@@ -87,7 +87,7 @@ export interface ShapeDefinition<T> {
   readonly table: string;
   readonly params: readonly string[];
   readonly url: string;
-  readonly _type: T;  // Phantom field for type inference
+  readonly _type: T;  // Phantom field for type inference (not present at runtime)
 }
 
 // Helper to create type-safe shape definitions
@@ -96,7 +96,7 @@ function defineShape<T>(
   params: readonly string[],
   url: string
 ): ShapeDefinition<T> {
-  return { table, params, url, _type: null as unknown as T };
+  return { table, params, url } as ShapeDefinition<T>;
 }
 
 // Individual shape definitions with embedded types
@@ -214,8 +214,8 @@ export interface EntityDefinition<TRow, TCreate = unknown, TUpdate = unknown> {
   readonly shape: ShapeDefinition<TRow> | null;
   readonly mutations: {
     readonly url: string;
-    readonly _createType: TCreate;
-    readonly _updateType: TUpdate;
+    readonly _createType: TCreate;  // Phantom (not present at runtime)
+    readonly _updateType: TUpdate;  // Phantom (not present at runtime)
   } | null;
 }
 
@@ -226,7 +226,7 @@ export const PROJECT_ENTITY: EntityDefinition<Project, CreateProjectRequest, Upd
   mutationScope: 'Organization',
   shapeScope: 'Organization',
   shape: PROJECTS_SHAPE,
-  mutations: { url: '/projects', _createType: null as unknown as CreateProjectRequest, _updateType: null as unknown as UpdateProjectRequest },
+  mutations: { url: '/projects' } as EntityDefinition<Project, CreateProjectRequest, UpdateProjectRequest>['mutations'],
 };
 
 export const NOTIFICATION_ENTITY: EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest> = {
@@ -235,7 +235,7 @@ export const NOTIFICATION_ENTITY: EntityDefinition<Notification, CreateNotificat
   mutationScope: 'Organization',
   shapeScope: 'Organization',
   shape: NOTIFICATIONS_SHAPE,
-  mutations: { url: '/notifications', _createType: null as unknown as CreateNotificationRequest, _updateType: null as unknown as UpdateNotificationRequest },
+  mutations: { url: '/notifications' } as EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest>['mutations'],
 };
 
 export const TAG_ENTITY: EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest> = {
@@ -244,7 +244,7 @@ export const TAG_ENTITY: EntityDefinition<Tag, CreateTagRequest, UpdateTagReques
   mutationScope: 'Project',
   shapeScope: 'Project',
   shape: TAGS_SHAPE,
-  mutations: { url: '/tags', _createType: null as unknown as CreateTagRequest, _updateType: null as unknown as UpdateTagRequest },
+  mutations: { url: '/tags' } as EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest>['mutations'],
 };
 
 export const PROJECT_STATUS_ENTITY: EntityDefinition<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest> = {
@@ -253,7 +253,7 @@ export const PROJECT_STATUS_ENTITY: EntityDefinition<ProjectStatus, CreateProjec
   mutationScope: 'Project',
   shapeScope: 'Project',
   shape: PROJECT_STATUSES_SHAPE,
-  mutations: { url: '/project_statuses', _createType: null as unknown as CreateProjectStatusRequest, _updateType: null as unknown as UpdateProjectStatusRequest },
+  mutations: { url: '/project_statuses' } as EntityDefinition<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest>['mutations'],
 };
 
 export const ISSUE_ENTITY: EntityDefinition<Issue, CreateIssueRequest, UpdateIssueRequest> = {
@@ -262,7 +262,7 @@ export const ISSUE_ENTITY: EntityDefinition<Issue, CreateIssueRequest, UpdateIss
   mutationScope: 'Project',
   shapeScope: 'Project',
   shape: ISSUES_SHAPE,
-  mutations: { url: '/issues', _createType: null as unknown as CreateIssueRequest, _updateType: null as unknown as UpdateIssueRequest },
+  mutations: { url: '/issues' } as EntityDefinition<Issue, CreateIssueRequest, UpdateIssueRequest>['mutations'],
 };
 
 export const WORKSPACE_ENTITY: EntityDefinition<Workspace> = {
@@ -280,7 +280,7 @@ export const ISSUE_ASSIGNEE_ENTITY: EntityDefinition<IssueAssignee, CreateIssueA
   mutationScope: 'Issue',
   shapeScope: 'Project',
   shape: ISSUE_ASSIGNEES_SHAPE,
-  mutations: { url: '/issue_assignees', _createType: null as unknown as CreateIssueAssigneeRequest, _updateType: null as unknown as UpdateIssueAssigneeRequest },
+  mutations: { url: '/issue_assignees' } as EntityDefinition<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest>['mutations'],
 };
 
 export const ISSUE_FOLLOWER_ENTITY: EntityDefinition<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest> = {
@@ -289,7 +289,7 @@ export const ISSUE_FOLLOWER_ENTITY: EntityDefinition<IssueFollower, CreateIssueF
   mutationScope: 'Issue',
   shapeScope: 'Project',
   shape: ISSUE_FOLLOWERS_SHAPE,
-  mutations: { url: '/issue_followers', _createType: null as unknown as CreateIssueFollowerRequest, _updateType: null as unknown as UpdateIssueFollowerRequest },
+  mutations: { url: '/issue_followers' } as EntityDefinition<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest>['mutations'],
 };
 
 export const ISSUE_TAG_ENTITY: EntityDefinition<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest> = {
@@ -298,7 +298,7 @@ export const ISSUE_TAG_ENTITY: EntityDefinition<IssueTag, CreateIssueTagRequest,
   mutationScope: 'Issue',
   shapeScope: 'Project',
   shape: ISSUE_TAGS_SHAPE,
-  mutations: { url: '/issue_tags', _createType: null as unknown as CreateIssueTagRequest, _updateType: null as unknown as UpdateIssueTagRequest },
+  mutations: { url: '/issue_tags' } as EntityDefinition<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest>['mutations'],
 };
 
 export const ISSUE_RELATIONSHIP_ENTITY: EntityDefinition<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest> = {
@@ -307,7 +307,7 @@ export const ISSUE_RELATIONSHIP_ENTITY: EntityDefinition<IssueRelationship, Crea
   mutationScope: 'Issue',
   shapeScope: 'Project',
   shape: ISSUE_RELATIONSHIPS_SHAPE,
-  mutations: { url: '/issue_relationships', _createType: null as unknown as CreateIssueRelationshipRequest, _updateType: null as unknown as UpdateIssueRelationshipRequest },
+  mutations: { url: '/issue_relationships' } as EntityDefinition<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest>['mutations'],
 };
 
 export const ISSUE_COMMENT_ENTITY: EntityDefinition<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> = {
@@ -316,7 +316,7 @@ export const ISSUE_COMMENT_ENTITY: EntityDefinition<IssueComment, CreateIssueCom
   mutationScope: 'Issue',
   shapeScope: 'Issue',
   shape: ISSUE_COMMENTS_SHAPE,
-  mutations: { url: '/issue_comments', _createType: null as unknown as CreateIssueCommentRequest, _updateType: null as unknown as UpdateIssueCommentRequest },
+  mutations: { url: '/issue_comments' } as EntityDefinition<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest>['mutations'],
 };
 
 export const ISSUE_COMMENT_REACTION_ENTITY: EntityDefinition<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest> = {
@@ -325,7 +325,7 @@ export const ISSUE_COMMENT_REACTION_ENTITY: EntityDefinition<IssueCommentReactio
   mutationScope: 'Comment',
   shapeScope: 'Comment',
   shape: ISSUE_COMMENT_REACTIONS_SHAPE,
-  mutations: { url: '/issue_comment_reactions', _createType: null as unknown as CreateIssueCommentReactionRequest, _updateType: null as unknown as UpdateIssueCommentReactionRequest },
+  mutations: { url: '/issue_comment_reactions' } as EntityDefinition<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>['mutations'],
 };
 
 // All entities as an array for SDK generation

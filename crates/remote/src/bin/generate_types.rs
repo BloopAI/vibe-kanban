@@ -137,7 +137,7 @@ fn export_shapes() -> String {
     output.push_str("  readonly table: string;\n");
     output.push_str("  readonly params: readonly string[];\n");
     output.push_str("  readonly url: string;\n");
-    output.push_str("  readonly _type: T;  // Phantom field for type inference\n");
+    output.push_str("  readonly _type: T;  // Phantom field for type inference (not present at runtime)\n");
     output.push_str("}\n\n");
 
     // Helper function
@@ -147,7 +147,7 @@ fn export_shapes() -> String {
     output.push_str("  params: readonly string[],\n");
     output.push_str("  url: string\n");
     output.push_str("): ShapeDefinition<T> {\n");
-    output.push_str("  return { table, params, url, _type: null as unknown as T };\n");
+    output.push_str("  return { table, params, url } as ShapeDefinition<T>;\n");
     output.push_str("}\n\n");
 
     // Generate individual shape definitions
@@ -215,8 +215,8 @@ fn export_shapes() -> String {
     output.push_str("  readonly shape: ShapeDefinition<TRow> | null;\n");
     output.push_str("  readonly mutations: {\n");
     output.push_str("    readonly url: string;\n");
-    output.push_str("    readonly _createType: TCreate;\n");
-    output.push_str("    readonly _updateType: TUpdate;\n");
+    output.push_str("    readonly _createType: TCreate;  // Phantom (not present at runtime)\n");
+    output.push_str("    readonly _updateType: TUpdate;  // Phantom (not present at runtime)\n");
     output.push_str("  } | null;\n");
     output.push_str("}\n\n");
 
@@ -239,8 +239,9 @@ fn export_shapes() -> String {
         let has_mutations = entity.mutation_scope().is_some() && !entity.fields().is_empty();
         let mutations_str = if has_mutations {
             format!(
-                "{{ url: '/{table}', _createType: null as unknown as Create{name}Request, _updateType: null as unknown as Update{name}Request }}",
+                "{{ url: '/{table}' }} as EntityDefinition<{ts_type}, Create{name}Request, Update{name}Request>['mutations']",
                 table = entity.table(),
+                ts_type = entity.ts_type_name(),
                 name = entity.name()
             )
         } else {
