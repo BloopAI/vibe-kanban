@@ -85,7 +85,14 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
           executeAction(effect.action, effectiveWorkspaceId, repoId);
         }
       },
-      [dispatch, modal, executeAction, effectiveWorkspaceId, repos, initialRepoId]
+      [
+        dispatch,
+        modal,
+        executeAction,
+        effectiveWorkspaceId,
+        repos,
+        initialRepoId,
+      ]
     );
 
     // Restore focus when dialog closes
