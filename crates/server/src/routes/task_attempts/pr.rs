@@ -706,17 +706,22 @@ pub async fn create_workspace_from_pr(
         .ensure_container_exists(&workspace)
         .await?;
 
+    // Configure PR branch tracking (non-fatal - workspace is usable without this)
     let worktree_path = PathBuf::from(&container_ref).join(&repo.name);
-    let repo_info = GhCli::new()
-        .get_repo_info(&remote_url, &worktree_path)
-        .map_err(|e| ApiError::BadRequest(format!("Failed to get repo info: {e}")))?;
-    if let Err(e) = GhCli::new().pr_checkout(
-        &worktree_path,
-        &repo_info.owner,
-        &repo_info.repo_name,
-        payload.pr_number,
-    ) {
-        tracing::warn!("Failed to configure PR branch tracking: {e}");
+    match GhCli::new().get_repo_info(&remote_url, &worktree_path) {
+        Ok(repo_info) => {
+            if let Err(e) = GhCli::new().pr_checkout(
+                &worktree_path,
+                &repo_info.owner,
+                &repo_info.repo_name,
+                payload.pr_number,
+            ) {
+                tracing::warn!("Failed to configure PR branch tracking: {e}");
+            }
+        }
+        Err(e) => {
+            tracing::warn!("Failed to get repo info for PR tracking (gh CLI may not be installed): {e}");
+        }
     }
 
     Merge::create_pr(
