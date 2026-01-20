@@ -30,7 +30,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuTriggerButton,
 } from '../../primitives/Dropdown';
-import { SettingsCard, SettingsField, SettingsCheckbox } from './SettingsComponents';
+import {
+  SettingsCard,
+  SettingsField,
+  SettingsCheckbox,
+} from './SettingsComponents';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 
