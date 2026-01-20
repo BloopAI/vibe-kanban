@@ -1,5 +1,5 @@
 import { useRef, useMemo } from 'react';
-import type { Workspace, Session } from 'shared/types';
+import type { Workspace, SessionWithInitiator } from 'shared/types';
 import { createWorkspaceWithSession } from '@/types/attempt';
 import { WorkspacesMain } from '@/components/ui-new/views/WorkspacesMain';
 import { useTask } from '@/hooks/useTask';
@@ -12,8 +12,8 @@ interface DiffStats {
 
 interface WorkspacesMainContainerProps {
   selectedWorkspace: Workspace | null;
-  selectedSession: Session | undefined;
-  sessions: Session[];
+  selectedSession: SessionWithInitiator | undefined;
+  sessions: SessionWithInitiator[];
   onSelectSession: (sessionId: string) => void;
   isLoading: boolean;
   /** Whether user is creating a new session */

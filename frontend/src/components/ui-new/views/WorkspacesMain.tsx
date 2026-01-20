@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Session } from 'shared/types';
+import type { SessionWithInitiator } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionChatBoxContainer';
 import { ContextBarContainer } from '@/components/ui-new/containers/ContextBarContainer';
@@ -18,7 +18,7 @@ interface DiffStats {
 
 interface WorkspacesMainProps {
   workspaceWithSession: WorkspaceWithSession | undefined;
-  sessions: Session[];
+  sessions: SessionWithInitiator[];
   onSelectSession: (sessionId: string) => void;
   isLoading: boolean;
   containerRef: RefObject<HTMLElement | null>;
