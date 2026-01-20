@@ -390,6 +390,13 @@ async fn run_session_inner(
 
             tracing::debug!("Sending commit reminder prompt to OpenCode session");
 
+            // Log the user message so it's visible in the UI
+            let _ = log_writer
+                .log_event(&OpencodeExecutorEvent::UserMessage {
+                    content: reminder_prompt.clone(),
+                })
+                .await;
+
             let reminder_fut = Box::pin(prompt(
                 &client,
                 &config.base_url,
@@ -1180,7 +1187,13 @@ pub async fn spawn_event_listener(config: EventListenerConfig, initial_resp: req
         .await;
 
         match outcome {
-            Ok(EventStreamOutcome::Idle) | Ok(EventStreamOutcome::Terminal) => return,
+            Ok(EventStreamOutcome::Idle) => {
+                // Keep listening - there may be more prompts (e.g., commit reminder)
+                // The task will be aborted by event_handle.abort() when done
+                resp = None;
+                continue;
+            }
+            Ok(EventStreamOutcome::Terminal) => return,
             Ok(EventStreamOutcome::Disconnected) | Err(_) => {
                 attempt += 1;
                 if attempt >= max_attempts {
