@@ -112,28 +112,28 @@ export const NOTIFICATIONS_SHAPE = defineShape<Notification>(
   '/shape/notifications'
 );
 
-export const WORKSPACES_SHAPE = defineShape<Workspace>(
-  'workspaces',
-  ['project_id'] as const,
-  '/shape/project/{project_id}/workspaces'
-);
-
-export const PROJECT_STATUSES_SHAPE = defineShape<ProjectStatus>(
-  'project_statuses',
-  ['project_id'] as const,
-  '/shape/project/{project_id}/statuses'
-);
-
 export const TAGS_SHAPE = defineShape<Tag>(
   'tags',
   ['project_id'] as const,
   '/shape/project/{project_id}/tags'
 );
 
+export const PROJECT_STATUSES_SHAPE = defineShape<ProjectStatus>(
+  'project_statuses',
+  ['project_id'] as const,
+  '/shape/project/{project_id}/project_statuses'
+);
+
 export const ISSUES_SHAPE = defineShape<Issue>(
   'issues',
   ['project_id'] as const,
   '/shape/project/{project_id}/issues'
+);
+
+export const WORKSPACES_SHAPE = defineShape<Workspace>(
+  'workspaces',
+  ['project_id'] as const,
+  '/shape/project/{project_id}/workspaces'
 );
 
 export const ISSUE_ASSIGNEES_SHAPE = defineShape<IssueAssignee>(
@@ -176,10 +176,10 @@ export const ISSUE_COMMENT_REACTIONS_SHAPE = defineShape<IssueCommentReaction>(
 export const ALL_SHAPES = [
   PROJECTS_SHAPE,
   NOTIFICATIONS_SHAPE,
-  WORKSPACES_SHAPE,
-  PROJECT_STATUSES_SHAPE,
   TAGS_SHAPE,
+  PROJECT_STATUSES_SHAPE,
   ISSUES_SHAPE,
+  WORKSPACES_SHAPE,
   ISSUE_ASSIGNEES_SHAPE,
   ISSUE_FOLLOWERS_SHAPE,
   ISSUE_TAGS_SHAPE,
@@ -188,8 +188,164 @@ export const ALL_SHAPES = [
   ISSUE_COMMENT_REACTIONS_SHAPE,
 ] as const;
 
+// Backward compatibility aliases (deprecated, use new names)
+/** @deprecated Use ISSUE_RELATIONSHIPS_SHAPE instead */
+export const ISSUE_DEPENDENCIES_SHAPE = ISSUE_RELATIONSHIPS_SHAPE;
+
 // Type helper to extract row type from a shape
 export type ShapeRowType<S extends ShapeDefinition<unknown>> = S['_type'];
 
 // Union of all shape types
 export type AnyShape = typeof ALL_SHAPES[number];
+
+// =============================================================================
+// Entity Definitions for SDK Generation
+// =============================================================================
+
+// Scope enum matching Rust
+export type Scope = 'Organization' | 'Project' | 'Issue' | 'Comment';
+
+// Entity definition interface
+export interface EntityDefinition<TRow, TCreate = unknown, TUpdate = unknown> {
+  readonly name: string;
+  readonly table: string;
+  readonly mutationScope: Scope | null;
+  readonly shapeScope: Scope | null;
+  readonly shape: ShapeDefinition<TRow> | null;
+  readonly mutations: {
+    readonly url: string;
+    readonly _createType: TCreate;
+    readonly _updateType: TUpdate;
+  } | null;
+}
+
+// Individual entity definitions
+export const PROJECT_ENTITY: EntityDefinition<Project, CreateProjectRequest, UpdateProjectRequest> = {
+  name: 'Project',
+  table: 'projects',
+  mutationScope: 'Organization',
+  shapeScope: 'Organization',
+  shape: PROJECTS_SHAPE,
+  mutations: { url: '/projects', _createType: null as unknown as CreateProjectRequest, _updateType: null as unknown as UpdateProjectRequest },
+};
+
+export const NOTIFICATION_ENTITY: EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest> = {
+  name: 'Notification',
+  table: 'notifications',
+  mutationScope: 'Organization',
+  shapeScope: 'Organization',
+  shape: NOTIFICATIONS_SHAPE,
+  mutations: { url: '/notifications', _createType: null as unknown as CreateNotificationRequest, _updateType: null as unknown as UpdateNotificationRequest },
+};
+
+export const TAG_ENTITY: EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest> = {
+  name: 'Tag',
+  table: 'tags',
+  mutationScope: 'Project',
+  shapeScope: 'Project',
+  shape: TAGS_SHAPE,
+  mutations: { url: '/tags', _createType: null as unknown as CreateTagRequest, _updateType: null as unknown as UpdateTagRequest },
+};
+
+export const PROJECT_STATUS_ENTITY: EntityDefinition<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest> = {
+  name: 'ProjectStatus',
+  table: 'project_statuses',
+  mutationScope: 'Project',
+  shapeScope: 'Project',
+  shape: PROJECT_STATUSES_SHAPE,
+  mutations: { url: '/project_statuses', _createType: null as unknown as CreateProjectStatusRequest, _updateType: null as unknown as UpdateProjectStatusRequest },
+};
+
+export const ISSUE_ENTITY: EntityDefinition<Issue, CreateIssueRequest, UpdateIssueRequest> = {
+  name: 'Issue',
+  table: 'issues',
+  mutationScope: 'Project',
+  shapeScope: 'Project',
+  shape: ISSUES_SHAPE,
+  mutations: { url: '/issues', _createType: null as unknown as CreateIssueRequest, _updateType: null as unknown as UpdateIssueRequest },
+};
+
+export const WORKSPACE_ENTITY: EntityDefinition<Workspace> = {
+  name: 'Workspace',
+  table: 'workspaces',
+  mutationScope: null,
+  shapeScope: null,
+  shape: WORKSPACES_SHAPE,
+  mutations: null,
+};
+
+export const ISSUE_ASSIGNEE_ENTITY: EntityDefinition<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest> = {
+  name: 'IssueAssignee',
+  table: 'issue_assignees',
+  mutationScope: 'Issue',
+  shapeScope: 'Project',
+  shape: ISSUE_ASSIGNEES_SHAPE,
+  mutations: { url: '/issue_assignees', _createType: null as unknown as CreateIssueAssigneeRequest, _updateType: null as unknown as UpdateIssueAssigneeRequest },
+};
+
+export const ISSUE_FOLLOWER_ENTITY: EntityDefinition<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest> = {
+  name: 'IssueFollower',
+  table: 'issue_followers',
+  mutationScope: 'Issue',
+  shapeScope: 'Project',
+  shape: ISSUE_FOLLOWERS_SHAPE,
+  mutations: { url: '/issue_followers', _createType: null as unknown as CreateIssueFollowerRequest, _updateType: null as unknown as UpdateIssueFollowerRequest },
+};
+
+export const ISSUE_TAG_ENTITY: EntityDefinition<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest> = {
+  name: 'IssueTag',
+  table: 'issue_tags',
+  mutationScope: 'Issue',
+  shapeScope: 'Project',
+  shape: ISSUE_TAGS_SHAPE,
+  mutations: { url: '/issue_tags', _createType: null as unknown as CreateIssueTagRequest, _updateType: null as unknown as UpdateIssueTagRequest },
+};
+
+export const ISSUE_RELATIONSHIP_ENTITY: EntityDefinition<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest> = {
+  name: 'IssueRelationship',
+  table: 'issue_relationships',
+  mutationScope: 'Issue',
+  shapeScope: 'Project',
+  shape: ISSUE_RELATIONSHIPS_SHAPE,
+  mutations: { url: '/issue_relationships', _createType: null as unknown as CreateIssueRelationshipRequest, _updateType: null as unknown as UpdateIssueRelationshipRequest },
+};
+
+export const ISSUE_COMMENT_ENTITY: EntityDefinition<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> = {
+  name: 'IssueComment',
+  table: 'issue_comments',
+  mutationScope: 'Issue',
+  shapeScope: 'Issue',
+  shape: ISSUE_COMMENTS_SHAPE,
+  mutations: { url: '/issue_comments', _createType: null as unknown as CreateIssueCommentRequest, _updateType: null as unknown as UpdateIssueCommentRequest },
+};
+
+export const ISSUE_COMMENT_REACTION_ENTITY: EntityDefinition<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest> = {
+  name: 'IssueCommentReaction',
+  table: 'issue_comment_reactions',
+  mutationScope: 'Comment',
+  shapeScope: 'Comment',
+  shape: ISSUE_COMMENT_REACTIONS_SHAPE,
+  mutations: { url: '/issue_comment_reactions', _createType: null as unknown as CreateIssueCommentReactionRequest, _updateType: null as unknown as UpdateIssueCommentReactionRequest },
+};
+
+// All entities as an array for SDK generation
+export const ALL_ENTITIES = [
+  PROJECT_ENTITY,
+  NOTIFICATION_ENTITY,
+  TAG_ENTITY,
+  PROJECT_STATUS_ENTITY,
+  ISSUE_ENTITY,
+  WORKSPACE_ENTITY,
+  ISSUE_ASSIGNEE_ENTITY,
+  ISSUE_FOLLOWER_ENTITY,
+  ISSUE_TAG_ENTITY,
+  ISSUE_RELATIONSHIP_ENTITY,
+  ISSUE_COMMENT_ENTITY,
+  ISSUE_COMMENT_REACTION_ENTITY,
+] as const;
+
+// Type helper to extract row type from an entity
+export type EntityRowType<E extends EntityDefinition<unknown>> = E extends EntityDefinition<infer R> ? R : never;
+
+// Union of all entity types
+export type AnyEntity = typeof ALL_ENTITIES[number];

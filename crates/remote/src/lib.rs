@@ -2,6 +2,8 @@ mod app;
 mod auth;
 pub mod config;
 pub mod db;
+pub mod entities;
+pub mod entity;
 pub mod github_app;
 pub mod mail;
 pub mod mutation_types;

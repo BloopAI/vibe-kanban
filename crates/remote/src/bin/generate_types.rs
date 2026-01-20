@@ -17,17 +17,17 @@ use remote::{
         users::UserData,
         workspaces::Workspace,
     },
-    mutations::{
-        CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
-        CreateIssueFollowerRequest, CreateIssueRelationshipRequest, CreateIssueRequest,
-        CreateIssueTagRequest, CreateNotificationRequest, CreateProjectRequest,
+    // Import from new unified entities module
+    entities::{
+        all_entities, all_shapes, CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest,
+        CreateIssueCommentRequest, CreateIssueFollowerRequest, CreateIssueRelationshipRequest,
+        CreateIssueRequest, CreateIssueTagRequest, CreateNotificationRequest, CreateProjectRequest,
         CreateProjectStatusRequest, CreateTagRequest, UpdateIssueAssigneeRequest,
         UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueFollowerRequest,
         UpdateIssueRelationshipRequest, UpdateIssueRequest, UpdateIssueTagRequest,
         UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest,
         UpdateTagRequest,
     },
-    shapes::all_shapes,
 };
 use ts_rs::TS;
 
@@ -180,12 +180,112 @@ fn export_shapes() -> String {
     }
     output.push_str("] as const;\n\n");
 
+    // Backward compatibility aliases
+    output.push_str("// Backward compatibility aliases (deprecated, use new names)\n");
+    output.push_str("/** @deprecated Use ISSUE_RELATIONSHIPS_SHAPE instead */\n");
+    output.push_str("export const ISSUE_DEPENDENCIES_SHAPE = ISSUE_RELATIONSHIPS_SHAPE;\n\n");
+
     // Type helpers
     output.push_str("// Type helper to extract row type from a shape\n");
     output
         .push_str("export type ShapeRowType<S extends ShapeDefinition<unknown>> = S['_type'];\n\n");
     output.push_str("// Union of all shape types\n");
-    output.push_str("export type AnyShape = typeof ALL_SHAPES[number];\n");
+    output.push_str("export type AnyShape = typeof ALL_SHAPES[number];\n\n");
+
+    // Generate EntityDefinition interface for SDK generation
+    output.push_str("// =============================================================================\n");
+    output.push_str("// Entity Definitions for SDK Generation\n");
+    output.push_str("// =============================================================================\n\n");
+
+    output.push_str("// Scope enum matching Rust\n");
+    output.push_str("export type Scope = 'Organization' | 'Project' | 'Issue' | 'Comment';\n\n");
+
+    output.push_str("// Entity definition interface\n");
+    output.push_str("export interface EntityDefinition<TRow, TCreate = unknown, TUpdate = unknown> {\n");
+    output.push_str("  readonly name: string;\n");
+    output.push_str("  readonly table: string;\n");
+    output.push_str("  readonly mutationScope: Scope | null;\n");
+    output.push_str("  readonly shapeScope: Scope | null;\n");
+    output.push_str("  readonly shape: ShapeDefinition<TRow> | null;\n");
+    output.push_str("  readonly mutations: {\n");
+    output.push_str("    readonly url: string;\n");
+    output.push_str("    readonly _createType: TCreate;\n");
+    output.push_str("    readonly _updateType: TUpdate;\n");
+    output.push_str("  } | null;\n");
+    output.push_str("}\n\n");
+
+    // Generate individual entity definitions
+    let entities = all_entities();
+    output.push_str("// Individual entity definitions\n");
+    for entity in &entities {
+        let const_name = to_screaming_snake_case(entity.name());
+        let shape_name = format!("{}_SHAPE", entity.table().to_uppercase());
+
+        let mutation_scope = entity
+            .mutation_scope()
+            .map(|s| format!("'{:?}'", s))
+            .unwrap_or_else(|| "null".to_string());
+        let shape_scope = entity
+            .shape_scope()
+            .map(|s| format!("'{:?}'", s))
+            .unwrap_or_else(|| "null".to_string());
+
+        let has_mutations = entity.mutation_scope().is_some() && !entity.fields().is_empty();
+        let mutations_str = if has_mutations {
+            format!(
+                "{{ url: '/{table}', _createType: null as unknown as Create{name}Request, _updateType: null as unknown as Update{name}Request }}",
+                table = entity.table(),
+                name = entity.name()
+            )
+        } else {
+            "null".to_string()
+        };
+
+        output.push_str(&format!(
+            "export const {const_name}_ENTITY: EntityDefinition<{ts_type}{create_update}> = {{\n",
+            const_name = const_name,
+            ts_type = entity.ts_type_name(),
+            create_update = if has_mutations {
+                format!(", Create{}Request, Update{}Request", entity.name(), entity.name())
+            } else {
+                "".to_string()
+            }
+        ));
+        output.push_str(&format!("  name: '{}',\n", entity.name()));
+        output.push_str(&format!("  table: '{}',\n", entity.table()));
+        output.push_str(&format!("  mutationScope: {},\n", mutation_scope));
+        output.push_str(&format!("  shapeScope: {},\n", shape_scope));
+        output.push_str(&format!("  shape: {},\n", shape_name));
+        output.push_str(&format!("  mutations: {},\n", mutations_str));
+        output.push_str("};\n\n");
+    }
+
+    // Generate ALL_ENTITIES array
+    output.push_str("// All entities as an array for SDK generation\n");
+    output.push_str("export const ALL_ENTITIES = [\n");
+    for entity in &entities {
+        let const_name = to_screaming_snake_case(entity.name());
+        output.push_str(&format!("  {}_ENTITY,\n", const_name));
+    }
+    output.push_str("] as const;\n\n");
+
+    // Type helpers for entities
+    output.push_str("// Type helper to extract row type from an entity\n");
+    output.push_str("export type EntityRowType<E extends EntityDefinition<unknown>> = E extends EntityDefinition<infer R> ? R : never;\n\n");
+    output.push_str("// Union of all entity types\n");
+    output.push_str("export type AnyEntity = typeof ALL_ENTITIES[number];\n");
 
     output
+}
+
+/// Convert PascalCase to SCREAMING_SNAKE_CASE
+fn to_screaming_snake_case(s: &str) -> String {
+    let mut result = String::new();
+    for (i, c) in s.chars().enumerate() {
+        if c.is_uppercase() && i > 0 {
+            result.push('_');
+        }
+        result.push(c.to_ascii_uppercase());
+    }
+    result
 }
