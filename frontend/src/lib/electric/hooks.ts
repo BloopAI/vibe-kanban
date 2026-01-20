@@ -86,7 +86,9 @@ export function useEntity<
 
   // Debug: log when paramsKey changes
   if (prevParamsKeyRef.current !== paramsKey) {
-    console.log(`[useEntity ${entity.name}] #${renderNum} PARAMS CHANGED: ${prevParamsKeyRef.current} -> ${paramsKey}`);
+    console.log(
+      `[useEntity ${entity.name}] #${renderNum} PARAMS CHANGED: ${prevParamsKeyRef.current} -> ${paramsKey}`
+    );
     prevParamsKeyRef.current = paramsKey;
   }
 
@@ -97,7 +99,9 @@ export function useEntity<
 
   // Create collection with mutation handlers - retryKey forces recreation on retry
   const collection = useMemo(() => {
-    console.log(`[useEntity ${entity.name}] #${renderNum} COLLECTION CREATED for params: ${paramsKey}`);
+    console.log(
+      `[useEntity ${entity.name}] #${renderNum} COLLECTION CREATED for params: ${paramsKey}`
+    );
     const config = { onError: handleError };
     void retryKey; // Reference to force recreation on retry
     return createEntityCollection(entity, stableParams, config);
@@ -108,7 +112,9 @@ export function useEntity<
   );
 
   // Debug: log data and isLoading state
-  console.log(`[useEntity ${entity.name}] #${renderNum} paramsKey=${paramsKey.slice(0, 50)}, isLoading=${isLoading}, dataLength=${data?.length ?? 'null'}`);
+  console.log(
+    `[useEntity ${entity.name}] #${renderNum} paramsKey=${paramsKey.slice(0, 50)}, isLoading=${isLoading}, dataLength=${data?.length ?? 'null'}`
+  );
 
   // useLiveQuery returns data as flat objects directly, not wrapped in { item: {...} }
   // Return empty array while loading to avoid showing stale data during collection transitions
@@ -118,7 +124,9 @@ export function useEntity<
   }, [data, isLoading]);
 
   // Debug: log what we're returning
-  console.log(`[useEntity ${entity.name}] #${renderNum} RETURNING: itemsLength=${items.length}, isLoading=${isLoading}`);
+  console.log(
+    `[useEntity ${entity.name}] #${renderNum} RETURNING: itemsLength=${items.length}, isLoading=${isLoading}`
+  );
 
   // Expose collection mutation methods with stable callbacks
   // Type assertion needed because TanStack DB collection types are complex
