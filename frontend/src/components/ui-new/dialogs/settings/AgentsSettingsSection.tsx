@@ -389,6 +389,19 @@ export function AgentsSettingsSection() {
     }
   };
 
+  const handleJsonEditorDiscard = () => {
+    if (serverProfilesContent) {
+      setLocalProfilesContent(serverProfilesContent);
+      setIsDirty(false);
+      try {
+        const parsed = JSON.parse(serverProfilesContent);
+        setLocalParsedProfiles(parsed);
+      } catch {
+        // Ignore parse errors on discard
+      }
+    }
+  };
+
   if (profilesLoading) {
     return (
       <div className="flex items-center justify-center py-8 gap-2">
@@ -720,8 +733,11 @@ export function AgentsSettingsSection() {
               show={isDirty}
               saving={profilesSaving}
               saveDisabled={!!profilesError}
-              saveLabel={t('settings.agents.save.button')}
+              saveLabel={t('buttons.save', { ns: 'common' })}
+              unsavedMessage={t('settings.agents.save.unsavedChanges')}
+              discardLabel={t('buttons.discard', { ns: 'common' })}
               onSave={handleJsonEditorSave}
+              onDiscard={handleJsonEditorDiscard}
             />
           </div>
         )}

@@ -632,9 +632,9 @@ export function GeneralSettingsSection() {
         show={hasUnsavedChanges}
         saving={saving}
         saveDisabled={!!branchPrefixError}
-        saveLabel={t('settings.general.save.button')}
+        saveLabel={t('buttons.save', { ns: 'common' })}
         unsavedMessage={t('settings.general.save.unsavedChanges')}
-        discardLabel={t('settings.general.save.discard')}
+        discardLabel={t('buttons.discard', { ns: 'common' })}
         onSave={handleSave}
         onDiscard={handleDiscard}
       />

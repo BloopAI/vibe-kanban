@@ -343,9 +343,9 @@ export function ReposSettingsSection() {
           <SettingsSaveBar
             show={hasUnsavedChanges}
             saving={saving}
-            saveLabel={t('settings.repos.save.button')}
+            saveLabel={t('buttons.save', { ns: 'common' })}
             unsavedMessage={t('settings.repos.save.unsavedChanges')}
-            discardLabel={t('settings.repos.save.discard')}
+            discardLabel={t('buttons.discard', { ns: 'common' })}
             onSave={handleSave}
             onDiscard={handleDiscard}
           />

@@ -425,9 +425,9 @@ export function ProjectsSettingsSection() {
           <SettingsSaveBar
             show={hasUnsavedChanges}
             saving={saving}
-            saveLabel={t('settings.projects.save.button')}
+            saveLabel={t('buttons.save', { ns: 'common' })}
             unsavedMessage={t('settings.projects.save.unsavedChanges')}
-            discardLabel={t('settings.projects.save.discard')}
+            discardLabel={t('buttons.discard', { ns: 'common' })}
             onSave={handleSave}
             onDiscard={handleDiscard}
           />
