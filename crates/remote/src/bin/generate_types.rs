@@ -18,10 +18,10 @@ use remote::{
         workspaces::Workspace,
     },
     mutations::{
-        CreateIssueCommentReactionRequest, CreateIssueCommentRequest, CreateProjectRequest,
-        CreateProjectStatusRequest, CreateTagRequest, UpdateIssueCommentReactionRequest,
-        UpdateIssueCommentRequest, UpdateProjectRequest, UpdateProjectStatusRequest,
-        UpdateTagRequest,
+        CreateIssueCommentReactionRequest, CreateIssueCommentRequest, CreateNotificationRequest,
+        CreateProjectRequest, CreateProjectStatusRequest, CreateTagRequest,
+        UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateNotificationRequest,
+        UpdateProjectRequest, UpdateProjectStatusRequest, UpdateTagRequest,
     },
     shapes::all_shapes,
 };
@@ -93,6 +93,8 @@ fn export_shapes() -> String {
         // Mutation request types
         CreateProjectRequest::decl(),
         UpdateProjectRequest::decl(),
+        CreateNotificationRequest::decl(),
+        UpdateNotificationRequest::decl(),
         CreateTagRequest::decl(),
         UpdateTagRequest::decl(),
         CreateProjectStatusRequest::decl(),

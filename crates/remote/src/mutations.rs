@@ -7,7 +7,7 @@
 
 use crate::db::{
     issue_comment_reactions::IssueCommentReaction, issue_comments::IssueComment,
-    project_statuses::ProjectStatus, projects::Project, tags::Tag,
+    notifications::Notification, project_statuses::ProjectStatus, projects::Project, tags::Tag,
 };
 
 // Organization-scoped mutations
@@ -16,6 +16,13 @@ crate::define_mutation_types!(
     table: "projects",
     scope: Organization,
     fields: [name: String, color: String],
+);
+
+crate::define_mutation_types!(
+    Notification,
+    table: "notifications",
+    scope: Organization,
+    fields: [seen: bool],
 );
 
 // Project-scoped mutations

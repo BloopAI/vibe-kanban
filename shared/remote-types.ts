@@ -40,6 +40,10 @@ export type CreateProjectRequest = { organization_id: string, name: string, colo
 
 export type UpdateProjectRequest = { name: string | null, color: string | null, };
 
+export type CreateNotificationRequest = { organization_id: string, seen: boolean, };
+
+export type UpdateNotificationRequest = { seen: boolean | null, };
+
 export type CreateTagRequest = { project_id: string, name: string, color: string, };
 
 export type UpdateTagRequest = { name: string | null, color: string | null, };
