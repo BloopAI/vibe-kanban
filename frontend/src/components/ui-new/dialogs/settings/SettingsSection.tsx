@@ -62,7 +62,7 @@ export function SettingsSection({ type, onClose }: SettingsSectionProps) {
       </div>
 
       {/* Content */}
-      <div className="space-y-6 px-6 py-4 overflow-y-auto">
+      <div className="space-y-6 px-6 pt-4 overflow-y-auto">
         {renderContent()}
       </div>
     </div>
