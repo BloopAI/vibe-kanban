@@ -342,9 +342,6 @@ export function ProjectsSettingsSection() {
         <h2 className="text-lg font-semibold text-high">
           {t('settings.layout.nav.projects')}
         </h2>
-        <p className="text-sm text-low">
-          {t('settings.layout.nav.projectsDesc')}
-        </p>
       </div>
 
       {/* Status messages */}
