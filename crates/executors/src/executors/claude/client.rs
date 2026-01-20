@@ -158,7 +158,11 @@ impl ClaudeAgentClient {
         // Stop hook git check - uses `decision` (approve/block) and `reason` fields
         if callback_id == STOP_GIT_CHECK_CALLBACK_ID {
             // If stop_hook_active is true, we already showed the reminder - just approve
-            if input.get("stop_hook_active").and_then(|v| v.as_bool()).unwrap_or(false) {
+            if input
+                .get("stop_hook_active")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+            {
                 return Ok(serde_json::json!({"decision": "approve"}));
             }
             return Ok(check_git_status(&self.repo_context).await);
