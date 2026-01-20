@@ -475,7 +475,8 @@ export function AgentsSettingsSection() {
     : [];
 
   const selectedProfile = profiles?.[executorDraft?.executor || ''];
-  const hasVariants = selectedProfile && Object.keys(selectedProfile).length > 0;
+  const hasVariants =
+    selectedProfile && Object.keys(selectedProfile).length > 0;
 
   return (
     <div className="space-y-6">
@@ -687,9 +688,7 @@ export function AgentsSettingsSection() {
                       {configurationOptions.map((option) => (
                         <DropdownMenuItem
                           key={option.value}
-                          onClick={() =>
-                            setSelectedConfiguration(option.value)
-                          }
+                          onClick={() => setSelectedConfiguration(option.value)}
                         >
                           {option.label}
                         </DropdownMenuItem>

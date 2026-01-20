@@ -262,7 +262,9 @@ export function OrganizationsSettingsSection() {
           className="size-icon-lg animate-spin text-brand"
           weight="bold"
         />
-        <span className="text-normal">{t('settings.loadingOrganizations')}</span>
+        <span className="text-normal">
+          {t('settings.loadingOrganizations')}
+        </span>
       </div>
     );
   }
@@ -427,7 +429,9 @@ export function OrganizationsSettingsSection() {
           {loadingMembers ? (
             <div className="flex items-center justify-center py-4 gap-2">
               <SpinnerIcon className="size-icon-sm animate-spin" />
-              <span className="text-sm text-low">{t('memberList.loading')}</span>
+              <span className="text-sm text-low">
+                {t('memberList.loading')}
+              </span>
             </div>
           ) : members.length === 0 ? (
             <div className="text-center py-4 text-sm text-low">

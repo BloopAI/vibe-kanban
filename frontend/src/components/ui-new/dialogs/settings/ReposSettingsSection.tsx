@@ -207,7 +207,9 @@ export function ReposSettingsSection() {
       if (id === selectedRepoId) return;
 
       if (hasUnsavedChanges) {
-        const confirmed = window.confirm(t('settings.repos.save.confirmSwitch'));
+        const confirmed = window.confirm(
+          t('settings.repos.save.confirmSwitch')
+        );
         if (!confirmed) return;
         setDraft(null);
         setSelectedRepo(null);
@@ -396,7 +398,9 @@ export function ReposSettingsSection() {
               <SettingsInput
                 value={draft.display_name}
                 onChange={(value) => updateDraft({ display_name: value })}
-                placeholder={t('settings.repos.general.displayName.placeholder')}
+                placeholder={t(
+                  'settings.repos.general.displayName.placeholder'
+                )}
               />
             </SettingsField>
 

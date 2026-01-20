@@ -299,7 +299,8 @@ export function McpSettingsSection() {
             <DropdownMenuTrigger asChild>
               <DropdownMenuTriggerButton
                 label={
-                  selectedProfileKey || t('settings.mcp.labels.agentPlaceholder')
+                  selectedProfileKey ||
+                  t('settings.mcp.labels.agentPlaceholder')
                 }
                 className="w-full justify-between"
               />
@@ -384,7 +385,8 @@ export function McpSettingsSection() {
                         icon?: string;
                       };
                       const name = metaObj.name || key;
-                      const description = metaObj.description || 'No description';
+                      const description =
+                        metaObj.description || 'No description';
                       const icon = metaObj.icon ? `/${metaObj.icon}` : null;
 
                       return (

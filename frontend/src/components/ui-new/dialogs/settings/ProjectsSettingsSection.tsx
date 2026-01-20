@@ -440,7 +440,9 @@ export function ProjectsSettingsSection() {
             {loadingRepos ? (
               <div className="flex items-center justify-center py-4 gap-2">
                 <SpinnerIcon className="size-icon-sm animate-spin" />
-                <span className="text-sm text-low">Loading repositories...</span>
+                <span className="text-sm text-low">
+                  Loading repositories...
+                </span>
               </div>
             ) : (
               <div className="space-y-2">
@@ -453,10 +455,14 @@ export function ProjectsSettingsSection() {
                       <div className="font-medium text-normal">
                         {repo.display_name}
                       </div>
-                      <div className="text-sm text-low truncate">{repo.path}</div>
+                      <div className="text-sm text-low truncate">
+                        {repo.path}
+                      </div>
                     </div>
                     <IconButton
-                      icon={deletingRepoId === repo.id ? SpinnerIcon : TrashIcon}
+                      icon={
+                        deletingRepoId === repo.id ? SpinnerIcon : TrashIcon
+                      }
                       onClick={() => handleDeleteRepository(repo.id)}
                       disabled={deletingRepoId === repo.id}
                       aria-label="Delete repository"
