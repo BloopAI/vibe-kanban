@@ -71,34 +71,6 @@ impl<'a> UserRepository<'a> {
         .await?
         .ok_or(IdentityError::NotFound)
     }
-
-    /// Fetch all assignees for a given project id.
-    /// Returns Vec<UserData> containing all unique users assigned to tasks in the project.
-    pub async fn fetch_assignees_by_project(
-        &self,
-        project_id: Uuid,
-    ) -> Result<Vec<UserData>, IdentityError> {
-        let rows = sqlx::query_as!(
-            UserData,
-            r#"
-            SELECT DISTINCT
-                u.id         as "user_id",
-                u.first_name as "first_name",
-                u.last_name  as "last_name",
-                u.username   as "username"
-            FROM shared_tasks st
-            INNER JOIN users u ON u.id = st.assignee_user_id
-            WHERE st.project_id = $1
-            AND st.assignee_user_id IS NOT NULL
-            "#,
-            project_id
-        )
-        .fetch_all(self.pool)
-        .await
-        .map_err(IdentityError::from)?;
-
-        Ok(rows)
-    }
 }
 
 async fn upsert_user(pool: &PgPool, user: &UpsertUser<'_>) -> Result<User, sqlx::Error> {

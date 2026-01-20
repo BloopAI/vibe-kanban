@@ -56,13 +56,13 @@
     "CODEX": {
       "DEFAULT": {
         "CODEX": {
-          "model": "gpt-5.2",
+          "model": "gpt-5.2-codex",
           "sandbox": "danger-full-access"
         }
       },
       "HIGH": {
         "CODEX": {
-          "model": "gpt-5.2",
+          "model": "gpt-5.2-codex",
           "sandbox": "danger-full-access",
           "model_reasoning_effort": "high"
         }
@@ -77,12 +77,6 @@
       "MAX": {
         "CODEX": {
           "model": "gpt-5.1-codex-max",
-          "sandbox": "danger-full-access"
-        }
-      },
-      "CODEX": {
-        "CODEX": {
-          "model": "gpt-5.2-codex",
           "sandbox": "danger-full-access"
         }
       }

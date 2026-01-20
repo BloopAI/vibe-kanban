@@ -134,6 +134,10 @@
     "viewArchive": "Ver archivo",
     "backToActive": "Volver a activos",
     "noArchived": "No hay espacios de trabajo archivados",
+    "noWorkspaces": "Sin espacios de trabajo",
+    "needsAttention": "Necesita Atención",
+    "idle": "Inactivo",
+    "running": "En Ejecución",
     "pin": "Fijar",
     "unpin": "Desfijar",
     "archive": "Archivar",
@@ -166,7 +170,12 @@
     "recent": "Reciente",
     "other": "Otro",
     "devServerPreview": "Vista previa del servidor de desarrollo",
-    "terminal": "Terminal"
+    "terminal": "Terminal",
+    "notes": "Notas"
+  },
+  "notes": {
+    "placeholder": "Agregar notas sobre este espacio de trabajo...",
+    "selectWorkspace": "Selecciona un espacio de trabajo para ver notas"
   },
   "repos": {
     "loading": "Cargando repositorios...",
@@ -184,7 +193,8 @@
     "repoSettings": "Configuración del repositorio",
     "cancel": "Cancelar",
     "saveChanges": "Guardar cambios",
-    "copied": "Copiado"
+    "copied": "Copiado",
+    "collapse": "Contraer"
   },
   "comments": {
     "addReviewComment": "Agregar comentario de revisión",
@@ -276,7 +286,8 @@
     "selectProcessToView": "Seleccione un proceso para ver los registros"
   },
   "processes": {
-    "noProcesses": "Sin procesos"
+    "noProcesses": "Sin procesos",
+    "terminal": "Terminal"
   },
   "search": {
     "matchCount": "{{current}} de {{total}}",

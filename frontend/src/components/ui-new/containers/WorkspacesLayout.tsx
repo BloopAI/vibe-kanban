@@ -100,7 +100,7 @@ export function WorkspacesLayout() {
       : { 'left-main': 50, 'right-main': 50 };
 
   const onLayoutChange = (layout: Layout) => {
-    if (rightMainPanelMode !== null)
+    if (isLeftMainPanelVisible && rightMainPanelMode !== null)
       setRightMainPanelSize(layout['right-main']);
   };
 

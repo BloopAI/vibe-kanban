@@ -2,14 +2,26 @@ pub mod auth;
 pub mod github_app;
 pub mod identity_errors;
 pub mod invitations;
+pub mod issue_assignees;
+pub mod issue_comment_reactions;
+pub mod issue_comments;
+pub mod issue_dependencies;
+pub mod issue_followers;
+pub mod issue_tags;
+pub mod issues;
+pub mod notifications;
 pub mod oauth;
 pub mod oauth_accounts;
 pub mod organization_members;
 pub mod organizations;
+pub mod project_notification_preferences;
+pub mod project_statuses;
 pub mod projects;
 pub mod reviews;
-pub mod tasks;
+pub mod tags;
+pub mod types;
 pub mod users;
+pub mod workspaces;
 
 use sqlx::{PgPool, Postgres, Transaction, migrate::MigrateError, postgres::PgPoolOptions};
 

@@ -60,9 +60,13 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
     const [isSaving, setIsSaving] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    // Track session ID locally so we can update it after starting a script
+    const [activeSessionId, setActiveSessionId] = useState<string | undefined>(
+      sessionId
+    );
 
     // Get execution processes for the session to find latest script process
-    const { executionProcesses } = useExecutionProcesses(sessionId);
+    const { executionProcesses } = useExecutionProcesses(activeSessionId);
 
     // Find the latest process for this script type
     const latestProcess = useMemo(() => {
@@ -215,14 +219,23 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
 
         setOriginalScript(script);
 
-        // Then run the script
+        // Then run the script and capture the session ID from the returned process
         if (scriptType === 'setup') {
-          await attemptsApi.runSetupScript(workspaceId);
+          const result = await attemptsApi.runSetupScript(workspaceId);
+          if (result.success) {
+            setActiveSessionId(result.data.session_id);
+          }
         } else if (scriptType === 'cleanup') {
-          await attemptsApi.runCleanupScript(workspaceId);
+          const result = await attemptsApi.runCleanupScript(workspaceId);
+          if (result.success) {
+            setActiveSessionId(result.data.session_id);
+          }
         } else {
           // Start the dev server
-          await attemptsApi.startDevServer(workspaceId);
+          const processes = await attemptsApi.startDevServer(workspaceId);
+          if (processes.length > 0) {
+            setActiveSessionId(processes[0].session_id);
+          }
         }
 
         // Keep dialog open so user can see the new execution logs

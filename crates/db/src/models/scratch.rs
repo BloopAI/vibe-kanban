@@ -37,6 +37,12 @@ pub struct PreviewSettingsData {
     pub responsive_height: Option<i32>,
 }
 
+/// Data for workspace notes scratch
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct WorkspaceNotesData {
+    pub content: String,
+}
+
 /// Data for a draft workspace scratch (new workspace creation)
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct DraftWorkspaceData {
@@ -70,6 +76,7 @@ pub enum ScratchPayload {
     DraftFollowUp(DraftFollowUpData),
     DraftWorkspace(DraftWorkspaceData),
     PreviewSettings(PreviewSettingsData),
+    WorkspaceNotes(WorkspaceNotesData),
 }
 
 impl ScratchPayload {

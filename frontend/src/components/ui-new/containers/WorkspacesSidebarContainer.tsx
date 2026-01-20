@@ -9,6 +9,8 @@ import {
 } from '@/stores/useUiPreferencesStore';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
 
+export type WorkspaceLayoutMode = 'flat' | 'accordion';
+
 // Fixed UUID for the universal workspace draft (same as in useCreateModeState.ts)
 const DRAFT_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -27,6 +29,15 @@ export function WorkspacesSidebarContainer() {
     PERSIST_KEYS.workspacesSidebarArchived,
     false
   );
+  const [isAccordionLayout, setAccordionLayout] = usePersistedExpanded(
+    PERSIST_KEYS.workspacesSidebarAccordionLayout,
+    false
+  );
+
+  const layoutMode: WorkspaceLayoutMode = isAccordionLayout
+    ? 'accordion'
+    : 'flat';
+  const toggleLayoutMode = () => setAccordionLayout(!isAccordionLayout);
 
   // Read persisted draft for sidebar placeholder
   const { scratch: draftScratch } = useScratch(
@@ -62,6 +73,8 @@ export function WorkspacesSidebarContainer() {
       onSelectCreate={navigateToCreate}
       showArchive={showArchive}
       onShowArchiveChange={setShowArchive}
+      layoutMode={layoutMode}
+      onToggleLayoutMode={toggleLayoutMode}
     />
   );
 }

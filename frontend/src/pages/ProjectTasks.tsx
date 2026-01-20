@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, Plus, X } from 'lucide-react';
+import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi } from '@/lib/api';
 import type { RepoBranchStatus, Workspace } from 'shared/types';
@@ -44,13 +44,10 @@ import {
 } from '@/keyboard';
 
 import TaskKanbanBoard, {
-  type KanbanColumnItem,
+  type KanbanColumns,
 } from '@/components/tasks/TaskKanbanBoard';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
-import {
-  useProjectTasks,
-  type SharedTaskRecord,
-} from '@/hooks/useProjectTasks';
+import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { TasksLayout, type LayoutMode } from '@/components/layout/TasksLayout';
@@ -58,9 +55,7 @@ import { PreviewPanel } from '@/components/panels/PreviewPanel';
 import { DiffsPanel } from '@/components/panels/DiffsPanel';
 import TaskAttemptPanel from '@/components/panels/TaskAttemptPanel';
 import TaskPanel from '@/components/panels/TaskPanel';
-import SharedTaskPanel from '@/components/panels/SharedTaskPanel';
 import TodoPanel from '@/components/tasks/TodoPanel';
-import { useAuth } from '@/hooks';
 import { NewCard, NewCardHeader } from '@/components/ui/new-card';
 import {
   Breadcrumb,
@@ -145,10 +140,6 @@ export function ProjectTasks() {
   const isXL = useMediaQuery('(min-width: 1280px)');
   const isMobile = !isXL;
   const posthog = usePostHog();
-  const [selectedSharedTaskId, setSelectedSharedTaskId] = useState<
-    string | null
-  >(null);
-  const { userId } = useAuth();
 
   const {
     projectId,
@@ -174,8 +165,6 @@ export function ProjectTasks() {
   const {
     tasks,
     tasksById,
-    sharedTasksById,
-    sharedOnlyByStatus,
     isLoading,
     error: streamError,
   } = useProjectTasks(projectId || '');
@@ -185,20 +174,7 @@ export function ProjectTasks() {
     [taskId, tasksById]
   );
 
-  const selectedSharedTask = useMemo(() => {
-    if (!selectedSharedTaskId) return null;
-    return sharedTasksById[selectedSharedTaskId] ?? null;
-  }, [selectedSharedTaskId, sharedTasksById]);
-
-  useEffect(() => {
-    if (taskId) {
-      setSelectedSharedTaskId(null);
-    }
-  }, [taskId]);
-
-  const isTaskPanelOpen = Boolean(taskId && selectedTask);
-  const isSharedPanelOpen = Boolean(selectedSharedTask);
-  const isPanelOpen = isTaskPanelOpen || isSharedPanelOpen;
+  const isPanelOpen = Boolean(taskId && selectedTask);
 
   const { config, updateAndSaveConfig, loading } = useUserSystem();
 
@@ -392,20 +368,9 @@ export function ProjectTasks() {
 
   const hasSearch = Boolean(searchQuery.trim());
   const normalizedSearch = searchQuery.trim().toLowerCase();
-  const showSharedTasks = searchParams.get('shared') !== 'off';
-
-  useEffect(() => {
-    if (showSharedTasks) return;
-    if (!selectedSharedTaskId) return;
-    const sharedTask = sharedTasksById[selectedSharedTaskId];
-    if (sharedTask && sharedTask.assignee_user_id === userId) {
-      return;
-    }
-    setSelectedSharedTaskId(null);
-  }, [selectedSharedTaskId, sharedTasksById, showSharedTasks, userId]);
 
   const kanbanColumns = useMemo(() => {
-    const columns: Record<TaskStatus, KanbanColumnItem[]> = {
+    const columns: KanbanColumns = {
       todo: [],
       inprogress: [],
       inreview: [],
@@ -428,73 +393,23 @@ export function ProjectTasks() {
 
     tasks.forEach((task) => {
       const statusKey = normalizeStatus(task.status);
-      const sharedTask = task.shared_task_id
-        ? sharedTasksById[task.shared_task_id]
-        : sharedTasksById[task.id];
 
       if (!matchesSearch(task.title, task.description)) {
         return;
       }
 
-      const isSharedAssignedElsewhere =
-        !showSharedTasks &&
-        !!sharedTask &&
-        !!sharedTask.assignee_user_id &&
-        sharedTask.assignee_user_id !== userId;
-
-      if (isSharedAssignedElsewhere) {
-        return;
-      }
-
-      columns[statusKey].push({
-        type: 'task',
-        task,
-        sharedTask,
-      });
+      columns[statusKey].push(task);
     });
-
-    (
-      Object.entries(sharedOnlyByStatus) as [TaskStatus, SharedTaskRecord[]][]
-    ).forEach(([status, items]) => {
-      if (!columns[status]) {
-        columns[status] = [];
-      }
-      items.forEach((sharedTask) => {
-        if (!matchesSearch(sharedTask.title, sharedTask.description)) {
-          return;
-        }
-        const shouldIncludeShared =
-          showSharedTasks || sharedTask.assignee_user_id === userId;
-        if (!shouldIncludeShared) {
-          return;
-        }
-        columns[status].push({
-          type: 'shared',
-          task: sharedTask,
-        });
-      });
-    });
-
-    const getTimestamp = (item: KanbanColumnItem) => {
-      const createdAt =
-        item.type === 'task' ? item.task.created_at : item.task.created_at;
-      return new Date(createdAt).getTime();
-    };
 
     TASK_STATUSES.forEach((status) => {
-      columns[status].sort((a, b) => getTimestamp(b) - getTimestamp(a));
+      columns[status].sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
     });
 
     return columns;
-  }, [
-    hasSearch,
-    normalizedSearch,
-    tasks,
-    sharedOnlyByStatus,
-    sharedTasksById,
-    showSharedTasks,
-    userId,
-  ]);
+  }, [hasSearch, normalizedSearch, tasks]);
 
   const visibleTasksByStatus = useMemo(() => {
     const map: Record<TaskStatus, Task[]> = {
@@ -506,28 +421,18 @@ export function ProjectTasks() {
     };
 
     TASK_STATUSES.forEach((status) => {
-      map[status] = kanbanColumns[status]
-        .filter((item) => item.type === 'task')
-        .map((item) => item.task);
+      map[status] = kanbanColumns[status];
     });
 
     return map;
   }, [kanbanColumns]);
 
-  const hasVisibleLocalTasks = useMemo(
+  const hasVisibleTasks = useMemo(
     () =>
       Object.values(visibleTasksByStatus).some(
         (items) => items && items.length > 0
       ),
     [visibleTasksByStatus]
-  );
-
-  const hasVisibleSharedTasks = useMemo(
-    () =>
-      Object.values(kanbanColumns).some((items) =>
-        items.some((item) => item.type === 'shared')
-      ),
-    [kanbanColumns]
   );
 
   useKeyNavUp(
@@ -680,7 +585,6 @@ export function ProjectTasks() {
   const handleViewTaskDetails = useCallback(
     (task: Task, attemptIdToShow?: string) => {
       if (!projectId) return;
-      setSelectedSharedTaskId(null);
 
       // If beta_workspaces is enabled, always navigate to task view (not attempt)
       if (config?.beta_workspaces) {
@@ -695,17 +599,6 @@ export function ProjectTasks() {
       }
     },
     [projectId, navigateWithSearch, config?.beta_workspaces]
-  );
-
-  const handleViewSharedTask = useCallback(
-    (sharedTask: SharedTaskRecord) => {
-      setSelectedSharedTaskId(sharedTask.id);
-      setMode(null);
-      if (projectId) {
-        navigateWithSearch(paths.projectTasks(projectId), { replace: true });
-      }
-    },
-    [navigateWithSearch, projectId, setMode]
   );
 
   const selectNextTask = useCallback(() => {
@@ -823,26 +716,6 @@ export function ProjectTasks() {
     [tasksById]
   );
 
-  const getSharedTask = useCallback(
-    (task: Task | null | undefined) => {
-      if (!task) return undefined;
-      if (task.shared_task_id) {
-        return sharedTasksById[task.shared_task_id];
-      }
-      return sharedTasksById[task.id];
-    },
-    [sharedTasksById]
-  );
-
-  const hasSharedTasks = useMemo(() => {
-    return Object.values(kanbanColumns).some((items) =>
-      items.some((item) => {
-        if (item.type === 'shared') return true;
-        return Boolean(item.sharedTask);
-      })
-    );
-  }, [kanbanColumns]);
-
   const isInitialTasksLoad = isLoading && tasks.length === 0;
 
   if (projectError) {
@@ -878,7 +751,7 @@ export function ProjectTasks() {
   };
 
   const kanbanContent =
-    tasks.length === 0 && !hasSharedTasks ? (
+    tasks.length === 0 ? (
       <div className="max-w-7xl mx-auto mt-8">
         <Card>
           <CardContent className="text-center py-8">
@@ -890,7 +763,7 @@ export function ProjectTasks() {
           </CardContent>
         </Card>
       </div>
-    ) : !hasVisibleLocalTasks && !hasVisibleSharedTasks ? (
+    ) : !hasVisibleTasks ? (
       <div className="max-w-7xl mx-auto mt-8">
         <Card>
           <CardContent className="text-center py-8">
@@ -906,9 +779,7 @@ export function ProjectTasks() {
           columns={kanbanColumns}
           onDragEnd={handleDragEnd}
           onViewTaskDetails={handleViewTaskDetails}
-          onViewSharedTask={handleViewSharedTask}
           selectedTaskId={selectedTask?.id}
-          selectedSharedTaskId={selectedSharedTaskId}
           onCreateTask={handleCreateNewTask}
           projectId={projectId!}
         />
@@ -922,7 +793,6 @@ export function ProjectTasks() {
         isTaskView ? (
           <TaskPanelHeaderActions
             task={selectedTask}
-            sharedTask={getSharedTask(selectedTask)}
             onClose={() =>
               navigate(`/projects/${projectId}/tasks`, { replace: true })
             }
@@ -932,7 +802,6 @@ export function ProjectTasks() {
             mode={mode}
             onModeChange={setMode}
             task={selectedTask}
-            sharedTask={getSharedTask(selectedTask)}
             attempt={attempt ?? null}
             onClose={() =>
               navigate(`/projects/${projectId}/tasks`, { replace: true })
@@ -974,38 +843,6 @@ export function ProjectTasks() {
         </Breadcrumb>
       </div>
     </NewCardHeader>
-  ) : selectedSharedTask ? (
-    <NewCardHeader
-      className="shrink-0"
-      actions={
-        <Button
-          variant="icon"
-          aria-label={t('common:buttons.close')}
-          onClick={() => {
-            setSelectedSharedTaskId(null);
-            if (projectId) {
-              navigateWithSearch(paths.projectTasks(projectId), {
-                replace: true,
-              });
-            }
-          }}
-        >
-          <X size={16} />
-        </Button>
-      }
-    >
-      <div className="mx-auto w-full">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbPage>
-                {truncateTitle(selectedSharedTask?.title)}
-              </BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
-    </NewCardHeader>
   ) : null;
 
   const attemptContent = selectedTask ? (
@@ -1037,10 +874,6 @@ export function ProjectTasks() {
         </TaskAttemptPanel>
       )}
     </NewCard>
-  ) : selectedSharedTask ? (
-    <NewCard className="h-full min-h-0 flex flex-col bg-muted border-0">
-      <SharedTaskPanel task={selectedSharedTask} />
-    </NewCard>
   ) : null;
 
   const auxContent =
@@ -1060,8 +893,6 @@ export function ProjectTasks() {
       <div className="relative h-full w-full" />
     );
 
-  const effectiveMode: LayoutMode = selectedSharedTask ? null : mode;
-
   const attemptArea = (
     <GitOperationsProvider attemptId={attempt?.id}>
       <ClickedElementsProvider attempt={attempt}>
@@ -1075,7 +906,7 @@ export function ProjectTasks() {
               attempt={attemptContent}
               aux={auxContent}
               isPanelOpen={isPanelOpen}
-              mode={effectiveMode}
+              mode={mode}
               isMobile={isMobile}
               rightHeader={rightHeader}
             />

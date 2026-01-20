@@ -20,7 +20,6 @@ import {
 import { useLogStream } from '@/hooks/useLogStream';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useNavigate } from 'react-router-dom';
 import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialog';
 
 const MIN_RESPONSIVE_WIDTH = 320;
@@ -35,7 +34,6 @@ export function PreviewBrowserContainer({
   attemptId,
   className,
 }: PreviewBrowserContainerProps) {
-  const navigate = useNavigate();
   const previewRefreshKey = useUiPreferencesStore((s) => s.previewRefreshKey);
   const triggerPreviewRefresh = useUiPreferencesStore(
     (s) => s.triggerPreviewRefresh
@@ -294,13 +292,19 @@ export function PreviewBrowserContainer({
     ? `${effectiveUrl}${effectiveUrl.includes('?') ? '&' : '?'}_refresh=${previewRefreshKey}`
     : undefined;
 
-  const handleEditDevScript = () => {
-    if (repos.length === 1) {
-      navigate(`/settings/repos?repoId=${repos[0].id}`);
-    } else {
-      navigate('/settings/repos');
-    }
-  };
+  const handleEditDevScript = useCallback(() => {
+    if (!attemptId || repos.length === 0) return;
+
+    const sessionId = devServerProcesses[0]?.session_id;
+
+    ScriptFixerDialog.show({
+      scriptType: 'dev_server',
+      repos,
+      workspaceId: attemptId,
+      sessionId,
+      initialRepoId: repos.length === 1 ? repos[0].id : undefined,
+    });
+  }, [attemptId, repos, devServerProcesses]);
 
   const handleFixDevScript = useCallback(() => {
     if (!attemptId || repos.length === 0) return;

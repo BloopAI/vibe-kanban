@@ -1,8 +1,12 @@
 [package]
 name = "remote"
-version = "0.0.155"
+version = "0.0.157"
 edition = "2024"
 publish = false
+
+[[bin]]
+name = "remote-generate-types"
+path = "src/bin/generate_types.rs"
 
 [dependencies]
 anyhow = { workspace = true }
