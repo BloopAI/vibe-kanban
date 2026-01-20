@@ -90,7 +90,9 @@ export const SelectWidget = (props: WidgetProps) => {
     : selectOptions;
 
   const currentValue = value === null ? '__null__' : (value ?? '');
-  const selectedOption = allOptions.find((opt) => String(opt.value) === String(currentValue));
+  const selectedOption = allOptions.find(
+    (opt) => String(opt.value) === String(currentValue)
+  );
 
   return (
     <DropdownMenu>
