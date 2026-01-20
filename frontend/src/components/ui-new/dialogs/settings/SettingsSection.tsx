@@ -42,16 +42,18 @@ export function SettingsSection({ type }: SettingsSectionProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="">
       {/* Header */}
-      <div className="pb-4 border-b border-border">
+      <div className="p-4 border-b border-border">
         <h2 className="text-lg font-semibold text-high">
           {t(`settings.layout.nav.${type}`)}
         </h2>
       </div>
 
       {/* Content */}
+      <div className="space-y-6 px-6 py-4">
       {renderContent()}
+    </div>
     </div>
   );
 }
