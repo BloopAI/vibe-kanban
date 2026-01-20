@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  XIcon,
   GearIcon,
   FolderIcon,
   GitBranchIcon,
@@ -114,17 +113,9 @@ const SettingsDialogImpl = NiceModal.create<SettingsDialogProps>(
             </div>
             {/* Content */}
             <div className="flex-1 flex flex-col relative overflow-hidden">
-              {/* Close button */}
-              <button
-                onClick={handleClose}
-                className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-panel transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
-              >
-                <XIcon className="h-4 w-4 text-normal" weight="bold" />
-                <span className="sr-only">{t('close', { ns: 'common' })}</span>
-              </button>
               {/* Section content */}
               <div className="flex-1 overflow-y-auto">
-                <SettingsSection type={activeSection} />
+                <SettingsSection type={activeSection} onClose={handleClose} />
               </div>
             </div>
           </div>
