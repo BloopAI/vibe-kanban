@@ -323,7 +323,8 @@
         "button": "Save MCP Configuration",
         "success": "Settings Saved!",
         "successMessage": "✓ MCP configuration saved successfully!",
-        "loading": "Loading current MCP server configuration..."
+        "loading": "Loading current MCP server configuration...",
+        "unsavedChanges": "• You have unsaved changes"
       }
     },
     "projects": {
