@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   SpinnerIcon,
-  BuildingsIcon,
   PlusIcon,
   UserPlusIcon,
   TrashIcon,
@@ -52,7 +51,7 @@ function SettingsCard({
   return (
     <div
       className={cn(
-        'bg-secondary/50 border rounded-sm p-4 space-y-4',
+        'border rounded-sm p-4 space-y-4',
         variant === 'danger' ? 'border-error/50' : 'border-border/50'
       )}
     >
@@ -302,14 +301,11 @@ export function OrganizationsSettingsSection() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <BuildingsIcon className="size-icon-lg text-brand" weight="duotone" />
-        <div>
-          <h2 className="text-lg font-semibold text-high">
-            {t('settings.title')}
-          </h2>
-          <p className="text-sm text-low">{t('settings.description')}</p>
-        </div>
+      <div>
+        <h2 className="text-lg font-semibold text-high">
+          {t('settings.title')}
+        </h2>
+        <p className="text-sm text-low">{t('settings.description')}</p>
       </div>
 
       {/* Status messages */}

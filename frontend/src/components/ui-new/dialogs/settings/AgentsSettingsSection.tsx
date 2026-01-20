@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { cloneDeep, isEqual } from 'lodash';
 import {
   SpinnerIcon,
-  CpuIcon,
   CheckIcon,
   WarningIcon,
   CaretDownIcon,
@@ -45,7 +44,7 @@ function SettingsCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-secondary/50 border border-border/50 rounded-sm p-4 space-y-4">
+    <div className="border border-border/50 rounded-sm p-4 space-y-4">
       <div>
         <h3 className="text-base font-medium text-high">{title}</h3>
         {description && <p className="text-sm text-low mt-1">{description}</p>}
@@ -481,16 +480,13 @@ export function AgentsSettingsSection() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <CpuIcon className="size-icon-lg text-brand" weight="duotone" />
-        <div>
-          <h2 className="text-lg font-semibold text-high">
-            {t('settings.layout.nav.agents')}
-          </h2>
-          <p className="text-sm text-low">
-            {t('settings.layout.nav.agentsDesc')}
-          </p>
-        </div>
+      <div>
+        <h2 className="text-lg font-semibold text-high">
+          {t('settings.layout.nav.agents')}
+        </h2>
+        <p className="text-sm text-low">
+          {t('settings.layout.nav.agentsDesc')}
+        </p>
       </div>
 
       {/* Status messages */}
