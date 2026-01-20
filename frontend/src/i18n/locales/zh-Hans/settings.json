@@ -135,6 +135,14 @@
             "invalidChars": "包含无效字符。",
             "controlChars": "包含控制字符。"
           }
+        },
+        "workspaceDir": {
+          "label": "工作区目录",
+          "placeholder": "~/",
+          "helper": "工作区将在此路径内的 .vibe-kanban-workspaces 子目录中创建。留空以使用系统默认值。更改需要重启应用程序。",
+          "browse": "浏览",
+          "dialogTitle": "选择工作区目录",
+          "dialogDescription": "选择一个目录。工作区将在其中的 .vibe-kanban-workspaces 子目录中创建。"
         }
       },
       "pullRequests": {

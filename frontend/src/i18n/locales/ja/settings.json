@@ -135,6 +135,14 @@
             "invalidChars": "無効な文字が含まれています。",
             "controlChars": "制御文字が含まれています。"
           }
+        },
+        "workspaceDir": {
+          "label": "ワークスペースディレクトリ",
+          "placeholder": "~/",
+          "helper": "このパス内の .vibe-kanban-workspaces サブディレクトリにワークスペースが作成されます。システムのデフォルトを使用する場合は空白のままにしてください。変更を反映するにはアプリの再起動が必要です。",
+          "browse": "参照",
+          "dialogTitle": "ワークスペースディレクトリを選択",
+          "dialogDescription": "ディレクトリを選択してください。ワークスペースはその中の .vibe-kanban-workspaces サブディレクトリに作成されます。"
         }
       },
       "pullRequests": {

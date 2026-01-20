@@ -135,6 +135,14 @@
             "invalidChars": "Contains invalid characters.",
             "controlChars": "Contains control characters."
           }
+        },
+        "workspaceDir": {
+          "label": "Workspace Directory",
+          "placeholder": "~/",
+          "helper": "Workspaces will be created in a .vibe-kanban-workspaces subdirectory within this path. Leave empty to use the system default. Changes require an app restart.",
+          "browse": "Browse",
+          "dialogTitle": "Select Workspace Directory",
+          "dialogDescription": "Choose a directory. Workspaces will be created in a .vibe-kanban-workspaces subdirectory within it."
         }
       },
       "pullRequests": {

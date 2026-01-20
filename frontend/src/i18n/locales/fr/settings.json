@@ -135,6 +135,14 @@
             "invalidChars": "Contient des caractères invalides.",
             "controlChars": "Contient des caractères de contrôle."
           }
+        },
+        "workspaceDir": {
+          "label": "Répertoire des espaces de travail",
+          "placeholder": "~/",
+          "helper": "Les espaces de travail seront créés dans un sous-répertoire .vibe-kanban-workspaces à l'intérieur de ce chemin. Laissez vide pour utiliser la valeur par défaut du système. Les modifications nécessitent un redémarrage de l'application.",
+          "browse": "Parcourir",
+          "dialogTitle": "Sélectionner le répertoire des espaces de travail",
+          "dialogDescription": "Choisissez un répertoire. Les espaces de travail seront créés dans un sous-répertoire .vibe-kanban-workspaces à l'intérieur."
         }
       },
       "pullRequests": {

@@ -135,6 +135,14 @@
             "invalidChars": "Contiene caracteres no válidos.",
             "controlChars": "Contiene caracteres de control."
           }
+        },
+        "workspaceDir": {
+          "label": "Directorio de Espacios de Trabajo",
+          "placeholder": "~/",
+          "helper": "Los espacios de trabajo se crearán en un subdirectorio .vibe-kanban-workspaces dentro de esta ruta. Dejar vacío para usar el valor predeterminado del sistema. Los cambios requieren reiniciar la aplicación.",
+          "browse": "Explorar",
+          "dialogTitle": "Seleccionar Directorio de Espacios de Trabajo",
+          "dialogDescription": "Elija un directorio. Los espacios de trabajo se crearán en un subdirectorio .vibe-kanban-workspaces dentro de él."
         }
       },
       "pullRequests": {

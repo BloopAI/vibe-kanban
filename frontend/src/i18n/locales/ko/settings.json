@@ -135,6 +135,14 @@
             "invalidChars": "유효하지 않은 문자가 포함되어 있습니다.",
             "controlChars": "제어 문자가 포함되어 있습니다."
           }
+        },
+        "workspaceDir": {
+          "label": "워크스페이스 디렉토리",
+          "placeholder": "~/",
+          "helper": "이 경로 내의 .vibe-kanban-workspaces 하위 디렉토리에 워크스페이스가 생성됩니다. 시스템 기본값을 사용하려면 비워두세요. 변경 사항은 앱을 다시 시작해야 적용됩니다.",
+          "browse": "찾아보기",
+          "dialogTitle": "워크스페이스 디렉토리 선택",
+          "dialogDescription": "디렉토리를 선택하세요. 워크스페이스는 해당 디렉토리 내의 .vibe-kanban-workspaces 하위 디렉토리에 생성됩니다."
         }
       },
       "pullRequests": {
