@@ -45,7 +45,7 @@ pub async fn get_billing_status(
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::FORBIDDEN, "Access denied"))?;
 
-    match state.billing() {
+    match state.billing().provider() {
         Some(billing) => {
             let status = billing
                 .get_billing_status(org_id)
@@ -71,7 +71,7 @@ pub async fn create_portal_session(
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::FORBIDDEN, "Admin access required"))?;
 
-    let billing = state.billing().ok_or_else(|| {
+    let billing = state.billing().provider().ok_or_else(|| {
         ErrorResponse::new(StatusCode::SERVICE_UNAVAILABLE, "Billing not configured")
     })?;
 
@@ -93,7 +93,7 @@ pub async fn create_checkout_session(
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::FORBIDDEN, "Admin access required"))?;
 
-    let billing = state.billing().ok_or_else(|| {
+    let billing = state.billing().provider().ok_or_else(|| {
         ErrorResponse::new(StatusCode::SERVICE_UNAVAILABLE, "Billing not configured")
     })?;
 
@@ -115,7 +115,7 @@ pub async fn handle_webhook(
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<impl IntoResponse, ErrorResponse> {
-    let billing = state.billing().ok_or_else(|| {
+    let billing = state.billing().provider().ok_or_else(|| {
         ErrorResponse::new(StatusCode::SERVICE_UNAVAILABLE, "Billing not configured")
     })?;
 

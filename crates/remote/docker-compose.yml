@@ -40,6 +40,10 @@ services:
     build:
       context: ../..
       dockerfile: crates/remote/Dockerfile
+      args:
+        FEATURES: ${FEATURES:-}
+      ssh:
+        - default
     depends_on:
       remote-db:
         condition: service_healthy
@@ -68,6 +72,10 @@ services:
       GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY:-}
       GITHUB_APP_WEBHOOK_SECRET: ${GITHUB_APP_WEBHOOK_SECRET:-}
       GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PRICE_ID: ${STRIPE_PRICE_ID:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      BILLING_FREE_SEAT_LIMIT: ${BILLING_FREE_SEAT_LIMIT:-5}
     ports:
       - "127.0.0.1:3000:8081"
     restart: unless-stopped

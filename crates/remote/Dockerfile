@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1.6
 
 ARG APP_NAME=remote
+ARG FEATURES=""
 
 FROM node:20-alpine AS fe-builder
 WORKDIR /repo
@@ -20,11 +21,13 @@ RUN pnpm -C remote-frontend build
 
 FROM rust:1.89-slim-bookworm AS builder
 ARG APP_NAME
+ARG FEATURES
 
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
+# Install build dependencies, plus git and openssh-client for private repo access
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends pkg-config libssl-dev ca-certificates \
+  && apt-get install -y --no-install-recommends pkg-config libssl-dev ca-certificates git openssh-client \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -39,7 +42,8 @@ RUN mkdir -p /app/bin
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/app/target \
-    cargo build --locked --release -p "${APP_NAME}" \
+    --mount=type=ssh \
+    cargo build --locked --release -p "${APP_NAME}" ${FEATURES:+--features ${FEATURES}} \
  && cp target/release/${APP_NAME} /app/bin/${APP_NAME}
 
 FROM debian:bookworm-slim AS runtime

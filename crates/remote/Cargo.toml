@@ -8,7 +8,15 @@ publish = false
 name = "remote-generate-types"
 path = "src/bin/generate_types.rs"
 
+[features]
+default = []
+vk-billing = ["dep:billing"]
+
 [dependencies]
+# private crate for billing functionality
+# vk-billing = { git = "ssh://git@github.com/BloopAI/vibe-kanban-private", branch = "main", package = "billing", optional = true }
+billing = { path = "/Users/gabriel/work/vk/vibe-kanban-private/crates/billing", optional = true }
+
 anyhow = { workspace = true }
 axum = { workspace = true }
 axum-extra = { version = "0.10.3", features = ["typed-header"] }
