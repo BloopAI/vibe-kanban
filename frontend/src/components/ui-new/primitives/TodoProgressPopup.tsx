@@ -15,12 +15,12 @@ interface TodoProgressPopupProps {
 function getStatusIcon(status?: string) {
   const s = (status || '').toLowerCase();
   if (s === 'completed')
-    return <Check aria-hidden className="h-4 w-4 text-success" />;
+    return <Check aria-hidden className="size-icon-sm text-success" />;
   if (s === 'in_progress' || s === 'in-progress')
-    return <CircleDot aria-hidden className="h-4 w-4 text-blue-500" />;
+    return <CircleDot aria-hidden className="size-icon-sm text-blue-500" />;
   if (s === 'cancelled')
-    return <Circle aria-hidden className="h-4 w-4 text-gray-400" />;
-  return <Circle aria-hidden className="h-4 w-4 text-muted-foreground" />;
+    return <Circle aria-hidden className="size-icon-sm text-gray-400" />;
+  return <Circle aria-hidden className="size-icon-sm text-muted-foreground" />;
 }
 
 export function TodoProgressPopup({
@@ -124,7 +124,7 @@ export function TodoProgressPopup({
                 key={`${todo.content}-${index}`}
                 className="flex items-start gap-2 py-half"
               >
-                <span className="mt-0.5 h-4 w-4 flex items-center justify-center shrink-0">
+                <span className="mt-0.5 size-icon-sm flex items-center justify-center shrink-0">
                   {getStatusIcon(todo.status)}
                 </span>
                 <span className="text-sm leading-5 break-words text-normal">
