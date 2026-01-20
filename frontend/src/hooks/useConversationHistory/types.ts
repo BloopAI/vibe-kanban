@@ -1,8 +1,4 @@
-import {
-  ExecutorAction,
-  PatchType,
-  Workspace,
-} from 'shared/types';
+import { ExecutorAction, PatchType, Workspace } from 'shared/types';
 
 export type PatchTypeWithKey = PatchType & {
   patchKey: string;

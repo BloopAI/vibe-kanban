@@ -24,7 +24,11 @@ import {
   REMAINING_BATCH_SIZE,
 } from '@/hooks/useConversationHistory/constants';
 
-export type { AddEntryType, OnEntriesUpdated, PatchTypeWithKey } from '@/hooks/useConversationHistory/types';
+export type {
+  AddEntryType,
+  OnEntriesUpdated,
+  PatchTypeWithKey,
+} from '@/hooks/useConversationHistory/types';
 
 export const useConversationHistory = ({
   attempt,
