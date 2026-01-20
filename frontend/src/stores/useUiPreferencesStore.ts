@@ -35,6 +35,10 @@ const DEFAULT_WORKSPACE_PANEL_STATE: WorkspacePanelState = {
 export const PERSIST_KEYS = {
   // Sidebar sections
   workspacesSidebarArchived: 'workspaces-sidebar-archived',
+  workspacesSidebarAccordionLayout: 'workspaces-sidebar-accordion-layout',
+  workspacesSidebarRaisedHand: 'workspaces-sidebar-raised-hand',
+  workspacesSidebarNotRunning: 'workspaces-sidebar-not-running',
+  workspacesSidebarRunning: 'workspaces-sidebar-running',
   // Right panel sections
   gitAdvancedSettings: 'git-advanced-settings',
   gitPanelRepositories: 'git-panel-repositories',
@@ -50,6 +54,8 @@ export const PERSIST_KEYS = {
   devServerSection: 'dev-server-section',
   // Terminal panel section
   terminalSection: 'terminal-section',
+  // Notes panel section
+  notesSection: 'notes-section',
   // GitHub comments toggle
   showGitHubComments: 'show-github-comments',
   // Panel sizes
@@ -63,6 +69,10 @@ const isWideScreen = () => window.innerWidth > 2048;
 
 export type PersistKey =
   | typeof PERSIST_KEYS.workspacesSidebarArchived
+  | typeof PERSIST_KEYS.workspacesSidebarAccordionLayout
+  | typeof PERSIST_KEYS.workspacesSidebarRaisedHand
+  | typeof PERSIST_KEYS.workspacesSidebarNotRunning
+  | typeof PERSIST_KEYS.workspacesSidebarRunning
   | typeof PERSIST_KEYS.gitAdvancedSettings
   | typeof PERSIST_KEYS.gitPanelRepositories
   | typeof PERSIST_KEYS.gitPanelProject
@@ -71,6 +81,7 @@ export type PersistKey =
   | typeof PERSIST_KEYS.changesSection
   | typeof PERSIST_KEYS.devServerSection
   | typeof PERSIST_KEYS.terminalSection
+  | typeof PERSIST_KEYS.notesSection
   | typeof PERSIST_KEYS.showGitHubComments
   | typeof PERSIST_KEYS.rightMainPanel
   | typeof PERSIST_KEYS.rightPanelprocesses

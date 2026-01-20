@@ -160,7 +160,11 @@ module.exports = {
       },
     },
     {
-      files: ['**/*.test.{ts,tsx}', '**/*.stories.{ts,tsx}'],
+      files: [
+        '**/*.test.{ts,tsx}',
+        '**/*.stories.{ts,tsx}',
+        'src/pages/ui-new/ElectricTestPage.tsx',
+      ],
       rules: {
         'i18next/no-literal-string': 'off',
       },

@@ -21,6 +21,5 @@ pub mod qa_repos;
 pub mod queued_message;
 pub mod remote_client;
 pub mod repo;
-pub mod share;
 pub mod workspace_manager;
 pub mod worktree_manager;

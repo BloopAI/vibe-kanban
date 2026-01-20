@@ -337,6 +337,8 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
             error: None,
             num_turns: Some(3),
             session_id: Some(session_id),
+            model_usage: None,
+            usage: None,
         },
     ];
 

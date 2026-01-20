@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT 1 AS v FROM issue_assignees WHERE \"issue_id\" IN (SELECT id FROM issues WHERE \"project_id\" = $1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "v",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "4411b08341b6b5516505ef4d218e0e46cebe76085e49f4cb88fcdc40816d1228"
+}

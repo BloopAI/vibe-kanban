@@ -134,6 +134,10 @@
     "viewArchive": "查看归档",
     "backToActive": "返回活跃",
     "noArchived": "没有已归档的工作区",
+    "noWorkspaces": "没有工作区",
+    "needsAttention": "需要注意",
+    "idle": "空闲",
+    "running": "运行中",
     "pin": "置顶",
     "unpin": "取消置顶",
     "archive": "归档",
@@ -166,7 +170,12 @@
     "recent": "最近",
     "other": "其他",
     "devServerPreview": "开发服务器预览",
-    "terminal": "终端"
+    "terminal": "终端",
+    "notes": "笔记"
+  },
+  "notes": {
+    "placeholder": "添加关于此工作区的笔记...",
+    "selectWorkspace": "选择一个工作区以查看笔记"
   },
   "repos": {
     "loading": "正在加载仓库...",
@@ -184,7 +193,8 @@
     "repoSettings": "仓库设置",
     "cancel": "取消",
     "saveChanges": "保存更改",
-    "copied": "已复制"
+    "copied": "已复制",
+    "collapse": "收起"
   },
   "comments": {
     "addReviewComment": "添加审查评论",
@@ -276,7 +286,8 @@
     "selectProcessToView": "选择一个进程以查看日志"
   },
   "processes": {
-    "noProcesses": "无进程"
+    "noProcesses": "无进程",
+    "terminal": "终端"
   },
   "search": {
     "matchCount": "{{current}} / {{total}}",

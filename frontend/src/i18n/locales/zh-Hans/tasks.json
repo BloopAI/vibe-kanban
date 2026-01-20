@@ -412,9 +412,6 @@
     "gitActions": "Git 操作",
     "editBranchName": "编辑分支名称",
     "task": "任务",
-    "share": "共享",
-    "reassign": "重新分配",
-    "stopShare": "停止共享",
     "duplicate": "复制",
     "startReview": "开始审查",
     "startingReview": "正在开始审查..."
@@ -451,41 +448,6 @@
       "filesWithConflicts_other": "{{count}} 个文件有冲突",
       "andMore": "...还有 {{count}} 个"
     }
-  },
-  "stopShareDialog": {
-    "title": "停止共享任务",
-    "description": "停止与您的组织共享 {{title}} ？",
-    "warning": "停止与您的组织共享任务，但保留您的本地任务。",
-    "confirm": "停止共享任务",
-    "inProgress": "停止共享中...",
-    "genericError": "停止共享任务失败。请重试。"
-  },
-  "shareDialog": {
-    "title": "共享任务",
-    "description": "与您的组织共享 {{title}} ？",
-    "success": "任务共享成功。",
-    "genericError": "共享任务失败。请重试。",
-    "loadingSystem": "加载账户状态中...",
-    "loginRequired": {
-      "title": "登录以继续",
-      "description": "您需要登录才能共享任务。我们将重定向您到登录页面。",
-      "action": "前往登录"
-    },
-    "gitProviderRequired": {
-      "title": "连接 Git 提供商",
-      "description": "连接您的 Git 提供商账户以共享任务。此项目必须有远程仓库。",
-      "action": "连接"
-    },
-    "linkProjectRequired": {
-      "description": "在共享任务之前，将此项目链接到组织。",
-      "action": "链接项目"
-    },
-    "confirmationTitle": "确认共享",
-    "confirmationBody": "共享将发布此任务到您的共享工作区。",
-    "cancel": "取消",
-    "confirm": "共享任务",
-    "inProgress": "共享中...",
-    "closeButton": "关闭"
   },
   "createPrDialog": {
     "title": "创建拉取请求",

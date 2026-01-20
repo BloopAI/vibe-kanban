@@ -4,14 +4,28 @@ import {
   useReducer,
   useMemo,
   useCallback,
+  useRef,
   ReactNode,
 } from 'react';
+import type { Terminal } from '@xterm/xterm';
+import type { FitAddon } from '@xterm/addon-fit';
+
+export interface TerminalInstance {
+  terminal: Terminal;
+  fitAddon: FitAddon;
+}
 
 export interface TerminalTab {
   id: string;
   title: string;
   workspaceId: string;
   cwd: string;
+}
+
+interface TerminalConnection {
+  ws: WebSocket;
+  send: (data: string) => void;
+  resize: (cols: number, rows: number) => void;
 }
 
 interface TerminalState {
@@ -33,6 +47,18 @@ type TerminalAction =
 
 function generateTabId(): string {
   return `term-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function encodeBase64(str: string): string {
+  const bytes = new TextEncoder().encode(str);
+  const binString = Array.from(bytes, (b) => String.fromCodePoint(b)).join('');
+  return btoa(binString);
+}
+
+function decodeBase64(base64: string): string {
+  const binString = atob(base64);
+  const bytes = Uint8Array.from(binString, (c) => c.codePointAt(0)!);
+  return new TextDecoder().decode(bytes);
 }
 
 function terminalReducer(
@@ -146,6 +172,25 @@ interface TerminalContextType {
   setActiveTab: (workspaceId: string, tabId: string) => void;
   updateTabTitle: (workspaceId: string, tabId: string, title: string) => void;
   clearWorkspaceTabs: (workspaceId: string) => void;
+  // Terminal instance management
+  registerTerminalInstance: (
+    tabId: string,
+    terminal: Terminal,
+    fitAddon: FitAddon
+  ) => void;
+  getTerminalInstance: (tabId: string) => TerminalInstance | null;
+  unregisterTerminalInstance: (tabId: string) => void;
+  // Terminal connection management
+  createTerminalConnection: (
+    tabId: string,
+    endpoint: string,
+    onData: (data: string) => void,
+    onExit?: () => void
+  ) => {
+    send: (data: string) => void;
+    resize: (cols: number, rows: number) => void;
+  };
+  getTerminalConnection: (tabId: string) => TerminalConnection | null;
 }
 
 const TerminalContext = createContext<TerminalContextType | null>(null);
@@ -159,6 +204,19 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
     tabsByWorkspace: {},
     activeTabByWorkspace: {},
   });
+
+  // Store terminal instances in a ref to persist across re-renders
+  const terminalInstancesRef = useRef<Map<string, TerminalInstance>>(new Map());
+
+  // Store WebSocket connections in a ref to persist across component remounts
+  const terminalConnectionsRef = useRef<Map<string, TerminalConnection>>(
+    new Map()
+  );
+
+  // Store callback refs for each connection to prevent stale closures
+  const connectionCallbacksRef = useRef<
+    Map<string, { onData: (data: string) => void; onExit?: () => void }>
+  >(new Map());
 
   const getTabsForWorkspace = useCallback(
     (workspaceId: string): TerminalTab[] => {
@@ -181,9 +239,29 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
     dispatch({ type: 'CREATE_TAB', workspaceId, cwd });
   }, []);
 
-  const closeTab = useCallback((workspaceId: string, tabId: string) => {
-    dispatch({ type: 'CLOSE_TAB', workspaceId, tabId });
+  const closeTerminalConnection = useCallback((tabId: string) => {
+    const conn = terminalConnectionsRef.current.get(tabId);
+    if (conn) {
+      conn.ws.close();
+      terminalConnectionsRef.current.delete(tabId);
+    }
+    connectionCallbacksRef.current.delete(tabId);
   }, []);
+
+  const closeTab = useCallback(
+    (workspaceId: string, tabId: string) => {
+      // Dispose the terminal instance when closing the tab
+      const instance = terminalInstancesRef.current.get(tabId);
+      if (instance) {
+        instance.terminal.dispose();
+        terminalInstancesRef.current.delete(tabId);
+      }
+      // Close the WebSocket connection
+      closeTerminalConnection(tabId);
+      dispatch({ type: 'CLOSE_TAB', workspaceId, tabId });
+    },
+    [closeTerminalConnection]
+  );
 
   const setActiveTab = useCallback((workspaceId: string, tabId: string) => {
     dispatch({ type: 'SET_ACTIVE_TAB', workspaceId, tabId });
@@ -196,9 +274,102 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
     []
   );
 
-  const clearWorkspaceTabs = useCallback((workspaceId: string) => {
-    dispatch({ type: 'CLEAR_WORKSPACE_TABS', workspaceId });
+  const clearWorkspaceTabs = useCallback(
+    (workspaceId: string) => {
+      // Dispose all terminal instances for this workspace
+      const tabs = state.tabsByWorkspace[workspaceId] || [];
+      tabs.forEach((tab) => {
+        const instance = terminalInstancesRef.current.get(tab.id);
+        if (instance) {
+          instance.terminal.dispose();
+          terminalInstancesRef.current.delete(tab.id);
+        }
+        // Close WebSocket connections
+        closeTerminalConnection(tab.id);
+      });
+      dispatch({ type: 'CLEAR_WORKSPACE_TABS', workspaceId });
+    },
+    [state.tabsByWorkspace, closeTerminalConnection]
+  );
+
+  const registerTerminalInstance = useCallback(
+    (tabId: string, terminal: Terminal, fitAddon: FitAddon) => {
+      terminalInstancesRef.current.set(tabId, { terminal, fitAddon });
+    },
+    []
+  );
+
+  const getTerminalInstance = useCallback(
+    (tabId: string): TerminalInstance | null => {
+      return terminalInstancesRef.current.get(tabId) || null;
+    },
+    []
+  );
+
+  const unregisterTerminalInstance = useCallback((tabId: string) => {
+    terminalInstancesRef.current.delete(tabId);
   }, []);
+
+  const createTerminalConnection = useCallback(
+    (
+      tabId: string,
+      endpoint: string,
+      onData: (data: string) => void,
+      onExit?: () => void
+    ) => {
+      // Close existing connection if any
+      const existing = terminalConnectionsRef.current.get(tabId);
+      if (existing) {
+        existing.ws.close();
+      }
+
+      // Store callbacks in ref so they can be updated without recreating connection
+      connectionCallbacksRef.current.set(tabId, { onData, onExit });
+
+      // Create new WebSocket
+      const wsEndpoint = endpoint.replace(/^http/, 'ws');
+      const ws = new WebSocket(wsEndpoint);
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          const callbacks = connectionCallbacksRef.current.get(tabId);
+          if (msg.type === 'output' && msg.data && callbacks) {
+            callbacks.onData(decodeBase64(msg.data));
+          } else if (msg.type === 'exit' && callbacks) {
+            callbacks.onExit?.();
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      };
+
+      const send = (data: string) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'input', data: encodeBase64(data) }));
+        }
+      };
+
+      const resize = (cols: number, rows: number) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'resize', cols, rows }));
+        }
+      };
+
+      const connection: TerminalConnection = { ws, send, resize };
+      terminalConnectionsRef.current.set(tabId, connection);
+
+      return { send, resize };
+    },
+    []
+  );
+
+  const getTerminalConnection = useCallback(
+    (tabId: string): TerminalConnection | null => {
+      return terminalConnectionsRef.current.get(tabId) || null;
+    },
+    []
+  );
 
   const value = useMemo(
     () => ({
@@ -209,6 +380,11 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       setActiveTab,
       updateTabTitle,
       clearWorkspaceTabs,
+      registerTerminalInstance,
+      getTerminalInstance,
+      unregisterTerminalInstance,
+      createTerminalConnection,
+      getTerminalConnection,
     }),
     [
       getTabsForWorkspace,
@@ -218,6 +394,11 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       setActiveTab,
       updateTabTitle,
       clearWorkspaceTabs,
+      registerTerminalInstance,
+      getTerminalInstance,
+      unregisterTerminalInstance,
+      createTerminalConnection,
+      getTerminalConnection,
     ]
   );
 

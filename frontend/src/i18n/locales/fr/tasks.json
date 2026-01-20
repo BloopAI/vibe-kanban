@@ -481,9 +481,6 @@
     "startReview": "Démarrer la révision",
     "startingReview": "Démarrage de la révision...",
     "task": "Tâche",
-    "share": "Partager",
-    "reassign": "Réassigner",
-    "stopShare": "Arrêter le partage",
     "duplicate": "Dupliquer"
   },
   "editBranchName": {
@@ -518,41 +515,6 @@
       "filesWithConflicts_other": "{{count}} fichiers ont des conflits",
       "andMore": "...et {{count}} autres"
     }
-  },
-  "stopShareDialog": {
-    "title": "Arrêter le partage de la tâche",
-    "description": "Arrêter le partage de \"{{title}}\" avec votre organisation ?",
-    "warning": "Arrête le partage de la tâche avec votre organisation, mais conserve votre tâche locale.",
-    "confirm": "Arrêter le partage de la tâche",
-    "inProgress": "Arrêt du partage...",
-    "genericError": "Échec de l'arrêt du partage de la tâche. Veuillez réessayer."
-  },
-  "shareDialog": {
-    "title": "Partager la tâche",
-    "description": "Partager \"{{title}}\" avec votre organisation ?",
-    "success": "Tâche partagée avec succès.",
-    "genericError": "Échec du partage de la tâche. Veuillez réessayer.",
-    "loadingSystem": "Chargement du statut du compte...",
-    "loginRequired": {
-      "title": "Connexion requise",
-      "description": "Vous devez vous connecter avant de pouvoir partager des tâches. Nous vous redirigerons vers la page de connexion.",
-      "action": "Aller à la connexion"
-    },
-    "gitProviderRequired": {
-      "title": "Connecter le fournisseur Git",
-      "description": "Connectez votre compte de fournisseur Git pour partager des tâches. Ce projet doit avoir un dépôt distant.",
-      "action": "Connecter"
-    },
-    "linkProjectRequired": {
-      "description": "Liez ce projet à une organisation avant de partager des tâches.",
-      "action": "Lier le projet"
-    },
-    "confirmationTitle": "Confirmer le partage",
-    "confirmationBody": "Le partage publiera cette tâche dans votre espace de travail partagé.",
-    "cancel": "Annuler",
-    "confirm": "Partager la tâche",
-    "inProgress": "Partage en cours...",
-    "closeButton": "Fermer"
   },
   "createPrDialog": {
     "title": "Créer une Pull Request",
