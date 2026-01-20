@@ -79,12 +79,17 @@ async fn create_tag(
 ) -> Result<Json<Tag>, ErrorResponse> {
     ensure_project_access(state.pool(), ctx.user.id, payload.project_id).await?;
 
-    let tag = TagRepository::create(state.pool(), payload.project_id, payload.name, payload.color)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, "failed to create tag");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-        })?;
+    let tag = TagRepository::create(
+        state.pool(),
+        payload.project_id,
+        payload.name,
+        payload.color,
+    )
+    .await
+    .map_err(|error| {
+        tracing::error!(?error, "failed to create tag");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
 
     Ok(Json(tag))
 }
@@ -111,17 +116,12 @@ async fn update_tag(
     ensure_project_access(state.pool(), ctx.user.id, tag.project_id).await?;
 
     // Partial update - use existing values if not provided
-    let updated_tag = TagRepository::update(
-        state.pool(),
-        tag_id,
-        payload.name,
-        payload.color,
-    )
-    .await
-    .map_err(|error| {
-        tracing::error!(?error, "failed to update tag");
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-    })?;
+    let updated_tag = TagRepository::update(state.pool(), tag_id, payload.name, payload.color)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to update tag");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?;
 
     Ok(Json(updated_tag))
 }
