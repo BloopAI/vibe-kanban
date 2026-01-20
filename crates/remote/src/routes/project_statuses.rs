@@ -11,16 +11,15 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::project_statuses::{ProjectStatus, ProjectStatusRepository},
-    define_mutation_types,
+    define_mutation_router,
+    mutations::{
+        CreateProjectStatusRequest, ListProjectStatussQuery, ListProjectStatussResponse,
+        UpdateProjectStatusRequest,
+    },
 };
 
-// Auto-generate types and router
-define_mutation_types!(
-    ProjectStatus,
-    table: "project_statuses",
-    scope: Project,
-    fields: [name: String, color: String, sort_order: i32],
-);
+// Generate router that references handlers below
+define_mutation_router!(ProjectStatus, table: "project_statuses");
 
 #[instrument(
     name = "project_statuses.list_project_statuss",

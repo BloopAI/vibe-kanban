@@ -18,16 +18,16 @@ mod electric_proxy;
 mod error;
 mod github_app;
 mod identity;
-pub mod issue_comment_reactions;
-pub mod issue_comments;
+mod issue_comment_reactions;
+mod issue_comments;
 mod notifications;
 mod oauth;
 pub(crate) mod organization_members;
 mod organizations;
-pub mod project_statuses;
+mod project_statuses;
 mod projects;
 mod review;
-pub mod tags;
+mod tags;
 mod tokens;
 
 pub fn router(state: AppState) -> Router {

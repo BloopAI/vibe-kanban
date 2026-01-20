@@ -11,16 +11,14 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::tags::{Tag, TagRepository},
-    define_mutation_types,
+    define_mutation_router,
+    mutations::{
+        CreateTagRequest, ListTagsQuery, ListTagsResponse, UpdateTagRequest,
+    },
 };
 
-// Auto-generate types and router
-define_mutation_types!(
-    Tag,
-    table: "tags",
-    scope: Project,
-    fields: [name: String, color: String],
-);
+// Generate router that references handlers below
+define_mutation_router!(Tag, table: "tags");
 
 #[instrument(
     name = "tags.list_tags",

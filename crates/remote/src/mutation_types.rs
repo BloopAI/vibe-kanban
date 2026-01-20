@@ -6,15 +6,13 @@
 /// - `Update{Entity}Request` struct with all fields optional (for partial updates)
 /// - `List{Entity}sQuery` struct with parent_id for filtering
 /// - `List{Entity}sResponse` struct wrapping `Vec<Entity>`
-/// - `router()` function that wires up all 5 CRUD routes
 ///
-/// The route handlers must be defined manually, but the generated router
-/// references them, ensuring they exist at compile time.
+/// Use `define_mutation_router!` in route files to generate the router.
 ///
 /// # Example
 ///
 /// ```ignore
-/// use crate::db::tags::{Tag, TagRepository};
+/// use crate::db::tags::Tag;
 /// use crate::define_mutation_types;
 ///
 /// define_mutation_types!(
@@ -23,22 +21,15 @@
 ///     scope: Project,
 ///     fields: [name: String, color: String],
 /// );
-///
-/// // Handlers must be defined manually:
-/// async fn list_tags(...) -> Result<Json<ListTagsResponse>, ErrorResponse> { ... }
-/// async fn get_tag(...) -> Result<Json<Tag>, ErrorResponse> { ... }
-/// async fn create_tag(...) -> Result<Json<Tag>, ErrorResponse> { ... }
-/// async fn update_tag(...) -> Result<Json<Tag>, ErrorResponse> { ... }
-/// async fn delete_tag(...) -> Result<StatusCode, ErrorResponse> { ... }
 /// ```
 ///
 /// # Scopes
 ///
-/// The `scope` parameter determines the parent field and authorization:
-/// - `Project` → `project_id: Uuid` (use `ensure_project_access`)
-/// - `Issue` → `issue_id: Uuid` (use `ensure_issue_access`)
-/// - `Organization` → `organization_id: Uuid` (use `ensure_member_access`)
-/// - `Comment` → `comment_id: Uuid` (lookup comment then use issue access)
+/// The `scope` parameter determines the parent field:
+/// - `Project` → `project_id: Uuid`
+/// - `Issue` → `issue_id: Uuid`
+/// - `Organization` → `organization_id: Uuid`
+/// - `Comment` → `comment_id: Uuid`
 #[macro_export]
 macro_rules! define_mutation_types {
     // Project scope
@@ -153,8 +144,33 @@ macro_rules! define_mutation_types {
             pub struct [<List $entity s Response>] {
                 pub [<$entity:snake s>]: Vec<$entity>,
             }
+        }
+    };
+}
 
-            // Router - ensures all handlers exist at compile time
+/// Macro to define mutation router that wires up CRUD routes.
+///
+/// This macro generates a `router()` function that references handler functions.
+/// The handlers must be defined in the same module.
+///
+/// # Example
+///
+/// ```ignore
+/// use crate::define_mutation_router;
+///
+/// define_mutation_router!(Tag, table: "tags");
+///
+/// // Handlers must be defined:
+/// async fn list_tags(...) -> Result<Json<ListTagsResponse>, ErrorResponse> { ... }
+/// async fn get_tag(...) -> Result<Json<Tag>, ErrorResponse> { ... }
+/// async fn create_tag(...) -> Result<Json<Tag>, ErrorResponse> { ... }
+/// async fn update_tag(...) -> Result<Json<Tag>, ErrorResponse> { ... }
+/// async fn delete_tag(...) -> Result<StatusCode, ErrorResponse> { ... }
+/// ```
+#[macro_export]
+macro_rules! define_mutation_router {
+    ($entity:ident, table: $table:literal) => {
+        paste::paste! {
             pub fn router() -> axum::Router<$crate::AppState> {
                 use axum::routing::get;
 

@@ -14,16 +14,15 @@ use crate::{
         issue_comment_reactions::{IssueCommentReaction, IssueCommentReactionRepository},
         issue_comments::IssueCommentRepository,
     },
-    define_mutation_types,
+    define_mutation_router,
+    mutations::{
+        CreateIssueCommentReactionRequest, ListIssueCommentReactionsQuery,
+        ListIssueCommentReactionsResponse, UpdateIssueCommentReactionRequest,
+    },
 };
 
-// Auto-generate types and router
-define_mutation_types!(
-    IssueCommentReaction,
-    table: "issue_comment_reactions",
-    scope: Comment,
-    fields: [emoji: String],
-);
+// Generate router that references handlers below
+define_mutation_router!(IssueCommentReaction, table: "issue_comment_reactions");
 
 #[instrument(
     name = "issue_comment_reactions.list_issue_comment_reactions",

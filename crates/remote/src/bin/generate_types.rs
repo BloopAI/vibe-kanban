@@ -17,13 +17,10 @@ use remote::{
         users::UserData,
         workspaces::Workspace,
     },
-    routes::{
-        issue_comment_reactions::{
-            CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest,
-        },
-        issue_comments::{CreateIssueCommentRequest, UpdateIssueCommentRequest},
-        project_statuses::{CreateProjectStatusRequest, UpdateProjectStatusRequest},
-        tags::{CreateTagRequest, UpdateTagRequest},
+    mutations::{
+        CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
+        CreateProjectStatusRequest, CreateTagRequest, UpdateIssueCommentReactionRequest,
+        UpdateIssueCommentRequest, UpdateProjectStatusRequest, UpdateTagRequest,
     },
     shapes::all_shapes,
 };

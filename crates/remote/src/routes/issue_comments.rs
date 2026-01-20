@@ -11,16 +11,15 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::issue_comments::{IssueComment, IssueCommentRepository},
-    define_mutation_types,
+    define_mutation_router,
+    mutations::{
+        CreateIssueCommentRequest, ListIssueCommentsQuery, ListIssueCommentsResponse,
+        UpdateIssueCommentRequest,
+    },
 };
 
-// Auto-generate types and router
-define_mutation_types!(
-    IssueComment,
-    table: "issue_comments",
-    scope: Issue,
-    fields: [message: String],
-);
+// Generate router that references handlers below
+define_mutation_router!(IssueComment, table: "issue_comments");
 
 #[instrument(
     name = "issue_comments.list_issue_comments",

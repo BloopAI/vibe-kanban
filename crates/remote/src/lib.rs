@@ -5,6 +5,7 @@ pub mod db;
 pub mod github_app;
 pub mod mail;
 pub mod mutation_types;
+pub mod mutations;
 pub mod r2;
 pub mod routes;
 pub mod shapes;
