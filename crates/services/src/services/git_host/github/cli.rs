@@ -15,6 +15,7 @@ use db::models::merge::{MergeStatus, PullRequestInfo};
 use serde::Deserialize;
 use tempfile::NamedTempFile;
 use thiserror::Error;
+use url::Url;
 use utils::shell::resolve_executable_path_blocking;
 
 use crate::services::git_host::types::{
@@ -443,9 +444,10 @@ impl GhCli {
             .into_iter()
             .map(|pr| {
                 let head_repo_url = match (&pr.head_repository, &pr.head_repository_owner) {
-                    (Some(repo), Some(owner)) => {
-                        Some(format!("https://github.com/{}/{}", owner.login, repo.name))
-                    }
+                    (Some(repo), Some(owner)) => Url::parse(&pr.url).ok().and_then(|parsed| {
+                        let host = parsed.host_str()?;
+                        Some(format!("{}://{}/{}/{}", parsed.scheme(), host, owner.login, repo.name))
+                    }),
                     _ => None,
                 };
                 OpenPrInfo {
