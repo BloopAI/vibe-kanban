@@ -57,8 +57,7 @@ export interface CommandBarPage {
 }
 
 // Static page IDs (excludes dynamic pages like selectRepo)
-// Note: repoActions is also treated specially since it requires a repoId
-export type StaticPageId = Exclude<PageId, 'selectRepo' | 'repoActions'>;
+export type StaticPageId = Exclude<PageId, 'selectRepo'>;
 
 export const Pages: Record<StaticPageId, CommandBarPage> = {
   // Root page - shown when opening via CMD+K
@@ -184,6 +183,28 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
           { type: 'action', action: Actions.GitCreatePR },
           { type: 'action', action: Actions.GitMerge },
           { type: 'action', action: Actions.GitPush },
+          { type: 'action', action: Actions.GitRebase },
+          { type: 'action', action: Actions.GitChangeTarget },
+        ],
+      },
+    ],
+  },
+
+  // Repo actions page - shown when clicking "..." on a repo card
+  repoActions: {
+    id: 'repo-actions',
+    title: 'Repository Actions',
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    items: [
+      {
+        type: 'group',
+        label: 'Actions',
+        items: [
+          { type: 'action', action: Actions.RepoCopyPath },
+          { type: 'action', action: Actions.RepoOpenInIDE },
+          { type: 'action', action: Actions.RepoSettings },
+          { type: 'action', action: Actions.GitCreatePR },
+          { type: 'action', action: Actions.GitMerge },
           { type: 'action', action: Actions.GitRebase },
           { type: 'action', action: Actions.GitChangeTarget },
         ],
