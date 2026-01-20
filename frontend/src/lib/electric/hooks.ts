@@ -1,11 +1,8 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useLiveQuery } from '@tanstack/react-db';
 import { createEntityCollection } from './collections';
 import type { EntityDefinition } from 'shared/remote-types';
 import type { SyncError } from './types';
-
-// Debug counter for tracking renders
-let debugRenderCount = 0;
 
 // Type helpers for extracting types from EntityDefinition
 type EntityRowType<E> =
@@ -81,17 +78,6 @@ export function useEntity<
 
   // Memoize params by serialized value to get stable reference
   const paramsKey = JSON.stringify(params);
-  const prevParamsKeyRef = useRef(paramsKey);
-  const renderNum = ++debugRenderCount;
-
-  // Debug: log when paramsKey changes
-  if (prevParamsKeyRef.current !== paramsKey) {
-    console.log(
-      `[useEntity ${entity.name}] #${renderNum} PARAMS CHANGED: ${prevParamsKeyRef.current} -> ${paramsKey}`
-    );
-    prevParamsKeyRef.current = paramsKey;
-  }
-
   const stableParams = useMemo(
     () => JSON.parse(paramsKey) as Record<string, string>,
     [paramsKey]
@@ -99,9 +85,6 @@ export function useEntity<
 
   // Create collection with mutation handlers - retryKey forces recreation on retry
   const collection = useMemo(() => {
-    console.log(
-      `[useEntity ${entity.name}] #${renderNum} COLLECTION CREATED for params: ${paramsKey}`
-    );
     const config = { onError: handleError };
     void retryKey; // Reference to force recreation on retry
     return createEntityCollection(entity, stableParams, config);
@@ -112,25 +95,12 @@ export function useEntity<
     [collection]
   );
 
-  // Debug: log data and isLoading state, including first item's project_id if available
-  const firstItem = data?.[0] as Record<string, unknown> | undefined;
-  const firstItemProjectId =
-    firstItem?.project_id ?? firstItem?.organization_id ?? 'N/A';
-  console.log(
-    `[useEntity ${entity.name}] #${renderNum} paramsKey=${paramsKey.slice(0, 50)}, isLoading=${isLoading}, dataLength=${data?.length ?? 'null'}, firstItemScope=${firstItemProjectId}`
-  );
-
   // useLiveQuery returns data as flat objects directly, not wrapped in { item: {...} }
   // Return empty array while loading to avoid showing stale data during collection transitions
   const items = useMemo(() => {
     if (!data || isLoading) return [];
     return data as unknown as EntityRowType<E>[];
   }, [data, isLoading]);
-
-  // Debug: log what we're returning
-  console.log(
-    `[useEntity ${entity.name}] #${renderNum} RETURNING: itemsLength=${items.length}, isLoading=${isLoading}`
-  );
 
   // Expose collection mutation methods with stable callbacks
   // Type assertion needed because TanStack DB collection types are complex
