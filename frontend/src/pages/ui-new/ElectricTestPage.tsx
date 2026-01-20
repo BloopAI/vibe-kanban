@@ -189,7 +189,9 @@ function MutationPanel({
 }) {
   return (
     <div className="mt-base p-base bg-secondary rounded-sm space-y-base">
-      <h4 className="text-sm font-medium text-normal">Mutations (Optimistic)</h4>
+      <h4 className="text-sm font-medium text-normal">
+        Mutations (Optimistic)
+      </h4>
       {children}
       <div className="flex gap-base flex-wrap">
         {onCreate && (
@@ -446,7 +448,11 @@ function TagsList({ projectId }: { projectId: string }) {
 
   const handleCreate = () => {
     if (!newTagName.trim()) return;
-    insert({ project_id: projectId, name: newTagName.trim(), color: newTagColor });
+    insert({
+      project_id: projectId,
+      name: newTagName.trim(),
+      color: newTagColor,
+    });
     setNewTagName('');
   };
 
