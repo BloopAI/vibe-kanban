@@ -31,7 +31,7 @@ function SettingsCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border border-border/50 rounded-sm p-4 space-y-4">
+    <div className="space-y-4">
       <div>
         <h3 className="text-base font-medium text-high">{title}</h3>
         {description && <p className="text-sm text-low mt-1">{description}</p>}
@@ -338,7 +338,7 @@ export function ProjectsSettingsSection() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
+      <div className="pb-4 border-b border-border/50">
         <h2 className="text-lg font-semibold text-high">
           {t('settings.layout.nav.projects')}
         </h2>

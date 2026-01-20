@@ -40,31 +40,17 @@ function SettingsCard({
   description,
   children,
   headerAction,
-  variant,
 }: {
   title: string;
   description?: string;
   children: React.ReactNode;
   headerAction?: React.ReactNode;
-  variant?: 'default' | 'danger';
 }) {
   return (
-    <div
-      className={cn(
-        'border rounded-sm p-4 space-y-4',
-        variant === 'danger' ? 'border-error/50' : 'border-border/50'
-      )}
-    >
+    <div className="space-y-4">
       <div className="flex items-start justify-between">
         <div>
-          <h3
-            className={cn(
-              'text-base font-medium',
-              variant === 'danger' ? 'text-error' : 'text-high'
-            )}
-          >
-            {title}
-          </h3>
+          <h3 className="text-base font-medium text-high">{title}</h3>
           {description && (
             <p className="text-sm text-low mt-1">{description}</p>
           )}
@@ -301,7 +287,7 @@ export function OrganizationsSettingsSection() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
+      <div className="pb-4 border-b border-border/50">
         <h2 className="text-lg font-semibold text-high">
           {t('settings.title')}
         </h2>
@@ -457,7 +443,6 @@ export function OrganizationsSettingsSection() {
         <SettingsCard
           title={t('settings.dangerZone')}
           description={t('settings.dangerZoneDescription')}
-          variant="danger"
         >
           <div className="flex items-center justify-between">
             <div>
