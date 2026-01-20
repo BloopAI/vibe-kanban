@@ -204,8 +204,7 @@ impl ClaudeAgentClient {
         }
     }
 
-    pub async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError> {
-        // Forward all non-control messages to stdout
+    pub async fn log_message(&self, line: &str) -> Result<(), ExecutorError> {
         self.log_writer.log_raw(line).await
     }
 }
