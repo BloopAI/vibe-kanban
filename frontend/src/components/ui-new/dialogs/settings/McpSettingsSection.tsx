@@ -402,7 +402,6 @@ export function McpSettingsSection() {
         show={isDirty && !mcpError?.includes('does not support MCP')}
         saving={mcpApplying}
         saveDisabled={!!mcpError}
-        unsavedMessage={t('settings.mcp.save.unsavedChanges')}
         onSave={handleApplyMcpServers}
         onDiscard={handleDiscard}
       />

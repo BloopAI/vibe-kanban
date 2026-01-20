@@ -425,7 +425,6 @@ export function ProjectsSettingsSection() {
           <SettingsSaveBar
             show={hasUnsavedChanges}
             saving={saving}
-            unsavedMessage={t('settings.projects.save.unsavedChanges')}
             onSave={handleSave}
             onDiscard={handleDiscard}
           />

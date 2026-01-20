@@ -343,7 +343,6 @@ export function ReposSettingsSection() {
           <SettingsSaveBar
             show={hasUnsavedChanges}
             saving={saving}
-            unsavedMessage={t('settings.repos.save.unsavedChanges')}
             onSave={handleSave}
             onDiscard={handleDiscard}
           />
