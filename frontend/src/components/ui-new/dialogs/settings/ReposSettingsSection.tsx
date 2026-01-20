@@ -318,14 +318,7 @@ export function ReposSettingsSection() {
     repos?.map((r) => ({ value: r.id, label: r.display_name })) ?? [];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="pb-4 border-b border-border">
-        <h2 className="text-lg font-semibold text-high">
-          {t('settings.layout.nav.repos')}
-        </h2>
-      </div>
-
+    <>
       {/* Status messages */}
       {error && (
         <div className="bg-error/10 border border-error/50 rounded-sm p-4 text-error">
@@ -496,6 +489,9 @@ export function ReposSettingsSection() {
           )}
         </>
       )}
-    </div>
+    </>
   );
 }
+
+// Alias for backwards compatibility
+export { ReposSettingsSection as ReposSettingsSectionContent };
