@@ -1629,26 +1629,18 @@ impl GitService {
     }
 
     pub fn list_remotes(&self, repo_path: &Path) -> Result<Vec<GitRemote>, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let default_remote = self.default_remote_name(&repo);
         let cli = GitCli::new();
+        let remotes = cli.list_remotes(repo_path)?;
 
-        let remotes = repo.remotes()?;
-        let mut result = Vec::new();
-
-        for remote_name in remotes.iter().flatten() {
-            let url = cli
-                .get_remote_url(repo_path, remote_name)
-                .unwrap_or_default();
-
-            result.push(GitRemote {
-                name: remote_name.to_string(),
+        Ok(remotes
+            .into_iter()
+            .enumerate()
+            .map(|(i, (name, url))| GitRemote {
+                is_default: i == 0,
+                name,
                 url,
-                is_default: remote_name == default_remote,
-            });
-        }
-
-        Ok(result)
+            })
+            .collect())
     }
 
     pub fn check_remote_branch_exists(
