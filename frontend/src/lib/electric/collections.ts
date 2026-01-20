@@ -2,7 +2,7 @@ import { electricCollectionOptions } from '@tanstack/electric-db-collection';
 import { createCollection } from '@tanstack/react-db';
 import { oauthApi } from '../api';
 import { makeRequest, REMOTE_API_URL } from '@/lib/remoteApi';
-import type { ShapeDefinition, EntityDefinition } from 'shared/remote-types';
+import type { EntityDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { CollectionConfig, SyncError } from './types';
 
 /**
@@ -73,37 +73,6 @@ export function getAuthenticatedShapeOptions(
 
 // Row type with index signature required by Electric
 type ElectricRow = Record<string, unknown> & { [key: string]: unknown };
-
-/**
- * Create an Electric collection for a shape with the given row type.
- *
- * Note: The Electric library has strict generic constraints that are
- * difficult to satisfy with dynamic shape options. We use type assertions
- * to bridge the gap between our runtime-correct values and the library's
- * static type requirements.
- */
-export function createElectricCollection<T extends ElectricRow = ElectricRow>(
-  shape: ShapeDefinition<unknown>,
-  params: Record<string, string>,
-  config?: CollectionConfig
-) {
-  const collectionId = `${shape.table}-${Object.values(params).join('-')}`;
-  const shapeOptions = getAuthenticatedShapeOptions(shape, params, config);
-
-  // Electric library requires specific type shapes that are difficult to satisfy
-  // when building options dynamically. We cast through unknown to bridge the gap.
-  const options = electricCollectionOptions({
-    id: collectionId,
-    shapeOptions: shapeOptions as unknown as Parameters<
-      typeof electricCollectionOptions
-    >[0]['shapeOptions'],
-    getKey: (item: ElectricRow) => getRowKey(item),
-  });
-
-  return createCollection(options) as unknown as ReturnType<
-    typeof createCollection
-  > & { __rowType?: T };
-}
 
 /**
  * Create an Electric collection for an entity with mutation support.

@@ -1,20 +1,20 @@
 import { useState } from 'react';
 import { useAuth, useUserOrganizations, useCurrentUser } from '@/hooks';
-import { useElectricCollection } from '@/lib/electric/hooks';
+import { useEntity } from '@/lib/electric/hooks';
 import type { SyncError } from '@/lib/electric/types';
 import {
-  PROJECTS_SHAPE,
-  NOTIFICATIONS_SHAPE,
-  WORKSPACES_SHAPE,
-  PROJECT_STATUSES_SHAPE,
-  TAGS_SHAPE,
-  ISSUES_SHAPE,
-  ISSUE_ASSIGNEES_SHAPE,
-  ISSUE_FOLLOWERS_SHAPE,
-  ISSUE_TAGS_SHAPE,
-  ISSUE_DEPENDENCIES_SHAPE,
-  ISSUE_COMMENTS_SHAPE,
-  ISSUE_COMMENT_REACTIONS_SHAPE,
+  PROJECT_ENTITY,
+  NOTIFICATION_ENTITY,
+  WORKSPACE_ENTITY,
+  PROJECT_STATUS_ENTITY,
+  TAG_ENTITY,
+  ISSUE_ENTITY,
+  ISSUE_ASSIGNEE_ENTITY,
+  ISSUE_FOLLOWER_ENTITY,
+  ISSUE_TAG_ENTITY,
+  ISSUE_RELATIONSHIP_ENTITY,
+  ISSUE_COMMENT_ENTITY,
+  ISSUE_COMMENT_REACTION_ENTITY,
   type Project,
   type Issue,
 } from 'shared/remote-types';
@@ -185,8 +185,8 @@ function ProjectsList({
   onSelectProject: (project: Project) => void;
   selectedProjectId: string | null;
 }) {
-  const { data, isLoading, error, retry } = useElectricCollection(
-    PROJECTS_SHAPE,
+  const { data, isLoading, error, retry } = useEntity(
+    PROJECT_ENTITY,
     { organization_id: organizationId }
   );
 
@@ -235,8 +235,8 @@ function NotificationsList({
   organizationId: string;
   userId: string;
 }) {
-  const { data, isLoading, error, retry } = useElectricCollection(
-    NOTIFICATIONS_SHAPE,
+  const { data, isLoading, error, retry } = useEntity(
+    NOTIFICATION_ENTITY,
     { organization_id: organizationId, user_id: userId }
   );
 
@@ -278,8 +278,8 @@ function IssuesList({
   onSelectIssue: (issue: Issue) => void;
   selectedIssueId: string | null;
 }) {
-  const { data, isLoading, error, retry } = useElectricCollection(
-    ISSUES_SHAPE,
+  const { data, isLoading, error, retry } = useEntity(
+    ISSUE_ENTITY,
     { project_id: projectId }
   );
 
@@ -311,8 +311,8 @@ function IssuesList({
 }
 
 function WorkspacesList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useElectricCollection(
-    WORKSPACES_SHAPE,
+  const { data, isLoading, error, retry } = useEntity(
+    WORKSPACE_ENTITY,
     { project_id: projectId }
   );
 
@@ -346,8 +346,8 @@ function WorkspacesList({ projectId }: { projectId: string }) {
 }
 
 function StatusesList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useElectricCollection(
-    PROJECT_STATUSES_SHAPE,
+  const { data, isLoading, error, retry } = useEntity(
+    PROJECT_STATUS_ENTITY,
     { project_id: projectId }
   );
 
@@ -384,7 +384,7 @@ function StatusesList({ projectId }: { projectId: string }) {
 }
 
 function TagsList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useElectricCollection(TAGS_SHAPE, {
+  const { data, isLoading, error, retry } = useEntity(TAG_ENTITY, {
     project_id: projectId,
   });
 
@@ -420,8 +420,8 @@ function TagsList({ projectId }: { projectId: string }) {
 }
 
 function AssigneesList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useElectricCollection(
-    ISSUE_ASSIGNEES_SHAPE,
+  const { data, isLoading, error, retry } = useEntity(
+    ISSUE_ASSIGNEE_ENTITY,
     { project_id: projectId }
   );
 
@@ -458,8 +458,8 @@ function AssigneesList({ projectId }: { projectId: string }) {
 }
 
 function FollowersList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useElectricCollection(
-    ISSUE_FOLLOWERS_SHAPE,
+  const { data, isLoading, error, retry } = useEntity(
+    ISSUE_FOLLOWER_ENTITY,
     { project_id: projectId }
   );
 
@@ -491,8 +491,8 @@ function FollowersList({ projectId }: { projectId: string }) {
 }
 
 function IssueTagsList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useElectricCollection(
-    ISSUE_TAGS_SHAPE,
+  const { data, isLoading, error, retry } = useEntity(
+    ISSUE_TAG_ENTITY,
     { project_id: projectId }
   );
 
@@ -524,8 +524,8 @@ function IssueTagsList({ projectId }: { projectId: string }) {
 }
 
 function DependenciesList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useElectricCollection(
-    ISSUE_DEPENDENCIES_SHAPE,
+  const { data, isLoading, error, retry } = useEntity(
+    ISSUE_RELATIONSHIP_ENTITY,
     { project_id: projectId }
   );
 
@@ -562,8 +562,8 @@ function DependenciesList({ projectId }: { projectId: string }) {
 }
 
 function CommentsList({ issueId }: { issueId: string }) {
-  const { data, isLoading, error, retry } = useElectricCollection(
-    ISSUE_COMMENTS_SHAPE,
+  const { data, isLoading, error, retry } = useEntity(
+    ISSUE_COMMENT_ENTITY,
     { issue_id: issueId }
   );
 
@@ -604,8 +604,8 @@ function CommentsList({ issueId }: { issueId: string }) {
 }
 
 function ReactionsList({ issueId }: { issueId: string }) {
-  const { data, isLoading, error, retry } = useElectricCollection(
-    ISSUE_COMMENT_REACTIONS_SHAPE,
+  const { data, isLoading, error, retry } = useEntity(
+    ISSUE_COMMENT_REACTION_ENTITY,
     { issue_id: issueId }
   );
 
