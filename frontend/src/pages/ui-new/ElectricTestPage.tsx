@@ -185,10 +185,9 @@ function ProjectsList({
   onSelectProject: (project: Project) => void;
   selectedProjectId: string | null;
 }) {
-  const { data, isLoading, error, retry } = useEntity(
-    PROJECT_ENTITY,
-    { organization_id: organizationId }
-  );
+  const { data, isLoading, error, retry } = useEntity(PROJECT_ENTITY, {
+    organization_id: organizationId,
+  });
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
@@ -235,10 +234,10 @@ function NotificationsList({
   organizationId: string;
   userId: string;
 }) {
-  const { data, isLoading, error, retry } = useEntity(
-    NOTIFICATION_ENTITY,
-    { organization_id: organizationId, user_id: userId }
-  );
+  const { data, isLoading, error, retry } = useEntity(NOTIFICATION_ENTITY, {
+    organization_id: organizationId,
+    user_id: userId,
+  });
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
@@ -278,10 +277,9 @@ function IssuesList({
   onSelectIssue: (issue: Issue) => void;
   selectedIssueId: string | null;
 }) {
-  const { data, isLoading, error, retry } = useEntity(
-    ISSUE_ENTITY,
-    { project_id: projectId }
-  );
+  const { data, isLoading, error, retry } = useEntity(ISSUE_ENTITY, {
+    project_id: projectId,
+  });
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
@@ -311,10 +309,9 @@ function IssuesList({
 }
 
 function WorkspacesList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useEntity(
-    WORKSPACE_ENTITY,
-    { project_id: projectId }
-  );
+  const { data, isLoading, error, retry } = useEntity(WORKSPACE_ENTITY, {
+    project_id: projectId,
+  });
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
@@ -346,10 +343,9 @@ function WorkspacesList({ projectId }: { projectId: string }) {
 }
 
 function StatusesList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useEntity(
-    PROJECT_STATUS_ENTITY,
-    { project_id: projectId }
-  );
+  const { data, isLoading, error, retry } = useEntity(PROJECT_STATUS_ENTITY, {
+    project_id: projectId,
+  });
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
@@ -420,10 +416,9 @@ function TagsList({ projectId }: { projectId: string }) {
 }
 
 function AssigneesList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useEntity(
-    ISSUE_ASSIGNEE_ENTITY,
-    { project_id: projectId }
-  );
+  const { data, isLoading, error, retry } = useEntity(ISSUE_ASSIGNEE_ENTITY, {
+    project_id: projectId,
+  });
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
@@ -458,10 +453,9 @@ function AssigneesList({ projectId }: { projectId: string }) {
 }
 
 function FollowersList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useEntity(
-    ISSUE_FOLLOWER_ENTITY,
-    { project_id: projectId }
-  );
+  const { data, isLoading, error, retry } = useEntity(ISSUE_FOLLOWER_ENTITY, {
+    project_id: projectId,
+  });
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
@@ -491,10 +485,9 @@ function FollowersList({ projectId }: { projectId: string }) {
 }
 
 function IssueTagsList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useEntity(
-    ISSUE_TAG_ENTITY,
-    { project_id: projectId }
-  );
+  const { data, isLoading, error, retry } = useEntity(ISSUE_TAG_ENTITY, {
+    project_id: projectId,
+  });
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
@@ -562,10 +555,9 @@ function DependenciesList({ projectId }: { projectId: string }) {
 }
 
 function CommentsList({ issueId }: { issueId: string }) {
-  const { data, isLoading, error, retry } = useEntity(
-    ISSUE_COMMENT_ENTITY,
-    { issue_id: issueId }
-  );
+  const { data, isLoading, error, retry } = useEntity(ISSUE_COMMENT_ENTITY, {
+    issue_id: issueId,
+  });
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
