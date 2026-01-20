@@ -3,7 +3,7 @@ export {
   settingsWidgets,
   settingsTemplates,
   settingsFields,
-} from './Theme';
-export * from './Widgets';
-export * from './Templates';
-export * from './Fields';
+} from './theme';
+export * from './Widgets.tsx';
+export * from './Templates.tsx';
+export * from './Fields.tsx';
