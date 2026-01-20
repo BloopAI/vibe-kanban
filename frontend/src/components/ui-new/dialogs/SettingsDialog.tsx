@@ -137,14 +137,9 @@ const SettingsDialogImpl = NiceModal.create<SettingsDialogProps>(
                       )}
                     >
                       <Icon className="size-icon-sm shrink-0" weight="bold" />
-                      <div className="flex-1 min-w-0">
-                        <div className="truncate">
-                          {t(`settings.layout.nav.${section.id}`)}
-                        </div>
-                        <div className="text-xs opacity-70 truncate">
-                          {t(`settings.layout.nav.${section.id}Desc`)}
-                        </div>
-                      </div>
+                      <span className="truncate">
+                        {t(`settings.layout.nav.${section.id}`)}
+                      </span>
                     </button>
                   );
                 })}
