@@ -10,26 +10,70 @@
 
 // Re-export all mutation types from the unified entities module
 pub use crate::entities::{
-    // Project mutations
-    CreateProjectRequest, UpdateProjectRequest, ListProjectsQuery, ListProjectsResponse, PROJECT_URL,
-    // Notification mutations
-    CreateNotificationRequest, UpdateNotificationRequest, ListNotificationsQuery, ListNotificationsResponse, NOTIFICATION_URL,
-    // Tag mutations
-    CreateTagRequest, UpdateTagRequest, ListTagsQuery, ListTagsResponse, TAG_URL,
-    // ProjectStatus mutations
-    CreateProjectStatusRequest, UpdateProjectStatusRequest, ListProjectStatussQuery, ListProjectStatussResponse, PROJECT_STATUS_URL,
-    // Issue mutations
-    CreateIssueRequest, UpdateIssueRequest, ListIssuesQuery, ListIssuesResponse, ISSUE_URL,
-    // IssueComment mutations
-    CreateIssueCommentRequest, UpdateIssueCommentRequest, ListIssueCommentsQuery, ListIssueCommentsResponse, ISSUE_COMMENT_URL,
     // IssueAssignee mutations
-    CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest, ListIssueAssigneesQuery, ListIssueAssigneesResponse, ISSUE_ASSIGNEE_URL,
-    // IssueFollower mutations
-    CreateIssueFollowerRequest, UpdateIssueFollowerRequest, ListIssueFollowersQuery, ListIssueFollowersResponse, ISSUE_FOLLOWER_URL,
-    // IssueTag mutations
-    CreateIssueTagRequest, UpdateIssueTagRequest, ListIssueTagsQuery, ListIssueTagsResponse, ISSUE_TAG_URL,
-    // IssueRelationship mutations
-    CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest, ListIssueRelationshipsQuery, ListIssueRelationshipsResponse, ISSUE_RELATIONSHIP_URL,
+    CreateIssueAssigneeRequest,
     // IssueCommentReaction mutations
-    CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest, ListIssueCommentReactionsQuery, ListIssueCommentReactionsResponse, ISSUE_COMMENT_REACTION_URL,
+    CreateIssueCommentReactionRequest,
+    // IssueComment mutations
+    CreateIssueCommentRequest,
+    // IssueFollower mutations
+    CreateIssueFollowerRequest,
+    // IssueRelationship mutations
+    CreateIssueRelationshipRequest,
+    // Issue mutations
+    CreateIssueRequest,
+    // IssueTag mutations
+    CreateIssueTagRequest,
+    // Notification mutations
+    CreateNotificationRequest,
+    // Project mutations
+    CreateProjectRequest,
+    // ProjectStatus mutations
+    CreateProjectStatusRequest,
+    // Tag mutations
+    CreateTagRequest,
+    ISSUE_ASSIGNEE_URL,
+    ISSUE_COMMENT_REACTION_URL,
+    ISSUE_COMMENT_URL,
+    ISSUE_FOLLOWER_URL,
+    ISSUE_RELATIONSHIP_URL,
+    ISSUE_TAG_URL,
+    ISSUE_URL,
+    ListIssueAssigneesQuery,
+    ListIssueAssigneesResponse,
+    ListIssueCommentReactionsQuery,
+    ListIssueCommentReactionsResponse,
+    ListIssueCommentsQuery,
+    ListIssueCommentsResponse,
+    ListIssueFollowersQuery,
+    ListIssueFollowersResponse,
+    ListIssueRelationshipsQuery,
+    ListIssueRelationshipsResponse,
+    ListIssueTagsQuery,
+    ListIssueTagsResponse,
+    ListIssuesQuery,
+    ListIssuesResponse,
+    ListNotificationsQuery,
+    ListNotificationsResponse,
+    ListProjectStatussQuery,
+    ListProjectStatussResponse,
+    ListProjectsQuery,
+    ListProjectsResponse,
+    ListTagsQuery,
+    ListTagsResponse,
+    NOTIFICATION_URL,
+    PROJECT_STATUS_URL,
+    PROJECT_URL,
+    TAG_URL,
+    UpdateIssueAssigneeRequest,
+    UpdateIssueCommentReactionRequest,
+    UpdateIssueCommentRequest,
+    UpdateIssueFollowerRequest,
+    UpdateIssueRelationshipRequest,
+    UpdateIssueRequest,
+    UpdateIssueTagRequest,
+    UpdateNotificationRequest,
+    UpdateProjectRequest,
+    UpdateProjectStatusRequest,
+    UpdateTagRequest,
 };

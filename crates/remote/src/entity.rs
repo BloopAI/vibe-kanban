@@ -34,6 +34,7 @@
 //! ```
 
 use std::marker::PhantomData;
+
 use ts_rs::TS;
 
 /// Scope for entity relationships - determines parent ID field

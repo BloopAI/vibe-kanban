@@ -19,14 +19,14 @@ use remote::{
     },
     // Import from new unified entities module
     entities::{
-        all_entities, all_shapes, CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest,
-        CreateIssueCommentRequest, CreateIssueFollowerRequest, CreateIssueRelationshipRequest,
-        CreateIssueRequest, CreateIssueTagRequest, CreateNotificationRequest, CreateProjectRequest,
+        CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
+        CreateIssueFollowerRequest, CreateIssueRelationshipRequest, CreateIssueRequest,
+        CreateIssueTagRequest, CreateNotificationRequest, CreateProjectRequest,
         CreateProjectStatusRequest, CreateTagRequest, UpdateIssueAssigneeRequest,
         UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueFollowerRequest,
         UpdateIssueRelationshipRequest, UpdateIssueRequest, UpdateIssueTagRequest,
         UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest,
-        UpdateTagRequest,
+        UpdateTagRequest, all_entities, all_shapes,
     },
 };
 use ts_rs::TS;
@@ -193,15 +193,21 @@ fn export_shapes() -> String {
     output.push_str("export type AnyShape = typeof ALL_SHAPES[number];\n\n");
 
     // Generate EntityDefinition interface for SDK generation
-    output.push_str("// =============================================================================\n");
+    output.push_str(
+        "// =============================================================================\n",
+    );
     output.push_str("// Entity Definitions for SDK Generation\n");
-    output.push_str("// =============================================================================\n\n");
+    output.push_str(
+        "// =============================================================================\n\n",
+    );
 
     output.push_str("// Scope enum matching Rust\n");
     output.push_str("export type Scope = 'Organization' | 'Project' | 'Issue' | 'Comment';\n\n");
 
     output.push_str("// Entity definition interface\n");
-    output.push_str("export interface EntityDefinition<TRow, TCreate = unknown, TUpdate = unknown> {\n");
+    output.push_str(
+        "export interface EntityDefinition<TRow, TCreate = unknown, TUpdate = unknown> {\n",
+    );
     output.push_str("  readonly name: string;\n");
     output.push_str("  readonly table: string;\n");
     output.push_str("  readonly mutationScope: Scope | null;\n");
@@ -246,7 +252,11 @@ fn export_shapes() -> String {
             const_name = const_name,
             ts_type = entity.ts_type_name(),
             create_update = if has_mutations {
-                format!(", Create{}Request, Update{}Request", entity.name(), entity.name())
+                format!(
+                    ", Create{}Request, Update{}Request",
+                    entity.name(),
+                    entity.name()
+                )
             } else {
                 "".to_string()
             }
