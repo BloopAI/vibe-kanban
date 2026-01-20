@@ -255,7 +255,8 @@
       "loading": "Loading agent configurations...",
       "save": {
         "button": "Save Agent Configurations",
-        "success": "✓ Executor configurations saved successfully!"
+        "success": "✓ Executor configurations saved successfully!",
+        "unsavedChanges": "• You have unsaved changes"
       },
       "availability": {
         "checking": "Checking...",
