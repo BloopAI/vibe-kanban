@@ -1,6 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SpinnerIcon, PlusIcon, TrashIcon } from '@phosphor-icons/react';
+import {
+  SpinnerIcon,
+  PlusIcon,
+  TrashIcon,
+  DotsThreeIcon,
+  StarIcon,
+} from '@phosphor-icons/react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../primitives/Dropdown';
 import { ExecutorConfigForm } from './ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -464,11 +476,30 @@ export function AgentsSettingsSection() {
                         >
                           {toPrettyCase(configName)}
                         </span>
-                        {/* Action buttons on hover */}
-                        <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                          {!isDefault && (
+                        {isDefault && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand/15 text-brand font-medium shrink-0 ml-auto">
+                            {t('settings.agents.editor.isDefault')}
+                          </span>
+                        )}
+                        {/* Actions dropdown */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
                             <button
-                              className="text-[10px] px-1.5 py-0.5 rounded bg-secondary hover:bg-panel text-low hover:text-normal"
+                              className={cn(
+                                'p-0.5 rounded-sm hover:bg-panel text-low hover:text-normal',
+                                'opacity-0 group-hover:opacity-100 transition-opacity',
+                                !isDefault && 'ml-auto'
+                              )}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <DotsThreeIcon
+                                className="size-icon-xs"
+                                weight="bold"
+                              />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleMakeDefault(
@@ -476,13 +507,12 @@ export function AgentsSettingsSection() {
                                   configName
                                 );
                               }}
+                              disabled={isDefault}
                             >
+                              <StarIcon className="size-icon-xs mr-2" />
                               {t('settings.agents.editor.makeDefault')}
-                            </button>
-                          )}
-                          {configCount > 1 && (
-                            <button
-                              className="p-0.5 rounded-sm hover:bg-panel text-low hover:text-error"
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeleteConfig(
@@ -490,20 +520,14 @@ export function AgentsSettingsSection() {
                                   configName
                                 );
                               }}
-                              title={t('settings.agents.editor.deleteText')}
+                              disabled={configCount <= 1}
+                              className="text-error focus:text-error"
                             >
-                              <TrashIcon
-                                className="size-icon-2xs"
-                                weight="regular"
-                              />
-                            </button>
-                          )}
-                        </div>
-                        {isDefault && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand/15 text-brand font-medium shrink-0">
-                            {t('settings.agents.editor.isDefault')}
-                          </span>
-                        )}
+                              <TrashIcon className="size-icon-xs mr-2" />
+                              {t('settings.agents.editor.deleteText')}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     );
                   })
