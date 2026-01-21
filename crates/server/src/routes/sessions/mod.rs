@@ -11,7 +11,7 @@ use axum::{
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     scratch::{Scratch, ScratchType},
-    session::{CreateSession, Session},
+    session::{CreateSession, Session, SessionError},
     workspace::{Workspace, WorkspaceError},
     workspace_repo::WorkspaceRepo,
 };
@@ -122,12 +122,10 @@ pub async fn follow_up(
         ExecutionProcess::latest_executor_profile_for_session(pool, session.id).await?
     {
         if existing_profile.executor != executor_profile_id.executor {
-            return Err(ApiError::Workspace(WorkspaceError::ValidationError(
-                format!(
-                    "Executor mismatch: session uses {:?} but request specified {:?}",
-                    existing_profile.executor, executor_profile_id.executor
-                ),
-            )));
+            return Err(ApiError::Session(SessionError::ExecutorMismatch {
+                expected: existing_profile.executor.to_string(),
+                actual: executor_profile_id.executor.to_string(),
+            }));
         }
     }
 

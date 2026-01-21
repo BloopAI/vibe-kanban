@@ -19,7 +19,7 @@ use db::{
         execution_process_repo_state::ExecutionProcessRepoState,
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
-        session::Session,
+        session::{Session, SessionError},
         task::{Task, TaskStatus},
         workspace::Workspace,
         workspace_repo::WorkspaceRepo,
@@ -828,10 +828,11 @@ impl LocalContainerService {
                 .await?
         {
             if existing_profile.executor != executor_profile_id.executor {
-                return Err(ContainerError::ExecutorMismatch {
+                return Err(SessionError::ExecutorMismatch {
                     expected: existing_profile.executor.to_string(),
                     actual: executor_profile_id.executor.to_string(),
-                });
+                }
+                .into());
             }
         }
 

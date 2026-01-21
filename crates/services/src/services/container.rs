@@ -80,8 +80,6 @@ pub enum ContainerError {
     Io(#[from] std::io::Error),
     #[error("Failed to kill process: {0}")]
     KillFailed(std::io::Error),
-    #[error("Executor mismatch: session uses {expected} but request specified {actual}")]
-    ExecutorMismatch { expected: String, actual: String },
     #[error(transparent)]
     Other(#[from] AnyhowError), // Catches any unclassified errors
 }
