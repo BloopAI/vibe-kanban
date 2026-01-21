@@ -244,6 +244,29 @@
           "label": "提交提醒",
           "helper": "提示支援的代理在停止前提交變更。"
         }
+      },
+      "appManagement": {
+        "title": "應用管理",
+        "description": "管理應用程式相關操作。",
+        "exit": {
+          "label": "退出應用",
+          "helper": "安全退出應用程式。未儲存的變更可能會遺失。",
+          "button": "退出應用",
+          "confirm": "確定要退出應用嗎？",
+          "errors": {
+            "failed": "退出應用失敗"
+          }
+        },
+        "desktopShortcut": {
+          "label": "桌面捷徑",
+          "helper": "在桌面建立應用捷徑，方便快速啟動。",
+          "create": "建立捷徑",
+          "recreate": "重新建立",
+          "exists": "已存在",
+          "errors": {
+            "createFailed": "建立桌面捷徑失敗"
+          }
+        }
       }
     },
     "agents": {

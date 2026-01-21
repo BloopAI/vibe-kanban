@@ -88,6 +88,8 @@ import {
   Workspace,
   StartReviewRequest,
   ReviewError,
+  PathConfigInfo,
+  SetCustomPathResponse,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -917,6 +919,29 @@ export const configApi = {
   },
 };
 
+// Data Storage APIs
+export const dataStorageApi = {
+  getPathConfig: async (): Promise<PathConfigInfo> => {
+    const response = await makeRequest('/api/path-config');
+    return handleApiResponse<PathConfigInfo>(response);
+  },
+
+  setCustomPath: async (customPath: string): Promise<SetCustomPathResponse> => {
+    const response = await makeRequest('/api/path-config/custom', {
+      method: 'PUT',
+      body: JSON.stringify({ custom_path: customPath }),
+    });
+    return handleApiResponse<SetCustomPathResponse>(response);
+  },
+
+  resetToDefault: async (): Promise<{ message: string }> => {
+    const response = await makeRequest('/api/path-config/reset', {
+      method: 'PUT',
+    });
+    return handleApiResponse<{ message: string }>(response);
+  },
+};
+
 // Task Tags APIs (all tags are global)
 export const tagsApi = {
   list: async (params?: TagSearchParams): Promise<Tag[]> => {
@@ -1343,5 +1368,56 @@ export const queueApi = {
   getStatus: async (sessionId: string): Promise<QueueStatus> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`);
     return handleApiResponse<QueueStatus>(response);
+  },
+};
+
+// App Management API
+export const appManagementApi = {
+  /**
+   * Exit the application
+   */
+  exitApp: async (): Promise<{ message: string }> => {
+    const response = await makeRequest('/api/app/exit', {
+      method: 'POST',
+    });
+    return handleApiResponse<{ message: string }>(response);
+  },
+
+  /**
+   * Create a desktop shortcut
+   */
+  createDesktopShortcut: async (): Promise<{
+    success: boolean;
+    message: string;
+    path: string | null;
+    already_exists: boolean;
+  }> => {
+    const response = await makeRequest('/api/app/desktop-shortcut', {
+      method: 'POST',
+    });
+    return handleApiResponse<{
+      success: boolean;
+      message: string;
+      path: string | null;
+      already_exists: boolean;
+    }>(response);
+  },
+
+  /**
+   * Check if desktop shortcut exists
+   */
+  desktopShortcutExists: async (): Promise<{
+    success: boolean;
+    message: string;
+    path: string | null;
+    already_exists: boolean;
+  }> => {
+    const response = await makeRequest('/api/app/desktop-shortcut-exists');
+    return handleApiResponse<{
+      success: boolean;
+      message: string;
+      path: string | null;
+      already_exists: boolean;
+    }>(response);
   },
 };

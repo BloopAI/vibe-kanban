@@ -6,6 +6,7 @@ pub mod api;
 pub mod approvals;
 pub mod assets;
 pub mod browser;
+pub mod desktop;
 pub mod diff;
 pub mod git;
 pub mod jwt;

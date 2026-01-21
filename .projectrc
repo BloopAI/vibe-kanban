@@ -1,0 +1,13 @@
+#!/bin/zsh
+# Vibe Kanban 项目环境配置
+# 此文件会在进入项目目录时自动加载
+
+# 添加 Cargo 到 PATH
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# 项目特定的 Rust 环境变量（可选）
+export CARGO_TARGET_DIR="target"
+export RUST_LOG="info"
+
+# 显示激活提示
+echo "🦀 Vibe Kanban Rust 环境已激活"

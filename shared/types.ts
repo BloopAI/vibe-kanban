@@ -575,5 +575,7 @@ Analyze the changes in this branch and write:
    - Why they were made (based on the task context)
    - Any important implementation details
    - At the end, include a note: "This PR was written using [Vibe Kanban](https://vibekanban.com)"
-
-Use the appropriate CLI tool to update the PR (gh pr edit for GitHub, az repos pr update for Azure DevOps).`;
+`;
+export type PathConfigInfo = { current_path: string, custom_path: string | null, default_path: string, is_custom: boolean, };
+export type SetCustomPathRequest = { custom_path: string, };
+export type SetCustomPathResponse = { message: string, requires_restart: boolean, credentials_warning: boolean, };

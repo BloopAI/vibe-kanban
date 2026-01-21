@@ -244,6 +244,38 @@
           "label": "Commit reminder",
           "helper": "Prompt supported agents to commit changes before stopping."
         }
+      },
+      "dataStorage": {
+        "title": "Data Storage",
+        "description": "Configure where your application data is stored.",
+        "currentPath": {
+          "label": "Current Data Location",
+          "helper": "All configuration files, databases, and credentials are stored here."
+        },
+        "changePath": {
+          "label": "Change Storage Location",
+          "button": "Choose Custom Folder",
+          "helper": "Select a folder to store your data. Useful for syncing via iCloud, Dropbox, or other cloud services."
+        },
+        "picker": {
+          "title": "Select Data Storage Folder",
+          "description": "Choose a folder where all application data will be stored. For multi-device sync, select a cloud-synced folder."
+        },
+        "warnings": {
+          "credentials": "Note: Your credentials.json file contains sensitive authentication tokens. It will remain in the old location for security."
+        },
+        "reset": {
+          "button": "Reset to Default Location",
+          "helper": "Revert to the system default data directory.",
+          "confirm": "Are you sure you want to reset to the default storage location? The custom path configuration will be removed, but files will not be moved automatically."
+        },
+        "errors": {
+          "loadFailed": "Failed to load path configuration.",
+          "saveFailed": "Failed to save custom path.",
+          "resetFailed": "Failed to reset to default path.",
+          "emptyPath": "Please select a valid folder path."
+        },
+        "custom": "Custom"
       }
     },
     "agents": {

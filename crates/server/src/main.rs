@@ -12,6 +12,10 @@ use utils::{
     port_file::write_port_file,
     sentry::{self as sentry_utils, SentrySource, sentry_layer},
 };
+use std::sync::atomic::{AtomicBool, Ordering};
+
+// Global shutdown flag that can be triggered by API
+static SHUTDOWN_REQUESTED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, Error)]
 pub enum VibeKanbanError {
@@ -132,13 +136,28 @@ async fn main() -> Result<(), VibeKanbanError> {
     Ok(())
 }
 
+/// Request a graceful shutdown from API
+pub fn request_shutdown() {
+    SHUTDOWN_REQUESTED.store(true, Ordering::SeqCst);
+    tracing::info!("Shutdown requested via API");
+}
+
 pub async fn shutdown_signal() {
-    // Always wait for Ctrl+C
-    let ctrl_c = async {
-        if let Err(e) = tokio::signal::ctrl_c().await {
-            tracing::error!("Failed to install Ctrl+C handler: {e}");
+    // Check for API-triggered shutdown first
+    tokio::select! {
+        _ = async {
+            loop {
+                if SHUTDOWN_REQUESTED.load(Ordering::SeqCst) {
+                    tracing::info!("API shutdown signal received");
+                    break;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
+        } => {},
+        _ = tokio::signal::ctrl_c() => {
+            tracing::info!("Ctrl+C received");
         }
-    };
+    }
 
     #[cfg(unix)]
     {
@@ -156,15 +175,10 @@ pub async fn shutdown_signal() {
         };
 
         tokio::select! {
-            _ = ctrl_c => {},
-            _ = terminate => {},
+            _ = terminate => {
+                tracing::info!("SIGTERM received");
+            }
         }
-    }
-
-    #[cfg(not(unix))]
-    {
-        // Only ctrl_c is available, so just await it
-        ctrl_c.await;
     }
 }
 

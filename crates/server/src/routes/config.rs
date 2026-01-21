@@ -26,6 +26,7 @@ use services::services::config::{
 use tokio::fs;
 use ts_rs::TS;
 use utils::{api::oauth::LoginStatus, assets::config_path, response::ApiResponse};
+use utils::assets::{custom_path_config_file, load_custom_path_config, CustomPathConfig};
 
 use crate::{DeploymentImpl, error::ApiError};
 
@@ -41,6 +42,10 @@ pub fn router() -> Router<DeploymentImpl> {
             get(check_editor_availability),
         )
         .route("/agents/check-availability", get(check_agent_availability))
+        // Data storage path configuration endpoints
+        .route("/path-config", get(get_path_config))
+        .route("/path-config/custom", put(set_custom_path))
+        .route("/path-config/reset", put(reset_custom_path))
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -471,6 +476,29 @@ pub struct CheckAgentAvailabilityQuery {
     executor: BaseCodingAgent,
 }
 
+/// Data storage path configuration information
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct PathConfigInfo {
+    pub current_path: String,
+    pub custom_path: Option<String>,
+    pub default_path: String,
+    pub is_custom: bool,
+}
+
+/// Request to set a custom path
+#[derive(Debug, Deserialize, TS)]
+pub struct SetCustomPathRequest {
+    pub custom_path: String,
+}
+
+/// Response when setting a custom path
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct SetCustomPathResponse {
+    pub message: String,
+    pub requires_restart: bool,
+    pub credentials_warning: bool,
+}
+
 async fn check_agent_availability(
     State(_deployment): State<DeploymentImpl>,
     Query(query): Query<CheckAgentAvailabilityQuery>,
@@ -484,4 +512,102 @@ async fn check_agent_availability(
     };
 
     ResponseJson(ApiResponse::success(info))
+}
+
+/// Get current data storage path configuration
+#[axum::debug_handler]
+async fn get_path_config(
+    State(_deployment): State<DeploymentImpl>,
+) -> ResponseJson<ApiResponse<PathConfigInfo>> {
+    let custom_config = load_custom_path_config();
+    let current_path = utils::assets::asset_dir();
+    let default_path = if cfg!(debug_assertions) {
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../dev_assets")
+    } else {
+        directories::ProjectDirs::from("ai", "bloop", "vibe-kanban")
+            .expect("OS didn't give us a home directory")
+            .data_dir()
+            .to_path_buf()
+    };
+
+    let is_custom = custom_config.custom_asset_dir.is_some();
+
+    ResponseJson(ApiResponse::success(PathConfigInfo {
+        current_path: current_path.to_string_lossy().to_string(),
+        custom_path: custom_config
+            .custom_asset_dir
+            .as_ref()
+            .map(|p| p.to_string_lossy().to_string()),
+        default_path: default_path.to_string_lossy().to_string(),
+        is_custom,
+    }))
+}
+
+/// Set a custom data storage path
+async fn set_custom_path(
+    State(_deployment): State<DeploymentImpl>,
+    Json(req): Json<SetCustomPathRequest>,
+) -> Result<ResponseJson<ApiResponse<SetCustomPathResponse>>, ApiError> {
+    let custom_path = std::path::PathBuf::from(&req.custom_path);
+
+    // Validate path exists
+    if !custom_path.exists() {
+        return Err(ApiError::BadRequest(format!(
+            "Path does not exist: {}",
+            req.custom_path
+        )));
+    }
+
+    // Validate path is a directory
+    if !custom_path.is_dir() {
+        return Err(ApiError::BadRequest(format!(
+            "Path is not a directory: {}",
+            req.custom_path
+        )));
+    }
+
+    // Check if credentials.json exists in old location
+    let old_credentials = utils::assets::credentials_path().exists();
+    let new_credentials = custom_path.join("credentials.json").exists();
+
+    // Save configuration
+    let config_file = custom_path_config_file();
+    let config = CustomPathConfig {
+        custom_asset_dir: Some(custom_path.clone()),
+    };
+
+    // Ensure config directory exists
+    if let Some(parent) = config_file.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| ApiError::Internal(format!("Failed to create config directory: {}", e)))?;
+    }
+
+    let config_json = serde_json::to_string_pretty(&config)
+        .map_err(|e| ApiError::Internal(format!("Failed to serialize config: {}", e)))?;
+
+    std::fs::write(&config_file, config_json)
+        .map_err(|e| ApiError::Internal(format!("Failed to write config: {}", e)))?;
+
+    Ok(ResponseJson(ApiResponse::success(SetCustomPathResponse {
+        message: "Custom path saved. Restart the application to apply changes.".to_string(),
+        requires_restart: true,
+        credentials_warning: old_credentials && !new_credentials,
+    })))
+}
+
+/// Reset to default data storage path
+async fn reset_custom_path(
+    State(_deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<String>>, ApiError> {
+    let config_file = custom_path_config_file();
+
+    if config_file.exists() {
+        std::fs::remove_file(&config_file)
+            .map_err(|e| ApiError::Internal(format!("Failed to remove config: {}", e)))?;
+    }
+
+    Ok(ResponseJson(ApiResponse::success(
+        "Custom path removed. Restart the application to use default location.".to_string(),
+    )))
 }

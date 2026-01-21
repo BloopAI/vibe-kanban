@@ -20,13 +20,14 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Volume2 } from 'lucide-react';
+import { Loader2, Volume2, Folder, FolderOpen, Power, Monitor } from 'lucide-react';
 import {
   DEFAULT_PR_DESCRIPTION_PROMPT,
   EditorType,
   SoundFile,
   ThemeMode,
   UiLanguage,
+  PathConfigInfo,
 } from 'shared/types';
 import { getLanguageOptions } from '@/i18n/languages';
 
@@ -36,6 +37,8 @@ import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndi
 import { useTheme } from '@/components/ThemeProvider';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
+import { dataStorageApi, appManagementApi } from '@/lib/api';
+import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
 
 export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
@@ -63,6 +66,18 @@ export function GeneralSettings() {
     null
   );
   const { setTheme } = useTheme();
+
+  // Data storage state management
+  const [dataStorageInfo, setDataStorageInfo] = useState<PathConfigInfo | null>(null);
+  const [loadingStorage, setLoadingStorage] = useState(true);
+  const [credentialsWarning, setCredentialsWarning] = useState(false);
+  const [storageSuccessMessage, setStorageSuccessMessage] = useState<string>('');
+  const [storageErrorMessage, setStorageErrorMessage] = useState<string>('');
+
+  // App management state
+  const [shortcutExists, setShortcutExists] = useState(false);
+  const [loadingShortcut, setLoadingShortcut] = useState(false);
+  const [shortcutMessage, setShortcutMessage] = useState<string>('');
 
   // Check editor availability when draft editor changes
   const editorAvailability = useEditorAvailability(draft?.editor.editor_type);
@@ -179,6 +194,127 @@ export function GeneralSettings() {
     updateAndSaveConfig({ onboarding_acknowledged: false });
   };
 
+  // Data storage handlers
+  const loadPathConfig = async () => {
+    setLoadingStorage(true);
+    try {
+      const result = await dataStorageApi.getPathConfig();
+      setDataStorageInfo(result);
+      setCredentialsWarning(false);
+    } catch (err) {
+      console.error('Failed to load path config:', err);
+      setStorageErrorMessage(t('settings.general.dataStorage.errors.loadFailed'));
+    } finally {
+      setLoadingStorage(false);
+    }
+  };
+
+  const handleSelectCustomPath = async () => {
+    const selectedPath = await FolderPickerDialog.show({
+      title: t('settings.general.dataStorage.picker.title'),
+      description: t('settings.general.dataStorage.picker.description'),
+      value: dataStorageInfo?.current_path || '',
+    }) as string | null;
+
+    if (!selectedPath) return; // User cancelled
+
+    setLoadingStorage(true);
+    setStorageErrorMessage('');
+    setStorageSuccessMessage('');
+
+    try {
+      const result = await dataStorageApi.setCustomPath(selectedPath);
+
+      setStorageSuccessMessage(result.message);
+
+      if (result.credentials_warning) {
+        setCredentialsWarning(true);
+      }
+
+      // Refresh path info
+      await loadPathConfig();
+    } catch (err: any) {
+      const errorMsg = err?.message || t('settings.general.dataStorage.errors.saveFailed');
+      setStorageErrorMessage(errorMsg);
+    } finally {
+      setLoadingStorage(false);
+    }
+  };
+
+  const handleResetToDefault = async () => {
+    if (!confirm(t('settings.general.dataStorage.reset.confirm'))) {
+      return;
+    }
+
+    setLoadingStorage(true);
+    setStorageErrorMessage('');
+    setStorageSuccessMessage('');
+
+    try {
+      const result = await dataStorageApi.resetToDefault();
+
+      setStorageSuccessMessage(result.message);
+      setCredentialsWarning(false);
+
+      // Refresh path info
+      await loadPathConfig();
+    } catch (err: any) {
+      const errorMsg = err?.message || t('settings.general.dataStorage.errors.resetFailed');
+      setStorageErrorMessage(errorMsg);
+    } finally {
+      setLoadingStorage(false);
+    }
+  };
+
+  // App management handlers
+  const checkShortcutExists = async () => {
+    try {
+      const result = await appManagementApi.desktopShortcutExists();
+      setShortcutExists(result.already_exists);
+    } catch (err) {
+      console.error('Failed to check shortcut status:', err);
+    }
+  };
+
+  const handleCreateDesktopShortcut = async () => {
+    setLoadingShortcut(true);
+    setShortcutMessage('');
+
+    try {
+      const result = await appManagementApi.createDesktopShortcut();
+      setShortcutExists(true);
+      setShortcutMessage(result.message);
+      setTimeout(() => setShortcutMessage(''), 5000);
+    } catch (err: any) {
+      const errorMsg = err?.message || t('settings.general.appManagement.desktopShortcut.errors.createFailed');
+      setShortcutMessage(errorMsg);
+      setTimeout(() => setShortcutMessage(''), 5000);
+    } finally {
+      setLoadingShortcut(false);
+    }
+  };
+
+  const handleExitApp = async () => {
+    if (!confirm(t('settings.general.appManagement.exit.confirm'))) {
+      return;
+    }
+
+    try {
+      await appManagementApi.exitApp();
+      // The app will shut down, no need to do anything else
+    } catch (err: any) {
+      const errorMsg = err?.message || t('settings.general.appManagement.exit.errors.failed');
+      setShortcutMessage(errorMsg);
+      setTimeout(() => setShortcutMessage(''), 5000);
+    }
+  };
+
+  // Load path config on mount
+  useEffect(() => {
+    loadPathConfig();
+    checkShortcutExists();
+  }, []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -281,6 +417,95 @@ export function GeneralSettings() {
               {t('settings.general.appearance.language.helper')}
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Data Storage */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Folder className="h-5 w-5" />
+            {t('settings.general.dataStorage.title')}
+          </CardTitle>
+          <CardDescription>
+            {t('settings.general.dataStorage.description')}
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {/* Current path display */}
+          <div className="space-y-2">
+            <Label>{t('settings.general.dataStorage.currentPath.label')}</Label>
+            <div className="flex items-center space-x-2">
+              <code className="flex-1 text-sm bg-muted px-3 py-2 rounded block overflow-hidden text-ellipsis">
+                {loadingStorage ? 'Loading...' : dataStorageInfo?.current_path || ''}
+              </code>
+              {dataStorageInfo?.is_custom && (
+                <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded">
+                  {t('settings.general.dataStorage.custom')}
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {t('settings.general.dataStorage.currentPath.helper')}
+            </p>
+          </div>
+
+          {/* Select custom path */}
+          <div className="space-y-2">
+            <Label>{t('settings.general.dataStorage.changePath.label')}</Label>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleSelectCustomPath}
+              disabled={loadingStorage}
+            >
+              <FolderOpen className="mr-2 h-4 w-4" />
+              {t('settings.general.dataStorage.changePath.button')}
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              {t('settings.general.dataStorage.changePath.helper')}
+            </p>
+          </div>
+
+          {/* Success message */}
+          {storageSuccessMessage && (
+            <Alert variant="default" className="border-green-500">
+              <AlertDescription>{storageSuccessMessage}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* Warning for credentials */}
+          {credentialsWarning && (
+            <Alert variant="destructive">
+              <AlertDescription>
+                {t('settings.general.dataStorage.warnings.credentials')}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Error message */}
+          {storageErrorMessage && (
+            <Alert variant="destructive">
+              <AlertDescription>{storageErrorMessage}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* Reset button */}
+          {dataStorageInfo?.is_custom && (
+            <div className="pt-4 border-t">
+              <Button
+                variant="ghost"
+                onClick={handleResetToDefault}
+                className="text-destructive hover:text-destructive"
+              >
+                {t('settings.general.dataStorage.reset.button')}
+              </Button>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t('settings.general.dataStorage.reset.helper')}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -754,6 +979,75 @@ export function GeneralSettings() {
                 {t('settings.general.beta.commitReminder.helper')}
               </p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* App Management */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('settings.general.appManagement.title')}</CardTitle>
+          <CardDescription>
+            {t('settings.general.appManagement.description')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Exit App */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">
+                {t('settings.general.appManagement.exit.label')}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.appManagement.exit.helper')}
+              </p>
+            </div>
+            <Button variant="destructive" onClick={handleExitApp}>
+              <Power className="mr-2 h-4 w-4" />
+              {t('settings.general.appManagement.exit.button')}
+            </Button>
+          </div>
+
+          {/* Desktop Shortcut */}
+          <div className="flex flex-col space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">
+                  {t('settings.general.appManagement.desktopShortcut.label')}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.general.appManagement.desktopShortcut.helper')}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {shortcutExists && (
+                  <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded">
+                    {t('settings.general.appManagement.desktopShortcut.exists')}
+                  </span>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={handleCreateDesktopShortcut}
+                  disabled={loadingShortcut}
+                >
+                  {loadingShortcut ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Monitor className="mr-2 h-4 w-4" />
+                  )}
+                  {shortcutExists
+                    ? t('settings.general.appManagement.desktopShortcut.recreate')
+                    : t('settings.general.appManagement.desktopShortcut.create')}
+                </Button>
+              </div>
+            </div>
+
+            {/* Shortcut message */}
+            {shortcutMessage && (
+              <Alert variant={shortcutMessage.includes('error') || shortcutMessage.includes('Failed') ? 'destructive' : 'default'}>
+                <AlertDescription>{shortcutMessage}</AlertDescription>
+              </Alert>
+            )}
           </div>
         </CardContent>
       </Card>

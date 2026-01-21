@@ -244,6 +244,61 @@
           "label": "提交提醒",
           "helper": "提示支持的代理在停止前提交更改。"
         }
+      },
+      "dataStorage": {
+        "title": "数据存储",
+        "description": "配置应用程序数据的存储位置。",
+        "currentPath": {
+          "label": "当前数据位置",
+          "helper": "所有配置文件、数据库和凭据都存储在此处。"
+        },
+        "changePath": {
+          "label": "更改存储位置",
+          "button": "选择自定义文件夹",
+          "helper": "选择其他文件夹存储数据。适用于通过 iCloud、Dropbox 或其他云服务同步。"
+        },
+        "picker": {
+          "title": "选择数据存储文件夹",
+          "description": "选择用于存储所有应用程序数据的文件夹。如需多设备同步，请选择云同步文件夹。"
+        },
+        "warnings": {
+          "credentials": "注意：您的 credentials.json 文件包含敏感的身份验证令牌。它将保留在原位置以确保安全。"
+        },
+        "reset": {
+          "button": "重置为默认位置",
+          "helper": "恢复到系统默认数据目录。",
+          "confirm": "确定要重置为默认存储位置吗？自定义路径配置将被移除，但文件不会被自动移动。"
+        },
+        "errors": {
+          "loadFailed": "加载路径配置失败。",
+          "saveFailed": "保存自定义路径失败。",
+          "resetFailed": "重置为默认路径失败。",
+          "emptyPath": "请选择有效的文件夹路径。"
+        },
+        "custom": "自定义"
+      },
+      "appManagement": {
+        "title": "应用管理",
+        "description": "管理应用程序相关操作。",
+        "exit": {
+          "label": "退出应用",
+          "helper": "安全退出应用程序。未保存的更改可能会丢失。",
+          "button": "退出应用",
+          "confirm": "确定要退出应用吗？",
+          "errors": {
+            "failed": "退出应用失败"
+          }
+        },
+        "desktopShortcut": {
+          "label": "桌面快捷方式",
+          "helper": "在桌面创建应用快捷方式，方便快速启动。",
+          "create": "创建快捷方式",
+          "recreate": "重新创建",
+          "exists": "已存在",
+          "errors": {
+            "createFailed": "创建桌面快捷方式失败"
+          }
+        }
       }
     },
     "agents": {

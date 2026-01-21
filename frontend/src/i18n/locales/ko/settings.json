@@ -244,6 +244,29 @@
           "label": "커밋 알림",
           "helper": "지원되는 에이전트에게 중지 전 변경사항 커밋을 요청합니다."
         }
+      },
+      "appManagement": {
+        "title": "앱 관리",
+        "description": "애플리케이션 관련 작업을 관리합니다.",
+        "exit": {
+          "label": "앱 종료",
+          "helper": "애플리케이션을 안전하게 종료합니다. 저장되지 않은 변경사항은 손실될 수 있습니다.",
+          "button": "앱 종료",
+          "confirm": "앱을 종료하시겠습니까?",
+          "errors": {
+            "failed": "앱 종료 실패"
+          }
+        },
+        "desktopShortcut": {
+          "label": "데스크톱 바로가기",
+          "helper": "데스크톱에 앱 바로가기를 만들어 빠르게 시작할 수 있습니다.",
+          "create": "바로가기 만들기",
+          "recreate": "다시 만들기",
+          "exists": "있음",
+          "errors": {
+            "createFailed": "데스크톱 바로가기 만들기 실패"
+          }
+        }
       }
     },
     "agents": {
