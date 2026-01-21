@@ -191,11 +191,12 @@ export const useConversationHistory = ({
             );
             entries.push(userPatchTypeWithKey);
 
-            // Remove all coding agent added user messages, replace with our custom one
+            // Remove user messages (replaced with custom one) and token usage info (displayed separately)
             const entriesExcludingUser = p.entries.filter(
               (e) =>
                 e.type !== 'NORMALIZED_ENTRY' ||
-                e.content.entry_type.type !== 'user_message'
+                (e.content.entry_type.type !== 'user_message' &&
+                  e.content.entry_type.type !== 'token_usage_info')
             );
 
             const hasPendingApprovalEntry = entriesExcludingUser.some(
@@ -367,21 +368,9 @@ export const useConversationHistory = ({
       const entries = flattenEntriesForEmit(executionProcessState);
       let modifiedAddEntryType = addEntryType;
 
-      // Modify so that if last non-token_usage_info entry is ExitPlanMode, emit special plan type
+      // Modify so that if last entry is ExitPlanMode, emit special plan type
       if (entries.length > 0) {
-        // Find the last entry that is not token_usage_info
-        let lastEntry = entries[entries.length - 1];
-        for (let i = entries.length - 1; i >= 0; i--) {
-          const entry = entries[i];
-          if (
-            entry.type !== 'NORMALIZED_ENTRY' ||
-            entry.content.entry_type.type !== 'token_usage_info'
-          ) {
-            lastEntry = entry;
-            break;
-          }
-        }
-
+        const lastEntry = entries[entries.length - 1];
         if (
           lastEntry.type === 'NORMALIZED_ENTRY' &&
           lastEntry.content.entry_type.type === 'tool_use' &&
