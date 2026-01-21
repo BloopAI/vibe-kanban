@@ -11,8 +11,8 @@ use db::{
     models::{
         coding_agent_turn::{CodingAgentTurn, CreateCodingAgentTurn},
         execution_process::{
-            CreateExecutionProcess, ExecutionContext, ExecutionProcess,
-            ExecutionProcessError, ExecutionProcessRunReason, ExecutionProcessStatus,
+            CreateExecutionProcess, ExecutionContext, ExecutionProcess, ExecutionProcessError,
+            ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         execution_process_logs::ExecutionProcessLogs,
         execution_process_repo_state::{
