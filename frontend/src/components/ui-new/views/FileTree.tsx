@@ -1,5 +1,9 @@
 import { useTranslation } from 'react-i18next';
-import { GithubLogoIcon, CaretUpIcon, CaretDownIcon } from '@phosphor-icons/react';
+import {
+  GithubLogoIcon,
+  CaretUpIcon,
+  CaretDownIcon,
+} from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '../primitives/Tooltip';
 import { FileTreeSearchBar } from './FileTreeSearchBar';
