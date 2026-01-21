@@ -583,13 +583,8 @@ pub struct CreateWorkspaceFromPrBody {
     pub head_branch: String,
     pub base_branch: String,
     pub head_repo_url: Option<String>,
-    #[serde(default = "default_true")]
     pub run_setup: bool,
     pub remote_name: Option<String>,
-}
-
-fn default_true() -> bool {
-    true
 }
 
 #[derive(Debug, Serialize, TS)]
