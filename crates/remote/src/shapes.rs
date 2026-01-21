@@ -1,12 +1,12 @@
 //! Shape definitions for realtime streaming.
 //!
-//! **DEPRECATED**: The individual shape definitions in this module are deprecated.
-//! Use the `entities` module instead, which provides a unified `define_entity!` macro
-//! that generates both mutation types and shape definitions from a single declaration.
+//! This module provides the core shape infrastructure:
+//! - `ShapeDefinition<T>` struct for shape metadata
+//! - `ShapeExport` trait for heterogeneous shape collections
+//! - `define_shape!` macro for compile-time SQL validation
 //!
-//! This module keeps the `ShapeDefinition` struct, `ShapeExport` trait, and `define_shape!`
-//! macro for use by the `define_entity!` macro. The actual shape constants are now
-//! re-exported from the `entities` module for backward compatibility.
+//! The `define_entity!` macro in the `entity` module uses `define_shape!` internally.
+//! Shape constants are re-exported from the `entities` module for convenience.
 
 use std::marker::PhantomData;
 

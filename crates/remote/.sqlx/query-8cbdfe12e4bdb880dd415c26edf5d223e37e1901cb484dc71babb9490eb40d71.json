@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE notifications\n            SET seen = COALESCE($1, seen)\n            WHERE id = $2\n            RETURNING\n                id                AS \"id!: Uuid\",\n                organization_id   AS \"organization_id!: Uuid\",\n                user_id           AS \"user_id!: Uuid\",\n                notification_type AS \"notification_type!: NotificationType\",\n                payload           AS \"payload!: Value\",\n                issue_id          AS \"issue_id: Uuid\",\n                comment_id        AS \"comment_id: Uuid\",\n                seen              AS \"seen!\",\n                dismissed_at      AS \"dismissed_at: DateTime<Utc>\",\n                created_at        AS \"created_at!: DateTime<Utc>\"\n            ",
+  "query": "\n            UPDATE notifications\n            SET seen = COALESCE($1, seen),\n                dismissed_at = CASE\n                    WHEN $1 = true AND dismissed_at IS NULL THEN NOW()\n                    ELSE dismissed_at\n                END\n            WHERE id = $2\n            RETURNING\n                id                AS \"id!: Uuid\",\n                organization_id   AS \"organization_id!: Uuid\",\n                user_id           AS \"user_id!: Uuid\",\n                notification_type AS \"notification_type!: NotificationType\",\n                payload           AS \"payload!: Value\",\n                issue_id          AS \"issue_id: Uuid\",\n                comment_id        AS \"comment_id: Uuid\",\n                seen              AS \"seen!\",\n                dismissed_at      AS \"dismissed_at: DateTime<Utc>\",\n                created_at        AS \"created_at!: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -85,5 +85,5 @@
       false
     ]
   },
-  "hash": "c807945a6e1e6a5aa5500756a555bf6a7a87dfaf90fc7a1c212f657e24b7f512"
+  "hash": "8cbdfe12e4bdb880dd415c26edf5d223e37e1901cb484dc71babb9490eb40d71"
 }

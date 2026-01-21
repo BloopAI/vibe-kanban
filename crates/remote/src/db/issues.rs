@@ -185,8 +185,13 @@ impl IssueRepository {
         Ok(MutationResponse { data, txid })
     }
 
-    /// Update an issue with partial fields. Uses COALESCE to preserve existing values
-    /// when None is provided.
+    /// Update an issue with partial fields.
+    ///
+    /// For non-nullable fields, uses COALESCE to preserve existing values when None is provided.
+    /// For nullable fields (Option<Option<T>>), uses CASE to distinguish between:
+    /// - None: don't update the field
+    /// - Some(None): set the field to NULL
+    /// - Some(Some(value)): set the field to the value
     #[allow(clippy::too_many_arguments)]
     pub async fn update(
         pool: &PgPool,
@@ -204,6 +209,19 @@ impl IssueRepository {
     ) -> Result<MutationResponse<Issue>, IssueError> {
         let mut tx = pool.begin().await?;
 
+        // For nullable fields, extract boolean flags and flattened values
+        // This preserves the distinction between "don't update" and "set to NULL"
+        let update_description = description.is_some();
+        let description_value = description.flatten();
+        let update_start_date = start_date.is_some();
+        let start_date_value = start_date.flatten();
+        let update_target_date = target_date.is_some();
+        let target_date_value = target_date.flatten();
+        let update_completed_at = completed_at.is_some();
+        let completed_at_value = completed_at.flatten();
+        let update_parent_issue_id = parent_issue_id.is_some();
+        let parent_issue_id_value = parent_issue_id.flatten();
+
         let data = sqlx::query_as!(
             Issue,
             r#"
@@ -211,16 +229,16 @@ impl IssueRepository {
             SET
                 status_id = COALESCE($1, status_id),
                 title = COALESCE($2, title),
-                description = COALESCE($3, description),
-                priority = COALESCE($4, priority),
-                start_date = COALESCE($5, start_date),
-                target_date = COALESCE($6, target_date),
-                completed_at = COALESCE($7, completed_at),
-                sort_order = COALESCE($8, sort_order),
-                parent_issue_id = COALESCE($9, parent_issue_id),
-                extension_metadata = COALESCE($10, extension_metadata),
+                description = CASE WHEN $3 THEN $4 ELSE description END,
+                priority = COALESCE($5, priority),
+                start_date = CASE WHEN $6 THEN $7 ELSE start_date END,
+                target_date = CASE WHEN $8 THEN $9 ELSE target_date END,
+                completed_at = CASE WHEN $10 THEN $11 ELSE completed_at END,
+                sort_order = COALESCE($12, sort_order),
+                parent_issue_id = CASE WHEN $13 THEN $14 ELSE parent_issue_id END,
+                extension_metadata = COALESCE($15, extension_metadata),
                 updated_at = NOW()
-            WHERE id = $11
+            WHERE id = $16
             RETURNING
                 id                  AS "id!: Uuid",
                 project_id          AS "project_id!: Uuid",
@@ -239,13 +257,18 @@ impl IssueRepository {
             "#,
             status_id,
             title,
-            description.flatten(),
+            update_description,
+            description_value,
             priority as Option<IssuePriority>,
-            start_date.flatten(),
-            target_date.flatten(),
-            completed_at.flatten(),
+            update_start_date,
+            start_date_value,
+            update_target_date,
+            target_date_value,
+            update_completed_at,
+            completed_at_value,
             sort_order,
-            parent_issue_id.flatten(),
+            update_parent_issue_id,
+            parent_issue_id_value,
             extension_metadata,
             id
         )

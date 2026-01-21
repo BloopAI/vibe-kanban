@@ -268,7 +268,7 @@ impl NotificationRepository {
     }
 
     /// Update a notification with partial fields. Uses COALESCE to preserve existing values
-    /// when None is provided.
+    /// when None is provided. Automatically sets `dismissed_at` when `seen` is set to true.
     pub async fn update<'e, E>(
         executor: E,
         id: Uuid,
@@ -281,7 +281,11 @@ impl NotificationRepository {
             Notification,
             r#"
             UPDATE notifications
-            SET seen = COALESCE($1, seen)
+            SET seen = COALESCE($1, seen),
+                dismissed_at = CASE
+                    WHEN $1 = true AND dismissed_at IS NULL THEN NOW()
+                    ELSE dismissed_at
+                END
             WHERE id = $2
             RETURNING
                 id                AS "id!: Uuid",
