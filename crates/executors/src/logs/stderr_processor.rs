@@ -19,6 +19,20 @@ use super::{
 };
 use crate::logs::utils::EntryIndexProvider;
 
+/// Patterns to filter out from stderr output.
+/// These are harmless warnings that shouldn't be shown to users.
+const IGNORED_STDERR_PATTERNS: &[&str] = &[
+    // npm warnings about unknown env config variables (e.g., from Deno/JSR)
+    "npm warn Unknown env config",
+];
+
+fn should_filter_line(line: &str) -> bool {
+    let trimmed = line.trim();
+    IGNORED_STDERR_PATTERNS
+        .iter()
+        .any(|pattern| trimmed.starts_with(pattern))
+}
+
 /// Standard stderr log normalizer that uses PlainTextLogProcessor to stream error logs.
 ///
 /// Splits stderr output into discrete entries based on a latency threshold (2s) to group
@@ -50,6 +64,9 @@ pub fn normalize_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: Ent
                 content: strip_ansi_escapes::strip_str(&content),
                 metadata: None,
             }))
+            .transform_lines(Box::new(|lines: &mut Vec<String>| {
+                lines.retain(|line| !should_filter_line(line));
+            }))
             .time_gap(Duration::from_secs(2)) // Break messages if they are 2 seconds apart
             .index_provider(entry_index_provider)
             .build();
@@ -60,4 +77,31 @@ pub fn normalize_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: Ent
             }
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_should_filter_npm_warn_unknown_env_config() {
+        assert!(should_filter_line(
+            "npm warn Unknown env config \"_jsr-registry\". This will stop working..."
+        ));
+        assert!(should_filter_line(
+            "npm warn Unknown env config \"verify-deps-before-run\". This will stop working..."
+        ));
+        // With leading whitespace
+        assert!(should_filter_line(
+            "  npm warn Unknown env config \"_jsr-registry\"."
+        ));
+    }
+
+    #[test]
+    fn test_should_not_filter_other_npm_warnings() {
+        // Other npm warnings should NOT be filtered
+        assert!(!should_filter_line("npm warn deprecated somepackage@1.0.0"));
+        assert!(!should_filter_line("npm ERR! something went wrong"));
+        assert!(!should_filter_line("Some random error message"));
+    }
 }
