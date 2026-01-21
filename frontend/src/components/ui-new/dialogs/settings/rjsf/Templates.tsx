@@ -7,6 +7,7 @@ import type {
 import { PlusIcon, XIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
+import { toPrettyCase } from '@/utils/string';
 
 // FieldTemplate - Two-column layout matching settings dialog styling
 export const FieldTemplate = (props: FieldTemplateProps) => {
@@ -30,7 +31,7 @@ export const FieldTemplate = (props: FieldTemplateProps) => {
       <div className="space-y-1">
         {label && (
           <div className="text-sm font-medium text-normal">
-            {label}
+            {toPrettyCase(label)}
             {required && <span className="text-error ml-1">*</span>}
           </div>
         )}

@@ -509,8 +509,10 @@ export function AgentsSettingsSection() {
                               }}
                               disabled={isDefault}
                             >
-                              <StarIcon className="size-icon-xs mr-2" />
-                              {t('settings.agents.editor.makeDefault')}
+                              <div className="flex items-center gap-1 w-full">
+                                <StarIcon className="size-icon-xs mr-2" />
+                                {t('settings.agents.editor.makeDefault')}
+                              </div>
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={(e) => {
@@ -523,8 +525,10 @@ export function AgentsSettingsSection() {
                               disabled={configCount <= 1}
                               className="text-error focus:text-error"
                             >
-                              <TrashIcon className="size-icon-xs mr-2" />
-                              {t('settings.agents.editor.deleteText')}
+                              <div className="flex items-center gap-1 w-full">
+                                <TrashIcon className="size-icon-xs mr-2" />
+                                {t('settings.agents.editor.deleteText')}
+                              </div>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
