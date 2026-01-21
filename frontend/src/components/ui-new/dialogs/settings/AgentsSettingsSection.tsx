@@ -14,7 +14,7 @@ import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteC
 import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
 import { cn } from '@/lib/utils';
 import { toPrettyCase } from '@/utils/string';
-import { SettingsCheckbox, SettingsSaveBar } from './SettingsComponents';
+import { SettingsSaveBar } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
@@ -26,7 +26,6 @@ export function AgentsSettingsSection() {
   // Profiles hook for server state
   const {
     profilesContent: serverProfilesContent,
-    profilesPath,
     isLoading: profilesLoading,
     isSaving: profilesSaving,
     error: profilesError,
@@ -36,12 +35,10 @@ export function AgentsSettingsSection() {
   const { config, updateAndSaveConfig, reloadSystem } = useUserSystem();
 
   // Local editor state
-  const [localProfilesContent, setLocalProfilesContent] = useState('');
   const [profilesSuccess, setProfilesSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Form-based editor state
-  const [useFormEditor, setUseFormEditor] = useState(true);
   const [selectedExecutorType, setSelectedExecutorType] =
     useState<BaseCodingAgent | null>(null);
   const [selectedConfiguration, setSelectedConfiguration] = useState<
@@ -62,7 +59,6 @@ export function AgentsSettingsSection() {
   // Sync server state to local state when not dirty
   useEffect(() => {
     if (!isDirty && serverProfilesContent) {
-      setLocalProfilesContent(serverProfilesContent);
       try {
         const parsed = JSON.parse(serverProfilesContent);
         setLocalParsedProfiles(parsed);
@@ -81,7 +77,6 @@ export function AgentsSettingsSection() {
 
   const markDirty = (nextProfiles: unknown) => {
     setLocalParsedProfiles(nextProfiles as ExecutorConfigs);
-    setLocalProfilesContent(JSON.stringify(nextProfiles, null, 2));
     setIsDirty(true);
   };
 
@@ -190,7 +185,6 @@ export function AgentsSettingsSection() {
       try {
         await saveProfiles(JSON.stringify(updatedProfiles, null, 2));
         setLocalParsedProfiles(updatedProfiles);
-        setLocalProfilesContent(JSON.stringify(updatedProfiles, null, 2));
         setIsDirty(false);
 
         // Select another config if we deleted the selected one
@@ -280,12 +274,10 @@ export function AgentsSettingsSection() {
     setLocalParsedProfiles(updatedProfiles);
 
     try {
-      const contentToSave = JSON.stringify(updatedProfiles, null, 2);
-      await saveProfiles(contentToSave);
+      await saveProfiles(JSON.stringify(updatedProfiles, null, 2));
       setProfilesSuccess(true);
       setIsDirty(false);
       setTimeout(() => setProfilesSuccess(false), 3000);
-      setLocalProfilesContent(contentToSave);
       reloadSystem();
     } catch (err: unknown) {
       console.error('Failed to save profiles:', err);
@@ -293,23 +285,24 @@ export function AgentsSettingsSection() {
     }
   };
 
-  const handleJsonEditorSave = async () => {
-    setSaveError(null);
-    try {
-      await saveProfiles(localProfilesContent);
-      setProfilesSuccess(true);
-      setIsDirty(false);
-      setTimeout(() => setProfilesSuccess(false), 3000);
-      reloadSystem();
-    } catch (err: unknown) {
-      console.error('Failed to save profiles:', err);
-      setSaveError(t('settings.agents.errors.saveFailed'));
+  // Save handler for agent configuration
+  const handleSave = async () => {
+    if (isDirty && localParsedProfiles && selectedExecutorType && selectedConfiguration) {
+      const executorsMap =
+        localParsedProfiles.executors as unknown as ExecutorsMap;
+      const formData =
+        executorsMap[selectedExecutorType]?.[selectedConfiguration]?.[
+          selectedExecutorType
+        ];
+      if (formData) {
+        await handleExecutorConfigSave(formData);
+      }
     }
   };
 
-  const handleJsonEditorDiscard = () => {
-    if (serverProfilesContent) {
-      setLocalProfilesContent(serverProfilesContent);
+  // Discard handler for agent configuration
+  const handleDiscard = () => {
+    if (isDirty && serverProfilesContent) {
       setIsDirty(false);
       try {
         const parsed = JSON.parse(serverProfilesContent);
@@ -317,37 +310,6 @@ export function AgentsSettingsSection() {
       } catch {
         // Ignore parse errors on discard
       }
-    }
-  };
-
-  // Save handler for agent configuration
-  const handleSave = async () => {
-    if (isDirty) {
-      if (
-        useFormEditor &&
-        localParsedProfiles &&
-        selectedExecutorType &&
-        selectedConfiguration
-      ) {
-        const executorsMap =
-          localParsedProfiles.executors as unknown as ExecutorsMap;
-        const formData =
-          executorsMap[selectedExecutorType]?.[selectedConfiguration]?.[
-            selectedExecutorType
-          ];
-        if (formData) {
-          await handleExecutorConfigSave(formData);
-        }
-      } else {
-        await handleJsonEditorSave();
-      }
-    }
-  };
-
-  // Discard handler for agent configuration
-  const handleDiscard = () => {
-    if (isDirty) {
-      handleJsonEditorDiscard();
     }
   };
 
@@ -389,18 +351,7 @@ export function AgentsSettingsSection() {
         </div>
       )}
 
-      {/* JSON Editor toggle */}
-      <div className="mb-4">
-        <SettingsCheckbox
-          id="use-json-editor"
-          label={t('settings.agents.editor.formLabel')}
-          checked={!useFormEditor}
-          onChange={(checked) => setUseFormEditor(!checked)}
-          disabled={profilesLoading || !localParsedProfiles}
-        />
-      </div>
-
-      {useFormEditor && localParsedProfiles?.executors ? (
+      {localParsedProfiles?.executors ? (
         /* Two-column layout: agents and variants on top, config form below */
         <div className="space-y-4">
           {/* Two-column selector - Finder-like style */}
@@ -408,11 +359,11 @@ export function AgentsSettingsSection() {
             {/* Agents column */}
             <div className="flex-1 border-r border-border">
               <div className="h-7 px-2 border-b border-border bg-secondary/50 flex items-center">
-                <span className="text-xs font-medium text-low uppercase tracking-wide">
+                <span className="text-xs font-medium text-low tracking-wide">
                   {t('settings.agents.editor.agentLabel')}
                 </span>
               </div>
-              <div className="max-h-32 overflow-y-auto bg-panel">
+              <div className="h-32 overflow-y-auto bg-panel">
                 {Object.keys(localParsedProfiles.executors).map((executor) => {
                   const isSelected = selectedExecutorType === executor;
                   const isDefault =
@@ -463,7 +414,7 @@ export function AgentsSettingsSection() {
             {/* Variants column */}
             <div className="flex-1">
               <div className="h-7 px-2 border-b border-border bg-secondary/50 flex items-center justify-between">
-                <span className="text-xs font-medium text-low uppercase tracking-wide">
+                <span className="text-xs font-medium text-low tracking-wide">
                   {t('settings.agents.editor.configLabel')}
                 </span>
                 {selectedExecutorType && (
@@ -477,7 +428,7 @@ export function AgentsSettingsSection() {
                   </button>
                 )}
               </div>
-              <div className="max-h-32 overflow-y-auto bg-panel">
+              <div className="h-32 overflow-y-auto bg-panel">
                 {selectedExecutorType &&
                 localParsedProfiles.executors[selectedExecutorType] ? (
                   Object.keys(
@@ -593,46 +544,7 @@ export function AgentsSettingsSection() {
             </div>
           )}
         </div>
-      ) : (
-        /* JSON editor */
-        <div className="space-y-4">
-          <textarea
-            value={
-              profilesLoading
-                ? t('settings.agents.editor.jsonLoading')
-                : localProfilesContent
-            }
-            onChange={(e) => {
-              setLocalProfilesContent(e.target.value);
-              setIsDirty(true);
-              if (e.target.value.trim()) {
-                try {
-                  const parsed = JSON.parse(e.target.value);
-                  setLocalParsedProfiles(parsed);
-                } catch {
-                  setLocalParsedProfiles(null);
-                }
-              }
-            }}
-            disabled={profilesLoading}
-            placeholder={t('settings.agents.editor.jsonPlaceholder')}
-            className={cn(
-              'w-full min-h-[400px] bg-secondary border border-border rounded-sm px-base py-half text-base text-high font-mono',
-              'placeholder:text-low focus:outline-none focus:ring-1 focus:ring-brand',
-              'resize-y'
-            )}
-          />
-
-          {!profilesError && profilesPath && (
-            <p className="text-sm text-low">
-              <span className="font-medium">
-                {t('settings.agents.editor.pathLabel')}
-              </span>{' '}
-              <span className="font-mono text-xs">{profilesPath}</span>
-            </p>
-          )}
-        </div>
-      )}
+      ) : null}
 
       <SettingsSaveBar
         show={isDirty}
