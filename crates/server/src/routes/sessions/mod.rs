@@ -20,10 +20,12 @@ use executors::{
     actions::{
         ExecutorAction, ExecutorActionType, coding_agent_follow_up::CodingAgentFollowUpRequest,
     },
+    executors::BaseCodingAgent,
     profile::ExecutorProfileId,
 };
 use serde::Deserialize;
 use services::services::container::ContainerService;
+use std::str::FromStr;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -124,6 +126,17 @@ pub async fn follow_up(
         if existing_profile.executor != executor_profile_id.executor {
             return Err(ApiError::Session(SessionError::ExecutorMismatch {
                 expected: existing_profile.executor.to_string(),
+                actual: executor_profile_id.executor.to_string(),
+            }));
+        }
+    } else if let Some(session_executor) = session.executor.as_ref() {
+        let normalized = session_executor.replace('-', "_").to_ascii_uppercase();
+        let expected = BaseCodingAgent::from_str(&normalized)
+            .map(|executor| executor.to_string())
+            .unwrap_or_else(|_| session_executor.to_string());
+        if expected != executor_profile_id.executor.to_string() {
+            return Err(ApiError::Session(SessionError::ExecutorMismatch {
+                expected,
                 actual: executor_profile_id.executor.to_string(),
             }));
         }
