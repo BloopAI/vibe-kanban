@@ -133,11 +133,14 @@
       "desktopView": "Desktop view",
       "mobileView": "Mobile view (390x844)",
       "responsiveView": "Responsive view (resizable)",
-      "startDevServer": "Start dev server"
+      "startDevServer": "Start dev server",
+      "submitUrl": "Submit URL"
     },
     "loading": {
       "startingServer": "Starting dev server...",
-      "waitingForServer": "Waiting for server..."
+      "waitingForServer": "Waiting for server...",
+      "loadingPreview": "Loading preview...",
+      "manualUrlHint": "No URL detected yet. You can manually enter a URL in the toolbar above."
     },
     "browser": {
       "title": "Dev Server Preview",
