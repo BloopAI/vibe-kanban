@@ -6,11 +6,10 @@ use std::{
 };
 
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
-
 use eventsource_stream::Eventsource;
 use futures::{FutureExt, StreamExt};
 use rand::{Rng, distributions::Alphanumeric};
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
+use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::{
@@ -146,7 +145,10 @@ pub async fn run_session(
     let cancel = CancellationToken::new();
 
     let client = reqwest::Client::builder()
-        .default_headers(build_default_headers(&config.directory, &config.server_password))
+        .default_headers(build_default_headers(
+            &config.directory,
+            &config.server_password,
+        ))
         .build()
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
 
