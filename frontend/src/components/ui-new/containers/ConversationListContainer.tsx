@@ -127,12 +127,23 @@ export function ConversationList({ attempt }: ConversationListProps) {
       if (!pending) return;
 
       let scrollModifier: ScrollModifier = InitialDataScrollModifier;
+      let scrollModifierName = 'InitialDataScrollModifier';
 
       if (pending.addType === 'plan' && !loadingRef.current) {
         scrollModifier = ScrollToTopOfLastItem;
+        scrollModifierName = 'ScrollToTopOfLastItem';
       } else if (pending.addType === 'running' && !loadingRef.current) {
         scrollModifier = AutoScrollToBottom;
+        scrollModifierName = 'AutoScrollToBottom';
       }
+
+      console.log('[ConversationList] onEntriesUpdated debounce fired:', {
+        addType: pending.addType,
+        loadingRef: loadingRef.current,
+        pendingLoading: pending.loading,
+        entriesCount: pending.entries.length,
+        scrollModifier: scrollModifierName,
+      });
 
       setChannelData({ data: pending.entries, scrollModifier });
       setEntries(pending.entries);

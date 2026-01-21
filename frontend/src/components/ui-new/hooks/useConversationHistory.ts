@@ -303,11 +303,28 @@ export const useConversationHistory = ({
       // Modify so that if add entry type is 'running' and last entry is a plan, emit special plan type
       if (entries.length > 0) {
         const lastEntry = entries[entries.length - 1];
+
+        console.log('[useConversationHistory] emitEntries:', {
+          addEntryType,
+          entriesCount: entries.length,
+          lastEntryType: lastEntry.type,
+          lastEntryEntryType:
+            lastEntry.type === 'NORMALIZED_ENTRY'
+              ? lastEntry.content.entry_type.type
+              : 'n/a',
+          lastEntryToolName:
+            lastEntry.type === 'NORMALIZED_ENTRY' &&
+            lastEntry.content.entry_type.type === 'tool_use'
+              ? lastEntry.content.entry_type.tool_name
+              : 'n/a',
+        });
+
         if (
           lastEntry.type === 'NORMALIZED_ENTRY' &&
           lastEntry.content.entry_type.type === 'tool_use' &&
           lastEntry.content.entry_type.tool_name === 'ExitPlanMode'
         ) {
+          console.log('[useConversationHistory] Detected ExitPlanMode, setting addType to plan');
           modifiedAddEntryType = 'plan';
         }
       }
