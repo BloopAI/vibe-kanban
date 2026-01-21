@@ -62,8 +62,13 @@ export function useWorkspaceSessions(
     }
   }, [workspaceId, sessions]);
 
-  // New session mode when user explicitly chose it OR when no sessions exist yet
-  const isNewSessionMode = selection?.mode === 'new' || sessions.length === 0;
+  // New session mode when:
+  // 1. User explicitly chose new session mode, OR
+  // 2. No sessions exist AND no explicit selection (initial state for workspace)
+  // The second condition uses `selection === undefined` to avoid staying in new session mode
+  // after a session is created but before the query refetches (when selection is set to 'existing')
+  const isNewSessionMode =
+    selection?.mode === 'new' || (selection === undefined && sessions.length === 0);
   const selectedSessionId =
     selection?.mode === 'existing' ? selection.sessionId : undefined;
 
