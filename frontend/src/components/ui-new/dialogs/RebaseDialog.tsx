@@ -75,7 +75,8 @@ function RebaseDialogContent({
     } catch (err) {
       // Check if this is a conflict error (Result type with success=false)
       const resultErr = err as Result<void, GitOperationError> | undefined;
-      const errorData = resultErr && !resultErr.success ? resultErr.error : undefined;
+      const errorData =
+        resultErr && !resultErr.success ? resultErr.error : undefined;
 
       if (errorData?.type === 'merge_conflicts') {
         // Hide this dialog and show the resolve conflicts dialog
