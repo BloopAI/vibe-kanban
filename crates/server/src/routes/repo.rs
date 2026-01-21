@@ -247,13 +247,15 @@ pub async fn list_open_prs(
         .get_by_id(&deployment.db().pool, repo_id)
         .await?;
 
-    let remote_name = match query.remote {
-        Some(name) => name,
-        None => deployment.git().get_default_remote_name(&repo.path)?,
+    let remote = match query.remote {
+        Some(name) => GitRemote {
+            url: deployment.git().get_remote_url(&repo.path, &name)?,
+            name,
+        },
+        None => deployment.git().get_default_remote(&repo.path)?,
     };
-    let remote_url = deployment.git().get_remote_url(&repo.path, &remote_name)?;
 
-    let git_host = match GitHostService::from_url(&remote_url) {
+    let git_host = match GitHostService::from_url(&remote.url) {
         Ok(host) => host,
         Err(GitHostError::UnsupportedProvider) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -266,7 +268,7 @@ pub async fn list_open_prs(
         }
     };
 
-    match git_host.list_open_prs(&repo.path, &remote_url).await {
+    match git_host.list_open_prs(&repo.path, &remote.url).await {
         Ok(prs) => Ok(ResponseJson(ApiResponse::success(prs))),
         Err(GitHostError::CliNotInstalled { provider }) => Ok(ResponseJson(
             ApiResponse::error_with_data(ListPrsError::CliNotInstalled { provider }),

@@ -23,7 +23,7 @@ use executors::actions::{
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
-    git::{GitCliError, GitServiceError},
+    git::{GitCliError, GitRemote, GitServiceError},
     git_host::{
         self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
         github::GhCli,
@@ -225,25 +225,22 @@ pub async fn create_pr(
     let worktree_path = workspace_path.join(&repo.name);
 
     let git = deployment.git();
-    let push_remote = git.resolve_remote_name_for_branch(&repo_path, &workspace.branch)?;
+    let push_remote = git.resolve_remote_for_branch(&repo_path, &workspace.branch)?;
 
     // Try to get the remote from the branch name (works for remote-tracking branches like "upstream/main").
     // Fall back to push_remote if the branch doesn't exist locally or isn't a remote-tracking branch.
     let (target_remote, base_branch) =
-        match git.get_remote_name_from_branch_name(&repo_path, &target_branch) {
+        match git.get_remote_from_branch_name(&repo_path, &target_branch) {
             Ok(remote) => {
                 let branch = target_branch
-                    .strip_prefix(&format!("{remote}/"))
+                    .strip_prefix(&format!("{}/", remote.name))
                     .unwrap_or(&target_branch);
                 (remote, branch.to_string())
             }
             Err(_) => (push_remote.clone(), target_branch.clone()),
         };
 
-    let push_remote_url = git.get_remote_url(&repo_path, &push_remote)?;
-    let target_remote_url = git.get_remote_url(&repo_path, &target_remote)?;
-
-    match git.check_remote_branch_exists(&repo_path, &target_remote_url, &base_branch) {
+    match git.check_remote_branch_exists(&repo_path, &target_remote.url, &base_branch) {
         Ok(false) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 PrError::TargetBranchNotFound {
@@ -282,7 +279,7 @@ pub async fn create_pr(
         }
     }
 
-    let git_host = match git_host::GitHostService::from_url(&target_remote_url) {
+    let git_host = match git_host::GitHostService::from_url(&target_remote.url) {
         Ok(host) => host,
         Err(GitHostError::UnsupportedProvider) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -306,11 +303,11 @@ pub async fn create_pr(
         head_branch: workspace.branch.clone(),
         base_branch: base_branch.clone(),
         draft: request.draft,
-        head_repo_url: Some(push_remote_url),
+        head_repo_url: Some(push_remote.url.clone()),
     };
 
     match git_host
-        .create_pr(&repo_path, &target_remote_url, &pr_request)
+        .create_pr(&repo_path, &target_remote.url, &pr_request)
         .await
     {
         Ok(pr_info) => {
@@ -417,12 +414,9 @@ pub async fn attach_existing_pr(
     }
 
     let git = deployment.git();
-    let remote_url = git.get_remote_url(
-        &repo.path,
-        &git.resolve_remote_name_for_branch(&repo.path, &workspace_repo.target_branch)?,
-    )?;
+    let remote = git.resolve_remote_for_branch(&repo.path, &workspace_repo.target_branch)?;
 
-    let git_host = match git_host::GitHostService::from_url(&remote_url) {
+    let git_host = match git_host::GitHostService::from_url(&remote.url) {
         Ok(host) => host,
         Err(GitHostError::UnsupportedProvider) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -441,7 +435,7 @@ pub async fn attach_existing_pr(
 
     // List all PRs for branch (open, closed, and merged)
     let prs = match git_host
-        .list_prs_for_branch(&repo.path, &remote_url, &workspace.branch)
+        .list_prs_for_branch(&repo.path, &remote.url, &workspace.branch)
         .await
     {
         Ok(prs) => prs,
@@ -537,12 +531,9 @@ pub async fn get_pr_comments(
     };
 
     let git = deployment.git();
-    let remote_url = git.get_remote_url(
-        &repo.path,
-        &git.resolve_remote_name_for_branch(&repo.path, &workspace_repo.target_branch)?,
-    )?;
+    let remote = git.resolve_remote_for_branch(&repo.path, &workspace_repo.target_branch)?;
 
-    let git_host = match git_host::GitHostService::from_url(&remote_url) {
+    let git_host = match git_host::GitHostService::from_url(&remote.url) {
         Ok(host) => host,
         Err(GitHostError::CliNotInstalled { provider }) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -555,7 +546,7 @@ pub async fn get_pr_comments(
     let provider = git_host.provider_kind();
 
     match git_host
-        .get_pr_comments(&repo.path, &remote_url, pr_info.number)
+        .get_pr_comments(&repo.path, &remote.url, pr_info.number)
         .await
     {
         Ok(comments) => Ok(ResponseJson(ApiResponse::success(PrCommentsResponse {
@@ -644,13 +635,15 @@ pub async fn create_workspace_from_pr(
         }
     };
 
-    let remote_name = match payload.remote_name {
-        Some(ref name) => name.clone(),
-        None => deployment.git().get_default_remote_name(&repo.path)?,
+    let remote = match payload.remote_name {
+        Some(ref name) => GitRemote {
+            url: deployment.git().get_remote_url(&repo.path, name)?,
+            name: name.clone(),
+        },
+        None => deployment.git().get_default_remote(&repo.path)?,
     };
-    let remote_url = deployment.git().get_remote_url(&repo.path, &remote_name)?;
 
-    let fetch_url = payload.head_repo_url.as_deref().unwrap_or(&remote_url);
+    let fetch_url = payload.head_repo_url.as_deref().unwrap_or(&remote.url);
     if let Err(e) = deployment
         .git()
         .fetch_branch(&repo.path, fetch_url, &payload.head_branch)
@@ -696,7 +689,7 @@ pub async fn create_workspace_from_pr(
         workspace.id,
         &[CreateWorkspaceRepo {
             repo_id: payload.repo_id,
-            target_branch: format!("{}/{}", remote_name, payload.base_branch),
+            target_branch: format!("{}/{}", remote.name, payload.base_branch),
         }],
     )
     .await?;
@@ -708,7 +701,7 @@ pub async fn create_workspace_from_pr(
 
     // Configure PR branch tracking (non-fatal - workspace is usable without this)
     let worktree_path = PathBuf::from(&container_ref).join(&repo.name);
-    match GhCli::new().get_repo_info(&remote_url, &worktree_path) {
+    match GhCli::new().get_repo_info(&remote.url, &worktree_path) {
         Ok(repo_info) => {
             if let Err(e) = GhCli::new().pr_checkout(
                 &worktree_path,
@@ -730,7 +723,7 @@ pub async fn create_workspace_from_pr(
         pool,
         workspace.id,
         payload.repo_id,
-        &format!("{}/{}", remote_name, payload.base_branch),
+        &format!("{}/{}", remote.name, payload.base_branch),
         payload.pr_number,
         &payload.pr_url,
     )
