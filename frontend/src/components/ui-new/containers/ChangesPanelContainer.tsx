@@ -161,9 +161,15 @@ export function ChangesPanelContainer({
   useEffect(() => {
     if (!selectedFilePath) return;
 
+    console.log('[DEBUG] scroll effect triggered', {
+      selectedFilePath,
+      selectedLineNumber,
+    });
+
     // Defer to next frame to ensure ref is attached after render
     const timeoutId = setTimeout(() => {
       const fileEl = diffRefs.current.get(selectedFilePath);
+      console.log('[DEBUG] fileEl found:', !!fileEl);
       fileEl?.scrollIntoView({
         behavior: 'instant',
         block: 'start',
@@ -173,9 +179,16 @@ export function ChangesPanelContainer({
       if (selectedLineNumber && fileEl) {
         setTimeout(() => {
           // Find the comment extend row by data-line attribute
-          const commentEl = fileEl.querySelector(
-            `[data-line="${selectedLineNumber}-extend"]`
-          );
+          const selector = `[data-line="${selectedLineNumber}-extend"]`;
+          const commentEl = fileEl.querySelector(selector);
+          console.log('[DEBUG] looking for comment element', {
+            selector,
+            found: !!commentEl,
+            allDataLineElements: fileEl.querySelectorAll('[data-line]').length,
+            sampleDataLines: Array.from(fileEl.querySelectorAll('[data-line]'))
+              .slice(0, 5)
+              .map((el) => el.getAttribute('data-line')),
+          });
           commentEl?.scrollIntoView({ behavior: 'instant', block: 'center' });
         }, 50); // Brief delay to ensure file scroll completes
       }
