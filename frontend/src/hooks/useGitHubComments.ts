@@ -36,6 +36,7 @@ interface UseGitHubCommentsResult {
   getGitHubCommentsForFile: (filePath: string) => NormalizedGitHubComment[];
   getGitHubCommentCountForFile: (filePath: string) => number;
   getFilesWithGitHubComments: () => string[];
+  getFirstCommentLineForFile: (filePath: string) => number | null;
 }
 
 export function useGitHubComments({
@@ -121,6 +122,18 @@ export function useGitHubComments({
     return Array.from(filesSet);
   }, [normalizedComments]);
 
+  // Get the first (lowest line number) comment's line for a file
+  const getFirstCommentLineForFile = useCallback(
+    (filePath: string): number | null => {
+      const comments = normalizedComments.filter((c) =>
+        pathMatches(filePath, c.filePath)
+      );
+      if (comments.length === 0) return null;
+      return Math.min(...comments.map((c) => c.lineNumber));
+    },
+    [normalizedComments, pathMatches]
+  );
+
   return {
     gitHubComments,
     isGitHubCommentsLoading,
@@ -129,5 +142,6 @@ export function useGitHubComments({
     getGitHubCommentsForFile,
     getGitHubCommentCountForFile,
     getFilesWithGitHubComments,
+    getFirstCommentLineForFile,
   };
 }

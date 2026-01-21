@@ -5,6 +5,7 @@ import {
   filterFileTree,
   getExpandedPathsForSearch,
   getAllFolderPaths,
+  sortDiffs,
 } from '@/utils/fileTreeUtils';
 import { usePersistedCollapsedPaths } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
@@ -37,8 +38,12 @@ export function FileTreeContainer({
     setShowGitHubComments,
     getGitHubCommentCountForFile,
     getFilesWithGitHubComments,
+    getFirstCommentLineForFile,
     isGitHubCommentsLoading,
   } = useWorkspaceContext();
+
+  // Get selectFile from context to pass line number when navigating
+  const { selectFile } = useChangesView();
 
   // Sync selectedPath with fileInView from context and scroll into view
   useEffect(() => {
@@ -126,20 +131,17 @@ export function FileTreeContainer({
     [diffs, onSelectFile]
   );
 
-  // Get list of diff paths that have GitHub comments (matched to diff paths)
+  // Get list of diff paths that have GitHub comments, sorted to match visual order
   const filesWithComments = useMemo(() => {
     const ghFiles = getFilesWithGitHubComments();
-    // Match GitHub paths to diff paths (handle repo prefix)
-    return ghFiles
-      .map((ghPath) => {
-        const diff = diffs.find(
-          (d) =>
-            (d.newPath || d.oldPath || '') === ghPath ||
-            (d.newPath || d.oldPath || '').endsWith('/' + ghPath)
-        );
-        return diff ? diff.newPath || diff.oldPath || '' : null;
-      })
-      .filter((p): p is string => p !== null);
+    // Sort diffs first to match visual order, then filter to those with comments
+    return sortDiffs(diffs)
+      .map((d) => d.newPath || d.oldPath || '')
+      .filter((diffPath) =>
+        ghFiles.some(
+          (ghPath) => diffPath === ghPath || diffPath.endsWith('/' + ghPath)
+        )
+      );
   }, [getFilesWithGitHubComments, diffs]);
 
   // Navigate between files with GitHub comments
@@ -160,9 +162,21 @@ export function FileTreeContainer({
           currentIndex > 0 ? currentIndex - 1 : filesWithComments.length - 1;
       }
 
-      handleSelectFile(filesWithComments[nextIndex]);
+      const targetPath = filesWithComments[nextIndex];
+      const lineNumber = getFirstCommentLineForFile(targetPath);
+
+      // Update local state
+      setSelectedPath(targetPath);
+
+      // Select file with line number to scroll to the comment
+      selectFile(targetPath, lineNumber ?? undefined);
     },
-    [filesWithComments, selectedPath, handleSelectFile]
+    [
+      filesWithComments,
+      selectedPath,
+      getFirstCommentLineForFile,
+      selectFile,
+    ]
   );
 
   return (

@@ -144,7 +144,8 @@ export function ChangesPanelContainer({
   const { data: task } = useTask(workspace?.task_id, {
     enabled: !!workspace?.task_id,
   });
-  const { selectedFilePath, setFileInView } = useChangesView();
+  const { selectedFilePath, selectedLineNumber, setFileInView } =
+    useChangesView();
   const diffRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Track which diffs we've processed for auto-collapse
@@ -162,14 +163,26 @@ export function ChangesPanelContainer({
 
     // Defer to next frame to ensure ref is attached after render
     const timeoutId = setTimeout(() => {
-      diffRefs.current.get(selectedFilePath)?.scrollIntoView({
+      const fileEl = diffRefs.current.get(selectedFilePath);
+      fileEl?.scrollIntoView({
         behavior: 'smooth',
         block: 'start',
       });
+
+      // If line number specified, scroll to comment row after file scroll completes
+      if (selectedLineNumber && fileEl) {
+        setTimeout(() => {
+          // Find the comment extend row by data-line attribute
+          const commentEl = fileEl.querySelector(
+            `[data-line="${selectedLineNumber}-extend"]`
+          );
+          commentEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300); // Wait for file scroll to complete
+      }
     }, 0);
 
     return () => clearTimeout(timeoutId);
-  }, [selectedFilePath]);
+  }, [selectedFilePath, selectedLineNumber]);
 
   const handleDiffRef = useCallback(
     (path: string, el: HTMLDivElement | null) => {

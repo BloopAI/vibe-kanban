@@ -14,10 +14,12 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 interface ChangesViewContextValue {
   /** File path selected by user (triggers scroll-to in ChangesPanelContainer) */
   selectedFilePath: string | null;
+  /** Line number to scroll to within the selected file (for GitHub comment navigation) */
+  selectedLineNumber: number | null;
   /** File currently in view from scrolling (for FileTree highlighting) */
   fileInView: string | null;
-  /** Select a file and update fileInView */
-  selectFile: (path: string) => void;
+  /** Select a file and optionally scroll to a specific line */
+  selectFile: (path: string, lineNumber?: number) => void;
   /** Update the file currently in view (from scroll observer) */
   setFileInView: (path: string | null) => void;
   /** Navigate to changes mode and scroll to a specific file */
@@ -32,6 +34,7 @@ const EMPTY_SET = new Set<string>();
 
 const defaultValue: ChangesViewContextValue = {
   selectedFilePath: null,
+  selectedLineNumber: null,
   fileInView: null,
   selectFile: () => {},
   setFileInView: () => {},
@@ -49,11 +52,15 @@ interface ChangesViewProviderProps {
 export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
   const { diffPaths } = useWorkspaceContext();
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
+  const [selectedLineNumber, setSelectedLineNumber] = useState<number | null>(
+    null
+  );
   const [fileInView, setFileInView] = useState<string | null>(null);
   const { setRightMainPanelMode } = useUiPreferencesStore();
 
-  const selectFile = useCallback((path: string) => {
+  const selectFile = useCallback((path: string, lineNumber?: number) => {
     setSelectedFilePath(path);
+    setSelectedLineNumber(lineNumber ?? null);
     setFileInView(path);
   }, []);
 
@@ -81,6 +88,7 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
   const value = useMemo(
     () => ({
       selectedFilePath,
+      selectedLineNumber,
       fileInView,
       selectFile,
       setFileInView,
@@ -90,6 +98,7 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
     }),
     [
       selectedFilePath,
+      selectedLineNumber,
       fileInView,
       selectFile,
       viewFileInChanges,
