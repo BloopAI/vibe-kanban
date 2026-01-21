@@ -416,6 +416,11 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     cancelDebouncedSave();
     await saveToScratch(localMessage, selectedVariant);
     await queueMessage(combinedMessage, selectedVariant);
+
+    // Clear local state after queueing (same as handleSend)
+    setLocalMessage('');
+    clearUploadedImages();
+    reviewContext?.clearComments();
   }, [
     localMessage,
     reviewMarkdown,
@@ -423,6 +428,9 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     queueMessage,
     cancelDebouncedSave,
     saveToScratch,
+    setLocalMessage,
+    clearUploadedImages,
+    reviewContext,
   ]);
 
   // Editor change handler
