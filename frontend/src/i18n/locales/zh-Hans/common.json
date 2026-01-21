@@ -199,7 +199,8 @@
   "comments": {
     "addReviewComment": "添加审查评论",
     "addPlaceholder": "添加评论...",
-    "editPlaceholder": "编辑评论..."
+    "editPlaceholder": "编辑评论...",
+    "copyToReview": "复制到审查"
   },
   "confirm": {
     "defaultConfirm": "确认",

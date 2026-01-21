@@ -199,7 +199,8 @@
   "comments": {
     "addReviewComment": "Add Review Comment",
     "addPlaceholder": "Add a comment...",
-    "editPlaceholder": "Edit comment..."
+    "editPlaceholder": "Edit comment...",
+    "copyToReview": "Copy to review"
   },
   "confirm": {
     "defaultConfirm": "Confirm",

@@ -199,7 +199,8 @@
   "comments": {
     "addReviewComment": "리뷰 코멘트 추가",
     "addPlaceholder": "코멘트 추가...",
-    "editPlaceholder": "코멘트 편집..."
+    "editPlaceholder": "코멘트 편집...",
+    "copyToReview": "리뷰로 복사"
   },
   "confirm": {
     "defaultConfirm": "확인",

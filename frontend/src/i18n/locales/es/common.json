@@ -199,7 +199,8 @@
   "comments": {
     "addReviewComment": "Agregar comentario de revisión",
     "addPlaceholder": "Agregar un comentario...",
-    "editPlaceholder": "Editar comentario..."
+    "editPlaceholder": "Editar comentario...",
+    "copyToReview": "Copiar a revisión"
   },
   "confirm": {
     "defaultConfirm": "Confirmar",

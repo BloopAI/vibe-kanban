@@ -199,7 +199,8 @@
   "comments": {
     "addReviewComment": "新增審查評論",
     "addPlaceholder": "新增評論...",
-    "editPlaceholder": "編輯評論..."
+    "editPlaceholder": "編輯評論...",
+    "copyToReview": "複製到審查"
   },
   "confirm": {
     "defaultConfirm": "確認",

@@ -199,7 +199,8 @@
   "comments": {
     "addReviewComment": "レビューコメントを追加",
     "addPlaceholder": "コメントを追加...",
-    "editPlaceholder": "コメントを編集..."
+    "editPlaceholder": "コメントを編集...",
+    "copyToReview": "レビューにコピー"
   },
   "confirm": {
     "defaultConfirm": "確認",
