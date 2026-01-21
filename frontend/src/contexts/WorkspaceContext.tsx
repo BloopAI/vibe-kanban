@@ -67,6 +67,7 @@ interface WorkspaceContextValue {
   setShowGitHubComments: (show: boolean) => void;
   getGitHubCommentsForFile: (filePath: string) => NormalizedGitHubComment[];
   getGitHubCommentCountForFile: (filePath: string) => number;
+  getFilesWithGitHubComments: () => string[];
   /** Diffs for the current workspace */
   diffs: Diff[];
   /** Set of file paths in the diffs */
@@ -135,6 +136,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     setShowGitHubComments,
     getGitHubCommentsForFile,
     getGitHubCommentCountForFile,
+    getFilesWithGitHubComments,
   } = useGitHubComments({
     workspaceId,
     repoId: primaryRepoId,
@@ -218,6 +220,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       setShowGitHubComments,
       getGitHubCommentsForFile,
       getGitHubCommentCountForFile,
+      getFilesWithGitHubComments,
       diffs,
       diffPaths,
       diffStats,
@@ -247,6 +250,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       setShowGitHubComments,
       getGitHubCommentsForFile,
       getGitHubCommentCountForFile,
+      getFilesWithGitHubComments,
       diffs,
       diffPaths,
       diffStats,

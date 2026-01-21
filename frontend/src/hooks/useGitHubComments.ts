@@ -35,6 +35,7 @@ interface UseGitHubCommentsResult {
   setShowGitHubComments: (show: boolean) => void;
   getGitHubCommentsForFile: (filePath: string) => NormalizedGitHubComment[];
   getGitHubCommentCountForFile: (filePath: string) => number;
+  getFilesWithGitHubComments: () => string[];
 }
 
 export function useGitHubComments({
@@ -111,6 +112,15 @@ export function useGitHubComments({
     [normalizedComments, pathMatches]
   );
 
+  // Get list of unique file paths that have GitHub comments
+  const getFilesWithGitHubComments = useCallback((): string[] => {
+    const filesSet = new Set<string>();
+    for (const comment of normalizedComments) {
+      filesSet.add(comment.filePath);
+    }
+    return Array.from(filesSet);
+  }, [normalizedComments]);
+
   return {
     gitHubComments,
     isGitHubCommentsLoading,
@@ -118,5 +128,6 @@ export function useGitHubComments({
     setShowGitHubComments,
     getGitHubCommentsForFile,
     getGitHubCommentCountForFile,
+    getFilesWithGitHubComments,
   };
 }

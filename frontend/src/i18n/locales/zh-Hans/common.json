@@ -156,7 +156,9 @@
     "noResults": "没有匹配的文件",
     "title": "文件",
     "showGitHubComments": "显示 GitHub 评论",
-    "hideGitHubComments": "隐藏 GitHub 评论"
+    "hideGitHubComments": "隐藏 GitHub 评论",
+    "prevGitHubComment": "上一个有评论的文件",
+    "nextGitHubComment": "下一个有评论的文件"
   },
   "sections": {
     "changes": "更改",

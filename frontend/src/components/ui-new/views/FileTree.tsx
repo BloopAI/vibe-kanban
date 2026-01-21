@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { GithubLogoIcon } from '@phosphor-icons/react';
+import { GithubLogoIcon, CaretUpIcon, CaretDownIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '../primitives/Tooltip';
 import { FileTreeSearchBar } from './FileTreeSearchBar';
@@ -26,6 +26,10 @@ interface FileTreeProps {
   getGitHubCommentCountForFile?: (filePath: string) => number;
   /** Whether GitHub comments are currently loading */
   isGitHubCommentsLoading?: boolean;
+  /** Callback to navigate between files with GitHub comments */
+  onNavigateComments?: (direction: 'prev' | 'next') => void;
+  /** Whether there are files with GitHub comments to navigate */
+  hasFilesWithComments?: boolean;
 }
 
 export function FileTree({
@@ -44,6 +48,8 @@ export function FileTree({
   onToggleGitHubComments,
   getGitHubCommentCountForFile,
   isGitHubCommentsLoading,
+  onNavigateComments,
+  hasFilesWithComments,
 }: FileTreeProps) {
   const { t } = useTranslation(['tasks', 'common']);
 
@@ -91,6 +97,30 @@ export function FileTree({
               onToggleExpandAll={onToggleExpandAll}
             />
           </div>
+          {showGitHubComments && onNavigateComments && hasFilesWithComments && (
+            <>
+              <Tooltip content={t('common:fileTree.prevGitHubComment')}>
+                <button
+                  type="button"
+                  onClick={() => onNavigateComments('prev')}
+                  className="p-1 rounded hover:bg-panel transition-colors shrink-0 text-low hover:text-normal"
+                  aria-label={t('common:fileTree.prevGitHubComment')}
+                >
+                  <CaretUpIcon className="size-icon-sm" />
+                </button>
+              </Tooltip>
+              <Tooltip content={t('common:fileTree.nextGitHubComment')}>
+                <button
+                  type="button"
+                  onClick={() => onNavigateComments('next')}
+                  className="p-1 rounded hover:bg-panel transition-colors shrink-0 text-low hover:text-normal"
+                  aria-label={t('common:fileTree.nextGitHubComment')}
+                >
+                  <CaretDownIcon className="size-icon-sm" />
+                </button>
+              </Tooltip>
+            </>
+          )}
           {onToggleGitHubComments && (
             <Tooltip
               content={

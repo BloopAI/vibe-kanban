@@ -156,7 +156,9 @@
     "noResults": "一致するファイルがありません",
     "title": "ファイル",
     "showGitHubComments": "GitHubコメントを表示",
-    "hideGitHubComments": "GitHubコメントを非表示"
+    "hideGitHubComments": "GitHubコメントを非表示",
+    "prevGitHubComment": "前のコメント付きファイル",
+    "nextGitHubComment": "次のコメント付きファイル"
   },
   "sections": {
     "changes": "変更",

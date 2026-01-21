@@ -156,7 +156,9 @@
     "noResults": "Aucun fichier correspondant",
     "title": "Fichiers",
     "showGitHubComments": "Afficher les commentaires GitHub",
-    "hideGitHubComments": "Masquer les commentaires GitHub"
+    "hideGitHubComments": "Masquer les commentaires GitHub",
+    "prevGitHubComment": "Fichier précédent avec commentaires",
+    "nextGitHubComment": "Fichier suivant avec commentaires"
   },
   "sections": {
     "changes": "Modifications",

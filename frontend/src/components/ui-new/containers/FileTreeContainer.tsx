@@ -36,6 +36,7 @@ export function FileTreeContainer({
     showGitHubComments,
     setShowGitHubComments,
     getGitHubCommentCountForFile,
+    getFilesWithGitHubComments,
     isGitHubCommentsLoading,
   } = useWorkspaceContext();
 
@@ -125,6 +126,45 @@ export function FileTreeContainer({
     [diffs, onSelectFile]
   );
 
+  // Get list of diff paths that have GitHub comments (matched to diff paths)
+  const filesWithComments = useMemo(() => {
+    const ghFiles = getFilesWithGitHubComments();
+    // Match GitHub paths to diff paths (handle repo prefix)
+    return ghFiles
+      .map((ghPath) => {
+        const diff = diffs.find(
+          (d) =>
+            (d.newPath || d.oldPath || '') === ghPath ||
+            (d.newPath || d.oldPath || '').endsWith('/' + ghPath)
+        );
+        return diff ? diff.newPath || diff.oldPath || '' : null;
+      })
+      .filter((p): p is string => p !== null);
+  }, [getFilesWithGitHubComments, diffs]);
+
+  // Navigate between files with GitHub comments
+  const handleNavigateComments = useCallback(
+    (direction: 'prev' | 'next') => {
+      if (filesWithComments.length === 0) return;
+
+      const currentIndex = selectedPath
+        ? filesWithComments.indexOf(selectedPath)
+        : -1;
+      let nextIndex: number;
+
+      if (direction === 'next') {
+        nextIndex =
+          currentIndex < filesWithComments.length - 1 ? currentIndex + 1 : 0;
+      } else {
+        nextIndex =
+          currentIndex > 0 ? currentIndex - 1 : filesWithComments.length - 1;
+      }
+
+      handleSelectFile(filesWithComments[nextIndex]);
+    },
+    [filesWithComments, selectedPath, handleSelectFile]
+  );
+
   return (
     <FileTree
       nodes={filteredTree}
@@ -142,6 +182,8 @@ export function FileTreeContainer({
       onToggleGitHubComments={setShowGitHubComments}
       getGitHubCommentCountForFile={getGitHubCommentCountForFile}
       isGitHubCommentsLoading={isGitHubCommentsLoading}
+      onNavigateComments={handleNavigateComments}
+      hasFilesWithComments={filesWithComments.length > 0}
     />
   );
 }

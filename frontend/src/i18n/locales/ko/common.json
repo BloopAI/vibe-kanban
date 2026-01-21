@@ -156,7 +156,9 @@
     "noResults": "일치하는 파일 없음",
     "title": "파일",
     "showGitHubComments": "GitHub 댓글 표시",
-    "hideGitHubComments": "GitHub 댓글 숨기기"
+    "hideGitHubComments": "GitHub 댓글 숨기기",
+    "prevGitHubComment": "이전 댓글 파일",
+    "nextGitHubComment": "다음 댓글 파일"
   },
   "sections": {
     "changes": "변경사항",
