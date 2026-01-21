@@ -302,6 +302,8 @@
         "deleteTitle": "마지막 구성은 삭제할 수 없습니다",
         "deleteButton": "{{name}} 삭제",
         "deleteText": "삭제",
+        "makeDefault": "기본값으로 설정",
+        "isDefault": "기본값",
         "jsonLabel": "에이전트 구성 (JSON)",
         "jsonPlaceholder": "프로필 로딩 중...",
         "jsonLoading": "로딩 중...",

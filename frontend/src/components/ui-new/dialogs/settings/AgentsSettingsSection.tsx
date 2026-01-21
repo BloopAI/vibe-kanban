@@ -1,26 +1,12 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { cloneDeep, isEqual } from 'lodash';
-import {
-  SpinnerIcon,
-  CheckIcon,
-  WarningIcon,
-  CaretDownIcon,
-} from '@phosphor-icons/react';
+import { SpinnerIcon, StarIcon } from '@phosphor-icons/react';
 import { ExecutorConfigForm } from './ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteConfigurationDialog';
-import {
-  useAgentAvailability,
-  type AgentAvailabilityState,
-} from '@/hooks/useAgentAvailability';
-import type {
-  BaseCodingAgent,
-  ExecutorConfigs,
-  ExecutorProfileId,
-} from 'shared/types';
+import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
 import { cn } from '@/lib/utils';
 import { toPrettyCase } from '@/utils/string';
 import {
@@ -40,52 +26,6 @@ import { useSettingsDirty } from './SettingsDirtyContext';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 
-function AgentAvailabilityIndicator({
-  availability,
-}: {
-  availability: AgentAvailabilityState;
-}) {
-  const { t } = useTranslation('settings');
-
-  if (availability === null) {
-    return null;
-  }
-
-  if (availability.status === 'checking') {
-    return (
-      <div className="flex items-center gap-2 text-sm text-low">
-        <SpinnerIcon className="size-icon-xs animate-spin" />
-        <span>{t('settings.agents.availability.checkingAvailability')}</span>
-      </div>
-    );
-  }
-
-  const isAvailable =
-    availability.status === 'login_detected' ||
-    availability.status === 'installation_found';
-
-  return (
-    <div
-      className={cn(
-        'flex items-center gap-2 text-sm',
-        isAvailable ? 'text-success' : 'text-warning'
-      )}
-    >
-      {isAvailable ? (
-        <>
-          <CheckIcon className="size-icon-xs" weight="bold" />
-          <span>{t('settings.agents.availability.available')}</span>
-        </>
-      ) : (
-        <>
-          <WarningIcon className="size-icon-xs" weight="bold" />
-          <span>{t('settings.agents.availability.notFoundSimple')}</span>
-        </>
-      )}
-    </div>
-  );
-}
-
 export function AgentsSettingsSection() {
   const { t } = useTranslation(['settings', 'common']);
   const { setDirty: setContextDirty } = useSettingsDirty();
@@ -100,8 +40,7 @@ export function AgentsSettingsSection() {
     save: saveProfiles,
   } = useProfiles();
 
-  const { config, updateAndSaveConfig, profiles, reloadSystem } =
-    useUserSystem();
+  const { config, updateAndSaveConfig, reloadSystem } = useUserSystem();
 
   // Local editor state
   const [localProfilesContent, setLocalProfilesContent] = useState('');
@@ -117,17 +56,7 @@ export function AgentsSettingsSection() {
   const [localParsedProfiles, setLocalParsedProfiles] =
     useState<ExecutorConfigs | null>(null);
   const [isDirty, setIsDirty] = useState(false);
-
-  // Default executor profile state
-  const [executorDraft, setExecutorDraft] = useState<ExecutorProfileId | null>(
-    () => (config?.executor_profile ? cloneDeep(config.executor_profile) : null)
-  );
-  const [executorSaving, setExecutorSaving] = useState(false);
-  const [executorSuccess, setExecutorSuccess] = useState(false);
-  const [executorError, setExecutorError] = useState<string | null>(null);
-
-  // Check agent availability
-  const agentAvailability = useAgentAvailability(executorDraft?.executor);
+  const [makeDefaultSaving, setMakeDefaultSaving] = useState(false);
 
   // Sync server state to local state when not dirty
   useEffect(() => {
@@ -143,56 +72,31 @@ export function AgentsSettingsSection() {
     }
   }, [serverProfilesContent, isDirty]);
 
-  // Check if executor draft differs from saved config
-  const executorDirty =
-    executorDraft && config?.executor_profile
-      ? !isEqual(executorDraft, config.executor_profile)
-      : false;
-
-  // Combined dirty state
-  const hasUnsavedChanges = useMemo(
-    () => executorDirty || isDirty,
-    [executorDirty, isDirty]
-  );
-
   // Sync dirty state to context for unsaved changes confirmation
   useEffect(() => {
-    setContextDirty('agents', hasUnsavedChanges);
+    setContextDirty('agents', isDirty);
     return () => setContextDirty('agents', false);
-  }, [hasUnsavedChanges, setContextDirty]);
+  }, [isDirty, setContextDirty]);
 
-  // Sync executor draft when config changes
-  useEffect(() => {
-    if (config?.executor_profile) {
-      setExecutorDraft((currentDraft) => {
-        if (!currentDraft || isEqual(currentDraft, config.executor_profile)) {
-          return cloneDeep(config.executor_profile);
-        }
-        return currentDraft;
-      });
-    }
-  }, [config?.executor_profile]);
+  // Check if current selection is the default
+  const isCurrentDefault =
+    config?.executor_profile?.executor === selectedExecutorType &&
+    config?.executor_profile?.variant === selectedConfiguration;
 
-  const updateExecutorDraft = (newProfile: ExecutorProfileId) => {
-    setExecutorDraft(newProfile);
-  };
-
-  const handleSaveExecutorProfile = async () => {
-    if (!executorDraft || !config) return;
-
-    setExecutorSaving(true);
-    setExecutorError(null);
-
+  const handleMakeDefault = async () => {
+    setMakeDefaultSaving(true);
     try {
-      await updateAndSaveConfig({ executor_profile: executorDraft });
-      setExecutorSuccess(true);
-      setTimeout(() => setExecutorSuccess(false), 3000);
+      await updateAndSaveConfig({
+        executor_profile: {
+          executor: selectedExecutorType,
+          variant: selectedConfiguration,
+        },
+      });
       reloadSystem();
     } catch (err) {
-      setExecutorError(t('settings.general.save.error'));
-      console.error('Error saving executor profile:', err);
+      console.error('Error setting default:', err);
     } finally {
-      setExecutorSaving(false);
+      setMakeDefaultSaving(false);
     }
   };
 
@@ -418,13 +322,8 @@ export function AgentsSettingsSection() {
     }
   };
 
-  // Unified save handler for both subsections
-  const handleUnifiedSave = async () => {
-    // Save executor profile if dirty
-    if (executorDirty) {
-      await handleSaveExecutorProfile();
-    }
-    // Save agent configuration if dirty
+  // Save handler for agent configuration
+  const handleSave = async () => {
     if (isDirty) {
       if (useFormEditor && localParsedProfiles) {
         const executorsMap =
@@ -442,13 +341,8 @@ export function AgentsSettingsSection() {
     }
   };
 
-  // Unified discard handler for both subsections
-  const handleUnifiedDiscard = () => {
-    // Discard executor profile changes
-    if (executorDirty && config?.executor_profile) {
-      setExecutorDraft(cloneDeep(config.executor_profile));
-    }
-    // Discard agent configuration changes
+  // Discard handler for agent configuration
+  const handleDiscard = () => {
     if (isDirty) {
       handleJsonEditorDiscard();
     }
@@ -466,12 +360,6 @@ export function AgentsSettingsSection() {
     );
   }
 
-  const executorOptions = profiles
-    ? Object.keys(profiles)
-        .sort()
-        .map((key) => ({ value: key, label: toPrettyCase(key) }))
-    : [];
-
   const configurationOptions = localParsedProfiles?.executors?.[
     selectedExecutorType
   ]
@@ -479,10 +367,6 @@ export function AgentsSettingsSection() {
         (key) => ({ value: key, label: toPrettyCase(key) })
       )
     : [];
-
-  const selectedProfile = profiles?.[executorDraft?.executor || ''];
-  const hasVariants =
-    selectedProfile && Object.keys(selectedProfile).length > 0;
 
   return (
     <>
@@ -506,118 +390,6 @@ export function AgentsSettingsSection() {
           {saveError}
         </div>
       )}
-
-      {executorError && (
-        <div className="bg-error/10 border border-error/50 rounded-sm p-4 text-error">
-          {executorError}
-        </div>
-      )}
-
-      {executorSuccess && (
-        <div className="bg-success/10 border border-success/50 rounded-sm p-4 text-success font-medium">
-          {t('settings.general.save.success')}
-        </div>
-      )}
-
-      {/* Default Executor Profile */}
-      <SettingsCard
-        title={t('settings.general.taskExecution.title')}
-        description={t('settings.general.taskExecution.description')}
-      >
-        <SettingsField
-          label={t('settings.general.taskExecution.executor.label')}
-          description={t('settings.general.taskExecution.executor.helper')}
-        >
-          <div className="grid grid-cols-2 gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <DropdownMenuTriggerButton
-                  label={
-                    executorDraft?.executor
-                      ? toPrettyCase(executorDraft.executor)
-                      : t('settings.agents.selectAgent')
-                  }
-                  className="w-full justify-between"
-                  disabled={!profiles}
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                {executorOptions.map((option) => (
-                  <DropdownMenuItem
-                    key={option.value}
-                    onClick={() => {
-                      const variants = profiles?.[option.value];
-                      const keepCurrentVariant =
-                        variants &&
-                        executorDraft?.variant &&
-                        variants[executorDraft.variant];
-
-                      const newProfile: ExecutorProfileId = {
-                        executor: option.value as BaseCodingAgent,
-                        variant: keepCurrentVariant
-                          ? executorDraft!.variant
-                          : null,
-                      };
-                      updateExecutorDraft(newProfile);
-                    }}
-                  >
-                    {option.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {hasVariants ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    className={cn(
-                      'flex items-center justify-between w-full px-base py-half rounded-sm border border-border bg-secondary',
-                      'text-base text-normal hover:bg-secondary/80 focus:outline-none focus:ring-1 focus:ring-brand'
-                    )}
-                  >
-                    <span className="truncate">
-                      {executorDraft?.variant
-                        ? toPrettyCase(executorDraft.variant)
-                        : t('settings.general.taskExecution.defaultLabel')}
-                    </span>
-                    <CaretDownIcon className="size-icon-xs ml-2 shrink-0" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                  {Object.keys(selectedProfile).map((variantLabel) => (
-                    <DropdownMenuItem
-                      key={variantLabel}
-                      onClick={() => {
-                        const newProfile: ExecutorProfileId = {
-                          executor: executorDraft!.executor,
-                          variant: variantLabel,
-                        };
-                        updateExecutorDraft(newProfile);
-                      }}
-                    >
-                      {toPrettyCase(variantLabel)}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : selectedProfile ? (
-              <button
-                disabled
-                className={cn(
-                  'flex items-center justify-between w-full px-base py-half rounded-sm border border-border bg-secondary',
-                  'text-base text-low opacity-50 cursor-not-allowed'
-                )}
-              >
-                <span className="truncate">
-                  {t('settings.general.taskExecution.defaultLabel')}
-                </span>
-              </button>
-            ) : null}
-          </div>
-          <AgentAvailabilityIndicator availability={agentAvailability} />
-        </SettingsField>
-      </SettingsCard>
 
       {/* Agent Configuration */}
       <SettingsCard
@@ -702,6 +474,25 @@ export function AgentsSettingsSection() {
                   >
                     {t('settings.agents.editor.deleteText')}
                   </button>
+                  <button
+                    onClick={handleMakeDefault}
+                    disabled={makeDefaultSaving || isCurrentDefault}
+                    className={cn(
+                      'flex items-center gap-1.5 px-base py-half rounded-sm text-sm font-medium',
+                      isCurrentDefault
+                        ? 'bg-success/10 text-success border border-success/50'
+                        : 'bg-brand/10 text-brand hover:bg-brand/20 border border-brand/50',
+                      'disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+                    )}
+                  >
+                    <StarIcon
+                      className="size-icon-xs"
+                      weight={isCurrentDefault ? 'fill' : 'regular'}
+                    />
+                    {isCurrentDefault
+                      ? t('settings.agents.editor.isDefault')
+                      : t('settings.agents.editor.makeDefault')}
+                  </button>
                 </div>
               </SettingsField>
             </div>
@@ -778,12 +569,12 @@ export function AgentsSettingsSection() {
       </SettingsCard>
 
       <SettingsSaveBar
-        show={executorDirty || isDirty}
-        saving={executorSaving || profilesSaving}
+        show={isDirty}
+        saving={profilesSaving}
         saveDisabled={!!profilesError}
         unsavedMessage={t('settings.agents.save.unsavedChanges')}
-        onSave={handleUnifiedSave}
-        onDiscard={handleUnifiedDiscard}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
       />
     </>
   );

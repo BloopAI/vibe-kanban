@@ -302,6 +302,8 @@
         "deleteTitle": "Impossible de supprimer la dernière configuration",
         "deleteButton": "Supprimer {{name}}",
         "deleteText": "Supprimer",
+        "makeDefault": "Définir par défaut",
+        "isDefault": "Par défaut",
         "jsonLabel": "Configuration de l'agent (JSON)",
         "jsonPlaceholder": "Chargement des profils...",
         "jsonLoading": "Chargement...",

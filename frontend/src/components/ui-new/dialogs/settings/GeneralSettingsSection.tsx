@@ -6,6 +6,7 @@ import {
   SpeakerHighIcon,
   CheckIcon,
   WarningIcon,
+  CaretDownIcon,
 } from '@phosphor-icons/react';
 import {
   DEFAULT_PR_DESCRIPTION_PROMPT,
@@ -14,6 +15,8 @@ import {
   ThemeMode,
   UiLanguage,
   type SendMessageShortcut,
+  type BaseCodingAgent,
+  type ExecutorProfileId,
 } from 'shared/types';
 import { getModifierKey } from '@/utils/platform';
 import { getLanguageOptions } from '@/i18n/languages';
@@ -22,12 +25,23 @@ import {
   useEditorAvailability,
   type EditorAvailabilityState,
 } from '@/hooks/useEditorAvailability';
+import {
+  useAgentAvailability,
+  type AgentAvailabilityState,
+} from '@/hooks/useAgentAvailability';
 import { useTheme } from '@/components/ThemeProvider';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
 import { cn } from '@/lib/utils';
 import { PrimaryButton } from '../../primitives/PrimaryButton';
 import { IconButton } from '../../primitives/IconButton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuTriggerButton,
+} from '../../primitives/Dropdown';
 import {
   SettingsCard,
   SettingsField,
@@ -81,6 +95,52 @@ function EditorAvailabilityIndicator({
   );
 }
 
+function AgentAvailabilityIndicator({
+  availability,
+}: {
+  availability: AgentAvailabilityState;
+}) {
+  const { t } = useTranslation('settings');
+
+  if (availability === null) {
+    return null;
+  }
+
+  if (availability.status === 'checking') {
+    return (
+      <div className="flex items-center gap-2 text-sm text-low">
+        <SpinnerIcon className="size-icon-xs animate-spin" />
+        <span>{t('settings.agents.availability.checkingAvailability')}</span>
+      </div>
+    );
+  }
+
+  const isAvailable =
+    availability.status === 'login_detected' ||
+    availability.status === 'installation_found';
+
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2 text-sm',
+        isAvailable ? 'text-success' : 'text-warning'
+      )}
+    >
+      {isAvailable ? (
+        <>
+          <CheckIcon className="size-icon-xs" weight="bold" />
+          <span>{t('settings.agents.availability.available')}</span>
+        </>
+      ) : (
+        <>
+          <WarningIcon className="size-icon-xs" weight="bold" />
+          <span>{t('settings.agents.availability.notFoundSimple')}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function GeneralSettingsSection() {
   const { t } = useTranslation(['settings', 'common']);
   const { setDirty: setContextDirty } = useSettingsDirty();
@@ -91,7 +151,7 @@ export function GeneralSettingsSection() {
       defaultValue: 'Browser Default',
     })
   );
-  const { config, loading, updateAndSaveConfig } = useUserSystem();
+  const { config, loading, updateAndSaveConfig, profiles } = useUserSystem();
 
   const [draft, setDraft] = useState(() => (config ? cloneDeep(config) : null));
   const [dirty, setDirty] = useState(false);
@@ -104,6 +164,18 @@ export function GeneralSettingsSection() {
   const { setTheme } = useTheme();
 
   const editorAvailability = useEditorAvailability(draft?.editor.editor_type);
+  const agentAvailability = useAgentAvailability(draft?.executor_profile?.executor);
+
+  // Executor options for the default coding agent dropdown
+  const executorOptions = profiles
+    ? Object.keys(profiles)
+        .sort()
+        .map((key) => ({ value: key, label: toPrettyCase(key) }))
+    : [];
+
+  const selectedAgentProfile = profiles?.[draft?.executor_profile?.executor || ''];
+  const hasVariants =
+    selectedAgentProfile && Object.keys(selectedAgentProfile).length > 0;
 
   const validateBranchPrefix = useCallback(
     (prefix: string): string | null => {
@@ -393,6 +465,106 @@ export function GeneralSettingsSection() {
             )}
           </>
         )}
+      </SettingsCard>
+
+      {/* Default Coding Agent */}
+      <SettingsCard
+        title={t('settings.general.taskExecution.title')}
+        description={t('settings.general.taskExecution.description')}
+      >
+        <SettingsField
+          label={t('settings.general.taskExecution.executor.label')}
+          description={t('settings.general.taskExecution.executor.helper')}
+        >
+          <div className="grid grid-cols-2 gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <DropdownMenuTriggerButton
+                  label={
+                    draft?.executor_profile?.executor
+                      ? toPrettyCase(draft.executor_profile.executor)
+                      : t('settings.agents.selectAgent')
+                  }
+                  className="w-full justify-between"
+                  disabled={!profiles}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                {executorOptions.map((option) => (
+                  <DropdownMenuItem
+                    key={option.value}
+                    onClick={() => {
+                      const variants = profiles?.[option.value];
+                      const keepCurrentVariant =
+                        variants &&
+                        draft?.executor_profile?.variant &&
+                        variants[draft.executor_profile.variant];
+
+                      const newProfile: ExecutorProfileId = {
+                        executor: option.value as BaseCodingAgent,
+                        variant: keepCurrentVariant
+                          ? draft!.executor_profile!.variant
+                          : null,
+                      };
+                      updateDraft({ executor_profile: newProfile });
+                    }}
+                  >
+                    {option.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {hasVariants ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={cn(
+                      'flex items-center justify-between w-full px-base py-half rounded-sm border border-border bg-secondary',
+                      'text-base text-normal hover:bg-secondary/80 focus:outline-none focus:ring-1 focus:ring-brand'
+                    )}
+                  >
+                    <span className="truncate">
+                      {draft?.executor_profile?.variant
+                        ? toPrettyCase(draft.executor_profile.variant)
+                        : t('settings.general.taskExecution.defaultLabel')}
+                    </span>
+                    <CaretDownIcon className="size-icon-xs ml-2 shrink-0" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                  {Object.keys(selectedAgentProfile).map((variantLabel) => (
+                    <DropdownMenuItem
+                      key={variantLabel}
+                      onClick={() => {
+                        const newProfile: ExecutorProfileId = {
+                          executor: draft!.executor_profile!.executor,
+                          variant: variantLabel,
+                        };
+                        updateDraft({ executor_profile: newProfile });
+                      }}
+                    >
+                      {toPrettyCase(variantLabel)}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : selectedAgentProfile ? (
+              <button
+                disabled
+                className={cn(
+                  'flex items-center justify-between w-full px-base py-half rounded-sm border border-border bg-secondary',
+                  'text-base text-low opacity-50 cursor-not-allowed'
+                )}
+              >
+                <span className="truncate">
+                  {t('settings.general.taskExecution.defaultLabel')}
+                </span>
+              </button>
+            ) : null}
+          </div>
+          <AgentAvailabilityIndicator availability={agentAvailability} />
+        </SettingsField>
       </SettingsCard>
 
       {/* Git */}

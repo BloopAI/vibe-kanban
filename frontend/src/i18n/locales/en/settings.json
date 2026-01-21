@@ -302,6 +302,8 @@
         "deleteTitle": "Cannot delete the last configuration",
         "deleteButton": "Delete {{name}}",
         "deleteText": "Delete",
+        "makeDefault": "Make Default",
+        "isDefault": "Default",
         "jsonLabel": "Agent Configuration (JSON)",
         "jsonPlaceholder": "Loading profiles...",
         "jsonLoading": "Loading...",

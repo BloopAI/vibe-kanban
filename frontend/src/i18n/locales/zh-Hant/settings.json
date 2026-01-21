@@ -302,6 +302,8 @@
         "deleteTitle": "無法刪除最後一個設定",
         "deleteButton": "刪除 {{name}}",
         "deleteText": "刪除",
+        "makeDefault": "設為預設",
+        "isDefault": "預設",
         "jsonLabel": "代理設定（JSON）",
         "jsonPlaceholder": "載入設定檔中...",
         "jsonLoading": "載入中...",

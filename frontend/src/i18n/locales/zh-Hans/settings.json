@@ -302,6 +302,8 @@
         "deleteTitle": "无法删除最后一个配置",
         "deleteButton": "删除 {{name}}",
         "deleteText": "删除",
+        "makeDefault": "设为默认",
+        "isDefault": "默认",
         "jsonLabel": "代理配置（JSON）",
         "jsonPlaceholder": "加载配置文件中...",
         "jsonLoading": "加载中...",
