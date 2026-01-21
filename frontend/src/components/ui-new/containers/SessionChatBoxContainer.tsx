@@ -499,7 +499,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       return;
     editRetryMutation.mutate({
       message: localMessage,
-      executorProfileId: executorProfileId,
+      executor: executorProfileId.executor,
+      variant: executorProfileId.variant,
       executionProcessId: editContext.activeEdit.processId,
       branchStatus,
       processes,

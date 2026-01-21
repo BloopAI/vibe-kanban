@@ -7,12 +7,13 @@ import {
 import type {
   RepoBranchStatus,
   ExecutionProcess,
-  ExecutorProfileId,
+  BaseCodingAgent,
 } from 'shared/types';
 
 export interface MessageEditRetryParams {
   message: string;
-  executorProfileId: ExecutorProfileId;
+  executor: BaseCodingAgent;
+  variant: string | null;
   executionProcessId: string;
   branchStatus: RepoBranchStatus[] | undefined;
   processes: ExecutionProcess[] | undefined;
@@ -33,7 +34,8 @@ export function useMessageEditRetry(
   return useMutation({
     mutationFn: async ({
       message,
-      executorProfileId,
+      executor,
+      variant,
       executionProcessId,
       branchStatus,
       processes,
@@ -56,7 +58,7 @@ export function useMessageEditRetry(
       // Send the retry request with the edited message
       await sessionsApi.followUp(sessionId, {
         prompt: message,
-        executor_profile_id: executorProfileId,
+        executor_profile_id: { executor, variant },
         retry_process_id: executionProcessId,
         force_when_dirty: modalResult.forceWhenDirty ?? false,
         perform_git_reset: modalResult.performGitReset ?? true,

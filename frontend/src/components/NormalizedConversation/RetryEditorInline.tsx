@@ -9,7 +9,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Loader2, Paperclip, Send, X } from 'lucide-react';
 import { imagesApi } from '@/lib/api';
 import type { WorkspaceWithSession } from '@/types/attempt';
-import type { ExecutorProfileId } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
@@ -42,7 +41,7 @@ export function RetryEditorInline({
   const sessionId = attempt.session?.id;
 
   // Extract profile from the process being retried
-  const processProfileId = useMemo<ExecutorProfileId | null>(() => {
+  const processProfileId = useMemo(() => {
     const process = attemptData.processes?.find(
       (p) => p.id === executionProcessId
     );
@@ -50,18 +49,10 @@ export function RetryEditorInline({
     return extractProfileFromAction(process.executor_action);
   }, [attemptData.processes, executionProcessId]);
 
-  const processVariant = processProfileId?.variant ?? null;
-
   const { selectedVariant, setSelectedVariant } = useVariant({
-    processVariant,
+    processVariant: processProfileId?.variant ?? null,
     scratchVariant: undefined,
   });
-
-  // Build the executorProfileId from the process executor and selected variant
-  const executorProfileId = useMemo<ExecutorProfileId | null>(() => {
-    if (!processProfileId) return null;
-    return { executor: processProfileId.executor, variant: selectedVariant };
-  }, [processProfileId, selectedVariant]);
 
   const retryMutation = useRetryProcess(
     sessionId ?? '',
@@ -71,18 +62,19 @@ export function RetryEditorInline({
 
   const isSending = retryMutation.isPending;
   const canSend =
-    !isAttemptRunning && !!message.trim() && !!sessionId && !!executorProfileId;
+    !isAttemptRunning && !!message.trim() && !!sessionId && !!processProfileId;
 
   const onCancel = () => {
     onCancelled?.();
   };
 
   const onSend = useCallback(() => {
-    if (!canSend || !executorProfileId) return;
+    if (!canSend || !processProfileId) return;
     setSendError(null);
     retryMutation.mutate({
       message,
-      executorProfileId,
+      executor: processProfileId.executor,
+      variant: selectedVariant,
       executionProcessId,
       branchStatus,
       processes: attemptData.processes,
@@ -91,7 +83,8 @@ export function RetryEditorInline({
     canSend,
     retryMutation,
     message,
-    executorProfileId,
+    processProfileId,
+    selectedVariant,
     executionProcessId,
     branchStatus,
     attemptData.processes,
