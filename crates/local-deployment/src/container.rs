@@ -19,6 +19,7 @@ use db::{
         execution_process_repo_state::ExecutionProcessRepoState,
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
+        session::Session,
         task::{Task, TaskStatus},
         workspace::Workspace,
         workspace_repo::WorkspaceRepo,
@@ -820,6 +821,29 @@ impl LocalContainerService {
         queued_data: &DraftFollowUpData,
     ) -> Result<ExecutionProcess, ContainerError> {
         let executor_profile_id = queued_data.executor_profile_id.clone();
+
+        // Validate executor matches session if session has prior executions
+        if let Some(existing_profile) =
+            ExecutionProcess::latest_executor_profile_for_session(&self.db.pool, ctx.session.id)
+                .await?
+        {
+            if existing_profile.executor != executor_profile_id.executor {
+                return Err(ContainerError::ExecutorMismatch {
+                    expected: existing_profile.executor.to_string(),
+                    actual: executor_profile_id.executor.to_string(),
+                });
+            }
+        }
+
+        // Set session.executor if not already set
+        if ctx.session.executor.is_none() {
+            Session::update_executor(
+                &self.db.pool,
+                ctx.session.id,
+                &executor_profile_id.executor.to_string(),
+            )
+            .await?;
+        }
 
         // Get latest agent session ID for session continuity (from coding agent turns)
         let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(
