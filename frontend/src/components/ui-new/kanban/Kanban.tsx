@@ -198,7 +198,7 @@ export const KanbanCardContent = ({
 
       {/* Row 3: Description (optional, truncated) */}
       {description && (
-        <p className="text-sm text-low m-0 leading-relaxed line-clamp-2">
+        <p className="text-sm text-low m-0 leading-relaxed line-clamp-base">
           {description}
         </p>
       )}
@@ -240,7 +240,7 @@ export const KanbanBoard = ({ id, children, className }: KanbanBoardProps) => {
   return (
     <div
       className={cn(
-        'flex min-h-40 flex-col',
+        'flex flex-col min-h-40',
         isOver ? 'outline-primary' : 'outline-black',
         className
       )}
@@ -299,7 +299,7 @@ export const KanbanCard = ({
   return (
     <Card
       className={cn(
-        'p-base outline-none border-b flex-col',
+        'p-base outline-none flex-col border -mt-[1px] -mx-[1px] bg-secondary',
         isDragging && 'cursor-grabbing',
         isOpen && 'ring-2 ring-secondary-foreground ring-inset',
         className
@@ -352,7 +352,7 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
   return (
     <Card
       className={cn(
-        'sticky top-0 z-20 flex shrink-0 items-center gap-2 p-3 border-b border-dashed flex gap-2',
+        'sticky top-0 z-20 flex shrink-0 items-center gap-base p-base flex gap-base',
         'bg-background',
         props.className
       )}
@@ -360,7 +360,7 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
         backgroundImage: `linear-gradient(hsl(var(${props.color}) / 0.03), hsl(var(${props.color}) / 0.03))`,
       }}
     >
-      <span className="flex-1 flex items-center gap-2">
+      <span className="flex-1 flex items-center gap-base">
         <div
           className="h-2 w-2 rounded-full"
           style={{ backgroundColor: `hsl(var(${props.color}))` }}
@@ -472,7 +472,7 @@ export const KanbanProvider = ({
     >
       <div
         className={cn(
-          'inline-grid grid-flow-col auto-cols-[minmax(200px,400px)] divide-x border-x items-stretch min-h-full',
+          'inline-grid grid-flow-col auto-cols-[minmax(200px,400px)] divide-x border-t border-x items-stretch min-h-full',
           className
         )}
       >
