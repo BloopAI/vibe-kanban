@@ -70,6 +70,10 @@ export interface DecoratorNodeConfig<T> {
   // importDOM receives the createNode function to avoid circular reference issues
   importDOM?: (createNode: (data: T) => LexicalNode) => DOMConversionMap | null;
   exportDOM?: (data: T) => HTMLElement;
+  // Optional inline styles for the wrapper DOM element (for cursor spacing)
+  domStyle?: Partial<CSSStyleDeclaration>;
+  // If false, arrow keys skip over the node instead of selecting it (default: true)
+  keyboardSelectable?: boolean;
 }
 
 export interface DecoratorNodeResult<T> {
@@ -92,6 +96,8 @@ export function createDecoratorNode<T>(
     component: UserComponent,
     importDOM: importDOMConfig,
     exportDOM,
+    domStyle,
+    keyboardSelectable = true,
   } = config;
 
   // Holder for createNode function - needs to be assigned after class definition
@@ -118,7 +124,11 @@ export function createDecoratorNode<T>(
     }
 
     createDOM(): HTMLElement {
-      return document.createElement('span');
+      const el = document.createElement('span');
+      if (domStyle) {
+        Object.assign(el.style, domStyle);
+      }
+      return el;
     }
 
     updateDOM(): false {
@@ -172,7 +182,7 @@ export function createDecoratorNode<T>(
     }
 
     isKeyboardSelectable(): boolean {
-      return true;
+      return keyboardSelectable;
     }
   }
 

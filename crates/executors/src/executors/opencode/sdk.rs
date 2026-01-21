@@ -74,6 +74,7 @@ pub struct RunConfig {
     pub prompt: String,
     pub resume_session_id: Option<String>,
     pub model: Option<String>,
+    pub model_variant: Option<String>,
     pub agent: Option<String>,
     pub approvals: Option<Arc<dyn ExecutorApprovalService>>,
     pub auto_approve: bool,
@@ -96,6 +97,8 @@ struct PromptRequest {
     model: Option<ModelSpec>,
     #[serde(skip_serializing_if = "Option::is_none")]
     agent: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    variant: Option<String>,
     parts: Vec<TextPartInput>,
 }
 
@@ -219,6 +222,7 @@ async fn run_session_inner(
         },
         &config.prompt,
         model.clone(),
+        config.model_variant.clone(),
         config.agent.clone(),
         &mut control_rx,
         cancel.clone(),
@@ -268,6 +272,7 @@ async fn run_prompt_with_control(
     ctx: SessionRequestContext<'_>,
     prompt_text: &str,
     model: Option<ModelSpec>,
+    model_variant: Option<String>,
     agent: Option<String>,
     control_rx: &mut mpsc::UnboundedReceiver<ControlEvent>,
     cancel: CancellationToken,
@@ -282,6 +287,7 @@ async fn run_prompt_with_control(
         ctx.session_id,
         prompt_text,
         model,
+        model_variant,
         agent,
     ));
 
@@ -430,6 +436,7 @@ async fn fork_session(
     Ok(session.id)
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn prompt(
     client: &reqwest::Client,
     base_url: &str,
@@ -437,11 +444,13 @@ async fn prompt(
     session_id: &str,
     prompt: &str,
     model: Option<ModelSpec>,
+    model_variant: Option<String>,
     agent: Option<String>,
 ) -> Result<(), ExecutorError> {
     let req = PromptRequest {
         model,
         agent,
+        variant: model_variant,
         parts: vec![TextPartInput {
             r#type: "text",
             text: prompt.to_string(),

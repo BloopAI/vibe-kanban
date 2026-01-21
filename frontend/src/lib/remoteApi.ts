@@ -14,8 +14,6 @@ export const makeRequest = async (path: string, options: RequestInit = {}) => {
   }
   headers.set('Authorization', `Bearer ${tokenRes.access_token}`);
 
-  console.log('VITE_VK_SHARED_API_BASE:', REMOTE_API_URL);
-
   return fetch(`${REMOTE_API_URL}${path}`, {
     ...options,
     headers,

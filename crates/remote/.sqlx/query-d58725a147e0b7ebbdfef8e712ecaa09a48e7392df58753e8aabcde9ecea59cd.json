@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE issue_comments\n            SET\n                message = $1,\n                updated_at = $2\n            WHERE id = $3\n            RETURNING\n                id          AS \"id!: Uuid\",\n                issue_id    AS \"issue_id!: Uuid\",\n                author_id   AS \"author_id!: Uuid\",\n                message     AS \"message!\",\n                created_at  AS \"created_at!: DateTime<Utc>\",\n                updated_at  AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "query": "\n            UPDATE issue_comments\n            SET\n                message = COALESCE($1, message),\n                updated_at = $2\n            WHERE id = $3\n            RETURNING\n                id          AS \"id!: Uuid\",\n                issue_id    AS \"issue_id!: Uuid\",\n                author_id   AS \"author_id!: Uuid\",\n                message     AS \"message!\",\n                created_at  AS \"created_at!: DateTime<Utc>\",\n                updated_at  AS \"updated_at!: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -50,5 +50,5 @@
       false
     ]
   },
-  "hash": "2d3890f90eb351e209160db7a1a6374fc3f8987b05c96bb9994a2d22cd1c281b"
+  "hash": "d58725a147e0b7ebbdfef8e712ecaa09a48e7392df58753e8aabcde9ecea59cd"
 }

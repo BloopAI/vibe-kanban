@@ -79,7 +79,7 @@ export function ProcessListContainer() {
 
   const searchBar = showSearch && (
     <div
-      className="my-base flex items-center gap-2 shrink-0"
+      className="flex items-center gap-2 shrink-0 mx-base mb-base"
       onKeyDown={handleSearchKeyDown}
     >
       <InputField
@@ -146,8 +146,8 @@ export function ProcessListContainer() {
   );
 
   return (
-    <div className="h-full w-full bg-secondary flex flex-col overflow-hidden p-base">
-      <div className="space-y-0">
+    <div className="flex flex-col flex-1 w-full bg-secondary">
+      <div className="flex-1 overflow-y-auto pt-half px-base">
         {terminalItem}
         {sortedProcesses.map((process) => (
           <ProcessListItem
@@ -165,7 +165,7 @@ export function ProcessListContainer() {
           <p className="text-sm">{t('processes.noProcesses')}</p>
         </div>
       )}
-      {searchBar}
+      <div>{searchBar}</div>
     </div>
   );
 }

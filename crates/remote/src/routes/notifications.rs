@@ -13,6 +13,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::notifications::{Notification, NotificationRepository},
+    entities::UpdateNotificationRequest,
 };
 
 #[derive(Debug, Serialize)]
@@ -36,12 +37,6 @@ pub struct ListNotificationsQuery {
     pub include_dismissed: bool,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct UpdateNotificationRequest {
-    pub seen: Option<bool>,
-    pub dismissed: Option<bool>,
-}
-
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/notifications", get(list_notifications))
@@ -49,7 +44,9 @@ pub fn router() -> Router<AppState> {
         .route("/notifications/mark-all-seen", post(mark_all_seen))
         .route(
             "/notifications/{notification_id}",
-            get(get_notification).patch(update_notification),
+            get(get_notification)
+                .patch(update_notification)
+                .delete(delete_notification),
         )
 }
 
@@ -119,6 +116,44 @@ async fn update_notification(
     Path(notification_id): Path<Uuid>,
     Json(payload): Json<UpdateNotificationRequest>,
 ) -> Result<Json<Notification>, ErrorResponse> {
+    let existing = NotificationRepository::find_by_id(state.pool(), notification_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %notification_id, "failed to load notification");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to load notification",
+            )
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "notification not found"))?;
+
+    if existing.user_id != ctx.user.id {
+        return Err(ErrorResponse::new(
+            StatusCode::NOT_FOUND,
+            "notification not found",
+        ));
+    }
+
+    let notification = NotificationRepository::update(state.pool(), notification_id, payload.seen)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to update notification");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?;
+
+    Ok(Json(notification))
+}
+
+#[instrument(
+    name = "notifications.delete",
+    skip(state, ctx),
+    fields(notification_id = %notification_id, user_id = %ctx.user.id)
+)]
+async fn delete_notification(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(notification_id): Path<Uuid>,
+) -> Result<StatusCode, ErrorResponse> {
     let notification = NotificationRepository::find_by_id(state.pool(), notification_id)
         .await
         .map_err(|error| {
@@ -137,27 +172,14 @@ async fn update_notification(
         ));
     }
 
-    let mut updated = notification;
+    NotificationRepository::delete(state.pool(), notification_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to delete notification");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?;
 
-    if let Some(true) = payload.seen {
-        updated = NotificationRepository::mark_seen(state.pool(), notification_id)
-            .await
-            .map_err(|error| {
-                tracing::error!(?error, "failed to mark notification as seen");
-                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-            })?;
-    }
-
-    if let Some(true) = payload.dismissed {
-        updated = NotificationRepository::dismiss(state.pool(), notification_id)
-            .await
-            .map_err(|error| {
-                tracing::error!(?error, "failed to dismiss notification");
-                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-            })?;
-    }
-
-    Ok(Json(updated))
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[instrument(

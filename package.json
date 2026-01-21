@@ -1,6 +1,6 @@
 {
   "name": "vibe-kanban",
-  "version": "0.0.157",
+  "version": "0.0.158",
   "private": true,
   "bin": {
     "vibe-kanban": "npx-cli/bin/cli.js"
@@ -32,6 +32,7 @@
     "build:npx": "bash ./local-build.sh",
     "prepack": "pnpm run build:npx",
     "remote:dev": "cd crates/remote && docker compose --env-file .env.remote up --build ; docker compose down -v",
+    "remote:dev:clean": "cd crates/remote && docker compose --env-file .env.remote down -v && docker compose --env-file .env.remote up --build --force-recreate",
     "remote:prepare-db": "cd crates/remote && bash scripts/prepare-db.sh",
     "remote:prepare-db:check": "cd crates/remote && bash scripts/prepare-db.sh --check"
   },

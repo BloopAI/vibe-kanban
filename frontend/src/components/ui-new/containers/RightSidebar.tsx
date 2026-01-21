@@ -138,7 +138,6 @@ export function RightSidebar({
           <GitPanelContainer
             selectedWorkspace={selectedWorkspace}
             repos={repos}
-            diffs={diffs}
           />
         ),
         actions: [],
@@ -235,7 +234,7 @@ export function RightSidebar({
                 defaultExpanded={section.expanded}
                 actions={section.actions}
               >
-                <div className="flex-1 border-t min-h-[200px] w-full">
+                <div className="flex flex-1 border-t min-h-[200px] w-full">
                   {section.content}
                 </div>
               </CollapsibleSectionHeader>

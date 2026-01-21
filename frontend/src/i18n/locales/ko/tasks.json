@@ -1,4 +1,8 @@
 {
+  "dropzone": {
+    "dropImagesHere": "여기에 이미지를 드롭하세요",
+    "supportedFormats": "PNG, JPG, GIF, WebP, SVG 지원"
+  },
   "gitPanel": {
     "create": {
       "warnings": {
@@ -441,6 +445,11 @@
   "todos": {
     "title_one": "Todos ({{count}})",
     "title_other": "Todos ({{count}})"
+  },
+  "todoPopup": {
+    "title": "작업",
+    "progress": "{{completed}}/{{total}} 완료",
+    "noTasks": "작업 없음"
   },
   "toolbar": {
     "actions": "Actions",

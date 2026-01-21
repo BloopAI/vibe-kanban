@@ -79,30 +79,33 @@ CREATE TABLE issues (
 
 -- 9. ISSUE ASSIGNEES (Team members)
 CREATE TABLE issue_assignees (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (issue_id, user_id)
+    UNIQUE (issue_id, user_id)
 );
 
 -- 10. ISSUE FOLLOWERS
 CREATE TABLE issue_followers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    PRIMARY KEY (issue_id, user_id)
+    UNIQUE (issue_id, user_id)
 );
 
--- 11. ISSUE DEPENDENCIES (Blocked By)
--- NOTE: Application logic must validate against circular dependencies before inserting.
-CREATE TABLE issue_dependencies (
-    blocking_issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
-    blocked_issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+-- 11. ISSUE RELATIONSHIPS
+-- Links issues with different relationship types (blocking, related, duplicate)
+CREATE TYPE issue_relationship_type AS ENUM ('blocking', 'related', 'has_duplicate');
 
+CREATE TABLE issue_relationships (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    related_issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    relationship_type issue_relationship_type NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    PRIMARY KEY (blocking_issue_id, blocked_issue_id),
-    -- Prevent an issue from blocking itself
-    CONSTRAINT no_self_block CHECK (blocking_issue_id != blocked_issue_id)
+    UNIQUE (issue_id, related_issue_id, relationship_type),
+    CHECK (issue_id != related_issue_id)
 );
 
 -- 12. TAGS
@@ -116,9 +119,10 @@ CREATE TABLE tags (
 );
 
 CREATE TABLE issue_tags (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
     tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-    PRIMARY KEY (issue_id, tag_id)
+    UNIQUE (issue_id, tag_id)
 );
 
 -- 13. COMMENTS

@@ -152,11 +152,19 @@ impl ClaudeAgentClient {
     pub async fn on_hook_callback(
         &self,
         callback_id: String,
-        _input: serde_json::Value,
+        input: serde_json::Value,
         _tool_use_id: Option<String>,
     ) -> Result<serde_json::Value, ExecutorError> {
         // Stop hook git check - uses `decision` (approve/block) and `reason` fields
         if callback_id == STOP_GIT_CHECK_CALLBACK_ID {
+            // If stop_hook_active is true, we already showed the reminder - just approve
+            if input
+                .get("stop_hook_active")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+            {
+                return Ok(serde_json::json!({"decision": "approve"}));
+            }
             return Ok(check_git_status(&self.repo_context).await);
         }
 
@@ -193,8 +201,7 @@ impl ClaudeAgentClient {
         }
     }
 
-    pub async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError> {
-        // Forward all non-control messages to stdout
+    pub async fn log_message(&self, line: &str) -> Result<(), ExecutorError> {
         self.log_writer.log_raw(line).await
     }
 }

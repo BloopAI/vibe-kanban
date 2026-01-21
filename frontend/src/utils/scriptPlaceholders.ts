@@ -27,14 +27,11 @@ REM This runs after coding agent execution - only if changes were made`,
 class UnixScriptPlaceholderStrategy implements ScriptPlaceholderStrategy {
   getPlaceholders(): ScriptPlaceholders {
     return {
-      setup: `#!/bin/bash
-npm install
+      setup: `npm install
 # Add any setup commands here...`,
-      dev: `#!/bin/bash
-npm run dev
+      dev: `npm run dev
 # Add dev server start command here...`,
-      cleanup: `#!/bin/bash
-# Add cleanup commands here...
+      cleanup: `# Add cleanup commands here...
 # This runs after coding agent execution - only if changes were made`,
     };
   }

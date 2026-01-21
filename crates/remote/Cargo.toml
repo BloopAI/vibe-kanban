@@ -1,6 +1,6 @@
 [package]
 name = "remote"
-version = "0.0.157"
+version = "0.0.158"
 edition = "2024"
 publish = false
 
@@ -49,3 +49,4 @@ aws-credential-types = "1.2"
 tempfile = "3"
 tar = "0.4"
 flate2 = "1.0"
+paste = "1.0"

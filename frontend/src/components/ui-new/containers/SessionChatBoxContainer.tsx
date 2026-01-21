@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { useDropzone } from 'react-dropzone';
 import {
   type Session,
   type ToolStatus,
@@ -187,7 +188,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const isInEditMode = editContext.isInEditMode;
 
   // Get todos from entries
-  const { inProgressTodo } = useTodos(entries);
+  const { todos, inProgressTodo } = useTodos(entries);
 
   // Review comments context (optional - only available when ReviewProvider wraps this)
   const reviewContext = useReviewOptional();
@@ -283,6 +284,26 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   const { uploadFiles, localImages, clearUploadedImages } =
     useSessionAttachments(workspaceId, handleInsertMarkdown);
+
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const imageFiles = acceptedFiles.filter((f) =>
+        f.type.startsWith('image/')
+      );
+      if (imageFiles.length > 0) {
+        uploadFiles(imageFiles);
+      }
+    },
+    [uploadFiles]
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { 'image/*': [] },
+    disabled: mode === 'placeholder' || isAttemptRunning,
+    noClick: true,
+    noKeyboard: true,
+  });
 
   // Executor/variant selection
   const {
@@ -668,6 +689,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       }}
       error={sendError}
       agent={latestProfileId?.executor}
+      todos={todos}
       inProgressTodo={inProgressTodo}
       executor={
         isNewSessionMode
@@ -718,6 +740,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
           : undefined
       }
       localImages={localImages}
+      dropzone={{ getRootProps, getInputProps, isDragActive }}
     />
   );
 }

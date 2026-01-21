@@ -5,19 +5,29 @@ use remote::{
         issue_assignees::IssueAssignee,
         issue_comment_reactions::IssueCommentReaction,
         issue_comments::IssueComment,
-        issue_dependencies::IssueDependency,
         issue_followers::IssueFollower,
+        issue_relationships::IssueRelationship,
         issue_tags::IssueTag,
         issues::Issue,
         notifications::{Notification, NotificationType},
         project_statuses::ProjectStatus,
         projects::Project,
         tags::Tag,
-        types::{IssuePriority, WorkspacePrStatus},
+        types::{IssuePriority, IssueRelationshipType, WorkspacePrStatus},
         users::UserData,
         workspaces::Workspace,
     },
-    shapes::all_shapes,
+    // Import from new unified entities module
+    entities::{
+        CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
+        CreateIssueFollowerRequest, CreateIssueRelationshipRequest, CreateIssueRequest,
+        CreateIssueTagRequest, CreateNotificationRequest, CreateProjectRequest,
+        CreateProjectStatusRequest, CreateTagRequest, UpdateIssueAssigneeRequest,
+        UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueFollowerRequest,
+        UpdateIssueRelationshipRequest, UpdateIssueRequest, UpdateIssueTagRequest,
+        UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest,
+        UpdateTagRequest, all_entities, all_shapes,
+    },
 };
 use ts_rs::TS;
 
@@ -78,12 +88,36 @@ fn export_shapes() -> String {
         IssueAssignee::decl(),
         IssueFollower::decl(),
         IssueTag::decl(),
-        IssueDependency::decl(),
+        IssueRelationship::decl(),
+        IssueRelationshipType::decl(),
         IssueComment::decl(),
         IssueCommentReaction::decl(),
         IssuePriority::decl(),
         WorkspacePrStatus::decl(),
         UserData::decl(),
+        // Mutation request types
+        CreateProjectRequest::decl(),
+        UpdateProjectRequest::decl(),
+        CreateNotificationRequest::decl(),
+        UpdateNotificationRequest::decl(),
+        CreateTagRequest::decl(),
+        UpdateTagRequest::decl(),
+        CreateProjectStatusRequest::decl(),
+        UpdateProjectStatusRequest::decl(),
+        CreateIssueRequest::decl(),
+        UpdateIssueRequest::decl(),
+        CreateIssueAssigneeRequest::decl(),
+        UpdateIssueAssigneeRequest::decl(),
+        CreateIssueFollowerRequest::decl(),
+        UpdateIssueFollowerRequest::decl(),
+        CreateIssueTagRequest::decl(),
+        UpdateIssueTagRequest::decl(),
+        CreateIssueRelationshipRequest::decl(),
+        UpdateIssueRelationshipRequest::decl(),
+        CreateIssueCommentRequest::decl(),
+        UpdateIssueCommentRequest::decl(),
+        CreateIssueCommentReactionRequest::decl(),
+        UpdateIssueCommentReactionRequest::decl(),
     ];
 
     for decl in type_decls {
@@ -103,7 +137,9 @@ fn export_shapes() -> String {
     output.push_str("  readonly table: string;\n");
     output.push_str("  readonly params: readonly string[];\n");
     output.push_str("  readonly url: string;\n");
-    output.push_str("  readonly _type: T;  // Phantom field for type inference\n");
+    output.push_str(
+        "  readonly _type: T;  // Phantom field for type inference (not present at runtime)\n",
+    );
     output.push_str("}\n\n");
 
     // Helper function
@@ -113,7 +149,7 @@ fn export_shapes() -> String {
     output.push_str("  params: readonly string[],\n");
     output.push_str("  url: string\n");
     output.push_str("): ShapeDefinition<T> {\n");
-    output.push_str("  return { table, params, url, _type: null as unknown as T };\n");
+    output.push_str("  return { table, params, url } as ShapeDefinition<T>;\n");
     output.push_str("}\n\n");
 
     // Generate individual shape definitions
@@ -128,7 +164,7 @@ fn export_shapes() -> String {
             .join(", ");
 
         output.push_str(&format!(
-            "export const {}_SHAPE = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '{}'\n);\n\n",
+            "export const {}_SHAPE = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '/v1{}'\n);\n\n",
             const_name,
             shape.ts_type_name(),
             shape.table(),
@@ -137,21 +173,100 @@ fn export_shapes() -> String {
         ));
     }
 
-    // Generate ALL_SHAPES array
-    output.push_str("// All shapes as an array for iteration and factory building\n");
-    output.push_str("export const ALL_SHAPES = [\n");
-    for shape in &shapes {
-        let const_name = shape.table().to_uppercase();
-        output.push_str(&format!("  {}_SHAPE,\n", const_name));
+    // Generate EntityDefinition interface for SDK generation
+    output.push_str(
+        "// =============================================================================\n",
+    );
+    output.push_str("// Entity Definitions for SDK Generation\n");
+    output.push_str(
+        "// =============================================================================\n\n",
+    );
+
+    output.push_str("// Scope enum matching Rust\n");
+    output.push_str("export type Scope = 'Organization' | 'Project' | 'Issue' | 'Comment';\n\n");
+
+    output.push_str("// Entity definition interface\n");
+    output.push_str(
+        "export interface EntityDefinition<TRow, TCreate = unknown, TUpdate = unknown> {\n",
+    );
+    output.push_str("  readonly name: string;\n");
+    output.push_str("  readonly table: string;\n");
+    output.push_str("  readonly mutationScope: Scope | null;\n");
+    output.push_str("  readonly shapeScope: Scope | null;\n");
+    output.push_str("  readonly shape: ShapeDefinition<TRow> | null;\n");
+    output.push_str("  readonly mutations: {\n");
+    output.push_str("    readonly url: string;\n");
+    output.push_str("    readonly _createType: TCreate;  // Phantom (not present at runtime)\n");
+    output.push_str("    readonly _updateType: TUpdate;  // Phantom (not present at runtime)\n");
+    output.push_str("  } | null;\n");
+    output.push_str("}\n\n");
+
+    // Generate individual entity definitions
+    let entities = all_entities();
+    output.push_str("// Individual entity definitions\n");
+    for entity in &entities {
+        let const_name = to_screaming_snake_case(entity.name());
+        let shape_name = format!("{}_SHAPE", entity.table().to_uppercase());
+
+        let mutation_scope = entity
+            .mutation_scope()
+            .map(|s| format!("'{:?}'", s))
+            .unwrap_or_else(|| "null".to_string());
+        let shape_scope = entity
+            .shape_scope()
+            .map(|s| format!("'{:?}'", s))
+            .unwrap_or_else(|| "null".to_string());
+
+        let has_mutations = entity.mutation_scope().is_some() && !entity.fields().is_empty();
+        let mutations_str = if has_mutations {
+            format!(
+                "{{ url: '/v1/{table}' }} as EntityDefinition<{ts_type}, Create{name}Request, Update{name}Request>['mutations']",
+                table = entity.table(),
+                ts_type = entity.ts_type_name(),
+                name = entity.name()
+            )
+        } else {
+            "null".to_string()
+        };
+
+        output.push_str(&format!(
+            "export const {const_name}_ENTITY: EntityDefinition<{ts_type}{create_update}> = {{\n",
+            const_name = const_name,
+            ts_type = entity.ts_type_name(),
+            create_update = if has_mutations {
+                format!(
+                    ", Create{}Request, Update{}Request",
+                    entity.name(),
+                    entity.name()
+                )
+            } else {
+                "".to_string()
+            }
+        ));
+        output.push_str(&format!("  name: '{}',\n", entity.name()));
+        output.push_str(&format!("  table: '{}',\n", entity.table()));
+        output.push_str(&format!("  mutationScope: {},\n", mutation_scope));
+        output.push_str(&format!("  shapeScope: {},\n", shape_scope));
+        output.push_str(&format!("  shape: {},\n", shape_name));
+        output.push_str(&format!("  mutations: {},\n", mutations_str));
+        output.push_str("};\n\n");
     }
-    output.push_str("] as const;\n\n");
 
-    // Type helpers
-    output.push_str("// Type helper to extract row type from a shape\n");
-    output
-        .push_str("export type ShapeRowType<S extends ShapeDefinition<unknown>> = S['_type'];\n\n");
-    output.push_str("// Union of all shape types\n");
-    output.push_str("export type AnyShape = typeof ALL_SHAPES[number];\n");
+    // Type helpers for entities
+    output.push_str("// Type helper to extract row type from an entity\n");
+    output.push_str("export type EntityRowType<E extends EntityDefinition<unknown>> = E extends EntityDefinition<infer R> ? R : never;\n");
 
     output
+}
+
+/// Convert PascalCase to SCREAMING_SNAKE_CASE
+fn to_screaming_snake_case(s: &str) -> String {
+    let mut result = String::new();
+    for (i, c) in s.chars().enumerate() {
+        if c.is_uppercase() && i > 0 {
+            result.push('_');
+        }
+        result.push(c.to_ascii_uppercase());
+    }
+    result
 }

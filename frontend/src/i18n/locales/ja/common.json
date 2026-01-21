@@ -205,6 +205,10 @@
     "defaultConfirm": "確認",
     "defaultCancel": "キャンセル"
   },
+  "dialogs": {
+    "selectGitRepository": "Gitリポジトリを選択",
+    "chooseExistingRepo": "ファイルシステムから既存のリポジトリを選択してください"
+  },
   "empty": {
     "noChanges": "表示する変更がありません"
   },

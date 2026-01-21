@@ -1,4 +1,8 @@
 {
+  "dropzone": {
+    "dropImagesHere": "将图片拖放到这里",
+    "supportedFormats": "支持 PNG、JPG、GIF、WebP、SVG 格式"
+  },
   "gitPanel": {
     "create": {
       "warnings": {
@@ -230,6 +234,11 @@
   "todos": {
     "title_one": "待办事项（{{count}}）",
     "title_other": "待办事项（{{count}}）"
+  },
+  "todoPopup": {
+    "title": "任务",
+    "progress": "{{completed}}/{{total}} 已完成",
+    "noTasks": "暂无任务"
   },
   "projects": {
     "create": {

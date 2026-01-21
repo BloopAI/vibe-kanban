@@ -79,10 +79,16 @@ impl PtyService {
             } else if shell_name == "cmd.exe" {
                 // cmd.exe: no special args needed
             } else {
-                // Unix shells (bash, zsh, etc.): skip loading rc files
-                cmd.arg("-f");
-                cmd.env("PS1", "$ "); // Bash prompt
-                cmd.env("PROMPT", "$ "); // Zsh prompt
+                // Unix shells
+                cmd.env("VIBE_KANBAN_TERMINAL", "1");
+
+                if shell_name == "bash" {
+                    cmd.env("PROMPT_COMMAND", r#"PS1='$ '; unset PROMPT_COMMAND"#);
+                } else if shell_name == "zsh" {
+                    // PROMPT is set after spawning
+                } else {
+                    cmd.env("PS1", "$ ");
+                }
             }
 
             cmd.env("TERM", "xterm-256color");
@@ -93,10 +99,17 @@ impl PtyService {
                 .spawn_command(cmd)
                 .map_err(|e| PtyError::CreateFailed(e.to_string()))?;
 
-            let writer = pty_pair
+            let mut writer = pty_pair
                 .master
                 .take_writer()
                 .map_err(|e| PtyError::CreateFailed(e.to_string()))?;
+
+            if shell_name == "zsh" {
+                let _ = writer.write_all(b" PROMPT='$ '; RPROMPT=''\n");
+                let _ = writer.flush();
+                let _ = writer.write_all(b"\x0c");
+                let _ = writer.flush();
+            }
 
             let mut reader = pty_pair
                 .master

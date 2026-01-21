@@ -1365,7 +1365,7 @@ checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
 
 [[package]]
 name = "db"
-version = "0.0.157"
+version = "0.0.158"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1395,7 +1395,7 @@ dependencies = [
 
 [[package]]
 name = "deployment"
-version = "0.0.157"
+version = "0.0.158"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1784,7 +1784,7 @@ dependencies = [
 
 [[package]]
 name = "executors"
-version = "0.0.157"
+version = "0.0.158"
 dependencies = [
  "agent-client-protocol",
  "async-trait",
@@ -3011,7 +3011,7 @@ checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
 
 [[package]]
 name = "local-deployment"
-version = "0.0.157"
+version = "0.0.158"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4138,7 +4138,7 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
 name = "remote"
-version = "0.0.157"
+version = "0.0.158"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -4155,6 +4155,7 @@ dependencies = [
  "hmac",
  "ipnetwork",
  "jsonwebtoken",
+ "paste",
  "rand 0.9.2",
  "reqwest",
  "rustls",
@@ -4225,7 +4226,7 @@ dependencies = [
 
 [[package]]
 name = "review"
-version = "0.0.157"
+version = "0.0.158"
 dependencies = [
  "anyhow",
  "chrono",
@@ -4845,7 +4846,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.0.157"
+version = "0.0.158"
 dependencies = [
  "anyhow",
  "axum",
@@ -4893,7 +4894,7 @@ dependencies = [
 
 [[package]]
 name = "services"
-version = "0.0.157"
+version = "0.0.158"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -6068,7 +6069,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
-version = "0.0.157"
+version = "0.0.158"
 dependencies = [
  "axum",
  "bytes",

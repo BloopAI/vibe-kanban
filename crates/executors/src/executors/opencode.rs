@@ -34,6 +34,8 @@ pub struct Opencode {
     pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub variant: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none", alias = "agent")]
     pub mode: Option<String>,
     /// Auto-approve agent actions
@@ -110,6 +112,7 @@ impl Opencode {
             prompt: combined_prompt,
             resume_session_id: resume_session.map(|s| s.to_string()),
             model: self.model.clone(),
+            model_variant: self.variant.clone(),
             agent: self.mode.clone(),
             approvals,
             auto_approve: self.auto_approve,

@@ -1,10 +1,8 @@
 use axum::{
-    Json, Router,
+    Json,
     extract::{Extension, Path, Query, State},
     http::StatusCode,
-    routing::get,
 };
-use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -12,64 +10,33 @@ use super::{error::ErrorResponse, organization_members::ensure_member_access};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{
-        project_statuses::ProjectStatusRepository,
-        projects::{Project, ProjectRepository},
-        tags::TagRepository,
+    db::projects::{Project, ProjectRepository},
+    define_mutation_router,
+    entities::{
+        CreateProjectRequest, ListProjectsQuery, ListProjectsResponse, UpdateProjectRequest,
     },
+    mutation_types::{DeleteResponse, MutationResponse},
 };
 
-#[derive(Debug, Serialize)]
-pub struct ListProjectsResponse {
-    pub projects: Vec<Project>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ProjectsQuery {
-    organization_id: Uuid,
-}
-
-#[derive(Debug, Deserialize)]
-struct CreateProjectRequest {
-    organization_id: Uuid,
-    name: String,
-    color: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct UpdateProjectRequest {
-    name: String,
-    color: String,
-}
-
-pub fn router() -> Router<AppState> {
-    Router::new()
-        .route("/projects", get(list_projects).post(create_project))
-        .route(
-            "/projects/{project_id}",
-            get(get_project)
-                .patch(update_project)
-                .delete(delete_project),
-        )
-}
+// Generate router that references handlers below
+define_mutation_router!(Project, table: "projects");
 
 #[instrument(
     name = "projects.list_projects",
-    skip(state, ctx, params),
-    fields(org_id = %params.organization_id, user_id = %ctx.user.id)
+    skip(state, ctx),
+    fields(organization_id = %query.organization_id, user_id = %ctx.user.id)
 )]
 async fn list_projects(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Query(params): Query<ProjectsQuery>,
+    Query(query): Query<ListProjectsQuery>,
 ) -> Result<Json<ListProjectsResponse>, ErrorResponse> {
-    let target_org = params.organization_id;
-    ensure_member_access(state.pool(), target_org, ctx.user.id).await?;
+    ensure_member_access(state.pool(), query.organization_id, ctx.user.id).await?;
 
-    let projects = ProjectRepository::list_by_organization(state.pool(), target_org)
+    let projects = ProjectRepository::list_by_organization(state.pool(), query.organization_id)
         .await
         .map_err(|error| {
-            tracing::error!(?error, org_id = %target_org, "failed to list remote projects");
+            tracing::error!(?error, organization_id = %query.organization_id, "failed to list projects");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list projects")
         })?;
 
@@ -102,69 +69,42 @@ async fn get_project(
 #[instrument(
     name = "projects.create_project",
     skip(state, ctx, payload),
-    fields(user_id = %ctx.user.id, org_id = %payload.organization_id)
+    fields(organization_id = %payload.organization_id, user_id = %ctx.user.id)
 )]
 async fn create_project(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateProjectRequest>,
-) -> Result<Json<Project>, ErrorResponse> {
-    let CreateProjectRequest {
-        organization_id,
-        name,
-        color,
-    } = payload;
+) -> Result<Json<MutationResponse<Project>>, ErrorResponse> {
+    ensure_member_access(state.pool(), payload.organization_id, ctx.user.id).await?;
 
-    ensure_member_access(state.pool(), organization_id, ctx.user.id).await?;
-
-    let mut tx = state.pool().begin().await.map_err(|error| {
-        tracing::error!(?error, "failed to begin transaction");
+    let response = ProjectRepository::create_with_defaults(
+        state.pool(),
+        payload.id,
+        payload.organization_id,
+        payload.name,
+        payload.color,
+    )
+    .await
+    .map_err(|error| {
+        tracing::error!(?error, "failed to create project");
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    let project = ProjectRepository::create(&mut *tx, organization_id, name, color)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, "failed to create remote project");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-        })?;
-
-    if let Err(error) = TagRepository::create_default_tags(&mut *tx, project.id).await {
-        tracing::error!(?error, project_id = %project.id, "failed to create default tags");
-        return Err(ErrorResponse::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal server error",
-        ));
-    }
-
-    if let Err(error) = ProjectStatusRepository::create_default_statuses(&mut *tx, project.id).await
-    {
-        tracing::error!(?error, project_id = %project.id, "failed to create default statuses");
-        return Err(ErrorResponse::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal server error",
-        ));
-    }
-
-    tx.commit().await.map_err(|error| {
-        tracing::error!(?error, "failed to commit transaction");
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-    })?;
-
-    Ok(Json(project))
+    Ok(Json(response))
 }
 
 #[instrument(
     name = "projects.update_project",
     skip(state, ctx, payload),
-    fields(user_id = %ctx.user.id, project_id = %project_id)
+    fields(project_id = %project_id, user_id = %ctx.user.id)
 )]
 async fn update_project(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
     Json(payload): Json<UpdateProjectRequest>,
-) -> Result<Json<Project>, ErrorResponse> {
+) -> Result<Json<MutationResponse<Project>>, ErrorResponse> {
     let existing = ProjectRepository::find_by_id(state.pool(), project_id)
         .await
         .map_err(|error| {
@@ -175,27 +115,27 @@ async fn update_project(
 
     ensure_member_access(state.pool(), existing.organization_id, ctx.user.id).await?;
 
-    let project = ProjectRepository::update(state.pool(), project_id, payload.name, payload.color)
+    let response = ProjectRepository::update(state.pool(), project_id, payload.name, payload.color)
         .await
         .map_err(|error| {
-            tracing::error!(?error, "failed to update remote project");
+            tracing::error!(?error, "failed to update project");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(Json(project))
+    Ok(Json(response))
 }
 
 #[instrument(
     name = "projects.delete_project",
     skip(state, ctx),
-    fields(user_id = %ctx.user.id, project_id = %project_id)
+    fields(project_id = %project_id, user_id = %ctx.user.id)
 )]
 async fn delete_project(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
-) -> Result<StatusCode, ErrorResponse> {
-    let record = ProjectRepository::find_by_id(state.pool(), project_id)
+) -> Result<Json<DeleteResponse>, ErrorResponse> {
+    let project = ProjectRepository::find_by_id(state.pool(), project_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %project_id, "failed to load project");
@@ -203,14 +143,14 @@ async fn delete_project(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
 
-    ensure_member_access(state.pool(), record.organization_id, ctx.user.id).await?;
+    ensure_member_access(state.pool(), project.organization_id, ctx.user.id).await?;
 
-    ProjectRepository::delete(state.pool(), project_id)
+    let response = ProjectRepository::delete(state.pool(), project_id)
         .await
         .map_err(|error| {
-            tracing::error!(?error, "failed to delete remote project");
+            tracing::error!(?error, "failed to delete project");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(response))
 }

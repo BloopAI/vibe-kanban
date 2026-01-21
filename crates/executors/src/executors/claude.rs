@@ -2471,4 +2471,11 @@ mod tests {
 
         // ToolResult entry is ignored - no third entry
     }
+
+    #[test]
+    fn test_control_request_with_permission_suggestions() {
+        let control_request_json = r#"{"type":"control_request","request_id":"f559d907-b139-475b-addd-79c05591eb99","request":{"subtype":"can_use_tool","tool_name":"Bash","input":{"command":"./gradlew :web:testApi","timeout":300000,"description":"Run API tests"},"permission_suggestions":[{"type":"addRules","rules":[{"toolName":"Bash","ruleContent":"./gradlew :web:testApi:"}],"behavior":"allow","destination":"localSettings"}],"tool_use_id":"toolu_014PR3WXsJfiftSCbjcjEbeM"}}"#;
+        let parsed: ClaudeJson = serde_json::from_str(control_request_json).unwrap();
+        assert!(matches!(parsed, ClaudeJson::ControlRequest { .. }));
+    }
 }
