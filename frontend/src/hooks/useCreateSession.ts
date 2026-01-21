@@ -3,13 +3,14 @@ import { sessionsApi } from '@/lib/api';
 import type {
   Session,
   CreateFollowUpAttempt,
-  ExecutorProfileId,
+  BaseCodingAgent,
 } from 'shared/types';
 
 interface CreateSessionParams {
   workspaceId: string;
   prompt: string;
-  executorProfileId: ExecutorProfileId;
+  executor: BaseCodingAgent;
+  variant: string | null;
 }
 
 /**
@@ -23,7 +24,8 @@ export function useCreateSession() {
     mutationFn: async ({
       workspaceId,
       prompt,
-      executorProfileId,
+      executor,
+      variant,
     }: CreateSessionParams): Promise<Session> => {
       // Step 1: Create the session (executor will be set by follow-up)
       const session = await sessionsApi.create({
@@ -33,7 +35,7 @@ export function useCreateSession() {
       // Step 2: Send the first message as a follow-up (this sets the executor)
       const body: CreateFollowUpAttempt = {
         prompt,
-        executor_profile_id: executorProfileId,
+        executor_profile_id: { executor, variant },
         retry_process_id: null,
         force_when_dirty: null,
         perform_git_reset: null,
