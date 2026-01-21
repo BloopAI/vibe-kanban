@@ -518,7 +518,11 @@ export function AgentsSettingsSection() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <DropdownMenuTriggerButton
-                  label={executorDraft?.executor ? toPrettyCase(executorDraft.executor) : t('settings.agents.selectAgent')}
+                  label={
+                    executorDraft?.executor
+                      ? toPrettyCase(executorDraft.executor)
+                      : t('settings.agents.selectAgent')
+                  }
                   className="w-full justify-between"
                   disabled={!profiles}
                 />
