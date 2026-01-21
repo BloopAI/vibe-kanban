@@ -844,7 +844,6 @@ impl LocalContainerService {
             .into());
         }
 
-        // Set session.executor if not already set
         if ctx.session.executor.is_none() {
             Session::update_executor(
                 &self.db.pool,

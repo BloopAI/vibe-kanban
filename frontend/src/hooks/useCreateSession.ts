@@ -27,12 +27,10 @@ export function useCreateSession() {
       variant,
       executor,
     }: CreateSessionParams): Promise<Session> => {
-      // Step 1: Create the session (executor will be set by follow-up)
       const session = await sessionsApi.create({
         workspace_id: workspaceId,
       });
 
-      // Step 2: Send the first message as a follow-up (this sets the executor)
       const body: CreateFollowUpAttempt = {
         prompt,
         executor_profile_id: { executor, variant },

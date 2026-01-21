@@ -136,7 +136,6 @@ pub async fn follow_up(
         }));
     }
 
-    // Set session.executor if not already set
     if session.executor.is_none() {
         Session::update_executor(pool, session.id, &executor_profile_id.executor.to_string())
             .await?;
