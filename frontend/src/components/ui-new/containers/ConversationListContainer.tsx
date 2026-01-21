@@ -133,10 +133,17 @@ export function ConversationList({ attempt }: ConversationListProps) {
         loadingRef: loadingRef.current,
         pendingLoading: pending.loading,
         entriesCount: pending.entries.length,
-        lastEntryType: pending.entries.length > 0 ? pending.entries[pending.entries.length - 1].type : 'none',
-        lastEntryToolName: pending.entries.length > 0 && pending.entries[pending.entries.length - 1].type === 'NORMALIZED_ENTRY'
-          ? (pending.entries[pending.entries.length - 1] as any).content?.entry_type?.tool_name
-          : 'n/a',
+        lastEntryType:
+          pending.entries.length > 0
+            ? pending.entries[pending.entries.length - 1].type
+            : 'none',
+        lastEntryToolName:
+          pending.entries.length > 0 &&
+          pending.entries[pending.entries.length - 1].type ===
+            'NORMALIZED_ENTRY'
+            ? (pending.entries[pending.entries.length - 1] as any).content
+                ?.entry_type?.tool_name
+            : 'n/a',
       });
 
       if (pending.addType === 'plan' && !loadingRef.current) {
