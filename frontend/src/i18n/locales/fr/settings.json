@@ -270,6 +270,7 @@
       "title": "Configurations des agents de codage",
       "description": "Personnalisez le comportement des agents de codage avec différentes configurations.",
       "loading": "Chargement des configurations d'agents...",
+      "selectAgent": "Sélectionner un agent",
       "save": {
         "button": "Enregistrer les configurations d'agents",
         "success": "✓ Configurations d'exécuteurs enregistrées avec succès !",

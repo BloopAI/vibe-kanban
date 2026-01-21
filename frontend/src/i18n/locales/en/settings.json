@@ -270,6 +270,7 @@
       "title": "Coding Agent Configurations",
       "description": "Customize the behavior of coding agents with different configurations.",
       "loading": "Loading agent configurations...",
+      "selectAgent": "Select agent",
       "save": {
         "button": "Save Agent Configurations",
         "success": "✓ Executor configurations saved successfully!",

@@ -7,6 +7,7 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { mcpServersApi } from '@/lib/api';
 import { McpConfigStrategyGeneral } from '@/lib/mcpStrategies';
 import { cn } from '@/lib/utils';
+import { toPrettyCase } from '@/utils/string';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -216,7 +217,7 @@ export function McpSettingsSection() {
   const profileOptions = profiles
     ? Object.keys(profiles)
         .sort()
-        .map((key) => ({ value: key, label: key }))
+        .map((key) => ({ value: key, label: toPrettyCase(key) }))
     : [];
 
   const selectedProfileKey = selectedProfile
@@ -263,8 +264,9 @@ export function McpSettingsSection() {
             <DropdownMenuTrigger asChild>
               <DropdownMenuTriggerButton
                 label={
-                  selectedProfileKey ||
-                  t('settings.mcp.labels.agentPlaceholder')
+                  selectedProfileKey
+                    ? toPrettyCase(selectedProfileKey)
+                    : t('settings.mcp.labels.agentPlaceholder')
                 }
                 className="w-full justify-between"
               />

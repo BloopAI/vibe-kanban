@@ -270,6 +270,7 @@
       "title": "Configuraciones de Agentes de Código",
       "description": "Personaliza el comportamiento de los agentes con diferentes configuraciones.",
       "loading": "Cargando configuraciones de agentes...",
+      "selectAgent": "Seleccionar agente",
       "save": {
         "button": "Guardar Configuraciones de Agentes",
         "success": "✓ ¡Configuración guardada con éxito!",

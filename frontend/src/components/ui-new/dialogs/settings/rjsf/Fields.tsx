@@ -62,7 +62,7 @@ export function KeyValueField({
   const isDisabled = disabled || readonly;
 
   const inputClassName = cn(
-    'flex-1 bg-secondary border border-border rounded-sm px-base py-half text-base text-high font-mono text-sm',
+    'min-w-[50px] flex-1 bg-secondary border border-border rounded-sm px-base py-half text-base text-high font-mono text-sm',
     'placeholder:text-low placeholder:opacity-80 focus:outline-none focus:ring-1 focus:ring-brand',
     isDisabled && 'opacity-50 cursor-not-allowed'
   );

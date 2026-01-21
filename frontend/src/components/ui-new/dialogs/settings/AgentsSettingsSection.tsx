@@ -22,6 +22,7 @@ import type {
   ExecutorProfileId,
 } from 'shared/types';
 import { cn } from '@/lib/utils';
+import { toPrettyCase } from '@/utils/string';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -454,14 +455,14 @@ export function AgentsSettingsSection() {
   const executorOptions = profiles
     ? Object.keys(profiles)
         .sort()
-        .map((key) => ({ value: key, label: key }))
+        .map((key) => ({ value: key, label: toPrettyCase(key) }))
     : [];
 
   const configurationOptions = localParsedProfiles?.executors?.[
     selectedExecutorType
   ]
     ? Object.keys(localParsedProfiles.executors[selectedExecutorType]).map(
-        (key) => ({ value: key, label: key })
+        (key) => ({ value: key, label: toPrettyCase(key) })
       )
     : [];
 
@@ -517,7 +518,7 @@ export function AgentsSettingsSection() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <DropdownMenuTriggerButton
-                  label={executorDraft?.executor || 'Select agent'}
+                  label={executorDraft?.executor ? toPrettyCase(executorDraft.executor) : t('settings.agents.selectAgent')}
                   className="w-full justify-between"
                   disabled={!profiles}
                 />
@@ -558,8 +559,9 @@ export function AgentsSettingsSection() {
                     )}
                   >
                     <span className="truncate">
-                      {executorDraft?.variant ||
-                        t('settings.general.taskExecution.defaultLabel')}
+                      {executorDraft?.variant
+                        ? toPrettyCase(executorDraft.variant)
+                        : t('settings.general.taskExecution.defaultLabel')}
                     </span>
                     <CaretDownIcon className="size-icon-xs ml-2 shrink-0" />
                   </button>
@@ -576,7 +578,7 @@ export function AgentsSettingsSection() {
                         updateExecutorDraft(newProfile);
                       }}
                     >
-                      {variantLabel}
+                      {toPrettyCase(variantLabel)}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -621,7 +623,7 @@ export function AgentsSettingsSection() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <DropdownMenuTriggerButton
-                      label={selectedExecutorType}
+                      label={toPrettyCase(selectedExecutorType)}
                       className="w-full justify-between"
                     />
                   </DropdownMenuTrigger>
@@ -634,7 +636,7 @@ export function AgentsSettingsSection() {
                           setSelectedConfiguration('DEFAULT');
                         }}
                       >
-                        {type}
+                        {toPrettyCase(type)}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
@@ -646,7 +648,7 @@ export function AgentsSettingsSection() {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <DropdownMenuTriggerButton
-                        label={selectedConfiguration}
+                        label={toPrettyCase(selectedConfiguration)}
                         className="flex-1 justify-between"
                         disabled={
                           !localParsedProfiles.executors[selectedExecutorType]

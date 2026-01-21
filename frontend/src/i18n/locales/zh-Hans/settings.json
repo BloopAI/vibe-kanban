@@ -270,6 +270,7 @@
       "title": "编码代理配置",
       "description": "使用不同的配置自定义编码代理的行为。",
       "loading": "加载代理配置中...",
+      "selectAgent": "选择代理",
       "save": {
         "button": "保存代理配置",
         "success": "✓ 执行器配置保存成功！",

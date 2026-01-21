@@ -270,6 +270,7 @@
       "title": "編碼代理設定",
       "description": "使用不同設定自訂編碼代理的行為。",
       "loading": "載入代理設定中...",
+      "selectAgent": "選擇代理",
       "save": {
         "button": "儲存代理設定",
         "success": "✓ 執行器設定儲存成功！",
