@@ -3,6 +3,12 @@
     "common": {
       "unsavedChanges": "• 您有未保存的更改"
     },
+    "unsavedChanges": {
+      "title": "未保存的更改",
+      "message": "您有未保存的更改。确定要关闭而不保存吗？",
+      "discard": "放弃更改",
+      "cancel": "继续编辑"
+    },
     "layout": {
       "nav": {
         "title": "设置",

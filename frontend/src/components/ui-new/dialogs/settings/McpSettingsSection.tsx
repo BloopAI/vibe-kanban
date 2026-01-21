@@ -20,9 +20,11 @@ import {
   SettingsField,
   SettingsSaveBar,
 } from './SettingsComponents';
+import { useSettingsDirty } from './SettingsDirtyContext';
 
 export function McpSettingsSection() {
   const { t } = useTranslation('settings');
+  const { setDirty: setContextDirty } = useSettingsDirty();
   const { config, profiles } = useUserSystem();
   const [mcpServers, setMcpServers] = useState('{}');
   const [originalMcpServers, setOriginalMcpServers] = useState('{}');
@@ -37,6 +39,12 @@ export function McpSettingsSection() {
   const [success, setSuccess] = useState(false);
 
   const isDirty = mcpServers !== originalMcpServers;
+
+  // Sync dirty state to context for unsaved changes confirmation
+  useEffect(() => {
+    setContextDirty('mcp', isDirty);
+    return () => setContextDirty('mcp', false);
+  }, [isDirty, setContextDirty]);
 
   // Initialize selected profile when config loads
   useEffect(() => {

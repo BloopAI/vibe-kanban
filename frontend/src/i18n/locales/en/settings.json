@@ -3,6 +3,12 @@
     "common": {
       "unsavedChanges": "• You have unsaved changes"
     },
+    "unsavedChanges": {
+      "title": "Unsaved Changes",
+      "message": "You have unsaved changes. Are you sure you want to close without saving?",
+      "discard": "Discard Changes",
+      "cancel": "Keep Editing"
+    },
     "layout": {
       "nav": {
         "title": "Settings",

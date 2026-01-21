@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -16,6 +16,11 @@ import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { cn } from '@/lib/utils';
 import { SettingsSection } from './settings/SettingsSection';
 import type { SettingsSectionType } from './settings/SettingsSection';
+import {
+  SettingsDirtyProvider,
+  useSettingsDirty,
+} from './settings/SettingsDirtyContext';
+import { ConfirmDialog } from './ConfirmDialog';
 
 const SETTINGS_SECTIONS: {
   id: SettingsSectionType;
@@ -33,14 +38,127 @@ export interface SettingsDialogProps {
   initialSection?: SettingsSectionType;
 }
 
+interface SettingsDialogContentProps {
+  initialSection?: SettingsSectionType;
+  onClose: () => void;
+}
+
+function SettingsDialogContent({
+  initialSection,
+  onClose,
+}: SettingsDialogContentProps) {
+  const { t } = useTranslation('settings');
+  const { isDirty } = useSettingsDirty();
+  const [activeSection, setActiveSection] = useState<SettingsSectionType>(
+    initialSection || 'general'
+  );
+  const isConfirmingRef = useRef(false);
+
+  const handleCloseWithConfirmation = useCallback(async () => {
+    if (isConfirmingRef.current) return;
+
+    if (isDirty) {
+      isConfirmingRef.current = true;
+      try {
+        const result = await ConfirmDialog.show({
+          title: t('settings.unsavedChanges.title'),
+          message: t('settings.unsavedChanges.message'),
+          confirmText: t('settings.unsavedChanges.discard'),
+          cancelText: t('settings.unsavedChanges.cancel'),
+          variant: 'destructive',
+        });
+        if (result === 'confirmed') {
+          onClose();
+        }
+      } finally {
+        isConfirmingRef.current = false;
+      }
+    } else {
+      onClose();
+    }
+  }, [isDirty, onClose, t]);
+
+  // Handle ESC key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleCloseWithConfirmation();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleCloseWithConfirmation]);
+
+  return (
+    <>
+      {/* Overlay */}
+      <div
+        className="fixed inset-0 z-[9998] bg-black/50 animate-in fade-in-0 duration-200"
+        onClick={handleCloseWithConfirmation}
+      />
+      {/* Dialog wrapper - handles positioning */}
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999]">
+        {/* Dialog content - handles animation */}
+        <div
+          className={cn(
+            'w-[900px] h-[700px] flex rounded-sm overflow-hidden',
+            'bg-panel/95 backdrop-blur-sm border border-border/50 shadow-lg',
+            'animate-in fade-in-0 slide-in-from-bottom-4 duration-200'
+          )}
+        >
+          {/* Sidebar */}
+          <div className="w-56 bg-secondary/80 border-r border-border flex flex-col">
+            {/* Header */}
+            <div className="p-4 border-b border-border">
+              <h2 className="text-lg font-semibold text-high">
+                {t('settings.layout.nav.title')}
+              </h2>
+            </div>
+            {/* Navigation */}
+            <nav className="flex-1 p-2 flex flex-col gap-1 overflow-y-auto">
+              {SETTINGS_SECTIONS.map((section) => {
+                const Icon = section.icon;
+                const isActive = activeSection === section.id;
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => setActiveSection(section.id)}
+                    className={cn(
+                      'flex items-center gap-3 text-left px-3 py-2 rounded-sm text-sm transition-colors',
+                      isActive
+                        ? 'bg-brand/10 text-brand font-medium'
+                        : 'text-normal hover:bg-primary/10'
+                    )}
+                  >
+                    <Icon className="size-icon-sm shrink-0" weight="bold" />
+                    <span className="truncate">
+                      {t(`settings.layout.nav.${section.id}`)}
+                    </span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+          {/* Content */}
+          <div className="flex-1 flex flex-col relative overflow-hidden">
+            {/* Section content */}
+            <div className="flex-1 overflow-y-auto">
+              <SettingsSection
+                type={activeSection}
+                onClose={handleCloseWithConfirmation}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 const SettingsDialogImpl = NiceModal.create<SettingsDialogProps>(
   ({ initialSection }) => {
     const modal = useModal();
     const container = usePortalContainer();
-    const { t } = useTranslation('settings');
-    const [activeSection, setActiveSection] = useState<SettingsSectionType>(
-      initialSection || 'general'
-    );
 
     const handleClose = useCallback(() => {
       modal.hide();
@@ -48,79 +166,15 @@ const SettingsDialogImpl = NiceModal.create<SettingsDialogProps>(
       modal.remove();
     }, [modal]);
 
-    // Handle ESC key
-    useEffect(() => {
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-          handleClose();
-        }
-      };
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleClose]);
-
     if (!container) return null;
 
     return createPortal(
-      <>
-        {/* Overlay */}
-        <div
-          className="fixed inset-0 z-[9998] bg-black/50 animate-in fade-in-0 duration-200"
-          onClick={handleClose}
+      <SettingsDirtyProvider>
+        <SettingsDialogContent
+          initialSection={initialSection}
+          onClose={handleClose}
         />
-        {/* Dialog wrapper - handles positioning */}
-        <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999]">
-          {/* Dialog content - handles animation */}
-          <div
-            className={cn(
-              'w-[900px] h-[700px] flex rounded-sm overflow-hidden',
-              'bg-panel/95 backdrop-blur-sm border border-border/50 shadow-lg',
-              'animate-in fade-in-0 slide-in-from-bottom-4 duration-200'
-            )}
-          >
-            {/* Sidebar */}
-            <div className="w-56 bg-secondary/80 border-r border-border flex flex-col">
-              {/* Header */}
-              <div className="p-4 border-b border-border">
-                <h2 className="text-lg font-semibold text-high">
-                  {t('settings.layout.nav.title')}
-                </h2>
-              </div>
-              {/* Navigation */}
-              <nav className="flex-1 p-2 flex flex-col gap-1 overflow-y-auto">
-                {SETTINGS_SECTIONS.map((section) => {
-                  const Icon = section.icon;
-                  const isActive = activeSection === section.id;
-                  return (
-                    <button
-                      key={section.id}
-                      onClick={() => setActiveSection(section.id)}
-                      className={cn(
-                        'flex items-center gap-3 text-left px-3 py-2 rounded-sm text-sm transition-colors',
-                        isActive
-                          ? 'bg-brand/10 text-brand font-medium'
-                          : 'text-normal hover:bg-primary/10'
-                      )}
-                    >
-                      <Icon className="size-icon-sm shrink-0" weight="bold" />
-                      <span className="truncate">
-                        {t(`settings.layout.nav.${section.id}`)}
-                      </span>
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-            {/* Content */}
-            <div className="flex-1 flex flex-col relative overflow-hidden">
-              {/* Section content */}
-              <div className="flex-1 overflow-y-auto">
-                <SettingsSection type={activeSection} onClose={handleClose} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </>,
+      </SettingsDirtyProvider>,
       container
     );
   }

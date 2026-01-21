@@ -3,6 +3,12 @@
     "common": {
       "unsavedChanges": "• 您有未儲存的變更"
     },
+    "unsavedChanges": {
+      "title": "未儲存的變更",
+      "message": "您有未儲存的變更。確定要關閉而不儲存嗎？",
+      "discard": "放棄變更",
+      "cancel": "繼續編輯"
+    },
     "layout": {
       "nav": {
         "title": "設定",

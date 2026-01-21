@@ -37,6 +37,7 @@ import {
   SettingsTextarea,
   SettingsSaveBar,
 } from './SettingsComponents';
+import { useSettingsDirty } from './SettingsDirtyContext';
 
 function EditorAvailabilityIndicator({
   availability,
@@ -82,6 +83,7 @@ function EditorAvailabilityIndicator({
 
 export function GeneralSettingsSection() {
   const { t } = useTranslation(['settings', 'common']);
+  const { setDirty: setContextDirty } = useSettingsDirty();
 
   const languageOptions = getLanguageOptions(
     t('language.browserDefault', {
@@ -137,6 +139,12 @@ export function GeneralSettingsSection() {
     if (!draft || !config) return false;
     return !isEqual(draft, config);
   }, [draft, config]);
+
+  // Sync dirty state to context for unsaved changes confirmation
+  useEffect(() => {
+    setContextDirty('general', hasUnsavedChanges);
+    return () => setContextDirty('general', false);
+  }, [hasUnsavedChanges, setContextDirty]);
 
   const updateDraft = useCallback(
     (patch: Partial<typeof config>) => {

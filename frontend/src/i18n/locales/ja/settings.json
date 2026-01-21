@@ -3,6 +3,12 @@
     "common": {
       "unsavedChanges": "• 未保存の変更があります"
     },
+    "unsavedChanges": {
+      "title": "未保存の変更",
+      "message": "未保存の変更があります。保存せずに閉じてもよろしいですか？",
+      "discard": "変更を破棄",
+      "cancel": "編集を続ける"
+    },
     "layout": {
       "nav": {
         "title": "設定",

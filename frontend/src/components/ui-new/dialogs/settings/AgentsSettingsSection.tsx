@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cloneDeep, isEqual } from 'lodash';
 import {
@@ -36,6 +36,7 @@ import {
   SettingsCheckbox,
   SettingsSaveBar,
 } from './SettingsComponents';
+import { useSettingsDirty } from './SettingsDirtyContext';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 
@@ -87,6 +88,7 @@ function AgentAvailabilityIndicator({
 
 export function AgentsSettingsSection() {
   const { t } = useTranslation(['settings', 'common']);
+  const { setDirty: setContextDirty } = useSettingsDirty();
 
   // Profiles hook for server state
   const {
@@ -146,6 +148,18 @@ export function AgentsSettingsSection() {
     executorDraft && config?.executor_profile
       ? !isEqual(executorDraft, config.executor_profile)
       : false;
+
+  // Combined dirty state
+  const hasUnsavedChanges = useMemo(
+    () => executorDirty || isDirty,
+    [executorDirty, isDirty]
+  );
+
+  // Sync dirty state to context for unsaved changes confirmation
+  useEffect(() => {
+    setContextDirty('agents', hasUnsavedChanges);
+    return () => setContextDirty('agents', false);
+  }, [hasUnsavedChanges, setContextDirty]);
 
   // Sync executor draft when config changes
   useEffect(() => {

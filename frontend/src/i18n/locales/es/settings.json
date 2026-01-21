@@ -3,6 +3,12 @@
     "common": {
       "unsavedChanges": "• Tienes cambios sin guardar"
     },
+    "unsavedChanges": {
+      "title": "Cambios sin guardar",
+      "message": "Tienes cambios sin guardar. ¿Estás seguro de que deseas cerrar sin guardar?",
+      "discard": "Descartar cambios",
+      "cancel": "Seguir editando"
+    },
     "layout": {
       "nav": {
         "title": "Configuración",
