@@ -1789,6 +1789,7 @@ dependencies = [
  "agent-client-protocol",
  "async-trait",
  "axum",
+ "base64",
  "bon",
  "bytes",
  "chrono",

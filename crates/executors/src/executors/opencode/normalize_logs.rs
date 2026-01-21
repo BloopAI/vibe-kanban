@@ -57,6 +57,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
             };
 
             match event {
+                OpencodeExecutorEvent::StartupLog { .. } => {}
                 OpencodeExecutorEvent::SessionStart { session_id } => {
                     if !stored_session_id {
                         msg_store.push_session_id(session_id);
