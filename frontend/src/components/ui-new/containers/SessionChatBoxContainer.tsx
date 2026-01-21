@@ -2,7 +2,11 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
-import { type Session, type ToolStatus, type BaseCodingAgent } from 'shared/types';
+import {
+  type Session,
+  type ToolStatus,
+  type BaseCodingAgent,
+} from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -496,7 +500,12 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Handle edit submission
   const handleSubmitEdit = useCallback(async () => {
-    if (!editContext.activeEdit || !localMessage.trim() || !effectiveExecutorProfileId) return;
+    if (
+      !editContext.activeEdit ||
+      !localMessage.trim() ||
+      !effectiveExecutorProfileId
+    )
+      return;
     editRetryMutation.mutate({
       message: localMessage,
       executorProfileId: effectiveExecutorProfileId,

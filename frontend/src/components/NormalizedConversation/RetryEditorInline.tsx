@@ -70,7 +70,8 @@ export function RetryEditorInline({
   );
 
   const isSending = retryMutation.isPending;
-  const canSend = !isAttemptRunning && !!message.trim() && !!sessionId && !!executorProfileId;
+  const canSend =
+    !isAttemptRunning && !!message.trim() && !!sessionId && !!executorProfileId;
 
   const onCancel = () => {
     onCancelled?.();
