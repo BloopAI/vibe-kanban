@@ -182,10 +182,13 @@ export function ChangesPanelContainer({
           const selector = `[data-line="${selectedLineNumber}-extend"]`;
           const commentEl = fileEl.querySelector(selector);
           // Log all data-line values to find the correct format
-          const allDataLines = Array.from(fileEl.querySelectorAll('[data-line]'))
-            .map((el) => el.getAttribute('data-line'));
+          const allDataLines = Array.from(
+            fileEl.querySelectorAll('[data-line]')
+          ).map((el) => el.getAttribute('data-line'));
           // Find any that contain our line number
-          const matchingLines = allDataLines.filter((dl) => dl?.includes('242'));
+          const matchingLines = allDataLines.filter((dl) =>
+            dl?.includes('242')
+          );
           console.log('[DEBUG] looking for comment element', {
             selector,
             found: !!commentEl,
