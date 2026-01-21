@@ -287,8 +287,9 @@ export function AgentConfigTree({
 }: AgentConfigTreeProps) {
   const { t } = useTranslation('settings');
   const [searchQuery, setSearchQuery] = useState('');
+  // Only expand the default executor by default
   const [expandedExecutors, setExpandedExecutors] = useState<Set<string>>(
-    () => new Set(executors ? Object.keys(executors) : [])
+    () => new Set(defaultExecutor ? [defaultExecutor] : [])
   );
 
   // Filter executors and configs based on search

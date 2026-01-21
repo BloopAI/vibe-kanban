@@ -38,12 +38,21 @@ export function AgentsSettingsSection() {
   // Form-based editor state
   const [useFormEditor, setUseFormEditor] = useState(true);
   const [selectedExecutorType, setSelectedExecutorType] =
-    useState<BaseCodingAgent>('CLAUDE_CODE' as BaseCodingAgent);
-  const [selectedConfiguration, setSelectedConfiguration] =
-    useState<string>('DEFAULT');
+    useState<BaseCodingAgent | null>(null);
+  const [selectedConfiguration, setSelectedConfiguration] = useState<
+    string | null
+  >(null);
   const [localParsedProfiles, setLocalParsedProfiles] =
     useState<ExecutorConfigs | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+
+  // Initialize selection with default executor when config loads
+  useEffect(() => {
+    if (config?.executor_profile && !selectedExecutorType) {
+      setSelectedExecutorType(config.executor_profile.executor);
+      setSelectedConfiguration(config.executor_profile.variant || 'DEFAULT');
+    }
+  }, [config?.executor_profile, selectedExecutorType]);
 
   // Sync server state to local state when not dirty
   useEffect(() => {
@@ -245,7 +254,13 @@ export function AgentsSettingsSection() {
   };
 
   const handleExecutorConfigSave = async (formData: unknown) => {
-    if (!localParsedProfiles || !localParsedProfiles.executors) return;
+    if (
+      !localParsedProfiles ||
+      !localParsedProfiles.executors ||
+      !selectedExecutorType ||
+      !selectedConfiguration
+    )
+      return;
 
     setSaveError(null);
 
@@ -308,7 +323,12 @@ export function AgentsSettingsSection() {
   // Save handler for agent configuration
   const handleSave = async () => {
     if (isDirty) {
-      if (useFormEditor && localParsedProfiles) {
+      if (
+        useFormEditor &&
+        localParsedProfiles &&
+        selectedExecutorType &&
+        selectedConfiguration
+      ) {
         const executorsMap =
           localParsedProfiles.executors as unknown as ExecutorsMap;
         const formData =
@@ -385,8 +405,8 @@ export function AgentsSettingsSection() {
         <div className="bg-secondary/50 border border-border rounded-sm overflow-hidden">
           <AgentConfigTree
             executors={localParsedProfiles.executors}
-            selectedExecutor={selectedExecutorType}
-            selectedConfig={selectedConfiguration}
+            selectedExecutor={selectedExecutorType || ''}
+            selectedConfig={selectedConfiguration || ''}
             defaultExecutor={config?.executor_profile?.executor}
             defaultVariant={config?.executor_profile?.variant}
             onSelect={handleSelect}
