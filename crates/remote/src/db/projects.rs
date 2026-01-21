@@ -5,8 +5,7 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::project_statuses::ProjectStatusRepository;
-use super::tags::TagRepository;
+use super::{project_statuses::ProjectStatusRepository, tags::TagRepository};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]

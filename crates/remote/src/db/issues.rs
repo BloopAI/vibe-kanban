@@ -66,7 +66,10 @@ impl IssueRepository {
         Ok(record)
     }
 
-    pub async fn organization_id(pool: &PgPool, issue_id: Uuid) -> Result<Option<Uuid>, IssueError> {
+    pub async fn organization_id(
+        pool: &PgPool,
+        issue_id: Uuid,
+    ) -> Result<Option<Uuid>, IssueError> {
         let record = sqlx::query_scalar!(
             r#"
             SELECT p.organization_id
