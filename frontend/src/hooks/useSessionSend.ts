@@ -10,8 +10,8 @@ interface UseSessionSendOptions {
   workspaceId: string | undefined;
   /** Whether in new session mode */
   isNewSessionMode: boolean;
-  /** Effective executor profile for new sessions */
-  effectiveExecutorProfileId: ExecutorProfileId | null;
+  /** Executor profile for new sessions */
+  executorProfileId: ExecutorProfileId | null;
   /** Callback when session is selected (to exit new session mode) */
   onSelectSession?: (sessionId: string) => void;
 }
@@ -20,7 +20,7 @@ interface UseSessionSendResult {
   /** Send a message. Returns true on success, false on failure. */
   send: (
     message: string,
-    executorProfileId: ExecutorProfileId
+    profileId: ExecutorProfileId
   ) => Promise<boolean>;
   /** Whether a send operation is in progress */
   isSending: boolean;
@@ -43,7 +43,7 @@ export function useSessionSend({
   sessionId,
   workspaceId,
   isNewSessionMode,
-  effectiveExecutorProfileId,
+  executorProfileId,
   onSelectSession,
 }: UseSessionSendOptions): UseSessionSendResult {
   const { mutateAsync: createSession, isPending: isCreatingSession } =
@@ -54,7 +54,7 @@ export function useSessionSend({
   const send = useCallback(
     async (
       message: string,
-      executorProfileId: ExecutorProfileId
+      profileId: ExecutorProfileId
     ): Promise<boolean> => {
       const trimmed = message.trim();
       if (!trimmed) return false;
@@ -63,7 +63,7 @@ export function useSessionSend({
 
       if (isNewSessionMode) {
         // New session flow
-        if (!workspaceId || !effectiveExecutorProfileId) {
+        if (!workspaceId || !executorProfileId) {
           setError('No executor selected');
           return false;
         }
@@ -71,7 +71,7 @@ export function useSessionSend({
           const session = await createSession({
             workspaceId,
             prompt: trimmed,
-            executorProfileId: effectiveExecutorProfileId,
+            executorProfileId: profileId,
           });
           onSelectSession?.(session.id);
           return true;
@@ -89,7 +89,7 @@ export function useSessionSend({
         try {
           await sessionsApi.followUp(sessionId, {
             prompt: trimmed,
-            executor_profile_id: executorProfileId,
+            executor_profile_id: profileId,
             retry_process_id: null,
             force_when_dirty: null,
             perform_git_reset: null,
@@ -108,7 +108,7 @@ export function useSessionSend({
       sessionId,
       workspaceId,
       isNewSessionMode,
-      effectiveExecutorProfileId,
+      executorProfileId,
       createSession,
       onSelectSession,
     ]

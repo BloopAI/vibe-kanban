@@ -308,7 +308,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Executor/variant selection
   const {
-    effectiveExecutor,
+    executorProfileId,
     executorOptions,
     handleExecutorChange,
     selectedVariant,
@@ -346,12 +346,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     refreshQueueStatus,
   } = useSessionQueueInteraction({ sessionId });
 
-  // Build executor profile ID from effective executor and selected variant
-  const effectiveExecutorProfileId = useMemo(() => {
-    if (!effectiveExecutor) return null;
-    return { executor: effectiveExecutor, variant: selectedVariant };
-  }, [effectiveExecutor, selectedVariant]);
-
   // Send actions
   const {
     send,
@@ -362,17 +356,17 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     sessionId,
     workspaceId,
     isNewSessionMode,
-    effectiveExecutorProfileId,
+    executorProfileId,
     onSelectSession,
   });
 
   const handleSend = useCallback(async () => {
-    if (!effectiveExecutorProfileId) return;
+    if (!executorProfileId) return;
 
     const messageParts = [reviewMarkdown, localMessage].filter(Boolean);
     const combinedMessage = messageParts.join('\n\n');
 
-    const success = await send(combinedMessage, effectiveExecutorProfileId);
+    const success = await send(combinedMessage, executorProfileId);
     if (success) {
       cancelDebouncedSave();
       setLocalMessage('');
@@ -384,7 +378,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     send,
     localMessage,
     reviewMarkdown,
-    effectiveExecutorProfileId,
+    executorProfileId,
     cancelDebouncedSave,
     setLocalMessage,
     clearUploadedImages,
@@ -504,12 +498,12 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     if (
       !editContext.activeEdit ||
       !localMessage.trim() ||
-      !effectiveExecutorProfileId
+      !executorProfileId
     )
       return;
     editRetryMutation.mutate({
       message: localMessage,
-      executorProfileId: effectiveExecutorProfileId,
+      executorProfileId: executorProfileId,
       executionProcessId: editContext.activeEdit.processId,
       branchStatus,
       processes,
@@ -517,7 +511,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   }, [
     editContext.activeEdit,
     localMessage,
-    effectiveExecutorProfileId,
+    executorProfileId,
     branchStatus,
     processes,
     editRetryMutation,
@@ -724,7 +718,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       executor={
         needsExecutorSelection
           ? {
-              selected: effectiveExecutor,
+              selected: executorProfileId?.executor ?? null,
               options: executorOptions,
               onChange: handleExecutorChange,
             }

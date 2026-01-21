@@ -1,12 +1,11 @@
 import { useState, useMemo, useCallback } from 'react';
-import type { BaseCodingAgent, ExecutorConfig } from 'shared/types';
+import type {
+  BaseCodingAgent,
+  ExecutorConfig,
+  ExecutorProfileId,
+} from 'shared/types';
 import { getVariantOptions } from '@/utils/executor';
 import { useVariant } from './useVariant';
-
-interface ExecutorProfileId {
-  executor: BaseCodingAgent;
-  variant: string | null;
-}
 
 interface UseExecutorSelectionOptions {
   profiles: Record<string, ExecutorConfig> | null;
@@ -18,8 +17,8 @@ interface UseExecutorSelectionOptions {
 }
 
 interface UseExecutorSelectionResult {
-  /** Effective executor: user selection > latest from processes > first available */
-  effectiveExecutor: BaseCodingAgent | null;
+  /** Combined executor + variant profile */
+  executorProfileId: ExecutorProfileId | null;
   /** Available executor options */
   executorOptions: BaseCodingAgent[];
   /** Handle executor change (resets variant) */
@@ -91,8 +90,14 @@ export function useExecutorSelection({
     [profiles, setSelectedVariant]
   );
 
+  // Build the combined executor + variant profile
+  const executorProfileId = useMemo<ExecutorProfileId | null>(() => {
+    if (!effectiveExecutor) return null;
+    return { executor: effectiveExecutor, variant: selectedVariant };
+  }, [effectiveExecutor, selectedVariant]);
+
   return {
-    effectiveExecutor,
+    executorProfileId,
     executorOptions,
     handleExecutorChange,
     selectedVariant,

@@ -48,7 +48,7 @@ import { useRetryUi } from '@/contexts/RetryUiContext';
 import { useFollowUpSend } from '@/hooks/useFollowUpSend';
 import { useVariant } from '@/hooks/useVariant';
 import type { DraftFollowUpData, ExecutorProfileId } from 'shared/types';
-import { extractProfileFromAction } from '@/utils/executor';
+import { getLatestProfileFromProcesses } from '@/utils/executor';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { useTranslation } from 'react-i18next';
 import { useScratch } from '@/hooks/useScratch';
@@ -147,16 +147,10 @@ export function TaskFollowUpSection({
   const [localMessage, setLocalMessage] = useState('');
 
   // Variant selection - derive default from latest process
-  const latestProfileId = useMemo<ExecutorProfileId | null>(() => {
-    if (!processes?.length) return null;
-    return (
-      processes
-        .slice()
-        .reverse()
-        .map((p) => extractProfileFromAction(p.executor_action ?? null))
-        .find((pid) => pid !== null) ?? null
-    );
-  }, [processes]);
+  const latestProfileId = useMemo(
+    () => getLatestProfileFromProcesses(processes),
+    [processes]
+  );
 
   const processVariant = latestProfileId?.variant ?? null;
 
