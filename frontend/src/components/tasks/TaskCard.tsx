@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
-import { Link, Loader2, XCircle } from 'lucide-react';
+import { Calendar, Link, Loader2, RefreshCw, XCircle } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '@/components/ui/actions-dropdown';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { paths } from '@/lib/paths';
 import { attemptsApi } from '@/lib/api';
 import { TaskCardHeader } from './TaskCardHeader';
 import { useTranslation } from 'react-i18next';
+import { formatRelativeTime } from '@/utils/date';
 
 type Task = TaskWithAttemptStatus;
 
@@ -119,6 +120,17 @@ export function TaskCard({
               : task.description}
           </p>
         )}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Calendar className="h-3 w-3 shrink-0" />
+          <span>{formatRelativeTime(task.created_at)}</span>
+          {task.updated_at !== task.created_at && (
+            <>
+              <span className="text-muted-foreground/30">•</span>
+              <RefreshCw className="h-3 w-3 shrink-0" />
+              <span>{formatRelativeTime(task.updated_at)}</span>
+            </>
+          )}
+        </div>
       </div>
     </KanbanCard>
   );
