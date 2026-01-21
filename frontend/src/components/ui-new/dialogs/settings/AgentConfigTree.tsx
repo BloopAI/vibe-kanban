@@ -56,7 +56,6 @@ function ConfigNode({
   disabled,
 }: ConfigNodeProps) {
   const { t } = useTranslation('settings');
-  const [showActions, setShowActions] = useState(false);
 
   return (
     <div
@@ -66,8 +65,6 @@ function ConfigNode({
         isSelected && 'bg-brand/10 text-brand'
       )}
       onClick={onSelect}
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
     >
       {/* Indentation guide */}
       <div className="absolute left-0 top-0 bottom-0 flex">
@@ -101,8 +98,8 @@ function ConfigNode({
           {toPrettyCase(configName)}
         </span>
 
-        {/* Actions menu */}
-        {showActions && !disabled && (
+        {/* Actions menu - always rendered but trigger only visible on hover */}
+        {!disabled && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
