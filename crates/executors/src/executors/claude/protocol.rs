@@ -65,7 +65,9 @@ impl ProtocolPeer {
                             if line.is_empty() {
                                 continue;
                             }
-                            // Parse message using typed enum
+                            client.log_message(line).await?;
+
+                            // Parse and handle control messages
                             match serde_json::from_str::<CLIMessage>(line) {
                                 Ok(CLIMessage::ControlRequest {
                                     request_id,
@@ -74,14 +76,10 @@ impl ProtocolPeer {
                                     self.handle_control_request(&client, request_id, request)
                                         .await;
                                 }
-                                Ok(CLIMessage::ControlResponse { .. }) => {}
                                 Ok(CLIMessage::Result(_)) => {
-                                    client.on_non_control(line).await?;
                                     break;
                                 }
-                                _ => {
-                                    client.on_non_control(line).await?;
-                                }
+                                _ => {}
                             }
                         }
                         Err(e) => {

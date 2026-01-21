@@ -20,6 +20,7 @@ use services::services::{
     queued_message::QueuedMessageService,
     remote_client::{RemoteClient, RemoteClientError},
     repo::RepoService,
+    worktree_manager::WorktreeManager,
 };
 use tokio::sync::RwLock;
 use utils::{
@@ -89,6 +90,11 @@ impl Deployment for LocalDeployment {
 
         // Always save config (may have been migrated or version updated)
         save_config_to_file(&raw_config, &config_path()).await?;
+
+        if let Some(workspace_dir) = &raw_config.workspace_dir {
+            let path = utils::path::expand_tilde(workspace_dir);
+            WorktreeManager::set_workspace_dir_override(path);
+        }
 
         let config = Arc::new(RwLock::new(raw_config));
         let user_id = generate_user_id();

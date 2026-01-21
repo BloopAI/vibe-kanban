@@ -292,7 +292,18 @@ impl WorkspaceManager {
             return;
         }
 
-        let workspace_base_dir = Self::get_workspace_base_dir();
+        // Always clean up the default directory
+        let default_dir = WorktreeManager::get_default_worktree_base_dir();
+        Self::cleanup_orphans_in_directory(db, &default_dir).await;
+
+        // Also clean up custom directory if it's different from the default
+        let current_dir = Self::get_workspace_base_dir();
+        if current_dir != default_dir {
+            Self::cleanup_orphans_in_directory(db, &current_dir).await;
+        }
+    }
+
+    async fn cleanup_orphans_in_directory(db: &Pool<Sqlite>, workspace_base_dir: &Path) {
         if !workspace_base_dir.exists() {
             debug!(
                 "Workspace base directory {} does not exist, skipping orphan cleanup",
@@ -301,7 +312,7 @@ impl WorkspaceManager {
             return;
         }
 
-        let entries = match std::fs::read_dir(&workspace_base_dir) {
+        let entries = match std::fs::read_dir(workspace_base_dir) {
             Ok(entries) => entries,
             Err(e) => {
                 error!(

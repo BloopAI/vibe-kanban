@@ -205,6 +205,10 @@
     "defaultConfirm": "Confirmar",
     "defaultCancel": "Cancelar"
   },
+  "dialogs": {
+    "selectGitRepository": "Seleccionar repositorio Git",
+    "chooseExistingRepo": "Elige un repositorio existente de tu sistema de archivos"
+  },
   "empty": {
     "noChanges": "No hay cambios para mostrar"
   },

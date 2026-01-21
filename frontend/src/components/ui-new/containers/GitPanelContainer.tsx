@@ -1,26 +1,19 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useActions } from '@/contexts/ActionsContext';
 import { usePush } from '@/hooks/usePush';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
-import { repoApi } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { ForcePushDialog } from '@/components/dialogs/git/ForcePushDialog';
+import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
 import { Actions } from '@/components/ui-new/actions';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
-import type {
-  Workspace,
-  RepoWithTargetBranch,
-  Diff,
-  Merge,
-} from 'shared/types';
+import type { Workspace, RepoWithTargetBranch, Merge } from 'shared/types';
 
 export interface GitPanelContainerProps {
   selectedWorkspace: Workspace | undefined;
   repos: RepoWithTargetBranch[];
-  diffs: Diff[];
 }
 
 type PushState = 'idle' | 'pending' | 'success' | 'error';
@@ -28,10 +21,8 @@ type PushState = 'idle' | 'pending' | 'success' | 'error';
 export function GitPanelContainer({
   selectedWorkspace,
   repos,
-  diffs,
 }: GitPanelContainerProps) {
   const { executeAction } = useActions();
-  const navigate = useNavigate();
 
   // Hooks for branch management (moved from WorkspacesLayout)
   const renameBranch = useRenameBranch(selectedWorkspace?.id);
@@ -70,32 +61,19 @@ export function GitPanelContainer({
           }
         }
 
-        const repoDiffs = diffs.filter((d) => d.repoId === repo.id);
-        const filesChanged = repoDiffs.length;
-        const linesAdded = repoDiffs.reduce(
-          (sum, d) => sum + (d.additions ?? 0),
-          0
-        );
-        const linesRemoved = repoDiffs.reduce(
-          (sum, d) => sum + (d.deletions ?? 0),
-          0
-        );
-
         return {
           id: repo.id,
           name: repo.display_name || repo.name,
           targetBranch: repo.target_branch || 'main',
           commitsAhead: repoStatus?.commits_ahead ?? 0,
+          commitsBehind: repoStatus?.commits_behind ?? 0,
           remoteCommitsAhead: repoStatus?.remote_commits_ahead ?? 0,
-          filesChanged,
-          linesAdded,
-          linesRemoved,
           prNumber,
           prUrl,
           prStatus,
         };
       }),
-    [repos, diffs, branchStatus]
+    [repos, branchStatus]
   );
 
   // Track push state per repo: idle, pending, success, or error
@@ -193,33 +171,17 @@ export function GitPanelContainer({
     [repoInfos, pushStates]
   );
 
-  // Handle copying repo path to clipboard
-  const handleCopyPath = useCallback(
+  // Handle opening command bar for repo actions
+  const handleMoreClick = useCallback(
     (repoId: string) => {
-      const repo = repos.find((r) => r.id === repoId);
-      if (repo?.path) {
-        navigator.clipboard.writeText(repo.path);
-      }
-    },
-    [repos]
-  );
-
-  // Handle opening repo in editor
-  const handleOpenInEditor = useCallback(async (repoId: string) => {
-    try {
-      const response = await repoApi.openEditor(repoId, {
-        editor_type: null,
-        file_path: null,
+      CommandBarDialog.show({
+        page: 'repoActions',
+        workspaceId: selectedWorkspace?.id,
+        repoId,
       });
-
-      // If a URL is returned (remote mode), open it in a new tab
-      if (response.url) {
-        window.open(response.url, '_blank');
-      }
-    } catch (err) {
-      console.error('Failed to open repo in editor:', err);
-    }
-  }, []);
+    },
+    [selectedWorkspace?.id]
+  );
 
   // Handle GitPanel actions using the action system
   const handleActionsClick = useCallback(
@@ -264,14 +226,6 @@ export function GitPanelContainer({
     [pushMutation]
   );
 
-  // Handle opening repository settings
-  const handleOpenSettings = useCallback(
-    (repoId: string) => {
-      navigate(`/settings/repos?repoId=${repoId}`);
-    },
-    [navigate]
-  );
-
   return (
     <GitPanel
       repos={repoInfosWithPushButton}
@@ -279,9 +233,7 @@ export function GitPanelContainer({
       onWorkingBranchNameChange={handleBranchNameChange}
       onActionsClick={handleActionsClick}
       onPushClick={handlePushClick}
-      onOpenInEditor={handleOpenInEditor}
-      onCopyPath={handleCopyPath}
-      onOpenSettings={handleOpenSettings}
+      onMoreClick={handleMoreClick}
       onAddRepo={() => console.log('Add repo clicked')}
     />
   );

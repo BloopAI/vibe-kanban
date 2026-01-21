@@ -307,10 +307,10 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
                     className="font-mono text-sm p-3 border-0 min-h-full bg-panel"
                     placeholder={
                       scriptType === 'setup'
-                        ? '#!/bin/bash\nnpm install'
+                        ? 'npm install'
                         : scriptType === 'cleanup'
-                          ? '#!/bin/bash\nrm -rf node_modules'
-                          : '#!/bin/bash\nnpm run dev'
+                          ? 'rm -rf node_modules'
+                          : 'npm run dev'
                     }
                     disableInternalScroll
                   />

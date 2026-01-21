@@ -1,4 +1,8 @@
 {
+  "dropzone": {
+    "dropImagesHere": "Drop images here",
+    "supportedFormats": "PNG, JPG, GIF, WebP, SVG supported"
+  },
   "gitPanel": {
     "create": {
       "warnings": {
@@ -217,6 +221,11 @@
   "todos": {
     "title_one": "Todos ({{count}})",
     "title_other": "Todos ({{count}})"
+  },
+  "todoPopup": {
+    "title": "Tasks",
+    "progress": "{{completed}}/{{total}} completed",
+    "noTasks": "No tasks"
   },
   "projects": {
     "create": {

@@ -205,6 +205,10 @@
     "defaultConfirm": "確認",
     "defaultCancel": "取消"
   },
+  "dialogs": {
+    "selectGitRepository": "選擇 Git 儲存庫",
+    "chooseExistingRepo": "從檔案系統中選擇現有儲存庫"
+  },
   "empty": {
     "noChanges": "沒有要顯示的變更"
   },

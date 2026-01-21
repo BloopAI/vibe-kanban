@@ -16,7 +16,7 @@ import {
   AddEntryType,
   PatchTypeWithKey,
   useConversationHistory,
-} from '@/hooks/useConversationHistory';
+} from '@/components/ui-new/hooks/useConversationHistory';
 import type { WorkspaceWithSession } from '@/types/attempt';
 
 interface ConversationListProps {

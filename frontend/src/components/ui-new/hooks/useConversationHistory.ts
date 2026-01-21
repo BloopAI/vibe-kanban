@@ -1,94 +1,34 @@
-// useConversationHistory.ts
 import {
   CommandExitStatus,
   ExecutionProcess,
   ExecutionProcessStatus,
-  ExecutorAction,
   NormalizedEntry,
   PatchType,
   ToolStatus,
-  Workspace,
 } from 'shared/types';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { streamJsonPatchEntries } from '@/utils/streamJsonPatchEntries';
+import type {
+  AddEntryType,
+  ExecutionProcessStateStore,
+  OnEntriesUpdated,
+  PatchTypeWithKey,
+  UseConversationHistoryParams,
+  UseConversationHistoryResult,
+} from '@/hooks/useConversationHistory/types';
+import {
+  makeLoadingPatch,
+  MIN_INITIAL_ENTRIES,
+  nextActionPatch,
+  REMAINING_BATCH_SIZE,
+} from '@/hooks/useConversationHistory/constants';
 
-export type PatchTypeWithKey = PatchType & {
-  patchKey: string;
-  executionProcessId: string;
-};
-
-export type AddEntryType = 'initial' | 'running' | 'historic' | 'plan';
-
-export type OnEntriesUpdated = (
-  newEntries: PatchTypeWithKey[],
-  addType: AddEntryType,
-  loading: boolean
-) => void;
-
-type ExecutionProcessStaticInfo = {
-  id: string;
-  created_at: string;
-  updated_at: string;
-  executor_action: ExecutorAction;
-};
-
-type ExecutionProcessState = {
-  executionProcess: ExecutionProcessStaticInfo;
-  entries: PatchTypeWithKey[];
-};
-
-type ExecutionProcessStateStore = Record<string, ExecutionProcessState>;
-
-interface UseConversationHistoryParams {
-  attempt: Workspace;
-  onEntriesUpdated: OnEntriesUpdated;
-}
-
-interface UseConversationHistoryResult {}
-
-const MIN_INITIAL_ENTRIES = 10;
-const REMAINING_BATCH_SIZE = 50;
-
-const makeLoadingPatch = (executionProcessId: string): PatchTypeWithKey => ({
-  type: 'NORMALIZED_ENTRY',
-  content: {
-    entry_type: {
-      type: 'loading',
-    },
-    content: '',
-    timestamp: null,
-  },
-  patchKey: `${executionProcessId}:loading`,
-  executionProcessId,
-});
-
-const nextActionPatch: (
-  failed: boolean,
-  execution_processes: number,
-  needs_setup: boolean,
-  setup_help_text?: string
-) => PatchTypeWithKey = (
-  failed,
-  execution_processes,
-  needs_setup,
-  setup_help_text
-) => ({
-  type: 'NORMALIZED_ENTRY',
-  content: {
-    entry_type: {
-      type: 'next_action',
-      failed: failed,
-      execution_processes: execution_processes,
-      needs_setup: needs_setup,
-      setup_help_text: setup_help_text ?? null,
-    },
-    content: '',
-    timestamp: null,
-  },
-  patchKey: 'next_action',
-  executionProcessId: '',
-});
+export type {
+  AddEntryType,
+  OnEntriesUpdated,
+  PatchTypeWithKey,
+} from '@/hooks/useConversationHistory/types';
 
 export const useConversationHistory = ({
   attempt,
@@ -139,7 +79,7 @@ export const useConversationHistory = ({
           resolve(allEntries);
         },
         onError: (err) => {
-          console.warn!(
+          console.warn(
             `Error loading entries for historic execution process ${executionProcess.id}`,
             err
           );
