@@ -248,7 +248,8 @@ function ExecutorNode({
                   configName={configName}
                   isSelected={isSelected}
                   isDefault={
-                    defaultExecutor === executor && defaultVariant === configName
+                    defaultExecutor === executor &&
+                    defaultVariant === configName
                   }
                   isOnlyConfig={configs.length <= 1}
                   onSelect={() => onSelect(configName)}
