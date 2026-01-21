@@ -116,7 +116,7 @@ impl IntoResponse for ApiError {
             },
             // Promote certain GitService errors to conflict status with concise messages
             ApiError::GitService(git_err) => match git_err {
-                services::services::git::GitServiceError::MergeConflicts(_) => {
+                services::services::git::GitServiceError::MergeConflicts { .. } => {
                     (StatusCode::CONFLICT, "GitServiceError")
                 }
                 services::services::git::GitServiceError::RebaseInProgress => {
@@ -203,7 +203,9 @@ impl IntoResponse for ApiError {
                 }
             },
             ApiError::GitService(git_err) => match git_err {
-                services::services::git::GitServiceError::MergeConflicts(msg) => msg.clone(),
+                services::services::git::GitServiceError::MergeConflicts { message, .. } => {
+                    message.clone()
+                }
                 services::services::git::GitServiceError::RebaseInProgress => {
                     "A rebase is already in progress. Resolve conflicts or abort the rebase, then retry.".to_string()
                 }

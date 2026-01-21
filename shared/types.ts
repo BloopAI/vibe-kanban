@@ -258,7 +258,7 @@ export type RebaseTaskAttemptRequest = { repo_id: string, old_base_branch: strin
 
 export type AbortConflictsRequest = { repo_id: string, };
 
-export type GitOperationError = { "type": "merge_conflicts", message: string, op: ConflictOp, } | { "type": "rebase_in_progress" };
+export type GitOperationError = { "type": "merge_conflicts", message: string, op: ConflictOp, conflicted_files: Array<string>, target_branch: string, } | { "type": "rebase_in_progress" };
 
 export type PushError = { "type": "force_push_required" };
 
