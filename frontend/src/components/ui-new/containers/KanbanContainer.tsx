@@ -1,9 +1,6 @@
 import { useMemo } from 'react';
-import {
-  useElectricCollection,
-  PROJECT_STATUSES_SHAPE,
-  PROJECTS_SHAPE,
-} from '@/lib/electric';
+import { useEntity } from '@/lib/electric/hooks';
+import { PROJECT_ENTITY, PROJECT_STATUS_ENTITY } from 'shared/remote-types';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import {
   KanbanProvider,
@@ -30,10 +27,9 @@ function KanbanBoardContent({
   projectId: string;
   projectName: string;
 }) {
-  const { data: statuses, isLoading } = useElectricCollection(
-    PROJECT_STATUSES_SHAPE,
-    { project_id: projectId }
-  );
+  const { data: statuses, isLoading } = useEntity(PROJECT_STATUS_ENTITY, {
+    project_id: projectId,
+  });
 
   const sortedStatuses = useMemo(
     () => [...statuses].sort((a, b) => a.sort_order - b.sort_order),
@@ -121,7 +117,7 @@ function KanbanBoardContent({
 }
 
 function KanbanWithProjects({ organizationId }: { organizationId: string }) {
-  const { data: projects, isLoading } = useElectricCollection(PROJECTS_SHAPE, {
+  const { data: projects, isLoading } = useEntity(PROJECT_ENTITY, {
     organization_id: organizationId,
   });
   const firstProject = projects?.[0];
