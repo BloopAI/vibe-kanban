@@ -171,12 +171,7 @@ export function FileTreeContainer({
       // Select file with line number to scroll to the comment
       selectFile(targetPath, lineNumber ?? undefined);
     },
-    [
-      filesWithComments,
-      selectedPath,
-      getFirstCommentLineForFile,
-      selectFile,
-    ]
+    [filesWithComments, selectedPath, getFirstCommentLineForFile, selectFile]
   );
 
   return (
