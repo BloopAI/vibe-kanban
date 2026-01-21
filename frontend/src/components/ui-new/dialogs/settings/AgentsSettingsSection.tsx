@@ -1,16 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SpinnerIcon } from '@phosphor-icons/react';
+import {
+  SpinnerIcon,
+  StarIcon,
+  PlusIcon,
+  TrashIcon,
+} from '@phosphor-icons/react';
 import { ExecutorConfigForm } from './ExecutorConfigForm';
-import { AgentConfigTree } from './AgentConfigTree';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteConfigurationDialog';
 import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
 import { cn } from '@/lib/utils';
+import { toPrettyCase } from '@/utils/string';
 import { SettingsCheckbox, SettingsSaveBar } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
+import { IconButton } from '../../primitives/IconButton';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 
@@ -78,11 +84,6 @@ export function AgentsSettingsSection() {
     setLocalParsedProfiles(nextProfiles as ExecutorConfigs);
     setLocalProfilesContent(JSON.stringify(nextProfiles, null, 2));
     setIsDirty(true);
-  };
-
-  const handleSelect = (executor: string, config: string) => {
-    setSelectedExecutorType(executor as BaseCodingAgent);
-    setSelectedConfiguration(config);
   };
 
   const handleCreateConfig = async (executor: string) => {
@@ -401,38 +402,195 @@ export function AgentsSettingsSection() {
       </div>
 
       {useFormEditor && localParsedProfiles?.executors ? (
-        /* Tree-based form editor layout - full width inline */
-        <div className="bg-secondary/50 border border-border rounded-sm overflow-hidden">
-          <AgentConfigTree
-            executors={localParsedProfiles.executors}
-            selectedExecutor={selectedExecutorType || ''}
-            selectedConfig={selectedConfiguration || ''}
-            defaultExecutor={config?.executor_profile?.executor}
-            defaultVariant={config?.executor_profile?.variant}
-            onSelect={handleSelect}
-            onCreateConfig={handleCreateConfig}
-            onDeleteConfig={handleDeleteConfig}
-            onMakeDefault={handleMakeDefault}
-            disabled={profilesSaving}
-            renderContent={(executor, configName) => {
-              const configData =
-                executorsMap?.[executor]?.[configName]?.[executor];
-              if (!configData) return null;
-              return (
-                <div className="bg-panel border border-border rounded-sm p-4">
-                  <ExecutorConfigForm
-                    key={`${executor}-${configName}`}
-                    executor={executor as BaseCodingAgent}
-                    value={configData as Record<string, unknown>}
-                    onChange={(formData) =>
-                      handleExecutorConfigChange(executor, configName, formData)
-                    }
+        /* Two-column layout: agents and variants on top, config form below */
+        <div className="space-y-4">
+          {/* Two-column selector */}
+          <div className="flex gap-4">
+            {/* Agents column */}
+            <div className="flex-1 bg-secondary/50 border border-border rounded-sm overflow-hidden">
+              <div className="px-3 py-2 border-b border-border bg-secondary/50">
+                <span className="text-sm font-medium text-high">
+                  {t('settings.agents.editor.agentLabel')}
+                </span>
+              </div>
+              <div className="max-h-48 overflow-y-auto">
+                {Object.keys(localParsedProfiles.executors).map((executor) => {
+                  const isSelected = selectedExecutorType === executor;
+                  const isDefault =
+                    config?.executor_profile?.executor === executor;
+                  return (
+                    <div
+                      key={executor}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors',
+                        'hover:bg-panel',
+                        isSelected && 'bg-brand/10 text-brand'
+                      )}
+                      onClick={() => {
+                        setSelectedExecutorType(executor as BaseCodingAgent);
+                        // Select first config for this executor
+                        const configs = Object.keys(
+                          localParsedProfiles.executors[
+                            executor as BaseCodingAgent
+                          ] || {}
+                        );
+                        if (configs.length > 0) {
+                          setSelectedConfiguration(configs[0]);
+                        }
+                      }}
+                    >
+                      <span className="w-4 flex items-center justify-center shrink-0">
+                        {isDefault && (
+                          <StarIcon
+                            className="size-icon-xs text-warning"
+                            weight="fill"
+                          />
+                        )}
+                      </span>
+                      <span
+                        className={cn(
+                          'text-sm truncate flex-1',
+                          isSelected ? 'text-brand font-medium' : 'text-normal'
+                        )}
+                      >
+                        {toPrettyCase(executor)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Variants column */}
+            <div className="flex-1 bg-secondary/50 border border-border rounded-sm overflow-hidden">
+              <div className="px-3 py-2 border-b border-border bg-secondary/50 flex items-center justify-between">
+                <span className="text-sm font-medium text-high">
+                  {t('settings.agents.editor.configLabel')}
+                </span>
+                {selectedExecutorType && (
+                  <IconButton
+                    icon={PlusIcon}
+                    aria-label={t('settings.agents.editor.createNew')}
+                    onClick={() => handleCreateConfig(selectedExecutorType)}
                     disabled={profilesSaving}
                   />
-                </div>
-              );
-            }}
-          />
+                )}
+              </div>
+              <div className="max-h-48 overflow-y-auto">
+                {selectedExecutorType &&
+                localParsedProfiles.executors[selectedExecutorType] ? (
+                  Object.keys(
+                    localParsedProfiles.executors[selectedExecutorType]
+                  ).map((configName) => {
+                    const isSelected = selectedConfiguration === configName;
+                    const isDefault =
+                      config?.executor_profile?.executor ===
+                        selectedExecutorType &&
+                      config?.executor_profile?.variant === configName;
+                    const configCount = Object.keys(
+                      localParsedProfiles.executors[selectedExecutorType] || {}
+                    ).length;
+                    return (
+                      <div
+                        key={configName}
+                        className={cn(
+                          'group flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors',
+                          'hover:bg-panel',
+                          isSelected && 'bg-brand/10 text-brand'
+                        )}
+                        onClick={() => setSelectedConfiguration(configName)}
+                      >
+                        <span className="w-4 flex items-center justify-center shrink-0">
+                          {isDefault && (
+                            <StarIcon
+                              className="size-icon-xs text-warning"
+                              weight="fill"
+                            />
+                          )}
+                        </span>
+                        <span
+                          className={cn(
+                            'text-sm truncate flex-1',
+                            isSelected
+                              ? 'text-brand font-medium'
+                              : 'text-normal'
+                          )}
+                        >
+                          {toPrettyCase(configName)}
+                        </span>
+                        {/* Action buttons on hover */}
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {!isDefault && (
+                            <button
+                              className="p-0.5 rounded-sm hover:bg-secondary text-low hover:text-normal"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleMakeDefault(
+                                  selectedExecutorType,
+                                  configName
+                                );
+                              }}
+                              title={t('settings.agents.editor.makeDefault')}
+                            >
+                              <StarIcon
+                                className="size-icon-xs"
+                                weight="regular"
+                              />
+                            </button>
+                          )}
+                          {configCount > 1 && (
+                            <button
+                              className="p-0.5 rounded-sm hover:bg-secondary text-low hover:text-error"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteConfig(
+                                  selectedExecutorType,
+                                  configName
+                                );
+                              }}
+                              title={t('settings.agents.editor.deleteText')}
+                            >
+                              <TrashIcon
+                                className="size-icon-xs"
+                                weight="regular"
+                              />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="px-3 py-4 text-sm text-low text-center">
+                    {t('settings.agents.selectAgent')}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Config form */}
+          {selectedExecutorType && selectedConfiguration && (
+            <div className="bg-secondary/50 border border-border rounded-sm p-4">
+              <ExecutorConfigForm
+                key={`${selectedExecutorType}-${selectedConfiguration}`}
+                executor={selectedExecutorType}
+                value={
+                  (executorsMap?.[selectedExecutorType]?.[
+                    selectedConfiguration
+                  ]?.[selectedExecutorType] as Record<string, unknown>) || {}
+                }
+                onChange={(formData) =>
+                  handleExecutorConfigChange(
+                    selectedExecutorType,
+                    selectedConfiguration,
+                    formData
+                  )
+                }
+                disabled={profilesSaving}
+              />
+            </div>
+          )}
         </div>
       ) : (
         /* JSON editor */
