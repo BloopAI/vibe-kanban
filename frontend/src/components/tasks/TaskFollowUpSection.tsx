@@ -47,7 +47,7 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useRetryUi } from '@/contexts/RetryUiContext';
 import { useFollowUpSend } from '@/hooks/useFollowUpSend';
 import { useVariant } from '@/hooks/useVariant';
-import type { DraftFollowUpData, ExecutorProfileId } from 'shared/types';
+import type { DraftFollowUpData } from 'shared/types';
 import { getLatestProfileFromProcesses } from '@/utils/executor';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { useTranslation } from 'react-i18next';
@@ -152,8 +152,6 @@ export function TaskFollowUpSection({
     [processes]
   );
 
-  const processVariant = latestProfileId?.variant ?? null;
-
   const currentProfile = useMemo(() => {
     if (!latestProfileId) return null;
     return profiles?.[latestProfileId.executor] ?? null;
@@ -162,7 +160,7 @@ export function TaskFollowUpSection({
   // Variant selection with priority: user selection > scratch > process
   const { selectedVariant, setSelectedVariant: setVariantFromHook } =
     useVariant({
-      processVariant,
+      processVariant: latestProfileId?.variant ?? null,
       scratchVariant: scratchData?.variant,
     });
 
@@ -333,12 +331,6 @@ export function TaskFollowUpSection({
     });
   }, [entries]);
 
-  // Build executor profile ID from latest profile and selected variant
-  const executorProfileId = useMemo<ExecutorProfileId | null>(() => {
-    if (!latestProfileId) return null;
-    return { executor: latestProfileId.executor, variant: selectedVariant };
-  }, [latestProfileId, selectedVariant]);
-
   // Send follow-up action
   const { isSendingFollowUp, followUpError, setFollowUpError, onSendFollowUp } =
     useFollowUpSend({
@@ -347,7 +339,8 @@ export function TaskFollowUpSection({
       conflictMarkdown: conflictResolutionInstructions,
       reviewMarkdown,
       clickedMarkdown,
-      executorProfileId,
+      executor: latestProfileId?.executor ?? null,
+      variant: selectedVariant,
       clearComments,
       clearClickedElements,
       onAfterSendCleanup: () => {
