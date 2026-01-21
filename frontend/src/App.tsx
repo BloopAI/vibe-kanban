@@ -14,6 +14,7 @@ import { usePreviousPath } from '@/hooks/usePreviousPath';
 
 import {
   AgentSettings,
+  ClaudeTokenSettings,
   GeneralSettings,
   McpSettings,
   OrganizationSettings,
@@ -169,6 +170,7 @@ function AppContent() {
                 />
                 <Route path="agents" element={<AgentSettings />} />
                 <Route path="mcp" element={<McpSettings />} />
+                <Route path="claude-token" element={<ClaudeTokenSettings />} />
               </Route>
               <Route
                 path="/mcp-servers"

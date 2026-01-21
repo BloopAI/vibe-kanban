@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO claude_oauth_tokens (id, user_id, encrypted_token, token_hint, expires_at)\n               VALUES ($1, $2, $3, $4, $5)\n               ON CONFLICT(user_id) DO UPDATE SET\n                   encrypted_token = excluded.encrypted_token,\n                   token_hint = excluded.token_hint,\n                   expires_at = excluded.expires_at,\n                   created_at = datetime('now', 'subsec'),\n                   last_used_at = NULL\n               RETURNING id as \"id!: Uuid\",\n                         user_id as \"user_id!: Uuid\",\n                         encrypted_token,\n                         token_hint,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         expires_at as \"expires_at: DateTime<Utc>\",\n                         last_used_at as \"last_used_at: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "user_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "encrypted_token",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "token_hint",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "expires_at: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_used_at: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "a0b6378ea1c0d6b095ce3f6b99cfaf4716173fd59d326e61dd86184e9e661604"
+}
