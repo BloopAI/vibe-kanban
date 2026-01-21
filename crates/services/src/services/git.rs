@@ -218,9 +218,7 @@ impl GitService {
             .into_iter()
             .next()
             .map(|(name, url)| GitRemote { name, url })
-            .ok_or_else(|| {
-                GitServiceError::InvalidRepository("No remotes configured".to_string())
-            })
+            .ok_or_else(|| GitServiceError::InvalidRepository("No remotes configured".to_string()))
     }
 
     /// Initialize a new git repository with a main branch and initial commit
@@ -1615,22 +1613,16 @@ impl GitService {
         let repo = Repository::open(repo_path)?;
         let branch_ref = Self::find_branch(&repo, branch_name)?.into_reference();
         let remote = self.get_remote_from_branch_ref(&repo, &branch_ref)?;
-        let name = remote
-            .name()
-            .map(|name| name.to_string())
-            .ok_or_else(|| {
-                GitServiceError::InvalidRepository(format!(
-                    "Remote for branch '{branch_name}' has no name"
-                ))
-            })?;
-        let url = remote
-            .url()
-            .map(|url| url.to_string())
-            .ok_or_else(|| {
-                GitServiceError::InvalidRepository(format!(
-                    "Remote for branch '{branch_name}' has no URL"
-                ))
-            })?;
+        let name = remote.name().map(|name| name.to_string()).ok_or_else(|| {
+            GitServiceError::InvalidRepository(format!(
+                "Remote for branch '{branch_name}' has no name"
+            ))
+        })?;
+        let url = remote.url().map(|url| url.to_string()).ok_or_else(|| {
+            GitServiceError::InvalidRepository(format!(
+                "Remote for branch '{branch_name}' has no URL"
+            ))
+        })?;
         Ok(GitRemote { name, url })
     }
 
