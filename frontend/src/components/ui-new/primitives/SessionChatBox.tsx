@@ -522,8 +522,8 @@ export function SessionChatBox({
       dropzone={dropzone}
       headerLeft={
         <>
-          {/* New session mode: agent icon + executor dropdown */}
-          {isNewSessionMode && executor && (
+          {/* Executor selection: agent icon + executor dropdown */}
+          {executor && (
             <>
               <AgentIcon agent={agent} className="size-icon-xl" />
               <ToolbarDropdown
@@ -548,8 +548,8 @@ export function SessionChatBox({
               </ToolbarDropdown>
             </>
           )}
-          {/* Existing session mode: show in-progress todo when running, otherwise file stats */}
-          {!isNewSessionMode && (
+          {/* Existing session with executor: show in-progress todo when running, otherwise file stats */}
+          {!executor && (
             <>
               {isRunning && inProgressTodo ? (
                 <span className="text-sm flex items-center gap-1 min-w-0">
@@ -597,8 +597,8 @@ export function SessionChatBox({
       }
       headerRight={
         <>
-          {/* Agent icon for existing session mode */}
-          {!isNewSessionMode && (
+          {/* Agent icon for sessions with executor (when not showing executor dropdown) */}
+          {!executor && (
             <AgentIcon agent={agent} className="size-icon-xl" />
           )}
           {/* Todo progress popup - always rendered, disabled when no todos */}

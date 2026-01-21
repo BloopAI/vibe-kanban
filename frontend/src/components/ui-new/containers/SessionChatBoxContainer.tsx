@@ -117,6 +117,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         ? props.workspaceId
         : undefined;
   const isNewSessionMode = mode === 'new-session';
+  const needsExecutorSelection = isNewSessionMode || !session?.executor;
   const onSelectSession =
     mode === 'placeholder' ? undefined : props.onSelectSession;
   const onStartNewSession =
@@ -721,7 +722,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       todos={todos}
       inProgressTodo={inProgressTodo}
       executor={
-        isNewSessionMode
+        needsExecutorSelection
           ? {
               selected: effectiveExecutor,
               options: executorOptions,
