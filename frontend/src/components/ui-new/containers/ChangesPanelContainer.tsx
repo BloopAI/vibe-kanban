@@ -165,7 +165,7 @@ export function ChangesPanelContainer({
     const timeoutId = setTimeout(() => {
       const fileEl = diffRefs.current.get(selectedFilePath);
       fileEl?.scrollIntoView({
-        behavior: 'smooth',
+        behavior: 'instant',
         block: 'start',
       });
 
@@ -176,8 +176,8 @@ export function ChangesPanelContainer({
           const commentEl = fileEl.querySelector(
             `[data-line="${selectedLineNumber}-extend"]`
           );
-          commentEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 300); // Wait for file scroll to complete
+          commentEl?.scrollIntoView({ behavior: 'instant', block: 'center' });
+        }, 50); // Brief delay to ensure file scroll completes
       }
     }, 0);
 

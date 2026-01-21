@@ -91,9 +91,9 @@ export function FileTree({
 
   return (
     <div className={cn('flex-1 w-full bg-secondary flex flex-col', className)}>
-      <div className="px-base pt-base">
+      <div className="px-base pt-base overflow-hidden">
         <div className="flex items-center gap-half">
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <FileTreeSearchBar
               searchQuery={searchQuery}
               onSearchChange={onSearchChange}
