@@ -127,13 +127,13 @@ pub async fn follow_up(
                 actual: executor_profile_id.executor.to_string(),
             }));
         }
-    } else if let Some(session_executor) = session.executor.as_ref() {
-        if session_executor != &executor_profile_id.executor.to_string() {
-            return Err(ApiError::Session(SessionError::ExecutorMismatch {
-                expected: session_executor.to_string(),
-                actual: executor_profile_id.executor.to_string(),
-            }));
-        }
+    } else if let Some(session_executor) = session.executor.as_ref()
+        && session_executor != &executor_profile_id.executor.to_string()
+    {
+        return Err(ApiError::Session(SessionError::ExecutorMismatch {
+            expected: session_executor.to_string(),
+            actual: executor_profile_id.executor.to_string(),
+        }));
     }
 
     // Set session.executor if not already set

@@ -834,14 +834,14 @@ impl LocalContainerService {
                 }
                 .into());
             }
-        } else if let Some(session_executor) = ctx.session.executor.as_ref() {
-            if session_executor != &executor_profile_id.executor.to_string() {
-                return Err(SessionError::ExecutorMismatch {
-                    expected: session_executor.to_string(),
-                    actual: executor_profile_id.executor.to_string(),
-                }
-                .into());
+        } else if let Some(session_executor) = ctx.session.executor.as_ref()
+            && session_executor != &executor_profile_id.executor.to_string()
+        {
+            return Err(SessionError::ExecutorMismatch {
+                expected: session_executor.to_string(),
+                actual: executor_profile_id.executor.to_string(),
             }
+            .into());
         }
 
         // Set session.executor if not already set
