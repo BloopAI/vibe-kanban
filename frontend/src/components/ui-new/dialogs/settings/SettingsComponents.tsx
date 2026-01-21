@@ -170,7 +170,7 @@ export function SettingsInput({
       placeholder={placeholder}
       disabled={disabled}
       className={cn(
-        'w-full bg-secondary border rounded-sm px-base py-half text-base text-high',
+        'w-full bg-secondary border rounded-sm px-base py-half text-sm text-high',
         'placeholder:text-low placeholder:opacity-80 focus:outline-none focus:ring-1 focus:ring-brand',
         error ? 'border-error' : 'border-border',
         disabled && 'opacity-50 cursor-not-allowed'
@@ -203,7 +203,7 @@ export function SettingsTextarea({
       disabled={disabled}
       rows={rows}
       className={cn(
-        'w-full bg-secondary border border-border rounded-sm px-base py-half text-base text-high',
+        'w-full bg-secondary border border-border rounded-sm px-base py-half text-sm text-high',
         'placeholder:text-low placeholder:opacity-80 focus:outline-none focus:ring-1 focus:ring-brand',
         'resize-y',
         monospace && 'font-mono',
