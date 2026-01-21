@@ -83,6 +83,7 @@ export function ConversationList({ attempt }: ConversationListProps) {
   const [channelData, setChannelData] =
     useState<DataWithScrollModifier<PatchTypeWithKey> | null>(null);
   const [loading, setLoading] = useState(true);
+  const loadingRef = useRef(true);
   const { setEntries, reset } = useEntries();
   const pendingUpdateRef = useRef<{
     entries: PatchTypeWithKey[];
@@ -92,6 +93,7 @@ export function ConversationList({ attempt }: ConversationListProps) {
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    loadingRef.current = true;
     setLoading(true);
     setChannelData(null);
     reset();
@@ -126,16 +128,17 @@ export function ConversationList({ attempt }: ConversationListProps) {
 
       let scrollModifier: ScrollModifier = InitialDataScrollModifier;
 
-      if (pending.addType === 'plan' && !loading) {
+      if (pending.addType === 'plan' && !loadingRef.current) {
         scrollModifier = ScrollToTopOfLastItem;
-      } else if (pending.addType === 'running' && !loading) {
+      } else if (pending.addType === 'running' && !loadingRef.current) {
         scrollModifier = AutoScrollToBottom;
       }
 
       setChannelData({ data: pending.entries, scrollModifier });
       setEntries(pending.entries);
 
-      if (loading) {
+      if (loadingRef.current) {
+        loadingRef.current = pending.loading;
         setLoading(pending.loading);
       }
     }, 100);
