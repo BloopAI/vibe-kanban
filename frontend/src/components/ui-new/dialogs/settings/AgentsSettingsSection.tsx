@@ -407,7 +407,7 @@ export function AgentsSettingsSection() {
           <div className="flex border border-border rounded-sm overflow-hidden">
             {/* Agents column */}
             <div className="flex-1 border-r border-border">
-              <div className="px-2 py-1.5 border-b border-border bg-secondary/50">
+              <div className="h-7 px-2 border-b border-border bg-secondary/50 flex items-center">
                 <span className="text-xs font-medium text-low uppercase tracking-wide">
                   {t('settings.agents.editor.agentLabel')}
                 </span>
@@ -462,7 +462,7 @@ export function AgentsSettingsSection() {
 
             {/* Variants column */}
             <div className="flex-1">
-              <div className="px-2 py-1.5 border-b border-border bg-secondary/50 flex items-center justify-between">
+              <div className="h-7 px-2 border-b border-border bg-secondary/50 flex items-center justify-between">
                 <span className="text-xs font-medium text-low uppercase tracking-wide">
                   {t('settings.agents.editor.configLabel')}
                 </span>
