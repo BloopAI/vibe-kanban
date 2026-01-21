@@ -124,8 +124,9 @@ export const SelectWidget = (props: WidgetProps) => {
 };
 
 // CheckboxWidget - Checkbox matching settings dialog styling
+// Note: Label is shown in the FieldTemplate's left column, not here
 export const CheckboxWidget = (props: WidgetProps) => {
-  const { id, value, disabled, readonly, onChange, label } = props;
+  const { id, value, disabled, readonly, onChange } = props;
 
   const handleChange = (checked: boolean) => {
     onChange(checked);
@@ -134,30 +135,17 @@ export const CheckboxWidget = (props: WidgetProps) => {
   const checked = Boolean(value);
 
   return (
-    <div className="flex items-start gap-3">
-      <input
-        type="checkbox"
-        id={id}
-        checked={checked}
-        onChange={(e) => handleChange(e.target.checked)}
-        disabled={disabled || readonly}
-        className={cn(
-          'mt-0.5 h-4 w-4 rounded border-border bg-secondary text-brand focus:ring-brand focus:ring-offset-0',
-          (disabled || readonly) && 'opacity-50 cursor-not-allowed'
-        )}
-      />
-      {label && (
-        <label
-          htmlFor={id}
-          className={cn(
-            'text-sm font-medium text-normal cursor-pointer',
-            (disabled || readonly) && 'opacity-50 cursor-not-allowed'
-          )}
-        >
-          {label}
-        </label>
+    <input
+      type="checkbox"
+      id={id}
+      checked={checked}
+      onChange={(e) => handleChange(e.target.checked)}
+      disabled={disabled || readonly}
+      className={cn(
+        'h-4 w-4 rounded border-border bg-secondary text-brand focus:ring-brand focus:ring-offset-0',
+        (disabled || readonly) && 'opacity-50 cursor-not-allowed'
       )}
-    </div>
+    />
   );
 };
 
