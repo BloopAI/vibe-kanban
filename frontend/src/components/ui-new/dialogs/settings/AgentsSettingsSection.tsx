@@ -1,11 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  SpinnerIcon,
-  StarIcon,
-  PlusIcon,
-  TrashIcon,
-} from '@phosphor-icons/react';
+import { SpinnerIcon, PlusIcon, TrashIcon } from '@phosphor-icons/react';
 import { ExecutorConfigForm } from './ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -363,8 +358,8 @@ export function AgentsSettingsSection() {
           <div className="flex border border-border rounded-sm overflow-hidden">
             {/* Agents column */}
             <div className="flex-1 border-r border-border">
-              <div className="h-7 px-2 border-b border-border bg-secondary/50 flex items-center">
-                <span className="text-xs font-medium text-low tracking-wide">
+              <div className="h-9 px-2 border-b border-border bg-secondary/50 flex items-center">
+                <span className="text-sm font-medium text-low tracking-wide">
                   {t('settings.agents.editor.agentLabel')}
                 </span>
               </div>
@@ -394,22 +389,19 @@ export function AgentsSettingsSection() {
                         }
                       }}
                     >
-                      <span className="w-3 flex items-center justify-center shrink-0">
-                        {isDefault && (
-                          <StarIcon
-                            className="size-icon-2xs text-warning"
-                            weight="fill"
-                          />
-                        )}
-                      </span>
                       <span
                         className={cn(
-                          'text-xs truncate flex-1',
+                          'text-sm truncate',
                           isSelected ? 'text-brand font-medium' : 'text-normal'
                         )}
                       >
                         {toPrettyCase(executor)}
                       </span>
+                      {isDefault && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand/15 text-brand font-medium shrink-0">
+                          {t('settings.agents.editor.isDefault')}
+                        </span>
+                      )}
                     </div>
                   );
                 })}
@@ -418,8 +410,8 @@ export function AgentsSettingsSection() {
 
             {/* Variants column */}
             <div className="flex-1">
-              <div className="h-7 px-2 border-b border-border bg-secondary/50 flex items-center justify-between">
-                <span className="text-xs font-medium text-low tracking-wide">
+              <div className="h-9 px-2 border-b border-border bg-secondary/50 flex items-center justify-between">
+                <span className="text-sm font-medium text-low tracking-wide">
                   {t('settings.agents.editor.configLabel')}
                 </span>
                 {selectedExecutorType && (
@@ -457,17 +449,9 @@ export function AgentsSettingsSection() {
                         )}
                         onClick={() => setSelectedConfiguration(configName)}
                       >
-                        <span className="w-3 flex items-center justify-center shrink-0">
-                          {isDefault && (
-                            <StarIcon
-                              className="size-icon-2xs text-warning"
-                              weight="fill"
-                            />
-                          )}
-                        </span>
                         <span
                           className={cn(
-                            'text-xs truncate flex-1',
+                            'text-sm truncate',
                             isSelected
                               ? 'text-brand font-medium'
                               : 'text-normal'
@@ -475,11 +459,16 @@ export function AgentsSettingsSection() {
                         >
                           {toPrettyCase(configName)}
                         </span>
+                        {isDefault && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand/15 text-brand font-medium shrink-0">
+                            {t('settings.agents.editor.isDefault')}
+                          </span>
+                        )}
                         {/* Action buttons on hover */}
-                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
                           {!isDefault && (
                             <button
-                              className="p-0.5 rounded-sm hover:bg-panel text-low hover:text-normal"
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-secondary hover:bg-panel text-low hover:text-normal"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleMakeDefault(
@@ -487,12 +476,8 @@ export function AgentsSettingsSection() {
                                   configName
                                 );
                               }}
-                              title={t('settings.agents.editor.makeDefault')}
                             >
-                              <StarIcon
-                                className="size-icon-2xs"
-                                weight="regular"
-                              />
+                              {t('settings.agents.editor.makeDefault')}
                             </button>
                           )}
                           {configCount > 1 && (
@@ -518,7 +503,7 @@ export function AgentsSettingsSection() {
                     );
                   })
                 ) : (
-                  <div className="px-2 py-3 text-xs text-low text-center">
+                  <div className="px-2 py-3 text-sm text-low text-center">
                     {t('settings.agents.selectAgent')}
                   </div>
                 )}
