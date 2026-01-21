@@ -20,7 +20,6 @@ import type {
 import {
   makeLoadingPatch,
   MIN_INITIAL_ENTRIES,
-  nextActionPatch,
   REMAINING_BATCH_SIZE,
 } from '@/hooks/useConversationHistory/constants';
 
@@ -144,13 +143,6 @@ export const useConversationHistory = ({
 
   const flattenEntriesForEmit = useCallback(
     (executionProcessState: ExecutionProcessStateStore): PatchTypeWithKey[] => {
-      // Flags to control Next Action bar emit
-      let hasPendingApproval = false;
-      let hasRunningProcess = false;
-      let lastProcessFailedOrKilled = false;
-      let needsSetup = false;
-      let setupHelpText: string | undefined;
-
       // Create user messages + tool calls for setup/cleanup scripts
       const allEntries = Object.values(executionProcessState)
         .sort(
@@ -162,7 +154,7 @@ export const useConversationHistory = ({
               b.executionProcess.created_at as unknown as string
             ).getTime()
         )
-        .flatMap((p, index) => {
+        .flatMap((p) => {
           const entries: PatchTypeWithKey[] = [];
           if (
             p.executionProcess.executor_action.typ.type ===
@@ -209,10 +201,6 @@ export const useConversationHistory = ({
               }
             );
 
-            if (hasPendingApprovalEntry) {
-              hasPendingApproval = true;
-            }
-
             entries.push(...entriesExcludingUser);
 
             const liveProcessStatus = getLiveExecutionProcess(
@@ -220,37 +208,6 @@ export const useConversationHistory = ({
             )?.status;
             const isProcessRunning =
               liveProcessStatus === ExecutionProcessStatus.running;
-            const processFailedOrKilled =
-              liveProcessStatus === ExecutionProcessStatus.failed ||
-              liveProcessStatus === ExecutionProcessStatus.killed;
-
-            if (isProcessRunning) {
-              hasRunningProcess = true;
-            }
-
-            if (
-              processFailedOrKilled &&
-              index === Object.keys(executionProcessState).length - 1
-            ) {
-              lastProcessFailedOrKilled = true;
-
-              // Check if this failed process has a SetupRequired entry
-              const hasSetupRequired = entriesExcludingUser.some((entry) => {
-                if (entry.type !== 'NORMALIZED_ENTRY') return false;
-                if (
-                  entry.content.entry_type.type === 'error_message' &&
-                  entry.content.entry_type.error_type.type === 'setup_required'
-                ) {
-                  setupHelpText = entry.content.content;
-                  return true;
-                }
-                return false;
-              });
-
-              if (hasSetupRequired) {
-                needsSetup = true;
-              }
-            }
 
             if (isProcessRunning && !hasPendingApprovalEntry) {
               entries.push(makeLoadingPatch(p.executionProcess.id));
@@ -277,18 +234,6 @@ export const useConversationHistory = ({
             const executionProcess = getLiveExecutionProcess(
               p.executionProcess.id
             );
-
-            if (executionProcess?.status === ExecutionProcessStatus.running) {
-              hasRunningProcess = true;
-            }
-
-            if (
-              (executionProcess?.status === ExecutionProcessStatus.failed ||
-                executionProcess?.status === ExecutionProcessStatus.killed) &&
-              index === Object.keys(executionProcessState).length - 1
-            ) {
-              lastProcessFailedOrKilled = true;
-            }
 
             const exitCode = Number(executionProcess?.exit_code) || 0;
             const exit_status: CommandExitStatus | null =
@@ -340,18 +285,6 @@ export const useConversationHistory = ({
 
           return entries;
         });
-
-      // Emit the next action bar if no process running
-      if (!hasRunningProcess && !hasPendingApproval) {
-        allEntries.push(
-          nextActionPatch(
-            lastProcessFailedOrKilled,
-            Object.keys(executionProcessState).length,
-            needsSetup,
-            setupHelpText
-          )
-        );
-      }
 
       return allEntries;
     },

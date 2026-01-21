@@ -128,26 +128,7 @@ export function ConversationList({ attempt }: ConversationListProps) {
 
       let scrollModifier: ScrollModifier = InitialDataScrollModifier;
 
-      console.log('[ConversationList] onEntriesUpdated debounce fired:', {
-        addType: pending.addType,
-        loadingRef: loadingRef.current,
-        pendingLoading: pending.loading,
-        entriesCount: pending.entries.length,
-        lastEntryType:
-          pending.entries.length > 0
-            ? pending.entries[pending.entries.length - 1].type
-            : 'none',
-        lastEntryToolName:
-          pending.entries.length > 0 &&
-          pending.entries[pending.entries.length - 1].type ===
-            'NORMALIZED_ENTRY'
-            ? (pending.entries[pending.entries.length - 1] as any).content
-                ?.entry_type?.tool_name
-            : 'n/a',
-      });
-
       if (pending.addType === 'plan' && !loadingRef.current) {
-        console.log('[ConversationList] Using ScrollToTopOfLastItem');
         scrollModifier = ScrollToTopOfLastItem;
       } else if (pending.addType === 'running' && !loadingRef.current) {
         scrollModifier = AutoScrollToBottom;
