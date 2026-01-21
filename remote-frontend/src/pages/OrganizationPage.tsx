@@ -21,6 +21,7 @@ import {
   getBillingStatus,
   createBillingPortalSession,
   createCheckoutSession,
+  ApiError,
   type Organization,
   type OrganizationMemberWithProfile,
   type OrganizationInvitation,
@@ -72,6 +73,7 @@ export default function OrganizationPage() {
   const [inviteRole, setInviteRole] = useState<MemberRole>("MEMBER");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [isSubscriptionRequired, setIsSubscriptionRequired] = useState(false);
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -99,6 +101,15 @@ export default function OrganizationPage() {
       setGithubAppError(githubAppErrorParam);
       searchParams.delete("github_app_error");
       setSearchParams(searchParams, { replace: true });
+    }
+
+    const billingResult = searchParams.get("billing");
+    if (billingResult) {
+      searchParams.delete("billing");
+      setSearchParams(searchParams, { replace: true });
+      if (billingResult === "success") {
+        getBillingStatus(orgId).then(setBillingStatus).catch(() => {});
+      }
     }
   }, [orgId, navigate, searchParams, setSearchParams]);
 
@@ -221,6 +232,7 @@ export default function OrganizationPage() {
 
     setInviteLoading(true);
     setInviteError(null);
+    setIsSubscriptionRequired(false);
 
     try {
       const invitation = await createInvitation(
@@ -232,7 +244,12 @@ export default function OrganizationPage() {
       setInviteEmail("");
       setShowInviteForm(false);
     } catch (e) {
-      setInviteError(e instanceof Error ? e.message : "Failed to send invite");
+      if (e instanceof ApiError && e.status === 402) {
+        setIsSubscriptionRequired(true);
+        setInviteError("Subscription required to add more members.");
+      } else {
+        setInviteError(e instanceof Error ? e.message : "Failed to send invite");
+      }
     } finally {
       setInviteLoading(false);
     }
@@ -615,7 +632,29 @@ export default function OrganizationPage() {
                 </select>
               </div>
               {inviteError && (
-                <p className="text-sm text-red-600">{inviteError}</p>
+                <div
+                  className={
+                    isSubscriptionRequired
+                      ? "bg-amber-50 border border-amber-200 rounded-lg p-3"
+                      : ""
+                  }
+                >
+                  <p
+                    className={`text-sm ${isSubscriptionRequired ? "text-amber-700" : "text-red-600"}`}
+                  >
+                    {inviteError}
+                  </p>
+                  {isSubscriptionRequired && (
+                    <button
+                      type="button"
+                      onClick={handleSubscribe}
+                      disabled={billingLoading}
+                      className="mt-2 px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                    >
+                      {billingLoading ? "Loading..." : "Upgrade to Team Plan"}
+                    </button>
+                  )}
+                </div>
               )}
               <button
                 type="submit"
@@ -745,10 +784,6 @@ export default function OrganizationPage() {
         {/* Billing Card (admin only, non-personal orgs, when billing is enabled) */}
         {isAdmin && !organization?.is_personal && billingStatus?.billing_enabled && (
           <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
-              Billing
-            </h2>
-
             {billingError && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-red-700">{billingError}</p>
@@ -761,39 +796,10 @@ export default function OrganizationPage() {
               </div>
             )}
 
-            {billingStatus.seat_info && (
-              <div className="mb-4">
-                <p className="text-sm text-gray-600">
-                  {billingStatus.seat_info.current_members} of {billingStatus.seat_info.free_seats} free seats used
-                </p>
-                {billingStatus.seat_info.requires_subscription && !billingStatus.seat_info.subscription && (
-                  <p className="text-sm text-amber-600 mt-1">
-                    Subscription required for additional members
-                  </p>
-                )}
-              </div>
-            )}
-
             {billingStatus.seat_info?.subscription ? (
-              <div className="mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm font-medium text-gray-700">Status:</span>
-                  <span
-                    className={`px-2 py-0.5 text-xs rounded ${
-                      billingStatus.seat_info.subscription.status === "active"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-yellow-100 text-yellow-700"
-                    }`}
-                  >
-                    {billingStatus.seat_info.subscription.status}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600">
-                  ${(billingStatus.seat_info.subscription.unit_amount / 100).toFixed(2)}/seat/month
-                  ({billingStatus.seat_info.subscription.quantity} seats)
-                </p>
+              <>
                 {billingStatus.seat_info.subscription.cancel_at_period_end && (
-                  <p className="text-sm text-amber-600 mt-1">
+                  <p className="text-sm text-amber-600 mb-3">
                     Subscription will end on{" "}
                     {new Date(billingStatus.seat_info.subscription.current_period_end).toLocaleDateString()}
                   </p>
@@ -801,21 +807,24 @@ export default function OrganizationPage() {
                 <button
                   onClick={handleManageSubscription}
                   disabled={billingLoading}
-                  className="mt-3 px-4 py-2 text-sm bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                  className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
                 >
                   {billingLoading ? "Loading..." : "Manage Subscription"}
                 </button>
-              </div>
+              </>
             ) : (
-              billingStatus.seat_info?.requires_subscription && (
+              <>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                  Upgrade to Team Plan
+                </h2>
                 <button
                   onClick={handleSubscribe}
                   disabled={billingLoading}
                   className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
                 >
-                  {billingLoading ? "Loading..." : "Subscribe Now - $20/seat/month"}
+                  {billingLoading ? "Loading..." : "Upgrade"}
                 </button>
-              )
+              </>
             )}
           </div>
         )}

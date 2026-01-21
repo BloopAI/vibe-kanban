@@ -29,7 +29,7 @@ mod billing {
     }
 }
 mod electric_proxy;
-mod error;
+pub(crate) mod error;
 mod github_app;
 mod identity;
 mod issue_assignees;
@@ -101,11 +101,11 @@ pub fn router(state: AppState) -> Router {
         .merge(pull_requests::router())
         .merge(notifications::router())
         .merge(workspaces::router())
+        .merge(billing::protected_router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,
-        ))
-        .merge(billing::protected_router());
+        ));
 
     let static_dir = "/srv/static";
     let spa =

@@ -1,7 +1,7 @@
 use axum::{
     Json, Router,
     body::Bytes,
-    extract::{Path, State},
+    extract::{Extension, Path, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
     routing::{get, post},
@@ -38,7 +38,7 @@ pub fn protected_router() -> Router<AppState> {
 
 pub async fn get_billing_status(
     State(state): State<AppState>,
-    axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
+    Extension(ctx): Extension<RequestContext>,
     Path(org_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     organization_members::assert_membership(&state.pool, org_id, ctx.user.id)
@@ -63,7 +63,7 @@ pub async fn get_billing_status(
 
 pub async fn create_portal_session(
     State(state): State<AppState>,
-    axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
+    Extension(ctx): Extension<RequestContext>,
     Path(org_id): Path<Uuid>,
     Json(payload): Json<CreatePortalRequest>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
@@ -85,7 +85,7 @@ pub async fn create_portal_session(
 
 pub async fn create_checkout_session(
     State(state): State<AppState>,
-    axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
+    Extension(ctx): Extension<RequestContext>,
     Path(org_id): Path<Uuid>,
     Json(payload): Json<CreateCheckoutRequest>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
@@ -98,12 +98,7 @@ pub async fn create_checkout_session(
     })?;
 
     let session = billing
-        .create_checkout_session(
-            org_id,
-            &ctx.user.email,
-            &payload.success_url,
-            &payload.cancel_url,
-        )
+        .create_checkout_session(org_id, &payload.success_url, &payload.cancel_url)
         .await
         .map_err(billing_error)?;
 

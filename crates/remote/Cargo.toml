@@ -14,8 +14,7 @@ vk-billing = ["dep:billing"]
 
 [dependencies]
 # private crate for billing functionality
-# vk-billing = { git = "ssh://git@github.com/BloopAI/vibe-kanban-private", branch = "main", package = "billing", optional = true }
-billing = { path = "/Users/gabriel/work/vk/vibe-kanban-private/crates/billing", optional = true }
+billing = { git = "ssh://git@github.com/BloopAI/vibe-kanban-private", branch = "main", package = "billing", optional = true }
 
 anyhow = { workspace = true }
 axum = { workspace = true }
@@ -52,7 +51,7 @@ hex = "0.4"
 urlencoding = "2.1"
 url = "2.5"
 base64 = "0.22"
-aws-sdk-s3 = { version = "1.65", default-features = false, features = ["behavior-version-latest"] }
+aws-sdk-s3 = { version = "1.65", default-features = false, features = ["behavior-version-latest", "rt-tokio"] }
 aws-credential-types = "1.2"
 tempfile = "3"
 tar = "0.4"

@@ -7,7 +7,7 @@ use uuid::Uuid;
 use super::{
     identity_errors::IdentityError,
     organization_members::{MemberRole, add_member, assert_admin},
-    organizations::{Organization, OrganizationRepository},
+    organizations::{Organization, OrganizationRepository, is_personal_org},
 };
 use crate::{billing::BillingService, db::organization_members::is_member};
 
@@ -223,10 +223,7 @@ impl<'a> InvitationRepository<'a> {
             IdentityError::InvitationError("Invitation not found or already used".to_string())
         })?;
 
-        if OrganizationRepository::new(self.pool)
-            .is_personal(invitation.organization_id)
-            .await?
-        {
+        if is_personal_org(&mut *tx, invitation.organization_id).await? {
             tx.rollback().await?;
             return Err(IdentityError::InvitationError(
                 "Cannot accept invitations for a personal organization".to_string(),
@@ -258,15 +255,7 @@ impl<'a> InvitationRepository<'a> {
             ));
         }
 
-        billing
-            .can_add_member(invitation.organization_id)
-            .await
-            .map_err(|e| {
-                IdentityError::InvitationError(format!(
-                    "Cannot accept invitation: {}. Organization admin must subscribe first.",
-                    e
-                ))
-            })?;
+        billing.can_add_member(invitation.organization_id).await?;
 
         add_member(
             &mut *tx,

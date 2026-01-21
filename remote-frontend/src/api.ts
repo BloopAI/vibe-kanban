@@ -8,6 +8,16 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status?: number
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 // Types for account management
 export type MemberRole = "ADMIN" | "MEMBER";
 
@@ -455,7 +465,10 @@ export async function createInvitation(
   );
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `Failed to create invitation (${res.status})`);
+    throw new ApiError(
+      error.message || `Failed to create invitation (${res.status})`,
+      res.status
+    );
   }
   const data = await res.json();
   return data.invitation;

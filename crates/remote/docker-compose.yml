@@ -35,6 +35,8 @@ services:
     depends_on:
       remote-db:
         condition: service_healthy
+      remote-server:
+        condition: service_healthy
 
   remote-server:
     build:
@@ -47,9 +49,9 @@ services:
     depends_on:
       remote-db:
         condition: service_healthy
-      electric:
-        condition: service_started
     environment:
+      RUST_LOG: info,remote=debug 
+
       SERVER_DATABASE_URL: postgres://remote:remote@remote-db:5432/remote
       SERVER_LISTEN_ADDR: 0.0.0.0:8081
       ELECTRIC_URL: http://electric:3000
@@ -72,13 +74,20 @@ services:
       GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY:-}
       GITHUB_APP_WEBHOOK_SECRET: ${GITHUB_APP_WEBHOOK_SECRET:-}
       GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-}
+
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-      STRIPE_PRICE_ID: ${STRIPE_PRICE_ID:-}
+      STRIPE_TEAM_SEAT_PRICE_ID: ${STRIPE_TEAM_SEAT_PRICE_ID:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      BILLING_FREE_SEAT_LIMIT: ${BILLING_FREE_SEAT_LIMIT:-5}
+      STRIPE_FREE_SEAT_LIMIT: ${STRIPE_FREE_SEAT_LIMIT:-1}
     ports:
       - "127.0.0.1:3000:8081"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8081/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
 volumes:
   remote-db-data:

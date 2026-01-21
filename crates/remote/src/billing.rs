@@ -98,3 +98,44 @@ impl std::fmt::Display for BillingCheckError {
 }
 
 impl std::error::Error for BillingCheckError {}
+
+impl BillingCheckError {
+    pub fn to_error_response(&self, _context: &str) -> crate::routes::error::ErrorResponse {
+        #[cfg(feature = "vk-billing")]
+        {
+            use axum::http::StatusCode;
+
+            use crate::routes::error::ErrorResponse;
+
+            match self {
+                Self::Billing(e) => match e {
+                    BillingError::SubscriptionRequired(_) | BillingError::SubscriptionInactive => {
+                        ErrorResponse::new(
+                            StatusCode::PAYMENT_REQUIRED,
+                            format!("{}: {}. Subscribe to add more members.", _context, e),
+                        )
+                    }
+                    BillingError::Stripe(msg) => {
+                        tracing::error!(?msg, "Stripe error");
+                        ErrorResponse::new(StatusCode::BAD_GATEWAY, "Payment provider error")
+                    }
+                    BillingError::Database(db_err) => {
+                        tracing::error!(?db_err, "Database error in billing check");
+                        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal error")
+                    }
+                    BillingError::NotConfigured => ErrorResponse::new(
+                        StatusCode::SERVICE_UNAVAILABLE,
+                        "Billing not configured",
+                    ),
+                    BillingError::OrganizationNotFound => {
+                        ErrorResponse::new(StatusCode::NOT_FOUND, "Organization not found")
+                    }
+                },
+            }
+        }
+        #[cfg(not(feature = "vk-billing"))]
+        {
+            match *self {}
+        }
+    }
+}

@@ -100,15 +100,11 @@ pub async fn create_invitation(
 
     ensure_admin_access(&state.pool, org_id, user.id).await?;
 
-    state.billing().can_add_member(org_id).await.map_err(|e| {
-        ErrorResponse::new(
-            StatusCode::PAYMENT_REQUIRED,
-            format!(
-                "Cannot invite more members: {}. Subscribe to add more members.",
-                e
-            ),
-        )
-    })?;
+    state
+        .billing()
+        .can_add_member(org_id)
+        .await
+        .map_err(|e| e.to_error_response("Cannot invite more members"))?;
 
     let token = Uuid::new_v4().to_string();
     let expires_at = Utc::now() + Duration::days(7);
@@ -256,6 +252,10 @@ pub async fn accept_invitation(
             IdentityError::InvitationError(msg) => ErrorResponse::new(StatusCode::BAD_REQUEST, msg),
             IdentityError::NotFound => {
                 ErrorResponse::new(StatusCode::NOT_FOUND, "Invitation not found")
+            }
+            #[cfg(feature = "vk-billing")]
+            IdentityError::Billing(billing_err) => {
+                billing_err.to_error_response("Cannot accept invitation")
             }
             _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
         })?;
