@@ -462,7 +462,7 @@ export function AgentsSettingsSection() {
     selectedExecutorType
   ]
     ? Object.keys(localParsedProfiles.executors[selectedExecutorType]).map(
-        (key) => ({ value: key, label: key })
+        (key) => ({ value: key, label: toPrettyCase(key) })
       )
     : [];
 
@@ -652,7 +652,7 @@ export function AgentsSettingsSection() {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <DropdownMenuTriggerButton
-                        label={selectedConfiguration}
+                        label={toPrettyCase(selectedConfiguration)}
                         className="flex-1 justify-between"
                         disabled={
                           !localParsedProfiles.executors[selectedExecutorType]
