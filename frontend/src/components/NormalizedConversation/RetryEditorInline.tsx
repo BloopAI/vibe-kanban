@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Loader2, Paperclip, Send, X } from 'lucide-react';
 import { imagesApi } from '@/lib/api';
 import type { WorkspaceWithSession } from '@/types/attempt';
+import type { ExecutorProfileId } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
@@ -40,19 +41,27 @@ export function RetryEditorInline({
   // Get sessionId from attempt's session
   const sessionId = attempt.session?.id;
 
-  // Extract variant from the process being retried
-  const processVariant = useMemo<string | null>(() => {
+  // Extract profile from the process being retried
+  const processProfileId = useMemo<ExecutorProfileId | null>(() => {
     const process = attemptData.processes?.find(
       (p) => p.id === executionProcessId
     );
     if (!process?.executor_action) return null;
-    return extractProfileFromAction(process.executor_action)?.variant ?? null;
+    return extractProfileFromAction(process.executor_action);
   }, [attemptData.processes, executionProcessId]);
+
+  const processVariant = processProfileId?.variant ?? null;
 
   const { selectedVariant, setSelectedVariant } = useVariant({
     processVariant,
     scratchVariant: undefined,
   });
+
+  // Build the executorProfileId from the process executor and selected variant
+  const executorProfileId = useMemo<ExecutorProfileId | null>(() => {
+    if (!processProfileId) return null;
+    return { executor: processProfileId.executor, variant: selectedVariant };
+  }, [processProfileId, selectedVariant]);
 
   const retryMutation = useRetryProcess(
     sessionId ?? '',
@@ -61,18 +70,18 @@ export function RetryEditorInline({
   );
 
   const isSending = retryMutation.isPending;
-  const canSend = !isAttemptRunning && !!message.trim() && !!sessionId;
+  const canSend = !isAttemptRunning && !!message.trim() && !!sessionId && !!executorProfileId;
 
   const onCancel = () => {
     onCancelled?.();
   };
 
   const onSend = useCallback(() => {
-    if (!canSend) return;
+    if (!canSend || !executorProfileId) return;
     setSendError(null);
     retryMutation.mutate({
       message,
-      variant: selectedVariant,
+      executorProfileId,
       executionProcessId,
       branchStatus,
       processes: attemptData.processes,
@@ -81,7 +90,7 @@ export function RetryEditorInline({
     canSend,
     retryMutation,
     message,
-    selectedVariant,
+    executorProfileId,
     executionProcessId,
     branchStatus,
     attemptData.processes,

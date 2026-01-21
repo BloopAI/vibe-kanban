@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import type { BaseCodingAgent } from 'shared/types';
+import type { ExecutorProfileId } from 'shared/types';
 import { sessionsApi } from '@/lib/api';
 import { useCreateSession } from './useCreateSession';
 
@@ -10,15 +10,15 @@ interface UseSessionSendOptions {
   workspaceId: string | undefined;
   /** Whether in new session mode */
   isNewSessionMode: boolean;
-  /** Effective executor for new sessions */
-  effectiveExecutor: BaseCodingAgent | null;
+  /** Effective executor profile for new sessions */
+  effectiveExecutorProfileId: ExecutorProfileId | null;
   /** Callback when session is selected (to exit new session mode) */
   onSelectSession?: (sessionId: string) => void;
 }
 
 interface UseSessionSendResult {
   /** Send a message. Returns true on success, false on failure. */
-  send: (message: string, variant: string | null) => Promise<boolean>;
+  send: (message: string, executorProfileId: ExecutorProfileId) => Promise<boolean>;
   /** Whether a send operation is in progress */
   isSending: boolean;
   /** Error message if send failed */
@@ -32,7 +32,7 @@ interface UseSessionSendResult {
  * Handles both new session creation and existing session follow-up.
  *
  * Unlike useFollowUpSend, this hook:
- * - Takes message/variant as parameters to send() (not captured in closure)
+ * - Takes message/executorProfileId as parameters to send() (not captured in closure)
  * - Returns boolean for success/failure (caller handles cleanup)
  * - Has no prompt composition (no conflict/review/clicked markdown)
  */
@@ -40,7 +40,7 @@ export function useSessionSend({
   sessionId,
   workspaceId,
   isNewSessionMode,
-  effectiveExecutor,
+  effectiveExecutorProfileId,
   onSelectSession,
 }: UseSessionSendOptions): UseSessionSendResult {
   const { mutateAsync: createSession, isPending: isCreatingSession } =
@@ -49,7 +49,7 @@ export function useSessionSend({
   const [error, setError] = useState<string | null>(null);
 
   const send = useCallback(
-    async (message: string, variant: string | null): Promise<boolean> => {
+    async (message: string, executorProfileId: ExecutorProfileId): Promise<boolean> => {
       const trimmed = message.trim();
       if (!trimmed) return false;
 
@@ -57,7 +57,7 @@ export function useSessionSend({
 
       if (isNewSessionMode) {
         // New session flow
-        if (!workspaceId || !effectiveExecutor) {
+        if (!workspaceId || !effectiveExecutorProfileId) {
           setError('No executor selected');
           return false;
         }
@@ -65,8 +65,7 @@ export function useSessionSend({
           const session = await createSession({
             workspaceId,
             prompt: trimmed,
-            variant,
-            executor: effectiveExecutor,
+            executorProfileId: effectiveExecutorProfileId,
           });
           onSelectSession?.(session.id);
           return true;
@@ -84,7 +83,7 @@ export function useSessionSend({
         try {
           await sessionsApi.followUp(sessionId, {
             prompt: trimmed,
-            variant,
+            executor_profile_id: executorProfileId,
             retry_process_id: null,
             force_when_dirty: null,
             perform_git_reset: null,
@@ -103,7 +102,7 @@ export function useSessionSend({
       sessionId,
       workspaceId,
       isNewSessionMode,
-      effectiveExecutor,
+      effectiveExecutorProfileId,
       createSession,
       onSelectSession,
     ]

@@ -4,11 +4,15 @@ import {
   RestoreLogsDialog,
   type RestoreLogsDialogResult,
 } from '@/components/dialogs';
-import type { RepoBranchStatus, ExecutionProcess } from 'shared/types';
+import type {
+  RepoBranchStatus,
+  ExecutionProcess,
+  ExecutorProfileId,
+} from 'shared/types';
 
 export interface RetryProcessParams {
   message: string;
-  variant: string | null;
+  executorProfileId: ExecutorProfileId;
   executionProcessId: string;
   branchStatus: RepoBranchStatus[] | undefined;
   processes: ExecutionProcess[] | undefined;
@@ -29,7 +33,7 @@ export function useRetryProcess(
   return useMutation({
     mutationFn: async ({
       message,
-      variant,
+      executorProfileId,
       executionProcessId,
       branchStatus,
       processes,
@@ -52,7 +56,7 @@ export function useRetryProcess(
       // Send the retry request
       await sessionsApi.followUp(sessionId, {
         prompt: message,
-        variant,
+        executor_profile_id: executorProfileId,
         retry_process_id: executionProcessId,
         force_when_dirty: modalResult.forceWhenDirty ?? false,
         perform_git_reset: modalResult.performGitReset ?? true,

@@ -339,6 +339,12 @@ export function TaskFollowUpSection({
     });
   }, [entries]);
 
+  // Build executor profile ID from latest profile and selected variant
+  const executorProfileId = useMemo<ExecutorProfileId | null>(() => {
+    if (!latestProfileId) return null;
+    return { executor: latestProfileId.executor, variant: selectedVariant };
+  }, [latestProfileId, selectedVariant]);
+
   // Send follow-up action
   const { isSendingFollowUp, followUpError, setFollowUpError, onSendFollowUp } =
     useFollowUpSend({
@@ -347,7 +353,7 @@ export function TaskFollowUpSection({
       conflictMarkdown: conflictResolutionInstructions,
       reviewMarkdown,
       clickedMarkdown,
-      selectedVariant,
+      executorProfileId,
       clearComments,
       clearClickedElements,
       onAfterSendCleanup: () => {

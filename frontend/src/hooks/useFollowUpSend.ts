@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { sessionsApi } from '@/lib/api';
-import type { CreateFollowUpAttempt } from 'shared/types';
+import type { CreateFollowUpAttempt, ExecutorProfileId } from 'shared/types';
 
 type Args = {
   sessionId?: string;
@@ -8,7 +8,7 @@ type Args = {
   conflictMarkdown: string | null;
   reviewMarkdown: string;
   clickedMarkdown?: string;
-  selectedVariant: string | null;
+  executorProfileId: ExecutorProfileId | null;
   clearComments: () => void;
   clearClickedElements?: () => void;
   onAfterSendCleanup: () => void;
@@ -20,7 +20,7 @@ export function useFollowUpSend({
   conflictMarkdown,
   reviewMarkdown,
   clickedMarkdown,
-  selectedVariant,
+  executorProfileId,
   clearComments,
   clearClickedElements,
   onAfterSendCleanup,
@@ -29,7 +29,7 @@ export function useFollowUpSend({
   const [followUpError, setFollowUpError] = useState<string | null>(null);
 
   const onSendFollowUp = useCallback(async () => {
-    if (!sessionId) return;
+    if (!sessionId || !executorProfileId) return;
     const extraMessage = message.trim();
     const finalPrompt = [
       conflictMarkdown,
@@ -45,7 +45,7 @@ export function useFollowUpSend({
       setFollowUpError(null);
       const body: CreateFollowUpAttempt = {
         prompt: finalPrompt,
-        variant: selectedVariant,
+        executor_profile_id: executorProfileId,
         retry_process_id: null,
         force_when_dirty: null,
         perform_git_reset: null,
@@ -69,7 +69,7 @@ export function useFollowUpSend({
     conflictMarkdown,
     reviewMarkdown,
     clickedMarkdown,
-    selectedVariant,
+    executorProfileId,
     clearComments,
     clearClickedElements,
     onAfterSendCleanup,
