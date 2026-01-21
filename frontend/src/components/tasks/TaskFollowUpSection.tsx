@@ -369,7 +369,7 @@ export function TaskFollowUpSection({
   ]);
 
   const canSendFollowUp = useMemo(() => {
-    if (!canTypeFollowUp) {
+    if (!canTypeFollowUp || !latestProfileId?.executor) {
       return false;
     }
 
@@ -382,6 +382,7 @@ export function TaskFollowUpSection({
     );
   }, [
     canTypeFollowUp,
+    latestProfileId?.executor,
     conflictResolutionInstructions,
     reviewMarkdown,
     clickedMarkdown,

@@ -308,7 +308,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Executor/variant selection
   const {
-    executorProfileId,
+    effectiveExecutor,
     executorOptions,
     handleExecutorChange,
     selectedVariant,
@@ -356,17 +356,15 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     sessionId,
     workspaceId,
     isNewSessionMode,
-    executorProfileId,
+    effectiveExecutor,
     onSelectSession,
   });
 
   const handleSend = useCallback(async () => {
-    if (!executorProfileId) return;
-
     const messageParts = [reviewMarkdown, localMessage].filter(Boolean);
     const combinedMessage = messageParts.join('\n\n');
 
-    const success = await send(combinedMessage, executorProfileId);
+    const success = await send(combinedMessage, selectedVariant);
     if (success) {
       cancelDebouncedSave();
       setLocalMessage('');
@@ -378,7 +376,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     send,
     localMessage,
     reviewMarkdown,
-    executorProfileId,
+    selectedVariant,
     cancelDebouncedSave,
     setLocalMessage,
     clearUploadedImages,
@@ -495,12 +493,12 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Handle edit submission
   const handleSubmitEdit = useCallback(async () => {
-    if (!editContext.activeEdit || !localMessage.trim() || !executorProfileId)
+    if (!editContext.activeEdit || !localMessage.trim() || !effectiveExecutor)
       return;
     editRetryMutation.mutate({
       message: localMessage,
-      executor: executorProfileId.executor,
-      variant: executorProfileId.variant,
+      executor: effectiveExecutor,
+      variant: selectedVariant,
       executionProcessId: editContext.activeEdit.processId,
       branchStatus,
       processes,
@@ -508,7 +506,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   }, [
     editContext.activeEdit,
     localMessage,
-    executorProfileId,
+    effectiveExecutor,
+    selectedVariant,
     branchStatus,
     processes,
     editRetryMutation,
@@ -693,7 +692,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         sessions,
         selectedSessionId: sessionId,
         onSelectSession: onSelectSession ?? (() => {}),
-        isNewSessionMode,
+        isNewSessionMode: needsExecutorSelection,
         onNewSession: onStartNewSession,
       }}
       toolbarActions={{
@@ -715,7 +714,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       executor={
         needsExecutorSelection
           ? {
-              selected: executorProfileId?.executor ?? null,
+              selected: effectiveExecutor,
               options: executorOptions,
               onChange: handleExecutorChange,
             }
