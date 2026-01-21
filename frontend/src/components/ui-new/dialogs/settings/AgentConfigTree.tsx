@@ -7,7 +7,8 @@ import {
   PlusIcon,
   TrashIcon,
   DotsThreeIcon,
-  MagnifyingGlassIcon,
+  ArrowsInSimpleIcon,
+  ArrowsOutSimpleIcon,
 } from '@phosphor-icons/react';
 import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
 import { cn } from '@/lib/utils';
@@ -19,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '../../primitives/Dropdown';
 import { IconButton } from '../../primitives/IconButton';
+import { InputField } from '../../primitives/InputField';
 
 interface AgentConfigTreeProps {
   executors: ExecutorConfigs['executors'] | null;
@@ -357,34 +359,20 @@ export function AgentConfigTree({
     executorEntries.length > 0 &&
     executorEntries.every(([executor]) => expandedExecutors.has(executor));
 
+  const ExpandIcon = allExpanded ? ArrowsInSimpleIcon : ArrowsOutSimpleIcon;
+
   return (
     <div className="flex flex-col h-full">
       {/* Search and controls */}
-      <div className="p-2 border-b border-border space-y-2">
-        <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-2 top-1/2 -translate-y-1/2 size-icon-xs text-low" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t('settings.agents.tree.search')}
-            className={cn(
-              'w-full pl-7 pr-2 py-1 text-sm rounded-sm',
-              'bg-secondary border border-border',
-              'placeholder:text-low focus:outline-none focus:ring-1 focus:ring-brand'
-            )}
-          />
-        </div>
-        <div className="flex justify-end gap-1">
-          <button
-            onClick={allExpanded ? collapseAll : expandAll}
-            className="text-xs text-low hover:text-normal transition-colors"
-          >
-            {allExpanded
-              ? t('settings.agents.tree.collapseAll')
-              : t('settings.agents.tree.expandAll')}
-          </button>
-        </div>
+      <div className="p-2 border-b border-border">
+        <InputField
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder={t('settings.agents.tree.search')}
+          variant="search"
+          actionIcon={ExpandIcon}
+          onAction={allExpanded ? collapseAll : expandAll}
+        />
       </div>
 
       {/* Tree content */}
