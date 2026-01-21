@@ -280,6 +280,50 @@ impl Approvals {
             })
             .collect()
     }
+
+    pub fn has_pending_for_execution_process(&self, execution_process_id: Uuid) -> bool {
+        self.pending
+            .iter()
+            .any(|entry| entry.value().execution_process_id == execution_process_id)
+    }
+
+    pub async fn cancel_for_execution_process(&self, execution_process_id: Uuid) {
+        let approval_ids_to_cancel: Vec<String> = self
+            .pending
+            .iter()
+            .filter(|entry| entry.value().execution_process_id == execution_process_id)
+            .map(|entry| entry.key().clone())
+            .collect();
+
+        if approval_ids_to_cancel.is_empty() {
+            return;
+        }
+
+        let store = self.msg_store_by_id(&execution_process_id).await;
+
+        for approval_id in approval_ids_to_cancel {
+            if let Some((_, pending_approval)) = self.pending.remove(&approval_id) {
+                self.completed
+                    .insert(approval_id.clone(), ApprovalStatus::TimedOut);
+
+                if let Some(ref store) = store
+                    && let Some(updated_entry) =
+                        pending_approval.entry.with_tool_status(ToolStatus::Failed)
+                {
+                    store.push_patch(ConversationPatch::replace(
+                        pending_approval.entry_index,
+                        updated_entry,
+                    ));
+                }
+
+                tracing::debug!(
+                    "Cancelled approval '{}' for killed execution process {}",
+                    approval_id,
+                    execution_process_id
+                );
+            }
+        }
+    }
 }
 
 pub(crate) async fn ensure_task_in_review(pool: &SqlitePool, execution_process_id: Uuid) {

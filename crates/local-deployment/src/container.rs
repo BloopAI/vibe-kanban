@@ -1173,49 +1173,71 @@ impl ContainerService for LocalContainerService {
         ExecutionProcess::update_completion(&self.db.pool, execution_process.id, status, exit_code)
             .await?;
 
-        // Try graceful interrupt first, then force kill
-        if let Some(interrupt_sender) = self.take_interrupt_sender(&execution_process.id).await {
-            // Send interrupt signal (ignore error if receiver dropped)
-            let _ = interrupt_sender.send(());
+        let has_pending_approvals = self
+            .approvals
+            .has_pending_for_execution_process(execution_process.id);
 
-            // Wait for graceful exit with timeout
-            let graceful_exit = {
+        if has_pending_approvals {
+            {
                 let mut child_guard = child.write().await;
-                tokio::time::timeout(Duration::from_secs(5), child_guard.wait()).await
-            };
-
-            match graceful_exit {
-                Ok(Ok(_)) => {
-                    tracing::debug!(
-                        "Process {} exited gracefully after interrupt",
-                        execution_process.id
+                if let Err(e) = command::kill_process_group_force(&mut child_guard).await {
+                    tracing::error!(
+                        "Failed to stop execution process {}: {}",
+                        execution_process.id,
+                        e
                     );
-                }
-                Ok(Err(e)) => {
-                    tracing::info!("Error waiting for process {}: {}", execution_process.id, e);
-                }
-                Err(_) => {
-                    tracing::debug!(
-                        "Graceful shutdown timed out for process {}, force killing",
-                        execution_process.id
-                    );
+                    return Err(e);
                 }
             }
-        }
+            self.remove_child_from_store(&execution_process.id).await;
+            let _ = self.take_interrupt_sender(&execution_process.id).await;
 
-        // Kill the child process and remove from the store
-        {
-            let mut child_guard = child.write().await;
-            if let Err(e) = command::kill_process_group(&mut child_guard).await {
-                tracing::error!(
-                    "Failed to stop execution process {}: {}",
-                    execution_process.id,
-                    e
-                );
-                return Err(e);
+            self.approvals
+                .cancel_for_execution_process(execution_process.id)
+                .await;
+        } else {
+            // Try graceful interrupt first, then force kill
+            if let Some(interrupt_sender) = self.take_interrupt_sender(&execution_process.id).await
+            {
+                let _ = interrupt_sender.send(());
+
+                let graceful_exit = {
+                    let mut child_guard = child.write().await;
+                    tokio::time::timeout(Duration::from_secs(5), child_guard.wait()).await
+                };
+
+                match graceful_exit {
+                    Ok(Ok(_)) => {
+                        tracing::debug!(
+                            "Process {} exited gracefully after interrupt",
+                            execution_process.id
+                        );
+                    }
+                    Ok(Err(e)) => {
+                        tracing::info!("Error waiting for process {}: {}", execution_process.id, e);
+                    }
+                    Err(_) => {
+                        tracing::debug!(
+                            "Graceful shutdown timed out for process {}, force killing",
+                            execution_process.id
+                        );
+                    }
+                }
             }
+
+            {
+                let mut child_guard = child.write().await;
+                if let Err(e) = command::kill_process_group(&mut child_guard).await {
+                    tracing::error!(
+                        "Failed to stop execution process {}: {}",
+                        execution_process.id,
+                        e
+                    );
+                    return Err(e);
+                }
+            }
+            self.remove_child_from_store(&execution_process.id).await;
         }
-        self.remove_child_from_store(&execution_process.id).await;
 
         // Mark the process finished in the MsgStore
         if let Some(msg) = self.msg_stores.write().await.remove(&execution_process.id) {

@@ -44,6 +44,9 @@ export const useConversationHistory = ({
   const loadedInitialEntries = useRef(false);
   const streamingProcessIdsRef = useRef<Set<string>>(new Set());
   const onEntriesUpdatedRef = useRef<OnEntriesUpdated | null>(null);
+  const previousStatusMapRef = useRef<Map<string, ExecutionProcessStatus>>(
+    new Map()
+  );
 
   const mergeIntoDisplayed = (
     mutator: (state: ExecutionProcessStateStore) => void
@@ -634,6 +637,54 @@ export const useConversationHistory = ({
     loadRunningAndEmitWithBackoff,
   ]);
 
+  useEffect(() => {
+    if (!executionProcessesRaw) return;
+
+    const processesToReload: ExecutionProcess[] = [];
+
+    for (const process of executionProcessesRaw) {
+      const previousStatus = previousStatusMapRef.current.get(process.id);
+      const currentStatus = process.status;
+
+      if (
+        previousStatus === ExecutionProcessStatus.running &&
+        currentStatus !== ExecutionProcessStatus.running &&
+        displayedExecutionProcesses.current[process.id]
+      ) {
+        processesToReload.push(process);
+      }
+
+      previousStatusMapRef.current.set(process.id, currentStatus);
+    }
+
+    if (processesToReload.length === 0) return;
+
+    (async () => {
+      let anyUpdated = false;
+
+      for (const process of processesToReload) {
+        const entries = await loadEntriesForHistoricExecutionProcess(process);
+        if (entries.length === 0) continue;
+
+        const entriesWithKey = entries.map((e, idx) =>
+          patchWithKey(e, process.id, idx)
+        );
+
+        mergeIntoDisplayed((state) => {
+          state[process.id] = {
+            executionProcess: process,
+            entries: entriesWithKey,
+          };
+        });
+        anyUpdated = true;
+      }
+
+      if (anyUpdated) {
+        emitEntries(displayedExecutionProcesses.current, 'running', false);
+      }
+    })();
+  }, [idStatusKey, executionProcessesRaw, emitEntries]);
+
   // If an execution process is removed, remove it from the state
   useEffect(() => {
     if (!executionProcessesRaw) return;
@@ -651,11 +702,11 @@ export const useConversationHistory = ({
     }
   }, [attempt.id, idListKey, executionProcessesRaw]);
 
-  // Reset state when attempt changes
   useEffect(() => {
     displayedExecutionProcesses.current = {};
     loadedInitialEntries.current = false;
     streamingProcessIdsRef.current.clear();
+    previousStatusMapRef.current.clear();
     emitEntries(displayedExecutionProcesses.current, 'initial', true);
   }, [attempt.id, emitEntries]);
 
