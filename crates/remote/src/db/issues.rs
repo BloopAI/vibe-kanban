@@ -6,7 +6,9 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
+use super::get_txid;
 use super::types::IssuePriority;
+use crate::mutation_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -133,9 +135,11 @@ impl IssueRepository {
         sort_order: f64,
         parent_issue_id: Option<Uuid>,
         extension_metadata: Value,
-    ) -> Result<Issue, IssueError> {
+    ) -> Result<MutationResponse<Issue>, IssueError> {
+        let mut tx = pool.begin().await?;
+
         let id = id.unwrap_or_else(Uuid::new_v4);
-        let record = sqlx::query_as!(
+        let data = sqlx::query_as!(
             Issue,
             r#"
             INSERT INTO issues (
@@ -173,10 +177,13 @@ impl IssueRepository {
             parent_issue_id,
             extension_metadata
         )
-        .fetch_one(pool)
+        .fetch_one(&mut *tx)
         .await?;
 
-        Ok(record)
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+
+        Ok(MutationResponse { data, txid })
     }
 
     /// Update an issue with partial fields. Uses COALESCE to preserve existing values
@@ -195,8 +202,10 @@ impl IssueRepository {
         sort_order: Option<f64>,
         parent_issue_id: Option<Option<Uuid>>,
         extension_metadata: Option<Value>,
-    ) -> Result<Issue, IssueError> {
-        let record = sqlx::query_as!(
+    ) -> Result<MutationResponse<Issue>, IssueError> {
+        let mut tx = pool.begin().await?;
+
+        let data = sqlx::query_as!(
             Issue,
             r#"
             UPDATE issues
@@ -241,16 +250,25 @@ impl IssueRepository {
             extension_metadata,
             id
         )
-        .fetch_one(pool)
+        .fetch_one(&mut *tx)
         .await?;
 
-        Ok(record)
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+
+        Ok(MutationResponse { data, txid })
     }
 
-    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<(), IssueError> {
+    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, IssueError> {
+        let mut tx = pool.begin().await?;
+
         sqlx::query!("DELETE FROM issues WHERE id = $1", id)
-            .execute(pool)
+            .execute(&mut *tx)
             .await?;
-        Ok(())
+
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+
+        Ok(DeleteResponse { txid })
     }
 }

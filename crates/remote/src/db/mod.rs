@@ -23,9 +23,21 @@ pub mod types;
 pub mod users;
 pub mod workspaces;
 
-use sqlx::{PgPool, Postgres, Transaction, migrate::MigrateError, postgres::PgPoolOptions};
+use sqlx::{Executor, PgPool, Postgres, Transaction, migrate::MigrateError, postgres::PgPoolOptions};
 
 pub(crate) type Tx<'a> = Transaction<'a, Postgres>;
+
+/// Get the current transaction ID from Postgres.
+/// Must be called within an active transaction.
+pub async fn get_txid<'e, E>(executor: E) -> Result<i64, sqlx::Error>
+where
+    E: Executor<'e, Database = Postgres>,
+{
+    let row: (i64,) = sqlx::query_as("SELECT pg_current_xact_id()::bigint")
+        .fetch_one(executor)
+        .await?;
+    Ok(row.0)
+}
 
 pub(crate) async fn migrate(pool: &PgPool) -> Result<(), MigrateError> {
     sqlx::migrate!("./migrations").run(pool).await

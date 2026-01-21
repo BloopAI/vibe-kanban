@@ -1,8 +1,11 @@
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, Postgres};
+use sqlx::PgPool;
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
+
+use super::get_txid;
+use crate::mutation_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -21,10 +24,7 @@ pub enum IssueTagError {
 pub struct IssueTagRepository;
 
 impl IssueTagRepository {
-    pub async fn find_by_id<'e, E>(executor: E, id: Uuid) -> Result<Option<IssueTag>, IssueTagError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<IssueTag>, IssueTagError> {
         let record = sqlx::query_as!(
             IssueTag,
             r#"
@@ -37,19 +37,16 @@ impl IssueTagRepository {
             "#,
             id
         )
-        .fetch_optional(executor)
+        .fetch_optional(pool)
         .await?;
 
         Ok(record)
     }
 
-    pub async fn list_by_issue<'e, E>(
-        executor: E,
+    pub async fn list_by_issue(
+        pool: &PgPool,
         issue_id: Uuid,
-    ) -> Result<Vec<IssueTag>, IssueTagError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    ) -> Result<Vec<IssueTag>, IssueTagError> {
         let records = sqlx::query_as!(
             IssueTag,
             r#"
@@ -62,23 +59,21 @@ impl IssueTagRepository {
             "#,
             issue_id
         )
-        .fetch_all(executor)
+        .fetch_all(pool)
         .await?;
 
         Ok(records)
     }
 
-    pub async fn create<'e, E>(
-        executor: E,
+    pub async fn create(
+        pool: &PgPool,
         id: Option<Uuid>,
         issue_id: Uuid,
         tag_id: Uuid,
-    ) -> Result<IssueTag, IssueTagError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    ) -> Result<MutationResponse<IssueTag>, IssueTagError> {
         let id = id.unwrap_or_else(Uuid::new_v4);
-        let record = sqlx::query_as!(
+        let mut tx = pool.begin().await?;
+        let data = sqlx::query_as!(
             IssueTag,
             r#"
             INSERT INTO issue_tags (id, issue_id, tag_id)
@@ -92,19 +87,20 @@ impl IssueTagRepository {
             issue_id,
             tag_id
         )
-        .fetch_one(executor)
+        .fetch_one(&mut *tx)
         .await?;
-
-        Ok(record)
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(MutationResponse { data, txid })
     }
 
-    pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<(), IssueTagError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, IssueTagError> {
+        let mut tx = pool.begin().await?;
         sqlx::query!("DELETE FROM issue_tags WHERE id = $1", id)
-            .execute(executor)
+            .execute(&mut *tx)
             .await?;
-        Ok(())
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(DeleteResponse { txid })
     }
 }

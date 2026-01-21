@@ -1,11 +1,13 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, Postgres};
+use sqlx::PgPool;
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
+use super::get_txid;
 use super::types::IssueRelationshipType;
+use crate::mutation_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -26,13 +28,10 @@ pub enum IssueRelationshipError {
 pub struct IssueRelationshipRepository;
 
 impl IssueRelationshipRepository {
-    pub async fn find_by_id<'e, E>(
-        executor: E,
+    pub async fn find_by_id(
+        pool: &PgPool,
         id: Uuid,
-    ) -> Result<Option<IssueRelationship>, IssueRelationshipError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    ) -> Result<Option<IssueRelationship>, IssueRelationshipError> {
         let record = sqlx::query_as!(
             IssueRelationship,
             r#"
@@ -47,19 +46,16 @@ impl IssueRelationshipRepository {
             "#,
             id
         )
-        .fetch_optional(executor)
+        .fetch_optional(pool)
         .await?;
 
         Ok(record)
     }
 
-    pub async fn list_by_issue<'e, E>(
-        executor: E,
+    pub async fn list_by_issue(
+        pool: &PgPool,
         issue_id: Uuid,
-    ) -> Result<Vec<IssueRelationship>, IssueRelationshipError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    ) -> Result<Vec<IssueRelationship>, IssueRelationshipError> {
         let records = sqlx::query_as!(
             IssueRelationship,
             r#"
@@ -74,24 +70,22 @@ impl IssueRelationshipRepository {
             "#,
             issue_id
         )
-        .fetch_all(executor)
+        .fetch_all(pool)
         .await?;
 
         Ok(records)
     }
 
-    pub async fn create<'e, E>(
-        executor: E,
+    pub async fn create(
+        pool: &PgPool,
         id: Option<Uuid>,
         issue_id: Uuid,
         related_issue_id: Uuid,
         relationship_type: IssueRelationshipType,
-    ) -> Result<IssueRelationship, IssueRelationshipError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    ) -> Result<MutationResponse<IssueRelationship>, IssueRelationshipError> {
         let id = id.unwrap_or_else(Uuid::new_v4);
-        let record = sqlx::query_as!(
+        let mut tx = pool.begin().await?;
+        let data = sqlx::query_as!(
             IssueRelationship,
             r#"
             INSERT INTO issue_relationships (id, issue_id, related_issue_id, relationship_type)
@@ -108,19 +102,20 @@ impl IssueRelationshipRepository {
             related_issue_id,
             relationship_type as IssueRelationshipType
         )
-        .fetch_one(executor)
+        .fetch_one(&mut *tx)
         .await?;
-
-        Ok(record)
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(MutationResponse { data, txid })
     }
 
-    pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<(), IssueRelationshipError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, IssueRelationshipError> {
+        let mut tx = pool.begin().await?;
         sqlx::query!("DELETE FROM issue_relationships WHERE id = $1", id)
-            .execute(executor)
+            .execute(&mut *tx)
             .await?;
-        Ok(())
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(DeleteResponse { txid })
     }
 }

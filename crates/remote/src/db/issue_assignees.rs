@@ -5,6 +5,9 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
+use super::get_txid;
+use crate::mutation_types::{DeleteResponse, MutationResponse};
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct IssueAssignee {
@@ -74,9 +77,10 @@ impl IssueAssigneeRepository {
         id: Option<Uuid>,
         issue_id: Uuid,
         user_id: Uuid,
-    ) -> Result<IssueAssignee, IssueAssigneeError> {
+    ) -> Result<MutationResponse<IssueAssignee>, IssueAssigneeError> {
         let id = id.unwrap_or_else(Uuid::new_v4);
-        let record = sqlx::query_as!(
+        let mut tx = pool.begin().await?;
+        let data = sqlx::query_as!(
             IssueAssignee,
             r#"
             INSERT INTO issue_assignees (id, issue_id, user_id)
@@ -91,16 +95,21 @@ impl IssueAssigneeRepository {
             issue_id,
             user_id
         )
-        .fetch_one(pool)
+        .fetch_one(&mut *tx)
         .await?;
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
 
-        Ok(record)
+        Ok(MutationResponse { data, txid })
     }
 
-    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<(), IssueAssigneeError> {
+    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, IssueAssigneeError> {
+        let mut tx = pool.begin().await?;
         sqlx::query!("DELETE FROM issue_assignees WHERE id = $1", id)
-            .execute(pool)
+            .execute(&mut *tx)
             .await?;
-        Ok(())
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(DeleteResponse { txid })
     }
 }

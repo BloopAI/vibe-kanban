@@ -13,6 +13,7 @@ use crate::{
     db::tags::{Tag, TagRepository},
     define_mutation_router,
     entities::{CreateTagRequest, ListTagsQuery, ListTagsResponse, UpdateTagRequest},
+    mutation_types::{DeleteResponse, MutationResponse},
 };
 
 // Generate router that references handlers below
@@ -72,10 +73,10 @@ async fn create_tag(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateTagRequest>,
-) -> Result<Json<Tag>, ErrorResponse> {
+) -> Result<Json<MutationResponse<Tag>>, ErrorResponse> {
     ensure_project_access(state.pool(), ctx.user.id, payload.project_id).await?;
 
-    let tag = TagRepository::create(
+    let response = TagRepository::create(
         state.pool(),
         payload.id,
         payload.project_id,
@@ -88,7 +89,7 @@ async fn create_tag(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(tag))
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -101,7 +102,7 @@ async fn update_tag(
     Extension(ctx): Extension<RequestContext>,
     Path(tag_id): Path<Uuid>,
     Json(payload): Json<UpdateTagRequest>,
-) -> Result<Json<Tag>, ErrorResponse> {
+) -> Result<Json<MutationResponse<Tag>>, ErrorResponse> {
     let tag = TagRepository::find_by_id(state.pool(), tag_id)
         .await
         .map_err(|error| {
@@ -113,14 +114,14 @@ async fn update_tag(
     ensure_project_access(state.pool(), ctx.user.id, tag.project_id).await?;
 
     // Partial update - use existing values if not provided
-    let updated_tag = TagRepository::update(state.pool(), tag_id, payload.name, payload.color)
+    let response = TagRepository::update(state.pool(), tag_id, payload.name, payload.color)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to update tag");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(Json(updated_tag))
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -132,7 +133,7 @@ async fn delete_tag(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(tag_id): Path<Uuid>,
-) -> Result<StatusCode, ErrorResponse> {
+) -> Result<Json<DeleteResponse>, ErrorResponse> {
     let tag = TagRepository::find_by_id(state.pool(), tag_id)
         .await
         .map_err(|error| {
@@ -143,12 +144,12 @@ async fn delete_tag(
 
     ensure_project_access(state.pool(), ctx.user.id, tag.project_id).await?;
 
-    TagRepository::delete(state.pool(), tag_id)
+    let response = TagRepository::delete(state.pool(), tag_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete tag");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(response))
 }

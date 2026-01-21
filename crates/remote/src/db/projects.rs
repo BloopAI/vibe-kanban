@@ -5,7 +5,9 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
+use super::get_txid;
 use super::{project_statuses::ProjectStatusRepository, tags::TagRepository};
+use crate::mutation_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -130,17 +132,15 @@ impl ProjectRepository {
 
     /// Update a project with partial fields. Uses COALESCE to preserve existing values
     /// when None is provided.
-    pub async fn update<'e, E>(
-        executor: E,
+    pub async fn update(
+        pool: &PgPool,
         id: Uuid,
         name: Option<String>,
         color: Option<String>,
-    ) -> Result<Project, ProjectError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    ) -> Result<MutationResponse<Project>, ProjectError> {
+        let mut tx = pool.begin().await?;
         let updated_at = Utc::now();
-        let record = sqlx::query_as!(
+        let data = sqlx::query_as!(
             Project,
             r#"
             UPDATE projects
@@ -162,20 +162,22 @@ impl ProjectRepository {
             updated_at,
             id
         )
-        .fetch_one(executor)
+        .fetch_one(&mut *tx)
         .await?;
 
-        Ok(record)
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(MutationResponse { data, txid })
     }
 
-    pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<(), ProjectError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, ProjectError> {
+        let mut tx = pool.begin().await?;
         sqlx::query!("DELETE FROM projects WHERE id = $1", id)
-            .execute(executor)
+            .execute(&mut *tx)
             .await?;
-        Ok(())
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(DeleteResponse { txid })
     }
 
     pub async fn organization_id<'e, E>(
@@ -205,7 +207,7 @@ impl ProjectRepository {
         organization_id: Uuid,
         name: String,
         color: String,
-    ) -> Result<Project, ProjectError> {
+    ) -> Result<MutationResponse<Project>, ProjectError> {
         let mut tx = pool.begin().await?;
 
         let project = Self::create(&mut *tx, id, organization_id, name, color).await?;
@@ -218,7 +220,8 @@ impl ProjectRepository {
             .await
             .map_err(|e| ProjectError::DefaultStatusesFailed(e.to_string()))?;
 
+        let txid = get_txid(&mut *tx).await?;
         tx.commit().await?;
-        Ok(project)
+        Ok(MutationResponse { data: project, txid })
     }
 }
