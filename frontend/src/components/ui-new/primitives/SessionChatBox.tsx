@@ -598,9 +598,7 @@ export function SessionChatBox({
       headerRight={
         <>
           {/* Agent icon for sessions with executor (when not showing executor dropdown) */}
-          {!executor && (
-            <AgentIcon agent={agent} className="size-icon-xl" />
-          )}
+          {!executor && <AgentIcon agent={agent} className="size-icon-xl" />}
           {/* Todo progress popup - always rendered, disabled when no todos */}
           <TodoProgressPopup todos={todos ?? []} />
           <ContextUsageGauge tokenUsageInfo={tokenUsageInfo} />
