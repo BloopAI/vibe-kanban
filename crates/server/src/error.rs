@@ -6,7 +6,8 @@ use axum::{
 };
 use db::models::{
     execution_process::ExecutionProcessError, project::ProjectError,
-    project_repo::ProjectRepoError, repo::RepoError, scratch::ScratchError, session::SessionError,
+    project_repo::ProjectRepoError, repo::RepoError,
+    review_conversation::ReviewConversationError, scratch::ScratchError, session::SessionError,
     workspace::WorkspaceError,
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
@@ -373,6 +374,23 @@ impl From<ProjectRepoError> for ApiError {
             }
             ProjectRepoError::AlreadyExists => {
                 ApiError::Conflict("Repository already exists in project".to_string())
+            }
+        }
+    }
+}
+
+impl From<ReviewConversationError> for ApiError {
+    fn from(err: ReviewConversationError) -> Self {
+        match err {
+            ReviewConversationError::Database(db_err) => ApiError::Database(db_err),
+            ReviewConversationError::NotFound => {
+                ApiError::BadRequest("Conversation not found".to_string())
+            }
+            ReviewConversationError::MessageNotFound => {
+                ApiError::BadRequest("Message not found".to_string())
+            }
+            ReviewConversationError::AlreadyResolved => {
+                ApiError::Conflict("Conversation is already resolved".to_string())
             }
         }
     }

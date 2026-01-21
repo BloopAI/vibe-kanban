@@ -70,3 +70,12 @@ pub async fn user_has_valid_claude_token<D: Deployment>(
         }
     }
 }
+
+/// Helper to get user ID directly from headers (convenience function)
+pub async fn get_user_id_from_headers<D: Deployment>(
+    deployment: &D,
+    headers: &HeaderMap,
+) -> Option<Uuid> {
+    let user = try_get_authenticated_user(deployment, headers).await;
+    get_user_id(&user)
+}

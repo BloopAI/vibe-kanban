@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
@@ -201,6 +201,54 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     [reviewContext]
   );
   const hasReviewComments = (reviewContext?.comments.length ?? 0) > 0;
+
+  // Unresolved conversations from review context
+  const unresolvedCount = reviewContext?.unresolvedCount ?? 0;
+  const unresolvedConversationsData = useMemo(
+    () => reviewContext?.unresolvedConversations ?? [],
+    [reviewContext?.unresolvedConversations]
+  );
+
+  // State for tracking conversation resolution
+  const [isResolvingConversations, setIsResolvingConversations] = useState(false);
+
+  // Handler for resolving all unresolved conversations
+  const handleResolveAllConversations = useCallback(async () => {
+    if (!reviewContext || unresolvedConversationsData.length === 0) return;
+
+    setIsResolvingConversations(true);
+    try {
+      // Resolve each conversation sequentially
+      // Generate summaries based on first message content
+      for (const conversation of unresolvedConversationsData) {
+        const messages = conversation.messages || [];
+        let summary: string;
+
+        if (messages.length === 0) {
+          summary = 'Conversation resolved';
+        } else {
+          // Use truncated first message as summary
+          const firstMessage = messages[0].content;
+          const truncatedFirst =
+            firstMessage.length > 100
+              ? firstMessage.slice(0, 100) + '...'
+              : firstMessage;
+
+          if (messages.length === 1) {
+            summary = truncatedFirst;
+          } else {
+            summary = `${truncatedFirst} (${messages.length} messages)`;
+          }
+        }
+
+        await reviewContext.resolveConversation(conversation.id, summary);
+      }
+    } catch (error) {
+      console.error('Failed to resolve conversations:', error);
+    } finally {
+      setIsResolvingConversations(false);
+    }
+  }, [reviewContext, unresolvedConversationsData]);
 
   // Approval mutation for approve/deny actions
   const { approveAsync, denyAsync, isApproving, isDenying, denyError } =
@@ -780,6 +828,15 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
               count: reviewContext.comments.length,
               previewMarkdown: reviewMarkdown,
               onClear: reviewContext.clearComments,
+            }
+          : undefined
+      }
+      unresolvedConversations={
+        unresolvedCount > 0
+          ? {
+              count: unresolvedCount,
+              onResolveAll: handleResolveAllConversations,
+              isResolving: isResolvingConversations,
             }
           : undefined
       }

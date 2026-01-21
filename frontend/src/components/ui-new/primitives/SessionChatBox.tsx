@@ -7,6 +7,7 @@ import {
   PlusIcon,
   SpinnerIcon,
   ChatCircleIcon,
+  ChatsCircleIcon,
   TrashIcon,
   WarningIcon,
 } from '@phosphor-icons/react';
@@ -127,6 +128,15 @@ interface ReviewCommentsProps {
   onClear: () => void;
 }
 
+interface UnresolvedConversationsProps {
+  /** Number of unresolved conversations */
+  count: number;
+  /** Handler to resolve all conversations */
+  onResolveAll: () => void;
+  /** Whether resolution is in progress */
+  isResolving: boolean;
+}
+
 interface SessionChatBoxProps {
   status: ExecutionStatus;
   editor: EditorProps;
@@ -138,6 +148,7 @@ interface SessionChatBoxProps {
   editMode?: EditModeProps;
   approvalMode?: ApprovalModeProps;
   reviewComments?: ReviewCommentsProps;
+  unresolvedConversations?: UnresolvedConversationsProps;
   toolbarActions?: ToolbarActionsProps;
   error?: string | null;
   workspaceId?: string;
@@ -167,6 +178,7 @@ export function SessionChatBox({
   editMode,
   approvalMode,
   reviewComments,
+  unresolvedConversations,
   toolbarActions,
   error,
   workspaceId,
@@ -373,6 +385,23 @@ export function SessionChatBox({
 
     switch (status) {
       case 'idle':
+        // If there are unresolved conversations, show resolve button instead of send
+        if (unresolvedConversations && unresolvedConversations.count > 0) {
+          return (
+            <PrimaryButton
+              onClick={unresolvedConversations.onResolveAll}
+              disabled={unresolvedConversations.isResolving}
+              actionIcon={
+                unresolvedConversations.isResolving ? 'spinner' : ChatsCircleIcon
+              }
+              value={
+                unresolvedConversations.isResolving
+                  ? t('conversation.actions.resolvingConversations')
+                  : t('conversation.actions.resolveConversations')
+              }
+            />
+          );
+        }
         return (
           <PrimaryButton
             onClick={actions.onSend}
@@ -449,6 +478,23 @@ export function SessionChatBox({
   // Banner content
   const renderBanner = () => {
     const banners: React.ReactNode[] = [];
+
+    // Unresolved conversations banner (show first as it blocks sending)
+    if (unresolvedConversations && unresolvedConversations.count > 0) {
+      banners.push(
+        <div
+          key="unresolved-conversations"
+          className="bg-warning/10 border-b border-warning/20 px-double py-base flex items-center gap-base"
+        >
+          <ChatsCircleIcon className="h-4 w-4 text-warning flex-shrink-0" />
+          <span className="text-sm text-warning flex-1">
+            {t('conversation.unresolvedConversations.count', {
+              count: unresolvedConversations.count,
+            })}
+          </span>
+        </div>
+      );
+    }
 
     // Review comments banner
     if (reviewComments && reviewComments.count > 0) {

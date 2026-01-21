@@ -4,6 +4,7 @@ import {
   CaretDownIcon,
   ChatCircleIcon,
   GithubLogoIcon,
+  ChatsCircleIcon,
 } from '@phosphor-icons/react';
 import { DiffView, DiffModeEnum, SplitSide } from '@git-diff-view/react';
 import { generateDiffFile, type DiffFile } from '@git-diff-view/file';
@@ -16,6 +17,7 @@ import { useDiffViewMode } from '@/stores/useDiffViewStore';
 import { stripLineEnding } from '@/utils/string';
 import {
   useReview,
+  diffSideToSplitSide,
   type ReviewDraft,
   type ReviewComment,
 } from '@/contexts/ReviewProvider';
@@ -23,10 +25,14 @@ import {
   useWorkspaceContext,
   type NormalizedGitHubComment,
 } from '@/contexts/WorkspaceContext';
-import { CommentWidgetLine } from './CommentWidgetLine';
+import { ConversationWidgetLine } from '@/components/diff/ConversationWidgetLine';
+import { ConversationRenderer } from '@/components/diff/ConversationRenderer';
 import { ReviewCommentRenderer } from './ReviewCommentRenderer';
 import { GitHubCommentRenderer } from './GitHubCommentRenderer';
-import type { DiffChangeKind } from 'shared/types';
+import type {
+  DiffChangeKind,
+  ConversationWithMessages,
+} from 'shared/types';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import '@/styles/diff-style-overrides.css';
@@ -35,7 +41,8 @@ import { DisplayTruncatedPath } from '@/utils/TruncatePath';
 /** Discriminated union for comment data in extendData */
 type ExtendLineData =
   | { type: 'review'; comment: ReviewComment }
-  | { type: 'github'; comment: NormalizedGitHubComment };
+  | { type: 'github'; comment: NormalizedGitHubComment }
+  | { type: 'conversation'; conversation: ConversationWithMessages };
 
 // Discriminated union for input format flexibility
 export type DiffInput =
@@ -193,9 +200,15 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
 
   const { diffFile, additions, deletions, filePath, isValid } =
     useDiffData(input);
-  const { comments, drafts, setDraft, addComment } = useReview();
+  const { comments, drafts, setDraft, addComment, getConversationsForFile } = useReview();
   const { showGitHubComments, getGitHubCommentsForFile } =
     useWorkspaceContext();
+
+  // Get persisted conversations for this file
+  const conversationsForFile = useMemo(
+    () => getConversationsForFile(filePath),
+    [getConversationsForFile, filePath]
+  );
 
   // Open in IDE functionality
   const openInEditor = useOpenInEditor(attemptId);
@@ -242,9 +255,16 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
     return getGitHubCommentsForFile(filePath);
   }, [showGitHubComments, getGitHubCommentsForFile, filePath]);
 
-  // Total comment count (user + GitHub)
+  // Count unresolved conversations
+  const unresolvedConversationsCount = conversationsForFile.filter(
+    (c) => !c.is_resolved
+  ).length;
+
+  // Total comment count (user + GitHub + conversations)
   const totalCommentCount =
-    commentsForFile.length + githubCommentsForFile.length;
+    commentsForFile.length +
+    githubCommentsForFile.length +
+    unresolvedConversationsCount;
 
   // Transform comments to git-diff-view extendData format
   // The library expects { data: T } where T is the actual data
@@ -252,20 +272,34 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
     const oldFileData: Record<string, { data: ExtendLineData }> = {};
     const newFileData: Record<string, { data: ExtendLineData }> = {};
 
-    // Add user review comments first (higher priority)
-    commentsForFile.forEach((comment) => {
-      const lineKey = String(comment.lineNumber);
-      const entry: ExtendLineData = { type: 'review', comment };
-      if (comment.side === SplitSide.old) {
+    // Add persisted conversations first (highest priority)
+    conversationsForFile.forEach((conversation) => {
+      const lineKey = String(conversation.line_number);
+      const entry: ExtendLineData = { type: 'conversation', conversation };
+      const side = diffSideToSplitSide(conversation.side);
+      if (side === SplitSide.old) {
         oldFileData[lineKey] = { data: entry };
       } else {
         newFileData[lineKey] = { data: entry };
       }
     });
 
-    // Add GitHub comments (only if no user comment on that line).
-    // User comments take priority - if you're adding your own comment on a line,
-    // you've likely addressed the GitHub feedback, so we hide the GitHub comment.
+    // Add user review comments (if no conversation on that line)
+    commentsForFile.forEach((comment) => {
+      const lineKey = String(comment.lineNumber);
+      const entry: ExtendLineData = { type: 'review', comment };
+      if (comment.side === SplitSide.old) {
+        if (!oldFileData[lineKey]) {
+          oldFileData[lineKey] = { data: entry };
+        }
+      } else {
+        if (!newFileData[lineKey]) {
+          newFileData[lineKey] = { data: entry };
+        }
+      }
+    });
+
+    // Add GitHub comments (only if no user comment or conversation on that line).
     githubCommentsForFile.forEach((comment) => {
       const lineKey = String(comment.lineNumber);
       const entry: ExtendLineData = { type: 'github', comment };
@@ -285,7 +319,7 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
       oldFile: oldFileData,
       newFile: newFileData,
     };
-  }, [commentsForFile, githubCommentsForFile]);
+  }, [conversationsForFile, commentsForFile, githubCommentsForFile]);
 
   // Handle click on "add widget" button in diff view
   const handleAddWidgetClick = useCallback(
@@ -304,7 +338,7 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
     [filePath, diffFile, setDraft]
   );
 
-  // Render the comment widget line (for new comments)
+  // Render the comment widget line (for new conversations)
   const renderWidgetLine = useCallback(
     (props: { side: SplitSide; lineNumber: number; onClose: () => void }) => {
       const widgetKey = `${filePath}-${props.side}-${props.lineNumber}`;
@@ -312,7 +346,7 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
       if (!draft) return null;
 
       return (
-        <CommentWidgetLine
+        <ConversationWidgetLine
           draft={draft}
           widgetKey={widgetKey}
           onSave={props.onClose}
@@ -324,13 +358,21 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
     [filePath, drafts, projectId]
   );
 
-  // Render existing comments below lines (handles both user and GitHub comments)
+  // Render existing comments below lines (handles conversations, user comments, and GitHub comments)
   // The library wraps our data in { data: ExtendLineData }
   const renderExtendLine = useCallback(
     (lineData: { data: ExtendLineData }) => {
       // Guard against undefined data (can happen when switching diff modes)
       if (!lineData.data) return null;
 
+      if (lineData.data.type === 'conversation') {
+        return (
+          <ConversationRenderer
+            conversation={lineData.data.conversation}
+            projectId={projectId}
+          />
+        );
+      }
       if (lineData.data.type === 'github') {
         const githubComment = lineData.data.comment;
         const handleCopyToUserComment = () => {
@@ -407,6 +449,12 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
         )}
         {totalCommentCount > 0 && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded shrink-0">
+            {unresolvedConversationsCount > 0 && (
+              <span className="inline-flex items-center gap-0.5 text-accent">
+                <ChatsCircleIcon className="size-icon-xs" weight="fill" />
+                {unresolvedConversationsCount}
+              </span>
+            )}
             {commentsForFile.length > 0 && (
               <span className="inline-flex items-center gap-0.5 text-accent">
                 <ChatCircleIcon className="size-icon-xs" weight="fill" />
