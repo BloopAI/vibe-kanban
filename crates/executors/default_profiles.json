@@ -20,6 +20,12 @@
         "CLAUDE_CODE": {
           "approvals": true
         }
+      },
+      "MPM": {
+        "CLAUDE_CODE": {
+          "base_command_override": "claude-mpm run",
+          "dangerously_skip_permissions": true
+        }
       }
     },
     "AMP": {
