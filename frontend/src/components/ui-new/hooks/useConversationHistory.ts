@@ -324,7 +324,9 @@ export const useConversationHistory = ({
           lastEntry.content.entry_type.type === 'tool_use' &&
           lastEntry.content.entry_type.tool_name === 'ExitPlanMode'
         ) {
-          console.log('[useConversationHistory] Detected ExitPlanMode, setting addType to plan');
+          console.log(
+            '[useConversationHistory] Detected ExitPlanMode, setting addType to plan'
+          );
           modifiedAddEntryType = 'plan';
         }
       }
