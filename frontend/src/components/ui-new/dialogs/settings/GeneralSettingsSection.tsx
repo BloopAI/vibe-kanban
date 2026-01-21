@@ -164,7 +164,9 @@ export function GeneralSettingsSection() {
   const { setTheme } = useTheme();
 
   const editorAvailability = useEditorAvailability(draft?.editor.editor_type);
-  const agentAvailability = useAgentAvailability(draft?.executor_profile?.executor);
+  const agentAvailability = useAgentAvailability(
+    draft?.executor_profile?.executor
+  );
 
   // Executor options for the default coding agent dropdown
   const executorOptions = profiles
@@ -173,7 +175,8 @@ export function GeneralSettingsSection() {
         .map((key) => ({ value: key, label: toPrettyCase(key) }))
     : [];
 
-  const selectedAgentProfile = profiles?.[draft?.executor_profile?.executor || ''];
+  const selectedAgentProfile =
+    profiles?.[draft?.executor_profile?.executor || ''];
   const hasVariants =
     selectedAgentProfile && Object.keys(selectedAgentProfile).length > 0;
 
