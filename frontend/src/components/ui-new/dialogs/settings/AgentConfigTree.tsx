@@ -31,6 +31,7 @@ interface AgentConfigTreeProps {
   onDeleteConfig: (executor: string, config: string) => void;
   onMakeDefault: (executor: string, config: string) => void;
   disabled?: boolean;
+  renderContent?: (executor: string, config: string) => React.ReactNode;
 }
 
 interface ConfigNodeProps {
@@ -158,6 +159,7 @@ interface ExecutorNodeProps {
   onDeleteConfig: (config: string) => void;
   onMakeDefault: (config: string) => void;
   disabled?: boolean;
+  renderContent?: (executor: string, config: string) => React.ReactNode;
 }
 
 function ExecutorNode({
@@ -174,6 +176,7 @@ function ExecutorNode({
   onDeleteConfig,
   onMakeDefault,
   disabled,
+  renderContent,
 }: ExecutorNodeProps) {
   const { t } = useTranslation('settings');
   const [showAddButton, setShowAddButton] = useState(false);
@@ -236,23 +239,32 @@ function ExecutorNode({
       {/* Config children */}
       {isExpanded && (
         <div className="ml-0">
-          {configs.map((configName) => (
-            <ConfigNode
-              key={configName}
-              configName={configName}
-              isSelected={
-                selectedExecutor === executor && selectedConfig === configName
-              }
-              isDefault={
-                defaultExecutor === executor && defaultVariant === configName
-              }
-              isOnlyConfig={configs.length <= 1}
-              onSelect={() => onSelect(configName)}
-              onDelete={() => onDeleteConfig(configName)}
-              onMakeDefault={() => onMakeDefault(configName)}
-              disabled={disabled}
-            />
-          ))}
+          {configs.map((configName) => {
+            const isSelected =
+              selectedExecutor === executor && selectedConfig === configName;
+            return (
+              <div key={configName}>
+                <ConfigNode
+                  configName={configName}
+                  isSelected={isSelected}
+                  isDefault={
+                    defaultExecutor === executor && defaultVariant === configName
+                  }
+                  isOnlyConfig={configs.length <= 1}
+                  onSelect={() => onSelect(configName)}
+                  onDelete={() => onDeleteConfig(configName)}
+                  onMakeDefault={() => onMakeDefault(configName)}
+                  disabled={disabled}
+                />
+                {/* Inline content for selected config */}
+                {isSelected && renderContent && (
+                  <div className="mt-2 mb-4 ml-6">
+                    {renderContent(executor, configName)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -270,6 +282,7 @@ export function AgentConfigTree({
   onDeleteConfig,
   onMakeDefault,
   disabled,
+  renderContent,
 }: AgentConfigTreeProps) {
   const { t } = useTranslation('settings');
   const [searchQuery, setSearchQuery] = useState('');
@@ -396,6 +409,7 @@ export function AgentConfigTree({
               onDeleteConfig={(config) => onDeleteConfig(executor, config)}
               onMakeDefault={(config) => onMakeDefault(executor, config)}
               disabled={disabled}
+              renderContent={renderContent}
             />
           ))
         )}

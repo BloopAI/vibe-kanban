@@ -9,7 +9,6 @@ import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateC
 import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteConfigurationDialog';
 import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
 import { cn } from '@/lib/utils';
-import { toPrettyCase } from '@/utils/string';
 import { SettingsCheckbox, SettingsSaveBar } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 
@@ -346,10 +345,6 @@ export function AgentsSettingsSection() {
 
   const executorsMap =
     localParsedProfiles?.executors as unknown as ExecutorsMap;
-  const currentConfigData =
-    executorsMap?.[selectedExecutorType]?.[selectedConfiguration]?.[
-      selectedExecutorType
-    ];
 
   return (
     <>
@@ -386,61 +381,38 @@ export function AgentsSettingsSection() {
       </div>
 
       {useFormEditor && localParsedProfiles?.executors ? (
-        /* Tree-based form editor layout */
-        <div className="flex gap-4 min-h-[400px]">
-          {/* Sidebar with tree */}
-          <div className="w-56 shrink-0 bg-secondary/50 border border-border rounded-sm overflow-hidden">
-            <AgentConfigTree
-              executors={localParsedProfiles.executors}
-              selectedExecutor={selectedExecutorType}
-              selectedConfig={selectedConfiguration}
-              defaultExecutor={config?.executor_profile?.executor}
-              defaultVariant={config?.executor_profile?.variant}
-              onSelect={handleSelect}
-              onCreateConfig={handleCreateConfig}
-              onDeleteConfig={handleDeleteConfig}
-              onMakeDefault={handleMakeDefault}
-              disabled={profilesSaving}
-            />
-          </div>
-
-          {/* Content area */}
-          <div className="flex-1 min-w-0">
-            {currentConfigData ? (
-              <div className="bg-secondary/30 border border-border rounded-sm p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-base font-medium text-high">
-                      {toPrettyCase(selectedExecutorType)}
-                    </h3>
-                    <p className="text-sm text-low">
-                      {toPrettyCase(selectedConfiguration)}
-                    </p>
-                  </div>
+        /* Tree-based form editor layout - full width inline */
+        <div className="bg-secondary/50 border border-border rounded-sm overflow-hidden">
+          <AgentConfigTree
+            executors={localParsedProfiles.executors}
+            selectedExecutor={selectedExecutorType}
+            selectedConfig={selectedConfiguration}
+            defaultExecutor={config?.executor_profile?.executor}
+            defaultVariant={config?.executor_profile?.variant}
+            onSelect={handleSelect}
+            onCreateConfig={handleCreateConfig}
+            onDeleteConfig={handleDeleteConfig}
+            onMakeDefault={handleMakeDefault}
+            disabled={profilesSaving}
+            renderContent={(executor, configName) => {
+              const configData =
+                executorsMap?.[executor]?.[configName]?.[executor];
+              if (!configData) return null;
+              return (
+                <div className="bg-panel border border-border rounded-sm p-4">
+                  <ExecutorConfigForm
+                    key={`${executor}-${configName}`}
+                    executor={executor as BaseCodingAgent}
+                    value={configData as Record<string, unknown>}
+                    onChange={(formData) =>
+                      handleExecutorConfigChange(executor, configName, formData)
+                    }
+                    disabled={profilesSaving}
+                  />
                 </div>
-
-                <ExecutorConfigForm
-                  key={`${selectedExecutorType}-${selectedConfiguration}`}
-                  executor={selectedExecutorType}
-                  value={currentConfigData as Record<string, unknown>}
-                  onChange={(formData) =>
-                    handleExecutorConfigChange(
-                      selectedExecutorType,
-                      selectedConfiguration,
-                      formData
-                    )
-                  }
-                  disabled={profilesSaving}
-                />
-              </div>
-            ) : (
-              <div className="bg-secondary/30 border border-border rounded-sm p-8 text-center">
-                <p className="text-low">
-                  {t('settings.agents.tree.selectConfig')}
-                </p>
-              </div>
-            )}
-          </div>
+              );
+            }}
+          />
         </div>
       ) : (
         /* JSON editor */
