@@ -38,33 +38,6 @@ function getRowKey(item: Record<string, unknown>): string {
     .join('-');
 }
 
-type SyncOperation = 'insert' | 'update' | 'delete';
-
-// Electric change message shape (from @electric-sql/client)
-type ChangeMessage = {
-  headers: { operation: SyncOperation };
-  value: Record<string, unknown>;
-};
-
-function isChangeMessage(msg: unknown): msg is ChangeMessage {
-  if (typeof msg !== 'object' || msg === null) return false;
-  const m = msg as { headers?: { operation?: unknown } };
-  return typeof m.headers?.operation === 'string';
-}
-
-/**
- * Creates a match function for awaitMatch that waits for a specific
- * operation on a row identified by key.
- */
-function createSyncMatcher(
-  operation: SyncOperation,
-  key: string
-): (msg: unknown) => boolean {
-  return (msg: unknown) => {
-    if (!isChangeMessage(msg)) return false;
-    return msg.headers.operation === operation && getRowKey(msg.value) === key;
-  };
-}
 
 /**
  * Get authenticated shape options for an Electric shape.
@@ -142,9 +115,9 @@ export function createEntityCollection<
 
   // Build mutation handlers if entity supports mutations
   //
-  // Handlers use `collection.utils.awaitMatch` to wait for the synced data
-  // to arrive from Electric before resolving. This prevents flicker where
-  // the optimistic state gets replaced by synced state.
+  // Handlers return { txid: number[] } to allow Electric to wait for the
+  // transaction to be synced before resolving. This is more reliable than
+  // awaitMatch which was previously used.
   type MutationFnParams = {
     transaction: {
       mutations: Array<{
@@ -154,87 +127,86 @@ export function createEntityCollection<
         changes?: unknown; // For updates - the changed fields
       }>;
     };
-    collection: {
-      utils: {
-        awaitMatch: (
-          matchFn: (msg: unknown) => boolean,
-          timeout?: number
-        ) => Promise<boolean>;
-      };
-    };
   };
 
   const mutationHandlers = entity.mutations
     ? {
         onInsert: async ({
           transaction,
-          collection,
-        }: MutationFnParams): Promise<void> => {
-          const data = transaction.mutations[0].modified as Record<
-            string,
-            unknown
-          >;
-          const response = await makeRequest(entity.mutations!.url, {
-            method: 'POST',
-            body: JSON.stringify(data),
-          });
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || `Failed to create ${entity.name}`);
-          }
-          const key = getRowKey(data);
-          await collection.utils.awaitMatch(
-            createSyncMatcher('insert', key),
-            5000
+        }: MutationFnParams): Promise<{ txid: number[] }> => {
+          const results = await Promise.all(
+            transaction.mutations.map(async (mutation) => {
+              const data = mutation.modified as Record<string, unknown>;
+              const response = await makeRequest(entity.mutations!.url, {
+                method: 'POST',
+                body: JSON.stringify(data),
+              });
+              if (!response.ok) {
+                const error = await response.json();
+                throw new Error(
+                  error.message || `Failed to create ${entity.name}`
+                );
+              }
+              const result = (await response.json()) as { txid: number };
+              return result.txid;
+            })
           );
+          return { txid: results };
         },
         onUpdate: async ({
           transaction,
-          collection,
-        }: MutationFnParams): Promise<void> => {
-          const { key, changes } = transaction.mutations[0];
-          const response = await makeRequest(
-            `${entity.mutations!.url}/${key}`,
-            {
-              method: 'PATCH',
-              body: JSON.stringify(changes),
-            }
+        }: MutationFnParams): Promise<{ txid: number[] }> => {
+          const results = await Promise.all(
+            transaction.mutations.map(async (mutation) => {
+              const { key, changes } = mutation;
+              const response = await makeRequest(
+                `${entity.mutations!.url}/${key}`,
+                {
+                  method: 'PATCH',
+                  body: JSON.stringify(changes),
+                }
+              );
+              if (!response.ok) {
+                const error = await response.json();
+                throw new Error(
+                  error.message || `Failed to update ${entity.name}`
+                );
+              }
+              const result = (await response.json()) as { txid: number };
+              return result.txid;
+            })
           );
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || `Failed to update ${entity.name}`);
-          }
-          await collection.utils.awaitMatch(
-            createSyncMatcher('update', key!),
-            5000
-          );
+          return { txid: results };
         },
         onDelete: async ({
           transaction,
-          collection,
-        }: MutationFnParams): Promise<void> => {
-          const { key } = transaction.mutations[0];
-          const response = await makeRequest(
-            `${entity.mutations!.url}/${key}`,
-            {
-              method: 'DELETE',
-            }
+        }: MutationFnParams): Promise<{ txid: number[] }> => {
+          const results = await Promise.all(
+            transaction.mutations.map(async (mutation) => {
+              const { key } = mutation;
+              const response = await makeRequest(
+                `${entity.mutations!.url}/${key}`,
+                {
+                  method: 'DELETE',
+                }
+              );
+              if (!response.ok) {
+                const error = await response.json();
+                throw new Error(
+                  error.message || `Failed to delete ${entity.name}`
+                );
+              }
+              const result = (await response.json()) as { txid: number };
+              return result.txid;
+            })
           );
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || `Failed to delete ${entity.name}`);
-          }
-          await collection.utils.awaitMatch(
-            createSyncMatcher('delete', key!),
-            5000
-          );
+          return { txid: results };
         },
       }
     : {};
 
-  // Type assertion needed because our MutationFnParams includes Electric-specific
-  // utils (awaitMatch) that the base @tanstack/db types don't know about.
-  // The actual runtime behavior is correct - electricCollectionOptions adds these utils.
+  // Type assertion needed because the specific return types for mutation handlers
+  // ({ txid: number[] }) need to be compatible with electricCollectionOptions.
   type ElectricConfig = Parameters<typeof electricCollectionOptions>[0];
   const options = electricCollectionOptions({
     id: collectionId,

@@ -16,6 +16,7 @@ use crate::{
         CreateIssueCommentRequest, ListIssueCommentsQuery, ListIssueCommentsResponse,
         UpdateIssueCommentRequest,
     },
+    mutation_types::{DeleteResponse, MutationResponse},
 };
 
 // Generate router that references handlers below
@@ -81,10 +82,10 @@ async fn create_issue_comment(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateIssueCommentRequest>,
-) -> Result<Json<IssueComment>, ErrorResponse> {
+) -> Result<Json<MutationResponse<IssueComment>>, ErrorResponse> {
     ensure_issue_access(state.pool(), ctx.user.id, payload.issue_id).await?;
 
-    let comment = IssueCommentRepository::create(
+    let response = IssueCommentRepository::create(
         state.pool(),
         payload.id,
         payload.issue_id,
@@ -97,7 +98,7 @@ async fn create_issue_comment(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(comment))
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -110,7 +111,7 @@ async fn update_issue_comment(
     Extension(ctx): Extension<RequestContext>,
     Path(issue_comment_id): Path<Uuid>,
     Json(payload): Json<UpdateIssueCommentRequest>,
-) -> Result<Json<IssueComment>, ErrorResponse> {
+) -> Result<Json<MutationResponse<IssueComment>>, ErrorResponse> {
     let comment = IssueCommentRepository::find_by_id(state.pool(), issue_comment_id)
         .await
         .map_err(|error| {
@@ -131,7 +132,7 @@ async fn update_issue_comment(
 
     ensure_issue_access(state.pool(), ctx.user.id, comment.issue_id).await?;
 
-    let updated_comment =
+    let response =
         IssueCommentRepository::update(state.pool(), issue_comment_id, payload.message)
             .await
             .map_err(|error| {
@@ -139,7 +140,7 @@ async fn update_issue_comment(
                 ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
             })?;
 
-    Ok(Json(updated_comment))
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -151,7 +152,7 @@ async fn delete_issue_comment(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_comment_id): Path<Uuid>,
-) -> Result<StatusCode, ErrorResponse> {
+) -> Result<Json<DeleteResponse>, ErrorResponse> {
     let comment = IssueCommentRepository::find_by_id(state.pool(), issue_comment_id)
         .await
         .map_err(|error| {
@@ -172,12 +173,12 @@ async fn delete_issue_comment(
 
     ensure_issue_access(state.pool(), ctx.user.id, comment.issue_id).await?;
 
-    IssueCommentRepository::delete(state.pool(), issue_comment_id)
+    let response = IssueCommentRepository::delete(state.pool(), issue_comment_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete issue comment");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(response))
 }

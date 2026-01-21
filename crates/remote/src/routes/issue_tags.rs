@@ -15,6 +15,7 @@ use crate::{
     entities::{
         CreateIssueTagRequest, ListIssueTagsQuery, ListIssueTagsResponse, UpdateIssueTagRequest,
     },
+    mutation_types::{DeleteResponse, MutationResponse},
 };
 
 // Generate router that references handlers below
@@ -80,10 +81,10 @@ async fn create_issue_tag(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateIssueTagRequest>,
-) -> Result<Json<IssueTag>, ErrorResponse> {
+) -> Result<Json<MutationResponse<IssueTag>>, ErrorResponse> {
     ensure_issue_access(state.pool(), ctx.user.id, payload.issue_id).await?;
 
-    let issue_tag =
+    let response =
         IssueTagRepository::create(state.pool(), payload.id, payload.issue_id, payload.tag_id)
             .await
             .map_err(|error| {
@@ -91,7 +92,7 @@ async fn create_issue_tag(
                 ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
             })?;
 
-    Ok(Json(issue_tag))
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -104,7 +105,7 @@ async fn update_issue_tag(
     Extension(_ctx): Extension<RequestContext>,
     Path(_issue_tag_id): Path<Uuid>,
     Json(_payload): Json<UpdateIssueTagRequest>,
-) -> Result<Json<IssueTag>, ErrorResponse> {
+) -> Result<Json<MutationResponse<IssueTag>>, ErrorResponse> {
     Err(ErrorResponse::new(
         StatusCode::METHOD_NOT_ALLOWED,
         "issue tags cannot be updated, only created or deleted",
@@ -120,7 +121,7 @@ async fn delete_issue_tag(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_tag_id): Path<Uuid>,
-) -> Result<StatusCode, ErrorResponse> {
+) -> Result<Json<DeleteResponse>, ErrorResponse> {
     let issue_tag = IssueTagRepository::find_by_id(state.pool(), issue_tag_id)
         .await
         .map_err(|error| {
@@ -134,12 +135,12 @@ async fn delete_issue_tag(
 
     ensure_issue_access(state.pool(), ctx.user.id, issue_tag.issue_id).await?;
 
-    IssueTagRepository::delete(state.pool(), issue_tag_id)
+    let response = IssueTagRepository::delete(state.pool(), issue_tag_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete issue tag");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(response))
 }

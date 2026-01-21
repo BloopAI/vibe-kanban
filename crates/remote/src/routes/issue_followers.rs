@@ -16,6 +16,7 @@ use crate::{
         CreateIssueFollowerRequest, ListIssueFollowersQuery, ListIssueFollowersResponse,
         UpdateIssueFollowerRequest,
     },
+    mutation_types::{DeleteResponse, MutationResponse},
 };
 
 // Generate router that references handlers below
@@ -81,10 +82,10 @@ async fn create_issue_follower(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateIssueFollowerRequest>,
-) -> Result<Json<IssueFollower>, ErrorResponse> {
+) -> Result<Json<MutationResponse<IssueFollower>>, ErrorResponse> {
     ensure_issue_access(state.pool(), ctx.user.id, payload.issue_id).await?;
 
-    let follower = IssueFollowerRepository::create(
+    let response = IssueFollowerRepository::create(
         state.pool(),
         payload.id,
         payload.issue_id,
@@ -96,7 +97,7 @@ async fn create_issue_follower(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(follower))
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -109,7 +110,7 @@ async fn update_issue_follower(
     Extension(_ctx): Extension<RequestContext>,
     Path(_issue_follower_id): Path<Uuid>,
     Json(_payload): Json<UpdateIssueFollowerRequest>,
-) -> Result<Json<IssueFollower>, ErrorResponse> {
+) -> Result<Json<MutationResponse<IssueFollower>>, ErrorResponse> {
     Err(ErrorResponse::new(
         StatusCode::METHOD_NOT_ALLOWED,
         "issue followers cannot be updated, only created or deleted",
@@ -125,7 +126,7 @@ async fn delete_issue_follower(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_follower_id): Path<Uuid>,
-) -> Result<StatusCode, ErrorResponse> {
+) -> Result<Json<DeleteResponse>, ErrorResponse> {
     let follower = IssueFollowerRepository::find_by_id(state.pool(), issue_follower_id)
         .await
         .map_err(|error| {
@@ -139,12 +140,12 @@ async fn delete_issue_follower(
 
     ensure_issue_access(state.pool(), ctx.user.id, follower.issue_id).await?;
 
-    IssueFollowerRepository::delete(state.pool(), issue_follower_id)
+    let response = IssueFollowerRepository::delete(state.pool(), issue_follower_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete issue follower");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(response))
 }

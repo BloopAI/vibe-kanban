@@ -15,6 +15,7 @@ use crate::{
     entities::{
         CreateProjectRequest, ListProjectsQuery, ListProjectsResponse, UpdateProjectRequest,
     },
+    mutation_types::{DeleteResponse, MutationResponse},
 };
 
 // Generate router that references handlers below
@@ -74,10 +75,10 @@ async fn create_project(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateProjectRequest>,
-) -> Result<Json<Project>, ErrorResponse> {
+) -> Result<Json<MutationResponse<Project>>, ErrorResponse> {
     ensure_member_access(state.pool(), payload.organization_id, ctx.user.id).await?;
 
-    let project = ProjectRepository::create_with_defaults(
+    let response = ProjectRepository::create_with_defaults(
         state.pool(),
         payload.id,
         payload.organization_id,
@@ -90,7 +91,7 @@ async fn create_project(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(project))
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -103,7 +104,7 @@ async fn update_project(
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
     Json(payload): Json<UpdateProjectRequest>,
-) -> Result<Json<Project>, ErrorResponse> {
+) -> Result<Json<MutationResponse<Project>>, ErrorResponse> {
     let existing = ProjectRepository::find_by_id(state.pool(), project_id)
         .await
         .map_err(|error| {
@@ -114,14 +115,14 @@ async fn update_project(
 
     ensure_member_access(state.pool(), existing.organization_id, ctx.user.id).await?;
 
-    let project = ProjectRepository::update(state.pool(), project_id, payload.name, payload.color)
+    let response = ProjectRepository::update(state.pool(), project_id, payload.name, payload.color)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to update project");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(Json(project))
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -133,7 +134,7 @@ async fn delete_project(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
-) -> Result<StatusCode, ErrorResponse> {
+) -> Result<Json<DeleteResponse>, ErrorResponse> {
     let project = ProjectRepository::find_by_id(state.pool(), project_id)
         .await
         .map_err(|error| {
@@ -144,12 +145,12 @@ async fn delete_project(
 
     ensure_member_access(state.pool(), project.organization_id, ctx.user.id).await?;
 
-    ProjectRepository::delete(state.pool(), project_id)
+    let response = ProjectRepository::delete(state.pool(), project_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete project");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(response))
 }

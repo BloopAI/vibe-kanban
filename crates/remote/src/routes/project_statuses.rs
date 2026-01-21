@@ -16,6 +16,7 @@ use crate::{
         CreateProjectStatusRequest, ListProjectStatussQuery, ListProjectStatussResponse,
         UpdateProjectStatusRequest,
     },
+    mutation_types::{DeleteResponse, MutationResponse},
 };
 
 // Generate router that references handlers below
@@ -81,10 +82,10 @@ async fn create_project_status(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateProjectStatusRequest>,
-) -> Result<Json<ProjectStatus>, ErrorResponse> {
+) -> Result<Json<MutationResponse<ProjectStatus>>, ErrorResponse> {
     ensure_project_access(state.pool(), ctx.user.id, payload.project_id).await?;
 
-    let status = ProjectStatusRepository::create(
+    let response = ProjectStatusRepository::create(
         state.pool(),
         payload.id,
         payload.project_id,
@@ -98,7 +99,7 @@ async fn create_project_status(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(status))
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -111,7 +112,7 @@ async fn update_project_status(
     Extension(ctx): Extension<RequestContext>,
     Path(project_status_id): Path<Uuid>,
     Json(payload): Json<UpdateProjectStatusRequest>,
-) -> Result<Json<ProjectStatus>, ErrorResponse> {
+) -> Result<Json<MutationResponse<ProjectStatus>>, ErrorResponse> {
     let status = ProjectStatusRepository::find_by_id(state.pool(), project_status_id)
         .await
         .map_err(|error| {
@@ -125,7 +126,7 @@ async fn update_project_status(
 
     ensure_project_access(state.pool(), ctx.user.id, status.project_id).await?;
 
-    let updated_status = ProjectStatusRepository::update(
+    let response = ProjectStatusRepository::update(
         state.pool(),
         project_status_id,
         payload.name,
@@ -138,7 +139,7 @@ async fn update_project_status(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(updated_status))
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -150,7 +151,7 @@ async fn delete_project_status(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(project_status_id): Path<Uuid>,
-) -> Result<StatusCode, ErrorResponse> {
+) -> Result<Json<DeleteResponse>, ErrorResponse> {
     let status = ProjectStatusRepository::find_by_id(state.pool(), project_status_id)
         .await
         .map_err(|error| {
@@ -164,12 +165,12 @@ async fn delete_project_status(
 
     ensure_project_access(state.pool(), ctx.user.id, status.project_id).await?;
 
-    ProjectStatusRepository::delete(state.pool(), project_status_id)
+    let response = ProjectStatusRepository::delete(state.pool(), project_status_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete project status");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(response))
 }

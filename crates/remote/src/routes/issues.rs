@@ -13,6 +13,7 @@ use crate::{
     db::issues::{Issue, IssueRepository},
     define_mutation_router,
     entities::{CreateIssueRequest, ListIssuesQuery, ListIssuesResponse, UpdateIssueRequest},
+    mutation_types::{DeleteResponse, MutationResponse},
 };
 
 // Generate router that references handlers below
@@ -72,10 +73,10 @@ async fn create_issue(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateIssueRequest>,
-) -> Result<Json<Issue>, ErrorResponse> {
+) -> Result<Json<MutationResponse<Issue>>, ErrorResponse> {
     ensure_project_access(state.pool(), ctx.user.id, payload.project_id).await?;
 
-    let issue = IssueRepository::create(
+    let response = IssueRepository::create(
         state.pool(),
         payload.id,
         payload.project_id,
@@ -96,7 +97,7 @@ async fn create_issue(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(issue))
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -109,7 +110,7 @@ async fn update_issue(
     Extension(ctx): Extension<RequestContext>,
     Path(issue_id): Path<Uuid>,
     Json(payload): Json<UpdateIssueRequest>,
-) -> Result<Json<Issue>, ErrorResponse> {
+) -> Result<Json<MutationResponse<Issue>>, ErrorResponse> {
     let issue = IssueRepository::find_by_id(state.pool(), issue_id)
         .await
         .map_err(|error| {
@@ -120,7 +121,7 @@ async fn update_issue(
 
     ensure_project_access(state.pool(), ctx.user.id, issue.project_id).await?;
 
-    let updated_issue = IssueRepository::update(
+    let response = IssueRepository::update(
         state.pool(),
         issue_id,
         payload.status_id,
@@ -140,7 +141,7 @@ async fn update_issue(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(updated_issue))
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -152,7 +153,7 @@ async fn delete_issue(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_id): Path<Uuid>,
-) -> Result<StatusCode, ErrorResponse> {
+) -> Result<Json<DeleteResponse>, ErrorResponse> {
     let issue = IssueRepository::find_by_id(state.pool(), issue_id)
         .await
         .map_err(|error| {
@@ -163,12 +164,12 @@ async fn delete_issue(
 
     ensure_project_access(state.pool(), ctx.user.id, issue.project_id).await?;
 
-    IssueRepository::delete(state.pool(), issue_id)
+    let response = IssueRepository::delete(state.pool(), issue_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete issue");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(response))
 }

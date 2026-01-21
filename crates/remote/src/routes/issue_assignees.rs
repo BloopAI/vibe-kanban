@@ -16,6 +16,7 @@ use crate::{
         CreateIssueAssigneeRequest, ListIssueAssigneesQuery, ListIssueAssigneesResponse,
         UpdateIssueAssigneeRequest,
     },
+    mutation_types::{DeleteResponse, MutationResponse},
 };
 
 // Generate router that references handlers below
@@ -81,10 +82,10 @@ async fn create_issue_assignee(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateIssueAssigneeRequest>,
-) -> Result<Json<IssueAssignee>, ErrorResponse> {
+) -> Result<Json<MutationResponse<IssueAssignee>>, ErrorResponse> {
     ensure_issue_access(state.pool(), ctx.user.id, payload.issue_id).await?;
 
-    let assignee = IssueAssigneeRepository::create(
+    let response = IssueAssigneeRepository::create(
         state.pool(),
         payload.id,
         payload.issue_id,
@@ -96,7 +97,7 @@ async fn create_issue_assignee(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(assignee))
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -109,7 +110,7 @@ async fn update_issue_assignee(
     Extension(_ctx): Extension<RequestContext>,
     Path(_issue_assignee_id): Path<Uuid>,
     Json(_payload): Json<UpdateIssueAssigneeRequest>,
-) -> Result<Json<IssueAssignee>, ErrorResponse> {
+) -> Result<Json<MutationResponse<IssueAssignee>>, ErrorResponse> {
     Err(ErrorResponse::new(
         StatusCode::METHOD_NOT_ALLOWED,
         "issue assignees cannot be updated, only created or deleted",
@@ -125,7 +126,7 @@ async fn delete_issue_assignee(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_assignee_id): Path<Uuid>,
-) -> Result<StatusCode, ErrorResponse> {
+) -> Result<Json<DeleteResponse>, ErrorResponse> {
     let assignee = IssueAssigneeRepository::find_by_id(state.pool(), issue_assignee_id)
         .await
         .map_err(|error| {
@@ -139,12 +140,12 @@ async fn delete_issue_assignee(
 
     ensure_issue_access(state.pool(), ctx.user.id, assignee.issue_id).await?;
 
-    IssueAssigneeRepository::delete(state.pool(), issue_assignee_id)
+    let response = IssueAssigneeRepository::delete(state.pool(), issue_assignee_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete issue assignee");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(response))
 }

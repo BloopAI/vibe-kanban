@@ -16,6 +16,7 @@ use crate::{
         CreateIssueRelationshipRequest, ListIssueRelationshipsQuery,
         ListIssueRelationshipsResponse, UpdateIssueRelationshipRequest,
     },
+    mutation_types::{DeleteResponse, MutationResponse},
 };
 
 // Generate router that references handlers below
@@ -86,10 +87,10 @@ async fn create_issue_relationship(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateIssueRelationshipRequest>,
-) -> Result<Json<IssueRelationship>, ErrorResponse> {
+) -> Result<Json<MutationResponse<IssueRelationship>>, ErrorResponse> {
     ensure_issue_access(state.pool(), ctx.user.id, payload.issue_id).await?;
 
-    let relationship = IssueRelationshipRepository::create(
+    let response = IssueRelationshipRepository::create(
         state.pool(),
         payload.id,
         payload.issue_id,
@@ -102,7 +103,7 @@ async fn create_issue_relationship(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(relationship))
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -115,7 +116,7 @@ async fn update_issue_relationship(
     Extension(_ctx): Extension<RequestContext>,
     Path(_issue_relationship_id): Path<Uuid>,
     Json(_payload): Json<UpdateIssueRelationshipRequest>,
-) -> Result<Json<IssueRelationship>, ErrorResponse> {
+) -> Result<Json<MutationResponse<IssueRelationship>>, ErrorResponse> {
     Err(ErrorResponse::new(
         StatusCode::METHOD_NOT_ALLOWED,
         "issue relationships cannot be updated, only created or deleted",
@@ -131,7 +132,7 @@ async fn delete_issue_relationship(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_relationship_id): Path<Uuid>,
-) -> Result<StatusCode, ErrorResponse> {
+) -> Result<Json<DeleteResponse>, ErrorResponse> {
     let relationship = IssueRelationshipRepository::find_by_id(state.pool(), issue_relationship_id)
         .await
         .map_err(|error| {
@@ -145,12 +146,12 @@ async fn delete_issue_relationship(
 
     ensure_issue_access(state.pool(), ctx.user.id, relationship.issue_id).await?;
 
-    IssueRelationshipRepository::delete(state.pool(), issue_relationship_id)
+    let response = IssueRelationshipRepository::delete(state.pool(), issue_relationship_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete issue relationship");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(response))
 }
