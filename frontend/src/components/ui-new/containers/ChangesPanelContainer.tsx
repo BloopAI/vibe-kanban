@@ -161,15 +161,9 @@ export function ChangesPanelContainer({
   useEffect(() => {
     if (!selectedFilePath) return;
 
-    console.log('[DEBUG] scroll effect triggered', {
-      selectedFilePath,
-      selectedLineNumber,
-    });
-
     // Defer to next frame to ensure ref is attached after render
     const timeoutId = setTimeout(() => {
       const fileEl = diffRefs.current.get(selectedFilePath);
-      console.log('[DEBUG] fileEl found:', !!fileEl);
       fileEl?.scrollIntoView({
         behavior: 'instant',
         block: 'start',
@@ -178,24 +172,9 @@ export function ChangesPanelContainer({
       // If line number specified, scroll to comment row after file scroll completes
       if (selectedLineNumber && fileEl) {
         setTimeout(() => {
-          // Find the comment extend row by data-line attribute
-          const selector = `[data-line="${selectedLineNumber}-extend"]`;
+          // Find the comment row by data-line attribute (library uses plain line numbers)
+          const selector = `[data-line="${selectedLineNumber}"]`;
           const commentEl = fileEl.querySelector(selector);
-          // Log all data-line values to find the correct format
-          const allDataLines = Array.from(
-            fileEl.querySelectorAll('[data-line]')
-          ).map((el) => el.getAttribute('data-line'));
-          // Find any that contain our line number
-          const matchingLines = allDataLines.filter((dl) =>
-            dl?.includes('242')
-          );
-          console.log('[DEBUG] looking for comment element', {
-            selector,
-            found: !!commentEl,
-            allDataLineElements: allDataLines.length,
-            matchingLines,
-            sampleDataLines: allDataLines.slice(0, 10),
-          });
           commentEl?.scrollIntoView({ behavior: 'instant', block: 'center' });
         }, 50); // Brief delay to ensure file scroll completes
       }
