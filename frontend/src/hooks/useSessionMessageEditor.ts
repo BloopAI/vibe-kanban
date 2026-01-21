@@ -24,13 +24,19 @@ interface UseSessionMessageEditorResult {
   /** Whether the initial value has been applied from scratch */
   hasInitialValue: boolean;
   /** Save message and executor profile to scratch */
-  saveToScratch: (message: string, executorProfileId: ExecutorProfileId) => Promise<void>;
+  saveToScratch: (
+    message: string,
+    executorProfileId: ExecutorProfileId
+  ) => Promise<void>;
   /** Delete the draft scratch */
   clearDraft: () => Promise<void>;
   /** Cancel pending debounced save */
   cancelDebouncedSave: () => void;
   /** Handle message change with debounced save */
-  handleMessageChange: (value: string, executorProfileId: ExecutorProfileId) => void;
+  handleMessageChange: (
+    value: string,
+    executorProfileId: ExecutorProfileId
+  ) => void;
 }
 
 /**

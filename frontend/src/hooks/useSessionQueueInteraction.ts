@@ -16,7 +16,10 @@ interface UseSessionQueueInteractionResult {
   /** Whether a queue operation is in progress */
   isQueueLoading: boolean;
   /** Queue a message for later execution */
-  queueMessage: (message: string, executorProfileId: ExecutorProfileId) => Promise<void>;
+  queueMessage: (
+    message: string,
+    executorProfileId: ExecutorProfileId
+  ) => Promise<void>;
   /** Cancel the queued message */
   cancelQueue: () => Promise<void>;
   /** Refresh queue status from server */
@@ -73,7 +76,10 @@ export function useSessionQueueInteraction({
   const queueMessage = useCallback(
     async (message: string, executorProfileId: ExecutorProfileId) => {
       if (!sessionId) return;
-      await queueMutation.mutateAsync({ message, executor_profile_id: executorProfileId });
+      await queueMutation.mutateAsync({
+        message,
+        executor_profile_id: executorProfileId,
+      });
     },
     [sessionId, queueMutation]
   );

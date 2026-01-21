@@ -47,7 +47,11 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useRetryUi } from '@/contexts/RetryUiContext';
 import { useFollowUpSend } from '@/hooks/useFollowUpSend';
 import { useVariant } from '@/hooks/useVariant';
-import type { DraftFollowUpData, ExecutorProfileId, QueueStatus } from 'shared/types';
+import type {
+  DraftFollowUpData,
+  ExecutorProfileId,
+  QueueStatus,
+} from 'shared/types';
 import { getLatestProfileFromProcesses } from '@/utils/executor';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { useTranslation } from 'react-i18next';
@@ -276,7 +280,10 @@ export function TaskFollowUpSection({
   const queueMessage = useCallback(
     async (message: string, executorProfileId: ExecutorProfileId) => {
       if (!sessionId) return;
-      await queueMutation.mutateAsync({ message, executor_profile_id: executorProfileId });
+      await queueMutation.mutateAsync({
+        message,
+        executor_profile_id: executorProfileId,
+      });
     },
     [sessionId, queueMutation]
   );
