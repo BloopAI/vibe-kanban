@@ -58,7 +58,7 @@ export function useWorkspaceSessions(
         return { mode: 'existing', sessionId: sessions[0].id };
       });
     } else {
-      setSelection({ mode: 'new' });
+      setSelection(undefined);
     }
   }, [workspaceId, sessions]);
 
