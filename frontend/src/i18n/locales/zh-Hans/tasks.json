@@ -153,11 +153,14 @@
       "desktopView": "桌面视图",
       "mobileView": "移动视图 (390x844)",
       "responsiveView": "响应式视图（可调整大小）",
-      "startDevServer": "启动开发服务器"
+      "startDevServer": "启动开发服务器",
+      "submitUrl": "提交 URL"
     },
     "loading": {
       "startingServer": "正在启动开发服务器...",
-      "waitingForServer": "正在等待服务器..."
+      "waitingForServer": "正在等待服务器...",
+      "loadingPreview": "正在加载预览...",
+      "manualUrlHint": "尚未检测到 URL。您可以在上方工具栏中手动输入 URL。"
     }
   },
   "diff": {

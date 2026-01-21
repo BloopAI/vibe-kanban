@@ -371,11 +371,14 @@
       "desktopView": "Vista de escritorio",
       "mobileView": "Vista móvil (390x844)",
       "responsiveView": "Vista adaptable (redimensionable)",
-      "startDevServer": "Iniciar servidor de desarrollo"
+      "startDevServer": "Iniciar servidor de desarrollo",
+      "submitUrl": "Enviar URL"
     },
     "loading": {
       "startingServer": "Iniciando servidor de desarrollo...",
-      "waitingForServer": "Esperando servidor..."
+      "waitingForServer": "Esperando servidor...",
+      "loadingPreview": "Cargando vista previa...",
+      "manualUrlHint": "No se detectó ninguna URL aún. Puedes ingresar una URL manualmente en la barra de herramientas de arriba."
     },
     "troubleAlert": {
       "item1": "¿Se inició correctamente el servidor de desarrollo? Puede haber un error que necesites resolver, o quizás sea necesario instalar dependencias.",

@@ -133,11 +133,14 @@
       "desktopView": "Vue bureau",
       "mobileView": "Vue mobile (390x844)",
       "responsiveView": "Vue responsive (redimensionnable)",
-      "startDevServer": "Démarrer le serveur de développement"
+      "startDevServer": "Démarrer le serveur de développement",
+      "submitUrl": "Valider l'URL"
     },
     "loading": {
       "startingServer": "Démarrage du serveur de développement...",
-      "waitingForServer": "En attente du serveur..."
+      "waitingForServer": "En attente du serveur...",
+      "loadingPreview": "Chargement de l'aperçu...",
+      "manualUrlHint": "Aucune URL détectée pour l'instant. Vous pouvez saisir une URL manuellement dans la barre d'outils ci-dessus."
     },
     "browser": {
       "title": "Aperçu du serveur de développement",

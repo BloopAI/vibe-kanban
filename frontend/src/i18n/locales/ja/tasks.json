@@ -371,11 +371,14 @@
       "desktopView": "デスクトップ表示",
       "mobileView": "モバイル表示 (390x844)",
       "responsiveView": "レスポンシブ表示（リサイズ可能）",
-      "startDevServer": "開発サーバーを開始"
+      "startDevServer": "開発サーバーを開始",
+      "submitUrl": "URLを送信"
     },
     "loading": {
       "startingServer": "開発サーバーを起動中...",
-      "waitingForServer": "サーバーを待機中..."
+      "waitingForServer": "サーバーを待機中...",
+      "loadingPreview": "プレビューを読み込み中...",
+      "manualUrlHint": "URLがまだ検出されていません。上部のツールバーでURLを手動で入力できます。"
     },
     "troubleAlert": {
       "item1": "開発サーバーが正常に起動しましたか？解決すべきバグがあるか、依存関係のインストールが必要な可能性があります。",

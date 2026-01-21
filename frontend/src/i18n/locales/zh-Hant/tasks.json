@@ -153,11 +153,14 @@
       "desktopView": "桌面檢視",
       "mobileView": "行動裝置檢視 (390x844)",
       "responsiveView": "響應式檢視（可調整大小）",
-      "startDevServer": "啟動開發伺服器"
+      "startDevServer": "啟動開發伺服器",
+      "submitUrl": "提交 URL"
     },
     "loading": {
       "startingServer": "正在啟動開發伺服器...",
-      "waitingForServer": "正在等待伺服器..."
+      "waitingForServer": "正在等待伺服器...",
+      "loadingPreview": "正在載入預覽...",
+      "manualUrlHint": "尚未偵測到 URL。您可以在上方工具列中手動輸入 URL。"
     }
   },
   "diff": {
