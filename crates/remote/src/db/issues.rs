@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::{Executor, Postgres};
+use sqlx::PgPool;
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
@@ -36,10 +36,7 @@ pub enum IssueError {
 pub struct IssueRepository;
 
 impl IssueRepository {
-    pub async fn find_by_id<'e, E>(executor: E, id: Uuid) -> Result<Option<Issue>, IssueError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Issue>, IssueError> {
         let record = sqlx::query_as!(
             Issue,
             r#"
@@ -63,19 +60,13 @@ impl IssueRepository {
             "#,
             id
         )
-        .fetch_optional(executor)
+        .fetch_optional(pool)
         .await?;
 
         Ok(record)
     }
 
-    pub async fn organization_id<'e, E>(
-        executor: E,
-        issue_id: Uuid,
-    ) -> Result<Option<Uuid>, IssueError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    pub async fn organization_id(pool: &PgPool, issue_id: Uuid) -> Result<Option<Uuid>, IssueError> {
         let record = sqlx::query_scalar!(
             r#"
             SELECT p.organization_id
@@ -85,19 +76,16 @@ impl IssueRepository {
             "#,
             issue_id
         )
-        .fetch_optional(executor)
+        .fetch_optional(pool)
         .await?;
 
         Ok(record)
     }
 
-    pub async fn list_by_project<'e, E>(
-        executor: E,
+    pub async fn list_by_project(
+        pool: &PgPool,
         project_id: Uuid,
-    ) -> Result<Vec<Issue>, IssueError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    ) -> Result<Vec<Issue>, IssueError> {
         let records = sqlx::query_as!(
             Issue,
             r#"
@@ -121,15 +109,15 @@ impl IssueRepository {
             "#,
             project_id
         )
-        .fetch_all(executor)
+        .fetch_all(pool)
         .await?;
 
         Ok(records)
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn create<'e, E>(
-        executor: E,
+    pub async fn create(
+        pool: &PgPool,
         id: Option<Uuid>,
         project_id: Uuid,
         status_id: Uuid,
@@ -142,10 +130,7 @@ impl IssueRepository {
         sort_order: f64,
         parent_issue_id: Option<Uuid>,
         extension_metadata: Value,
-    ) -> Result<Issue, IssueError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    ) -> Result<Issue, IssueError> {
         let id = id.unwrap_or_else(Uuid::new_v4);
         let record = sqlx::query_as!(
             Issue,
@@ -185,7 +170,7 @@ impl IssueRepository {
             parent_issue_id,
             extension_metadata
         )
-        .fetch_one(executor)
+        .fetch_one(pool)
         .await?;
 
         Ok(record)
@@ -194,8 +179,8 @@ impl IssueRepository {
     /// Update an issue with partial fields. Uses COALESCE to preserve existing values
     /// when None is provided.
     #[allow(clippy::too_many_arguments)]
-    pub async fn update<'e, E>(
-        executor: E,
+    pub async fn update(
+        pool: &PgPool,
         id: Uuid,
         status_id: Option<Uuid>,
         title: Option<String>,
@@ -207,10 +192,7 @@ impl IssueRepository {
         sort_order: Option<f64>,
         parent_issue_id: Option<Option<Uuid>>,
         extension_metadata: Option<Value>,
-    ) -> Result<Issue, IssueError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    ) -> Result<Issue, IssueError> {
         let record = sqlx::query_as!(
             Issue,
             r#"
@@ -256,18 +238,15 @@ impl IssueRepository {
             extension_metadata,
             id
         )
-        .fetch_one(executor)
+        .fetch_one(pool)
         .await?;
 
         Ok(record)
     }
 
-    pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<(), IssueError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<(), IssueError> {
         sqlx::query!("DELETE FROM issues WHERE id = $1", id)
-            .execute(executor)
+            .execute(pool)
             .await?;
         Ok(())
     }

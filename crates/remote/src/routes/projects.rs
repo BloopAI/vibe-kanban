@@ -10,11 +10,7 @@ use super::{error::ErrorResponse, organization_members::ensure_member_access};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{
-        project_statuses::ProjectStatusRepository,
-        projects::{Project, ProjectRepository},
-        tags::TagRepository,
-    },
+    db::projects::{Project, ProjectRepository},
     define_mutation_router,
     entities::{
         CreateProjectRequest, ListProjectsQuery, ListProjectsResponse, UpdateProjectRequest,
@@ -81,13 +77,8 @@ async fn create_project(
 ) -> Result<Json<Project>, ErrorResponse> {
     ensure_member_access(state.pool(), payload.organization_id, ctx.user.id).await?;
 
-    let mut tx = state.pool().begin().await.map_err(|error| {
-        tracing::error!(?error, "failed to begin transaction");
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-    })?;
-
-    let project = ProjectRepository::create(
-        &mut *tx,
+    let project = ProjectRepository::create_with_defaults(
+        state.pool(),
         payload.id,
         payload.organization_id,
         payload.name,
@@ -96,28 +87,6 @@ async fn create_project(
     .await
     .map_err(|error| {
         tracing::error!(?error, "failed to create project");
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-    })?;
-
-    if let Err(error) = TagRepository::create_default_tags(&mut *tx, project.id).await {
-        tracing::error!(?error, project_id = %project.id, "failed to create default tags");
-        return Err(ErrorResponse::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal server error",
-        ));
-    }
-
-    if let Err(error) = ProjectStatusRepository::create_default_statuses(&mut *tx, project.id).await
-    {
-        tracing::error!(?error, project_id = %project.id, "failed to create default statuses");
-        return Err(ErrorResponse::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal server error",
-        ));
-    }
-
-    tx.commit().await.map_err(|error| {
-        tracing::error!(?error, "failed to commit transaction");
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 

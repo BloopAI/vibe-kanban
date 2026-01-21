@@ -1,9 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, Postgres};
+use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
+
+use super::project_statuses::ProjectStatusRepository;
+use super::tags::TagRepository;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -20,6 +23,10 @@ pub struct Project {
 pub enum ProjectError {
     #[error("project conflict: {0}")]
     Conflict(String),
+    #[error("failed to create default tags: {0}")]
+    DefaultTagsFailed(String),
+    #[error("failed to create default statuses: {0}")]
+    DefaultStatusesFailed(String),
     #[error(transparent)]
     Database(#[from] sqlx::Error),
 }
@@ -190,5 +197,29 @@ impl ProjectRepository {
         .fetch_optional(executor)
         .await
         .map_err(ProjectError::from)
+    }
+
+    /// Creates a project along with default tags and statuses in a single transaction.
+    pub async fn create_with_defaults(
+        pool: &PgPool,
+        id: Option<Uuid>,
+        organization_id: Uuid,
+        name: String,
+        color: String,
+    ) -> Result<Project, ProjectError> {
+        let mut tx = pool.begin().await?;
+
+        let project = Self::create(&mut *tx, id, organization_id, name, color).await?;
+
+        TagRepository::create_default_tags(&mut *tx, project.id)
+            .await
+            .map_err(|e| ProjectError::DefaultTagsFailed(e.to_string()))?;
+
+        ProjectStatusRepository::create_default_statuses(&mut *tx, project.id)
+            .await
+            .map_err(|e| ProjectError::DefaultStatusesFailed(e.to_string()))?;
+
+        tx.commit().await?;
+        Ok(project)
     }
 }

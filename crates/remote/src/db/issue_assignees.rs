@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, Postgres};
+use sqlx::PgPool;
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
@@ -23,13 +23,10 @@ pub enum IssueAssigneeError {
 pub struct IssueAssigneeRepository;
 
 impl IssueAssigneeRepository {
-    pub async fn find_by_id<'e, E>(
-        executor: E,
+    pub async fn find_by_id(
+        pool: &PgPool,
         id: Uuid,
-    ) -> Result<Option<IssueAssignee>, IssueAssigneeError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    ) -> Result<Option<IssueAssignee>, IssueAssigneeError> {
         let record = sqlx::query_as!(
             IssueAssignee,
             r#"
@@ -43,19 +40,16 @@ impl IssueAssigneeRepository {
             "#,
             id
         )
-        .fetch_optional(executor)
+        .fetch_optional(pool)
         .await?;
 
         Ok(record)
     }
 
-    pub async fn list_by_issue<'e, E>(
-        executor: E,
+    pub async fn list_by_issue(
+        pool: &PgPool,
         issue_id: Uuid,
-    ) -> Result<Vec<IssueAssignee>, IssueAssigneeError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    ) -> Result<Vec<IssueAssignee>, IssueAssigneeError> {
         let records = sqlx::query_as!(
             IssueAssignee,
             r#"
@@ -69,21 +63,18 @@ impl IssueAssigneeRepository {
             "#,
             issue_id
         )
-        .fetch_all(executor)
+        .fetch_all(pool)
         .await?;
 
         Ok(records)
     }
 
-    pub async fn create<'e, E>(
-        executor: E,
+    pub async fn create(
+        pool: &PgPool,
         id: Option<Uuid>,
         issue_id: Uuid,
         user_id: Uuid,
-    ) -> Result<IssueAssignee, IssueAssigneeError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    ) -> Result<IssueAssignee, IssueAssigneeError> {
         let id = id.unwrap_or_else(Uuid::new_v4);
         let record = sqlx::query_as!(
             IssueAssignee,
@@ -100,18 +91,15 @@ impl IssueAssigneeRepository {
             issue_id,
             user_id
         )
-        .fetch_one(executor)
+        .fetch_one(pool)
         .await?;
 
         Ok(record)
     }
 
-    pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<(), IssueAssigneeError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<(), IssueAssigneeError> {
         sqlx::query!("DELETE FROM issue_assignees WHERE id = $1", id)
-            .execute(executor)
+            .execute(pool)
             .await?;
         Ok(())
     }
