@@ -668,7 +668,7 @@ pub async fn create_workspace_from_pr(
     let agent_working_dir = Some(repo.name.clone());
 
     let workspace_id = Uuid::new_v4();
-    let workspace = Workspace::create(
+    let mut workspace = Workspace::create(
         pool,
         &CreateWorkspace {
             branch: payload.head_branch.clone(),
@@ -693,6 +693,9 @@ pub async fn create_workspace_from_pr(
         .container()
         .ensure_container_exists(&workspace)
         .await?;
+
+    // Update workspace with container_ref so start_execution can find it
+    workspace.container_ref = Some(container_ref.clone());
 
     // Configure PR branch tracking (non-fatal - workspace is usable without this)
     let worktree_path = PathBuf::from(&container_ref).join(&repo.name);
