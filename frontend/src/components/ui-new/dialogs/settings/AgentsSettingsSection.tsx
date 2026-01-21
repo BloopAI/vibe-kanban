@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { toPrettyCase } from '@/utils/string';
 import { SettingsSaveBar } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
+import { AgentIcon } from '@/components/agents/AgentIcon';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 
@@ -389,16 +390,20 @@ export function AgentsSettingsSection() {
                         }
                       }}
                     >
+                      <AgentIcon
+                        agent={executor as BaseCodingAgent}
+                        className="size-icon-sm shrink-0"
+                      />
                       <span
                         className={cn(
-                          'text-sm truncate',
+                          'text-sm truncate flex-1',
                           isSelected ? 'text-brand font-medium' : 'text-normal'
                         )}
                       >
                         {toPrettyCase(executor)}
                       </span>
                       {isDefault && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand/15 text-brand font-medium shrink-0">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand/15 text-brand font-medium shrink-0 ml-auto">
                           {t('settings.agents.editor.isDefault')}
                         </span>
                       )}
@@ -451,7 +456,7 @@ export function AgentsSettingsSection() {
                       >
                         <span
                           className={cn(
-                            'text-sm truncate',
+                            'text-sm truncate flex-1',
                             isSelected
                               ? 'text-brand font-medium'
                               : 'text-normal'
@@ -459,11 +464,6 @@ export function AgentsSettingsSection() {
                         >
                           {toPrettyCase(configName)}
                         </span>
-                        {isDefault && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand/15 text-brand font-medium shrink-0">
-                            {t('settings.agents.editor.isDefault')}
-                          </span>
-                        )}
                         {/* Action buttons on hover */}
                         <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
                           {!isDefault && (
@@ -499,6 +499,11 @@ export function AgentsSettingsSection() {
                             </button>
                           )}
                         </div>
+                        {isDefault && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand/15 text-brand font-medium shrink-0">
+                            {t('settings.agents.editor.isDefault')}
+                          </span>
+                        )}
                       </div>
                     );
                   })
