@@ -133,6 +133,7 @@ export function TagManager() {
                       <div className="flex justify-end gap-1">
                         <IconButton
                           icon={PencilSimpleIcon}
+                          aria-label="edit"
                           onClick={() => handleOpenDialog(tag)}
                           title={t(
                             'settings.general.tags.manager.actions.editTag'
@@ -140,6 +141,7 @@ export function TagManager() {
                         />
                         <IconButton
                           icon={TrashIcon}
+                          aria-label="delete"
                           onClick={() => handleDelete(tag)}
                           title={t(
                             'settings.general.tags.manager.actions.deleteTag'
