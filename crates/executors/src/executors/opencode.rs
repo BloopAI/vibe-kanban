@@ -99,26 +99,42 @@ impl Opencode {
         let (interrupt_tx, interrupt_rx) = tokio::sync::oneshot::channel();
 
         let directory = current_dir.to_string_lossy().to_string();
-        let base_url = wait_for_server_url(server_stdout).await?;
         let approvals = if self.auto_approve {
             None
         } else {
             self.approvals.clone()
         };
-
-        let config = RunConfig {
-            base_url,
-            directory,
-            prompt: combined_prompt,
-            resume_session_id: resume_session.map(|s| s.to_string()),
-            model: self.model.clone(),
-            model_variant: self.variant.clone(),
-            agent: self.mode.clone(),
-            approvals,
-            auto_approve: self.auto_approve,
-        };
+        let model = self.model.clone();
+        let model_variant = self.variant.clone();
+        let agent = self.mode.clone();
+        let auto_approve = self.auto_approve;
+        let resume_session_id = resume_session.map(|s| s.to_string());
 
         tokio::spawn(async move {
+            // Wait for server to print listening URL
+            let base_url = match wait_for_server_url(server_stdout).await {
+                Ok(url) => url,
+                Err(err) => {
+                    let _ = log_writer
+                        .log_error(format!("OpenCode startup error: {err}"))
+                        .await;
+                    let _ = exit_signal_tx.send(ExecutorExitResult::Failure);
+                    return;
+                }
+            };
+
+            let config = RunConfig {
+                base_url,
+                directory,
+                prompt: combined_prompt,
+                resume_session_id,
+                model,
+                model_variant,
+                agent,
+                approvals,
+                auto_approve,
+            };
+
             let result = run_session(config, log_writer.clone(), interrupt_rx).await;
             let exit_result = match result {
                 Ok(()) => ExecutorExitResult::Success,
