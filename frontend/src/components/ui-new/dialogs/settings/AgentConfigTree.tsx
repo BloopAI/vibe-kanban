@@ -120,8 +120,10 @@ function ConfigNode({
                 }}
                 disabled={isDefault}
               >
-                <StarIcon className="size-icon-xs mr-2" />
-                {t('settings.agents.editor.makeDefault')}
+                <div className="flex items-center gap-2 w-full">
+                  <StarIcon className="size-icon-xs mr-2" />
+                  {t('settings.agents.editor.makeDefault')}
+                </div>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => {
@@ -131,8 +133,10 @@ function ConfigNode({
                 disabled={isOnlyConfig}
                 className="text-error focus:text-error"
               >
-                <TrashIcon className="size-icon-xs mr-2" />
-                {t('settings.agents.editor.deleteText')}
+                <div className="flex items-center gap-2 w-full text-error">
+                  <TrashIcon className="size-icon-xs mr-2" />
+                  {t('settings.agents.editor.deleteText')}
+                </div>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
