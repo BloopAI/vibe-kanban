@@ -46,7 +46,7 @@ export function SettingsSection({ type, onClose }: SettingsSectionProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header - sticky */}
-      <div className="p-4 border-b border-border bg-panel/95 backdrop-blur-sm flex items-center justify-between">
+      <div className="p-4 border-b border-border bg-panel/95 backdrop-blur-sm hidden sm:flex items-center justify-between">
         <h2 className="text-lg font-semibold text-high">
           {t(`settings.layout.nav.${type}`)}
         </h2>

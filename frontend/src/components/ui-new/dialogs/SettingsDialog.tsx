@@ -8,6 +8,8 @@ import {
   BuildingsIcon,
   CpuIcon,
   PlugIcon,
+  CaretLeftIcon,
+  XIcon,
 } from '@phosphor-icons/react';
 import type { Icon } from '@phosphor-icons/react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
@@ -52,6 +54,10 @@ function SettingsDialogContent({
   const [activeSection, setActiveSection] = useState<SettingsSectionType>(
     initialSection || 'general'
   );
+  // On mobile, null means show the nav menu, a section means show that section
+  const [mobileShowContent, setMobileShowContent] = useState(
+    initialSection ? true : false
+  );
   const isConfirmingRef = useRef(false);
 
   const handleCloseWithConfirmation = useCallback(async () => {
@@ -78,6 +84,15 @@ function SettingsDialogContent({
     }
   }, [isDirty, onClose, t]);
 
+  const handleSectionSelect = (sectionId: SettingsSectionType) => {
+    setActiveSection(sectionId);
+    setMobileShowContent(true);
+  };
+
+  const handleMobileBack = () => {
+    setMobileShowContent(false);
+  };
+
   // Handle ESC key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -97,22 +112,50 @@ function SettingsDialogContent({
         onClick={handleCloseWithConfirmation}
       />
       {/* Dialog wrapper - handles positioning */}
-      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999]">
+      <div
+        className={cn(
+          'fixed z-[9999]',
+          // Mobile: full screen
+          'inset-0',
+          // Desktop: centered with fixed size
+          'md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2'
+        )}
+      >
         {/* Dialog content - handles animation */}
         <div
           className={cn(
-            'w-[900px] h-[700px] flex rounded-sm overflow-hidden',
-            'bg-panel/95 backdrop-blur-sm border border-border/50 shadow-lg',
-            'animate-in fade-in-0 slide-in-from-bottom-4 duration-200'
+            'h-full w-full flex overflow-hidden',
+            'bg-panel/95 backdrop-blur-sm shadow-lg',
+            'animate-in fade-in-0 slide-in-from-bottom-4 duration-200',
+            // Mobile: full screen, no rounded corners
+            'rounded-none border-0',
+            // Desktop: fixed size with rounded corners
+            'md:w-[900px] md:h-[700px] md:rounded-sm md:border md:border-border/50'
           )}
         >
-          {/* Sidebar */}
-          <div className="w-56 bg-secondary/80 border-r border-border flex flex-col">
+          {/* Sidebar - hidden on mobile when showing content */}
+          <div
+            className={cn(
+              'bg-secondary/80 border-r border-border flex flex-col',
+              // Mobile: full width, hidden when showing content
+              'w-full',
+              mobileShowContent && 'hidden',
+              // Desktop: fixed width sidebar, always visible
+              'md:w-56 md:block'
+            )}
+          >
             {/* Header */}
-            <div className="p-4 border-b border-border">
+            <div className="p-4 border-b border-border flex items-center justify-between">
               <h2 className="text-lg font-semibold text-high">
                 {t('settings.layout.nav.title')}
               </h2>
+              {/* Close button - mobile only */}
+              <button
+                onClick={handleCloseWithConfirmation}
+                className="p-1 rounded-sm hover:bg-secondary text-low hover:text-normal md:hidden"
+              >
+                <XIcon className="size-icon-sm" weight="bold" />
+              </button>
             </div>
             {/* Navigation */}
             <nav className="flex-1 p-2 flex flex-col gap-1 overflow-y-auto">
@@ -122,7 +165,7 @@ function SettingsDialogContent({
                 return (
                   <button
                     key={section.id}
-                    onClick={() => setActiveSection(section.id)}
+                    onClick={() => handleSectionSelect(section.id)}
                     className={cn(
                       'flex items-center gap-3 text-left px-3 py-2 rounded-sm text-sm transition-colors',
                       isActive
@@ -139,8 +182,34 @@ function SettingsDialogContent({
               })}
             </nav>
           </div>
-          {/* Content */}
-          <div className="flex-1 flex flex-col relative overflow-hidden">
+          {/* Content - hidden on mobile when showing nav */}
+          <div
+            className={cn(
+              'flex-1 flex flex-col relative overflow-hidden',
+              // Mobile: full width, hidden when showing nav
+              !mobileShowContent && 'hidden',
+              // Desktop: always visible
+              'md:flex'
+            )}
+          >
+            {/* Mobile header with back button */}
+            <div className="flex items-center gap-2 p-3 border-b border-border md:hidden">
+              <button
+                onClick={handleMobileBack}
+                className="p-1 rounded-sm hover:bg-secondary text-low hover:text-normal"
+              >
+                <CaretLeftIcon className="size-icon-sm" weight="bold" />
+              </button>
+              <span className="text-sm font-medium text-high">
+                {t(`settings.layout.nav.${activeSection}`)}
+              </span>
+              <button
+                onClick={handleCloseWithConfirmation}
+                className="ml-auto p-1 rounded-sm hover:bg-secondary text-low hover:text-normal"
+              >
+                <XIcon className="size-icon-sm" weight="bold" />
+              </button>
+            </div>
             {/* Section content */}
             <div className="flex-1 overflow-y-auto">
               <SettingsSection

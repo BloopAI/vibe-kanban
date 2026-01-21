@@ -26,7 +26,7 @@ export const FieldTemplate = (props: FieldTemplateProps) => {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+    <div className="grid grid-cols-2 gap-4 py-4">
       {/* Left column: Label and description */}
       <div className="space-y-1">
         {label && (

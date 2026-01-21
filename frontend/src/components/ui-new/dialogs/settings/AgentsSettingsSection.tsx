@@ -367,16 +367,16 @@ export function AgentsSettingsSection() {
       {localParsedProfiles?.executors ? (
         /* Two-column layout: agents and variants on top, config form below */
         <div className="space-y-4">
-          {/* Two-column selector - Finder-like style */}
-          <div className="flex border border-border rounded-sm overflow-hidden">
+          {/* Two-column selector - Finder-like style, stacked on mobile */}
+          <div className="flex flex-col md:flex-row border border-border rounded-sm overflow-hidden">
             {/* Agents column */}
-            <div className="flex-1 border-r border-border">
+            <div className="flex-1 border-b md:border-b-0 md:border-r border-border">
               <div className="h-9 px-2 border-b border-border bg-secondary/50 flex items-center">
                 <span className="text-sm font-medium text-low tracking-wide">
                   {t('settings.agents.editor.agentLabel')}
                 </span>
               </div>
-              <div className="h-32 overflow-y-auto bg-panel">
+              <div className="max-h-32 md:h-32 overflow-y-auto bg-panel">
                 {Object.keys(localParsedProfiles.executors).map((executor) => {
                   const isSelected = selectedExecutorType === executor;
                   const isDefault =
@@ -442,7 +442,7 @@ export function AgentsSettingsSection() {
                   </button>
                 )}
               </div>
-              <div className="h-32 overflow-y-auto bg-panel">
+              <div className="max-h-32 md:h-32 overflow-y-auto bg-panel">
                 {selectedExecutorType &&
                 localParsedProfiles.executors[selectedExecutorType] ? (
                   Object.keys(
