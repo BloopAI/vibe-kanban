@@ -1,8 +1,6 @@
 pub mod queue;
 pub mod review;
 
-use std::str::FromStr;
-
 use axum::{
     Extension, Json, Router,
     extract::{Query, State},
@@ -22,7 +20,6 @@ use executors::{
     actions::{
         ExecutorAction, ExecutorActionType, coding_agent_follow_up::CodingAgentFollowUpRequest,
     },
-    executors::BaseCodingAgent,
     profile::ExecutorProfileId,
 };
 use serde::Deserialize;
@@ -131,13 +128,9 @@ pub async fn follow_up(
             }));
         }
     } else if let Some(session_executor) = session.executor.as_ref() {
-        let normalized = session_executor.replace('-', "_").to_ascii_uppercase();
-        let expected = BaseCodingAgent::from_str(&normalized)
-            .map(|executor| executor.to_string())
-            .unwrap_or_else(|_| session_executor.to_string());
-        if expected != executor_profile_id.executor.to_string() {
+        if session_executor != &executor_profile_id.executor.to_string() {
             return Err(ApiError::Session(SessionError::ExecutorMismatch {
-                expected,
+                expected: session_executor.to_string(),
                 actual: executor_profile_id.executor.to_string(),
             }));
         }
