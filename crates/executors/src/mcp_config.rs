@@ -5,7 +5,10 @@
 
 use std::{collections::HashMap, path::Path, sync::LazyLock};
 
-use jsonc_parser::{ParseOptions, cst::CstRootNode};
+use jsonc_parser::{
+    ParseOptions,
+    cst::{CstObject, CstRootNode},
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use tokio::fs;
@@ -121,17 +124,42 @@ fn update_jsonc_content(current_content: &str, new_config: &Value) -> String {
     let root_obj = root.object_value_or_set();
 
     if let Some(obj) = new_config.as_object() {
-        for (key, value) in obj {
-            let cst_value = serde_json_to_cst_input(value);
-            if let Some(existing) = root_obj.get(key) {
-                existing.set_value(cst_value);
-            } else {
-                root_obj.append(key, cst_value);
-            }
-        }
+        deep_merge_cst_object(&root_obj, obj);
     }
 
     root.to_string()
+}
+
+/// Recursively merges a serde_json Map into an existing CST object.
+/// This preserves comments by navigating into existing nested objects rather than replacing them.
+fn deep_merge_cst_object(cst_obj: &CstObject, new_obj: &Map<String, Value>) {
+    let existing_keys: Vec<String> = cst_obj
+        .properties()
+        .iter()
+        .filter_map(|p| p.name().and_then(|n| n.decoded_value().ok()))
+        .collect();
+
+    for key in &existing_keys {
+        if !new_obj.contains_key(key)
+            && let Some(prop) = cst_obj.get(key)
+        {
+            prop.remove();
+        }
+    }
+
+    for (key, new_value) in new_obj {
+        if let Some(prop) = cst_obj.get(key) {
+            if let (Some(existing_obj), Some(new_obj_map)) =
+                (prop.object_value(), new_value.as_object())
+            {
+                deep_merge_cst_object(&existing_obj, new_obj_map);
+            } else {
+                prop.set_value(serde_json_to_cst_input(new_value));
+            }
+        } else {
+            cst_obj.append(key, serde_json_to_cst_input(new_value));
+        }
+    }
 }
 
 fn serde_json_to_cst_input(value: &Value) -> jsonc_parser::cst::CstInputValue {
