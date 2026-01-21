@@ -9,8 +9,8 @@ import type {
 interface CreateSessionParams {
   workspaceId: string;
   prompt: string;
-  executor: BaseCodingAgent;
   variant: string | null;
+  executor: BaseCodingAgent;
 }
 
 /**
@@ -24,8 +24,8 @@ export function useCreateSession() {
     mutationFn: async ({
       workspaceId,
       prompt,
-      executor,
       variant,
+      executor,
     }: CreateSessionParams): Promise<Session> => {
       // Step 1: Create the session (executor will be set by follow-up)
       const session = await sessionsApi.create({
