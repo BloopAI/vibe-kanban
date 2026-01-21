@@ -23,7 +23,9 @@ pub mod types;
 pub mod users;
 pub mod workspaces;
 
-use sqlx::{Executor, PgPool, Postgres, Transaction, migrate::MigrateError, postgres::PgPoolOptions};
+use sqlx::{
+    Executor, PgPool, Postgres, Transaction, migrate::MigrateError, postgres::PgPoolOptions,
+};
 
 pub(crate) type Tx<'a> = Transaction<'a, Postgres>;
 

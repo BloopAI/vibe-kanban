@@ -120,7 +120,10 @@ impl IssueCommentReactionRepository {
         Ok(MutationResponse { data, txid })
     }
 
-    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, IssueCommentReactionError> {
+    pub async fn delete(
+        pool: &PgPool,
+        id: Uuid,
+    ) -> Result<DeleteResponse, IssueCommentReactionError> {
         let mut tx = pool.begin().await?;
         sqlx::query!("DELETE FROM issue_comment_reactions WHERE id = $1", id)
             .execute(&mut *tx)

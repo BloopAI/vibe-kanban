@@ -5,8 +5,7 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::get_txid;
-use super::types::IssueRelationshipType;
+use super::{get_txid, types::IssueRelationshipType};
 use crate::mutation_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

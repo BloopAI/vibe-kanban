@@ -5,8 +5,7 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::get_txid;
-use super::{project_statuses::ProjectStatusRepository, tags::TagRepository};
+use super::{get_txid, project_statuses::ProjectStatusRepository, tags::TagRepository};
 use crate::mutation_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -222,6 +221,9 @@ impl ProjectRepository {
 
         let txid = get_txid(&mut *tx).await?;
         tx.commit().await?;
-        Ok(MutationResponse { data: project, txid })
+        Ok(MutationResponse {
+            data: project,
+            txid,
+        })
     }
 }
