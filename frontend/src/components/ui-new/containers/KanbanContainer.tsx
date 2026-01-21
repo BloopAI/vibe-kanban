@@ -53,14 +53,16 @@ function KanbanBoardContent({
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <h2 className="px-double pt-double text-lg font-medium">{projectName}</h2>
-      <div className="flex-1 overflow-x-auto p-double pt-base">
+    <div className="flex flex-col h-full space-y-double">
+      <h2 className="px-double pt-double text-2xl font-medium">
+        {projectName}
+      </h2>
+      <div className="flex-1 overflow-x-auto px-double">
         <KanbanProvider onDragEnd={handleDragEnd}>
           {sortedStatuses.map((status) => (
             <KanbanBoard key={status.id} id={status.id}>
               <KanbanHeader>
-                <div className="sticky top-0 z-20 flex shrink-0 items-center gap-2 p-3 border-b border-dashed bg-background">
+                <div className="sticky border-b top-0 z-20 flex shrink-0 items-center gap-2 p-base bg-background">
                   <div
                     className="h-2 w-2 rounded-full shrink-0"
                     style={{ backgroundColor: status.color }}
