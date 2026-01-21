@@ -43,11 +43,9 @@ export function useCreateSession() {
       return session;
     },
     onSuccess: (session) => {
-      // Invalidate and force refetch session queries
-      // Using refetchType: 'all' ensures refetch even if query might be considered inactive
+      // Invalidate session queries to refresh the list
       queryClient.invalidateQueries({
         queryKey: ['workspaceSessions', session.workspace_id],
-        refetchType: 'all',
       });
     },
   });
