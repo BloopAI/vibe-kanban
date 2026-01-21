@@ -314,6 +314,14 @@
         "saveFailed": "Failed to save agent configurations. Please try again.",
         "saveConfigFailed": "Failed to save configuration. Please try again.",
         "schemaNotFound": "Schema not found for executor type: {{executor}}"
+      },
+      "tree": {
+        "search": "Search configurations...",
+        "expandAll": "Expand All",
+        "collapseAll": "Collapse All",
+        "noResults": "No matching configurations",
+        "noConfigs": "No configurations available",
+        "selectConfig": "Select a configuration from the sidebar to view and edit its settings."
       }
     },
     "mcp": {

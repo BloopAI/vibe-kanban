@@ -314,6 +314,14 @@
         "saveFailed": "Échec de l'enregistrement des configurations d'agents. Veuillez réessayer.",
         "saveConfigFailed": "Échec de l'enregistrement de la configuration. Veuillez réessayer.",
         "schemaNotFound": "Schéma non trouvé pour le type d'exécuteur : {{executor}}"
+      },
+      "tree": {
+        "search": "Rechercher des configurations...",
+        "expandAll": "Tout développer",
+        "collapseAll": "Tout réduire",
+        "noResults": "Aucune configuration correspondante",
+        "noConfigs": "Aucune configuration disponible",
+        "selectConfig": "Sélectionnez une configuration dans la barre latérale pour afficher et modifier ses paramètres."
       }
     },
     "mcp": {

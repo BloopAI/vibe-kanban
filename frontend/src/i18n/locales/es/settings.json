@@ -314,6 +314,14 @@
         "saveFailed": "Error al guardar la configuración de los agentes. Por favor, inténtalo de nuevo.",
         "saveConfigFailed": "Error al guardar la configuración. Por favor, inténtalo de nuevo.",
         "schemaNotFound": "Esquema no encontrado para el tipo de ejecutor: {{executor}}"
+      },
+      "tree": {
+        "search": "Buscar configuraciones...",
+        "expandAll": "Expandir todo",
+        "collapseAll": "Contraer todo",
+        "noResults": "No se encontraron configuraciones",
+        "noConfigs": "No hay configuraciones disponibles",
+        "selectConfig": "Selecciona una configuración de la barra lateral para ver y editar sus ajustes."
       }
     },
     "mcp": {

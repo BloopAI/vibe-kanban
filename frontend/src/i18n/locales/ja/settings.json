@@ -314,6 +314,14 @@
         "saveFailed": "エージェント設定の保存に失敗しました。もう一度お試しください。",
         "saveConfigFailed": "設定の保存に失敗しました。もう一度お試しください。",
         "schemaNotFound": "実行タイプ {{executor}} のスキーマが見つかりません"
+      },
+      "tree": {
+        "search": "設定を検索...",
+        "expandAll": "すべて展開",
+        "collapseAll": "すべて折りたたむ",
+        "noResults": "一致する設定がありません",
+        "noConfigs": "利用可能な設定がありません",
+        "selectConfig": "サイドバーから設定を選択して、その設定を表示・編集できます。"
       }
     },
     "mcp": {

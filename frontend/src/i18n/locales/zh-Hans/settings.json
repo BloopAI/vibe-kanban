@@ -314,6 +314,14 @@
         "saveFailed": "保存代理配置失败。请重试。",
         "saveConfigFailed": "保存配置失败。请重试。",
         "schemaNotFound": "未找到执行器类型 {{executor}} 的架构"
+      },
+      "tree": {
+        "search": "搜索配置...",
+        "expandAll": "全部展开",
+        "collapseAll": "全部折叠",
+        "noResults": "没有匹配的配置",
+        "noConfigs": "没有可用的配置",
+        "selectConfig": "从侧边栏选择一个配置来查看和编辑其设置。"
       }
     },
     "mcp": {

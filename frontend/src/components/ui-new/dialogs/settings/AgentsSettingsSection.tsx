@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SpinnerIcon, StarIcon } from '@phosphor-icons/react';
+import { SpinnerIcon } from '@phosphor-icons/react';
 import { ExecutorConfigForm } from './ExecutorConfigForm';
+import { AgentConfigTree } from './AgentConfigTree';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateConfigurationDialog';
@@ -9,19 +10,7 @@ import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteC
 import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
 import { cn } from '@/lib/utils';
 import { toPrettyCase } from '@/utils/string';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuTriggerButton,
-} from '../../primitives/Dropdown';
-import {
-  SettingsCard,
-  SettingsField,
-  SettingsCheckbox,
-  SettingsSaveBar,
-} from './SettingsComponents';
+import { SettingsCheckbox, SettingsSaveBar } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
@@ -56,7 +45,6 @@ export function AgentsSettingsSection() {
   const [localParsedProfiles, setLocalParsedProfiles] =
     useState<ExecutorConfigs | null>(null);
   const [isDirty, setIsDirty] = useState(false);
-  const [makeDefaultSaving, setMakeDefaultSaving] = useState(false);
 
   // Sync server state to local state when not dirty
   useEffect(() => {
@@ -78,49 +66,28 @@ export function AgentsSettingsSection() {
     return () => setContextDirty('agents', false);
   }, [isDirty, setContextDirty]);
 
-  // Check if current selection is the default
-  const isCurrentDefault =
-    config?.executor_profile?.executor === selectedExecutorType &&
-    config?.executor_profile?.variant === selectedConfiguration;
-
-  const handleMakeDefault = async () => {
-    setMakeDefaultSaving(true);
-    try {
-      await updateAndSaveConfig({
-        executor_profile: {
-          executor: selectedExecutorType,
-          variant: selectedConfiguration,
-        },
-      });
-      reloadSystem();
-    } catch (err) {
-      console.error('Error setting default:', err);
-    } finally {
-      setMakeDefaultSaving(false);
-    }
-  };
-
   const markDirty = (nextProfiles: unknown) => {
     setLocalParsedProfiles(nextProfiles as ExecutorConfigs);
     setLocalProfilesContent(JSON.stringify(nextProfiles, null, 2));
     setIsDirty(true);
   };
 
-  const openCreateDialog = async () => {
+  const handleSelect = (executor: string, config: string) => {
+    setSelectedExecutorType(executor as BaseCodingAgent);
+    setSelectedConfiguration(config);
+  };
+
+  const handleCreateConfig = async (executor: string) => {
     try {
       const result = await CreateConfigurationDialog.show({
-        executorType: selectedExecutorType,
+        executorType: executor as BaseCodingAgent,
         existingConfigs: Object.keys(
-          localParsedProfiles?.executors?.[selectedExecutorType] || {}
+          localParsedProfiles?.executors?.[executor as BaseCodingAgent] || {}
         ),
       });
 
       if (result.action === 'created' && result.configName) {
-        createConfiguration(
-          selectedExecutorType,
-          result.configName,
-          result.cloneFrom
-        );
+        createConfiguration(executor, result.configName, result.cloneFrom);
       }
     } catch {
       // User cancelled
@@ -155,60 +122,60 @@ export function AgentsSettingsSection() {
     };
 
     markDirty(updatedProfiles);
+    setSelectedExecutorType(executorType as BaseCodingAgent);
     setSelectedConfiguration(configName);
   };
 
-  const openDeleteDialog = async (configName: string) => {
+  const handleDeleteConfig = async (executor: string, configName: string) => {
     try {
       const result = await DeleteConfigurationDialog.show({
         configName,
-        executorType: selectedExecutorType,
+        executorType: executor as BaseCodingAgent,
       });
 
       if (result === 'deleted') {
-        await handleDeleteConfiguration(configName);
+        await deleteConfiguration(executor, configName);
       }
     } catch {
       // User cancelled
     }
   };
 
-  const handleDeleteConfiguration = async (configToDelete: string) => {
+  const deleteConfiguration = async (
+    executorType: string,
+    configToDelete: string
+  ) => {
     if (!localParsedProfiles) return;
 
     setSaveError(null);
 
     try {
-      if (
-        !localParsedProfiles.executors[selectedExecutorType]?.[configToDelete]
-      ) {
+      const executorConfigs =
+        localParsedProfiles.executors[executorType as BaseCodingAgent];
+      if (!executorConfigs?.[configToDelete]) {
         return;
       }
 
-      const currentConfigs = Object.keys(
-        localParsedProfiles.executors[selectedExecutorType] || {}
-      );
+      const currentConfigs = Object.keys(executorConfigs);
       if (currentConfigs.length <= 1) {
         return;
       }
 
-      const remainingConfigs = {
-        ...localParsedProfiles.executors[selectedExecutorType],
-      };
+      const remainingConfigs = { ...executorConfigs };
       delete remainingConfigs[configToDelete];
 
       const updatedProfiles = {
         ...localParsedProfiles,
         executors: {
           ...localParsedProfiles.executors,
-          [selectedExecutorType]: remainingConfigs,
+          [executorType]: remainingConfigs,
         },
       };
 
       const executorsMap = updatedProfiles.executors as unknown as ExecutorsMap;
       if (Object.keys(remainingConfigs).length === 0) {
-        executorsMap[selectedExecutorType] = {
-          DEFAULT: { [selectedExecutorType]: {} },
+        executorsMap[executorType] = {
+          DEFAULT: { [executorType]: {} },
         };
       }
 
@@ -218,21 +185,40 @@ export function AgentsSettingsSection() {
         setLocalProfilesContent(JSON.stringify(updatedProfiles, null, 2));
         setIsDirty(false);
 
-        const nextConfigs = Object.keys(
-          executorsMap[selectedExecutorType] || {}
-        );
-        const nextSelected = nextConfigs[0] || 'DEFAULT';
-        setSelectedConfiguration(nextSelected);
+        // Select another config if we deleted the selected one
+        if (
+          selectedExecutorType === executorType &&
+          selectedConfiguration === configToDelete
+        ) {
+          const nextConfigs = Object.keys(
+            executorsMap[executorType] || {}
+          );
+          setSelectedConfiguration(nextConfigs[0] || 'DEFAULT');
+        }
 
         setProfilesSuccess(true);
         setTimeout(() => setProfilesSuccess(false), 3000);
         reloadSystem();
-      } catch (saveError: unknown) {
-        console.error('Failed to save deletion to backend:', saveError);
+      } catch (error: unknown) {
+        console.error('Failed to save deletion to backend:', error);
         setSaveError(t('settings.agents.errors.deleteFailed'));
       }
     } catch (error) {
       console.error('Error deleting configuration:', error);
+    }
+  };
+
+  const handleMakeDefault = async (executor: string, config: string) => {
+    try {
+      await updateAndSaveConfig({
+        executor_profile: {
+          executor: executor as BaseCodingAgent,
+          variant: config,
+        },
+      });
+      reloadSystem();
+    } catch (err) {
+      console.error('Error setting default:', err);
     }
   };
 
@@ -360,19 +346,17 @@ export function AgentsSettingsSection() {
     );
   }
 
-  const configurationOptions = localParsedProfiles?.executors?.[
-    selectedExecutorType
-  ]
-    ? Object.keys(localParsedProfiles.executors[selectedExecutorType]).map(
-        (key) => ({ value: key, label: toPrettyCase(key) })
-      )
-    : [];
+  const executorsMap = localParsedProfiles?.executors as unknown as ExecutorsMap;
+  const currentConfigData =
+    executorsMap?.[selectedExecutorType]?.[selectedConfiguration]?.[
+      selectedExecutorType
+    ];
 
   return (
     <>
       {/* Status messages */}
       {!!profilesError && (
-        <div className="bg-error/10 border border-error/50 rounded-sm p-4 text-error">
+        <div className="bg-error/10 border border-error/50 rounded-sm p-4 text-error mb-4">
           {profilesError instanceof Error
             ? profilesError.message
             : String(profilesError)}
@@ -380,22 +364,19 @@ export function AgentsSettingsSection() {
       )}
 
       {profilesSuccess && (
-        <div className="bg-success/10 border border-success/50 rounded-sm p-4 text-success font-medium">
+        <div className="bg-success/10 border border-success/50 rounded-sm p-4 text-success font-medium mb-4">
           {t('settings.agents.save.success')}
         </div>
       )}
 
       {saveError && (
-        <div className="bg-error/10 border border-error/50 rounded-sm p-4 text-error">
+        <div className="bg-error/10 border border-error/50 rounded-sm p-4 text-error mb-4">
           {saveError}
         </div>
       )}
 
-      {/* Agent Configuration */}
-      <SettingsCard
-        title={t('settings.agents.title')}
-        description={t('settings.agents.description')}
-      >
+      {/* JSON Editor toggle */}
+      <div className="mb-4">
         <SettingsCheckbox
           id="use-json-editor"
           label={t('settings.agents.editor.formLabel')}
@@ -403,170 +384,105 @@ export function AgentsSettingsSection() {
           onChange={(checked) => setUseFormEditor(!checked)}
           disabled={profilesLoading || !localParsedProfiles}
         />
+      </div>
 
-        {useFormEditor &&
-        localParsedProfiles &&
-        localParsedProfiles.executors ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <SettingsField label={t('settings.agents.editor.agentLabel')}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <DropdownMenuTriggerButton
-                      label={toPrettyCase(selectedExecutorType)}
-                      className="w-full justify-between"
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                    {Object.keys(localParsedProfiles.executors).map((type) => (
-                      <DropdownMenuItem
-                        key={type}
-                        onClick={() => {
-                          setSelectedExecutorType(type as BaseCodingAgent);
-                          setSelectedConfiguration('DEFAULT');
-                        }}
-                      >
-                        {toPrettyCase(type)}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </SettingsField>
-
-              <SettingsField label={t('settings.agents.editor.configLabel')}>
-                <div className="flex gap-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <DropdownMenuTriggerButton
-                        label={toPrettyCase(selectedConfiguration)}
-                        className="flex-1 justify-between"
-                        disabled={
-                          !localParsedProfiles.executors[selectedExecutorType]
-                        }
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                      {configurationOptions.map((option) => (
-                        <DropdownMenuItem
-                          key={option.value}
-                          onClick={() => setSelectedConfiguration(option.value)}
-                        >
-                          {option.label}
-                        </DropdownMenuItem>
-                      ))}
-                      <DropdownMenuItem onClick={openCreateDialog}>
-                        {t('settings.agents.editor.createNew')}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <button
-                    onClick={() => openDeleteDialog(selectedConfiguration)}
-                    disabled={
-                      profilesSaving ||
-                      !localParsedProfiles.executors[selectedExecutorType] ||
-                      configurationOptions.length <= 1
-                    }
-                    className={cn(
-                      'px-base py-half rounded-sm text-sm font-medium',
-                      'bg-error/10 text-error hover:bg-error/20 border border-error/50',
-                      'disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-                    )}
-                  >
-                    {t('settings.agents.editor.deleteText')}
-                  </button>
-                  <button
-                    onClick={handleMakeDefault}
-                    disabled={makeDefaultSaving || isCurrentDefault}
-                    className={cn(
-                      'flex items-center gap-1.5 px-base py-half rounded-sm text-sm font-medium',
-                      isCurrentDefault
-                        ? 'bg-success/10 text-success border border-success/50'
-                        : 'bg-brand/10 text-brand hover:bg-brand/20 border border-brand/50',
-                      'disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-                    )}
-                  >
-                    <StarIcon
-                      className="size-icon-xs"
-                      weight={isCurrentDefault ? 'fill' : 'regular'}
-                    />
-                    {isCurrentDefault
-                      ? t('settings.agents.editor.isDefault')
-                      : t('settings.agents.editor.makeDefault')}
-                  </button>
-                </div>
-              </SettingsField>
-            </div>
-
-            {(() => {
-              const executorsMap =
-                localParsedProfiles.executors as unknown as ExecutorsMap;
-              return (
-                !!executorsMap[selectedExecutorType]?.[selectedConfiguration]?.[
-                  selectedExecutorType
-                ] && (
-                  <ExecutorConfigForm
-                    key={`${selectedExecutorType}-${selectedConfiguration}`}
-                    executor={selectedExecutorType}
-                    value={
-                      (executorsMap[selectedExecutorType][
-                        selectedConfiguration
-                      ][selectedExecutorType] as Record<string, unknown>) || {}
-                    }
-                    onChange={(formData) =>
-                      handleExecutorConfigChange(
-                        selectedExecutorType,
-                        selectedConfiguration,
-                        formData
-                      )
-                    }
-                    disabled={profilesSaving}
-                  />
-                )
-              );
-            })()}
+      {useFormEditor && localParsedProfiles?.executors ? (
+        /* Tree-based form editor layout */
+        <div className="flex gap-4 min-h-[400px]">
+          {/* Sidebar with tree */}
+          <div className="w-56 shrink-0 bg-secondary/50 border border-border rounded-sm overflow-hidden">
+            <AgentConfigTree
+              executors={localParsedProfiles.executors}
+              selectedExecutor={selectedExecutorType}
+              selectedConfig={selectedConfiguration}
+              defaultExecutor={config?.executor_profile?.executor}
+              defaultVariant={config?.executor_profile?.variant}
+              onSelect={handleSelect}
+              onCreateConfig={handleCreateConfig}
+              onDeleteConfig={handleDeleteConfig}
+              onMakeDefault={handleMakeDefault}
+              disabled={profilesSaving}
+            />
           </div>
-        ) : (
-          <div className="space-y-4">
-            <SettingsField label={t('settings.agents.editor.jsonLabel')}>
-              <textarea
-                value={
-                  profilesLoading
-                    ? t('settings.agents.editor.jsonLoading')
-                    : localProfilesContent
-                }
-                onChange={(e) => {
-                  setLocalProfilesContent(e.target.value);
-                  setIsDirty(true);
-                  if (e.target.value.trim()) {
-                    try {
-                      const parsed = JSON.parse(e.target.value);
-                      setLocalParsedProfiles(parsed);
-                    } catch {
-                      setLocalParsedProfiles(null);
-                    }
-                  }
-                }}
-                disabled={profilesLoading}
-                placeholder={t('settings.agents.editor.jsonPlaceholder')}
-                className={cn(
-                  'w-full min-h-[300px] bg-secondary border border-border rounded-sm px-base py-half text-base text-high font-mono',
-                  'placeholder:text-low focus:outline-none focus:ring-1 focus:ring-brand',
-                  'resize-y'
-                )}
-              />
-            </SettingsField>
 
-            {!profilesError && profilesPath && (
-              <p className="text-sm text-low">
-                <span className="font-medium">
-                  {t('settings.agents.editor.pathLabel')}
-                </span>{' '}
-                <span className="font-mono text-xs">{profilesPath}</span>
-              </p>
+          {/* Content area */}
+          <div className="flex-1 min-w-0">
+            {currentConfigData ? (
+              <div className="bg-secondary/30 border border-border rounded-sm p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-base font-medium text-high">
+                      {toPrettyCase(selectedExecutorType)}
+                    </h3>
+                    <p className="text-sm text-low">
+                      {toPrettyCase(selectedConfiguration)}
+                    </p>
+                  </div>
+                </div>
+
+                <ExecutorConfigForm
+                  key={`${selectedExecutorType}-${selectedConfiguration}`}
+                  executor={selectedExecutorType}
+                  value={currentConfigData as Record<string, unknown>}
+                  onChange={(formData) =>
+                    handleExecutorConfigChange(
+                      selectedExecutorType,
+                      selectedConfiguration,
+                      formData
+                    )
+                  }
+                  disabled={profilesSaving}
+                />
+              </div>
+            ) : (
+              <div className="bg-secondary/30 border border-border rounded-sm p-8 text-center">
+                <p className="text-low">
+                  {t('settings.agents.tree.selectConfig')}
+                </p>
+              </div>
             )}
           </div>
-        )}
-      </SettingsCard>
+        </div>
+      ) : (
+        /* JSON editor */
+        <div className="space-y-4">
+          <textarea
+            value={
+              profilesLoading
+                ? t('settings.agents.editor.jsonLoading')
+                : localProfilesContent
+            }
+            onChange={(e) => {
+              setLocalProfilesContent(e.target.value);
+              setIsDirty(true);
+              if (e.target.value.trim()) {
+                try {
+                  const parsed = JSON.parse(e.target.value);
+                  setLocalParsedProfiles(parsed);
+                } catch {
+                  setLocalParsedProfiles(null);
+                }
+              }
+            }}
+            disabled={profilesLoading}
+            placeholder={t('settings.agents.editor.jsonPlaceholder')}
+            className={cn(
+              'w-full min-h-[400px] bg-secondary border border-border rounded-sm px-base py-half text-base text-high font-mono',
+              'placeholder:text-low focus:outline-none focus:ring-1 focus:ring-brand',
+              'resize-y'
+            )}
+          />
+
+          {!profilesError && profilesPath && (
+            <p className="text-sm text-low">
+              <span className="font-medium">
+                {t('settings.agents.editor.pathLabel')}
+              </span>{' '}
+              <span className="font-mono text-xs">{profilesPath}</span>
+            </p>
+          )}
+        </div>
+      )}
 
       <SettingsSaveBar
         show={isDirty}

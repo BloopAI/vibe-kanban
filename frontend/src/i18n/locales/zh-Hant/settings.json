@@ -314,6 +314,14 @@
         "saveFailed": "儲存代理設定失敗。請重試。",
         "saveConfigFailed": "儲存設定失敗。請重試。",
         "schemaNotFound": "找不到執行器類型 {{executor}} 的結構描述"
+      },
+      "tree": {
+        "search": "搜尋設定...",
+        "expandAll": "全部展開",
+        "collapseAll": "全部收合",
+        "noResults": "沒有符合的設定",
+        "noConfigs": "沒有可用的設定",
+        "selectConfig": "從側邊欄選擇一個設定來查看和編輯其設定。"
       }
     },
     "mcp": {
