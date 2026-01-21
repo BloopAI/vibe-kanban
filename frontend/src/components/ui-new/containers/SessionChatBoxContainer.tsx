@@ -452,6 +452,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
           executor: effectiveExecutor,
           variant: selectedVariant,
         });
+      } else {
+        setLocalMessage(value);
       }
       if (sendError) clearError();
     },
@@ -463,6 +465,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       selectedVariant,
       sendError,
       clearError,
+      setLocalMessage,
     ]
   );
 
