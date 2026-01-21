@@ -495,11 +495,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Handle edit submission
   const handleSubmitEdit = useCallback(async () => {
-    if (
-      !editContext.activeEdit ||
-      !localMessage.trim() ||
-      !executorProfileId
-    )
+    if (!editContext.activeEdit || !localMessage.trim() || !executorProfileId)
       return;
     editRetryMutation.mutate({
       message: localMessage,
