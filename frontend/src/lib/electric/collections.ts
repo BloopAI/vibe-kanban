@@ -38,7 +38,6 @@ function getRowKey(item: Record<string, unknown>): string {
     .join('-');
 }
 
-
 /**
  * Get authenticated shape options for an Electric shape.
  */
