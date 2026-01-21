@@ -1377,7 +1377,14 @@ impl ContainerService for LocalContainerService {
         tracing::info!("Killing all running processes");
         let running_processes = ExecutionProcess::find_running(&self.db.pool).await?;
 
+        tracing::info!("Found {} running processes to kill", running_processes.len());
+
         for process in running_processes {
+            tracing::info!(
+                "Killing process: id={}, run_reason={:?}",
+                process.id,
+                process.run_reason
+            );
             if let Err(error) = self
                 .stop_execution(&process, ExecutionProcessStatus::Killed)
                 .await
@@ -1387,6 +1394,8 @@ impl ContainerService for LocalContainerService {
                     process,
                     error
                 );
+            } else {
+                tracing::info!("Successfully killed process: id={}", process.id);
             }
         }
 
