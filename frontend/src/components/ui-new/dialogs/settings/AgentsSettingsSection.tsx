@@ -287,7 +287,12 @@ export function AgentsSettingsSection() {
 
   // Save handler for agent configuration
   const handleSave = async () => {
-    if (isDirty && localParsedProfiles && selectedExecutorType && selectedConfiguration) {
+    if (
+      isDirty &&
+      localParsedProfiles &&
+      selectedExecutorType &&
+      selectedConfiguration
+    ) {
       const executorsMap =
         localParsedProfiles.executors as unknown as ExecutorsMap;
       const formData =
