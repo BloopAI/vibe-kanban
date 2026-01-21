@@ -86,10 +86,7 @@ function ConfigNode({
         {/* Star icon for default */}
         <span className="w-4 flex items-center justify-center shrink-0">
           {isDefault && (
-            <StarIcon
-              className="size-icon-xs text-warning"
-              weight="fill"
-            />
+            <StarIcon className="size-icon-xs text-warning" weight="fill" />
           )}
         </span>
 
@@ -208,10 +205,7 @@ function ExecutorNode({
           {/* Default indicator */}
           <span className="w-4 flex items-center justify-center shrink-0">
             {hasDefaultConfig && (
-              <StarIcon
-                className="size-icon-xs text-warning"
-                weight="fill"
-              />
+              <StarIcon className="size-icon-xs text-warning" weight="fill" />
             )}
           </span>
 

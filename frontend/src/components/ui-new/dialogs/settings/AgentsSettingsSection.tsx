@@ -190,9 +190,7 @@ export function AgentsSettingsSection() {
           selectedExecutorType === executorType &&
           selectedConfiguration === configToDelete
         ) {
-          const nextConfigs = Object.keys(
-            executorsMap[executorType] || {}
-          );
+          const nextConfigs = Object.keys(executorsMap[executorType] || {});
           setSelectedConfiguration(nextConfigs[0] || 'DEFAULT');
         }
 
@@ -346,7 +344,8 @@ export function AgentsSettingsSection() {
     );
   }
 
-  const executorsMap = localParsedProfiles?.executors as unknown as ExecutorsMap;
+  const executorsMap =
+    localParsedProfiles?.executors as unknown as ExecutorsMap;
   const currentConfigData =
     executorsMap?.[selectedExecutorType]?.[selectedConfiguration]?.[
       selectedExecutorType
