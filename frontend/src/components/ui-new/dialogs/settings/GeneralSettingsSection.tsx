@@ -4,8 +4,6 @@ import { cloneDeep, merge, isEqual } from 'lodash';
 import {
   SpinnerIcon,
   SpeakerHighIcon,
-  CheckIcon,
-  WarningIcon,
   CaretDownIcon,
 } from '@phosphor-icons/react';
 import {
@@ -21,14 +19,6 @@ import {
 import { getModifierKey } from '@/utils/platform';
 import { getLanguageOptions } from '@/i18n/languages';
 import { toPrettyCase } from '@/utils/string';
-import {
-  useEditorAvailability,
-  type EditorAvailabilityState,
-} from '@/hooks/useEditorAvailability';
-import {
-  useAgentAvailability,
-  type AgentAvailabilityState,
-} from '@/hooks/useAgentAvailability';
 import { useTheme } from '@/components/ThemeProvider';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
@@ -53,94 +43,6 @@ import {
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 
-function EditorAvailabilityIndicator({
-  availability,
-}: {
-  availability: EditorAvailabilityState;
-}) {
-  const { t } = useTranslation('settings');
-
-  if (availability === null) {
-    return null;
-  }
-
-  if (availability === 'checking') {
-    return (
-      <div className="flex items-center gap-2 text-sm text-low">
-        <SpinnerIcon className="size-icon-xs animate-spin" />
-        <span>{t('settings.general.editor.availability.checking')}</span>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={cn(
-        'flex items-center gap-2 text-sm',
-        availability === 'available' ? 'text-success' : 'text-warning'
-      )}
-    >
-      {availability === 'available' ? (
-        <>
-          <CheckIcon className="size-icon-xs" weight="bold" />
-          <span>{t('settings.general.editor.availability.available')}</span>
-        </>
-      ) : (
-        <>
-          <WarningIcon className="size-icon-xs" weight="bold" />
-          <span>{t('settings.general.editor.availability.notFound')}</span>
-        </>
-      )}
-    </div>
-  );
-}
-
-function AgentAvailabilityIndicator({
-  availability,
-}: {
-  availability: AgentAvailabilityState;
-}) {
-  const { t } = useTranslation('settings');
-
-  if (availability === null) {
-    return null;
-  }
-
-  if (availability.status === 'checking') {
-    return (
-      <div className="flex items-center gap-2 text-sm text-low">
-        <SpinnerIcon className="size-icon-xs animate-spin" />
-        <span>{t('settings.agents.availability.checkingAvailability')}</span>
-      </div>
-    );
-  }
-
-  const isAvailable =
-    availability.status === 'login_detected' ||
-    availability.status === 'installation_found';
-
-  return (
-    <div
-      className={cn(
-        'flex items-center gap-2 text-sm',
-        isAvailable ? 'text-success' : 'text-warning'
-      )}
-    >
-      {isAvailable ? (
-        <>
-          <CheckIcon className="size-icon-xs" weight="bold" />
-          <span>{t('settings.agents.availability.available')}</span>
-        </>
-      ) : (
-        <>
-          <WarningIcon className="size-icon-xs" weight="bold" />
-          <span>{t('settings.agents.availability.notFoundSimple')}</span>
-        </>
-      )}
-    </div>
-  );
-}
-
 export function GeneralSettingsSection() {
   const { t } = useTranslation(['settings', 'common']);
   const { setDirty: setContextDirty } = useSettingsDirty();
@@ -162,11 +64,6 @@ export function GeneralSettingsSection() {
     null
   );
   const { setTheme } = useTheme();
-
-  const editorAvailability = useEditorAvailability(draft?.editor.editor_type);
-  const agentAvailability = useAgentAvailability(
-    draft?.executor_profile?.executor
-  );
 
   // Executor options for the default coding agent dropdown
   const executorOptions = profiles
@@ -392,9 +289,6 @@ export function GeneralSettingsSection() {
             }
             placeholder={t('settings.general.editor.type.placeholder')}
           />
-          {draft?.editor.editor_type !== EditorType.CUSTOM && (
-            <EditorAvailabilityIndicator availability={editorAvailability} />
-          )}
         </SettingsField>
 
         {draft?.editor.editor_type === EditorType.CUSTOM && (
@@ -566,7 +460,6 @@ export function GeneralSettingsSection() {
               </button>
             ) : null}
           </div>
-          <AgentAvailabilityIndicator availability={agentAvailability} />
         </SettingsField>
       </SettingsCard>
 
