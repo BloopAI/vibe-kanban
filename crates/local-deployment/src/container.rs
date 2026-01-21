@@ -1377,7 +1377,10 @@ impl ContainerService for LocalContainerService {
         tracing::info!("Killing all running processes");
         let running_processes = ExecutionProcess::find_running(&self.db.pool).await?;
 
-        tracing::info!("Found {} running processes to kill", running_processes.len());
+        tracing::info!(
+            "Found {} running processes to kill",
+            running_processes.len()
+        );
 
         for process in running_processes {
             tracing::info!(
