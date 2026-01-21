@@ -181,13 +181,17 @@ export function ChangesPanelContainer({
           // Find the comment extend row by data-line attribute
           const selector = `[data-line="${selectedLineNumber}-extend"]`;
           const commentEl = fileEl.querySelector(selector);
+          // Log all data-line values to find the correct format
+          const allDataLines = Array.from(fileEl.querySelectorAll('[data-line]'))
+            .map((el) => el.getAttribute('data-line'));
+          // Find any that contain our line number
+          const matchingLines = allDataLines.filter((dl) => dl?.includes('242'));
           console.log('[DEBUG] looking for comment element', {
             selector,
             found: !!commentEl,
-            allDataLineElements: fileEl.querySelectorAll('[data-line]').length,
-            sampleDataLines: Array.from(fileEl.querySelectorAll('[data-line]'))
-              .slice(0, 5)
-              .map((el) => el.getAttribute('data-line')),
+            allDataLineElements: allDataLines.length,
+            matchingLines,
+            sampleDataLines: allDataLines.slice(0, 10),
           });
           commentEl?.scrollIntoView({ behavior: 'instant', block: 'center' });
         }, 50); // Brief delay to ensure file scroll completes
