@@ -375,7 +375,7 @@ export function PreviewBrowser({
                       : t('preview.loading.waitingForServer')}
                 </p>
                 {allowManualUrl && !autoDetectedUrl && (
-                  <p className="text-xs text-low mt-base">
+                  <p className="text-sm text-low mt-base">
                     {t('preview.loading.manualUrlHint')}
                   </p>
                 )}
