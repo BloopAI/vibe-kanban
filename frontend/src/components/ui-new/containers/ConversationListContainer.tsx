@@ -83,7 +83,6 @@ export function ConversationList({ attempt }: ConversationListProps) {
   const [channelData, setChannelData] =
     useState<DataWithScrollModifier<PatchTypeWithKey> | null>(null);
   const [loading, setLoading] = useState(true);
-  const loadingRef = useRef(true);
   const { setEntries, reset } = useEntries();
   const pendingUpdateRef = useRef<{
     entries: PatchTypeWithKey[];
@@ -93,7 +92,6 @@ export function ConversationList({ attempt }: ConversationListProps) {
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    loadingRef.current = true;
     setLoading(true);
     setChannelData(null);
     reset();
@@ -127,29 +125,17 @@ export function ConversationList({ attempt }: ConversationListProps) {
       if (!pending) return;
 
       let scrollModifier: ScrollModifier = InitialDataScrollModifier;
-      let scrollModifierName = 'InitialDataScrollModifier';
 
-      if (pending.addType === 'plan' && !loadingRef.current) {
+      if (pending.addType === 'plan' && !loading) {
         scrollModifier = ScrollToTopOfLastItem;
-        scrollModifierName = 'ScrollToTopOfLastItem';
-      } else if (pending.addType === 'running' && !loadingRef.current) {
+      } else if (pending.addType === 'running' && !loading) {
         scrollModifier = AutoScrollToBottom;
-        scrollModifierName = 'AutoScrollToBottom';
       }
-
-      console.log('[ConversationList] onEntriesUpdated debounce fired:', {
-        addType: pending.addType,
-        loadingRef: loadingRef.current,
-        pendingLoading: pending.loading,
-        entriesCount: pending.entries.length,
-        scrollModifier: scrollModifierName,
-      });
 
       setChannelData({ data: pending.entries, scrollModifier });
       setEntries(pending.entries);
 
-      if (loadingRef.current) {
-        loadingRef.current = pending.loading;
+      if (loading) {
         setLoading(pending.loading);
       }
     }, 100);
