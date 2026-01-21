@@ -474,6 +474,14 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     feedbackContext?.exitFeedbackMode();
   }, [feedbackContext]);
 
+  // Handle cancel queue - restore message to editor
+  const handleCancelQueue = useCallback(async () => {
+    if (queuedMessage) {
+      setLocalMessage(queuedMessage);
+    }
+    await cancelQueue();
+  }, [queuedMessage, setLocalMessage, cancelQueue]);
+
   // Message edit retry mutation
   const editRetryMutation = useMessageEditRetry(sessionId ?? '', () => {
     // On success, clear edit mode and reset editor
@@ -666,7 +674,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       actions={{
         onSend: handleSend,
         onQueue: handleQueueMessage,
-        onCancelQueue: cancelQueue,
+        onCancelQueue: handleCancelQueue,
         onStop: stopExecution,
         onPasteFiles: uploadFiles,
       }}
