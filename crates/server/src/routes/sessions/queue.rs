@@ -4,6 +4,7 @@ use axum::{
 };
 use db::models::{scratch::DraftFollowUpData, session::Session};
 use deployment::Deployment;
+use executors::profile::ExecutorProfileId;
 use serde::Deserialize;
 use services::services::queued_message::QueueStatus;
 use ts_rs::TS;
@@ -15,7 +16,7 @@ use crate::{DeploymentImpl, error::ApiError, middleware::load_session_middleware
 #[derive(Debug, Deserialize, TS)]
 pub struct QueueMessageRequest {
     pub message: String,
-    pub variant: Option<String>,
+    pub executor_profile_id: ExecutorProfileId,
 }
 
 /// Queue a follow-up message to be executed when the current execution finishes
@@ -26,7 +27,7 @@ pub async fn queue_message(
 ) -> Result<ResponseJson<ApiResponse<QueueStatus>>, ApiError> {
     let data = DraftFollowUpData {
         message: payload.message,
-        variant: payload.variant,
+        executor_profile_id: payload.executor_profile_id,
     };
 
     let queued = deployment

@@ -318,7 +318,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     profiles,
     latestProfileId,
     isNewSessionMode,
-    scratchVariant: scratchData?.variant,
+    scratchVariant: scratchData?.executor_profile_id?.variant,
     configExecutorProfile: config?.executor_profile,
   });
 
@@ -326,9 +326,11 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const setSelectedVariant = useCallback(
     (variant: string | null) => {
       setVariantFromHook(variant);
-      saveToScratch(localMessage, variant);
+      if (effectiveExecutor) {
+        saveToScratch(localMessage, { executor: effectiveExecutor, variant });
+      }
     },
-    [setVariantFromHook, saveToScratch, localMessage]
+    [setVariantFromHook, saveToScratch, localMessage, effectiveExecutor]
   );
 
   // Navigate to agent settings to customise variants
@@ -407,16 +409,22 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Queue message handler
   const handleQueueMessage = useCallback(async () => {
-    // Allow queueing if there's a message OR review comments
-    if (!localMessage.trim() && !reviewMarkdown) return;
+    // Allow queueing if there's a message OR review comments, and we have an executor
+    if ((!localMessage.trim() && !reviewMarkdown) || !effectiveExecutor) return;
 
     // Combine review comments with user message
     const messageParts = [reviewMarkdown, localMessage].filter(Boolean);
     const combinedMessage = messageParts.join('\n\n');
 
     cancelDebouncedSave();
-    await saveToScratch(localMessage, selectedVariant);
-    await queueMessage(combinedMessage, selectedVariant);
+    await saveToScratch(localMessage, {
+      executor: effectiveExecutor,
+      variant: selectedVariant,
+    });
+    await queueMessage(combinedMessage, {
+      executor: effectiveExecutor,
+      variant: selectedVariant,
+    });
 
     // Clear local state after queueing (same as handleSend)
     setLocalMessage('');
@@ -425,6 +433,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   }, [
     localMessage,
     reviewMarkdown,
+    effectiveExecutor,
     selectedVariant,
     queueMessage,
     cancelDebouncedSave,
@@ -438,13 +447,19 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const handleEditorChange = useCallback(
     (value: string) => {
       if (isQueued) cancelQueue();
-      handleMessageChange(value, selectedVariant);
+      if (effectiveExecutor) {
+        handleMessageChange(value, {
+          executor: effectiveExecutor,
+          variant: selectedVariant,
+        });
+      }
       if (sendError) clearError();
     },
     [
       isQueued,
       cancelQueue,
       handleMessageChange,
+      effectiveExecutor,
       selectedVariant,
       sendError,
       clearError,
