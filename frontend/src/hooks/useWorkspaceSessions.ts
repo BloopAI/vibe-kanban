@@ -68,7 +68,8 @@ export function useWorkspaceSessions(
   // The second condition uses `selection === undefined` to avoid staying in new session mode
   // after a session is created but before the query refetches (when selection is set to 'existing')
   const isNewSessionMode =
-    selection?.mode === 'new' || (selection === undefined && sessions.length === 0);
+    selection?.mode === 'new' ||
+    (selection === undefined && sessions.length === 0);
   const selectedSessionId =
     selection?.mode === 'existing' ? selection.sessionId : undefined;
 
