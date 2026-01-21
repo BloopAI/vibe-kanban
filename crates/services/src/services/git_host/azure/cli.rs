@@ -308,14 +308,6 @@ impl AzCli {
         Self::parse_pr_response(&raw)
     }
 
-    pub fn check_auth(&self) -> Result<(), AzCliError> {
-        match self.run(["account", "show"], None) {
-            Ok(_) => Ok(()),
-            Err(AzCliError::CommandFailed(msg)) => Err(AzCliError::AuthFailed(msg)),
-            Err(err) => Err(err),
-        }
-    }
-
     pub fn view_pr(&self, pr_url: &str) -> Result<PullRequestInfo, AzCliError> {
         let (organization, pr_id) = Self::parse_pr_url(pr_url).ok_or_else(|| {
             AzCliError::UnexpectedOutput(format!("Could not parse Azure DevOps PR URL: {pr_url}"))
