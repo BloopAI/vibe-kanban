@@ -16,7 +16,6 @@ import { cn } from '@/lib/utils';
 import { toPrettyCase } from '@/utils/string';
 import { SettingsCheckbox, SettingsSaveBar } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
-import { IconButton } from '../../primitives/IconButton';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 
@@ -404,16 +403,16 @@ export function AgentsSettingsSection() {
       {useFormEditor && localParsedProfiles?.executors ? (
         /* Two-column layout: agents and variants on top, config form below */
         <div className="space-y-4">
-          {/* Two-column selector */}
-          <div className="flex gap-4">
+          {/* Two-column selector - Finder-like style */}
+          <div className="flex border border-border rounded-sm overflow-hidden">
             {/* Agents column */}
-            <div className="flex-1 bg-secondary/50 border border-border rounded-sm overflow-hidden">
-              <div className="px-3 py-2 border-b border-border bg-secondary/50">
-                <span className="text-sm font-medium text-high">
+            <div className="flex-1 border-r border-border">
+              <div className="px-2 py-1.5 border-b border-border bg-secondary/50">
+                <span className="text-xs font-medium text-low uppercase tracking-wide">
                   {t('settings.agents.editor.agentLabel')}
                 </span>
               </div>
-              <div className="max-h-48 overflow-y-auto">
+              <div className="max-h-32 overflow-y-auto bg-panel">
                 {Object.keys(localParsedProfiles.executors).map((executor) => {
                   const isSelected = selectedExecutorType === executor;
                   const isDefault =
@@ -422,8 +421,8 @@ export function AgentsSettingsSection() {
                     <div
                       key={executor}
                       className={cn(
-                        'flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors',
-                        'hover:bg-panel',
+                        'flex items-center gap-1.5 px-2 py-1 cursor-pointer transition-colors',
+                        'hover:bg-secondary',
                         isSelected && 'bg-brand/10 text-brand'
                       )}
                       onClick={() => {
@@ -439,17 +438,17 @@ export function AgentsSettingsSection() {
                         }
                       }}
                     >
-                      <span className="w-4 flex items-center justify-center shrink-0">
+                      <span className="w-3 flex items-center justify-center shrink-0">
                         {isDefault && (
                           <StarIcon
-                            className="size-icon-xs text-warning"
+                            className="size-icon-2xs text-warning"
                             weight="fill"
                           />
                         )}
                       </span>
                       <span
                         className={cn(
-                          'text-sm truncate flex-1',
+                          'text-xs truncate flex-1',
                           isSelected ? 'text-brand font-medium' : 'text-normal'
                         )}
                       >
@@ -462,21 +461,23 @@ export function AgentsSettingsSection() {
             </div>
 
             {/* Variants column */}
-            <div className="flex-1 bg-secondary/50 border border-border rounded-sm overflow-hidden">
-              <div className="px-3 py-2 border-b border-border bg-secondary/50 flex items-center justify-between">
-                <span className="text-sm font-medium text-high">
+            <div className="flex-1">
+              <div className="px-2 py-1.5 border-b border-border bg-secondary/50 flex items-center justify-between">
+                <span className="text-xs font-medium text-low uppercase tracking-wide">
                   {t('settings.agents.editor.configLabel')}
                 </span>
                 {selectedExecutorType && (
-                  <IconButton
-                    icon={PlusIcon}
-                    aria-label={t('settings.agents.editor.createNew')}
+                  <button
+                    className="p-0.5 rounded-sm hover:bg-secondary text-low hover:text-normal"
                     onClick={() => handleCreateConfig(selectedExecutorType)}
                     disabled={profilesSaving}
-                  />
+                    title={t('settings.agents.editor.createNew')}
+                  >
+                    <PlusIcon className="size-icon-2xs" weight="bold" />
+                  </button>
                 )}
               </div>
-              <div className="max-h-48 overflow-y-auto">
+              <div className="max-h-32 overflow-y-auto bg-panel">
                 {selectedExecutorType &&
                 localParsedProfiles.executors[selectedExecutorType] ? (
                   Object.keys(
@@ -494,23 +495,23 @@ export function AgentsSettingsSection() {
                       <div
                         key={configName}
                         className={cn(
-                          'group flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors',
-                          'hover:bg-panel',
+                          'group flex items-center gap-1.5 px-2 py-1 cursor-pointer transition-colors',
+                          'hover:bg-secondary',
                           isSelected && 'bg-brand/10 text-brand'
                         )}
                         onClick={() => setSelectedConfiguration(configName)}
                       >
-                        <span className="w-4 flex items-center justify-center shrink-0">
+                        <span className="w-3 flex items-center justify-center shrink-0">
                           {isDefault && (
                             <StarIcon
-                              className="size-icon-xs text-warning"
+                              className="size-icon-2xs text-warning"
                               weight="fill"
                             />
                           )}
                         </span>
                         <span
                           className={cn(
-                            'text-sm truncate flex-1',
+                            'text-xs truncate flex-1',
                             isSelected
                               ? 'text-brand font-medium'
                               : 'text-normal'
@@ -519,10 +520,10 @@ export function AgentsSettingsSection() {
                           {toPrettyCase(configName)}
                         </span>
                         {/* Action buttons on hover */}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                           {!isDefault && (
                             <button
-                              className="p-0.5 rounded-sm hover:bg-secondary text-low hover:text-normal"
+                              className="p-0.5 rounded-sm hover:bg-panel text-low hover:text-normal"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleMakeDefault(
@@ -533,14 +534,14 @@ export function AgentsSettingsSection() {
                               title={t('settings.agents.editor.makeDefault')}
                             >
                               <StarIcon
-                                className="size-icon-xs"
+                                className="size-icon-2xs"
                                 weight="regular"
                               />
                             </button>
                           )}
                           {configCount > 1 && (
                             <button
-                              className="p-0.5 rounded-sm hover:bg-secondary text-low hover:text-error"
+                              className="p-0.5 rounded-sm hover:bg-panel text-low hover:text-error"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeleteConfig(
@@ -551,7 +552,7 @@ export function AgentsSettingsSection() {
                               title={t('settings.agents.editor.deleteText')}
                             >
                               <TrashIcon
-                                className="size-icon-xs"
+                                className="size-icon-2xs"
                                 weight="regular"
                               />
                             </button>
@@ -561,7 +562,7 @@ export function AgentsSettingsSection() {
                     );
                   })
                 ) : (
-                  <div className="px-3 py-4 text-sm text-low text-center">
+                  <div className="px-2 py-3 text-xs text-low text-center">
                     {t('settings.agents.selectAgent')}
                   </div>
                 )}
