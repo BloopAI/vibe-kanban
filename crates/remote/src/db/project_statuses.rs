@@ -66,6 +66,36 @@ impl ProjectStatusRepository {
         Ok(record)
     }
 
+    pub async fn find_by_name<'e, E>(
+        executor: E,
+        project_id: Uuid,
+        name: &str,
+    ) -> Result<Option<ProjectStatus>, ProjectStatusError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let record = sqlx::query_as!(
+            ProjectStatus,
+            r#"
+            SELECT
+                id              AS "id!: Uuid",
+                project_id      AS "project_id!: Uuid",
+                name            AS "name!",
+                color           AS "color!",
+                sort_order      AS "sort_order!",
+                created_at      AS "created_at!: DateTime<Utc>"
+            FROM project_statuses
+            WHERE project_id = $1 AND LOWER(name) = LOWER($2)
+            "#,
+            project_id,
+            name
+        )
+        .fetch_optional(executor)
+        .await?;
+
+        Ok(record)
+    }
+
     pub async fn create(
         pool: &PgPool,
         id: Option<Uuid>,

@@ -12,7 +12,9 @@ SELECT electric_sync_table('public', 'issue_comments');
 SELECT electric_sync_table('public', 'issue_relationships');
 SELECT electric_sync_table('public', 'issue_comment_reactions');
 SELECT electric_sync_table('public', 'notifications');
+SELECT electric_sync_table('public', 'organization_member_metadata');
 SELECT electric_sync_table('public', 'workspaces');
+SELECT electric_sync_table('public', 'pull_requests');
 
 -- Add indexes for subquery performance
 CREATE INDEX IF NOT EXISTS idx_projects_organization_id ON projects(organization_id);

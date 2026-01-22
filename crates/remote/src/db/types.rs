@@ -31,3 +31,13 @@ pub enum IssueRelationshipType {
     Related,
     HasDuplicate,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, TS)]
+#[sqlx(type_name = "pull_request_status", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+#[ts(export)]
+pub enum PullRequestStatus {
+    Open,
+    Merged,
+    Closed,
+}

@@ -18,8 +18,10 @@ use crate::{
         issue_tags::IssueTag,
         issues::Issue,
         notifications::Notification,
+        organization_members::OrganizationMember,
         project_statuses::ProjectStatus,
         projects::Project,
+        pull_requests::PullRequest,
         tags::Tag,
         types::{IssuePriority, IssueRelationshipType},
         workspaces::Workspace,
@@ -55,6 +57,17 @@ crate::define_entity!(
         url: "/shape/notifications",
     },
     fields: [seen: bool],
+);
+
+// OrganizationMember: shape-only (no mutations)
+crate::define_entity!(
+    OrganizationMember,
+    table: "organization_member_metadata",
+    shape: {
+        where_clause: r#""organization_id" = $1"#,
+        params: ["organization_id"],
+        url: "/shape/organization_members",
+    },
 );
 
 // =============================================================================
@@ -151,6 +164,17 @@ crate::define_entity!(
     fields: [related_issue_id: uuid::Uuid, relationship_type: IssueRelationshipType],
 );
 
+// PullRequest: streaming at project level, no mutations
+crate::define_entity!(
+    PullRequest,
+    table: "pull_requests",
+    shape: {
+        where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+        params: ["project_id"],
+        url: "/shape/project/{project_id}/pull_requests",
+    },
+);
+
 // =============================================================================
 // Issue-scoped entities (both mutations and streaming at issue level)
 // =============================================================================
@@ -195,6 +219,7 @@ pub fn all_entities() -> Vec<&'static dyn EntityExport> {
         // Organization-scoped
         &PROJECT_ENTITY,
         &NOTIFICATION_ENTITY,
+        &ORGANIZATION_MEMBER_ENTITY,
         // Project-scoped
         &TAG_ENTITY,
         &PROJECT_STATUS_ENTITY,
@@ -205,6 +230,7 @@ pub fn all_entities() -> Vec<&'static dyn EntityExport> {
         &ISSUE_FOLLOWER_ENTITY,
         &ISSUE_TAG_ENTITY,
         &ISSUE_RELATIONSHIP_ENTITY,
+        &PULL_REQUEST_ENTITY,
         // Issue-scoped
         &ISSUE_COMMENT_ENTITY,
         // Comment-scoped
@@ -217,6 +243,7 @@ pub fn all_shapes() -> Vec<&'static dyn crate::shapes::ShapeExport> {
     vec![
         &PROJECT_SHAPE,
         &NOTIFICATION_SHAPE,
+        &ORGANIZATION_MEMBER_SHAPE,
         &TAG_SHAPE,
         &PROJECT_STATUS_SHAPE,
         &ISSUE_SHAPE,
@@ -225,6 +252,7 @@ pub fn all_shapes() -> Vec<&'static dyn crate::shapes::ShapeExport> {
         &ISSUE_FOLLOWER_SHAPE,
         &ISSUE_TAG_SHAPE,
         &ISSUE_RELATIONSHIP_SHAPE,
+        &PULL_REQUEST_SHAPE,
         &ISSUE_COMMENT_SHAPE,
         &ISSUE_COMMENT_REACTION_SHAPE,
     ]

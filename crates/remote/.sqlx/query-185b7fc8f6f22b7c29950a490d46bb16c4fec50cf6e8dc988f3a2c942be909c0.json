@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO pull_requests (\n                id, url, number, status, merged_at, merge_commit_sha,\n                target_branch_name, issue_id, workspace_id\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n            RETURNING\n                id                  AS \"id!: Uuid\",\n                url                 AS \"url!: String\",\n                number              AS \"number!: i32\",\n                status              AS \"status!: PullRequestStatus\",\n                merged_at           AS \"merged_at: DateTime<Utc>\",\n                merge_commit_sha    AS \"merge_commit_sha: String\",\n                target_branch_name  AS \"target_branch_name!: String\",\n                issue_id            AS \"issue_id!: Uuid\",\n                workspace_id        AS \"workspace_id: Uuid\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "url!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "number!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "status!: PullRequestStatus",
+        "type_info": {
+          "Custom": {
+            "name": "pull_request_status",
+            "kind": {
+              "Enum": [
+                "open",
+                "merged",
+                "closed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "merged_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "merge_commit_sha: String",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "target_branch_name!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "issue_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "workspace_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int4",
+        {
+          "Custom": {
+            "name": "pull_request_status",
+            "kind": {
+              "Enum": [
+                "open",
+                "merged",
+                "closed"
+              ]
+            }
+          }
+        },
+        "Timestamptz",
+        "Varchar",
+        "Text",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "185b7fc8f6f22b7c29950a490d46bb16c4fec50cf6e8dc988f3a2c942be909c0"
+}
