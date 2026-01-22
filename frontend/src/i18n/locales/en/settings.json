@@ -422,6 +422,11 @@
         },
         "path": {
           "label": "Repository Path"
+        },
+        "defaultTargetBranch": {
+          "label": "Default Target Branch",
+          "placeholder": "e.g., main, master, develop",
+          "helper": "The default base branch for new workspaces. Worktrees branch off from this branch and PRs will target it. Leave empty to use the current branch."
         }
       },
       "scripts": {

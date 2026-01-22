@@ -120,6 +120,7 @@ impl WorkspaceRepo {
                       r.copy_files,
                       r.parallel_setup_script as "parallel_setup_script!: bool",
                       r.dev_server_script,
+                      r.default_target_branch,
                       r.created_at as "created_at!: DateTime<Utc>",
                       r.updated_at as "updated_at!: DateTime<Utc>"
                FROM repos r
@@ -146,6 +147,7 @@ impl WorkspaceRepo {
                       r.copy_files,
                       r.parallel_setup_script as "parallel_setup_script!: bool",
                       r.dev_server_script,
+                      r.default_target_branch,
                       r.created_at as "created_at!: DateTime<Utc>",
                       r.updated_at as "updated_at!: DateTime<Utc>",
                       wr.target_branch
@@ -171,6 +173,7 @@ impl WorkspaceRepo {
                     copy_files: row.copy_files,
                     parallel_setup_script: row.parallel_setup_script,
                     dev_server_script: row.dev_server_script,
+                    default_target_branch: row.default_target_branch,
                     created_at: row.created_at,
                     updated_at: row.updated_at,
                 },
@@ -257,6 +260,7 @@ impl WorkspaceRepo {
                       r.copy_files,
                       r.parallel_setup_script as "parallel_setup_script!: bool",
                       r.dev_server_script,
+                      r.default_target_branch,
                       r.created_at as "created_at!: DateTime<Utc>",
                       r.updated_at as "updated_at!: DateTime<Utc>"
                FROM repos r
