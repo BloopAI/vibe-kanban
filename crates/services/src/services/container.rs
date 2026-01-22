@@ -20,7 +20,7 @@ use db::{
         },
         repo::Repo,
         session::{CreateSession, Session, SessionError},
-        task::{Task, TaskStatus},
+        task::{Task, TaskStatus, TaskType},
         workspace::{Workspace, WorkspaceError},
         workspace_repo::WorkspaceRepo,
     },
@@ -32,6 +32,7 @@ use executors::profile::ExecutorConfigs;
 use executors::{
     actions::{
         ExecutorAction, ExecutorActionType,
+        coding_agent_follow_up::CodingAgentFollowUpRequest,
         coding_agent_initial::CodingAgentInitialRequest,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
@@ -53,6 +54,7 @@ use uuid::Uuid;
 use crate::services::{
     git::{GitService, GitServiceError},
     notification::NotificationService,
+    ralph::RalphService,
     workspace_manager::WorkspaceError as WorkspaceManagerError,
     worktree_manager::WorktreeError,
 };
@@ -161,11 +163,102 @@ pub trait ContainerService {
     }
 
     /// Finalize task execution by updating status to InReview and sending notifications
+    /// For Ralph tasks, also updates story progress and marks as Done if all stories complete
     async fn finalize_task(&self, ctx: &ExecutionContext) {
-        if let Err(e) =
-            Task::update_status(&self.db().pool, ctx.task.id, TaskStatus::InReview).await
+        let mut final_status = TaskStatus::InReview;
+
+        // Handle Ralph task completion
+        if ctx.task.task_type == TaskType::Ralph {
+            // Get the repo path (workspace_dir + repo_name) for Ralph files
+            let repo_path = ctx.workspace.container_ref.as_ref().and_then(|ws_path| {
+                ctx.repos.first().map(|repo| {
+                    PathBuf::from(ws_path).join(&repo.name)
+                })
+            });
+
+            if let Some(repo_path) = repo_path {
+                match RalphService::get_status_from_repo(&repo_path) {
+                    Ok(status) => {
+                        // Update ralph_current_story_index to match completed count
+                        if let Err(e) = Task::update_ralph_story_index(
+                            &self.db().pool,
+                            ctx.task.id,
+                            status.completed_count as i64,
+                        )
+                        .await
+                        {
+                            tracing::error!(
+                                "Failed to update ralph_current_story_index for task {}: {}",
+                                ctx.task.id,
+                                e
+                            );
+                        }
+
+                        // If all stories are complete, mark task as Done
+                        if status.completed_count == status.total_stories && status.total_stories > 0 {
+                            final_status = TaskStatus::Done;
+                            tracing::info!(
+                                "Ralph task {} completed all {} stories, marking as Done",
+                                ctx.task.id,
+                                status.total_stories
+                            );
+                        } else {
+                            tracing::info!(
+                                "Ralph task {} progress: {}/{} stories complete",
+                                ctx.task.id,
+                                status.completed_count,
+                                status.total_stories
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "Failed to read Ralph status for task {}: {}",
+                            ctx.task.id,
+                            e
+                        );
+                    }
+                }
+            }
+
+            // Check for <promise>COMPLETE</promise> signal in the LAST log entry only
+            // This avoids false positives from the agent reading prompt.md (which contains the signal as instruction text)
+            if final_status != TaskStatus::Done {
+                match ExecutionProcessLogs::find_by_execution_id(
+                    &self.db().pool,
+                    ctx.execution_process.id,
+                )
+                .await
+                {
+                    Ok(log_records) => {
+                        // Only check the last log entry (agent's final response)
+                        let has_complete_signal = log_records
+                            .last()
+                            .map(|record| record.logs.contains("<promise>COMPLETE</promise>"))
+                            .unwrap_or(false);
+
+                        if has_complete_signal {
+                            final_status = TaskStatus::Done;
+                            tracing::info!(
+                                "Ralph completed all stories for {} (detected <promise>COMPLETE</promise> signal)",
+                                ctx.task.title
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "Failed to read execution logs for Ralph task {}: {}",
+                            ctx.task.id,
+                            e
+                        );
+                    }
+                }
+            }
+        }
+
+        if let Err(e) = Task::update_status(&self.db().pool, ctx.task.id, final_status.clone()).await
         {
-            tracing::error!("Failed to update task status to InReview: {e}");
+            tracing::error!("Failed to update task status to {:?}: {}", final_status, e);
         }
 
         // Skip notification if process was intentionally killed by user
@@ -192,6 +285,239 @@ pub trait ContainerService {
             }
         };
         self.notification_service().notify(&title, &message).await;
+    }
+
+    /// Check and trigger Ralph auto-continue if conditions are met
+    /// Returns true if auto-continue was triggered
+    async fn try_ralph_auto_continue(&self, ctx: &ExecutionContext) -> bool {
+        // Only for Ralph tasks
+        if ctx.task.task_type != TaskType::Ralph {
+            return false;
+        }
+
+        // Only if auto_continue is enabled
+        if !ctx.task.ralph_auto_continue {
+            return false;
+        }
+
+        // Only if execution completed successfully (not failed or killed)
+        if !matches!(ctx.execution_process.status, ExecutionProcessStatus::Completed) {
+            tracing::info!(
+                "Ralph auto-continue skipped for task {} - execution did not complete successfully",
+                ctx.task.id
+            );
+            return false;
+        }
+
+        // Check iteration count
+        let current_iteration = ctx.task.ralph_current_story_index.unwrap_or(0);
+        if current_iteration >= ctx.task.ralph_max_iterations {
+            tracing::info!(
+                "Ralph auto-continue skipped for task {} - reached max iterations ({})",
+                ctx.task.id,
+                ctx.task.ralph_max_iterations
+            );
+            return false;
+        }
+
+        // Check if task was marked Done (via prd.json or <promise>COMPLETE</promise>)
+        // Re-fetch task to get updated status after finalize_task
+        let task = match Task::find_by_id(&self.db().pool, ctx.task.id).await {
+            Ok(Some(t)) => t,
+            _ => {
+                tracing::warn!("Failed to re-fetch task {} for auto-continue check", ctx.task.id);
+                return false;
+            }
+        };
+
+        if task.status == TaskStatus::Done {
+            tracing::info!(
+                "Ralph auto-continue skipped for task {} - task is already done",
+                ctx.task.id
+            );
+            return false;
+        }
+
+        // Check if there are remaining stories
+        // Get the repo path (workspace_dir + repo_name) for Ralph files
+        let repo_path = match (&ctx.workspace.container_ref, ctx.repos.first()) {
+            (Some(ws_path), Some(repo)) => PathBuf::from(ws_path).join(&repo.name),
+            _ => {
+                tracing::warn!("No workspace path or repo for Ralph auto-continue");
+                return false;
+            }
+        };
+
+        let status = match RalphService::get_status_from_repo(&repo_path) {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::warn!("Failed to read Ralph status for auto-continue: {}", e);
+                return false;
+            }
+        };
+
+        // Check if all stories are complete
+        if status.current_story.is_none() {
+            tracing::info!(
+                "Ralph auto-continue skipped for task {} - all stories complete",
+                ctx.task.id
+            );
+            return false;
+        }
+
+        // Check if the just-completed story was a checkpoint
+        // Find the last completed story (most recent with passes: true)
+        let last_completed = status.stories.iter()
+            .filter(|s| s.passes)
+            .last();
+
+        if let Some(completed_story) = last_completed {
+            if completed_story.checkpoint {
+                tracing::info!(
+                    "Ralph auto-continue paused at checkpoint story {} for task {}",
+                    completed_story.id,
+                    ctx.task.id
+                );
+                return false;
+            }
+        }
+
+        let next_story = status.current_story.unwrap();
+
+        // All conditions met - start next execution
+        tracing::info!(
+            "Ralph auto-continue triggered for task {} - starting story {} (iteration {}/{})",
+            ctx.task.id,
+            next_story.id,
+            current_iteration + 1,
+            ctx.task.ralph_max_iterations
+        );
+
+        // Use task.description as the prompt (user includes instructions in their prompt)
+        let prompt = ctx.task.description.clone().unwrap_or_default();
+
+        let working_dir = ctx.workspace
+            .agent_working_dir
+            .as_ref()
+            .filter(|dir| !dir.is_empty())
+            .cloned();
+
+        // Use claude-code executor
+        let executor_profile_id = ExecutorProfileId {
+            executor: executors::executors::BaseCodingAgent::ClaudeCode,
+            variant: None,
+        };
+
+        // Get repos for cleanup action
+        let repos = match WorkspaceRepo::find_repos_for_workspace(&self.db().pool, ctx.workspace.id).await {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!("Failed to get repos for auto-continue: {}", e);
+                return false;
+            }
+        };
+        let cleanup_action = self.cleanup_actions_for_repos(&repos);
+
+        // Check if a story is in progress (agent is mid-work)
+        // If so, reuse existing session to continue; otherwise create new session
+        let (session, action_type) = if status.has_in_progress {
+            // Story in progress - reuse existing session with follow-up request
+            tracing::info!(
+                "Ralph auto-continue: story in progress, reusing session for task {}",
+                ctx.task.id
+            );
+
+            // Get latest agent session ID for follow-up
+            let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(
+                &self.db().pool,
+                ctx.session.id,
+            )
+            .await
+            .unwrap_or(None);
+
+            if let Some(agent_session_id) = latest_agent_session_id {
+                (
+                    ctx.session.clone(),
+                    ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
+                        prompt,
+                        session_id: agent_session_id,
+                        executor_profile_id: executor_profile_id.clone(),
+                        working_dir,
+                    }),
+                )
+            } else {
+                // No previous session found, start fresh
+                tracing::warn!(
+                    "Ralph auto-continue: no previous session found despite inProgress, starting fresh"
+                );
+                (
+                    ctx.session.clone(),
+                    ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+                        prompt,
+                        executor_profile_id: executor_profile_id.clone(),
+                        working_dir,
+                    }),
+                )
+            }
+        } else {
+            // No story in progress - create new session for fresh start
+            tracing::info!(
+                "Ralph auto-continue: no story in progress, creating new session for task {}",
+                ctx.task.id
+            );
+
+            let new_session = match Session::create(
+                &self.db().pool,
+                &CreateSession {
+                    executor: Some(executor_profile_id.executor.to_string()),
+                },
+                Uuid::new_v4(),
+                ctx.workspace.id,
+            )
+            .await
+            {
+                Ok(s) => s,
+                Err(e) => {
+                    tracing::error!("Failed to create new session for Ralph auto-continue: {}", e);
+                    return false;
+                }
+            };
+
+            (
+                new_session,
+                ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+                    prompt,
+                    executor_profile_id: executor_profile_id.clone(),
+                    working_dir,
+                }),
+            )
+        };
+
+        let action = ExecutorAction::new(action_type, cleanup_action.map(Box::new));
+
+        // Start the execution
+        match self
+            .start_execution(
+                &ctx.workspace,
+                &session,
+                &action,
+                &ExecutionProcessRunReason::CodingAgent,
+            )
+            .await
+        {
+            Ok(_) => {
+                tracing::info!(
+                    "Ralph auto-continue started execution for task {} story {}",
+                    ctx.task.id,
+                    next_story.id
+                );
+                true
+            }
+            Err(e) => {
+                tracing::error!("Failed to start Ralph auto-continue execution: {}", e);
+                false
+            }
+        }
     }
 
     /// Cleanup executions marked as running in the db, call at startup
@@ -871,7 +1197,13 @@ pub trait ContainerService {
         )
         .await?;
 
-        let prompt = task.to_prompt();
+        // Build prompt - Ralph tasks use task.description as the starting prompt
+        // (user includes instructions to read .ralph/prompt.md in their prompt)
+        let prompt = if task.task_type == TaskType::Ralph {
+            task.description.clone().unwrap_or_default()
+        } else {
+            task.to_prompt()
+        };
 
         let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 

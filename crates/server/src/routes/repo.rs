@@ -10,8 +10,8 @@ use db::models::{
     repo::{Repo, UpdateRepo},
 };
 use deployment::Deployment;
-use serde::Deserialize;
-use services::services::{file_search::SearchQuery, git::GitBranch};
+use serde::{Deserialize, Serialize};
+use services::services::{file_search::SearchQuery, git::GitBranch, ralph::RalphService};
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -170,6 +170,38 @@ pub async fn open_repo_in_editor(
     }
 }
 
+/// Response for Ralph check endpoint
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct RalphCheckResponse {
+    /// Whether the repo has .ralph/prompt.md
+    pub has_prompt: bool,
+    /// Error message if prompt is missing
+    pub error: Option<String>,
+}
+
+/// Check if a repo is ready for Ralph (has .ralph/prompt.md)
+pub async fn check_ralph_ready(
+    State(deployment): State<DeploymentImpl>,
+    Path(repo_id): Path<Uuid>,
+) -> Result<ResponseJson<ApiResponse<RalphCheckResponse>>, ApiError> {
+    let repo = deployment
+        .repo()
+        .get_by_id(&deployment.db().pool, repo_id)
+        .await?;
+
+    let has_prompt = RalphService::validate_prompt_exists(&repo.path).is_ok();
+
+    Ok(ResponseJson(ApiResponse::success(RalphCheckResponse {
+        has_prompt,
+        error: if has_prompt {
+            None
+        } else {
+            Some("Missing .ralph/prompt.md file. Create this file with Ralph agent instructions.".to_string())
+        },
+    })))
+}
+
 pub async fn search_repo(
     State(deployment): State<DeploymentImpl>,
     Path(repo_id): Path<Uuid>,
@@ -215,4 +247,5 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/repos/{repo_id}/branches", get(get_repo_branches))
         .route("/repos/{repo_id}/search", get(search_repo))
         .route("/repos/{repo_id}/open-editor", post(open_repo_in_editor))
+        .route("/repos/{repo_id}/ralph-check", get(check_ralph_ready))
 }
