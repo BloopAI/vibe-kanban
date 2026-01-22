@@ -72,6 +72,8 @@ interface SharedProps {
   linesAdded: number;
   /** Number of lines removed */
   linesRemoved: number;
+  /** Callback to scroll to previous user message */
+  onScrollToPreviousMessage: () => void;
 }
 
 /** Props for existing session mode */
@@ -105,8 +107,15 @@ type SessionChatBoxContainerProps =
   | PlaceholderProps;
 
 export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
-  const { mode, sessions, projectId, filesChanged, linesAdded, linesRemoved } =
-    props;
+  const {
+    mode,
+    sessions,
+    projectId,
+    filesChanged,
+    linesAdded,
+    linesRemoved,
+    onScrollToPreviousMessage,
+  } = props;
 
   // Extract mode-specific values
   const session = mode === 'existing-session' ? props.session : undefined;
@@ -688,6 +697,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     <SessionChatBox
       status={status}
       onViewCode={handleViewCode}
+      onScrollToPreviousMessage={onScrollToPreviousMessage}
       workspaceId={workspaceId}
       projectId={projectId}
       tokenUsageInfo={tokenUsageInfo}

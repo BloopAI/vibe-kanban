@@ -274,7 +274,8 @@
       "requestChanges": "Request Changes",
       "approve": "Approve",
       "clearReviewComments": "Clear review comments",
-      "edit": "Edit message"
+      "edit": "Edit message",
+      "scrollToPreviousMessage": "Go to previous message"
     },
     "approval": {
       "conflictWarning": "Conflicted files need manual resolution",
