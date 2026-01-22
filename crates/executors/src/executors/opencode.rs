@@ -255,14 +255,37 @@ impl StandardCodingAgentExecutor for Opencode {
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
+        // First check the current implementation's path
+        let current_path;
+        let alternative_path;
         #[cfg(unix)]
         {
-            xdg::BaseDirectories::with_prefix("opencode").get_config_file("opencode.json")
+            current_path =
+                curxdg::BaseDirectories::with_prefix("opencode").get_config_file("opencode.json");
+            alternative_path = dirs::config_dir().map(|config| config.join("opencode").join("opencode.json"));
         }
         #[cfg(not(unix))]
         {
-            dirs::config_dir().map(|config| config.join("opencode").join("opencode.json"))
+            current_path = dirs::config_dir().map(|config| config.join("opencode").join("opencode.json"));
+            alternative_path = dirs::home_dir().map(|home| home.join(".config").join("opencode").join("opencode.json"));
         }
+
+        // Check if current path exists
+        if let Some(ref path) = current_path {
+            if path.exists() {
+                return current_path;
+            }
+        }
+
+        // Check if alternative path exists
+        if let Some(ref path) = alternative_path {
+            if path.exists() {
+                return alternative_path;
+            }
+        }
+
+        // If neither exists, return the current path (as before)
+        current_path
     }
 
     fn get_availability_info(&self) -> AvailabilityInfo {
