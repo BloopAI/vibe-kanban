@@ -1,4 +1,7 @@
 {
+  "note": "Note",
+  "saving": "Enregistrement...",
+  "continue": "Continuer",
   "buttons": {
     "save": "Enregistrer",
     "cancel": "Annuler",
