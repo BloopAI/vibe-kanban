@@ -48,7 +48,7 @@ export function SlashCommandTypeaheadPlugin({
   const [activeQuery, setActiveQuery] = useState<string | null>(null);
 
   const slashCommandsQuery = useSlashCommands(agent, {
-    taskAttemptId,
+    workspaceId: taskAttemptId,
   });
   const allCommands = useMemo(
     () => slashCommandsQuery.commands ?? [],

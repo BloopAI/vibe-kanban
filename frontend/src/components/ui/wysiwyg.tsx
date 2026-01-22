@@ -227,7 +227,7 @@ function WYSIWYGEditor({
 
   const editorContent = (
     <div className="wysiwyg text-base">
-      <TaskAttemptContext.Provider value={taskAttemptId}>
+      <TaskAttemptContext.Provider value={taskAttemptId || workspaceId}>
         <TaskContext.Provider value={taskId}>
           <LocalImagesContext.Provider value={localImages ?? []}>
             <LexicalComposer initialConfig={initialConfig}>

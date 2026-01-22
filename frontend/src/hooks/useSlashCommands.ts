@@ -10,18 +10,18 @@ type SlashCommandsStreamState = {
 
 export function useSlashCommands(
   agent: BaseCodingAgent | null | undefined,
-  opts?: { taskAttemptId?: string; repoId?: string }
+  opts?: { workspaceId?: string; repoId?: string }
 ) {
   const endpoint = useMemo(() => {
     if (!agent) return undefined;
 
     const params = new URLSearchParams();
     params.set('executor', agent);
-    if (opts?.taskAttemptId) params.set('task_attempt_id', opts.taskAttemptId);
+    if (opts?.workspaceId) params.set('workspace_id', opts.workspaceId);
     if (opts?.repoId) params.set('repo_id', opts.repoId);
 
     return `/api/agents/slash-commands/ws?${params.toString()}`;
-  }, [agent, opts?.repoId, opts?.taskAttemptId]);
+  }, [agent, opts?.repoId, opts?.workspaceId]);
 
   const initialData = useCallback(
     (): SlashCommandsStreamState => ({

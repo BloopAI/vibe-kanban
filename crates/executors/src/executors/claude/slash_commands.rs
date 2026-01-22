@@ -18,7 +18,7 @@ use crate::{
     command::{CommandBuildError, CommandBuilder, apply_overrides},
     env::{ExecutionEnv, RepoContext},
     executors::{
-        ExecutorError, SlashCommandDescription,
+        BaseCodingAgent, ExecutorError, SlashCommandDescription,
         utils::{SlashCommandCache, SlashCommandCacheKey},
     },
 };
@@ -265,7 +265,7 @@ impl ClaudeCode {
         &self,
         current_dir: &Path,
     ) -> Result<Vec<SlashCommandDescription>, ExecutorError> {
-        let key = SlashCommandCacheKey::new(current_dir, "claude");
+        let key = SlashCommandCacheKey::new(current_dir, &BaseCodingAgent::ClaudeCode);
         if let Some(cached) = SlashCommandCache::instance().get(&key) {
             return Ok(cached.as_ref().clone());
         }
