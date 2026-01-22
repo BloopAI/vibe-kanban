@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import { PlusIcon, UsersIcon } from '@phosphor-icons/react';
 import type { IssuePriority, ProjectStatus } from 'shared/remote-types';
 import { PriorityIcon } from './Kanban';
@@ -54,6 +55,7 @@ export function IssuePropertyRow({
   disabled,
   className,
 }: IssuePropertyRowProps) {
+  const { t } = useTranslation('common');
   const selectedStatus = statuses.find((s) => s.id === statusId);
   const selectedAssignee = users.find((u) => u.id === assigneeId);
 
@@ -144,7 +146,7 @@ export function IssuePropertyRow({
         <DropdownMenuContent align="start">
           <DropdownMenuItem onClick={() => onAssigneeChange(null)}>
             <UsersIcon className="size-icon-xs text-low" weight="bold" />
-            Unassigned
+            {t('kanban.unassigned')}
           </DropdownMenuItem>
           {users.map((user) => (
             <DropdownMenuItem

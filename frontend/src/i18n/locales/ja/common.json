@@ -315,7 +315,7 @@
     "tooltip": "コンテキスト: {{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "コンテキスト使用量: {{percentage}}%"
   },
-  "shortcuts": {
+"shortcuts": {
     "title": "キーボードショートカット",
     "inWorkspace": "(ワークスペース内)",
     "sequentialHint": "シーケンシャルショートカット：最初のキーを押し、500ms以内に2番目のキーを押してください。",
@@ -327,5 +327,15 @@
     "commands": "コマンド",
     "noTagsOrFiles": "タグまたはファイルが見つかりません",
     "noCommands": "このエージェントで利用可能なコマンドはありません。"
+  },
+  "kanban": {
+    "noStatusesFound": "このプロジェクトのステータスが見つかりません",
+    "noProjectFound": "プロジェクトが見つかりません",
+    "noOrganizationFound": "組織が見つかりません",
+    "unassigned": "未割り当て",
+    "noTagsAvailable": "利用可能なタグがありません",
+    "filesCount": "{{count}}ファイル",
+    "noPrCreated": "PRが作成されていません",
+    "noCommentsYet": "コメントはまだありません"
   }
 }
