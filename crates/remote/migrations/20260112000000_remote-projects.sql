@@ -13,7 +13,7 @@ ALTER TABLE organizations ADD COLUMN IF NOT EXISTS issue_prefix VARCHAR(10) NOT 
 
 -- 3. MODIFY EXISTING PROJECTS TABLE
 -- Add color and updated_at columns, drop unused metadata column
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS color VARCHAR(7) NOT NULL DEFAULT '#000000';
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS color VARCHAR(20) NOT NULL DEFAULT '0 0% 0%';
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 ALTER TABLE projects DROP COLUMN IF EXISTS metadata;
 -- Add issue_counter for sequential issue numbering per project
@@ -31,7 +31,7 @@ CREATE TABLE project_statuses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(50) NOT NULL,
-    color VARCHAR(7) NOT NULL,
+    color VARCHAR(20) NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -158,7 +158,7 @@ CREATE TABLE tags (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(50) NOT NULL,
-    color VARCHAR(7) NOT NULL,
+    color VARCHAR(20) NOT NULL,
 
     UNIQUE (project_id, name)
 );
