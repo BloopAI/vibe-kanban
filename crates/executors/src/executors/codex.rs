@@ -354,10 +354,11 @@ impl Codex {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .current_dir(current_dir)
-            .args(&args)
+            .env("NPM_CONFIG_LOGLEVEL", "error")
             .env("NODE_NO_WARNINGS", "1")
             .env("NO_COLOR", "1")
-            .env("RUST_LOG", "error");
+            .env("RUST_LOG", "error")
+            .args(&args);
 
         env.clone()
             .with_profile(&self.cmd)
