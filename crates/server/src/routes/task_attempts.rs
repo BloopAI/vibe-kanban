@@ -133,6 +133,27 @@ pub async fn update_workspace(
     Json(request): Json<UpdateWorkspace>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
     let pool = &deployment.db().pool;
+
+    // Stop dev servers if archiving (transitioning from not archived to archived)
+    if request.archived == Some(true) && !workspace.archived {
+        let running_dev_servers =
+            ExecutionProcess::find_running_dev_servers_by_workspace(pool, workspace.id).await?;
+        for dev_server in running_dev_servers {
+            tracing::info!(
+                "Stopping dev server {} for archived workspace {}",
+                dev_server.id,
+                workspace.id
+            );
+            if let Err(e) = deployment
+                .container()
+                .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
+                .await
+            {
+                tracing::error!("Failed to stop dev server {}: {}", dev_server.id, e);
+            }
+        }
+    }
+
     Workspace::update(
         pool,
         workspace.id,

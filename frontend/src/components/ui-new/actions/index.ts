@@ -36,6 +36,7 @@ import {
   ListIcon,
   MegaphoneIcon,
   QuestionIcon,
+  StopIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import {
@@ -43,7 +44,7 @@ import {
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
 
-import { attemptsApi, tasksApi, repoApi } from '@/lib/api';
+import { attemptsApi, tasksApi, repoApi, projectsApi } from '@/lib/api';
 import { attemptKeys } from '@/hooks/useAttempt';
 import { taskKeys } from '@/hooks/useTask';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
@@ -295,6 +296,29 @@ export const Actions = {
       // Select next workspace after successful archive
       if (!wasArchived && nextWorkspaceId) {
         ctx.selectWorkspace(nextWorkspaceId);
+      }
+    },
+  },
+
+  StopAllDevServers: {
+    id: 'stop-all-dev-servers',
+    label: 'Stop All Dev Servers',
+    icon: StopIcon,
+    requiresTarget: false,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.runningDevServers.length > 0,
+    execute: async (ctx) => {
+      if (!ctx.currentWorkspaceId) return;
+
+      const workspace = await getWorkspace(
+        ctx.queryClient,
+        ctx.currentWorkspaceId
+      );
+      if (!workspace?.task_id) return;
+
+      const task = await tasksApi.getById(workspace.task_id);
+      if (task?.project_id) {
+        await projectsApi.stopAllDevServers(task.project_id);
+        ctx.queryClient.invalidateQueries({ queryKey: attemptKeys.all });
       }
     },
   },
@@ -978,7 +1002,7 @@ export type NavbarItem = ActionDefinition | typeof NavbarDivider;
 
 // Navbar action groups define which actions appear in each section
 export const NavbarActionGroups = {
-  left: [Actions.ArchiveWorkspace, Actions.OpenInOldUI] as ActionDefinition[],
+  left: [Actions.StopAllDevServers, Actions.ArchiveWorkspace, Actions.OpenInOldUI] as ActionDefinition[],
   right: [
     Actions.ToggleDiffViewMode,
     Actions.ToggleAllDiffs,
