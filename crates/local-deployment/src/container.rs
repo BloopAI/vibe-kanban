@@ -388,35 +388,28 @@ impl LocalContainerService {
         })
     }
 
-    /// Fetch project members and convert them to co-authors.
-    async fn get_project_co_authors(&self, project_id: Uuid) -> Vec<CoAuthor> {
-        let Ok(publisher) = &self.publisher else {
-            tracing::debug!("Remote client not configured, skipping co-author fetch");
-            return vec![];
-        };
+    /// Fetch all local users and convert them to co-authors.
+    /// All users who have logged into this instance become co-authors on commits.
+    async fn get_project_co_authors(&self, _project_id: Uuid) -> Vec<CoAuthor> {
+        use db::models::user::User;
 
-        match publisher.get_project_members(project_id).await {
-            Ok(members) => {
-                members
+        match User::find_all(&self.db.pool).await {
+            Ok(users) => {
+                users
                     .into_iter()
-                    .filter_map(|member| {
-                        // Build a name from first_name, last_name, or username
-                        let name = match (&member.first_name, &member.last_name) {
-                            (Some(first), Some(last)) => format!("{} {}", first, last),
-                            (Some(first), None) => first.clone(),
-                            (None, Some(last)) => last.clone(),
-                            (None, None) => member.username.clone()?,
-                        };
+                    .filter_map(|user| {
+                        // Use display_name if available, otherwise username
+                        let name = user.display_name.unwrap_or(user.username);
 
                         // Require email for co-author trailer
-                        let email = member.email?;
+                        let email = user.email?;
 
                         Some(CoAuthor::new(name, email))
                     })
                     .collect()
             }
             Err(e) => {
-                tracing::warn!("Failed to fetch project members for co-authors: {}", e);
+                tracing::warn!("Failed to fetch users for co-authors: {}", e);
                 vec![]
             }
         }
