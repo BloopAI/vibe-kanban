@@ -4,11 +4,16 @@ import type { Session } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionChatBoxContainer';
 import { ContextBarContainer } from '@/components/ui-new/containers/ContextBarContainer';
-import { ConversationList } from '../containers/ConversationListContainer';
+import {
+  ConversationList,
+  type ConversationListHandle,
+} from '../containers/ConversationListContainer';
 import { EntriesProvider } from '@/contexts/EntriesContext';
 import { MessageEditProvider } from '@/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
+
+export type { ConversationListHandle };
 
 interface DiffStats {
   filesChanged: number;
@@ -22,6 +27,7 @@ interface WorkspacesMainProps {
   onSelectSession: (sessionId: string) => void;
   isLoading: boolean;
   containerRef: RefObject<HTMLElement | null>;
+  conversationListRef: RefObject<ConversationListHandle>;
   projectId?: string;
   /** Whether user is creating a new session */
   isNewSessionMode?: boolean;
@@ -29,6 +35,8 @@ interface WorkspacesMainProps {
   onStartNewSession?: () => void;
   /** Diff statistics from the workspace */
   diffStats?: DiffStats;
+  /** Callback to scroll to previous user message */
+  onScrollToPreviousMessage: () => void;
 }
 
 export function WorkspacesMain({
@@ -37,10 +45,12 @@ export function WorkspacesMain({
   onSelectSession,
   isLoading,
   containerRef,
+  conversationListRef,
   projectId,
   isNewSessionMode,
   onStartNewSession,
   diffStats,
+  onScrollToPreviousMessage,
 }: WorkspacesMainProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const { session } = workspaceWithSession ?? {};
@@ -75,7 +85,10 @@ export function WorkspacesMain({
               <div className="flex-1 min-h-0 overflow-hidden flex justify-center">
                 <div className="w-chat max-w-full h-full">
                   <RetryUiProvider attemptId={workspaceWithSession.id}>
-                    <ConversationList attempt={workspaceWithSession} />
+                    <ConversationList
+                      ref={conversationListRef}
+                      attempt={workspaceWithSession}
+                    />
                   </RetryUiProvider>
                 </div>
               </div>
@@ -104,6 +117,7 @@ export function WorkspacesMain({
                 filesChanged={diffStats?.filesChanged ?? 0}
                 linesAdded={diffStats?.linesAdded ?? 0}
                 linesRemoved={diffStats?.linesRemoved ?? 0}
+                onScrollToPreviousMessage={onScrollToPreviousMessage}
               />
             </div>
           </MessageEditProvider>
