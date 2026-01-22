@@ -1,0 +1,52 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: vibe-kanban-dev
+    volumes:
+      - ./crates:/app/crates
+      - ./frontend:/app/frontend
+      - ./shared:/app/shared
+      - ./scripts:/app/scripts
+      - ./assets:/app/assets
+      - ./dev_assets_seed:/app/dev_assets_seed
+      - ./npx-cli:/app/npx-cli
+      - ./package.json:/app/package.json:ro
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
+      - ./pnpm-lock.yaml:/app/source-lock/pnpm-lock.yaml:ro
+      - ./Cargo.toml:/app/Cargo.toml
+      - ./Cargo.lock:/app/Cargo.lock
+      - ./rust-toolchain.toml:/app/rust-toolchain.toml
+      - ./rustfmt.toml:/app/rustfmt.toml:ro
+      - ./.docker-cache/cargo-registry:/root/.cargo/registry
+      - ./.docker-cache/cargo-git:/root/.cargo/git
+      - ./.docker-cache/target:/app/target
+      - ./.docker-cache/node_modules:/app/node_modules
+      - ./.docker-cache/frontend-node-modules:/app/frontend/node_modules
+      - ./.docker-cache/pnpm-store:/root/.local/share/pnpm/store
+      - dev-assets:/app/dev_assets
+    ports:
+      - "3001:3001"
+      - "3000:3000"
+    environment:
+      - FRONTEND_PORT=3001
+      - BACKEND_PORT=3000
+      - HOST=0.0.0.0
+      - RUST_LOG=debug
+      - DISABLE_WORKTREE_ORPHAN_CLEANUP=1
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - SESSION_SECRET=${SESSION_SECRET:-dev-session-secret-change-in-production}
+    stdin_open: true
+    tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health", "||", "exit", "0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+volumes:
+  dev-assets:
+    name: vibe-kanban-dev-assets

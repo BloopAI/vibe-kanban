@@ -1,0 +1,44 @@
+FROM rust:1.89-bookworm
+
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
+    && apt-get install -y nodejs
+
+RUN apt-get update && apt-get install -y \
+    sqlite3 \
+    libsqlite3-dev \
+    clang \
+    libclang-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN rustup toolchain install nightly-2025-12-04 \
+    --component rustfmt,clippy \
+    && rustup default nightly-2025-12-04
+
+RUN cargo install cargo-watch
+
+RUN npm install -g pnpm@10.13.1
+
+WORKDIR /app
+
+RUN mkdir -p /app/dev_assets /app/target
+
+EXPOSE 3000 3001
+
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+if [ -f "/app/source-lock/pnpm-lock.yaml" ] && [ ! -f "/app/pnpm-lock.yaml" ]; then\n\
+  echo "Copying pnpm-lock.yaml..."\n\
+  cp /app/source-lock/pnpm-lock.yaml /app/pnpm-lock.yaml\n\
+fi\n\
+\n\
+if [ ! -d "/app/node_modules/concurrently" ]; then\n\
+  echo "Installing dependencies..."\n\
+  pnpm install --frozen-lockfile || pnpm install\n\
+fi\n\
+\n\
+exec "$@"\n\
+' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["pnpm", "run", "dev"]
