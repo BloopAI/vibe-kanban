@@ -13,6 +13,7 @@ import { PlusIcon } from 'lucide-react';
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { DataTable, type ColumnDef } from '@/components/ui/table';
+import { RalphStoriesPanel } from '@/components/tasks/RalphStoriesPanel';
 
 interface TaskPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -108,6 +109,7 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
             {descriptionContent && (
               <WYSIWYGEditor value={descriptionContent} disabled />
             )}
+            <RalphStoriesPanel task={task} />
           </div>
 
           <div className="mt-6 flex-shrink-0 space-y-4">

@@ -78,6 +78,11 @@ import {
   PushError,
   TokenResponse,
   CurrentUserResponse,
+  RalphStatusResponse,
+  RalphStoryCommitsResponse,
+  UpdateRalphAutoContinueRequest,
+  UpdateRalphAutoContinueResponse,
+  RalphCheckResponse,
   QueueStatus,
   PrCommentsResponse,
   MergeTaskAttemptRequest,
@@ -397,6 +402,32 @@ export const tasksApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+
+  getRalphStatus: async (taskId: string): Promise<RalphStatusResponse> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/ralph/status`);
+    return handleApiResponse<RalphStatusResponse>(response);
+  },
+
+  updateRalphAutoContinue: async (
+    taskId: string,
+    data: UpdateRalphAutoContinueRequest
+  ): Promise<UpdateRalphAutoContinueResponse> => {
+    const response = await makeRequest(
+      `/api/tasks/${taskId}/ralph/auto-continue`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<UpdateRalphAutoContinueResponse>(response);
+  },
+
+  getRalphStoryCommits: async (
+    taskId: string
+  ): Promise<RalphStoryCommitsResponse> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/ralph/commits`);
+    return handleApiResponse<RalphStoryCommitsResponse>(response);
   },
 };
 
@@ -883,6 +914,11 @@ export const repoApi = {
       options
     );
     return handleApiResponse<SearchResult[]>(response);
+  },
+
+  checkRalphReady: async (repoId: string): Promise<RalphCheckResponse> => {
+    const response = await makeRequest(`/api/repos/${repoId}/ralph-check`);
+    return handleApiResponse<RalphCheckResponse>(response);
   },
 };
 

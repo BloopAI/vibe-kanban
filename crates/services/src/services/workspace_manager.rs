@@ -12,6 +12,9 @@ use super::worktree_manager::{WorktreeCleanup, WorktreeError, WorktreeManager};
 pub struct RepoWorkspaceInput {
     pub repo: Repo,
     pub target_branch: String,
+    /// Optional git ref (commit, tag, branch) to start the worktree from
+    /// instead of the default target_branch HEAD
+    pub start_from_ref: Option<String>,
 }
 
 impl RepoWorkspaceInput {
@@ -19,6 +22,15 @@ impl RepoWorkspaceInput {
         Self {
             repo,
             target_branch,
+            start_from_ref: None,
+        }
+    }
+
+    pub fn with_start_from_ref(repo: Repo, target_branch: String, start_from_ref: Option<String>) -> Self {
+        Self {
+            repo,
+            target_branch,
+            start_from_ref,
         }
     }
 }
@@ -84,12 +96,13 @@ impl WorkspaceManager {
                 worktree_path.display()
             );
 
-            match WorktreeManager::create_worktree(
+            match WorktreeManager::create_worktree_with_start_ref(
                 &input.repo.path,
                 branch_name,
                 &worktree_path,
                 &input.target_branch,
                 true,
+                input.start_from_ref.as_deref(),
             )
             .await
             {

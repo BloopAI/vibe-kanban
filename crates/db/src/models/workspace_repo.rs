@@ -14,6 +14,7 @@ pub struct WorkspaceRepo {
     pub workspace_id: Uuid,
     pub repo_id: Uuid,
     pub target_branch: String,
+    pub start_from_ref: Option<String>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -24,6 +25,7 @@ pub struct WorkspaceRepo {
 pub struct CreateWorkspaceRepo {
     pub repo_id: Uuid,
     pub target_branch: String,
+    pub start_from_ref: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -63,18 +65,20 @@ impl WorkspaceRepo {
             let id = Uuid::new_v4();
             let workspace_repo = sqlx::query_as!(
                 WorkspaceRepo,
-                r#"INSERT INTO workspace_repos (id, workspace_id, repo_id, target_branch)
-                   VALUES ($1, $2, $3, $4)
+                r#"INSERT INTO workspace_repos (id, workspace_id, repo_id, target_branch, start_from_ref)
+                   VALUES ($1, $2, $3, $4, $5)
                    RETURNING id as "id!: Uuid",
                              workspace_id as "workspace_id!: Uuid",
                              repo_id as "repo_id!: Uuid",
                              target_branch,
+                             start_from_ref,
                              created_at as "created_at!: DateTime<Utc>",
                              updated_at as "updated_at!: DateTime<Utc>""#,
                 id,
                 workspace_id,
                 repo.repo_id,
-                repo.target_branch
+                repo.target_branch,
+                repo.start_from_ref
             )
             .fetch_one(&mut *tx)
             .await?;
@@ -95,6 +99,7 @@ impl WorkspaceRepo {
                       workspace_id as "workspace_id!: Uuid",
                       repo_id as "repo_id!: Uuid",
                       target_branch,
+                      start_from_ref,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM workspace_repos
@@ -190,6 +195,7 @@ impl WorkspaceRepo {
                       workspace_id as "workspace_id!: Uuid",
                       repo_id as "repo_id!: Uuid",
                       target_branch,
+                      start_from_ref,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM workspace_repos

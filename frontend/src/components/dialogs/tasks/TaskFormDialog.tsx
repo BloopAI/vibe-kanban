@@ -70,6 +70,7 @@ export type TaskFormDialogProps =
       projectId: string;
       parentTaskAttemptId: string;
       initialBaseBranch: string;
+      startFromRef?: string;
     };
 
 type RepoBranch = { repoId: string; branch: string };
@@ -81,6 +82,7 @@ type TaskFormValues = {
   executorProfileId: ExecutorProfileId | null;
   repoBranches: RepoBranch[];
   autoStart: boolean;
+  isRalph: boolean;
 };
 
 const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
@@ -136,6 +138,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: false,
+          isRalph: false,
         };
 
       case 'duplicate':
@@ -146,6 +149,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: true,
+          isRalph: false,
         };
 
       case 'subtask':
@@ -158,6 +162,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: true,
+          isRalph: false,
         };
     }
   }, [mode, props, system.config?.executor_profile, defaultRepoBranches]);
@@ -186,10 +191,12 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
         title: value.title,
         description: value.description,
         status: null,
+        task_type: value.isRalph ? 'ralph' as const : 'default' as const,
         parent_workspace_id:
           mode === 'subtask' ? props.parentTaskAttemptId : null,
         image_ids: imageIds,
-        shared_task_id: null,
+        ralph_auto_continue: value.isRalph ? true : null,
+        ralph_max_iterations: value.isRalph ? (10 as unknown as bigint) : null,
       };
       const shouldAutoStart = value.autoStart && !forceCreateOnlyRef.current;
       if (shouldAutoStart) {
@@ -621,31 +628,55 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
               </Button>
             </div>
 
-            {/* Autostart switch */}
+            {/* Ralph and Autostart switches */}
             <div className="flex items-center gap-3">
               {!editMode && (
-                <form.Field name="autoStart">
-                  {(field) => (
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id="autostart-switch"
-                        checked={field.state.value}
-                        onCheckedChange={(checked) =>
-                          field.handleChange(checked)
-                        }
-                        disabled={isSubmitting}
-                        className="data-[state=checked]:bg-gray-900 dark:data-[state=checked]:bg-gray-100"
-                        aria-label={t('taskFormDialog.startLabel')}
-                      />
-                      <Label
-                        htmlFor="autostart-switch"
-                        className="text-sm cursor-pointer"
-                      >
-                        {t('taskFormDialog.startLabel')}
-                      </Label>
-                    </div>
-                  )}
-                </form.Field>
+                <>
+                  <form.Field name="isRalph">
+                    {(field) => (
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="ralph-switch"
+                          checked={field.state.value}
+                          onCheckedChange={(checked) =>
+                            field.handleChange(checked)
+                          }
+                          disabled={isSubmitting}
+                          className="data-[state=checked]:bg-yellow-400 dark:data-[state=checked]:bg-yellow-500"
+                          aria-label="Ralph mode"
+                        />
+                        <Label
+                          htmlFor="ralph-switch"
+                          className="text-sm cursor-pointer"
+                        >
+                          Ralph
+                        </Label>
+                      </div>
+                    )}
+                  </form.Field>
+                  <form.Field name="autoStart">
+                    {(field) => (
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="autostart-switch"
+                          checked={field.state.value}
+                          onCheckedChange={(checked) =>
+                            field.handleChange(checked)
+                          }
+                          disabled={isSubmitting}
+                          className="data-[state=checked]:bg-gray-900 dark:data-[state=checked]:bg-gray-100"
+                          aria-label={t('taskFormDialog.startLabel')}
+                        />
+                        <Label
+                          htmlFor="autostart-switch"
+                          className="text-sm cursor-pointer"
+                        >
+                          {t('taskFormDialog.startLabel')}
+                        </Label>
+                      </div>
+                    )}
+                  </form.Field>
+                </>
               )}
 
               {/* Create/Start/Update button*/}
