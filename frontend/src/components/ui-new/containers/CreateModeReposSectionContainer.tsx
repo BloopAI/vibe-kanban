@@ -17,9 +17,16 @@ export function CreateModeReposSectionContainer() {
     repos.forEach((repo) => {
       const branches = branchesByRepo[repo.id];
       if (branches && !targetBranches[repo.id]) {
-        const currentBranch = branches.find((b) => b.is_current);
-        if (currentBranch) {
-          setTargetBranch(repo.id, currentBranch.name);
+        if (
+          repo.default_target_branch &&
+          branches.some((b) => b.name === repo.default_target_branch)
+        ) {
+          setTargetBranch(repo.id, repo.default_target_branch);
+        } else {
+          const currentBranch = branches.find((b) => b.is_current);
+          if (currentBranch) {
+            setTargetBranch(repo.id, currentBranch.name);
+          }
         }
       }
     });
