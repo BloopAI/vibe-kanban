@@ -17,6 +17,17 @@ export type {
   AssigneeDropdownProps,
 } from './PropertyDropdown';
 
+// Multi-Select Dropdowns
+export {
+  MultiSelectDropdown,
+  PriorityFilterDropdown,
+} from './MultiSelectDropdown';
+export type {
+  MultiSelectDropdownOption,
+  MultiSelectDropdownProps,
+  PriorityFilterDropdownProps,
+} from './MultiSelectDropdown';
+
 // Kanban Components
 export {
   KanbanBadge,
