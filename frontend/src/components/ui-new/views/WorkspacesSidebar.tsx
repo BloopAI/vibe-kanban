@@ -328,57 +328,7 @@ export function WorkspacesSidebar({
               </span>
             </>
           )}
-          {filteredWorkspaces.map((workspace) => (
-            <WorkspaceSummary
-              key={workspace.id}
-              name={workspace.name}
-              workspaceId={workspace.id}
-              filesChanged={workspace.filesChanged}
-              linesAdded={workspace.linesAdded}
-              linesRemoved={workspace.linesRemoved}
-              isActive={selectedWorkspaceId === workspace.id}
-              isRunning={workspace.isRunning}
-              isPinned={workspace.isPinned}
-              hasPendingApproval={workspace.hasPendingApproval}
-              hasRunningDevServer={workspace.hasRunningDevServer}
-              hasUnseenActivity={workspace.hasUnseenActivity}
-              latestProcessCompletedAt={workspace.latestProcessCompletedAt}
-              latestProcessStatus={workspace.latestProcessStatus}
-              prStatus={workspace.prStatus}
-              owner={workspace.owner}
-              onClick={() => onSelectWorkspace(workspace.id)}
-            />
-          ))}
-        </CollapsibleSection>
-        <CollapsibleSection
-          persistKey={PERSIST_KEYS.workspacesSidebarArchived}
-          title={t('common:workspaces.archived')}
-          defaultExpanded
-          className="px-base pb-half"
-        >
-          {filteredArchivedWorkspaces.map((workspace) => (
-            <WorkspaceSummary
-              summary
-              key={workspace.id}
-              name={workspace.name}
-              workspaceId={workspace.id}
-              filesChanged={workspace.filesChanged}
-              linesAdded={workspace.linesAdded}
-              linesRemoved={workspace.linesRemoved}
-              isActive={selectedWorkspaceId === workspace.id}
-              isRunning={workspace.isRunning}
-              isPinned={workspace.isPinned}
-              hasPendingApproval={workspace.hasPendingApproval}
-              hasRunningDevServer={workspace.hasRunningDevServer}
-              hasUnseenActivity={workspace.hasUnseenActivity}
-              latestProcessCompletedAt={workspace.latestProcessCompletedAt}
-              latestProcessStatus={workspace.latestProcessStatus}
-              prStatus={workspace.prStatus}
-              owner={workspace.owner}
-              onClick={() => onSelectWorkspace(workspace.id)}
-            />
-          ))}
-        </CollapsibleSection>
+        </button>
       </div>
     </div>
   );

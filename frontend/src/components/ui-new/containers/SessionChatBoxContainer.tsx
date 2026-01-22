@@ -712,7 +712,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         onCustomise: handleCustomise,
       }}
       session={{
-        sessions,
+        sessions: sessions ?? [],
         selectedSessionId: sessionId,
         onSelectSession: onSelectSession ?? (() => {}),
         isNewSessionMode: needsExecutorSelection,

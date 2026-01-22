@@ -88,26 +88,6 @@ export function TaskCard({
       <div className="flex flex-col gap-2">
         <TaskCardHeader
           title={task.title}
-          avatar={
-            // Priority: shared task assignee > local task assignee > local task creator
-            sharedTask
-              ? {
-                  firstName: sharedTask.assignee_first_name ?? undefined,
-                  lastName: sharedTask.assignee_last_name ?? undefined,
-                  username: sharedTask.assignee_username ?? undefined,
-                }
-              : task.assignee
-                ? {
-                    username: task.assignee.username,
-                    imageUrl: task.assignee.avatar_url ?? undefined,
-                  }
-                : task.creator
-                  ? {
-                      username: task.creator.username,
-                      imageUrl: task.creator.avatar_url ?? undefined,
-                    }
-                  : undefined
-          }
           right={
             <>
               {task.has_in_progress_attempt && (

@@ -4,7 +4,22 @@
 
 // If you are an AI, and you absolutely have to edit this file, please confirm with the user first.
 
-export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
+// Multiplayer types (from our branch)
+export type SharedTaskResponse = { task: SharedTask, user: UserData | null, };
+
+export type AssigneesQuery = { project_id: string, };
+
+export type SharedTask = { id: string, organization_id: string, project_id: string, creator_user_id: string | null, assignee_user_id: string | null, deleted_by_user_id: string | null, title: string, description: string | null, status: TaskStatus, deleted_at: string | null, shared_at: string | null, created_at: string, updated_at: string, };
+
+export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
+
+export type User = { id: string, github_id: bigint, username: string, email: string | null, display_name: string | null, avatar_url: string | null, created_at: Date, updated_at: Date, };
+
+export type ProjectCreator = { id: string, username: string, avatar_url: string | null, };
+
+export type ProjectWithCreator = { creator: ProjectCreator | null, id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, creator_user_id: string | null, created_at: Date, updated_at: Date, };
+
+export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, creator_user_id: string | null, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
@@ -40,15 +55,19 @@ export type UpdateTag = { tag_name: string | null, content: string | null, };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
-export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, created_at: string, updated_at: string, };
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, creator_user_id: string | null, assignee_user_id: string | null, created_at: string, updated_at: string, };
 
-export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, created_at: string, updated_at: string, };
+export type TaskUser = { id: string, username: string, avatar_url: string | null, };
+
+export type TaskWithUsers = { creator: TaskUser | null, assignee: TaskUser | null, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, creator_user_id: string | null, assignee_user_id: string | null, created_at: string, updated_at: string, };
+
+export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, creator: TaskUser | null, assignee: TaskUser | null, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, creator_user_id: string | null, assignee_user_id: string | null, created_at: string, updated_at: string, };
 
 export type TaskRelationships = { parent_task: Task | null, current_workspace: Workspace, children: Array<Task>, };
 
-export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, };
+export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, shared_task_id: string | null, };
 
-export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, };
+export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, assignee_user_id: string | null, };
 
 export type DraftFollowUpData = { message: string, executor_profile_id: ExecutorProfileId, };
 
@@ -74,11 +93,17 @@ export type Image = { id: string, file_path: string, original_name: string, mime
 
 export type CreateImage = { file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, };
 
-export type Workspace = { id: string, task_id: string, container_ref: string | null, branch: string, agent_working_dir: string | null, setup_completed_at: string | null, created_at: string, updated_at: string, archived: boolean, pinned: boolean, name: string | null, };
+export type Workspace = { id: string, task_id: string, container_ref: string | null, branch: string, agent_working_dir: string | null, setup_completed_at: string | null, created_at: string, updated_at: string, archived: boolean, pinned: boolean, name: string | null, owner_user_id: string | null, };
 
-export type WorkspaceWithStatus = { is_running: boolean, is_errored: boolean, id: string, task_id: string, container_ref: string | null, branch: string, agent_working_dir: string | null, setup_completed_at: string | null, created_at: string, updated_at: string, archived: boolean, pinned: boolean, name: string | null, };
+export type WorkspaceUser = { id: string, username: string, avatar_url: string | null, };
 
-export type Session = { id: string, workspace_id: string, executor: string | null, created_at: string, updated_at: string, };
+export type WorkspaceWithStatus = { is_running: boolean, is_errored: boolean, owner: WorkspaceUser | null, id: string, task_id: string, container_ref: string | null, branch: string, agent_working_dir: string | null, setup_completed_at: string | null, created_at: string, updated_at: string, archived: boolean, pinned: boolean, name: string | null, owner_user_id: string | null, };
+
+export type Session = { id: string, workspace_id: string, executor: string | null, created_at: string, updated_at: string, initiated_by_user_id: string | null, };
+
+export type SessionUser = { id: string, username: string, avatar_url: string | null, };
+
+export type SessionWithInitiator = { initiated_by: SessionUser | null, id: string, workspace_id: string, executor: string | null, created_at: string, updated_at: string, initiated_by_user_id: string | null, };
 
 export type ExecutionProcess = { id: string, session_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, status: ExecutionProcessStatus, exit_code: bigint | null, 
 /**
