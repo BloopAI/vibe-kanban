@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { PlusIcon, UsersIcon } from '@phosphor-icons/react';
 import type { IssuePriority, ProjectStatus } from 'shared/remote-types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 import { PriorityIcon } from './Kanban';
 import { UserAvatar } from '@/components/tasks/UserAvatar';
 import {
@@ -11,20 +12,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui-new/primitives/Dropdown';
 
-export interface User {
-  id: string;
-  firstName?: string | null;
-  lastName?: string | null;
-  username?: string | null;
-  imageUrl?: string | null;
-}
-
 export interface IssuePropertyRowProps {
   statusId: string;
   priority: IssuePriority;
   assigneeId: string | null;
   statuses: ProjectStatus[];
-  users: User[];
+  users: OrganizationMemberWithProfile[];
   onStatusChange: (statusId: string) => void;
   onPriorityChange: (priority: IssuePriority) => void;
   onAssigneeChange: (userId: string | null) => void;
@@ -57,7 +50,7 @@ export function IssuePropertyRow({
 }: IssuePropertyRowProps) {
   const { t } = useTranslation('common');
   const selectedStatus = statuses.find((s) => s.id === statusId);
-  const selectedAssignee = users.find((u) => u.id === assigneeId);
+  const selectedAssignee = users.find((u) => u.user_id === assigneeId);
 
   return (
     <div className={cn('flex items-center gap-half', className)}>
@@ -124,14 +117,14 @@ export function IssuePropertyRow({
             {selectedAssignee ? (
               <>
                 <UserAvatar
-                  firstName={selectedAssignee.firstName}
-                  lastName={selectedAssignee.lastName}
+                  firstName={selectedAssignee.first_name}
+                  lastName={selectedAssignee.last_name}
                   username={selectedAssignee.username}
-                  imageUrl={selectedAssignee.imageUrl}
+                  imageUrl={selectedAssignee.avatar_url}
                   className="h-4 w-4 text-[8px]"
                 />
                 <span className="truncate max-w-[80px]">
-                  {[selectedAssignee.firstName, selectedAssignee.lastName]
+                  {[selectedAssignee.first_name, selectedAssignee.last_name]
                     .filter(Boolean)
                     .join(' ') ||
                     selectedAssignee.username ||
@@ -150,17 +143,17 @@ export function IssuePropertyRow({
           </DropdownMenuItem>
           {users.map((user) => (
             <DropdownMenuItem
-              key={user.id}
-              onClick={() => onAssigneeChange(user.id)}
+              key={user.user_id}
+              onClick={() => onAssigneeChange(user.user_id)}
             >
               <UserAvatar
-                firstName={user.firstName}
-                lastName={user.lastName}
+                firstName={user.first_name}
+                lastName={user.last_name}
                 username={user.username}
-                imageUrl={user.imageUrl}
+                imageUrl={user.avatar_url}
                 className="h-4 w-4 text-[8px]"
               />
-              {[user.firstName, user.lastName].filter(Boolean).join(' ') ||
+              {[user.first_name, user.last_name].filter(Boolean).join(' ') ||
                 user.username ||
                 'User'}
             </DropdownMenuItem>
