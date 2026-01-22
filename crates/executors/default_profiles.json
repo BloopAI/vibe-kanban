@@ -23,7 +23,7 @@
       },
       "MPM": {
         "CLAUDE_CODE": {
-          "base_command_override": "claude-mpm run",
+          "base_command_override": "claude-mpm run --headless",
           "dangerously_skip_permissions": true
         }
       }

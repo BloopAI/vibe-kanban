@@ -85,3 +85,7 @@ dev_assets
 vibe-kanban-cloud/
 
 .jj
+
+# Claude Code local config
+.claude/
+.claude-mpm/
