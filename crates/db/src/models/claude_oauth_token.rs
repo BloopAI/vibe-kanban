@@ -202,10 +202,7 @@ impl ClaudeOAuthToken {
 
     /// Convert to status for frontend display
     pub fn to_status(&self) -> ClaudeOAuthTokenStatus {
-        let is_expired = self
-            .expires_at
-            .map(|exp| exp < Utc::now())
-            .unwrap_or(false);
+        let is_expired = self.expires_at.map(|exp| exp < Utc::now()).unwrap_or(false);
 
         ClaudeOAuthTokenStatus {
             has_token: true,

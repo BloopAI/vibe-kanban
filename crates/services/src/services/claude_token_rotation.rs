@@ -5,12 +5,16 @@
 
 use std::sync::Arc;
 
-use db::models::claude_oauth_token::{
-    generate_token_hint, ClaudeOAuthToken, ClaudeOAuthTokenError, ClaudeOAuthTokenStatus,
-    UserTokenStatus,
+use db::{
+    DBService,
+    models::{
+        claude_oauth_token::{
+            ClaudeOAuthToken, ClaudeOAuthTokenError, ClaudeOAuthTokenStatus, UserTokenStatus,
+            generate_token_hint,
+        },
+        user::User,
+    },
 };
-use db::models::user::User;
-use db::DBService;
 use thiserror::Error;
 use tokio::sync::Mutex;
 use tracing::{info, warn};

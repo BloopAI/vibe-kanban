@@ -1444,6 +1444,9 @@ async fn ensure_claude_onboarding_complete() -> io::Result<()> {
     )
     .await?;
 
-    tracing::debug!("Ensured Claude onboarding complete at {:?}", claude_json_path);
+    tracing::debug!(
+        "Ensured Claude onboarding complete at {:?}",
+        claude_json_path
+    );
     Ok(())
 }

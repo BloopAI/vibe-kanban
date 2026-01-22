@@ -56,7 +56,10 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    middleware::{get_user_id, load_workspace_middleware, try_get_authenticated_user, user_has_valid_claude_token},
+    middleware::{
+        get_user_id, load_workspace_middleware, try_get_authenticated_user,
+        user_has_valid_claude_token,
+    },
     routes::task_attempts::gh_cli_setup::GhCliSetupError,
 };
 

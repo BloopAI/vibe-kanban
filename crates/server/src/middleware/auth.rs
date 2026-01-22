@@ -61,7 +61,11 @@ pub async fn user_has_valid_claude_token<D: Deployment>(
     {
         Ok(status) => status.has_token && !status.is_expired,
         Err(e) => {
-            tracing::warn!("Failed to check Claude token status for user {}: {}", user.id, e);
+            tracing::warn!(
+                "Failed to check Claude token status for user {}: {}",
+                user.id,
+                e
+            );
             false
         }
     }
