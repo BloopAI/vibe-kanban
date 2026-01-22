@@ -38,8 +38,10 @@ function filterSlashCommands(
 
 export function SlashCommandTypeaheadPlugin({
   agent,
+  repoId,
 }: {
   agent: BaseCodingAgent | null;
+  repoId?: string;
 }) {
   const [editor] = useLexicalComposerContext();
   const portalContainer = usePortalContainer();
@@ -49,6 +51,7 @@ export function SlashCommandTypeaheadPlugin({
 
   const slashCommandsQuery = useSlashCommands(agent, {
     workspaceId: taskAttemptId,
+    repoId,
   });
   const allCommands = useMemo(
     () => slashCommandsQuery.commands ?? [],
