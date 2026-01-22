@@ -668,11 +668,29 @@ RunCleanupScript: { ..., shortcut: 'R C' },
 
 ---
 
-## Phase 5: Keyboard Shortcuts Help Dialog
+## Phase 5: Keyboard Shortcuts Help Dialog ✅ COMPLETED
 
 **Goal:** Implement the `Shift+/` help dialog showing all shortcuts.
 
 **Estimated Scope:** ~200 lines of new code
+
+**Status:** Completed on 2026-01-22
+
+### Implementation Notes
+
+- Created `KeyboardShortcutsDialog.tsx` using portal pattern (like SettingsDialog/WorkspacesGuideDialog)
+- Platform-aware display: Mac uses `⌘`, `⇧`, `↩`; Windows/Linux uses `Ctrl`, `Shift+`, `Enter`
+- Scope indicators: KANBAN-scoped shortcuts show "(in workspace)" indicator in `text-low text-xs`
+- Two-column responsive grid layout for shortcut groups
+- Dialog closes via: Escape key, backdrop click, X button
+- Sequential shortcuts grouped by first key namespace (G, W, V, X, Y, T, R)
+- Footer hint about 500ms timeout for sequences
+- Added `KeyboardShortcutsHandler` component inside `NiceModal.Provider` in `NewDesignScope.tsx`
+
+### Verification Results
+
+- `pnpm run check` - Passed
+- `pnpm run lint` - Passed
 
 ### Files to Create/Modify
 
