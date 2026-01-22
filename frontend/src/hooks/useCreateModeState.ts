@@ -299,7 +299,10 @@ export function useCreateModeState({
         // Mark repos as initialized to prevent overwrite
         hasInitializedRepos.current = true;
       } catch (e) {
-        console.error('[useCreateModeState] Failed to apply spin off repos:', e);
+        console.error(
+          '[useCreateModeState] Failed to apply spin off repos:',
+          e
+        );
       }
     };
 
