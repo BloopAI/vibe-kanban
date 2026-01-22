@@ -318,7 +318,7 @@ export const Actions = {
       const task = await tasksApi.getById(workspace.task_id);
       if (task?.project_id) {
         await projectsApi.stopAllDevServers(task.project_id);
-        ctx.queryClient.invalidateQueries({ queryKey: attemptKeys.all });
+        ctx.queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
       }
     },
   },
