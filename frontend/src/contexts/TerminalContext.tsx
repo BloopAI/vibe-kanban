@@ -422,7 +422,9 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
 
         const send = (data: string) => {
           if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'input', data: encodeBase64(data) }));
+            ws.send(
+              JSON.stringify({ type: 'input', data: encodeBase64(data) })
+            );
           }
         };
 
