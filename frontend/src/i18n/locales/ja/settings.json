@@ -14,7 +14,9 @@
         "mcp": "MCPサーバー",
         "mcpDesc": "モデルコンテキストプロトコルサーバー",
         "organizations": "Organization Settings",
-        "organizationsDesc": "Manage organization members and permissions"
+        "organizationsDesc": "Manage organization members and permissions",
+        "claude-token": "Claude トークン",
+        "claude-tokenDesc": "Claude Code OAuth トークンを管理"
       }
     },
     "general": {
@@ -394,6 +396,61 @@
         "unsavedChanges": "未保存の変更があります",
         "discard": "破棄",
         "confirmSwitch": "未保存の変更があります。本当にリポジトリを切り替えますか？変更は失われます。"
+      }
+    },
+    "claudeToken": {
+      "title": "Claude Code トークン",
+      "description": "公平な使用ローテーションのため、Claude Code Max サブスクリプションを共有トークンプールに貢献してください。",
+      "yourToken": {
+        "title": "あなたのトークン",
+        "configured": "トークン設定済み",
+        "configuredDescription": "あなたのトークンはアクティブで、プールに貢献しています。",
+        "missing": "トークン未設定",
+        "missingDescription": "Claude Code OAuth トークンを追加してプールに貢献してください。",
+        "expires": "有効期限",
+        "lastUsed": "最終使用",
+        "never": "なし"
+      },
+      "form": {
+        "label": "OAuth トークン",
+        "placeholder": "OAuth トークンをここに貼り付けてください...",
+        "helper": "ターミナルで 'claude setup-token' を実行してトークンを生成し、ここに貼り付けてください。",
+        "saveButton": "トークンを保存",
+        "saving": "保存中...",
+        "deleteButton": "トークンを削除",
+        "deleting": "削除中..."
+      },
+      "instructions": {
+        "title": "トークンの取得方法",
+        "step1": "マシンでターミナルを開く",
+        "step2": "コマンドを実行: claude setup-token",
+        "step3": "プロンプトに従って Claude Max アカウントで認証",
+        "step4": "生成されたトークンをコピーして上に貼り付け",
+        "note": "このトークンにより、Vibe Kanban があなたの Claude Code サブスクリプションを使用できます。トークンはすべての貢献者間で公平にローテーションされます。"
+      },
+      "teamPool": {
+        "title": "チームトークンプール",
+        "description": "公平なローテーションのためにチームメンバーが貢献したすべてのトークン。",
+        "noTokens": "プールにはまだトークンがありません。最初の貢献者になってください！",
+        "columns": {
+          "user": "ユーザー",
+          "status": "ステータス",
+          "lastUsed": "最終使用"
+        },
+        "status": {
+          "active": "アクティブ",
+          "expired": "期限切れ",
+          "missing": "未設定"
+        }
+      },
+      "errors": {
+        "loadFailed": "トークン状態の読み込みに失敗しました",
+        "saveFailed": "トークンの保存に失敗しました",
+        "deleteFailed": "トークンの削除に失敗しました"
+      },
+      "success": {
+        "saved": "トークンが正常に保存されました",
+        "deleted": "トークンが正常に削除されました"
       }
     }
   },

@@ -14,7 +14,9 @@
         "mcp": "MCP 伺服器",
         "mcpDesc": "模型上下文協議伺服器",
         "organizations": "組織設定",
-        "organizationsDesc": "管理組織成員與權限"
+        "organizationsDesc": "管理組織成員與權限",
+        "claude-token": "Claude 權杖",
+        "claude-tokenDesc": "管理您的 Claude Code OAuth 權杖"
       }
     },
     "general": {
@@ -394,6 +396,61 @@
         "unsavedChanges": "您有未儲存的變更",
         "discard": "放棄",
         "confirmSwitch": "您有未儲存的變更。確定要切換儲存庫嗎？您的變更將會遺失。"
+      }
+    },
+    "claudeToken": {
+      "title": "Claude Code 權杖",
+      "description": "將您的 Claude Code Max 訂閱貢獻到共享權杖池，實現公平使用輪換。",
+      "yourToken": {
+        "title": "您的權杖",
+        "configured": "權杖已設定",
+        "configuredDescription": "您的權杖處於活動狀態並正在為池做出貢獻。",
+        "missing": "未設定權杖",
+        "missingDescription": "新增您的 Claude Code OAuth 權杖以貢獻到池中。",
+        "expires": "過期時間",
+        "lastUsed": "最後使用",
+        "never": "從未"
+      },
+      "form": {
+        "label": "OAuth 權杖",
+        "placeholder": "在此貼上您的 OAuth 權杖...",
+        "helper": "在終端機中執行 'claude setup-token' 產生權杖，然後貼到這裡。",
+        "saveButton": "儲存權杖",
+        "saving": "儲存中...",
+        "deleteButton": "刪除權杖",
+        "deleting": "刪除中..."
+      },
+      "instructions": {
+        "title": "如何取得權杖",
+        "step1": "在您的電腦上開啟終端機",
+        "step2": "執行命令：claude setup-token",
+        "step3": "按照提示使用您的 Claude Max 帳戶進行身份驗證",
+        "step4": "複製產生的權杖並貼到上方",
+        "note": "此權杖允許 Vibe Kanban 使用您的 Claude Code 訂閱。權杖在所有貢獻者之間公平輪換。"
+      },
+      "teamPool": {
+        "title": "團隊權杖池",
+        "description": "團隊成員貢獻的所有權杖，用於公平輪換。",
+        "noTokens": "池中還沒有權杖。成為第一個貢獻者！",
+        "columns": {
+          "user": "使用者",
+          "status": "狀態",
+          "lastUsed": "最後使用"
+        },
+        "status": {
+          "active": "活動",
+          "expired": "已過期",
+          "missing": "缺失"
+        }
+      },
+      "errors": {
+        "loadFailed": "載入權杖狀態失敗",
+        "saveFailed": "儲存權杖失敗",
+        "deleteFailed": "刪除權杖失敗"
+      },
+      "success": {
+        "saved": "權杖儲存成功",
+        "deleted": "權杖刪除成功"
       }
     }
   },
