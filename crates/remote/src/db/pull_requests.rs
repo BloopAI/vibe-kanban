@@ -95,7 +95,6 @@ impl PullRequestRepository {
     #[allow(clippy::too_many_arguments)]
     pub async fn create(
         pool: &PgPool,
-        id: Option<Uuid>,
         url: String,
         number: i32,
         status: PullRequestStatus,
@@ -105,7 +104,7 @@ impl PullRequestRepository {
         issue_id: Uuid,
         workspace_id: Option<Uuid>,
     ) -> Result<PullRequest, PullRequestError> {
-        let id = id.unwrap_or_else(Uuid::new_v4);
+        let id = Uuid::new_v4();
         let record = sqlx::query_as!(
             PullRequest,
             r#"

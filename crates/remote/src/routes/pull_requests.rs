@@ -22,7 +22,6 @@ use crate::{
 
 #[derive(Debug, Deserialize)]
 pub struct CreatePullRequestRequest {
-    pub id: Option<Uuid>,
     pub url: String,
     pub number: i32,
     pub status: PullRequestStatus,
@@ -62,7 +61,6 @@ async fn create_pull_request(
 
     let pr = PullRequestRepository::create(
         state.pool(),
-        payload.id,
         payload.url,
         payload.number,
         payload.status,
