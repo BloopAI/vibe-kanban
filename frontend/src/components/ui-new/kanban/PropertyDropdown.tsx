@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { UsersIcon } from '@phosphor-icons/react';
+import { UsersIcon, CaretDownIcon, type Icon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import type { IssuePriority, ProjectStatus } from 'shared/remote-types';
 import { MemberRole, type OrganizationMemberWithProfile } from 'shared/types';
@@ -23,31 +23,24 @@ export interface PropertyDropdownOption<T extends string = string> {
   value: T;
   label: string;
   renderOption?: () => ReactNode;
-  renderTrigger?: () => ReactNode;
 }
 
 export interface PropertyDropdownProps<T extends string = string> {
   value: T;
   options: PropertyDropdownOption<T>[];
   onChange: (value: T) => void;
-  placeholder?: string;
-  renderTrigger?: (
-    selectedOption: PropertyDropdownOption<T> | undefined
-  ) => ReactNode;
+  icon?: Icon;
+  label?: string;
   disabled?: boolean;
-  triggerClassName?: string;
-  align?: 'start' | 'center' | 'end';
 }
 
 export function PropertyDropdown<T extends string = string>({
   value,
   options,
   onChange,
-  placeholder = 'Select...',
-  renderTrigger,
+  icon: IconComponent,
+  label,
   disabled,
-  triggerClassName,
-  align = 'start',
 }: PropertyDropdownProps<T>) {
   const selectedOption = options.find((opt) => opt.value === value);
 
@@ -59,20 +52,22 @@ export function PropertyDropdown<T extends string = string>({
           className={cn(
             'flex items-center gap-half px-base py-half bg-panel rounded-sm',
             'text-sm text-normal hover:bg-secondary transition-colors',
-            'disabled:opacity-50 disabled:cursor-not-allowed',
-            triggerClassName
+            'disabled:opacity-50 disabled:cursor-not-allowed'
           )}
         >
-          {renderTrigger
-            ? renderTrigger(selectedOption)
-            : (selectedOption?.renderTrigger?.() ?? (
-                <span className="truncate">
-                  {selectedOption?.label ?? placeholder}
-                </span>
-              ))}
+          {IconComponent ? (
+            <>
+              <IconComponent className="size-icon-xs" weight="bold" />
+              {label && <span>{label}:</span>}
+              <span>{selectedOption?.label}</span>
+            </>
+          ) : (
+            (selectedOption?.renderOption?.() ?? selectedOption?.label)
+          )}
+          <CaretDownIcon className="size-icon-2xs text-low" weight="bold" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align={align}>
+      <DropdownMenuContent align="start">
         {options.map((option) => (
           <DropdownMenuItem
             key={option.value}
@@ -103,8 +98,6 @@ export function StatusDropdown({
   onChange,
   disabled,
 }: StatusDropdownProps) {
-  const selectedStatus = statuses.find((s) => s.id === statusId);
-
   const options = statuses.map((status) => ({
     value: status.id,
     label: status.name,
@@ -121,15 +114,7 @@ export function StatusDropdown({
       value={statusId}
       options={options}
       onChange={onChange}
-      placeholder="Status"
       disabled={disabled}
-      triggerClassName="gap-base"
-      renderTrigger={() => (
-        <>
-          {selectedStatus && <StatusDot color={selectedStatus.color} />}
-          <span className="truncate">{selectedStatus?.name ?? 'Status'}</span>
-        </>
-      )}
     />
   );
 }
@@ -175,12 +160,6 @@ export function PriorityDropdown({
       options={options}
       onChange={onChange}
       disabled={disabled}
-      renderTrigger={() => (
-        <>
-          <PriorityIcon priority={priority} />
-          <span className="truncate">{priorityLabels[priority]}</span>
-        </>
-      )}
     />
   );
 }
@@ -387,3 +366,5 @@ export function SearchableAssigneeDropdown({
     />
   );
 }
+
+// =============================================================================

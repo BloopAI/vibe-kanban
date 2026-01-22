@@ -5,9 +5,14 @@ import {
   PROJECT_ENTITY,
   PROJECT_STATUS_ENTITY,
   ISSUE_ENTITY,
+  ISSUE_ASSIGNEE_ENTITY,
+  ISSUE_TAG_ENTITY,
+  TAG_ENTITY,
 } from 'shared/remote-types';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
+import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
+import { useKanbanFilters, PRIORITY_ORDER } from '@/hooks/useKanbanFilters';
 import { PlusIcon } from '@phosphor-icons/react';
 import {
   KanbanProvider,
@@ -18,6 +23,7 @@ import {
   KanbanCardContent,
   type DropResult,
 } from '@/components/ui-new/kanban/Kanban';
+import { KanbanFilterBar } from '@/components/ui-new/kanban/KanbanFilterBar';
 
 function LoadingState() {
   const { t } = useTranslation('common');
@@ -31,9 +37,11 @@ function LoadingState() {
 function KanbanBoardContent({
   projectId,
   projectName,
+  organizationId,
 }: {
   projectId: string;
   projectName: string;
+  organizationId: string;
 }) {
   const { t } = useTranslation('common');
   const { data: statuses, isLoading: statusesLoading } = useEntity(
@@ -48,12 +56,35 @@ function KanbanBoardContent({
     project_id: projectId,
   });
 
+  // Fetch additional data for filtering
+  const { data: issueAssignees, isLoading: assigneesLoading } = useEntity(
+    ISSUE_ASSIGNEE_ENTITY,
+    { project_id: projectId }
+  );
+  const { data: issueTags, isLoading: issueTagsLoading } = useEntity(
+    ISSUE_TAG_ENTITY,
+    { project_id: projectId }
+  );
+  const { data: tags, isLoading: tagsLoading } = useEntity(TAG_ENTITY, {
+    project_id: projectId,
+  });
+  const { data: orgMembers = [], isLoading: membersLoading } =
+    useOrganizationMembers(organizationId);
+
+  // Apply filters
+  const { filteredIssues, hasActiveFilters } = useKanbanFilters({
+    issues,
+    issueAssignees,
+    issueTags,
+  });
+
   const openKanbanIssuePanel = useUiPreferencesStore(
     (s) => s.openKanbanIssuePanel
   );
   const selectedKanbanIssueId = useUiPreferencesStore(
     (s) => s.selectedKanbanIssueId
   );
+  const kanbanFilters = useUiPreferencesStore((s) => s.kanbanFilters);
 
   const sortedStatuses = useMemo(
     () => [...statuses].sort((a, b) => a.sort_order - b.sort_order),
@@ -63,17 +94,49 @@ function KanbanBoardContent({
   // Track items as arrays of IDs grouped by status
   const [items, setItems] = useState<Record<string, string[]>>({});
 
-  // Sync items from issues when they change
+  // Sync items from filtered issues when they change
   useEffect(() => {
+    const { sortField, sortDirection } = kanbanFilters;
     const grouped: Record<string, string[]> = {};
+
     for (const status of statuses) {
-      grouped[status.id] = issues
-        .filter((i) => i.status_id === status.id)
-        .sort((a, b) => a.sort_order - b.sort_order)
-        .map((i) => i.id);
+      // Filter issues for this status
+      let statusIssues = filteredIssues.filter(
+        (i) => i.status_id === status.id
+      );
+
+      // Sort within column based on user preference
+      statusIssues = [...statusIssues].sort((a, b) => {
+        let comparison = 0;
+        switch (sortField) {
+          case 'priority':
+            comparison =
+              PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+            break;
+          case 'created_at':
+            comparison =
+              new Date(a.created_at).getTime() -
+              new Date(b.created_at).getTime();
+            break;
+          case 'updated_at':
+            comparison =
+              new Date(a.updated_at).getTime() -
+              new Date(b.updated_at).getTime();
+            break;
+          case 'title':
+            comparison = a.title.localeCompare(b.title);
+            break;
+          case 'sort_order':
+          default:
+            comparison = a.sort_order - b.sort_order;
+        }
+        return sortDirection === 'desc' ? -comparison : comparison;
+      });
+
+      grouped[status.id] = statusIssues.map((i) => i.id);
     }
     setItems(grouped);
-  }, [issues, statuses]);
+  }, [filteredIssues, statuses, kanbanFilters]);
 
   // Create a lookup map for issue data
   const issueMap = useMemo(() => {
@@ -97,6 +160,14 @@ function KanbanBoardContent({
         source.droppableId === destination.droppableId &&
         source.index === destination.index
       ) {
+        return;
+      }
+
+      const isManualSort = kanbanFilters.sortField === 'sort_order';
+
+      // Block within-column reordering when not in manual sort mode
+      // (cross-column moves are always allowed for status changes)
+      if (source.droppableId === destination.droppableId && !isManualSort) {
         return;
       }
 
@@ -147,7 +218,7 @@ function KanbanBoardContent({
         sort_order: newSortOrder,
       });
     },
-    [updateIssue, issues]
+    [updateIssue, issues, kanbanFilters.sortField]
   );
 
   const handleCardClick = useCallback(
@@ -161,7 +232,13 @@ function KanbanBoardContent({
     openKanbanIssuePanel(null, true);
   }, [openKanbanIssuePanel]);
 
-  const isLoading = statusesLoading || issuesLoading;
+  const isLoading =
+    statusesLoading ||
+    issuesLoading ||
+    assigneesLoading ||
+    issueTagsLoading ||
+    tagsLoading ||
+    membersLoading;
 
   if (isLoading) {
     return <LoadingState />;
@@ -176,10 +253,15 @@ function KanbanBoardContent({
   }
 
   return (
-    <div className="flex flex-col h-full space-y-double">
-      <h2 className="px-double pt-double text-2xl font-medium">
-        {projectName}
-      </h2>
+    <div className="flex flex-col h-full space-y-base">
+      <div className="px-double pt-double space-y-base">
+        <h2 className="text-2xl font-medium">{projectName}</h2>
+        <KanbanFilterBar
+          tags={tags}
+          users={orgMembers}
+          hasActiveFilters={hasActiveFilters}
+        />
+      </div>
       <div className="flex-1 overflow-x-auto px-double">
         <KanbanProvider onDragEnd={handleDragEnd}>
           {sortedStatuses.map((status) => {
@@ -264,6 +346,7 @@ function KanbanWithProjects({ organizationId }: { organizationId: string }) {
     <KanbanBoardContent
       projectId={firstProject.id}
       projectName={firstProject.name}
+      organizationId={organizationId}
     />
   );
 }
