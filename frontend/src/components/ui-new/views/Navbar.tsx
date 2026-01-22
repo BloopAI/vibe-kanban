@@ -27,12 +27,14 @@ interface NavbarIconButtonProps
   icon: Icon;
   isActive?: boolean;
   tooltip?: string;
+  shortcut?: string;
 }
 
 function NavbarIconButton({
   icon: IconComponent,
   isActive = false,
   tooltip,
+  shortcut,
   className,
   ...props
 }: NavbarIconButtonProps) {
@@ -54,7 +56,13 @@ function NavbarIconButton({
     </button>
   );
 
-  return tooltip ? <Tooltip content={tooltip}>{button}</Tooltip> : button;
+  return tooltip ? (
+    <Tooltip content={tooltip} shortcut={shortcut}>
+      {button}
+    </Tooltip>
+  ) : (
+    button
+  );
 }
 
 export interface NavbarProps {
@@ -105,6 +113,7 @@ export function Navbar({
         onClick={() => onExecuteAction(action)}
         aria-label={tooltip}
         tooltip={tooltip}
+        shortcut={action.shortcut}
         disabled={isDisabled}
         className={isDisabled ? 'opacity-40 cursor-not-allowed' : ''}
       />

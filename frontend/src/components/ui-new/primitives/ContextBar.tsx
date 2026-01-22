@@ -32,6 +32,7 @@ interface ContextBarButtonProps
   label: string;
   iconClassName?: string;
   tooltip?: string;
+  shortcut?: string;
 }
 
 function ContextBarButton({
@@ -40,6 +41,7 @@ function ContextBarButton({
   className,
   iconClassName,
   tooltip,
+  shortcut,
   ...props
 }: ContextBarButtonProps) {
   const button = (
@@ -61,7 +63,7 @@ function ContextBarButton({
   );
 
   return tooltip ? (
-    <Tooltip content={tooltip} side="left">
+    <Tooltip content={tooltip} shortcut={shortcut} side="left">
       {button}
     </Tooltip>
   ) : (
@@ -204,6 +206,7 @@ export function ContextBar({
         icon={resolvedIcon}
         label={tooltip}
         tooltip={tooltip}
+        shortcut={action.shortcut}
         onClick={() => onExecuteAction(action)}
         disabled={!enabled}
         iconClassName={iconClassName}
