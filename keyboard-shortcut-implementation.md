@@ -443,11 +443,27 @@ import { SequentialShortcutsProvider } from '@/contexts/SequentialShortcutsConte
 
 ---
 
-## Phase 3: Visual Sequence Indicator
+## Phase 3: Visual Sequence Indicator ✅ COMPLETED
 
 **Goal:** Show visual feedback when a sequential shortcut is in progress.
 
 **Estimated Scope:** ~60 lines of new code
+
+**Status:** Completed on 2026-01-22
+
+### Implementation Notes
+
+- Added shake keyframes and animation to `frontend/tailwind.new.config.js`
+- Created `KeySequenceIndicator.tsx` component that consumes `useSequentialShortcuts()` context
+- Component positioned at bottom-right (`bottom-4 right-4`) with z-index 10001 (above tooltips)
+- Entry animation: `animate-in fade-in-0 zoom-in-95 duration-150`
+- Error state: red border with shake animation (300ms matches invalid timeout)
+- Shows "..." after keys when waiting for more input
+
+### Verification Results
+
+- `pnpm run check` - Passed
+- `pnpm run lint` - Passed
 
 ### Files to Create/Modify
 

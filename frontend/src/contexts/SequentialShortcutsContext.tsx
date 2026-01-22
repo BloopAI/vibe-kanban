@@ -23,6 +23,8 @@ import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 interface SequentialShortcutsContextValue {
   /** Current key buffer (e.g., ['g'] while waiting for next key) */
   buffer: string[];
+  /** Buffer that timed out (preserved during invalid state for display) */
+  invalidBuffer: string[];
   /** Whether a sequence is currently being typed */
   isSequenceActive: boolean;
   /** Whether the last sequence was invalid (timed out without match) */
@@ -49,6 +51,7 @@ export function SequentialShortcutsProvider({
   enabled = true,
 }: SequentialShortcutsProviderProps) {
   const [buffer, setBuffer] = useState<string[]>([]);
+  const [invalidBuffer, setInvalidBuffer] = useState<string[]>([]);
   const [isInvalidSequence, setIsInvalidSequence] = useState(false);
   const { executeAction } = useActions();
   const { workspaceId, repos } = useWorkspaceContext();
@@ -56,7 +59,10 @@ export function SequentialShortcutsProvider({
   // Clear invalid state after brief display (300ms flash)
   useEffect(() => {
     if (isInvalidSequence) {
-      const timer = setTimeout(() => setIsInvalidSequence(false), 300);
+      const timer = setTimeout(() => {
+        setIsInvalidSequence(false);
+        setInvalidBuffer([]);
+      }, 300);
       return () => clearTimeout(timer);
     }
   }, [isInvalidSequence]);
@@ -122,7 +128,9 @@ export function SequentialShortcutsProvider({
   }, []);
 
   // Handle invalid sequences (no match found when buffer times out)
-  const handleTimeout = useCallback(() => {
+  // Capture the current buffer before it gets cleared
+  const handleTimeout = useCallback((timedOutBuffer: string[]) => {
+    setInvalidBuffer(timedOutBuffer);
     setIsInvalidSequence(true);
   }, []);
 
@@ -140,6 +148,7 @@ export function SequentialShortcutsProvider({
     <SequentialShortcutsContext.Provider
       value={{
         buffer,
+        invalidBuffer,
         isSequenceActive: buffer.length > 0,
         isInvalidSequence,
         clearBuffer,
