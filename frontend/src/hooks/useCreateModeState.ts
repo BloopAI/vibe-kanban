@@ -205,7 +205,10 @@ export function useCreateModeState({
         },
         {} as Record<string, string>
       );
-      console.log('[useCreateModeState] initialRepos effect SETTING branches:', branches);
+      console.log(
+        '[useCreateModeState] initialRepos effect SETTING branches:',
+        branches
+      );
       setRepos(initialRepos);
       setTargetBranches(branches);
     }
@@ -298,7 +301,10 @@ export function useCreateModeState({
       },
       {} as Record<string, string>
     );
-    console.log('[useCreateModeState] spinOff effect SETTING branches:', branches);
+    console.log(
+      '[useCreateModeState] spinOff effect SETTING branches:',
+      branches
+    );
     setTargetBranches(branches);
 
     // Mark repos as initialized to prevent overwrite by initialRepos effect
