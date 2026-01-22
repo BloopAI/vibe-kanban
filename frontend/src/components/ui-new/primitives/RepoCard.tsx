@@ -87,13 +87,13 @@ export function RepoCard({
   const [selectedAction, setSelectedAction] = useRepoAction(repoId);
 
   // Hide "Open pull request" option when PR is already open
-  // Hide "merge" option when target branch is remote (must use PR instead)
+  // Hide "merge" option when PR is already open or target branch is remote
   const hasPrOpen = prStatus === 'open';
   const availableActionOptions = useMemo(
     () =>
       repoActionOptions.filter((opt) => {
         if (opt.value === 'pull-request' && hasPrOpen) return false;
-        if (opt.value === 'merge' && isTargetRemote) return false;
+        if (opt.value === 'merge' && (hasPrOpen || isTargetRemote)) return false;
         return true;
       }),
     [hasPrOpen, isTargetRemote]
