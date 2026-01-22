@@ -8,6 +8,12 @@ use uuid::Uuid;
 use super::{get_txid, project_statuses::ProjectStatusRepository, tags::TagRepository};
 use crate::mutation_types::{DeleteResponse, MutationResponse};
 
+/// Default color for the initial project created with personal organizations
+pub const INITIAL_PROJECT_COLOR: &str = "#3b82f6"; // Blue - matches "To do" status
+
+/// Default name for the initial project
+pub const INITIAL_PROJECT_NAME: &str = "Initial Project";
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct Project {

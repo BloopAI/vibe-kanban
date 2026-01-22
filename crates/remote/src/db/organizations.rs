@@ -1,4 +1,4 @@
-use sqlx::{PgPool, query_as};
+use sqlx::{Executor, PgPool, Postgres, query_as};
 pub use utils::api::organizations::{MemberRole, Organization, OrganizationWithRole};
 use uuid::Uuid;
 
@@ -8,6 +8,9 @@ use super::{
         add_member, assert_admin as check_admin, assert_membership as check_membership,
         check_user_role as get_user_role,
     },
+    project_statuses::ProjectStatusRepository,
+    projects::{ProjectRepository, INITIAL_PROJECT_COLOR, INITIAL_PROJECT_NAME},
+    tags::TagRepository,
 };
 
 pub struct OrganizationRepository<'a> {
@@ -76,13 +79,50 @@ impl<'a> OrganizationRepository<'a> {
         let slug = personal_org_slug(user_id);
 
         // Try to find existing personal org by slug
-        let org = find_organization_by_slug(self.pool, &slug).await?;
+        let existing_org = find_organization_by_slug(self.pool, &slug).await?;
 
-        let org = match org {
+        let org = match existing_org {
             Some(org) => org,
             None => {
-                // Create new personal org (DB will generate random UUID)
-                create_personal_org(self.pool, &name, &slug).await?
+                // Create new personal org WITH initial project in a transaction
+                let mut tx = self.pool.begin().await?;
+
+                let org = create_personal_org_tx(&mut *tx, &name, &slug).await?;
+
+                // Create initial project
+                let project = ProjectRepository::create(
+                    &mut *tx,
+                    None,
+                    org.id,
+                    INITIAL_PROJECT_NAME.to_string(),
+                    INITIAL_PROJECT_COLOR.to_string(),
+                )
+                .await
+                .map_err(|e| {
+                    IdentityError::Database(sqlx::Error::Protocol(format!(
+                        "Failed to create initial project: {e}"
+                    )))
+                })?;
+
+                // Create default tags and statuses
+                TagRepository::create_default_tags(&mut *tx, project.id)
+                    .await
+                    .map_err(|e| {
+                        IdentityError::Database(sqlx::Error::Protocol(format!(
+                            "Failed to create default tags: {e}"
+                        )))
+                    })?;
+
+                ProjectStatusRepository::create_default_statuses(&mut *tx, project.id)
+                    .await
+                    .map_err(|e| {
+                        IdentityError::Database(sqlx::Error::Protocol(format!(
+                            "Failed to create default statuses: {e}"
+                        )))
+                    })?;
+
+                tx.commit().await?;
+                org
             }
         };
 
@@ -291,11 +331,14 @@ async fn find_organization_by_slug(
     .await
 }
 
-async fn create_personal_org(
-    pool: &PgPool,
+async fn create_personal_org_tx<'e, E>(
+    executor: E,
     name: &str,
     slug: &str,
-) -> Result<Organization, sqlx::Error> {
+) -> Result<Organization, sqlx::Error>
+where
+    E: Executor<'e, Database = Postgres>,
+{
     let issue_prefix = derive_issue_prefix(name);
     query_as!(
         Organization,
@@ -315,7 +358,7 @@ async fn create_personal_org(
         slug,
         issue_prefix
     )
-    .fetch_one(pool)
+    .fetch_one(executor)
     .await
 }
 
