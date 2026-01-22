@@ -24,6 +24,7 @@ use crate::{
         pull_requests::PullRequest,
         tags::Tag,
         types::{IssuePriority, IssueRelationshipType},
+        users::OrganizationUser,
         workspaces::Workspace,
     },
     entity::EntityExport,
@@ -67,6 +68,17 @@ crate::define_entity!(
         where_clause: r#""organization_id" = $1"#,
         params: ["organization_id"],
         url: "/shape/organization_members",
+    },
+);
+
+// OrganizationUser: shape-only (no mutations) - users in an organization
+crate::define_entity!(
+    OrganizationUser,
+    table: "users",
+    shape: {
+        where_clause: r#""id" IN (SELECT user_id FROM organization_member_metadata WHERE "organization_id" = $1)"#,
+        params: ["organization_id"],
+        url: "/shape/organization_users",
     },
 );
 
@@ -220,6 +232,7 @@ pub fn all_entities() -> Vec<&'static dyn EntityExport> {
         &PROJECT_ENTITY,
         &NOTIFICATION_ENTITY,
         &ORGANIZATION_MEMBER_ENTITY,
+        &ORGANIZATION_USER_ENTITY,
         // Project-scoped
         &TAG_ENTITY,
         &PROJECT_STATUS_ENTITY,
@@ -244,6 +257,7 @@ pub fn all_shapes() -> Vec<&'static dyn crate::shapes::ShapeExport> {
         &PROJECT_SHAPE,
         &NOTIFICATION_SHAPE,
         &ORGANIZATION_MEMBER_SHAPE,
+        &ORGANIZATION_USER_SHAPE,
         &TAG_SHAPE,
         &PROJECT_STATUS_SHAPE,
         &ISSUE_SHAPE,

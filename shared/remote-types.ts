@@ -42,6 +42,8 @@ export type PullRequest = { id: string, url: string, number: number, status: Pul
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
+export type OrganizationUser = { id: string, first_name: string | null, last_name: string | null, username: string | null, created_at: string, updated_at: string, };
+
 export enum MemberRole { ADMIN = "ADMIN", MEMBER = "MEMBER" }
 
 export type OrganizationMember = { organization_id: string, user_id: string, role: MemberRole, joined_at: string, last_seen_at: string | null, };
@@ -181,6 +183,12 @@ export const ORGANIZATION_MEMBER_METADATA_SHAPE = defineShape<OrganizationMember
   '/v1/shape/organization_members'
 );
 
+export const USERS_SHAPE = defineShape<OrganizationUser>(
+  'users',
+  ['organization_id'] as const,
+  '/v1/shape/organization_users'
+);
+
 export const TAGS_SHAPE = defineShape<Tag>(
   'tags',
   ['project_id'] as const,
@@ -293,6 +301,15 @@ export const ORGANIZATION_MEMBER_ENTITY: EntityDefinition<OrganizationMember> = 
   mutationScope: null,
   shapeScope: null,
   shape: ORGANIZATION_MEMBER_METADATA_SHAPE,
+  mutations: null,
+};
+
+export const ORGANIZATION_USER_ENTITY: EntityDefinition<OrganizationUser> = {
+  name: 'OrganizationUser',
+  table: 'users',
+  mutationScope: null,
+  shapeScope: null,
+  shape: USERS_SHAPE,
   mutations: null,
 };
 

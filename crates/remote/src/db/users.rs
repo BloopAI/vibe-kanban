@@ -26,6 +26,19 @@ pub struct UserData {
     pub username: Option<String>,
 }
 
+/// User data for organization-scoped shape streaming.
+/// Excludes email for security.
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
+#[ts(export)]
+pub struct OrganizationUser {
+    pub id: Uuid,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub username: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Clone)]
 pub struct UpsertUser<'a> {
     pub id: Uuid,
