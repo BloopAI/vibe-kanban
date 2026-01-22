@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use anyhow;
 use axum::{
@@ -13,17 +13,31 @@ use axum::{
     routing::{delete, get, post, put},
 };
 use db::models::{
+    execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     image::TaskImage,
     repo::{Repo, RepoError},
-    task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
+    session::{CreateSession, Session},
+    task::{CreateTask, Task, TaskType, TaskWithAttemptStatus, UpdateTask},
     workspace::{CreateWorkspace, Workspace},
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
 use deployment::Deployment;
-use executors::profile::ExecutorProfileId;
+use executors::{
+    actions::{
+        ExecutorAction, ExecutorActionType,
+        coding_agent_follow_up::CodingAgentFollowUpRequest,
+        coding_agent_initial::CodingAgentInitialRequest,
+    },
+    executors::BaseCodingAgent,
+    profile::ExecutorProfileId,
+};
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
-use services::services::{container::ContainerService, workspace_manager::WorkspaceManager};
+use services::services::{
+    container::ContainerService,
+    ralph::{RalphError, RalphService, RalphStory, StoryCommit},
+    workspace_manager::WorkspaceManager,
+};
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -210,6 +224,7 @@ pub async fn create_task_and_start(
         .map(|r| CreateWorkspaceRepo {
             repo_id: r.repo_id,
             target_branch: r.target_branch.clone(),
+            start_from_ref: None,
         })
         .collect();
     WorkspaceRepo::create_many(&deployment.db().pool, workspace.id, &workspace_repos).await?;
@@ -389,10 +404,369 @@ pub async fn delete_task(
     Ok((StatusCode::ACCEPTED, ResponseJson(ApiResponse::success(()))))
 }
 
+/// Response for Ralph status endpoint
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct RalphStatusResponse {
+    pub total_stories: usize,
+    pub completed_count: usize,
+    pub stories: Vec<RalphStory>,
+    pub current_story: Option<RalphStory>,
+    /// Index of the current story (first with passes: false), if any
+    pub current_story_index: Option<usize>,
+    pub has_in_progress: bool,
+}
+
+/// Get Ralph status for a task
+/// Returns 404 if task is not Ralph type or has no workspace
+pub async fn get_ralph_status(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<RalphStatusResponse>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    // Check if task is Ralph type
+    if task.task_type != TaskType::Ralph {
+        return Err(ApiError::BadRequest(format!(
+            "Task {} is not a Ralph task",
+            task.id
+        )));
+    }
+
+    // Get the first workspace for this task
+    let workspaces = Workspace::fetch_all(pool, Some(task.id)).await?;
+    let workspace = workspaces.first().ok_or_else(|| {
+        ApiError::BadRequest(format!("No workspace found for task {}", task.id))
+    })?;
+
+    // Get the container ref (workspace directory)
+    let workspace_dir = workspace.container_ref.as_ref().ok_or_else(|| {
+        ApiError::BadRequest("Workspace has no container reference".to_string())
+    })?;
+
+    // Get the first repo in the workspace
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let repo = repos.first().ok_or_else(|| {
+        ApiError::BadRequest("No repos found for workspace".to_string())
+    })?;
+
+    // Build repo path
+    let repo_path = PathBuf::from(workspace_dir).join(&repo.name);
+
+    // Get Ralph status from prd.json in .ralph/
+    let response = match RalphService::get_status_from_repo(&repo_path) {
+        Ok(status) => {
+            // Find the index of the current story (first with passes: false)
+            let current_story_index = status.stories.iter().position(|s| !s.passes);
+            RalphStatusResponse {
+                total_stories: status.total_stories,
+                completed_count: status.completed_count,
+                stories: status.stories,
+                current_story: status.current_story,
+                current_story_index,
+                has_in_progress: status.has_in_progress,
+            }
+        }
+        Err(RalphError::PrdNotFound) => {
+            // Return empty status if prd.json doesn't exist yet
+            RalphStatusResponse {
+                total_stories: 0,
+                completed_count: 0,
+                stories: vec![],
+                current_story: None,
+                current_story_index: None,
+                has_in_progress: false,
+            }
+        }
+        Err(e) => {
+            return Err(ApiError::BadRequest(format!("Failed to read Ralph status: {}", e)));
+        }
+    };
+
+    Ok(ResponseJson(ApiResponse::success(response)))
+}
+
+/// Response for Ralph continue endpoint
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct RalphContinueResponse {
+    pub started: bool,
+    pub story_id: Option<String>,
+}
+
+/// Continue Ralph execution - starts the next story
+/// Returns error if task is not Ralph type, has no workspace, execution is running, or all stories complete
+pub async fn continue_ralph_execution(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<RalphContinueResponse>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    // Check if task is Ralph type
+    if task.task_type != TaskType::Ralph {
+        return Err(ApiError::BadRequest(format!(
+            "Task {} is not a Ralph task",
+            task.id
+        )));
+    }
+
+    // Get the first workspace for this task
+    let workspaces = Workspace::fetch_all(pool, Some(task.id)).await?;
+    let workspace = workspaces.first().ok_or_else(|| {
+        ApiError::BadRequest(format!("No workspace found for task {}", task.id))
+    })?;
+
+    // Check if there's already a running execution
+    if deployment.container().has_running_processes(task.id).await? {
+        return Err(ApiError::BadRequest(
+            "Task already has a running execution. Wait for it to complete.".to_string(),
+        ));
+    }
+
+    // Get the container ref (workspace directory)
+    let workspace_dir = workspace.container_ref.as_ref().ok_or_else(|| {
+        ApiError::BadRequest("Workspace has no container reference".to_string())
+    })?;
+
+    // Get the first repo in the workspace
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let repo = repos.first().ok_or_else(|| {
+        ApiError::BadRequest("No repos found for workspace".to_string())
+    })?;
+
+    // Build repo path
+    let repo_path = PathBuf::from(workspace_dir).join(&repo.name);
+
+    // Get Ralph status
+    let status = RalphService::get_status_from_repo(&repo_path)
+        .map_err(|e| ApiError::BadRequest(format!("Failed to read Ralph status: {}", e)))?;
+
+    // Check if there are remaining stories
+    let next_story = status.current_story.ok_or_else(|| {
+        ApiError::BadRequest("All stories are complete".to_string())
+    })?;
+
+    // Use task.description as the prompt
+    let prompt = task.description.clone().unwrap_or_default();
+
+    let working_dir = workspace
+        .agent_working_dir
+        .as_ref()
+        .filter(|dir: &&String| !dir.is_empty())
+        .cloned();
+
+    // Use claude-code executor
+    let executor_profile_id = ExecutorProfileId {
+        executor: BaseCodingAgent::ClaudeCode,
+        variant: None,
+    };
+
+    // Get repos for cleanup action
+    let all_repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let cleanup_action = deployment.container().cleanup_actions_for_repos(&all_repos);
+
+    // Check if a story is in progress (agent is mid-work)
+    let (session, action_type) = if status.has_in_progress {
+        tracing::info!(
+            "Ralph continue: story in progress, attempting to reuse session for task {}",
+            task.id
+        );
+
+        // Get the latest session for this workspace
+        let sessions = Session::find_by_workspace_id(pool, workspace.id).await?;
+        let session = sessions.first().ok_or_else(|| {
+            ApiError::BadRequest("No session found for workspace".to_string())
+        })?;
+
+        // Get latest agent session ID for follow-up
+        let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(
+            pool,
+            session.id,
+        )
+        .await
+        .unwrap_or(None);
+
+        if let Some(agent_session_id) = latest_agent_session_id {
+            (
+                session.clone(),
+                ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
+                    prompt,
+                    session_id: agent_session_id,
+                    executor_profile_id: executor_profile_id.clone(),
+                    working_dir,
+                }),
+            )
+        } else {
+            tracing::warn!(
+                "Ralph continue: no previous agent session found despite inProgress, starting fresh"
+            );
+            (
+                session.clone(),
+                ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+                    prompt,
+                    executor_profile_id: executor_profile_id.clone(),
+                    working_dir,
+                }),
+            )
+        }
+    } else {
+        tracing::info!(
+            "Ralph continue: no story in progress, creating new session for task {}",
+            task.id
+        );
+
+        let new_session = Session::create(
+            pool,
+            &CreateSession {
+                executor: Some(executor_profile_id.executor.to_string()),
+            },
+            Uuid::new_v4(),
+            workspace.id,
+        )
+        .await?;
+
+        (
+            new_session,
+            ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+                prompt,
+                executor_profile_id: executor_profile_id.clone(),
+                working_dir,
+            }),
+        )
+    };
+
+    let action = ExecutorAction::new(action_type, cleanup_action.map(Box::new));
+
+    // Start the execution
+    deployment
+        .container()
+        .start_execution(
+            workspace,
+            &session,
+            &action,
+            &ExecutionProcessRunReason::CodingAgent,
+        )
+        .await?;
+
+    tracing::info!(
+        "Started Ralph execution for task {} story {}",
+        task.id,
+        next_story.id
+    );
+
+    Ok(ResponseJson(ApiResponse::success(RalphContinueResponse {
+        started: true,
+        story_id: Some(next_story.id),
+    })))
+}
+
+/// Request body for updating Ralph auto-continue setting
+#[derive(Debug, Deserialize, TS)]
+#[ts(export)]
+pub struct UpdateRalphAutoContinueRequest {
+    pub auto_continue: bool,
+}
+
+/// Response for Ralph auto-continue update endpoint
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct UpdateRalphAutoContinueResponse {
+    pub auto_continue: bool,
+}
+
+/// Update Ralph auto-continue setting for a task
+pub async fn update_ralph_auto_continue(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<UpdateRalphAutoContinueRequest>,
+) -> Result<ResponseJson<ApiResponse<UpdateRalphAutoContinueResponse>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    // Check if task is Ralph type
+    if task.task_type != TaskType::Ralph {
+        return Err(ApiError::BadRequest(format!(
+            "Task {} is not a Ralph task",
+            task.id
+        )));
+    }
+
+    Task::update_ralph_auto_continue(pool, task.id, payload.auto_continue).await?;
+
+    tracing::info!(
+        "Updated Ralph auto-continue for task {} to {}",
+        task.id,
+        payload.auto_continue
+    );
+
+    Ok(ResponseJson(ApiResponse::success(
+        UpdateRalphAutoContinueResponse {
+            auto_continue: payload.auto_continue,
+        },
+    )))
+}
+
+/// Response for Ralph story commits endpoint
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct RalphStoryCommitsResponse {
+    pub commits: HashMap<String, StoryCommit>,
+}
+
+/// Get commit information for completed Ralph stories
+pub async fn get_ralph_story_commits(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<RalphStoryCommitsResponse>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    // Check if task is Ralph type
+    if task.task_type != TaskType::Ralph {
+        return Err(ApiError::BadRequest(format!(
+            "Task {} is not a Ralph task",
+            task.id
+        )));
+    }
+
+    // Get the first workspace for this task
+    let workspaces = Workspace::fetch_all(pool, Some(task.id)).await?;
+    let workspace = workspaces.first().ok_or_else(|| {
+        ApiError::BadRequest(format!("No workspace found for task {}", task.id))
+    })?;
+
+    // Get the container ref (workspace directory)
+    let workspace_dir = workspace.container_ref.as_ref().ok_or_else(|| {
+        ApiError::BadRequest("Workspace has no container reference".to_string())
+    })?;
+
+    // Get the first repo in the workspace
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let repo = repos.first().ok_or_else(|| {
+        ApiError::BadRequest("No repos found for workspace".to_string())
+    })?;
+
+    // Build repo path
+    let repo_path = PathBuf::from(workspace_dir).join(&repo.name);
+
+    let commits = RalphService::get_story_commits(&repo_path)
+        .map_err(|e| ApiError::BadRequest(format!("Failed to get story commits: {}", e)))?;
+
+    Ok(ResponseJson(ApiResponse::success(RalphStoryCommitsResponse {
+        commits,
+    })))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
+    // Ralph-specific routes under /{task_id}/ralph
+    let ralph_router = Router::new()
+        .route("/status", get(get_ralph_status))
+        .route("/continue", post(continue_ralph_execution))
+        .route("/auto-continue", put(update_ralph_auto_continue))
+        .route("/commits", get(get_ralph_story_commits));
+
     let task_actions_router = Router::new()
         .route("/", put(update_task))
-        .route("/", delete(delete_task));
+        .route("/", delete(delete_task))
+        .nest("/ralph", ralph_router);
 
     let task_id_router = Router::new()
         .route("/", get(get_task))

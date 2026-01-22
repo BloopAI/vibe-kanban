@@ -8,6 +8,7 @@ import { useNavigateWithSearch } from '@/hooks';
 import { paths } from '@/lib/paths';
 import { attemptsApi } from '@/lib/api';
 import { TaskCardHeader } from './TaskCardHeader';
+import { RalphProgressBadge } from './RalphProgressBadge';
 import { useTranslation } from 'react-i18next';
 
 type Task = TaskWithAttemptStatus;
@@ -90,6 +91,7 @@ export function TaskCard({
           title={task.title}
           right={
             <>
+              <RalphProgressBadge task={task} />
               {task.has_in_progress_attempt && (
                 <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
               )}

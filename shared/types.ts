@@ -26,9 +26,9 @@ export type ProjectRepo = { id: string, project_id: string, repo_id: string, };
 
 export type CreateProjectRepo = { display_name: string, git_repo_path: string, };
 
-export type WorkspaceRepo = { id: string, workspace_id: string, repo_id: string, target_branch: string, created_at: Date, updated_at: Date, };
+export type WorkspaceRepo = { id: string, workspace_id: string, repo_id: string, target_branch: string, start_from_ref: string | null, created_at: Date, updated_at: Date, };
 
-export type CreateWorkspaceRepo = { repo_id: string, target_branch: string, };
+export type CreateWorkspaceRepo = { repo_id: string, target_branch: string, start_from_ref: string | null, };
 
 export type RepoWithTargetBranch = { target_branch: string, id: string, path: string, name: string, display_name: string, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, dev_server_script: string | null, default_target_branch: string | null, created_at: Date, updated_at: Date, };
 
@@ -40,13 +40,15 @@ export type UpdateTag = { tag_name: string | null, content: string | null, };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
-export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, created_at: string, updated_at: string, };
+export type TaskType = "default" | "ralph";
 
-export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, created_at: string, updated_at: string, };
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, task_type: TaskType, parent_workspace_id: string | null, ralph_current_story_index: bigint | null, ralph_auto_continue: boolean, ralph_max_iterations: bigint, created_at: string, updated_at: string, };
+
+export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, task_type: TaskType, parent_workspace_id: string | null, ralph_current_story_index: bigint | null, ralph_auto_continue: boolean, ralph_max_iterations: bigint, created_at: string, updated_at: string, };
 
 export type TaskRelationships = { parent_task: Task | null, current_workspace: Workspace, children: Array<Task>, };
 
-export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, };
+export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, task_type: TaskType | null, parent_workspace_id: string | null, image_ids: Array<string> | null, ralph_auto_continue: boolean | null, ralph_max_iterations: bigint | null, };
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, };
 
@@ -188,6 +190,16 @@ export type RegisterRepoRequest = { path: string, display_name: string | null, }
 
 export type InitRepoRequest = { parent_path: string, folder_name: string, };
 
+export type RalphCheckResponse = { 
+/**
+ * Whether the repo has .ralph/prompt.md
+ */
+has_prompt: boolean, 
+/**
+ * Error message if prompt is missing
+ */
+error: string | null, };
+
 export type TagSearchParams = { search: string | null, };
 
 export type TokenResponse = { access_token: string, expires_at: string | null, };
@@ -237,6 +249,20 @@ export type OpenEditorRequest = { editor_type: string | null, file_path: string 
 export type OpenEditorResponse = { url: string | null, };
 
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, };
+
+export type RalphStatusResponse = { total_stories: number, completed_count: number, stories: Array<RalphStory>, current_story: RalphStory | null, 
+/**
+ * Index of the current story (first with passes: false), if any
+ */
+current_story_index: number | null, has_in_progress: boolean, };
+
+export type RalphContinueResponse = { started: boolean, story_id: string | null, };
+
+export type UpdateRalphAutoContinueRequest = { auto_continue: boolean, };
+
+export type UpdateRalphAutoContinueResponse = { auto_continue: boolean, };
+
+export type RalphStoryCommitsResponse = { commits: { [key in string]?: StoryCommit }, };
 
 export type CreatePrApiRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };
 
@@ -395,6 +421,30 @@ queued_at: string, };
 export type QueueStatus = { "status": "empty" } | { "status": "queued", message: QueuedMessage, };
 
 export type ConflictOp = "rebase" | "merge" | "cherry_pick" | "revert";
+
+export type RalphStory = { id: string, title: string, passes: boolean, 
+/**
+ * Whether this story is currently being worked on (set by agent)
+ */
+in_progress: boolean, 
+/**
+ * Whether this story is a checkpoint (pauses auto-continue for review)
+ */
+checkpoint: boolean, };
+
+export type StoryCommit = { 
+/**
+ * Short commit hash (7 characters)
+ */
+commit_hash: string, 
+/**
+ * Full commit hash
+ */
+full_hash: string, 
+/**
+ * Commit message subject line
+ */
+message: string, };
 
 export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAction | null, };
 

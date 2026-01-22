@@ -22,6 +22,18 @@ pub enum TaskStatus {
     Cancelled,
 }
 
+#[derive(
+    Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, EnumString, Display, Default,
+)]
+#[sqlx(type_name = "task_type", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum TaskType {
+    #[default]
+    Default,
+    Ralph,
+}
+
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct Task {
     pub id: Uuid,
@@ -29,7 +41,11 @@ pub struct Task {
     pub title: String,
     pub description: Option<String>,
     pub status: TaskStatus,
+    pub task_type: TaskType,
     pub parent_workspace_id: Option<Uuid>, // Foreign key to parent Workspace
+    pub ralph_current_story_index: Option<i64>,
+    pub ralph_auto_continue: bool,
+    pub ralph_max_iterations: i64,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -70,8 +86,11 @@ pub struct CreateTask {
     pub title: String,
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
+    pub task_type: Option<TaskType>,
     pub parent_workspace_id: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
+    pub ralph_auto_continue: Option<bool>,
+    pub ralph_max_iterations: Option<i64>,
 }
 
 impl CreateTask {
@@ -85,8 +104,11 @@ impl CreateTask {
             title,
             description,
             status: Some(TaskStatus::Todo),
+            task_type: None,
             parent_workspace_id: None,
             image_ids: None,
+            ralph_auto_continue: None,
+            ralph_max_iterations: None,
         }
     }
 }
@@ -124,7 +146,11 @@ impl Task {
   t.title,
   t.description,
   t.status                        AS "status!: TaskStatus",
+  t.task_type                     AS "task_type!: TaskType",
   t.parent_workspace_id           AS "parent_workspace_id: Uuid",
+  t.ralph_current_story_index     AS "ralph_current_story_index: i64",
+  t.ralph_auto_continue           AS "ralph_auto_continue!: bool",
+  t.ralph_max_iterations          AS "ralph_max_iterations!: i64",
   t.created_at                    AS "created_at!: DateTime<Utc>",
   t.updated_at                    AS "updated_at!: DateTime<Utc>",
 
@@ -176,7 +202,11 @@ ORDER BY t.created_at DESC"#,
                     title: rec.title,
                     description: rec.description,
                     status: rec.status,
+                    task_type: rec.task_type,
                     parent_workspace_id: rec.parent_workspace_id,
+                    ralph_current_story_index: rec.ralph_current_story_index,
+                    ralph_auto_continue: rec.ralph_auto_continue,
+                    ralph_max_iterations: rec.ralph_max_iterations,
                     created_at: rec.created_at,
                     updated_at: rec.updated_at,
                 },
@@ -192,7 +222,7 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", task_type as "task_type!: TaskType", parent_workspace_id as "parent_workspace_id: Uuid", ralph_current_story_index as "ralph_current_story_index: i64", ralph_auto_continue as "ralph_auto_continue!: bool", ralph_max_iterations as "ralph_max_iterations!: i64", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE id = $1"#,
             id
@@ -204,7 +234,7 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", task_type as "task_type!: TaskType", parent_workspace_id as "parent_workspace_id: Uuid", ralph_current_story_index as "ralph_current_story_index: i64", ralph_auto_continue as "ralph_auto_continue!: bool", ralph_max_iterations as "ralph_max_iterations!: i64", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE rowid = $1"#,
             rowid
@@ -219,17 +249,23 @@ ORDER BY t.created_at DESC"#,
         task_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
         let status = data.status.clone().unwrap_or_default();
+        let task_type = data.task_type.clone().unwrap_or_default();
+        let ralph_auto_continue = data.ralph_auto_continue.unwrap_or(false);
+        let ralph_max_iterations = data.ralph_max_iterations.unwrap_or(10);
         sqlx::query_as!(
             Task,
-            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id)
-               VALUES ($1, $2, $3, $4, $5, $6)
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO tasks (id, project_id, title, description, status, task_type, parent_workspace_id, ralph_auto_continue, ralph_max_iterations)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", task_type as "task_type!: TaskType", parent_workspace_id as "parent_workspace_id: Uuid", ralph_current_story_index as "ralph_current_story_index: i64", ralph_auto_continue as "ralph_auto_continue!: bool", ralph_max_iterations as "ralph_max_iterations!: i64", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             task_id,
             data.project_id,
             data.title,
             data.description,
             status,
-            data.parent_workspace_id
+            task_type,
+            data.parent_workspace_id,
+            ralph_auto_continue,
+            ralph_max_iterations
         )
         .fetch_one(pool)
         .await
@@ -249,7 +285,7 @@ ORDER BY t.created_at DESC"#,
             r#"UPDATE tasks
                SET title = $3, description = $4, status = $5, parent_workspace_id = $6
                WHERE id = $1 AND project_id = $2
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", task_type as "task_type!: TaskType", parent_workspace_id as "parent_workspace_id: Uuid", ralph_current_story_index as "ralph_current_story_index: i64", ralph_auto_continue as "ralph_auto_continue!: bool", ralph_max_iterations as "ralph_max_iterations!: i64", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             project_id,
             title,
@@ -327,7 +363,7 @@ ORDER BY t.created_at DESC"#,
         // Find only child tasks that have this workspace as their parent
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", task_type as "task_type!: TaskType", parent_workspace_id as "parent_workspace_id: Uuid", ralph_current_story_index as "ralph_current_story_index: i64", ralph_auto_continue as "ralph_auto_continue!: bool", ralph_max_iterations as "ralph_max_iterations!: i64", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE parent_workspace_id = $1
                ORDER BY created_at DESC"#,
@@ -335,6 +371,47 @@ ORDER BY t.created_at DESC"#,
         )
         .fetch_all(pool)
         .await
+    }
+
+    /// Update ralph_auto_continue setting for a Ralph task
+    pub async fn update_ralph_auto_continue(
+        pool: &SqlitePool,
+        id: Uuid,
+        auto_continue: bool,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE tasks SET ralph_auto_continue = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            id,
+            auto_continue
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Update ralph_current_story_index for a Ralph task
+    pub async fn update_ralph_current_story_index(
+        pool: &SqlitePool,
+        id: Uuid,
+        story_index: Option<i64>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE tasks SET ralph_current_story_index = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            id,
+            story_index
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Update ralph_current_story_index directly with a count value
+    pub async fn update_ralph_story_index(
+        pool: &SqlitePool,
+        id: Uuid,
+        story_index: i64,
+    ) -> Result<(), sqlx::Error> {
+        Self::update_ralph_current_story_index(pool, id, Some(story_index)).await
     }
 
     pub async fn find_relationships_for_workspace(

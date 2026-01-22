@@ -491,6 +491,9 @@ impl LocalContainerService {
 
                         // Manually finalize task since we're bypassing normal execution flow
                         container.finalize_task(&ctx).await;
+
+                        // Try Ralph auto-continue if conditions are met
+                        container.try_ralph_auto_continue(&ctx).await;
                     }
                 }
 
@@ -545,6 +548,9 @@ impl LocalContainerService {
                         }
                     } else {
                         container.finalize_task(&ctx).await;
+
+                        // Try Ralph auto-continue if conditions are met
+                        container.try_ralph_auto_continue(&ctx).await;
                     }
                 }
 
@@ -950,16 +956,22 @@ impl ContainerService for LocalContainerService {
         let repositories =
             WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
 
+        // Build lookup maps for target_branch and start_from_ref
         let target_branches: HashMap<_, _> = workspace_repos
             .iter()
             .map(|wr| (wr.repo_id, wr.target_branch.clone()))
+            .collect();
+        let start_from_refs: HashMap<_, _> = workspace_repos
+            .iter()
+            .filter_map(|wr| wr.start_from_ref.as_ref().map(|r| (wr.repo_id, r.clone())))
             .collect();
 
         let workspace_inputs: Vec<RepoWorkspaceInput> = repositories
             .iter()
             .map(|repo| {
                 let target_branch = target_branches.get(&repo.id).cloned().unwrap_or_default();
-                RepoWorkspaceInput::new(repo.clone(), target_branch)
+                let start_from_ref = start_from_refs.get(&repo.id).cloned();
+                RepoWorkspaceInput::with_start_from_ref(repo.clone(), target_branch, start_from_ref)
             })
             .collect();
 
@@ -976,6 +988,9 @@ impl ContainerService for LocalContainerService {
 
         Self::create_workspace_config_files(&created_workspace.workspace_dir, &repositories)
             .await?;
+
+        // Note: For Ralph tasks, .ralph/prd.json is created by the agent during conversation
+        // The agent reads instructions from .ralph/prompt.md which must already exist in the repo
 
         Workspace::update_container_ref(
             &self.db.pool,

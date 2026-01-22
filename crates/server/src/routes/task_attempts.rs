@@ -226,6 +226,7 @@ pub async fn create_task_attempt(
         .map(|r| CreateWorkspaceRepo {
             repo_id: r.repo_id,
             target_branch: r.target_branch.clone(),
+            start_from_ref: None,
         })
         .collect();
 

@@ -68,20 +68,52 @@ impl WorktreeManager {
         base_branch: &str,
         create_branch: bool,
     ) -> Result<(), WorktreeError> {
+        Self::create_worktree_with_start_ref(
+            repo_path,
+            branch_name,
+            worktree_path,
+            base_branch,
+            create_branch,
+            None,
+        )
+        .await
+    }
+
+    /// Create a worktree with optional start_from_ref to branch from a specific commit/ref
+    pub async fn create_worktree_with_start_ref(
+        repo_path: &Path,
+        branch_name: &str,
+        worktree_path: &Path,
+        base_branch: &str,
+        create_branch: bool,
+        start_from_ref: Option<&str>,
+    ) -> Result<(), WorktreeError> {
         if create_branch {
             let repo_path_owned = repo_path.to_path_buf();
             let branch_name_owned = branch_name.to_string();
             let base_branch_owned = base_branch.to_string();
+            let start_from_ref_owned = start_from_ref.map(|s| s.to_string());
 
             tokio::task::spawn_blocking(move || {
                 let repo = Repository::open(&repo_path_owned)?;
-                let base_branch_ref =
-                    GitService::find_branch(&repo, &base_branch_owned)?.into_reference();
-                repo.branch(
-                    &branch_name_owned,
-                    &base_branch_ref.peel_to_commit()?,
-                    false,
-                )?;
+
+                // Determine the commit to branch from:
+                // - If start_from_ref is provided, use that ref
+                // - Otherwise, use the base_branch
+                let commit = if let Some(ref start_ref) = start_from_ref_owned {
+                    // Try to resolve the ref as a commit
+                    let obj = repo
+                        .revparse_single(start_ref)
+                        .map_err(|e| GitServiceError::Git(e))?;
+                    obj.peel_to_commit()
+                        .map_err(|e| GitServiceError::Git(e))?
+                } else {
+                    let base_branch_ref =
+                        GitService::find_branch(&repo, &base_branch_owned)?.into_reference();
+                    base_branch_ref.peel_to_commit()?
+                };
+
+                repo.branch(&branch_name_owned, &commit, false)?;
                 Ok::<(), GitServiceError>(())
             })
             .await
