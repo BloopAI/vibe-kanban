@@ -432,8 +432,9 @@ pub async fn execute(
         OpencodeSlashCommand::Models { provider } => {
             let config_providers =
                 sdk::list_config_providers(&client, &config.base_url, &config.directory).await?;
-            let provider_list =
-                sdk::list_providers(&client, &config.base_url, &config.directory).await.ok();
+            let provider_list = sdk::list_providers(&client, &config.base_url, &config.directory)
+                .await
+                .ok();
             log_result_and_done(
                 &log_writer,
                 format_models(
@@ -531,8 +532,13 @@ pub async fn execute(
     let is_compact = matches!(&command, OpencodeSlashCommand::Compact);
     let compaction_model = if is_compact {
         Some(
-            sdk::resolve_compaction_model(&client, &config.base_url, &config.directory, config.model.as_deref())
-                .await?,
+            sdk::resolve_compaction_model(
+                &client,
+                &config.base_url,
+                &config.directory,
+                config.model.as_deref(),
+            )
+            .await?,
         )
     } else {
         None
