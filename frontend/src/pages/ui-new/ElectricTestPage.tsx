@@ -15,15 +15,21 @@ import {
   ISSUE_RELATIONSHIP_ENTITY,
   ISSUE_COMMENT_ENTITY,
   ISSUE_COMMENT_REACTION_ENTITY,
+  ORGANIZATION_MEMBER_ENTITY,
+  ORGANIZATION_USER_ENTITY,
+  PULL_REQUEST_ENTITY,
   type Project,
   type Issue,
+  type OrganizationMember,
+  type OrganizationUser,
+  type PullRequest,
 } from 'shared/remote-types';
 
 // ============================================================================
 // Types
 // ============================================================================
 
-type OrgCollectionType = 'projects' | 'notifications';
+type OrgCollectionType = 'projects' | 'notifications' | 'members' | 'users';
 type ProjectCollectionType =
   | 'issues'
   | 'workspaces'
@@ -32,7 +38,8 @@ type ProjectCollectionType =
   | 'assignees'
   | 'followers'
   | 'issueTags'
-  | 'dependencies';
+  | 'dependencies'
+  | 'pullRequests';
 type IssueCollectionType = 'comments' | 'reactions';
 
 // ============================================================================
@@ -865,6 +872,145 @@ function ReactionsList({ issueId }: { issueId: string }) {
   );
 }
 
+function MembersList({ organizationId }: { organizationId: string }) {
+  const { data, isLoading, error, retry } = useEntity(
+    ORGANIZATION_MEMBER_ENTITY,
+    { organization_id: organizationId }
+  );
+
+  if (error)
+    return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
+  if (isLoading) return <LoadingState message="Loading members..." />;
+
+  return (
+    <div>
+      <p className="text-sm text-low mb-base">{data.length} synced</p>
+      <DataTable
+        data={data}
+        getRowId={(m: OrganizationMember) =>
+          `${m.organization_id}-${m.user_id}`
+        }
+        columns={[
+          {
+            key: 'user_id',
+            label: 'User ID',
+            render: (m: OrganizationMember) => truncateId(m.user_id),
+          },
+          { key: 'role', label: 'Role' },
+          {
+            key: 'joined_at',
+            label: 'Joined',
+            render: (m: OrganizationMember) => formatDate(m.joined_at),
+          },
+          {
+            key: 'last_seen_at',
+            label: 'Last Seen',
+            render: (m: OrganizationMember) =>
+              m.last_seen_at ? formatDate(m.last_seen_at) : 'Never',
+          },
+        ]}
+      />
+    </div>
+  );
+}
+
+function UsersList({ organizationId }: { organizationId: string }) {
+  const { data, isLoading, error, retry } = useEntity(ORGANIZATION_USER_ENTITY, {
+    organization_id: organizationId,
+  });
+
+  if (error)
+    return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
+  if (isLoading) return <LoadingState message="Loading users..." />;
+
+  return (
+    <div>
+      <p className="text-sm text-low mb-base">{data.length} synced</p>
+      <DataTable
+        data={data}
+        getRowId={(u: OrganizationUser) => u.id}
+        columns={[
+          {
+            key: 'username',
+            label: 'Username',
+            render: (u: OrganizationUser) => u.username ?? '-',
+          },
+          {
+            key: 'first_name',
+            label: 'First Name',
+            render: (u: OrganizationUser) => u.first_name ?? '-',
+          },
+          {
+            key: 'last_name',
+            label: 'Last Name',
+            render: (u: OrganizationUser) => u.last_name ?? '-',
+          },
+          {
+            key: 'id',
+            label: 'ID',
+            render: (u: OrganizationUser) => truncateId(u.id),
+          },
+          {
+            key: 'updated_at',
+            label: 'Updated',
+            render: (u: OrganizationUser) => formatDate(u.updated_at),
+          },
+        ]}
+      />
+    </div>
+  );
+}
+
+function PullRequestsList({ projectId }: { projectId: string }) {
+  const { data, isLoading, error, retry } = useEntity(PULL_REQUEST_ENTITY, {
+    project_id: projectId,
+  });
+
+  if (error)
+    return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
+  if (isLoading) return <LoadingState message="Loading pull requests..." />;
+
+  return (
+    <div>
+      <p className="text-sm text-low mb-base">{data.length} synced</p>
+      <DataTable
+        data={data}
+        getRowId={(pr: PullRequest) => pr.id}
+        columns={[
+          { key: 'number', label: 'PR #' },
+          { key: 'status', label: 'Status' },
+          { key: 'target_branch_name', label: 'Target Branch' },
+          {
+            key: 'url',
+            label: 'URL',
+            render: (pr: PullRequest) => (
+              <a
+                href={pr.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand hover:underline"
+              >
+                View
+              </a>
+            ),
+          },
+          {
+            key: 'merged_at',
+            label: 'Merged',
+            render: (pr: PullRequest) =>
+              pr.merged_at ? formatDate(pr.merged_at) : 'Not merged',
+          },
+          {
+            key: 'id',
+            label: 'ID',
+            render: (pr: PullRequest) => truncateId(pr.id),
+          },
+        ]}
+      />
+    </div>
+  );
+}
+
 // ============================================================================
 // Utility functions
 // ============================================================================
@@ -1024,6 +1170,8 @@ export function ElectricTestPage() {
             options={[
               { value: 'projects', label: 'Projects' },
               { value: 'notifications', label: 'Notifications' },
+              { value: 'members', label: 'Members' },
+              { value: 'users', label: 'Users' },
             ]}
           />
 
@@ -1039,6 +1187,12 @@ export function ElectricTestPage() {
           )}
           {activeOrgCollection === 'notifications' && !userId && (
             <LoadingState message="Loading user info..." />
+          )}
+          {activeOrgCollection === 'members' && (
+            <MembersList organizationId={selectedOrgId} />
+          )}
+          {activeOrgCollection === 'users' && (
+            <UsersList organizationId={selectedOrgId} />
           )}
 
           {selectedProject && (
@@ -1072,6 +1226,7 @@ export function ElectricTestPage() {
               { value: 'followers', label: 'Followers' },
               { value: 'issueTags', label: 'Issue Tags' },
               { value: 'dependencies', label: 'Dependencies' },
+              { value: 'pullRequests', label: 'Pull Requests' },
             ]}
           />
 
@@ -1102,6 +1257,9 @@ export function ElectricTestPage() {
           )}
           {activeProjectCollection === 'dependencies' && (
             <DependenciesList projectId={selectedProjectId} />
+          )}
+          {activeProjectCollection === 'pullRequests' && (
+            <PullRequestsList projectId={selectedProjectId} />
           )}
 
           {selectedIssue && (
