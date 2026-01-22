@@ -27,6 +27,7 @@ import {
   MinusIcon,
   ArrowDownIcon,
   UsersIcon,
+  ArrowFatLineUpIcon,
 } from '@phosphor-icons/react';
 import type { IssuePriority } from 'shared/remote-types';
 import { UserAvatar } from '@/components/tasks/UserAvatar';
@@ -54,27 +55,17 @@ const priorityConfig: Record<
   IssuePriority,
   { icon: typeof WarningCircleIcon; colorClass: string }
 > = {
-  urgent: { icon: WarningCircleIcon, colorClass: 'text-error' },
+  urgent: { icon: ArrowFatLineUpIcon, colorClass: 'text-error' },
   high: { icon: ArrowUpIcon, colorClass: 'text-brand' },
   medium: { icon: MinusIcon, colorClass: 'text-low' },
-  low: { icon: ArrowDownIcon, colorClass: 'text-low' },
+  low: { icon: ArrowDownIcon, colorClass: 'text-success' },
 };
 
-export const PriorityIcon = ({ priority, className }: PriorityIconProps) => {
+export const PriorityIcon = ({ priority }: PriorityIconProps) => {
   const { icon: IconComponent, colorClass } = priorityConfig[priority];
 
   return (
-    <div
-      className={cn(
-        'flex items-center justify-center',
-        'h-5 w-5',
-        'bg-panel rounded-sm',
-        className
-      )}
-      aria-label={`Priority: ${priority}`}
-    >
-      <IconComponent className={cn('size-icon-xs', colorClass)} weight="bold" />
-    </div>
+    <IconComponent className={cn('size-icon-xs', colorClass)} weight="bold" />
   );
 };
 
