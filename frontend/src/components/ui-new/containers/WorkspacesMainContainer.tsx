@@ -1,4 +1,10 @@
-import { useRef, useMemo, useCallback } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+} from 'react';
 import type { Workspace, Session } from 'shared/types';
 import { createWorkspaceWithSession } from '@/types/attempt';
 import {
@@ -7,6 +13,10 @@ import {
 } from '@/components/ui-new/views/WorkspacesMain';
 import { useTask } from '@/hooks/useTask';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+
+export interface WorkspacesMainContainerHandle {
+  scrollToBottom: () => void;
+}
 
 interface WorkspacesMainContainerProps {
   selectedWorkspace: Workspace | null;
@@ -20,15 +30,21 @@ interface WorkspacesMainContainerProps {
   onStartNewSession: () => void;
 }
 
-export function WorkspacesMainContainer({
-  selectedWorkspace,
-  selectedSession,
-  sessions,
-  onSelectSession,
-  isLoading,
-  isNewSessionMode,
-  onStartNewSession,
-}: WorkspacesMainContainerProps) {
+export const WorkspacesMainContainer = forwardRef<
+  WorkspacesMainContainerHandle,
+  WorkspacesMainContainerProps
+>(function WorkspacesMainContainer(
+  {
+    selectedWorkspace,
+    selectedSession,
+    sessions,
+    onSelectSession,
+    isLoading,
+    isNewSessionMode,
+    onStartNewSession,
+  },
+  ref
+) {
   const { diffStats } = useWorkspaceContext();
   const containerRef = useRef<HTMLElement>(null);
   const conversationListRef = useRef<ConversationListHandle>(null);
@@ -47,6 +63,16 @@ export function WorkspacesMainContainer({
   const handleScrollToPreviousMessage = useCallback(() => {
     conversationListRef.current?.scrollToPreviousUserMessage();
   }, []);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      scrollToBottom: () => {
+        conversationListRef.current?.scrollToBottom();
+      },
+    }),
+    []
+  );
 
   return (
     <WorkspacesMain
@@ -67,4 +93,4 @@ export function WorkspacesMainContainer({
       onScrollToPreviousMessage={handleScrollToPreviousMessage}
     />
   );
-}
+});

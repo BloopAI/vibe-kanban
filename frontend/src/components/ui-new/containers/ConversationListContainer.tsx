@@ -32,6 +32,7 @@ interface ConversationListProps {
 
 export interface ConversationListHandle {
   scrollToPreviousUserMessage: () => void;
+  scrollToBottom: () => void;
 }
 
 interface MessageListContext {
@@ -201,6 +202,14 @@ export const ConversationList = forwardRef<
             behavior: 'smooth',
           });
         }
+      },
+      scrollToBottom: () => {
+        if (!messageListRef.current) return;
+        messageListRef.current.scrollToItem({
+          index: 'LAST',
+          align: 'end',
+          behavior: 'smooth',
+        });
       },
     }),
     [channelData]
