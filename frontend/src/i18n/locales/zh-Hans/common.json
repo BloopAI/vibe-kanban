@@ -315,7 +315,7 @@
     "tooltip": "上下文：{{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "上下文使用量：{{percentage}}%"
   },
-  "shortcuts": {
+"shortcuts": {
     "title": "键盘快捷键",
     "inWorkspace": "(在工作区中)",
     "sequentialHint": "组合快捷键：先按第一个键，然后在500毫秒内按第二个键。",
@@ -327,5 +327,15 @@
     "commands": "命令",
     "noTagsOrFiles": "未找到标签或文件",
     "noCommands": "此代理没有可用的命令。"
+  },
+  "kanban": {
+    "noStatusesFound": "未找到此项目的状态",
+    "noProjectFound": "未找到项目",
+    "noOrganizationFound": "未找到组织",
+    "unassigned": "未分配",
+    "noTagsAvailable": "没有可用的标签",
+    "filesCount": "{{count}} 个文件",
+    "noPrCreated": "未创建 PR",
+    "noCommentsYet": "暂无评论"
   }
 }

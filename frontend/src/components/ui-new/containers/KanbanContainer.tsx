@@ -1,4 +1,5 @@
 import { useMemo, useCallback, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useEntity } from '@/lib/electric/hooks';
 import {
   PROJECT_ENTITY,
@@ -19,9 +20,10 @@ import {
 } from '@/components/ui-new/kanban/Kanban';
 
 function LoadingState() {
+  const { t } = useTranslation('common');
   return (
     <div className="flex items-center justify-center h-full">
-      <p className="text-low">Loading kanban board...</p>
+      <p className="text-low">{t('states.loading')}</p>
     </div>
   );
 }
@@ -33,6 +35,7 @@ function KanbanBoardContent({
   projectId: string;
   projectName: string;
 }) {
+  const { t } = useTranslation('common');
   const { data: statuses, isLoading: statusesLoading } = useEntity(
     PROJECT_STATUS_ENTITY,
     { project_id: projectId }
@@ -175,7 +178,7 @@ function KanbanBoardContent({
   if (sortedStatuses.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-low">No statuses found for this project</p>
+        <p className="text-low">{t('kanban.noStatusesFound')}</p>
       </div>
     );
   }
@@ -292,6 +295,7 @@ function KanbanBoardContent({
 }
 
 function KanbanWithProjects({ organizationId }: { organizationId: string }) {
+  const { t } = useTranslation('common');
   const { data: projects, isLoading } = useEntity(PROJECT_ENTITY, {
     organization_id: organizationId,
   });
@@ -304,7 +308,7 @@ function KanbanWithProjects({ organizationId }: { organizationId: string }) {
   if (!firstProject) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-low">No project found</p>
+        <p className="text-low">{t('kanban.noProjectFound')}</p>
       </div>
     );
   }
@@ -318,6 +322,7 @@ function KanbanWithProjects({ organizationId }: { organizationId: string }) {
 }
 
 export function KanbanContainer() {
+  const { t } = useTranslation('common');
   const { data: orgsData, isLoading } = useUserOrganizations();
   const firstOrg = orgsData?.organizations?.[0];
 
@@ -328,7 +333,7 @@ export function KanbanContainer() {
   if (!firstOrg) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-low">No organization found</p>
+        <p className="text-low">{t('kanban.noOrganizationFound')}</p>
       </div>
     );
   }
