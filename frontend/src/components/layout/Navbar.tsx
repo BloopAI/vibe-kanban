@@ -1,5 +1,5 @@
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { siDiscord } from 'simple-icons';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,7 +19,9 @@ import {
   Plus,
   LogOut,
   LogIn,
+  StopCircle,
 } from 'lucide-react';
+import { projectsApi } from '@/lib/api';
 import { Logo } from '@/components/Logo';
 import { SearchBar } from '@/components/SearchBar';
 import { useSearch } from '@/contexts/SearchContext';
@@ -137,6 +139,23 @@ export function Navbar() {
 
   const isOAuthLoggedIn = loginStatus?.status === 'loggedin';
 
+  const [isStoppingDevServers, setIsStoppingDevServers] = useState(false);
+
+  const handleStopAllDevServers = async () => {
+    if (!projectId || isStoppingDevServers) return;
+    setIsStoppingDevServers(true);
+    try {
+      const result = await projectsApi.stopAllDevServers(projectId);
+      if (result.stopped_count > 0) {
+        console.log(`Stopped ${result.stopped_count} dev server(s)`);
+      }
+    } catch (err) {
+      console.error('Failed to stop dev servers:', err);
+    } finally {
+      setIsStoppingDevServers(false);
+    }
+  };
+
   return (
     <div className="border-b bg-background">
       <div className="w-full px-3">
@@ -219,6 +238,25 @@ export function Navbar() {
                       className="h-9 w-9"
                     />
                   )}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9"
+                          onClick={handleStopAllDevServers}
+                          disabled={isStoppingDevServers}
+                          aria-label={t('common:navbar.stopAllDevServers')}
+                        >
+                          <StopCircle className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        {t('common:navbar.stopAllDevServers')}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <Button
                     variant="ghost"
                     size="icon"

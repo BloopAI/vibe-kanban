@@ -92,6 +92,7 @@ fn generate_types_content() -> String {
         utils::api::projects::RemoteProjectMembersResponse::decl(),
         server::routes::projects::CreateRemoteProjectRequest::decl(),
         server::routes::projects::LinkToExistingRequest::decl(),
+        server::routes::projects::StopAllDevServersResponse::decl(),
         server::routes::repo::RegisterRepoRequest::decl(),
         server::routes::repo::InitRepoRequest::decl(),
         server::routes::tags::TagSearchParams::decl(),

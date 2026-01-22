@@ -1194,26 +1194,14 @@ pub async fn start_dev_server(
 ) -> Result<ResponseJson<ApiResponse<Vec<ExecutionProcess>>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    // Get parent task
-    let task = workspace
-        .parent_task(&deployment.db().pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    // Get parent project
-    let project = task
-        .parent_project(&deployment.db().pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    // Stop any existing dev servers for this project
+    // Stop any existing dev servers for this workspace only (allows multiple workspaces to have dev servers)
     let existing_dev_servers =
-        match ExecutionProcess::find_running_dev_servers_by_project(pool, project.id).await {
+        match ExecutionProcess::find_running_dev_servers_by_workspace(pool, workspace.id).await {
             Ok(servers) => servers,
             Err(e) => {
                 tracing::error!(
-                    "Failed to find running dev servers for project {}: {}",
-                    project.id,
+                    "Failed to find running dev servers for workspace {}: {}",
+                    workspace.id,
                     e
                 );
                 return Err(ApiError::Workspace(WorkspaceError::ValidationError(
@@ -1224,9 +1212,9 @@ pub async fn start_dev_server(
 
     for dev_server in existing_dev_servers {
         tracing::info!(
-            "Stopping existing dev server {} for project {}",
+            "Stopping existing dev server {} for workspace {}",
             dev_server.id,
-            project.id
+            workspace.id
         );
 
         if let Err(e) = deployment
@@ -1288,6 +1276,10 @@ pub async fn start_dev_server(
             .await?;
         execution_processes.push(execution_process);
     }
+
+    // Get parent task and project for analytics
+    let task = workspace.parent_task(pool).await?.ok_or(SqlxError::RowNotFound)?;
+    let project = task.parent_project(pool).await?.ok_or(SqlxError::RowNotFound)?;
 
     deployment
         .track_if_analytics_allowed(

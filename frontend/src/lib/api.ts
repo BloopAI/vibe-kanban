@@ -24,6 +24,7 @@ import {
   UpdateRepo,
   SearchMode,
   SearchResult,
+  StopAllDevServersResponse,
   Task,
   TaskRelationships,
   Tag,
@@ -356,6 +357,18 @@ export const projectsApi = {
       }
     );
     return handleApiResponse<void>(response);
+  },
+
+  stopAllDevServers: async (
+    projectId: string
+  ): Promise<StopAllDevServersResponse> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/stop-all-dev-servers`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<StopAllDevServersResponse>(response);
   },
 };
 

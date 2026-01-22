@@ -88,7 +88,8 @@
     "currentBadge": "（当前）"
   },
   "navbar": {
-    "tryNewUI": "试用新界面"
+    "tryNewUI": "试用新界面",
+    "stopAllDevServers": "停止所有开发服务器"
   },
   "signOut": "退出登录",
   "devMode": {

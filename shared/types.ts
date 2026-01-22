@@ -184,6 +184,8 @@ export type CreateRemoteProjectRequest = { organization_id: string, name: string
 
 export type LinkToExistingRequest = { remote_project_id: string, };
 
+export type StopAllDevServersResponse = { stopped_count: number, };
+
 export type RegisterRepoRequest = { path: string, display_name: string | null, };
 
 export type InitRepoRequest = { parent_path: string, folder_name: string, };

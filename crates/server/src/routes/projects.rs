@@ -13,6 +13,7 @@ use axum::{
     routing::{get, post},
 };
 use db::models::{
+    execution_process::{ExecutionProcess, ExecutionProcessStatus},
     project::{CreateProject, Project, ProjectError, SearchResult, UpdateProject},
     project_repo::{CreateProjectRepo, ProjectRepo},
     repo::Repo,
@@ -21,7 +22,7 @@ use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::Deserialize;
 use services::services::{
-    file_search::SearchQuery, project::ProjectServiceError,
+    container::ContainerService, file_search::SearchQuery, project::ProjectServiceError,
     remote_client::CreateRemoteProjectPayload,
 };
 use ts_rs::TS;
@@ -568,6 +569,54 @@ pub async fn get_project_repository(
     }
 }
 
+#[derive(Debug, serde::Serialize, ts_rs::TS)]
+pub struct StopAllDevServersResponse {
+    pub stopped_count: usize,
+}
+
+pub async fn stop_all_dev_servers(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<StopAllDevServersResponse>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    let running_dev_servers =
+        ExecutionProcess::find_running_dev_servers_by_project(pool, project.id).await?;
+
+    let mut stopped_count = 0;
+    for dev_server in &running_dev_servers {
+        tracing::info!(
+            "Stopping dev server {} for project {}",
+            dev_server.id,
+            project.id
+        );
+
+        if let Err(e) = deployment
+            .container()
+            .stop_execution(dev_server, ExecutionProcessStatus::Killed)
+            .await
+        {
+            tracing::error!("Failed to stop dev server {}: {}", dev_server.id, e);
+        } else {
+            stopped_count += 1;
+        }
+    }
+
+    deployment
+        .track_if_analytics_allowed(
+            "all_dev_servers_stopped",
+            serde_json::json!({
+                "project_id": project.id.to_string(),
+                "stopped_count": stopped_count,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(StopAllDevServersResponse {
+        stopped_count,
+    })))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let project_id_router = Router::new()
         .route(
@@ -586,6 +635,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             "/repositories",
             get(get_project_repositories).post(add_project_repository),
         )
+        .route("/stop-all-dev-servers", post(stop_all_dev_servers))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_project_middleware,

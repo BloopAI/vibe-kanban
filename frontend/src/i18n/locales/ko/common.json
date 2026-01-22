@@ -88,7 +88,8 @@
     "currentBadge": " (현재)"
   },
   "navbar": {
-    "tryNewUI": "새로운 UI 사용해보기"
+    "tryNewUI": "새로운 UI 사용해보기",
+    "stopAllDevServers": "모든 개발 서버 중지"
   },
   "signOut": "로그아웃",
   "devMode": {
