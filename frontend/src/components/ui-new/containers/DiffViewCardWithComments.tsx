@@ -82,11 +82,14 @@ interface StaticProps extends BaseProps {
 
 type DiffViewCardWithCommentsProps = CollapsibleProps | StaticProps;
 
-interface DiffData {
-  diffFile: DiffFile | null;
+interface DiffStats {
   additions: number;
   deletions: number;
   filePath: string;
+}
+
+interface DiffData extends DiffStats {
+  diffFile: DiffFile | null;
   isValid: boolean;
 }
 
@@ -113,10 +116,48 @@ function readPlainLine(
 }
 
 /**
- * Process input to get diff data and statistics
+ * Compute cheap stats for header display (always runs)
  */
-function useDiffData(input: DiffInput): DiffData {
+function useDiffStats(input: DiffInput): DiffStats {
   return useMemo(() => {
+    if (input.type === 'content') {
+      const filePath = input.newPath || input.oldPath || 'unknown';
+      const oldContent = input.oldContent || '';
+      const newContent = input.newContent || '';
+
+      if (oldContent === newContent) {
+        return { additions: 0, deletions: 0, filePath };
+      }
+
+      const oldLineCount = oldContent.split('\n').length;
+      const newLineCount = newContent.split('\n').length;
+      const lineDiff = newLineCount - oldLineCount;
+      return {
+        additions: lineDiff > 0 ? lineDiff : 0,
+        deletions: lineDiff < 0 ? -lineDiff : 0,
+        filePath,
+      };
+    } else {
+      return { additions: 0, deletions: 0, filePath: input.path };
+    }
+  }, [input]);
+}
+
+/**
+ * Process input to get full diff data (only when expanded)
+ */
+function useDiffData(input: DiffInput, expanded: boolean): DiffData {
+  const stats = useDiffStats(input);
+
+  return useMemo(() => {
+    if (!expanded) {
+      return {
+        ...stats,
+        diffFile: null,
+        isValid: false,
+      };
+    }
+
     if (input.type === 'content') {
       const filePath = input.newPath || input.oldPath || 'unknown';
       const oldLang =
@@ -175,7 +216,7 @@ function useDiffData(input: DiffInput): DiffData {
         isValid: false,
       };
     }
-  }, [input]);
+  }, [input, expanded, stats]);
 }
 
 export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
@@ -192,7 +233,7 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
     globalMode === 'split' ? DiffModeEnum.Split : DiffModeEnum.Unified;
 
   const { diffFile, additions, deletions, filePath, isValid } =
-    useDiffData(input);
+    useDiffData(input, expanded);
   const { comments, drafts, setDraft, addComment } = useReview();
   const { showGitHubComments, getGitHubCommentsForFile } =
     useWorkspaceContext();
