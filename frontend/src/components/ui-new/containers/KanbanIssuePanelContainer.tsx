@@ -190,7 +190,7 @@ export function KanbanIssuePanelContainer({
           0
         );
 
-        await insertIssue({
+        const newIssue = insertIssue({
           project_id: projectId,
           status_id: formData.statusId,
           title: formData.title,
@@ -203,6 +203,14 @@ export function KanbanIssuePanelContainer({
           parent_issue_id: null,
           extension_metadata: null,
         });
+
+        // Create assignee record if an assignee was selected
+        if (formData.assigneeId) {
+          insertIssueAssignee({
+            issue_id: newIssue.id,
+            user_id: formData.assigneeId,
+          });
+        }
 
         // TODO: Create workspace if formData.createDraftWorkspace is true
 
@@ -217,7 +225,15 @@ export function KanbanIssuePanelContainer({
     } finally {
       setIsSubmitting(false);
     }
-  }, [mode, formData, projectId, issues, insertIssue, closeKanbanIssuePanel]);
+  }, [
+    mode,
+    formData,
+    projectId,
+    issues,
+    insertIssue,
+    insertIssueAssignee,
+    closeKanbanIssuePanel,
+  ]);
 
   // Loading state
   const isLoading = statusesLoading || tagsLoading || issuesLoading;
