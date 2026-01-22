@@ -8,8 +8,8 @@ export interface PreviewUrlInfo {
 }
 
 const urlPatterns = [
-  // Full URL pattern (e.g., http://localhost:3000, https://127.0.0.1:8080)
-  /(https?:\/\/(?:\[[0-9a-f:]+\]|localhost|127\.0\.0\.1|0\.0\.0\.0|\d{1,3}(?:\.\d{1,3}){3})(?::\d{2,5})?(?:\/\S*)?)/i,
+  // Full URL pattern (e.g., http://localhost:3000, https://127.0.0.1:8080, http://dev.local:8504/path)
+  /(https?:\/\/(?:\[[0-9a-f:]+\]|[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*|\d{1,3}(?:\.\d{1,3}){3})(?::\d{2,5})?(?:\/\S*)?)/i,
   // Host:port pattern (e.g., localhost:3000, 0.0.0.0:8080)
   /(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[[0-9a-f:]+\]|(?:\d{1,3}\.){3}\d{1,3}):(\d{2,5})/i,
 ];
