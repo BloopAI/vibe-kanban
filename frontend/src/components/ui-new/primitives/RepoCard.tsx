@@ -99,13 +99,15 @@ export function RepoCard({
     [hasPrOpen, isTargetRemote]
   );
 
-  // If PR is open and 'pull-request' was selected, fall back to 'merge'
-  // If target is remote and 'merge' was selected, fall back to 'pull-request'
+  // If current selection is unavailable, fall back to the first available option.
   const effectiveSelectedAction = useMemo(() => {
-    if (hasPrOpen && selectedAction === 'pull-request') return 'merge';
-    if (isTargetRemote && selectedAction === 'merge') return 'pull-request';
-    return selectedAction;
-  }, [hasPrOpen, isTargetRemote, selectedAction]);
+    const selectedOption = availableActionOptions.find(
+      (option) => option.value === selectedAction
+    );
+    return (
+      selectedOption?.value ?? availableActionOptions[0]?.value ?? selectedAction
+    );
+  }, [availableActionOptions, selectedAction]);
 
   return (
     <div className="bg-primary rounded-sm my-base p-base space-y-base">
