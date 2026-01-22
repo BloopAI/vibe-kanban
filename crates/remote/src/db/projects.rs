@@ -205,6 +205,32 @@ impl ProjectRepository {
         .map_err(ProjectError::from)
     }
 
+    /// Creates the initial project for a newly created personal organization.
+    /// Includes default tags and statuses. Designed for use within transactions.
+    pub async fn create_initial_project_tx(
+        tx: &mut sqlx::Transaction<'_, Postgres>,
+        organization_id: Uuid,
+    ) -> Result<Project, ProjectError> {
+        let project = Self::create(
+            &mut **tx,
+            None,
+            organization_id,
+            INITIAL_PROJECT_NAME.to_string(),
+            INITIAL_PROJECT_COLOR.to_string(),
+        )
+        .await?;
+
+        TagRepository::create_default_tags(&mut **tx, project.id)
+            .await
+            .map_err(|e| ProjectError::DefaultTagsFailed(e.to_string()))?;
+
+        ProjectStatusRepository::create_default_statuses(&mut **tx, project.id)
+            .await
+            .map_err(|e| ProjectError::DefaultStatusesFailed(e.to_string()))?;
+
+        Ok(project)
+    }
+
     /// Creates a project along with default tags and statuses in a single transaction.
     pub async fn create_with_defaults(
         pool: &PgPool,

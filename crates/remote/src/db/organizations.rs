@@ -8,9 +8,7 @@ use super::{
         add_member, assert_admin as check_admin, assert_membership as check_membership,
         check_user_role as get_user_role,
     },
-    project_statuses::ProjectStatusRepository,
-    projects::{INITIAL_PROJECT_COLOR, INITIAL_PROJECT_NAME, ProjectRepository},
-    tags::TagRepository,
+    projects::ProjectRepository,
 };
 
 pub struct OrganizationRepository<'a> {
@@ -89,35 +87,12 @@ impl<'a> OrganizationRepository<'a> {
 
                 let org = create_personal_org_tx(&mut *tx, &name, &slug).await?;
 
-                // Create initial project
-                let project = ProjectRepository::create(
-                    &mut *tx,
-                    None,
-                    org.id,
-                    INITIAL_PROJECT_NAME.to_string(),
-                    INITIAL_PROJECT_COLOR.to_string(),
-                )
-                .await
-                .map_err(|e| {
-                    IdentityError::Database(sqlx::Error::Protocol(format!(
-                        "Failed to create initial project: {e}"
-                    )))
-                })?;
-
-                // Create default tags and statuses
-                TagRepository::create_default_tags(&mut *tx, project.id)
+                // Create initial project with default tags and statuses
+                ProjectRepository::create_initial_project_tx(&mut tx, org.id)
                     .await
                     .map_err(|e| {
                         IdentityError::Database(sqlx::Error::Protocol(format!(
-                            "Failed to create default tags: {e}"
-                        )))
-                    })?;
-
-                ProjectStatusRepository::create_default_statuses(&mut *tx, project.id)
-                    .await
-                    .map_err(|e| {
-                        IdentityError::Database(sqlx::Error::Protocol(format!(
-                            "Failed to create default statuses: {e}"
+                            "Failed to create initial project: {e}"
                         )))
                     })?;
 
