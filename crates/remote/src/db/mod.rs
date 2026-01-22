@@ -17,6 +17,7 @@ pub mod organizations;
 pub mod project_notification_preferences;
 pub mod project_statuses;
 pub mod projects;
+pub mod pull_requests;
 pub mod reviews;
 pub mod tags;
 pub mod types;

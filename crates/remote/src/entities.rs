@@ -20,6 +20,7 @@ use crate::{
         notifications::Notification,
         project_statuses::ProjectStatus,
         projects::Project,
+        pull_requests::PullRequest,
         tags::Tag,
         types::{IssuePriority, IssueRelationshipType},
         workspaces::Workspace,
@@ -151,6 +152,17 @@ crate::define_entity!(
     fields: [related_issue_id: uuid::Uuid, relationship_type: IssueRelationshipType],
 );
 
+// PullRequest: streaming at project level, no mutations
+crate::define_entity!(
+    PullRequest,
+    table: "pull_requests",
+    shape: {
+        where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+        params: ["project_id"],
+        url: "/shape/project/{project_id}/pull_requests",
+    },
+);
+
 // =============================================================================
 // Issue-scoped entities (both mutations and streaming at issue level)
 // =============================================================================
@@ -205,6 +217,7 @@ pub fn all_entities() -> Vec<&'static dyn EntityExport> {
         &ISSUE_FOLLOWER_ENTITY,
         &ISSUE_TAG_ENTITY,
         &ISSUE_RELATIONSHIP_ENTITY,
+        &PULL_REQUEST_ENTITY,
         // Issue-scoped
         &ISSUE_COMMENT_ENTITY,
         // Comment-scoped
@@ -225,6 +238,7 @@ pub fn all_shapes() -> Vec<&'static dyn crate::shapes::ShapeExport> {
         &ISSUE_FOLLOWER_SHAPE,
         &ISSUE_TAG_SHAPE,
         &ISSUE_RELATIONSHIP_SHAPE,
+        &PULL_REQUEST_SHAPE,
         &ISSUE_COMMENT_SHAPE,
         &ISSUE_COMMENT_REACTION_SHAPE,
     ]

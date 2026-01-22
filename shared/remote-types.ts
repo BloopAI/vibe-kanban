@@ -215,6 +215,12 @@ export const ISSUE_RELATIONSHIPS_SHAPE = defineShape<IssueRelationship>(
   '/v1/shape/project/{project_id}/issue_relationships'
 );
 
+export const PULL_REQUESTS_SHAPE = defineShape<PullRequest>(
+  'pull_requests',
+  ['project_id'] as const,
+  '/v1/shape/project/{project_id}/pull_requests'
+);
+
 export const ISSUE_COMMENTS_SHAPE = defineShape<IssueComment>(
   'issue_comments',
   ['issue_id'] as const,
@@ -337,6 +343,15 @@ export const ISSUE_RELATIONSHIP_ENTITY: EntityDefinition<IssueRelationship, Crea
   shapeScope: 'Project',
   shape: ISSUE_RELATIONSHIPS_SHAPE,
   mutations: { url: '/v1/issue_relationships' } as EntityDefinition<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest>['mutations'],
+};
+
+export const PULL_REQUEST_ENTITY: EntityDefinition<PullRequest, CreatePullRequestRequest, UpdatePullRequestRequest> = {
+  name: 'PullRequest',
+  table: 'pull_requests',
+  mutationScope: 'Issue',
+  shapeScope: 'Project',
+  shape: PULL_REQUESTS_SHAPE,
+  mutations: { url: '/v1/pull_requests' } as EntityDefinition<PullRequest, CreatePullRequestRequest, UpdatePullRequestRequest>['mutations'],
 };
 
 export const ISSUE_COMMENT_ENTITY: EntityDefinition<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> = {

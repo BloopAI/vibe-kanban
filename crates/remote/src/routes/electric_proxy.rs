@@ -49,6 +49,7 @@ pub fn router() -> Router<AppState> {
             shapes::ISSUE_RELATIONSHIPS.url,
             get(proxy_issue_relationships),
         )
+        .route(shapes::PULL_REQUESTS.url, get(proxy_pull_requests))
         // Issue-scoped
         .route(shapes::ISSUE_COMMENTS.url, get(proxy_issue_comments))
         .route(
@@ -258,6 +259,25 @@ async fn proxy_issue_relationships(
     proxy_table(
         &state,
         &shapes::ISSUE_RELATIONSHIPS,
+        &query.params,
+        &[project_id.to_string()],
+    )
+    .await
+}
+
+async fn proxy_pull_requests(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+    Query(query): Query<ShapeQuery>,
+) -> Result<Response, ProxyError> {
+    organization_members::assert_project_access(state.pool(), project_id, ctx.user.id)
+        .await
+        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
+
+    proxy_table(
+        &state,
+        &shapes::PULL_REQUESTS,
         &query.params,
         &[project_id.to_string()],
     )

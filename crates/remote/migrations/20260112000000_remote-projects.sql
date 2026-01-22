@@ -237,3 +237,27 @@ CREATE INDEX idx_workspaces_issue_id ON workspaces(issue_id) WHERE issue_id IS N
 CREATE INDEX idx_workspaces_local_workspace_id ON workspaces(local_workspace_id);
 CREATE INDEX idx_workspace_repos_workspace_id ON workspace_repos(workspace_id);
 CREATE INDEX idx_workspace_prs_workspace_repo_id ON workspace_prs(workspace_repo_id);
+
+-- 17. PULL REQUESTS
+-- Direct PR tracking linked to issues (tasks)
+CREATE TYPE pull_request_status AS ENUM ('open', 'merged', 'closed');
+
+CREATE TABLE pull_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    url TEXT NOT NULL,
+    number INTEGER NOT NULL,
+    status pull_request_status NOT NULL DEFAULT 'open',
+    merged_at TIMESTAMPTZ,
+    merge_commit_sha VARCHAR(40),
+    target_branch_name TEXT NOT NULL,
+    issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    workspace_id UUID REFERENCES workspaces(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    UNIQUE (url)
+);
+
+CREATE INDEX idx_pull_requests_issue_id ON pull_requests(issue_id);
+CREATE INDEX idx_pull_requests_workspace_id ON pull_requests(workspace_id) WHERE workspace_id IS NOT NULL;
+CREATE INDEX idx_pull_requests_status ON pull_requests(status);
