@@ -5,7 +5,7 @@ import type { OrganizationMemberWithProfile } from 'shared/types';
 import {
   StatusDropdown,
   PriorityDropdown,
-  AssigneeDropdown,
+  SearchableAssigneeDropdown,
 } from './PropertyDropdown';
 
 export interface IssuePropertyRowProps {
@@ -50,7 +50,7 @@ export function IssuePropertyRow({
         disabled={disabled}
       />
 
-      <AssigneeDropdown
+      <SearchableAssigneeDropdown
         assigneeId={assigneeId}
         users={users}
         onChange={onAssigneeChange}
