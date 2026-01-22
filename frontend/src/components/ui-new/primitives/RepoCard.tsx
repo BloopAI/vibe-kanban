@@ -105,7 +105,9 @@ export function RepoCard({
       (option) => option.value === selectedAction
     );
     return (
-      selectedOption?.value ?? availableActionOptions[0]?.value ?? selectedAction
+      selectedOption?.value ??
+      availableActionOptions[0]?.value ??
+      selectedAction
     );
   }, [availableActionOptions, selectedAction]);
 
