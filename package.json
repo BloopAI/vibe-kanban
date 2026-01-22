@@ -31,7 +31,12 @@
     "prepack": "npm run build:npx",
     "remote:dev": "cd crates/remote && docker compose --env-file .env.remote up --build ; docker compose down -v",
     "remote:prepare-db": "cd crates/remote && bash scripts/prepare-db.sh",
-    "remote:prepare-db:check": "cd crates/remote && bash scripts/prepare-db.sh --check"
+    "remote:prepare-db:check": "cd crates/remote && bash scripts/prepare-db.sh --check",
+    "docker:dev": "bash scripts/docker-dev.sh start",
+    "docker:dev:stop": "bash scripts/docker-dev.sh stop",
+    "docker:dev:build": "bash scripts/docker-dev.sh build",
+    "docker:dev:shell": "bash scripts/docker-dev.sh shell",
+    "docker:dev:clean": "bash scripts/docker-dev.sh clean"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

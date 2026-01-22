@@ -1,0 +1,39 @@
+# Development Dockerfile for vibe-kanban
+# This provides a containerized Rust + Node environment for local development
+
+FROM node:24-bookworm
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    git \
+    sqlite3 \
+    libsqlite3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Rust (using the specific nightly version from rust-toolchain.toml)
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    --default-toolchain nightly-2025-12-04 \
+    --component rustfmt,rust-analyzer,rust-src,clippy
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Install cargo-watch for hot-reloading
+RUN cargo install cargo-watch
+
+# Install pnpm
+RUN npm install -g pnpm@10.13.1
+
+# Set working directory
+WORKDIR /app
+
+# Create directories for development
+RUN mkdir -p /app/dev_assets /app/target
+
+# Expose ports for frontend and backend
+EXPOSE 3000 3001
+
+# Default command runs the dev environment
+CMD ["pnpm", "run", "dev"]

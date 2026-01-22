@@ -1,0 +1,82 @@
+# Docker Compose configuration for local development
+# Usage: docker compose -f docker-compose.dev.yml up
+#
+# This creates a containerized development environment with:
+# - Rust nightly toolchain
+# - Node.js 24 with pnpm
+# - Hot-reloading for both frontend and backend
+# - Volume mounts for live code changes
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: vibe-kanban-dev
+    volumes:
+      # Mount source code for live editing
+      - ./crates:/app/crates
+      - ./frontend:/app/frontend
+      - ./shared:/app/shared
+      - ./scripts:/app/scripts
+      - ./assets:/app/assets
+      - ./dev_assets_seed:/app/dev_assets_seed
+      - ./npx-cli:/app/npx-cli
+      # Mount config files
+      - ./package.json:/app/package.json
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
+      - ./Cargo.toml:/app/Cargo.toml
+      - ./Cargo.lock:/app/Cargo.lock
+      - ./rust-toolchain.toml:/app/rust-toolchain.toml
+      - ./rustfmt.toml:/app/rustfmt.toml:ro
+      # Persist build artifacts for faster rebuilds
+      - cargo-cache:/root/.cargo/registry
+      - cargo-git:/root/.cargo/git
+      - target-cache:/app/target
+      # Persist node_modules
+      - node-modules:/app/node_modules
+      - frontend-node-modules:/app/frontend/node_modules
+      # Persist dev assets
+      - dev-assets:/app/dev_assets
+    ports:
+      # Frontend dev server
+      - "3001:3001"
+      # Backend API server
+      - "3000:3000"
+    environment:
+      # Force ports to be consistent in container
+      - FRONTEND_PORT=3001
+      - BACKEND_PORT=3000
+      - HOST=0.0.0.0
+      # Rust logging
+      - RUST_LOG=debug
+      # Disable worktree cleanup in dev
+      - DISABLE_WORKTREE_ORPHAN_CLEANUP=1
+      # Optional: GitHub OAuth (copy from .env if needed)
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - SESSION_SECRET=${SESSION_SECRET:-dev-session-secret-change-in-production}
+    stdin_open: true
+    tty: true
+    # Healthcheck to verify the app is running
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health", "||", "exit", "0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+volumes:
+  cargo-cache:
+    name: vibe-kanban-cargo-cache
+  cargo-git:
+    name: vibe-kanban-cargo-git
+  target-cache:
+    name: vibe-kanban-target-cache
+  node-modules:
+    name: vibe-kanban-node-modules
+  frontend-node-modules:
+    name: vibe-kanban-frontend-node-modules
+  dev-assets:
+    name: vibe-kanban-dev-assets
