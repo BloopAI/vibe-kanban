@@ -4,6 +4,8 @@ import type { NavigateFunction } from 'react-router-dom';
 import type { QueryClient } from '@tanstack/react-query';
 import type { EditorType, ExecutionProcess, Workspace } from 'shared/types';
 import type { DiffViewMode } from '@/stores/useDiffViewStore';
+import type { LogsPanelContent } from '../containers/LogsContentContainer';
+import type { LogEntry } from '../containers/VirtualizedProcessLogs';
 import {
   CopyIcon,
   PushPinIcon,
@@ -94,6 +96,9 @@ export interface ActionExecutorContext {
   runningDevServers: ExecutionProcess[];
   startDevServer: () => void;
   stopDevServer: () => void;
+  // Logs panel state
+  currentLogs: LogEntry[] | null;
+  logsPanelContent: LogsPanelContent | null;
 }
 
 // Context for evaluating action visibility and state conditions
@@ -129,6 +134,9 @@ export interface ActionVisibilityContext {
 
   // Execution state
   isAttemptRunning: boolean;
+
+  // Logs panel state
+  logsPanelContent: LogsPanelContent | null;
 }
 
 // Base properties shared by all actions
@@ -673,6 +681,21 @@ export const Actions = {
     execute: async (ctx) => {
       if (!ctx.containerRef) return;
       await navigator.clipboard.writeText(ctx.containerRef);
+    },
+  },
+
+  CopyRawLogs: {
+    id: 'copy-raw-logs',
+    label: 'Copy Raw Logs',
+    icon: CopyIcon,
+    requiresTarget: false,
+    isVisible: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS &&
+      ctx.logsPanelContent?.type !== 'terminal',
+    execute: async (ctx) => {
+      if (!ctx.currentLogs || ctx.currentLogs.length === 0) return;
+      const rawText = ctx.currentLogs.map((log) => log.content).join('\n');
+      await navigator.clipboard.writeText(rawText);
     },
   },
 
