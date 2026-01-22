@@ -187,24 +187,29 @@ export function useCreateModeState({
 
   // Initialize repos from props (if not restored from scratch)
   useEffect(() => {
+    console.log('[useCreateModeState] initialRepos effect running', {
+      hasInitializedRepos: hasInitializedRepos.current,
+      initialReposLength: initialRepos?.length,
+      spinOffRepos: locationState?.spinOffRepos,
+    });
     if (
       !hasInitializedRepos.current &&
       initialRepos &&
       initialRepos.length > 0
     ) {
       hasInitializedRepos.current = true;
-      setRepos(initialRepos);
-      setTargetBranches(
-        initialRepos.reduce(
-          (acc, repo) => {
-            acc[repo.id] = repo.target_branch;
-            return acc;
-          },
-          {} as Record<string, string>
-        )
+      const branches = initialRepos.reduce(
+        (acc, repo) => {
+          acc[repo.id] = repo.target_branch;
+          return acc;
+        },
+        {} as Record<string, string>
       );
+      console.log('[useCreateModeState] initialRepos effect SETTING branches:', branches);
+      setRepos(initialRepos);
+      setTargetBranches(branches);
     }
-  }, [initialRepos]);
+  }, [initialRepos, locationState?.spinOffRepos]);
 
   // Initialize project from props (if not restored from scratch)
   useEffect(() => {
@@ -274,6 +279,10 @@ export function useCreateModeState({
 
   // Handle spin off repos from navigation state
   useEffect(() => {
+    console.log('[useCreateModeState] spinOff effect running', {
+      hasAppliedSpinOffRepos: hasAppliedSpinOffRepos.current,
+      spinOffRepos: locationState?.spinOffRepos,
+    });
     if (hasAppliedSpinOffRepos.current) return;
     if (!locationState?.spinOffRepos || locationState.spinOffRepos.length === 0)
       return;
@@ -282,15 +291,15 @@ export function useCreateModeState({
 
     // Set target branches SYNCHRONOUSLY first to prevent race condition
     // with CreateModeReposSectionContainer's auto-select effect
-    setTargetBranches(
-      locationState.spinOffRepos.reduce(
-        (acc, r) => {
-          acc[r.repo_id] = r.target_branch;
-          return acc;
-        },
-        {} as Record<string, string>
-      )
+    const branches = locationState.spinOffRepos.reduce(
+      (acc, r) => {
+        acc[r.repo_id] = r.target_branch;
+        return acc;
+      },
+      {} as Record<string, string>
     );
+    console.log('[useCreateModeState] spinOff effect SETTING branches:', branches);
+    setTargetBranches(branches);
 
     // Mark repos as initialized to prevent overwrite by initialRepos effect
     hasInitializedRepos.current = true;
