@@ -47,6 +47,7 @@ interface ChatBoxBaseProps {
   disabled?: boolean;
   workspaceId?: string;
   projectId?: string;
+  repoId?: string;
   executor?: BaseCodingAgent | null;
   autoFocus?: boolean;
 
@@ -101,6 +102,7 @@ export function ChatBoxBase({
   disabled,
   workspaceId,
   projectId,
+  repoId,
   executor,
   autoFocus,
   variant,
@@ -190,6 +192,7 @@ export function ChatBoxBase({
           className="min-h-double max-h-[50vh] overflow-y-auto"
           workspaceId={workspaceId}
           projectId={projectId}
+          repoId={repoId}
           executor={executor ?? null}
           autoFocus={autoFocus}
           onPasteFiles={onPasteFiles}

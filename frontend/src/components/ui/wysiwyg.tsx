@@ -73,6 +73,8 @@ type WysiwygProps = {
   taskAttemptId?: string;
   /** Task ID for resolving .vibe-images paths when taskAttemptId is not available */
   taskId?: string;
+  /** Repo ID for slash commands when no workspace yet */
+  repoId?: string;
   /** Local images for immediate rendering (before saved to server) */
   localImages?: LocalImageMetadata[];
   /** Optional edit callback - shows edit button in read-only mode when provided */
@@ -103,6 +105,7 @@ function WYSIWYGEditor({
   sendShortcut,
   taskAttemptId,
   taskId,
+  repoId,
   localImages,
   onEdit,
   onDelete,
@@ -268,7 +271,12 @@ function WYSIWYGEditor({
                     workspaceId={workspaceId}
                     projectId={projectId}
                   />
-                  {executor && <SlashCommandTypeaheadPlugin agent={executor} />}
+                  {executor && (
+                    <SlashCommandTypeaheadPlugin
+                      agent={executor}
+                      repoId={repoId}
+                    />
+                  )}
                   <KeyboardCommandsPlugin
                     onCmdEnter={onCmdEnter}
                     onShiftCmdEnter={onShiftCmdEnter}
