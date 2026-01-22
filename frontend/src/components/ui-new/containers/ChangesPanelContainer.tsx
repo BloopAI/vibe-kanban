@@ -11,13 +11,14 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useTask } from '@/hooks/useTask';
 import type { Diff, DiffChangeKind } from 'shared/types';
 
+// Auto-collapse defaults based on change type (matches DiffsPanel behavior)
 const COLLAPSE_BY_CHANGE_TYPE: Record<DiffChangeKind, boolean> = {
-  added: false,
-  deleted: true,
-  modified: false,
-  renamed: true,
-  copied: true,
-  permissionChange: true,
+  added: false, // Expand added files
+  deleted: true, // Collapse deleted files
+  modified: false, // Expand modified files
+  renamed: true, // Collapse renamed files
+  copied: true, // Collapse copied files
+  permissionChange: true, // Collapse permission changes
 };
 
 const COLLAPSE_MAX_LINES = 200;
