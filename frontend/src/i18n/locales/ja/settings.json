@@ -422,6 +422,11 @@
         },
         "path": {
           "label": "リポジトリパス"
+        },
+        "defaultTargetBranch": {
+          "label": "デフォルトターゲットブランチ",
+          "placeholder": "例：main、master、develop",
+          "helper": "新しいワークスペースのデフォルトベースブランチ。ワークツリーはこのブランチから分岐し、PRはこのブランチをターゲットにします。空のままにすると現在のブランチを使用します。"
         }
       },
       "scripts": {

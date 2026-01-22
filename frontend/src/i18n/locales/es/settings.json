@@ -422,6 +422,11 @@
         },
         "path": {
           "label": "Ruta del Repositorio"
+        },
+        "defaultTargetBranch": {
+          "label": "Rama Objetivo Predeterminada",
+          "placeholder": "ej., main, master, develop",
+          "helper": "La rama base predeterminada para nuevos workspaces. Los worktrees se ramifican desde esta rama y los PRs la tendrán como objetivo. Déjalo vacío para usar la rama actual."
         }
       },
       "scripts": {

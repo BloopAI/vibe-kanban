@@ -422,6 +422,11 @@
         },
         "path": {
           "label": "저장소 경로"
+        },
+        "defaultTargetBranch": {
+          "label": "기본 대상 브랜치",
+          "placeholder": "예: main, master, develop",
+          "helper": "새 워크스페이스의 기본 베이스 브랜치입니다. 워크트리는 이 브랜치에서 분기하고 PR은 이 브랜치를 대상으로 합니다. 비워두면 현재 브랜치를 사용합니다."
         }
       },
       "scripts": {

@@ -422,6 +422,11 @@
         },
         "path": {
           "label": "Chemin du dépôt"
+        },
+        "defaultTargetBranch": {
+          "label": "Branche cible par défaut",
+          "placeholder": "ex: main, master, develop",
+          "helper": "La branche de base par défaut pour les nouveaux espaces de travail. Les worktrees partent de cette branche et les PRs la cibleront. Laissez vide pour utiliser la branche actuelle."
         }
       },
       "scripts": {

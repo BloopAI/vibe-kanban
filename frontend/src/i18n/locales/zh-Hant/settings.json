@@ -422,6 +422,11 @@
         },
         "path": {
           "label": "儲存庫路徑"
+        },
+        "defaultTargetBranch": {
+          "label": "預設目標分支",
+          "placeholder": "例如：main、master、develop",
+          "helper": "新工作區的預設基礎分支。工作樹從此分支建立，PR 將以此分支為目標。留空則使用目前分支。"
         }
       },
       "scripts": {
