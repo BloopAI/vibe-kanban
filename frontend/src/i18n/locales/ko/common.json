@@ -1,4 +1,7 @@
 {
+  "note": "참고",
+  "saving": "저장 중...",
+  "continue": "계속",
   "folderPicker": {
     "legend": "폴더 이름을 클릭하여 탐색 • 작업 버튼을 사용하여 선택",
     "manualPathLabel": "경로 직접 입력:",

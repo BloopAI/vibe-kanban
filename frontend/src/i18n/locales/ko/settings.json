@@ -401,6 +401,10 @@
     "claudeToken": {
       "title": "Claude Code 토큰",
       "description": "공정한 사용 로테이션을 위해 Claude Code Max 구독을 공유 토큰 풀에 기여하세요.",
+      "dialog": {
+        "title": "Claude Code 토큰 필요",
+        "description": "코딩 작업을 실행하려면 Claude Code OAuth 토큰을 구성해야 합니다. 이를 통해 Vibe Kanban이 귀하의 Claude Code 구독을 사용할 수 있습니다."
+      },
       "yourToken": {
         "title": "내 토큰",
         "configured": "토큰 구성됨",
@@ -424,6 +428,7 @@
         "title": "토큰 얻는 방법",
         "step1": "컴퓨터에서 터미널 열기",
         "step2": "명령 실행: claude setup-token",
+        "step2Run": "실행:",
         "step3": "프롬프트에 따라 Claude Max 계정으로 인증",
         "step4": "생성된 토큰을 복사하여 위에 붙여넣기",
         "note": "이 토큰을 통해 Vibe Kanban이 귀하의 Claude Code 구독을 사용할 수 있습니다. 토큰은 모든 기여자 간에 공정하게 로테이션됩니다."
@@ -446,7 +451,9 @@
       "errors": {
         "loadFailed": "토큰 상태를 불러오지 못했습니다",
         "saveFailed": "토큰 저장에 실패했습니다",
-        "deleteFailed": "토큰 삭제에 실패했습니다"
+        "deleteFailed": "토큰 삭제에 실패했습니다",
+        "tokenRequired": "OAuth 토큰을 입력해주세요",
+        "tokenTooShort": "토큰이 너무 짧습니다. 전체 토큰을 붙여넣어 주세요."
       },
       "success": {
         "saved": "토큰이 성공적으로 저장되었습니다",

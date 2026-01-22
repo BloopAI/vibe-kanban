@@ -401,6 +401,10 @@
     "claudeToken": {
       "title": "Claude Code 權杖",
       "description": "將您的 Claude Code Max 訂閱貢獻到共享權杖池，實現公平使用輪換。",
+      "dialog": {
+        "title": "需要 Claude Code 權杖",
+        "description": "要執行編碼任務，您需要設定 Claude Code OAuth 權杖。這允許 Vibe Kanban 使用您的 Claude Code 訂閱。"
+      },
       "yourToken": {
         "title": "您的權杖",
         "configured": "權杖已設定",
@@ -424,6 +428,7 @@
         "title": "如何取得權杖",
         "step1": "在您的電腦上開啟終端機",
         "step2": "執行命令：claude setup-token",
+        "step2Run": "執行：",
         "step3": "按照提示使用您的 Claude Max 帳戶進行身份驗證",
         "step4": "複製產生的權杖並貼到上方",
         "note": "此權杖允許 Vibe Kanban 使用您的 Claude Code 訂閱。權杖在所有貢獻者之間公平輪換。"
@@ -446,7 +451,9 @@
       "errors": {
         "loadFailed": "載入權杖狀態失敗",
         "saveFailed": "儲存權杖失敗",
-        "deleteFailed": "刪除權杖失敗"
+        "deleteFailed": "刪除權杖失敗",
+        "tokenRequired": "請輸入您的 OAuth 權杖",
+        "tokenTooShort": "權杖似乎太短了。請貼上完整的權杖。"
       },
       "success": {
         "saved": "權杖儲存成功",

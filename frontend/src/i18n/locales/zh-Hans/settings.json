@@ -401,6 +401,10 @@
     "claudeToken": {
       "title": "Claude Code 令牌",
       "description": "将您的 Claude Code Max 订阅贡献到共享令牌池，实现公平使用轮换。",
+      "dialog": {
+        "title": "需要 Claude Code 令牌",
+        "description": "要运行编码任务，您需要配置 Claude Code OAuth 令牌。这允许 Vibe Kanban 使用您的 Claude Code 订阅。"
+      },
       "yourToken": {
         "title": "您的令牌",
         "configured": "令牌已配置",
@@ -424,6 +428,7 @@
         "title": "如何获取令牌",
         "step1": "在您的机器上打开终端",
         "step2": "运行命令：claude setup-token",
+        "step2Run": "运行：",
         "step3": "按照提示使用您的 Claude Max 账户进行身份验证",
         "step4": "复制生成的令牌并粘贴到上方",
         "note": "此令牌允许 Vibe Kanban 使用您的 Claude Code 订阅。令牌在所有贡献者之间公平轮换。"
@@ -446,7 +451,9 @@
       "errors": {
         "loadFailed": "加载令牌状态失败",
         "saveFailed": "保存令牌失败",
-        "deleteFailed": "删除令牌失败"
+        "deleteFailed": "删除令牌失败",
+        "tokenRequired": "请输入您的 OAuth 令牌",
+        "tokenTooShort": "令牌似乎太短了。请粘贴完整的令牌。"
       },
       "success": {
         "saved": "令牌保存成功",

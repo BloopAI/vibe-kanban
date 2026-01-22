@@ -401,6 +401,10 @@
     "claudeToken": {
       "title": "Claude Code トークン",
       "description": "公平な使用ローテーションのため、Claude Code Max サブスクリプションを共有トークンプールに貢献してください。",
+      "dialog": {
+        "title": "Claude Code トークンが必要です",
+        "description": "コーディングタスクを実行するには、Claude Code OAuth トークンを設定する必要があります。これにより、Vibe Kanban があなたの Claude Code サブスクリプションを使用できます。"
+      },
       "yourToken": {
         "title": "あなたのトークン",
         "configured": "トークン設定済み",
@@ -424,6 +428,7 @@
         "title": "トークンの取得方法",
         "step1": "マシンでターミナルを開く",
         "step2": "コマンドを実行: claude setup-token",
+        "step2Run": "実行:",
         "step3": "プロンプトに従って Claude Max アカウントで認証",
         "step4": "生成されたトークンをコピーして上に貼り付け",
         "note": "このトークンにより、Vibe Kanban があなたの Claude Code サブスクリプションを使用できます。トークンはすべての貢献者間で公平にローテーションされます。"
@@ -446,7 +451,9 @@
       "errors": {
         "loadFailed": "トークン状態の読み込みに失敗しました",
         "saveFailed": "トークンの保存に失敗しました",
-        "deleteFailed": "トークンの削除に失敗しました"
+        "deleteFailed": "トークンの削除に失敗しました",
+        "tokenRequired": "OAuth トークンを入力してください",
+        "tokenTooShort": "トークンが短すぎます。完全なトークンを貼り付けてください。"
       },
       "success": {
         "saved": "トークンが正常に保存されました",

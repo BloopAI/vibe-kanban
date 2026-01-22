@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,7 @@ export type ClaudeTokenResult = {
 
 const ClaudeTokenRequiredDialogImpl = NiceModal.create<NoProps>(() => {
   const modal = useModal();
+  const { t } = useTranslation(['settings', 'common']);
   const [token, setToken] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,14 +44,12 @@ const ClaudeTokenRequiredDialogImpl = NiceModal.create<NoProps>(() => {
 
   const handleSaveToken = async () => {
     if (!token.trim()) {
-      setError('Please enter your Claude Code OAuth token');
+      setError(t('settings.claudeToken.errors.tokenRequired'));
       return;
     }
 
     if (token.length < 20) {
-      setError(
-        'Token appears too short. Please paste the complete token from `claude setup-token`'
-      );
+      setError(t('settings.claudeToken.errors.tokenTooShort'));
       return;
     }
 
@@ -61,7 +61,7 @@ const ClaudeTokenRequiredDialogImpl = NiceModal.create<NoProps>(() => {
       modal.resolve({ tokenConfigured: true } as ClaudeTokenResult);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Failed to save token. Please try again.'
+        err instanceof Error ? err.message : t('settings.claudeToken.errors.saveFailed')
       );
       setSaving(false);
     }
@@ -73,12 +73,10 @@ const ClaudeTokenRequiredDialogImpl = NiceModal.create<NoProps>(() => {
         <DialogHeader>
           <div className="flex items-center gap-3">
             <Key className="h-6 w-6 text-primary" />
-            <DialogTitle>Claude Code Token Required</DialogTitle>
+            <DialogTitle>{t('settings.claudeToken.dialog.title')}</DialogTitle>
           </div>
           <DialogDescription className="text-left pt-2">
-            To use Vibe Kanban, you need to provide your Claude Code Max
-            subscription token. This enables fair rotation of API usage across
-            all team members.
+            {t('settings.claudeToken.dialog.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -86,12 +84,12 @@ const ClaudeTokenRequiredDialogImpl = NiceModal.create<NoProps>(() => {
         <div className="space-y-3 bg-muted/50 p-4 rounded-lg">
           <div className="flex items-center gap-2 text-sm font-medium">
             <Terminal className="h-4 w-4" />
-            How to get your token
+            {t('settings.claudeToken.instructions.title')}
           </div>
           <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-2 ml-1">
-            <li>Open a terminal on your machine</li>
+            <li>{t('settings.claudeToken.instructions.step1')}</li>
             <li className="flex items-center gap-2 flex-wrap">
-              <span>Run the command:</span>
+              <span>{t('settings.claudeToken.instructions.step2Run')}</span>
               <code className="bg-background px-2 py-1 rounded text-foreground font-mono text-xs">
                 claude setup-token
               </code>
@@ -108,12 +106,11 @@ const ClaudeTokenRequiredDialogImpl = NiceModal.create<NoProps>(() => {
                 )}
               </Button>
             </li>
-            <li>Follow the prompts to authenticate with your Claude Max account</li>
-            <li>Copy the generated token and paste it below</li>
+            <li>{t('settings.claudeToken.instructions.step3')}</li>
+            <li>{t('settings.claudeToken.instructions.step4')}</li>
           </ol>
           <p className="text-xs text-muted-foreground mt-2">
-            <strong>Note:</strong> You need a Claude Pro or Max subscription to
-            generate OAuth tokens.
+            <strong>{t('common:note')}:</strong> {t('settings.claudeToken.instructions.note')}
           </p>
         </div>
 
@@ -127,11 +124,11 @@ const ClaudeTokenRequiredDialogImpl = NiceModal.create<NoProps>(() => {
 
         {/* Token Input */}
         <div className="space-y-2">
-          <Label htmlFor="claude-token">OAuth Token</Label>
+          <Label htmlFor="claude-token">{t('settings.claudeToken.form.label')}</Label>
           <Input
             id="claude-token"
             type="password"
-            placeholder="Paste your token here..."
+            placeholder={t('settings.claudeToken.form.placeholder')}
             value={token}
             onChange={(e) => {
               setToken(e.target.value);
@@ -149,7 +146,7 @@ const ClaudeTokenRequiredDialogImpl = NiceModal.create<NoProps>(() => {
             className="w-full"
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {saving ? 'Saving...' : 'Continue'}
+            {saving ? t('common:saving') : t('common:continue')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -349,14 +349,16 @@ export function ClaudeTokenSettings() {
                     {userStatus.token_status.has_token ? (
                       <>
                         {userStatus.token_status.is_expired ? (
-                          <Badge variant="destructive">Expired</Badge>
+                          <Badge variant="destructive">
+                            {t('settings.claudeToken.teamPool.status.expired')}
+                          </Badge>
                         ) : (
                           <Badge
                             variant="outline"
                             className="text-green-600 border-green-600"
                           >
                             <CheckCircle className="h-3 w-3 mr-1" />
-                            Active
+                            {t('settings.claudeToken.teamPool.status.active')}
                           </Badge>
                         )}
                         <span className="text-xs text-muted-foreground font-mono">
@@ -364,7 +366,9 @@ export function ClaudeTokenSettings() {
                         </span>
                       </>
                     ) : (
-                      <Badge variant="secondary">No Token</Badge>
+                      <Badge variant="secondary">
+                        {t('settings.claudeToken.teamPool.status.missing')}
+                      </Badge>
                     )}
                   </div>
                 </div>
