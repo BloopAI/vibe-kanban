@@ -231,25 +231,13 @@ export type Feature = {
 // =============================================================================
 
 export type KanbanBoardProps = {
-  id: Status['id'];
   children: ReactNode;
   className?: string;
 };
 
-export const KanbanBoard = ({ id, children, className }: KanbanBoardProps) => {
+export const KanbanBoard = ({ children, className }: KanbanBoardProps) => {
   return (
-    <Droppable droppableId={id}>
-      {(provided: DroppableProvided) => (
-        <div
-          className={cn('flex flex-col min-h-40', className)}
-          ref={provided.innerRef}
-          {...provided.droppableProps}
-        >
-          {children}
-          {provided.placeholder}
-        </div>
-      )}
-    </Droppable>
+    <div className={cn('flex flex-col min-h-40', className)}>{children}</div>
   );
 };
 
@@ -325,12 +313,24 @@ export const KanbanCard = ({
 // =============================================================================
 
 export type KanbanCardsProps = {
+  id: string;
   children: ReactNode;
   className?: string;
 };
 
-export const KanbanCards = ({ children, className }: KanbanCardsProps) => (
-  <div className={cn('flex flex-1 flex-col', className)}>{children}</div>
+export const KanbanCards = ({ id, children, className }: KanbanCardsProps) => (
+  <Droppable droppableId={id}>
+    {(provided: DroppableProvided) => (
+      <div
+        className={cn('flex flex-1 flex-col', className)}
+        ref={provided.innerRef}
+        {...provided.droppableProps}
+      >
+        {children}
+        {provided.placeholder}
+      </div>
+    )}
+  </Droppable>
 );
 
 // =============================================================================
