@@ -40,8 +40,6 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum OpencodeSlashCommand {
     Compact,
-    Share,
-    Unshare,
     Commands,
     Models {
         provider: Option<String>,
@@ -102,12 +100,12 @@ impl OpencodeSlashCommand {
 
     /// Returns true if this command requires an existing session.
     pub fn requires_existing_session(&self) -> bool {
-        matches!(self, Self::Compact | Self::Share | Self::Unshare)
+        matches!(self, Self::Compact)
     }
 
     /// Returns true if this command should fork the session.
     pub fn should_fork_session(&self) -> bool {
-        !matches!(self, Self::Share | Self::Unshare)
+        true
     }
 }
 
@@ -115,8 +113,6 @@ impl<'a> From<SlashCommandCall<'a>> for OpencodeSlashCommand {
     fn from(call: SlashCommandCall<'a>) -> Self {
         match call.name.as_str() {
             "compact" | "summarize" => Self::Compact,
-            "share" => Self::Share,
-            "unshare" => Self::Unshare,
             "commands" => Self::Commands,
             "models" => Self::Models {
                 provider: call.arguments.split_whitespace().next().map(String::from),
@@ -158,14 +154,6 @@ pub fn hardcoded_slash_commands() -> Vec<SlashCommandDescription> {
         SlashCommandDescription {
             name: "mcp".to_string(),
             description: Some("show MCP status".to_string()),
-        },
-        SlashCommandDescription {
-            name: "share".to_string(),
-            description: Some("share a session".to_string()),
-        },
-        SlashCommandDescription {
-            name: "unshare".to_string(),
-            description: Some("unshare a session".to_string()),
         },
     ]
 }
@@ -370,19 +358,6 @@ fn format_formatter_section(formatter: &[FormatterStatus]) -> String {
     lines.join("\n")
 }
 
-/// Format a "session shared" message.
-fn format_share_result(url: Option<String>) -> String {
-    match url {
-        Some(url) => format!("**Session shared:** {url}"),
-        None => "**Session shared.**".to_string(),
-    }
-}
-
-/// Format a "session unshared" message.
-fn format_unshare_result() -> String {
-    "**Session unshared.**".to_string()
-}
-
 /// Format a "command not found" message.
 fn format_command_not_found(name: &str) -> String {
     format!("_Command not found: `/{name}`_")
@@ -466,10 +441,7 @@ pub async fn execute(
             return Ok(());
         }
         // Session-dependent commands handled below
-        OpencodeSlashCommand::Compact
-        | OpencodeSlashCommand::Share
-        | OpencodeSlashCommand::Unshare
-        | OpencodeSlashCommand::Custom { .. } => {}
+        OpencodeSlashCommand::Compact | OpencodeSlashCommand::Custom { .. } => {}
     }
 
     // Validate custom commands exist
@@ -512,22 +484,6 @@ pub async fn execute(
             session_id: session_id.clone(),
         })
         .await?;
-
-    // Handle share/unshare commands
-    match &command {
-        OpencodeSlashCommand::Share => {
-            let url = sdk::session_share(&client, &config.base_url, &config.directory, &session_id)
-                .await?;
-            log_result_and_done(&log_writer, format_share_result(url)).await?;
-            return Ok(());
-        }
-        OpencodeSlashCommand::Unshare => {
-            sdk::session_unshare(&client, &config.base_url, &config.directory, &session_id).await?;
-            log_result_and_done(&log_writer, format_unshare_result()).await?;
-            return Ok(());
-        }
-        _ => {}
-    }
 
     let is_compact = matches!(&command, OpencodeSlashCommand::Compact);
     let compaction_model = if is_compact {
