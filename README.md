@@ -81,6 +81,16 @@ pnpm run dev
 
 This will start the backend. A blank DB will be copied from the `dev_assets_seed` folder.
 
+### Containerized Development
+
+If you don't have Rust installed locally, use Docker:
+
+```bash
+pnpm run docker:dev
+```
+
+Frontend: http://localhost:3000, Backend: http://localhost:3001
+
 ### Building the frontend
 
 To build just the frontend:
