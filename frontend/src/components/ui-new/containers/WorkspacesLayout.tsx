@@ -31,6 +31,10 @@ import {
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 import { KanbanContainer } from '@/components/ui-new/containers/KanbanContainer';
+import { KanbanIssuePanelContainer } from '@/components/ui-new/containers/KanbanIssuePanelContainer';
+import { useEntity } from '@/lib/electric/hooks';
+import { PROJECT_ENTITY } from 'shared/remote-types';
+import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 
@@ -75,6 +79,14 @@ export function WorkspacesLayout() {
   const isKanbanRightPanelVisible = useUiPreferencesStore(
     (s) => s.isKanbanRightPanelVisible
   );
+
+  // Get organization and project for Kanban mode
+  const { data: orgsData } = useUserOrganizations();
+  const firstOrg = orgsData?.organizations?.[0];
+  const { data: projects } = useEntity(PROJECT_ENTITY, {
+    organization_id: firstOrg?.id ?? '',
+  });
+  const kanbanProjectId = projects?.[0]?.id;
 
   useCommandBarShortcut(() => CommandBarDialog.show());
 
@@ -168,13 +180,13 @@ export function WorkspacesLayout() {
               />
             )}
 
-            {isKanbanRightPanelVisible && (
+            {isKanbanRightPanelVisible && kanbanProjectId && (
               <Panel
                 id="kanban-right"
                 minSize="20%"
-                className="min-w-0 h-full overflow-hidden flex items-center justify-center bg-secondary"
+                className="min-w-0 h-full overflow-hidden bg-secondary"
               >
-                <p className="text-low">Kanban Right Panel</p>
+                <KanbanIssuePanelContainer projectId={kanbanProjectId} />
               </Panel>
             )}
           </Group>
