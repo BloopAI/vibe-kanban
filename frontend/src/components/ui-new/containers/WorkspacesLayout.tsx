@@ -4,7 +4,6 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
-import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import { ChangesViewProvider } from '@/contexts/ChangesViewContext';
 import { WorkspacesSidebarContainer } from '@/components/ui-new/containers/WorkspacesSidebarContainer';
 import { LogsContentContainer } from '@/components/ui-new/containers/LogsContentContainer';
@@ -106,8 +105,7 @@ export function WorkspacesLayout() {
 
   const mainContent = (
     <ReviewProvider attemptId={selectedWorkspace?.id}>
-      <LogsPanelProvider>
-        <ChangesViewProvider>
+      <ChangesViewProvider>
           <div className="flex h-full">
             <Group
               orientation="horizontal"
@@ -183,7 +181,6 @@ export function WorkspacesLayout() {
             )}
           </div>
         </ChangesViewProvider>
-      </LogsPanelProvider>
     </ReviewProvider>
   );
 

@@ -7,6 +7,7 @@ import {
 } from '@/contexts/WorkspaceContext';
 import { ActionsProvider } from '@/contexts/ActionsContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
+import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import NiceModal from '@ebay/nice-modal-react';
 import '@/styles/new/index.css';
 
@@ -48,9 +49,11 @@ export function NewDesignScope({ children }: NewDesignScopeProps) {
       <PortalContainerContext.Provider value={ref}>
         <WorkspaceProvider>
           <ExecutionProcessesProviderWrapper>
-            <ActionsProvider>
-              <NiceModal.Provider>{children}</NiceModal.Provider>
-            </ActionsProvider>
+            <LogsPanelProvider>
+              <ActionsProvider>
+                <NiceModal.Provider>{children}</NiceModal.Provider>
+              </ActionsProvider>
+            </LogsPanelProvider>
           </ExecutionProcessesProviderWrapper>
         </WorkspaceProvider>
       </PortalContainerContext.Provider>
