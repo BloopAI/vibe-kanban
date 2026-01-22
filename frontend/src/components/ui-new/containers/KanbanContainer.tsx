@@ -194,7 +194,7 @@ function KanbanBoardContent({
             const issueIds = items[status.id] ?? [];
 
             return (
-              <KanbanBoard key={status.id} id={status.id}>
+              <KanbanBoard key={status.id}>
                 <KanbanHeader>
                   <div className="sticky border-b top-0 z-20 flex shrink-0 items-center justify-between gap-2 p-base bg-background">
                     <div className="flex items-center gap-2">
@@ -214,7 +214,7 @@ function KanbanBoardContent({
                     </button>
                   </div>
                 </KanbanHeader>
-                <KanbanCards>
+                <KanbanCards id={status.id}>
                   {issueIds.map((issueId, index) => {
                     const issue = issueMap[issueId];
                     if (!issue) return null;
@@ -239,51 +239,6 @@ function KanbanBoardContent({
                       </KanbanCard>
                     );
                   })}
-                  {/* Show sample cards if no real issues */}
-                  {issueIds.length === 0 && (
-                    <>
-                      <KanbanCard
-                        id={`sample-1-${status.id}`}
-                        name="Add Welcome Modal"
-                        index={0}
-                        onClick={() => handleAddTask()}
-                        dragDisabled
-                      >
-                        <KanbanCardContent
-                          displayId="Task-001"
-                          title="Add Welcome Modal"
-                          description="Goal: to successfully on-board a user onto Vibe Kanban in a few clicks as possible"
-                          priority="urgent"
-                          tags={[
-                            { id: '1', name: 'On-boarding' },
-                            { id: '2', name: 'Front-end' },
-                          ]}
-                          assignee={null}
-                        />
-                      </KanbanCard>
-                      <KanbanCard
-                        id={`sample-2-${status.id}`}
-                        name="Setup CI Pipeline"
-                        index={1}
-                        onClick={() => handleAddTask()}
-                        dragDisabled
-                      >
-                        <KanbanCardContent
-                          displayId="Task-002"
-                          title="Setup CI Pipeline"
-                          description="Configure GitHub Actions for automated testing and deployment"
-                          priority="low"
-                          tags={[{ id: '3', name: 'DevOps' }]}
-                          assignee={{
-                            firstName: 'Schnitzel',
-                            lastName: 'Boy',
-                            username: 'schnitzelboy',
-                          }}
-                          isLoading
-                        />
-                      </KanbanCard>
-                    </>
-                  )}
                 </KanbanCards>
               </KanbanBoard>
             );
