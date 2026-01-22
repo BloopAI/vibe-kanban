@@ -633,7 +633,8 @@
       "requestChanges": "변경 요청",
       "approve": "승인",
       "clearReviewComments": "리뷰 댓글 지우기",
-      "edit": "메시지 편집"
+      "edit": "메시지 편집",
+      "scrollToPreviousMessage": "Go to previous message"
     },
     "approval": {
       "conflictWarning": "충돌하는 파일은 수동으로 해결해야 합니다",

@@ -1,7 +1,10 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useCallback } from 'react';
 import type { Workspace, Session } from 'shared/types';
 import { createWorkspaceWithSession } from '@/types/attempt';
-import { WorkspacesMain } from '@/components/ui-new/views/WorkspacesMain';
+import {
+  WorkspacesMain,
+  type ConversationListHandle,
+} from '@/components/ui-new/views/WorkspacesMain';
 import { useTask } from '@/hooks/useTask';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
@@ -28,6 +31,7 @@ export function WorkspacesMainContainer({
 }: WorkspacesMainContainerProps) {
   const { diffStats } = useWorkspaceContext();
   const containerRef = useRef<HTMLElement>(null);
+  const conversationListRef = useRef<ConversationListHandle>(null);
 
   // Fetch task to get project_id for file search
   const { data: task } = useTask(selectedWorkspace?.task_id, {
@@ -40,8 +44,13 @@ export function WorkspacesMainContainer({
     return createWorkspaceWithSession(selectedWorkspace, selectedSession);
   }, [selectedWorkspace, selectedSession]);
 
+  const handleScrollToPreviousMessage = useCallback(() => {
+    conversationListRef.current?.scrollToPreviousUserMessage();
+  }, []);
+
   return (
     <WorkspacesMain
+      conversationListRef={conversationListRef}
       workspaceWithSession={workspaceWithSession}
       sessions={sessions}
       onSelectSession={onSelectSession}
@@ -55,6 +64,7 @@ export function WorkspacesMainContainer({
         linesAdded: diffStats.lines_added,
         linesRemoved: diffStats.lines_removed,
       }}
+      onScrollToPreviousMessage={handleScrollToPreviousMessage}
     />
   );
 }

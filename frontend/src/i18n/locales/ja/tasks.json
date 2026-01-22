@@ -633,7 +633,8 @@
       "requestChanges": "変更を依頼",
       "approve": "承認",
       "clearReviewComments": "レビューコメントをクリア",
-      "edit": "メッセージを編集"
+      "edit": "メッセージを編集",
+      "scrollToPreviousMessage": "Go to previous message"
     },
     "approval": {
       "conflictWarning": "競合するファイルは手動で解決する必要があります",
