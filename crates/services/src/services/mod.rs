@@ -1,6 +1,7 @@
 pub mod analytics;
 pub mod approvals;
 pub mod auth;
+pub mod claude_token_rotation;
 pub mod config;
 pub mod container;
 pub mod diff_stream;

@@ -14,6 +14,16 @@ export type UserData = { user_id: string, first_name: string | null, last_name: 
 
 export type User = { id: string, github_id: bigint, username: string, email: string | null, display_name: string | null, avatar_url: string | null, created_at: Date, updated_at: Date, };
 
+export type ClaudeOAuthTokenStatus = { has_token: boolean, token_hint: string | null, created_at: Date | null, expires_at: Date | null, last_used_at: Date | null, is_expired: boolean, };
+
+export type UserTokenStatus = { user_id: string, username: string, display_name: string | null, avatar_url: string | null, token_status: ClaudeOAuthTokenStatus, };
+
+export type UpsertClaudeTokenRequest = { 
+/**
+ * The raw token from `claude setup-token` output
+ */
+token: string, };
+
 export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, creator_user_id: string | null, created_at: Date, updated_at: Date, };
 
 export type ProjectCreator = { id: string, username: string, avatar_url: string | null, };

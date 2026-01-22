@@ -1,4 +1,7 @@
 {
+  "note": "注意",
+  "saving": "保存中...",
+  "continue": "続行",
   "folderPicker": {
     "legend": "フォルダ名をクリックして移動 • アクションボタンで選択",
     "manualPathLabel": "パスを手動入力:",

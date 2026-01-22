@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COUNT(*) as \"count!: i64\"\n               FROM claude_oauth_tokens\n               WHERE expires_at IS NULL OR expires_at > datetime('now')",
+  "describe": {
+    "columns": [
+      {
+        "name": "count!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ae2c1e20a501ca70d0baca06fe270bfa2c6f93556a4b02ebddc1a0804f89422b"
+}

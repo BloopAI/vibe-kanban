@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '@/i18n';
@@ -14,6 +14,7 @@ import { usePreviousPath } from '@/hooks/usePreviousPath';
 
 import {
   AgentSettings,
+  ClaudeTokenSettings,
   GeneralSettings,
   McpSettings,
   OrganizationSettings,
@@ -36,7 +37,10 @@ import * as Sentry from '@sentry/react';
 import { DisclaimerDialog } from '@/components/dialogs/global/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
 import { ReleaseNotesDialog } from '@/components/dialogs/global/ReleaseNotesDialog';
+import { ClaudeTokenRequiredDialog } from '@/components/dialogs/global/ClaudeTokenRequiredDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
+import { claudeTokensApi } from '@/lib/api';
+import { useLocalAuth } from '@/contexts/LocalAuthContext';
 
 // Design scope components
 import { LegacyDesignScope } from '@/components/legacy-design/LegacyDesignScope';
@@ -52,9 +56,33 @@ function AppContent() {
   const { config, analyticsUserId, updateAndSaveConfig } = useUserSystem();
   const posthog = usePostHog();
   const { isSignedIn } = useAuth();
+  const { isAuthenticated, isLocalAuthConfigured } = useLocalAuth();
+  const [hasClaudeToken, setHasClaudeToken] = useState<boolean | null>(null);
 
   // Track previous path for back navigation
   usePreviousPath();
+
+  // Check Claude token status when authenticated
+  const checkClaudeTokenStatus = useCallback(async () => {
+    if (!isAuthenticated) {
+      setHasClaudeToken(null);
+      return;
+    }
+    try {
+      const status = await claudeTokensApi.getMyStatus();
+      setHasClaudeToken(status.has_token && !status.is_expired);
+    } catch (error) {
+      console.error('Failed to check Claude token status:', error);
+      // If we can't check, assume no token to be safe
+      setHasClaudeToken(false);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isLocalAuthConfigured && isAuthenticated) {
+      checkClaudeTokenStatus();
+    }
+  }, [isLocalAuthConfigured, isAuthenticated, checkClaudeTokenStatus]);
 
   // Handle opt-in/opt-out and user identification when config loads
   useEffect(() => {
@@ -99,7 +127,23 @@ function AppContent() {
         return;
       }
 
-      // 3) Release notes - last step
+      // 3) Claude Token - required after onboarding when authenticated
+      // Only check if auth is configured and user is authenticated
+      if (
+        isLocalAuthConfigured &&
+        isAuthenticated &&
+        hasClaudeToken === false
+      ) {
+        await ClaudeTokenRequiredDialog.show();
+        if (!cancelled) {
+          // Refresh token status after dialog closes
+          await checkClaudeTokenStatus();
+        }
+        ClaudeTokenRequiredDialog.hide();
+        return;
+      }
+
+      // 4) Release notes - last step
       if (config.show_release_notes) {
         await ReleaseNotesDialog.show();
         if (!cancelled) {
@@ -115,7 +159,15 @@ function AppContent() {
     return () => {
       cancelled = true;
     };
-  }, [config, isSignedIn, updateAndSaveConfig]);
+  }, [
+    config,
+    isSignedIn,
+    updateAndSaveConfig,
+    isLocalAuthConfigured,
+    isAuthenticated,
+    hasClaudeToken,
+    checkClaudeTokenStatus,
+  ]);
 
   // TODO: Disabled while developing FE only
   // if (loading) {
@@ -174,6 +226,7 @@ function AppContent() {
                 />
                 <Route path="agents" element={<AgentSettings />} />
                 <Route path="mcp" element={<McpSettings />} />
+                <Route path="claude-token" element={<ClaudeTokenSettings />} />
               </Route>
               <Route
                 path="/mcp-servers"

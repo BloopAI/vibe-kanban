@@ -72,6 +72,8 @@ pub enum ApiError {
     RemoteClient(#[from] RemoteClientError),
     #[error("Unauthorized")]
     Unauthorized,
+    #[error("Claude token required")]
+    ClaudeTokenRequired,
     #[error("Bad request: {0}")]
     BadRequest(String),
     #[error("Conflict: {0}")]
@@ -180,6 +182,7 @@ impl IntoResponse for ApiError {
                 }
             },
             ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
+            ApiError::ClaudeTokenRequired => (StatusCode::FORBIDDEN, "ClaudeTokenRequired"),
             ApiError::BadRequest(_) => (StatusCode::BAD_REQUEST, "BadRequest"),
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
             ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "ForbiddenError"),
@@ -264,6 +267,7 @@ impl IntoResponse for ApiError {
                 RemoteClientError::Url(_) => "Remote service URL is invalid.".to_string(),
             },
             ApiError::Unauthorized => "Unauthorized. Please sign in again.".to_string(),
+            ApiError::ClaudeTokenRequired => "You must configure your Claude Code OAuth token before starting work. Please go to Settings > Claude Token to add your token.".to_string(),
             ApiError::BadRequest(msg) => msg.clone(),
             ApiError::Conflict(msg) => msg.clone(),
             ApiError::Forbidden(msg) => msg.clone(),
