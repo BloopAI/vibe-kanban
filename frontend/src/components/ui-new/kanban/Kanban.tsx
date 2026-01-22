@@ -20,17 +20,10 @@ import {
 import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import {
-  PlusIcon,
-  WarningCircleIcon,
-  ArrowUpIcon,
-  MinusIcon,
-  ArrowDownIcon,
-  UsersIcon,
-  ArrowFatLineUpIcon,
-} from '@phosphor-icons/react';
+import { PlusIcon, UsersIcon } from '@phosphor-icons/react';
 import type { IssuePriority } from 'shared/remote-types';
 import { UserAvatar } from '@/components/tasks/UserAvatar';
+import { PriorityIcon } from './Icons';
 import { RunningDots } from '@/components/ui-new/primitives/RunningDots';
 import { Button } from '@/components/ui/button';
 
@@ -40,33 +33,6 @@ export type Status = {
   id: string;
   name: string;
   color: string;
-};
-
-// =============================================================================
-// Priority Icon Component
-// =============================================================================
-
-export type PriorityIconProps = {
-  priority: IssuePriority;
-  className?: string;
-};
-
-const priorityConfig: Record<
-  IssuePriority,
-  { icon: typeof WarningCircleIcon; colorClass: string }
-> = {
-  urgent: { icon: ArrowFatLineUpIcon, colorClass: 'text-error' },
-  high: { icon: ArrowUpIcon, colorClass: 'text-brand' },
-  medium: { icon: MinusIcon, colorClass: 'text-low' },
-  low: { icon: ArrowDownIcon, colorClass: 'text-success' },
-};
-
-export const PriorityIcon = ({ priority }: PriorityIconProps) => {
-  const { icon: IconComponent, colorClass } = priorityConfig[priority];
-
-  return (
-    <IconComponent className={cn('size-icon-xs', colorClass)} weight="bold" />
-  );
 };
 
 // =============================================================================
