@@ -7,7 +7,7 @@ use super::{
     jsonrpc::{ExitSignalSender, JsonRpcPeer},
     session::SessionHandler,
 };
-use crate::{approvals::ExecutorApprovalService, executors::ExecutorError};
+use crate::{approvals::ExecutorApprovalService, env::RepoContext, executors::ExecutorError};
 
 #[allow(clippy::too_many_arguments)]
 pub async fn launch_codex_review(
@@ -20,8 +20,16 @@ pub async fn launch_codex_review(
     exit_signal_tx: ExitSignalSender,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool,
+    repo_context: RepoContext,
+    commit_reminder: bool,
 ) -> Result<(), ExecutorError> {
-    let client = AppServerClient::new(log_writer, approvals, auto_approve);
+    let client = AppServerClient::new(
+        log_writer,
+        approvals,
+        auto_approve,
+        repo_context,
+        commit_reminder,
+    );
     let rpc_peer = JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx);
     client.connect(rpc_peer);
     client.initialize().await?;
