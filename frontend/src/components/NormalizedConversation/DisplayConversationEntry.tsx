@@ -58,105 +58,118 @@ const renderJson = (v: JsonValue) => (
   <pre className="whitespace-pre-wrap">{JSON.stringify(v, null, 2)}</pre>
 );
 
-const getEntryIcon = (entryType: NormalizedEntryType) => {
-  const iconSize = 'h-3 w-3';
-  if (entryType.type === 'user_message' || entryType.type === 'user_feedback') {
-    return <User className={iconSize} />;
-  }
-  if (entryType.type === 'assistant_message') {
-    return <Bot className={iconSize} />;
-  }
-  if (entryType.type === 'system_message') {
-    return <Settings className={iconSize} />;
-  }
-  if (entryType.type === 'thinking') {
-    return <Brain className={iconSize} />;
-  }
-  if (entryType.type === 'error_message') {
-    return <AlertCircle className={iconSize} />;
-  }
-  if (entryType.type === 'tool_use') {
-    const { action_type, tool_name } = entryType;
+/**********************
+ * Icon Configuration *
+ **********************/
 
-    // Special handling for TODO tools
-    if (
-      action_type.action === 'todo_management' ||
-      (tool_name &&
-        (tool_name.toLowerCase() === 'todowrite' ||
-          tool_name.toLowerCase() === 'todoread' ||
-          tool_name.toLowerCase() === 'todo_write' ||
-          tool_name.toLowerCase() === 'todo_read' ||
-          tool_name.toLowerCase() === 'todo'))
-    ) {
-      return <CheckSquare className={iconSize} />;
-    }
+const ICON_SIZE = 'h-3 w-3';
 
-    if (action_type.action === 'file_read') {
-      return <Eye className={iconSize} />;
-    } else if (action_type.action === 'file_edit') {
-      return <Edit className={iconSize} />;
-    } else if (action_type.action === 'command_run') {
-      return <Terminal className={iconSize} />;
-    } else if (action_type.action === 'search') {
-      return <Search className={iconSize} />;
-    } else if (action_type.action === 'web_fetch') {
-      return <Globe className={iconSize} />;
-    } else if (action_type.action === 'task_create') {
-      return <Plus className={iconSize} />;
-    } else if (action_type.action === 'plan_presentation') {
-      return <CheckSquare className={iconSize} />;
-    } else if (action_type.action === 'tool') {
-      return <Hammer className={iconSize} />;
-    }
-    return <Settings className={iconSize} />;
-  }
-  return <Settings className={iconSize} />;
+const TODO_TOOL_NAMES = new Set([
+  'todowrite',
+  'todoread',
+  'todo_write',
+  'todo_read',
+  'todo',
+]);
+
+const isTodoTool = (toolName: string | undefined, actionType: ActionType): boolean => {
+  if (actionType.action === 'todo_management') return true;
+  if (!toolName) return false;
+  return TODO_TOOL_NAMES.has(toolName.toLowerCase());
 };
+
+const ENTRY_TYPE_ICON_MAP: Record<
+  Exclude<NormalizedEntryType['type'], 'tool_use'>,
+  React.ComponentType<{ className?: string }>
+> = {
+  user_message: User,
+  user_feedback: User,
+  assistant_message: Bot,
+  system_message: Settings,
+  thinking: Brain,
+  error_message: AlertCircle,
+  loading: Settings,
+  token_usage_info: Settings,
+  next_action: Settings,
+};
+
+const ACTION_TYPE_ICON_MAP: Partial<
+  Record<ActionType['action'], React.ComponentType<{ className?: string }>>
+> = {
+  file_read: Eye,
+  file_edit: Edit,
+  command_run: Terminal,
+  search: Search,
+  web_fetch: Globe,
+  task_create: Plus,
+  plan_presentation: CheckSquare,
+  tool: Hammer,
+};
+
+const getEntryIcon = (entryType: NormalizedEntryType) => {
+  if (entryType.type !== 'tool_use') {
+    const IconComponent = ENTRY_TYPE_ICON_MAP[entryType.type] || Settings;
+    return <IconComponent className={ICON_SIZE} />;
+  }
+
+  const { action_type, tool_name } = entryType;
+
+  if (isTodoTool(tool_name, action_type)) {
+    return <CheckSquare className={ICON_SIZE} />;
+  }
+
+  const IconComponent = ACTION_TYPE_ICON_MAP[action_type.action] || Settings;
+  return <IconComponent className={ICON_SIZE} />;
+};
+
+/*******************************
+ * Status Indicator Configuration *
+ *******************************/
 
 type ExitStatusVisualisation = 'success' | 'error' | 'pending';
 
-const getStatusIndicator = (entryType: NormalizedEntryType) => {
-  let status_visualisation: ExitStatusVisualisation | null = null;
-  if (
-    entryType.type === 'tool_use' &&
-    entryType.action_type.action === 'command_run'
-  ) {
-    status_visualisation = 'pending';
-    if (entryType.action_type.result?.exit_status?.type === 'success') {
-      if (entryType.action_type.result?.exit_status?.success) {
-        status_visualisation = 'success';
-      } else {
-        status_visualisation = 'error';
-      }
-    } else if (
-      entryType.action_type.result?.exit_status?.type === 'exit_code'
-    ) {
-      if (entryType.action_type.result?.exit_status?.code === 0) {
-        status_visualisation = 'success';
-      } else {
-        status_visualisation = 'error';
-      }
-    }
+const STATUS_COLOR_MAP: Record<ExitStatusVisualisation, string> = {
+  success: 'bg-green-300',
+  error: 'bg-red-300',
+  pending: 'bg-primary-foreground/50',
+};
+
+const determineExitStatus = (
+  exitStatus:
+    | NonNullable<Extract<ActionType, { action: 'command_run' }>['result']>['exit_status']
+    | undefined
+): ExitStatusVisualisation => {
+  if (!exitStatus) return 'pending';
+
+  if (exitStatus.type === 'success') {
+    return exitStatus.success ? 'success' : 'error';
   }
 
-  // If pending, should be a pulsing primary-foreground
-  const colorMap: Record<ExitStatusVisualisation, string> = {
-    success: 'bg-green-300',
-    error: 'bg-red-300',
-    pending: 'bg-primary-foreground/50',
-  };
+  if (exitStatus.type === 'exit_code') {
+    return exitStatus.code === 0 ? 'success' : 'error';
+  }
 
-  if (!status_visualisation) return null;
+  return 'pending';
+};
+
+const getStatusIndicator = (entryType: NormalizedEntryType) => {
+  if (
+    entryType.type !== 'tool_use' ||
+    entryType.action_type.action !== 'command_run'
+  ) {
+    return null;
+  }
+
+  const exitStatus = entryType.action_type.result?.exit_status;
+  const statusVisualization = determineExitStatus(exitStatus);
+  const colorClass = STATUS_COLOR_MAP[statusVisualization];
+  const baseClasses = 'h-1.5 w-1.5 rounded-full absolute -left-1 -bottom-4';
 
   return (
     <div className="relative">
-      <div
-        className={`${colorMap[status_visualisation]} h-1.5 w-1.5 rounded-full absolute -left-1 -bottom-4`}
-      />
-      {status_visualisation === 'pending' && (
-        <div
-          className={`${colorMap[status_visualisation]} h-1.5 w-1.5 rounded-full absolute -left-1 -bottom-4 animate-ping`}
-        />
+      <div className={`${colorClass} ${baseClasses}`} />
+      {statusVisualization === 'pending' && (
+        <div className={`${colorClass} ${baseClasses} animate-ping`} />
       )}
     </div>
   );
@@ -172,37 +185,51 @@ const shouldRenderMarkdown = (entryType: NormalizedEntryType) =>
   entryType.type === 'thinking' ||
   entryType.type === 'tool_use';
 
-const getContentClassName = (entryType: NormalizedEntryType) => {
-  const base = ' whitespace-pre-wrap break-words';
-  if (
-    entryType.type === 'tool_use' &&
-    entryType.action_type.action === 'command_run'
-  )
-    return `${base} font-mono`;
+/**********************************
+ * Content Class Name Configuration *
+ **********************************/
 
-  // Keep content-only styling — no bg/padding/rounded here.
-  if (entryType.type === 'error_message')
-    return `${base} font-mono text-destructive`;
+const BASE_CONTENT_CLASSES = 'whitespace-pre-wrap break-words';
 
-  if (entryType.type === 'thinking') return `${base} opacity-60`;
+type ContentClassConfig = {
+  condition: (entryType: NormalizedEntryType) => boolean;
+  classes: string;
+};
 
-  if (
-    entryType.type === 'tool_use' &&
-    (entryType.action_type.action === 'todo_management' ||
-      (entryType.tool_name &&
-        ['todowrite', 'todoread', 'todo_write', 'todo_read', 'todo'].includes(
-          entryType.tool_name.toLowerCase()
-        )))
-  )
-    return `${base} font-mono text-zinc-800 dark:text-zinc-200`;
+const CONTENT_CLASS_RULES: ContentClassConfig[] = [
+  {
+    condition: (entryType) =>
+      entryType.type === 'tool_use' &&
+      entryType.action_type.action === 'plan_presentation',
+    classes: `${BASE_CONTENT_CLASSES} text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/20 px-3 py-2 border-l-4 border-blue-400`,
+  },
+  {
+    condition: (entryType) =>
+      entryType.type === 'tool_use' &&
+      isTodoTool(entryType.tool_name, entryType.action_type),
+    classes: `${BASE_CONTENT_CLASSES} font-mono text-zinc-800 dark:text-zinc-200`,
+  },
+  {
+    condition: (entryType) =>
+      entryType.type === 'tool_use' &&
+      entryType.action_type.action === 'command_run',
+    classes: `${BASE_CONTENT_CLASSES} font-mono`,
+  },
+  {
+    condition: (entryType) => entryType.type === 'error_message',
+    classes: `${BASE_CONTENT_CLASSES} font-mono text-destructive`,
+  },
+  {
+    condition: (entryType) => entryType.type === 'thinking',
+    classes: `${BASE_CONTENT_CLASSES} opacity-60`,
+  },
+];
 
-  if (
-    entryType.type === 'tool_use' &&
-    entryType.action_type.action === 'plan_presentation'
-  )
-    return `${base} text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/20 px-3 py-2 border-l-4 border-blue-400`;
-
-  return base;
+const getContentClassName = (entryType: NormalizedEntryType): string => {
+  const matchedRule = CONTENT_CLASS_RULES.find((rule) =>
+    rule.condition(entryType)
+  );
+  return matchedRule ? matchedRule.classes : BASE_CONTENT_CLASSES;
 };
 
 /*********************
