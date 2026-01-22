@@ -41,7 +41,6 @@ import {
   useActionVisibilityContext,
 } from '../actions/useActionVisibility';
 
-/** Compute execution status from boolean flags */
 function computeExecutionStatus(params: {
   isInFeedbackMode: boolean;
   isInEditMode: boolean;
@@ -61,7 +60,21 @@ function computeExecutionStatus(params: {
   return 'idle';
 }
 
-/** Shared props across all modes */
+function generateConversationSummary(
+  messages: { content: string }[]
+): string {
+  if (messages.length === 0) return 'Conversation resolved';
+
+  const firstMessage = messages[0].content;
+  const truncatedFirst =
+    firstMessage.length > 100
+      ? firstMessage.slice(0, 100) + '...'
+      : firstMessage;
+
+  if (messages.length === 1) return truncatedFirst;
+  return `${truncatedFirst} (${messages.length} messages)`;
+}
+
 interface SharedProps {
   /** Available sessions for this workspace */
   sessions: SessionWithInitiator[];
@@ -202,45 +215,22 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   );
   const hasReviewComments = (reviewContext?.comments.length ?? 0) > 0;
 
-  // Unresolved conversations from review context
   const unresolvedCount = reviewContext?.unresolvedCount ?? 0;
   const unresolvedConversationsData = useMemo(
     () => reviewContext?.unresolvedConversations ?? [],
     [reviewContext?.unresolvedConversations]
   );
 
-  // State for tracking conversation resolution
   const [isResolvingConversations, setIsResolvingConversations] = useState(false);
 
-  // Handler for resolving all unresolved conversations
   const handleResolveAllConversations = useCallback(async () => {
     if (!reviewContext || unresolvedConversationsData.length === 0) return;
 
     setIsResolvingConversations(true);
     try {
-      // Resolve each conversation sequentially
-      // Generate summaries based on first message content
       for (const conversation of unresolvedConversationsData) {
         const messages = conversation.messages || [];
-        let summary: string;
-
-        if (messages.length === 0) {
-          summary = 'Conversation resolved';
-        } else {
-          // Use truncated first message as summary
-          const firstMessage = messages[0].content;
-          const truncatedFirst =
-            firstMessage.length > 100
-              ? firstMessage.slice(0, 100) + '...'
-              : firstMessage;
-
-          if (messages.length === 1) {
-            summary = truncatedFirst;
-          } else {
-            summary = `${truncatedFirst} (${messages.length} messages)`;
-          }
-        }
-
+        const summary = generateConversationSummary(messages);
         await reviewContext.resolveConversation(conversation.id, summary);
       }
     } catch (error) {

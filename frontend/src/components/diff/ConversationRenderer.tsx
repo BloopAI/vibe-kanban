@@ -6,10 +6,6 @@ interface ConversationRendererProps {
   projectId?: string;
 }
 
-/**
- * Wrapper component for rendering a conversation in the diff view's extendData.
- * The ConversationThread handles all resolution logic internally.
- */
 export function ConversationRenderer({
   conversation,
   projectId,

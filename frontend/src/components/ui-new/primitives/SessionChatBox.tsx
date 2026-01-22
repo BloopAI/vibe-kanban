@@ -385,7 +385,6 @@ export function SessionChatBox({
 
     switch (status) {
       case 'idle':
-        // If there are unresolved conversations, show resolve button instead of send
         if (unresolvedConversations && unresolvedConversations.count > 0) {
           return (
             <PrimaryButton
@@ -475,11 +474,9 @@ export function SessionChatBox({
     }
   };
 
-  // Banner content
   const renderBanner = () => {
     const banners: React.ReactNode[] = [];
 
-    // Unresolved conversations banner (show first as it blocks sending)
     if (unresolvedConversations && unresolvedConversations.count > 0) {
       banners.push(
         <div

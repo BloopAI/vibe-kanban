@@ -14,10 +14,6 @@ interface ConversationWidgetLineProps {
   projectId?: string;
 }
 
-/**
- * Widget for starting a new conversation (persisted to database).
- * Similar to CommentWidgetLine but creates a conversation instead of a local comment.
- */
 export function ConversationWidgetLine({
   draft,
   widgetKey,

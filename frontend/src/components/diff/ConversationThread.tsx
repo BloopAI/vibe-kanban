@@ -16,17 +16,11 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useReview } from '@/contexts/ReviewProvider';
 import type { ConversationWithMessages, MessageWithAuthor } from 'shared/types';
 
-/**
- * Helper to convert a Date or string to ISO string for formatRelativeTime
- */
 function toDateString(date: Date | string): string {
   if (typeof date === 'string') return date;
   return date.toISOString();
 }
 
-/**
- * Displays a single message within a conversation thread
- */
 function MessageItem({
   message,
   isFirst,
@@ -76,9 +70,6 @@ function MessageItem({
   );
 }
 
-/**
- * Collapsed view for resolved conversations
- */
 function ResolvedConversationView({
   conversation,
   onUnresolve,
@@ -117,14 +108,12 @@ function ResolvedConversationView({
         />
       </div>
 
-      {/* Summary - always visible */}
       {conversation.resolution_summary && (
         <div className="mt-2 text-sm text-normal italic border-l-2 border-success/30 pl-2">
           {conversation.resolution_summary}
         </div>
       )}
 
-      {/* Expandable message history */}
       {isExpanded && (
         <div className="mt-3 pt-3 border-t border-border">
           <div className="text-xs text-low mb-2 uppercase tracking-wide">
@@ -160,16 +149,12 @@ function ResolvedConversationView({
   );
 }
 
-/**
- * Generate a default summary from conversation messages
- */
 function generateDefaultSummary(
   conversation: ConversationWithMessages
 ): string {
   const messages = conversation.messages || [];
   if (messages.length === 0) return 'Conversation resolved';
 
-  // Get first message content (truncated if too long)
   const firstMessage = messages[0].content;
   const truncatedFirst =
     firstMessage.length > 100
@@ -180,13 +165,9 @@ function generateDefaultSummary(
     return truncatedFirst;
   }
 
-  // For multi-message conversations, summarize
   return `${truncatedFirst} (${messages.length} messages)`;
 }
 
-/**
- * Active conversation thread with reply functionality
- */
 function ActiveConversationView({
   conversation,
   projectId,
@@ -269,7 +250,6 @@ function ActiveConversationView({
 
   return (
     <CommentCard variant="user">
-      {/* Message thread */}
       <div className="space-y-2">
         {conversation.messages.map((msg, idx) => (
           <MessageItem
@@ -282,7 +262,6 @@ function ActiveConversationView({
         ))}
       </div>
 
-      {/* Reply input */}
       {isReplying && (
         <div className="mt-3 pt-3 border-t border-brand/30">
           <WYSIWYGEditor
@@ -320,7 +299,6 @@ function ActiveConversationView({
         </div>
       )}
 
-      {/* Resolve input with editable summary */}
       {isResolving && (
         <div className="mt-3 pt-3 border-t border-success/30">
           <div className="text-xs text-low mb-2 uppercase tracking-wide">
@@ -354,7 +332,6 @@ function ActiveConversationView({
         </div>
       )}
 
-      {/* Action buttons (when not replying or resolving) */}
       {!isReplying && !isResolving && (
         <div className="mt-3 pt-3 border-t border-brand/30 flex gap-2 flex-wrap">
           <Button variant="ghost" size="xs" onClick={() => setIsReplying(true)}>
@@ -382,10 +359,6 @@ function ActiveConversationView({
   );
 }
 
-/**
- * Main conversation thread component that switches between
- * resolved (collapsed, read-only) and active (interactive) views
- */
 export function ConversationThread({
   conversation,
   projectId,
