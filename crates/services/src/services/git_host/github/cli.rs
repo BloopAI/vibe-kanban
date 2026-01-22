@@ -231,15 +231,6 @@ impl GhCli {
         Self::parse_pr_create_text(&raw)
     }
 
-    /// Ensure the GitHub CLI has valid auth.
-    pub fn check_auth(&self) -> Result<(), GhCliError> {
-        match self.run(["auth", "status"], None) {
-            Ok(_) => Ok(()),
-            Err(GhCliError::CommandFailed(msg)) => Err(GhCliError::AuthFailed(msg)),
-            Err(err) => Err(err),
-        }
-    }
-
     /// Retrieve details for a pull request by URL.
     pub fn view_pr(&self, pr_url: &str) -> Result<PullRequestInfo, GhCliError> {
         let raw = self.run(

@@ -45,29 +45,6 @@ impl GitHubProvider {
             .map_err(Into::into)
     }
 
-    async fn check_auth(&self) -> Result<(), GitHostError> {
-        let cli = self.gh_cli.clone();
-        task::spawn_blocking(move || cli.check_auth())
-            .await
-            .map_err(|err| {
-                GitHostError::Repository(format!(
-                    "Failed to execute GitHub CLI for auth check: {err}"
-                ))
-            })?
-            .map_err(|err| match err {
-                GhCliError::NotAvailable => GitHostError::CliNotInstalled {
-                    provider: ProviderKind::GitHub,
-                },
-                GhCliError::AuthFailed(msg) => GitHostError::AuthFailed(msg),
-                GhCliError::CommandFailed(msg) => {
-                    GitHostError::Repository(format!("GitHub CLI auth check failed: {msg}"))
-                }
-                GhCliError::UnexpectedOutput(msg) => GitHostError::Repository(format!(
-                    "Unexpected output from GitHub CLI auth check: {msg}"
-                )),
-            })
-    }
-
     async fn fetch_general_comments(
         &self,
         cli: &GhCli,
@@ -187,9 +164,6 @@ impl GitHostProvider for GitHubProvider {
         remote_url: &str,
         request: &CreatePrRequest,
     ) -> Result<PullRequestInfo, GitHostError> {
-        // Check auth first
-        self.check_auth().await?;
-
         // Get owner/repo from the remote URL (target repo for the PR).
         let target_repo_info = self.get_repo_info(remote_url, repo_path).await?;
 
