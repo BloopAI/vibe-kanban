@@ -64,9 +64,9 @@ function computeExecutionStatus(params: {
 /** Shared props across all modes */
 interface SharedProps {
   /** Available sessions for this workspace */
-  sessions?: SessionWithInitiator[];
+  sessions: SessionWithInitiator[];
   /** Called when a session is selected */
-  onSelectSession?: (sessionId: string) => void;
+  onSelectSession: (sessionId: string) => void;
   /** Project ID for file search in typeahead */
   projectId: string | undefined;
   /** Number of files changed in current session */
@@ -82,8 +82,6 @@ interface ExistingSessionProps extends SharedProps {
   mode: 'existing-session';
   /** The current session */
   session: Session;
-  /** Called when a session is selected */
-  onSelectSession: (sessionId: string) => void;
   /** Callback to start new session mode */
   onStartNewSession: (() => void) | undefined;
 }
@@ -93,8 +91,6 @@ interface NewSessionProps extends SharedProps {
   mode: 'new-session';
   /** Workspace ID for creating new sessions */
   workspaceId: string;
-  /** Called when a session is selected */
-  onSelectSession: (sessionId: string) => void;
 }
 
 /** Props for placeholder mode (no workspace selected) */
@@ -108,8 +104,15 @@ type SessionChatBoxContainerProps =
   | PlaceholderProps;
 
 export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
-  const { mode, sessions, projectId, filesChanged, linesAdded, linesRemoved } =
-    props;
+  const {
+    mode,
+    sessions,
+    onSelectSession,
+    projectId,
+    filesChanged,
+    linesAdded,
+    linesRemoved,
+  } = props;
 
   // Extract mode-specific values
   const session = mode === 'existing-session' ? props.session : undefined;
@@ -120,8 +123,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         ? props.workspaceId
         : undefined;
   const isNewSessionMode = mode === 'new-session';
-  const onSelectSession =
-    mode === 'placeholder' ? undefined : props.onSelectSession;
   const onStartNewSession =
     mode === 'existing-session' ? props.onStartNewSession : undefined;
 

@@ -98,6 +98,7 @@ export function WorkspacesMain({
                       }
                     : {
                         mode: 'placeholder',
+                        onSelectSession,
                       })}
                 sessions={sessions}
                 projectId={projectId}
