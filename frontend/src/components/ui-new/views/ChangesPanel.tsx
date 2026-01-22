@@ -25,14 +25,22 @@ interface ChangesPanelContext {
   onDiffRef?: (path: string, el: HTMLDivElement | null) => void;
   projectId: string;
   attemptId: string;
+  isScrolling: boolean;
 }
 
 interface ChangesPanelProps {
   className?: string;
   diffItems: DiffItemData[];
+  defaultItemHeight?: number;
+  isScrolling?: boolean;
+  onIsScrolling?: (isScrolling: boolean) => void;
   onDiffRef?: (path: string, el: HTMLDivElement | null) => void;
   /** Callback when visible range changes - reports the first visible item index */
   onRangeChanged?: (range: ListRange) => void;
+  onScrollerRef?: VirtuosoProps<
+    DiffItemData,
+    ChangesPanelContext
+  >['scrollerRef'];
   /** Project ID for @ mentions in comments */
   projectId: string;
   /** Attempt ID for opening files in IDE */
@@ -45,6 +53,7 @@ interface DiffItemProps {
   onRef?: (path: string, el: HTMLDivElement | null) => void;
   projectId: string;
   attemptId: string;
+  isScrolling: boolean;
 }
 
 const DiffItem = memo(function DiffItem({
@@ -53,6 +62,7 @@ const DiffItem = memo(function DiffItem({
   onRef,
   projectId,
   attemptId,
+  isScrolling,
 }: DiffItemProps) {
   const path = diff.newPath || diff.oldPath || '';
   const [expanded, toggle] = usePersistedExpanded(
@@ -67,6 +77,8 @@ const DiffItem = memo(function DiffItem({
     oldPath: diff.oldPath || undefined,
     newPath: diff.newPath || '',
     changeKind: diff.change,
+    backendAdditions: diff.additions,
+    backendDeletions: diff.deletions,
   };
 
   return (
@@ -79,19 +91,25 @@ const DiffItem = memo(function DiffItem({
         className=""
         projectId={projectId}
         attemptId={attemptId}
+        isScrolling={isScrolling}
       />
     </div>
   );
 });
 
 const ItemContent: VirtuosoProps<DiffItemData, ChangesPanelContext>['itemContent'] =
-  (_index, { diff, initialExpanded }, { onDiffRef, projectId, attemptId }) => (
+  (
+    _index,
+    { diff, initialExpanded },
+    { onDiffRef, projectId, attemptId, isScrolling }
+  ) => (
     <DiffItem
       diff={diff}
       initialExpanded={initialExpanded}
       onRef={onDiffRef}
       projectId={projectId}
       attemptId={attemptId}
+      isScrolling={isScrolling}
     />
   );
 
@@ -100,7 +118,18 @@ const computeItemKey: VirtuosoProps<DiffItemData, ChangesPanelContext>['computeI
 
 export const ChangesPanel = forwardRef<ChangesPanelHandle, ChangesPanelProps>(
   function ChangesPanel(
-    { className, diffItems, onDiffRef, onRangeChanged, projectId, attemptId },
+    {
+      className,
+      diffItems,
+      defaultItemHeight,
+      isScrolling,
+      onIsScrolling,
+      onDiffRef,
+      onRangeChanged,
+      onScrollerRef,
+      projectId,
+      attemptId,
+    },
     ref
   ) {
     const { t } = useTranslation(['tasks', 'common']);
@@ -117,8 +146,13 @@ export const ChangesPanel = forwardRef<ChangesPanelHandle, ChangesPanelProps>(
     }));
 
     const context = useMemo<ChangesPanelContext>(
-      () => ({ onDiffRef, projectId, attemptId }),
-      [onDiffRef, projectId, attemptId]
+      () => ({
+        onDiffRef,
+        projectId,
+        attemptId,
+        isScrolling: isScrolling ?? false,
+      }),
+      [onDiffRef, projectId, attemptId, isScrolling]
     );
 
     if (diffItems.length === 0) {
@@ -147,7 +181,10 @@ export const ChangesPanel = forwardRef<ChangesPanelHandle, ChangesPanelProps>(
           itemContent={ItemContent}
           computeItemKey={computeItemKey}
           rangeChanged={onRangeChanged}
-          increaseViewportBy={{ top: 500, bottom: 500 }}
+          isScrolling={onIsScrolling}
+          scrollerRef={onScrollerRef}
+          defaultItemHeight={defaultItemHeight}
+          increaseViewportBy={{ top: 2500, bottom: 1200 }}
           className="px-base scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent"
           style={{ height: '100%' }}
         />

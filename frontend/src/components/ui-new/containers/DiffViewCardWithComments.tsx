@@ -1,12 +1,13 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CaretDownIcon,
   ChatCircleIcon,
   GithubLogoIcon,
+  SpinnerGapIcon,
+  WarningCircleIcon,
 } from '@phosphor-icons/react';
-import { DiffView, DiffModeEnum, SplitSide } from '@git-diff-view/react';
-import { generateDiffFile, type DiffFile } from '@git-diff-view/file';
+import { DiffView, DiffModeEnum, SplitSide, type DiffFile } from '@git-diff-view/react';
 import { cn } from '@/lib/utils';
 import { getFileIcon } from '@/utils/fileTypeIcon';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
@@ -29,8 +30,13 @@ import { GitHubCommentRenderer } from './GitHubCommentRenderer';
 import type { DiffChangeKind } from 'shared/types';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
+import { useDiffWorker, getCachedDiffStats } from '@/hooks/useDiffWorker';
 import '@/styles/diff-style-overrides.css';
 import { DisplayTruncatedPath } from '@/utils/TruncatePath';
+import {
+  estimateDiffBodyHeightPx,
+  estimateDiffLineCount,
+} from '@/utils/diffHeightEstimate';
 
 /** Discriminated union for comment data in extendData */
 type ExtendLineData =
@@ -46,6 +52,8 @@ export type DiffInput =
       oldPath: string | undefined;
       newPath: string;
       changeKind: DiffChangeKind;
+      backendAdditions: number | null;
+      backendDeletions: number | null;
     }
   | {
       type: 'unified';
@@ -64,6 +72,8 @@ interface BaseProps {
   projectId: string;
   /** Attempt ID for opening files in IDE */
   attemptId: string;
+  /** Whether the diff list is currently scrolling */
+  isScrolling: boolean;
 }
 
 /** Props for collapsible mode (with expand/collapse) */
@@ -82,6 +92,8 @@ interface StaticProps extends BaseProps {
 
 type DiffViewCardWithCommentsProps = CollapsibleProps | StaticProps;
 
+const HUGE_FILE_LINE_THRESHOLD = 1000;
+
 interface DiffStats {
   additions: number;
   deletions: number;
@@ -91,11 +103,9 @@ interface DiffStats {
 interface DiffData extends DiffStats {
   diffFile: DiffFile | null;
   isValid: boolean;
+  isLoading: boolean;
 }
 
-/**
- * Read a plain line from the diff file for context in comments
- */
 function readPlainLine(
   diffFile: DiffFile | null,
   lineNumber: number,
@@ -115,10 +125,7 @@ function readPlainLine(
   }
 }
 
-/**
- * Compute cheap stats for header display (always runs)
- */
-function useDiffStats(input: DiffInput): DiffStats {
+function useDiffStats(input: DiffInput, theme: 'light' | 'dark'): DiffStats {
   return useMemo(() => {
     if (input.type === 'content') {
       const filePath = input.newPath || input.oldPath || 'unknown';
@@ -127,6 +134,35 @@ function useDiffStats(input: DiffInput): DiffStats {
 
       if (oldContent === newContent) {
         return { additions: 0, deletions: 0, filePath };
+      }
+
+      const oldLang =
+        getHighLightLanguageFromPath(input.oldPath || filePath) || 'plaintext';
+      const newLang =
+        getHighLightLanguageFromPath(input.newPath || filePath) || 'plaintext';
+
+      const cachedStats = getCachedDiffStats({
+        oldFileName: input.oldPath || filePath,
+        oldContent,
+        newFileName: input.newPath || filePath,
+        newContent,
+        oldLang,
+        newLang,
+        theme,
+      });
+
+      if (cachedStats) {
+        return { ...cachedStats, filePath };
+      }
+
+      const hasBackendStats =
+        input.backendAdditions != null || input.backendDeletions != null;
+      if (hasBackendStats) {
+        return {
+          additions: input.backendAdditions ?? 0,
+          deletions: input.backendDeletions ?? 0,
+          filePath,
+        };
       }
 
       const oldLineCount = oldContent.split('\n').length;
@@ -140,87 +176,94 @@ function useDiffStats(input: DiffInput): DiffStats {
     } else {
       return { additions: 0, deletions: 0, filePath: input.path };
     }
-  }, [input]);
+  }, [input, theme]);
 }
 
-/**
- * Process input to get full diff data (only when expanded)
- */
-function useDiffData(input: DiffInput, expanded: boolean): DiffData {
-  const stats = useDiffStats(input);
+function useDiffData(
+  input: DiffInput,
+  expanded: boolean,
+  theme: 'light' | 'dark'
+): DiffData {
+  const stats = useDiffStats(input, theme);
 
-  return useMemo(() => {
-    if (!expanded) {
+  const workerParams = useMemo(() => {
+    if (input.type !== 'content') return null;
+    const filePath = input.newPath || input.oldPath || 'unknown';
+    const oldLang =
+      getHighLightLanguageFromPath(input.oldPath || filePath) || 'plaintext';
+    const newLang =
+      getHighLightLanguageFromPath(input.newPath || filePath) || 'plaintext';
+
+    return {
+      oldFileName: input.oldPath || filePath,
+      oldContent: input.oldContent || '',
+      newFileName: input.newPath || filePath,
+      newContent: input.newContent || '',
+      oldLang,
+      newLang,
+      theme,
+    };
+  }, [input, theme]);
+
+  const isContentEqual =
+    input.type === 'content' && input.oldContent === input.newContent;
+
+  const workerResult = useDiffWorker({
+    oldFileName: workerParams?.oldFileName ?? '',
+    oldContent: workerParams?.oldContent ?? '',
+    newFileName: workerParams?.newFileName ?? '',
+    newContent: workerParams?.newContent ?? '',
+    oldLang: workerParams?.oldLang ?? '',
+    newLang: workerParams?.newLang ?? '',
+    theme: workerParams?.theme,
+    enabled: expanded && input.type === 'content' && !isContentEqual,
+  });
+
+  if (!expanded) {
+    return {
+      ...stats,
+      diffFile: null,
+      isValid: false,
+      isLoading: false,
+    };
+  }
+
+  if (input.type === 'content') {
+    if (isContentEqual) {
       return {
         ...stats,
-        diffFile: null,
-        isValid: false,
-      };
-    }
-
-    if (input.type === 'content') {
-      const filePath = input.newPath || input.oldPath || 'unknown';
-      const oldLang =
-        getHighLightLanguageFromPath(input.oldPath || filePath) || 'plaintext';
-      const newLang =
-        getHighLightLanguageFromPath(input.newPath || filePath) || 'plaintext';
-
-      const oldContent = input.oldContent || '';
-      const newContent = input.newContent || '';
-
-      if (oldContent === newContent) {
-        return {
-          diffFile: null,
-          additions: 0,
-          deletions: 0,
-          filePath,
-          isValid: false,
-        };
-      }
-
-      try {
-        const file = generateDiffFile(
-          input.oldPath || filePath,
-          oldContent,
-          input.newPath || filePath,
-          newContent,
-          oldLang,
-          newLang
-        );
-        file.initRaw();
-
-        return {
-          diffFile: file,
-          additions: file.additionLength ?? 0,
-          deletions: file.deletionLength ?? 0,
-          filePath,
-          isValid: true,
-        };
-      } catch (e) {
-        console.error('Failed to generate diff:', e);
-        return {
-          diffFile: null,
-          additions: 0,
-          deletions: 0,
-          filePath,
-          isValid: false,
-        };
-      }
-    } else {
-      // Unified diff - doesn't support comments (need DiffFile for line content)
-      return {
-        diffFile: null,
         additions: 0,
         deletions: 0,
-        filePath: input.path,
+        diffFile: null,
         isValid: false,
+        isLoading: false,
       };
     }
-  }, [input, expanded, stats]);
+
+    const hasWorkerResult = !!workerResult.diffFile;
+    return {
+      filePath: stats.filePath,
+      additions: hasWorkerResult ? workerResult.additions : stats.additions,
+      deletions: hasWorkerResult ? workerResult.deletions : stats.deletions,
+      diffFile: workerResult.diffFile,
+      isValid: hasWorkerResult,
+      isLoading: workerResult.isLoading,
+    };
+  }
+
+  return {
+    diffFile: null,
+    additions: 0,
+    deletions: 0,
+    filePath: input.path,
+    isValid: false,
+    isLoading: false,
+  };
 }
 
 export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
-  const { input, className, projectId, attemptId, mode } = props;
+  const { input, className, projectId, attemptId, mode, isScrolling } = props;
+  const { t } = useTranslation('tasks');
 
   // Extract mode-specific values
   const expanded = mode === 'collapsible' ? props.expanded : true;
@@ -232,8 +275,19 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
   const diffMode =
     globalMode === 'split' ? DiffModeEnum.Split : DiffModeEnum.Unified;
 
-  const { diffFile, additions, deletions, filePath, isValid } =
-    useDiffData(input, expanded);
+  const [hugeFileConfirmed, setHugeFileConfirmed] = useState(false);
+
+  const backendLineCount =
+    input.type === 'content'
+      ? (input.backendAdditions ?? 0) + (input.backendDeletions ?? 0)
+      : 0;
+  const isHugeFile = backendLineCount > HUGE_FILE_LINE_THRESHOLD;
+  const shouldBlockHugeFile = isHugeFile && !hugeFileConfirmed;
+
+  const { diffFile, additions, deletions, filePath, isValid, isLoading } =
+    useDiffData(input, expanded && !shouldBlockHugeFile, actualTheme);
+  const estimatedLineCount = estimateDiffLineCount(additions, deletions);
+  const estimatedBodyHeight = estimateDiffBodyHeightPx(estimatedLineCount);
   const { comments, drafts, setDraft, addComment } = useReview();
   const { showGitHubComments, getGitHubCommentsForFile } =
     useWorkspaceContext();
@@ -286,10 +340,18 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
   // Total comment count (user + GitHub)
   const totalCommentCount =
     commentsForFile.length + githubCommentsForFile.length;
+  const hasLineComments = totalCommentCount > 0;
+
+  const hasDraftsForFile = useMemo(
+    () =>
+      Object.keys(drafts).some((key) => key.startsWith(`${filePath}-`)),
+    [drafts, filePath]
+  );
 
   // Transform comments to git-diff-view extendData format
   // The library expects { data: T } where T is the actual data
   const extendData = useMemo(() => {
+    if (!hasLineComments) return null;
     const oldFileData: Record<string, { data: ExtendLineData }> = {};
     const newFileData: Record<string, { data: ExtendLineData }> = {};
 
@@ -326,7 +388,7 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
       oldFile: oldFileData,
       newFile: newFileData,
     };
-  }, [commentsForFile, githubCommentsForFile]);
+  }, [commentsForFile, githubCommentsForFile, hasLineComments]);
 
   // Handle click on "add widget" button in diff view
   const handleAddWidgetClick = useCallback(
@@ -481,30 +543,52 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
       </div>
 
       {/* Diff body - shown when expanded */}
-      {expanded && (
+      {expanded && shouldBlockHugeFile && (
+        <div className="px-base py-4 flex flex-col items-center gap-3 text-center">
+          <WarningCircleIcon className="size-icon-lg text-warning" />
+          <div className="text-sm text-low">
+            {t('conversation.hugeFileDiffWarning', {
+              lines: backendLineCount.toLocaleString(),
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => setHugeFileConfirmed(true)}
+            className="px-3 py-1.5 text-sm bg-panel border rounded-sm hover:bg-muted transition-colors"
+          >
+            {t('conversation.showDiffAnyway')}
+          </button>
+        </div>
+      )}
+      {expanded && !shouldBlockHugeFile && (
         <DiffViewBodyWithComments
           diffFile={diffFile}
           isValid={isValid}
+          isLoading={isLoading}
+          estimatedBodyHeight={estimatedBodyHeight}
           theme={actualTheme}
           diffMode={diffMode}
-          extendData={extendData}
+          isScrolling={isScrolling}
+          extendData={hasLineComments ? extendData ?? undefined : undefined}
           onAddWidgetClick={handleAddWidgetClick}
-          renderWidgetLine={renderWidgetLine}
-          renderExtendLine={renderExtendLine}
+          renderWidgetLine={
+            !isScrolling || hasDraftsForFile ? renderWidgetLine : undefined
+          }
+          renderExtendLine={hasLineComments ? renderExtendLine : undefined}
         />
       )}
     </div>
   );
 }
 
-/**
- * Diff body component with comment support
- */
 function DiffViewBodyWithComments({
   diffFile,
   isValid,
+  isLoading,
+  estimatedBodyHeight,
   theme,
   diffMode,
+  isScrolling,
   extendData,
   onAddWidgetClick,
   renderWidgetLine,
@@ -512,21 +596,43 @@ function DiffViewBodyWithComments({
 }: {
   diffFile: DiffFile | null;
   isValid: boolean;
+  isLoading: boolean;
+  estimatedBodyHeight: number;
   theme: 'light' | 'dark';
   diffMode: DiffModeEnum;
-  extendData: {
-    oldFile: Record<string, { data: ExtendLineData }>;
-    newFile: Record<string, { data: ExtendLineData }>;
-  };
+  isScrolling: boolean;
+  extendData:
+    | {
+        oldFile: Record<string, { data: ExtendLineData }>;
+        newFile: Record<string, { data: ExtendLineData }>;
+      }
+    | null
+    | undefined;
   onAddWidgetClick: (lineNumber: number, side: SplitSide) => void;
-  renderWidgetLine: (props: {
-    side: SplitSide;
-    lineNumber: number;
-    onClose: () => void;
-  }) => React.ReactNode;
-  renderExtendLine: (lineData: { data: ExtendLineData }) => React.ReactNode;
+  renderWidgetLine:
+    | ((props: {
+        side: SplitSide;
+        lineNumber: number;
+        onClose: () => void;
+      }) => React.ReactNode)
+    | undefined;
+  renderExtendLine:
+    | ((lineData: { data: ExtendLineData }) => React.ReactNode)
+    | undefined;
 }) {
   const { t } = useTranslation('tasks');
+
+  if (isLoading) {
+    return (
+      <div
+        className="flex items-center justify-center py-8 text-low"
+        style={{ minHeight: estimatedBodyHeight }}
+      >
+        <SpinnerGapIcon className="size-icon-base animate-spin" />
+      </div>
+    );
+  }
+
   if (!isValid || !diffFile) {
     return (
       <div className="px-base pb-base text-xs font-ibm-plex-mono text-low">
@@ -541,17 +647,15 @@ function DiffViewBodyWithComments({
         diffFile={diffFile}
         diffViewWrap={false}
         diffViewTheme={theme}
-        diffViewHighlight
+        diffViewHighlight={!isScrolling}
         diffViewMode={diffMode}
         diffViewFontSize={12}
-        diffViewAddWidget
+        diffViewAddWidget={!isScrolling}
         onAddWidgetClick={onAddWidgetClick}
         renderWidgetLine={renderWidgetLine}
-        extendData={extendData}
+        extendData={extendData ?? undefined}
         renderExtendLine={renderExtendLine}
       />
     </div>
   );
 }
-
-export { useDiffData };

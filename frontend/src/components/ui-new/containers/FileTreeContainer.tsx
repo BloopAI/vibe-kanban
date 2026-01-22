@@ -47,14 +47,11 @@ export function FileTreeContainer({
 
   // Sync selectedPath with fileInView from context and scroll into view
   useEffect(() => {
-    if (fileInView !== undefined) {
+    if (fileInView != null) {
       setSelectedPath(fileInView);
-      // Scroll the selected node into view if needed
-      if (fileInView) {
-        const el = nodeRefs.current.get(fileInView);
-        if (el) {
-          el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }
+      const el = nodeRefs.current.get(fileInView);
+      if (el) {
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }
     }
   }, [fileInView]);
@@ -122,7 +119,6 @@ export function FileTreeContainer({
   const handleSelectFile = useCallback(
     (path: string) => {
       setSelectedPath(path);
-      // Find the diff for this path
       const diff = diffs.find((d) => d.newPath === path || d.oldPath === path);
       if (diff) {
         onSelectFile(path, diff);

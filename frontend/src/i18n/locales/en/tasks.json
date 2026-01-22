@@ -310,7 +310,9 @@
     },
     "updatedTodos": "Updated Todos",
     "viewInChangesPanel": "View in changes panel",
-    "unableToRenderDiff": "Unable to render diff."
+    "unableToRenderDiff": "Unable to render diff.",
+    "hugeFileDiffWarning": "This file has {{lines}} changed lines. Rendering large diffs may cause performance issues.",
+    "showDiffAnyway": "Show diff anyway"
   },
   "attempt": {
     "actions": {
