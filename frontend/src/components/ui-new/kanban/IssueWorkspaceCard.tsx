@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import { GitPullRequestIcon, FileIcon } from '@phosphor-icons/react';
 import { UserAvatar } from '@/components/tasks/UserAvatar';
 
@@ -35,6 +36,7 @@ export function IssueWorkspaceCard({
   onClick,
   className,
 }: IssueWorkspaceCardProps) {
+  const { t } = useTranslation('common');
   const timeAgo = getTimeAgo(workspace.createdAt);
 
   return (
@@ -78,7 +80,7 @@ export function IssueWorkspaceCard({
               <>
                 <span className="text-low/50">·</span>
                 <FileIcon className="size-icon-2xs" weight="bold" />
-                <span>{workspace.filesChanged} Files</span>
+                <span>{t('kanban.filesCount', { count: workspace.filesChanged })}</span>
               </>
             )}
           </span>
@@ -118,7 +120,7 @@ export function IssueWorkspaceCard({
               <span>#{workspace.prNumber.toString().padStart(3, '0')}</span>
             </a>
           ) : (
-            <span className="text-sm text-low">No PR created</span>
+            <span className="text-sm text-low">{t('kanban.noPrCreated')}</span>
           )}
 
           {/* Assignee Avatars */}

@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import { PlusIcon, GitPullRequestIcon, HashIcon } from '@phosphor-icons/react';
 import type { Tag } from 'shared/remote-types';
 import { KanbanBadge } from './Kanban';
@@ -41,6 +42,7 @@ export function IssueTagsRow({
   disabled,
   className,
 }: IssueTagsRowProps) {
+  const { t } = useTranslation('common');
   const selectedTags = availableTags.filter((tag) =>
     selectedTagIds.includes(tag.id)
   );
@@ -100,7 +102,7 @@ export function IssueTagsRow({
         <DropdownMenuContent align="start">
           {availableTags.length === 0 ? (
             <div className="px-base py-half text-sm text-low">
-              No tags available
+              {t('kanban.noTagsAvailable')}
             </div>
           ) : (
             availableTags.map((tag) => (
