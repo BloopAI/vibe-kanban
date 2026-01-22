@@ -8,16 +8,15 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import type { DragEndEvent, Modifier } from '@dnd-kit/core';
 import {
-  DndContext,
-  PointerSensor,
-  rectIntersection,
-  useDraggable,
-  useDroppable,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
+  DragDropContext,
+  Droppable,
+  Draggable,
+  type DropResult,
+  type DraggableProvided,
+  type DraggableStateSnapshot,
+  type DroppableProvided,
+} from '@hello-pangea/dnd';
 import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -32,10 +31,9 @@ import {
 import type { IssuePriority } from 'shared/remote-types';
 import { UserAvatar } from '@/components/tasks/UserAvatar';
 import { RunningDots } from '@/components/ui-new/primitives/RunningDots';
-import type { ClientRect } from '@dnd-kit/core';
-import type { Transform } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
-export type { DragEndEvent } from '@dnd-kit/core';
+
+export type { DropResult } from '@hello-pangea/dnd';
 
 export type Status = {
   id: string;
@@ -228,6 +226,10 @@ export type Feature = {
   status: Status;
 };
 
+// =============================================================================
+// Kanban Board (Droppable Column)
+// =============================================================================
+
 export type KanbanBoardProps = {
   id: Status['id'];
   children: ReactNode;
@@ -235,25 +237,28 @@ export type KanbanBoardProps = {
 };
 
 export const KanbanBoard = ({ id, children, className }: KanbanBoardProps) => {
-  const { isOver, setNodeRef } = useDroppable({ id });
-
   return (
-    <div
-      className={cn(
-        'flex flex-col min-h-40',
-        isOver ? 'outline-primary' : 'outline-black',
-        className
+    <Droppable droppableId={id}>
+      {(provided: DroppableProvided) => (
+        <div
+          className={cn('flex flex-col min-h-40', className)}
+          ref={provided.innerRef}
+          {...provided.droppableProps}
+        >
+          {children}
+          {provided.placeholder}
+        </div>
       )}
-      ref={setNodeRef}
-    >
-      {children}
-    </div>
+    </Droppable>
   );
 };
 
+// =============================================================================
+// Kanban Card (Draggable)
+// =============================================================================
+
 export type KanbanCardProps = Pick<Feature, 'id' | 'name'> & {
   index: number;
-  parent: string;
   children?: ReactNode;
   className?: string;
   onClick?: () => void;
@@ -268,7 +273,6 @@ export const KanbanCard = ({
   id,
   name,
   index,
-  parent,
   children,
   className,
   onClick,
@@ -278,49 +282,47 @@ export const KanbanCard = ({
   isOpen,
   dragDisabled = false,
 }: KanbanCardProps) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id,
-      data: { index, parent },
-      disabled: dragDisabled,
-    });
-
-  // Combine DnD ref and forwarded ref
-  const combinedRef = (node: HTMLDivElement | null) => {
-    setNodeRef(node);
-    if (typeof forwardedRef === 'function') {
-      forwardedRef(node);
-    } else if (forwardedRef && typeof forwardedRef === 'object') {
-      (forwardedRef as React.MutableRefObject<HTMLDivElement | null>).current =
-        node;
-    }
-  };
-
   return (
-    <Card
-      className={cn(
-        'p-base outline-none flex-col border -mt-[1px] -mx-[1px] bg-secondary',
-        isDragging && 'cursor-grabbing',
-        isOpen && 'ring-2 ring-secondary-foreground ring-inset',
-        className
-      )}
-      {...listeners}
-      {...attributes}
-      ref={combinedRef}
-      tabIndex={tabIndex}
-      onClick={onClick}
-      onKeyDown={onKeyDown}
-      style={{
-        zIndex: isDragging ? 1000 : 1,
-        transform: transform
-          ? `translateX(${transform.x}px) translateY(${transform.y}px)`
-          : 'none',
+    <Draggable draggableId={id} index={index} isDragDisabled={dragDisabled}>
+      {(provided: DraggableProvided, snapshot: DraggableStateSnapshot) => {
+        // Combine DnD ref and forwarded ref
+        const setRefs = (node: HTMLDivElement | null) => {
+          provided.innerRef(node);
+          if (typeof forwardedRef === 'function') {
+            forwardedRef(node);
+          } else if (forwardedRef && typeof forwardedRef === 'object') {
+            (
+              forwardedRef as React.MutableRefObject<HTMLDivElement | null>
+            ).current = node;
+          }
+        };
+
+        return (
+          <Card
+            className={cn(
+              'p-base outline-none flex-col border -mt-[1px] -mx-[1px] bg-secondary',
+              snapshot.isDragging && 'cursor-grabbing shadow-lg',
+              isOpen && 'ring-2 ring-secondary-foreground ring-inset',
+              className
+            )}
+            ref={setRefs}
+            {...provided.draggableProps}
+            {...provided.dragHandleProps}
+            tabIndex={tabIndex}
+            onClick={onClick}
+            onKeyDown={onKeyDown}
+          >
+            {children ?? <p className="m-0 font-medium text-sm">{name}</p>}
+          </Card>
+        );
       }}
-    >
-      {children ?? <p className="m-0 font-medium text-sm">{name}</p>}
-    </Card>
+    </Draggable>
   );
 };
+
+// =============================================================================
+// Kanban Cards Container
+// =============================================================================
 
 export type KanbanCardsProps = {
   children: ReactNode;
@@ -330,6 +332,10 @@ export type KanbanCardsProps = {
 export const KanbanCards = ({ children, className }: KanbanCardsProps) => (
   <div className={cn('flex flex-1 flex-col', className)}>{children}</div>
 );
+
+// =============================================================================
+// Kanban Header
+// =============================================================================
 
 export type KanbanHeaderProps =
   | {
@@ -387,68 +393,13 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
   );
 };
 
-function restrictToBoundingRectWithRightPadding(
-  transform: Transform,
-  rect: ClientRect,
-  boundingRect: ClientRect,
-  rightPadding: number
-): Transform {
-  const value = {
-    ...transform,
-  };
-
-  if (rect.top + transform.y <= boundingRect.top) {
-    value.y = boundingRect.top - rect.top;
-  } else if (
-    rect.bottom + transform.y >=
-    boundingRect.top + boundingRect.height
-  ) {
-    value.y = boundingRect.top + boundingRect.height - rect.bottom;
-  }
-
-  if (rect.left + transform.x <= boundingRect.left) {
-    value.x = boundingRect.left - rect.left;
-  } else if (
-    // branch that checks if the right edge of the dragged element is beyond
-    // the right edge of the bounding rectangle
-    rect.right + transform.x + rightPadding >=
-    boundingRect.left + boundingRect.width
-  ) {
-    value.x =
-      boundingRect.left + boundingRect.width - rect.right - rightPadding;
-  }
-
-  return {
-    ...value,
-    x: value.x,
-  };
-}
-
-// An alternative to `restrictToFirstScrollableAncestor` from the dnd-kit library
-const restrictToFirstScrollableAncestorCustom: Modifier = (args) => {
-  const { draggingNodeRect, transform, scrollableAncestorRects } = args;
-  const firstScrollableAncestorRect = scrollableAncestorRects[0];
-
-  if (!draggingNodeRect || !firstScrollableAncestorRect) {
-    return transform;
-  }
-
-  // Inset the right edge that the rect can be dragged to by this amount.
-  // This is a workaround for the kanban board where dragging a card too far
-  // to the right causes infinite horizontal scrolling if there are also
-  // enough cards for vertical scrolling to be enabled.
-  const rightPadding = 16;
-  return restrictToBoundingRectWithRightPadding(
-    transform,
-    draggingNodeRect,
-    firstScrollableAncestorRect,
-    rightPadding
-  );
-};
+// =============================================================================
+// Kanban Provider (DragDropContext)
+// =============================================================================
 
 export type KanbanProviderProps = {
   children: ReactNode;
-  onDragEnd: (event: DragEndEvent) => void;
+  onDragEnd: (result: DropResult) => void;
   className?: string;
 };
 
@@ -457,19 +408,8 @@ export const KanbanProvider = ({
   onDragEnd,
   className,
 }: KanbanProviderProps) => {
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    })
-  );
-
   return (
-    <DndContext
-      collisionDetection={rectIntersection}
-      onDragEnd={onDragEnd}
-      sensors={sensors}
-      modifiers={[restrictToFirstScrollableAncestorCustom]}
-    >
+    <DragDropContext onDragEnd={onDragEnd}>
       <div
         className={cn(
           'inline-grid grid-flow-col auto-cols-[minmax(200px,400px)] divide-x border-t border-x items-stretch min-h-full',
@@ -478,6 +418,6 @@ export const KanbanProvider = ({
       >
         {children}
       </div>
-    </DndContext>
+    </DragDropContext>
   );
 };
