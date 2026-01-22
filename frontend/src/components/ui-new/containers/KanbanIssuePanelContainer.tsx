@@ -18,11 +18,6 @@ interface KanbanIssuePanelContainerProps {
   projectId: string;
 }
 
-// Generate a display ID based on issue count
-function generateDisplayId(prefix: string, count: number): string {
-  return `${prefix}-${(count + 1).toString().padStart(3, '0')}`;
-}
-
 export function KanbanIssuePanelContainer({
   projectId,
 }: KanbanIssuePanelContainerProps) {
@@ -91,16 +86,13 @@ export function KanbanIssuePanelContainer({
   // Default status (first one by sort order)
   const defaultStatusId = sortedStatuses[0]?.id ?? '';
 
-  // Generate display ID for create mode
+  // Display ID: use real simple_id in edit mode, placeholder for create mode
   const displayId = useMemo(() => {
     if (mode === 'edit' && selectedIssue) {
-      // In a real app, this would come from the issue data
-      // For now, generate based on position in list
-      const issueIndex = issues.findIndex((i) => i.id === selectedIssue.id);
-      return generateDisplayId('Task', issueIndex);
+      return selectedIssue.simple_id;
     }
-    return generateDisplayId('Task', issues.length);
-  }, [mode, selectedIssue, issues]);
+    return 'New Issue';
+  }, [mode, selectedIssue]);
 
   // Form state
   const [formData, setFormData] = useState<IssueFormData>(() => ({
