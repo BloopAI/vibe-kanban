@@ -266,7 +266,7 @@ pub(super) async fn discover_commands(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
 
     wait_for_health(&client, &server.base_url).await?;
-    list_commands(&client, &server.base_url).await
+    list_commands(&client, &server.base_url, &directory).await
 }
 
 pub async fn run_slash_command(
@@ -817,9 +817,11 @@ pub async fn session_unshare(
 pub async fn list_commands(
     client: &reqwest::Client,
     base_url: &str,
+    directory: &str,
 ) -> Result<Vec<CommandInfo>, ExecutorError> {
     let resp = client
         .get(format!("{base_url}/command"))
+        .query(&[("directory", directory)])
         .send()
         .await
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
@@ -836,9 +838,11 @@ pub async fn list_commands(
 pub async fn list_agents(
     client: &reqwest::Client,
     base_url: &str,
+    directory: &str,
 ) -> Result<Vec<AgentInfo>, ExecutorError> {
     let resp = client
         .get(format!("{base_url}/agent"))
+        .query(&[("directory", directory)])
         .send()
         .await
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
@@ -855,9 +859,11 @@ pub async fn list_agents(
 pub async fn config_get(
     client: &reqwest::Client,
     base_url: &str,
+    directory: &str,
 ) -> Result<ConfigResponse, ExecutorError> {
     let resp = client
         .get(format!("{base_url}/config"))
+        .query(&[("directory", directory)])
         .send()
         .await
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
@@ -874,9 +880,11 @@ pub async fn config_get(
 pub async fn list_config_providers(
     client: &reqwest::Client,
     base_url: &str,
+    directory: &str,
 ) -> Result<ConfigProvidersResponse, ExecutorError> {
     let resp = client
         .get(format!("{base_url}/config/providers"))
+        .query(&[("directory", directory)])
         .send()
         .await
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
@@ -893,9 +901,11 @@ pub async fn list_config_providers(
 pub async fn list_providers(
     client: &reqwest::Client,
     base_url: &str,
+    directory: &str,
 ) -> Result<ProviderListResponse, ExecutorError> {
     let resp = client
         .get(format!("{base_url}/provider"))
+        .query(&[("directory", directory)])
         .send()
         .await
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
@@ -912,9 +922,11 @@ pub async fn list_providers(
 pub async fn mcp_status(
     client: &reqwest::Client,
     base_url: &str,
+    directory: &str,
 ) -> Result<HashMap<String, Value>, ExecutorError> {
     let resp = client
         .get(format!("{base_url}/mcp"))
+        .query(&[("directory", directory)])
         .send()
         .await
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
@@ -931,9 +943,11 @@ pub async fn mcp_status(
 pub async fn lsp_status(
     client: &reqwest::Client,
     base_url: &str,
+    directory: &str,
 ) -> Result<Vec<LspStatus>, ExecutorError> {
     let resp = client
         .get(format!("{base_url}/lsp"))
+        .query(&[("directory", directory)])
         .send()
         .await
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
@@ -950,9 +964,11 @@ pub async fn lsp_status(
 pub async fn formatter_status(
     client: &reqwest::Client,
     base_url: &str,
+    directory: &str,
 ) -> Result<Vec<FormatterStatus>, ExecutorError> {
     let resp = client
         .get(format!("{base_url}/formatter"))
+        .query(&[("directory", directory)])
         .send()
         .await
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
@@ -1024,18 +1040,19 @@ fn parse_model_strict(model: &str) -> Option<ModelSpec> {
 pub async fn resolve_compaction_model(
     client: &reqwest::Client,
     base_url: &str,
+    directory: &str,
     configured_model: Option<&str>,
 ) -> Result<ModelSpec, ExecutorError> {
     if let Some(model) = configured_model.and_then(parse_model_strict) {
         return Ok(model);
     }
 
-    let config = config_get(client, base_url).await?;
+    let config = config_get(client, base_url, directory).await?;
     if let Some(model) = config.model.as_deref().and_then(parse_model_strict) {
         return Ok(model);
     }
 
-    let providers = list_config_providers(client, base_url).await?;
+    let providers = list_config_providers(client, base_url, directory).await?;
     let mut provider_ids: Vec<_> = providers.default.keys().cloned().collect();
     provider_ids.sort();
 

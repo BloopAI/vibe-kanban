@@ -425,13 +425,15 @@ pub async fn execute(
     // Handle commands that don't require a session first
     match &command {
         OpencodeSlashCommand::Commands => {
-            let commands = sdk::list_commands(&client, &config.base_url).await?;
+            let commands = sdk::list_commands(&client, &config.base_url, &config.directory).await?;
             log_result_and_done(&log_writer, format_commands(&commands)).await?;
             return Ok(());
         }
         OpencodeSlashCommand::Models { provider } => {
-            let config_providers = sdk::list_config_providers(&client, &config.base_url).await?;
-            let provider_list = sdk::list_providers(&client, &config.base_url).await.ok();
+            let config_providers =
+                sdk::list_config_providers(&client, &config.base_url, &config.directory).await?;
+            let provider_list =
+                sdk::list_providers(&client, &config.base_url, &config.directory).await.ok();
             log_result_and_done(
                 &log_writer,
                 format_models(
@@ -444,20 +446,21 @@ pub async fn execute(
             return Ok(());
         }
         OpencodeSlashCommand::Agents => {
-            let agents = sdk::list_agents(&client, &config.base_url).await?;
+            let agents = sdk::list_agents(&client, &config.base_url, &config.directory).await?;
             log_result_and_done(&log_writer, format_agents(&agents)).await?;
             return Ok(());
         }
         OpencodeSlashCommand::Status => {
-            let mcp = sdk::mcp_status(&client, &config.base_url).await?;
-            let lsp = sdk::lsp_status(&client, &config.base_url).await?;
-            let formatter = sdk::formatter_status(&client, &config.base_url).await?;
-            let cfg = sdk::config_get(&client, &config.base_url).await?;
+            let mcp = sdk::mcp_status(&client, &config.base_url, &config.directory).await?;
+            let lsp = sdk::lsp_status(&client, &config.base_url, &config.directory).await?;
+            let formatter =
+                sdk::formatter_status(&client, &config.base_url, &config.directory).await?;
+            let cfg = sdk::config_get(&client, &config.base_url, &config.directory).await?;
             log_result_and_done(&log_writer, format_status(&mcp, &lsp, &formatter, &cfg)).await?;
             return Ok(());
         }
         OpencodeSlashCommand::Mcp => {
-            let mcp = sdk::mcp_status(&client, &config.base_url).await?;
+            let mcp = sdk::mcp_status(&client, &config.base_url, &config.directory).await?;
             log_result_and_done(&log_writer, format_mcp(&mcp)).await?;
             return Ok(());
         }
@@ -470,7 +473,7 @@ pub async fn execute(
 
     // Validate custom commands exist
     if let OpencodeSlashCommand::Custom { name, .. } = &command {
-        let available = sdk::list_commands(&client, &config.base_url).await?;
+        let available = sdk::list_commands(&client, &config.base_url, &config.directory).await?;
         let normalized = name.trim_start_matches('/');
         if !available
             .iter()
@@ -528,7 +531,7 @@ pub async fn execute(
     let is_compact = matches!(&command, OpencodeSlashCommand::Compact);
     let compaction_model = if is_compact {
         Some(
-            sdk::resolve_compaction_model(&client, &config.base_url, config.model.as_deref())
+            sdk::resolve_compaction_model(&client, &config.base_url, &config.directory, config.model.as_deref())
                 .await?,
         )
     } else {
