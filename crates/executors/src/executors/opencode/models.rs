@@ -51,7 +51,7 @@ impl ModelContextCache {
                 entry
                     .unknown_models
                     .contains(&(provider.to_string(), model.to_string()))
-                    .then(|| 0)
+                    .then_some(0)
             })
     }
 

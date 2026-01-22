@@ -1,9 +1,4 @@
-use std::{
-    collections::HashSet,
-    io,
-    sync::{Arc, Once},
-    time::Duration,
-};
+use std::{collections::HashSet, io, sync::Arc, time::Duration};
 
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use eventsource_stream::Eventsource;
