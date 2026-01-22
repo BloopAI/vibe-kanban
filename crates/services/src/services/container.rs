@@ -96,6 +96,10 @@ pub trait ContainerService {
 
     fn workspace_to_current_dir(&self, workspace: &Workspace) -> PathBuf;
 
+    async fn store_db_stream_handle(&self, id: Uuid, handle: JoinHandle<()>);
+
+    async fn take_db_stream_handle(&self, id: &Uuid) -> Option<JoinHandle<()>>;
+
     async fn create(&self, workspace: &Workspace) -> Result<ContainerRef, ContainerError>;
 
     async fn kill_all_running_processes(&self) -> Result<(), ContainerError>;
@@ -1119,7 +1123,9 @@ pub trait ContainerService {
             }
         }
 
-        self.spawn_stream_raw_logs_to_db(&execution_process.id);
+        let db_stream_handle = self.spawn_stream_raw_logs_to_db(&execution_process.id);
+        self.store_db_stream_handle(execution_process.id, db_stream_handle)
+            .await;
         Ok(execution_process)
     }
 

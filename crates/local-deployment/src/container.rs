@@ -68,6 +68,9 @@ pub struct LocalContainerService {
     child_store: Arc<RwLock<HashMap<Uuid, Arc<RwLock<AsyncGroupChild>>>>>,
     interrupt_senders: Arc<RwLock<HashMap<Uuid, InterruptSender>>>,
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
+    /// Tracks background tasks that stream logs to the database.
+    /// When stopping execution, we await these to ensure logs are fully persisted.
+    db_stream_handles: Arc<RwLock<HashMap<Uuid, JoinHandle<()>>>>,
     config: Arc<RwLock<Config>>,
     git: GitService,
     image_service: ImageService,
@@ -91,6 +94,7 @@ impl LocalContainerService {
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
         let interrupt_senders = Arc::new(RwLock::new(HashMap::new()));
+        let db_stream_handles = Arc::new(RwLock::new(HashMap::new()));
         let notification_service = NotificationService::new(config.clone());
 
         let container = LocalContainerService {
@@ -98,6 +102,7 @@ impl LocalContainerService {
             child_store,
             interrupt_senders,
             msg_stores,
+            db_stream_handles,
             config,
             git,
             image_service,
@@ -134,6 +139,16 @@ impl LocalContainerService {
 
     async fn take_interrupt_sender(&self, id: &Uuid) -> Option<InterruptSender> {
         let mut map = self.interrupt_senders.write().await;
+        map.remove(id)
+    }
+
+    async fn add_db_stream_handle(&self, id: Uuid, handle: JoinHandle<()>) {
+        let mut map = self.db_stream_handles.write().await;
+        map.insert(id, handle);
+    }
+
+    async fn take_db_stream_handle(&self, id: &Uuid) -> Option<JoinHandle<()>> {
+        let mut map = self.db_stream_handles.write().await;
         map.remove(id)
     }
 
@@ -571,18 +586,13 @@ impl LocalContainerService {
             // capture the HEAD OID as the definitive "after" state (best-effort).
             container.update_after_head_commits(exec_id).await;
 
-            // Cleanup msg store
+            // Wait for DB persistence to complete before cleaning up MsgStore
+            let db_stream_handle = container.take_db_stream_handle(&exec_id).await;
             if let Some(msg_arc) = msg_stores.write().await.remove(&exec_id) {
                 msg_arc.push_finished();
-                tokio::time::sleep(Duration::from_millis(50)).await; // Wait for the finish message to propagate
-                match Arc::try_unwrap(msg_arc) {
-                    Ok(inner) => drop(inner),
-                    Err(arc) => tracing::error!(
-                        "There are still {} strong Arcs to MsgStore for {}",
-                        Arc::strong_count(&arc),
-                        exec_id
-                    ),
-                }
+            }
+            if let Some(handle) = db_stream_handle {
+                let _ = tokio::time::timeout(Duration::from_secs(5), handle).await;
             }
 
             // Cleanup child handle
@@ -921,6 +931,14 @@ impl ContainerService for LocalContainerService {
         &self.notification_service
     }
 
+    async fn store_db_stream_handle(&self, id: Uuid, handle: JoinHandle<()>) {
+        self.add_db_stream_handle(id, handle).await;
+    }
+
+    async fn take_db_stream_handle(&self, id: &Uuid) -> Option<JoinHandle<()>> {
+        LocalContainerService::take_db_stream_handle(self, id).await
+    }
+
     async fn git_branch_prefix(&self) -> String {
         self.config.read().await.git_branch_prefix.clone()
     }
@@ -1239,9 +1257,13 @@ impl ContainerService for LocalContainerService {
             self.remove_child_from_store(&execution_process.id).await;
         }
 
-        // Mark the process finished in the MsgStore
+        // Mark the process finished in the MsgStore and wait for DB persistence
+        let db_stream_handle = self.take_db_stream_handle(&execution_process.id).await;
         if let Some(msg) = self.msg_stores.write().await.remove(&execution_process.id) {
             msg.push_finished();
+        }
+        if let Some(handle) = db_stream_handle {
+            let _ = tokio::time::timeout(Duration::from_secs(5), handle).await;
         }
 
         // Update task status to InReview when execution is stopped
