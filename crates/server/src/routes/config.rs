@@ -501,7 +501,7 @@ async fn check_agent_availability(
 pub struct AgentSlashCommandsStreamQuery {
     executor: BaseCodingAgent,
     #[serde(default)]
-    task_attempt_id: Option<Uuid>,
+    workspace_id: Option<Uuid>,
     #[serde(default)]
     repo_id: Option<Uuid>,
 }
@@ -533,7 +533,7 @@ async fn handle_agent_slash_commands_ws(
         .container()
         .available_agent_slash_commands(
             ExecutorProfileId::new(query.executor),
-            query.task_attempt_id,
+            query.workspace_id,
             query.repo_id,
         )
         .await

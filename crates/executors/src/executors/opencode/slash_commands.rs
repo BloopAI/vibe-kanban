@@ -27,7 +27,7 @@ use super::{
 use crate::{
     env::{ExecutionEnv, RepoContext},
     executors::{
-        ExecutorError, SlashCommandDescription,
+        BaseCodingAgent, ExecutorError, SlashCommandDescription,
         opencode::Opencode,
         utils::{
             SlashCommandCache, SlashCommandCacheKey, SlashCommandCall, parse_slash_command,
@@ -61,7 +61,7 @@ impl Opencode {
         &self,
         current_dir: &Path,
     ) -> Result<Vec<SlashCommandDescription>, ExecutorError> {
-        let key = SlashCommandCacheKey::new(current_dir, "opencode");
+        let key = SlashCommandCacheKey::new(current_dir, &BaseCodingAgent::Opencode);
         if let Some(cached) = SlashCommandCache::instance().get(&key) {
             return Ok((*cached).clone());
         }
