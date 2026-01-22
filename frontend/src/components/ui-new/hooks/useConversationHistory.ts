@@ -202,8 +202,8 @@ export const useConversationHistory = ({
                 e.content.entry_type.type === 'token_usage_info'
             );
             if (tokenUsageEntry?.type === 'NORMALIZED_ENTRY') {
-              latestTokenUsageInfo =
-                tokenUsageEntry.content.entry_type as TokenUsageInfo;
+              latestTokenUsageInfo = tokenUsageEntry.content
+                .entry_type as TokenUsageInfo;
             }
 
             // Remove user messages (replaced with custom one) and token usage info (displayed separately)
