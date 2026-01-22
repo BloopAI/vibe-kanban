@@ -59,12 +59,12 @@ export function IssuePropertyRow({
         <DropdownMenuTrigger asChild disabled={disabled}>
           <button
             type="button"
-            className="flex items-center gap-half px-base py-half bg-panel rounded-sm text-sm text-normal hover:bg-secondary transition-colors"
+            className="flex items-center gap-base px-base py-half bg-panel rounded-sm text-sm text-normal hover:bg-secondary transition-colors"
           >
             {selectedStatus && (
               <span
                 className="w-2 h-2 rounded-full shrink-0"
-                style={{ backgroundColor: `hsl(var(${selectedStatus.color}))` }}
+                style={{ backgroundColor: selectedStatus.color }}
               />
             )}
             <span className="truncate">{selectedStatus?.name ?? 'Status'}</span>
@@ -76,11 +76,13 @@ export function IssuePropertyRow({
               key={status.id}
               onClick={() => onStatusChange(status.id)}
             >
-              <span
-                className="w-2 h-2 rounded-full shrink-0"
-                style={{ backgroundColor: `hsl(var(${status.color}))` }}
-              />
-              {status.name}
+              <div className="flex items-center gap-base">
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: status.color }}
+                />
+                {status.name}
+              </div>
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
@@ -93,15 +95,17 @@ export function IssuePropertyRow({
             type="button"
             className="flex items-center gap-half px-base py-half bg-panel rounded-sm text-sm text-normal hover:bg-secondary transition-colors"
           >
-            <PriorityIcon priority={priority} className="h-4 w-4" />
+            <PriorityIcon priority={priority} />
             <span className="truncate">{priorityLabels[priority]}</span>
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           {PRIORITIES.map((p) => (
             <DropdownMenuItem key={p} onClick={() => onPriorityChange(p)}>
-              <PriorityIcon priority={p} className="h-4 w-4" />
-              {priorityLabels[p]}
+              <div className="flex items-center gap-base">
+                <PriorityIcon priority={p} />
+                {priorityLabels[p]}
+              </div>
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
