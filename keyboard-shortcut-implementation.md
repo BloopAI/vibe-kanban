@@ -545,11 +545,24 @@ import { KeySequenceIndicator } from '@/components/ui-new/KeySequenceIndicator';
 
 ---
 
-## Phase 4: Populate Action Shortcuts
+## Phase 4: Populate Action Shortcuts ✅ COMPLETED
 
 **Goal:** Add `shortcut` property to all actions with sequential bindings and verify display in command bar.
 
 **Estimated Scope:** ~30 lines of edits
+
+**Status:** Completed on 2026-01-22
+
+### Implementation Notes
+
+- Added `shortcut` property to all 22 actions that have sequential bindings
+- Shortcuts formatted as uppercase with space separator (e.g., `'G S'`, `'V C'`)
+- Properties added after `icon` property in each action definition
+
+### Verification Results
+
+- `pnpm run check` - Passed
+- `pnpm run lint` - Passed
 
 ### Files to Modify
 
