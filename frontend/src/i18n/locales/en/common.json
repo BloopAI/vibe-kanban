@@ -312,7 +312,7 @@
     "tooltip": "Context: {{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "Context usage: {{percentage}}%"
   },
-  "shortcuts": {
+"shortcuts": {
     "title": "Keyboard Shortcuts",
     "inWorkspace": "(in workspace)",
     "sequentialHint": "Sequential shortcuts: Press the first key, then the second within 500ms.",
@@ -324,5 +324,15 @@
     "commands": "Commands",
     "noTagsOrFiles": "No tags or files found",
     "noCommands": "No commands available for this agent."
+  },
+  "kanban": {
+    "noStatusesFound": "No statuses found for this project",
+    "noProjectFound": "No project found",
+    "noOrganizationFound": "No organization found",
+    "unassigned": "Unassigned",
+    "noTagsAvailable": "No tags available",
+    "filesCount": "{{count}} Files",
+    "noPrCreated": "No PR created",
+    "noCommentsYet": "No comments yet"
   }
 }
