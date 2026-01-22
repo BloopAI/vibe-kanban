@@ -1407,9 +1407,7 @@ pub async fn run_setup_script(
         None => {
             Session::create(
                 pool,
-                &CreateSession {
-                    executor: Some("setup-script".to_string()),
-                },
+                &CreateSession { executor: None },
                 Uuid::new_v4(),
                 workspace.id,
             )
@@ -1488,9 +1486,7 @@ pub async fn run_cleanup_script(
         None => {
             Session::create(
                 pool,
-                &CreateSession {
-                    executor: Some("cleanup-script".to_string()),
-                },
+                &CreateSession { executor: None },
                 Uuid::new_v4(),
                 workspace.id,
             )

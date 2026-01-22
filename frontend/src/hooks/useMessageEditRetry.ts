@@ -4,10 +4,15 @@ import {
   RestoreLogsDialog,
   type RestoreLogsDialogResult,
 } from '@/components/dialogs';
-import type { RepoBranchStatus, ExecutionProcess } from 'shared/types';
+import type {
+  RepoBranchStatus,
+  ExecutionProcess,
+  BaseCodingAgent,
+} from 'shared/types';
 
 export interface MessageEditRetryParams {
   message: string;
+  executor: BaseCodingAgent;
   variant: string | null;
   executionProcessId: string;
   branchStatus: RepoBranchStatus[] | undefined;
@@ -29,6 +34,7 @@ export function useMessageEditRetry(
   return useMutation({
     mutationFn: async ({
       message,
+      executor,
       variant,
       executionProcessId,
       branchStatus,
@@ -52,7 +58,7 @@ export function useMessageEditRetry(
       // Send the retry request with the edited message
       await sessionsApi.followUp(sessionId, {
         prompt: message,
-        variant,
+        executor_profile_id: { executor, variant },
         retry_process_id: executionProcessId,
         force_when_dirty: modalResult.forceWhenDirty ?? false,
         perform_git_reset: modalResult.performGitReset ?? true,

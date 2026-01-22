@@ -13,6 +13,8 @@ pub enum SessionError {
     NotFound,
     #[error("Workspace not found")]
     WorkspaceNotFound,
+    #[error("Executor mismatch: session uses {expected} but request specified {actual}")]
+    ExecutorMismatch { expected: String, actual: String },
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
@@ -126,5 +128,20 @@ impl Session {
         )
         .fetch_one(pool)
         .await?)
+    }
+
+    pub async fn update_executor(
+        pool: &SqlitePool,
+        id: Uuid,
+        executor: &str,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            r#"UPDATE sessions SET executor = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2"#,
+            executor,
+            id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
     }
 }
