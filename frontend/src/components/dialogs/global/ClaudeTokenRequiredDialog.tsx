@@ -61,7 +61,9 @@ const ClaudeTokenRequiredDialogImpl = NiceModal.create<NoProps>(() => {
       modal.resolve({ tokenConfigured: true } as ClaudeTokenResult);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : t('settings.claudeToken.errors.saveFailed')
+        err instanceof Error
+          ? err.message
+          : t('settings.claudeToken.errors.saveFailed')
       );
       setSaving(false);
     }
@@ -110,7 +112,8 @@ const ClaudeTokenRequiredDialogImpl = NiceModal.create<NoProps>(() => {
             <li>{t('settings.claudeToken.instructions.step4')}</li>
           </ol>
           <p className="text-xs text-muted-foreground mt-2">
-            <strong>{t('common:note')}:</strong> {t('settings.claudeToken.instructions.note')}
+            <strong>{t('common:note')}:</strong>{' '}
+            {t('settings.claudeToken.instructions.note')}
           </p>
         </div>
 
@@ -124,7 +127,9 @@ const ClaudeTokenRequiredDialogImpl = NiceModal.create<NoProps>(() => {
 
         {/* Token Input */}
         <div className="space-y-2">
-          <Label htmlFor="claude-token">{t('settings.claudeToken.form.label')}</Label>
+          <Label htmlFor="claude-token">
+            {t('settings.claudeToken.form.label')}
+          </Label>
           <Input
             id="claude-token"
             type="password"

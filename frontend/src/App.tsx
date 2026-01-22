@@ -128,7 +128,11 @@ function AppContent() {
 
       // 3) Claude Token - required after onboarding when authenticated
       // Only check if auth is configured and user is authenticated
-      if (isLocalAuthConfigured && isAuthenticated && hasClaudeToken === false) {
+      if (
+        isLocalAuthConfigured &&
+        isAuthenticated &&
+        hasClaudeToken === false
+      ) {
         await ClaudeTokenRequiredDialog.show();
         if (!cancelled) {
           // Refresh token status after dialog closes
@@ -154,7 +158,15 @@ function AppContent() {
     return () => {
       cancelled = true;
     };
-  }, [config, isSignedIn, updateAndSaveConfig, isLocalAuthConfigured, isAuthenticated, hasClaudeToken, checkClaudeTokenStatus]);
+  }, [
+    config,
+    isSignedIn,
+    updateAndSaveConfig,
+    isLocalAuthConfigured,
+    isAuthenticated,
+    hasClaudeToken,
+    checkClaudeTokenStatus,
+  ]);
 
   // TODO: Disabled while developing FE only
   // if (loading) {

@@ -187,7 +187,10 @@ export function ClaudeTokenSettings() {
             <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-700 dark:text-green-300">
-                {t('settings.claudeToken.saveSuccess', 'Token saved successfully!')}
+                {t(
+                  'settings.claudeToken.saveSuccess',
+                  'Token saved successfully!'
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -299,7 +302,7 @@ export function ClaudeTokenSettings() {
               <CardDescription>
                 {t(
                   'settings.claudeToken.teamDescription',
-                  'Overview of all team members\' token status. Tokens are rotated among available members.'
+                  "Overview of all team members' token status. Tokens are rotated among available members."
                 )}
               </CardDescription>
             </div>
@@ -378,7 +381,12 @@ export function ClaudeTokenSettings() {
           <div className="mt-4 p-3 bg-muted rounded-md">
             <p className="text-sm text-muted-foreground">
               <strong>
-                {allStatuses.filter((s) => s.token_status.has_token && !s.token_status.is_expired).length}
+                {
+                  allStatuses.filter(
+                    (s) =>
+                      s.token_status.has_token && !s.token_status.is_expired
+                  ).length
+                }
               </strong>{' '}
               {t(
                 'settings.claudeToken.activeTokens',
