@@ -1,9 +1,9 @@
-import { useMemo, useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import {
-  VirtualizedProcessLogs,
   type LogEntry,
+  VirtualizedProcessLogs,
 } from './VirtualizedProcessLogs';
 import { useLogStream } from '@/hooks/useLogStream';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
@@ -105,20 +105,20 @@ export function LogsContentContainer({ className }: LogsContentContainerProps) {
   if (content.type === 'terminal') {
     return (
       <div className={cn('h-full bg-secondary flex flex-col', className)}>
-        <div className="px-4 py-2 border-b border-border flex items-center justify-between shrink-0">
+        <div className="px-4 py-1 flex items-center justify-between shrink-0 h-8">
           <span className="text-sm font-medium text-normal">
             {t('processes.terminal')}
           </span>
           <button
             type="button"
             onClick={collapseTerminal}
-            className="p-1 text-low hover:text-normal transition-colors"
+            className="text-low hover:text-normal transition-colors"
             title={t('actions.collapse')}
           >
             <ArrowsInSimpleIcon className="size-icon-sm" weight="bold" />
           </button>
         </div>
-        <div className="flex-1 flex min-h-0">
+        <div className="flex-1 flex min-h-0 border-t border-border">
           <div className="flex-1 min-h-0 w-full">
             <TerminalPanelContainer />
           </div>
