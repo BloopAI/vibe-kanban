@@ -1,17 +1,8 @@
-# Development Dockerfile for vibe-kanban
-# This provides a containerized Rust + Node environment for local development
-#
-# NOTE: If Docker Desktop runs out of disk space, run:
-#   docker system prune -a --volumes
-# Or increase Docker Desktop's disk limit in settings.
-
 FROM rust:1.89-bookworm
 
-# Install Node.js 24
 RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get install -y nodejs
 
-# Install additional system dependencies (clang/llvm needed for bindgen/libsqlite3-sys)
 RUN apt-get update && apt-get install -y \
     sqlite3 \
     libsqlite3-dev \
@@ -19,47 +10,35 @@ RUN apt-get update && apt-get install -y \
     libclang-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install the nightly toolchain (minimal - only what we need)
 RUN rustup toolchain install nightly-2025-12-04 \
     --component rustfmt,clippy \
     && rustup default nightly-2025-12-04
 
-# Install cargo-watch for hot-reloading
 RUN cargo install cargo-watch
 
-# Install pnpm
 RUN npm install -g pnpm@10.13.1
 
-# Set working directory
 WORKDIR /app
 
-# Create directories for development
 RUN mkdir -p /app/dev_assets /app/target
 
-# Expose ports for frontend and backend
 EXPOSE 3000 3001
 
-# Create entrypoint script that installs deps if needed
 RUN echo '#!/bin/bash\n\
 set -e\n\
 \n\
-# Copy pnpm-lock.yaml from mounted source if it exists and we dont have one\n\
 if [ -f "/app/source-lock/pnpm-lock.yaml" ] && [ ! -f "/app/pnpm-lock.yaml" ]; then\n\
   echo "Copying pnpm-lock.yaml..."\n\
   cp /app/source-lock/pnpm-lock.yaml /app/pnpm-lock.yaml\n\
 fi\n\
 \n\
-# Install dependencies if node_modules is empty\n\
 if [ ! -d "/app/node_modules/concurrently" ]; then\n\
   echo "Installing dependencies..."\n\
   pnpm install --frozen-lockfile || pnpm install\n\
 fi\n\
 \n\
-# Run the provided command or default to dev\n\
 exec "$@"\n\
 ' > /entrypoint.sh && chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
-
-# Default command runs the dev environment
 CMD ["pnpm", "run", "dev"]
