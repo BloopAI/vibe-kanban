@@ -18,6 +18,7 @@ use crate::{
         issue_tags::IssueTag,
         issues::Issue,
         notifications::Notification,
+        organization_members::OrganizationMember,
         project_statuses::ProjectStatus,
         projects::Project,
         pull_requests::PullRequest,
@@ -56,6 +57,17 @@ crate::define_entity!(
         url: "/shape/notifications",
     },
     fields: [seen: bool],
+);
+
+// OrganizationMember: shape-only (no mutations)
+crate::define_entity!(
+    OrganizationMember,
+    table: "organization_member_metadata",
+    shape: {
+        where_clause: r#""organization_id" = $1"#,
+        params: ["organization_id"],
+        url: "/shape/organization_members",
+    },
 );
 
 // =============================================================================
@@ -207,6 +219,7 @@ pub fn all_entities() -> Vec<&'static dyn EntityExport> {
         // Organization-scoped
         &PROJECT_ENTITY,
         &NOTIFICATION_ENTITY,
+        &ORGANIZATION_MEMBER_ENTITY,
         // Project-scoped
         &TAG_ENTITY,
         &PROJECT_STATUS_ENTITY,
@@ -230,6 +243,7 @@ pub fn all_shapes() -> Vec<&'static dyn crate::shapes::ShapeExport> {
     vec![
         &PROJECT_SHAPE,
         &NOTIFICATION_SHAPE,
+        &ORGANIZATION_MEMBER_SHAPE,
         &TAG_SHAPE,
         &PROJECT_STATUS_SHAPE,
         &ISSUE_SHAPE,

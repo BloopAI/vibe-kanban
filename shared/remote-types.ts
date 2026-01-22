@@ -38,6 +38,10 @@ export type WorkspacePrStatus = "open" | "merged" | "closed";
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
+export enum MemberRole { ADMIN = "ADMIN", MEMBER = "MEMBER" }
+
+export type OrganizationMember = { organization_id: string, user_id: string, role: MemberRole, joined_at: string, last_seen_at: string | null, };
+
 export type CreateProjectRequest = { 
 /**
  * Optional client-generated ID. If not provided, server generates one.
@@ -167,6 +171,12 @@ export const NOTIFICATIONS_SHAPE = defineShape<Notification>(
   '/v1/shape/notifications'
 );
 
+export const ORGANIZATION_MEMBER_METADATA_SHAPE = defineShape<OrganizationMember>(
+  'organization_member_metadata',
+  ['organization_id'] as const,
+  '/v1/shape/organization_members'
+);
+
 export const TAGS_SHAPE = defineShape<Tag>(
   'tags',
   ['project_id'] as const,
@@ -273,6 +283,15 @@ export const NOTIFICATION_ENTITY: EntityDefinition<Notification, CreateNotificat
   mutations: { url: '/v1/notifications' } as EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest>['mutations'],
 };
 
+export const ORGANIZATION_MEMBER_ENTITY: EntityDefinition<OrganizationMember> = {
+  name: 'OrganizationMember',
+  table: 'organization_member_metadata',
+  mutationScope: null,
+  shapeScope: null,
+  shape: ORGANIZATION_MEMBER_METADATA_SHAPE,
+  mutations: null,
+};
+
 export const TAG_ENTITY: EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest> = {
   name: 'Tag',
   table: 'tags',
@@ -345,13 +364,13 @@ export const ISSUE_RELATIONSHIP_ENTITY: EntityDefinition<IssueRelationship, Crea
   mutations: { url: '/v1/issue_relationships' } as EntityDefinition<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest>['mutations'],
 };
 
-export const PULL_REQUEST_ENTITY: EntityDefinition<PullRequest, CreatePullRequestRequest, UpdatePullRequestRequest> = {
+export const PULL_REQUEST_ENTITY: EntityDefinition<PullRequest> = {
   name: 'PullRequest',
   table: 'pull_requests',
-  mutationScope: 'Issue',
-  shapeScope: 'Project',
+  mutationScope: null,
+  shapeScope: null,
   shape: PULL_REQUESTS_SHAPE,
-  mutations: { url: '/v1/pull_requests' } as EntityDefinition<PullRequest, CreatePullRequestRequest, UpdatePullRequestRequest>['mutations'],
+  mutations: null,
 };
 
 export const ISSUE_COMMENT_ENTITY: EntityDefinition<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> = {

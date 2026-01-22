@@ -10,6 +10,7 @@ use remote::{
         issue_tags::IssueTag,
         issues::Issue,
         notifications::{Notification, NotificationType},
+        organization_members::{MemberRole, OrganizationMember},
         project_statuses::ProjectStatus,
         projects::Project,
         tags::Tag,
@@ -95,6 +96,8 @@ fn export_shapes() -> String {
         IssuePriority::decl(),
         WorkspacePrStatus::decl(),
         UserData::decl(),
+        MemberRole::decl(),
+        OrganizationMember::decl(),
         // Mutation request types
         CreateProjectRequest::decl(),
         UpdateProjectRequest::decl(),
