@@ -256,13 +256,28 @@ impl StandardCodingAgentExecutor for Opencode {
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
+        // Try multiple config file names (.json and .jsonc) in XDG/platform config dirs
         #[cfg(unix)]
         {
-            xdg::BaseDirectories::with_prefix("opencode").get_config_file("opencode.json")
+            let base_dirs = xdg::BaseDirectories::with_prefix("opencode");
+            // First try opencode.json, then opencode.jsonc
+            base_dirs
+                .get_config_file("opencode.json")
+                .filter(|p| p.exists())
+                .or_else(|| base_dirs.get_config_file("opencode.jsonc"))
         }
         #[cfg(not(unix))]
         {
-            dirs::config_dir().map(|config| config.join("opencode").join("opencode.json"))
+            dirs::config_dir().and_then(|config| {
+                let opencode_dir = config.join("opencode");
+                let json_path = opencode_dir.join("opencode.json");
+                let jsonc_path = opencode_dir.join("opencode.jsonc");
+                if json_path.exists() {
+                    Some(json_path)
+                } else {
+                    Some(jsonc_path)
+                }
+            })
         }
     }
 
@@ -272,9 +287,29 @@ impl StandardCodingAgentExecutor for Opencode {
             .map(|p| p.exists())
             .unwrap_or(false);
 
-        let installation_indicator_found = dirs::config_dir()
-            .map(|config| config.join("opencode").exists())
-            .unwrap_or(false);
+        // Check multiple installation indicator paths:
+        // 1. XDG config dir: ~/.config/opencode (Unix)
+        // 2. Platform config dir: ~/Library/Application Support/opencode (macOS)
+        // 3. OpenCode Desktop app: ~/Library/Application Support/ai.opencode.desktop (macOS)
+        // 4. OpenCode CLI home: ~/.opencode (cross-platform)
+        let installation_indicator_found = {
+            // Check XDG/platform config directory
+            let config_dir_exists = dirs::config_dir()
+                .map(|config| config.join("opencode").exists())
+                .unwrap_or(false);
+
+            // Check OpenCode Desktop app directory (macOS)
+            let desktop_app_exists = dirs::config_dir()
+                .map(|config| config.join("ai.opencode.desktop").exists())
+                .unwrap_or(false);
+
+            // Check ~/.opencode directory (CLI installation)
+            let home_opencode_exists = dirs::home_dir()
+                .map(|home| home.join(".opencode").exists())
+                .unwrap_or(false);
+
+            config_dir_exists || desktop_app_exists || home_opencode_exists
+        };
 
         if mcp_config_found || installation_indicator_found {
             AvailabilityInfo::InstallationFound

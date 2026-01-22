@@ -1806,6 +1806,7 @@ dependencies = [
  "futures",
  "futures-io",
  "json-patch",
+ "jsonc-parser",
  "mcp-types",
  "os_pipe",
  "rand 0.8.5",
@@ -2858,6 +2859,15 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "jsonc-parser"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9eb0774546269185d38da823d8583e94448ba0e158e3f50759d9c79aba946ca5"
+dependencies = [
+ "serde_json",
 ]
 
 [[package]]
