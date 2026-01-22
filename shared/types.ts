@@ -471,7 +471,11 @@ export type Opencode = { append_prompt: AppendPrompt, model?: string | null, var
 /**
  * Auto-approve agent actions
  */
-auto_approve: boolean, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
+auto_approve: boolean, 
+/**
+ * Enable auto-compaction when the context length approaches the model's context window limit
+ */
+auto_compact: boolean, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
 export type QwenCode = { append_prompt: AppendPrompt, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 

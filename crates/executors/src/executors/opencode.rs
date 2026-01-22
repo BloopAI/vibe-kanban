@@ -5,7 +5,7 @@ use command_group::AsyncCommandGroup;
 use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Map;
+use serde_json::{Map, Value};
 use tokio::{io::AsyncBufReadExt, process::Command};
 use ts_rs::TS;
 use workspace_utils::msg_store::MsgStore;
@@ -42,6 +42,9 @@ pub struct Opencode {
     /// Auto-approve agent actions
     #[serde(default = "default_to_true")]
     pub auto_approve: bool,
+    /// Enable auto-compaction when the context length approaches the model's context window limit
+    #[serde(default = "default_to_true")]
+    pub auto_compact: bool,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
     #[serde(skip)]
@@ -244,6 +247,7 @@ impl StandardCodingAgentExecutor for Opencode {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let env = setup_permissions_env(self.auto_approve, env);
+        let env = setup_compaction_env(self.auto_compact, &env);
         self.spawn_inner(current_dir, prompt, None, &env).await
     }
 
@@ -255,6 +259,7 @@ impl StandardCodingAgentExecutor for Opencode {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let env = setup_permissions_env(self.auto_approve, env);
+        let env = setup_compaction_env(self.auto_compact, &env);
         self.spawn_inner(current_dir, prompt, Some(session_id), &env)
             .await
     }
@@ -361,4 +366,30 @@ fn merge_question_deny(existing_json: &str) -> String {
     );
 
     serde_json::to_string(&permissions).unwrap_or_else(|_| r#"{"question":"deny"}"#.to_string())
+}
+
+fn setup_compaction_env(auto_compact: bool, env: &ExecutionEnv) -> ExecutionEnv {
+    if !auto_compact {
+        return env.clone();
+    }
+
+    let mut env = env.clone();
+    let merged = merge_compaction_config(env.get("OPENCODE_CONFIG_CONTENT").map(String::as_str));
+    env.insert("OPENCODE_CONFIG_CONTENT", merged);
+    env
+}
+
+fn merge_compaction_config(existing_json: Option<&str>) -> String {
+    let mut config: Map<String, Value> = existing_json
+        .and_then(|value| serde_json::from_str(value.trim()).ok())
+        .unwrap_or_default();
+
+    let mut compaction = config
+        .remove("compaction")
+        .and_then(|value| value.as_object().cloned())
+        .unwrap_or_default();
+    compaction.insert("auto".to_string(), Value::Bool(true));
+    config.insert("compaction".to_string(), Value::Object(compaction));
+
+    serde_json::to_string(&config).unwrap_or_else(|_| r#"{"compaction":{"auto":true}}"#.to_string())
 }
