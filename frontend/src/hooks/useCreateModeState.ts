@@ -280,24 +280,27 @@ export function useCreateModeState({
 
     hasAppliedSpinOffRepos.current = true;
 
+    // Set target branches SYNCHRONOUSLY first to prevent race condition
+    // with CreateModeReposSectionContainer's auto-select effect
+    setTargetBranches(
+      locationState.spinOffRepos.reduce(
+        (acc, r) => {
+          acc[r.repo_id] = r.target_branch;
+          return acc;
+        },
+        {} as Record<string, string>
+      )
+    );
+
+    // Mark repos as initialized to prevent overwrite by initialRepos effect
+    hasInitializedRepos.current = true;
+
+    // Then fetch full repo objects asynchronously
     const applySpinOffRepos = async () => {
       try {
         const repoIds = locationState.spinOffRepos!.map((r) => r.repo_id);
         const fetchedRepos = await repoApi.getBatch(repoIds);
-
         setRepos(fetchedRepos);
-        setTargetBranches(
-          locationState.spinOffRepos!.reduce(
-            (acc, r) => {
-              acc[r.repo_id] = r.target_branch;
-              return acc;
-            },
-            {} as Record<string, string>
-          )
-        );
-
-        // Mark repos as initialized to prevent overwrite
-        hasInitializedRepos.current = true;
       } catch (e) {
         console.error(
           '[useCreateModeState] Failed to apply spin off repos:',
