@@ -376,7 +376,10 @@ async fn run_session_inner(
         return Ok(());
     }
 
-    prompt_result?;
+    if let Err(err) = prompt_result {
+        event_handle.abort();
+        return Err(err);
+    }
 
     // Handle commit reminder if enabled
     if config.commit_reminder && !cancel.is_cancelled() {
