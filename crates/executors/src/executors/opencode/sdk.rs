@@ -25,15 +25,6 @@ use crate::{
     executors::{ExecutorError, opencode::models::maybe_emit_token_usage},
 };
 
-fn ensure_rustls_crypto_provider() {
-    static INIT: Once = Once::new();
-    INIT.call_once(|| {
-        if let Err(err) = rustls::crypto::aws_lc_rs::default_provider().install_default() {
-            tracing::debug!("rustls crypto provider install failed: {err:?}");
-        }
-    });
-}
-
 #[derive(Clone)]
 pub struct LogWriter {
     writer: Arc<AsyncMutex<BufWriter<Box<dyn AsyncWrite + Send + Unpin>>>>,
@@ -144,7 +135,6 @@ pub async fn run_session(
     log_writer: LogWriter,
     interrupt_rx: oneshot::Receiver<()>,
 ) -> Result<(), ExecutorError> {
-    ensure_rustls_crypto_provider();
     let cancel = CancellationToken::new();
 
     let client = reqwest::Client::builder()
