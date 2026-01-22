@@ -15,6 +15,7 @@ import { projectsApi, repoApi } from '@/lib/api';
 
 interface LocationState {
   duplicatePrompt?: string | null;
+  spinOffRepos?: Array<{ repo_id: string; target_branch: string }> | null;
 }
 
 // Fixed UUID for the universal workspace draft
@@ -65,6 +66,7 @@ export function useCreateModeState({
   const hasInitializedRepos = useRef(false);
   const hasInitializedProject = useRef(false);
   const hasAppliedDuplicatePrompt = useRef(false);
+  const hasAppliedSpinOffRepos = useRef(false);
 
   // Validation helper for executor profiles
   const isValidProfile = useMemo(() => {
@@ -267,6 +269,43 @@ export function useCreateModeState({
     setMessage(locationState.duplicatePrompt);
 
     // Clear the navigation state to prevent re-applying on subsequent renders
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [locationState, location.pathname, navigate]);
+
+  // Handle spin off repos from navigation state
+  useEffect(() => {
+    if (hasAppliedSpinOffRepos.current) return;
+    if (!locationState?.spinOffRepos || locationState.spinOffRepos.length === 0)
+      return;
+
+    hasAppliedSpinOffRepos.current = true;
+
+    const applySpinOffRepos = async () => {
+      try {
+        const repoIds = locationState.spinOffRepos!.map((r) => r.repo_id);
+        const fetchedRepos = await repoApi.getBatch(repoIds);
+
+        setRepos(fetchedRepos);
+        setTargetBranches(
+          locationState.spinOffRepos!.reduce(
+            (acc, r) => {
+              acc[r.repo_id] = r.target_branch;
+              return acc;
+            },
+            {} as Record<string, string>
+          )
+        );
+
+        // Mark repos as initialized to prevent overwrite
+        hasInitializedRepos.current = true;
+      } catch (e) {
+        console.error('[useCreateModeState] Failed to apply spin off repos:', e);
+      }
+    };
+
+    applySpinOffRepos();
+
+    // Clear the navigation state
     navigate(location.pathname, { replace: true, state: {} });
   }, [locationState, location.pathname, navigate]);
 

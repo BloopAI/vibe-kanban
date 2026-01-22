@@ -29,6 +29,7 @@ import {
   SpinnerIcon,
   GitPullRequestIcon,
   GitMergeIcon,
+  GitForkIcon,
   ArrowsClockwiseIcon,
   CrosshairIcon,
   DesktopIcon,
@@ -360,6 +361,29 @@ export const Actions = {
       await StartReviewDialog.show({
         workspaceId,
       });
+    },
+  },
+
+  SpinOffWorkspace: {
+    id: 'spin-off-workspace',
+    label: 'Spin off workspace',
+    icon: GitForkIcon,
+    requiresTarget: true,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    execute: async (ctx, workspaceId) => {
+      try {
+        const repos = await attemptsApi.getRepos(workspaceId);
+        ctx.navigate('/workspaces/create', {
+          state: {
+            spinOffRepos: repos.map((r) => ({
+              repo_id: r.id,
+              target_branch: r.target_branch,
+            })),
+          },
+        });
+      } catch {
+        ctx.navigate('/workspaces/create');
+      }
     },
   },
 
