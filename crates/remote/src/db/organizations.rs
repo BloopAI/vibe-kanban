@@ -9,7 +9,7 @@ use super::{
         check_user_role as get_user_role,
     },
     project_statuses::ProjectStatusRepository,
-    projects::{ProjectRepository, INITIAL_PROJECT_COLOR, INITIAL_PROJECT_NAME},
+    projects::{INITIAL_PROJECT_COLOR, INITIAL_PROJECT_NAME, ProjectRepository},
     tags::TagRepository,
 };
 
