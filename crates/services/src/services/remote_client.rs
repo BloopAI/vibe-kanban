@@ -31,6 +31,13 @@ use uuid::Uuid;
 
 use super::{auth::AuthContext, oauth_credentials::Credentials};
 
+#[derive(Debug, Deserialize)]
+struct MutationResponse<T> {
+    data: T,
+    #[allow(dead_code)]
+    txid: i64,
+}
+
 #[derive(Debug, Clone, Error)]
 pub enum RemoteClientError {
     #[error("network error: {0}")]
@@ -425,7 +432,10 @@ impl RemoteClient {
         &self,
         request: &CreateRemoteProjectPayload,
     ) -> Result<RemoteProject, RemoteClientError> {
-        self.post_authed("/v1/projects", Some(request)).await
+        // Remote service returns MutationResponse<Project> with { data, txid }
+        let response: MutationResponse<RemoteProject> =
+            self.post_authed("/v1/projects", Some(request)).await?;
+        Ok(response.data)
     }
 
     /// Gets a specific organization by ID.
