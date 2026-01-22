@@ -40,6 +40,7 @@ import {
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { oauthApi } from '@/lib/api';
+import { UserMenu } from '@/components/UserMenu';
 
 const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
 
@@ -240,6 +241,9 @@ export function Navbar() {
               </Link>
             </Button>
             <NavDivider /> */}
+
+            {/* Local Auth User Menu */}
+            <UserMenu />
 
             <div className="flex items-center gap-1">
               <Button

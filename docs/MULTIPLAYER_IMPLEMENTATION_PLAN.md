@@ -12,10 +12,27 @@ Transform Vibe Kanban from a single-user local application to a multi-user colla
 - UI displays which user performed each action
 - Multiple users can collaborate on projects
 
-### Current State
-- **Local Mode**: Single anonymous user, no authentication, actions not attributed
-- **Remote Mode**: Already has multi-user with OAuth (can reference patterns)
-- **Existing Assets**: `UserAvatar` component, translation infrastructure, auth hooks exist
+### Current State (Updated 2026-01-22)
+
+**Status**: ~95% complete - Only Phase 5 (Chat Message Attribution) remaining.
+
+The multiplayer infrastructure is fully integrated:
+- ✅ `ProtectedRoute` wraps all routes except `/login`
+- ✅ `UserMenu` integrated into Navbar
+- ✅ GitHub OAuth backend fully implemented
+- ✅ User attribution on projects, tasks, workspaces, and sessions
+
+**Why you may not see a login experience**: Authentication is **OPTIONAL** - if GitHub OAuth credentials are not configured, the app falls back to single-user mode (backward compatible).
+
+To enable multiplayer authentication:
+1. Create a GitHub OAuth App (see Configuration Requirements below)
+2. Add credentials to `.env` file
+3. Restart the app - you'll be redirected to `/login`
+
+**Note**: The app gracefully handles missing OAuth config. When `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and `SESSION_SECRET` are not set:
+- `ProtectedRoute` allows access (no redirect to login)
+- `UserMenu` renders nothing (hidden)
+- All features work as before in single-user mode
 
 ---
 
@@ -218,17 +235,37 @@ In multi-user, multiple people may interact with the same agent session. The UI 
 
 ---
 
-## Phase 6: User Menu & Profile Display 🔄 IN PROGRESS
+## Phase 6: User Menu & Profile Display ✅ COMPLETED
 
 **Duration**: 1-2 days
 
-**Status**: Partially Complete - UserMenu component built, needs header integration
+**Status**: Completed - Components built and integrated into main app flow
 
 ### What
 Header displays current user with avatar and provides logout.
 
 ### Why
 Users need visual confirmation of who they're logged in as and a way to sign out.
+
+### Current Implementation Status
+
+| Component | Status | Location | Notes |
+|-----------|--------|----------|-------|
+| `UserMenu` | ✅ Integrated | `frontend/src/components/UserMenu.tsx` | Added to Navbar.tsx |
+| `ProtectedRoute` | ✅ Integrated | `frontend/src/components/ProtectedRoute.tsx` | Wrapping routes in App.tsx |
+| `Login` page | ✅ Built | `frontend/src/pages/Login.tsx` | Route exists at `/login` |
+| `LocalAuthContext` | ✅ Built | `frontend/src/contexts/LocalAuthContext.tsx` | Wraps app, enforced via ProtectedRoute |
+
+### Implementation Notes
+
+1. **Route Protection**: All routes except `/login` are now wrapped with `ProtectedRoute`
+   - When local auth is configured (env vars set), unauthenticated users are redirected to `/login`
+   - When local auth is NOT configured, routes remain accessible (backward compatibility)
+
+2. **UserMenu Integration**: `Navbar.tsx` now includes `UserMenu`
+   - Shows "Sign in with GitHub" button when not authenticated (if auth is configured)
+   - Shows user avatar and dropdown when authenticated
+   - Coexists with remote OAuth system (different use case)
 
 ### Tests
 
@@ -242,8 +279,9 @@ Users need visual confirmation of who they're logged in as and a way to sign out
 
 **Frontend**
 - ~~Create UserMenu component with avatar, dropdown, sign out option~~ ✅
-- Add UserMenu to app header/navigation
+- ~~Add UserMenu to app header/navigation (Navbar.tsx)~~ ✅
 - ~~Wire logout action to auth context~~ ✅
+- ~~Wrap routes in App.tsx with ProtectedRoute~~ ✅
 
 ---
 
@@ -324,8 +362,8 @@ Users need visual confirmation of who they're logged in as and a way to sign out
 | Phase 3: Task Attribution & Assignment | 2-3 days | Phase 1 | ✅ Completed |
 | Phase 4: Workspace & Session Ownership | 2 days | Phase 1 | ✅ Completed |
 | Phase 5: Chat Message Attribution | 3-4 days | Phase 4 | 🔜 Ready |
-| Phase 6: User Menu & Profile Display | 1-2 days | Phase 1 | 🔄 In Progress |
-| **Total** | **~2-3 weeks** | | |
+| Phase 6: User Menu & Profile Display | 1-2 days | Phase 1 | ✅ Completed |
+| **Total** | **~2-3 weeks** | | **~95% Complete** |
 
 Note: Phases 2, 3, 4, and 6 can run in parallel after Phase 1 completes. Phase 5 depends on Phase 4.
 
@@ -347,3 +385,69 @@ Note: Phases 2, 3, 4, and 6 can run in parallel after Phase 1 completes. Phase 5
 - Existing UserAvatar component: `frontend/src/components/tasks/UserAvatar.tsx`
 - Existing auth hooks: `frontend/src/hooks/auth/`
 - OAuth patterns: `crates/server/src/routes/oauth.rs` (current remote handoff)
+
+---
+
+## Remaining Work Summary (Updated 2026-01-22)
+
+### Current Status: ~95% Complete
+
+The multiplayer infrastructure is now fully integrated:
+
+```
+Backend (DONE):              Frontend (DONE):
+┌─────────────────────┐      ┌─────────────────────────────────────┐
+│ ✅ Users table      │      │ ✅ LocalAuthContext (wraps app)     │
+│ ✅ GitHub OAuth     │      │ ✅ Login page exists at /login      │
+│ ✅ JWT sessions     │      │ ✅ UserMenu component integrated    │
+│ ✅ Auth routes      │      │ ✅ ProtectedRoute wrapping routes   │
+│ ✅ User FKs on all  │      │ ✅ Redirect to /login when needed   │
+│    entities         │      │                                     │
+└─────────────────────┘      └─────────────────────────────────────┘
+```
+
+**Important**: Authentication is OPTIONAL by default. If GitHub OAuth env vars are not set, the app works as before (single-user mode).
+
+### Remaining Work (Phase 5 Only) - ~3-4 days
+
+1. **Chat Message Attribution**
+   - Add `user_id` column to `coding_agent_turns` table
+   - Thread user context through execution pipeline
+   - Update normalizers to populate sender info
+   - Update chat UI to show "You" vs other usernames
+
+### Quick Start for Testing Multiplayer
+
+```bash
+# 1. Create GitHub OAuth App at https://github.com/settings/developers
+#    - Homepage URL: http://localhost:3000
+#    - Callback URL: http://localhost:3000/api/local-auth/github/callback
+
+# 2. Create .env file
+cp .env.example .env
+
+# 3. Fill in the values
+GITHUB_CLIENT_ID=your_client_id
+GITHUB_CLIENT_SECRET=your_client_secret
+SESSION_SECRET=$(openssl rand -hex 32)
+
+# 4. Run the app
+pnpm run dev
+
+# 5. Navigate to /login to test authentication
+```
+
+### Key Files Modified (Phase 6)
+
+| File | Change Made |
+|------|-------------|
+| `frontend/src/App.tsx` | ✅ Routes wrapped with `<ProtectedRoute>` |
+| `frontend/src/components/layout/Navbar.tsx` | ✅ `<UserMenu />` added |
+
+### Key Files to Modify (Phase 5)
+
+| File | Change Needed |
+|------|---------------|
+| `crates/db/migrations/` | Add migration for `coding_agent_turns.user_id` |
+| `crates/executors/src/` | Thread user context and update normalizers |
+| `frontend/src/components/` | Update chat components for sender attribution |

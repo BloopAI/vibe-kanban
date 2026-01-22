@@ -25,6 +25,7 @@ import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { SearchProvider } from '@/contexts/SearchContext';
 import { LocalAuthProvider } from '@/contexts/LocalAuthContext';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 
 import { HotkeysProvider } from 'react-hotkeys-hook';
 
@@ -133,22 +134,26 @@ function AppContent() {
             {/* ========== LOGIN ROUTE ========== */}
             <Route path="/login" element={<Login />} />
 
-            {/* ========== LEGACY DESIGN ROUTES ========== */}
+            {/* ========== LEGACY DESIGN ROUTES (Protected) ========== */}
             {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
             <Route
               path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
               element={
-                <LegacyDesignScope>
-                  <FullAttemptLogsPage />
-                </LegacyDesignScope>
+                <ProtectedRoute>
+                  <LegacyDesignScope>
+                    <FullAttemptLogsPage />
+                  </LegacyDesignScope>
+                </ProtectedRoute>
               }
             />
 
             <Route
               element={
-                <LegacyDesignScope>
-                  <NormalLayout />
-                </LegacyDesignScope>
+                <ProtectedRoute>
+                  <LegacyDesignScope>
+                    <NormalLayout />
+                  </LegacyDesignScope>
+                </ProtectedRoute>
               }
             >
               <Route path="/" element={<Projects />} />
@@ -184,13 +189,15 @@ function AppContent() {
               />
             </Route>
 
-            {/* ========== NEW DESIGN ROUTES ========== */}
+            {/* ========== NEW DESIGN ROUTES (Protected) ========== */}
             <Route
               path="/workspaces"
               element={
-                <NewDesignScope>
-                  <NewDesignLayout />
-                </NewDesignScope>
+                <ProtectedRoute>
+                  <NewDesignScope>
+                    <NewDesignLayout />
+                  </NewDesignScope>
+                </ProtectedRoute>
               }
             >
               <Route index element={<WorkspacesLanding />} />
