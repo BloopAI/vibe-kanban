@@ -274,7 +274,9 @@ export function KanbanIssuePanel({
             >
               <div className="px-base pb-base flex flex-col gap-base">
                 {comments.length === 0 ? (
-                  <p className="text-sm text-low">{t('kanban.noCommentsYet')}</p>
+                  <p className="text-sm text-low">
+                    {t('kanban.noCommentsYet')}
+                  </p>
                 ) : (
                   comments.map((comment) => (
                     <CommentItem key={comment.id} comment={comment} />

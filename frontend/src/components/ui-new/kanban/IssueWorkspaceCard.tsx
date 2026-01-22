@@ -80,7 +80,9 @@ export function IssueWorkspaceCard({
               <>
                 <span className="text-low/50">·</span>
                 <FileIcon className="size-icon-2xs" weight="bold" />
-                <span>{t('kanban.filesCount', { count: workspace.filesChanged })}</span>
+                <span>
+                  {t('kanban.filesCount', { count: workspace.filesChanged })}
+                </span>
               </>
             )}
           </span>
