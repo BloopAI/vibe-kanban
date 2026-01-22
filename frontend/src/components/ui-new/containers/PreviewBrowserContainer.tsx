@@ -132,7 +132,13 @@ export function PreviewBrowserContainer({
     setShowIframe(false);
     const timer = setTimeout(() => setShowIframe(true), 2000);
     return () => clearTimeout(timer);
-  }, [effectiveUrl, previewRefreshKey, immediateLoad, hasOverride, urlInfo?.url]);
+  }, [
+    effectiveUrl,
+    previewRefreshKey,
+    immediateLoad,
+    hasOverride,
+    urlInfo?.url,
+  ]);
 
   // Responsive resize state - use refs for values that shouldn't trigger re-renders
   const [localDimensions, setLocalDimensions] = useState(responsiveDimensions);
