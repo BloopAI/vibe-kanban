@@ -31,19 +31,33 @@ export const detectPreviewUrl = (line: string): PreviewUrlInfo | null => {
   if (fullUrlMatch) {
     try {
       const parsed = new URL(fullUrlMatch[1]);
-      // Replace 0.0.0.0 or :: with browser hostname
-      if (
-        parsed.hostname === '0.0.0.0' ||
-        parsed.hostname === '::' ||
-        parsed.hostname === '[::]'
-      ) {
-        parsed.hostname = browserHostname;
+
+      // Reject localhost/loopback URLs without a port - they're not valid dev server URLs
+      const isLocalhost = [
+        'localhost',
+        '127.0.0.1',
+        '0.0.0.0',
+        '::',
+        '[::]',
+      ].includes(parsed.hostname);
+
+      if (isLocalhost && !parsed.port) {
+        // Fall through to host:port pattern detection
+      } else {
+        // Replace 0.0.0.0 or :: with browser hostname
+        if (
+          parsed.hostname === '0.0.0.0' ||
+          parsed.hostname === '::' ||
+          parsed.hostname === '[::]'
+        ) {
+          parsed.hostname = browserHostname;
+        }
+        return {
+          url: parsed.toString(),
+          port: parsed.port ? Number(parsed.port) : undefined,
+          scheme: parsed.protocol === 'https:' ? 'https' : 'http',
+        };
       }
-      return {
-        url: parsed.toString(),
-        port: parsed.port ? Number(parsed.port) : undefined,
-        scheme: parsed.protocol === 'https:' ? 'https' : 'http',
-      };
     } catch {
       // Ignore invalid URLs and fall through to host:port detection
     }

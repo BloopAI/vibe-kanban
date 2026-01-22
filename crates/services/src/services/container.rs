@@ -11,8 +11,8 @@ use db::{
     models::{
         coding_agent_turn::{CodingAgentTurn, CreateCodingAgentTurn},
         execution_process::{
-            CreateExecutionProcess, ExecutionContext, ExecutionProcess, ExecutionProcessRunReason,
-            ExecutionProcessStatus,
+            CreateExecutionProcess, ExecutionContext, ExecutionProcess, ExecutionProcessError,
+            ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         execution_process_logs::ExecutionProcessLogs,
         execution_process_repo_state::{
@@ -53,7 +53,6 @@ use uuid::Uuid;
 use crate::services::{
     git::{GitService, GitServiceError},
     notification::NotificationService,
-    share::SharePublisher,
     workspace_manager::WorkspaceError as WorkspaceManagerError,
     worktree_manager::WorktreeError,
 };
@@ -75,6 +74,8 @@ pub enum ContainerError {
     WorkspaceManager(#[from] WorkspaceManagerError),
     #[error(transparent)]
     Session(#[from] SessionError),
+    #[error(transparent)]
+    ExecutionProcess(#[from] ExecutionProcessError),
     #[error("Io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Failed to kill process: {0}")]
@@ -90,8 +91,6 @@ pub trait ContainerService {
     fn db(&self) -> &DBService;
 
     fn git(&self) -> &GitService;
-
-    fn share_publisher(&self) -> Option<&SharePublisher>;
 
     fn notification_service(&self) -> &NotificationService;
 
@@ -164,26 +163,11 @@ pub trait ContainerService {
     }
 
     /// Finalize task execution by updating status to InReview and sending notifications
-    async fn finalize_task(
-        &self,
-        share_publisher: Option<&SharePublisher>,
-        ctx: &ExecutionContext,
-    ) {
-        match Task::update_status(&self.db().pool, ctx.task.id, TaskStatus::InReview).await {
-            Ok(_) => {
-                if let Some(publisher) = share_publisher
-                    && let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await
-                {
-                    tracing::warn!(
-                        ?err,
-                        "Failed to propagate shared task update for {}",
-                        ctx.task.id
-                    );
-                }
-            }
-            Err(e) => {
-                tracing::error!("Failed to update task status to InReview: {e}");
-            }
+    async fn finalize_task(&self, ctx: &ExecutionContext) {
+        if let Err(e) =
+            Task::update_status(&self.db().pool, ctx.task.id, TaskStatus::InReview).await
+        {
+            tracing::error!("Failed to update task status to InReview: {e}");
         }
 
         // Skip notification if process was intentionally killed by user
@@ -275,26 +259,13 @@ pub trait ContainerService {
                 && let Ok(Some(workspace)) =
                     Workspace::find_by_id(&self.db().pool, session.workspace_id).await
                 && let Ok(Some(task)) = workspace.parent_task(&self.db().pool).await
+                && let Err(e) =
+                    Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await
             {
-                match Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await {
-                    Ok(_) => {
-                        if let Some(publisher) = self.share_publisher()
-                            && let Err(err) = publisher.update_shared_task_by_id(task.id).await
-                        {
-                            tracing::warn!(
-                                ?err,
-                                "Failed to propagate shared task update for {}",
-                                task.id
-                            );
-                        }
-                    }
-                    Err(e) => {
-                        tracing::error!(
-                            "Failed to update task status to InReview for orphaned session: {}",
-                            e
-                        );
-                    }
-                }
+                tracing::error!(
+                    "Failed to update task status to InReview for orphaned session: {}",
+                    e
+                );
             }
         }
         Ok(())
@@ -980,16 +951,6 @@ pub trait ContainerService {
             && run_reason != &ExecutionProcessRunReason::DevServer
         {
             Task::update_status(&self.db().pool, task.id, TaskStatus::InProgress).await?;
-
-            if let Some(publisher) = self.share_publisher()
-                && let Err(err) = publisher.update_shared_task_by_id(task.id).await
-            {
-                tracing::warn!(
-                    ?err,
-                    "Failed to propagate shared task update for {}",
-                    task.id
-                );
-            }
         }
         // Create new execution process record
         // Capture current HEAD per repository as the "before" commit for this execution

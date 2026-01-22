@@ -55,6 +55,5 @@
   "projectNotFound": "The project you're looking for doesn't exist or has been deleted.",
   "viewProject": "View Project",
   "openInIDE": "Open in IDE",
-  "createdDate": "Created {{date}}",
-  "copyFilesPlaceholderWithSearch": "File paths or glob patterns (e.g., .env, config/*.json)"
+  "createdDate": "Created {{date}}"
 }

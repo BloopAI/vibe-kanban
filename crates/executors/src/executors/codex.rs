@@ -5,9 +5,23 @@ pub mod review;
 pub mod session;
 use std::{
     collections::HashMap,
+    env,
     path::{Path, PathBuf},
     sync::Arc,
 };
+
+/// Returns the Codex home directory.
+///
+/// Checks the `CODEX_HOME` environment variable first, then falls back to `~/.codex`.
+/// This allows users to configure a custom location for Codex configuration and state.
+pub fn codex_home() -> Option<PathBuf> {
+    if let Ok(codex_home) = env::var("CODEX_HOME")
+        && !codex_home.trim().is_empty()
+    {
+        return Some(PathBuf::from(codex_home));
+    }
+    dirs::home_dir().map(|home| home.join(".codex"))
+}
 
 use async_trait::async_trait;
 use codex_app_server_protocol::{NewConversationParams, ReviewTarget};
@@ -32,7 +46,7 @@ use self::{
 };
 use crate::{
     approvals::ExecutorApprovalService,
-    command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
+    command::{CmdOverrides, CommandBuildError, CommandBuilder, CommandParts, apply_overrides},
     env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult, SpawnedChild,
@@ -160,7 +174,7 @@ impl StandardCodingAgentExecutor for Codex {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let command_parts = self.build_command_builder().build_initial()?;
+        let command_parts = self.build_command_builder()?.build_initial()?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let action = CodexSessionAction::Chat {
             prompt: combined_prompt,
@@ -176,7 +190,7 @@ impl StandardCodingAgentExecutor for Codex {
         session_id: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let command_parts = self.build_command_builder().build_follow_up(&[])?;
+        let command_parts = self.build_command_builder()?.build_follow_up(&[])?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let action = CodexSessionAction::Chat {
             prompt: combined_prompt,
@@ -190,12 +204,12 @@ impl StandardCodingAgentExecutor for Codex {
     }
 
     fn default_mcp_config_path(&self) -> Option<PathBuf> {
-        dirs::home_dir().map(|home| home.join(".codex").join("config.toml"))
+        codex_home().map(|home| home.join("config.toml"))
     }
 
     fn get_availability_info(&self) -> AvailabilityInfo {
-        if let Some(timestamp) = dirs::home_dir()
-            .and_then(|home| std::fs::metadata(home.join(".codex").join("auth.json")).ok())
+        if let Some(timestamp) = codex_home()
+            .and_then(|home| std::fs::metadata(home.join("auth.json")).ok())
             .and_then(|m| m.modified().ok())
             .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|d| d.as_secs() as i64)
@@ -210,8 +224,8 @@ impl StandardCodingAgentExecutor for Codex {
             .map(|p| p.exists())
             .unwrap_or(false);
 
-        let installation_indicator_found = dirs::home_dir()
-            .map(|home| home.join(".codex").join("version.json").exists())
+        let installation_indicator_found = codex_home()
+            .map(|home| home.join("version.json").exists())
             .unwrap_or(false);
 
         if mcp_config_found || installation_indicator_found {
@@ -228,7 +242,7 @@ impl StandardCodingAgentExecutor for Codex {
         session_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let command_parts = self.build_command_builder().build_initial()?;
+        let command_parts = self.build_command_builder()?.build_initial()?;
         let review_target = ReviewTarget::Custom {
             instructions: prompt.to_string(),
         };
@@ -242,10 +256,10 @@ impl StandardCodingAgentExecutor for Codex {
 
 impl Codex {
     pub fn base_command() -> &'static str {
-        "npx -y @openai/codex@0.77.0"
+        "npx -y @openai/codex@0.86.0"
     }
 
-    fn build_command_builder(&self) -> CommandBuilder {
+    fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
         let mut builder = CommandBuilder::new(Self::base_command());
         builder = builder.extend_params(["app-server"]);
         if self.oss.unwrap_or(false) {
@@ -340,10 +354,11 @@ impl Codex {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .current_dir(current_dir)
-            .args(&args)
+            .env("NPM_CONFIG_LOGLEVEL", "error")
             .env("NODE_NO_WARNINGS", "1")
             .env("NO_COLOR", "1")
-            .env("RUST_LOG", "error");
+            .env("RUST_LOG", "error")
+            .args(&args);
 
         env.clone()
             .with_profile(&self.cmd)
@@ -368,6 +383,8 @@ impl Codex {
             (Some(SandboxMode::DangerFullAccess), None)
         );
         let approvals = self.approvals.clone();
+        let repo_context = env.repo_context.clone();
+        let commit_reminder = env.commit_reminder;
         tokio::spawn(async move {
             let exit_signal_tx = ExitSignalSender::new(exit_signal_tx);
             let log_writer = LogWriter::new(new_stdout);
@@ -383,6 +400,8 @@ impl Codex {
                         exit_signal_tx.clone(),
                         approvals,
                         auto_approve,
+                        repo_context.clone(),
+                        commit_reminder,
                     )
                     .await
                 }
@@ -397,6 +416,8 @@ impl Codex {
                         exit_signal_tx.clone(),
                         approvals,
                         auto_approve,
+                        repo_context,
+                        commit_reminder,
                     )
                     .await
                 }
@@ -453,8 +474,16 @@ impl Codex {
         exit_signal_tx: ExitSignalSender,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
         auto_approve: bool,
+        repo_context: crate::env::RepoContext,
+        commit_reminder: bool,
     ) -> Result<(), ExecutorError> {
-        let client = AppServerClient::new(log_writer, approvals, auto_approve);
+        let client = AppServerClient::new(
+            log_writer,
+            approvals,
+            auto_approve,
+            repo_context,
+            commit_reminder,
+        );
         let rpc_peer =
             JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx);
         client.connect(rpc_peer);

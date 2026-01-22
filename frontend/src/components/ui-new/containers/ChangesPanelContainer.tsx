@@ -8,6 +8,9 @@ import {
 } from 'react';
 import { ChangesPanel } from '../views/ChangesPanel';
 import { sortDiffs } from '@/utils/fileTreeUtils';
+import { useChangesView } from '@/contexts/ChangesViewContext';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useTask } from '@/hooks/useTask';
 import type { Diff, DiffChangeKind } from 'shared/types';
 
 // Auto-collapse defaults based on change type (matches DiffsPanel behavior)
@@ -128,24 +131,21 @@ function useInViewObserver(
 }
 
 interface ChangesPanelContainerProps {
-  diffs: Diff[];
-  selectedFilePath?: string | null;
-  onFileInViewChange?: (path: string) => void;
-  className?: string;
-  /** Project ID for @ mentions in comments */
-  projectId?: string;
+  className: string;
   /** Attempt ID for opening files in IDE */
-  attemptId?: string;
+  attemptId: string;
 }
 
 export function ChangesPanelContainer({
-  diffs,
-  selectedFilePath,
-  onFileInViewChange,
   className,
-  projectId,
   attemptId,
 }: ChangesPanelContainerProps) {
+  const { diffs, workspace } = useWorkspaceContext();
+  const { data: task } = useTask(workspace?.task_id, {
+    enabled: !!workspace?.task_id,
+  });
+  const { selectedFilePath, selectedLineNumber, setFileInView } =
+    useChangesView();
   const diffRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Track which diffs we've processed for auto-collapse
@@ -155,7 +155,7 @@ export function ChangesPanelContainer({
   const observeElement = useInViewObserver(
     diffRefs,
     containerRef,
-    onFileInViewChange
+    setFileInView
   );
 
   useEffect(() => {
@@ -163,14 +163,25 @@ export function ChangesPanelContainer({
 
     // Defer to next frame to ensure ref is attached after render
     const timeoutId = setTimeout(() => {
-      diffRefs.current.get(selectedFilePath)?.scrollIntoView({
-        behavior: 'smooth',
+      const fileEl = diffRefs.current.get(selectedFilePath);
+      fileEl?.scrollIntoView({
+        behavior: 'instant',
         block: 'start',
       });
+
+      // If line number specified, scroll to comment row after file scroll completes
+      if (selectedLineNumber && fileEl) {
+        setTimeout(() => {
+          // Find the comment row by data-line attribute (library uses plain line numbers)
+          const selector = `[data-line="${selectedLineNumber}"]`;
+          const commentEl = fileEl.querySelector(selector);
+          commentEl?.scrollIntoView({ behavior: 'instant', block: 'center' });
+        }, 50); // Brief delay to ensure file scroll completes
+      }
     }, 0);
 
     return () => clearTimeout(timeoutId);
-  }, [selectedFilePath]);
+  }, [selectedFilePath, selectedLineNumber]);
 
   const handleDiffRef = useCallback(
     (path: string, el: HTMLDivElement | null) => {
@@ -201,6 +212,20 @@ export function ChangesPanelContainer({
       return { diff, initialExpanded };
     });
   }, [diffs, processedPaths]);
+
+  // Guard: Don't render diffs until we have required data
+  const projectId = task?.project_id;
+  if (!projectId) {
+    return (
+      <ChangesPanel
+        ref={containerRef}
+        className={className}
+        diffItems={[]}
+        projectId=""
+        attemptId={attemptId}
+      />
+    );
+  }
 
   return (
     <ChangesPanel

@@ -1,6 +1,6 @@
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { cn } from '@/lib/utils';
-import { useFileNavigation } from '@/contexts/FileNavigationContext';
+import { useChangesView } from '@/contexts/ChangesViewContext';
 
 interface ChatMarkdownProps {
   content: string;
@@ -15,7 +15,7 @@ export function ChatMarkdown({
   className,
   workspaceId,
 }: ChatMarkdownProps) {
-  const { viewFileInChanges, findMatchingDiffPath } = useFileNavigation();
+  const { viewFileInChanges, findMatchingDiffPath } = useChangesView();
 
   return (
     <div className={cn('text-sm', className)} style={{ maxWidth }}>

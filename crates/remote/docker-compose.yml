@@ -18,8 +18,9 @@ services:
       - "5432:5432"
 
   electric:
-    image: electricsql/electric:latest
+    image: electricsql/electric:1.3.3
     working_dir: /app
+    restart: on-failure
     environment:
       DATABASE_URL: postgresql://electric_sync:${ELECTRIC_ROLE_PASSWORD:?set in .env.remote}@remote-db:5432/remote?sslmode=disable
       PG_PROXY_PORT: 65432
@@ -28,6 +29,7 @@ services:
       ELECTRIC_INSECURE: true
       ELECTRIC_MANUAL_TABLE_PUBLISHING: true
       ELECTRIC_USAGE_REPORTING: false
+      ELECTRIC_FEATURE_FLAGS: allow_subqueries,tagged_subqueries
     volumes:
       - electric-data:/app/persistent
     depends_on:

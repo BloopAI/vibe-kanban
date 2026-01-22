@@ -2,8 +2,9 @@ use axum::{
     Router,
     routing::{IntoMakeService, get},
 };
+use tower_http::validate_request::ValidateRequestHeaderLayer;
 
-use crate::DeploymentImpl;
+use crate::{DeploymentImpl, middleware};
 
 pub mod approvals;
 pub mod config;
@@ -22,10 +23,10 @@ pub mod projects;
 pub mod repo;
 pub mod scratch;
 pub mod sessions;
-pub mod shared_tasks;
 pub mod tags;
 pub mod task_attempts;
 pub mod tasks;
+pub mod terminal;
 pub mod users;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
@@ -36,7 +37,6 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(containers::router(&deployment))
         .merge(projects::router(&deployment))
         .merge(tasks::router(&deployment))
-        .merge(shared_tasks::router())
         .merge(task_attempts::router(&deployment))
         .merge(execution_processes::router(&deployment))
         .merge(tags::router(&deployment))
@@ -49,8 +49,12 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(approvals::router())
         .merge(scratch::router(&deployment))
         .merge(sessions::router(&deployment))
+        .merge(terminal::router())
         .merge(users::router())
         .nest("/images", images::routes())
+        .layer(ValidateRequestHeaderLayer::custom(
+            middleware::validate_origin,
+        ))
         .with_state(deployment);
 
     Router::new()

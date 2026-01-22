@@ -17,7 +17,6 @@ use tracing::{debug, error, info};
 use crate::services::{
     analytics::AnalyticsContext,
     git_host::{self, GitHostError, GitHostProvider},
-    share::SharePublisher,
 };
 
 #[derive(Debug, Error)]
@@ -35,20 +34,17 @@ pub struct PrMonitorService {
     db: DBService,
     poll_interval: Duration,
     analytics: Option<AnalyticsContext>,
-    publisher: Option<SharePublisher>,
 }
 
 impl PrMonitorService {
     pub async fn spawn(
         db: DBService,
         analytics: Option<AnalyticsContext>,
-        publisher: Option<SharePublisher>,
     ) -> tokio::task::JoinHandle<()> {
         let service = Self {
             db,
             poll_interval: Duration::from_secs(60), // Check every minute
             analytics,
-            publisher,
         };
         tokio::spawn(async move {
             service.start().await;
@@ -142,16 +138,6 @@ impl PrMonitorService {
                             "workspace_id": workspace.id.to_string(),
                             "project_id": task.project_id.to_string(),
                         })),
-                    );
-                }
-
-                if let Some(publisher) = &self.publisher
-                    && let Err(err) = publisher.update_shared_task_by_id(workspace.task_id).await
-                {
-                    tracing::warn!(
-                        ?err,
-                        "Failed to propagate shared task update for {}",
-                        workspace.task_id
                     );
                 }
             }

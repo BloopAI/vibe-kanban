@@ -79,12 +79,12 @@ export function useSessionSend({
         }
       } else {
         // Existing session flow
-        if (!sessionId) return false;
+        if (!sessionId || !effectiveExecutor) return false;
         setIsSendingFollowUp(true);
         try {
           await sessionsApi.followUp(sessionId, {
             prompt: trimmed,
-            variant,
+            executor_profile_id: { executor: effectiveExecutor, variant },
             retry_process_id: null,
             force_when_dirty: null,
             perform_git_reset: null,

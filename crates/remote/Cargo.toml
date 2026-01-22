@@ -1,8 +1,12 @@
 [package]
 name = "remote"
-version = "0.0.150"
+version = "0.0.160"
 edition = "2024"
 publish = false
+
+[[bin]]
+name = "remote-generate-types"
+path = "src/bin/generate_types.rs"
 
 [dependencies]
 anyhow = { workspace = true }
@@ -45,3 +49,4 @@ aws-credential-types = "1.2"
 tempfile = "3"
 tar = "0.4"
 flate2 = "1.0"
+paste = "1.0"

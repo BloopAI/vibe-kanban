@@ -2,7 +2,6 @@ use std::{
     collections::HashMap,
     io,
     path::{Path, PathBuf},
-    str::FromStr,
     sync::Arc,
     time::Duration,
 };
@@ -20,12 +19,13 @@ use db::{
         execution_process_repo_state::ExecutionProcessRepoState,
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
+        session::{Session, SessionError},
         task::{Task, TaskStatus},
         workspace::Workspace,
         workspace_repo::WorkspaceRepo,
     },
 };
-use deployment::{DeploymentError, RemoteClientNotConfigured};
+use deployment::DeploymentError;
 use executors::{
     actions::{
         Executable, ExecutorAction, ExecutorActionType,
@@ -33,10 +33,9 @@ use executors::{
         coding_agent_initial::CodingAgentInitialRequest,
     },
     approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
-    env::ExecutionEnv,
+    env::{ExecutionEnv, RepoContext},
     executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal, InterruptSender},
     logs::{NormalizedEntryType, utils::patch::extract_normalized_entry_from_patch},
-    profile::ExecutorProfileId,
 };
 use futures::{FutureExt, TryStreamExt, stream::select};
 use serde_json::json;
@@ -50,7 +49,6 @@ use services::services::{
     image::ImageService,
     notification::NotificationService,
     queued_message::QueuedMessageService,
-    share::SharePublisher,
     workspace_manager::{RepoWorkspaceInput, WorkspaceManager},
 };
 use tokio::{sync::RwLock, task::JoinHandle};
@@ -76,7 +74,6 @@ pub struct LocalContainerService {
     analytics: Option<AnalyticsContext>,
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
-    publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     notification_service: NotificationService,
 }
 
@@ -91,7 +88,6 @@ impl LocalContainerService {
         analytics: Option<AnalyticsContext>,
         approvals: Approvals,
         queued_message_service: QueuedMessageService,
-        publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
         let interrupt_senders = Arc::new(RwLock::new(HashMap::new()));
@@ -108,7 +104,6 @@ impl LocalContainerService {
             analytics,
             approvals,
             queued_message_service,
-            publisher,
             notification_service,
         };
 
@@ -311,6 +306,35 @@ impl LocalContainerService {
         Ok(repos_with_changes)
     }
 
+    async fn has_commits_from_execution(
+        &self,
+        ctx: &ExecutionContext,
+    ) -> Result<bool, ContainerError> {
+        let workspace_root = self.workspace_to_current_dir(&ctx.workspace);
+
+        let repo_states = ExecutionProcessRepoState::find_by_execution_process_id(
+            &self.db.pool,
+            ctx.execution_process.id,
+        )
+        .await?;
+
+        for repo in &ctx.repos {
+            let repo_path = workspace_root.join(&repo.name);
+            let current_head = self.git().get_head_info(&repo_path).ok().map(|h| h.oid);
+
+            let before_head = repo_states
+                .iter()
+                .find(|s| s.repo_id == repo.id)
+                .and_then(|s| s.before_head_commit.clone());
+
+            if current_head != before_head {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
+    }
+
     /// Commit changes to each repo. Logs failures but continues with other repos.
     fn commit_repos(&self, repos_with_changes: Vec<(Repo, PathBuf)>, message: &str) -> bool {
         let mut any_committed = false;
@@ -353,7 +377,6 @@ impl LocalContainerService {
         let config = self.config.clone();
         let container = self.clone();
         let analytics = self.analytics.clone();
-        let publisher = self.publisher.clone();
 
         let mut process_exit_rx = self.spawn_os_exit_watcher(exec_id);
 
@@ -445,7 +468,12 @@ impl LocalContainerService {
                         ctx.execution_process.run_reason,
                         ExecutionProcessRunReason::CodingAgent
                     ) {
+                        // Check if agent made commits OR if we just committed uncommitted changes
                         changes_committed
+                            || container
+                                .has_commits_from_execution(&ctx)
+                                .await
+                                .unwrap_or(false)
                     } else {
                         true
                     };
@@ -462,7 +490,7 @@ impl LocalContainerService {
                         );
 
                         // Manually finalize task since we're bypassing normal execution flow
-                        container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                        container.finalize_task(&ctx).await;
                     }
                 }
 
@@ -504,7 +532,7 @@ impl LocalContainerService {
                             {
                                 tracing::error!("Failed to start queued follow-up: {}", e);
                                 // Fall back to finalization if follow-up fails
-                                container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                                container.finalize_task(&ctx).await;
                             }
                         } else {
                             // Execution failed or was killed - discard the queued message and finalize
@@ -513,10 +541,10 @@ impl LocalContainerService {
                                 ctx.session.id,
                                 ctx.execution_process.status
                             );
-                            container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                            container.finalize_task(&ctx).await;
                         }
                     } else {
-                        container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                        container.finalize_task(&ctx).await;
                     }
                 }
 
@@ -792,33 +820,30 @@ impl LocalContainerService {
         ctx: &ExecutionContext,
         queued_data: &DraftFollowUpData,
     ) -> Result<ExecutionProcess, ContainerError> {
-        // Get executor from the latest CodingAgent process, or fall back to session's executor
-        let base_executor = match ExecutionProcess::latest_executor_profile_for_session(
-            &self.db.pool,
-            ctx.session.id,
-        )
-        .await
-        .map_err(|e| ContainerError::Other(anyhow!("Failed to get executor profile: {e}")))?
-        {
-            Some(profile) => profile.executor,
-            None => {
-                // No prior execution - use session's executor field
-                let executor_str = ctx.session.executor.as_ref().ok_or_else(|| {
-                    ContainerError::Other(anyhow!(
-                        "No prior execution and no executor configured on session"
-                    ))
-                })?;
-                BaseCodingAgent::from_str(&executor_str.replace('-', "_").to_ascii_uppercase())
-                    .map_err(|_| {
-                        ContainerError::Other(anyhow!("Invalid executor: {}", executor_str))
-                    })?
-            }
-        };
+        let executor_profile_id = queued_data.executor_profile_id.clone();
 
-        let executor_profile_id = ExecutorProfileId {
-            executor: base_executor,
-            variant: queued_data.variant.clone(),
-        };
+        // Validate executor matches session if session has prior executions
+        let expected_executor: Option<String> =
+            ExecutionProcess::latest_executor_profile_for_session(&self.db.pool, ctx.session.id)
+                .await?
+                .map(|profile| profile.executor.to_string())
+                .or_else(|| ctx.session.executor.clone());
+
+        if let Some(expected) = expected_executor {
+            let actual = executor_profile_id.executor.to_string();
+            if expected != actual {
+                return Err(SessionError::ExecutorMismatch { expected, actual }.into());
+            }
+        }
+
+        if ctx.session.executor.is_none() {
+            Session::update_executor(
+                &self.db.pool,
+                ctx.session.id,
+                &executor_profile_id.executor.to_string(),
+            )
+            .await?;
+        }
 
         // Get latest agent session ID for session continuity (from coding agent turns)
         let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(
@@ -890,10 +915,6 @@ impl ContainerService for LocalContainerService {
 
     fn git(&self) -> &GitService {
         &self.git
-    }
-
-    fn share_publisher(&self) -> Option<&SharePublisher> {
-        self.publisher.as_ref().ok()
     }
 
     fn notification_service(&self) -> &NotificationService {
@@ -1077,8 +1098,12 @@ impl ContainerService for LocalContainerService {
                 _ => Arc::new(NoopExecutorApprovalService {}),
             };
 
-        // Build ExecutionEnv with VK_* variables
-        let mut env = ExecutionEnv::new();
+        let repos = WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
+        let repo_names: Vec<String> = repos.iter().map(|r| r.name.clone()).collect();
+        let repo_context = RepoContext::new(current_dir.clone(), repo_names);
+
+        let commit_reminder = self.config.read().await.commit_reminder;
+        let mut env = ExecutionEnv::new(repo_context, commit_reminder);
 
         // Load task and project context for environment variables
         let task = workspace
@@ -1203,23 +1228,10 @@ impl ContainerService for LocalContainerService {
                 ctx.execution_process.run_reason,
                 ExecutionProcessRunReason::DevServer
             )
+            && let Err(e) =
+                Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await
         {
-            match Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await {
-                Ok(_) => {
-                    if let Some(publisher) = self.share_publisher()
-                        && let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await
-                    {
-                        tracing::warn!(
-                            ?err,
-                            "Failed to propagate shared task update for {}",
-                            ctx.task.id
-                        );
-                    }
-                }
-                Err(e) => {
-                    tracing::error!("Failed to update task status to InReview: {e}");
-                }
-            }
+            tracing::error!("Failed to update task status to InReview: {e}");
         }
 
         tracing::debug!(
@@ -1361,7 +1373,17 @@ impl ContainerService for LocalContainerService {
         tracing::info!("Killing all running processes");
         let running_processes = ExecutionProcess::find_running(&self.db.pool).await?;
 
+        tracing::info!(
+            "Found {} running processes to kill",
+            running_processes.len()
+        );
+
         for process in running_processes {
+            tracing::info!(
+                "Killing process: id={}, run_reason={:?}",
+                process.id,
+                process.run_reason
+            );
             if let Err(error) = self
                 .stop_execution(&process, ExecutionProcessStatus::Killed)
                 .await
@@ -1371,6 +1393,8 @@ impl ContainerService for LocalContainerService {
                     process,
                     error
                 );
+            } else {
+                tracing::info!("Successfully killed process: id={}", process.id);
             }
         }
 

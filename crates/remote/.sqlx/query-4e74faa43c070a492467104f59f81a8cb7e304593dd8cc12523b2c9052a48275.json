@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE issue_comment_reactions\n            SET\n                emoji = COALESCE($1, emoji)\n            WHERE id = $2\n            RETURNING\n                id          AS \"id!: Uuid\",\n                comment_id  AS \"comment_id!: Uuid\",\n                user_id     AS \"user_id!: Uuid\",\n                emoji       AS \"emoji!\",\n                created_at  AS \"created_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "comment_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "emoji!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4e74faa43c070a492467104f59f81a8cb7e304593dd8cc12523b2c9052a48275"
+}

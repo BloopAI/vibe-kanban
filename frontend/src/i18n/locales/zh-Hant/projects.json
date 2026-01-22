@@ -55,6 +55,5 @@
   "projectNotFound": "您要查找的專案不存在或已被刪除。",
   "viewProject": "查看專案",
   "openInIDE": "在 IDE 中開啟",
-  "createdDate": "建立於 {{date}}",
-  "copyFilesPlaceholderWithSearch": "檔案路徑或 glob 模式（例如：.env、config/*.json）"
+  "createdDate": "建立於 {{date}}"
 }

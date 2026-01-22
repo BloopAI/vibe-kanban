@@ -35,12 +35,13 @@ impl<'a> OrganizationRepository<'a> {
             Organization,
             r#"
             SELECT
-                id          AS "id!: Uuid",
-                name        AS "name!",
-                slug        AS "slug!",
-                is_personal AS "is_personal!",
-                created_at  AS "created_at!",
-                updated_at  AS "updated_at!"
+                id           AS "id!: Uuid",
+                name         AS "name!",
+                slug         AS "slug!",
+                is_personal  AS "is_personal!",
+                issue_prefix AS "issue_prefix!",
+                created_at   AS "created_at!",
+                updated_at   AS "updated_at!"
             FROM organizations
             WHERE id = $1
             "#,
@@ -113,21 +114,24 @@ impl<'a> OrganizationRepository<'a> {
     ) -> Result<OrganizationWithRole, IdentityError> {
         let mut tx = self.pool.begin().await?;
 
+        let issue_prefix = derive_issue_prefix(name);
         let org = sqlx::query_as!(
             Organization,
             r#"
-            INSERT INTO organizations (name, slug)
-            VALUES ($1, $2)
+            INSERT INTO organizations (name, slug, issue_prefix)
+            VALUES ($1, $2, $3)
             RETURNING
-                id AS "id!: Uuid",
-                name AS "name!",
-                slug AS "slug!",
-                is_personal AS "is_personal!",
-                created_at AS "created_at!",
-                updated_at AS "updated_at!"
+                id           AS "id!: Uuid",
+                name         AS "name!",
+                slug         AS "slug!",
+                is_personal  AS "is_personal!",
+                issue_prefix AS "issue_prefix!",
+                created_at   AS "created_at!",
+                updated_at   AS "updated_at!"
             "#,
             name,
-            slug
+            slug,
+            issue_prefix
         )
         .fetch_one(&mut *tx)
         .await
@@ -151,6 +155,7 @@ impl<'a> OrganizationRepository<'a> {
             name: org.name,
             slug: org.slug,
             is_personal: org.is_personal,
+            issue_prefix: org.issue_prefix,
             created_at: org.created_at,
             updated_at: org.updated_at,
             user_role: MemberRole::Admin,
@@ -165,13 +170,14 @@ impl<'a> OrganizationRepository<'a> {
             OrganizationWithRole,
             r#"
             SELECT
-                o.id AS "id!: Uuid",
-                o.name AS "name!",
-                o.slug AS "slug!",
-                o.is_personal AS "is_personal!",
-                o.created_at AS "created_at!",
-                o.updated_at AS "updated_at!",
-                m.role AS "user_role!: MemberRole"
+                o.id           AS "id!: Uuid",
+                o.name         AS "name!",
+                o.slug         AS "slug!",
+                o.is_personal  AS "is_personal!",
+                o.issue_prefix AS "issue_prefix!",
+                o.created_at   AS "created_at!",
+                o.updated_at   AS "updated_at!",
+                m.role         AS "user_role!: MemberRole"
             FROM organizations o
             JOIN organization_member_metadata m ON m.organization_id = o.id
             WHERE m.user_id = $1
@@ -200,12 +206,13 @@ impl<'a> OrganizationRepository<'a> {
             SET name = $2
             WHERE id = $1
             RETURNING
-                id AS "id!: Uuid",
-                name AS "name!",
-                slug AS "slug!",
-                is_personal AS "is_personal!",
-                created_at AS "created_at!",
-                updated_at AS "updated_at!"
+                id           AS "id!: Uuid",
+                name         AS "name!",
+                slug         AS "slug!",
+                is_personal  AS "is_personal!",
+                issue_prefix AS "issue_prefix!",
+                created_at   AS "created_at!",
+                updated_at   AS "updated_at!"
             "#,
             org_id,
             new_name
@@ -268,12 +275,13 @@ async fn find_organization_by_slug(
         Organization,
         r#"
         SELECT
-            id          AS "id!: Uuid",
-            name        AS "name!",
-            slug        AS "slug!",
-            is_personal AS "is_personal!",
-            created_at  AS "created_at!",
-            updated_at  AS "updated_at!"
+            id           AS "id!: Uuid",
+            name         AS "name!",
+            slug         AS "slug!",
+            is_personal  AS "is_personal!",
+            issue_prefix AS "issue_prefix!",
+            created_at   AS "created_at!",
+            updated_at   AS "updated_at!"
         FROM organizations
         WHERE slug = $1
         "#,
@@ -288,21 +296,24 @@ async fn create_personal_org(
     name: &str,
     slug: &str,
 ) -> Result<Organization, sqlx::Error> {
+    let issue_prefix = derive_issue_prefix(name);
     query_as!(
         Organization,
         r#"
-        INSERT INTO organizations (name, slug, is_personal)
-        VALUES ($1, $2, TRUE)
+        INSERT INTO organizations (name, slug, is_personal, issue_prefix)
+        VALUES ($1, $2, TRUE, $3)
         RETURNING
-            id          AS "id!: Uuid",
-            name        AS "name!",
-            slug        AS "slug!",
-            is_personal AS "is_personal!",
-            created_at  AS "created_at!",
-            updated_at  AS "updated_at!"
+            id           AS "id!: Uuid",
+            name         AS "name!",
+            slug         AS "slug!",
+            is_personal  AS "is_personal!",
+            issue_prefix AS "issue_prefix!",
+            created_at   AS "created_at!",
+            updated_at   AS "updated_at!"
         "#,
         name,
-        slug
+        slug,
+        issue_prefix
     )
     .fetch_one(pool)
     .await
@@ -317,4 +328,17 @@ fn personal_org_name(hint: Option<&str>, user_id: Uuid) -> String {
 fn personal_org_slug(user_id: Uuid) -> String {
     // Use a deterministic slug pattern so we can find personal orgs
     format!("personal-{user_id}")
+}
+
+/// Derive an issue prefix from an organization name.
+/// Takes the first 3 uppercase letters from the name.
+/// Examples: "Bloop" -> "BLO", "My Project" -> "MYP"
+fn derive_issue_prefix(name: &str) -> String {
+    let letters: String = name.chars().filter(|c| c.is_ascii_alphabetic()).collect();
+    let prefix: String = letters.chars().take(3).collect::<String>().to_uppercase();
+    if prefix.is_empty() {
+        "ISS".to_string()
+    } else {
+        prefix
+    }
 }

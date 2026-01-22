@@ -29,12 +29,18 @@
     "create": "作成",
     "delete": "削除",
     "disconnect": "切断",
+    "discard": "破棄",
     "edit": "編集",
     "manage": "管理",
     "replay": "再生",
     "reset": "リセット",
     "save": "保存",
-    "send": "送信"
+    "send": "送信",
+    "addItem": "項目を追加"
+  },
+  "form": {
+    "notSpecified": "指定なし",
+    "selectOption": "オプションを選択..."
   },
   "conversation": {
     "args": "引数",
@@ -143,6 +149,17 @@
     "loading": "読み込み中...",
     "selectToStart": "ワークスペースを選択して開始",
     "draft": "下書き",
+    "viewArchive": "アーカイブを表示",
+    "backToActive": "アクティブに戻る",
+    "noArchived": "アーカイブされたワークスペースはありません",
+    "noWorkspaces": "ワークスペースがありません",
+    "needsAttention": "対応が必要",
+    "idle": "待機中",
+    "running": "実行中",
+    "pin": "ピン留め",
+    "unpin": "ピン留め解除",
+    "archive": "アーカイブ",
+    "more": "その他の操作",
     "rename": {
       "title": "ワークスペースの名前を変更",
       "description": "このワークスペースの新しい名前を入力してください。",
@@ -157,7 +174,9 @@
     "noResults": "一致するファイルがありません",
     "title": "ファイル",
     "showGitHubComments": "GitHubコメントを表示",
-    "hideGitHubComments": "GitHubコメントを非表示"
+    "hideGitHubComments": "GitHubコメントを非表示",
+    "prevGitHubComment": "前のコメント付きファイル",
+    "nextGitHubComment": "次のコメント付きファイル"
   },
   "sections": {
     "changes": "変更",
@@ -170,7 +189,13 @@
     "workingBranch": "作業ブランチ",
     "recent": "最近",
     "other": "その他",
-    "devServerPreview": "開発サーバープレビュー"
+    "devServerPreview": "開発サーバープレビュー",
+    "terminal": "ターミナル",
+    "notes": "メモ"
+  },
+  "notes": {
+    "placeholder": "このワークスペースについてメモを追加...",
+    "selectWorkspace": "メモを表示するにはワークスペースを選択してください"
   },
   "repos": {
     "loading": "リポジトリを読み込み中...",
@@ -185,18 +210,25 @@
     "copyPath": "パスをコピー",
     "copyWorktreePath": "ワークツリーパスをコピー",
     "openInIde": "IDEで開く",
+    "repoSettings": "リポジトリ設定",
     "cancel": "キャンセル",
     "saveChanges": "変更を保存",
-    "copied": "コピーしました"
+    "copied": "コピーしました",
+    "collapse": "折りたたむ"
   },
   "comments": {
     "addReviewComment": "レビューコメントを追加",
     "addPlaceholder": "コメントを追加...",
-    "editPlaceholder": "コメントを編集..."
+    "editPlaceholder": "コメントを編集...",
+    "copyToReview": "レビューにコピー"
   },
   "confirm": {
     "defaultConfirm": "確認",
     "defaultCancel": "キャンセル"
+  },
+  "dialogs": {
+    "selectGitRepository": "Gitリポジトリを選択",
+    "chooseExistingRepo": "ファイルシステムから既存のリポジトリを選択してください"
   },
   "empty": {
     "noChanges": "表示する変更がありません"
@@ -207,12 +239,89 @@
     "defaultPlaceholder": "コマンドを入力または検索..."
   },
   "chatBox": {
-    "variants": "バリアント"
+    "variants": "バリアント",
+    "customise": "カスタマイズ"
   },
   "projects": {
     "noProjectFound": "プロジェクトが見つかりません",
     "createFirstPrompt": "タスクを開始するには、まずプロジェクトを作成してください。",
     "createNew": "新しいプロジェクトを作成",
     "noProjectsFound": "プロジェクトが見つかりません"
+  },
+  "betaWorkspaces": {
+    "title": "新しいUIを試す",
+    "intro": "Vibe KanbanのUIをゼロから再構築しました。あなたは試用に招待されています。",
+    "newUiDescription": "新しいUIは日常業務に最適化されています：エージェントの管理、変更のプレビュー、コードのレビュー。また、旧UIでは利用できない機能も利用可能になります：",
+    "newFeatures": {
+      "multiRepo": "複数のリポジトリを同時に編集",
+      "multiAgent": "単一のワークスペースで複数のエージェント会話（異なるエージェント間でも）を実行",
+      "commandBar": "コマンドバーでより高速なナビゲーション"
+    },
+    "oldUiDescription": "現時点では、いくつかの機能は現在のUIに残っています：",
+    "oldFeatures": {
+      "kanban": "カンバンボードでのタスク管理",
+      "settings": "設定の変更",
+      "projects": "プロジェクトの管理"
+    },
+    "transition": "今後数週間の移行期間中は、両方のUIを行き来します。",
+    "optOutNote": "オプトアウトしたい場合は、設定からいつでも現在のUIに戻すことができます。",
+    "joinBeta": "ベータに参加",
+    "maybeLater": "後で"
+  },
+  "workspacesGuide": {
+    "welcome": {
+      "title": "ようこそ",
+      "content": "Vibe Kanbanの新しいUIであるWorkspacesへようこそ。早期フィードバックのために一部のユーザーに先行公開しています。ナビバーのフィードバックアイコンからいつでもご意見をお聞かせください。"
+    },
+    "commandBar": {
+      "title": "コマンドバー",
+      "content": "コマンドバーはナビゲーションの中心となるハブです。CMD+Kで開いて、ワークスペースで利用可能なすべてのアクションを検索・アクセスできます。"
+    },
+    "contextBar": {
+      "title": "コンテキストバー",
+      "content": "コンテキストバーでペイン間をすばやく切り替えられます。使いやすい場所にドラッグして配置できます。"
+    },
+    "sidebar": {
+      "title": "ワークスペースサイドバー",
+      "content": "すべてのワークスペースの状態を一目で確認できます。通知により注意が必要なワークスペースがハイライトされます。マージ済みのワークスペースをアーカイブしてサイドバーを整理しましょう。"
+    },
+    "multiRepo": {
+      "title": "マルチリポジトリ対応",
+      "content": "1つのワークスペースに複数のリポジトリを追加できます。別のリポジトリで作業しながら他のリポジトリのコードを参照したり、複数のリポジトリにまたがる変更を同時に実装できます。"
+    },
+    "sessions": {
+      "title": "複数セッション",
+      "content": "1つのワークスペース内で複数のエージェント会話セッションを作成できます（異なるエージェントとのセッションも含む）。これにより会話の制限を回避したり、別スレッドでレビューエージェントを起動できます。"
+    },
+    "preview": {
+      "title": "変更のプレビュー",
+      "content": "コンテキストを切り替えることなく、内蔵ブラウザで作業をプレビューできます。デスクトップ、モバイル、カスタムビューポートサイズでテストできます。"
+    },
+    "diffs": {
+      "title": "差分とコメント",
+      "content": "再設計された差分パネルには変更のファイルツリーが含まれています。差分に直接コメントしてエージェントにフィードバックを送ったり、ワークスペースがPRにリンクされている場合はGitHubコメントを表示できます。"
+    },
+    "classicUi": {
+      "title": "クラシックUIに戻る",
+      "content": "ナビバー左側の終了アイコンをクリックすると、クラシックカンバンボードに戻ります。新しいUIを完全に無効にするには、設定の「ベータ機能」にある「Workspacesベータを有効にする」オプションを更新してください。"
+    }
+  },
+  "logs": {
+    "searchLogs": "ログを検索",
+    "selectProcessToView": "プロセスを選択してログを表示"
+  },
+  "processes": {
+    "noProcesses": "プロセスがありません",
+    "terminal": "ターミナル"
+  },
+  "search": {
+    "matchCount": "{{current}} / {{total}}",
+    "noMatches": "一致なし"
+  },
+  "contextUsage": {
+    "label": "コンテキスト使用量",
+    "emptyTooltip": "コンテキスト使用量は次の返信後に表示されます",
+    "tooltip": "コンテキスト: {{percentage}}% · {{used}} / {{total}} tokens",
+    "ariaLabel": "コンテキスト使用量: {{percentage}}%"
   }
 }

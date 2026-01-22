@@ -22,8 +22,8 @@ import {
   CreateProject,
   CreateProjectRepo,
   UpdateRepo,
+  SearchMode,
   SearchResult,
-  ShareTaskResponse,
   Task,
   TaskRelationships,
   Tag,
@@ -47,6 +47,7 @@ import {
   CheckEditorAvailabilityResponse,
   AvailabilityInfo,
   BaseCodingAgent,
+  ExecutorProfileId,
   RunAgentSetupRequest,
   RunAgentSetupResponse,
   GhCliSetupError,
@@ -78,8 +79,6 @@ import {
   PushError,
   TokenResponse,
   CurrentUserResponse,
-  SharedTaskResponse,
-  SharedTaskDetails,
   QueueStatus,
   PrCommentsResponse,
   MergeTaskAttemptRequest,
@@ -299,7 +298,7 @@ export const projectsApi = {
   searchFiles: async (
     id: string,
     query: string,
-    mode?: string,
+    mode?: SearchMode,
     options?: RequestInit
   ): Promise<SearchResult[]> => {
     const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
@@ -416,47 +415,6 @@ export const tasksApi = {
     });
     return handleApiResponse<void>(response);
   },
-
-  share: async (taskId: string): Promise<ShareTaskResponse> => {
-    const response = await makeRequest(`/api/tasks/${taskId}/share`, {
-      method: 'POST',
-    });
-    return handleApiResponse<ShareTaskResponse>(response);
-  },
-
-  reassign: async (
-    sharedTaskId: string,
-    data: { new_assignee_user_id: string | null }
-  ): Promise<SharedTaskResponse> => {
-    const payload = {
-      new_assignee_user_id: data.new_assignee_user_id,
-    };
-
-    const response = await makeRequest(
-      `/api/shared-tasks/${sharedTaskId}/assign`,
-      {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      }
-    );
-
-    return handleApiResponse<SharedTaskResponse>(response);
-  },
-
-  unshare: async (sharedTaskId: string): Promise<void> => {
-    const response = await makeRequest(`/api/shared-tasks/${sharedTaskId}`, {
-      method: 'DELETE',
-    });
-    return handleApiResponse<void>(response);
-  },
-
-  linkToLocal: async (data: SharedTaskDetails): Promise<Task | null> => {
-    const response = await makeRequest(`/api/shared-tasks/link-to-local`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<Task | null>(response);
-  },
 };
 
 // Sessions API
@@ -529,6 +487,12 @@ export const attemptsApi = {
     return handleApiResponse<Workspace[]>(response);
   },
 
+  /** Get total count of workspaces */
+  getCount: async (): Promise<number> => {
+    const response = await makeRequest('/api/task-attempts/count');
+    return handleApiResponse<number>(response);
+  },
+
   get: async (attemptId: string): Promise<Workspace> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}`);
     return handleApiResponse<Workspace>(response);
@@ -574,6 +538,18 @@ export const attemptsApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+
+  searchFiles: async (
+    workspaceId: string,
+    query: string,
+    mode?: string
+  ): Promise<SearchResult[]> => {
+    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
+    const response = await makeRequest(
+      `/api/task-attempts/${workspaceId}/search?q=${encodeURIComponent(query)}${modeParam}`
+    );
+    return handleApiResponse<SearchResult[]>(response);
   },
 
   runAgentSetup: async (
@@ -732,14 +708,14 @@ export const attemptsApi = {
     return handleApiResponseAsResult<string, PrError>(response);
   },
 
-  startDevServer: async (attemptId: string): Promise<void> => {
+  startDevServer: async (attemptId: string): Promise<ExecutionProcess[]> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/start-dev-server`,
       {
         method: 'POST',
       }
     );
-    return handleApiResponse<void>(response);
+    return handleApiResponse<ExecutionProcess[]>(response);
   },
 
   setupGhCli: async (attemptId: string): Promise<ExecutionProcess> => {
@@ -912,6 +888,20 @@ export const repoApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<OpenEditorResponse>(response);
+  },
+
+  searchFiles: async (
+    repoId: string,
+    query: string,
+    mode?: SearchMode,
+    options?: RequestInit
+  ): Promise<SearchResult[]> => {
+    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
+    const response = await makeRequest(
+      `/api/repos/${repoId}/search?q=${encodeURIComponent(query)}${modeParam}`,
+      options
+    );
+    return handleApiResponse<SearchResult[]>(response);
   },
 };
 
@@ -1347,7 +1337,7 @@ export const queueApi = {
    */
   queue: async (
     sessionId: string,
-    data: { message: string; variant: string | null }
+    data: { message: string; executor_profile_id: ExecutorProfileId }
   ): Promise<QueueStatus> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`, {
       method: 'POST',

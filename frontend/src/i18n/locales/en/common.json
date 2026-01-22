@@ -12,7 +12,13 @@
     "connect": "Connect",
     "disconnect": "Disconnect",
     "close": "Close",
-    "replay": "Replay"
+    "replay": "Replay",
+    "discard": "Discard",
+    "addItem": "Add Item"
+  },
+  "form": {
+    "notSpecified": "Not specified",
+    "selectOption": "Select an option..."
   },
   "states": {
     "loading": "Loading...",
@@ -143,6 +149,17 @@
     "loading": "Loading...",
     "selectToStart": "Select a workspace to get started",
     "draft": "Draft",
+    "viewArchive": "View Archive",
+    "backToActive": "Back to Active",
+    "noArchived": "No archived workspaces",
+    "noWorkspaces": "No workspaces",
+    "needsAttention": "Needs Attention",
+    "idle": "Idle",
+    "running": "Running",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "archive": "Archive",
+    "more": "More actions",
     "rename": {
       "title": "Rename Workspace",
       "description": "Enter a new name for this workspace.",
@@ -157,7 +174,9 @@
     "noResults": "No matching files",
     "title": "Files",
     "showGitHubComments": "Show GitHub comments",
-    "hideGitHubComments": "Hide GitHub comments"
+    "hideGitHubComments": "Hide GitHub comments",
+    "prevGitHubComment": "Previous file with comments",
+    "nextGitHubComment": "Next file with comments"
   },
   "sections": {
     "changes": "Changes",
@@ -170,7 +189,13 @@
     "workingBranch": "Working Branch",
     "recent": "Recent",
     "other": "Other",
-    "devServerPreview": "Dev Server Preview"
+    "devServerPreview": "Dev Server Preview",
+    "terminal": "Terminal",
+    "notes": "Notes"
+  },
+  "notes": {
+    "placeholder": "Add notes about this workspace...",
+    "selectWorkspace": "Select a workspace to view notes"
   },
   "repos": {
     "loading": "Loading repositories...",
@@ -185,18 +210,25 @@
     "copyPath": "Copy path",
     "copyWorktreePath": "Copy worktree path",
     "openInIde": "Open in IDE",
+    "repoSettings": "Repository settings",
     "cancel": "Cancel",
     "saveChanges": "Save Changes",
-    "copied": "Copied"
+    "copied": "Copied",
+    "collapse": "Collapse"
   },
   "comments": {
     "addReviewComment": "Add Review Comment",
     "addPlaceholder": "Add a comment...",
-    "editPlaceholder": "Edit comment..."
+    "editPlaceholder": "Edit comment...",
+    "copyToReview": "Copy to review"
   },
   "confirm": {
     "defaultConfirm": "Confirm",
     "defaultCancel": "Cancel"
+  },
+  "dialogs": {
+    "selectGitRepository": "Select Git Repository",
+    "chooseExistingRepo": "Choose an existing repository from your file system"
   },
   "empty": {
     "noChanges": "No changes to display"
@@ -207,12 +239,89 @@
     "defaultPlaceholder": "Type a command or search..."
   },
   "chatBox": {
-    "variants": "Variants"
+    "variants": "Variants",
+    "customise": "Customise"
   },
   "projects": {
     "noProjectFound": "No project found",
     "createFirstPrompt": "Create a project first to start working on tasks.",
     "createNew": "Create new project",
     "noProjectsFound": "No projects found"
+  },
+  "betaWorkspaces": {
+    "title": "Try the new UI",
+    "intro": "We've rebuilt Vibe Kanban's UI from the ground up, and you've been invited to try it.",
+    "newUiDescription": "The new UI is optimised for day-to-day work: juggling agents, previewing changes, and reviewing code. It also unlocks features that aren't available in the old UI:",
+    "newFeatures": {
+      "multiRepo": "Edit multiple repositories at the same time",
+      "multiAgent": "Run multiple agent conversations (even across different agents) in a single workspace",
+      "commandBar": "Faster navigation with the command bar"
+    },
+    "oldUiDescription": "For now, a few things still live in the current UI:",
+    "oldFeatures": {
+      "kanban": "Managing tasks on the kanban board",
+      "settings": "Changing settings",
+      "projects": "Managing projects"
+    },
+    "transition": "During the transition over the next few weeks, you'll move between both.",
+    "optOutNote": "Want to opt out? You can switch back to the current UI at any time in Settings.",
+    "joinBeta": "Join Beta",
+    "maybeLater": "Maybe Later"
+  },
+  "workspacesGuide": {
+    "welcome": {
+      "title": "Welcome",
+      "content": "Welcome to Workspaces, a redesigned UI for Vibe Kanban. We're rolling this out to select users for early feedback. Share your thoughts anytime using the feedback icon in the navbar."
+    },
+    "commandBar": {
+      "title": "Command Bar",
+      "content": "The command bar is your central hub for navigation. Open it with CMD+K to search and access every action available in a workspace."
+    },
+    "contextBar": {
+      "title": "Context Bar",
+      "content": "The context bar lets you switch between panes quickly. Drag it wherever works best for you."
+    },
+    "sidebar": {
+      "title": "Workspace Sidebar",
+      "content": "See the status of all your workspaces at a glance. Notifications highlight which ones need attention. Archive merged workspaces to keep your sidebar clean."
+    },
+    "multiRepo": {
+      "title": "Multi-Repo Support",
+      "content": "Add multiple repos to a single workspace. Reference code from one repo while working in another, or implement changes across several repos at once."
+    },
+    "sessions": {
+      "title": "Multiple Sessions",
+      "content": "Create multiple agent conversation sessions within a single workspace, including sessions with different agents. This helps you work around conversation limits or spin up review agents in separate threads."
+    },
+    "preview": {
+      "title": "Preview Changes",
+      "content": "Preview your work in a built-in browser without switching contexts. Test across desktop, mobile, and custom viewport sizes."
+    },
+    "diffs": {
+      "title": "Diffs and Comments",
+      "content": "The redesigned diffs panel includes a file tree of your changes. Comment directly on diffs to give feedback to the agent, and view GitHub comments when your workspace is linked to a PR."
+    },
+    "classicUi": {
+      "title": "Return to Classic UI",
+      "content": "Click the exit icon on the left side of the navbar to return to the classic kanban board. To disable the new UI entirely, update the \"Enable Workspaces Beta\" option under \"Beta Features\" in settings."
+    }
+  },
+  "logs": {
+    "searchLogs": "Search logs",
+    "selectProcessToView": "Select a process to view logs"
+  },
+  "processes": {
+    "noProcesses": "No processes",
+    "terminal": "Terminal"
+  },
+  "search": {
+    "matchCount": "{{current}} of {{total}}",
+    "noMatches": "No matches"
+  },
+  "contextUsage": {
+    "label": "Context usage",
+    "emptyTooltip": "Context usage appears after the next reply",
+    "tooltip": "Context: {{percentage}}% · {{used}} / {{total}} tokens",
+    "ariaLabel": "Context usage: {{percentage}}%"
   }
 }

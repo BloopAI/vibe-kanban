@@ -5,6 +5,7 @@ use workspace_utils::approvals::ApprovalStatus;
 use super::types::PermissionMode;
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
+    env::RepoContext,
     executors::{
         ExecutorError,
         claude::{
@@ -20,12 +21,14 @@ use crate::{
 
 const EXIT_PLAN_MODE_NAME: &str = "ExitPlanMode";
 pub const AUTO_APPROVE_CALLBACK_ID: &str = "AUTO_APPROVE_CALLBACK_ID";
+pub const STOP_GIT_CHECK_CALLBACK_ID: &str = "STOP_GIT_CHECK_CALLBACK_ID";
 
 /// Claude Agent client with control protocol support
 pub struct ClaudeAgentClient {
     log_writer: LogWriter,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool, // true when approvals is None
+    repo_context: RepoContext,
 }
 
 impl ClaudeAgentClient {
@@ -33,12 +36,14 @@ impl ClaudeAgentClient {
     pub fn new(
         log_writer: LogWriter,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
+        repo_context: RepoContext,
     ) -> Arc<Self> {
         let auto_approve = approvals.is_none();
         Arc::new(Self {
             log_writer,
             approvals,
             auto_approve,
+            repo_context,
         })
     }
 
@@ -74,7 +79,10 @@ impl ClaudeAgentClient {
                                 updated_permissions: Some(vec![PermissionUpdate {
                                     update_type: PermissionUpdateType::SetMode,
                                     mode: Some(PermissionMode::BypassPermissions),
-                                    destination: PermissionUpdateDestination::Session,
+                                    destination: Some(PermissionUpdateDestination::Session),
+                                    rules: None,
+                                    behavior: None,
+                                    directories: None,
                                 }]),
                             })
                         } else {
@@ -143,9 +151,34 @@ impl ClaudeAgentClient {
     pub async fn on_hook_callback(
         &self,
         callback_id: String,
-        _input: serde_json::Value,
+        input: serde_json::Value,
         _tool_use_id: Option<String>,
     ) -> Result<serde_json::Value, ExecutorError> {
+        // Stop hook git check - uses `decision` (approve/block) and `reason` fields
+        if callback_id == STOP_GIT_CHECK_CALLBACK_ID {
+            if input
+                .get("stop_hook_active")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+            {
+                return Ok(serde_json::json!({"decision": "approve"}));
+            }
+            let status =
+                workspace_utils::git::check_uncommitted_changes(&self.repo_context.repo_paths())
+                    .await;
+            return Ok(if status.is_empty() {
+                serde_json::json!({"decision": "approve"})
+            } else {
+                serde_json::json!({
+                    "decision": "block",
+                    "reason": format!(
+                        "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
+                        status
+                    )
+                })
+            });
+        }
+
         if self.auto_approve {
             Ok(serde_json::json!({
                 "hookSpecificOutput": {
@@ -179,8 +212,7 @@ impl ClaudeAgentClient {
         }
     }
 
-    pub async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError> {
-        // Forward all non-control messages to stdout
+    pub async fn log_message(&self, line: &str) -> Result<(), ExecutorError> {
         self.log_writer.log_raw(line).await
     }
 }

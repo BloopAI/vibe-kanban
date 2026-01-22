@@ -23,6 +23,7 @@ use crate::{
 pub struct RequestContext {
     pub user: User,
     pub session_id: Uuid,
+    #[allow(dead_code)]
     pub access_token_expires_at: DateTime<Utc>,
 }
 

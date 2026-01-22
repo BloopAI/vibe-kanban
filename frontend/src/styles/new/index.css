@@ -275,81 +275,82 @@
   }
 }
 
-/* ANSI color classes for fancy-ansi */
+/* ANSI color classes for fancy-ansi - optimized for both light and dark modes */
 @layer components {
-  .ansi-red {
-    @apply text-red-500;
+  /* Light mode: use darker shades for contrast on light backgrounds */
+  .new-design .ansi-red {
+    @apply text-red-700 dark:text-red-400;
   }
 
-  .ansi-green {
-    @apply text-green-500;
+  .new-design .ansi-green {
+    @apply text-green-700 dark:text-green-400;
   }
 
-  .ansi-yellow {
-    @apply text-yellow-500;
+  .new-design .ansi-yellow {
+    @apply text-yellow-700 dark:text-yellow-400;
   }
 
-  .ansi-blue {
-    @apply text-blue-500;
+  .new-design .ansi-blue {
+    @apply text-blue-700 dark:text-blue-400;
   }
 
-  .ansi-magenta {
-    @apply text-purple-500;
+  .new-design .ansi-magenta {
+    @apply text-purple-700 dark:text-purple-400;
   }
 
-  .ansi-cyan {
-    @apply text-cyan-500;
+  .new-design .ansi-cyan {
+    @apply text-cyan-700 dark:text-cyan-400;
   }
 
-  .ansi-white {
-    @apply text-white;
+  .new-design .ansi-white {
+    @apply text-gray-600 dark:text-gray-200;
   }
 
-  .ansi-black {
-    @apply text-black;
+  .new-design .ansi-black {
+    @apply text-black dark:text-gray-900;
   }
 
-  .ansi-bright-red {
-    @apply text-red-400;
+  .new-design .ansi-bright-red {
+    @apply text-red-600 dark:text-red-300;
   }
 
-  .ansi-bright-green {
-    @apply text-green-400;
+  .new-design .ansi-bright-green {
+    @apply text-green-600 dark:text-green-300;
   }
 
-  .ansi-bright-yellow {
-    @apply text-yellow-400;
+  .new-design .ansi-bright-yellow {
+    @apply text-amber-600 dark:text-yellow-300;
   }
 
-  .ansi-bright-blue {
-    @apply text-blue-400;
+  .new-design .ansi-bright-blue {
+    @apply text-blue-600 dark:text-blue-300;
   }
 
-  .ansi-bright-magenta {
-    @apply text-purple-400;
+  .new-design .ansi-bright-magenta {
+    @apply text-purple-600 dark:text-purple-300;
   }
 
-  .ansi-bright-cyan {
-    @apply text-cyan-400;
+  .new-design .ansi-bright-cyan {
+    @apply text-cyan-600 dark:text-cyan-300;
   }
 
-  .ansi-bright-white {
-    @apply text-gray-200;
+  .new-design .ansi-bright-white {
+    @apply text-gray-500 dark:text-gray-100;
   }
 
-  .ansi-bright-black {
-    @apply text-gray-700;
+  .new-design .ansi-bright-black {
+    @apply text-gray-600 dark:text-gray-500;
   }
 
-  .ansi-bold {
+  .new-design .ansi-bold {
     @apply font-bold;
   }
 
-  .ansi-italic {
+  .new-design .ansi-italic {
     @apply italic;
   }
 
-  .ansi-underline {
+  .new-design .ansi-underline {
     @apply underline;
   }
 }
@@ -359,6 +360,7 @@
   0% {
     background-position: 200% 0;
   }
+
   100% {
     background-position: -200% 0;
   }

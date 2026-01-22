@@ -55,6 +55,5 @@
   "projectNotFound": "El proyecto que buscas no existe o ha sido eliminado.",
   "viewProject": "Ver Proyecto",
   "openInIDE": "Abrir en IDE",
-  "createdDate": "Creado {{date}}",
-  "copyFilesPlaceholderWithSearch": "Escribe una ruta o patrón glob (.env, config/*.json)"
+  "createdDate": "Creado {{date}}"
 }

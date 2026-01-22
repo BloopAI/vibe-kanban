@@ -6,14 +6,14 @@ interface SearchableDropdownContainerProps<T> {
   /** Array of items to display */
   items: T[];
   /** Currently selected value (matched against getItemKey) */
-  selectedValue?: string | null;
+  selectedValue: string | null;
 
   /** Extract unique key from item */
   getItemKey: (item: T) => string;
   /** Extract display label from item */
   getItemLabel: (item: T) => string;
-  /** Custom filter function (defaults to label.includes(query)) */
-  filterItem?: (item: T, query: string) => boolean;
+  /** Custom filter function (null = default label.includes(query)) */
+  filterItem: ((item: T, query: string) => boolean) | null;
 
   /** Called when an item is selected */
   onSelect: (item: T) => void;
@@ -22,14 +22,14 @@ interface SearchableDropdownContainerProps<T> {
   trigger: React.ReactNode;
 
   /** Class name for dropdown content */
-  contentClassName?: string;
+  contentClassName: string;
   /** Placeholder text for search input */
-  placeholder?: string;
+  placeholder: string;
   /** Message shown when no items match */
-  emptyMessage?: string;
+  emptyMessage: string;
 
-  /** Optional badge text for each item */
-  getItemBadge?: (item: T) => string | undefined;
+  /** Badge text for each item (null = no badges) */
+  getItemBadge: ((item: T) => string | undefined) | null;
 }
 
 export function SearchableDropdownContainer<T>({
@@ -41,8 +41,8 @@ export function SearchableDropdownContainer<T>({
   onSelect,
   trigger,
   contentClassName,
-  placeholder = 'Search',
-  emptyMessage = 'No items found',
+  placeholder,
+  emptyMessage,
   getItemBadge,
 }: SearchableDropdownContainerProps<T>) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,7 +53,7 @@ export function SearchableDropdownContainer<T>({
   const filteredItems = useMemo(() => {
     if (!searchTerm.trim()) return items;
     const query = searchTerm.toLowerCase();
-    if (filterItem) {
+    if (filterItem !== null) {
       return items.filter((item) => filterItem(item, query));
     }
     return items.filter((item) =>
@@ -160,7 +160,7 @@ export function SearchableDropdownContainer<T>({
       contentClassName={contentClassName}
       placeholder={placeholder}
       emptyMessage={emptyMessage}
-      getItemBadge={getItemBadge}
+      getItemBadge={getItemBadge ?? undefined}
     />
   );
 }

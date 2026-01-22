@@ -1,10 +1,9 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import type {
-  Repo,
-  ExecutorProfileId,
-  RepoWithTargetBranch,
-} from 'shared/types';
+import type { Repo, ExecutorProfileId } from 'shared/types';
 import { useCreateModeState } from '@/hooks/useCreateModeState';
+import { useWorkspaces } from '@/components/ui-new/hooks/useWorkspaces';
+import { useTask } from '@/hooks/useTask';
+import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 
 interface CreateModeContextValue {
   selectedProjectId: string | null;
@@ -28,16 +27,28 @@ const CreateModeContext = createContext<CreateModeContextValue | null>(null);
 
 interface CreateModeProviderProps {
   children: ReactNode;
-  initialProjectId?: string;
-  initialRepos?: RepoWithTargetBranch[];
 }
 
-export function CreateModeProvider({
-  children,
-  initialProjectId,
-  initialRepos,
-}: CreateModeProviderProps) {
-  const state = useCreateModeState({ initialProjectId, initialRepos });
+export function CreateModeProvider({ children }: CreateModeProviderProps) {
+  // Fetch most recent workspace to use as initial values
+  const { workspaces: activeWorkspaces, archivedWorkspaces } = useWorkspaces();
+  const mostRecentWorkspace = activeWorkspaces[0] ?? archivedWorkspaces[0];
+
+  const { data: lastWorkspaceTask } = useTask(mostRecentWorkspace?.taskId, {
+    enabled: !!mostRecentWorkspace?.taskId,
+  });
+
+  const { repos: lastWorkspaceRepos } = useAttemptRepo(
+    mostRecentWorkspace?.id,
+    {
+      enabled: !!mostRecentWorkspace?.id,
+    }
+  );
+
+  const state = useCreateModeState({
+    initialProjectId: lastWorkspaceTask?.project_id,
+    initialRepos: lastWorkspaceRepos,
+  });
 
   const value = useMemo<CreateModeContextValue>(
     () => ({
