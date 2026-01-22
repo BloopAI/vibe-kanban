@@ -10,10 +10,8 @@ import {
   CheckIcon,
 } from '@phosphor-icons/react';
 import type { IssuePriority, ProjectStatus, Tag } from 'shared/remote-types';
-import {
-  IssuePropertyRow,
-  type User,
-} from '@/components/ui-new/kanban/IssuePropertyRow';
+import type { OrganizationMemberWithProfile } from 'shared/types';
+import { IssuePropertyRow } from '@/components/ui-new/kanban/IssuePropertyRow';
 import { IssueTagsRow } from '@/components/ui-new/kanban/IssueTagsRow';
 import {
   IssueWorkspaceCard,
@@ -66,7 +64,7 @@ export interface KanbanIssuePanelProps {
   // Options for dropdowns
   statuses: ProjectStatus[];
   tags: Tag[];
-  users: User[];
+  users: OrganizationMemberWithProfile[];
 
   // Edit mode data
   workspaces?: WorkspaceWithStats[];
@@ -109,7 +107,7 @@ export function KanbanIssuePanel({
 
   return (
     <div
-      className="flex flex-col h-full bg-secondary overflow-hidden"
+      className="flex flex-col h-full bg-panel overflow-hidden"
       onKeyDown={handleKeyDown}
     >
       {/* Header */}
@@ -161,7 +159,7 @@ export function KanbanIssuePanel({
 
         {/* Title and Description */}
         <div className="px-base py-base">
-          <div className="bg-panel rounded-sm p-base">
+          <div className="bg-primary rounded-sm p-base">
             {/* Title Input */}
             <input
               type="text"
