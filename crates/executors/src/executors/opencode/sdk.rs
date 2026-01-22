@@ -172,17 +172,6 @@ pub struct FormatterStatus {
     pub enabled: bool,
 }
 
-#[derive(Debug, Deserialize)]
-struct SessionShareResponse {
-    #[serde(default)]
-    share: Option<SessionShareInfo>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SessionShareInfo {
-    url: String,
-}
-
 #[derive(Debug, Serialize)]
 struct PromptRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -761,54 +750,6 @@ pub async fn session_summarize(
 
     let _ = resp
         .json::<bool>()
-        .await
-        .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
-    Ok(())
-}
-
-pub async fn session_share(
-    client: &reqwest::Client,
-    base_url: &str,
-    directory: &str,
-    session_id: &str,
-) -> Result<Option<String>, ExecutorError> {
-    let resp = client
-        .post(format!("{base_url}/session/{session_id}/share"))
-        .query(&[("directory", directory)])
-        .send()
-        .await
-        .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
-
-    if !resp.status().is_success() {
-        return Err(build_response_error(resp, "session.share").await);
-    }
-
-    let session = resp
-        .json::<SessionShareResponse>()
-        .await
-        .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
-    Ok(session.share.map(|share| share.url))
-}
-
-pub async fn session_unshare(
-    client: &reqwest::Client,
-    base_url: &str,
-    directory: &str,
-    session_id: &str,
-) -> Result<(), ExecutorError> {
-    let resp = client
-        .post(format!("{base_url}/session/{session_id}/unshare"))
-        .query(&[("directory", directory)])
-        .send()
-        .await
-        .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
-
-    if !resp.status().is_success() {
-        return Err(build_response_error(resp, "session.unshare").await);
-    }
-
-    let _ = resp
-        .json::<SessionShareResponse>()
         .await
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
     Ok(())
