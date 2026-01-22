@@ -32,6 +32,36 @@ pub enum PullRequestError {
 pub struct PullRequestRepository;
 
 impl PullRequestRepository {
+    pub async fn list_by_issue(
+        pool: &PgPool,
+        issue_id: Uuid,
+    ) -> Result<Vec<PullRequest>, PullRequestError> {
+        let records = sqlx::query_as!(
+            PullRequest,
+            r#"
+            SELECT
+                id                  AS "id!: Uuid",
+                url                 AS "url!: String",
+                number              AS "number!: i32",
+                status              AS "status!: PullRequestStatus",
+                merged_at           AS "merged_at: DateTime<Utc>",
+                merge_commit_sha    AS "merge_commit_sha: String",
+                target_branch_name  AS "target_branch_name!: String",
+                issue_id            AS "issue_id!: Uuid",
+                workspace_id        AS "workspace_id: Uuid",
+                created_at          AS "created_at!: DateTime<Utc>",
+                updated_at          AS "updated_at!: DateTime<Utc>"
+            FROM pull_requests
+            WHERE issue_id = $1
+            "#,
+            issue_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(records)
+    }
+
     pub async fn find_by_url(
         pool: &PgPool,
         url: &str,

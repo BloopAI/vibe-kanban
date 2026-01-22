@@ -14,6 +14,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{
+        issues::IssueRepository,
         pull_requests::{PullRequest, PullRequestRepository},
         types::PullRequestStatus,
     },
@@ -59,7 +60,7 @@ async fn create_pull_request(
 ) -> Result<Json<PullRequest>, ErrorResponse> {
     ensure_issue_access(state.pool(), ctx.user.id, payload.issue_id).await?;
 
-    let response = PullRequestRepository::create(
+    let pr = PullRequestRepository::create(
         state.pool(),
         payload.id,
         payload.url,
@@ -77,7 +78,14 @@ async fn create_pull_request(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(response))
+    IssueRepository::sync_status_from_pull_request(state.pool(), pr.issue_id, pr.status)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to sync issue status");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?;
+
+    Ok(Json(pr))
 }
 
 #[instrument(
@@ -103,7 +111,7 @@ async fn update_pull_request(
 
     ensure_issue_access(state.pool(), ctx.user.id, pull_request.issue_id).await?;
 
-    let response = PullRequestRepository::update(
+    let pr = PullRequestRepository::update(
         state.pool(),
         pull_request.id,
         payload.status,
@@ -116,5 +124,12 @@ async fn update_pull_request(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(response))
+    IssueRepository::sync_status_from_pull_request(state.pool(), pr.issue_id, pr.status)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to sync issue status");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?;
+
+    Ok(Json(pr))
 }

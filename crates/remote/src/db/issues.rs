@@ -6,7 +6,12 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::{get_txid, types::IssuePriority};
+use super::{
+    get_txid,
+    project_statuses::ProjectStatusRepository,
+    pull_requests::PullRequestRepository,
+    types::{IssuePriority, PullRequestStatus},
+};
 use crate::mutation_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -32,6 +37,10 @@ pub struct Issue {
 pub enum IssueError {
     #[error(transparent)]
     Database(#[from] sqlx::Error),
+    #[error("pull request error: {0}")]
+    PullRequest(#[from] super::pull_requests::PullRequestError),
+    #[error("project status error: {0}")]
+    ProjectStatus(#[from] super::project_statuses::ProjectStatusError),
 }
 
 pub struct IssueRepository;
@@ -292,5 +301,59 @@ impl IssueRepository {
         tx.commit().await?;
 
         Ok(DeleteResponse { txid })
+    }
+
+    /// Syncs issue status based on the current PR state.
+    /// - If PR is open → move issue to "In review" (no need to fetch other PRs)
+    /// - If PR is merged/closed → check if ALL PRs are merged → move to "Done"
+    pub async fn sync_status_from_pull_request(
+        pool: &PgPool,
+        issue_id: Uuid,
+        pr_status: PullRequestStatus,
+    ) -> Result<(), IssueError> {
+        let Some(issue) = Self::find_by_id(pool, issue_id).await? else {
+            return Ok(());
+        };
+
+        let target_status_name = if pr_status == PullRequestStatus::Open {
+            "In review"
+        } else {
+            let prs = PullRequestRepository::list_by_issue(pool, issue_id).await?;
+            let all_merged = prs.iter().all(|pr| pr.status == PullRequestStatus::Merged);
+            if all_merged {
+                "Done"
+            } else {
+                return Ok(());
+            }
+        };
+
+        let Some(target_status) =
+            ProjectStatusRepository::find_by_name(pool, issue.project_id, target_status_name)
+                .await?
+        else {
+            return Ok(());
+        };
+
+        if issue.status_id == target_status.id {
+            return Ok(());
+        }
+
+        Self::update(
+            pool,
+            issue_id,
+            Some(target_status.id),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .await?;
+
+        Ok(())
     }
 }
