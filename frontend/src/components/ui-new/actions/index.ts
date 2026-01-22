@@ -134,6 +134,9 @@ export interface ActionVisibilityContext {
 
   // Execution state
   isAttemptRunning: boolean;
+
+  // Logs panel state
+  logsPanelContent: LogsPanelContent | null;
 }
 
 // Base properties shared by all actions
@@ -686,27 +689,13 @@ export const Actions = {
     label: 'Copy Raw Logs',
     icon: CopyIcon,
     requiresTarget: false,
-    isVisible: (ctx) => ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS,
+    isVisible: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS &&
+      ctx.logsPanelContent?.type !== 'terminal',
     execute: async (ctx) => {
-      console.log('[CopyRawLogs] execute called');
-      console.log('[CopyRawLogs] logsPanelContent:', ctx.logsPanelContent);
-      console.log('[CopyRawLogs] currentLogs:', ctx.currentLogs);
-      console.log(
-        '[CopyRawLogs] currentLogs length:',
-        ctx.currentLogs?.length ?? 0
-      );
-      if (!ctx.currentLogs || ctx.currentLogs.length === 0) {
-        console.log('[CopyRawLogs] No logs to copy, returning early');
-        return;
-      }
+      if (!ctx.currentLogs || ctx.currentLogs.length === 0) return;
       const rawText = ctx.currentLogs.map((log) => log.content).join('\n');
-      console.log(
-        '[CopyRawLogs] Copying text length:',
-        rawText.length,
-        'chars'
-      );
       await navigator.clipboard.writeText(rawText);
-      console.log('[CopyRawLogs] Text copied to clipboard successfully');
     },
   },
 

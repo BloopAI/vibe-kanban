@@ -9,6 +9,7 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { useDevServer } from '@/hooks/useDevServer';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
+import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import type { Workspace, Merge } from 'shared/types';
 import type {
   ActionVisibilityContext,
@@ -38,6 +39,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     useDevServer(workspaceId);
   const { data: branchStatus } = useBranchStatus(workspaceId);
   const { isAttemptRunningVisible } = useExecutionProcessesContext();
+  const { logsPanelContent } = useLogsPanel();
 
   return useMemo(() => {
     // Compute isAllDiffsExpanded
@@ -85,6 +87,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       hasOpenPR,
       hasUnpushedCommits,
       isAttemptRunning: isAttemptRunningVisible,
+      logsPanelContent,
     };
   }, [
     panelState.rightMainPanelMode,
@@ -103,6 +106,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     runningDevServers,
     branchStatus,
     isAttemptRunningVisible,
+    logsPanelContent,
   ]);
 }
 
