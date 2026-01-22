@@ -1,9 +1,4 @@
-use std::{
-    collections::HashSet,
-    io,
-    sync::{Arc, Once},
-    time::Duration,
-};
+use std::{collections::HashSet, io, sync::Arc, time::Duration};
 
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use eventsource_stream::Eventsource;
@@ -14,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::{
     io::{AsyncWrite, AsyncWriteExt, BufWriter},
-    sync::{Mutex, mpsc, oneshot},
+    sync::{Mutex as AsyncMutex, mpsc, oneshot},
 };
 use tokio_util::sync::CancellationToken;
 use workspace_utils::approvals::ApprovalStatus;
@@ -22,27 +17,18 @@ use workspace_utils::approvals::ApprovalStatus;
 use super::types::OpencodeExecutorEvent;
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
-    executors::ExecutorError,
+    executors::{ExecutorError, opencode::models::maybe_emit_token_usage},
 };
-
-fn ensure_rustls_crypto_provider() {
-    static INIT: Once = Once::new();
-    INIT.call_once(|| {
-        if let Err(err) = rustls::crypto::aws_lc_rs::default_provider().install_default() {
-            tracing::debug!("rustls crypto provider install failed: {err:?}");
-        }
-    });
-}
 
 #[derive(Clone)]
 pub struct LogWriter {
-    writer: Arc<Mutex<BufWriter<Box<dyn AsyncWrite + Send + Unpin>>>>,
+    writer: Arc<AsyncMutex<BufWriter<Box<dyn AsyncWrite + Send + Unpin>>>>,
 }
 
 impl LogWriter {
     pub fn new(writer: impl AsyncWrite + Send + Unpin + 'static) -> Self {
         Self {
-            writer: Arc::new(Mutex::new(BufWriter::new(Box::new(writer)))),
+            writer: Arc::new(AsyncMutex::new(BufWriter::new(Box::new(writer)))),
         }
     }
 
@@ -81,6 +67,9 @@ pub struct RunConfig {
     pub approvals: Option<Arc<dyn ExecutorApprovalService>>,
     pub auto_approve: bool,
     pub server_password: String,
+    /// Cache key for model context windows. Should be derived from configuration
+    /// that affects available models (e.g., env vars, base command).
+    pub models_cache_key: String,
 }
 
 /// Generate a cryptographically secure random password for OpenCode server auth.
@@ -141,7 +130,6 @@ pub async fn run_session(
     log_writer: LogWriter,
     interrupt_rx: oneshot::Receiver<()>,
 ) -> Result<(), ExecutorError> {
-    ensure_rustls_crypto_provider();
     let cancel = CancellationToken::new();
 
     let client = reqwest::Client::builder()
@@ -224,6 +212,7 @@ async fn run_session_inner(
             approvals: config.approvals.clone(),
             auto_approve: config.auto_approve,
             control_tx,
+            models_cache_key: config.models_cache_key.clone(),
         },
         event_resp,
     ));
@@ -599,6 +588,7 @@ struct EventListenerConfig {
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool,
     control_tx: mpsc::UnboundedSender<ControlEvent>,
+    models_cache_key: String,
 }
 
 async fn spawn_event_listener(config: EventListenerConfig, initial_resp: reqwest::Response) {
@@ -611,6 +601,7 @@ async fn spawn_event_listener(config: EventListenerConfig, initial_resp: reqwest
         approvals,
         auto_approve,
         control_tx,
+        models_cache_key,
     } = config;
 
     let mut seen_permissions: HashSet<String> = HashSet::new();
@@ -664,6 +655,7 @@ async fn spawn_event_listener(config: EventListenerConfig, initial_resp: reqwest
                 control_tx: &control_tx,
                 base_retry_delay: &mut base_retry_delay,
                 last_event_id: &mut last_event_id,
+                models_cache_key: &models_cache_key,
             },
             current_resp,
         )
@@ -700,18 +692,20 @@ enum EventStreamOutcome {
     Disconnected,
 }
 
-struct EventStreamContext<'a> {
+pub(super) struct EventStreamContext<'a> {
     seen_permissions: &'a mut HashSet<String>,
-    client: &'a reqwest::Client,
-    base_url: &'a str,
-    directory: &'a str,
-    session_id: &'a str,
-    log_writer: &'a LogWriter,
+    pub client: &'a reqwest::Client,
+    pub base_url: &'a str,
+    pub directory: &'a str,
+    pub session_id: &'a str,
+    pub log_writer: &'a LogWriter,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool,
     control_tx: &'a mpsc::UnboundedSender<ControlEvent>,
     base_retry_delay: &'a mut Duration,
     last_event_id: &'a mut Option<String>,
+    /// Cache key for model context windows, derived from config that affects available models.
+    pub models_cache_key: &'a str,
 }
 
 async fn process_event_stream(
@@ -761,6 +755,9 @@ async fn process_event_stream(
             .await;
 
         match event_type {
+            "message.updated" => {
+                maybe_emit_token_usage(&ctx, &data).await;
+            }
             "session.idle" => {
                 let _ = ctx.control_tx.send(ControlEvent::Idle);
                 return Ok(EventStreamOutcome::Idle);

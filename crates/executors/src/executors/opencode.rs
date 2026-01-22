@@ -21,6 +21,7 @@ use crate::{
     stdout_dup::create_stdout_pipe_writer,
 };
 
+mod models;
 mod normalize_logs;
 mod sdk;
 mod types;
@@ -56,6 +57,11 @@ impl Opencode {
             // (it checks `process.argv.includes(\"--port\")` / `\"--hostname\"`).
             .extend_params(["serve", "--hostname", "127.0.0.1", "--port", "0"]);
         apply_overrides(builder, &self.cmd)
+    }
+
+    /// Compute a cache key for model context windows based on configuration that can affect the list of available models.
+    fn compute_models_cache_key(&self) -> String {
+        serde_json::to_string(&self.cmd).unwrap_or_default()
     }
 
     async fn spawn_inner(
@@ -114,6 +120,7 @@ impl Opencode {
         let agent = self.mode.clone();
         let auto_approve = self.auto_approve;
         let resume_session_id = resume_session.map(|s| s.to_string());
+        let models_cache_key = self.compute_models_cache_key();
 
         tokio::spawn(async move {
             // Wait for server to print listening URL
@@ -139,6 +146,7 @@ impl Opencode {
                 approvals,
                 auto_approve,
                 server_password,
+                models_cache_key,
             };
 
             let result = run_session(config, log_writer.clone(), interrupt_rx).await;
