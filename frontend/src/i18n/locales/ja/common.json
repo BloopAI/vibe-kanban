@@ -311,5 +311,15 @@
     "emptyTooltip": "コンテキスト使用量は次の返信後に表示されます",
     "tooltip": "コンテキスト: {{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "コンテキスト使用量: {{percentage}}%"
+  },
+  "kanban": {
+    "noStatusesFound": "このプロジェクトのステータスが見つかりません",
+    "noProjectFound": "プロジェクトが見つかりません",
+    "noOrganizationFound": "組織が見つかりません",
+    "unassigned": "未割り当て",
+    "noTagsAvailable": "利用可能なタグがありません",
+    "filesCount": "{{count}}ファイル",
+    "noPrCreated": "PRが作成されていません",
+    "noCommentsYet": "コメントはまだありません"
   }
 }

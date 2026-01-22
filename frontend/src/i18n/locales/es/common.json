@@ -311,5 +311,15 @@
     "emptyTooltip": "El uso del contexto aparece después de la próxima respuesta",
     "tooltip": "Contexto: {{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "Uso del contexto: {{percentage}}%"
+  },
+  "kanban": {
+    "noStatusesFound": "No se encontraron estados para este proyecto",
+    "noProjectFound": "No se encontró el proyecto",
+    "noOrganizationFound": "No se encontró la organización",
+    "unassigned": "Sin asignar",
+    "noTagsAvailable": "No hay etiquetas disponibles",
+    "filesCount": "{{count}} Archivos",
+    "noPrCreated": "No se creó PR",
+    "noCommentsYet": "Sin comentarios aún"
   }
 }

@@ -311,5 +311,15 @@
     "emptyTooltip": "上下文使用量将在下一次回复后显示",
     "tooltip": "上下文：{{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "上下文使用量：{{percentage}}%"
+  },
+  "kanban": {
+    "noStatusesFound": "未找到此项目的状态",
+    "noProjectFound": "未找到项目",
+    "noOrganizationFound": "未找到组织",
+    "unassigned": "未分配",
+    "noTagsAvailable": "没有可用的标签",
+    "filesCount": "{{count}} 个文件",
+    "noPrCreated": "未创建 PR",
+    "noCommentsYet": "暂无评论"
   }
 }

@@ -311,5 +311,15 @@
     "emptyTooltip": "컨텍스트 사용량은 다음 응답 후에 표시됩니다",
     "tooltip": "컨텍스트: {{percentage}}% · {{used}} / {{total}} 토큰",
     "ariaLabel": "컨텍스트 사용량: {{percentage}}%"
+  },
+  "kanban": {
+    "noStatusesFound": "이 프로젝트의 상태를 찾을 수 없습니다",
+    "noProjectFound": "프로젝트를 찾을 수 없습니다",
+    "noOrganizationFound": "조직을 찾을 수 없습니다",
+    "unassigned": "미할당",
+    "noTagsAvailable": "사용 가능한 태그가 없습니다",
+    "filesCount": "{{count}}개 파일",
+    "noPrCreated": "PR이 생성되지 않음",
+    "noCommentsYet": "아직 댓글이 없습니다"
   }
 }
