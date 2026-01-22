@@ -10,7 +10,10 @@ use super::{error::ErrorResponse, organization_members::ensure_member_access};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::projects::{Project, ProjectRepository},
+    db::{
+        projects::{Project, ProjectRepository},
+        types::is_valid_hsl_color,
+    },
     define_mutation_router,
     entities::{
         CreateProjectRequest, ListProjectsQuery, ListProjectsResponse, UpdateProjectRequest,
@@ -78,6 +81,13 @@ async fn create_project(
 ) -> Result<Json<MutationResponse<Project>>, ErrorResponse> {
     ensure_member_access(state.pool(), payload.organization_id, ctx.user.id).await?;
 
+    if !is_valid_hsl_color(&payload.color) {
+        return Err(ErrorResponse::new(
+            StatusCode::BAD_REQUEST,
+            "Invalid color format. Expected HSL format: 'H S% L%'",
+        ));
+    }
+
     let response = ProjectRepository::create_with_defaults(
         state.pool(),
         payload.id,
@@ -114,6 +124,15 @@ async fn update_project(
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
 
     ensure_member_access(state.pool(), existing.organization_id, ctx.user.id).await?;
+
+    if let Some(ref color) = payload.color
+        && !is_valid_hsl_color(color)
+    {
+        return Err(ErrorResponse::new(
+            StatusCode::BAD_REQUEST,
+            "Invalid color format. Expected HSL format: 'H S% L%'",
+        ));
+    }
 
     let response = ProjectRepository::update(state.pool(), project_id, payload.name, payload.color)
         .await

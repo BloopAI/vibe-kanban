@@ -9,7 +9,8 @@ use super::{get_txid, project_statuses::ProjectStatusRepository, tags::TagReposi
 use crate::mutation_types::{DeleteResponse, MutationResponse};
 
 /// Default color for the initial project created with personal organizations
-pub const INITIAL_PROJECT_COLOR: &str = "#3b82f6"; // Blue - matches "To do" status
+/// HSL format: "H S% L%" (blue - matches "To do" status)
+pub const INITIAL_PROJECT_COLOR: &str = "217 91% 60%";
 
 /// Default name for the initial project
 pub const INITIAL_PROJECT_NAME: &str = "Initial Project";
