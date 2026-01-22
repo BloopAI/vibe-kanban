@@ -274,10 +274,6 @@ export function useCreateModeState({
 
   // Handle spin off repos from navigation state
   useEffect(() => {
-    console.log('[useCreateModeState] spin-off effect running', {
-      hasAppliedSpinOffRepos: hasAppliedSpinOffRepos.current,
-      spinOffRepos: locationState?.spinOffRepos,
-    });
     if (hasAppliedSpinOffRepos.current) return;
     if (!locationState?.spinOffRepos || locationState.spinOffRepos.length === 0)
       return;
@@ -286,15 +282,15 @@ export function useCreateModeState({
 
     // Set target branches SYNCHRONOUSLY first to prevent race condition
     // with CreateModeReposSectionContainer's auto-select effect
-    const branchesToSet = locationState.spinOffRepos.reduce(
-      (acc, r) => {
-        acc[r.repo_id] = r.target_branch;
-        return acc;
-      },
-      {} as Record<string, string>
+    setTargetBranches(
+      locationState.spinOffRepos.reduce(
+        (acc, r) => {
+          acc[r.repo_id] = r.target_branch;
+          return acc;
+        },
+        {} as Record<string, string>
+      )
     );
-    console.log('[useCreateModeState] setting target branches:', branchesToSet);
-    setTargetBranches(branchesToSet);
 
     // Mark repos as initialized to prevent overwrite by initialRepos effect
     hasInitializedRepos.current = true;
@@ -304,7 +300,6 @@ export function useCreateModeState({
       try {
         const repoIds = locationState.spinOffRepos!.map((r) => r.repo_id);
         const fetchedRepos = await repoApi.getBatch(repoIds);
-        console.log('[useCreateModeState] fetched repos:', fetchedRepos);
         setRepos(fetchedRepos);
       } catch (e) {
         console.error(

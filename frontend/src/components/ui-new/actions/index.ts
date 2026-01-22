@@ -372,12 +372,15 @@ export const Actions = {
     isVisible: (ctx) => ctx.hasWorkspace,
     execute: async (ctx, workspaceId) => {
       try {
-        const repos = await attemptsApi.getRepos(workspaceId);
+        const [workspace, repos] = await Promise.all([
+          getWorkspace(ctx.queryClient, workspaceId),
+          attemptsApi.getRepos(workspaceId),
+        ]);
         ctx.navigate('/workspaces/create', {
           state: {
             spinOffRepos: repos.map((r) => ({
               repo_id: r.id,
-              target_branch: r.target_branch,
+              target_branch: workspace.branch,
             })),
           },
         });

@@ -14,31 +14,13 @@ export function CreateModeReposSectionContainer() {
   const { branchesByRepo } = useMultiRepoBranches(repoIds);
 
   useEffect(() => {
-    console.log('[CreateModeReposSectionContainer] auto-select effect', {
-      repos: repos.map((r) => r.id),
-      targetBranches,
-      branchesByRepo: Object.keys(branchesByRepo),
-    });
     repos.forEach((repo) => {
       const branches = branchesByRepo[repo.id];
       if (branches && !targetBranches[repo.id]) {
         const currentBranch = branches.find((b) => b.is_current);
-        console.log(
-          '[CreateModeReposSectionContainer] SETTING branch for',
-          repo.id,
-          'to',
-          currentBranch?.name
-        );
         if (currentBranch) {
           setTargetBranch(repo.id, currentBranch.name);
         }
-      } else {
-        console.log(
-          '[CreateModeReposSectionContainer] SKIPPING',
-          repo.id,
-          'already has:',
-          targetBranches[repo.id]
-        );
       }
     });
   }, [repos, branchesByRepo, targetBranches, setTargetBranch]);
