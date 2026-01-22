@@ -6,6 +6,7 @@ import {
   VirtuosoMessageListMethods,
   VirtuosoMessageListProps,
 } from '@virtuoso.dev/message-list';
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { cn } from '@/lib/utils';
@@ -52,6 +53,33 @@ const ItemContent: VirtuosoMessageListProps<
   PatchTypeWithKey,
   MessageListContext
 >['ItemContent'] = ({ data, context }) => {
+  const attempt = context?.attempt;
+
+  if (data.type === 'STDOUT') {
+    return <p>{data.content}</p>;
+  }
+  if (data.type === 'STDERR') {
+    return <p>{data.content}</p>;
+  }
+  if (data.type === 'NORMALIZED_ENTRY' && attempt) {
+    return (
+      <NewDisplayConversationEntry
+        expansionKey={data.patchKey}
+        entry={data.content}
+        executionProcessId={data.executionProcessId}
+        taskAttempt={attempt}
+      />
+    );
+  }
+
+  return null;
+};
+
+const fallbackItemContent = (
+  _index: number,
+  data: PatchTypeWithKey,
+  context?: MessageListContext
+) => {
   const attempt = context?.attempt;
 
   if (data.type === 'STDOUT') {
@@ -128,8 +156,12 @@ export function ConversationList({ attempt }: ConversationListProps) {
 
       if (pending.addType === 'plan' && !loading) {
         scrollModifier = ScrollToTopOfLastItem;
+        setFollowOutput(false);
       } else if (pending.addType === 'running' && !loading) {
         scrollModifier = AutoScrollToBottom;
+        setFollowOutput('smooth');
+      } else {
+        setFollowOutput(false);
       }
 
       setChannelData({ data: pending.entries, scrollModifier });
@@ -143,8 +175,18 @@ export function ConversationList({ attempt }: ConversationListProps) {
 
   useConversationHistory({ attempt, onEntriesUpdated });
 
-  const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
+  const messageListRef =
+    useRef<VirtuosoMessageListMethods<PatchTypeWithKey, MessageListContext> | null>(
+      null
+    );
+  const fallbackRef = useRef<VirtuosoHandle | null>(null);
   const messageListContext = useMemo(() => ({ attempt }), [attempt]);
+  const licenseKey = import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY;
+  const useLicensedList = Boolean(licenseKey);
+  const [followOutput, setFollowOutput] = useState<false | 'smooth'>(false);
+  const initialTopMostItemIndex = channelData?.data?.length
+    ? Math.max(channelData.data.length - 1, 0)
+    : 0;
 
   // Determine if content is ready to show (has data or finished loading)
   const hasContent = !loading || (channelData?.data?.length ?? 0) > 0;
@@ -157,21 +199,36 @@ export function ConversationList({ attempt }: ConversationListProps) {
           hasContent ? 'opacity-100' : 'opacity-0'
         )}
       >
-        <VirtuosoMessageListLicense
-          licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
-        >
-          <VirtuosoMessageList<PatchTypeWithKey, MessageListContext>
-            ref={messageListRef}
+        {useLicensedList ? (
+          <VirtuosoMessageListLicense licenseKey={licenseKey}>
+            <VirtuosoMessageList<PatchTypeWithKey, MessageListContext>
+              ref={messageListRef}
+              className="h-full scrollbar-none"
+              data={channelData}
+              initialLocation={INITIAL_TOP_ITEM}
+              context={messageListContext}
+              computeItemKey={computeItemKey}
+              ItemContent={ItemContent}
+              Header={() => <div className="h-2" />}
+              Footer={() => <div className="h-2" />}
+            />
+          </VirtuosoMessageListLicense>
+        ) : (
+          <Virtuoso
+            ref={fallbackRef}
             className="h-full scrollbar-none"
-            data={channelData}
-            initialLocation={INITIAL_TOP_ITEM}
-            context={messageListContext}
-            computeItemKey={computeItemKey}
-            ItemContent={ItemContent}
-            Header={() => <div className="h-2" />}
-            Footer={() => <div className="h-2" />}
+            data={channelData?.data ?? []}
+            followOutput={followOutput}
+            initialTopMostItemIndex={initialTopMostItemIndex}
+            itemContent={(index, data) =>
+              fallbackItemContent(index, data, messageListContext)
+            }
+            components={{
+              Header: () => <div className="h-2" />,
+              Footer: () => <div className="h-2" />,
+            }}
           />
-        </VirtuosoMessageListLicense>
+        )}
       </div>
     </ApprovalFormProvider>
   );

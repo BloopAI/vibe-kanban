@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vibe-kanban
+  namespace: vibe-kanban
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vibe-kanban
+  template:
+    metadata:
+      labels:
+        app: vibe-kanban
+    spec:
+      initContainers:
+        - name: opencode-install
+          image: alpine:3.20
+          command: ["/bin/sh", "-c"]
+          args:
+            - apk add --no-cache bash curl ca-certificates libstdc++ libgcc &&
+              /bin/bash -c "curl -fsSL https://opencode.ai/install | bash" &&
+              mkdir -p /opt/opencode/bin &&
+              cp /root/.opencode/bin/opencode /opt/opencode/bin/opencode-real &&
+              mkdir -p /opt/opencode/libroot/usr/lib &&
+              cp /usr/lib/libstdc++.so.6 /usr/lib/libgcc_s.so.1 /opt/opencode/libroot/usr/lib &&
+              printf '#!/bin/sh\nexport XDG_CONFIG_HOME=/mnt/xdg-config\nexport XDG_DATA_HOME=/mnt/xdg-data\nexport XDG_STATE_HOME=/home/appuser/.local/share/vibe-kanban/opencode-state\nexport XDG_CACHE_HOME=/home/appuser/.local/share/vibe-kanban/opencode-cache\nexec /opt/opencode/bin/opencode-real "$@"\n' > /opt/opencode/bin/opencode &&
+              chmod +x /opt/opencode/bin/opencode;
+          volumeMounts:
+            - name: opencode-bin
+              mountPath: /opt/opencode/bin
+            - name: opencode-libs
+              mountPath: /opt/opencode/libroot
+      containers:
+        - name: vibe-kanban
+          image: vibe-kanban:local
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: HOST
+              value: 0.0.0.0
+            - name: PORT
+              value: "3000"
+            - name: VK_ALLOWED_ORIGINS
+              value: http://vibe-kanban.localtest.me
+            - name: PATH
+              value: "/opt/opencode/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            - name: LD_LIBRARY_PATH
+              value: /opt/opencode/libroot/usr/lib
+          ports:
+            - containerPort: 3000
+              name: http
+          volumeMounts:
+            - mountPath: /home/appuser/.local/share/vibe-kanban
+              name: data
+            - mountPath: /repos
+              name: repos
+            - mountPath: /opt/opencode/bin
+              name: opencode-bin
+            - mountPath: /opt/opencode/libroot
+              name: opencode-libs
+            - mountPath: /mnt/xdg-config/opencode
+              name: opencode-config
+              readOnly: true
+            - mountPath: /mnt/xdg-data/opencode
+              name: opencode-data
+              readOnly: false
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: vibe-kanban-data
+        - name: opencode-bin
+          emptyDir: {}
+        - name: opencode-libs
+          emptyDir: {}
+        - name: opencode-config
+          hostPath:
+            path: /var/lib/rancher/k3s/persist/opencode-config
+            type: Directory
+        - name: opencode-data
+          hostPath:
+            path: /var/lib/rancher/k3s/persist/opencode-data
+            type: Directory
+        - name: repos
+          hostPath:
+            path: /var/lib/rancher/k3s/persist/vk-repos
+            type: Directory

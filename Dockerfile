@@ -47,6 +47,9 @@ FROM alpine:latest AS runtime
 # Install runtime dependencies
 RUN apk add --no-cache \
     ca-certificates \
+    git \
+    nodejs \
+    npm \
     tini \
     libgcc \
     wget

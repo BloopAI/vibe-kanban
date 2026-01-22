@@ -7,6 +7,7 @@ import {
   VirtuosoMessageListProps,
 } from '@virtuoso.dev/message-list';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 
 import DisplayConversationEntry from '../NormalizedConversation/DisplayConversationEntry';
 import { useEntries } from '@/contexts/EntriesContext';
@@ -71,6 +72,34 @@ const ItemContent: VirtuosoMessageListProps<
   return null;
 };
 
+const fallbackItemContent = (
+  data: PatchTypeWithKey,
+  context?: MessageListContext
+) => {
+  const attempt = context?.attempt;
+  const task = context?.task;
+
+  if (data.type === 'STDOUT') {
+    return <p>{data.content}</p>;
+  }
+  if (data.type === 'STDERR') {
+    return <p>{data.content}</p>;
+  }
+  if (data.type === 'NORMALIZED_ENTRY' && attempt) {
+    return (
+      <DisplayConversationEntry
+        expansionKey={data.patchKey}
+        entry={data.content}
+        executionProcessId={data.executionProcessId}
+        taskAttempt={attempt}
+        task={task}
+      />
+    );
+  }
+
+  return null;
+};
+
 const computeItemKey: VirtuosoMessageListProps<
   PatchTypeWithKey,
   MessageListContext
@@ -97,6 +126,9 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
 
     if ((addType === 'running' || addType === 'plan') && !loading) {
       scrollModifier = AutoScrollToBottom;
+      setFollowOutput('smooth');
+    } else {
+      setFollowOutput(false);
     }
 
     setChannelData({ data: newEntries, scrollModifier });
@@ -109,29 +141,54 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
 
   useConversationHistory({ attempt, onEntriesUpdated });
 
-  const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
+  const messageListRef =
+    useRef<VirtuosoMessageListMethods<PatchTypeWithKey, MessageListContext> | null>(
+      null
+    );
+  const fallbackRef = useRef<VirtuosoHandle | null>(null);
   const messageListContext = useMemo(
     () => ({ attempt, task }),
     [attempt, task]
   );
+  const licenseKey = import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY;
+  const useLicensedList = Boolean(licenseKey);
+  const [followOutput, setFollowOutput] = useState<false | 'smooth'>(false);
+  const initialTopMostItemIndex = channelData?.data?.length
+    ? Math.max(channelData.data.length - 1, 0)
+    : 0;
 
   return (
     <ApprovalFormProvider>
-      <VirtuosoMessageListLicense
-        licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
-      >
-        <VirtuosoMessageList<PatchTypeWithKey, MessageListContext>
-          ref={messageListRef}
+      {useLicensedList ? (
+        <VirtuosoMessageListLicense licenseKey={licenseKey}>
+          <VirtuosoMessageList<PatchTypeWithKey, MessageListContext>
+            ref={messageListRef}
+            className="flex-1"
+            data={channelData}
+            initialLocation={INITIAL_TOP_ITEM}
+            context={messageListContext}
+            computeItemKey={computeItemKey}
+            ItemContent={ItemContent}
+            Header={() => <div className="h-2"></div>}
+            Footer={() => <div className="h-2"></div>}
+          />
+        </VirtuosoMessageListLicense>
+      ) : (
+        <Virtuoso
+          ref={fallbackRef}
           className="flex-1"
-          data={channelData}
-          initialLocation={INITIAL_TOP_ITEM}
-          context={messageListContext}
-          computeItemKey={computeItemKey}
-          ItemContent={ItemContent}
-          Header={() => <div className="h-2"></div>}
-          Footer={() => <div className="h-2"></div>}
+          data={channelData?.data ?? []}
+          followOutput={followOutput}
+          initialTopMostItemIndex={initialTopMostItemIndex}
+          itemContent={(_index: number, data: PatchTypeWithKey) =>
+            fallbackItemContent(data, messageListContext)
+          }
+          components={{
+            Header: () => <div className="h-2" />,
+            Footer: () => <div className="h-2" />,
+          }}
         />
-      </VirtuosoMessageListLicense>
+      )}
       {loading && (
         <div className="float-left top-0 left-0 w-full h-full bg-primary flex flex-col gap-2 justify-center items-center">
           <Loader2 className="h-8 w-8 animate-spin" />

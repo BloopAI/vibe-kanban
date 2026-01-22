@@ -8,6 +8,7 @@ import {
   VirtuosoMessageListMethods,
   VirtuosoMessageListProps,
 } from '@virtuoso.dev/message-list';
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { WarningCircleIcon } from '@phosphor-icons/react/dist/ssr';
 import RawLogText from '@/components/common/RawLogText';
 import type { PatchType } from 'shared/types';
@@ -71,6 +72,26 @@ const ItemContent: VirtuosoMessageListProps<
   );
 };
 
+const fallbackItemContent = (
+  data: LogEntryWithKey,
+  context: SearchContext
+) => {
+  const isMatch = context.matchIndices.includes(data.originalIndex);
+  const isCurrentMatch =
+    context.matchIndices[context.currentMatchIndex] === data.originalIndex;
+
+  return (
+    <RawLogText
+      content={data.content}
+      channel={data.type === 'STDERR' ? 'stderr' : 'stdout'}
+      className="text-sm px-4 py-1"
+      linkifyUrls
+      searchQuery={isMatch ? context.searchQuery : undefined}
+      isCurrentMatch={isCurrentMatch}
+    />
+  );
+};
+
 export function VirtualizedProcessLogs({
   logs,
   error,
@@ -81,12 +102,19 @@ export function VirtualizedProcessLogs({
   const { t } = useTranslation('tasks');
   const [channelData, setChannelData] =
     useState<DataWithScrollModifier<LogEntryWithKey> | null>(null);
-  const messageListRef = useRef<VirtuosoMessageListMethods<
-    LogEntryWithKey,
-    SearchContext
-  > | null>(null);
+  const messageListRef =
+    useRef<VirtuosoMessageListMethods<LogEntryWithKey, SearchContext> | null>(
+      null
+    );
+  const fallbackRef = useRef<VirtuosoHandle | null>(null);
   const prevLogsLengthRef = useRef(0);
   const prevCurrentMatchRef = useRef<number | undefined>(undefined);
+  const licenseKey = import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY;
+  const useLicensedList = Boolean(licenseKey);
+  const [followOutput, setFollowOutput] = useState<false | 'smooth'>(false);
+  const initialTopMostItemIndex = channelData?.data?.length
+    ? Math.max(channelData.data.length - 1, 0)
+    : 0;
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -102,12 +130,15 @@ export function VirtualizedProcessLogs({
       if (prevLogsLengthRef.current === 0 && logs.length > 0) {
         // Initial load - scroll to bottom
         scrollModifier = InitialDataScrollModifier;
+        setFollowOutput('smooth');
       } else if (logs.length > prevLogsLengthRef.current) {
         // New logs added - auto-scroll to bottom
         scrollModifier = AutoScrollToBottom;
+        setFollowOutput('smooth');
       } else {
         // No new logs - keep current position
         scrollModifier = AutoScrollToBottom;
+        setFollowOutput(false);
       }
 
       prevLogsLengthRef.current = logs.length;
@@ -125,14 +156,22 @@ export function VirtualizedProcessLogs({
       currentMatchIndex !== prevCurrentMatchRef.current
     ) {
       const logIndex = matchIndices[currentMatchIndex];
-      messageListRef.current?.scrollToItem({
-        index: logIndex,
-        align: 'center',
-        behavior: 'smooth',
-      });
+      if (useLicensedList) {
+        messageListRef.current?.scrollToItem({
+          index: logIndex,
+          align: 'center',
+          behavior: 'smooth',
+        });
+      } else {
+        fallbackRef.current?.scrollToIndex({
+          index: logIndex,
+          align: 'center',
+          behavior: 'smooth',
+        });
+      }
       prevCurrentMatchRef.current = currentMatchIndex;
     }
-  }, [currentMatchIndex, matchIndices]);
+  }, [currentMatchIndex, matchIndices, useLicensedList]);
 
   if (logs.length === 0 && !error) {
     return (
@@ -163,19 +202,30 @@ export function VirtualizedProcessLogs({
 
   return (
     <div className="h-full">
-      <VirtuosoMessageListLicense
-        licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
-      >
-        <VirtuosoMessageList<LogEntryWithKey, SearchContext>
-          ref={messageListRef}
+      {useLicensedList ? (
+        <VirtuosoMessageListLicense licenseKey={licenseKey}>
+          <VirtuosoMessageList<LogEntryWithKey, SearchContext>
+            ref={messageListRef}
+            className="h-full"
+            data={channelData}
+            context={context}
+            initialLocation={INITIAL_TOP_ITEM}
+            computeItemKey={computeItemKey}
+            ItemContent={ItemContent}
+          />
+        </VirtuosoMessageListLicense>
+      ) : (
+        <Virtuoso
+          ref={fallbackRef}
           className="h-full"
-          data={channelData}
-          context={context}
-          initialLocation={INITIAL_TOP_ITEM}
-          computeItemKey={computeItemKey}
-          ItemContent={ItemContent}
+          data={channelData?.data ?? []}
+          followOutput={followOutput}
+          initialTopMostItemIndex={initialTopMostItemIndex}
+          itemContent={(_index: number, data: LogEntryWithKey) =>
+            fallbackItemContent(data, context)
+          }
         />
-      </VirtuosoMessageListLicense>
+      )}
     </div>
   );
 }
