@@ -376,6 +376,9 @@ export const Actions = {
           getWorkspace(ctx.queryClient, workspaceId),
           attemptsApi.getRepos(workspaceId),
         ]);
+        console.log('[SpinOffWorkspace] workspace:', workspace);
+        console.log('[SpinOffWorkspace] workspace.branch:', workspace.branch);
+        console.log('[SpinOffWorkspace] repos:', repos);
         ctx.navigate('/workspaces/create', {
           state: {
             spinOffRepos: repos.map((r) => ({
