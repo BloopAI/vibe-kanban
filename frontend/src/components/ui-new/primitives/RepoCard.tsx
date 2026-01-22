@@ -93,7 +93,8 @@ export function RepoCard({
     () =>
       repoActionOptions.filter((opt) => {
         if (opt.value === 'pull-request' && hasPrOpen) return false;
-        if (opt.value === 'merge' && (hasPrOpen || isTargetRemote)) return false;
+        if (opt.value === 'merge' && (hasPrOpen || isTargetRemote))
+          return false;
         return true;
       }),
     [hasPrOpen, isTargetRemote]
