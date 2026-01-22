@@ -32,7 +32,10 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    middleware::{get_user_id, load_session_middleware, try_get_authenticated_user},
+    middleware::{
+        get_user_id, load_session_middleware, try_get_authenticated_user,
+        user_has_valid_claude_token,
+    },
     routes::task_attempts::util::restore_worktrees_to_process,
 };
 
@@ -113,8 +116,15 @@ pub struct CreateFollowUpAttempt {
 pub async fn follow_up(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,
+    headers: HeaderMap,
     Json(payload): Json<CreateFollowUpAttempt>,
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
+    // Validate user has configured their Claude OAuth token
+    let authenticated_user = try_get_authenticated_user(&deployment, &headers).await;
+    if !user_has_valid_claude_token(&deployment, &authenticated_user).await {
+        return Err(ApiError::ClaudeTokenRequired);
+    }
+
     let pool = &deployment.db().pool;
 
     // Load workspace from session

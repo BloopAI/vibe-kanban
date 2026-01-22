@@ -58,7 +58,10 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    middleware::{get_user_id, load_workspace_middleware, try_get_authenticated_user},
+    middleware::{
+        get_user_id, load_workspace_middleware, try_get_authenticated_user,
+        user_has_valid_claude_token,
+    },
     routes::task_attempts::gh_cli_setup::GhCliSetupError,
 };
 
@@ -184,14 +187,20 @@ pub async fn create_task_attempt(
         ));
     }
 
+    // Get authenticated user for workspace ownership
+    let authenticated_user = try_get_authenticated_user(&deployment, &headers).await;
+
+    // Validate user has configured their Claude OAuth token
+    if !user_has_valid_claude_token(&deployment, &authenticated_user).await {
+        return Err(ApiError::ClaudeTokenRequired);
+    }
+
+    let owner_user_id = get_user_id(&authenticated_user);
+
     let pool = &deployment.db().pool;
     let task = Task::find_by_id(&deployment.db().pool, payload.task_id)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
-
-    // Get authenticated user for workspace ownership
-    let authenticated_user = try_get_authenticated_user(&deployment, &headers).await;
-    let owner_user_id = get_user_id(&authenticated_user);
 
     // Compute agent_working_dir based on repo count:
     // - Single repo: use repo name as working dir (agent runs in repo directory)

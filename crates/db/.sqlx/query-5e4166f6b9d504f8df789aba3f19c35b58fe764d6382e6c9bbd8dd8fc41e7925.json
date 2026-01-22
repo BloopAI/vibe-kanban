@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM claude_oauth_tokens WHERE user_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "5e4166f6b9d504f8df789aba3f19c35b58fe764d6382e6c9bbd8dd8fc41e7925"
+}

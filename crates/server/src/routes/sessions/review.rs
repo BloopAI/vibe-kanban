@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use axum::{Extension, Json, extract::State, response::Json as ResponseJson};
+use axum::{Extension, Json, extract::State, http::HeaderMap, response::Json as ResponseJson};
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     session::Session,
@@ -21,7 +21,11 @@ use services::services::container::ContainerService;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 
-use crate::{DeploymentImpl, error::ApiError};
+use crate::{
+    DeploymentImpl,
+    error::ApiError,
+    middleware::{try_get_authenticated_user, user_has_valid_claude_token},
+};
 
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct StartReviewRequest {
@@ -42,8 +46,15 @@ pub enum ReviewError {
 pub async fn start_review(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,
+    headers: HeaderMap,
     Json(payload): Json<StartReviewRequest>,
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess, ReviewError>>, ApiError> {
+    // Validate user has configured their Claude OAuth token
+    let authenticated_user = try_get_authenticated_user(&deployment, &headers).await;
+    if !user_has_valid_claude_token(&deployment, &authenticated_user).await {
+        return Err(ApiError::ClaudeTokenRequired);
+    }
+
     let pool = &deployment.db().pool;
 
     let workspace = Workspace::find_by_id(pool, session.workspace_id)

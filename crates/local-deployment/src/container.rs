@@ -42,6 +42,7 @@ use serde_json::json;
 use services::services::{
     analytics::AnalyticsContext,
     approvals::{Approvals, executor_approvals::ExecutorApprovalBridge},
+    claude_token_rotation::ClaudeTokenRotationService,
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
@@ -75,6 +76,7 @@ pub struct LocalContainerService {
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
     notification_service: NotificationService,
+    claude_token_rotation: ClaudeTokenRotationService,
 }
 
 impl LocalContainerService {
@@ -88,6 +90,8 @@ impl LocalContainerService {
         analytics: Option<AnalyticsContext>,
         approvals: Approvals,
         queued_message_service: QueuedMessageService,
+        publisher: Result<SharePublisher, RemoteClientNotConfigured>,
+        claude_token_rotation: ClaudeTokenRotationService,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
         let interrupt_senders = Arc::new(RwLock::new(HashMap::new()));
@@ -105,6 +109,7 @@ impl LocalContainerService {
             approvals,
             queued_message_service,
             notification_service,
+            claude_token_rotation,
         };
 
         container.spawn_workspace_cleanup();
@@ -1123,6 +1128,32 @@ impl ContainerService for LocalContainerService {
         env.insert("VK_WORKSPACE_ID", workspace.id.to_string());
         env.insert("VK_WORKSPACE_BRANCH", &workspace.branch);
 
+        // Inject Claude OAuth token for rotation if this is a Claude Code executor
+        if matches!(
+            executor_action.base_executor(),
+            Some(BaseCodingAgent::ClaudeCode)
+        ) {
+            match self.claude_token_rotation.get_next_token().await {
+                Ok(Some(token)) => {
+                    env.insert("CLAUDE_CODE_OAUTH_TOKEN", token);
+                    tracing::info!("Injected rotated Claude OAuth token for execution");
+                }
+                Ok(None) => {
+                    tracing::warn!(
+                        "No Claude OAuth tokens available for rotation - execution may fail"
+                    );
+                }
+                Err(e) => {
+                    tracing::error!("Failed to get Claude OAuth token for rotation: {}", e);
+                }
+            }
+
+            // Ensure ~/.claude.json has hasCompletedOnboarding set
+            if let Err(e) = ensure_claude_onboarding_complete().await {
+                tracing::warn!("Failed to set Claude onboarding flag: {}", e);
+            }
+        }
+
         // Create the child and stream, add to execution tracker with timeout
         let mut spawned = tokio::time::timeout(
             Duration::from_secs(30),
@@ -1412,4 +1443,35 @@ fn success_exit_status() -> std::process::ExitStatus {
         use std::os::windows::process::ExitStatusExt;
         ExitStatusExt::from_raw(0)
     }
+}
+
+/// Ensure ~/.claude.json has hasCompletedOnboarding set to true.
+/// This prevents Claude Code from prompting for onboarding when using OAuth tokens.
+async fn ensure_claude_onboarding_complete() -> io::Result<()> {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/root".to_string());
+    let claude_json_path = PathBuf::from(home).join(".claude.json");
+
+    let config = if claude_json_path.exists() {
+        // Read existing config and ensure hasCompletedOnboarding is true
+        let content = tokio::fs::read_to_string(&claude_json_path).await?;
+        let mut existing: serde_json::Value =
+            serde_json::from_str(&content).unwrap_or_else(|_| json!({}));
+        existing["hasCompletedOnboarding"] = json!(true);
+        existing
+    } else {
+        // Create new config with hasCompletedOnboarding
+        json!({ "hasCompletedOnboarding": true })
+    };
+
+    tokio::fs::write(
+        &claude_json_path,
+        serde_json::to_string_pretty(&config).map_err(|e| io::Error::other(e.to_string()))?,
+    )
+    .await?;
+
+    tracing::debug!(
+        "Ensured Claude onboarding complete at {:?}",
+        claude_json_path
+    );
+    Ok(())
 }

@@ -1473,3 +1473,55 @@ export const localAuthApi = {
     return handleApiResponse<LocalAuthUser[]>(response);
   },
 };
+
+// ==================== CLAUDE OAUTH TOKENS API ====================
+
+import type {
+  ClaudeOAuthTokenStatus,
+  UserTokenStatus,
+  UpsertClaudeTokenRequest,
+} from 'shared/types';
+
+/**
+ * API for managing Claude Code OAuth tokens for subscription rotation
+ */
+export const claudeTokensApi = {
+  /**
+   * Get current user's token status
+   */
+  getMyStatus: async (): Promise<ClaudeOAuthTokenStatus> => {
+    const response = await makeRequest('/api/claude-tokens/me');
+    return handleApiResponse<ClaudeOAuthTokenStatus>(response);
+  },
+
+  /**
+   * Add or update token for current user
+   */
+  upsertToken: async (
+    data: UpsertClaudeTokenRequest
+  ): Promise<ClaudeOAuthTokenStatus> => {
+    const response = await makeRequest('/api/claude-tokens', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ClaudeOAuthTokenStatus>(response);
+  },
+
+  /**
+   * Delete current user's token
+   */
+  deleteMyToken: async (): Promise<void> => {
+    const response = await makeRequest('/api/claude-tokens/me', {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  /**
+   * Get all users' token statuses (admin view / team dashboard)
+   */
+  getAllStatuses: async (): Promise<UserTokenStatus[]> => {
+    const response = await makeRequest('/api/claude-tokens/all');
+    return handleApiResponse<UserTokenStatus[]>(response);
+  },
+};

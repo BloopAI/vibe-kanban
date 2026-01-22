@@ -1,4 +1,7 @@
 {
+  "note": "Note",
+  "saving": "Saving...",
+  "continue": "Continue",
   "buttons": {
     "save": "Save",
     "cancel": "Cancel",

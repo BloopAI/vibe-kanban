@@ -1,4 +1,7 @@
 {
+  "note": "注意",
+  "saving": "保存中...",
+  "continue": "继续",
   "buttons": {
     "save": "保存",
     "cancel": "取消",

@@ -8,6 +8,7 @@ use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     approvals::Approvals,
     auth::AuthContext,
+    claude_token_rotation::ClaudeTokenRotationService,
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
     events::EventService,
@@ -20,6 +21,7 @@ use services::services::{
     queued_message::QueuedMessageService,
     remote_client::{RemoteClient, RemoteClientError},
     repo::RepoService,
+    share::{ShareConfig, SharePublisher},
     worktree_manager::WorktreeManager,
 };
 use tokio::sync::RwLock;
@@ -56,6 +58,9 @@ pub struct LocalDeployment {
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
     pty: PtyService,
+    share_publisher: Result<SharePublisher, RemoteClientNotConfigured>,
+    share_config: Option<ShareConfig>,
+    claude_token_rotation: ClaudeTokenRotationService,
 }
 
 #[derive(Debug, Clone)]
@@ -133,6 +138,8 @@ impl Deployment for LocalDeployment {
         let approvals = Approvals::new(msg_stores.clone());
         let queued_message_service = QueuedMessageService::new();
 
+        let share_config = ShareConfig::from_env();
+
         let oauth_credentials = Arc::new(OAuthCredentials::new(credentials_path()));
         if let Err(e) = oauth_credentials.load().await {
             tracing::warn!(?e, "failed to load OAuth credentials");
@@ -162,7 +169,15 @@ impl Deployment for LocalDeployment {
             }
         };
 
+        let share_publisher = remote_client
+            .as_ref()
+            .map(|client| SharePublisher::new(db.clone(), client.clone()))
+            .map_err(|e| *e);
+
         let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
+
+        // Initialize Claude token rotation service
+        let claude_token_rotation = ClaudeTokenRotationService::new(Arc::new(db.clone()));
 
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully
@@ -179,6 +194,8 @@ impl Deployment for LocalDeployment {
             analytics_ctx,
             approvals.clone(),
             queued_message_service.clone(),
+            share_publisher.clone(),
+            claude_token_rotation.clone(),
         )
         .await;
 
@@ -207,6 +224,9 @@ impl Deployment for LocalDeployment {
             auth_context,
             oauth_handoffs,
             pty,
+            share_publisher,
+            share_config,
+            claude_token_rotation,
         };
 
         Ok(deployment)
@@ -271,6 +291,14 @@ impl Deployment for LocalDeployment {
     fn auth_context(&self) -> &AuthContext {
         &self.auth_context
     }
+
+    fn share_publisher(&self) -> Result<SharePublisher, RemoteClientNotConfigured> {
+        self.share_publisher.clone()
+    }
+
+    fn claude_token_rotation(&self) -> &ClaudeTokenRotationService {
+        &self.claude_token_rotation
+    }
 }
 
 impl LocalDeployment {
@@ -333,5 +361,9 @@ impl LocalDeployment {
 
     pub fn pty(&self) -> &PtyService {
         &self.pty
+    }
+
+    pub fn share_config(&self) -> Option<&ShareConfig> {
+        self.share_config.as_ref()
     }
 }

@@ -23,7 +23,9 @@
         "mcp": "MCP 서버",
         "mcpDesc": "Model Context Protocol 서버",
         "organizations": "Organization Settings",
-        "organizationsDesc": "Manage organization members and permissions"
+        "organizationsDesc": "Manage organization members and permissions",
+        "claude-token": "Claude 토큰",
+        "claude-tokenDesc": "Claude Code OAuth 토큰 관리"
       }
     },
     "general": {
@@ -454,6 +456,68 @@
         "unsavedChanges": "저장되지 않은 변경사항이 있습니다",
         "discard": "취소",
         "confirmSwitch": "저장되지 않은 변경사항이 있습니다. 정말 저장소를 전환하시겠습니까? 변경사항이 손실됩니다."
+      }
+    },
+    "claudeToken": {
+      "title": "Claude Code 토큰",
+      "description": "공정한 사용 로테이션을 위해 Claude Code Max 구독을 공유 토큰 풀에 기여하세요.",
+      "dialog": {
+        "title": "Claude Code 토큰 필요",
+        "description": "코딩 작업을 실행하려면 Claude Code OAuth 토큰을 구성해야 합니다. 이를 통해 Vibe Kanban이 귀하의 Claude Code 구독을 사용할 수 있습니다."
+      },
+      "yourToken": {
+        "title": "내 토큰",
+        "configured": "토큰 구성됨",
+        "configuredDescription": "토큰이 활성화되어 풀에 기여하고 있습니다.",
+        "missing": "토큰 미구성",
+        "missingDescription": "Claude Code OAuth 토큰을 추가하여 풀에 기여하세요.",
+        "expires": "만료",
+        "lastUsed": "마지막 사용",
+        "never": "없음"
+      },
+      "form": {
+        "label": "OAuth 토큰",
+        "placeholder": "OAuth 토큰을 여기에 붙여넣으세요...",
+        "helper": "터미널에서 'claude setup-token'을 실행하여 토큰을 생성한 후 여기에 붙여넣으세요.",
+        "saveButton": "토큰 저장",
+        "saving": "저장 중...",
+        "deleteButton": "토큰 삭제",
+        "deleting": "삭제 중..."
+      },
+      "instructions": {
+        "title": "토큰 얻는 방법",
+        "step1": "컴퓨터에서 터미널 열기",
+        "step2": "명령 실행: claude setup-token",
+        "step2Run": "실행:",
+        "step3": "프롬프트에 따라 Claude Max 계정으로 인증",
+        "step4": "생성된 토큰을 복사하여 위에 붙여넣기",
+        "note": "이 토큰을 통해 Vibe Kanban이 귀하의 Claude Code 구독을 사용할 수 있습니다. 토큰은 모든 기여자 간에 공정하게 로테이션됩니다."
+      },
+      "teamPool": {
+        "title": "팀 토큰 풀",
+        "description": "공정한 로테이션을 위해 팀원이 기여한 모든 토큰.",
+        "noTokens": "풀에 아직 토큰이 없습니다. 첫 번째 기여자가 되세요!",
+        "columns": {
+          "user": "사용자",
+          "status": "상태",
+          "lastUsed": "마지막 사용"
+        },
+        "status": {
+          "active": "활성",
+          "expired": "만료됨",
+          "missing": "없음"
+        }
+      },
+      "errors": {
+        "loadFailed": "토큰 상태를 불러오지 못했습니다",
+        "saveFailed": "토큰 저장에 실패했습니다",
+        "deleteFailed": "토큰 삭제에 실패했습니다",
+        "tokenRequired": "OAuth 토큰을 입력해주세요",
+        "tokenTooShort": "토큰이 너무 짧습니다. 전체 토큰을 붙여넣어 주세요."
+      },
+      "success": {
+        "saved": "토큰이 성공적으로 저장되었습니다",
+        "deleted": "토큰이 성공적으로 삭제되었습니다"
       }
     }
   },

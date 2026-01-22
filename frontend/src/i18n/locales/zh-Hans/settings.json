@@ -23,7 +23,9 @@
         "mcp": "MCP 服务器",
         "mcpDesc": "模型上下文协议服务器",
         "organizations": "组织设置",
-        "organizationsDesc": "管理组织成员和权限"
+        "organizationsDesc": "管理组织成员和权限",
+        "claude-token": "Claude 令牌",
+        "claude-tokenDesc": "管理您的 Claude Code OAuth 令牌"
       }
     },
     "general": {
@@ -454,6 +456,68 @@
         "unsavedChanges": "您有未保存的更改",
         "discard": "放弃",
         "confirmSwitch": "您有未保存的更改。您确定要切换仓库吗？您的更改将丢失。"
+      }
+    },
+    "claudeToken": {
+      "title": "Claude Code 令牌",
+      "description": "将您的 Claude Code Max 订阅贡献到共享令牌池，实现公平使用轮换。",
+      "dialog": {
+        "title": "需要 Claude Code 令牌",
+        "description": "要运行编码任务，您需要配置 Claude Code OAuth 令牌。这允许 Vibe Kanban 使用您的 Claude Code 订阅。"
+      },
+      "yourToken": {
+        "title": "您的令牌",
+        "configured": "令牌已配置",
+        "configuredDescription": "您的令牌处于活动状态并正在为池做出贡献。",
+        "missing": "未配置令牌",
+        "missingDescription": "添加您的 Claude Code OAuth 令牌以贡献到池中。",
+        "expires": "过期时间",
+        "lastUsed": "最后使用",
+        "never": "从未"
+      },
+      "form": {
+        "label": "OAuth 令牌",
+        "placeholder": "在此粘贴您的 OAuth 令牌...",
+        "helper": "在终端中运行 'claude setup-token' 生成令牌，然后粘贴到这里。",
+        "saveButton": "保存令牌",
+        "saving": "保存中...",
+        "deleteButton": "删除令牌",
+        "deleting": "删除中..."
+      },
+      "instructions": {
+        "title": "如何获取令牌",
+        "step1": "在您的机器上打开终端",
+        "step2": "运行命令：claude setup-token",
+        "step2Run": "运行：",
+        "step3": "按照提示使用您的 Claude Max 账户进行身份验证",
+        "step4": "复制生成的令牌并粘贴到上方",
+        "note": "此令牌允许 Vibe Kanban 使用您的 Claude Code 订阅。令牌在所有贡献者之间公平轮换。"
+      },
+      "teamPool": {
+        "title": "团队令牌池",
+        "description": "团队成员贡献的所有令牌，用于公平轮换。",
+        "noTokens": "池中还没有令牌。成为第一个贡献者！",
+        "columns": {
+          "user": "用户",
+          "status": "状态",
+          "lastUsed": "最后使用"
+        },
+        "status": {
+          "active": "活动",
+          "expired": "已过期",
+          "missing": "缺失"
+        }
+      },
+      "errors": {
+        "loadFailed": "加载令牌状态失败",
+        "saveFailed": "保存令牌失败",
+        "deleteFailed": "删除令牌失败",
+        "tokenRequired": "请输入您的 OAuth 令牌",
+        "tokenTooShort": "令牌似乎太短了。请粘贴完整的令牌。"
+      },
+      "success": {
+        "saved": "令牌保存成功",
+        "deleted": "令牌删除成功"
       }
     }
   },

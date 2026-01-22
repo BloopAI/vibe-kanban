@@ -23,7 +23,9 @@
         "mcp": "Servidores MCP",
         "mcpDesc": "Servidores de Protocolo de Contexto de Modelo (MCP)",
         "organizations": "Organization Settings",
-        "organizationsDesc": "Manage organization members and permissions"
+        "organizationsDesc": "Manage organization members and permissions",
+        "claude-token": "Token de Claude",
+        "claude-tokenDesc": "Administrar tu token OAuth de Claude Code"
       }
     },
     "general": {
@@ -454,6 +456,68 @@
         "unsavedChanges": "Tienes cambios sin guardar",
         "discard": "Descartar",
         "confirmSwitch": "Tienes cambios sin guardar. ¿Estás seguro de que quieres cambiar de repositorio? Tus cambios se perderán."
+      }
+    },
+    "claudeToken": {
+      "title": "Token de Claude Code",
+      "description": "Contribuye tu suscripción de Claude Code Max al grupo de tokens compartido para una rotación de uso justa.",
+      "dialog": {
+        "title": "Se Requiere Token de Claude Code",
+        "description": "Para ejecutar tareas de codificación, necesitas configurar tu token OAuth de Claude Code. Esto permite que Vibe Kanban use tu suscripción de Claude Code."
+      },
+      "yourToken": {
+        "title": "Tu Token",
+        "configured": "Token configurado",
+        "configuredDescription": "Tu token está activo y contribuyendo al grupo.",
+        "missing": "Token no configurado",
+        "missingDescription": "Agrega tu token OAuth de Claude Code para contribuir al grupo.",
+        "expires": "Expira",
+        "lastUsed": "Último uso",
+        "never": "Nunca"
+      },
+      "form": {
+        "label": "Token OAuth",
+        "placeholder": "Pega tu token OAuth aquí...",
+        "helper": "Ejecuta 'claude setup-token' en tu terminal para generar un token, luego pégalo aquí.",
+        "saveButton": "Guardar Token",
+        "saving": "Guardando...",
+        "deleteButton": "Eliminar Token",
+        "deleting": "Eliminando..."
+      },
+      "instructions": {
+        "title": "Cómo obtener tu token",
+        "step1": "Abre una terminal en tu máquina",
+        "step2": "Ejecuta el comando: claude setup-token",
+        "step2Run": "Ejecuta:",
+        "step3": "Sigue las instrucciones para autenticarte con tu cuenta de Claude Max",
+        "step4": "Copia el token generado y pégalo arriba",
+        "note": "Este token permite que Vibe Kanban use tu suscripción de Claude Code. Los tokens se rotan de manera justa entre todos los contribuyentes."
+      },
+      "teamPool": {
+        "title": "Grupo de Tokens del Equipo",
+        "description": "Todos los tokens contribuidos por los miembros del equipo para rotación justa.",
+        "noTokens": "Aún no hay tokens en el grupo. ¡Sé el primero en contribuir!",
+        "columns": {
+          "user": "Usuario",
+          "status": "Estado",
+          "lastUsed": "Último Uso"
+        },
+        "status": {
+          "active": "Activo",
+          "expired": "Expirado",
+          "missing": "Faltante"
+        }
+      },
+      "errors": {
+        "loadFailed": "Error al cargar el estado del token",
+        "saveFailed": "Error al guardar el token",
+        "deleteFailed": "Error al eliminar el token",
+        "tokenRequired": "Por favor ingresa tu token OAuth",
+        "tokenTooShort": "El token parece ser demasiado corto. Por favor pega el token completo."
+      },
+      "success": {
+        "saved": "Token guardado exitosamente",
+        "deleted": "Token eliminado exitosamente"
       }
     }
   },

@@ -1,4 +1,7 @@
 {
+  "note": "Nota",
+  "saving": "Guardando...",
+  "continue": "Continuar",
   "folderPicker": {
     "legend": "Haz clic en los nombres de carpetas para navegar • Usa los botones de acción para seleccionar",
     "manualPathLabel": "Ingresar ruta manualmente:",
