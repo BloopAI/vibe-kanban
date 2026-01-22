@@ -823,25 +823,17 @@ impl LocalContainerService {
         let executor_profile_id = queued_data.executor_profile_id.clone();
 
         // Validate executor matches session if session has prior executions
-        if let Some(existing_profile) =
+        let expected_executor: Option<String> =
             ExecutionProcess::latest_executor_profile_for_session(&self.db.pool, ctx.session.id)
                 .await?
-        {
-            if existing_profile.executor != executor_profile_id.executor {
-                return Err(SessionError::ExecutorMismatch {
-                    expected: existing_profile.executor.to_string(),
-                    actual: executor_profile_id.executor.to_string(),
-                }
-                .into());
+                .map(|profile| profile.executor.to_string())
+                .or_else(|| ctx.session.executor.clone());
+
+        if let Some(expected) = expected_executor {
+            let actual = executor_profile_id.executor.to_string();
+            if expected != actual {
+                return Err(SessionError::ExecutorMismatch { expected, actual }.into());
             }
-        } else if let Some(session_executor) = ctx.session.executor.as_ref()
-            && session_executor != &executor_profile_id.executor.to_string()
-        {
-            return Err(SessionError::ExecutorMismatch {
-                expected: session_executor.to_string(),
-                actual: executor_profile_id.executor.to_string(),
-            }
-            .into());
         }
 
         if ctx.session.executor.is_none() {

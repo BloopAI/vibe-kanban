@@ -118,22 +118,20 @@ pub async fn follow_up(
     let executor_profile_id = payload.executor_profile_id;
 
     // Validate executor matches session if session has prior executions
-    if let Some(existing_profile) =
-        ExecutionProcess::latest_executor_profile_for_session(pool, session.id).await?
-    {
-        if existing_profile.executor != executor_profile_id.executor {
+    let expected_executor: Option<String> =
+        ExecutionProcess::latest_executor_profile_for_session(pool, session.id)
+            .await?
+            .map(|profile| profile.executor.to_string())
+            .or_else(|| session.executor.clone());
+
+    if let Some(expected) = expected_executor {
+        let actual = executor_profile_id.executor.to_string();
+        if expected != actual {
             return Err(ApiError::Session(SessionError::ExecutorMismatch {
-                expected: existing_profile.executor.to_string(),
-                actual: executor_profile_id.executor.to_string(),
+                expected,
+                actual,
             }));
         }
-    } else if let Some(session_executor) = session.executor.as_ref()
-        && session_executor != &executor_profile_id.executor.to_string()
-    {
-        return Err(ApiError::Session(SessionError::ExecutorMismatch {
-            expected: session_executor.to_string(),
-            actual: executor_profile_id.executor.to_string(),
-        }));
     }
 
     if session.executor.is_none() {
