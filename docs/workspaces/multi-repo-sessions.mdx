@@ -1,0 +1,140 @@
+---
+title: "Multi-Repo & Sessions"
+description: "Work with multiple repositories and agent sessions in a single workspace"
+---
+
+<Frame>
+<img src="/images/workspaces-multi-repo.png" alt="Workspace with multiple repositories showing the repository panel with two repos" />
+</Frame>
+
+Workspaces support working across multiple repositories and running multiple agent sessions simultaneously.
+
+## Multi-Repository Support
+
+Add multiple repositories to a single workspace to work on cross-repo tasks.
+
+### Adding Repositories
+
+<Frame>
+<img src="/images/workspaces-add-repo.png" alt="Repository selection showing selected repo with branch dropdown and list of available repositories to add" />
+</Frame>
+
+When creating a new workspace, add multiple repositories from the create view:
+
+1. Click the **+** button in the workspace sidebar
+2. Select your **project** from the dropdown
+3. Click repositories from the **Add Repositories** list to include them
+4. Set the **target branch** for each selected repository
+5. Each repo maintains independent git state
+
+### Working Across Repos
+
+With multiple repositories in a workspace:
+
+- **Reference code** from one repo while implementing changes in another
+- **Implement coordinated changes** across multiple codebases
+- **Manage git operations** independently per repository
+- **View changes** from all repos in a unified diff view
+
+### Repository Panel
+
+Each repository in the workspace shows:
+
+| Information | Description |
+|-------------|-------------|
+| Repository name | With status indicator |
+| Current branch | The working branch |
+| Target branch | Branch to merge into |
+| Changes count | Uncommitted modifications |
+| Commits ahead/behind | Relative to target branch |
+
+### Per-Repository Actions
+
+Access repository-specific actions via the [command bar](/workspaces/command-bar):
+
+- **Open Repo in IDE** - Open just this repository
+- **Copy Repo Path** - Copy the repository path
+- **Repository Settings** - Configure repo options
+- **Git Operations** - PR, merge, rebase per repo
+
+<Tip>
+Use the command bar's Repo Actions page to quickly switch between repositories when performing git operations.
+</Tip>
+
+## Multiple Sessions
+
+<Frame>
+<img src="/images/workspaces-sessions.png" alt="Session dropdown in chat box toolbar showing multiple sessions" />
+</Frame>
+
+Create multiple agent conversation sessions within a single workspace.
+
+### Why Use Multiple Sessions?
+
+- **Token limits**: Start fresh sessions when conversations get long
+- **Parallel work**: Run different tasks or agents simultaneously
+- **Code review**: Start a dedicated review session
+- **Experimentation**: Try different approaches in separate sessions
+
+### Creating a New Session
+
+1. Click the session dropdown in the chat box toolbar
+2. Select **New Session** from the dropdown
+3. Select the agent to use for the new session
+4. Start your conversation
+
+### Switching Between Sessions
+
+The session dropdown in the chat box toolbar shows all sessions:
+
+- **Latest** - the most recent session
+- Older sessions show their creation timestamp
+- Click any session to switch to it
+- Each session maintains its own conversation history
+
+### Session Indicators
+
+| Indicator | Meaning |
+|-----------|---------|
+| **Running** | Agent is actively processing |
+| **Idle** | Session waiting for input |
+| **Agent icon** | Shows which agent is assigned |
+
+### Running Multiple Agents
+
+Different sessions can use different coding agents:
+
+1. Create a new session
+2. Select a different agent (Claude Code, Gemini CLI, etc.)
+3. Both sessions can run in parallel
+4. Switch between them to monitor progress
+
+<Info>
+Each session operates independently. Changes made by one agent are visible to other sessions through the shared workspace files.
+</Info>
+
+## Best Practices
+
+### Multi-Repo Workflows
+
+- **Start with a plan**: Describe the cross-repo changes needed upfront
+- **Coordinate commits**: Ensure related changes are committed together
+- **Test integration**: Use the preview to verify repos work together
+- **Create linked PRs**: Reference related PRs across repositories
+
+### Session Management
+
+- **Name sessions descriptively**: Use the rename feature to identify session purposes
+- **Archive completed sessions**: Keep the session list manageable
+- **Use review sessions**: Dedicate sessions for code review feedback
+- **Limit concurrent sessions**: Too many active sessions can be confusing
+
+<Warning>
+Be mindful of file conflicts when multiple sessions modify the same files. Review changes carefully before committing.
+</Warning>
+
+## Related Documentation
+
+- [Interface Guide](/workspaces/interface) - Understanding the workspace layout
+- [Git Operations](/workspaces/git-operations) - Managing git across repositories
+- [Command Bar](/workspaces/command-bar) - Quick actions for repo management
