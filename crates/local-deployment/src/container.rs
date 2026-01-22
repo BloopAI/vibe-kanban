@@ -46,7 +46,7 @@ use services::services::{
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
-    git::{GitCli, GitService},
+    git::{CoAuthor, CommitOptions, GitCli, GitIdentity, GitService},
     image::ImageService,
     notification::NotificationService,
     queued_message::QueuedMessageService,
@@ -342,7 +342,12 @@ impl LocalContainerService {
     }
 
     /// Commit changes to each repo. Logs failures but continues with other repos.
-    fn commit_repos(&self, repos_with_changes: Vec<(Repo, PathBuf)>, message: &str) -> bool {
+    fn commit_repos(
+        &self,
+        repos_with_changes: Vec<(Repo, PathBuf)>,
+        message: &str,
+        options: Option<&CommitOptions>,
+    ) -> bool {
         let mut any_committed = false;
 
         for (repo, worktree_path) in repos_with_changes {
@@ -352,7 +357,7 @@ impl LocalContainerService {
                 &worktree_path
             );
 
-            match self.git().commit(&worktree_path, message) {
+            match self.git().commit_with_options(&worktree_path, message, options) {
                 Ok(true) => {
                     any_committed = true;
                     tracing::info!("Committed changes in repo '{}'", repo.name);
@@ -367,6 +372,54 @@ impl LocalContainerService {
         }
 
         any_committed
+    }
+
+    /// Build commit options with Claude Code as the committer and all project members as co-authors.
+    async fn build_commit_options(&self, project_id: Uuid) -> Option<CommitOptions> {
+        // Set Claude Code as the committer identity
+        let committer = GitIdentity::new("Claude Code", "noreply@anthropic.com");
+
+        // Fetch project members as co-authors
+        let co_authors = self.get_project_co_authors(project_id).await;
+
+        Some(CommitOptions {
+            committer: Some(committer),
+            co_authors,
+        })
+    }
+
+    /// Fetch project members and convert them to co-authors.
+    async fn get_project_co_authors(&self, project_id: Uuid) -> Vec<CoAuthor> {
+        let Ok(publisher) = &self.publisher else {
+            tracing::debug!("Remote client not configured, skipping co-author fetch");
+            return vec![];
+        };
+
+        match publisher.get_project_members(project_id).await {
+            Ok(members) => {
+                members
+                    .into_iter()
+                    .filter_map(|member| {
+                        // Build a name from first_name, last_name, or username
+                        let name = match (&member.first_name, &member.last_name) {
+                            (Some(first), Some(last)) => format!("{} {}", first, last),
+                            (Some(first), None) => first.clone(),
+                            (None, Some(last)) => last.clone(),
+                            (None, None) => member.username.clone()?,
+                        };
+
+                        // Require email for co-author trailer
+                        let email = member.email?;
+
+                        Some(CoAuthor::new(name, email))
+                    })
+                    .collect()
+            }
+            Err(e) => {
+                tracing::warn!("Failed to fetch project members for co-authors: {}", e);
+                vec![]
+            }
+        }
     }
 
     /// Spawn a background task that polls the child process for completion and
@@ -1375,7 +1428,10 @@ impl ContainerService for LocalContainerService {
             return Ok(false);
         }
 
-        Ok(self.commit_repos(repos_with_changes, &message))
+        // Build commit options with Claude Code as committer and project members as co-authors
+        let commit_options = self.build_commit_options(ctx.task.project_id).await;
+
+        Ok(self.commit_repos(repos_with_changes, &message, commit_options.as_ref()))
     }
 
     /// Copy files from the original project directory to the worktree.

@@ -8,6 +8,7 @@ use db::{
 use remote::routes::tasks::{
     AssignSharedTaskRequest, CreateSharedTaskRequest, SharedTaskResponse, UpdateSharedTaskRequest,
 };
+use utils::api::organizations::OrganizationMemberWithProfile;
 use uuid::Uuid;
 
 use super::{ShareError, status};
@@ -201,5 +202,29 @@ impl SharePublisher {
         }
 
         Ok(())
+    }
+
+    /// Fetch all members of the organization that owns the given project.
+    /// Returns an empty vector if the project is not linked to a remote project.
+    pub async fn get_project_members(
+        &self,
+        project_id: Uuid,
+    ) -> Result<Vec<OrganizationMemberWithProfile>, ShareError> {
+        let project = Project::find_by_id(&self.db.pool, project_id)
+            .await?
+            .ok_or(ShareError::ProjectNotFound(project_id))?;
+
+        let Some(remote_project_id) = project.remote_project_id else {
+            return Ok(vec![]);
+        };
+
+        let remote_project = self.client.get_project(remote_project_id).await?;
+        let members = self
+            .client
+            .list_members(remote_project.organization_id)
+            .await?
+            .members;
+
+        Ok(members)
     }
 }

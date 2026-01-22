@@ -13,7 +13,7 @@ use utils::diff::{Diff, DiffChangeKind, FileDiffDetails, compute_line_change_cou
 mod cli;
 
 use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
-pub use cli::{GitCli, GitCliError};
+pub use cli::{CoAuthor, CommitOptions, GitCli, GitCliError, GitIdentity};
 
 use super::file_ranker::FileStat;
 
@@ -272,6 +272,21 @@ impl GitService {
     }
 
     pub fn commit(&self, path: &Path, message: &str) -> Result<bool, GitServiceError> {
+        self.commit_with_options(path, message, None)
+    }
+
+    /// Commit changes with optional custom committer identity and co-authors.
+    ///
+    /// # Arguments
+    /// * `path` - Path to the git repository/worktree
+    /// * `message` - Commit message
+    /// * `options` - Optional commit options for custom committer identity and co-authors
+    pub fn commit_with_options(
+        &self,
+        path: &Path,
+        message: &str,
+        options: Option<&CommitOptions>,
+    ) -> Result<bool, GitServiceError> {
         // Use Git CLI to respect sparse-checkout semantics for staging and commit
         let git = GitCli::new();
         let has_changes = git
@@ -286,7 +301,7 @@ impl GitService {
             .map_err(|e| GitServiceError::InvalidRepository(format!("git add failed: {e}")))?;
         // Only ensure identity once we know we're about to commit
         self.ensure_cli_commit_identity(path)?;
-        git.commit(path, message)
+        git.commit_with_options(path, message, options)
             .map_err(|e| GitServiceError::InvalidRepository(format!("git commit failed: {e}")))?;
         Ok(true)
     }
