@@ -25,14 +25,13 @@ export function FileTreeContainer({
   onSelectFile,
   className,
 }: FileTreeContainerProps) {
-  const { fileInView } = useChangesView();
+  const { fileInView, scrollToFile } = useChangesView();
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedPaths, setCollapsedPaths] =
     usePersistedCollapsedPaths(workspaceId);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  // Get GitHub comments state from workspace context
   const {
     showGitHubComments,
     setShowGitHubComments,
@@ -42,10 +41,6 @@ export function FileTreeContainer({
     isGitHubCommentsLoading,
   } = useWorkspaceContext();
 
-  // Get selectFile from context to pass line number when navigating
-  const { selectFile } = useChangesView();
-
-  // Sync selectedPath with fileInView from context and scroll into view
   useEffect(() => {
     if (fileInView != null) {
       setSelectedPath(fileInView);
@@ -67,22 +62,15 @@ export function FileTreeContainer({
     []
   );
 
-  // Build tree from diffs
   const fullTree = useMemo(() => buildFileTree(diffs), [diffs]);
-
-  // Get all folder paths for expand all functionality
   const allFolderPaths = useMemo(() => getAllFolderPaths(fullTree), [fullTree]);
-
-  // All folders are expanded when none are in the collapsed set
   const isAllExpanded = collapsedPaths.size === 0;
 
-  // Filter tree based on search
   const filteredTree = useMemo(
     () => filterFileTree(fullTree, searchQuery),
     [fullTree, searchQuery]
   );
 
-  // Auto-expand folders when searching (remove from collapsed set)
   const collapsedPathsRef = useRef(collapsedPaths);
   collapsedPathsRef.current = collapsedPaths;
 
@@ -99,9 +87,9 @@ export function FileTreeContainer({
     (path: string) => {
       const next = new Set(collapsedPaths);
       if (next.has(path)) {
-        next.delete(path); // was collapsed, now expand
+        next.delete(path);
       } else {
-        next.add(path); // was expanded, now collapse
+        next.add(path);
       }
       setCollapsedPaths(next);
     },
@@ -110,27 +98,27 @@ export function FileTreeContainer({
 
   const handleToggleExpandAll = useCallback(() => {
     if (isAllExpanded) {
-      setCollapsedPaths(new Set(allFolderPaths)); // collapse all
+      setCollapsedPaths(new Set(allFolderPaths));
     } else {
-      setCollapsedPaths(new Set()); // expand all
+      setCollapsedPaths(new Set());
     }
   }, [isAllExpanded, allFolderPaths, setCollapsedPaths]);
 
   const handleSelectFile = useCallback(
     (path: string) => {
       setSelectedPath(path);
+      scrollToFile(path);
+
       const diff = diffs.find((d) => d.newPath === path || d.oldPath === path);
       if (diff) {
         onSelectFile(path, diff);
       }
     },
-    [diffs, onSelectFile]
+    [diffs, onSelectFile, scrollToFile]
   );
 
-  // Get list of diff paths that have GitHub comments, sorted to match visual order
   const filesWithComments = useMemo(() => {
     const ghFiles = getFilesWithGitHubComments();
-    // Sort diffs first to match visual order, then filter to those with comments
     return sortDiffs(diffs)
       .map((d) => d.newPath || d.oldPath || '')
       .filter((diffPath) =>
@@ -140,7 +128,6 @@ export function FileTreeContainer({
       );
   }, [getFilesWithGitHubComments, diffs]);
 
-  // Navigate between files with GitHub comments
   const handleNavigateComments = useCallback(
     (direction: 'prev' | 'next') => {
       if (filesWithComments.length === 0) return;
@@ -161,13 +148,10 @@ export function FileTreeContainer({
       const targetPath = filesWithComments[nextIndex];
       const lineNumber = getFirstCommentLineForFile(targetPath);
 
-      // Update local state
       setSelectedPath(targetPath);
-
-      // Select file with line number to scroll to the comment
-      selectFile(targetPath, lineNumber ?? undefined);
+      scrollToFile(targetPath, lineNumber ?? undefined);
     },
-    [filesWithComments, selectedPath, getFirstCommentLineForFile, selectFile]
+    [filesWithComments, selectedPath, getFirstCommentLineForFile, scrollToFile]
   );
 
   return (

@@ -7,7 +7,12 @@ import {
   SpinnerGapIcon,
   WarningCircleIcon,
 } from '@phosphor-icons/react';
-import { DiffView, DiffModeEnum, SplitSide, type DiffFile } from '@git-diff-view/react';
+import {
+  DiffView,
+  DiffModeEnum,
+  SplitSide,
+  type DiffFile,
+} from '@git-diff-view/react';
 import { cn } from '@/lib/utils';
 import { getFileIcon } from '@/utils/fileTypeIcon';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
@@ -343,8 +348,7 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
   const hasLineComments = totalCommentCount > 0;
 
   const hasDraftsForFile = useMemo(
-    () =>
-      Object.keys(drafts).some((key) => key.startsWith(`${filePath}-`)),
+    () => Object.keys(drafts).some((key) => key.startsWith(`${filePath}-`)),
     [drafts, filePath]
   );
 
@@ -569,7 +573,7 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
           theme={actualTheme}
           diffMode={diffMode}
           isScrolling={isScrolling}
-          extendData={hasLineComments ? extendData ?? undefined : undefined}
+          extendData={hasLineComments ? (extendData ?? undefined) : undefined}
           onAddWidgetClick={handleAddWidgetClick}
           renderWidgetLine={
             !isScrolling || hasDraftsForFile ? renderWidgetLine : undefined

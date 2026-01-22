@@ -97,24 +97,29 @@ const DiffItem = memo(function DiffItem({
   );
 });
 
-const ItemContent: VirtuosoProps<DiffItemData, ChangesPanelContext>['itemContent'] =
-  (
-    _index,
-    { diff, initialExpanded },
-    { onDiffRef, projectId, attemptId, isScrolling }
-  ) => (
-    <DiffItem
-      diff={diff}
-      initialExpanded={initialExpanded}
-      onRef={onDiffRef}
-      projectId={projectId}
-      attemptId={attemptId}
-      isScrolling={isScrolling}
-    />
-  );
+const ItemContent: VirtuosoProps<
+  DiffItemData,
+  ChangesPanelContext
+>['itemContent'] = (
+  _index,
+  { diff, initialExpanded },
+  { onDiffRef, projectId, attemptId, isScrolling }
+) => (
+  <DiffItem
+    diff={diff}
+    initialExpanded={initialExpanded}
+    onRef={onDiffRef}
+    projectId={projectId}
+    attemptId={attemptId}
+    isScrolling={isScrolling}
+  />
+);
 
-const computeItemKey: VirtuosoProps<DiffItemData, ChangesPanelContext>['computeItemKey'] =
-  (index, { diff }) => diff.newPath || diff.oldPath || String(index);
+const computeItemKey: VirtuosoProps<
+  DiffItemData,
+  ChangesPanelContext
+>['computeItemKey'] = (index, { diff }) =>
+  diff.newPath || diff.oldPath || String(index);
 
 export const ChangesPanel = forwardRef<ChangesPanelHandle, ChangesPanelProps>(
   function ChangesPanel(

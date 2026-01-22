@@ -13,41 +13,33 @@ import {
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
 interface ChangesViewContextValue {
-  /** File path selected by user (triggers scroll-to in ChangesPanelContainer) */
-  selectedFilePath: string | null;
-  /** Line number to scroll to within the selected file (for GitHub comment navigation) */
-  selectedLineNumber: number | null;
-  /** File currently in view from scrolling (for FileTree highlighting) */
   fileInView: string | null;
-  /** Select a file and optionally scroll to a specific line */
-  selectFile: (path: string, lineNumber?: number) => void;
-  /** Update the file currently in view (from scroll observer) */
-  setFileInView: (path: string | null) => void;
-  /** Navigate to changes mode and scroll to a specific file */
-  viewFileInChanges: (filePath: string) => void;
-  /** Set of file paths currently in the diffs (for checking if inline code should be clickable) */
+  selectedFilePath: string | null;
+  selectedLineNumber: number | null;
   diffPaths: Set<string>;
-  /** Find a diff path matching the given text (supports partial/right-hand match) */
+
+  scrollToFile: (path: string, lineNumber?: number) => void;
+  setFileInView: (path: string) => void;
+  unlockScroll: () => void;
+  isScrollLocked: () => boolean;
+
+  viewFileInChanges: (filePath: string) => void;
   findMatchingDiffPath: (text: string) => string | null;
-  /** Get target file path if programmatic scroll is in progress, null otherwise */
-  getScrollTarget: () => string | null;
-  /** Clear programmatic scroll lock (call when target is visible) */
-  clearScrollLock: () => void;
 }
 
 const EMPTY_SET = new Set<string>();
 
 const defaultValue: ChangesViewContextValue = {
+  fileInView: null,
   selectedFilePath: null,
   selectedLineNumber: null,
-  fileInView: null,
-  selectFile: () => {},
-  setFileInView: () => {},
-  viewFileInChanges: () => {},
   diffPaths: EMPTY_SET,
+  scrollToFile: () => {},
+  setFileInView: () => {},
+  unlockScroll: () => {},
+  isScrollLocked: () => false,
+  viewFileInChanges: () => {},
   findMatchingDiffPath: () => null,
-  getScrollTarget: () => null,
-  clearScrollLock: () => {},
 };
 
 const ChangesViewContext = createContext<ChangesViewContextValue>(defaultValue);
@@ -56,48 +48,32 @@ interface ChangesViewProviderProps {
   children: React.ReactNode;
 }
 
-const SCROLL_LOCK_SAFETY_TIMEOUT_MS = 2000;
-
 export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
   const { diffPaths } = useWorkspaceContext();
+  const [fileInView, setFileInViewState] = useState<string | null>(null);
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [selectedLineNumber, setSelectedLineNumber] = useState<number | null>(
     null
   );
-  const [fileInView, setFileInViewState] = useState<string | null>(null);
   const { setRightMainPanelMode } = useUiPreferencesStore();
 
-  const scrollTargetRef = useRef<string | null>(null);
-  const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const scrollLockedRef = useRef(false);
 
-  const getScrollTarget = useCallback(() => {
-    return scrollTargetRef.current;
+  const isScrollLocked = useCallback(() => scrollLockedRef.current, []);
+
+  const unlockScroll = useCallback(() => {
+    scrollLockedRef.current = false;
   }, []);
 
-  const clearScrollLock = useCallback(() => {
-    if (safetyTimeoutRef.current) {
-      clearTimeout(safetyTimeoutRef.current);
-    }
-    scrollTargetRef.current = null;
-  }, []);
-
-  const selectFile = useCallback((path: string, lineNumber?: number) => {
-    if (safetyTimeoutRef.current) {
-      clearTimeout(safetyTimeoutRef.current);
-    }
-    scrollTargetRef.current = path;
-    
-    safetyTimeoutRef.current = setTimeout(() => {
-      scrollTargetRef.current = null;
-    }, SCROLL_LOCK_SAFETY_TIMEOUT_MS);
-    
+  const scrollToFile = useCallback((path: string, lineNumber?: number) => {
+    scrollLockedRef.current = true;
+    setFileInViewState(path);
     setSelectedFilePath(path);
     setSelectedLineNumber(lineNumber ?? null);
-    setFileInViewState(path);
   }, []);
 
-  const setFileInView = useCallback((path: string | null) => {
-    if (scrollTargetRef.current !== null) {
+  const setFileInView = useCallback((path: string) => {
+    if (scrollLockedRef.current) {
       return;
     }
     setFileInViewState(path);
@@ -106,9 +82,9 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
   const viewFileInChanges = useCallback(
     (filePath: string) => {
       setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.CHANGES);
-      setSelectedFilePath(filePath);
+      scrollToFile(filePath);
     },
-    [setRightMainPanelMode]
+    [setRightMainPanelMode, scrollToFile]
   );
 
   const findMatchingDiffPath = useCallback(
@@ -126,28 +102,28 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
 
   const value = useMemo(
     () => ({
+      fileInView,
       selectedFilePath,
       selectedLineNumber,
-      fileInView,
-      selectFile,
-      setFileInView,
-      viewFileInChanges,
       diffPaths,
+      scrollToFile,
+      setFileInView,
+      unlockScroll,
+      isScrollLocked,
+      viewFileInChanges,
       findMatchingDiffPath,
-      getScrollTarget,
-      clearScrollLock,
     }),
     [
+      fileInView,
       selectedFilePath,
       selectedLineNumber,
-      fileInView,
-      selectFile,
-      setFileInView,
-      viewFileInChanges,
       diffPaths,
+      scrollToFile,
+      setFileInView,
+      unlockScroll,
+      isScrollLocked,
+      viewFileInChanges,
       findMatchingDiffPath,
-      getScrollTarget,
-      clearScrollLock,
     ]
   );
 

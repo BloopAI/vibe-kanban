@@ -8,7 +8,6 @@ import { CreateModeProjectSectionContainer } from '@/components/ui-new/container
 import { CreateModeReposSectionContainer } from '@/components/ui-new/containers/CreateModeReposSectionContainer';
 import { CreateModeAddReposSectionContainer } from '@/components/ui-new/containers/CreateModeAddReposSectionContainer';
 import { WorkspaceNotesContainer } from '@/components/ui-new/containers/WorkspaceNotesContainer';
-import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ArrowsOutSimpleIcon } from '@phosphor-icons/react';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
@@ -50,7 +49,7 @@ export function RightSidebar({
   repos,
 }: RightSidebarProps) {
   const { t } = useTranslation(['tasks', 'common']);
-  const { selectFile } = useChangesView();
+
   const { diffs } = useWorkspaceContext();
   const { setExpanded } = useExpandedAll();
   const isTerminalVisible = useUiPreferencesStore((s) => s.isTerminalVisible);
@@ -174,7 +173,6 @@ export function RightSidebar({
                 workspaceId={selectedWorkspace.id}
                 diffs={diffs}
                 onSelectFile={(path) => {
-                  selectFile(path);
                   setExpanded(`diff:${path}`, true);
                 }}
                 className=""

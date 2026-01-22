@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { DiffFile } from '@git-diff-view/react';
 import { generateDiffFile } from '@git-diff-view/file';
-import type {
-  DiffWorkerInput,
-  DiffWorkerOutput,
-} from '@/workers/diff.worker';
+import type { DiffWorkerInput, DiffWorkerOutput } from '@/workers/diff.worker';
 
 type DiffFileBundle = ReturnType<DiffFile['_getFullBundle']>;
 
@@ -45,7 +42,7 @@ function simpleHash(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash;
   }
   return hash.toString(36);
@@ -120,7 +117,15 @@ function computeDiffSync(params: DiffWorkerParams): CachedDiffData {
   );
 
   file.initTheme(params.theme);
-  file.initRaw();
+
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  try {
+    file.initRaw();
+  } finally {
+    console.warn = originalWarn;
+  }
+
   file.buildSplitDiffLines();
   file.buildUnifiedDiffLines();
 
@@ -285,7 +290,9 @@ export interface UseDiffWorkerResult {
   error: Error | null;
 }
 
-export function useDiffWorker(options: UseDiffWorkerOptions): UseDiffWorkerResult {
+export function useDiffWorker(
+  options: UseDiffWorkerOptions
+): UseDiffWorkerResult {
   const {
     oldFileName,
     oldContent,

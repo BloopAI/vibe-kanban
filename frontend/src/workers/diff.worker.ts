@@ -35,7 +35,15 @@ onmessage = (event: MessageEvent<DiffWorkerInput>) => {
     );
 
     file.initTheme(input.theme);
-    file.initRaw();
+
+    const originalWarn = console.warn;
+    console.warn = () => {};
+    try {
+      file.initRaw();
+    } finally {
+      console.warn = originalWarn;
+    }
+
     file.buildSplitDiffLines();
     file.buildUnifiedDiffLines();
 
