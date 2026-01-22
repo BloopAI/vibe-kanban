@@ -179,7 +179,7 @@ export const useUiPreferencesStore = create<State>()(
       isLeftSidebarVisible: true,
       isRightSidebarVisible: true,
       isTerminalVisible: true,
-      isKanbanRightPanelVisible: true,
+      isKanbanRightPanelVisible: false,
       selectedKanbanIssueId: null,
       kanbanCreateMode: false,
       previewRefreshKey: 0,
