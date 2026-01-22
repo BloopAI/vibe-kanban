@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import {
   XIcon,
   TextBIcon,
@@ -97,6 +98,7 @@ export function KanbanIssuePanel({
   onSubmit,
   isSubmitting,
 }: KanbanIssuePanelProps) {
+  const { t } = useTranslation('common');
   const isCreateMode = mode === 'create';
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -272,7 +274,7 @@ export function KanbanIssuePanel({
             >
               <div className="px-base pb-base flex flex-col gap-base">
                 {comments.length === 0 ? (
-                  <p className="text-sm text-low">No comments yet</p>
+                  <p className="text-sm text-low">{t('kanban.noCommentsYet')}</p>
                 ) : (
                   comments.map((comment) => (
                     <CommentItem key={comment.id} comment={comment} />

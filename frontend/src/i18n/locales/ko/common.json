@@ -312,7 +312,7 @@
     "tooltip": "컨텍스트: {{percentage}}% · {{used}} / {{total}} 토큰",
     "ariaLabel": "컨텍스트 사용량: {{percentage}}%"
   },
-  "shortcuts": {
+"shortcuts": {
     "title": "키보드 단축키",
     "inWorkspace": "(워크스페이스 내)",
     "sequentialHint": "순차 단축키: 첫 번째 키를 누른 후 500ms 이내에 두 번째 키를 누르세요.",
@@ -324,5 +324,15 @@
     "commands": "명령어",
     "noTagsOrFiles": "태그 또는 파일을 찾을 수 없습니다",
     "noCommands": "이 에이전트에 사용 가능한 명령어가 없습니다."
+  },
+  "kanban": {
+    "noStatusesFound": "이 프로젝트의 상태를 찾을 수 없습니다",
+    "noProjectFound": "프로젝트를 찾을 수 없습니다",
+    "noOrganizationFound": "조직을 찾을 수 없습니다",
+    "unassigned": "미할당",
+    "noTagsAvailable": "사용 가능한 태그가 없습니다",
+    "filesCount": "{{count}}개 파일",
+    "noPrCreated": "PR이 생성되지 않음",
+    "noCommentsYet": "아직 댓글이 없습니다"
   }
 }
