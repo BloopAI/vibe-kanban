@@ -25,8 +25,8 @@ This will:
 ## Access Points
 
 Once running:
-- **Frontend**: http://localhost:3001
-- **Backend API**: http://localhost:3000
+- **Frontend**: http://localhost:3000 (Vite dev server with hot-reload)
+- **Backend API**: http://localhost:3001
 
 ## Available Commands
 
@@ -48,19 +48,22 @@ Or use the script directly:
 ### Dockerfile.dev
 
 The development Dockerfile (`Dockerfile.dev`) creates an image with:
-- Node.js 24 (Debian Bookworm base)
-- Rust nightly-2025-12-04 (matching `rust-toolchain.toml`)
+- Rust 1.89 (Debian Bookworm base) with nightly-2025-12-04 toolchain
+- Node.js 24 (installed via nodesource)
 - cargo-watch for hot-reloading
 - pnpm 10.13.1
 - SQLite development libraries
+- clang/libclang for native compilation (bindgen)
 
 ### docker-compose.dev.yml
 
 The compose file:
 - Mounts source code directories for live editing
-- Persists build caches (Cargo, node_modules) in named volumes
-- Exposes ports 3000 (backend) and 3001 (frontend)
+- Persists build caches (Cargo, node_modules, pnpm store) using bind mounts in `.docker-cache/`
+- Exposes ports 3000 (frontend) and 3001 (backend)
 - Sets up environment variables for development
+
+**Note**: Build caches use bind mounts instead of Docker volumes to avoid Docker Desktop disk space issues.
 
 ### Volume Mounts
 
@@ -70,13 +73,13 @@ Source code is mounted for live editing:
 - `./shared` - Shared TypeScript types
 - `./scripts` - Development scripts
 
-Build caches are persisted in named volumes:
-- `vibe-kanban-cargo-cache` - Cargo registry cache
-- `vibe-kanban-cargo-git` - Cargo git dependencies
-- `vibe-kanban-target-cache` - Rust build artifacts
-- `vibe-kanban-node-modules` - Root node_modules
-- `vibe-kanban-frontend-node-modules` - Frontend node_modules
-- `vibe-kanban-dev-assets` - Development assets
+Build caches are persisted in `.docker-cache/` (bind mounts to host):
+- `.docker-cache/cargo-registry` - Cargo registry cache
+- `.docker-cache/cargo-git` - Cargo git dependencies
+- `.docker-cache/target` - Rust build artifacts
+- `.docker-cache/node_modules` - Root node_modules
+- `.docker-cache/frontend-node-modules` - Frontend node_modules
+- `.docker-cache/pnpm-store` - pnpm package store
 
 ## Environment Variables
 
@@ -96,9 +99,21 @@ SESSION_SECRET=your_session_secret
 The first run will:
 1. Build the Docker image (downloads Rust, Node.js, etc.)
 2. Install pnpm dependencies
-3. Compile Rust code
+3. Compile Rust code (~2-3 minutes)
 
-Subsequent runs are much faster due to cached volumes.
+Subsequent runs are much faster due to cached build artifacts.
+
+### Docker Desktop Disk Space
+
+If you encounter "no space left on device" errors:
+
+```bash
+# Prune unused Docker resources
+docker system prune -a --volumes
+
+# Or increase Docker Desktop disk limit in:
+# Settings > Resources > Advanced > Virtual disk limit
+```
 
 ### Rebuild After Dependency Changes
 
@@ -141,9 +156,10 @@ pnpm run generate-types
 
 ## Differences from Native Development
 
-1. **Ports**: Container uses fixed ports (3000, 3001) instead of auto-assigned
-2. **Performance**: Slight overhead from Docker, but build caches help
+1. **Ports**: Container uses fixed ports (3000 frontend, 3001 backend) instead of auto-assigned
+2. **Performance**: First Rust build takes ~2-3 minutes, but subsequent builds use cache
 3. **File watching**: Works through volume mounts, may have slight delay on some systems
+4. **Storage**: Build caches stored in `.docker-cache/` directory (can grow large)
 
 ## Working with Other Agents
 

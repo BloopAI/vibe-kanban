@@ -54,8 +54,9 @@ case "$command" in
     echo "Stopping container and removing volumes..."
     docker compose -f "$COMPOSE_FILE" down -v
     echo "Removing named volumes..."
-    docker volume rm vibe-kanban-cargo-cache vibe-kanban-cargo-git vibe-kanban-target-cache \
-      vibe-kanban-node-modules vibe-kanban-frontend-node-modules vibe-kanban-dev-assets 2>/dev/null || true
+    docker volume rm vibe-kanban-dev-assets 2>/dev/null || true
+    echo "Removing local cache directory..."
+    rm -rf .docker-cache
     echo "Clean complete. Run './scripts/docker-dev.sh start' for a fresh environment."
     ;;
 

@@ -23,20 +23,23 @@ services:
       - ./dev_assets_seed:/app/dev_assets_seed
       - ./npx-cli:/app/npx-cli
       # Mount config files
-      - ./package.json:/app/package.json
-      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
-      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
+      - ./package.json:/app/package.json:ro
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
+      # Lock file mounted read-only, copied to /app at startup
+      - ./pnpm-lock.yaml:/app/source-lock/pnpm-lock.yaml:ro
       - ./Cargo.toml:/app/Cargo.toml
       - ./Cargo.lock:/app/Cargo.lock
       - ./rust-toolchain.toml:/app/rust-toolchain.toml
       - ./rustfmt.toml:/app/rustfmt.toml:ro
-      # Persist build artifacts for faster rebuilds
-      - cargo-cache:/root/.cargo/registry
-      - cargo-git:/root/.cargo/git
-      - target-cache:/app/target
-      # Persist node_modules
-      - node-modules:/app/node_modules
-      - frontend-node-modules:/app/frontend/node_modules
+      # Persist build artifacts for faster rebuilds (using bind mounts to avoid Docker VM disk space issues)
+      - ./.docker-cache/cargo-registry:/root/.cargo/registry
+      - ./.docker-cache/cargo-git:/root/.cargo/git
+      - ./.docker-cache/target:/app/target
+      # Persist node_modules (using bind mounts to avoid Docker VM disk space issues)
+      - ./.docker-cache/node_modules:/app/node_modules
+      - ./.docker-cache/frontend-node-modules:/app/frontend/node_modules
+      # pnpm store on host to avoid disk space issues
+      - ./.docker-cache/pnpm-store:/root/.local/share/pnpm/store
       # Persist dev assets
       - dev-assets:/app/dev_assets
     ports:
@@ -68,15 +71,5 @@ services:
       start_period: 120s
 
 volumes:
-  cargo-cache:
-    name: vibe-kanban-cargo-cache
-  cargo-git:
-    name: vibe-kanban-cargo-git
-  target-cache:
-    name: vibe-kanban-target-cache
-  node-modules:
-    name: vibe-kanban-node-modules
-  frontend-node-modules:
-    name: vibe-kanban-frontend-node-modules
   dev-assets:
     name: vibe-kanban-dev-assets
