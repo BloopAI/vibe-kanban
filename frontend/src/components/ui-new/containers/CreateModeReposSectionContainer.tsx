@@ -23,12 +23,22 @@ export function CreateModeReposSectionContainer() {
       const branches = branchesByRepo[repo.id];
       if (branches && !targetBranches[repo.id]) {
         const currentBranch = branches.find((b) => b.is_current);
-        console.log('[CreateModeReposSectionContainer] SETTING branch for', repo.id, 'to', currentBranch?.name);
+        console.log(
+          '[CreateModeReposSectionContainer] SETTING branch for',
+          repo.id,
+          'to',
+          currentBranch?.name
+        );
         if (currentBranch) {
           setTargetBranch(repo.id, currentBranch.name);
         }
       } else {
-        console.log('[CreateModeReposSectionContainer] SKIPPING', repo.id, 'already has:', targetBranches[repo.id]);
+        console.log(
+          '[CreateModeReposSectionContainer] SKIPPING',
+          repo.id,
+          'already has:',
+          targetBranches[repo.id]
+        );
       }
     });
   }, [repos, branchesByRepo, targetBranches, setTargetBranch]);
