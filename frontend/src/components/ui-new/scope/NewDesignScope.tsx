@@ -6,6 +6,7 @@ import {
   useWorkspaceContext,
 } from '@/contexts/WorkspaceContext';
 import { ActionsProvider } from '@/contexts/ActionsContext';
+import { SequentialShortcutsProvider } from '@/contexts/SequentialShortcutsContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import NiceModal from '@ebay/nice-modal-react';
@@ -51,7 +52,9 @@ export function NewDesignScope({ children }: NewDesignScopeProps) {
           <ExecutionProcessesProviderWrapper>
             <LogsPanelProvider>
               <ActionsProvider>
-                <NiceModal.Provider>{children}</NiceModal.Provider>
+                <SequentialShortcutsProvider>
+                  <NiceModal.Provider>{children}</NiceModal.Provider>
+                </SequentialShortcutsProvider>
               </ActionsProvider>
             </LogsPanelProvider>
           </ExecutionProcessesProviderWrapper>

@@ -275,11 +275,27 @@ export * from './useSequentialHotkeys';
 
 ---
 
-## Phase 2: Integration with Actions System
+## Phase 2: Integration with Actions System ✅ COMPLETED
 
 **Goal:** Connect sequential shortcuts to the existing Actions system and execute actions when shortcuts match.
 
 **Estimated Scope:** ~150 lines of new code
+
+**Status:** Completed on 2026-01-22
+
+### Implementation Notes
+
+- Created `SequentialShortcutsContext.tsx` with `ACTION_MAP` built at module load
+- Extended `useCommandBarState.ts` to accept `initialPendingAction` for direct repo selection
+- Extended `CommandBarDialog.tsx` with `pendingGitAction` prop
+- Updated `NewDesignScope.tsx` to wrap with `SequentialShortcutsProvider`
+- Multi-repo git actions open CommandBarDialog in repo selection mode
+- Console warnings for edge cases (no workspace, no repos)
+
+### Verification Results
+
+- `pnpm run check` - Passed
+- `pnpm run lint` - Passed
 
 ### Files to Create/Modify
 

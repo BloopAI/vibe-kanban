@@ -12,6 +12,7 @@ import type {
   PageId,
   ResolvedGroupItem,
 } from '@/components/ui-new/actions/pages';
+import type { GitActionDefinition } from '@/components/ui-new/actions';
 import { useActionVisibilityContext } from '@/components/ui-new/actions/useActionVisibility';
 import { useCommandBarState } from './commandBar/useCommandBarState';
 import { useResolvedPage } from './commandBar/useResolvedPage';
@@ -20,10 +21,12 @@ export interface CommandBarDialogProps {
   page?: PageId;
   workspaceId?: string;
   repoId?: string;
+  /** When provided, opens directly in repo selection mode for this git action */
+  pendingGitAction?: GitActionDefinition;
 }
 
 const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
-  ({ page = 'root', workspaceId, repoId: initialRepoId }) => {
+  ({ page = 'root', workspaceId, repoId: initialRepoId, pendingGitAction }) => {
     const modal = useModal();
     const previousFocusRef = useRef<HTMLElement | null>(null);
     const queryClient = useQueryClient();
@@ -41,7 +44,8 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
     // State machine
     const { state, currentPage, canGoBack, dispatch } = useCommandBarState(
       page,
-      repos.length
+      repos.length,
+      pendingGitAction
     );
 
     // Reset state and capture focus when dialog opens
