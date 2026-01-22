@@ -126,12 +126,13 @@ async fn update_project(
     ensure_member_access(state.pool(), existing.organization_id, ctx.user.id).await?;
 
     if let Some(ref color) = payload.color
-        && !is_valid_hsl_color(color) {
-            return Err(ErrorResponse::new(
-                StatusCode::BAD_REQUEST,
-                "Invalid color format. Expected HSL format: 'H S% L%'",
-            ));
-        }
+        && !is_valid_hsl_color(color)
+    {
+        return Err(ErrorResponse::new(
+            StatusCode::BAD_REQUEST,
+            "Invalid color format. Expected HSL format: 'H S% L%'",
+        ));
+    }
 
     let response = ProjectRepository::update(state.pool(), project_id, payload.name, payload.color)
         .await
