@@ -915,9 +915,12 @@ function MembersList({ organizationId }: { organizationId: string }) {
 }
 
 function UsersList({ organizationId }: { organizationId: string }) {
-  const { data, isLoading, error, retry } = useEntity(ORGANIZATION_USER_ENTITY, {
-    organization_id: organizationId,
-  });
+  const { data, isLoading, error, retry } = useEntity(
+    ORGANIZATION_USER_ENTITY,
+    {
+      organization_id: organizationId,
+    }
+  );
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
