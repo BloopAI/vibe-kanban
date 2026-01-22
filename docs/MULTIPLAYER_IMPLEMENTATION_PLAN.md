@@ -12,7 +12,22 @@ Transform Vibe Kanban from a single-user local application to a multi-user colla
 - UI displays which user performed each action
 - Multiple users can collaborate on projects
 
-### Current State
+### Current State (Updated 2026-01-22)
+
+**IMPORTANT**: The multiplayer infrastructure is ~85% complete, but **authentication is NOT enforced by default**.
+
+Why you see no login experience when running the app:
+1. **GitHub OAuth credentials not configured** - Without `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and `SESSION_SECRET` in `.env`, the auth system gracefully disables
+2. **`ProtectedRoute` exists but is not used** - Routes are freely accessible without auth
+3. **`UserMenu` exists but is not integrated into the header** - The Navbar uses a different OAuth system (for remote mode)
+
+To enable multiplayer authentication:
+1. Create a GitHub OAuth App (see Configuration Requirements below)
+2. Add credentials to `.env` file
+3. Wrap routes with `ProtectedRoute` component
+4. Add `UserMenu` to the Navbar
+
+**Previous State Reference**:
 - **Local Mode**: Single anonymous user, no authentication, actions not attributed
 - **Remote Mode**: Already has multi-user with OAuth (can reference patterns)
 - **Existing Assets**: `UserAvatar` component, translation infrastructure, auth hooks exist
@@ -222,13 +237,36 @@ In multi-user, multiple people may interact with the same agent session. The UI 
 
 **Duration**: 1-2 days
 
-**Status**: Partially Complete - UserMenu component built, needs header integration
+**Status**: Partially Complete - Components built, but NOT integrated into the main app flow
 
 ### What
 Header displays current user with avatar and provides logout.
 
 ### Why
 Users need visual confirmation of who they're logged in as and a way to sign out.
+
+### Current Implementation Status
+
+| Component | Status | Location | Notes |
+|-----------|--------|----------|-------|
+| `UserMenu` | ✅ Built | `frontend/src/components/UserMenu.tsx` | Not imported in Navbar |
+| `ProtectedRoute` | ✅ Built | `frontend/src/components/ProtectedRoute.tsx` | Not wrapping routes in App.tsx |
+| `Login` page | ✅ Built | `frontend/src/pages/Login.tsx` | Route exists at `/login` |
+| `LocalAuthContext` | ✅ Built | `frontend/src/contexts/LocalAuthContext.tsx` | Wraps app but not enforced |
+
+### What's Still Missing
+
+1. **Route Protection**: `App.tsx` routes are NOT wrapped with `ProtectedRoute`
+   - All routes (/, /projects, /workspaces, etc.) are freely accessible
+   - Need to wrap protected routes with `<ProtectedRoute>` component
+
+2. **UserMenu Integration**: `Navbar.tsx` does NOT use `UserMenu`
+   - The Navbar has its own OAuth login/logout for remote mode (different system)
+   - `UserMenu` needs to be added for local auth display
+   - Or consolidate both auth systems into one UI
+
+3. **Environment Variables**: Most users won't have GitHub OAuth configured
+   - Need clear onboarding flow or documentation for setup
 
 ### Tests
 
@@ -242,8 +280,9 @@ Users need visual confirmation of who they're logged in as and a way to sign out
 
 **Frontend**
 - ~~Create UserMenu component with avatar, dropdown, sign out option~~ ✅
-- Add UserMenu to app header/navigation
+- Add UserMenu to app header/navigation (Navbar.tsx) - **NOT DONE**
 - ~~Wire logout action to auth context~~ ✅
+- Wrap routes in App.tsx with ProtectedRoute - **NOT DONE**
 
 ---
 
@@ -347,3 +386,81 @@ Note: Phases 2, 3, 4, and 6 can run in parallel after Phase 1 completes. Phase 5
 - Existing UserAvatar component: `frontend/src/components/tasks/UserAvatar.tsx`
 - Existing auth hooks: `frontend/src/hooks/auth/`
 - OAuth patterns: `crates/server/src/routes/oauth.rs` (current remote handoff)
+
+---
+
+## Remaining Work Summary (Updated 2026-01-22)
+
+### Why Authentication Isn't Visible
+
+The backend infrastructure is complete, but the frontend doesn't enforce it:
+
+```
+Backend (DONE):              Frontend (PARTIAL):
+┌─────────────────────┐      ┌─────────────────────────────────────┐
+│ ✅ Users table      │      │ ✅ LocalAuthContext (wraps app)     │
+│ ✅ GitHub OAuth     │      │ ✅ Login page exists at /login      │
+│ ✅ JWT sessions     │      │ ✅ UserMenu component built         │
+│ ✅ Auth routes      │      │ ✅ ProtectedRoute component built   │
+│ ✅ User FKs on all  │      │ ❌ Routes NOT protected             │
+│    entities         │      │ ❌ UserMenu NOT in Navbar           │
+└─────────────────────┘      │ ❌ No redirect to /login            │
+                             └─────────────────────────────────────┘
+```
+
+### Action Items to Complete Multiplayer
+
+#### Immediate (Phase 6 Completion) - ~1 day
+
+1. **Integrate UserMenu into Navbar.tsx**
+   - Import `UserMenu` from `@/components/UserMenu`
+   - Add it to the right side of the navbar
+   - Handle the case where both remote OAuth and local auth might be active
+
+2. **Wrap Routes with ProtectedRoute**
+   - In `App.tsx`, wrap the main route groups with `<ProtectedRoute>`
+   - Keep `/login` route unprotected
+   - Consider which routes should be protected vs public
+
+3. **Test with GitHub OAuth Configured**
+   - Create GitHub OAuth App
+   - Add credentials to `.env`
+   - Verify login flow works end-to-end
+
+#### Remaining (Phase 5) - ~3-4 days
+
+4. **Chat Message Attribution**
+   - Add `user_id` column to `coding_agent_turns` table
+   - Thread user context through execution pipeline
+   - Update normalizers to populate sender info
+   - Update chat UI to show "You" vs other usernames
+
+### Quick Start for Testing Multiplayer
+
+```bash
+# 1. Create GitHub OAuth App at https://github.com/settings/developers
+#    - Homepage URL: http://localhost:3000
+#    - Callback URL: http://localhost:3000/api/local-auth/github/callback
+
+# 2. Create .env file
+cp .env.example .env
+
+# 3. Fill in the values
+GITHUB_CLIENT_ID=your_client_id
+GITHUB_CLIENT_SECRET=your_client_secret
+SESSION_SECRET=$(openssl rand -hex 32)
+
+# 4. Run the app
+pnpm run dev
+
+# 5. Navigate to /login to test authentication
+```
+
+### Key Files to Modify
+
+| File | Change Needed |
+|------|---------------|
+| `frontend/src/App.tsx` | Wrap routes with `<ProtectedRoute>` |
+| `frontend/src/components/layout/Navbar.tsx` | Import and add `<UserMenu />` |
+| `crates/db/migrations/` | Add Phase 5 migration for `coding_agent_turns.user_id` |
+| `crates/executors/src/` | Thread user context and update normalizers |
