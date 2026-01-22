@@ -161,14 +161,6 @@ function KanbanBoardContent({
     openKanbanIssuePanel(null, true);
   }, [openKanbanIssuePanel]);
 
-  // Generate display ID for an issue
-  const getDisplayId = useCallback(
-    (_issue: (typeof issues)[0], index: number) => {
-      return `Task-${(index + 1).toString().padStart(3, '0')}`;
-    },
-    []
-  );
-
   const isLoading = statusesLoading || issuesLoading;
 
   if (isLoading) {
@@ -229,7 +221,7 @@ function KanbanBoardContent({
                         isOpen={selectedKanbanIssueId === issue.id}
                       >
                         <KanbanCardContent
-                          displayId={getDisplayId(issue, index)}
+                          displayId={issue.simple_id}
                           title={issue.title}
                           description={issue.description}
                           priority={issue.priority}
