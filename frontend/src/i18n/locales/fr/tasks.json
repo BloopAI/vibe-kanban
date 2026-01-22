@@ -605,6 +605,7 @@
     "titlePlaceholder": "Titre de la tâche...",
     "descriptionPlaceholder": "Ajouter plus de détails (optionnel). Tapez @ pour rechercher des fichiers.",
     "statusLabel": "Statut",
+    "assigneeLabel": "Assigné à",
     "statusOptions": {
       "todo": "À faire",
       "inprogress": "En cours",
@@ -672,6 +673,11 @@
     "buttons": {
       "retry": "Réessayer"
     }
+  },
+  "assigneeSelector": {
+    "label": "Assigné à",
+    "unassigned": "Non assigné",
+    "noUsersAvailable": "Aucun utilisateur disponible"
   },
   "scriptFixer": {
     "title": "Corriger le script",
