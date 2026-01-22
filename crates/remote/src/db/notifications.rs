@@ -266,4 +266,55 @@ impl NotificationRepository {
 
         Ok(result.unwrap_or(0))
     }
+
+    /// Update a notification with partial fields. Uses COALESCE to preserve existing values
+    /// when None is provided. Automatically sets `dismissed_at` when `seen` is set to true.
+    pub async fn update<'e, E>(
+        executor: E,
+        id: Uuid,
+        seen: Option<bool>,
+    ) -> Result<Notification, NotificationError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let record = sqlx::query_as!(
+            Notification,
+            r#"
+            UPDATE notifications
+            SET seen = COALESCE($1, seen),
+                dismissed_at = CASE
+                    WHEN $1 = true AND dismissed_at IS NULL THEN NOW()
+                    ELSE dismissed_at
+                END
+            WHERE id = $2
+            RETURNING
+                id                AS "id!: Uuid",
+                organization_id   AS "organization_id!: Uuid",
+                user_id           AS "user_id!: Uuid",
+                notification_type AS "notification_type!: NotificationType",
+                payload           AS "payload!: Value",
+                issue_id          AS "issue_id: Uuid",
+                comment_id        AS "comment_id: Uuid",
+                seen              AS "seen!",
+                dismissed_at      AS "dismissed_at: DateTime<Utc>",
+                created_at        AS "created_at!: DateTime<Utc>"
+            "#,
+            seen,
+            id
+        )
+        .fetch_one(executor)
+        .await?;
+
+        Ok(record)
+    }
+
+    pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<(), NotificationError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        sqlx::query!("DELETE FROM notifications WHERE id = $1", id)
+            .execute(executor)
+            .await?;
+        Ok(())
+    }
 }

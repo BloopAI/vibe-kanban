@@ -21,8 +21,7 @@ pub enum ScratchError {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct DraftFollowUpData {
     pub message: String,
-    #[serde(default)]
-    pub variant: Option<String>,
+    pub executor_profile_id: ExecutorProfileId,
 }
 
 /// Data for preview settings scratch (URL override and screen size)

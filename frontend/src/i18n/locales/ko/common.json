@@ -29,12 +29,18 @@
     "create": "생성",
     "delete": "삭제",
     "disconnect": "연결 해제",
+    "discard": "취소",
     "edit": "편집",
     "manage": "관리",
     "replay": "다시 재생",
     "reset": "초기화",
     "save": "저장",
-    "send": "보내기"
+    "send": "보내기",
+    "addItem": "항목 추가"
+  },
+  "form": {
+    "notSpecified": "지정되지 않음",
+    "selectOption": "옵션 선택..."
   },
   "conversation": {
     "args": "인자",
@@ -157,7 +163,9 @@
     "noResults": "일치하는 파일 없음",
     "title": "파일",
     "showGitHubComments": "GitHub 댓글 표시",
-    "hideGitHubComments": "GitHub 댓글 숨기기"
+    "hideGitHubComments": "GitHub 댓글 숨기기",
+    "prevGitHubComment": "이전 댓글 파일",
+    "nextGitHubComment": "다음 댓글 파일"
   },
   "sections": {
     "changes": "변경사항",
@@ -200,7 +208,8 @@
   "comments": {
     "addReviewComment": "리뷰 코멘트 추가",
     "addPlaceholder": "코멘트 추가...",
-    "editPlaceholder": "코멘트 편집..."
+    "editPlaceholder": "코멘트 편집...",
+    "copyToReview": "리뷰로 복사"
   },
   "confirm": {
     "defaultConfirm": "확인",

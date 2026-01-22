@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { useDropzone } from 'react-dropzone';
 import {
   type Session,
   type ToolStatus,
@@ -250,6 +251,9 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     return null;
   }, [processes, lastSessionProcesses, sessions]);
 
+  const needsExecutorSelection =
+    isNewSessionMode || (!session?.executor && !latestProfileId?.executor);
+
   // Message editor state
   const {
     localMessage,
@@ -284,6 +288,26 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const { uploadFiles, localImages, clearUploadedImages } =
     useSessionAttachments(workspaceId, handleInsertMarkdown);
 
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const imageFiles = acceptedFiles.filter((f) =>
+        f.type.startsWith('image/')
+      );
+      if (imageFiles.length > 0) {
+        uploadFiles(imageFiles);
+      }
+    },
+    [uploadFiles]
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { 'image/*': [] },
+    disabled: mode === 'placeholder' || isAttemptRunning,
+    noClick: true,
+    noKeyboard: true,
+  });
+
   // Executor/variant selection
   const {
     effectiveExecutor,
@@ -296,7 +320,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     profiles,
     latestProfileId,
     isNewSessionMode,
-    scratchVariant: scratchData?.variant,
+    scratchVariant: scratchData?.executor_profile_id?.variant,
     configExecutorProfile: config?.executor_profile,
   });
 
@@ -304,9 +328,11 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const setSelectedVariant = useCallback(
     (variant: string | null) => {
       setVariantFromHook(variant);
-      saveToScratch(localMessage, variant);
+      if (effectiveExecutor) {
+        saveToScratch(localMessage, { executor: effectiveExecutor, variant });
+      }
     },
-    [setVariantFromHook, saveToScratch, localMessage]
+    [setVariantFromHook, saveToScratch, localMessage, effectiveExecutor]
   );
 
   // Navigate to agent settings to customise variants
@@ -385,39 +411,63 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Queue message handler
   const handleQueueMessage = useCallback(async () => {
-    // Allow queueing if there's a message OR review comments
-    if (!localMessage.trim() && !reviewMarkdown) return;
+    // Allow queueing if there's a message OR review comments, and we have an executor
+    if ((!localMessage.trim() && !reviewMarkdown) || !effectiveExecutor) return;
 
     // Combine review comments with user message
     const messageParts = [reviewMarkdown, localMessage].filter(Boolean);
     const combinedMessage = messageParts.join('\n\n');
 
     cancelDebouncedSave();
-    await saveToScratch(localMessage, selectedVariant);
-    await queueMessage(combinedMessage, selectedVariant);
+    await saveToScratch(localMessage, {
+      executor: effectiveExecutor,
+      variant: selectedVariant,
+    });
+    await queueMessage(combinedMessage, {
+      executor: effectiveExecutor,
+      variant: selectedVariant,
+    });
+
+    // Clear local state after queueing (same as handleSend)
+    setLocalMessage('');
+    clearUploadedImages();
+    reviewContext?.clearComments();
   }, [
     localMessage,
     reviewMarkdown,
+    effectiveExecutor,
     selectedVariant,
     queueMessage,
     cancelDebouncedSave,
     saveToScratch,
+    setLocalMessage,
+    clearUploadedImages,
+    reviewContext,
   ]);
 
   // Editor change handler
   const handleEditorChange = useCallback(
     (value: string) => {
       if (isQueued) cancelQueue();
-      handleMessageChange(value, selectedVariant);
+      if (effectiveExecutor) {
+        handleMessageChange(value, {
+          executor: effectiveExecutor,
+          variant: selectedVariant,
+        });
+      } else {
+        setLocalMessage(value);
+      }
       if (sendError) clearError();
     },
     [
       isQueued,
       cancelQueue,
       handleMessageChange,
+      effectiveExecutor,
       selectedVariant,
       sendError,
       clearError,
+      setLocalMessage,
     ]
   );
 
@@ -445,6 +495,14 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     feedbackContext?.exitFeedbackMode();
   }, [feedbackContext]);
 
+  // Handle cancel queue - restore message to editor
+  const handleCancelQueue = useCallback(async () => {
+    if (queuedMessage) {
+      setLocalMessage(queuedMessage);
+    }
+    await cancelQueue();
+  }, [queuedMessage, setLocalMessage, cancelQueue]);
+
   // Message edit retry mutation
   const editRetryMutation = useMessageEditRetry(sessionId ?? '', () => {
     // On success, clear edit mode and reset editor
@@ -455,9 +513,11 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Handle edit submission
   const handleSubmitEdit = useCallback(async () => {
-    if (!editContext.activeEdit || !localMessage.trim()) return;
+    if (!editContext.activeEdit || !localMessage.trim() || !effectiveExecutor)
+      return;
     editRetryMutation.mutate({
       message: localMessage,
+      executor: effectiveExecutor,
       variant: selectedVariant,
       executionProcessId: editContext.activeEdit.processId,
       branchStatus,
@@ -466,6 +526,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   }, [
     editContext.activeEdit,
     localMessage,
+    effectiveExecutor,
     selectedVariant,
     branchStatus,
     processes,
@@ -637,7 +698,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       actions={{
         onSend: handleSend,
         onQueue: handleQueueMessage,
-        onCancelQueue: cancelQueue,
+        onCancelQueue: handleCancelQueue,
         onStop: stopExecution,
         onPasteFiles: uploadFiles,
       }}
@@ -651,7 +712,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         sessions,
         selectedSessionId: sessionId,
         onSelectSession: onSelectSession ?? (() => {}),
-        isNewSessionMode,
+        isNewSessionMode: needsExecutorSelection,
         onNewSession: onStartNewSession,
       }}
       toolbarActions={{
@@ -671,7 +732,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       todos={todos}
       inProgressTodo={inProgressTodo}
       executor={
-        isNewSessionMode
+        needsExecutorSelection
           ? {
               selected: effectiveExecutor,
               options: executorOptions,
@@ -719,6 +780,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
           : undefined
       }
       localImages={localImages}
+      dropzone={{ getRootProps, getInputProps, isDragActive }}
     />
   );
 }

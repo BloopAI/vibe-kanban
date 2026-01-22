@@ -1,6 +1,7 @@
 import { useMemo, useCallback, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useDropzone } from 'react-dropzone';
 import { useCreateMode } from '@/contexts/CreateModeContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
@@ -43,6 +44,26 @@ export function CreateChatBoxContainer() {
 
   const { uploadFiles, getImageIds, clearAttachments, localImages } =
     useCreateAttachments(handleInsertMarkdown);
+
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const imageFiles = acceptedFiles.filter((f) =>
+        f.type.startsWith('image/')
+      );
+      if (imageFiles.length > 0) {
+        uploadFiles(imageFiles);
+      }
+    },
+    [uploadFiles]
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { 'image/*': [] },
+    disabled: createWorkspace.isPending,
+    noClick: true,
+    noKeyboard: true,
+  });
 
   // Default to user's config profile or first available executor
   const effectiveProfile = useMemo<ExecutorProfileId | null>(() => {
@@ -255,6 +276,7 @@ export function CreateChatBoxContainer() {
           agent={effectiveProfile?.executor ?? null}
           onPasteFiles={uploadFiles}
           localImages={localImages}
+          dropzone={{ getRootProps, getInputProps, isDragActive }}
         />
       </div>
     </div>

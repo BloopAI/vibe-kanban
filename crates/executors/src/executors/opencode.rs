@@ -16,7 +16,7 @@ use crate::{
     env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult, SpawnedChild,
-        StandardCodingAgentExecutor,
+        StandardCodingAgentExecutor, opencode::types::OpencodeExecutorEvent,
     },
     stdout_dup::create_stdout_pipe_writer,
 };
@@ -25,7 +25,7 @@ mod normalize_logs;
 mod sdk;
 mod types;
 
-use sdk::{LogWriter, RunConfig, run_session};
+use sdk::{LogWriter, RunConfig, generate_server_password, run_session};
 
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
@@ -70,6 +70,8 @@ impl Opencode {
         let command_parts = self.build_command_builder()?.build_initial()?;
         let (program_path, args) = command_parts.into_resolved().await?;
 
+        let server_password = generate_server_password();
+
         let mut command = Command::new(program_path);
         command
             .kill_on_drop(true)
@@ -77,9 +79,11 @@ impl Opencode {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .current_dir(current_dir)
-            .args(&args)
+            .env("NPM_CONFIG_LOGLEVEL", "error")
             .env("NODE_NO_WARNINGS", "1")
-            .env("NO_COLOR", "1");
+            .env("NO_COLOR", "1")
+            .env("OPENCODE_SERVER_PASSWORD", &server_password)
+            .args(&args);
 
         env.clone()
             .with_profile(&self.cmd)
@@ -98,27 +102,45 @@ impl Opencode {
         let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
         let (interrupt_tx, interrupt_rx) = tokio::sync::oneshot::channel();
 
+        // Prepare config values that will be moved into the spawned task
         let directory = current_dir.to_string_lossy().to_string();
-        let base_url = wait_for_server_url(server_stdout).await?;
         let approvals = if self.auto_approve {
             None
         } else {
             self.approvals.clone()
         };
-
-        let config = RunConfig {
-            base_url,
-            directory,
-            prompt: combined_prompt,
-            resume_session_id: resume_session.map(|s| s.to_string()),
-            model: self.model.clone(),
-            model_variant: self.variant.clone(),
-            agent: self.mode.clone(),
-            approvals,
-            auto_approve: self.auto_approve,
-        };
+        let model = self.model.clone();
+        let model_variant = self.variant.clone();
+        let agent = self.mode.clone();
+        let auto_approve = self.auto_approve;
+        let resume_session_id = resume_session.map(|s| s.to_string());
 
         tokio::spawn(async move {
+            // Wait for server to print listening URL
+            let base_url = match wait_for_server_url(server_stdout, log_writer.clone()).await {
+                Ok(url) => url,
+                Err(err) => {
+                    let _ = log_writer
+                        .log_error(format!("OpenCode startup error: {err}"))
+                        .await;
+                    let _ = exit_signal_tx.send(ExecutorExitResult::Failure);
+                    return;
+                }
+            };
+
+            let config = RunConfig {
+                base_url,
+                directory,
+                prompt: combined_prompt,
+                resume_session_id,
+                model,
+                model_variant,
+                agent,
+                approvals,
+                auto_approve,
+                server_password,
+            };
+
             let result = run_session(config, log_writer.clone(), interrupt_rx).await;
             let exit_result = match result {
                 Ok(()) => ExecutorExitResult::Success,
@@ -152,7 +174,10 @@ fn format_tail(captured: Vec<String>) -> String {
         .join("\n")
 }
 
-async fn wait_for_server_url(stdout: tokio::process::ChildStdout) -> Result<String, ExecutorError> {
+async fn wait_for_server_url(
+    stdout: tokio::process::ChildStdout,
+    log_writer: LogWriter,
+) -> Result<String, ExecutorError> {
     let mut lines = tokio::io::BufReader::new(stdout).lines();
     let deadline = tokio::time::Instant::now() + Duration::from_secs(180);
     let mut captured: Vec<String> = Vec::new();
@@ -176,6 +201,12 @@ async fn wait_for_server_url(stdout: tokio::process::ChildStdout) -> Result<Stri
             Ok(Err(err)) => return Err(ExecutorError::Io(err)),
             Err(_) => continue,
         };
+
+        log_writer
+            .log_event(&OpencodeExecutorEvent::StartupLog {
+                message: line.clone(),
+            })
+            .await?;
 
         if captured.len() < 64 {
             captured.push(line.clone());

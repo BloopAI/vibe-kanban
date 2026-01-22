@@ -121,6 +121,7 @@ async fn spawn_droid(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .current_dir(current_dir)
+        .env("NPM_CONFIG_LOGLEVEL", "error")
         .args(args);
 
     env.clone()

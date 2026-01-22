@@ -1,17 +1,17 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type {
-  Repo,
-  ExecutorProfileId,
-  RepoWithTargetBranch,
   DraftWorkspaceData,
+  ExecutorProfileId,
+  Repo,
+  RepoWithTargetBranch,
 } from 'shared/types';
 import { ScratchType } from 'shared/types';
 import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjects } from '@/hooks/useProjects';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { repoApi, projectsApi } from '@/lib/api';
+import { projectsApi, repoApi } from '@/lib/api';
 
 interface LocationState {
   duplicatePrompt?: string | null;
@@ -57,7 +57,7 @@ export function useCreateModeState({
   const locationState = location.state as LocationState | null;
 
   // Fetch validation data
-  const { projectsById } = useProjects();
+  const { projectsById, isLoading } = useProjects();
   const { profiles } = useUserSystem();
 
   // Initialization guards
@@ -224,7 +224,7 @@ export function useCreateModeState({
     // Skip if already have a project from scratch or props
     if (selectedProjectId) return;
     // Wait for projects to load
-    if (!projectsById) return;
+    if (!projectsById || isLoading) return;
 
     hasAttemptedAutoSelect.current = true;
 
@@ -256,7 +256,7 @@ export function useCreateModeState({
       };
       createDefaultProject();
     }
-  }, [hasInitialValue, selectedProjectId, projectsById]);
+  }, [hasInitialValue, selectedProjectId, projectsById, isLoading]);
 
   // Handle duplicate prompt from navigation state
   useEffect(() => {

@@ -11,8 +11,8 @@ use db::{
     models::{
         coding_agent_turn::{CodingAgentTurn, CreateCodingAgentTurn},
         execution_process::{
-            CreateExecutionProcess, ExecutionContext, ExecutionProcess, ExecutionProcessRunReason,
-            ExecutionProcessStatus,
+            CreateExecutionProcess, ExecutionContext, ExecutionProcess, ExecutionProcessError,
+            ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         execution_process_logs::ExecutionProcessLogs,
         execution_process_repo_state::{
@@ -74,6 +74,8 @@ pub enum ContainerError {
     WorkspaceManager(#[from] WorkspaceManagerError),
     #[error(transparent)]
     Session(#[from] SessionError),
+    #[error(transparent)]
+    ExecutionProcess(#[from] ExecutionProcessError),
     #[error("Io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Failed to kill process: {0}")]

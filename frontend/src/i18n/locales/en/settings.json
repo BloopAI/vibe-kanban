@@ -1,5 +1,14 @@
 {
   "settings": {
+    "common": {
+      "unsavedChanges": "• You have unsaved changes"
+    },
+    "unsavedChanges": {
+      "title": "Unsaved Changes",
+      "message": "You have unsaved changes. Are you sure you want to close without saving?",
+      "discard": "Discard Changes",
+      "cancel": "Keep Editing"
+    },
     "layout": {
       "nav": {
         "title": "Settings",
@@ -135,6 +144,14 @@
             "invalidChars": "Contains invalid characters.",
             "controlChars": "Contains control characters."
           }
+        },
+        "workspaceDir": {
+          "label": "Workspace Directory",
+          "placeholder": "~/",
+          "helper": "Workspaces will be created in a .vibe-kanban-workspaces subdirectory within this path. Leave empty to use the system default. Changes require an app restart.",
+          "browse": "Browse",
+          "dialogTitle": "Select Workspace Directory",
+          "dialogDescription": "Choose a directory. Workspaces will be created in a .vibe-kanban-workspaces subdirectory within it."
         }
       },
       "pullRequests": {
@@ -162,6 +179,15 @@
         "push": {
           "label": "Push Notifications",
           "helper": "Show system notifications when task attempts finish running."
+        }
+      },
+      "messageInput": {
+        "title": "Message Input",
+        "description": "Configure how messages are sent in the chat input.",
+        "shortcut": {
+          "label": "Send message with",
+          "helper": "Choose the keyboard shortcut to send messages.",
+          "enterLabel": "Enter (Shift+Enter for new line)"
         }
       },
       "privacy": {
@@ -250,12 +276,17 @@
       "title": "Coding Agent Configurations",
       "description": "Customize the behavior of coding agents with different configurations.",
       "loading": "Loading agent configurations...",
+      "selectAgent": "Select agent",
       "save": {
         "button": "Save Agent Configurations",
-        "success": "✓ Executor configurations saved successfully!"
+        "success": "✓ Executor configurations saved successfully!",
+        "unsavedChanges": "• You have unsaved changes"
       },
       "availability": {
         "checking": "Checking...",
+        "checkingAvailability": "Checking availability...",
+        "available": "Agent available",
+        "notFoundSimple": "Agent not found",
         "loginDetected": "Recent Usage Detected",
         "loginDetectedTooltip": "Recent authentication credentials found for this agent",
         "installationFound": "Previous Usage Detected",
@@ -271,6 +302,8 @@
         "deleteTitle": "Cannot delete the last configuration",
         "deleteButton": "Delete {{name}}",
         "deleteText": "Delete",
+        "makeDefault": "Make Default",
+        "isDefault": "Default",
         "jsonLabel": "Agent Configuration (JSON)",
         "jsonPlaceholder": "Loading profiles...",
         "jsonLoading": "Loading...",
@@ -279,7 +312,16 @@
       "errors": {
         "deleteFailed": "Failed to delete configuration. Please try again.",
         "saveFailed": "Failed to save agent configurations. Please try again.",
-        "saveConfigFailed": "Failed to save configuration. Please try again."
+        "saveConfigFailed": "Failed to save configuration. Please try again.",
+        "schemaNotFound": "Schema not found for executor type: {{executor}}"
+      },
+      "tree": {
+        "search": "Search configurations...",
+        "expandAll": "Expand All",
+        "collapseAll": "Collapse All",
+        "noResults": "No matching configurations",
+        "noConfigs": "No configurations available",
+        "selectConfig": "Select a configuration from the sidebar to view and edit its settings."
       }
     },
     "mcp": {
@@ -315,7 +357,8 @@
         "button": "Save MCP Configuration",
         "success": "Settings Saved!",
         "successMessage": "✓ MCP configuration saved successfully!",
-        "loading": "Loading current MCP server configuration..."
+        "loading": "Loading current MCP server configuration...",
+        "unsavedChanges": "• You have unsaved changes"
       }
     },
     "projects": {
@@ -350,6 +393,12 @@
         "unsavedChanges": "• You have unsaved changes",
         "discard": "Discard",
         "confirmSwitch": "You have unsaved changes. Are you sure you want to switch projects? Your changes will be lost."
+      },
+      "repositories": {
+        "title": "Repositories",
+        "description": "Manage the git repositories in this project",
+        "noRepositories": "No repositories configured",
+        "addRepository": "Add Repository"
       }
     },
     "repos": {

@@ -12,7 +12,13 @@
     "connect": "连接",
     "disconnect": "断开连接",
     "close": "关闭",
-    "replay": "重播"
+    "replay": "重播",
+    "discard": "放弃",
+    "addItem": "添加项目"
+  },
+  "form": {
+    "notSpecified": "未指定",
+    "selectOption": "选择一个选项..."
   },
   "states": {
     "loading": "加载中...",
@@ -157,7 +163,9 @@
     "noResults": "没有匹配的文件",
     "title": "文件",
     "showGitHubComments": "显示 GitHub 评论",
-    "hideGitHubComments": "隐藏 GitHub 评论"
+    "hideGitHubComments": "隐藏 GitHub 评论",
+    "prevGitHubComment": "上一个有评论的文件",
+    "nextGitHubComment": "下一个有评论的文件"
   },
   "sections": {
     "changes": "更改",
@@ -200,7 +208,8 @@
   "comments": {
     "addReviewComment": "添加审查评论",
     "addPlaceholder": "添加评论...",
-    "editPlaceholder": "编辑评论..."
+    "editPlaceholder": "编辑评论...",
+    "copyToReview": "复制到审查"
   },
   "confirm": {
     "defaultConfirm": "确认",

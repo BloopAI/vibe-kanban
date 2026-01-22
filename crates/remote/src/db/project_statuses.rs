@@ -1,9 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, Postgres};
+use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
+
+use super::get_txid;
+use crate::mutation_types::{DeleteResponse, MutationResponse};
 
 /// Default statuses that are created for each new project (name, color, sort_order)
 pub const DEFAULT_STATUSES: &[(&str, &str, i32)] = &[
@@ -63,19 +66,18 @@ impl ProjectStatusRepository {
         Ok(record)
     }
 
-    pub async fn create<'e, E>(
-        executor: E,
+    pub async fn create(
+        pool: &PgPool,
+        id: Option<Uuid>,
         project_id: Uuid,
         name: String,
         color: String,
         sort_order: i32,
-    ) -> Result<ProjectStatus, ProjectStatusError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
-        let id = Uuid::new_v4();
+    ) -> Result<MutationResponse<ProjectStatus>, ProjectStatusError> {
+        let mut tx = pool.begin().await?;
+        let id = id.unwrap_or_else(Uuid::new_v4);
         let created_at = Utc::now();
-        let record = sqlx::query_as!(
+        let data = sqlx::query_as!(
             ProjectStatus,
             r#"
             INSERT INTO project_statuses (id, project_id, name, color, sort_order, created_at)
@@ -95,30 +97,32 @@ impl ProjectStatusRepository {
             sort_order,
             created_at
         )
-        .fetch_one(executor)
+        .fetch_one(&mut *tx)
         .await?;
 
-        Ok(record)
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(MutationResponse { data, txid })
     }
 
-    pub async fn update<'e, E>(
-        executor: E,
+    /// Update a project status with partial fields. Uses COALESCE to preserve existing values
+    /// when None is provided.
+    pub async fn update(
+        pool: &PgPool,
         id: Uuid,
-        name: String,
-        color: String,
-        sort_order: i32,
-    ) -> Result<ProjectStatus, ProjectStatusError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
-        let record = sqlx::query_as!(
+        name: Option<String>,
+        color: Option<String>,
+        sort_order: Option<i32>,
+    ) -> Result<MutationResponse<ProjectStatus>, ProjectStatusError> {
+        let mut tx = pool.begin().await?;
+        let data = sqlx::query_as!(
             ProjectStatus,
             r#"
             UPDATE project_statuses
             SET
-                name = $1,
-                color = $2,
-                sort_order = $3
+                name = COALESCE($1, name),
+                color = COALESCE($2, color),
+                sort_order = COALESCE($3, sort_order)
             WHERE id = $4
             RETURNING
                 id              AS "id!: Uuid",
@@ -133,20 +137,22 @@ impl ProjectStatusRepository {
             sort_order,
             id
         )
-        .fetch_one(executor)
+        .fetch_one(&mut *tx)
         .await?;
 
-        Ok(record)
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(MutationResponse { data, txid })
     }
 
-    pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<(), ProjectStatusError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, ProjectStatusError> {
+        let mut tx = pool.begin().await?;
         sqlx::query!("DELETE FROM project_statuses WHERE id = $1", id)
-            .execute(executor)
+            .execute(&mut *tx)
             .await?;
-        Ok(())
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(DeleteResponse { txid })
     }
 
     pub async fn list_by_project<'e, E>(

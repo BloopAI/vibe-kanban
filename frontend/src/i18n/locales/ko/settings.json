@@ -1,5 +1,14 @@
 {
   "settings": {
+    "common": {
+      "unsavedChanges": "• 저장되지 않은 변경 사항이 있습니다"
+    },
+    "unsavedChanges": {
+      "title": "저장되지 않은 변경 사항",
+      "message": "저장되지 않은 변경 사항이 있습니다. 저장하지 않고 닫으시겠습니까?",
+      "discard": "변경 사항 삭제",
+      "cancel": "계속 편집"
+    },
     "layout": {
       "nav": {
         "title": "설정",
@@ -135,6 +144,14 @@
             "invalidChars": "유효하지 않은 문자가 포함되어 있습니다.",
             "controlChars": "제어 문자가 포함되어 있습니다."
           }
+        },
+        "workspaceDir": {
+          "label": "워크스페이스 디렉토리",
+          "placeholder": "~/",
+          "helper": "이 경로 내의 .vibe-kanban-workspaces 하위 디렉토리에 워크스페이스가 생성됩니다. 시스템 기본값을 사용하려면 비워두세요. 변경 사항은 앱을 다시 시작해야 적용됩니다.",
+          "browse": "찾아보기",
+          "dialogTitle": "워크스페이스 디렉토리 선택",
+          "dialogDescription": "디렉토리를 선택하세요. 워크스페이스는 해당 디렉토리 내의 .vibe-kanban-workspaces 하위 디렉토리에 생성됩니다."
         }
       },
       "pullRequests": {
@@ -162,6 +179,15 @@
         "push": {
           "label": "푸시 알림",
           "helper": "작업 시도가 완료되면 시스템 알림을 표시합니다."
+        }
+      },
+      "messageInput": {
+        "title": "메시지 입력",
+        "description": "채팅 입력에서 메시지를 보내는 방법을 구성합니다.",
+        "shortcut": {
+          "label": "메시지 보내기 키",
+          "helper": "메시지를 보내는 키보드 단축키를 선택하세요.",
+          "enterLabel": "Enter (Shift+Enter로 새 줄)"
         }
       },
       "privacy": {
@@ -250,12 +276,17 @@
       "title": "코딩 에이전트 구성",
       "description": "다양한 구성으로 코딩 에이전트의 동작을 사용자 정의하세요.",
       "loading": "에이전트 구성 로딩 중...",
+      "selectAgent": "에이전트 선택",
       "save": {
         "button": "에이전트 구성 저장",
-        "success": "✓ 실행자 구성이 성공적으로 저장되었습니다!"
+        "success": "✓ 실행자 구성이 성공적으로 저장되었습니다!",
+        "unsavedChanges": "• 저장되지 않은 변경 사항이 있습니다"
       },
       "availability": {
         "checking": "확인 중...",
+        "checkingAvailability": "가용성 확인 중...",
+        "available": "에이전트 사용 가능",
+        "notFoundSimple": "에이전트를 찾을 수 없음",
         "loginDetected": "최근 사용 감지됨",
         "loginDetectedTooltip": "이 에이전트에 대한 최근 인증 자격 증명이 발견되었습니다",
         "installationFound": "이전 사용 감지됨",
@@ -271,6 +302,8 @@
         "deleteTitle": "마지막 구성은 삭제할 수 없습니다",
         "deleteButton": "{{name}} 삭제",
         "deleteText": "삭제",
+        "makeDefault": "기본값으로 설정",
+        "isDefault": "기본값",
         "jsonLabel": "에이전트 구성 (JSON)",
         "jsonPlaceholder": "프로필 로딩 중...",
         "jsonLoading": "로딩 중...",
@@ -279,7 +312,16 @@
       "errors": {
         "deleteFailed": "구성을 삭제하지 못했습니다. 다시 시도해 주세요.",
         "saveFailed": "에이전트 구성을 저장하지 못했습니다. 다시 시도해 주세요.",
-        "saveConfigFailed": "구성을 저장하지 못했습니다. 다시 시도해 주세요."
+        "saveConfigFailed": "구성을 저장하지 못했습니다. 다시 시도해 주세요.",
+        "schemaNotFound": "실행자 유형 {{executor}}에 대한 스키마를 찾을 수 없습니다"
+      },
+      "tree": {
+        "search": "구성 검색...",
+        "expandAll": "모두 펼치기",
+        "collapseAll": "모두 접기",
+        "noResults": "일치하는 구성 없음",
+        "noConfigs": "사용 가능한 구성 없음",
+        "selectConfig": "사이드바에서 구성을 선택하여 설정을 보고 편집하세요."
       }
     },
     "mcp": {
@@ -315,7 +357,8 @@
         "button": "MCP 구성 저장",
         "success": "설정 저장됨!",
         "successMessage": "✓ MCP 구성이 성공적으로 저장되었습니다!",
-        "loading": "현재 MCP 서버 구성 로딩 중..."
+        "loading": "현재 MCP 서버 구성 로딩 중...",
+        "unsavedChanges": "• 저장되지 않은 변경 사항이 있습니다"
       }
     },
     "projects": {
@@ -350,6 +393,12 @@
         "unsavedChanges": "• 저장되지 않은 변경사항이 있습니다",
         "discard": "취소",
         "confirmSwitch": "저장되지 않은 변경사항이 있습니다. 정말 프로젝트를 전환하시겠습니까? 변경사항이 손실됩니다."
+      },
+      "repositories": {
+        "title": "저장소",
+        "description": "이 프로젝트의 Git 저장소 관리",
+        "noRepositories": "구성된 저장소가 없습니다",
+        "addRepository": "저장소 추가"
       }
     },
     "repos": {

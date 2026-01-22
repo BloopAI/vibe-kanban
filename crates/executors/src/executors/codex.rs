@@ -354,10 +354,11 @@ impl Codex {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .current_dir(current_dir)
-            .args(&args)
+            .env("NPM_CONFIG_LOGLEVEL", "error")
             .env("NODE_NO_WARNINGS", "1")
             .env("NO_COLOR", "1")
-            .env("RUST_LOG", "error");
+            .env("RUST_LOG", "error")
+            .args(&args);
 
         env.clone()
             .with_profile(&self.cmd)
@@ -382,6 +383,8 @@ impl Codex {
             (Some(SandboxMode::DangerFullAccess), None)
         );
         let approvals = self.approvals.clone();
+        let repo_context = env.repo_context.clone();
+        let commit_reminder = env.commit_reminder;
         tokio::spawn(async move {
             let exit_signal_tx = ExitSignalSender::new(exit_signal_tx);
             let log_writer = LogWriter::new(new_stdout);
@@ -397,6 +400,8 @@ impl Codex {
                         exit_signal_tx.clone(),
                         approvals,
                         auto_approve,
+                        repo_context.clone(),
+                        commit_reminder,
                     )
                     .await
                 }
@@ -411,6 +416,8 @@ impl Codex {
                         exit_signal_tx.clone(),
                         approvals,
                         auto_approve,
+                        repo_context,
+                        commit_reminder,
                     )
                     .await
                 }
@@ -467,8 +474,16 @@ impl Codex {
         exit_signal_tx: ExitSignalSender,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
         auto_approve: bool,
+        repo_context: crate::env::RepoContext,
+        commit_reminder: bool,
     ) -> Result<(), ExecutorError> {
-        let client = AppServerClient::new(log_writer, approvals, auto_approve);
+        let client = AppServerClient::new(
+            log_writer,
+            approvals,
+            auto_approve,
+            repo_context,
+            commit_reminder,
+        );
         let rpc_peer =
             JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx);
         client.connect(rpc_peer);

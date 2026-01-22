@@ -7,11 +7,12 @@ import {
   ReactNode,
 } from 'react';
 import type { PatchTypeWithKey } from '@/hooks/useConversationHistory';
-import { NormalizedEntry, TokenUsageInfo } from 'shared/types';
+import { TokenUsageInfo } from 'shared/types';
 
 interface EntriesContextType {
   entries: PatchTypeWithKey[];
   setEntries: (entries: PatchTypeWithKey[]) => void;
+  setTokenUsageInfo: (info: TokenUsageInfo | null) => void;
   reset: () => void;
   tokenUsageInfo: TokenUsageInfo | null;
 }
@@ -28,21 +29,16 @@ export const EntriesProvider = ({ children }: EntriesProviderProps) => {
     null
   );
 
-  const extractTokenUsageInfo = (
-    entries: PatchTypeWithKey[]
-  ): TokenUsageInfo | null => {
-    const latest = entries.findLast(
-      (e) =>
-        e.type === 'NORMALIZED_ENTRY' &&
-        e.content.entry_type.type === 'token_usage_info'
-    )?.content as NormalizedEntry | undefined;
-    return (latest?.entry_type as TokenUsageInfo) ?? null;
-  };
-
   const setEntries = useCallback((newEntries: PatchTypeWithKey[]) => {
     setEntriesState(newEntries);
-    setTokenUsageInfo(extractTokenUsageInfo(newEntries));
   }, []);
+
+  const setTokenUsageInfoCallback = useCallback(
+    (info: TokenUsageInfo | null) => {
+      setTokenUsageInfo(info);
+    },
+    []
+  );
 
   const reset = useCallback(() => {
     setEntriesState([]);
@@ -53,10 +49,11 @@ export const EntriesProvider = ({ children }: EntriesProviderProps) => {
     () => ({
       entries,
       setEntries,
+      setTokenUsageInfo: setTokenUsageInfoCallback,
       reset,
       tokenUsageInfo,
     }),
-    [entries, setEntries, reset, tokenUsageInfo]
+    [entries, setEntries, setTokenUsageInfoCallback, reset, tokenUsageInfo]
   );
 
   return (

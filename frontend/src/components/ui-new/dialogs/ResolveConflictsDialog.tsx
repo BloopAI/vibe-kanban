@@ -130,7 +130,7 @@ const ResolveConflictsDialogImpl =
           // Send follow-up with conflict resolution instructions
           await sessionsApi.followUp(targetSessionId, {
             prompt: conflictInstructions,
-            variant: effectiveProfile.variant,
+            executor_profile_id: effectiveProfile,
             retry_process_id: null,
             force_when_dirty: null,
             perform_git_reset: null,

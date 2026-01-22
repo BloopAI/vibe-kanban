@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ScratchType, type DraftFollowUpData } from 'shared/types';
+import {
+  ScratchType,
+  type DraftFollowUpData,
+  type ExecutorProfileId,
+} from 'shared/types';
 import { useScratch } from './useScratch';
 import { useDebouncedCallback } from './useDebouncedCallback';
 
@@ -19,14 +23,20 @@ interface UseSessionMessageEditorResult {
   isScratchLoading: boolean;
   /** Whether the initial value has been applied from scratch */
   hasInitialValue: boolean;
-  /** Save message and variant to scratch */
-  saveToScratch: (message: string, variant: string | null) => Promise<void>;
+  /** Save message and executor profile to scratch */
+  saveToScratch: (
+    message: string,
+    executorProfileId: ExecutorProfileId
+  ) => Promise<void>;
   /** Delete the draft scratch */
   clearDraft: () => Promise<void>;
   /** Cancel pending debounced save */
   cancelDebouncedSave: () => void;
   /** Handle message change with debounced save */
-  handleMessageChange: (value: string, currentVariant: string | null) => void;
+  handleMessageChange: (
+    value: string,
+    executorProfileId: ExecutorProfileId
+  ) => void;
 }
 
 /**
@@ -52,13 +62,13 @@ export function useSessionMessageEditor({
   const [hasInitialValue, setHasInitialValue] = useState(false);
 
   const saveToScratch = useCallback(
-    async (message: string, variant: string | null) => {
+    async (message: string, executorProfileId: ExecutorProfileId) => {
       if (!scratchId) return;
       try {
         await updateScratch({
           payload: {
             type: 'DRAFT_FOLLOW_UP',
-            data: { message, variant },
+            data: { message, executor_profile_id: executorProfileId },
           },
         });
       } catch (e) {
@@ -91,11 +101,11 @@ export function useSessionMessageEditor({
   }, [isScratchLoading, scratchData?.message]);
 
   // Handle message change with debounced save
-  // Pass variant at call-time to avoid stale closure
+  // Pass executor profile at call-time to avoid stale closure
   const handleMessageChange = useCallback(
-    (value: string, currentVariant: string | null) => {
+    (value: string, executorProfileId: ExecutorProfileId) => {
       setLocalMessage(value);
-      debouncedSave(value, currentVariant);
+      debouncedSave(value, executorProfileId);
     },
     [debouncedSave]
   );

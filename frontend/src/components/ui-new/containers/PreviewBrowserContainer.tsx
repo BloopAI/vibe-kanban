@@ -80,12 +80,65 @@ export function PreviewBrowserContainer({
   const urlInputRef = useRef<HTMLInputElement>(null);
   const [urlInputValue, setUrlInputValue] = useState(effectiveUrl ?? '');
 
+  // Iframe display timing state
+  const [showIframe, setShowIframe] = useState(false);
+  const [allowManualUrl, setAllowManualUrl] = useState(false);
+  const [immediateLoad, setImmediateLoad] = useState(false);
+
   // Sync from prop only when input is not focused
   useEffect(() => {
     if (document.activeElement !== urlInputRef.current) {
       setUrlInputValue(effectiveUrl ?? '');
     }
   }, [effectiveUrl]);
+
+  // 10-second timeout to enable manual URL entry when no URL detected
+  useEffect(() => {
+    if (!runningDevServers.length) {
+      setAllowManualUrl(false);
+      return;
+    }
+    if (urlInfo?.url) return; // Already have URL
+    const timer = setTimeout(() => setAllowManualUrl(true), 10000);
+    return () => clearTimeout(timer);
+  }, [runningDevServers.length, urlInfo?.url]);
+
+  // Reset immediateLoad when server stops
+  useEffect(() => {
+    if (!runningDevServers.length) {
+      setImmediateLoad(false);
+    }
+  }, [runningDevServers.length]);
+
+  // 2-second delay before showing iframe after URL detection
+  // When there's an override URL from scratch, wait for server to detect a URL first
+  // unless user has triggered an immediate load (refresh/submit)
+  useEffect(() => {
+    if (!effectiveUrl) {
+      setShowIframe(false);
+      return;
+    }
+
+    // If user has triggered immediate load (refresh/submit), show immediately after delay
+    // OR if no override (normal flow), show after delay once effectiveUrl is set
+    // OR if we have both override and auto-detected URL (server is ready), show after delay
+    const shouldShow = immediateLoad || !hasOverride || urlInfo?.url;
+
+    if (!shouldShow) {
+      setShowIframe(false);
+      return;
+    }
+
+    setShowIframe(false);
+    const timer = setTimeout(() => setShowIframe(true), 2000);
+    return () => clearTimeout(timer);
+  }, [
+    effectiveUrl,
+    previewRefreshKey,
+    immediateLoad,
+    hasOverride,
+    urlInfo?.url,
+  ]);
 
   // Responsive resize state - use refs for values that shouldn't trigger re-renders
   const [localDimensions, setLocalDimensions] = useState(responsiveDimensions);
@@ -243,13 +296,19 @@ export function PreviewBrowserContainer({
     []
   );
 
-  const handleUrlInputChange = useCallback(
-    (value: string) => {
-      setUrlInputValue(value);
-      setOverrideUrl(value);
-    },
-    [setOverrideUrl]
-  );
+  const handleUrlInputChange = useCallback((value: string) => {
+    setUrlInputValue(value);
+  }, []);
+
+  const handleUrlSubmit = useCallback(() => {
+    const trimmed = urlInputValue.trim();
+    if (!trimmed || trimmed === urlInfo?.url) {
+      clearOverride();
+    } else {
+      setOverrideUrl(trimmed);
+      setImmediateLoad(true);
+    }
+  }, [urlInputValue, urlInfo?.url, clearOverride, setOverrideUrl]);
 
   const handleStart = useCallback(() => {
     start();
@@ -260,6 +319,7 @@ export function PreviewBrowserContainer({
   }, [stop]);
 
   const handleRefresh = useCallback(() => {
+    setImmediateLoad(true);
     triggerPreviewRefresh();
   }, [triggerPreviewRefresh]);
 
@@ -329,6 +389,7 @@ export function PreviewBrowserContainer({
       urlInputRef={urlInputRef}
       isUsingOverride={hasOverride}
       onUrlInputChange={handleUrlInputChange}
+      onUrlSubmit={handleUrlSubmit}
       onClearOverride={handleClearOverride}
       onCopyUrl={handleCopyUrl}
       onOpenInNewTab={handleOpenInNewTab}
@@ -338,6 +399,8 @@ export function PreviewBrowserContainer({
       isStarting={isStarting}
       isStopping={isStopping}
       isServerRunning={runningDevServers.length > 0}
+      showIframe={showIframe}
+      allowManualUrl={allowManualUrl}
       screenSize={screenSize}
       localDimensions={localDimensions}
       onScreenSizeChange={handleScreenSizeChange}

@@ -1,8 +1,11 @@
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, Postgres};
+use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
+
+use super::get_txid;
+use crate::mutation_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -30,10 +33,7 @@ pub const DEFAULT_TAGS: &[(&str, &str)] = &[
 pub struct TagRepository;
 
 impl TagRepository {
-    pub async fn find_by_id<'e, E>(executor: E, id: Uuid) -> Result<Option<Tag>, TagError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Tag>, TagError> {
         let record = sqlx::query_as!(
             Tag,
             r#"
@@ -47,23 +47,23 @@ impl TagRepository {
             "#,
             id
         )
-        .fetch_optional(executor)
+        .fetch_optional(pool)
         .await?;
 
         Ok(record)
     }
 
-    pub async fn create<'e, E>(
-        executor: E,
+    pub async fn create(
+        pool: &PgPool,
+        id: Option<Uuid>,
         project_id: Uuid,
         name: String,
         color: String,
-    ) -> Result<Tag, TagError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
-        let id = Uuid::new_v4();
-        let record = sqlx::query_as!(
+    ) -> Result<MutationResponse<Tag>, TagError> {
+        let mut tx = pool.begin().await?;
+
+        let id = id.unwrap_or_else(Uuid::new_v4);
+        let data = sqlx::query_as!(
             Tag,
             r#"
             INSERT INTO tags (id, project_id, name, color)
@@ -79,28 +79,32 @@ impl TagRepository {
             name,
             color
         )
-        .fetch_one(executor)
+        .fetch_one(&mut *tx)
         .await?;
 
-        Ok(record)
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+
+        Ok(MutationResponse { data, txid })
     }
 
-    pub async fn update<'e, E>(
-        executor: E,
+    /// Update a tag with partial fields. Uses COALESCE to preserve existing values
+    /// when None is provided.
+    pub async fn update(
+        pool: &PgPool,
         id: Uuid,
-        name: String,
-        color: String,
-    ) -> Result<Tag, TagError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
-        let record = sqlx::query_as!(
+        name: Option<String>,
+        color: Option<String>,
+    ) -> Result<MutationResponse<Tag>, TagError> {
+        let mut tx = pool.begin().await?;
+
+        let data = sqlx::query_as!(
             Tag,
             r#"
             UPDATE tags
             SET
-                name = $1,
-                color = $2
+                name = COALESCE($1, name),
+                color = COALESCE($2, color)
             WHERE id = $3
             RETURNING
                 id          AS "id!: Uuid",
@@ -112,26 +116,29 @@ impl TagRepository {
             color,
             id
         )
-        .fetch_one(executor)
+        .fetch_one(&mut *tx)
         .await?;
 
-        Ok(record)
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+
+        Ok(MutationResponse { data, txid })
     }
 
-    pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<(), TagError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, TagError> {
+        let mut tx = pool.begin().await?;
+
         sqlx::query!("DELETE FROM tags WHERE id = $1", id)
-            .execute(executor)
+            .execute(&mut *tx)
             .await?;
-        Ok(())
+
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+
+        Ok(DeleteResponse { txid })
     }
 
-    pub async fn list_by_project<'e, E>(executor: E, project_id: Uuid) -> Result<Vec<Tag>, TagError>
-    where
-        E: Executor<'e, Database = Postgres>,
-    {
+    pub async fn list_by_project(pool: &PgPool, project_id: Uuid) -> Result<Vec<Tag>, TagError> {
         let records = sqlx::query_as!(
             Tag,
             r#"
@@ -145,7 +152,7 @@ impl TagRepository {
             "#,
             project_id
         )
-        .fetch_all(executor)
+        .fetch_all(pool)
         .await?;
 
         Ok(records)

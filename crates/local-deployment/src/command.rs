@@ -17,6 +17,7 @@ pub async fn kill_process_group(child: &mut AsyncGroupChild) -> Result<(), Conta
                 .map_err(|e| ContainerError::KillFailed(std::io::Error::other(e)))?;
 
             for sig in [Signal::SIGINT, Signal::SIGTERM, Signal::SIGKILL] {
+                tracing::info!("Sending {:?} to process group {}", sig, pgid);
                 if let Err(e) = killpg(pgid, sig) {
                     tracing::warn!(
                         "Failed to send signal {:?} to process group {}: {}",
@@ -25,6 +26,7 @@ pub async fn kill_process_group(child: &mut AsyncGroupChild) -> Result<(), Conta
                         e
                     );
                 }
+                tracing::info!("Waiting 2s for process group {} to exit", pgid);
                 tokio::time::sleep(Duration::from_secs(2)).await;
                 if child
                     .inner()
@@ -32,6 +34,7 @@ pub async fn kill_process_group(child: &mut AsyncGroupChild) -> Result<(), Conta
                     .map_err(ContainerError::Io)?
                     .is_some()
                 {
+                    tracing::info!("Process group {} exited after {:?}", pgid, sig);
                     break;
                 }
             }

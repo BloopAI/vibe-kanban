@@ -6,6 +6,9 @@ use workspace_utils::approvals::ApprovalStatus;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum OpencodeExecutorEvent {
+    StartupLog {
+        message: String,
+    },
     SessionStart {
         session_id: String,
     },

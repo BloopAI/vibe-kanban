@@ -43,6 +43,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
+import type { SendMessageShortcut } from 'shared/types';
 
 /** Markdown string representing the editor content */
 export type SerializedEditorState = string;
@@ -62,6 +63,8 @@ type WysiwygProps = {
   projectId?: string;
   onCmdEnter?: () => void;
   onShiftCmdEnter?: () => void;
+  /** Keyboard shortcut mode for sending messages */
+  sendShortcut?: SendMessageShortcut;
   /** Task attempt ID for resolving .vibe-images paths (preferred over taskId) */
   taskAttemptId?: string;
   /** Task ID for resolving .vibe-images paths when taskAttemptId is not available */
@@ -92,6 +95,7 @@ function WYSIWYGEditor({
   projectId,
   onCmdEnter,
   onShiftCmdEnter,
+  sendShortcut,
   taskAttemptId,
   taskId,
   localImages,
@@ -264,6 +268,7 @@ function WYSIWYGEditor({
                     onShiftCmdEnter={onShiftCmdEnter}
                     onChange={onChange}
                     transformers={extendedTransformers}
+                    sendShortcut={sendShortcut}
                   />
                   <ImageKeyboardPlugin />
                   <CodeBlockShortcutPlugin />

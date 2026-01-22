@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
-import { NodeKey, SerializedLexicalNode, Spread } from 'lexical';
-import { HelpCircle, Loader2 } from 'lucide-react';
+import { NodeKey, SerializedLexicalNode, Spread, $getNodeByKey } from 'lexical';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { HelpCircle, Loader2, X } from 'lucide-react';
 import {
   useTaskAttemptId,
   useTaskId,
@@ -36,6 +37,7 @@ function truncatePath(path: string, maxLength = 24): string {
 
 function ImageComponent({
   data,
+  nodeKey,
   onDoubleClickEdit,
 }: {
   data: ImageData;
@@ -46,6 +48,7 @@ function ImageComponent({
   const taskAttemptId = useTaskAttemptId();
   const taskId = useTaskId();
   const localImages = useLocalImages();
+  const [editor] = useLexicalComposerContext();
 
   const isVibeImage = src.startsWith('.vibe-images/');
 
@@ -76,6 +79,23 @@ function ImageComponent({
       }
     },
     [metadata, altText]
+  );
+
+  const handleDelete = useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (!editor.isEditable()) return;
+
+      editor.update(() => {
+        const node = $getNodeByKey(nodeKey);
+        if (node) {
+          node.remove();
+        }
+      });
+    },
+    [editor, nodeKey]
   );
 
   // Determine what to show as thumbnail
@@ -147,7 +167,7 @@ function ImageComponent({
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 px-1.5 py-1 bg-muted rounded border align-bottom cursor-pointer border-border hover:border-muted-foreground"
+      className="group relative inline-flex items-center gap-1.5 pl-1.5 pr-5 py-1 ml-0.5 mr-0.5 bg-muted rounded border cursor-pointer border-border hover:border-muted-foreground transition-colors align-bottom"
       onClick={handleClick}
       onDoubleClick={onDoubleClickEdit}
       role="button"
@@ -164,6 +184,16 @@ function ImageComponent({
           </span>
         )}
       </span>
+      {editor.isEditable() && (
+        <button
+          onClick={handleDelete}
+          className="absolute top-1 right-1 w-4 h-4 rounded-full bg-foreground/70 hover:bg-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-label="Remove image"
+          type="button"
+        >
+          <X className="w-2.5 h-2.5 text-background" />
+        </button>
+      )}
     </span>
   );
 }
@@ -178,6 +208,13 @@ const config: DecoratorNodeConfig<ImageData> = {
     deserialize: (match) => ({ src: match[2], altText: match[1] }),
   },
   component: ImageComponent,
+  domStyle: {
+    display: 'inline-block',
+    paddingLeft: '2px',
+    paddingRight: '2px',
+    verticalAlign: 'bottom',
+  },
+  keyboardSelectable: false,
   importDOM: (createNode) => ({
     img: () => ({
       conversion: (el: HTMLElement) => {

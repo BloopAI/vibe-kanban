@@ -18,13 +18,15 @@ export type Tag = { id: string, project_id: string, name: string, color: string,
 
 export type Issue = { id: string, project_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, extension_metadata: JsonValue, created_at: string, updated_at: string, };
 
-export type IssueAssignee = { issue_id: string, user_id: string, assigned_at: string, };
+export type IssueAssignee = { id: string, issue_id: string, user_id: string, assigned_at: string, };
 
-export type IssueFollower = { issue_id: string, user_id: string, };
+export type IssueFollower = { id: string, issue_id: string, user_id: string, };
 
-export type IssueTag = { issue_id: string, tag_id: string, };
+export type IssueTag = { id: string, issue_id: string, tag_id: string, };
 
-export type IssueDependency = { blocking_issue_id: string, blocked_issue_id: string, created_at: string, };
+export type IssueRelationship = { id: string, issue_id: string, related_issue_id: string, relationship_type: IssueRelationshipType, created_at: string, };
+
+export type IssueRelationshipType = "blocking" | "related" | "has_duplicate";
 
 export type IssueComment = { id: string, issue_id: string, author_id: string, message: string, created_at: string, updated_at: string, };
 
@@ -36,12 +38,111 @@ export type WorkspacePrStatus = "open" | "merged" | "closed";
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
+export type CreateProjectRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, organization_id: string, name: string, color: string, };
+
+export type UpdateProjectRequest = { name: string | null, color: string | null, };
+
+export type CreateNotificationRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, organization_id: string, seen: boolean, };
+
+export type UpdateNotificationRequest = { seen: boolean | null, };
+
+export type CreateTagRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, project_id: string, name: string, color: string, };
+
+export type UpdateTagRequest = { name: string | null, color: string | null, };
+
+export type CreateProjectStatusRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, project_id: string, name: string, color: string, sort_order: number, };
+
+export type UpdateProjectStatusRequest = { name: string | null, color: string | null, sort_order: number | null, };
+
+export type CreateIssueRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, project_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, extension_metadata: JsonValue, };
+
+export type UpdateIssueRequest = { status_id: string | null, title: string | null, description: string | null | null, priority: IssuePriority | null, start_date: string | null | null, target_date: string | null | null, completed_at: string | null | null, sort_order: number | null, parent_issue_id: string | null | null, extension_metadata: JsonValue | null, };
+
+export type CreateIssueAssigneeRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, issue_id: string, user_id: string, };
+
+export type UpdateIssueAssigneeRequest = { user_id: string | null, };
+
+export type CreateIssueFollowerRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, issue_id: string, user_id: string, };
+
+export type UpdateIssueFollowerRequest = { user_id: string | null, };
+
+export type CreateIssueTagRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, issue_id: string, tag_id: string, };
+
+export type UpdateIssueTagRequest = { tag_id: string | null, };
+
+export type CreateIssueRelationshipRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, issue_id: string, related_issue_id: string, relationship_type: IssueRelationshipType, };
+
+export type UpdateIssueRelationshipRequest = { related_issue_id: string | null, relationship_type: IssueRelationshipType | null, };
+
+export type CreateIssueCommentRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, issue_id: string, message: string, };
+
+export type UpdateIssueCommentRequest = { message: string | null, };
+
+export type CreateIssueCommentReactionRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, comment_id: string, emoji: string, };
+
+export type UpdateIssueCommentReactionRequest = { emoji: string | null, };
+
 // Shape definition interface
 export interface ShapeDefinition<T> {
   readonly table: string;
   readonly params: readonly string[];
   readonly url: string;
-  readonly _type: T;  // Phantom field for type inference
+  readonly _type: T;  // Phantom field for type inference (not present at runtime)
 }
 
 // Helper to create type-safe shape definitions
@@ -50,100 +151,211 @@ function defineShape<T>(
   params: readonly string[],
   url: string
 ): ShapeDefinition<T> {
-  return { table, params, url, _type: null as unknown as T };
+  return { table, params, url } as ShapeDefinition<T>;
 }
 
 // Individual shape definitions with embedded types
 export const PROJECTS_SHAPE = defineShape<Project>(
   'projects',
   ['organization_id'] as const,
-  '/shape/projects'
+  '/v1/shape/projects'
 );
 
 export const NOTIFICATIONS_SHAPE = defineShape<Notification>(
   'notifications',
   ['organization_id', 'user_id'] as const,
-  '/shape/notifications'
-);
-
-export const WORKSPACES_SHAPE = defineShape<Workspace>(
-  'workspaces',
-  ['project_id'] as const,
-  '/shape/project/{project_id}/workspaces'
-);
-
-export const PROJECT_STATUSES_SHAPE = defineShape<ProjectStatus>(
-  'project_statuses',
-  ['project_id'] as const,
-  '/shape/project/{project_id}/statuses'
+  '/v1/shape/notifications'
 );
 
 export const TAGS_SHAPE = defineShape<Tag>(
   'tags',
   ['project_id'] as const,
-  '/shape/project/{project_id}/tags'
+  '/v1/shape/project/{project_id}/tags'
+);
+
+export const PROJECT_STATUSES_SHAPE = defineShape<ProjectStatus>(
+  'project_statuses',
+  ['project_id'] as const,
+  '/v1/shape/project/{project_id}/project_statuses'
 );
 
 export const ISSUES_SHAPE = defineShape<Issue>(
   'issues',
   ['project_id'] as const,
-  '/shape/project/{project_id}/issues'
+  '/v1/shape/project/{project_id}/issues'
+);
+
+export const WORKSPACES_SHAPE = defineShape<Workspace>(
+  'workspaces',
+  ['project_id'] as const,
+  '/v1/shape/project/{project_id}/workspaces'
 );
 
 export const ISSUE_ASSIGNEES_SHAPE = defineShape<IssueAssignee>(
   'issue_assignees',
   ['project_id'] as const,
-  '/shape/project/{project_id}/issue_assignees'
+  '/v1/shape/project/{project_id}/issue_assignees'
 );
 
 export const ISSUE_FOLLOWERS_SHAPE = defineShape<IssueFollower>(
   'issue_followers',
   ['project_id'] as const,
-  '/shape/project/{project_id}/issue_followers'
+  '/v1/shape/project/{project_id}/issue_followers'
 );
 
 export const ISSUE_TAGS_SHAPE = defineShape<IssueTag>(
   'issue_tags',
   ['project_id'] as const,
-  '/shape/project/{project_id}/issue_tags'
+  '/v1/shape/project/{project_id}/issue_tags'
 );
 
-export const ISSUE_DEPENDENCIES_SHAPE = defineShape<IssueDependency>(
-  'issue_dependencies',
+export const ISSUE_RELATIONSHIPS_SHAPE = defineShape<IssueRelationship>(
+  'issue_relationships',
   ['project_id'] as const,
-  '/shape/project/{project_id}/issue_dependencies'
+  '/v1/shape/project/{project_id}/issue_relationships'
 );
 
 export const ISSUE_COMMENTS_SHAPE = defineShape<IssueComment>(
   'issue_comments',
   ['issue_id'] as const,
-  '/shape/issue/{issue_id}/comments'
+  '/v1/shape/issue/{issue_id}/comments'
 );
 
 export const ISSUE_COMMENT_REACTIONS_SHAPE = defineShape<IssueCommentReaction>(
   'issue_comment_reactions',
   ['issue_id'] as const,
-  '/shape/issue/{issue_id}/reactions'
+  '/v1/shape/issue/{issue_id}/reactions'
 );
 
-// All shapes as an array for iteration and factory building
-export const ALL_SHAPES = [
-  PROJECTS_SHAPE,
-  NOTIFICATIONS_SHAPE,
-  WORKSPACES_SHAPE,
-  PROJECT_STATUSES_SHAPE,
-  TAGS_SHAPE,
-  ISSUES_SHAPE,
-  ISSUE_ASSIGNEES_SHAPE,
-  ISSUE_FOLLOWERS_SHAPE,
-  ISSUE_TAGS_SHAPE,
-  ISSUE_DEPENDENCIES_SHAPE,
-  ISSUE_COMMENTS_SHAPE,
-  ISSUE_COMMENT_REACTIONS_SHAPE,
-] as const;
+// =============================================================================
+// Entity Definitions for SDK Generation
+// =============================================================================
 
-// Type helper to extract row type from a shape
-export type ShapeRowType<S extends ShapeDefinition<unknown>> = S['_type'];
+// Scope enum matching Rust
+export type Scope = 'Organization' | 'Project' | 'Issue' | 'Comment';
 
-// Union of all shape types
-export type AnyShape = typeof ALL_SHAPES[number];
+// Entity definition interface
+export interface EntityDefinition<TRow, TCreate = unknown, TUpdate = unknown> {
+  readonly name: string;
+  readonly table: string;
+  readonly mutationScope: Scope | null;
+  readonly shapeScope: Scope | null;
+  readonly shape: ShapeDefinition<TRow> | null;
+  readonly mutations: {
+    readonly url: string;
+    readonly _createType: TCreate;  // Phantom (not present at runtime)
+    readonly _updateType: TUpdate;  // Phantom (not present at runtime)
+  } | null;
+}
+
+// Individual entity definitions
+export const PROJECT_ENTITY: EntityDefinition<Project, CreateProjectRequest, UpdateProjectRequest> = {
+  name: 'Project',
+  table: 'projects',
+  mutationScope: 'Organization',
+  shapeScope: 'Organization',
+  shape: PROJECTS_SHAPE,
+  mutations: { url: '/v1/projects' } as EntityDefinition<Project, CreateProjectRequest, UpdateProjectRequest>['mutations'],
+};
+
+export const NOTIFICATION_ENTITY: EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest> = {
+  name: 'Notification',
+  table: 'notifications',
+  mutationScope: 'Organization',
+  shapeScope: 'Organization',
+  shape: NOTIFICATIONS_SHAPE,
+  mutations: { url: '/v1/notifications' } as EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest>['mutations'],
+};
+
+export const TAG_ENTITY: EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest> = {
+  name: 'Tag',
+  table: 'tags',
+  mutationScope: 'Project',
+  shapeScope: 'Project',
+  shape: TAGS_SHAPE,
+  mutations: { url: '/v1/tags' } as EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest>['mutations'],
+};
+
+export const PROJECT_STATUS_ENTITY: EntityDefinition<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest> = {
+  name: 'ProjectStatus',
+  table: 'project_statuses',
+  mutationScope: 'Project',
+  shapeScope: 'Project',
+  shape: PROJECT_STATUSES_SHAPE,
+  mutations: { url: '/v1/project_statuses' } as EntityDefinition<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest>['mutations'],
+};
+
+export const ISSUE_ENTITY: EntityDefinition<Issue, CreateIssueRequest, UpdateIssueRequest> = {
+  name: 'Issue',
+  table: 'issues',
+  mutationScope: 'Project',
+  shapeScope: 'Project',
+  shape: ISSUES_SHAPE,
+  mutations: { url: '/v1/issues' } as EntityDefinition<Issue, CreateIssueRequest, UpdateIssueRequest>['mutations'],
+};
+
+export const WORKSPACE_ENTITY: EntityDefinition<Workspace> = {
+  name: 'Workspace',
+  table: 'workspaces',
+  mutationScope: null,
+  shapeScope: null,
+  shape: WORKSPACES_SHAPE,
+  mutations: null,
+};
+
+export const ISSUE_ASSIGNEE_ENTITY: EntityDefinition<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest> = {
+  name: 'IssueAssignee',
+  table: 'issue_assignees',
+  mutationScope: 'Issue',
+  shapeScope: 'Project',
+  shape: ISSUE_ASSIGNEES_SHAPE,
+  mutations: { url: '/v1/issue_assignees' } as EntityDefinition<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest>['mutations'],
+};
+
+export const ISSUE_FOLLOWER_ENTITY: EntityDefinition<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest> = {
+  name: 'IssueFollower',
+  table: 'issue_followers',
+  mutationScope: 'Issue',
+  shapeScope: 'Project',
+  shape: ISSUE_FOLLOWERS_SHAPE,
+  mutations: { url: '/v1/issue_followers' } as EntityDefinition<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest>['mutations'],
+};
+
+export const ISSUE_TAG_ENTITY: EntityDefinition<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest> = {
+  name: 'IssueTag',
+  table: 'issue_tags',
+  mutationScope: 'Issue',
+  shapeScope: 'Project',
+  shape: ISSUE_TAGS_SHAPE,
+  mutations: { url: '/v1/issue_tags' } as EntityDefinition<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest>['mutations'],
+};
+
+export const ISSUE_RELATIONSHIP_ENTITY: EntityDefinition<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest> = {
+  name: 'IssueRelationship',
+  table: 'issue_relationships',
+  mutationScope: 'Issue',
+  shapeScope: 'Project',
+  shape: ISSUE_RELATIONSHIPS_SHAPE,
+  mutations: { url: '/v1/issue_relationships' } as EntityDefinition<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest>['mutations'],
+};
+
+export const ISSUE_COMMENT_ENTITY: EntityDefinition<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> = {
+  name: 'IssueComment',
+  table: 'issue_comments',
+  mutationScope: 'Issue',
+  shapeScope: 'Issue',
+  shape: ISSUE_COMMENTS_SHAPE,
+  mutations: { url: '/v1/issue_comments' } as EntityDefinition<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest>['mutations'],
+};
+
+export const ISSUE_COMMENT_REACTION_ENTITY: EntityDefinition<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest> = {
+  name: 'IssueCommentReaction',
+  table: 'issue_comment_reactions',
+  mutationScope: 'Comment',
+  shapeScope: 'Comment',
+  shape: ISSUE_COMMENT_REACTIONS_SHAPE,
+  mutations: { url: '/v1/issue_comment_reactions' } as EntityDefinition<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>['mutations'],
+};
+
+// Type helper to extract row type from an entity
+export type EntityRowType<E extends EntityDefinition<unknown>> = E extends EntityDefinition<infer R> ? R : never;

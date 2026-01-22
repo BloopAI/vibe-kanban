@@ -12,7 +12,13 @@
     "connect": "連線",
     "disconnect": "中斷連線",
     "close": "關閉",
-    "replay": "重播"
+    "replay": "重播",
+    "discard": "放棄",
+    "addItem": "新增項目"
+  },
+  "form": {
+    "notSpecified": "未指定",
+    "selectOption": "選擇一個選項..."
   },
   "states": {
     "loading": "載入中...",
@@ -160,7 +166,9 @@
     "noResults": "沒有匹配的檔案",
     "title": "檔案",
     "showGitHubComments": "顯示 GitHub 評論",
-    "hideGitHubComments": "隱藏 GitHub 評論"
+    "hideGitHubComments": "隱藏 GitHub 評論",
+    "prevGitHubComment": "上一個有評論的檔案",
+    "nextGitHubComment": "下一個有評論的檔案"
   },
   "sections": {
     "changes": "變更",
@@ -203,7 +211,8 @@
   "comments": {
     "addReviewComment": "新增審查評論",
     "addPlaceholder": "新增評論...",
-    "editPlaceholder": "編輯評論..."
+    "editPlaceholder": "編輯評論...",
+    "copyToReview": "複製到審查"
   },
   "confirm": {
     "defaultConfirm": "確認",

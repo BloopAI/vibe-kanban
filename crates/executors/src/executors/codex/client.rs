@@ -2,7 +2,10 @@ use std::{
     borrow::Cow,
     collections::VecDeque,
     io,
-    sync::{Arc, OnceLock},
+    sync::{
+        Arc, OnceLock,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use async_trait::async_trait;
@@ -27,6 +30,7 @@ use workspace_utils::approvals::ApprovalStatus;
 use super::jsonrpc::{JsonRpcCallbacks, JsonRpcPeer};
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
+    env::RepoContext,
     executors::{ExecutorError, codex::normalize_logs::Approval},
 };
 
@@ -37,6 +41,9 @@ pub struct AppServerClient {
     conversation_id: Mutex<Option<ConversationId>>,
     pending_feedback: Mutex<VecDeque<String>>,
     auto_approve: bool,
+    repo_context: RepoContext,
+    commit_reminder: bool,
+    commit_reminder_sent: AtomicBool,
 }
 
 impl AppServerClient {
@@ -44,6 +51,8 @@ impl AppServerClient {
         log_writer: LogWriter,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
         auto_approve: bool,
+        repo_context: RepoContext,
+        commit_reminder: bool,
     ) -> Arc<Self> {
         Arc::new(Self {
             rpc: OnceLock::new(),
@@ -52,6 +61,9 @@ impl AppServerClient {
             auto_approve,
             conversation_id: Mutex::new(None),
             pending_feedback: Mutex::new(VecDeque::new()),
+            repo_context,
+            commit_reminder,
+            commit_reminder_sent: AtomicBool::new(false),
         })
     }
 
@@ -360,19 +372,17 @@ impl AppServerClient {
             if trimmed.is_empty() {
                 continue;
             }
-            self.spawn_feedback_message(conversation_id, trimmed.to_string());
+            self.spawn_user_message(conversation_id, format!("User feedback: {trimmed}"));
         }
     }
 
-    fn spawn_feedback_message(&self, conversation_id: ConversationId, feedback: String) {
+    fn spawn_user_message(&self, conversation_id: ConversationId, message: String) {
         let peer = self.rpc().clone();
         let request = ClientRequest::SendUserMessage {
             request_id: peer.next_request_id(),
             params: SendUserMessageParams {
                 conversation_id,
-                items: vec![InputItem::Text {
-                    text: format!("User feedback: {feedback}"),
-                }],
+                items: vec![InputItem::Text { text: message }],
             },
         };
         tokio::spawn(async move {
@@ -384,7 +394,7 @@ impl AppServerClient {
                 )
                 .await
             {
-                tracing::error!("failed to send feedback follow-up message: {err}");
+                tracing::error!("failed to send user message: {err}");
             }
         });
     }
@@ -466,6 +476,27 @@ impl JsonRpcCallbacks for AppServerClient {
         let has_finished = method
             .strip_prefix("codex/event/")
             .is_some_and(|suffix| suffix == "task_complete");
+
+        if has_finished
+            && self.commit_reminder
+            && !self.commit_reminder_sent.swap(true, Ordering::SeqCst)
+        {
+            let status =
+                workspace_utils::git::check_uncommitted_changes(&self.repo_context.repo_paths())
+                    .await;
+            if !status.is_empty()
+                && let Some(conversation_id) = *self.conversation_id.lock().await
+            {
+                self.spawn_user_message(
+                    conversation_id,
+                    format!(
+                        "You have uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
+                        status
+                    ),
+                );
+                return Ok(false);
+            }
+        }
 
         Ok(has_finished)
     }

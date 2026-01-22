@@ -193,7 +193,7 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
 
   const { diffFile, additions, deletions, filePath, isValid } =
     useDiffData(input);
-  const { comments, drafts, setDraft } = useReview();
+  const { comments, drafts, setDraft, addComment } = useReview();
   const { showGitHubComments, getGitHubCommentsForFile } =
     useWorkspaceContext();
 
@@ -332,7 +332,21 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
       if (!lineData.data) return null;
 
       if (lineData.data.type === 'github') {
-        return <GitHubCommentRenderer comment={lineData.data.comment} />;
+        const githubComment = lineData.data.comment;
+        const handleCopyToUserComment = () => {
+          addComment({
+            filePath,
+            lineNumber: githubComment.lineNumber,
+            side: githubComment.side,
+            text: githubComment.body,
+          });
+        };
+        return (
+          <GitHubCommentRenderer
+            comment={githubComment}
+            onCopyToUserComment={handleCopyToUserComment}
+          />
+        );
       }
       return (
         <ReviewCommentRenderer
@@ -341,7 +355,7 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
         />
       );
     },
-    [projectId]
+    [projectId, addComment, filePath]
   );
 
   return (

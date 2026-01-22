@@ -17,6 +17,13 @@ fn default_pr_auto_description_enabled() -> bool {
     true
 }
 
+#[derive(Clone, Debug, Default, Serialize, Deserialize, TS, PartialEq, Eq)]
+pub enum SendMessageShortcut {
+    #[default]
+    ModifierEnter,
+    Enter,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct Config {
     pub config_version: String,
@@ -47,6 +54,8 @@ pub struct Config {
     pub beta_workspaces_invitation_sent: bool,
     #[serde(default)]
     pub commit_reminder: bool,
+    #[serde(default)]
+    pub send_message_shortcut: SendMessageShortcut,
 }
 
 impl Config {
@@ -75,6 +84,7 @@ impl Config {
             beta_workspaces: false,
             beta_workspaces_invitation_sent: false,
             commit_reminder: false,
+            send_message_shortcut: SendMessageShortcut::default(),
         }
     }
 
@@ -128,6 +138,7 @@ impl Default for Config {
             beta_workspaces: false,
             beta_workspaces_invitation_sent: false,
             commit_reminder: false,
+            send_message_shortcut: SendMessageShortcut::default(),
         }
     }
 }

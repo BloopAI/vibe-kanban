@@ -24,6 +24,7 @@ import { AgentIcon } from '@/components/agents/AgentIcon';
 import {
   ChatBoxBase,
   VisualVariant,
+  type DropzoneProps,
   type EditorProps,
   type VariantProps,
 } from './ChatBoxBase';
@@ -147,6 +148,7 @@ interface SessionChatBoxProps {
   localImages?: LocalImageMetadata[];
   onViewCode?: () => void;
   tokenUsageInfo?: TokenUsageInfo | null;
+  dropzone?: DropzoneProps;
 }
 
 /**
@@ -175,6 +177,7 @@ export function SessionChatBox({
   localImages,
   onViewCode,
   tokenUsageInfo,
+  dropzone,
 }: SessionChatBoxProps) {
   const { t } = useTranslation('tasks');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -516,6 +519,7 @@ export function SessionChatBox({
       isRunning={showRunningAnimation}
       onPasteFiles={actions.onPasteFiles}
       localImages={localImages}
+      dropzone={dropzone}
       headerLeft={
         <>
           {/* New session mode: agent icon + executor dropdown */}

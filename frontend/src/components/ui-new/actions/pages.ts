@@ -10,6 +10,7 @@ export type PageId =
   | 'diffOptions'
   | 'viewOptions'
   | 'gitActions'
+  | 'repoActions' // Page for repo-specific actions (opened from repo card)
   | 'selectRepo'; // Dynamic page for repo selection (not in Pages record)
 
 // Items that can appear inside a group
@@ -182,6 +183,28 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
           { type: 'action', action: Actions.GitCreatePR },
           { type: 'action', action: Actions.GitMerge },
           { type: 'action', action: Actions.GitPush },
+          { type: 'action', action: Actions.GitRebase },
+          { type: 'action', action: Actions.GitChangeTarget },
+        ],
+      },
+    ],
+  },
+
+  // Repo actions page - shown when clicking "..." on a repo card
+  repoActions: {
+    id: 'repo-actions',
+    title: 'Repository Actions',
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    items: [
+      {
+        type: 'group',
+        label: 'Actions',
+        items: [
+          { type: 'action', action: Actions.RepoCopyPath },
+          { type: 'action', action: Actions.RepoOpenInIDE },
+          { type: 'action', action: Actions.RepoSettings },
+          { type: 'action', action: Actions.GitCreatePR },
+          { type: 'action', action: Actions.GitMerge },
           { type: 'action', action: Actions.GitRebase },
           { type: 'action', action: Actions.GitChangeTarget },
         ],

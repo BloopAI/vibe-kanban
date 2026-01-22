@@ -11,6 +11,7 @@ import {
   DeviceMobileIcon,
   ArrowsOutCardinalIcon,
   PauseIcon,
+  CheckIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -37,6 +38,7 @@ interface PreviewBrowserProps {
   urlInputRef: RefObject<HTMLInputElement>;
   isUsingOverride?: boolean;
   onUrlInputChange: (value: string) => void;
+  onUrlSubmit: () => void;
   onClearOverride?: () => void;
   onCopyUrl: () => void;
   onOpenInNewTab: () => void;
@@ -46,6 +48,8 @@ interface PreviewBrowserProps {
   isStarting: boolean;
   isStopping: boolean;
   isServerRunning: boolean;
+  showIframe: boolean;
+  allowManualUrl?: boolean;
   screenSize: ScreenSize;
   localDimensions: ResponsiveDimensions;
   onScreenSizeChange: (size: ScreenSize) => void;
@@ -69,6 +73,7 @@ export function PreviewBrowser({
   urlInputRef,
   isUsingOverride,
   onUrlInputChange,
+  onUrlSubmit,
   onClearOverride,
   onCopyUrl,
   onOpenInNewTab,
@@ -78,6 +83,8 @@ export function PreviewBrowser({
   isStarting,
   isStopping,
   isServerRunning,
+  showIframe,
+  allowManualUrl,
   screenSize,
   localDimensions,
   onScreenSizeChange,
@@ -93,7 +100,10 @@ export function PreviewBrowser({
 }: PreviewBrowserProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const isLoading = isStarting || (isServerRunning && !url);
-  const showIframe = url && !isLoading && isServerRunning;
+  // Use the showIframe prop from container which handles the 2-second delay
+  const showIframeContent = showIframe && url && !isLoading && isServerRunning;
+  // Show loading when URL detected but waiting for delay
+  const isWaitingForDelay = isServerRunning && url && !showIframe;
 
   const hasDevScript = repos.some(
     (repo) => repo.dev_server_script && repo.dev_server_script.trim() !== ''
@@ -142,6 +152,7 @@ export function PreviewBrowser({
               type="text"
               value={urlInputValue}
               onChange={(e) => onUrlInputChange(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && onUrlSubmit()}
               placeholder={autoDetectedUrl ?? 'Enter URL...'}
               disabled={!isServerRunning}
               className={cn(
@@ -156,6 +167,13 @@ export function PreviewBrowser({
 
           {/* URL Actions */}
           <IconButtonGroup>
+            <IconButtonGroupItem
+              icon={CheckIcon}
+              onClick={onUrlSubmit}
+              disabled={!isServerRunning}
+              aria-label={t('preview.toolbar.submitUrl')}
+              title={t('preview.toolbar.submitUrl')}
+            />
             {isUsingOverride && (
               <IconButtonGroupItem
                 icon={XIcon}
@@ -269,7 +287,7 @@ export function PreviewBrowser({
           screenSize === 'mobile' ? 'overflow-hidden' : 'overflow-auto'
         )}
       >
-        {showIframe ? (
+        {showIframeContent ? (
           <div
             className={cn(
               'h-full',
@@ -346,14 +364,21 @@ export function PreviewBrowser({
           </div>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-base text-low">
-            {isLoading ? (
+            {isLoading || isWaitingForDelay ? (
               <>
                 <SpinnerIcon className="size-icon-lg animate-spin text-brand" />
                 <p className="text-sm">
                   {isStarting
                     ? t('preview.loading.startingServer')
-                    : t('preview.loading.waitingForServer')}
+                    : isWaitingForDelay
+                      ? t('preview.loading.loadingPreview')
+                      : t('preview.loading.waitingForServer')}
                 </p>
+                {allowManualUrl && !autoDetectedUrl && (
+                  <p className="text-sm text-low mt-base">
+                    {t('preview.loading.manualUrlHint')}
+                  </p>
+                )}
               </>
             ) : hasDevScript ? (
               <>

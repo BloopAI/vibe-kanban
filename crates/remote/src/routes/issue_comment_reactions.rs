@@ -1,10 +1,8 @@
 use axum::{
-    Json, Router,
-    extract::{Extension, Path, State},
+    Json,
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
-    routing::{delete, get},
 };
-use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -16,84 +14,109 @@ use crate::{
         issue_comment_reactions::{IssueCommentReaction, IssueCommentReactionRepository},
         issue_comments::IssueCommentRepository,
     },
+    define_mutation_router,
+    entities::{
+        CreateIssueCommentReactionRequest, ListIssueCommentReactionsQuery,
+        ListIssueCommentReactionsResponse, UpdateIssueCommentReactionRequest,
+    },
+    mutation_types::{DeleteResponse, MutationResponse},
 };
 
-#[derive(Debug, Serialize)]
-pub struct ListReactionsResponse {
-    pub reactions: Vec<IssueCommentReaction>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct CreateReactionRequest {
-    pub emoji: String,
-}
-
-pub fn router() -> Router<AppState> {
-    Router::new()
-        .route(
-            "/comments/{comment_id}/reactions",
-            get(list_reactions).post(create_reaction),
-        )
-        .route("/reactions/{reaction_id}", delete(delete_reaction))
-}
+// Generate router that references handlers below
+define_mutation_router!(IssueCommentReaction, table: "issue_comment_reactions");
 
 #[instrument(
-    name = "issue_comment_reactions.list_reactions",
+    name = "issue_comment_reactions.list_issue_comment_reactions",
     skip(state, ctx),
-    fields(comment_id = %comment_id, user_id = %ctx.user.id)
+    fields(comment_id = %query.comment_id, user_id = %ctx.user.id)
 )]
-async fn list_reactions(
+async fn list_issue_comment_reactions(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Path(comment_id): Path<Uuid>,
-) -> Result<Json<ListReactionsResponse>, ErrorResponse> {
-    let comment = IssueCommentRepository::find_by_id(state.pool(), comment_id)
+    Query(query): Query<ListIssueCommentReactionsQuery>,
+) -> Result<Json<ListIssueCommentReactionsResponse>, ErrorResponse> {
+    let comment = IssueCommentRepository::find_by_id(state.pool(), query.comment_id)
         .await
         .map_err(|error| {
-            tracing::error!(?error, %comment_id, "failed to load comment");
+            tracing::error!(?error, comment_id = %query.comment_id, "failed to load comment");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load comment")
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "comment not found"))?;
 
     ensure_issue_access(state.pool(), ctx.user.id, comment.issue_id).await?;
 
-    let reactions = IssueCommentReactionRepository::list_by_comment(state.pool(), comment_id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %comment_id, "failed to list reactions");
-            ErrorResponse::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "failed to list reactions",
-            )
-        })?;
+    let issue_comment_reactions =
+        IssueCommentReactionRepository::list_by_comment(state.pool(), query.comment_id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, comment_id = %query.comment_id, "failed to list reactions");
+                ErrorResponse::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "failed to list reactions",
+                )
+            })?;
 
-    Ok(Json(ListReactionsResponse { reactions }))
+    Ok(Json(ListIssueCommentReactionsResponse {
+        issue_comment_reactions,
+    }))
 }
 
 #[instrument(
-    name = "issue_comment_reactions.create_reaction",
-    skip(state, ctx, payload),
-    fields(comment_id = %comment_id, user_id = %ctx.user.id)
+    name = "issue_comment_reactions.get_issue_comment_reaction",
+    skip(state, ctx),
+    fields(issue_comment_reaction_id = %issue_comment_reaction_id, user_id = %ctx.user.id)
 )]
-async fn create_reaction(
+async fn get_issue_comment_reaction(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Path(comment_id): Path<Uuid>,
-    Json(payload): Json<CreateReactionRequest>,
+    Path(issue_comment_reaction_id): Path<Uuid>,
 ) -> Result<Json<IssueCommentReaction>, ErrorResponse> {
-    let comment = IssueCommentRepository::find_by_id(state.pool(), comment_id)
+    let reaction =
+        IssueCommentReactionRepository::find_by_id(state.pool(), issue_comment_reaction_id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %issue_comment_reaction_id, "failed to load reaction");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load reaction")
+            })?
+            .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "reaction not found"))?;
+
+    let comment = IssueCommentRepository::find_by_id(state.pool(), reaction.comment_id)
         .await
         .map_err(|error| {
-            tracing::error!(?error, %comment_id, "failed to load comment");
+            tracing::error!(?error, comment_id = %reaction.comment_id, "failed to load comment");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load comment")
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "comment not found"))?;
 
     ensure_issue_access(state.pool(), ctx.user.id, comment.issue_id).await?;
 
-    let reaction = IssueCommentReactionRepository::create(
+    Ok(Json(reaction))
+}
+
+#[instrument(
+    name = "issue_comment_reactions.create_issue_comment_reaction",
+    skip(state, ctx, payload),
+    fields(comment_id = %payload.comment_id, user_id = %ctx.user.id)
+)]
+async fn create_issue_comment_reaction(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Json(payload): Json<CreateIssueCommentReactionRequest>,
+) -> Result<Json<MutationResponse<IssueCommentReaction>>, ErrorResponse> {
+    let comment = IssueCommentRepository::find_by_id(state.pool(), payload.comment_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, comment_id = %payload.comment_id, "failed to load comment");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load comment")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "comment not found"))?;
+
+    ensure_issue_access(state.pool(), ctx.user.id, comment.issue_id).await?;
+
+    let response = IssueCommentReactionRepository::create(
         state.pool(),
-        comment_id,
+        payload.id,
+        payload.comment_id,
         ctx.user.id,
         payload.emoji,
     )
@@ -103,26 +126,28 @@ async fn create_reaction(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(reaction))
+    Ok(Json(response))
 }
 
 #[instrument(
-    name = "issue_comment_reactions.delete_reaction",
-    skip(state, ctx),
-    fields(reaction_id = %reaction_id, user_id = %ctx.user.id)
+    name = "issue_comment_reactions.update_issue_comment_reaction",
+    skip(state, ctx, payload),
+    fields(issue_comment_reaction_id = %issue_comment_reaction_id, user_id = %ctx.user.id)
 )]
-async fn delete_reaction(
+async fn update_issue_comment_reaction(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Path(reaction_id): Path<Uuid>,
-) -> Result<StatusCode, ErrorResponse> {
-    let reaction = IssueCommentReactionRepository::find_by_id(state.pool(), reaction_id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %reaction_id, "failed to load reaction");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load reaction")
-        })?
-        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "reaction not found"))?;
+    Path(issue_comment_reaction_id): Path<Uuid>,
+    Json(payload): Json<UpdateIssueCommentReactionRequest>,
+) -> Result<Json<MutationResponse<IssueCommentReaction>>, ErrorResponse> {
+    let reaction =
+        IssueCommentReactionRepository::find_by_id(state.pool(), issue_comment_reaction_id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %issue_comment_reaction_id, "failed to load reaction");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load reaction")
+            })?
+            .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "reaction not found"))?;
 
     if reaction.user_id != ctx.user.id {
         return Err(ErrorResponse::new(
@@ -141,12 +166,62 @@ async fn delete_reaction(
 
     ensure_issue_access(state.pool(), ctx.user.id, comment.issue_id).await?;
 
-    IssueCommentReactionRepository::delete(state.pool(), reaction_id)
+    let response = IssueCommentReactionRepository::update(
+        state.pool(),
+        issue_comment_reaction_id,
+        payload.emoji,
+    )
+    .await
+    .map_err(|error| {
+        tracing::error!(?error, "failed to update reaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    Ok(Json(response))
+}
+
+#[instrument(
+    name = "issue_comment_reactions.delete_issue_comment_reaction",
+    skip(state, ctx),
+    fields(issue_comment_reaction_id = %issue_comment_reaction_id, user_id = %ctx.user.id)
+)]
+async fn delete_issue_comment_reaction(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(issue_comment_reaction_id): Path<Uuid>,
+) -> Result<Json<DeleteResponse>, ErrorResponse> {
+    let reaction =
+        IssueCommentReactionRepository::find_by_id(state.pool(), issue_comment_reaction_id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %issue_comment_reaction_id, "failed to load reaction");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load reaction")
+            })?
+            .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "reaction not found"))?;
+
+    if reaction.user_id != ctx.user.id {
+        return Err(ErrorResponse::new(
+            StatusCode::FORBIDDEN,
+            "you are not the author of this reaction",
+        ));
+    }
+
+    let comment = IssueCommentRepository::find_by_id(state.pool(), reaction.comment_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, comment_id = %reaction.comment_id, "failed to load comment");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load comment")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "comment not found"))?;
+
+    ensure_issue_access(state.pool(), ctx.user.id, comment.issue_id).await?;
+
+    let response = IssueCommentReactionRepository::delete(state.pool(), issue_comment_reaction_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete reaction");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(response))
 }

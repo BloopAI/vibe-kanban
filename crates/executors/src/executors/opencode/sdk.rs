@@ -5,9 +5,11 @@ use std::{
     time::Duration,
 };
 
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use eventsource_stream::Eventsource;
 use futures::{FutureExt, StreamExt};
-use reqwest::header::{HeaderMap, HeaderValue};
+use rand::{Rng, distributions::Alphanumeric};
+use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::{
@@ -78,6 +80,16 @@ pub struct RunConfig {
     pub agent: Option<String>,
     pub approvals: Option<Arc<dyn ExecutorApprovalService>>,
     pub auto_approve: bool,
+    pub server_password: String,
+}
+
+/// Generate a cryptographically secure random password for OpenCode server auth.
+pub fn generate_server_password() -> String {
+    rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(32)
+        .map(char::from)
+        .collect()
 }
 
 #[derive(Debug, Deserialize)]
@@ -133,7 +145,10 @@ pub async fn run_session(
     let cancel = CancellationToken::new();
 
     let client = reqwest::Client::builder()
-        .default_headers(build_default_headers(&config.directory))
+        .default_headers(build_default_headers(
+            &config.directory,
+            &config.server_password,
+        ))
         .build()
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
 
@@ -243,10 +258,14 @@ async fn run_session_inner(
     Ok(())
 }
 
-fn build_default_headers(directory: &str) -> HeaderMap {
+fn build_default_headers(directory: &str, password: &str) -> HeaderMap {
     let mut headers = HeaderMap::new();
     if let Ok(value) = HeaderValue::from_str(directory) {
         headers.insert("x-opencode-directory", value);
+    }
+    let credentials = BASE64.encode(format!("opencode:{password}"));
+    if let Ok(value) = HeaderValue::from_str(&format!("Basic {credentials}")) {
+        headers.insert(AUTHORIZATION, value);
     }
     headers
 }

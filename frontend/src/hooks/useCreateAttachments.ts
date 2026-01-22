@@ -16,16 +16,25 @@ export function useCreateAttachments(
   const uploadFiles = useCallback(
     async (files: File[]) => {
       const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+      if (imageFiles.length === 0) return;
+
+      const uploadResults: ImageResponse[] = [];
 
       for (const file of imageFiles) {
         try {
           const response = await imagesApi.upload(file);
-          setUploadedImages((prev) => [...prev, response]);
-          const imageMarkdown = `![${response.original_name}](${response.file_path})`;
-          onInsertMarkdown(imageMarkdown);
+          uploadResults.push(response);
         } catch (error) {
           console.error('Failed to upload image:', error);
         }
+      }
+
+      if (uploadResults.length > 0) {
+        setUploadedImages((prev) => [...prev, ...uploadResults]);
+        const allMarkdown = uploadResults
+          .map((r) => `![${r.original_name}](${r.file_path})`)
+          .join('\n\n');
+        onInsertMarkdown(allMarkdown);
       }
     },
     [onInsertMarkdown]

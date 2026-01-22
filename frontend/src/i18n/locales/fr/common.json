@@ -12,7 +12,13 @@
     "connect": "Connecter",
     "disconnect": "Déconnecter",
     "close": "Fermer",
-    "replay": "Rejouer"
+    "replay": "Rejouer",
+    "discard": "Abandonner",
+    "addItem": "Ajouter un élément"
+  },
+  "form": {
+    "notSpecified": "Non spécifié",
+    "selectOption": "Sélectionner une option..."
   },
   "states": {
     "loading": "Chargement...",
@@ -157,7 +163,9 @@
     "noResults": "Aucun fichier correspondant",
     "title": "Fichiers",
     "showGitHubComments": "Afficher les commentaires GitHub",
-    "hideGitHubComments": "Masquer les commentaires GitHub"
+    "hideGitHubComments": "Masquer les commentaires GitHub",
+    "prevGitHubComment": "Fichier précédent avec commentaires",
+    "nextGitHubComment": "Fichier suivant avec commentaires"
   },
   "sections": {
     "changes": "Modifications",
@@ -200,7 +208,8 @@
   "comments": {
     "addReviewComment": "Ajouter un commentaire de révision",
     "addPlaceholder": "Ajouter un commentaire...",
-    "editPlaceholder": "Modifier le commentaire..."
+    "editPlaceholder": "Modifier le commentaire...",
+    "copyToReview": "Copier vers la révision"
   },
   "confirm": {
     "defaultConfirm": "Confirmer",

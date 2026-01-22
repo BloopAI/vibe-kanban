@@ -1,5 +1,14 @@
 {
   "settings": {
+    "common": {
+      "unsavedChanges": "• 未保存の変更があります"
+    },
+    "unsavedChanges": {
+      "title": "未保存の変更",
+      "message": "未保存の変更があります。保存せずに閉じてもよろしいですか？",
+      "discard": "変更を破棄",
+      "cancel": "編集を続ける"
+    },
     "layout": {
       "nav": {
         "title": "設定",
@@ -135,6 +144,14 @@
             "invalidChars": "無効な文字が含まれています。",
             "controlChars": "制御文字が含まれています。"
           }
+        },
+        "workspaceDir": {
+          "label": "ワークスペースディレクトリ",
+          "placeholder": "~/",
+          "helper": "このパス内の .vibe-kanban-workspaces サブディレクトリにワークスペースが作成されます。システムのデフォルトを使用する場合は空白のままにしてください。変更を反映するにはアプリの再起動が必要です。",
+          "browse": "参照",
+          "dialogTitle": "ワークスペースディレクトリを選択",
+          "dialogDescription": "ディレクトリを選択してください。ワークスペースはその中の .vibe-kanban-workspaces サブディレクトリに作成されます。"
         }
       },
       "pullRequests": {
@@ -162,6 +179,15 @@
         "push": {
           "label": "プッシュ通知",
           "helper": "タスク試行の実行が完了したときにシステム通知を表示します。"
+        }
+      },
+      "messageInput": {
+        "title": "メッセージ入力",
+        "description": "チャット入力でメッセージを送信する方法を設定します。",
+        "shortcut": {
+          "label": "メッセージ送信キー",
+          "helper": "メッセージを送信するキーボードショートカットを選択してください。",
+          "enterLabel": "Enter（Shift+Enterで改行）"
         }
       },
       "privacy": {
@@ -250,12 +276,17 @@
       "title": "コーディングエージェント設定",
       "description": "コーディングエージェントの動作を異なる設定でカスタマイズします。",
       "loading": "エージェント設定を読み込み中...",
+      "selectAgent": "エージェントを選択",
       "save": {
         "button": "エージェント設定を保存",
-        "success": "✓ 実行設定が正常に保存されました！"
+        "success": "✓ 実行設定が正常に保存されました！",
+        "unsavedChanges": "• 未保存の変更があります"
       },
       "availability": {
         "checking": "確認中...",
+        "checkingAvailability": "利用可能性を確認中...",
+        "available": "エージェント利用可能",
+        "notFoundSimple": "エージェントが見つかりません",
         "loginDetected": "最近の使用を検出",
         "loginDetectedTooltip": "このエージェントの最近の認証情報が見つかりました",
         "installationFound": "以前の使用を検出",
@@ -271,6 +302,8 @@
         "deleteTitle": "最後の設定は削除できません",
         "deleteButton": "{{name}}を削除",
         "deleteText": "削除",
+        "makeDefault": "デフォルトに設定",
+        "isDefault": "デフォルト",
         "jsonLabel": "エージェント設定（JSON）",
         "jsonPlaceholder": "プロファイルを読み込み中...",
         "jsonLoading": "読み込み中...",
@@ -279,7 +312,16 @@
       "errors": {
         "deleteFailed": "設定の削除に失敗しました。もう一度お試しください。",
         "saveFailed": "エージェント設定の保存に失敗しました。もう一度お試しください。",
-        "saveConfigFailed": "設定の保存に失敗しました。もう一度お試しください。"
+        "saveConfigFailed": "設定の保存に失敗しました。もう一度お試しください。",
+        "schemaNotFound": "実行タイプ {{executor}} のスキーマが見つかりません"
+      },
+      "tree": {
+        "search": "設定を検索...",
+        "expandAll": "すべて展開",
+        "collapseAll": "すべて折りたたむ",
+        "noResults": "一致する設定がありません",
+        "noConfigs": "利用可能な設定がありません",
+        "selectConfig": "サイドバーから設定を選択して、その設定を表示・編集できます。"
       }
     },
     "mcp": {
@@ -315,7 +357,8 @@
         "button": "MCP設定を保存",
         "success": "設定が保存されました！",
         "successMessage": "✓ MCP設定が正常に保存されました！",
-        "loading": "現在のMCPサーバー設定を読み込み中..."
+        "loading": "現在のMCPサーバー設定を読み込み中...",
+        "unsavedChanges": "• 未保存の変更があります"
       }
     },
     "projects": {
@@ -350,6 +393,12 @@
         "unsavedChanges": "• 未保存の変更があります",
         "discard": "破棄",
         "confirmSwitch": "未保存の変更があります。本当にプロジェクトを切り替えますか？変更は失われます。"
+      },
+      "repositories": {
+        "title": "リポジトリ",
+        "description": "このプロジェクトのGitリポジトリを管理",
+        "noRepositories": "リポジトリが設定されていません",
+        "addRepository": "リポジトリを追加"
       }
     },
     "repos": {

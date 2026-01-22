@@ -1,10 +1,8 @@
 use axum::{
-    Json, Router,
-    extract::{Extension, Path, State},
+    Json,
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
-    routing::{get, patch},
 };
-use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -13,50 +11,30 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::tags::{Tag, TagRepository},
+    define_mutation_router,
+    entities::{CreateTagRequest, ListTagsQuery, ListTagsResponse, UpdateTagRequest},
+    mutation_types::{DeleteResponse, MutationResponse},
 };
 
-#[derive(Debug, Serialize)]
-pub struct ListTagsResponse {
-    pub tags: Vec<Tag>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct CreateTagRequest {
-    pub name: String,
-    pub color: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UpdateTagRequest {
-    pub name: String,
-    pub color: String,
-}
-
-pub fn router() -> Router<AppState> {
-    Router::new()
-        .route(
-            "/projects/{project_id}/tags",
-            get(list_tags).post(create_tag),
-        )
-        .route("/tags/{tag_id}", patch(update_tag).delete(delete_tag))
-}
+// Generate router that references handlers below
+define_mutation_router!(Tag, table: "tags");
 
 #[instrument(
     name = "tags.list_tags",
     skip(state, ctx),
-    fields(project_id = %project_id, user_id = %ctx.user.id)
+    fields(project_id = %query.project_id, user_id = %ctx.user.id)
 )]
 async fn list_tags(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Path(project_id): Path<Uuid>,
+    Query(query): Query<ListTagsQuery>,
 ) -> Result<Json<ListTagsResponse>, ErrorResponse> {
-    ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
+    ensure_project_access(state.pool(), ctx.user.id, query.project_id).await?;
 
-    let tags = TagRepository::list_by_project(state.pool(), project_id)
+    let tags = TagRepository::list_by_project(state.pool(), query.project_id)
         .await
         .map_err(|error| {
-            tracing::error!(?error, %project_id, "failed to list tags");
+            tracing::error!(?error, project_id = %query.project_id, "failed to list tags");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list tags")
         })?;
 
@@ -64,26 +42,54 @@ async fn list_tags(
 }
 
 #[instrument(
+    name = "tags.get_tag",
+    skip(state, ctx),
+    fields(tag_id = %tag_id, user_id = %ctx.user.id)
+)]
+async fn get_tag(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(tag_id): Path<Uuid>,
+) -> Result<Json<Tag>, ErrorResponse> {
+    let tag = TagRepository::find_by_id(state.pool(), tag_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %tag_id, "failed to load tag");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load tag")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "tag not found"))?;
+
+    ensure_project_access(state.pool(), ctx.user.id, tag.project_id).await?;
+
+    Ok(Json(tag))
+}
+
+#[instrument(
     name = "tags.create_tag",
     skip(state, ctx, payload),
-    fields(project_id = %project_id, user_id = %ctx.user.id)
+    fields(project_id = %payload.project_id, user_id = %ctx.user.id)
 )]
 async fn create_tag(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Path(project_id): Path<Uuid>,
     Json(payload): Json<CreateTagRequest>,
-) -> Result<Json<Tag>, ErrorResponse> {
-    ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
+) -> Result<Json<MutationResponse<Tag>>, ErrorResponse> {
+    ensure_project_access(state.pool(), ctx.user.id, payload.project_id).await?;
 
-    let tag = TagRepository::create(state.pool(), project_id, payload.name, payload.color)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, "failed to create tag");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-        })?;
+    let response = TagRepository::create(
+        state.pool(),
+        payload.id,
+        payload.project_id,
+        payload.name,
+        payload.color,
+    )
+    .await
+    .map_err(|error| {
+        tracing::error!(?error, "failed to create tag");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
 
-    Ok(Json(tag))
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -96,7 +102,7 @@ async fn update_tag(
     Extension(ctx): Extension<RequestContext>,
     Path(tag_id): Path<Uuid>,
     Json(payload): Json<UpdateTagRequest>,
-) -> Result<Json<Tag>, ErrorResponse> {
+) -> Result<Json<MutationResponse<Tag>>, ErrorResponse> {
     let tag = TagRepository::find_by_id(state.pool(), tag_id)
         .await
         .map_err(|error| {
@@ -107,14 +113,15 @@ async fn update_tag(
 
     ensure_project_access(state.pool(), ctx.user.id, tag.project_id).await?;
 
-    let updated_tag = TagRepository::update(state.pool(), tag_id, payload.name, payload.color)
+    // Partial update - use existing values if not provided
+    let response = TagRepository::update(state.pool(), tag_id, payload.name, payload.color)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to update tag");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(Json(updated_tag))
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -126,7 +133,7 @@ async fn delete_tag(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(tag_id): Path<Uuid>,
-) -> Result<StatusCode, ErrorResponse> {
+) -> Result<Json<DeleteResponse>, ErrorResponse> {
     let tag = TagRepository::find_by_id(state.pool(), tag_id)
         .await
         .map_err(|error| {
@@ -137,12 +144,12 @@ async fn delete_tag(
 
     ensure_project_access(state.pool(), ctx.user.id, tag.project_id).await?;
 
-    TagRepository::delete(state.pool(), tag_id)
+    let response = TagRepository::delete(state.pool(), tag_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete tag");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(response))
 }

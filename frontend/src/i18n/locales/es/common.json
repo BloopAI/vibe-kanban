@@ -29,12 +29,18 @@
     "create": "Crear",
     "delete": "Eliminar",
     "disconnect": "Desconectar",
+    "discard": "Descartar",
     "edit": "Editar",
     "manage": "Gestionar",
     "replay": "Reproducir",
     "reset": "Restablecer",
     "save": "Guardar",
-    "send": "Enviar"
+    "send": "Enviar",
+    "addItem": "Añadir elemento"
+  },
+  "form": {
+    "notSpecified": "No especificado",
+    "selectOption": "Seleccionar una opción..."
   },
   "conversation": {
     "args": "Argumentos",
@@ -157,7 +163,9 @@
     "noResults": "No hay archivos coincidentes",
     "title": "Archivos",
     "showGitHubComments": "Mostrar comentarios de GitHub",
-    "hideGitHubComments": "Ocultar comentarios de GitHub"
+    "hideGitHubComments": "Ocultar comentarios de GitHub",
+    "prevGitHubComment": "Archivo anterior con comentarios",
+    "nextGitHubComment": "Siguiente archivo con comentarios"
   },
   "sections": {
     "changes": "Cambios",
@@ -200,7 +208,8 @@
   "comments": {
     "addReviewComment": "Agregar comentario de revisión",
     "addPlaceholder": "Agregar un comentario...",
-    "editPlaceholder": "Editar comentario..."
+    "editPlaceholder": "Editar comentario...",
+    "copyToReview": "Copiar a revisión"
   },
   "confirm": {
     "defaultConfirm": "Confirmar",
