@@ -37,7 +37,6 @@ pub enum CodexSlashCommand {
     Compact { instructions: Option<String> },
     Status,
     Mcp,
-    Logout,
 }
 
 impl CodexSlashCommand {
@@ -54,7 +53,6 @@ impl CodexSlashCommand {
             }),
             "status" => Some(Self::Status),
             "mcp" => Some(Self::Mcp),
-            "logout" => Some(Self::Logout),
             _ => None,
         }
     }
@@ -109,7 +107,7 @@ impl Codex {
                     )
                     .await
                 }
-                CodexSlashCommand::Mcp | CodexSlashCommand::Logout => {
+                CodexSlashCommand::Mcp => {
                     self.handle_app_server_slash_command(current_dir, command, env)
                         .await
                 }
@@ -249,14 +247,6 @@ impl Codex {
                     CodexSlashCommand::Mcp => {
                         let message = fetch_mcp_status_message(&client).await?;
                         log_event_raw(client.log_writer(), message).await?;
-                    }
-                    CodexSlashCommand::Logout => {
-                        client.logout_account().await?;
-                        log_event_raw(
-                            client.log_writer(),
-                            "Successfully logged out of **Codex**.".to_string(),
-                        )
-                        .await?;
                     }
                     _ => {
                         return Err(ExecutorError::Io(std::io::Error::other(
