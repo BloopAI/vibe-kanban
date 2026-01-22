@@ -10,8 +10,10 @@ use super::{error::ErrorResponse, organization_members::ensure_member_access};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::projects::{Project, ProjectRepository},
-    db::types::is_valid_hsl_color,
+    db::{
+        projects::{Project, ProjectRepository},
+        types::is_valid_hsl_color,
+    },
     define_mutation_router,
     entities::{
         CreateProjectRequest, ListProjectsQuery, ListProjectsResponse, UpdateProjectRequest,
@@ -123,14 +125,13 @@ async fn update_project(
 
     ensure_member_access(state.pool(), existing.organization_id, ctx.user.id).await?;
 
-    if let Some(ref color) = payload.color {
-        if !is_valid_hsl_color(color) {
+    if let Some(ref color) = payload.color
+        && !is_valid_hsl_color(color) {
             return Err(ErrorResponse::new(
                 StatusCode::BAD_REQUEST,
                 "Invalid color format. Expected HSL format: 'H S% L%'",
             ));
         }
-    }
 
     let response = ProjectRepository::update(state.pool(), project_id, payload.name, payload.color)
         .await

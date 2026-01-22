@@ -10,8 +10,10 @@ use super::{error::ErrorResponse, organization_members::ensure_project_access};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::tags::{Tag, TagRepository},
-    db::types::is_valid_hsl_color,
+    db::{
+        tags::{Tag, TagRepository},
+        types::is_valid_hsl_color,
+    },
     define_mutation_router,
     entities::{CreateTagRequest, ListTagsQuery, ListTagsResponse, UpdateTagRequest},
     mutation_types::{DeleteResponse, MutationResponse},
@@ -121,14 +123,13 @@ async fn update_tag(
 
     ensure_project_access(state.pool(), ctx.user.id, tag.project_id).await?;
 
-    if let Some(ref color) = payload.color {
-        if !is_valid_hsl_color(color) {
+    if let Some(ref color) = payload.color
+        && !is_valid_hsl_color(color) {
             return Err(ErrorResponse::new(
                 StatusCode::BAD_REQUEST,
                 "Invalid color format. Expected HSL format: 'H S% L%'",
             ));
         }
-    }
 
     // Partial update - use existing values if not provided
     let response = TagRepository::update(state.pool(), tag_id, payload.name, payload.color)
