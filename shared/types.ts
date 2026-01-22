@@ -13,6 +13,8 @@ export type SharedTask = { id: string, organization_id: string, project_id: stri
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
+export type SharedTaskDetails = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, };
+
 export type User = { id: string, github_id: bigint, username: string, email: string | null, display_name: string | null, avatar_url: string | null, created_at: Date, updated_at: Date, };
 
 export type ProjectCreator = { id: string, username: string, avatar_url: string | null, };

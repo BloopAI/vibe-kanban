@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 import { useNavigateWithSearch } from '@/hooks';
 import { paths } from '@/lib/paths';
 import { attemptsApi } from '@/lib/api';
+import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { TaskCardHeader } from './TaskCardHeader';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/hooks';
 
 type Task = TaskWithAttemptStatus;
 
@@ -19,6 +21,7 @@ interface TaskCardProps {
   onViewDetails: (task: Task) => void;
   isOpen?: boolean;
   projectId: string;
+  sharedTask?: SharedTaskRecord;
 }
 
 export function TaskCard({
@@ -28,10 +31,12 @@ export function TaskCard({
   onViewDetails,
   isOpen,
   projectId,
+  sharedTask,
 }: TaskCardProps) {
   const { t } = useTranslation('tasks');
   const navigate = useNavigateWithSearch();
   const [isNavigatingToParent, setIsNavigatingToParent] = useState(false);
+  const { isSignedIn } = useAuth();
 
   const handleClick = useCallback(() => {
     onViewDetails(task);
@@ -84,10 +89,36 @@ export function TaskCard({
       onClick={handleClick}
       isOpen={isOpen}
       forwardedRef={localRef}
+      dragDisabled={(!!sharedTask || !!task.shared_task_id) && !isSignedIn}
+      className={
+        sharedTask || task.shared_task_id
+          ? 'relative overflow-hidden pl-5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-card-foreground before:content-[""]'
+          : undefined
+      }
     >
       <div className="flex flex-col gap-2">
         <TaskCardHeader
           title={task.title}
+          avatar={
+            // Priority: shared task assignee > local task assignee > local task creator
+            sharedTask
+              ? {
+                  firstName: sharedTask.assignee_first_name ?? undefined,
+                  lastName: sharedTask.assignee_last_name ?? undefined,
+                  username: sharedTask.assignee_username ?? undefined,
+                }
+              : task.assignee
+                ? {
+                    username: task.assignee.username,
+                    imageUrl: task.assignee.avatar_url ?? undefined,
+                  }
+                : task.creator
+                  ? {
+                      username: task.creator.username,
+                      imageUrl: task.creator.avatar_url ?? undefined,
+                    }
+                  : undefined
+          }
           right={
             <>
               {task.has_in_progress_attempt && (
@@ -108,7 +139,7 @@ export function TaskCard({
                   <Link className="h-4 w-4" />
                 </Button>
               )}
-              <ActionsDropdown task={task} />
+              <ActionsDropdown task={task} sharedTask={sharedTask} />
             </>
           }
         />

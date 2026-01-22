@@ -15,6 +15,7 @@ import {
   DirectoryEntry,
   ExecutionProcess,
   ExecutionProcessRepoState,
+  ExecutorProfileId,
   GitBranch,
   Project,
   Repo,
@@ -47,7 +48,6 @@ import {
   CheckEditorAvailabilityResponse,
   AvailabilityInfo,
   BaseCodingAgent,
-  ExecutorProfileId,
   RunAgentSetupRequest,
   RunAgentSetupResponse,
   GhCliSetupError,
@@ -79,6 +79,8 @@ import {
   PushError,
   TokenResponse,
   CurrentUserResponse,
+  SharedTaskResponse,
+  SharedTaskDetails,
   QueueStatus,
   PrCommentsResponse,
   MergeTaskAttemptRequest,
@@ -298,7 +300,7 @@ export const projectsApi = {
   searchFiles: async (
     id: string,
     query: string,
-    mode?: SearchMode,
+    mode?: string,
     options?: RequestInit
   ): Promise<SearchResult[]> => {
     const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
@@ -415,6 +417,47 @@ export const tasksApi = {
     });
     return handleApiResponse<void>(response);
   },
+
+  share: async (taskId: string): Promise<SharedTaskResponse> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/share`, {
+      method: 'POST',
+    });
+    return handleApiResponse<SharedTaskResponse>(response);
+  },
+
+  reassign: async (
+    sharedTaskId: string,
+    data: { new_assignee_user_id: string | null }
+  ): Promise<SharedTaskResponse> => {
+    const payload = {
+      new_assignee_user_id: data.new_assignee_user_id,
+    };
+
+    const response = await makeRequest(
+      `/api/shared-tasks/${sharedTaskId}/assign`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+
+    return handleApiResponse<SharedTaskResponse>(response);
+  },
+
+  unshare: async (sharedTaskId: string): Promise<void> => {
+    const response = await makeRequest(`/api/shared-tasks/${sharedTaskId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  linkToLocal: async (data: SharedTaskDetails): Promise<Task | null> => {
+    const response = await makeRequest(`/api/shared-tasks/link-to-local`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Task | null>(response);
+  },
 };
 
 // Sessions API
@@ -469,6 +512,11 @@ export const sessionsApi = {
 
 // Task Attempts APIs
 export const attemptsApi = {
+  getCount: async (): Promise<number> => {
+    const response = await makeRequest('/api/task-attempts/count');
+    return handleApiResponse<number>(response);
+  },
+
   getChildren: async (attemptId: string): Promise<TaskRelationships> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/children`
@@ -485,12 +533,6 @@ export const attemptsApi = {
   getAllWorkspaces: async (): Promise<Workspace[]> => {
     const response = await makeRequest('/api/task-attempts');
     return handleApiResponse<Workspace[]>(response);
-  },
-
-  /** Get total count of workspaces */
-  getCount: async (): Promise<number> => {
-    const response = await makeRequest('/api/task-attempts/count');
-    return handleApiResponse<number>(response);
   },
 
   get: async (attemptId: string): Promise<Workspace> => {
@@ -538,18 +580,6 @@ export const attemptsApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
-  },
-
-  searchFiles: async (
-    workspaceId: string,
-    query: string,
-    mode?: string
-  ): Promise<SearchResult[]> => {
-    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
-    const response = await makeRequest(
-      `/api/task-attempts/${workspaceId}/search?q=${encodeURIComponent(query)}${modeParam}`
-    );
-    return handleApiResponse<SearchResult[]>(response);
   },
 
   runAgentSetup: async (
@@ -775,6 +805,18 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<void>(response);
+  },
+
+  searchFiles: async (
+    workspaceId: string,
+    query: string,
+    mode?: string
+  ): Promise<SearchResult[]> => {
+    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
+    const response = await makeRequest(
+      `/api/task-attempts/${workspaceId}/search?q=${encodeURIComponent(query)}${modeParam}`
+    );
+    return handleApiResponse<SearchResult[]>(response);
   },
 };
 
