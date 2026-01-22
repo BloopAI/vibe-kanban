@@ -215,7 +215,7 @@ export function ProjectTasks() {
   useEffect(() => {
     if (!isLoaded) return;
     if (config?.beta_workspaces_invitation_sent) return;
-    if (workspaceCount === undefined || workspaceCount <= 50) return;
+    if (workspaceCount === undefined || workspaceCount <= 5) return;
 
     BetaWorkspacesDialog.show().then((joinBeta) => {
       BetaWorkspacesDialog.hide();
