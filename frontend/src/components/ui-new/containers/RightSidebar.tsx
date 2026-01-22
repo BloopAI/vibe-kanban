@@ -12,15 +12,15 @@ import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ArrowsOutSimpleIcon } from '@phosphor-icons/react';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
-import type { Workspace, RepoWithTargetBranch } from 'shared/types';
+import type { RepoWithTargetBranch, Workspace } from 'shared/types';
 import {
-  RIGHT_MAIN_PANEL_MODES,
   PERSIST_KEYS,
+  PersistKey,
+  RIGHT_MAIN_PANEL_MODES,
   type RightMainPanelMode,
   useExpandedAll,
   usePersistedExpanded,
   useUiPreferencesStore,
-  PersistKey,
 } from '@/stores/useUiPreferencesStore';
 import {
   CollapsibleSectionHeader,
@@ -234,7 +234,7 @@ export function RightSidebar({
                 defaultExpanded={section.expanded}
                 actions={section.actions}
               >
-                <div className="flex flex-1 border-t min-h-[200px] w-full">
+                <div className="flex flex-1 border-t min-h-[200px] w-full overflow-auto">
                   {section.content}
                 </div>
               </CollapsibleSectionHeader>
