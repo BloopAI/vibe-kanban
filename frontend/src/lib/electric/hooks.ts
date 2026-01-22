@@ -24,8 +24,8 @@ export interface UseEntityResult<TRow, TCreate = unknown, TUpdate = unknown> {
   error: SyncError | null;
   /** Function to retry after an error */
   retry: () => void;
-  /** Insert a new entity (optimistic) */
-  insert: (data: TCreate) => void;
+  /** Insert a new entity (optimistic), returns the created entity with generated ID */
+  insert: (data: TCreate) => TRow;
   /** Update an entity by ID (optimistic) */
   update: (id: string, changes: Partial<TUpdate>) => void;
   /** Delete an entity by ID (optimistic) */
@@ -115,7 +115,7 @@ export function useEntity<
   const typedCollection = collection as unknown as CollectionWithMutations;
 
   const insert = useCallback(
-    (insertData: EntityCreateType<E>) => {
+    (insertData: EntityCreateType<E>): EntityRowType<E> => {
       // Auto-generate ID for optimistic inserts
       // TanStack DB requires client-generated IDs for stable optimistic rendering
       const dataWithId = {
@@ -123,6 +123,7 @@ export function useEntity<
         ...(insertData as Record<string, unknown>),
       };
       typedCollection.insert(dataWithId);
+      return dataWithId as EntityRowType<E>;
     },
     [typedCollection]
   );
