@@ -116,6 +116,8 @@ type State = {
   isRightSidebarVisible: boolean;
   isTerminalVisible: boolean;
   isKanbanRightPanelVisible: boolean;
+  selectedKanbanIssueId: string | null;
+  kanbanCreateMode: boolean;
   previewRefreshKey: number;
 
   // Workspace-specific panel state
@@ -139,6 +141,10 @@ type State = {
   toggleTerminal: () => void;
   setTerminalVisible: (value: boolean) => void;
   setKanbanRightPanelVisible: (value: boolean) => void;
+  setSelectedKanbanIssueId: (id: string | null) => void;
+  setKanbanCreateMode: (value: boolean) => void;
+  openKanbanIssuePanel: (issueId: string | null, createMode?: boolean) => void;
+  closeKanbanIssuePanel: () => void;
   toggleRightMainPanelMode: (
     mode: RightMainPanelMode,
     workspaceId?: string
@@ -175,6 +181,8 @@ export const useUiPreferencesStore = create<State>()(
       isRightSidebarVisible: true,
       isTerminalVisible: true,
       isKanbanRightPanelVisible: true,
+      selectedKanbanIssueId: null,
+      kanbanCreateMode: false,
       previewRefreshKey: 0,
 
       // Workspace-specific panel state
@@ -247,6 +255,24 @@ export const useUiPreferencesStore = create<State>()(
 
       setKanbanRightPanelVisible: (value) =>
         set({ isKanbanRightPanelVisible: value }),
+
+      setSelectedKanbanIssueId: (id) => set({ selectedKanbanIssueId: id }),
+
+      setKanbanCreateMode: (value) => set({ kanbanCreateMode: value }),
+
+      openKanbanIssuePanel: (issueId, createMode = false) =>
+        set({
+          selectedKanbanIssueId: issueId,
+          kanbanCreateMode: createMode,
+          isKanbanRightPanelVisible: true,
+        }),
+
+      closeKanbanIssuePanel: () =>
+        set({
+          selectedKanbanIssueId: null,
+          kanbanCreateMode: false,
+          isKanbanRightPanelVisible: false,
+        }),
 
       toggleRightMainPanelMode: (mode, workspaceId) => {
         if (!workspaceId) return;
@@ -356,6 +382,8 @@ export const useUiPreferencesStore = create<State>()(
         isRightSidebarVisible: state.isRightSidebarVisible,
         isTerminalVisible: state.isTerminalVisible,
         isKanbanRightPanelVisible: state.isKanbanRightPanelVisible,
+        selectedKanbanIssueId: state.selectedKanbanIssueId,
+        kanbanCreateMode: state.kanbanCreateMode,
         // Workspace-specific panel state (persisted)
         workspacePanelStates: state.workspacePanelStates,
       }),
