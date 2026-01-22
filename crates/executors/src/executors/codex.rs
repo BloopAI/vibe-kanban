@@ -194,10 +194,6 @@ impl StandardCodingAgentExecutor for Codex {
                 name: "mcp".to_string(),
                 description: Some("list configured MCP tools".to_string()),
             },
-            SlashCommandDescription {
-                name: "logout".to_string(),
-                description: Some("log out of Codex".to_string()),
-            },
         ];
         Ok(Box::pin(futures::stream::once(async move {
             patch::slash_commands(commands, false, None)

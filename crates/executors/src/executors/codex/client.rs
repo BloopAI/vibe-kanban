@@ -14,10 +14,10 @@ use codex_app_server_protocol::{
     ClientInfo, ClientNotification, ClientRequest, ExecCommandApprovalResponse,
     GetAuthStatusParams, GetAuthStatusResponse, InitializeParams, InitializeResponse, InputItem,
     JSONRPCError, JSONRPCNotification, JSONRPCRequest, JSONRPCResponse, ListMcpServerStatusParams,
-    ListMcpServerStatusResponse, LogoutAccountResponse, NewConversationParams,
-    NewConversationResponse, RequestId, ResumeConversationParams, ResumeConversationResponse,
-    ReviewStartParams, ReviewStartResponse, ReviewTarget, SendUserMessageParams,
-    SendUserMessageResponse, ServerNotification, ServerRequest,
+    ListMcpServerStatusResponse, NewConversationParams, NewConversationResponse, RequestId,
+    ResumeConversationParams, ResumeConversationResponse, ReviewStartParams, ReviewStartResponse,
+    ReviewTarget, SendUserMessageParams, SendUserMessageResponse, ServerNotification,
+    ServerRequest,
 };
 use codex_protocol::{ThreadId, protocol::ReviewDecision};
 use serde::{Serialize, de::DeserializeOwned};
@@ -193,14 +193,6 @@ impl AppServerClient {
             },
         };
         self.send_request(request, "mcpServerStatus/list").await
-    }
-
-    pub async fn logout_account(&self) -> Result<LogoutAccountResponse, ExecutorError> {
-        let request = ClientRequest::LogoutAccount {
-            request_id: self.next_request_id(),
-            params: None,
-        };
-        self.send_request(request, "account/logout").await
     }
 
     async fn handle_server_request(
@@ -557,8 +549,7 @@ fn request_id(request: &ClientRequest) -> RequestId {
         | ClientRequest::AddConversationListener { request_id, .. }
         | ClientRequest::SendUserMessage { request_id, .. }
         | ClientRequest::ReviewStart { request_id, .. }
-        | ClientRequest::McpServerStatusList { request_id, .. }
-        | ClientRequest::LogoutAccount { request_id, .. } => request_id.clone(),
+        | ClientRequest::McpServerStatusList { request_id, .. } => request_id.clone(),
         _ => unreachable!("request_id called for unsupported request variant"),
     }
 }
