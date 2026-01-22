@@ -4,6 +4,7 @@ import {
   PROJECT_STATUS_ENTITY,
   TAG_ENTITY,
   ISSUE_ENTITY,
+  ISSUE_ASSIGNEE_ENTITY,
   type IssuePriority,
 } from 'shared/remote-types';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
@@ -11,7 +12,7 @@ import {
   KanbanIssuePanel,
   type IssueFormData,
 } from '@/components/ui-new/views/KanbanIssuePanel';
-import type { User } from '@/components/ui-new/kanban/IssuePropertyRow';
+import { useProjectRemoteMembers } from '@/hooks/useProjectRemoteMembers';
 
 interface KanbanIssuePanelContainerProps {
   projectId: string;
@@ -49,13 +50,34 @@ export function KanbanIssuePanelContainer({
     data: issues,
     isLoading: issuesLoading,
     insert: insertIssue,
+    update: updateIssue,
   } = useEntity(ISSUE_ENTITY, { project_id: projectId });
+
+  // Fetch issue assignees
+  const {
+    data: issueAssignees,
+    insert: insertIssueAssignee,
+    remove: removeIssueAssignee,
+  } = useEntity(ISSUE_ASSIGNEE_ENTITY, { project_id: projectId });
+
+  // Fetch real organization members
+  const { data: remoteMembers } = useProjectRemoteMembers(projectId);
+  const users = remoteMembers?.members ?? [];
 
   // Find selected issue if in edit mode
   const selectedIssue = useMemo(() => {
     if (kanbanCreateMode || !selectedKanbanIssueId) return null;
     return issues.find((i) => i.id === selectedKanbanIssueId) ?? null;
   }, [issues, selectedKanbanIssueId, kanbanCreateMode]);
+
+  // Get current assignee from issue_assignees
+  const currentAssigneeId = useMemo(() => {
+    if (!selectedKanbanIssueId) return null;
+    const assignee = issueAssignees.find(
+      (a) => a.issue_id === selectedKanbanIssueId
+    );
+    return assignee?.user_id ?? null;
+  }, [issueAssignees, selectedKanbanIssueId]);
 
   // Determine mode (only edit when an issue is selected)
   const mode = kanbanCreateMode || !selectedKanbanIssueId ? 'create' : 'edit';
@@ -111,19 +133,54 @@ export function KanbanIssuePanelContainer({
         description: selectedIssue.description,
         statusId: selectedIssue.status_id,
         priority: selectedIssue.priority,
-        assigneeId: null, // Would come from issue_assignees table
+        assigneeId: currentAssigneeId,
         tagIds: [], // Would come from issue_tags table
         createDraftWorkspace: false,
       });
     }
-  }, [mode, selectedIssue, defaultStatusId]);
+  }, [mode, selectedIssue, defaultStatusId, currentAssigneeId]);
 
-  // Form change handler
-  const handleFormChange = useCallback(
+  // Form change handler - persists changes immediately in edit mode
+  const handlePropertyChange = useCallback(
     <K extends keyof IssueFormData>(field: K, value: IssueFormData[K]) => {
+      // Always update local form state
       setFormData((prev) => ({ ...prev, [field]: value }));
+
+      // In edit mode, immediately persist to database
+      if (!kanbanCreateMode && selectedKanbanIssueId) {
+        if (field === 'statusId') {
+          updateIssue(selectedKanbanIssueId, { status_id: value as string });
+        } else if (field === 'priority') {
+          updateIssue(selectedKanbanIssueId, {
+            priority: value as IssuePriority,
+          });
+        } else if (field === 'assigneeId') {
+          // Handle assignee change via junction table
+          const currentAssignee = issueAssignees.find(
+            (a) => a.issue_id === selectedKanbanIssueId
+          );
+
+          if (currentAssignee) {
+            removeIssueAssignee(currentAssignee.id);
+          }
+
+          if (value) {
+            insertIssueAssignee({
+              issue_id: selectedKanbanIssueId,
+              user_id: value as string,
+            });
+          }
+        }
+      }
     },
-    []
+    [
+      kanbanCreateMode,
+      selectedKanbanIssueId,
+      updateIssue,
+      issueAssignees,
+      insertIssueAssignee,
+      removeIssueAssignee,
+    ]
   );
 
   // Submit handler
@@ -170,20 +227,6 @@ export function KanbanIssuePanelContainer({
     }
   }, [mode, formData, projectId, issues, insertIssue, closeKanbanIssuePanel]);
 
-  // TODO: Fetch real users from organization members
-  const users: User[] = useMemo(
-    () => [
-      {
-        id: 'user-1',
-        firstName: 'Schnitzel',
-        lastName: 'Boy',
-        username: 'schnitzelboy',
-        imageUrl: null,
-      },
-    ],
-    []
-  );
-
   // Loading state
   const isLoading = statusesLoading || tagsLoading || issuesLoading;
 
@@ -200,7 +243,7 @@ export function KanbanIssuePanelContainer({
       mode={mode}
       displayId={displayId}
       formData={formData}
-      onFormChange={handleFormChange}
+      onFormChange={handlePropertyChange}
       statuses={sortedStatuses}
       tags={tags}
       users={users}
