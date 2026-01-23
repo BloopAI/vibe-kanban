@@ -1,6 +1,7 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowSquareOut } from '@phosphor-icons/react';
 import {
   Dialog,
   DialogContent,
@@ -92,8 +93,15 @@ const CreateWorkspaceFromPrDialogImpl =
       enabled: modal.visible && !!selectedRepoId && !!selectedRemote,
     });
 
-    const openPrs: OpenPrInfo[] =
-      prsResult?.success === true ? prsResult.data : [];
+    const openPrs = useMemo<OpenPrInfo[]>(
+      () => (prsResult?.success === true ? prsResult.data : []),
+      [prsResult]
+    );
+
+    const selectedPr = useMemo(
+      () => openPrs.find((pr) => Number(pr.number) === selectedPrNumber) ?? null,
+      [openPrs, selectedPrNumber]
+    );
 
     let prsErrorMessage: string | null = null;
     if (prsResult?.success === false) {
@@ -122,14 +130,8 @@ const CreateWorkspaceFromPrDialogImpl =
 
     const createMutation = useMutation({
       mutationFn: async () => {
-        if (!selectedRepoId || !selectedPrNumber || !selectedRemote) {
+        if (!selectedRepoId || !selectedPrNumber || !selectedRemote || !selectedPr) {
           throw new Error('Missing required fields');
-        }
-        const selectedPr = openPrs.find(
-          (pr) => Number(pr.number) === selectedPrNumber
-        );
-        if (!selectedPr) {
-          throw new Error('Selected PR not found');
         }
         const result = await attemptsApi.createFromPr({
           repo_id: selectedRepoId,
@@ -306,31 +308,46 @@ const CreateWorkspaceFromPrDialogImpl =
                   {t('createWorkspaceFromPr.noPullRequestsFound')}
                 </div>
               ) : (
-                <SearchableDropdownContainer
-                  items={openPrs}
-                  selectedValue={selectedPrNumber?.toString() ?? null}
-                  getItemKey={(pr) => String(pr.number)}
-                  getItemLabel={(pr) => `#${pr.number}: ${pr.title}`}
-                  filterItem={(pr, query) =>
-                    String(pr.number).includes(query) ||
-                    pr.title.toLowerCase().includes(query)
-                  }
-                  onSelect={(pr) => setSelectedPrNumber(Number(pr.number))}
-                  trigger={
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start font-normal"
+                <div className="flex items-center gap-2">
+                  <SearchableDropdownContainer
+                    items={openPrs}
+                    selectedValue={selectedPrNumber?.toString() ?? null}
+                    getItemKey={(pr) => String(pr.number)}
+                    getItemLabel={(pr) => `#${pr.number}: ${pr.title}`}
+                    filterItem={(pr, query) =>
+                      String(pr.number).includes(query) ||
+                      pr.title.toLowerCase().includes(query)
+                    }
+                    onSelect={(pr) => setSelectedPrNumber(Number(pr.number))}
+                    trigger={
+                      <Button
+                        variant="outline"
+                        className="flex-1 justify-start font-normal min-w-0"
+                      >
+                        <span className="truncate">
+                          {selectedPr
+                            ? `#${selectedPr.number}: ${selectedPr.title}`
+                            : t('createWorkspaceFromPr.selectPullRequest')}
+                        </span>
+                      </Button>
+                    }
+                    contentClassName="w-[400px]"
+                    placeholder={t('createWorkspaceFromPr.searchPrsPlaceholder')}
+                    emptyMessage={t('createWorkspaceFromPr.noMatchingPrs')}
+                    getItemBadge={null}
+                  />
+                  {selectedPr && (
+                    <a
+                      href={selectedPr.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-shrink-0 p-2 text-muted-foreground hover:text-foreground transition-colors"
+                      title={t('createWorkspaceFromPr.openPrInBrowser')}
                     >
-                      {selectedPrNumber
-                        ? `#${selectedPrNumber}: ${openPrs.find((pr) => Number(pr.number) === selectedPrNumber)?.title ?? ''}`
-                        : t('createWorkspaceFromPr.selectPullRequest')}
-                    </Button>
-                  }
-                  contentClassName="w-[400px]"
-                  placeholder={t('createWorkspaceFromPr.searchPrsPlaceholder')}
-                  emptyMessage={t('createWorkspaceFromPr.noMatchingPrs')}
-                  getItemBadge={null}
-                />
+                      <ArrowSquareOut className="size-4" />
+                    </a>
+                  )}
+                </div>
               )}
             </div>
 
