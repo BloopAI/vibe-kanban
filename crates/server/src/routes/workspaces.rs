@@ -10,6 +10,7 @@ use db::models::{
     coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     merge::Merge,
+    task::{Task, TaskStatus},
     workspace::Workspace,
     workspace_repo::WorkspaceRepo,
 };
@@ -398,6 +399,14 @@ pub async fn close_workspace(
     // Update database: set archived and clear container_ref
     Workspace::set_archived(pool, workspace_id, true).await?;
     Workspace::clear_container_ref(pool, workspace_id).await?;
+
+    // Update task status based on strategy
+    let new_status = if request.strategy == "merge" {
+        TaskStatus::Done
+    } else {
+        TaskStatus::Todo
+    };
+    Task::update_status(pool, workspace.task_id, new_status).await?;
 
     Ok(ResponseJson(ApiResponse::success(CloseWorkspaceResponse {
         workspace_id: workspace_id.to_string(),
