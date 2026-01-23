@@ -242,12 +242,21 @@ export const Actions = {
     requiresTarget: true,
     execute: async (ctx, workspaceId) => {
       try {
-        const firstMessage = await attemptsApi.getFirstUserMessage(workspaceId);
+        const [firstMessage, repos] = await Promise.all([
+          attemptsApi.getFirstUserMessage(workspaceId),
+          attemptsApi.getRepos(workspaceId),
+        ]);
         ctx.navigate('/workspaces/create', {
-          state: { initialPrompt: firstMessage },
+          state: {
+            initialPrompt: firstMessage,
+            preferredRepos: repos.map((r) => ({
+              repo_id: r.id,
+              target_branch: r.target_branch,
+            })),
+          },
         });
       } catch {
-        // Fallback to creating without the prompt
+        // Fallback to creating without the prompt/repos
         ctx.navigate('/workspaces/create');
       }
     },
