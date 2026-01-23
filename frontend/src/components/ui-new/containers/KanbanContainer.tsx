@@ -1,16 +1,7 @@
 import { useMemo, useCallback, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useEntity } from '@/lib/electric/hooks';
-import {
-  PROJECT_ENTITY,
-  PROJECT_STATUS_ENTITY,
-  ISSUE_ENTITY,
-  ISSUE_ASSIGNEE_ENTITY,
-  ISSUE_TAG_ENTITY,
-  TAG_ENTITY,
-} from 'shared/remote-types';
-import { useUserOrganizations } from '@/hooks/useUserOrganizations';
-import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
+import { useProjectContext } from '@/contexts/remote/ProjectContext';
+import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useKanbanFilters, PRIORITY_ORDER } from '@/hooks/useKanbanFilters';
 import { PlusIcon } from '@phosphor-icons/react';
@@ -34,42 +25,32 @@ function LoadingState() {
   );
 }
 
-function KanbanBoardContent({
-  projectId,
-  projectName,
-  organizationId,
-}: {
-  projectId: string;
-  projectName: string;
-  organizationId: string;
-}) {
+/**
+ * KanbanContainer displays the kanban board using data from ProjectContext and OrgContext.
+ * Must be rendered within both OrgProvider and ProjectProvider.
+ */
+export function KanbanContainer() {
   const { t } = useTranslation('common');
-  const { data: statuses, isLoading: statusesLoading } = useEntity(
-    PROJECT_STATUS_ENTITY,
-    { project_id: projectId }
-  );
-  const {
-    data: issues,
-    isLoading: issuesLoading,
-    update: updateIssue,
-  } = useEntity(ISSUE_ENTITY, {
-    project_id: projectId,
-  });
 
-  // Fetch additional data for filtering
-  const { data: issueAssignees, isLoading: assigneesLoading } = useEntity(
-    ISSUE_ASSIGNEE_ENTITY,
-    { project_id: projectId }
-  );
-  const { data: issueTags, isLoading: issueTagsLoading } = useEntity(
-    ISSUE_TAG_ENTITY,
-    { project_id: projectId }
-  );
-  const { data: tags, isLoading: tagsLoading } = useEntity(TAG_ENTITY, {
-    project_id: projectId,
-  });
-  const { data: orgMembers = [], isLoading: membersLoading } =
-    useOrganizationMembers(organizationId);
+  // Get data from contexts (set up by WorkspacesLayout)
+  const {
+    issues,
+    statuses,
+    tags,
+    issueAssignees,
+    issueTags,
+    updateIssue,
+    isLoading: projectLoading,
+  } = useProjectContext();
+
+  const {
+    projects,
+    membersWithProfiles,
+    isLoading: orgLoading,
+  } = useOrgContext();
+
+  // Get project name from first project (context provides the project we're viewing)
+  const projectName = projects[0]?.name ?? '';
 
   // Apply filters
   const { filteredIssues, hasActiveFilters } = useKanbanFilters({
@@ -232,13 +213,7 @@ function KanbanBoardContent({
     openKanbanIssuePanel(null, true);
   }, [openKanbanIssuePanel]);
 
-  const isLoading =
-    statusesLoading ||
-    issuesLoading ||
-    assigneesLoading ||
-    issueTagsLoading ||
-    tagsLoading ||
-    membersLoading;
+  const isLoading = projectLoading || orgLoading;
 
   if (isLoading) {
     return <LoadingState />;
@@ -258,7 +233,7 @@ function KanbanBoardContent({
         <h2 className="text-2xl font-medium">{projectName}</h2>
         <KanbanFilterBar
           tags={tags}
-          users={orgMembers}
+          users={membersWithProfiles}
           hasActiveFilters={hasActiveFilters}
         />
       </div>
@@ -321,52 +296,4 @@ function KanbanBoardContent({
       </div>
     </div>
   );
-}
-
-function KanbanWithProjects({ organizationId }: { organizationId: string }) {
-  const { t } = useTranslation('common');
-  const { data: projects, isLoading } = useEntity(PROJECT_ENTITY, {
-    organization_id: organizationId,
-  });
-  const firstProject = projects?.[0];
-
-  if (isLoading) {
-    return <LoadingState />;
-  }
-
-  if (!firstProject) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-low">{t('kanban.noProjectFound')}</p>
-      </div>
-    );
-  }
-
-  return (
-    <KanbanBoardContent
-      projectId={firstProject.id}
-      projectName={firstProject.name}
-      organizationId={organizationId}
-    />
-  );
-}
-
-export function KanbanContainer() {
-  const { t } = useTranslation('common');
-  const { data: orgsData, isLoading } = useUserOrganizations();
-  const firstOrg = orgsData?.organizations?.[0];
-
-  if (isLoading) {
-    return <LoadingState />;
-  }
-
-  if (!firstOrg) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-low">{t('kanban.noOrganizationFound')}</p>
-      </div>
-    );
-  }
-
-  return <KanbanWithProjects organizationId={firstOrg.id} />;
 }
