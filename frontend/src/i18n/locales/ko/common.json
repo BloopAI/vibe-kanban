@@ -330,7 +330,8 @@
     "noProjectFound": "프로젝트를 찾을 수 없습니다",
     "noOrganizationFound": "조직을 찾을 수 없습니다",
     "unassigned": "미할당",
-    "noTagsAvailable": "사용 가능한 태그가 없습니다",
+    "noTagsAvailable": "No tags available",
+    "createNewTag": "Create new tag",
     "filesCount": "{{count}}개 파일",
     "noPrCreated": "PR이 생성되지 않음",
     "noCommentsYet": "아직 댓글이 없습니다"
