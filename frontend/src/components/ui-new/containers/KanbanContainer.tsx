@@ -41,6 +41,7 @@ export function KanbanContainer() {
     issueAssignees,
     issueTags,
     updateIssue,
+    getTagObjectsForIssue,
     isLoading: projectLoading,
   } = useProjectContext();
 
@@ -294,7 +295,7 @@ export function KanbanContainer() {
                           title={issue.title}
                           description={issue.description}
                           priority={issue.priority}
-                          tags={[]}
+                          tags={getTagObjectsForIssue(issue.id)}
                           assignees={issueAssigneesMap[issue.id] ?? []}
                         />
                       </KanbanCard>

@@ -72,6 +72,9 @@ export interface KanbanIssuePanelProps {
   onSubmit: () => void;
   onAddComment?: (message: string) => void;
 
+  // Tag create callback - returns the new tag ID
+  onCreateTag?: (data: { name: string; color: string }) => string;
+
   // Loading states
   isSubmitting?: boolean;
   isLoading?: boolean;
@@ -90,6 +93,7 @@ export function KanbanIssuePanel({
   linkedPrs = [],
   onClose,
   onSubmit,
+  onCreateTag,
   isSubmitting,
 }: KanbanIssuePanelProps) {
   const { t } = useTranslation('common');
@@ -148,6 +152,7 @@ export function KanbanIssuePanel({
               availableTags={tags}
               linkedPrs={linkedPrs}
               onTagsChange={(tagIds) => onFormChange('tagIds', tagIds)}
+              onCreateTag={onCreateTag}
               disabled={isSubmitting}
             />
           </div>

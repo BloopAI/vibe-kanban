@@ -29,10 +29,15 @@ export function KanbanIssuePanelContainer() {
     statuses,
     tags,
     issueAssignees,
+    issueTags,
     insertIssue,
     updateIssue,
     insertIssueAssignee,
     removeIssueAssignee,
+    insertIssueTag,
+    removeIssueTag,
+    insertTag,
+    getTagsForIssue,
     isLoading: projectLoading,
   } = useProjectContext();
 
@@ -51,6 +56,13 @@ export function KanbanIssuePanelContainer() {
       .filter((a) => a.issue_id === selectedKanbanIssueId)
       .map((a) => a.user_id);
   }, [issueAssignees, selectedKanbanIssueId]);
+
+  // Get current tag IDs from issue_tags junction table
+  const currentTagIds = useMemo(() => {
+    if (!selectedKanbanIssueId) return [];
+    const tagLinks = getTagsForIssue(selectedKanbanIssueId);
+    return tagLinks.map((it) => it.tag_id);
+  }, [getTagsForIssue, selectedKanbanIssueId]);
 
   // Determine mode (only edit when an issue is selected)
   const mode = kanbanCreateMode || !selectedKanbanIssueId ? 'create' : 'edit';
@@ -104,11 +116,11 @@ export function KanbanIssuePanelContainer() {
         statusId: selectedIssue.status_id,
         priority: selectedIssue.priority,
         assigneeIds: currentAssigneeIds,
-        tagIds: [], // Would come from issue_tags table
+        tagIds: currentTagIds,
         createDraftWorkspace: false,
       });
     }
-  }, [mode, selectedIssue, defaultStatusId, currentAssigneeIds]);
+  }, [mode, selectedIssue, defaultStatusId, currentAssigneeIds, currentTagIds]);
 
   // Form change handler - persists changes immediately in edit mode
   const handlePropertyChange = useCallback(
@@ -149,6 +161,33 @@ export function KanbanIssuePanelContainer() {
                 user_id: userId,
               })
             );
+        } else if (field === 'tagIds') {
+          // Handle tag changes via junction table
+          const newTagIds = value as string[];
+          const currentIssueTags = issueTags.filter(
+            (it) => it.issue_id === selectedKanbanIssueId
+          );
+          const currentTagIdSet = new Set(
+            currentIssueTags.map((it) => it.tag_id)
+          );
+          const newTagIdSet = new Set(newTagIds);
+
+          // Remove tags that are no longer selected
+          for (const issueTag of currentIssueTags) {
+            if (!newTagIdSet.has(issueTag.tag_id)) {
+              removeIssueTag(issueTag.id);
+            }
+          }
+
+          // Add newly selected tags
+          for (const tagId of newTagIds) {
+            if (!currentTagIdSet.has(tagId)) {
+              insertIssueTag({
+                issue_id: selectedKanbanIssueId,
+                tag_id: tagId,
+              });
+            }
+          }
         }
       }
     },
@@ -159,6 +198,9 @@ export function KanbanIssuePanelContainer() {
       issueAssignees,
       insertIssueAssignee,
       removeIssueAssignee,
+      issueTags,
+      insertIssueTag,
+      removeIssueTag,
     ]
   );
 
@@ -199,6 +241,14 @@ export function KanbanIssuePanelContainer() {
           });
         });
 
+        // Create tag records if tags were selected
+        for (const tagId of formData.tagIds) {
+          insertIssueTag({
+            issue_id: newIssue.id,
+            tag_id: tagId,
+          });
+        }
+
         // TODO: Create workspace if formData.createDraftWorkspace is true
 
         closeKanbanIssuePanel();
@@ -219,8 +269,22 @@ export function KanbanIssuePanelContainer() {
     issues,
     insertIssue,
     insertIssueAssignee,
+    insertIssueTag,
     closeKanbanIssuePanel,
   ]);
+
+  // Tag create callback - returns the new tag ID so it can be auto-selected
+  const handleCreateTag = useCallback(
+    (data: { name: string; color: string }): string => {
+      const newTag = insertTag({
+        project_id: projectId,
+        name: data.name,
+        color: data.color,
+      });
+      return newTag.id;
+    },
+    [insertTag, projectId]
+  );
 
   // Loading state
   const isLoading = projectLoading || orgLoading;
@@ -247,6 +311,7 @@ export function KanbanIssuePanelContainer() {
       linkedPrs={[]}
       onClose={closeKanbanIssuePanel}
       onSubmit={handleSubmit}
+      onCreateTag={handleCreateTag}
       isSubmitting={isSubmitting}
       isLoading={isLoading}
     />

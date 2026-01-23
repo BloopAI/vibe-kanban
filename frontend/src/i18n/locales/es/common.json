@@ -330,7 +330,8 @@
     "noProjectFound": "No se encontró el proyecto",
     "noOrganizationFound": "No se encontró la organización",
     "unassigned": "Sin asignar",
-    "noTagsAvailable": "No hay etiquetas disponibles",
+    "noTagsAvailable": "No tags available",
+    "createNewTag": "Create new tag",
     "filesCount": "{{count}} Archivos",
     "noPrCreated": "No se creó PR",
     "noCommentsYet": "Sin comentarios aún"
