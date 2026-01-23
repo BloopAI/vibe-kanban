@@ -291,8 +291,12 @@ export function useCreateModeState({
     navigate(location.pathname, { replace: true, state: {} });
   }, [locationState, location.pathname, navigate]);
 
-  // Handle spin off repos from navigation state
+  // Handle preferred repos from navigation state
   useEffect(() => {
+    console.log('[useCreateModeState] preferredRepos effect', {
+      hasApplied: hasAppliedPreferredRepos.current,
+      preferredRepos: locationState?.preferredRepos,
+    });
     if (hasAppliedPreferredRepos.current) return;
     if (
       !locationState?.preferredRepos ||
@@ -302,26 +306,29 @@ export function useCreateModeState({
 
     hasAppliedPreferredRepos.current = true;
 
+    const branches = locationState.preferredRepos.reduce(
+      (acc, r) => {
+        acc[r.repo_id] = r.target_branch;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+    console.log('[useCreateModeState] SETTING targetBranches:', branches);
+
     // Set target branches SYNCHRONOUSLY first to prevent race condition
     // with CreateModeReposSectionContainer's auto-select effect
-    setTargetBranches(
-      locationState.preferredRepos.reduce(
-        (acc, r) => {
-          acc[r.repo_id] = r.target_branch;
-          return acc;
-        },
-        {} as Record<string, string>
-      )
-    );
+    setTargetBranches(branches);
 
     // Mark repos as initialized to prevent overwrite by initialRepos effect
     hasInitializedRepos.current = true;
 
     // Then fetch full repo objects asynchronously
-    const applySpinOffRepos = async () => {
+    const applyPreferredRepos = async () => {
       try {
         const repoIds = locationState.preferredRepos!.map((r) => r.repo_id);
+        console.log('[useCreateModeState] Fetching repos:', repoIds);
         const fetchedRepos = await repoApi.getBatch(repoIds);
+        console.log('[useCreateModeState] Setting repos:', fetchedRepos);
         setRepos(fetchedRepos);
       } catch (e) {
         console.error(
@@ -331,7 +338,7 @@ export function useCreateModeState({
       }
     };
 
-    applySpinOffRepos();
+    applyPreferredRepos();
 
     // Clear the navigation state
     navigate(location.pathname, { replace: true, state: {} });
