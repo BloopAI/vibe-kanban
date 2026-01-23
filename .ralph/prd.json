@@ -35,7 +35,7 @@
       ],
       "priority": 2,
       "passes": false,
-      "inProgress": false,
+      "inProgress": true,
       "checkpoint": false,
       "notes": ""
     },
