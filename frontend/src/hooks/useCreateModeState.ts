@@ -15,7 +15,7 @@ import { projectsApi, repoApi } from '@/lib/api';
 
 interface LocationState {
   duplicatePrompt?: string | null;
-  spinOffRepos?: Array<{ repo_id: string; target_branch: string }> | null;
+  preferredRepos?: Array<{ repo_id: string; target_branch: string }> | null;
 }
 
 // Fixed UUID for the universal workspace draft
@@ -66,7 +66,7 @@ export function useCreateModeState({
   const hasInitializedRepos = useRef(false);
   const hasInitializedProject = useRef(false);
   const hasAppliedDuplicatePrompt = useRef(false);
-  const hasAppliedSpinOffRepos = useRef(false);
+  const hasAppliedPreferredRepos = useRef(false);
 
   // Validation helper for executor profiles
   const isValidProfile = useMemo(() => {
@@ -114,7 +114,7 @@ export function useCreateModeState({
     if (!profiles) return; // Wait for profiles to validate
 
     // Skip scratch restore if spin-off repos are present - they take priority
-    if (locationState?.spinOffRepos && locationState.spinOffRepos.length > 0) {
+    if (locationState?.preferredRepos && locationState.preferredRepos.length > 0) {
       hasInitializedFromScratch.current = true;
       setHasInitialValue(true);
       return;
@@ -190,13 +190,13 @@ export function useCreateModeState({
     projectsById,
     profiles,
     isValidProfile,
-    locationState?.spinOffRepos,
+    locationState?.preferredRepos,
   ]);
 
   // Initialize repos from props (if not restored from scratch)
   useEffect(() => {
     // Skip if spin-off repos are present - they take priority
-    if (locationState?.spinOffRepos && locationState.spinOffRepos.length > 0) {
+    if (locationState?.preferredRepos && locationState.preferredRepos.length > 0) {
       return;
     }
 
@@ -217,7 +217,7 @@ export function useCreateModeState({
         )
       );
     }
-  }, [initialRepos, locationState?.spinOffRepos]);
+  }, [initialRepos, locationState?.preferredRepos]);
 
   // Initialize project from props (if not restored from scratch)
   useEffect(() => {
@@ -287,16 +287,16 @@ export function useCreateModeState({
 
   // Handle spin off repos from navigation state
   useEffect(() => {
-    if (hasAppliedSpinOffRepos.current) return;
-    if (!locationState?.spinOffRepos || locationState.spinOffRepos.length === 0)
+    if (hasAppliedPreferredRepos.current) return;
+    if (!locationState?.preferredRepos || locationState.preferredRepos.length === 0)
       return;
 
-    hasAppliedSpinOffRepos.current = true;
+    hasAppliedPreferredRepos.current = true;
 
     // Set target branches SYNCHRONOUSLY first to prevent race condition
     // with CreateModeReposSectionContainer's auto-select effect
     setTargetBranches(
-      locationState.spinOffRepos.reduce(
+      locationState.preferredRepos.reduce(
         (acc, r) => {
           acc[r.repo_id] = r.target_branch;
           return acc;
@@ -311,12 +311,12 @@ export function useCreateModeState({
     // Then fetch full repo objects asynchronously
     const applySpinOffRepos = async () => {
       try {
-        const repoIds = locationState.spinOffRepos!.map((r) => r.repo_id);
+        const repoIds = locationState.preferredRepos!.map((r) => r.repo_id);
         const fetchedRepos = await repoApi.getBatch(repoIds);
         setRepos(fetchedRepos);
       } catch (e) {
         console.error(
-          '[useCreateModeState] Failed to apply spin off repos:',
+          '[useCreateModeState] Failed to apply preferred repos:',
           e
         );
       }

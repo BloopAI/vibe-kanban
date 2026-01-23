@@ -378,7 +378,7 @@ export const Actions = {
         ]);
         ctx.navigate('/workspaces/create', {
           state: {
-            spinOffRepos: repos.map((r) => ({
+            preferredRepos: repos.map((r) => ({
               repo_id: r.id,
               target_branch: workspace.branch,
             })),
