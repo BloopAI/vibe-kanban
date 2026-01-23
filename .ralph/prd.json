@@ -51,7 +51,7 @@
       ],
       "priority": 3,
       "passes": false,
-      "inProgress": false,
+      "inProgress": true,
       "checkpoint": true,
       "notes": "Backend changes complete at this checkpoint - ready for README work"
     },
