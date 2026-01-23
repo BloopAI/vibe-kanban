@@ -334,6 +334,7 @@ export function ReposSettingsSection() {
                   b.name.toLowerCase().includes(query.toLowerCase())
                 }
                 getItemBadge={(b) => (b.is_current ? 'Current' : undefined)}
+                getItemIcon={null}
                 onSelect={(b) => updateDraft({ default_target_branch: b.name })}
                 placeholder={t(
                   'settings.repos.general.defaultTargetBranch.search'
