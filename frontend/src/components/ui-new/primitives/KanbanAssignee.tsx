@@ -2,23 +2,21 @@
 
 import { cn } from '@/lib/utils';
 import { UsersIcon } from '@phosphor-icons/react';
-import { UserAvatar } from '@/components/tasks/UserAvatar';
+import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
+import type { User } from 'shared/remote-types';
+
+const MAX_VISIBLE_AVATARS = 2;
 
 export type KanbanAssigneeProps = {
-  assignee: {
-    firstName?: string | null;
-    lastName?: string | null;
-    username?: string | null;
-    imageUrl?: string | null;
-  } | null;
+  assignees: User[];
   className?: string;
 };
 
 export const KanbanAssignee = ({
-  assignee,
+  assignees,
   className,
 }: KanbanAssigneeProps) => {
-  if (!assignee) {
+  if (assignees.length === 0) {
     // Unassigned state - show users icon
     return (
       <div
@@ -30,25 +28,22 @@ export const KanbanAssignee = ({
     );
   }
 
-  // Assigned state - show avatar with name
-  const displayName =
-    [assignee.firstName, assignee.lastName].filter(Boolean).join(' ') ||
-    assignee.username ||
-    '';
+  const visibleAssignees = assignees.slice(0, MAX_VISIBLE_AVATARS);
+  const remainingCount = assignees.length - MAX_VISIBLE_AVATARS;
 
   return (
-    <div className={cn('flex items-center gap-half h-5', className)}>
-      <UserAvatar
-        firstName={assignee.firstName}
-        lastName={assignee.lastName}
-        username={assignee.username}
-        imageUrl={assignee.imageUrl}
-        className="h-3 w-3 text-[8px] border-white"
-      />
-      {displayName && (
-        <span className="text-sm text-normal truncate max-w-[80px]">
-          {displayName}
-        </span>
+    <div className={cn('flex items-center h-5', className)}>
+      <div className="flex -space-x-1">
+        {visibleAssignees.map((assignee) => (
+          <UserAvatar
+            key={assignee.id}
+            user={assignee}
+            className="h-4 w-4 text-[8px] ring-1 ring-background"
+          />
+        ))}
+      </div>
+      {remainingCount > 0 && (
+        <span className="ml-half text-xs text-low">+{remainingCount}</span>
       )}
     </div>
   );
