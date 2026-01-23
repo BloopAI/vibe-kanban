@@ -33,13 +33,9 @@ export function useWorkspaceShortcuts() {
     const firstRepoId = currentRepos?.[0]?.id;
 
     if (action.requiresTarget === 'git') {
-      if (currentWorkspaceId && firstRepoId) {
-        currentExecuteAction(action, currentWorkspaceId, firstRepoId);
-      }
+      currentExecuteAction(action, currentWorkspaceId, firstRepoId);
     } else if (action.requiresTarget === true) {
-      if (currentWorkspaceId) {
-        currentExecuteAction(action, currentWorkspaceId);
-      }
+      currentExecuteAction(action, currentWorkspaceId);
     } else {
       currentExecuteAction(action);
     }
