@@ -330,7 +330,8 @@
     "noProjectFound": "找不到專案",
     "noOrganizationFound": "找不到組織",
     "unassigned": "未指派",
-    "noTagsAvailable": "沒有可用的標籤",
+    "noTagsAvailable": "No tags available",
+    "createNewTag": "Create new tag",
     "filesCount": "{{count}} 個檔案",
     "noPrCreated": "未建立 PR",
     "noCommentsYet": "尚無評論"

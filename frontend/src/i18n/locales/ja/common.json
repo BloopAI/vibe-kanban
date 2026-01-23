@@ -330,7 +330,8 @@
     "noProjectFound": "プロジェクトが見つかりません",
     "noOrganizationFound": "組織が見つかりません",
     "unassigned": "未割り当て",
-    "noTagsAvailable": "利用可能なタグがありません",
+    "noTagsAvailable": "No tags available",
+    "createNewTag": "Create new tag",
     "filesCount": "{{count}}ファイル",
     "noPrCreated": "PRが作成されていません",
     "noCommentsYet": "コメントはまだありません"
