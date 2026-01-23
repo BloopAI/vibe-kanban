@@ -1,0 +1,210 @@
+{
+  "project": "Vibe Kanban MCP Extension",
+  "branchName": "vk-mcp-lifecycle",
+  "description": "Extend Vibe Kanban MCP with workspace lifecycle management - status, transcript, diff, and close operations",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add workspace status API route",
+      "description": "As a developer, I need an API endpoint that returns workspace execution status and diff stats.",
+      "acceptanceCriteria": [
+        "Add GET /api/workspaces/{id}/status route in crates/server/src/routes/",
+        "Route returns: workspace_id, status (running/completed/failed/killed), files_changed, lines_added, lines_removed",
+        "Reuse compute_workspace_diff_stats logic from workspace_summary.rs",
+        "Query ExecutionProcess for latest status by workspace",
+        "Return 404 if workspace not found",
+        "Typecheck passes (cargo check)"
+      ],
+      "priority": 1,
+      "passes": true,
+      "inProgress": false,
+      "checkpoint": false,
+      "notes": "Reference: crates/server/src/routes/task_attempts/workspace_summary.rs:168 for diff stats logic"
+    },
+    {
+      "id": "US-002",
+      "title": "Add get_workspace_status MCP tool",
+      "description": "As an AI agent, I want to check workspace status via MCP so I know when work is complete.",
+      "acceptanceCriteria": [
+        "Add GetWorkspaceStatusRequest struct with workspace_id: Uuid",
+        "Add GetWorkspaceStatusResponse struct with status, diff stats fields",
+        "Add get_workspace_status tool in #[tool_router] impl block",
+        "Tool calls /api/workspaces/{id}/status via self.client",
+        "Returns success response with workspace status",
+        "Typecheck passes (cargo check)"
+      ],
+      "priority": 2,
+      "passes": false,
+      "inProgress": true,
+      "checkpoint": true,
+      "notes": "Location: crates/server/src/mcp/task_server.rs"
+    },
+    {
+      "id": "US-003",
+      "title": "Add workspace transcript API route",
+      "description": "As a developer, I need an API endpoint that returns the agent's output summary.",
+      "acceptanceCriteria": [
+        "Add GET /api/workspaces/{id}/transcript route",
+        "Query CodingAgentTurn via sessions and execution_processes joins",
+        "Return: prompt, summary, agent_session_id from latest coding agent turn",
+        "Return 404 if workspace not found",
+        "Return empty summary if no coding agent turns exist",
+        "Typecheck passes (cargo check)"
+      ],
+      "priority": 3,
+      "passes": false,
+      "inProgress": false,
+      "checkpoint": false,
+      "notes": "Reference: crates/db/src/models/coding_agent_turn.rs for model"
+    },
+    {
+      "id": "US-004",
+      "title": "Add get_workspace_transcript MCP tool",
+      "description": "As an AI agent, I want to retrieve agent findings via MCP so I can use the results.",
+      "acceptanceCriteria": [
+        "Add GetWorkspaceTranscriptRequest struct with workspace_id: Uuid",
+        "Add GetWorkspaceTranscriptResponse struct with prompt, summary, agent_session_id",
+        "Add get_workspace_transcript tool in #[tool_router] impl block",
+        "Tool calls /api/workspaces/{id}/transcript via self.client",
+        "Returns success response with transcript data",
+        "Typecheck passes (cargo check)"
+      ],
+      "priority": 4,
+      "passes": false,
+      "inProgress": false,
+      "checkpoint": true,
+      "notes": "Location: crates/server/src/mcp/task_server.rs"
+    },
+    {
+      "id": "US-005",
+      "title": "Add workspace diff API route",
+      "description": "As a developer, I need an API endpoint that returns actual file diffs for a workspace.",
+      "acceptanceCriteria": [
+        "Add GET /api/workspaces/{id}/diff route",
+        "Use git.get_diffs() to get actual diff content (not just stats)",
+        "Return list of files with: path, additions, deletions, diff_content",
+        "Compare workspace branch to target branch via merge base",
+        "Return 404 if workspace not found or no container_ref",
+        "Typecheck passes (cargo check)"
+      ],
+      "priority": 5,
+      "passes": false,
+      "inProgress": false,
+      "checkpoint": false,
+      "notes": "Reference: crates/services/src/services/git.rs for git operations"
+    },
+    {
+      "id": "US-006",
+      "title": "Add get_workspace_diff MCP tool",
+      "description": "As an AI agent, I want to see file changes via MCP before deciding to merge.",
+      "acceptanceCriteria": [
+        "Add GetWorkspaceDiffRequest struct with workspace_id: Uuid",
+        "Add GetWorkspaceDiffResponse struct with list of file diffs",
+        "Add get_workspace_diff tool in #[tool_router] impl block",
+        "Tool calls /api/workspaces/{id}/diff via self.client",
+        "Returns success response with diff data",
+        "Typecheck passes (cargo check)"
+      ],
+      "priority": 6,
+      "passes": false,
+      "inProgress": false,
+      "checkpoint": true,
+      "notes": "Location: crates/server/src/mcp/task_server.rs"
+    },
+    {
+      "id": "US-007",
+      "title": "Add close workspace service function - discard",
+      "description": "As a developer, I need a service function to discard workspace changes and cleanup.",
+      "acceptanceCriteria": [
+        "Add close_workspace_discard function in workspace_manager.rs or new module",
+        "Function removes worktree at workspace.container_ref",
+        "Function deletes workspace branch (git branch -D)",
+        "Function sets workspace.archived = true",
+        "Function clears workspace.container_ref to NULL",
+        "Returns error if workspace has running processes",
+        "Typecheck passes (cargo check)"
+      ],
+      "priority": 7,
+      "passes": false,
+      "inProgress": false,
+      "checkpoint": false,
+      "notes": "Reference: crates/services/src/services/worktree_manager.rs for worktree removal"
+    },
+    {
+      "id": "US-008",
+      "title": "Add close workspace service function - merge",
+      "description": "As a developer, I need a service function to merge workspace changes into target branch.",
+      "acceptanceCriteria": [
+        "Add close_workspace_merge function in workspace_manager.rs or new module",
+        "Function performs git merge of workspace branch into target branch",
+        "Function records DirectMerge in merges table via Merge::create_direct()",
+        "Function then calls discard logic (remove worktree, delete branch, archive)",
+        "Returns merge commit SHA on success",
+        "Returns error on merge conflicts (does not auto-resolve)",
+        "Typecheck passes (cargo check)"
+      ],
+      "priority": 8,
+      "passes": false,
+      "inProgress": false,
+      "checkpoint": false,
+      "notes": "Reference: crates/db/src/models/merge.rs for Merge::create_direct()"
+    },
+    {
+      "id": "US-009",
+      "title": "Add close workspace API route",
+      "description": "As a developer, I need an API endpoint to close workspaces with merge or discard.",
+      "acceptanceCriteria": [
+        "Add POST /api/workspaces/{id}/close route",
+        "Accept JSON body with strategy: 'merge' | 'discard'",
+        "Call appropriate service function based on strategy",
+        "Return 200 with merge_commit_sha for merge strategy",
+        "Return 200 with success message for discard strategy",
+        "Return 400 if workspace already closed (no container_ref)",
+        "Return 409 on merge conflicts",
+        "Typecheck passes (cargo check)"
+      ],
+      "priority": 9,
+      "passes": false,
+      "inProgress": false,
+      "checkpoint": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Add close_workspace MCP tool",
+      "description": "As an AI agent, I want to close workspaces via MCP to complete the lifecycle.",
+      "acceptanceCriteria": [
+        "Add CloseWorkspaceRequest struct with workspace_id: Uuid, strategy: String",
+        "Add CloseWorkspaceResponse struct with success, merge_commit_sha (optional)",
+        "Add close_workspace tool in #[tool_router] impl block",
+        "Tool validates strategy is 'merge' or 'discard'",
+        "Tool calls /api/workspaces/{id}/close via self.client",
+        "Returns success response with close result",
+        "Typecheck passes (cargo check)"
+      ],
+      "priority": 10,
+      "passes": false,
+      "inProgress": false,
+      "checkpoint": true,
+      "notes": "Location: crates/server/src/mcp/task_server.rs"
+    },
+    {
+      "id": "US-011",
+      "title": "Auto-archive workspace on PR merge",
+      "description": "As a user, I want workspaces to auto-archive when their PR is merged.",
+      "acceptanceCriteria": [
+        "Modify pr_monitor.rs to call workspace archive on PR merge",
+        "When Merge::update_status sets status to Merged, also archive workspace",
+        "Call existing close_workspace_discard service (worktree cleanup)",
+        "Only cleanup if workspace.container_ref is still set",
+        "Log action for debugging",
+        "Typecheck passes (cargo check)"
+      ],
+      "priority": 11,
+      "passes": false,
+      "inProgress": false,
+      "checkpoint": true,
+      "notes": "Location: crates/services/src/services/pr_monitor.rs"
+    }
+  ]
+}
