@@ -52,8 +52,8 @@
         "Typecheck passes (cargo check)"
       ],
       "priority": 3,
-      "passes": false,
-      "inProgress": true,
+      "passes": true,
+      "inProgress": false,
       "checkpoint": false,
       "notes": "Reference: crates/db/src/models/coding_agent_turn.rs for model"
     },

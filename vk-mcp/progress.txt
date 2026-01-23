@@ -49,3 +49,20 @@ Started: 2026-01-23
   - Use `#[schemars(description = "...")]` on each field for MCP schema generation
   - Tools are added inside the `#[tool_router] impl TaskServer` block, not a separate impl
 ---
+
+## 2026-01-23 - US-003
+- What was implemented:
+  - Added GET /api/workspaces/{id}/transcript route in crates/server/src/routes/workspaces.rs
+  - Added `find_latest_by_workspace_id` method to CodingAgentTurn model
+  - Returns workspace_id, prompt, summary, agent_session_id from latest coding agent turn
+  - Returns 404 if workspace not found
+  - Returns empty/null fields if no coding agent turns exist
+- Files changed:
+  - crates/server/src/routes/workspaces.rs (added WorkspaceTranscriptResponse + get_workspace_transcript handler)
+  - crates/db/src/models/coding_agent_turn.rs (added find_latest_by_workspace_id method)
+  - crates/db/.sqlx/ (new query cache file)
+- **Learnings for future iterations:**
+  - Query for workspace-related coding agent turns requires joining sessions → execution_processes → coding_agent_turns
+  - Use `ep.run_reason = 'codingagent'` and `ep.dropped = 0` to filter for valid coding agent executions
+  - After adding new SQLx queries, run `pnpm run prepare-db` to update the query cache
+---
