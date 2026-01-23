@@ -691,7 +691,7 @@ export function ProjectTasks() {
   }, [selectedTask, visibleTasksByStatus, handleViewTaskDetails]);
 
   // Status is now managed by the server based on events, not manually
-  const handleDragEnd = useCallback((_event: DragEndEvent) => {}, []);
+  const handleDragEnd = useCallback((() => {}) as (event: DragEndEvent) => void, []);
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;
 
