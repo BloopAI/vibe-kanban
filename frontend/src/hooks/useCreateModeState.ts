@@ -114,7 +114,10 @@ export function useCreateModeState({
     if (!profiles) return; // Wait for profiles to validate
 
     // Skip scratch restore if spin-off repos are present - they take priority
-    if (locationState?.preferredRepos && locationState.preferredRepos.length > 0) {
+    if (
+      locationState?.preferredRepos &&
+      locationState.preferredRepos.length > 0
+    ) {
       hasInitializedFromScratch.current = true;
       setHasInitialValue(true);
       return;
@@ -196,7 +199,10 @@ export function useCreateModeState({
   // Initialize repos from props (if not restored from scratch)
   useEffect(() => {
     // Skip if spin-off repos are present - they take priority
-    if (locationState?.preferredRepos && locationState.preferredRepos.length > 0) {
+    if (
+      locationState?.preferredRepos &&
+      locationState.preferredRepos.length > 0
+    ) {
       return;
     }
 
@@ -288,7 +294,10 @@ export function useCreateModeState({
   // Handle spin off repos from navigation state
   useEffect(() => {
     if (hasAppliedPreferredRepos.current) return;
-    if (!locationState?.preferredRepos || locationState.preferredRepos.length === 0)
+    if (
+      !locationState?.preferredRepos ||
+      locationState.preferredRepos.length === 0
+    )
       return;
 
     hasAppliedPreferredRepos.current = true;
