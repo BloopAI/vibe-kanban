@@ -163,6 +163,7 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::review_conversations::AddMessageResponse::decl(),
         server::routes::task_attempts::review_conversations::ResolveConversationResponse::decl(),
         server::routes::task_attempts::review_conversations::ConversationError::decl(),
+        server::routes::task_attempts::review_conversations::ConversationEvent::decl(),
         db::models::review_conversation::ReviewConversation::decl(),
         db::models::review_conversation::ReviewConversationMessage::decl(),
         db::models::review_conversation::ConversationUser::decl(),

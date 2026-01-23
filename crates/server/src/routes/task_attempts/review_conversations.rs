@@ -6,9 +6,12 @@
 
 use axum::{
     Extension, Json, Router,
-    extract::{Path, State},
+    extract::{
+        Path, State, WebSocketUpgrade,
+        ws::{Message, WebSocket},
+    },
     http::HeaderMap,
-    response::Json as ResponseJson,
+    response::{IntoResponse, Json as ResponseJson},
     routing::{delete, get, post},
 };
 use db::models::{
@@ -20,6 +23,7 @@ use db::models::{
     workspace::Workspace,
 };
 use deployment::Deployment;
+use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -57,6 +61,39 @@ pub enum ConversationError {
     MessageNotFound,
     AlreadyResolved,
     ValidationError { message: String },
+}
+
+/// Real-time events broadcast to WebSocket subscribers when conversations change
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[ts(export, tag = "type", rename_all = "snake_case")]
+pub enum ConversationEvent {
+    /// A new conversation was created
+    ConversationCreated {
+        conversation: ConversationWithMessages,
+    },
+    /// A message was added to an existing conversation
+    MessageAdded {
+        conversation: ConversationWithMessages,
+    },
+    /// A conversation was resolved
+    ConversationResolved {
+        conversation: ConversationWithMessages,
+    },
+    /// A conversation was unresolved (re-opened)
+    ConversationUnresolved {
+        conversation: ConversationWithMessages,
+    },
+    /// A conversation was deleted
+    ConversationDeleted { conversation_id: String },
+    /// A message was deleted from a conversation
+    MessageDeleted {
+        conversation: ConversationWithMessages,
+    },
+    /// A conversation was auto-deleted because its last message was removed
+    ConversationAutoDeleted { conversation_id: String },
+    /// Sent when the client has fallen behind and should refetch all conversations
+    Refresh,
 }
 
 impl From<ReviewConversationError> for ConversationError {
@@ -157,6 +194,15 @@ pub async fn create_conversation(
                 .await?
                 .ok_or(ReviewConversationError::NotFound)?;
 
+            broadcast_event(
+                &deployment,
+                workspace.id,
+                &ConversationEvent::ConversationCreated {
+                    conversation: full_conversation.clone(),
+                },
+            )
+            .await;
+
             deployment
                 .track_if_analytics_allowed(
                     "review_conversation_created",
@@ -225,6 +271,15 @@ pub async fn add_message(
                 .await?
                 .ok_or(ReviewConversationError::NotFound)?;
 
+            broadcast_event(
+                &deployment,
+                workspace.id,
+                &ConversationEvent::MessageAdded {
+                    conversation: full_conversation.clone(),
+                },
+            )
+            .await;
+
             deployment
                 .track_if_analytics_allowed(
                     "review_conversation_message_added",
@@ -281,6 +336,15 @@ pub async fn resolve_conversation(
                 .await?
                 .ok_or(ReviewConversationError::NotFound)?;
 
+            broadcast_event(
+                &deployment,
+                workspace.id,
+                &ConversationEvent::ConversationResolved {
+                    conversation: full_conversation.clone(),
+                },
+            )
+            .await;
+
             deployment
                 .track_if_analytics_allowed(
                     "review_conversation_resolved",
@@ -335,6 +399,15 @@ pub async fn unresolve_conversation(
                 .await?
                 .ok_or(ReviewConversationError::NotFound)?;
 
+            broadcast_event(
+                &deployment,
+                workspace.id,
+                &ConversationEvent::ConversationUnresolved {
+                    conversation: full_conversation.clone(),
+                },
+            )
+            .await;
+
             deployment
                 .track_if_analytics_allowed(
                     "review_conversation_unresolved",
@@ -384,6 +457,15 @@ pub async fn delete_conversation(
 
     match result {
         Ok(()) => {
+            broadcast_event(
+                &deployment,
+                workspace.id,
+                &ConversationEvent::ConversationDeleted {
+                    conversation_id: conversation_id.to_string(),
+                },
+            )
+            .await;
+
             deployment
                 .track_if_analytics_allowed(
                     "review_conversation_deleted",
@@ -457,6 +539,16 @@ pub async fn delete_message(
             if remaining_messages.is_empty() {
                 // Delete the entire conversation if no messages remain
                 ReviewConversation::delete(pool, conversation_id).await?;
+
+                broadcast_event(
+                    &deployment,
+                    workspace.id,
+                    &ConversationEvent::ConversationAutoDeleted {
+                        conversation_id: conversation_id.to_string(),
+                    },
+                )
+                .await;
+
                 // Return an empty conversation to indicate deletion
                 return Ok(ResponseJson(ApiResponse::error_with_data(
                     ConversationError::NotFound,
@@ -468,16 +560,102 @@ pub async fn delete_message(
                 .await?
                 .ok_or(ReviewConversationError::NotFound)?;
 
+            broadcast_event(
+                &deployment,
+                workspace.id,
+                &ConversationEvent::MessageDeleted {
+                    conversation: full_conversation.clone(),
+                },
+            )
+            .await;
+
             Ok(ResponseJson(ApiResponse::success(full_conversation)))
         }
         Err(e) => Ok(ResponseJson(ApiResponse::error_with_data(e.into()))),
     }
 }
 
+/// Broadcast a conversation event to all WebSocket subscribers for a workspace.
+/// This is fire-and-forget: errors are logged but do not affect the caller.
+async fn broadcast_event(
+    deployment: &DeploymentImpl,
+    workspace_id: Uuid,
+    event: &ConversationEvent,
+) {
+    match serde_json::to_string(event) {
+        Ok(json) => {
+            deployment
+                .conversation_broadcaster()
+                .broadcast(workspace_id, &json)
+                .await;
+        }
+        Err(e) => {
+            tracing::warn!("Failed to serialize conversation event: {}", e);
+        }
+    }
+}
+
+/// WebSocket endpoint for real-time conversation updates.
+/// Clients connect here and receive ConversationEvent messages as JSON.
+pub async fn stream_conversations_ws(
+    ws: WebSocketUpgrade,
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<impl IntoResponse, ApiError> {
+    let workspace_id = workspace.id;
+    Ok(ws.on_upgrade(move |socket| async move {
+        if let Err(e) = handle_conversations_ws(socket, deployment, workspace_id).await {
+            tracing::warn!("conversations WS closed: {}", e);
+        }
+    }))
+}
+
+async fn handle_conversations_ws(
+    socket: WebSocket,
+    deployment: DeploymentImpl,
+    workspace_id: Uuid,
+) -> anyhow::Result<()> {
+    let mut rx = deployment
+        .conversation_broadcaster()
+        .subscribe(workspace_id)
+        .await;
+    let (mut sender, mut receiver) = socket.split();
+
+    loop {
+        tokio::select! {
+            msg = rx.recv() => {
+                match msg {
+                    Ok(json) => {
+                        if sender.send(Message::Text(json.into())).await.is_err() {
+                            break;
+                        }
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                        tracing::debug!("Conversation WS client lagged by {} messages", n);
+                        let refresh = serde_json::to_string(&ConversationEvent::Refresh)
+                            .unwrap_or_default();
+                        if sender.send(Message::Text(refresh.into())).await.is_err() {
+                            break;
+                        }
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                }
+            }
+            msg = receiver.next() => {
+                if msg.is_none() {
+                    break; // client disconnected
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Router for review conversations under /task-attempts/{id}/conversations
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/", get(list_conversations).post(create_conversation))
+        .route("/ws", get(stream_conversations_ws))
         .route("/unresolved", get(list_unresolved_conversations))
         .route(
             "/{conversation_id}",

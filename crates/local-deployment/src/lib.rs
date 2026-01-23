@@ -35,8 +35,11 @@ use uuid::Uuid;
 use crate::{container::LocalContainerService, pty::PtyService};
 mod command;
 pub mod container;
+pub mod conversation_broadcaster;
 mod copy;
 pub mod pty;
+
+use conversation_broadcaster::ConversationBroadcaster;
 
 #[derive(Clone)]
 pub struct LocalDeployment {
@@ -61,6 +64,7 @@ pub struct LocalDeployment {
     share_publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     share_config: Option<ShareConfig>,
     claude_token_rotation: ClaudeTokenRotationService,
+    conversation_broadcaster: ConversationBroadcaster,
 }
 
 #[derive(Debug, Clone)]
@@ -204,6 +208,7 @@ impl Deployment for LocalDeployment {
         let file_search_cache = Arc::new(FileSearchCache::new());
 
         let pty = PtyService::new();
+        let conversation_broadcaster = ConversationBroadcaster::new();
 
         let deployment = Self {
             config,
@@ -227,6 +232,7 @@ impl Deployment for LocalDeployment {
             share_publisher,
             share_config,
             claude_token_rotation,
+            conversation_broadcaster,
         };
 
         Ok(deployment)
@@ -365,5 +371,9 @@ impl LocalDeployment {
 
     pub fn share_config(&self) -> Option<&ShareConfig> {
         self.share_config.as_ref()
+    }
+
+    pub fn conversation_broadcaster(&self) -> &ConversationBroadcaster {
+        &self.conversation_broadcaster
     }
 }

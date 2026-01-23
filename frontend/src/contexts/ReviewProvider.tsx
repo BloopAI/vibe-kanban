@@ -19,6 +19,7 @@ import {
   useDeleteConversation,
   useDeleteMessage,
 } from '@/hooks/useReviewConversations';
+import { useConversationWebSocket } from '@/hooks/useConversationWebSocket';
 import type { ConversationWithMessages, DiffSide } from 'shared/types';
 
 export interface ReviewComment {
@@ -126,6 +127,9 @@ export function ReviewProvider({
   // Legacy local comments state
   const [comments, setComments] = useState<ReviewComment[]>([]);
   const [drafts, setDrafts] = useState<Record<string, ReviewDraft>>({});
+
+  // Connect WebSocket for real-time conversation updates
+  useConversationWebSocket(attemptId);
 
   // Fetch conversations from backend
   const { data: conversations = [], isLoading: isLoadingAll } =
