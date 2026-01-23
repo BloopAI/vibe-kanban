@@ -333,10 +333,20 @@
     "noProjectFound": "No se encontró el proyecto",
     "noOrganizationFound": "No se encontró la organización",
     "unassigned": "Sin asignar",
-    "noTagsAvailable": "No tags available",
-    "createNewTag": "Create new tag",
+    "noTagsAvailable": "No hay etiquetas disponibles",
+    "createNewTag": "Crear nueva etiqueta",
+    "searchTags": "Buscar etiquetas...",
+    "selectColorFor": "Seleccionar color para",
+    "createTag": "Crear",
     "filesCount": "{{count}} Archivos",
     "noPrCreated": "No se creó PR",
     "noCommentsYet": "Sin comentarios aún"
+  },
+  "syncError": {
+    "networkErrors": "Errores de red",
+    "streamsAffected": "{{count}} flujo afectado",
+    "streamsAffected_other": "{{count}} flujos afectados",
+    "status": "(estado {{status}})",
+    "refreshPage": "Actualizar página"
   }
 }

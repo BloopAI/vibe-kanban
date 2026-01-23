@@ -1,4 +1,5 @@
 import { WarningIcon, ArrowClockwiseIcon } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import { useSyncErrorContext } from '@/contexts/SyncErrorContext';
 import {
   Popover,
@@ -12,6 +13,7 @@ import {
  * Returns null when there are no errors.
  */
 export function SyncErrorIndicator() {
+  const { t } = useTranslation('common');
   const syncErrorContext = useSyncErrorContext();
 
   // Graceful fallback if not wrapped in provider
@@ -35,9 +37,11 @@ export function SyncErrorIndicator() {
       <PopoverContent side="bottom" align="end" className="w-80">
         <div className="space-y-base">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-normal">Network Errors</h4>
+            <h4 className="text-sm font-medium text-normal">
+              {t('syncError.networkErrors')}
+            </h4>
             <span className="text-xs text-low">
-              {errors.length} stream{errors.length > 1 ? 's' : ''} affected
+              {t('syncError.streamsAffected', { count: errors.length })}
             </span>
           </div>
 
@@ -54,7 +58,7 @@ export function SyncErrorIndicator() {
                   {streamError.error.message}
                   {streamError.error.status && (
                     <span className="ml-1 text-error/70">
-                      (status {streamError.error.status})
+                      {t('syncError.status', { status: streamError.error.status })}
                     </span>
                   )}
                 </div>
@@ -68,7 +72,7 @@ export function SyncErrorIndicator() {
             className="flex w-full items-center justify-center gap-half rounded-sm bg-primary px-base py-half text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
             <ArrowClockwiseIcon className="size-icon-sm" />
-            Refresh Page
+            {t('syncError.refreshPage')}
           </button>
         </div>
       </PopoverContent>

@@ -333,10 +333,20 @@
     "noProjectFound": "プロジェクトが見つかりません",
     "noOrganizationFound": "組織が見つかりません",
     "unassigned": "未割り当て",
-    "noTagsAvailable": "No tags available",
-    "createNewTag": "Create new tag",
+    "noTagsAvailable": "利用可能なタグがありません",
+    "createNewTag": "新しいタグを作成",
+    "searchTags": "タグを検索...",
+    "selectColorFor": "色を選択:",
+    "createTag": "作成",
     "filesCount": "{{count}}ファイル",
     "noPrCreated": "PRが作成されていません",
     "noCommentsYet": "コメントはまだありません"
+  },
+  "syncError": {
+    "networkErrors": "ネットワークエラー",
+    "streamsAffected": "{{count}}件のストリームが影響を受けています",
+    "streamsAffected_other": "{{count}}件のストリームが影響を受けています",
+    "status": "(ステータス {{status}})",
+    "refreshPage": "ページを更新"
   }
 }
