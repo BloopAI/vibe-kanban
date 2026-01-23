@@ -99,7 +99,8 @@ const CreateWorkspaceFromPrDialogImpl =
     );
 
     const selectedPr = useMemo(
-      () => openPrs.find((pr) => Number(pr.number) === selectedPrNumber) ?? null,
+      () =>
+        openPrs.find((pr) => Number(pr.number) === selectedPrNumber) ?? null,
       [openPrs, selectedPrNumber]
     );
 
@@ -130,7 +131,12 @@ const CreateWorkspaceFromPrDialogImpl =
 
     const createMutation = useMutation({
       mutationFn: async () => {
-        if (!selectedRepoId || !selectedPrNumber || !selectedRemote || !selectedPr) {
+        if (
+          !selectedRepoId ||
+          !selectedPrNumber ||
+          !selectedRemote ||
+          !selectedPr
+        ) {
           throw new Error('Missing required fields');
         }
         const result = await attemptsApi.createFromPr({
@@ -332,7 +338,9 @@ const CreateWorkspaceFromPrDialogImpl =
                       </Button>
                     }
                     contentClassName="w-[400px]"
-                    placeholder={t('createWorkspaceFromPr.searchPrsPlaceholder')}
+                    placeholder={t(
+                      'createWorkspaceFromPr.searchPrsPlaceholder'
+                    )}
                     emptyMessage={t('createWorkspaceFromPr.noMatchingPrs')}
                     getItemBadge={null}
                   />
