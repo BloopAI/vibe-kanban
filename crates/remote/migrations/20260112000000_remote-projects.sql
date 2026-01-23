@@ -247,7 +247,7 @@ CREATE TABLE workspaces (
     project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     owner_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     issue_id UUID REFERENCES issues(id) ON DELETE SET NULL,
-    local_workspace_id UUID NOT NULL,
+    local_workspace_id UUID UNIQUE,
     archived BOOLEAN NOT NULL DEFAULT FALSE,
     files_changed INTEGER,
     lines_added INTEGER,
