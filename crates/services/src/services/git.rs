@@ -206,11 +206,10 @@ impl GitService {
         // Check for pushDefault config
         if let Ok(config) = repo.config()
             && let Ok(default_name) = config.get_string("remote.pushDefault")
+            && let Some(idx) = remotes.iter().position(|(name, _)| name == &default_name)
         {
-            if let Some(idx) = remotes.iter().position(|(name, _)| name == &default_name) {
-                let (name, url) = remotes.swap_remove(idx);
-                return Ok(GitRemote { name, url });
-            }
+            let (name, url) = remotes.swap_remove(idx);
+            return Ok(GitRemote { name, url });
         }
 
         // Fall back to first remote
