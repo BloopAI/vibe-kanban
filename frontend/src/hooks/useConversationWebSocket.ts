@@ -3,14 +3,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { conversationKeys } from './useReviewConversations';
 import type { ConversationEvent, ConversationWithMessages } from 'shared/types';
 
-/**
- * Hook that establishes a WebSocket connection for real-time conversation updates.
- * When events arrive, it patches the React Query cache directly so all components
- * consuming conversation data re-render immediately.
- *
- * On reconnect, it invalidates conversation queries to do a one-shot refetch
- * and catch up on any missed events.
- */
 export function useConversationWebSocket(attemptId: string | undefined) {
   const queryClient = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
@@ -38,12 +30,10 @@ export function useConversationWebSocket(attemptId: string | undefined) {
 
       switch (event.type) {
         case 'conversation_created': {
-          // Add to the list cache
           queryClient.setQueryData<ConversationWithMessages[]>(
             conversationKeys.byAttempt(id),
             (old) => (old ? [...old, event.conversation] : [event.conversation])
           );
-          // Add to unresolved if not resolved
           if (!event.conversation.is_resolved) {
             queryClient.setQueryData<ConversationWithMessages[]>(
               conversationKeys.unresolved(id),
@@ -59,15 +49,12 @@ export function useConversationWebSocket(attemptId: string | undefined) {
         case 'conversation_unresolved':
         case 'message_deleted': {
           const conv = event.conversation;
-          // Update the conversation in the list cache
           queryClient.setQueryData<ConversationWithMessages[]>(
             conversationKeys.byAttempt(id),
             (old) =>
               old ? old.map((c) => (c.id === conv.id ? conv : c)) : [conv]
           );
-          // Update the single conversation cache
           queryClient.setQueryData(conversationKeys.single(id, conv.id), conv);
-          // Rebuild unresolved list
           queryClient.setQueryData<ConversationWithMessages[]>(
             conversationKeys.unresolved(id),
             (old) => {
@@ -82,17 +69,14 @@ export function useConversationWebSocket(attemptId: string | undefined) {
         case 'conversation_deleted':
         case 'conversation_auto_deleted': {
           const convId = event.conversation_id;
-          // Remove from list cache
           queryClient.setQueryData<ConversationWithMessages[]>(
             conversationKeys.byAttempt(id),
             (old) => (old ? old.filter((c) => c.id !== convId) : [])
           );
-          // Remove from unresolved cache
           queryClient.setQueryData<ConversationWithMessages[]>(
             conversationKeys.unresolved(id),
             (old) => (old ? old.filter((c) => c.id !== convId) : [])
           );
-          // Remove single query
           queryClient.removeQueries({
             queryKey: conversationKeys.single(id, convId),
           });
@@ -100,7 +84,6 @@ export function useConversationWebSocket(attemptId: string | undefined) {
         }
 
         case 'refresh': {
-          // Client fell behind, refetch everything
           queryClient.invalidateQueries({
             queryKey: conversationKeys.byAttempt(id),
           });
@@ -116,7 +99,6 @@ export function useConversationWebSocket(attemptId: string | undefined) {
 
   useEffect(() => {
     if (!attemptId) {
-      // Clean up if attemptId goes away
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
@@ -129,7 +111,7 @@ export function useConversationWebSocket(attemptId: string | undefined) {
       return;
     }
 
-    if (wsRef.current) return; // Already connected
+    if (wsRef.current) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/api/task-attempts/${attemptId}/conversations/ws`;
@@ -142,7 +124,6 @@ export function useConversationWebSocket(attemptId: string | undefined) {
         retryTimerRef.current = null;
       }
 
-      // If this is a reconnect (not first connect), refetch to catch up
       if (retryNonce > 0) {
         queryClient.invalidateQueries({
           queryKey: conversationKeys.byAttempt(attemptId),
@@ -162,13 +143,10 @@ export function useConversationWebSocket(attemptId: string | undefined) {
       }
     };
 
-    ws.onerror = () => {
-      // Will trigger onclose
-    };
+    ws.onerror = () => {};
 
     ws.onclose = (evt) => {
       wsRef.current = null;
-      // Don't reconnect on clean close
       if (evt.code === 1000 && evt.wasClean) return;
       scheduleReconnect();
     };

@@ -128,7 +128,6 @@ export function ReviewProvider({
   const [comments, setComments] = useState<ReviewComment[]>([]);
   const [drafts, setDrafts] = useState<Record<string, ReviewDraft>>({});
 
-  // Connect WebSocket for real-time conversation updates
   useConversationWebSocket(attemptId);
 
   // Fetch conversations from backend

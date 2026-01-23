@@ -63,36 +63,31 @@ pub enum ConversationError {
     ValidationError { message: String },
 }
 
-/// Real-time events broadcast to WebSocket subscribers when conversations change
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[ts(export, tag = "type", rename_all = "snake_case")]
 pub enum ConversationEvent {
-    /// A new conversation was created
     ConversationCreated {
         conversation: ConversationWithMessages,
     },
-    /// A message was added to an existing conversation
     MessageAdded {
         conversation: ConversationWithMessages,
     },
-    /// A conversation was resolved
     ConversationResolved {
         conversation: ConversationWithMessages,
     },
-    /// A conversation was unresolved (re-opened)
     ConversationUnresolved {
         conversation: ConversationWithMessages,
     },
-    /// A conversation was deleted
-    ConversationDeleted { conversation_id: String },
-    /// A message was deleted from a conversation
+    ConversationDeleted {
+        conversation_id: String,
+    },
     MessageDeleted {
         conversation: ConversationWithMessages,
     },
-    /// A conversation was auto-deleted because its last message was removed
-    ConversationAutoDeleted { conversation_id: String },
-    /// Sent when the client has fallen behind and should refetch all conversations
+    ConversationAutoDeleted {
+        conversation_id: String,
+    },
     Refresh,
 }
 
@@ -575,8 +570,6 @@ pub async fn delete_message(
     }
 }
 
-/// Broadcast a conversation event to all WebSocket subscribers for a workspace.
-/// This is fire-and-forget: errors are logged but do not affect the caller.
 async fn broadcast_event(
     deployment: &DeploymentImpl,
     workspace_id: Uuid,
@@ -595,8 +588,6 @@ async fn broadcast_event(
     }
 }
 
-/// WebSocket endpoint for real-time conversation updates.
-/// Clients connect here and receive ConversationEvent messages as JSON.
 pub async fn stream_conversations_ws(
     ws: WebSocketUpgrade,
     Extension(workspace): Extension<Workspace>,
@@ -643,7 +634,7 @@ async fn handle_conversations_ws(
             }
             msg = receiver.next() => {
                 if msg.is_none() {
-                    break; // client disconnected
+                    break;
                 }
             }
         }
