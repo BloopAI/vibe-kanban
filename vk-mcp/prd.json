@@ -144,8 +144,8 @@
         "Typecheck passes (cargo check)"
       ],
       "priority": 8,
-      "passes": false,
-      "inProgress": true,
+      "passes": true,
+      "inProgress": false,
       "checkpoint": false,
       "notes": "Reference: crates/db/src/models/merge.rs for Merge::create_direct()"
     },

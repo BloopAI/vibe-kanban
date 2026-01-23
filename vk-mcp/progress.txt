@@ -126,3 +126,22 @@ Started: 2026-01-23
   - Branch deletion failures are logged but don't fail the close operation (branch might already be gone)
   - Use `-D` (force delete) for workspace branches since they may have unmerged commits
 ---
+
+## 2026-01-23 - US-008
+- What was implemented:
+  - Added `merge_commit` method to GitCli (git merge --no-ff)
+  - Added `merge_into_branch` method to GitService with conflict detection
+  - Added `close_workspace_merge` function to WorkspaceManager
+  - Added `RepoMergeResult` struct for merge results
+  - Added `MergeConflicts` error variant to WorkspaceError
+  - Returns merge commit SHA for each repo on success
+  - Database operations (create DirectMerge, call discard) handled by caller
+- Files changed:
+  - crates/services/src/services/git/cli.rs (added merge_commit)
+  - crates/services/src/services/git.rs (added merge_into_branch)
+  - crates/services/src/services/workspace_manager.rs (added close_workspace_merge, RepoMergeResult, MergeConflicts)
+- **Learnings for future iterations:**
+  - Use `--no-ff` for merge to always create a merge commit (makes history clearer)
+  - Merge conflicts detected by checking error message for "CONFLICT" keyword
+  - Merge operations run in main repo directory, not worktree
+---
