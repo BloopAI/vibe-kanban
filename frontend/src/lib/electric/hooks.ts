@@ -1,6 +1,7 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLiveQuery } from '@tanstack/react-db';
 import { createEntityCollection } from './collections';
+import { useSyncErrorContext } from '@/contexts/SyncErrorContext';
 import type { EntityDefinition } from 'shared/remote-types';
 import type { SyncError } from './types';
 
@@ -69,6 +70,13 @@ export function useEntity<
   const [error, setError] = useState<SyncError | null>(null);
   const [retryKey, setRetryKey] = useState(0);
 
+  // Access sync error context for global error aggregation (optional - works without provider)
+  // Extract stable function references to avoid infinite loops
+  // (the context value changes when errors change, but the functions are stable via useCallback)
+  const syncErrorContext = useSyncErrorContext();
+  const registerErrorFn = syncErrorContext?.registerError;
+  const clearErrorFn = syncErrorContext?.clearError;
+
   const handleError = useCallback((err: SyncError) => setError(err), []);
 
   const retry = useCallback(() => {
@@ -82,6 +90,26 @@ export function useEntity<
     () => JSON.parse(paramsKey) as Record<string, string>,
     [paramsKey]
   );
+
+  // Generate stable stream ID for error registration
+  const streamId = useMemo(
+    () => `${entity.name}:${paramsKey}`,
+    [entity.name, paramsKey]
+  );
+
+  // Register/clear errors with global context
+  useEffect(() => {
+    if (error && registerErrorFn) {
+      registerErrorFn(streamId, entity.name, error, retry);
+    } else if (!error && clearErrorFn) {
+      clearErrorFn(streamId);
+    }
+
+    // Cleanup: clear error when component unmounts
+    return () => {
+      clearErrorFn?.(streamId);
+    };
+  }, [error, streamId, entity.name, retry, registerErrorFn, clearErrorFn]);
 
   // Create collection with mutation handlers - retryKey forces recreation on retry
   const collection = useMemo(() => {
