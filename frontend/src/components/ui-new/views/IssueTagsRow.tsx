@@ -1,14 +1,10 @@
 import { cn } from '@/lib/utils';
-import { useTranslation } from 'react-i18next';
 import { PlusIcon, GitPullRequestIcon, HashIcon } from '@phosphor-icons/react';
 import type { Tag } from 'shared/remote-types';
-import { KanbanBadge } from '@/components/ui-new/primitives/KanbanBadge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-  DropdownMenuCheckboxItem,
-} from '@/components/ui-new/primitives/Dropdown';
+import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';
+
+// Re-export TAG_COLORS for backwards compatibility
+export { TAG_COLORS } from '@/components/ui-new/primitives/SearchableTagDropdown';
 
 export interface LinkedPullRequest {
   id: string;
@@ -28,7 +24,7 @@ export interface IssueTagsRowProps {
   linkedPrs?: LinkedPullRequest[];
   linkedIssues?: LinkedIssue[];
   onTagsChange: (tagIds: string[]) => void;
-  onAddTag?: () => void;
+  onCreateTag?: (data: { name: string; color: string }) => string;
   disabled?: boolean;
   className?: string;
 }
@@ -39,27 +35,53 @@ export function IssueTagsRow({
   linkedPrs = [],
   linkedIssues = [],
   onTagsChange,
+  onCreateTag,
   disabled,
   className,
 }: IssueTagsRowProps) {
-  const { t } = useTranslation('common');
   const selectedTags = availableTags.filter((tag) =>
     selectedTagIds.includes(tag.id)
   );
 
-  const handleTagToggle = (tagId: string, checked: boolean) => {
-    if (checked) {
-      onTagsChange([...selectedTagIds, tagId]);
-    } else {
+  const handleTagToggle = (tagId: string) => {
+    if (selectedTagIds.includes(tagId)) {
       onTagsChange(selectedTagIds.filter((id) => id !== tagId));
+    } else {
+      onTagsChange([...selectedTagIds, tagId]);
     }
+  };
+
+  const handleCreateTag = (data: { name: string; color: string }): string => {
+    return onCreateTag?.(data) ?? '';
   };
 
   return (
     <div className={cn('flex items-center gap-half flex-wrap', className)}>
-      {/* Selected Tags */}
+      {/* Selected Tags - clickable to remove on hover */}
       {selectedTags.map((tag) => (
-        <KanbanBadge key={tag.id} name={tag.name} />
+        <button
+          key={tag.id}
+          type="button"
+          onClick={() => handleTagToggle(tag.id)}
+          disabled={disabled}
+          className={cn(
+            'inline-flex items-center justify-center',
+            'h-5 px-base gap-half',
+            'bg-panel rounded-sm',
+            'text-sm text-low font-medium',
+            'whitespace-nowrap',
+            'transition-colors',
+            !disabled &&
+              'hover:bg-error/20 hover:text-error hover:line-through cursor-pointer',
+            disabled && 'cursor-default'
+          )}
+        >
+          <span
+            className="w-2 h-2 rounded-full shrink-0"
+            style={{ backgroundColor: `hsl(${tag.color})` }}
+          />
+          {tag.name}
+        </button>
       ))}
 
       {/* Linked PRs */}
@@ -90,37 +112,24 @@ export function IssueTagsRow({
       ))}
 
       {/* Add Tag Dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild disabled={disabled}>
-          <button
-            type="button"
-            className="flex items-center justify-center h-5 w-5 rounded-sm text-low hover:text-normal hover:bg-panel transition-colors disabled:opacity-50"
-          >
-            <PlusIcon className="size-icon-xs" weight="bold" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          {availableTags.length === 0 ? (
-            <div className="px-base py-half text-sm text-low">
-              {t('kanban.noTagsAvailable')}
-            </div>
-          ) : (
-            availableTags.map((tag) => (
-              <DropdownMenuCheckboxItem
-                key={tag.id}
-                checked={selectedTagIds.includes(tag.id)}
-                onCheckedChange={(checked) => handleTagToggle(tag.id, checked)}
-              >
-                <span
-                  className="w-2 h-2 rounded-full shrink-0 mr-half"
-                  style={{ backgroundColor: `hsl(var(${tag.color}))` }}
-                />
-                {tag.name}
-              </DropdownMenuCheckboxItem>
-            ))
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {onCreateTag && (
+        <SearchableTagDropdownContainer
+          tags={availableTags}
+          selectedTagIds={selectedTagIds}
+          onTagToggle={handleTagToggle}
+          onCreateTag={handleCreateTag}
+          disabled={disabled ?? false}
+          contentClassName=""
+          trigger={
+            <button
+              type="button"
+              className="flex items-center justify-center h-5 w-5 rounded-sm text-low hover:text-normal hover:bg-panel transition-colors disabled:opacity-50"
+            >
+              <PlusIcon className="size-icon-xs" weight="bold" />
+            </button>
+          }
+        />
+      )}
     </div>
   );
 }
