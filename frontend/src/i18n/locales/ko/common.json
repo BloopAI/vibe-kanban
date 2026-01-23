@@ -330,10 +330,20 @@
     "noProjectFound": "프로젝트를 찾을 수 없습니다",
     "noOrganizationFound": "조직을 찾을 수 없습니다",
     "unassigned": "미할당",
-    "noTagsAvailable": "No tags available",
-    "createNewTag": "Create new tag",
+    "noTagsAvailable": "사용 가능한 태그 없음",
+    "createNewTag": "새 태그 만들기",
+    "searchTags": "태그 검색...",
+    "selectColorFor": "색상 선택:",
+    "createTag": "만들기",
     "filesCount": "{{count}}개 파일",
     "noPrCreated": "PR이 생성되지 않음",
     "noCommentsYet": "아직 댓글이 없습니다"
+  },
+  "syncError": {
+    "networkErrors": "네트워크 오류",
+    "streamsAffected": "{{count}}개 스트림이 영향을 받음",
+    "streamsAffected_other": "{{count}}개 스트림이 영향을 받음",
+    "status": "(상태 {{status}})",
+    "refreshPage": "페이지 새로고침"
   }
 }
