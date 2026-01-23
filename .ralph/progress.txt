@@ -1,0 +1,25 @@
+## Codebase Patterns
+- Ralph service types are in `crates/services/src/services/ralph.rs`
+- API response types are separate from service types - check `crates/server/src/routes/tasks.rs` for `RalphStatusResponse`
+- When adding fields to service types, also update the corresponding API response types
+- Run `pnpm run generate-types` after changing any TS-exported Rust types
+- Typecheck with `pnpm run check` (runs both frontend and backend checks)
+
+---
+
+## 2026-01-23 - US-001
+- Added `started` (bool, default false) and `iteration_prompt` (Option<String>) fields to PrdFile struct
+- Added same fields to RalphStatus struct (exposed via TS)
+- Updated RalphStatusResponse in tasks.rs with the new fields
+- Added 2 new tests: `test_get_status_with_started_and_iteration_prompt` and `test_get_status_defaults_started_to_false`
+- Regenerated TypeScript types
+
+**Files changed:**
+- `crates/services/src/services/ralph.rs` - Added fields to PrdFile and RalphStatus, added tests
+- `crates/server/src/routes/tasks.rs` - Added fields to RalphStatusResponse and both struct initializers
+- `shared/types.ts` - Auto-generated, now includes `started` and `iteration_prompt`
+
+**Learnings for future iterations:**
+- The service layer (ralph.rs) has internal types, but the API layer (tasks.rs) has its own response types that map from the service types
+- Both places need updating when adding fields that should be exposed to the frontend
+---

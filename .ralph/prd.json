@@ -17,8 +17,8 @@
         "Typecheck passes (pnpm run check and pnpm run backend:check)"
       ],
       "priority": 1,
-      "passes": false,
-      "inProgress": true,
+      "passes": true,
+      "inProgress": false,
       "checkpoint": true,
       "notes": "Schema changes should be reviewed before proceeding to logic changes"
     },
