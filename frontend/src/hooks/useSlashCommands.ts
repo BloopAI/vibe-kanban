@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import type { BaseCodingAgent, SlashCommandDescription } from 'shared/types';
 import { useJsonPatchWsStream } from '@/hooks/useJsonPatchWsStream';
+import { agentsApi } from '@/lib/api';
 
 type SlashCommandsStreamState = {
   commands: SlashCommandDescription[];
@@ -14,13 +15,7 @@ export function useSlashCommands(
 ) {
   const endpoint = useMemo(() => {
     if (!agent) return undefined;
-
-    const params = new URLSearchParams();
-    params.set('executor', agent);
-    if (opts?.workspaceId) params.set('workspace_id', opts.workspaceId);
-    if (opts?.repoId) params.set('repo_id', opts.repoId);
-
-    return `/api/agents/slash-commands/ws?${params.toString()}`;
+    return agentsApi.getSlashCommandsStreamUrl(agent, opts);
   }, [agent, opts?.repoId, opts?.workspaceId]);
 
   const initialData = useCallback(
