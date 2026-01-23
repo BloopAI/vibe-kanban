@@ -24,7 +24,10 @@ use workspace_utils::approvals::ApprovalStatus;
 use super::{slash_commands, types::OpencodeExecutorEvent};
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
-    executors::{ExecutorError, opencode::models::maybe_emit_token_usage, opencode::OpencodeServer},
+    executors::{
+        ExecutorError,
+        opencode::{OpencodeServer, models::maybe_emit_token_usage},
+    },
 };
 
 #[derive(Clone)]
