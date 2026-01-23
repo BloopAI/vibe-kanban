@@ -28,6 +28,7 @@ import { ImageKeyboardPlugin } from './wysiwyg/plugins/image-keyboard-plugin';
 import { ReadOnlyLinkPlugin } from './wysiwyg/plugins/read-only-link-plugin';
 import { ClickableCodePlugin } from './wysiwyg/plugins/clickable-code-plugin';
 import { ToolbarPlugin } from './wysiwyg/plugins/toolbar-plugin';
+import { StaticToolbarPlugin } from './wysiwyg/plugins/static-toolbar-plugin';
 import { CodeBlockShortcutPlugin } from './wysiwyg/plugins/code-block-shortcut-plugin';
 import { MarkdownSyncPlugin } from './wysiwyg/plugins/markdown-sync-plugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
@@ -88,6 +89,8 @@ type WysiwygProps = {
   findMatchingDiffPath?: (text: string) => string | null;
   /** Callback when clickable inline code is clicked (only in read-only mode) */
   onCodeClick?: (fullPath: string) => void;
+  /** Show a static toolbar below the editor content */
+  showStaticToolbar?: boolean;
 };
 
 function WYSIWYGEditor({
@@ -113,6 +116,7 @@ function WYSIWYGEditor({
   autoFocus = false,
   findMatchingDiffPath,
   onCodeClick,
+  showStaticToolbar = false,
 }: WysiwygProps) {
   // Copy button state
   const [copied, setCopied] = useState(false);
@@ -258,6 +262,8 @@ function WYSIWYGEditor({
                   ErrorBoundary={LexicalErrorBoundary}
                 />
               </div>
+
+              {!disabled && showStaticToolbar && <StaticToolbarPlugin />}
 
               <ListPlugin />
               <TablePlugin />
