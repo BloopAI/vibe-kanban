@@ -311,5 +311,11 @@
     "emptyTooltip": "컨텍스트 사용량은 다음 응답 후에 표시됩니다",
     "tooltip": "컨텍스트: {{percentage}}% · {{used}} / {{total}} 토큰",
     "ariaLabel": "컨텍스트 사용량: {{percentage}}%"
+  },
+  "shortcuts": {
+    "title": "키보드 단축키",
+    "inWorkspace": "(워크스페이스 내)",
+    "sequentialHint": "순차 단축키: 첫 번째 키를 누른 후 500ms 이내에 두 번째 키를 누르세요.",
+    "configurableHint": "설정 → 일반 → 메시지 입력에서 설정 가능"
   }
 }

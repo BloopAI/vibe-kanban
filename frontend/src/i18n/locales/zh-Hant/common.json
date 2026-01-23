@@ -311,5 +311,11 @@
     "emptyTooltip": "上下文使用量將在下一次回覆後顯示",
     "tooltip": "上下文：{{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "上下文使用量：{{percentage}}%"
+  },
+  "shortcuts": {
+    "title": "鍵盤快捷鍵",
+    "inWorkspace": "(在工作區中)",
+    "sequentialHint": "組合快捷鍵：先按第一個鍵，然後在500毫秒內按第二個鍵。",
+    "configurableHint": "可在 設定 → 一般 → 訊息輸入 中設定"
   }
 }

@@ -311,5 +311,11 @@
     "emptyTooltip": "コンテキスト使用量は次の返信後に表示されます",
     "tooltip": "コンテキスト: {{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "コンテキスト使用量: {{percentage}}%"
+  },
+  "shortcuts": {
+    "title": "キーボードショートカット",
+    "inWorkspace": "(ワークスペース内)",
+    "sequentialHint": "シーケンシャルショートカット：最初のキーを押し、500ms以内に2番目のキーを押してください。",
+    "configurableHint": "設定 → 一般 → メッセージ入力で設定可能"
   }
 }
