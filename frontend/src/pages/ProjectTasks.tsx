@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
-import { tasksApi } from '@/lib/api';
 import type { RepoBranchStatus, Workspace } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
@@ -46,7 +45,6 @@ import {
 import TaskKanbanBoard, {
   type KanbanColumns,
 } from '@/components/tasks/TaskKanbanBoard';
-import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useHotkeysContext } from 'react-hotkeys-hook';
@@ -691,31 +689,10 @@ export function ProjectTasks() {
     }
   }, [selectedTask, visibleTasksByStatus, handleViewTaskDetails]);
 
-  const handleDragEnd = useCallback(
-    async (event: DragEndEvent) => {
-      const { active, over } = event;
-      if (!over || !active.data.current) return;
-
-      const draggedTaskId = active.id as string;
-      const newStatus = over.id as Task['status'];
-      const task = tasksById[draggedTaskId];
-      if (!task || task.status === newStatus) return;
-
-      try {
-        await tasksApi.update(draggedTaskId, {
-          title: task.title,
-          description: task.description,
-          status: newStatus,
-          parent_workspace_id: task.parent_workspace_id,
-          image_ids: null,
-          assignee_user_id: task.assignee_user_id ?? null,
-        });
-      } catch (err) {
-        console.error('Failed to update task status:', err);
-      }
-    },
-    [tasksById]
-  );
+  // Status is now managed by the server based on events, not manually
+  const handleDragEnd = useCallback(() => {
+    // no-op: status changes will be driven by server events
+  }, []);
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;
 
