@@ -125,8 +125,8 @@
         "Typecheck passes (cargo check)"
       ],
       "priority": 7,
-      "passes": false,
-      "inProgress": true,
+      "passes": true,
+      "inProgress": false,
       "checkpoint": false,
       "notes": "Reference: crates/services/src/services/worktree_manager.rs for worktree removal"
     },

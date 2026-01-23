@@ -108,3 +108,21 @@ Started: 2026-01-23
   - MCP diff tool follows same pattern as status/transcript tools
   - FileDiffInfo mirrors the API response structure for seamless JSON parsing
 ---
+
+## 2026-01-23 - US-007
+- What was implemented:
+  - Added `delete_branch` method to GitCli (git branch -D)
+  - Added `delete_branch` method to GitService (wraps GitCli)
+  - Added `close_workspace_discard` function to WorkspaceManager
+  - Function cleans up worktrees via existing cleanup_workspace()
+  - Function deletes workspace branch from each repository
+  - Database operations (archived, container_ref, running process check) delegated to caller
+- Files changed:
+  - crates/services/src/services/git/cli.rs (added delete_branch)
+  - crates/services/src/services/git.rs (added delete_branch wrapper)
+  - crates/services/src/services/workspace_manager.rs (added close_workspace_discard)
+- **Learnings for future iterations:**
+  - WorkspaceManager doesn't have database access - db operations handled at route level
+  - Branch deletion failures are logged but don't fail the close operation (branch might already be gone)
+  - Use `-D` (force delete) for workspace branches since they may have unmerged commits
+---
