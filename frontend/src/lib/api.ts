@@ -92,6 +92,14 @@ import {
   Workspace,
   StartReviewRequest,
   ReviewError,
+  ConversationWithMessages,
+  CreateConversation,
+  CreateMessage,
+  ResolveConversation,
+  CreateConversationResponse,
+  AddMessageResponse,
+  ResolveConversationResponse,
+  ConversationError,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -817,6 +825,135 @@ export const attemptsApi = {
       `/api/task-attempts/${workspaceId}/search?q=${encodeURIComponent(query)}${modeParam}`
     );
     return handleApiResponse<SearchResult[]>(response);
+  },
+
+  listConversations: async (
+    attemptId: string
+  ): Promise<ConversationWithMessages[]> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/conversations`
+    );
+    return handleApiResponse<ConversationWithMessages[]>(response);
+  },
+
+  listUnresolvedConversations: async (
+    attemptId: string
+  ): Promise<ConversationWithMessages[]> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/conversations/unresolved`
+    );
+    return handleApiResponse<ConversationWithMessages[]>(response);
+  },
+
+  getConversation: async (
+    attemptId: string,
+    conversationId: string
+  ): Promise<Result<ConversationWithMessages, ConversationError>> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/conversations/${conversationId}`
+    );
+    return handleApiResponseAsResult<
+      ConversationWithMessages,
+      ConversationError
+    >(response);
+  },
+
+  createConversation: async (
+    attemptId: string,
+    data: CreateConversation
+  ): Promise<Result<CreateConversationResponse, ConversationError>> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/conversations`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponseAsResult<
+      CreateConversationResponse,
+      ConversationError
+    >(response);
+  },
+
+  addMessage: async (
+    attemptId: string,
+    conversationId: string,
+    data: CreateMessage
+  ): Promise<Result<AddMessageResponse, ConversationError>> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/conversations/${conversationId}/messages`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponseAsResult<AddMessageResponse, ConversationError>(
+      response
+    );
+  },
+
+  resolveConversation: async (
+    attemptId: string,
+    conversationId: string,
+    data: ResolveConversation
+  ): Promise<Result<ResolveConversationResponse, ConversationError>> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/conversations/${conversationId}/resolve`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponseAsResult<
+      ResolveConversationResponse,
+      ConversationError
+    >(response);
+  },
+
+  unresolveConversation: async (
+    attemptId: string,
+    conversationId: string
+  ): Promise<Result<ResolveConversationResponse, ConversationError>> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/conversations/${conversationId}/unresolve`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponseAsResult<
+      ResolveConversationResponse,
+      ConversationError
+    >(response);
+  },
+
+  deleteConversation: async (
+    attemptId: string,
+    conversationId: string
+  ): Promise<Result<void, ConversationError>> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/conversations/${conversationId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponseAsResult<void, ConversationError>(response);
+  },
+
+  deleteMessage: async (
+    attemptId: string,
+    conversationId: string,
+    messageId: string
+  ): Promise<Result<ConversationWithMessages, ConversationError>> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/conversations/${conversationId}/messages/${messageId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponseAsResult<
+      ConversationWithMessages,
+      ConversationError
+    >(response);
   },
 };
 

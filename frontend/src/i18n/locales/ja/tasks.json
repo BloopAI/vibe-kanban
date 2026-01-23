@@ -634,7 +634,33 @@
       "requestChanges": "変更を依頼",
       "approve": "承認",
       "clearReviewComments": "レビューコメントをクリア",
-      "edit": "メッセージを編集"
+      "edit": "メッセージを編集",
+      "resolveConversations": "会話を解決",
+      "resolvingConversations": "解決中..."
+    },
+    "unresolvedConversations": {
+      "count_one": "{{count}}件の未解決の会話 - 送信前に解決してください",
+      "count_other": "{{count}}件の未解決の会話 - 送信前に解決してください"
+    },
+    "thread": {
+      "deleteMessage": "メッセージを削除",
+      "resolved": "解決済み",
+      "conversationHistory": "会話履歴",
+      "reopenConversation": "会話を再開",
+      "conversationResolved": "会話が解決されました",
+      "replyPlaceholder": "返信を入力...",
+      "reply": "返信",
+      "cancel": "キャンセル",
+      "resolutionSummary": "解決の概要",
+      "resolutionPlaceholder": "解決内容を要約...",
+      "confirmResolve": "解決を確認",
+      "resolve": "解決",
+      "delete": "削除",
+      "startPlaceholder": "会話を開始... (@でファイルを検索)",
+      "starting": "開始中...",
+      "startConversation": "会話を開始",
+      "anonymous": "匿名",
+      "resolvedBy": "@{{username}} による"
     },
     "approval": {
       "conflictWarning": "競合するファイルは手動で解決する必要があります",

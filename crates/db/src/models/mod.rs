@@ -9,6 +9,7 @@ pub mod merge;
 pub mod project;
 pub mod project_repo;
 pub mod repo;
+pub mod review_conversation;
 pub mod scratch;
 pub mod session;
 pub mod tag;

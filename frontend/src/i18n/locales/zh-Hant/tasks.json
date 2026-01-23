@@ -634,7 +634,33 @@
       "requestChanges": "請求變更",
       "approve": "核准",
       "clearReviewComments": "清除審查評論",
-      "edit": "編輯訊息"
+      "edit": "編輯訊息",
+      "resolveConversations": "解決對話",
+      "resolvingConversations": "解決中..."
+    },
+    "unresolvedConversations": {
+      "count_one": "{{count}} 個未解決的對話 - 傳送前請解決",
+      "count_other": "{{count}} 個未解決的對話 - 傳送前請解決"
+    },
+    "thread": {
+      "deleteMessage": "刪除訊息",
+      "resolved": "已解決",
+      "conversationHistory": "對話歷史",
+      "reopenConversation": "重新開啟對話",
+      "conversationResolved": "對話已解決",
+      "replyPlaceholder": "寫回覆...",
+      "reply": "回覆",
+      "cancel": "取消",
+      "resolutionSummary": "解決摘要",
+      "resolutionPlaceholder": "總結解決內容...",
+      "confirmResolve": "確認解決",
+      "resolve": "解決",
+      "delete": "刪除",
+      "startPlaceholder": "開始對話...（輸入 @ 搜尋檔案）",
+      "starting": "開始中...",
+      "startConversation": "開始對話",
+      "anonymous": "匿名",
+      "resolvedBy": "由 @{{username}}"
     },
     "approval": {
       "conflictWarning": "衝突檔案需要手動解決",

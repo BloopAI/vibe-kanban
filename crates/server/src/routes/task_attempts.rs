@@ -3,6 +3,7 @@ pub mod cursor_setup;
 pub mod gh_cli_setup;
 pub mod images;
 pub mod pr;
+pub mod review_conversations;
 pub mod util;
 pub mod workspace_summary;
 
@@ -1782,6 +1783,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/search", get(search_workspace_files))
         .route("/first-message", get(get_first_user_message))
         .route("/mark-seen", put(mark_seen))
+        .nest("/conversations", review_conversations::router())
         .layer(from_fn_with_state(
             deployment.clone(),
             load_workspace_middleware,

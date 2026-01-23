@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
@@ -41,7 +41,6 @@ import {
   useActionVisibilityContext,
 } from '../actions/useActionVisibility';
 
-/** Compute execution status from boolean flags */
 function computeExecutionStatus(params: {
   isInFeedbackMode: boolean;
   isInEditMode: boolean;
@@ -61,7 +60,19 @@ function computeExecutionStatus(params: {
   return 'idle';
 }
 
-/** Shared props across all modes */
+function generateConversationSummary(messages: { content: string }[]): string {
+  if (messages.length === 0) return 'Conversation resolved';
+
+  const firstMessage = messages[0].content;
+  const truncatedFirst =
+    firstMessage.length > 100
+      ? firstMessage.slice(0, 100) + '...'
+      : firstMessage;
+
+  if (messages.length === 1) return truncatedFirst;
+  return `${truncatedFirst} (${messages.length} messages)`;
+}
+
 interface SharedProps {
   /** Available sessions for this workspace */
   sessions: SessionWithInitiator[];
@@ -201,6 +212,32 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     [reviewContext]
   );
   const hasReviewComments = (reviewContext?.comments.length ?? 0) > 0;
+
+  const unresolvedCount = reviewContext?.unresolvedCount ?? 0;
+  const unresolvedConversationsData = useMemo(
+    () => reviewContext?.unresolvedConversations ?? [],
+    [reviewContext?.unresolvedConversations]
+  );
+
+  const [isResolvingConversations, setIsResolvingConversations] =
+    useState(false);
+
+  const handleResolveAllConversations = useCallback(async () => {
+    if (!reviewContext || unresolvedConversationsData.length === 0) return;
+
+    setIsResolvingConversations(true);
+    try {
+      for (const conversation of unresolvedConversationsData) {
+        const messages = conversation.messages || [];
+        const summary = generateConversationSummary(messages);
+        await reviewContext.resolveConversation(conversation.id, summary);
+      }
+    } catch (error) {
+      console.error('Failed to resolve conversations:', error);
+    } finally {
+      setIsResolvingConversations(false);
+    }
+  }, [reviewContext, unresolvedConversationsData]);
 
   // Approval mutation for approve/deny actions
   const { approveAsync, denyAsync, isApproving, isDenying, denyError } =
@@ -780,6 +817,15 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
               count: reviewContext.comments.length,
               previewMarkdown: reviewMarkdown,
               onClear: reviewContext.clearComments,
+            }
+          : undefined
+      }
+      unresolvedConversations={
+        unresolvedCount > 0
+          ? {
+              count: unresolvedCount,
+              onResolveAll: handleResolveAllConversations,
+              isResolving: isResolvingConversations,
             }
           : undefined
       }

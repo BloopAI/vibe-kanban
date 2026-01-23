@@ -354,6 +354,32 @@ conflicted_files: Array<string>, };
 
 export type UpdateWorkspace = { archived: boolean | null, pinned: boolean | null, name: string | null, };
 
+export type CreateConversationResponse = { conversation: ConversationWithMessages, };
+
+export type AddMessageResponse = { conversation: ConversationWithMessages, };
+
+export type ResolveConversationResponse = { conversation: ConversationWithMessages, };
+
+export type ConversationError = { "type": "not_found" } | { "type": "message_not_found" } | { "type": "already_resolved" } | { "type": "validation_error", message: string, };
+
+export type ReviewConversation = { id: string, workspace_id: string, file_path: string, line_number: bigint, side: string, code_line: string | null, is_resolved: boolean, resolved_at: Date | null, resolved_by_user_id: string | null, resolution_summary: string | null, created_at: Date, updated_at: Date, };
+
+export type ReviewConversationMessage = { id: string, conversation_id: string, user_id: string | null, content: string, created_at: Date, updated_at: Date, };
+
+export type ConversationUser = { id: string, username: string, avatar_url: string | null, };
+
+export type MessageWithAuthor = { author: ConversationUser | null, id: string, conversation_id: string, user_id: string | null, content: string, created_at: Date, updated_at: Date, };
+
+export type ConversationWithMessages = { messages: Array<MessageWithAuthor>, resolved_by: ConversationUser | null, id: string, workspace_id: string, file_path: string, line_number: bigint, side: string, code_line: string | null, is_resolved: boolean, resolved_at: Date | null, resolved_by_user_id: string | null, resolution_summary: string | null, created_at: Date, updated_at: Date, };
+
+export type DiffSide = "old" | "new";
+
+export type CreateConversation = { file_path: string, line_number: bigint, side: DiffSide, code_line: string | null, initial_message: string, };
+
+export type CreateMessage = { content: string, };
+
+export type ResolveConversation = { summary: string, };
+
 export type WorkspaceSummaryRequest = { archived: boolean, };
 
 export type WorkspaceSummary = { workspace_id: string, 
