@@ -1,0 +1,408 @@
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useCallback,
+  type ReactNode,
+} from 'react';
+import { useEntity } from '@/lib/electric/hooks';
+import {
+  ISSUE_ENTITY,
+  PROJECT_STATUS_ENTITY,
+  TAG_ENTITY,
+  ISSUE_ASSIGNEE_ENTITY,
+  ISSUE_FOLLOWER_ENTITY,
+  ISSUE_TAG_ENTITY,
+  ISSUE_RELATIONSHIP_ENTITY,
+  WORKSPACE_ENTITY,
+  PULL_REQUEST_ENTITY,
+  type Issue,
+  type ProjectStatus,
+  type Tag,
+  type IssueAssignee,
+  type IssueFollower,
+  type IssueTag,
+  type IssueRelationship,
+  type Workspace,
+  type PullRequest,
+  type CreateIssueRequest,
+  type UpdateIssueRequest,
+  type CreateProjectStatusRequest,
+  type UpdateProjectStatusRequest,
+  type CreateTagRequest,
+  type UpdateTagRequest,
+  type CreateIssueAssigneeRequest,
+  type CreateIssueFollowerRequest,
+  type CreateIssueTagRequest,
+  type CreateIssueRelationshipRequest,
+} from 'shared/remote-types';
+import type { SyncError } from '@/lib/electric/types';
+
+/**
+ * ProjectContext provides project-scoped data and mutations.
+ *
+ * Entities synced at project scope:
+ * - Issues (data + mutations)
+ * - ProjectStatuses (data + mutations)
+ * - Tags (data + mutations)
+ * - IssueAssignees (data + mutations)
+ * - IssueFollowers (data + mutations)
+ * - IssueTags (data + mutations)
+ * - IssueRelationships (data + mutations)
+ * - Workspaces (data only)
+ * - PullRequests (data only)
+ */
+export interface ProjectContextValue {
+  projectId: string;
+
+  // Normalized data arrays
+  issues: Issue[];
+  statuses: ProjectStatus[];
+  tags: Tag[];
+  issueAssignees: IssueAssignee[];
+  issueFollowers: IssueFollower[];
+  issueTags: IssueTag[];
+  issueRelationships: IssueRelationship[];
+  workspaces: Workspace[];
+  pullRequests: PullRequest[];
+
+  // Loading/error state
+  isLoading: boolean;
+  error: SyncError | null;
+  retry: () => void;
+
+  // Issue mutations
+  insertIssue: (data: CreateIssueRequest) => Issue;
+  updateIssue: (id: string, changes: Partial<UpdateIssueRequest>) => void;
+  removeIssue: (id: string) => void;
+
+  // Status mutations
+  insertStatus: (data: CreateProjectStatusRequest) => ProjectStatus;
+  updateStatus: (
+    id: string,
+    changes: Partial<UpdateProjectStatusRequest>
+  ) => void;
+  removeStatus: (id: string) => void;
+
+  // Tag mutations
+  insertTag: (data: CreateTagRequest) => Tag;
+  updateTag: (id: string, changes: Partial<UpdateTagRequest>) => void;
+  removeTag: (id: string) => void;
+
+  // IssueAssignee mutations
+  insertIssueAssignee: (data: CreateIssueAssigneeRequest) => IssueAssignee;
+  removeIssueAssignee: (id: string) => void;
+
+  // IssueFollower mutations
+  insertIssueFollower: (data: CreateIssueFollowerRequest) => IssueFollower;
+  removeIssueFollower: (id: string) => void;
+
+  // IssueTag mutations
+  insertIssueTag: (data: CreateIssueTagRequest) => IssueTag;
+  removeIssueTag: (id: string) => void;
+
+  // IssueRelationship mutations
+  insertIssueRelationship: (
+    data: CreateIssueRelationshipRequest
+  ) => IssueRelationship;
+  removeIssueRelationship: (id: string) => void;
+
+  // Lookup helpers
+  getIssue: (issueId: string) => Issue | undefined;
+  getIssuesForStatus: (statusId: string) => Issue[];
+  getAssigneesForIssue: (issueId: string) => IssueAssignee[];
+  getFollowersForIssue: (issueId: string) => IssueFollower[];
+  getTagsForIssue: (issueId: string) => IssueTag[];
+  getTagObjectsForIssue: (issueId: string) => Tag[];
+  getRelationshipsForIssue: (issueId: string) => IssueRelationship[];
+  getStatus: (statusId: string) => ProjectStatus | undefined;
+  getTag: (tagId: string) => Tag | undefined;
+  getWorkspacesForIssue: (issueId: string) => Workspace[];
+  getPullRequestsForIssue: (issueId: string) => PullRequest[];
+
+  // Computed aggregations (Maps for O(1) lookup)
+  issuesById: Map<string, Issue>;
+  statusesById: Map<string, ProjectStatus>;
+  tagsById: Map<string, Tag>;
+}
+
+const ProjectContext = createContext<ProjectContextValue | null>(null);
+
+interface ProjectProviderProps {
+  projectId: string;
+  children: ReactNode;
+}
+
+export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
+  const params = useMemo(() => ({ project_id: projectId }), [projectId]);
+
+  // Entity subscriptions
+  const issuesResult = useEntity(ISSUE_ENTITY, params);
+  const statusesResult = useEntity(PROJECT_STATUS_ENTITY, params);
+  const tagsResult = useEntity(TAG_ENTITY, params);
+  const issueAssigneesResult = useEntity(ISSUE_ASSIGNEE_ENTITY, params);
+  const issueFollowersResult = useEntity(ISSUE_FOLLOWER_ENTITY, params);
+  const issueTagsResult = useEntity(ISSUE_TAG_ENTITY, params);
+  const issueRelationshipsResult = useEntity(ISSUE_RELATIONSHIP_ENTITY, params);
+  const workspacesResult = useEntity(WORKSPACE_ENTITY, params);
+  const pullRequestsResult = useEntity(PULL_REQUEST_ENTITY, params);
+
+  // Combined loading state
+  const isLoading =
+    issuesResult.isLoading ||
+    statusesResult.isLoading ||
+    tagsResult.isLoading ||
+    issueAssigneesResult.isLoading ||
+    issueFollowersResult.isLoading ||
+    issueTagsResult.isLoading ||
+    issueRelationshipsResult.isLoading ||
+    workspacesResult.isLoading ||
+    pullRequestsResult.isLoading;
+
+  // First error found
+  const error =
+    issuesResult.error ||
+    statusesResult.error ||
+    tagsResult.error ||
+    issueAssigneesResult.error ||
+    issueFollowersResult.error ||
+    issueTagsResult.error ||
+    issueRelationshipsResult.error ||
+    workspacesResult.error ||
+    pullRequestsResult.error ||
+    null;
+
+  // Combined retry
+  const retry = useCallback(() => {
+    issuesResult.retry();
+    statusesResult.retry();
+    tagsResult.retry();
+    issueAssigneesResult.retry();
+    issueFollowersResult.retry();
+    issueTagsResult.retry();
+    issueRelationshipsResult.retry();
+    workspacesResult.retry();
+    pullRequestsResult.retry();
+  }, [
+    issuesResult,
+    statusesResult,
+    tagsResult,
+    issueAssigneesResult,
+    issueFollowersResult,
+    issueTagsResult,
+    issueRelationshipsResult,
+    workspacesResult,
+    pullRequestsResult,
+  ]);
+
+  // Computed Maps for O(1) lookup
+  const issuesById = useMemo(() => {
+    const map = new Map<string, Issue>();
+    for (const issue of issuesResult.data) {
+      map.set(issue.id, issue);
+    }
+    return map;
+  }, [issuesResult.data]);
+
+  const statusesById = useMemo(() => {
+    const map = new Map<string, ProjectStatus>();
+    for (const status of statusesResult.data) {
+      map.set(status.id, status);
+    }
+    return map;
+  }, [statusesResult.data]);
+
+  const tagsById = useMemo(() => {
+    const map = new Map<string, Tag>();
+    for (const tag of tagsResult.data) {
+      map.set(tag.id, tag);
+    }
+    return map;
+  }, [tagsResult.data]);
+
+  // Lookup helpers
+  const getIssue = useCallback(
+    (issueId: string) => issuesById.get(issueId),
+    [issuesById]
+  );
+
+  const getIssuesForStatus = useCallback(
+    (statusId: string) =>
+      issuesResult.data.filter((i) => i.status_id === statusId),
+    [issuesResult.data]
+  );
+
+  const getAssigneesForIssue = useCallback(
+    (issueId: string) =>
+      issueAssigneesResult.data.filter((a) => a.issue_id === issueId),
+    [issueAssigneesResult.data]
+  );
+
+  const getFollowersForIssue = useCallback(
+    (issueId: string) =>
+      issueFollowersResult.data.filter((f) => f.issue_id === issueId),
+    [issueFollowersResult.data]
+  );
+
+  const getTagsForIssue = useCallback(
+    (issueId: string) =>
+      issueTagsResult.data.filter((t) => t.issue_id === issueId),
+    [issueTagsResult.data]
+  );
+
+  const getTagObjectsForIssue = useCallback(
+    (issueId: string) => {
+      const issueTags = issueTagsResult.data.filter(
+        (t) => t.issue_id === issueId
+      );
+      return issueTags
+        .map((it) => tagsById.get(it.tag_id))
+        .filter((t): t is Tag => t !== undefined);
+    },
+    [issueTagsResult.data, tagsById]
+  );
+
+  const getRelationshipsForIssue = useCallback(
+    (issueId: string) =>
+      issueRelationshipsResult.data.filter((r) => r.issue_id === issueId),
+    [issueRelationshipsResult.data]
+  );
+
+  const getStatus = useCallback(
+    (statusId: string) => statusesById.get(statusId),
+    [statusesById]
+  );
+
+  const getTag = useCallback(
+    (tagId: string) => tagsById.get(tagId),
+    [tagsById]
+  );
+
+  const getWorkspacesForIssue = useCallback(
+    (issueId: string) =>
+      workspacesResult.data.filter((w) => w.issue_id === issueId),
+    [workspacesResult.data]
+  );
+
+  const getPullRequestsForIssue = useCallback(
+    (issueId: string) =>
+      pullRequestsResult.data.filter((pr) => pr.issue_id === issueId),
+    [pullRequestsResult.data]
+  );
+
+  const value = useMemo<ProjectContextValue>(
+    () => ({
+      projectId,
+
+      // Data
+      issues: issuesResult.data,
+      statuses: statusesResult.data,
+      tags: tagsResult.data,
+      issueAssignees: issueAssigneesResult.data,
+      issueFollowers: issueFollowersResult.data,
+      issueTags: issueTagsResult.data,
+      issueRelationships: issueRelationshipsResult.data,
+      workspaces: workspacesResult.data,
+      pullRequests: pullRequestsResult.data,
+
+      // Loading/error
+      isLoading,
+      error,
+      retry,
+
+      // Issue mutations
+      insertIssue: issuesResult.insert,
+      updateIssue: issuesResult.update,
+      removeIssue: issuesResult.remove,
+
+      // Status mutations
+      insertStatus: statusesResult.insert,
+      updateStatus: statusesResult.update,
+      removeStatus: statusesResult.remove,
+
+      // Tag mutations
+      insertTag: tagsResult.insert,
+      updateTag: tagsResult.update,
+      removeTag: tagsResult.remove,
+
+      // IssueAssignee mutations
+      insertIssueAssignee: issueAssigneesResult.insert,
+      removeIssueAssignee: issueAssigneesResult.remove,
+
+      // IssueFollower mutations
+      insertIssueFollower: issueFollowersResult.insert,
+      removeIssueFollower: issueFollowersResult.remove,
+
+      // IssueTag mutations
+      insertIssueTag: issueTagsResult.insert,
+      removeIssueTag: issueTagsResult.remove,
+
+      // IssueRelationship mutations
+      insertIssueRelationship: issueRelationshipsResult.insert,
+      removeIssueRelationship: issueRelationshipsResult.remove,
+
+      // Lookup helpers
+      getIssue,
+      getIssuesForStatus,
+      getAssigneesForIssue,
+      getFollowersForIssue,
+      getTagsForIssue,
+      getTagObjectsForIssue,
+      getRelationshipsForIssue,
+      getStatus,
+      getTag,
+      getWorkspacesForIssue,
+      getPullRequestsForIssue,
+
+      // Computed aggregations
+      issuesById,
+      statusesById,
+      tagsById,
+    }),
+    [
+      projectId,
+      issuesResult,
+      statusesResult,
+      tagsResult,
+      issueAssigneesResult,
+      issueFollowersResult,
+      issueTagsResult,
+      issueRelationshipsResult,
+      workspacesResult,
+      pullRequestsResult,
+      isLoading,
+      error,
+      retry,
+      getIssue,
+      getIssuesForStatus,
+      getAssigneesForIssue,
+      getFollowersForIssue,
+      getTagsForIssue,
+      getTagObjectsForIssue,
+      getRelationshipsForIssue,
+      getStatus,
+      getTag,
+      getWorkspacesForIssue,
+      getPullRequestsForIssue,
+      issuesById,
+      statusesById,
+      tagsById,
+    ]
+  );
+
+  return (
+    <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>
+  );
+}
+
+/**
+ * Hook to access project context.
+ * Must be used within a ProjectProvider.
+ */
+export function useProjectContext(): ProjectContextValue {
+  const context = useContext(ProjectContext);
+  if (!context) {
+    throw new Error('useProjectContext must be used within a ProjectProvider');
+  }
+  return context;
+}
