@@ -93,7 +93,8 @@ pub async fn list_unresolved_conversations(
 ) -> Result<ResponseJson<ApiResponse<Vec<ConversationWithMessages>>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    let conversations = ReviewConversation::find_unresolved_by_workspace_id(pool, workspace.id).await?;
+    let conversations =
+        ReviewConversation::find_unresolved_by_workspace_id(pool, workspace.id).await?;
 
     // Load messages for each conversation
     let mut result = Vec::with_capacity(conversations.len());
@@ -167,9 +168,11 @@ pub async fn create_conversation(
                 )
                 .await;
 
-            Ok(ResponseJson(ApiResponse::success(CreateConversationResponse {
-                conversation: full_conversation,
-            })))
+            Ok(ResponseJson(ApiResponse::success(
+                CreateConversationResponse {
+                    conversation: full_conversation,
+                },
+            )))
         }
         Err(e) => Ok(ResponseJson(ApiResponse::error_with_data(e.into()))),
     }
@@ -268,7 +271,8 @@ pub async fn resolve_conversation(
         _ => {}
     }
 
-    let result = ReviewConversation::resolve(pool, conversation_id, user_id, &payload.summary).await;
+    let result =
+        ReviewConversation::resolve(pool, conversation_id, user_id, &payload.summary).await;
 
     match result {
         Ok(_) => {
@@ -287,9 +291,11 @@ pub async fn resolve_conversation(
                 )
                 .await;
 
-            Ok(ResponseJson(ApiResponse::success(ResolveConversationResponse {
-                conversation: full_conversation,
-            })))
+            Ok(ResponseJson(ApiResponse::success(
+                ResolveConversationResponse {
+                    conversation: full_conversation,
+                },
+            )))
         }
         Err(e) => Ok(ResponseJson(ApiResponse::error_with_data(e.into()))),
     }
@@ -339,9 +345,11 @@ pub async fn unresolve_conversation(
                 )
                 .await;
 
-            Ok(ResponseJson(ApiResponse::success(ResolveConversationResponse {
-                conversation: full_conversation,
-            })))
+            Ok(ResponseJson(ApiResponse::success(
+                ResolveConversationResponse {
+                    conversation: full_conversation,
+                },
+            )))
         }
         Err(e) => Ok(ResponseJson(ApiResponse::error_with_data(e.into()))),
     }

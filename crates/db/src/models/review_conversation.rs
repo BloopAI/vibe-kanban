@@ -488,8 +488,7 @@ pub async fn load_conversations_with_messages(
     let mut result = Vec::with_capacity(conversations.len());
 
     for conv in conversations {
-        let messages =
-            ReviewConversationMessage::find_by_conversation_id(pool, conv.id).await?;
+        let messages = ReviewConversationMessage::find_by_conversation_id(pool, conv.id).await?;
         let mut messages_with_authors = Vec::with_capacity(messages.len());
 
         for msg in messages {
