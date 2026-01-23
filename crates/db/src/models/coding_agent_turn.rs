@@ -8,11 +8,11 @@ use uuid::Uuid;
 pub struct CodingAgentTurn {
     pub id: Uuid,
     pub execution_process_id: Uuid,
-    pub agent_session_id: Option<String>,   // Session ID from Claude/Amp coding agent
+    pub agent_session_id: Option<String>, // Session ID from Claude/Amp coding agent
     pub agent_message_uuid: Option<String>, // Last user message UUID for --resume-session-at
-    pub prompt: Option<String>,             // The prompt sent to the executor
-    pub summary: Option<String>,            // Final assistant message/summary
-    pub seen: bool,                         // Whether user has viewed this turn
+    pub prompt: Option<String>,           // The prompt sent to the executor
+    pub summary: Option<String>,          // Final assistant message/summary
+    pub seen: bool,                       // Whether user has viewed this turn
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

@@ -254,7 +254,10 @@ pub trait StandardCodingAgentExecutor {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         match session_id {
-            Some(id) => self.spawn_follow_up(current_dir, prompt, id, None, env).await,
+            Some(id) => {
+                self.spawn_follow_up(current_dir, prompt, id, None, env)
+                    .await
+            }
             None => self.spawn(current_dir, prompt, env).await,
         }
     }
