@@ -490,7 +490,7 @@ impl ClaudeLogProcessor {
                             }
 
                             // Extract user message UUID (tracks latest for --resume-session-at)
-                            if let Some(uuid) = Self::extract_user_message_uuid(&claude_json) {
+                            if let Some(uuid) = Self::extract_resumable_message_uuid(&claude_json) {
                                 msg_store.push_message_uuid(uuid);
                             }
 
@@ -560,10 +560,24 @@ impl ClaudeLogProcessor {
         }
     }
 
-    /// Extract user message UUID from Claude JSON (for --resume-session-at)
-    fn extract_user_message_uuid(claude_json: &ClaudeJson) -> Option<String> {
+    /// Extract message UUID for --resume-session-at from completed assistant messages.
+    /// Only returns UUID for assistant messages that contain text content (not tool_use),
+    /// which indicates a complete response that's safe to resume from.
+    fn extract_resumable_message_uuid(claude_json: &ClaudeJson) -> Option<String> {
         match claude_json {
-            ClaudeJson::User { uuid, .. } => uuid.clone(),
+            ClaudeJson::Assistant { message, uuid, .. } => {
+                // Only use this UUID if the message contains text (not just tool_use)
+                // This ensures we don't capture intermediate tool_use messages
+                let has_text = message
+                    .content
+                    .iter()
+                    .any(|item| matches!(item, ClaudeContentItem::Text { .. }));
+                if has_text {
+                    uuid.clone()
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
@@ -1701,6 +1715,8 @@ pub enum ClaudeJson {
     Assistant {
         message: ClaudeMessage,
         session_id: Option<String>,
+        #[serde(default)]
+        uuid: Option<String>,
     },
     User {
         message: ClaudeMessage,
