@@ -119,7 +119,7 @@ function ShortcutRow({ item }: { item: ShortcutItem }) {
         )}
         {item.hint && (
           <Tooltip content={item.hint} side="top">
-            <GearIcon className="size-3 text-low cursor-help" />
+            <GearIcon className="size-icon-xs text-low cursor-help" />
           </Tooltip>
         )}
       </span>
