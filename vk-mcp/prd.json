@@ -89,7 +89,7 @@
       ],
       "priority": 5,
       "passes": false,
-      "inProgress": false,
+      "inProgress": true,
       "checkpoint": false,
       "notes": "Reference: crates/services/src/services/git.rs for git operations"
     },
