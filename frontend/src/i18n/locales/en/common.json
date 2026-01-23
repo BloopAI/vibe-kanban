@@ -311,5 +311,11 @@
     "emptyTooltip": "Context usage appears after the next reply",
     "tooltip": "Context: {{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "Context usage: {{percentage}}%"
+  },
+  "shortcuts": {
+    "title": "Keyboard Shortcuts",
+    "inWorkspace": "(in workspace)",
+    "sequentialHint": "Sequential shortcuts: Press the first key, then the second within 500ms.",
+    "configurableHint": "Configurable in Settings → General → Message Input"
   }
 }

@@ -1,5 +1,6 @@
 import { useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { XIcon, GearIcon } from '@phosphor-icons/react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal, type NoProps } from '@/lib/modals';
@@ -18,7 +19,7 @@ interface ShortcutItem {
   keys: string | string[];
   description: string;
   hasScope?: boolean;
-  hint?: string;
+  useHintKey?: boolean;
 }
 
 interface ShortcutGroup {
@@ -62,8 +63,8 @@ function useShortcutGroups(): ShortcutGroup[] {
       shortcuts: [
         { keys: [mod, 'K'], description: 'Open command bar' },
         sendShortcut === 'Enter'
-          ? { keys: enterKey, description: 'Send message', hint: 'Configurable in Settings → General → Message Input' }
-          : { keys: [mod, enterKey], description: 'Send message', hint: 'Configurable in Settings → General → Message Input' },
+          ? { keys: enterKey, description: 'Send message', useHintKey: true }
+          : { keys: [mod, enterKey], description: 'Send message', useHintKey: true },
       ],
     };
 
@@ -108,6 +109,7 @@ function useShortcutGroups(): ShortcutGroup[] {
 }
 
 function ShortcutRow({ item }: { item: ShortcutItem }) {
+  const { t } = useTranslation('common');
   const keysArray = Array.isArray(item.keys) ? item.keys : [item.keys];
 
   return (
@@ -115,10 +117,10 @@ function ShortcutRow({ item }: { item: ShortcutItem }) {
       <span className="text-normal text-sm flex items-center gap-1">
         {item.description}
         {item.hasScope && (
-          <span className="text-low text-xs">(in workspace)</span>
+          <span className="text-low text-xs">{t('shortcuts.inWorkspace')}</span>
         )}
-        {item.hint && (
-          <Tooltip content={item.hint} side="top">
+        {item.useHintKey && (
+          <Tooltip content={t('shortcuts.configurableHint')} side="top">
             <GearIcon className="size-icon-xs text-low cursor-help" />
           </Tooltip>
         )}
@@ -158,6 +160,7 @@ function ShortcutSection({ group }: { group: ShortcutGroup }) {
 }
 
 const KeyboardShortcutsDialogImpl = NiceModal.create<NoProps>(() => {
+  const { t } = useTranslation('common');
   const modal = useModal();
   const container = usePortalContainer();
   const groups = useShortcutGroups();
@@ -202,7 +205,7 @@ const KeyboardShortcutsDialogImpl = NiceModal.create<NoProps>(() => {
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
             <h2 className="text-lg font-semibold text-high">
-              Keyboard Shortcuts
+              {t('shortcuts.title')}
             </h2>
             <button
               onClick={handleClose}
@@ -221,8 +224,7 @@ const KeyboardShortcutsDialogImpl = NiceModal.create<NoProps>(() => {
             {/* Footer hint */}
             <div className="mt-4 pt-4 border-t border-border text-center">
               <p className="text-xs text-low">
-                Sequential shortcuts: Press the first key, then the second
-                within 500ms.
+                {t('shortcuts.sequentialHint')}
               </p>
             </div>
           </div>
