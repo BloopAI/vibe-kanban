@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import {
   PlusIcon,
   ArrowLeftIcon,
@@ -15,6 +15,8 @@ import {
 } from '../primitives/CollapsibleSectionHeader';
 import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 import type { WorkspaceLayoutMode } from '../containers/WorkspacesSidebarContainer';
+
+const PAGE_SIZE = 50;
 
 interface WorkspacesSidebarProps {
   workspaces: Workspace[];
@@ -94,23 +96,70 @@ export function WorkspacesSidebar({
   const { t } = useTranslation(['tasks', 'common']);
   const searchLower = searchQuery.toLowerCase();
   const isSearching = searchQuery.length > 0;
-  const DISPLAY_LIMIT = 10;
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
 
-  const filteredWorkspaces = workspaces
-    .filter(
-      (workspace) =>
-        workspace.name.toLowerCase().includes(searchLower) ||
-        workspace.branch.toLowerCase().includes(searchLower)
-    )
-    .slice(0, isSearching ? undefined : DISPLAY_LIMIT);
+  // Reset display limit when search changes or archive view changes
+  useEffect(() => {
+    setDisplayLimit(PAGE_SIZE);
+  }, [searchQuery, showArchive]);
 
-  const filteredArchivedWorkspaces = archivedWorkspaces
-    .filter(
-      (workspace) =>
-        workspace.name.toLowerCase().includes(searchLower) ||
-        workspace.branch.toLowerCase().includes(searchLower)
-    )
-    .slice(0, isSearching ? undefined : DISPLAY_LIMIT);
+  // All filtered workspaces (before pagination)
+  const allFilteredWorkspaces = useMemo(
+    () =>
+      workspaces.filter(
+        (workspace) =>
+          workspace.name.toLowerCase().includes(searchLower) ||
+          workspace.branch.toLowerCase().includes(searchLower)
+      ),
+    [workspaces, searchLower]
+  );
+
+  const allFilteredArchivedWorkspaces = useMemo(
+    () =>
+      archivedWorkspaces.filter(
+        (workspace) =>
+          workspace.name.toLowerCase().includes(searchLower) ||
+          workspace.branch.toLowerCase().includes(searchLower)
+      ),
+    [archivedWorkspaces, searchLower]
+  );
+
+  // Paginated workspaces for display
+  const filteredWorkspaces = useMemo(
+    () =>
+      isSearching
+        ? allFilteredWorkspaces
+        : allFilteredWorkspaces.slice(0, displayLimit),
+    [allFilteredWorkspaces, displayLimit, isSearching]
+  );
+
+  const filteredArchivedWorkspaces = useMemo(
+    () =>
+      isSearching
+        ? allFilteredArchivedWorkspaces
+        : allFilteredArchivedWorkspaces.slice(0, displayLimit),
+    [allFilteredArchivedWorkspaces, displayLimit, isSearching]
+  );
+
+  // Check if there are more workspaces to load
+  const hasMoreWorkspaces = showArchive
+    ? allFilteredArchivedWorkspaces.length > displayLimit
+    : allFilteredWorkspaces.length > displayLimit;
+
+  // Handle scroll to load more
+  const handleScroll = useCallback(() => {
+    if (isSearching || !hasMoreWorkspaces) return;
+
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    // Load more when scrolled within 100px of the bottom
+    if (scrollHeight - scrollTop - clientHeight < 100) {
+      setDisplayLimit((prev) => prev + PAGE_SIZE);
+    }
+  }, [isSearching, hasMoreWorkspaces]);
 
   // Categorize workspaces for accordion layout
   const { raisedHandWorkspaces, idleWorkspaces, runningWorkspaces } =
@@ -161,7 +210,11 @@ export function WorkspacesSidebar({
       </div>
 
       {/* Scrollable workspace list */}
-      <div className="flex-1 overflow-y-auto py-base">
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto py-base"
+      >
         {showArchive ? (
           /* Archived workspaces view */
           <div className="flex flex-col gap-base">
@@ -273,9 +326,14 @@ export function WorkspacesSidebar({
         ) : (
           /* Active workspaces flat view */
           <div className="flex flex-col gap-base">
-            <span className="text-sm font-medium text-low px-base">
-              {t('common:workspaces.active')}
-            </span>
+            <div className="flex items-center justify-between px-base">
+              <span className="text-sm font-medium text-low">
+                {t('common:workspaces.active')}
+              </span>
+              <span className="text-xs text-low">
+                {workspaces.length}
+              </span>
+            </div>
             {draftTitle && (
               <WorkspaceSummary
                 name={draftTitle}
