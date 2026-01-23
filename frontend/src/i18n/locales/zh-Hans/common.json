@@ -333,10 +333,20 @@
     "noProjectFound": "未找到项目",
     "noOrganizationFound": "未找到组织",
     "unassigned": "未分配",
-    "noTagsAvailable": "No tags available",
-    "createNewTag": "Create new tag",
+    "noTagsAvailable": "无可用标签",
+    "createNewTag": "创建新标签",
+    "searchTags": "搜索标签...",
+    "selectColorFor": "选择颜色：",
+    "createTag": "创建",
     "filesCount": "{{count}} 个文件",
     "noPrCreated": "未创建 PR",
     "noCommentsYet": "暂无评论"
+  },
+  "syncError": {
+    "networkErrors": "网络错误",
+    "streamsAffected": "{{count}} 个数据流受影响",
+    "streamsAffected_other": "{{count}} 个数据流受影响",
+    "status": "(状态 {{status}})",
+    "refreshPage": "刷新页面"
   }
 }

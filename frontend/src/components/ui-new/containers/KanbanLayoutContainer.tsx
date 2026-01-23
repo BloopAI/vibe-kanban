@@ -1,4 +1,5 @@
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
+import { useTranslation } from 'react-i18next';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { ProjectProvider } from '@/contexts/remote/ProjectContext';
 import { KanbanContainer } from '@/components/ui-new/containers/KanbanContainer';
@@ -19,13 +20,14 @@ export function KanbanLayoutContainer({
   onKanbanLayoutChange,
   isKanbanRightPanelVisible,
 }: KanbanLayoutContainerProps) {
+  const { t } = useTranslation('common');
   const { projects, isLoading } = useOrgContext();
   const firstProject = projects[0];
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full w-full">
-        <p className="text-low">Loading...</p>
+        <p className="text-low">{t('loading')}</p>
       </div>
     );
   }
@@ -33,7 +35,7 @@ export function KanbanLayoutContainer({
   if (!firstProject) {
     return (
       <div className="flex items-center justify-center h-full w-full">
-        <p className="text-low">No project found</p>
+        <p className="text-low">{t('kanban.noProjectFound')}</p>
       </div>
     );
   }
