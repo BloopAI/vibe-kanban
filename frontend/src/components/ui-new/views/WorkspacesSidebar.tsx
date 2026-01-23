@@ -330,9 +330,7 @@ export function WorkspacesSidebar({
               <span className="text-sm font-medium text-low">
                 {t('common:workspaces.active')}
               </span>
-              <span className="text-xs text-low">
-                {workspaces.length}
-              </span>
+              <span className="text-xs text-low">{workspaces.length}</span>
             </div>
             {draftTitle && (
               <WorkspaceSummary
