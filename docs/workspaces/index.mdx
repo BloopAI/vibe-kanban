@@ -18,16 +18,16 @@ The Workspaces UI is a complete redesign of the task execution experience, provi
 
 | Concept | Description | Example |
 |---------|-------------|---------|
-| **Project** | A local container that groups related repositories | "Acme App" project containing `frontend` and `backend` repos |
 | **Workspace** | A task execution environment where you work with agents | "Add user authentication" |
-| **Repository** | A git repository included in a project | `acme-frontend`, `acme-backend` |
+| **Repository** | A git repository included in a workspace | `frontend`, `backend` |
+| **Session** | A conversation thread with a coding agent | Claude Code session for implementing a feature |
 
 **How they relate:**
-- A **project** groups related **repositories** together
-- When creating a **workspace**, you select a project, then choose which repositories to include
-- Each **repository** in a workspace has its own git state (branch, commits)
+- A **workspace** is your working environment for a specific task
+- A workspace can contain one or more **repositories** (each with independent git state)
+- Within a workspace, you can have multiple **sessions** to chat with different agents or start fresh conversations
 
-For example, your "Acme App" project contains `acme-frontend` and `acme-backend` repositories. When creating a workspace for "Add authentication", you select the project, then include both repos since the task spans multiple codebases.
+For example, you create a workspace for "Add authentication" that includes both `frontend` and `backend` repositories. Within that workspace, you might have one session for implementing the backend API and another session for the frontend UI.
 
 ## Key Features
 
@@ -40,8 +40,12 @@ For example, your "Acme App" project contains `acme-frontend` and `acme-backend`
   Run multiple agent conversations simultaneously. Work around token limits by starting fresh sessions while keeping context.
 </Card>
 
-<Card title="Integrated Preview" icon="browser" href="/workspaces/preview-changes">
+<Card title="Integrated Preview" icon="browser" href="/workspaces/preview">
   Built-in browser preview without leaving the workspace. Test across desktop, mobile, and custom viewport sizes.
+</Card>
+
+<Card title="Changes Panel" icon="code-compare" href="/workspaces/changes">
+  Review code modifications with syntax-highlighted diffs. Add inline comments to provide feedback to agents.
 </Card>
 
 <Card title="Integrated Terminal" icon="rectangle-terminal" href="/workspaces/interface#terminal-section">
@@ -89,26 +93,3 @@ You can return to the classic kanban board interface at any time:
 Your workspaces and task data are preserved when switching between the classic and new UI. You can switch back and forth without losing any work.
 </Info>
 
-## What's Next
-
-<CardGroup cols={2}>
-<Card title="Interface Guide" icon="layout" href="/workspaces/interface">
-  Learn about the four-panel layout and how to navigate the workspace
-</Card>
-
-<Card title="Command Bar" icon="keyboard" href="/workspaces/command-bar">
-  Master keyboard shortcuts and quick actions
-</Card>
-
-<Card title="Multi-Repo & Sessions" icon="code-branch" href="/workspaces/multi-repo-sessions">
-  Work with multiple repositories and agent sessions
-</Card>
-
-<Card title="Preview & Changes" icon="eye" href="/workspaces/preview-changes">
-  Use the integrated preview browser and review code changes
-</Card>
-
-<Card title="Git Operations" icon="git-alt" href="/workspaces/git-operations">
-  Create PRs, merge, rebase, and manage branches
-</Card>
-</CardGroup>

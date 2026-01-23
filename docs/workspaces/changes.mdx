@@ -1,85 +1,21 @@
 ---
-title: "Preview & Changes"
-description: "Use the integrated preview browser and review code changes"
+title: "Changes Panel"
+description: "Review code modifications and provide feedback to agents"
 ---
-
-<Frame>
-<img src="/images/workspaces-preview-panel.png" alt="Workspace showing preview panel on the right with built-in browser displaying the application" />
-</Frame>
-
-Workspaces include a built-in preview browser and a redesigned changes panel for reviewing code modifications.
-
-## Preview Browser
-
-Test your application without leaving the workspace.
-
-### Opening the Preview
-
-- Click the **Preview** toggle in the navbar
-- Use the [command bar](/workspaces/command-bar): `Cmd/Ctrl + K` → "Toggle Preview Panel"
-- Click the preview icon in the context bar
-
-The preview panel automatically opens when a dev server starts.
-
-### Starting the Dev Server
-
-1. Click **Toggle Dev Server** in the context bar
-2. Or use the command bar: "Toggle Dev Server"
-3. The preview panel opens automatically
-4. Your application loads in the built-in browser
-
-### Device Modes
-
-<Frame>
-<img src="/images/workspaces-preview-device-modes.png" alt="Preview panel in mobile device mode showing responsive view of the application" />
-</Frame>
-
-Test across different viewport sizes:
-
-| Mode | Description |
-|------|-------------|
-| **Desktop** | Full-width browser view |
-| **Mobile** | Mobile device dimensions |
-| **Custom** | Set specific viewport width and height |
-
-Switch modes using the device selector in the preview toolbar.
-
-### Multiple Dev Servers
-
-For projects with multiple services:
-
-- Each dev server appears as a tab
-- Switch between servers to view different parts of your application
-- Logs are separated per server
-
-### Viewing Logs
-
-The preview panel includes a log viewer:
-
-- View stdout/stderr from your dev server
-- **View Full Logs** button for complete output
-- Logs update in real-time
-- Filter or search log content
-
-<Tip>
-If your preview isn't loading, check the logs for error messages or port conflicts.
-</Tip>
-
-## Changes Panel
 
 <Frame>
 <img src="/images/workspaces-changes-panel.png" alt="Changes panel showing file tree and side-by-side diff view with code changes" />
 </Frame>
 
-Review all code modifications in your workspace.
+The changes panel lets you review all code modifications in your workspace and provide feedback to agents.
 
-### Opening Changes
+## Opening Changes
 
-- Click the **Changes** toggle in the navbar
-- Use the command bar: "Toggle Changes Panel"
-- Changes panel is the default right panel view
+- Click the **Changes** toggle (<Icon icon="code-compare" />) in the navbar
+- Click the changes icon in the context bar
+- Use the command bar: `Cmd/Ctrl + K` → "Toggle Changes Panel"
 
-### File Tree
+## File Tree
 
 The changes panel displays a hierarchical file tree:
 
@@ -88,7 +24,7 @@ The changes panel displays a hierarchical file tree:
 - **Search**: Filter files by name
 - **Expand/Collapse All**: Quick navigation buttons
 
-### Diff Viewer
+## Diff Viewer
 
 View code changes with syntax highlighting:
 
@@ -99,7 +35,7 @@ View code changes with syntax highlighting:
 | **Context** | Surrounding unchanged lines for reference |
 | **Line numbers** | Original and new line numbers |
 
-### Diff View Modes
+## Diff View Modes
 
 Toggle between two display modes:
 
@@ -108,9 +44,9 @@ Toggle between two display modes:
 | **Unified** | Inline view with changes interleaved |
 | **Side-by-Side** | Original and modified shown in parallel columns |
 
-Switch modes via the navbar button or command bar: "Toggle Diff View Mode"
+Switch modes using the diff view toggle in the navbar (when Changes panel is open) or via command bar: `Cmd/Ctrl + K` → "Toggle Diff View Mode".
 
-### Diff Options
+## Diff Options
 
 Customise the diff display:
 
@@ -123,7 +59,7 @@ Customise the diff display:
 
 Access these via the command bar's Diff Options page.
 
-## Inline Comments
+## Giving Feedback with Comments
 
 <Frame>
 <img src="/images/workspaces-inline-comments.png" alt="Changes panel showing inline comments on code with Add Review Comment button" />
@@ -145,6 +81,14 @@ Add comments directly on code changes to provide feedback to agents.
 - **Provide context**: Share additional requirements or constraints
 - **Approve sections**: Indicate code that looks good
 
+### Agent Response to Comments
+
+<Frame>
+<img src="/images/workspaces-review-comments-response.png" alt="Chat showing agent responding to review comments by restoring a file" />
+</Frame>
+
+When you send a message with review comments, the agent sees your feedback and acts on it. In this example, the agent restores a file after the user requested the change be reverted.
+
 <Info>
 Comments are visible to the agent in subsequent messages, helping guide further development.
 </Info>
@@ -155,15 +99,21 @@ When your workspace is linked to a pull request:
 
 ### Viewing GitHub Comments
 
-- Toggle **Show GitHub Comments** in the changes panel
+<Frame>
+<img src="/images/workspaces-show-github-comments.png" alt="Changes panel showing GitHub icon button with Show GitHub comments tooltip" />
+</Frame>
+
+- Click the **GitHub icon** in the changes panel toolbar to toggle GitHub comments
 - Comments from the PR appear inline with the diff
 - Badge shows comment count per file
 
-### Navigating Comments
+<Frame>
+<img src="/images/workspaces-github-comments-inline.png" alt="GitHub review comment displayed inline in the diff view" />
+</Frame>
 
-- Use **Previous/Next** buttons to jump between files with comments
-- Comments are highlighted in the diff view
-- Reply to comments directly from the workspace
+<Note>
+Only submitted review comments are shown. Pending reviews (not yet submitted on GitHub) won't appear until you submit the review.
+</Note>
 
 ### Linking to a PR
 
@@ -178,15 +128,6 @@ Review GitHub comments alongside your changes to address PR feedback efficiently
 
 ## Best Practices
 
-### Preview Workflow
-
-1. Start the dev server early in your task
-2. Keep the preview visible while the agent works
-3. Test changes incrementally
-4. Use device modes to verify responsive design
-
-### Code Review Workflow
-
 1. Open the changes panel after the agent completes work
 2. Review diffs file by file
 3. Add comments for any needed changes
@@ -195,6 +136,7 @@ Review GitHub comments alongside your changes to address PR feedback efficiently
 
 ## Related Documentation
 
+- [Preview](/workspaces/preview) - Test your application with the built-in browser
 - [Interface Guide](/workspaces/interface) - Overview of workspace panels
 - [Reviewing Code Changes](/core-features/reviewing-code-changes) - Code review in the classic UI
-- [Testing Your Application](/core-features/testing-your-application) - Testing workflows
+- [Git Operations](/workspaces/git-operations) - Create PRs and manage branches

@@ -1,0 +1,262 @@
+---
+title: "Chat Interface"
+description: "Interact with coding agents through the conversation panel"
+---
+
+<Frame>
+<img src="/images/workspaces-conversation.png" alt="Chat interface showing conversation with coding agent" />
+</Frame>
+
+The chat interface is your primary way of communicating with coding agents. It supports rich message formatting, file attachments, approval workflows, and multiple conversation sessions.
+
+## Message Types
+
+The chat displays different types of messages, each with distinct styling:
+
+### User Messages
+
+Your messages appear with an edit option. Click the pencil icon to modify and resend a message.
+
+### Agent Messages
+
+Agent responses are rendered with full markdown support, including:
+- Code blocks with syntax highlighting
+- Tables and lists
+- Links and formatted text
+
+### System Messages
+
+Informational messages from the system, such as model initialisation or status updates.
+
+### Error Messages
+
+Error messages appear in red with a warning icon. Click to expand and see full error details.
+
+## Chat Input
+
+### Writing Messages
+
+<Frame>
+<img src="/images/workspaces-writing-messages.png" alt="Chat input formatting toolbar showing bold, italic, underline, strikethrough, and code buttons" />
+</Frame>
+
+The chat input supports rich text editing:
+
+- **Bold** - `Cmd/Ctrl + B` or click **B**
+- **Italic** - `Cmd/Ctrl + I` or click **I**
+- **Underline** - `Cmd/Ctrl + U` or click **U**
+- **Strikethrough** - Click **S**
+- **Code** - Click the code button or wrap with backticks
+
+### Attaching Images
+
+<Frame>
+<img src="/images/workspaces-attach-images.png" alt="File picker dialog for attaching images to chat messages" />
+</Frame>
+
+You can attach images to your messages:
+
+1. **Click the attachment button** (paperclip icon) in the toolbar
+2. **Drag and drop** images directly into the chat
+3. Images are uploaded and referenced in your message
+
+<Tip>
+Attach screenshots to show the agent exactly what you're working on or what issue you're experiencing.
+</Tip>
+
+### File Mentions
+
+<Frame>
+<img src="/images/workspaces-file-mentions.png" alt="File mentions typeahead showing matching files when typing @" />
+</Frame>
+
+Type `@` to mention files from your repository. The chat provides typeahead suggestions showing:
+
+- **Filename** in bold
+- **Full path** below each file
+- Matches update as you type
+
+Select a file to include it as context for the agent.
+
+## Sending Messages
+
+### Send Actions
+
+| Action | Shortcut | Description |
+|--------|----------|-------------|
+| **Send** | `Cmd/Ctrl + Enter` | Send message immediately |
+| **Queue** | Click Queue button | Queue message while agent is running |
+| **Stop** | Click Stop button | Stop the current agent execution |
+
+### Execution States
+
+<Frame>
+<img src="/images/workspaces-running-state.png" alt="Chat interface in running state showing Queue and Stop buttons" />
+</Frame>
+
+The chat interface shows different states:
+
+| State | Description |
+|-------|-------------|
+| **Idle** | Ready to send a new message |
+| **Running** | Agent is actively working |
+| **Queued** | Your message is queued for when agent finishes |
+| **Sending** | Message is being sent |
+
+<Info>
+When the agent is running, you can queue a follow-up message instead of waiting for it to finish.
+</Info>
+
+## Agent Selection
+
+### Choosing an Agent
+
+Select which coding agent to use from the **Agent** dropdown in the chat toolbar. Available agents depend on your configuration.
+
+### Variants
+
+<Frame>
+<img src="/images/workspaces-agent-selection.png" alt="Variants dropdown showing Default, Approvals, Opus, and Plan options with Customise button" />
+</Frame>
+
+Some agents support different variants or profiles. Use the variant selector to choose:
+
+- Different model configurations
+- Custom system prompts
+- Specialised behaviours
+
+Click **Customise** to configure agent settings.
+
+## Approval Workflow
+
+When an agent needs approval before proceeding, you'll see an approval card:
+
+### Reviewing Plans
+
+1. The agent presents a plan with proposed changes
+2. Review the plan details (expand to see full content)
+3. Choose to **Approve** or **Request Changes**
+
+### Requesting Changes
+
+If you want modifications:
+
+1. Type your feedback in the chat input
+2. Click **Request Changes**
+3. The agent will revise based on your feedback
+
+<Note>
+Approval requests have a timeout. If you don't respond, you may need to restart the task.
+</Note>
+
+## Editing Messages
+
+You can edit and resend previous messages:
+
+<Frame>
+<img src="/images/workspaces-edit-message-1.png" alt="User message showing edit pencil icon in the top right corner" />
+</Frame>
+
+<Steps>
+<Step title="Click the Edit Button">
+  Click the pencil icon on any of your messages.
+</Step>
+
+<Step title="Modify Your Message">
+  The message content appears in an editable text area. Make your changes.
+
+  <Frame>
+  <img src="/images/workspaces-edit-message-2.png" alt="Edit mode showing message in editable text area with Cancel and Retry buttons" />
+  </Frame>
+</Step>
+
+<Step title="Submit the Edit">
+  Click **Retry** to resend the modified message. The conversation continues from that point. Click **Cancel** to discard your changes.
+</Step>
+</Steps>
+
+<Warning>
+Editing a message creates a new branch in the conversation. Subsequent messages after the edited one will be replaced.
+</Warning>
+
+## Status Indicators
+
+### Token Usage
+
+<Frame>
+<img src="/images/workspaces-token-usage.png" alt="Context gauge showing 13% usage with 27K of 200K tokens used" />
+</Frame>
+
+The context gauge shows how much of the agent's context window is used:
+
+| Colour | Usage Level |
+|--------|-------------|
+| Grey | Low usage |
+| Default | Normal usage |
+| Orange | High usage - consider starting a new session |
+| Red | Critical - near context limit |
+
+<Tip>
+When context usage is high, start a new session to give the agent fresh context.
+</Tip>
+
+### Tasks Progress
+
+<Frame>
+<img src="/images/workspaces-tasks-panel.png" alt="Tasks panel showing 5/5 completed with progress bar and list of individual tasks" />
+</Frame>
+
+When the agent breaks down work into tasks, a progress indicator appears in the chat toolbar:
+
+- **Progress bar** showing completion percentage
+- **Task count** (e.g., "5/5 completed")
+- **Individual tasks** with checkmarks when complete
+
+Click the indicator to expand the full task list showing each step the agent is working through.
+
+### File Changes
+
+The chat shows file modification summaries:
+
+- **Green** numbers indicate lines added
+- **Red** numbers indicate lines removed
+- Click to view the file in the Changes panel
+
+## Tool Outputs
+
+### Command Execution
+
+When the agent runs commands, you'll see:
+
+- **Terminal icon** for bash commands
+- **Exit code** for completed commands
+- **Fix Script** button if a command fails
+
+Click to view full output in the logs panel.
+
+### Search Results
+
+Search operations show summarised results. Click to expand and see full search output.
+
+## Review Comments
+
+When you add inline comments in the Changes panel:
+
+1. A banner appears showing the comment count
+2. Comments are automatically included when you send a message
+3. Click **Clear** to remove pending comments
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Cmd/Ctrl + Enter` | Send message (or contextual action) |
+| `Cmd/Ctrl + B` | Bold text |
+| `Cmd/Ctrl + I` | Italic text |
+| `Escape` | Cancel current action |
+
+## Related Documentation
+
+- [Sessions](/workspaces/sessions) - Managing multiple conversation sessions
+- [Interface Guide](/workspaces/interface) - Overview of the workspace layout
+- [Command Bar](/workspaces/command-bar) - Quick actions and shortcuts

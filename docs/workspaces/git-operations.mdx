@@ -32,15 +32,27 @@ Create PRs directly from your workspace.
 
 ### Creating a PR
 
-1. Open the [command bar](/workspaces/command-bar): `Cmd/Ctrl + K`
+**From the Git panel:**
+1. Click **Open pull request** in the Git section of the right sidebar
+2. Fill in the PR details
+
+**From the command bar:**
+1. Press `Cmd/Ctrl + K`
 2. Select **Create Pull Request**
-3. Fill in the PR details:
+
+**PR details:**
    - **Auto-generate PR description with AI** - Let AI write the description based on your changes
    - **Title** - PR title (auto-filled from task name)
    - **Description** - Optional details about the changes
    - **Base Branch** - The branch to merge into
    - **Create as draft** - Mark as draft PR
 4. Click **Create PR**
+
+Once created, your PR appears on GitHub with your commits, description, and CI checks running.
+
+<Frame>
+<img src="/images/workspaces-github-pr.png" alt="GitHub pull request page showing the created PR with commits, checks, and comments" />
+</Frame>
 
 ### Draft PRs
 
@@ -68,10 +80,14 @@ Merge your branch into the target branch.
 
 ### Merge Process
 
-1. Open the command bar: `Cmd/Ctrl + K`
+**From the Git panel:**
+1. Click the dropdown arrow next to **Open pull request**
 2. Select **Merge**
-3. Confirm the merge operation
-4. Changes are merged into the target branch
+
+**From the command bar:**
+1. Press `Cmd/Ctrl + K` and select **Merge**
+
+Changes are merged into the target branch after confirmation.
 
 ### Before Merging
 
@@ -90,10 +106,14 @@ Keep your branch up to date with the target branch.
 
 ### Rebase Process
 
-1. Open the command bar: `Cmd/Ctrl + K`
-2. Select **Rebase**
-3. Confirm the rebase operation
-4. Your commits are replayed on top of the target branch
+**From the Git panel:**
+1. Click the target branch dropdown (e.g., **main**)
+2. Select **Rebase** from the menu
+
+**From the command bar:**
+1. Press `Cmd/Ctrl + K` and select **Rebase**
+
+Your commits are replayed on top of the target branch after confirmation.
 
 ### Handling Conflicts
 
@@ -122,10 +142,15 @@ Switch the branch you're merging into.
 
 ### Changing the Target
 
-1. Open the command bar: `Cmd/Ctrl + K`
-2. Select **Change Target Branch**
-3. Choose the new target branch
-4. Workspace updates to show new ahead/behind status
+**From the Git panel:**
+1. Click the target branch dropdown (e.g., **main**) in the Git section
+2. Select a new target branch from the list
+
+**From the command bar:**
+1. Press `Cmd/Ctrl + K` and select **Change Target Branch**
+2. Choose the new target branch
+
+The workspace updates to show the new ahead/behind status.
 
 ### Use Cases
 
@@ -146,9 +171,13 @@ The Push command appears when:
 
 ### Pushing
 
-1. Open the command bar: `Cmd/Ctrl + K`
-2. Select **Push**
-3. Commits are pushed to the remote
+**From the Git panel:**
+- Click the **Push** button when it appears (shows when you have unpushed commits)
+
+**From the command bar:**
+- Press `Cmd/Ctrl + K` and select **Push**
+
+Commits are pushed to the remote repository.
 
 <Info>
 Push is contextual - it only appears when there are changes to push and a PR exists.

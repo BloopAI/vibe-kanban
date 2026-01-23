@@ -67,10 +67,15 @@
         "group": "Workspaces (Beta)",
         "pages": [
           "workspaces/index",
+          "workspaces/creating-workspaces",
+          "workspaces/repositories",
+          "workspaces/sessions",
+          "workspaces/chat-interface",
           "workspaces/interface",
           "workspaces/command-bar",
           "workspaces/multi-repo-sessions",
-          "workspaces/preview-changes",
+          "workspaces/preview",
+          "workspaces/changes",
           "workspaces/git-operations"
         ]
       },
