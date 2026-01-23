@@ -39,3 +39,17 @@
 - In auto-continue, the RalphStatus is already fetched for checkpoint/completion checks, so reuse it for prompt logic
 - In initial request, need to construct repo path from workspace.container_ref + repo.name to call RalphService
 ---
+
+## 2026-01-23 - US-003
+- Updated `continue_ralph_execution` endpoint in `tasks.rs` to check for prd.json existence
+- Changed error handling from generic `map_err` to explicit match on `RalphError::PrdNotFound`
+- Returns specific error message: "PRD not ready yet. Create prd.json first."
+- Also updated prompt logic to use `status.started` and `status.iteration_prompt` for consistency with container.rs
+
+**Files changed:**
+- `crates/server/src/routes/tasks.rs` - Updated continue_ralph_execution with PrdNotFound check and prompt logic
+
+**Learnings for future iterations:**
+- The `continue_ralph_execution` endpoint is a third place where prompt logic exists (alongside container.rs auto-continue and start_workspace)
+- All three places now consistently check `status.started` and use `iteration_prompt` when appropriate
+---
