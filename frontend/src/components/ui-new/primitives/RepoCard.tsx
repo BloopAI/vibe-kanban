@@ -52,6 +52,7 @@ interface RepoCardProps {
   isPushPending?: boolean;
   isPushSuccess?: boolean;
   isPushError?: boolean;
+  isTargetRemote?: boolean;
   branchDropdownContent?: React.ReactNode;
   onChangeTarget?: () => void;
   onRebase?: () => void;
@@ -73,6 +74,7 @@ export function RepoCard({
   isPushPending = false,
   isPushSuccess = false,
   isPushError = false,
+  isTargetRemote = false,
   branchDropdownContent,
   onChangeTarget,
   onRebase,
@@ -85,18 +87,30 @@ export function RepoCard({
   const [selectedAction, setSelectedAction] = useRepoAction(repoId);
 
   // Hide "Open pull request" option when PR is already open
+  // Hide "merge" option when PR is already open or target branch is remote
   const hasPrOpen = prStatus === 'open';
   const availableActionOptions = useMemo(
     () =>
-      hasPrOpen
-        ? repoActionOptions.filter((opt) => opt.value !== 'pull-request')
-        : repoActionOptions,
-    [hasPrOpen]
+      repoActionOptions.filter((opt) => {
+        if (opt.value === 'pull-request' && hasPrOpen) return false;
+        if (opt.value === 'merge' && (hasPrOpen || isTargetRemote))
+          return false;
+        return true;
+      }),
+    [hasPrOpen, isTargetRemote]
   );
 
-  // If PR is open and 'pull-request' was selected, fall back to 'merge'
-  const effectiveSelectedAction =
-    hasPrOpen && selectedAction === 'pull-request' ? 'merge' : selectedAction;
+  // If current selection is unavailable, fall back to the first available option.
+  const effectiveSelectedAction = useMemo(() => {
+    const selectedOption = availableActionOptions.find(
+      (option) => option.value === selectedAction
+    );
+    return (
+      selectedOption?.value ??
+      availableActionOptions[0]?.value ??
+      selectedAction
+    );
+  }, [availableActionOptions, selectedAction]);
 
   return (
     <div className="bg-primary rounded-sm my-base p-base space-y-base">

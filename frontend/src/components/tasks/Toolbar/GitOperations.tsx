@@ -480,6 +480,7 @@ function GitOperations({
                 merging ||
                 hasConflictsCalculated ||
                 isAttemptRunning ||
+                selectedRepoStatus?.is_target_remote ||
                 ((selectedRepoStatus?.commits_ahead ?? 0) === 0 &&
                   !pushSuccess &&
                   !mergeSuccess)
