@@ -164,3 +164,18 @@ Started: 2026-01-23
   - `ExecutionProcess::has_running_non_dev_server_processes_for_workspace` checks if workspace has running processes
   - `Workspace::set_archived` and `Workspace::clear_container_ref` are separate db operations
 ---
+
+## 2026-01-23 - US-010
+- What was implemented:
+  - Added `CloseWorkspaceRequest` struct with workspace_id: Uuid, strategy: String
+  - Added `CloseWorkspaceResponse` struct with workspace_id, success, message, merge_commit_sha
+  - Added `close_workspace` tool in `#[tool_router] impl TaskServer` block
+  - Tool validates strategy is 'merge' or 'discard' before calling API
+  - Tool calls `/api/workspaces/{id}/close` via `self.client.post().json()`
+- Files changed:
+  - crates/server/src/mcp/task_server.rs (added request/response structs + tool method)
+- **Learnings for future iterations:**
+  - For POST requests with JSON body, use `self.client.post(&url).json(&body)`
+  - Use `Self::err(message, None::<String>)` for returning tool errors
+  - MCP tool can do early validation before calling API for better error messages
+---
