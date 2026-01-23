@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SpinnerIcon } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
@@ -21,6 +22,7 @@ export function ConversationWidgetLine({
   onCancel,
   projectId,
 }: ConversationWidgetLineProps) {
+  const { t } = useTranslation('tasks');
   const { setDraft, createConversation } = useReview();
   const [value, setValue] = useState(draft.text);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -102,7 +104,7 @@ export function ConversationWidgetLine({
       <WYSIWYGEditor
         value={value}
         onChange={setValue}
-        placeholder="Start a conversation... (type @ to search files)"
+        placeholder={t('conversation.thread.startPlaceholder')}
         className="w-full bg-primary text-primary-foreground text-sm font-mono min-h-[60px]"
         projectId={projectId}
         onCmdEnter={handleSave}
@@ -121,10 +123,10 @@ export function ConversationWidgetLine({
           {isSubmitting ? (
             <>
               <SpinnerIcon className="size-icon-xs animate-spin mr-1" />
-              Starting...
+              {t('conversation.thread.starting')}
             </>
           ) : (
-            'Start conversation'
+            t('conversation.thread.startConversation')
           )}
         </Button>
         <Button
@@ -134,7 +136,7 @@ export function ConversationWidgetLine({
           className="text-secondary-foreground"
           disabled={isSubmitting}
         >
-          Cancel
+          {t('conversation.thread.cancel')}
         </Button>
       </div>
     </div>

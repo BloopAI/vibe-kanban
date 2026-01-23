@@ -634,7 +634,31 @@
       "requestChanges": "변경 요청",
       "approve": "승인",
       "clearReviewComments": "리뷰 댓글 지우기",
-      "edit": "메시지 편집"
+      "edit": "메시지 편집",
+      "resolveConversations": "대화 해결",
+      "resolvingConversations": "해결 중..."
+    },
+    "unresolvedConversations": {
+      "count_one": "{{count}}개의 미해결 대화 - 보내기 전에 해결하세요",
+      "count_other": "{{count}}개의 미해결 대화 - 보내기 전에 해결하세요"
+    },
+    "thread": {
+      "deleteMessage": "메시지 삭제",
+      "resolved": "해결됨",
+      "conversationHistory": "대화 기록",
+      "reopenConversation": "대화 다시 열기",
+      "conversationResolved": "대화가 해결되었습니다",
+      "replyPlaceholder": "답변 작성...",
+      "reply": "답변",
+      "cancel": "취소",
+      "resolutionSummary": "해결 요약",
+      "resolutionPlaceholder": "해결된 내용을 요약...",
+      "confirmResolve": "해결 확인",
+      "resolve": "해결",
+      "delete": "삭제",
+      "startPlaceholder": "대화 시작... (@를 입력하여 파일 검색)",
+      "starting": "시작 중...",
+      "startConversation": "대화 시작"
     },
     "approval": {
       "conflictWarning": "충돌하는 파일은 수동으로 해결해야 합니다",

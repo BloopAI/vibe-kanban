@@ -298,6 +298,24 @@
       "count_one": "{{count}} unresolved conversation - resolve before sending",
       "count_other": "{{count}} unresolved conversations - resolve before sending"
     },
+    "thread": {
+      "deleteMessage": "Delete message",
+      "resolved": "Resolved",
+      "conversationHistory": "Conversation History",
+      "reopenConversation": "Re-open conversation",
+      "conversationResolved": "Conversation resolved",
+      "replyPlaceholder": "Write a reply...",
+      "reply": "Reply",
+      "cancel": "Cancel",
+      "resolutionSummary": "Resolution Summary",
+      "resolutionPlaceholder": "Summarize what was resolved...",
+      "confirmResolve": "Confirm Resolve",
+      "resolve": "Resolve",
+      "delete": "Delete",
+      "startPlaceholder": "Start a conversation... (type @ to search files)",
+      "starting": "Starting...",
+      "startConversation": "Start conversation"
+    },
     "workspace": {
       "create": "Create",
       "creating": "Creating..."

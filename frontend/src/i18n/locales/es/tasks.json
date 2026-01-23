@@ -634,7 +634,31 @@
       "requestChanges": "Solicitar cambios",
       "approve": "Aprobar",
       "clearReviewComments": "Limpiar comentarios de revisión",
-      "edit": "Editar mensaje"
+      "edit": "Editar mensaje",
+      "resolveConversations": "Resolver conversaciones",
+      "resolvingConversations": "Resolviendo..."
+    },
+    "unresolvedConversations": {
+      "count_one": "{{count}} conversación sin resolver - resolver antes de enviar",
+      "count_other": "{{count}} conversaciones sin resolver - resolver antes de enviar"
+    },
+    "thread": {
+      "deleteMessage": "Eliminar mensaje",
+      "resolved": "Resuelto",
+      "conversationHistory": "Historial de conversación",
+      "reopenConversation": "Reabrir conversación",
+      "conversationResolved": "Conversación resuelta",
+      "replyPlaceholder": "Escribe una respuesta...",
+      "reply": "Responder",
+      "cancel": "Cancelar",
+      "resolutionSummary": "Resumen de resolución",
+      "resolutionPlaceholder": "Resume lo que se resolvió...",
+      "confirmResolve": "Confirmar resolución",
+      "resolve": "Resolver",
+      "delete": "Eliminar",
+      "startPlaceholder": "Inicia una conversación... (escribe @ para buscar archivos)",
+      "starting": "Iniciando...",
+      "startConversation": "Iniciar conversación"
     },
     "approval": {
       "conflictWarning": "Los archivos en conflicto necesitan resolución manual",

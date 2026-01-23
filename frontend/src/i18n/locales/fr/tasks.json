@@ -274,7 +274,31 @@
       "requestChanges": "Demander des modifications",
       "approve": "Approuver",
       "clearReviewComments": "Effacer les commentaires de révision",
-      "edit": "Modifier le message"
+      "edit": "Modifier le message",
+      "resolveConversations": "Résoudre les conversations",
+      "resolvingConversations": "Résolution..."
+    },
+    "unresolvedConversations": {
+      "count_one": "{{count}} conversation non résolue - résoudre avant d'envoyer",
+      "count_other": "{{count}} conversations non résolues - résoudre avant d'envoyer"
+    },
+    "thread": {
+      "deleteMessage": "Supprimer le message",
+      "resolved": "Résolu",
+      "conversationHistory": "Historique de la conversation",
+      "reopenConversation": "Rouvrir la conversation",
+      "conversationResolved": "Conversation résolue",
+      "replyPlaceholder": "Écrire une réponse...",
+      "reply": "Répondre",
+      "cancel": "Annuler",
+      "resolutionSummary": "Résumé de la résolution",
+      "resolutionPlaceholder": "Résumez ce qui a été résolu...",
+      "confirmResolve": "Confirmer la résolution",
+      "resolve": "Résoudre",
+      "delete": "Supprimer",
+      "startPlaceholder": "Démarrer une conversation... (tapez @ pour rechercher des fichiers)",
+      "starting": "Démarrage...",
+      "startConversation": "Démarrer la conversation"
     },
     "approval": {
       "conflictWarning": "Les fichiers en conflit nécessitent une résolution manuelle",

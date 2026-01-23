@@ -634,7 +634,31 @@
       "requestChanges": "请求更改",
       "approve": "批准",
       "clearReviewComments": "清除审查评论",
-      "edit": "编辑消息"
+      "edit": "编辑消息",
+      "resolveConversations": "解决对话",
+      "resolvingConversations": "解决中..."
+    },
+    "unresolvedConversations": {
+      "count_one": "{{count}} 个未解决的对话 - 发送前请解决",
+      "count_other": "{{count}} 个未解决的对话 - 发送前请解决"
+    },
+    "thread": {
+      "deleteMessage": "删除消息",
+      "resolved": "已解决",
+      "conversationHistory": "对话历史",
+      "reopenConversation": "重新打开对话",
+      "conversationResolved": "对话已解决",
+      "replyPlaceholder": "写回复...",
+      "reply": "回复",
+      "cancel": "取消",
+      "resolutionSummary": "解决摘要",
+      "resolutionPlaceholder": "总结解决内容...",
+      "confirmResolve": "确认解决",
+      "resolve": "解决",
+      "delete": "删除",
+      "startPlaceholder": "开始对话...（输入 @ 搜索文件）",
+      "starting": "开始中...",
+      "startConversation": "开始对话"
     },
     "approval": {
       "conflictWarning": "冲突文件需要手动解决",

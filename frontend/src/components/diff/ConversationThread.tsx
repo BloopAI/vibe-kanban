@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   CheckCircleIcon,
   CaretDownIcon,
@@ -32,6 +33,7 @@ function MessageItem({
   canDelete: boolean;
   onDelete?: () => void;
 }) {
+  const { t } = useTranslation('tasks');
   const author = message.author;
   const authorName = author?.username || 'Anonymous';
   const createdAtStr = toDateString(message.created_at);
@@ -56,7 +58,7 @@ function MessageItem({
             <button
               onClick={onDelete}
               className="ml-auto text-low hover:text-error p-1 rounded"
-              title="Delete message"
+              title={t('conversation.thread.deleteMessage')}
             >
               <TrashIcon className="size-icon-xs" />
             </button>
@@ -77,6 +79,7 @@ function ResolvedConversationView({
   conversation: ConversationWithMessages;
   onUnresolve?: () => void;
 }) {
+  const { t } = useTranslation('tasks');
   const [isExpanded, setIsExpanded] = useState(false);
   const resolvedBy = conversation.resolved_by;
   const resolvedAtStr = conversation.resolved_at
@@ -93,7 +96,7 @@ function ResolvedConversationView({
           className="size-icon-sm text-success shrink-0"
           weight="fill"
         />
-        <span className="text-sm font-medium text-success">Resolved</span>
+        <span className="text-sm font-medium text-success">{t('conversation.thread.resolved')}</span>
         {resolvedBy && (
           <span className="text-xs text-low">
             by @{resolvedBy.username}{' '}
@@ -117,7 +120,7 @@ function ResolvedConversationView({
       {isExpanded && (
         <div className="mt-3 pt-3 border-t border-border">
           <div className="text-xs text-low mb-2 uppercase tracking-wide">
-            Conversation History
+            {t('conversation.thread.conversationHistory')}
           </div>
           <div className="space-y-2">
             {conversation.messages.map((msg, idx) => (
@@ -139,7 +142,7 @@ function ResolvedConversationView({
                   onUnresolve();
                 }}
               >
-                Re-open conversation
+                {t('conversation.thread.reopenConversation')}
               </Button>
             </div>
           )}
@@ -175,6 +178,7 @@ function ActiveConversationView({
   conversation: ConversationWithMessages;
   projectId?: string;
 }) {
+  const { t } = useTranslation('tasks');
   const {
     addMessageToConversation,
     deleteMessageFromConversation,
@@ -267,7 +271,7 @@ function ActiveConversationView({
           <WYSIWYGEditor
             value={replyText}
             onChange={setReplyText}
-            placeholder="Write a reply..."
+            placeholder={t('conversation.thread.replyPlaceholder')}
             className="w-full text-sm min-h-[60px]"
             projectId={projectId}
             onCmdEnter={handleAddReply}
@@ -282,7 +286,7 @@ function ActiveConversationView({
               {isSubmitting ? (
                 <SpinnerIcon className="size-icon-sm animate-spin" />
               ) : (
-                'Reply'
+                t('conversation.thread.reply')
               )}
             </Button>
             <Button
@@ -293,7 +297,7 @@ function ActiveConversationView({
                 setReplyText('');
               }}
             >
-              Cancel
+              {t('conversation.thread.cancel')}
             </Button>
           </div>
         </div>
@@ -302,12 +306,12 @@ function ActiveConversationView({
       {isResolving && (
         <div className="mt-3 pt-3 border-t border-success/30">
           <div className="text-xs text-low mb-2 uppercase tracking-wide">
-            Resolution Summary
+            {t('conversation.thread.resolutionSummary')}
           </div>
           <textarea
             value={resolveSummary}
             onChange={(e) => setResolveSummary(e.target.value)}
-            placeholder="Summarize what was resolved..."
+            placeholder={t('conversation.thread.resolutionPlaceholder')}
             className="w-full text-sm min-h-[60px] p-2 rounded border border-border bg-surface focus:outline-none focus:ring-1 focus:ring-success resize-none"
             autoFocus
           />
@@ -323,10 +327,10 @@ function ActiveConversationView({
               ) : (
                 <CheckCircleIcon className="size-icon-xs mr-1" />
               )}
-              Confirm Resolve
+              {t('conversation.thread.confirmResolve')}
             </Button>
             <Button variant="ghost" size="xs" onClick={handleCancelResolve}>
-              Cancel
+              {t('conversation.thread.cancel')}
             </Button>
           </div>
         </div>
@@ -336,11 +340,11 @@ function ActiveConversationView({
         <div className="mt-3 pt-3 border-t border-brand/30 flex gap-2 flex-wrap">
           <Button variant="ghost" size="xs" onClick={() => setIsReplying(true)}>
             <ChatCircleIcon className="size-icon-xs mr-1" />
-            Reply
+            {t('conversation.thread.reply')}
           </Button>
           <Button size="xs" onClick={handleStartResolve}>
             <CheckCircleIcon className="size-icon-xs mr-1" />
-            Resolve
+            {t('conversation.thread.resolve')}
           </Button>
           {conversation.messages.length === 1 && (
             <Button
@@ -350,7 +354,7 @@ function ActiveConversationView({
               className="ml-auto text-error hover:bg-error/10"
             >
               <TrashIcon className="size-icon-xs mr-1" />
-              Delete
+              {t('conversation.thread.delete')}
             </Button>
           )}
         </div>
