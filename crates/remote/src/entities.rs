@@ -87,7 +87,7 @@ crate::define_entity!(
     ProjectStatus,
     table: "project_statuses",
     scope: Project,
-    fields: [name: String, color: String, sort_order: i32],
+    fields: [name: String, color: String, sort_order: i32, hidden: bool],
 );
 
 // Issue: simple project scope with many fields

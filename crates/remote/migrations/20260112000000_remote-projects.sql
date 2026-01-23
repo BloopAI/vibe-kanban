@@ -33,6 +33,7 @@ CREATE TABLE project_statuses (
     name VARCHAR(50) NOT NULL,
     color VARCHAR(20) NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
+    hidden BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     -- Prevents duplicate sort orders within the same project

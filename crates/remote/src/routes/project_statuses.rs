@@ -102,6 +102,7 @@ async fn create_project_status(
         payload.name,
         payload.color,
         payload.sort_order,
+        payload.hidden,
     )
     .await
     .map_err(|error| {
@@ -151,6 +152,7 @@ async fn update_project_status(
         payload.name,
         payload.color,
         payload.sort_order,
+        payload.hidden,
     )
     .await
     .map_err(|error| {
