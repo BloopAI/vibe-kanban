@@ -334,6 +334,10 @@
     "noOrganizationFound": "No organization found",
     "unassigned": "Unassigned",
     "noTagsAvailable": "No tags available",
+    "createNewTag": "Create new tag",
+    "searchTags": "Search tags...",
+    "selectColorFor": "Select color for",
+    "createTag": "Create",
     "filesCount": "{{count}} Files",
     "noPrCreated": "No PR created",
     "noCommentsYet": "No comments yet"

@@ -12,7 +12,7 @@ export type KanbanCardContentProps = {
   title: string;
   description?: string | null;
   priority: IssuePriority;
-  tags: { id: string; name: string }[];
+  tags: { id: string; name: string; color: string }[];
   assignees: User[];
   isLoading?: boolean;
   className?: string;
@@ -51,7 +51,7 @@ export const KanbanCardContent = ({
         <div className="flex items-center gap-half flex-wrap flex-1 min-w-0">
           <PriorityIcon priority={priority} />
           {tags.slice(0, 2).map((tag) => (
-            <KanbanBadge key={tag.id} name={tag.name} />
+            <KanbanBadge key={tag.id} name={tag.name} color={tag.color} />
           ))}
           {tags.length > 2 && (
             <span className="text-sm text-low">+{tags.length - 2}</span>
