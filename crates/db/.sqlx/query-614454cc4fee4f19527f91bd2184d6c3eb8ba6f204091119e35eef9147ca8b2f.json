@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                cat.id as \"id!: Uuid\",\n                cat.execution_process_id as \"execution_process_id!: Uuid\",\n                cat.agent_session_id,\n                cat.prompt,\n                cat.summary,\n                cat.seen as \"seen!: bool\",\n                cat.created_at as \"created_at!: DateTime<Utc>\",\n                cat.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM coding_agent_turns cat\n               JOIN execution_processes ep ON cat.execution_process_id = ep.id\n               JOIN sessions s ON ep.session_id = s.id\n               WHERE s.workspace_id = $1\n                 AND ep.run_reason = 'codingagent'\n                 AND ep.dropped = 0\n               ORDER BY ep.created_at DESC\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "execution_process_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "agent_session_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "prompt",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "summary",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "seen!: bool",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "614454cc4fee4f19527f91bd2184d6c3eb8ba6f204091119e35eef9147ca8b2f"
+}

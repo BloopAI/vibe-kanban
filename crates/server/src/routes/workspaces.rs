@@ -7,6 +7,7 @@ use axum::{
     routing::get,
 };
 use db::models::{
+    coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     workspace::Workspace,
     workspace_repo::WorkspaceRepo,
@@ -32,6 +33,18 @@ pub struct WorkspaceStatusResponse {
     pub lines_added: Option<usize>,
     /// Total lines removed across all files
     pub lines_removed: Option<usize>,
+}
+
+/// Response for workspace transcript endpoint
+#[derive(Debug, Serialize, TS)]
+pub struct WorkspaceTranscriptResponse {
+    pub workspace_id: String,
+    /// The prompt that was sent to the coding agent
+    pub prompt: Option<String>,
+    /// The agent's summary/final output
+    pub summary: Option<String>,
+    /// The agent session ID (e.g., Claude session ID)
+    pub agent_session_id: Option<String>,
 }
 
 /// Get workspace execution status and diff stats.
@@ -88,6 +101,42 @@ pub async fn get_workspace_status(
         lines_added,
         lines_removed,
     })))
+}
+
+/// Get workspace transcript (prompt, summary, agent_session_id).
+/// Returns 404 if workspace not found.
+/// Returns empty fields if no coding agent turns exist.
+#[axum::debug_handler]
+pub async fn get_workspace_transcript(
+    State(deployment): State<DeploymentImpl>,
+    Path(workspace_id): Path<Uuid>,
+) -> Result<ResponseJson<ApiResponse<WorkspaceTranscriptResponse>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    // Find workspace, return 404 if not found
+    let _workspace = Workspace::find_by_id(pool, workspace_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound(format!("Workspace {} not found", workspace_id)))?;
+
+    // Find the latest coding agent turn for this workspace
+    let coding_agent_turn = CodingAgentTurn::find_latest_by_workspace_id(pool, workspace_id).await?;
+
+    let response = match coding_agent_turn {
+        Some(turn) => WorkspaceTranscriptResponse {
+            workspace_id: workspace_id.to_string(),
+            prompt: turn.prompt,
+            summary: turn.summary,
+            agent_session_id: turn.agent_session_id,
+        },
+        None => WorkspaceTranscriptResponse {
+            workspace_id: workspace_id.to_string(),
+            prompt: None,
+            summary: None,
+            agent_session_id: None,
+        },
+    };
+
+    Ok(ResponseJson(ApiResponse::success(response)))
 }
 
 /// Diff stats for a workspace
@@ -164,5 +213,7 @@ async fn compute_workspace_diff_stats(
 }
 
 pub fn router() -> Router<DeploymentImpl> {
-    Router::new().route("/{id}/status", get(get_workspace_status))
+    Router::new()
+        .route("/{id}/status", get(get_workspace_status))
+        .route("/{id}/transcript", get(get_workspace_transcript))
 }
