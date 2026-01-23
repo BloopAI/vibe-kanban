@@ -5,7 +5,7 @@ import { RJSFValidationError } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { useTranslation } from 'react-i18next';
 import { BaseCodingAgent } from 'shared/types';
-import { settingsRjsfTheme } from './rjsf';
+import { settingsRjsfTheme } from './rjsf/theme';
 import { SettingsSaveBar } from './SettingsComponents';
 
 interface ExecutorConfigFormProps {
