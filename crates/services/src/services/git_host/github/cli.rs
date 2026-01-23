@@ -352,6 +352,7 @@ impl GhCli {
                 &pr_number.to_string(),
                 "--repo",
                 &format!("{owner}/{repo}"),
+                "--force",
             ],
             Some(repo_path),
         )?;
