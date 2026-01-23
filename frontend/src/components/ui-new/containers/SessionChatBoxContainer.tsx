@@ -74,6 +74,8 @@ interface SharedProps {
   linesRemoved: number;
   /** Callback to scroll to previous user message */
   onScrollToPreviousMessage: () => void;
+  /** Callback to scroll to bottom of conversation */
+  onScrollToBottom: () => void;
 }
 
 /** Props for existing session mode */
@@ -115,6 +117,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     linesAdded,
     linesRemoved,
     onScrollToPreviousMessage,
+    onScrollToBottom,
   } = props;
 
   // Extract mode-specific values
@@ -384,6 +387,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       clearUploadedImages();
       if (isNewSessionMode) await clearDraft();
       reviewContext?.clearComments();
+      onScrollToBottom();
     }
   }, [
     send,
@@ -396,6 +400,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     isNewSessionMode,
     clearDraft,
     reviewContext,
+    onScrollToBottom,
   ]);
 
   // Track previous process count for queue refresh

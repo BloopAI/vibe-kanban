@@ -64,6 +64,10 @@ export const WorkspacesMainContainer = forwardRef<
     conversationListRef.current?.scrollToPreviousUserMessage();
   }, []);
 
+  const handleScrollToBottom = useCallback(() => {
+    conversationListRef.current?.scrollToBottom();
+  }, []);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -91,6 +95,7 @@ export const WorkspacesMainContainer = forwardRef<
         linesRemoved: diffStats.lines_removed,
       }}
       onScrollToPreviousMessage={handleScrollToPreviousMessage}
+      onScrollToBottom={handleScrollToBottom}
     />
   );
 });
