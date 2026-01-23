@@ -62,7 +62,7 @@ const DEFAULT_PROFILES_JSON: &str = include_str!("../default_profiles.json");
 pub struct ExecutorProfileId {
     /// The executor type (e.g., "CLAUDE_CODE", "AMP")
     #[serde(alias = "profile", deserialize_with = "de_base_coding_agent_kebab")]
-    // Backwards compatability with ProfileVariantIds, esp stored in DB under ExecutorAction
+    // Backwards compatibility with ProfileVariantIds, esp stored in DB under ExecutorAction
     pub executor: BaseCodingAgent,
     /// Optional variant name (e.g., "PLAN", "ROUTER")
     #[serde(skip_serializing_if = "Option::is_none")]
