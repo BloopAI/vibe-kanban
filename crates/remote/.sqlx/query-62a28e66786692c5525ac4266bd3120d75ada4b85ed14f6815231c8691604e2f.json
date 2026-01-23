@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO project_statuses (id, project_id, name, color, sort_order, created_at)\n            VALUES ($1, $2, $3, $4, $5, $6)\n            RETURNING\n                id              AS \"id!: Uuid\",\n                project_id      AS \"project_id!: Uuid\",\n                name            AS \"name!\",\n                color           AS \"color!\",\n                sort_order      AS \"sort_order!\",\n                created_at      AS \"created_at!: DateTime<Utc>\"\n            ",
+  "query": "\n            SELECT\n                id              AS \"id!: Uuid\",\n                project_id      AS \"project_id!: Uuid\",\n                name            AS \"name!\",\n                color           AS \"color!\",\n                sort_order      AS \"sort_order!\",\n                hidden          AS \"hidden!\",\n                created_at      AS \"created_at!: DateTime<Utc>\"\n            FROM project_statuses\n            WHERE project_id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -30,18 +30,18 @@
       },
       {
         "ordinal": 5,
+        "name": "hidden!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Uuid",
-        "Varchar",
-        "Varchar",
-        "Int4",
-        "Timestamptz"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -50,8 +50,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "8d1bf70edc5118ee6cd4de1752b7e595b0453795859887e51f320c6af442b1d1"
+  "hash": "62a28e66786692c5525ac4266bd3120d75ada4b85ed14f6815231c8691604e2f"
 }

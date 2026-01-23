@@ -24,6 +24,7 @@ use crate::{
         pull_requests::PullRequest,
         tags::Tag,
         types::{IssuePriority, IssueRelationshipType},
+        users::User,
         workspaces::Workspace,
     },
     entity::EntityExport,
@@ -70,6 +71,17 @@ crate::define_entity!(
     },
 );
 
+// User: shape-only (no mutations), scoped via organization membership
+crate::define_entity!(
+    User,
+    table: "users",
+    shape: {
+        where_clause: r#""id" IN (SELECT user_id FROM organization_member_metadata WHERE "organization_id" = $1)"#,
+        params: ["organization_id"],
+        url: "/shape/users",
+    },
+);
+
 // =============================================================================
 // Project-scoped entities
 // =============================================================================
@@ -87,7 +99,7 @@ crate::define_entity!(
     ProjectStatus,
     table: "project_statuses",
     scope: Project,
-    fields: [name: String, color: String, sort_order: i32],
+    fields: [name: String, color: String, sort_order: i32, hidden: bool],
 );
 
 // Issue: simple project scope with many fields
@@ -220,6 +232,7 @@ pub fn all_entities() -> Vec<&'static dyn EntityExport> {
         &PROJECT_ENTITY,
         &NOTIFICATION_ENTITY,
         &ORGANIZATION_MEMBER_ENTITY,
+        &USER_ENTITY,
         // Project-scoped
         &TAG_ENTITY,
         &PROJECT_STATUS_ENTITY,
@@ -244,6 +257,7 @@ pub fn all_shapes() -> Vec<&'static dyn crate::shapes::ShapeExport> {
         &PROJECT_SHAPE,
         &NOTIFICATION_SHAPE,
         &ORGANIZATION_MEMBER_SHAPE,
+        &USER_SHAPE,
         &TAG_SHAPE,
         &PROJECT_STATUS_SHAPE,
         &ISSUE_SHAPE,

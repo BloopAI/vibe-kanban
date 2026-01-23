@@ -12,7 +12,7 @@ export type NotificationType = "IssueCommentAdded" | "IssueStatusChanged" | "Iss
 
 export type Workspace = { id: string, project_id: string, owner_user_id: string, issue_id: string | null, local_workspace_id: string, archived: boolean, files_changed: number | null, lines_added: number | null, lines_removed: number | null, created_at: string, updated_at: string, };
 
-export type ProjectStatus = { id: string, project_id: string, name: string, color: string, sort_order: number, created_at: string, };
+export type ProjectStatus = { id: string, project_id: string, name: string, color: string, sort_order: number, hidden: boolean, created_at: string, };
 
 export type Tag = { id: string, project_id: string, name: string, color: string, };
 
@@ -41,6 +41,8 @@ export type PullRequestStatus = "open" | "merged" | "closed";
 export type PullRequest = { id: string, url: string, number: number, status: PullRequestStatus, merged_at: string | null, merge_commit_sha: string | null, target_branch_name: string, issue_id: string, workspace_id: string | null, created_at: string, updated_at: string, };
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
+
+export type User = { id: string, email: string, first_name: string | null, last_name: string | null, username: string | null, created_at: string, updated_at: string, };
 
 export enum MemberRole { ADMIN = "ADMIN", MEMBER = "MEMBER" }
 
@@ -78,9 +80,9 @@ export type CreateProjectStatusRequest = {
  * Optional client-generated ID. If not provided, server generates one.
  * Using client-generated IDs enables stable optimistic updates.
  */
-id?: string, project_id: string, name: string, color: string, sort_order: number, };
+id?: string, project_id: string, name: string, color: string, sort_order: number, hidden: boolean, };
 
-export type UpdateProjectStatusRequest = { name: string | null, color: string | null, sort_order: number | null, };
+export type UpdateProjectStatusRequest = { name: string | null, color: string | null, sort_order: number | null, hidden: boolean | null, };
 
 export type CreateIssueRequest = { 
 /**
@@ -179,6 +181,12 @@ export const ORGANIZATION_MEMBER_METADATA_SHAPE = defineShape<OrganizationMember
   'organization_member_metadata',
   ['organization_id'] as const,
   '/v1/shape/organization_members'
+);
+
+export const USERS_SHAPE = defineShape<User>(
+  'users',
+  ['organization_id'] as const,
+  '/v1/shape/users'
 );
 
 export const TAGS_SHAPE = defineShape<Tag>(
@@ -293,6 +301,15 @@ export const ORGANIZATION_MEMBER_ENTITY: EntityDefinition<OrganizationMember> = 
   mutationScope: null,
   shapeScope: null,
   shape: ORGANIZATION_MEMBER_METADATA_SHAPE,
+  mutations: null,
+};
+
+export const USER_ENTITY: EntityDefinition<User> = {
+  name: 'User',
+  table: 'users',
+  mutationScope: null,
+  shapeScope: null,
+  shape: USERS_SHAPE,
   mutations: null,
 };
 
