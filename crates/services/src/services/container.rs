@@ -889,6 +889,23 @@ pub trait ContainerService {
                                 );
                             }
                         }
+                        LogMsg::MessageUuid(agent_message_uuid) => {
+                            // Update the message UUID for --resume-session-at
+                            if let Err(e) = CodingAgentTurn::update_agent_message_uuid(
+                                &db.pool,
+                                execution_id,
+                                &agent_message_uuid,
+                            )
+                            .await
+                            {
+                                tracing::error!(
+                                    "Failed to update agent_message_uuid {} for execution process {}: {}",
+                                    agent_message_uuid,
+                                    execution_id,
+                                    e
+                                );
+                            }
+                        }
                         LogMsg::Finished => {
                             break;
                         }

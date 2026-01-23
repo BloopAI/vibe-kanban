@@ -174,8 +174,8 @@ pub async fn follow_up(
         let _ = ExecutionProcess::drop_at_and_after(pool, process.session_id, proc_id).await?;
     }
 
-    let latest_agent_session_id =
-        ExecutionProcess::find_latest_coding_agent_turn_session_id(pool, session.id).await?;
+    let latest_session_info =
+        ExecutionProcess::find_latest_coding_agent_turn_session_info(pool, session.id).await?;
 
     let prompt = payload.prompt;
 
@@ -188,10 +188,11 @@ pub async fn follow_up(
         .filter(|dir| !dir.is_empty())
         .cloned();
 
-    let action_type = if let Some(agent_session_id) = latest_agent_session_id {
+    let action_type = if let Some((agent_session_id, agent_message_uuid)) = latest_session_info {
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt: prompt.clone(),
             session_id: agent_session_id,
+            message_uuid: agent_message_uuid,
             executor_profile_id: executor_profile_id.clone(),
             working_dir: working_dir.clone(),
         })

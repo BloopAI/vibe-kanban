@@ -203,14 +203,21 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        message_uuid: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await?;
-        let command_parts = command_builder.build_follow_up(&[
-            "--fork-session".to_string(),
-            "--resume".to_string(),
-            session_id.to_string(),
-        ])?;
+
+        // Build CLI args for session resumption
+        let mut args = vec!["--resume".to_string(), session_id.to_string()];
+
+        // Use --resume-session-at if message_uuid is available (preferred over --fork-session)
+        if let Some(uuid) = message_uuid {
+            args.push("--resume-session-at".to_string());
+            args.push(uuid.to_string());
+        }
+
+        let command_parts = command_builder.build_follow_up(&args)?;
         self.spawn_internal(current_dir, prompt, command_parts, env)
             .await
     }
@@ -441,6 +448,7 @@ impl ClaudeLogProcessor {
                     LogMsg::Stdout(x) => x,
                     LogMsg::JsonPatch(_)
                     | LogMsg::SessionId(_)
+                    | LogMsg::MessageUuid(_)
                     | LogMsg::Stderr(_)
                     | LogMsg::Ready => continue,
                     LogMsg::Finished => break,
@@ -470,12 +478,17 @@ impl ClaudeLogProcessor {
 
                     match serde_json::from_str::<ClaudeJson>(trimmed) {
                         Ok(claude_json) => {
-                            // Extract session ID if present
+                            // Extract session ID if present (only once)
                             if !session_id_extracted
                                 && let Some(session_id) = Self::extract_session_id(&claude_json)
                             {
                                 msg_store.push_session_id(session_id);
                                 session_id_extracted = true;
+                            }
+
+                            // Extract user message UUID (tracks latest for --resume-session-at)
+                            if let Some(uuid) = Self::extract_user_message_uuid(&claude_json) {
+                                msg_store.push_message_uuid(uuid);
                             }
 
                             let patches = processor.normalize_entries(
@@ -541,6 +554,14 @@ impl ClaudeLogProcessor {
             ClaudeJson::ControlResponse { .. } => None,
             ClaudeJson::ControlCancelRequest { .. } => None,
             ClaudeJson::Unknown { .. } => None,
+        }
+    }
+
+    /// Extract user message UUID from Claude JSON (for --resume-session-at)
+    fn extract_user_message_uuid(claude_json: &ClaudeJson) -> Option<String> {
+        match claude_json {
+            ClaudeJson::User { uuid, .. } => uuid.clone(),
+            _ => None,
         }
     }
 
@@ -1681,6 +1702,8 @@ pub enum ClaudeJson {
     User {
         message: ClaudeMessage,
         session_id: Option<String>,
+        #[serde(default)]
+        uuid: Option<String>,
         #[serde(default, rename = "isSynthetic")]
         is_synthetic: bool,
     },

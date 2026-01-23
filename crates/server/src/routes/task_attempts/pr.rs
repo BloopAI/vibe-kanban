@@ -150,8 +150,8 @@ async fn trigger_pr_description_follow_up(
         return Ok(());
     };
 
-    // Get latest agent session ID if one exists (for coding agent continuity)
-    let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(
+    // Get latest agent session info if one exists (for coding agent continuity)
+    let latest_session_info = ExecutionProcess::find_latest_coding_agent_turn_session_info(
         &deployment.db().pool,
         session.id,
     )
@@ -164,10 +164,11 @@ async fn trigger_pr_description_follow_up(
         .cloned();
 
     // Build the action type (follow-up if session exists, otherwise initial)
-    let action_type = if let Some(agent_session_id) = latest_agent_session_id {
+    let action_type = if let Some((agent_session_id, agent_message_uuid)) = latest_session_info {
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt,
             session_id: agent_session_id,
+            message_uuid: agent_message_uuid,
             executor_profile_id: executor_profile_id.clone(),
             working_dir: working_dir.clone(),
         })

@@ -79,6 +79,7 @@ impl StandardCodingAgentExecutor for QaMockExecutor {
         current_dir: &Path,
         prompt: &str,
         _session_id: &str,
+        _message_uuid: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         // QA mode doesn't support real sessions, just spawn fresh
