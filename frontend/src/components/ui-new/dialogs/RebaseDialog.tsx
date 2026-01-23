@@ -17,7 +17,7 @@ import { defineModal } from '@/lib/modals';
 import { GitOperationsProvider } from '@/contexts/GitOperationsContext';
 import { useGitOperations } from '@/hooks/useGitOperations';
 import { useAttempt } from '@/hooks/useAttempt';
-import { attemptsApi, type Result } from '@/lib/api';
+import type { Result } from '@/lib/api';
 import { ResolveConflictsDialog } from './ResolveConflictsDialog';
 
 export interface RebaseDialogProps {
@@ -75,30 +75,35 @@ function RebaseDialogContent({
     } catch (err) {
       // Check if this is a conflict error (Result type with success=false)
       const resultErr = err as Result<void, GitOperationError> | undefined;
-      const errorType =
-        resultErr && !resultErr.success ? resultErr.error?.type : undefined;
+      const errorData =
+        resultErr && !resultErr.success ? resultErr.error : undefined;
 
-      if (
-        errorType === 'merge_conflicts' ||
-        errorType === 'rebase_in_progress'
-      ) {
+      if (errorData?.type === 'merge_conflicts') {
+        // Hide this dialog and show the resolve conflicts dialog
+        // Use conflict details directly from the error response (no extra API call needed)
+        modal.hide();
+        await ResolveConflictsDialog.show({
+          workspaceId: attemptId,
+          conflictOp: errorData.op,
+          sourceBranch: workspace?.branch ?? null,
+          targetBranch: errorData.target_branch,
+          conflictedFiles: errorData.conflicted_files,
+          repoName: undefined,
+        });
+        return;
+      }
+
+      if (errorData?.type === 'rebase_in_progress') {
         // Hide this dialog and show the resolve conflicts dialog
         modal.hide();
-
-        // Fetch fresh branch status to get conflict details
-        const branchStatus = await attemptsApi.getBranchStatus(attemptId);
-        const repoStatus = branchStatus?.find((s) => s.repo_id === repoId);
-
-        if (repoStatus) {
-          await ResolveConflictsDialog.show({
-            workspaceId: attemptId,
-            conflictOp: repoStatus.conflict_op ?? 'rebase',
-            sourceBranch: workspace?.branch ?? null,
-            targetBranch: repoStatus.target_branch_name,
-            conflictedFiles: repoStatus.conflicted_files ?? [],
-            repoName: repoStatus.repo_name,
-          });
-        }
+        await ResolveConflictsDialog.show({
+          workspaceId: attemptId,
+          conflictOp: 'rebase',
+          sourceBranch: workspace?.branch ?? null,
+          targetBranch: selectedBranch,
+          conflictedFiles: [],
+          repoName: undefined,
+        });
         return;
       }
 

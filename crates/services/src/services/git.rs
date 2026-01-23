@@ -29,8 +29,11 @@ pub enum GitServiceError {
     InvalidRepository(String),
     #[error("Branch not found: {0}")]
     BranchNotFound(String),
-    #[error("Merge conflicts: {0}")]
-    MergeConflicts(String),
+    #[error("Merge conflicts: {message}")]
+    MergeConflicts {
+        message: String,
+        conflicted_files: Vec<String>,
+    },
     #[error("Branches diverged: {0}")]
     BranchesDiverged(String),
     #[error("{0} has uncommitted changes: {1}")]
@@ -1304,9 +1307,11 @@ impl GitService {
 
         // If there are conflicts, return an error
         if index.has_conflicts() {
-            return Err(GitServiceError::MergeConflicts(
-                "Merge failed due to conflicts. Please resolve conflicts manually.".to_string(),
-            ));
+            return Err(GitServiceError::MergeConflicts {
+                message: "Merge failed due to conflicts. Please resolve conflicts manually."
+                    .to_string(),
+                conflicted_files: vec![],
+            });
         }
 
         // Write the merged tree back to the repository
@@ -1382,11 +1387,12 @@ impl GitService {
                         .and_then(|h| h.shorthand().map(|s| s.to_string()))
                         .unwrap_or_else(|| "(unknown)".to_string());
                     // List conflicted files (best-effort)
-                    let conflicts = git.get_conflicted_files(worktree_path).unwrap_or_default();
-                    let files_part = if conflicts.is_empty() {
+                    let conflicted_files =
+                        git.get_conflicted_files(worktree_path).unwrap_or_default();
+                    let files_part = if conflicted_files.is_empty() {
                         "".to_string()
                     } else {
-                        let mut sample = conflicts.clone();
+                        let mut sample = conflicted_files.clone();
                         let total = sample.len();
                         sample.truncate(10);
                         let list = sample.join(", ");
@@ -1404,7 +1410,10 @@ impl GitService {
                     let msg = format!(
                         "Rebase encountered merge conflicts while rebasing '{attempt_branch}' onto '{new_base_branch}'.{files_part} Resolve conflicts and then continue or abort."
                     );
-                    return Err(GitServiceError::MergeConflicts(msg));
+                    return Err(GitServiceError::MergeConflicts {
+                        message: msg,
+                        conflicted_files,
+                    });
                 }
                 return Err(GitServiceError::InvalidRepository(format!(
                     "Rebase failed: {}",
