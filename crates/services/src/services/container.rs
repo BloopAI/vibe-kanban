@@ -395,8 +395,15 @@ pub trait ContainerService {
             ctx.task.ralph_max_iterations
         );
 
-        // Use task.description as the prompt (user includes instructions in their prompt)
-        let prompt = ctx.task.description.clone().unwrap_or_default();
+        // Determine prompt based on Ralph started state
+        // If started=true, use iterationPrompt (or default); otherwise use task.description
+        let prompt = if status.started {
+            status.iteration_prompt.unwrap_or_else(|| {
+                "Read .ralph/prompt.md and continue implementing the PRD.".to_string()
+            })
+        } else {
+            ctx.task.description.clone().unwrap_or_default()
+        };
 
         let working_dir = ctx.workspace
             .agent_working_dir
@@ -1199,10 +1206,32 @@ pub trait ContainerService {
         )
         .await?;
 
-        // Build prompt - Ralph tasks use task.description as the starting prompt
-        // (user includes instructions to read .ralph/prompt.md in their prompt)
+        // Build prompt based on task type and Ralph state
         let prompt = if task.task_type == TaskType::Ralph {
-            task.description.clone().unwrap_or_default()
+            // For Ralph tasks, check if prd.json exists and has started=true
+            // If so, use iterationPrompt or default; otherwise use task.description
+            let repo_path = workspace
+                .container_ref
+                .as_ref()
+                .and_then(|ws_path| repos.first().map(|r| PathBuf::from(ws_path).join(&r.name)));
+
+            if let Some(ref path) = repo_path {
+                match RalphService::get_status_from_repo(path) {
+                    Ok(status) if status.started => {
+                        status.iteration_prompt.unwrap_or_else(|| {
+                            "Read .ralph/prompt.md and continue implementing the PRD.".to_string()
+                        })
+                    }
+                    _ => {
+                        // prd.json doesn't exist, has error, or started=false
+                        // Use task.description (interactive mode)
+                        task.description.clone().unwrap_or_default()
+                    }
+                }
+            } else {
+                // No repo path available, fall back to task.description
+                task.description.clone().unwrap_or_default()
+            }
         } else {
             task.to_prompt()
         };
