@@ -472,29 +472,21 @@ export const tasksApi = {
 // Task Approvals API
 export const taskApprovalsApi = {
   list: async (taskId: string): Promise<TaskApprovalWithUser[]> => {
-    const response = await makeRequest(
-      `/api/tasks/${taskId}/task-approvals`
-    );
+    const response = await makeRequest(`/api/tasks/${taskId}/task-approvals`);
     return handleApiResponse<TaskApprovalWithUser[]>(response);
   },
 
   approve: async (taskId: string): Promise<TaskApprovalWithUser> => {
-    const response = await makeRequest(
-      `/api/tasks/${taskId}/task-approvals`,
-      {
-        method: 'POST',
-      }
-    );
+    const response = await makeRequest(`/api/tasks/${taskId}/task-approvals`, {
+      method: 'POST',
+    });
     return handleApiResponse<TaskApprovalWithUser>(response);
   },
 
   unapprove: async (taskId: string): Promise<void> => {
-    const response = await makeRequest(
-      `/api/tasks/${taskId}/task-approvals`,
-      {
-        method: 'DELETE',
-      }
-    );
+    const response = await makeRequest(`/api/tasks/${taskId}/task-approvals`, {
+      method: 'DELETE',
+    });
     return handleApiResponse<void>(response);
   },
 };
