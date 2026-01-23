@@ -574,7 +574,7 @@ impl LocalContainerService {
             // Cleanup msg store
             if let Some(msg_arc) = msg_stores.write().await.remove(&exec_id) {
                 msg_arc.push_finished();
-                tokio::time::sleep(Duration::from_millis(50)).await; // Wait for the finish message to propogate
+                tokio::time::sleep(Duration::from_millis(50)).await; // Wait for the finish message to propagate
                 match Arc::try_unwrap(msg_arc) {
                     Ok(inner) => drop(inner),
                     Err(arc) => tracing::error!(
