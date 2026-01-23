@@ -308,20 +308,6 @@ export type PushError = { "type": "force_push_required" };
 
 export type PrError = { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "cli_not_logged_in", provider: ProviderKind, } | { "type": "git_cli_not_logged_in" } | { "type": "git_cli_not_installed" } | { "type": "target_branch_not_found", branch: string, } | { "type": "unsupported_provider" };
 
-export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, target_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, 
-/**
- * True if a `git rebase` is currently in progress in this worktree
- */
-is_rebase_in_progress: boolean, 
-/**
- * Current conflict operation if any
- */
-conflict_op: ConflictOp | null, 
-/**
- * List of files currently in conflicted (unmerged) state
- */
-conflicted_files: Array<string>, };
-
 export type RunScriptError = { "type": "no_script_configured" } | { "type": "process_already_running" };
 
 export type AttachPrResponse = { pr_attached: boolean, pr_url: string | null, pr_number: bigint | null, pr_status: MergeStatus | null, };
@@ -350,7 +336,11 @@ conflict_op: ConflictOp | null,
 /**
  * List of files currently in conflicted (unmerged) state
  */
-conflicted_files: Array<string>, };
+conflicted_files: Array<string>, 
+/**
+ * True if the target branch is a remote branch (merging not allowed, must use PR)
+ */
+is_target_remote: boolean, };
 
 export type UpdateWorkspace = { archived: boolean | null, pinned: boolean | null, name: string | null, };
 
