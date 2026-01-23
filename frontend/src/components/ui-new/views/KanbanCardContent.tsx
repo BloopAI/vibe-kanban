@@ -1,13 +1,10 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import type { IssuePriority } from 'shared/remote-types';
+import type { IssuePriority, User } from 'shared/remote-types';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
 import { KanbanBadge } from '@/components/ui-new/primitives/KanbanBadge';
-import {
-  KanbanAssignee,
-  type KanbanAssigneeProps,
-} from '@/components/ui-new/primitives/KanbanAssignee';
+import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
 import { RunningDots } from '@/components/ui-new/primitives/RunningDots';
 
 export type KanbanCardContentProps = {
@@ -16,7 +13,7 @@ export type KanbanCardContentProps = {
   description?: string | null;
   priority: IssuePriority;
   tags: { id: string; name: string }[];
-  assignee: KanbanAssigneeProps['assignee'];
+  assignees: User[];
   isLoading?: boolean;
   className?: string;
 };
@@ -27,7 +24,7 @@ export const KanbanCardContent = ({
   description,
   priority,
   tags,
-  assignee,
+  assignees,
   isLoading = false,
   className,
 }: KanbanCardContentProps) => {
@@ -60,7 +57,7 @@ export const KanbanCardContent = ({
             <span className="text-sm text-low">+{tags.length - 2}</span>
           )}
         </div>
-        <KanbanAssignee assignee={assignee} />
+        <KanbanAssignee assignees={assignees} />
       </div>
     </div>
   );
