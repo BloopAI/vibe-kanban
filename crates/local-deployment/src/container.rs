@@ -357,7 +357,10 @@ impl LocalContainerService {
                 &worktree_path
             );
 
-            match self.git().commit_with_options(&worktree_path, message, options) {
+            match self
+                .git()
+                .commit_with_options(&worktree_path, message, options)
+            {
                 Ok(true) => {
                     any_committed = true;
                     tracing::info!("Committed changes in repo '{}'", repo.name);
