@@ -307,6 +307,28 @@ pub struct GetTaskResponse {
     pub task: TaskDetails,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetWorkspaceStatusRequest {
+    #[schemars(description = "The ID of the workspace to check status for")]
+    pub workspace_id: Uuid,
+}
+
+#[derive(Debug, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct GetWorkspaceStatusResponse {
+    #[schemars(description = "The workspace ID")]
+    pub workspace_id: String,
+    #[schemars(
+        description = "Status of the latest coding agent execution: 'running', 'completed', 'failed', 'killed', or 'none'"
+    )]
+    pub status: String,
+    #[schemars(description = "Number of files with changes (if workspace has container_ref)")]
+    pub files_changed: Option<usize>,
+    #[schemars(description = "Total lines added across all files")]
+    pub lines_added: Option<usize>,
+    #[schemars(description = "Total lines removed across all files")]
+    pub lines_removed: Option<usize>,
+}
+
 #[derive(Debug, Clone)]
 pub struct TaskServer {
     client: reqwest::Client,
@@ -998,6 +1020,22 @@ impl TaskServer {
         let response = GetTaskResponse { task: details };
 
         TaskServer::success(&response)
+    }
+
+    #[tool(
+        description = "Get workspace execution status and diff stats. Returns the status of the latest coding agent execution and file change statistics."
+    )]
+    async fn get_workspace_status(
+        &self,
+        Parameters(GetWorkspaceStatusRequest { workspace_id }): Parameters<GetWorkspaceStatusRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!("/api/workspaces/{}/status", workspace_id));
+        let status: GetWorkspaceStatusResponse = match self.send_json(self.client.get(&url)).await {
+            Ok(s) => s,
+            Err(e) => return Ok(e),
+        };
+
+        TaskServer::success(&status)
     }
 }
 
