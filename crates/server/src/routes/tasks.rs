@@ -415,6 +415,10 @@ pub struct RalphStatusResponse {
     /// Index of the current story (first with passes: false), if any
     pub current_story_index: Option<usize>,
     pub has_in_progress: bool,
+    /// Whether the PRD has been started (autonomous mode active)
+    pub started: bool,
+    /// Custom prompt for autonomous iterations (if set in prd.json)
+    pub iteration_prompt: Option<String>,
 }
 
 /// Get Ralph status for a task
@@ -465,6 +469,8 @@ pub async fn get_ralph_status(
                 current_story: status.current_story,
                 current_story_index,
                 has_in_progress: status.has_in_progress,
+                started: status.started,
+                iteration_prompt: status.iteration_prompt,
             }
         }
         Err(RalphError::PrdNotFound) => {
@@ -476,6 +482,8 @@ pub async fn get_ralph_status(
                 current_story: None,
                 current_story_index: None,
                 has_in_progress: false,
+                started: false,
+                iteration_prompt: None,
             }
         }
         Err(e) => {

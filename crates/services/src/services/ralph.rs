@@ -43,6 +43,12 @@ pub struct RalphStory {
 struct PrdFile {
     #[serde(rename = "userStories")]
     user_stories: Vec<PrdStory>,
+    /// Whether the PRD has been started (transitions from interactive to autonomous mode)
+    #[serde(default)]
+    started: bool,
+    /// Custom prompt for autonomous iterations (optional)
+    #[serde(default, rename = "iterationPrompt")]
+    iteration_prompt: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -70,6 +76,10 @@ pub struct RalphStatus {
     pub stories: Vec<RalphStory>,
     /// Whether any story has inProgress: true (agent is mid-work)
     pub has_in_progress: bool,
+    /// Whether the PRD has been started (autonomous mode active)
+    pub started: bool,
+    /// Custom prompt for autonomous iterations (if set in prd.json)
+    pub iteration_prompt: Option<String>,
 }
 
 /// Commit information for a completed story
@@ -138,6 +148,8 @@ impl RalphService {
         let completed_count = stories.iter().filter(|s| s.passes).count();
         let current_story = stories.iter().find(|s| !s.passes).cloned();
         let has_in_progress = stories.iter().any(|s| s.in_progress);
+        let started = prd.started;
+        let iteration_prompt = prd.iteration_prompt;
 
         Ok(RalphStatus {
             total_stories,
@@ -145,6 +157,8 @@ impl RalphService {
             current_story,
             stories,
             has_in_progress,
+            started,
+            iteration_prompt,
         })
     }
 
@@ -316,5 +330,50 @@ mod tests {
 
         let result = RalphService::get_status(&ralph_dir);
         assert!(matches!(result, Err(RalphError::PrdParseError(_))));
+    }
+
+    #[test]
+    fn test_get_status_with_started_and_iteration_prompt() {
+        let dir = tempdir().unwrap();
+        let ralph_dir = dir.path().join(".ralph");
+        std::fs::create_dir_all(&ralph_dir).unwrap();
+
+        let prd = r#"{
+            "project": "Test",
+            "branchName": "test-branch",
+            "started": true,
+            "iterationPrompt": "Custom iteration prompt for testing",
+            "userStories": [
+                {"id": "US-001", "title": "First story", "passes": false}
+            ]
+        }"#;
+        std::fs::write(ralph_dir.join("prd.json"), prd).unwrap();
+
+        let status = RalphService::get_status(&ralph_dir).unwrap();
+
+        assert!(status.started);
+        assert_eq!(status.iteration_prompt, Some("Custom iteration prompt for testing".to_string()));
+    }
+
+    #[test]
+    fn test_get_status_defaults_started_to_false() {
+        let dir = tempdir().unwrap();
+        let ralph_dir = dir.path().join(".ralph");
+        std::fs::create_dir_all(&ralph_dir).unwrap();
+
+        // PRD without started field should default to false
+        let prd = r#"{
+            "project": "Test",
+            "branchName": "test-branch",
+            "userStories": [
+                {"id": "US-001", "title": "First story", "passes": false}
+            ]
+        }"#;
+        std::fs::write(ralph_dir.join("prd.json"), prd).unwrap();
+
+        let status = RalphService::get_status(&ralph_dir).unwrap();
+
+        assert!(!status.started);
+        assert!(status.iteration_prompt.is_none());
     }
 }

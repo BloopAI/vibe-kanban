@@ -254,7 +254,15 @@ export type RalphStatusResponse = { total_stories: number, completed_count: numb
 /**
  * Index of the current story (first with passes: false), if any
  */
-current_story_index: number | null, has_in_progress: boolean, };
+current_story_index: number | null, has_in_progress: boolean, 
+/**
+ * Whether the PRD has been started (autonomous mode active)
+ */
+started: boolean, 
+/**
+ * Custom prompt for autonomous iterations (if set in prd.json)
+ */
+iteration_prompt: string | null, };
 
 export type RalphContinueResponse = { started: boolean, story_id: string | null, };
 
