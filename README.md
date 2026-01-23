@@ -1,58 +1,149 @@
-<p align="center">
-  <a href="https://vibekanban.com">
-    <picture>
-      <source srcset="frontend/public/vibe-kanban-logo-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="frontend/public/vibe-kanban-logo.svg" media="(prefers-color-scheme: light)">
-      <img src="frontend/public/vibe-kanban-logo.svg" alt="Vibe Kanban Logo">
-    </picture>
-  </a>
-</p>
+```
+██████╗  █████╗ ██╗     ██████╗ ██╗  ██╗
+██╔══██╗██╔══██╗██║     ██╔══██╗██║  ██║
+██████╔╝███████║██║     ██████╔╝███████║
+██╔══██╗██╔══██║██║     ██╔═══╝ ██╔══██║
+██║  ██║██║  ██║███████╗██║     ██║  ██║
+╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝  ╚═╝
+██╗  ██╗ █████╗ ███╗   ██╗██████╗  █████╗ ███╗   ██╗
+██║ ██╔╝██╔══██╗████╗  ██║██╔══██╗██╔══██╗████╗  ██║
+█████╔╝ ███████║██╔██╗ ██║██████╔╝███████║██╔██╗ ██║
+██╔═██╗ ██╔══██║██║╚██╗██║██╔══██╗██╔══██║██║╚██╗██║
+██║  ██╗██║  ██║██║ ╚████║██████╔╝██║  ██║██║ ╚████║
+╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝
+```
 
-<p align="center">Get 10X more out of Claude Code, Gemini CLI, Codex, Amp and other coding agents...</p>
-<p align="center">
-  <a href="https://www.npmjs.com/package/vibe-kanban"><img alt="npm" src="https://img.shields.io/npm/v/vibe-kanban?style=flat-square" /></a>
-  <a href="https://github.com/BloopAI/vibe-kanban/blob/main/.github/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/BloopAI/vibe-kanban/.github%2Fworkflows%2Fpublish.yml" /></a>
-  <a href="https://deepwiki.com/BloopAI/vibe-kanban"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
-</p>
+**Autonomous AI agent orchestration** • Fork of [Vibe Kanban](https://github.com/BloopAI/vibe-kanban)
 
-<h1 align="center">
-  <a href="https://jobs.polymer.co/vibe-kanban?source=github"><strong>We're hiring!</strong></a>
-</h1>
+---
 
 ![](frontend/public/vibe-kanban-screenshot-overview.png)
 
 ## Overview
 
-AI coding agents are increasingly writing the world's code and human engineers now spend the majority of their time planning, reviewing, and orchestrating tasks. Vibe Kanban streamlines this process, enabling you to:
+AI coding agents are increasingly writing the world's code and human engineers now spend the majority of their time planning, reviewing, and orchestrating tasks. Ralph-Kanban streamlines this process, enabling you to:
 
 - Easily switch between different coding agents
 - Orchestrate the execution of multiple coding agents in parallel or in sequence
 - Quickly review work and start dev servers
 - Track the status of tasks that your coding agents are working on
 - Centralise configuration of coding agent MCP configs
-- Open projects remotely via SSH when running Vibe Kanban on a remote server
+- **Run autonomous multi-iteration tasks with Ralph**
 
-You can watch a video overview [here](https://youtu.be/TFT3KnZOOAk).
+## What is Ralph?
+
+Ralph is an **autonomous coding agent system** that implements features incrementally from a PRD (Product Requirements Document). Instead of trying to build everything at once, Ralph:
+
+- **Breaks work into small stories** - Each story is small enough to complete in one AI session
+- **Executes one story per iteration** - Fresh context each time, no context overflow
+- **Tracks progress in `prd.json`** - Knows what's done, what's next, and can recover from crashes
+- **Pauses at checkpoints** - You review work at key milestones before continuing
+
+Ralph lives in the `.ralph/` folder of your repository:
+- `.ralph/prompt.md` - Agent instructions (you create this once)
+- `.ralph/prd.json` - The PRD with stories and progress (AI creates this)
+- `.ralph/progress.txt` - Log of completed work and learnings
+
+## Two-Phase Workflow
+
+### Phase 1: Interactive (Design)
+
+1. Create a **Ralph task** in the UI (toggle "Ralph" on)
+2. Chat with the AI to design your feature
+3. Tag files, discuss architecture, iterate on requirements
+4. AI creates `prd.json` when the PRD is ready
+
+During this phase, the AI receives your original task description as the prompt.
+
+### Phase 2: Autonomous (Execution)
+
+1. Set `"started": true` in `prd.json`
+2. Click **Continue** to start execution
+3. AI implements one story, commits, updates `prd.json`
+4. Auto-continues to next story (unless it's a checkpoint)
+5. At checkpoints, review work and click **Continue** when ready
+
+During this phase, the AI receives the iteration prompt (customizable in `prd.json`).
+
+## prd.json Schema
+
+The `prd.json` file controls Ralph's behavior. Key fields:
+
+### Top-Level Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `started` | boolean | `false` = interactive phase, `true` = autonomous phase |
+| `iterationPrompt` | string | Custom prompt for autonomous iterations. Default: "Read .ralph/prompt.md and continue implementing the PRD." |
+| `branchName` | string | Git branch for this feature |
+| `userStories` | array | List of stories to implement |
+
+### Story Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Story identifier (e.g., "US-001") |
+| `title` | string | Short description |
+| `passes` | boolean | `true` when story is complete |
+| `inProgress` | boolean | `true` while agent is working (for crash recovery) |
+| `checkpoint` | boolean | `true` to pause for review after this story |
+
+### Example
+
+```json
+{
+  "started": true,
+  "iterationPrompt": "Read .ralph/prompt.md and continue implementing the PRD.",
+  "branchName": "ralph/my-feature",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add database migration",
+      "passes": true,
+      "inProgress": false,
+      "checkpoint": true
+    },
+    {
+      "id": "US-002",
+      "title": "Add API endpoint",
+      "passes": false,
+      "inProgress": false,
+      "checkpoint": false
+    }
+  ]
+}
+```
+
+For complete agent instructions, see [`.ralph/prompt.md`](.ralph/prompt.md).
+
+## MCP Server
+
+Ralph-Kanban includes an MCP (Model Context Protocol) server that allows AI agents to manage tasks programmatically. Available tools:
+
+| Tool | Description |
+|------|-------------|
+| `list_projects` | List all projects |
+| `list_tasks` | List tasks in a project |
+| `create_task` | Create a new task |
+| `get_task` | Get task details |
+| `update_task` | Update task title, description, or status |
+| `delete_task` | Delete a task |
+| `start_workspace_session` | Start working on a task |
+| `list_repos` | List repositories in a project |
+| `get_repo` | Get repository details including scripts |
+| `update_setup_script` | Update repo setup script |
+| `update_cleanup_script` | Update repo cleanup script |
+| `update_dev_server_script` | Update repo dev server script |
+
+The MCP server automatically provides workspace context when running inside a task session.
 
 ## Installation
 
-Make sure you have authenticated with your favourite coding agent. A full list of supported coding agents can be found in the [docs](https://vibekanban.com/docs). Then in your terminal run:
+Make sure you have authenticated with your favourite coding agent. Then in your terminal run:
 
 ```bash
 npx vibe-kanban
 ```
-
-## Documentation
-
-Please head to the [website](https://vibekanban.com/docs) for the latest documentation and user guides.
-
-## Support
-
-We use [GitHub Discussions](https://github.com/BloopAI/vibe-kanban/discussions) for feature requests. Please open a discussion to create a feature request. For bugs please open an issue on this repo.
-
-## Contributing
-
-We would prefer that ideas and changes are first raised with the core team via [GitHub Discussions](https://github.com/BloopAI/vibe-kanban/discussions) or [Discord](https://discord.gg/AC4nwVtJM3), where we can discuss implementation details and alignment with the existing roadmap. Please do not open PRs without first discussing your proposal with the team.
 
 ## Development
 
@@ -117,7 +208,7 @@ The following environment variables can be configured at build time or runtime:
 
 #### Self-Hosting with a Reverse Proxy or Custom Domain
 
-When running Vibe Kanban behind a reverse proxy (e.g., nginx, Caddy, Traefik) or on a custom domain, you must set the `VK_ALLOWED_ORIGINS` environment variable. Without this, the browser's Origin header won't match the backend's expected host, and API requests will be rejected with a 403 Forbidden error.
+When running Ralph-Kanban behind a reverse proxy (e.g., nginx, Caddy, Traefik) or on a custom domain, you must set the `VK_ALLOWED_ORIGINS` environment variable. Without this, the browser's Origin header won't match the backend's expected host, and API requests will be rejected with a 403 Forbidden error.
 
 Set it to the full origin URL(s) where your frontend is accessible:
 
@@ -131,7 +222,7 @@ VK_ALLOWED_ORIGINS=https://vk.example.com,https://vk-staging.example.com
 
 ### Remote Deployment
 
-When running Vibe Kanban on a remote server (e.g., via systemctl, Docker, or cloud hosting), you can configure your editor to open projects via SSH:
+When running Ralph-Kanban on a remote server (e.g., via systemctl, Docker, or cloud hosting), you can configure your editor to open projects via SSH:
 
 1. **Access via tunnel**: Use Cloudflare Tunnel, ngrok, or similar to expose the web UI
 2. **Configure remote SSH** in Settings → Editor Integration:
@@ -144,4 +235,13 @@ When running Vibe Kanban on a remote server (e.g., via systemctl, Docker, or clo
 
 When configured, the "Open in VSCode" buttons will generate URLs like `vscode://vscode-remote/ssh-remote+user@host/path` that open your local editor and connect to the remote server.
 
-See the [documentation](https://vibekanban.com/docs/configuration-customisation/global-settings#remote-ssh-configuration) for detailed setup instructions.
+## Upstream
+
+This is a fork of [Vibe Kanban](https://github.com/BloopAI/vibe-kanban) with Ralph autonomous agent capabilities added. Ralph is an experimental add-on for multi-iteration autonomous task execution.
+
+To sync with upstream:
+```bash
+git remote add upstream https://github.com/BloopAI/vibe-kanban.git
+git fetch upstream
+git merge upstream/main
+```
