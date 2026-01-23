@@ -347,6 +347,32 @@ pub struct GetWorkspaceTranscriptResponse {
     pub agent_session_id: Option<String>,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetWorkspaceDiffRequest {
+    #[schemars(description = "The ID of the workspace to get diff for")]
+    pub workspace_id: Uuid,
+}
+
+#[derive(Debug, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct FileDiffInfo {
+    #[schemars(description = "File path")]
+    pub path: String,
+    #[schemars(description = "Number of lines added")]
+    pub additions: usize,
+    #[schemars(description = "Number of lines deleted")]
+    pub deletions: usize,
+    #[schemars(description = "The unified diff content")]
+    pub diff_content: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct GetWorkspaceDiffResponse {
+    #[schemars(description = "The workspace ID")]
+    pub workspace_id: String,
+    #[schemars(description = "List of file diffs")]
+    pub files: Vec<FileDiffInfo>,
+}
+
 #[derive(Debug, Clone)]
 pub struct TaskServer {
     client: reqwest::Client,
@@ -1071,6 +1097,22 @@ impl TaskServer {
             };
 
         TaskServer::success(&transcript)
+    }
+
+    #[tool(
+        description = "Get workspace file diffs. Returns the list of changed files with their unified diff content, additions, and deletions."
+    )]
+    async fn get_workspace_diff(
+        &self,
+        Parameters(GetWorkspaceDiffRequest { workspace_id }): Parameters<GetWorkspaceDiffRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!("/api/workspaces/{}/diff", workspace_id));
+        let diff: GetWorkspaceDiffResponse = match self.send_json(self.client.get(&url)).await {
+            Ok(d) => d,
+            Err(e) => return Ok(e),
+        };
+
+        TaskServer::success(&diff)
     }
 }
 
