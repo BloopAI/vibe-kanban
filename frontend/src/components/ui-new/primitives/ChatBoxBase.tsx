@@ -181,7 +181,10 @@ export function ChatBoxBase({
           onChange={editor.onChange}
           onCmdEnter={onCmdEnter}
           disabled={disabled}
-          className="min-h-0 max-h-[50vh] overflow-y-auto"
+          // min-h-double ensures space for at least one line of text,
+          // preventing the absolutely-positioned placeholder from overlapping
+          // with the footer when the editor is empty
+          className="min-h-double max-h-[50vh] overflow-y-auto"
           workspaceId={workspaceId}
           projectId={projectId}
           autoFocus={autoFocus}

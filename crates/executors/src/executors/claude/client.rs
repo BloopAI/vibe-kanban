@@ -22,6 +22,8 @@ use crate::{
 const EXIT_PLAN_MODE_NAME: &str = "ExitPlanMode";
 pub const AUTO_APPROVE_CALLBACK_ID: &str = "AUTO_APPROVE_CALLBACK_ID";
 pub const STOP_GIT_CHECK_CALLBACK_ID: &str = "STOP_GIT_CHECK_CALLBACK_ID";
+// Prefix for denial messages from the user, mirrors claude code CLI behavior
+const TOOL_DENY_PREFIX: &str = "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To tell you how to proceed, the user said: ";
 
 /// Claude Agent client with control protocol support
 pub struct ClaudeAgentClient {
@@ -92,13 +94,10 @@ impl ClaudeAgentClient {
                             })
                         }
                     }
-                    ApprovalStatus::Denied { reason } => {
-                        let message = reason.unwrap_or("Denied by user".to_string());
-                        Ok(PermissionResult::Deny {
-                            message,
-                            interrupt: Some(false),
-                        })
-                    }
+                    ApprovalStatus::Denied { reason } => Ok(PermissionResult::Deny {
+                        message: format!("{}{}", TOOL_DENY_PREFIX, reason.unwrap_or_default()),
+                        interrupt: Some(false),
+                    }),
                     ApprovalStatus::TimedOut => Ok(PermissionResult::Deny {
                         message: "Approval request timed out".to_string(),
                         interrupt: Some(false),
