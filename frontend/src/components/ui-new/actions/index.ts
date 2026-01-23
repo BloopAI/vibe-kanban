@@ -386,7 +386,7 @@ export const Actions = {
     },
   },
 
-SpinOffWorkspace: {
+  SpinOffWorkspace: {
     id: 'spin-off-workspace',
     label: 'Spin off workspace',
     icon: GitForkIcon,

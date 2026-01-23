@@ -315,7 +315,7 @@
     "tooltip": "Contexto: {{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "Uso del contexto: {{percentage}}%"
   },
-"shortcuts": {
+  "shortcuts": {
     "title": "Atajos de Teclado",
     "inWorkspace": "(en espacio de trabajo)",
     "sequentialHint": "Atajos secuenciales: Presiona la primera tecla, luego la segunda en 500ms.",

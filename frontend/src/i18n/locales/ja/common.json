@@ -315,7 +315,7 @@
     "tooltip": "コンテキスト: {{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "コンテキスト使用量: {{percentage}}%"
   },
-"shortcuts": {
+  "shortcuts": {
     "title": "キーボードショートカット",
     "inWorkspace": "(ワークスペース内)",
     "sequentialHint": "シーケンシャルショートカット：最初のキーを押し、500ms以内に2番目のキーを押してください。",
