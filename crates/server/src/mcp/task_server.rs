@@ -373,6 +373,26 @@ pub struct GetWorkspaceDiffResponse {
     pub files: Vec<FileDiffInfo>,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CloseWorkspaceRequest {
+    #[schemars(description = "The ID of the workspace to close")]
+    pub workspace_id: Uuid,
+    #[schemars(description = "The close strategy: 'merge' to merge changes into target branch, or 'discard' to discard changes")]
+    pub strategy: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct CloseWorkspaceResponse {
+    #[schemars(description = "The workspace ID")]
+    pub workspace_id: String,
+    #[schemars(description = "Whether the close operation succeeded")]
+    pub success: bool,
+    #[schemars(description = "A message describing the result")]
+    pub message: String,
+    #[schemars(description = "The merge commit SHA (only present when strategy is 'merge')")]
+    pub merge_commit_sha: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct TaskServer {
     client: reqwest::Client,
@@ -1113,6 +1133,38 @@ impl TaskServer {
         };
 
         TaskServer::success(&diff)
+    }
+
+    #[tool(
+        description = "Close a workspace with merge or discard strategy. Use 'merge' to merge changes into the target branch, or 'discard' to discard all changes. Returns success status and merge commit SHA if merge strategy was used."
+    )]
+    async fn close_workspace(
+        &self,
+        Parameters(CloseWorkspaceRequest {
+            workspace_id,
+            strategy,
+        }): Parameters<CloseWorkspaceRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        // Validate strategy
+        if strategy != "merge" && strategy != "discard" {
+            return Self::err(
+                format!(
+                    "Invalid strategy '{}'. Must be 'merge' or 'discard'",
+                    strategy
+                ),
+                None::<String>,
+            );
+        }
+
+        let url = self.url(&format!("/api/workspaces/{}/close", workspace_id));
+        let body = serde_json::json!({ "strategy": strategy });
+        let result: CloseWorkspaceResponse =
+            match self.send_json(self.client.post(&url).json(&body)).await {
+                Ok(r) => r,
+                Err(e) => return Ok(e),
+            };
+
+        TaskServer::success(&result)
     }
 }
 
