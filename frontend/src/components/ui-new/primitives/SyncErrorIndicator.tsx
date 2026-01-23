@@ -58,7 +58,9 @@ export function SyncErrorIndicator() {
                   {streamError.error.message}
                   {streamError.error.status && (
                     <span className="ml-1 text-error/70">
-                      {t('syncError.status', { status: streamError.error.status })}
+                      {t('syncError.status', {
+                        status: streamError.error.status,
+                      })}
                     </span>
                   )}
                 </div>
