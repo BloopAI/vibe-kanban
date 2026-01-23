@@ -7,7 +7,7 @@ interface SelectedReposListProps {
   repos: Repo[];
   onRemove: (repoId: string) => void;
   branchesByRepo?: Record<string, GitBranch[]>;
-  selectedBranches?: Record<string, string>;
+  selectedBranches?: Record<string, string | null>;
   onBranchChange?: (repoId: string, branch: string) => void;
 }
 

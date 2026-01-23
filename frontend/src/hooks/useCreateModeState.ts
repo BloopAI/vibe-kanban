@@ -19,13 +19,14 @@ import { projectsApi, repoApi } from '@/lib/api';
 
 interface LocationState {
   initialPrompt?: string | null;
-  preferredRepos?: Array<{ repo_id: string; target_branch: string }> | null;
+  preferredRepos?: Array<{ repo_id: string; target_branch: string | null }>
+    | null;
 }
 
 /** Unified repo model - keeps repo and branch together */
 interface SelectedRepo {
   repo: Repo;
-  targetBranch: string;
+  targetBranch: string | null;
 }
 
 type Phase = 'loading' | 'ready' | 'error';
@@ -46,7 +47,7 @@ type DraftAction =
     }
   | { type: 'INIT_ERROR'; error: string }
   | { type: 'SET_PROJECT'; projectId: string | null }
-  | { type: 'ADD_REPO'; repo: Repo; targetBranch: string }
+  | { type: 'ADD_REPO'; repo: Repo; targetBranch: string | null }
   | { type: 'REMOVE_REPO'; repoId: string }
   | { type: 'SET_TARGET_BRANCH'; repoId: string; branch: string }
   | { type: 'SET_PROFILE'; profile: ExecutorProfileId | null }
@@ -153,7 +154,7 @@ interface UseCreateModeStateResult {
   // State
   selectedProjectId: string | null;
   repos: Repo[];
-  targetBranches: Record<string, string>;
+  targetBranches: Record<string, string | null>;
   selectedProfile: ExecutorProfileId | null;
   message: string;
   isLoading: boolean;
@@ -316,7 +317,7 @@ export function useCreateModeState({
       project_id: state.projectId,
       repos: state.repos.map((r) => ({
         repo_id: r.repo.id,
-        target_branch: r.targetBranch,
+        target_branch: r.targetBranch ?? '',
       })),
       selected_profile: state.profile,
     });
@@ -341,7 +342,7 @@ export function useCreateModeState({
           acc[r.repo.id] = r.targetBranch;
           return acc;
         },
-        {} as Record<string, string>
+        {} as Record<string, string | null>
       ),
     [state.repos]
   );
@@ -366,7 +367,7 @@ export function useCreateModeState({
 
   const addRepo = useCallback((repo: Repo) => {
     // Default branch will be auto-selected by CreateModeReposSectionContainer
-    dispatch({ type: 'ADD_REPO', repo, targetBranch: '' });
+    dispatch({ type: 'ADD_REPO', repo, targetBranch: null });
   }, []);
 
   const removeRepo = useCallback((repoId: string) => {
@@ -441,27 +442,39 @@ async function initializeState({
 
     if (hasPreferredRepos || hasInitialPrompt) {
       const data: Partial<DraftState> = {};
+      let appliedNavState = false;
 
       // Handle preferred repos
       if (hasPreferredRepos) {
         const repoIds = navState!.preferredRepos!.map((r) => r.repo_id);
-        const fetchedRepos = await repoApi.getBatch(repoIds);
+        try {
+          const fetchedRepos = await repoApi.getBatch(repoIds);
 
-        data.repos = fetchedRepos.map((repo) => {
-          const pref = navState!.preferredRepos!.find(
-            (p) => p.repo_id === repo.id
+          data.repos = fetchedRepos.map((repo) => {
+            const pref = navState!.preferredRepos!.find(
+              (p) => p.repo_id === repo.id
+            );
+            return { repo, targetBranch: pref?.target_branch || null };
+          });
+          appliedNavState = data.repos.length > 0;
+        } catch (e) {
+          console.warn(
+            '[useCreateModeState] Failed to load preferred repos:',
+            e
           );
-          return { repo, targetBranch: pref?.target_branch ?? '' };
-        });
+        }
       }
 
       // Handle initial prompt (can be combined with preferred repos)
       if (hasInitialPrompt) {
         data.message = navState!.initialPrompt!;
+        appliedNavState = true;
       }
 
-      dispatch({ type: 'INIT_COMPLETE', data });
-      return;
+      if (appliedNavState) {
+        dispatch({ type: 'INIT_COMPLETE', data });
+        return;
+      }
     }
 
     // Priority 3: Restore from scratch
@@ -520,7 +533,7 @@ async function initializeState({
           if (fullRepo) {
             restoredRepos.push({
               repo: fullRepo,
-              targetBranch: draftRepo.target_branch,
+              targetBranch: draftRepo.target_branch || null,
             });
           }
         }
@@ -538,7 +551,7 @@ async function initializeState({
     if (initialRepos && initialRepos.length > 0) {
       const repos: SelectedRepo[] = initialRepos.map((r) => ({
         repo: r,
-        targetBranch: r.target_branch,
+        targetBranch: r.target_branch || null,
       }));
 
       dispatch({

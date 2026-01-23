@@ -12,7 +12,7 @@ interface CreateModeContextValue {
   addRepo: (repo: Repo) => void;
   removeRepo: (repoId: string) => void;
   clearRepos: () => void;
-  targetBranches: Record<string, string>;
+  targetBranches: Record<string, string | null>;
   setTargetBranch: (repoId: string, branch: string) => void;
   selectedProfile: ExecutorProfileId | null;
   setSelectedProfile: (profile: ExecutorProfileId | null) => void;
