@@ -126,7 +126,7 @@
       ],
       "priority": 7,
       "passes": false,
-      "inProgress": false,
+      "inProgress": true,
       "checkpoint": false,
       "notes": "Reference: crates/services/src/services/worktree_manager.rs for worktree removal"
     },
