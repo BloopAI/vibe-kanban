@@ -226,7 +226,9 @@ export function FileTagTypeaheadPlugin({
             </TypeaheadMenu.Header>
 
             {options.length === 0 ? (
-              <TypeaheadMenu.Empty>{t('typeahead.noTagsOrFiles')}</TypeaheadMenu.Empty>
+              <TypeaheadMenu.Empty>
+                {t('typeahead.noTagsOrFiles')}
+              </TypeaheadMenu.Empty>
             ) : (
               <TypeaheadMenu.ScrollArea>
                 {/* Tags Section */}
