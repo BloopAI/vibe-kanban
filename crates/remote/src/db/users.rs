@@ -6,7 +6,8 @@ use uuid::Uuid;
 
 use super::{Tx, identity_errors::IdentityError};
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
+#[ts(export)]
 pub struct User {
     pub id: Uuid,
     pub email: String,

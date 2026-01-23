@@ -41,6 +41,7 @@ pub fn router() -> Router<AppState> {
             shapes::ORGANIZATION_MEMBERS.url,
             get(proxy_organization_members),
         )
+        .route(shapes::USERS.url, get(proxy_users))
         // Project-scoped
         .route(shapes::WORKSPACES.url, get(proxy_workspaces))
         .route(shapes::PROJECT_STATUSES.url, get(proxy_project_statuses))
@@ -110,6 +111,24 @@ async fn proxy_organization_members(
     proxy_table(
         &state,
         &shapes::ORGANIZATION_MEMBERS,
+        &query.params,
+        &[query.organization_id.to_string()],
+    )
+    .await
+}
+
+async fn proxy_users(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Query(query): Query<OrgShapeQuery>,
+) -> Result<Response, ProxyError> {
+    organization_members::assert_membership(state.pool(), query.organization_id, ctx.user.id)
+        .await
+        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
+
+    proxy_table(
+        &state,
+        &shapes::USERS,
         &query.params,
         &[query.organization_id.to_string()],
     )

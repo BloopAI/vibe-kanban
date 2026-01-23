@@ -16,7 +16,7 @@ use remote::{
         pull_requests::PullRequest,
         tags::Tag,
         types::{IssuePriority, IssueRelationshipType, PullRequestStatus, WorkspacePrStatus},
-        users::UserData,
+        users::{User, UserData},
         workspaces::Workspace,
     },
     // Import from new unified entities module
@@ -99,6 +99,7 @@ fn export_shapes() -> String {
         PullRequestStatus::decl(),
         PullRequest::decl(),
         UserData::decl(),
+        User::decl(),
         MemberRole::decl(),
         OrganizationMember::decl(),
         // Mutation request types
