@@ -1,23 +1,18 @@
 use axum::{
     Extension, Router,
+    extract::State,
     http::{HeaderMap, StatusCode},
     response::Json as ResponseJson,
     routing::{delete, get, post},
-    extract::State,
 };
 use db::models::{
     task::Task,
     task_approval::{TaskApproval, TaskApprovalWithUser},
 };
+use deployment::Deployment;
 use utils::response::ApiResponse;
 
-use deployment::Deployment;
-
-use crate::{
-    DeploymentImpl,
-    error::ApiError,
-    middleware::try_get_authenticated_user,
-};
+use crate::{DeploymentImpl, error::ApiError, middleware::try_get_authenticated_user};
 
 pub async fn list_task_approvals(
     Extension(task): Extension<Task>,

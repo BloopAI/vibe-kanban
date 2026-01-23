@@ -63,10 +63,7 @@ impl TaskApproval {
     }
 
     /// Count approvals for a task
-    pub async fn count_by_task_id(
-        pool: &SqlitePool,
-        task_id: Uuid,
-    ) -> Result<i64, sqlx::Error> {
+    pub async fn count_by_task_id(pool: &SqlitePool, task_id: Uuid) -> Result<i64, sqlx::Error> {
         sqlx::query_scalar!(
             r#"SELECT COUNT(*) as "count!: i64" FROM task_approvals WHERE task_id = $1"#,
             task_id

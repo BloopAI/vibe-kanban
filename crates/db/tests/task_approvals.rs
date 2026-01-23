@@ -91,7 +91,9 @@ async fn test_user_can_approve_a_task() {
     assert_eq!(approval.task_id, task.id);
     assert_eq!(approval.user_id, user.id);
 
-    let count = TaskApproval::count_by_task_id(&pool, task.id).await.unwrap();
+    let count = TaskApproval::count_by_task_id(&pool, task.id)
+        .await
+        .unwrap();
     assert_eq!(count, 1);
 
     let approvals = TaskApproval::find_by_task_id(&pool, task.id).await.unwrap();
@@ -107,12 +109,22 @@ async fn test_user_can_remove_their_approval() {
     let task = create_test_task(&pool, project.id, TaskStatus::InReview).await;
 
     TaskApproval::create(&pool, task.id, user.id).await.unwrap();
-    assert_eq!(TaskApproval::count_by_task_id(&pool, task.id).await.unwrap(), 1);
+    assert_eq!(
+        TaskApproval::count_by_task_id(&pool, task.id)
+            .await
+            .unwrap(),
+        1
+    );
 
     let rows = TaskApproval::delete(&pool, task.id, user.id).await.unwrap();
     assert_eq!(rows, 1);
 
-    assert_eq!(TaskApproval::count_by_task_id(&pool, task.id).await.unwrap(), 0);
+    assert_eq!(
+        TaskApproval::count_by_task_id(&pool, task.id)
+            .await
+            .unwrap(),
+        0
+    );
     assert!(!TaskApproval::exists(&pool, task.id, user.id).await.unwrap());
 }
 
@@ -130,7 +142,12 @@ async fn test_duplicate_approval_is_rejected() {
     assert!(result.is_err());
 
     // Count should still be 1
-    assert_eq!(TaskApproval::count_by_task_id(&pool, task.id).await.unwrap(), 1);
+    assert_eq!(
+        TaskApproval::count_by_task_id(&pool, task.id)
+            .await
+            .unwrap(),
+        1
+    );
 }
 
 #[tokio::test]
@@ -141,7 +158,9 @@ async fn test_status_transition_blocked_without_enough_approvals() {
     let task = create_test_task(&pool, project.id, TaskStatus::InReview).await;
 
     // Project requires 1 approval by default, task has 0
-    let approval_count = TaskApproval::count_by_task_id(&pool, task.id).await.unwrap();
+    let approval_count = TaskApproval::count_by_task_id(&pool, task.id)
+        .await
+        .unwrap();
     assert_eq!(approval_count, 0);
     assert!(approval_count < project.min_approvals_required);
 
@@ -161,11 +180,15 @@ async fn test_status_transition_allowed_with_enough_approvals() {
     // Add an approval
     TaskApproval::create(&pool, task.id, user.id).await.unwrap();
 
-    let approval_count = TaskApproval::count_by_task_id(&pool, task.id).await.unwrap();
+    let approval_count = TaskApproval::count_by_task_id(&pool, task.id)
+        .await
+        .unwrap();
     assert!(approval_count >= project.min_approvals_required);
 
     // The gate passes, so the status update should succeed
-    Task::update_status(&pool, task.id, TaskStatus::Done).await.unwrap();
+    Task::update_status(&pool, task.id, TaskStatus::Done)
+        .await
+        .unwrap();
     let updated = Task::find_by_id(&pool, task.id).await.unwrap().unwrap();
     assert_eq!(updated.status, TaskStatus::Done);
 }
@@ -178,13 +201,21 @@ async fn test_multiple_users_can_approve_same_task() {
     let project = create_test_project(&pool, Some(user1.id)).await;
     let task = create_test_task(&pool, project.id, TaskStatus::InReview).await;
 
-    TaskApproval::create(&pool, task.id, user1.id).await.unwrap();
-    TaskApproval::create(&pool, task.id, user2.id).await.unwrap();
+    TaskApproval::create(&pool, task.id, user1.id)
+        .await
+        .unwrap();
+    TaskApproval::create(&pool, task.id, user2.id)
+        .await
+        .unwrap();
 
-    let count = TaskApproval::count_by_task_id(&pool, task.id).await.unwrap();
+    let count = TaskApproval::count_by_task_id(&pool, task.id)
+        .await
+        .unwrap();
     assert_eq!(count, 2);
 
-    let approvals = TaskApproval::find_by_task_id_with_users(&pool, task.id).await.unwrap();
+    let approvals = TaskApproval::find_by_task_id_with_users(&pool, task.id)
+        .await
+        .unwrap();
     assert_eq!(approvals.len(), 2);
 
     let user_ids: Vec<Uuid> = approvals.iter().map(|a| a.approval.user_id).collect();
@@ -200,12 +231,22 @@ async fn test_approvals_deleted_when_task_deleted() {
     let task = create_test_task(&pool, project.id, TaskStatus::InReview).await;
 
     TaskApproval::create(&pool, task.id, user.id).await.unwrap();
-    assert_eq!(TaskApproval::count_by_task_id(&pool, task.id).await.unwrap(), 1);
+    assert_eq!(
+        TaskApproval::count_by_task_id(&pool, task.id)
+            .await
+            .unwrap(),
+        1
+    );
 
     // Delete the task - CASCADE should remove approvals
     Task::delete(&pool, task.id).await.unwrap();
 
-    assert_eq!(TaskApproval::count_by_task_id(&pool, task.id).await.unwrap(), 0);
+    assert_eq!(
+        TaskApproval::count_by_task_id(&pool, task.id)
+            .await
+            .unwrap(),
+        0
+    );
 }
 
 #[tokio::test]
@@ -216,7 +257,9 @@ async fn test_non_inreview_to_done_transition_not_gated() {
     let task = create_test_task(&pool, project.id, TaskStatus::InProgress).await;
 
     // Task has 0 approvals, project requires 1
-    let approval_count = TaskApproval::count_by_task_id(&pool, task.id).await.unwrap();
+    let approval_count = TaskApproval::count_by_task_id(&pool, task.id)
+        .await
+        .unwrap();
     assert_eq!(approval_count, 0);
 
     // The gate only applies to InReview -> Done, not InProgress -> Done
@@ -224,7 +267,9 @@ async fn test_non_inreview_to_done_transition_not_gated() {
     assert!(task.status != TaskStatus::InReview);
 
     // Status update should succeed regardless of approval count
-    Task::update_status(&pool, task.id, TaskStatus::Done).await.unwrap();
+    Task::update_status(&pool, task.id, TaskStatus::Done)
+        .await
+        .unwrap();
     let updated = Task::find_by_id(&pool, task.id).await.unwrap().unwrap();
     assert_eq!(updated.status, TaskStatus::Done);
 }

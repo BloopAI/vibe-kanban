@@ -261,7 +261,7 @@ pub async fn create_task_and_start(
         last_attempt_failed: false,
         executor: payload.executor_profile_id.executor.to_string(),
         creator,
-        assignee: None, // Newly created task has no assignee yet
+        assignee: None,    // Newly created task has no assignee yet
         approval_count: 0, // Newly created task has no approvals
     })))
 }

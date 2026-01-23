@@ -484,10 +484,9 @@ pub async fn attach_existing_pr(
         // If PR is merged, check approval gate then mark task as done
         if matches!(pr_info.status, MergeStatus::Merged) {
             if task.status == TaskStatus::InReview {
-                let project =
-                    db::models::project::Project::find_by_id(pool, task.project_id)
-                        .await?
-                        .ok_or(ApiError::Database(sqlx::Error::RowNotFound))?;
+                let project = db::models::project::Project::find_by_id(pool, task.project_id)
+                    .await?
+                    .ok_or(ApiError::Database(sqlx::Error::RowNotFound))?;
 
                 let approval_count =
                     db::models::task_approval::TaskApproval::count_by_task_id(pool, task.id)
