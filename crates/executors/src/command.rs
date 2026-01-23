@@ -16,7 +16,7 @@ pub enum CommandBuildError {
     EmptyCommand,
     #[error("failed to quote command: {0}")]
     QuoteError(#[from] shlex::QuoteError),
-    #[error("invalide shell parameters: {0}")]
+    #[error("invalid shell parameters: {0}")]
     InvalidShellParams(String),
 }
 
