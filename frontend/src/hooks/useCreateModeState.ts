@@ -305,6 +305,7 @@ export function useCreateModeState({
       return;
 
     hasAppliedPreferredRepos.current = true;
+    hasInitializedFromScratch.current = true;
 
     const branches = locationState.preferredRepos.reduce(
       (acc, r) => {
