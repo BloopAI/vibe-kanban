@@ -53,3 +53,21 @@
 - The `continue_ralph_execution` endpoint is a third place where prompt logic exists (alongside container.rs auto-continue and start_workspace)
 - All three places now consistently check `status.started` and use `iteration_prompt` when appropriate
 ---
+
+## 2026-01-23 - US-004
+- Replaced SVG logo with ASCII art "RALPH-KANBAN" title
+- Added "What is Ralph?" section explaining the autonomous agent system
+- Added "Two-Phase Workflow" section (Interactive → Autonomous)
+- Added "prd.json Schema" section with field explanations and example
+- Added "MCP Server" section listing all available tools
+- Kept all existing Development sections intact
+- Added "Upstream" section with link to original Vibe Kanban repo
+- Removed: "We're hiring" banner, Support, Contributing, Documentation link, badges
+
+**Files changed:**
+- `README.md` - Complete rewrite with Ralph-Kanban branding
+
+**Learnings for future iterations:**
+- Keep README structure modular so sections can be updated independently
+- ASCII art renders well in GitHub markdown when wrapped in code blocks
+---
