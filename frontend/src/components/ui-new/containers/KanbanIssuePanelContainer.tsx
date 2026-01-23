@@ -1,26 +1,19 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useEntity } from '@/lib/electric/hooks';
-import {
-  PROJECT_STATUS_ENTITY,
-  TAG_ENTITY,
-  ISSUE_ENTITY,
-  ISSUE_ASSIGNEE_ENTITY,
-  type IssuePriority,
-} from 'shared/remote-types';
+import { useProjectContext } from '@/contexts/remote/ProjectContext';
+import { useOrgContext } from '@/contexts/remote/OrgContext';
+import { type IssuePriority } from 'shared/remote-types';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import {
   KanbanIssuePanel,
   type IssueFormData,
 } from '@/components/ui-new/views/KanbanIssuePanel';
-import { useProjectRemoteMembers } from '@/hooks/useProjectRemoteMembers';
 
-interface KanbanIssuePanelContainerProps {
-  projectId: string;
-}
-
-export function KanbanIssuePanelContainer({
-  projectId,
-}: KanbanIssuePanelContainerProps) {
+/**
+ * KanbanIssuePanelContainer manages the issue detail/create panel.
+ * Uses ProjectContext and OrgContext for data and mutations.
+ * Must be rendered within both OrgProvider and ProjectProvider.
+ */
+export function KanbanIssuePanelContainer() {
   const selectedKanbanIssueId = useUiPreferencesStore(
     (s) => s.selectedKanbanIssueId
   );
@@ -29,35 +22,21 @@ export function KanbanIssuePanelContainer({
     (s) => s.closeKanbanIssuePanel
   );
 
-  // Fetch project statuses
-  const { data: statuses, isLoading: statusesLoading } = useEntity(
-    PROJECT_STATUS_ENTITY,
-    { project_id: projectId }
-  );
-
-  // Fetch tags
-  const { data: tags, isLoading: tagsLoading } = useEntity(TAG_ENTITY, {
-    project_id: projectId,
-  });
-
-  // Fetch issues for the project (to generate display ID and find selected issue)
+  // Get data from contexts
   const {
-    data: issues,
-    isLoading: issuesLoading,
-    insert: insertIssue,
-    update: updateIssue,
-  } = useEntity(ISSUE_ENTITY, { project_id: projectId });
+    projectId,
+    issues,
+    statuses,
+    tags,
+    issueAssignees,
+    insertIssue,
+    updateIssue,
+    insertIssueAssignee,
+    removeIssueAssignee,
+    isLoading: projectLoading,
+  } = useProjectContext();
 
-  // Fetch issue assignees
-  const {
-    data: issueAssignees,
-    insert: insertIssueAssignee,
-    remove: removeIssueAssignee,
-  } = useEntity(ISSUE_ASSIGNEE_ENTITY, { project_id: projectId });
-
-  // Fetch real organization members
-  const { data: remoteMembers } = useProjectRemoteMembers(projectId);
-  const users = remoteMembers?.members ?? [];
+  const { membersWithProfiles, isLoading: orgLoading } = useOrgContext();
 
   // Find selected issue if in edit mode
   const selectedIssue = useMemo(() => {
@@ -236,7 +215,7 @@ export function KanbanIssuePanelContainer({
   ]);
 
   // Loading state
-  const isLoading = statusesLoading || tagsLoading || issuesLoading;
+  const isLoading = projectLoading || orgLoading;
 
   if (isLoading) {
     return (
@@ -254,7 +233,7 @@ export function KanbanIssuePanelContainer({
       onFormChange={handlePropertyChange}
       statuses={sortedStatuses}
       tags={tags}
-      users={users}
+      users={membersWithProfiles}
       workspaces={[]}
       comments={[]}
       linkedPrs={[]}

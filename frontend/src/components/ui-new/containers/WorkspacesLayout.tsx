@@ -30,11 +30,9 @@ import {
 
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
-import { KanbanContainer } from '@/components/ui-new/containers/KanbanContainer';
-import { KanbanIssuePanelContainer } from '@/components/ui-new/containers/KanbanIssuePanelContainer';
-import { useEntity } from '@/lib/electric/hooks';
-import { PROJECT_ENTITY } from 'shared/remote-types';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
+import { OrgProvider } from '@/contexts/remote/OrgContext';
+import { KanbanLayoutContainer } from '@/components/ui-new/containers/KanbanLayoutContainer';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 
@@ -80,13 +78,9 @@ export function WorkspacesLayout() {
     (s) => s.isKanbanRightPanelVisible
   );
 
-  // Get organization and project for Kanban mode
+  // Get organization for Kanban mode (project is fetched via OrgContext)
   const { data: orgsData } = useUserOrganizations();
   const firstOrg = orgsData?.organizations?.[0];
-  const { data: projects } = useEntity(PROJECT_ENTITY, {
-    organization_id: firstOrg?.id ?? '',
-  });
-  const kanbanProjectId = projects?.[0]?.id;
 
   useCommandBarShortcut(() => CommandBarDialog.show());
 
@@ -158,38 +152,19 @@ export function WorkspacesLayout() {
       <div className="flex flex-col h-screen">
         <NavbarContainer />
         <div className="flex flex-1 min-h-0">
-          <Group
-            orientation="horizontal"
-            className="flex-1 min-w-0 h-full"
-            defaultLayout={kanbanDefaultLayout}
-            onLayoutChange={onKanbanLayoutChange}
-          >
-            {/* Left Kanban Panel */}
-            <Panel
-              id="kanban-left"
-              minSize="20%"
-              className="min-w-0 h-full overflow-hidden bg-secondary"
-            >
-              <KanbanContainer />
-            </Panel>
-
-            {isKanbanRightPanelVisible && (
-              <Separator
-                id="kanban-separator"
-                className="w-1 bg-transparent hover:bg-brand/50 transition-colors cursor-col-resize"
+          {firstOrg ? (
+            <OrgProvider organizationId={firstOrg.id}>
+              <KanbanLayoutContainer
+                kanbanDefaultLayout={kanbanDefaultLayout}
+                onKanbanLayoutChange={onKanbanLayoutChange}
+                isKanbanRightPanelVisible={isKanbanRightPanelVisible}
               />
-            )}
-
-            {isKanbanRightPanelVisible && kanbanProjectId && (
-              <Panel
-                id="kanban-right"
-                minSize="20%"
-                className="min-w-0 h-full overflow-hidden bg-secondary"
-              >
-                <KanbanIssuePanelContainer projectId={kanbanProjectId} />
-              </Panel>
-            )}
-          </Group>
+            </OrgProvider>
+          ) : (
+            <div className="flex items-center justify-center h-full w-full">
+              <p className="text-low">Loading...</p>
+            </div>
+          )}
         </div>
       </div>
     );
