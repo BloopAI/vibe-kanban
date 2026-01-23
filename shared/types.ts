@@ -362,6 +362,8 @@ export type ResolveConversationResponse = { conversation: ConversationWithMessag
 
 export type ConversationError = { "type": "not_found" } | { "type": "message_not_found" } | { "type": "already_resolved" } | { "type": "validation_error", message: string, };
 
+export type ConversationEvent = { "type": "conversation_created", conversation: ConversationWithMessages, } | { "type": "message_added", conversation: ConversationWithMessages, } | { "type": "conversation_resolved", conversation: ConversationWithMessages, } | { "type": "conversation_unresolved", conversation: ConversationWithMessages, } | { "type": "conversation_deleted", conversation_id: string, } | { "type": "message_deleted", conversation: ConversationWithMessages, } | { "type": "conversation_auto_deleted", conversation_id: string, } | { "type": "refresh" };
+
 export type ReviewConversation = { id: string, workspace_id: string, file_path: string, line_number: bigint, side: string, code_line: string | null, is_resolved: boolean, resolved_at: Date | null, resolved_by_user_id: string | null, resolution_summary: string | null, created_at: Date, updated_at: Date, };
 
 export type ReviewConversationMessage = { id: string, conversation_id: string, user_id: string | null, content: string, created_at: Date, updated_at: Date, };

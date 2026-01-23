@@ -34,7 +34,7 @@ export function useReviewConversations(
     queryKey: conversationKeys.byAttempt(attemptId),
     queryFn: () => attemptsApi.listConversations(attemptId!),
     enabled,
-    staleTime: 10_000, // 10s cache
+    staleTime: 60_000,
     retry: 2,
   });
 }
@@ -52,7 +52,7 @@ export function useUnresolvedConversations(
     queryKey: conversationKeys.unresolved(attemptId),
     queryFn: () => attemptsApi.listUnresolvedConversations(attemptId!),
     enabled,
-    staleTime: 5_000, // Shorter cache for unresolved - more dynamic
+    staleTime: 60_000,
     retry: 2,
   });
 }
