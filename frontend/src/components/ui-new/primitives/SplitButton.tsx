@@ -40,7 +40,7 @@ export function SplitButton<T extends string>({
           onClick={() => onAction(selectedValue)}
           className={cn(
             'flex-1 bg-panel px-base py-half',
-            'text-sm font-medium text-normal',
+            'text-sm text-normal',
             'focus:outline-none focus-visible:ring-1 focus-visible:ring-brand focus-visible:ring-inset',
             'rounded-l-sm'
           )}

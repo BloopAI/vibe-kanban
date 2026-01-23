@@ -37,7 +37,7 @@ const DropdownMenuTriggerButton = React.forwardRef<
   <DropdownMenuPrimitive.Trigger
     ref={ref}
     className={cn(
-      'flex items-center gap-half bg-panel rounded-sm px-base py-half',
+      'flex items-center gap-half bg-secondary border border-border rounded-sm px-base py-half',
       'focus:outline-none focus-visible:ring-1 focus-visible:ring-brand',
       'disabled:opacity-50 disabled:cursor-not-allowed',
       className

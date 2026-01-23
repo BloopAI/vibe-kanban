@@ -18,11 +18,22 @@ mod electric_proxy;
 mod error;
 mod github_app;
 mod identity;
+mod issue_assignees;
+mod issue_comment_reactions;
+mod issue_comments;
+mod issue_followers;
+mod issue_relationships;
+mod issue_tags;
+mod issues;
+mod notifications;
 mod oauth;
 pub(crate) mod organization_members;
 mod organizations;
+mod project_statuses;
 mod projects;
+mod pull_requests;
 mod review;
+mod tags;
 pub mod tasks;
 mod tokens;
 
@@ -58,12 +69,23 @@ pub fn router(state: AppState) -> Router {
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
         .merge(projects::router())
-        .merge(tasks::router())
         .merge(organizations::router())
         .merge(organization_members::protected_router())
         .merge(oauth::protected_router())
         .merge(electric_proxy::router())
         .merge(github_app::protected_router())
+        .merge(project_statuses::router())
+        .merge(tags::router())
+        .merge(issue_comments::router())
+        .merge(issue_comment_reactions::router())
+        .merge(issues::router())
+        .merge(issue_assignees::router())
+        .merge(issue_followers::router())
+        .merge(issue_tags::router())
+        .merge(issue_relationships::router())
+        .merge(pull_requests::router())
+        .merge(notifications::router())
+        .merge(tasks::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,

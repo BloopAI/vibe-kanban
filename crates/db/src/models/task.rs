@@ -115,8 +115,8 @@ pub struct CreateTask {
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
     pub parent_workspace_id: Option<Uuid>,
-    pub image_ids: Option<Vec<Uuid>>,
     pub shared_task_id: Option<Uuid>,
+    pub image_ids: Option<Vec<Uuid>>,
 }
 
 impl CreateTask {
@@ -131,8 +131,8 @@ impl CreateTask {
             description,
             status: Some(TaskStatus::Todo),
             parent_workspace_id: None,
-            image_ids: None,
             shared_task_id: None,
+            image_ids: None,
         }
     }
 
@@ -149,8 +149,8 @@ impl CreateTask {
             description,
             status: Some(status),
             parent_workspace_id: None,
-            image_ids: None,
             shared_task_id: Some(shared_task_id),
+            image_ids: None,
         }
     }
 }
@@ -454,28 +454,6 @@ ORDER BY t.created_at DESC"#,
         Ok(result.rows_affected())
     }
 
-    /// Clear shared_task_id for all tasks that reference shared tasks belonging to a remote project
-    /// This breaks the link between local tasks and shared tasks when a project is unlinked
-    pub async fn clear_shared_task_ids_for_remote_project<'e, E>(
-        executor: E,
-        remote_project_id: Uuid,
-    ) -> Result<u64, sqlx::Error>
-    where
-        E: Executor<'e, Database = Sqlite>,
-    {
-        let result = sqlx::query!(
-            r#"UPDATE tasks
-               SET shared_task_id = NULL
-               WHERE project_id IN (
-                   SELECT id FROM projects WHERE remote_project_id = $1
-               )"#,
-            remote_project_id
-        )
-        .execute(executor)
-        .await?;
-        Ok(result.rows_affected())
-    }
-
     pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<u64, sqlx::Error>
     where
         E: Executor<'e, Database = Sqlite>,
@@ -483,49 +461,6 @@ ORDER BY t.created_at DESC"#,
         let result = sqlx::query!("DELETE FROM tasks WHERE id = $1", id)
             .execute(executor)
             .await?;
-        Ok(result.rows_affected())
-    }
-
-    pub async fn set_shared_task_id<'e, E>(
-        executor: E,
-        id: Uuid,
-        shared_task_id: Option<Uuid>,
-    ) -> Result<(), sqlx::Error>
-    where
-        E: Executor<'e, Database = Sqlite>,
-    {
-        sqlx::query!(
-            "UPDATE tasks SET shared_task_id = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
-            id,
-            shared_task_id
-        )
-        .execute(executor)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn batch_unlink_shared_tasks<'e, E>(
-        executor: E,
-        shared_task_ids: &[Uuid],
-    ) -> Result<u64, sqlx::Error>
-    where
-        E: Executor<'e, Database = Sqlite>,
-    {
-        if shared_task_ids.is_empty() {
-            return Ok(0);
-        }
-
-        let mut query_builder = sqlx::QueryBuilder::new(
-            "UPDATE tasks SET shared_task_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE shared_task_id IN (",
-        );
-
-        let mut separated = query_builder.separated(", ");
-        for id in shared_task_ids {
-            separated.push_bind(id);
-        }
-        separated.push_unseparated(")");
-
-        let result = query_builder.build().execute(executor).await?;
         Ok(result.rows_affected())
     }
 
@@ -601,6 +536,38 @@ ORDER BY t.created_at DESC"#,
         let creator = self.get_creator(pool).await?;
         let assignee = self.get_assignee(pool).await?;
         Ok(TaskWithUsers::new(self, creator, assignee))
+    }
+
+    /// Update the shared_task_id field for a task
+    pub async fn set_shared_task_id(
+        pool: &SqlitePool,
+        task_id: Uuid,
+        shared_task_id: Option<Uuid>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE tasks SET shared_task_id = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            task_id,
+            shared_task_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Unlink shared tasks by setting shared_task_id to NULL for the given shared task IDs
+    pub async fn batch_unlink_shared_tasks(
+        pool: &SqlitePool,
+        shared_task_ids: &[Uuid],
+    ) -> Result<(), sqlx::Error> {
+        for id in shared_task_ids {
+            sqlx::query!(
+                "UPDATE tasks SET shared_task_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE shared_task_id = $1",
+                id
+            )
+            .execute(pool)
+            .await?;
+        }
+        Ok(())
     }
 
     /// Batch fetch users for a list of tasks efficiently

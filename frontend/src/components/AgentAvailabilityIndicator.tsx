@@ -1,4 +1,4 @@
-import { Check, AlertCircle, Loader2 } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AgentAvailabilityState } from '@/hooks/useAgentAvailability';
 
@@ -46,19 +46,6 @@ export function AgentAvailabilityIndicator({
           </div>
           <p className="text-xs text-muted-foreground pl-6">
             {t('settings.agents.availability.installationFoundTooltip')}
-          </p>
-        </>
-      )}
-      {availability.status === 'not_found' && (
-        <>
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-warning" />
-            <span className="text-warning">
-              {t('settings.agents.availability.notFound')}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground pl-6">
-            {t('settings.agents.availability.notFoundTooltip')}
           </p>
         </>
       )}

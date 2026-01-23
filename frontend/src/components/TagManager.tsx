@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/button';
-import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
+import { PlusIcon, PencilSimpleIcon, TrashIcon } from '@phosphor-icons/react';
+import { SpinnerGap } from '@phosphor-icons/react';
 import { tagsApi } from '@/lib/api';
 import { TagEditDialog } from '@/components/dialogs/tasks/TagEditDialog';
+import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { IconButton } from '@/components/ui-new/primitives/IconButton';
 import type { Tag } from 'shared/types';
 
 export function TagManager() {
@@ -69,7 +71,7 @@ export function TagManager() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <SpinnerGap className="h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -80,10 +82,13 @@ export function TagManager() {
         <h3 className="text-lg font-semibold">
           {t('settings.general.tags.manager.title')}
         </h3>
-        <Button onClick={() => handleOpenDialog()} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
+        <PrimaryButton
+          variant="tertiary"
+          onClick={() => handleOpenDialog()}
+          actionIcon={PlusIcon}
+        >
           {t('settings.general.tags.manager.addTag')}
-        </Button>
+        </PrimaryButton>
       </div>
 
       {tags.length === 0 ? (
@@ -126,28 +131,22 @@ export function TagManager() {
                     </td>
                     <td className="p-2">
                       <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
+                        <IconButton
+                          icon={PencilSimpleIcon}
+                          aria-label="edit"
                           onClick={() => handleOpenDialog(tag)}
                           title={t(
                             'settings.general.tags.manager.actions.editTag'
                           )}
-                        >
-                          <Edit2 className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
+                        />
+                        <IconButton
+                          icon={TrashIcon}
+                          aria-label="delete"
                           onClick={() => handleDelete(tag)}
                           title={t(
                             'settings.general.tags.manager.actions.deleteTag'
                           )}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                        />
                       </div>
                     </td>
                   </tr>

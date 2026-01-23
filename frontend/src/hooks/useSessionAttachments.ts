@@ -19,16 +19,25 @@ export function useSessionAttachments(
       if (!workspaceId) return;
 
       const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+      if (imageFiles.length === 0) return;
+
+      const uploadResults: ImageResponse[] = [];
 
       for (const file of imageFiles) {
         try {
           const response = await imagesApi.uploadForAttempt(workspaceId, file);
-          const imageMarkdown = `![${response.original_name}](${response.file_path})`;
-          onInsertMarkdown(imageMarkdown);
-          setUploadedImages((prev) => [...prev, response]);
+          uploadResults.push(response);
         } catch (error) {
           console.error('Failed to upload image:', error);
         }
+      }
+
+      if (uploadResults.length > 0) {
+        setUploadedImages((prev) => [...prev, ...uploadResults]);
+        const allMarkdown = uploadResults
+          .map((r) => `![${r.original_name}](${r.file_path})`)
+          .join('\n\n');
+        onInsertMarkdown(allMarkdown);
       }
     },
     [workspaceId, onInsertMarkdown]

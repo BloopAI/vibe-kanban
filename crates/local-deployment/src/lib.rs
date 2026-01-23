@@ -12,7 +12,7 @@ use services::services::{
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
     events::EventService,
-    file_search_cache::FileSearchCache,
+    file_search::FileSearchCache,
     filesystem::FilesystemService,
     git::GitService,
     image::ImageService,
@@ -22,6 +22,7 @@ use services::services::{
     remote_client::{RemoteClient, RemoteClientError},
     repo::RepoService,
     share::{ShareConfig, SharePublisher},
+    worktree_manager::WorktreeManager,
 };
 use tokio::sync::RwLock;
 use utils::{
@@ -31,10 +32,11 @@ use utils::{
 };
 use uuid::Uuid;
 
-use crate::container::LocalContainerService;
+use crate::{container::LocalContainerService, pty::PtyService};
 mod command;
 pub mod container;
 mod copy;
+pub mod pty;
 
 #[derive(Clone)]
 pub struct LocalDeployment {
@@ -52,11 +54,12 @@ pub struct LocalDeployment {
     file_search_cache: Arc<FileSearchCache>,
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
-    share_publisher: Result<SharePublisher, RemoteClientNotConfigured>,
-    share_config: Option<ShareConfig>,
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
+    pty: PtyService,
+    share_publisher: Result<SharePublisher, RemoteClientNotConfigured>,
+    share_config: Option<ShareConfig>,
     claude_token_rotation: ClaudeTokenRotationService,
 }
 
@@ -92,6 +95,11 @@ impl Deployment for LocalDeployment {
 
         // Always save config (may have been migrated or version updated)
         save_config_to_file(&raw_config, &config_path()).await?;
+
+        if let Some(workspace_dir) = &raw_config.workspace_dir {
+            let path = utils::path::expand_tilde(workspace_dir);
+            WorktreeManager::set_workspace_dir_override(path);
+        }
 
         let config = Arc::new(RwLock::new(raw_config));
         let user_id = generate_user_id();
@@ -195,6 +203,8 @@ impl Deployment for LocalDeployment {
 
         let file_search_cache = Arc::new(FileSearchCache::new());
 
+        let pty = PtyService::new();
+
         let deployment = Self {
             config,
             user_id,
@@ -210,11 +220,12 @@ impl Deployment for LocalDeployment {
             file_search_cache,
             approvals,
             queued_message_service,
-            share_publisher,
-            share_config: share_config.clone(),
             remote_client,
             auth_context,
             oauth_handoffs,
+            pty,
+            share_publisher,
+            share_config,
             claude_token_rotation,
         };
 
@@ -277,12 +288,12 @@ impl Deployment for LocalDeployment {
         &self.queued_message_service
     }
 
-    fn share_publisher(&self) -> Result<SharePublisher, RemoteClientNotConfigured> {
-        self.share_publisher.clone()
-    }
-
     fn auth_context(&self) -> &AuthContext {
         &self.auth_context
+    }
+
+    fn share_publisher(&self) -> Result<SharePublisher, RemoteClientNotConfigured> {
+        self.share_publisher.clone()
     }
 
     fn claude_token_rotation(&self) -> &ClaudeTokenRotationService {
@@ -346,6 +357,10 @@ impl LocalDeployment {
             .await
             .remove(handoff_id)
             .map(|state| (state.provider, state.app_verifier))
+    }
+
+    pub fn pty(&self) -> &PtyService {
+        &self.pty
     }
 
     pub fn share_config(&self) -> Option<&ShareConfig> {

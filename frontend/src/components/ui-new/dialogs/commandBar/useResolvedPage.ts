@@ -4,6 +4,7 @@ import {
   SlidersIcon,
   SquaresFourIcon,
   GitBranchIcon,
+  FolderIcon,
 } from '@phosphor-icons/react';
 import type { Workspace } from 'shared/types';
 import {
@@ -34,6 +35,7 @@ const PAGE_ICONS = {
   diffOptions: SlidersIcon,
   viewOptions: SquaresFourIcon,
   gitActions: GitBranchIcon,
+  repoActions: FolderIcon,
 } as const satisfies Record<StaticPageId, typeof StackIcon>;
 
 function expandGroupItems(

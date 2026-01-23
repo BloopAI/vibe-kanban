@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO issue_relationships (id, issue_id, related_issue_id, relationship_type)\n            VALUES ($1, $2, $3, $4)\n            RETURNING\n                id                AS \"id!: Uuid\",\n                issue_id          AS \"issue_id!: Uuid\",\n                related_issue_id  AS \"related_issue_id!: Uuid\",\n                relationship_type AS \"relationship_type!: IssueRelationshipType\",\n                created_at        AS \"created_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "issue_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "related_issue_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "relationship_type!: IssueRelationshipType",
+        "type_info": {
+          "Custom": {
+            "name": "issue_relationship_type",
+            "kind": {
+              "Enum": [
+                "blocking",
+                "related",
+                "has_duplicate"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        {
+          "Custom": {
+            "name": "issue_relationship_type",
+            "kind": {
+              "Enum": [
+                "blocking",
+                "related",
+                "has_duplicate"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "426eb8216286273dd0066a15ce4508d9fed04d2feccfff81abb4813ebfea9778"
+}

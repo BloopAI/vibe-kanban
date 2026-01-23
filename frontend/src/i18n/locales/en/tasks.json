@@ -1,4 +1,8 @@
 {
+  "dropzone": {
+    "dropImagesHere": "Drop images here",
+    "supportedFormats": "PNG, JPG, GIF, WebP, SVG supported"
+  },
   "gitPanel": {
     "create": {
       "warnings": {
@@ -85,13 +89,16 @@
     "noServer": {
       "title": "No dev server running",
       "startPrompt": "Please start a dev server to see the preview",
+      "setupTitle": "You must set up a dev server script to use the preview feature",
       "setupPrompt": "To use the live preview and click-to-edit, please add a dev server script to this project.",
       "companionPrompt": "For click-to-edit functionality, add the browser companion to your project.",
       "companionLink": "View installation guide",
       "startButton": "Start Dev Server",
       "configureButton": "Configure",
       "stopAndEditButton": "Stop Dev Server & Resolve Issues",
-      "fixScript": "Fix Dev Script"
+      "fixScript": "Fix Dev Script",
+      "editDevScript": "Edit Dev Server Script",
+      "learnMore": "Learn more about testing applications"
     },
     "devScript": {
       "saveAndStart": "Save & Start",
@@ -121,13 +128,26 @@
       "openInTab": "Open in new tab",
       "stopDevServer": "Stop dev server",
       "clickToEdit": "Click to edit URL",
-      "resetUrl": "Reset to detected URL"
+      "resetUrl": "Reset to detected URL",
+      "clearUrlOverride": "Clear URL override",
+      "desktopView": "Desktop view",
+      "mobileView": "Mobile view (390x844)",
+      "responsiveView": "Responsive view (resizable)",
+      "startDevServer": "Start dev server",
+      "submitUrl": "Submit URL"
+    },
+    "loading": {
+      "startingServer": "Starting dev server...",
+      "waitingForServer": "Waiting for server...",
+      "loadingPreview": "Loading preview...",
+      "manualUrlHint": "No URL detected yet. You can manually enter a URL in the toolbar above."
     },
     "browser": {
       "title": "Dev Server Preview",
-      "startButton": "Start Dev Server",
-      "stopButton": "Stop",
-      "startingButton": "Start"
+      "devServerFallback": "Dev Server"
+    },
+    "urlInput": {
+      "placeholder": "Enter URL..."
     }
   },
   "diff": {
@@ -204,6 +224,11 @@
   "todos": {
     "title_one": "Todos ({{count}})",
     "title_other": "Todos ({{count}})"
+  },
+  "todoPopup": {
+    "title": "Tasks",
+    "progress": "{{completed}}/{{total}} completed",
+    "noTasks": "No tasks"
   },
   "projects": {
     "create": {
@@ -468,9 +493,6 @@
     "startReview": "Start Review",
     "startingReview": "Starting Review...",
     "task": "Task",
-    "share": "Share",
-    "reassign": "Reassign",
-    "stopShare": "Stop share",
     "duplicate": "Duplicate"
   },
   "editBranchName": {
@@ -492,40 +514,19 @@
     "includeGitContextDescription": "Tells the agent how to view all changes made on this branch",
     "newSession": "New Session"
   },
-  "stopShareDialog": {
-    "title": "Stop Sharing Task",
-    "description": "Stop sharing \"{{title}}\" with your organization?",
-    "warning": "Stops sharing the task with your organization, but keeps your local task.",
-    "confirm": "Stop share task",
-    "inProgress": "Stop sharing...",
-    "genericError": "Failed to stop sharing task. Please try again."
-  },
-  "shareDialog": {
-    "title": "Share Task",
-    "description": "Share \"{{title}}\" with your organization?",
-    "success": "Task shared successfully.",
-    "genericError": "Failed to share task. Please try again.",
-    "loadingSystem": "Loading account status...",
-    "loginRequired": {
-      "title": "Sign in to continue",
-      "description": "You need to sign in before you can share tasks. We will redirect you to the sign-in page.",
-      "action": "Go to sign in"
-    },
-    "gitProviderRequired": {
-      "title": "Connect Git Provider",
-      "description": "Connect your Git provider account to share tasks. This project must have a remote repository.",
-      "action": "Connect"
-    },
-    "linkProjectRequired": {
-      "description": "Link this project to an organization before sharing tasks.",
-      "action": "Link Project"
-    },
-    "confirmationTitle": "Confirm sharing",
-    "confirmationBody": "Sharing will publish this task to your shared workspace.",
-    "cancel": "Cancel",
-    "confirm": "Share task",
-    "inProgress": "Sharing...",
-    "closeButton": "Close"
+  "resolveConflicts": {
+    "dialog": {
+      "title": "Resolve Conflicts",
+      "description": "Conflicts were detected. Choose how you want the agent to resolve them.",
+      "sessionLabel": "Session",
+      "existingSession": "Continue in current session",
+      "newSession": "Start a new session",
+      "resolve": "Resolve Conflicts",
+      "resolving": "Starting...",
+      "filesWithConflicts_one": "{{count}} file has conflicts",
+      "filesWithConflicts_other": "{{count}} files have conflicts",
+      "andMore": "...and {{count}} more"
+    }
   },
   "createPrDialog": {
     "title": "Create Pull Request",
@@ -626,6 +627,9 @@
       "continueEditing": "Continue Editing",
       "discardChanges": "Discard Changes"
     }
+  },
+  "terminal": {
+    "selectWorkspace": "Select a workspace to open terminal"
   },
   "restoreLogsDialog": {
     "title": "Confirm Retry",

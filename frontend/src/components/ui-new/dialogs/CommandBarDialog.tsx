@@ -19,10 +19,11 @@ import { useResolvedPage } from './commandBar/useResolvedPage';
 export interface CommandBarDialogProps {
   page?: PageId;
   workspaceId?: string;
+  repoId?: string;
 }
 
 const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
-  ({ page = 'root', workspaceId }) => {
+  ({ page = 'root', workspaceId, repoId: initialRepoId }) => {
     const modal = useModal();
     const previousFocusRef = useRef<HTMLElement | null>(null);
     const queryClient = useQueryClient();
@@ -63,6 +64,18 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
     // Handle item selection with side effects
     const handleSelect = useCallback(
       (item: ResolvedGroupItem) => {
+        // If initialRepoId is provided and user selects a git action,
+        // execute immediately without going through repo selection
+        if (
+          initialRepoId &&
+          item.type === 'action' &&
+          item.action.requiresTarget === 'git'
+        ) {
+          modal.hide();
+          executeAction(item.action, effectiveWorkspaceId, initialRepoId);
+          return;
+        }
+
         const effect = dispatch({ type: 'SELECT_ITEM', item });
 
         if (effect.type === 'execute') {
@@ -72,7 +85,14 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
           executeAction(effect.action, effectiveWorkspaceId, repoId);
         }
       },
-      [dispatch, modal, executeAction, effectiveWorkspaceId, repos]
+      [
+        dispatch,
+        modal,
+        executeAction,
+        effectiveWorkspaceId,
+        repos,
+        initialRepoId,
+      ]
     );
 
     // Restore focus when dialog closes

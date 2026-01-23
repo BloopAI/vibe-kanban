@@ -15,7 +15,13 @@
     "connect": "连接",
     "disconnect": "断开连接",
     "close": "关闭",
-    "replay": "重播"
+    "replay": "重播",
+    "discard": "放弃",
+    "addItem": "添加项目"
+  },
+  "form": {
+    "notSpecified": "未指定",
+    "selectOption": "选择一个选项..."
   },
   "states": {
     "loading": "加载中...",
@@ -146,6 +152,17 @@
     "loading": "加载中...",
     "selectToStart": "选择一个工作区开始",
     "draft": "草稿",
+    "viewArchive": "查看归档",
+    "backToActive": "返回活跃",
+    "noArchived": "没有已归档的工作区",
+    "noWorkspaces": "没有工作区",
+    "needsAttention": "需要注意",
+    "idle": "空闲",
+    "running": "运行中",
+    "pin": "置顶",
+    "unpin": "取消置顶",
+    "archive": "归档",
+    "more": "更多操作",
     "rename": {
       "title": "重命名工作区",
       "description": "输入此工作区的新名称。",
@@ -160,7 +177,9 @@
     "noResults": "没有匹配的文件",
     "title": "文件",
     "showGitHubComments": "显示 GitHub 评论",
-    "hideGitHubComments": "隐藏 GitHub 评论"
+    "hideGitHubComments": "隐藏 GitHub 评论",
+    "prevGitHubComment": "上一个有评论的文件",
+    "nextGitHubComment": "下一个有评论的文件"
   },
   "sections": {
     "changes": "更改",
@@ -173,7 +192,13 @@
     "workingBranch": "工作分支",
     "recent": "最近",
     "other": "其他",
-    "devServerPreview": "开发服务器预览"
+    "devServerPreview": "开发服务器预览",
+    "terminal": "终端",
+    "notes": "笔记"
+  },
+  "notes": {
+    "placeholder": "添加关于此工作区的笔记...",
+    "selectWorkspace": "选择一个工作区以查看笔记"
   },
   "repos": {
     "loading": "正在加载仓库...",
@@ -188,18 +213,25 @@
     "copyPath": "复制路径",
     "copyWorktreePath": "复制工作树路径",
     "openInIde": "在IDE中打开",
+    "repoSettings": "仓库设置",
     "cancel": "取消",
     "saveChanges": "保存更改",
-    "copied": "已复制"
+    "copied": "已复制",
+    "collapse": "收起"
   },
   "comments": {
     "addReviewComment": "添加审查评论",
     "addPlaceholder": "添加评论...",
-    "editPlaceholder": "编辑评论..."
+    "editPlaceholder": "编辑评论...",
+    "copyToReview": "复制到审查"
   },
   "confirm": {
     "defaultConfirm": "确认",
     "defaultCancel": "取消"
+  },
+  "dialogs": {
+    "selectGitRepository": "选择 Git 仓库",
+    "chooseExistingRepo": "从文件系统中选择现有仓库"
   },
   "empty": {
     "noChanges": "没有要显示的更改"
@@ -210,12 +242,89 @@
     "defaultPlaceholder": "输入命令或搜索..."
   },
   "chatBox": {
-    "variants": "变体"
+    "variants": "变体",
+    "customise": "自定义"
   },
   "projects": {
     "noProjectFound": "未找到项目",
     "createFirstPrompt": "请先创建项目以开始处理任务。",
     "createNew": "创建新项目",
     "noProjectsFound": "未找到项目"
+  },
+  "betaWorkspaces": {
+    "title": "试用新界面",
+    "intro": "我们从头重建了 Vibe Kanban 的界面，您已被邀请试用。",
+    "newUiDescription": "新界面针对日常工作进行了优化：管理代理、预览更改和审查代码。它还解锁了旧界面中不可用的功能：",
+    "newFeatures": {
+      "multiRepo": "同时编辑多个仓库",
+      "multiAgent": "在单个工作区中运行多个代理对话（甚至跨不同代理）",
+      "commandBar": "使用命令栏更快地导航"
+    },
+    "oldUiDescription": "目前，一些功能仍保留在当前界面中：",
+    "oldFeatures": {
+      "kanban": "在看板上管理任务",
+      "settings": "更改设置",
+      "projects": "管理项目"
+    },
+    "transition": "在接下来几周的过渡期间，您将在两者之间切换。",
+    "optOutNote": "想要退出？您可以随时在设置中切换回当前界面。",
+    "joinBeta": "加入 Beta",
+    "maybeLater": "稍后再说"
+  },
+  "workspacesGuide": {
+    "welcome": {
+      "title": "欢迎",
+      "content": "欢迎使用 Workspaces，这是 Vibe Kanban 的全新设计界面。我们正在向部分用户推出以获取早期反馈。您可以随时通过导航栏中的反馈图标分享您的想法。"
+    },
+    "commandBar": {
+      "title": "命令栏",
+      "content": "命令栏是您的导航中心。使用 CMD+K 打开它，可以搜索和访问工作区中的所有可用操作。"
+    },
+    "contextBar": {
+      "title": "上下文栏",
+      "content": "上下文栏让您可以快速切换不同面板。将它拖动到最适合您的位置。"
+    },
+    "sidebar": {
+      "title": "工作区侧边栏",
+      "content": "一目了然地查看所有工作区的状态。通知会突出显示需要关注的工作区。归档已合并的工作区以保持侧边栏整洁。"
+    },
+    "multiRepo": {
+      "title": "多仓库支持",
+      "content": "将多个仓库添加到单个工作区。在处理一个仓库时可以引用另一个仓库的代码，或者同时在多个仓库中实现更改。"
+    },
+    "sessions": {
+      "title": "多会话",
+      "content": "在单个工作区内创建多个代理对话会话，包括与不同代理的会话。这可以帮助您绕过对话限制，或在单独的线程中启动审查代理。"
+    },
+    "preview": {
+      "title": "预览更改",
+      "content": "无需切换上下文，即可在内置浏览器中预览您的工作。支持桌面、移动设备和自定义视口尺寸测试。"
+    },
+    "diffs": {
+      "title": "差异和评论",
+      "content": "重新设计的差异面板包含更改的文件树。直接在差异上评论以向代理提供反馈，当您的工作区链接到 PR 时还可以查看 GitHub 评论。"
+    },
+    "classicUi": {
+      "title": "返回经典界面",
+      "content": "点击导航栏左侧的退出图标可返回经典看板。要完全禁用新界面，请在设置中的「测试版功能」下更新「启用 Workspaces 测试版」选项。"
+    }
+  },
+  "logs": {
+    "searchLogs": "搜索日志",
+    "selectProcessToView": "选择一个进程以查看日志"
+  },
+  "processes": {
+    "noProcesses": "无进程",
+    "terminal": "终端"
+  },
+  "search": {
+    "matchCount": "{{current}} / {{total}}",
+    "noMatches": "无匹配项"
+  },
+  "contextUsage": {
+    "label": "上下文使用量",
+    "emptyTooltip": "上下文使用量将在下一次回复后显示",
+    "tooltip": "上下文：{{percentage}}% · {{used}} / {{total}} tokens",
+    "ariaLabel": "上下文使用量：{{percentage}}%"
   }
 }

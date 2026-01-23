@@ -3,7 +3,7 @@ import { UserData, AssigneesQuery } from 'shared/types';
 
 export const REMOTE_API_URL = import.meta.env.VITE_VK_SHARED_API_BASE || '';
 
-const makeRequest = async (path: string, options: RequestInit = {}) => {
+export const makeRequest = async (path: string, options: RequestInit = {}) => {
   const tokenRes = await oauthApi.getToken();
   if (!tokenRes?.access_token) {
     throw new Error('Not authenticated');

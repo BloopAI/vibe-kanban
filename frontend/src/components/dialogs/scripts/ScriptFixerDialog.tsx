@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
-import { VirtualizedProcessLogs } from '@/components/ui-new/VirtualizedProcessLogs';
+import { VirtualizedProcessLogs } from '@/components/ui-new/containers/VirtualizedProcessLogs';
 import { RunningDots } from '@/components/ui-new/primitives/RunningDots';
 import { defineModal } from '@/lib/modals';
 import { repoApi, attemptsApi } from '@/lib/api';
@@ -60,9 +60,13 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
     const [isSaving, setIsSaving] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    // Track session ID locally so we can update it after starting a script
+    const [activeSessionId, setActiveSessionId] = useState<string | undefined>(
+      sessionId
+    );
 
     // Get execution processes for the session to find latest script process
-    const { executionProcesses } = useExecutionProcesses(sessionId);
+    const { executionProcesses } = useExecutionProcesses(activeSessionId);
 
     // Find the latest process for this script type
     const latestProcess = useMemo(() => {
@@ -102,6 +106,12 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
     const isProcessSuccessful = isProcessCompleted && isExitCodeZero;
     const hasProcessError =
       isProcessFailed || (isProcessCompleted && !isExitCodeZero);
+
+    // Reset selectedRepoId on dialog re-open
+    useEffect(() => {
+      if (!initialRepoId) return;
+      setSelectedRepoId(initialRepoId);
+    }, [initialRepoId]);
 
     // Fetch the selected repo's script
     useEffect(() => {
@@ -160,27 +170,16 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
       setError(null);
 
       try {
-        // Build update data with all required fields
-        const selectedRepo = repos.find((r) => r.id === selectedRepoId);
-        const updateData: UpdateRepo = {
-          display_name: selectedRepo?.display_name ?? null,
-          setup_script:
-            scriptType === 'setup'
-              ? script.trim() || null
-              : (selectedRepo?.setup_script ?? null),
-          cleanup_script:
-            scriptType === 'cleanup'
-              ? script.trim() || null
-              : (selectedRepo?.cleanup_script ?? null),
-          copy_files: selectedRepo?.copy_files ?? null,
-          parallel_setup_script: selectedRepo?.parallel_setup_script ?? null,
-          dev_server_script:
-            scriptType === 'dev_server'
-              ? script.trim() || null
-              : (selectedRepo?.dev_server_script ?? null),
-        };
+        // Only send the field being edited - other fields will be preserved by the backend
+        const scriptValue = script.trim() || null;
+        const updateData: Partial<UpdateRepo> =
+          scriptType === 'setup'
+            ? { setup_script: scriptValue }
+            : scriptType === 'cleanup'
+              ? { cleanup_script: scriptValue }
+              : { dev_server_script: scriptValue };
 
-        await repoApi.update(selectedRepoId, updateData);
+        await repoApi.update(selectedRepoId, updateData as UpdateRepo);
 
         // Invalidate repos cache
         queryClient.invalidateQueries({ queryKey: ['repos'] });
@@ -195,7 +194,7 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
       } finally {
         setIsSaving(false);
       }
-    }, [selectedRepoId, script, scriptType, queryClient, modal, t, repos]);
+    }, [selectedRepoId, script, scriptType, queryClient, modal, t]);
 
     const handleSaveAndTest = useCallback(async () => {
       if (!selectedRepoId) return;
@@ -204,41 +203,39 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
       setError(null);
 
       try {
-        // First save the script
-        const selectedRepo = repos.find((r) => r.id === selectedRepoId);
-        const updateData: UpdateRepo = {
-          display_name: selectedRepo?.display_name ?? null,
-          setup_script:
-            scriptType === 'setup'
-              ? script.trim() || null
-              : (selectedRepo?.setup_script ?? null),
-          cleanup_script:
-            scriptType === 'cleanup'
-              ? script.trim() || null
-              : (selectedRepo?.cleanup_script ?? null),
-          copy_files: selectedRepo?.copy_files ?? null,
-          parallel_setup_script: selectedRepo?.parallel_setup_script ?? null,
-          dev_server_script:
-            scriptType === 'dev_server'
-              ? script.trim() || null
-              : (selectedRepo?.dev_server_script ?? null),
-        };
+        // Only send the field being edited - other fields will be preserved by the backend
+        const scriptValue = script.trim() || null;
+        const updateData: Partial<UpdateRepo> =
+          scriptType === 'setup'
+            ? { setup_script: scriptValue }
+            : scriptType === 'cleanup'
+              ? { cleanup_script: scriptValue }
+              : { dev_server_script: scriptValue };
 
-        await repoApi.update(selectedRepoId, updateData);
+        await repoApi.update(selectedRepoId, updateData as UpdateRepo);
 
         // Invalidate repos cache
         queryClient.invalidateQueries({ queryKey: ['repos'] });
 
         setOriginalScript(script);
 
-        // Then run the script
+        // Then run the script and capture the session ID from the returned process
         if (scriptType === 'setup') {
-          await attemptsApi.runSetupScript(workspaceId);
+          const result = await attemptsApi.runSetupScript(workspaceId);
+          if (result.success) {
+            setActiveSessionId(result.data.session_id);
+          }
         } else if (scriptType === 'cleanup') {
-          await attemptsApi.runCleanupScript(workspaceId);
+          const result = await attemptsApi.runCleanupScript(workspaceId);
+          if (result.success) {
+            setActiveSessionId(result.data.session_id);
+          }
         } else {
           // Start the dev server
-          await attemptsApi.startDevServer(workspaceId);
+          const processes = await attemptsApi.startDevServer(workspaceId);
+          if (processes.length > 0) {
+            setActiveSessionId(processes[0].session_id);
+          }
         }
 
         // Keep dialog open so user can see the new execution logs
@@ -250,15 +247,7 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
       } finally {
         setIsTesting(false);
       }
-    }, [
-      selectedRepoId,
-      script,
-      scriptType,
-      workspaceId,
-      queryClient,
-      t,
-      repos,
-    ]);
+    }, [selectedRepoId, script, scriptType, workspaceId, queryClient, t]);
 
     const dialogTitle =
       scriptType === 'setup'
@@ -318,10 +307,10 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
                     className="font-mono text-sm p-3 border-0 min-h-full bg-panel"
                     placeholder={
                       scriptType === 'setup'
-                        ? '#!/bin/bash\nnpm install'
+                        ? 'npm install'
                         : scriptType === 'cleanup'
-                          ? '#!/bin/bash\nrm -rf node_modules'
-                          : '#!/bin/bash\nnpm run dev'
+                          ? 'rm -rf node_modules'
+                          : 'npm run dev'
                     }
                     disableInternalScroll
                   />
@@ -375,7 +364,13 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
               </div>
               <div className="bg-secondary py-base flex-1 border rounded-md bg-muted overflow-hidden min-w-0">
                 {latestProcess ? (
-                  <VirtualizedProcessLogs logs={logs} error={logsError} />
+                  <VirtualizedProcessLogs
+                    logs={logs}
+                    error={logsError}
+                    searchQuery=""
+                    matchIndices={[]}
+                    currentMatchIndex={-1}
+                  />
                 ) : (
                   <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
                     {t('scriptFixer.noLogs')}

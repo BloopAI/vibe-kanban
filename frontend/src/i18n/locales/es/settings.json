@@ -1,5 +1,14 @@
 {
   "settings": {
+    "common": {
+      "unsavedChanges": "• Tienes cambios sin guardar"
+    },
+    "unsavedChanges": {
+      "title": "Cambios sin guardar",
+      "message": "Tienes cambios sin guardar. ¿Estás seguro de que deseas cerrar sin guardar?",
+      "discard": "Descartar cambios",
+      "cancel": "Seguir editando"
+    },
     "layout": {
       "nav": {
         "title": "Configuración",
@@ -137,6 +146,14 @@
             "invalidChars": "Contiene caracteres no válidos.",
             "controlChars": "Contiene caracteres de control."
           }
+        },
+        "workspaceDir": {
+          "label": "Directorio de Espacios de Trabajo",
+          "placeholder": "~/",
+          "helper": "Los espacios de trabajo se crearán en un subdirectorio .vibe-kanban-workspaces dentro de esta ruta. Dejar vacío para usar el valor predeterminado del sistema. Los cambios requieren reiniciar la aplicación.",
+          "browse": "Explorar",
+          "dialogTitle": "Seleccionar Directorio de Espacios de Trabajo",
+          "dialogDescription": "Elija un directorio. Los espacios de trabajo se crearán en un subdirectorio .vibe-kanban-workspaces dentro de él."
         }
       },
       "pullRequests": {
@@ -164,6 +181,15 @@
         "push": {
           "label": "Notificaciones Push",
           "helper": "Muestra notificaciones del sistema cuando las tareas terminan de ejecutarse."
+        }
+      },
+      "messageInput": {
+        "title": "Entrada de mensajes",
+        "description": "Configura cómo se envían los mensajes en el chat.",
+        "shortcut": {
+          "label": "Enviar mensaje con",
+          "helper": "Elige el atajo de teclado para enviar mensajes.",
+          "enterLabel": "Enter (Shift+Enter para nueva línea)"
         }
       },
       "privacy": {
@@ -234,24 +260,39 @@
           "description": "Restablece el flujo de Introducción.",
           "button": "Restablecer"
         }
+      },
+      "beta": {
+        "title": "Funciones Beta",
+        "description": "Prueba funciones experimentales antes de su lanzamiento.",
+        "workspaces": {
+          "label": "Habilitar Beta de Workspaces",
+          "helper": "Usa la nueva interfaz de workspaces al ver intentos de tareas. Las tareas se abrirán primero en la vista de tareas, y los intentos se abrirán en la nueva vista de workspaces."
+        },
+        "commitReminder": {
+          "label": "Recordatorio de commit",
+          "helper": "Solicitar a los agentes compatibles que confirmen los cambios antes de detenerse."
+        }
       }
     },
     "agents": {
       "title": "Configuraciones de Agentes de Código",
       "description": "Personaliza el comportamiento de los agentes con diferentes configuraciones.",
       "loading": "Cargando configuraciones de agentes...",
+      "selectAgent": "Seleccionar agente",
       "save": {
         "button": "Guardar Configuraciones de Agentes",
-        "success": "✓ ¡Configuración guardada con éxito!"
+        "success": "✓ ¡Configuración guardada con éxito!",
+        "unsavedChanges": "• Tienes cambios sin guardar"
       },
       "availability": {
         "checking": "Comprobando...",
+        "checkingAvailability": "Comprobando disponibilidad...",
+        "available": "Agente disponible",
+        "notFoundSimple": "Agente no encontrado",
         "loginDetected": "Uso reciente detectado",
         "loginDetectedTooltip": "Se encontraron credenciales de autenticación recientes para este agente",
         "installationFound": "Uso previo detectado",
-        "installationFoundTooltip": "Se encontró la configuración del agente. Es posible que debas iniciar sesión para usarlo.",
-        "notFound": "Desconocido",
-        "notFoundTooltip": "No pudimos verificar que este agente esté configurado, pero pruébalo."
+        "installationFoundTooltip": "Se encontró la configuración del agente. Es posible que debas iniciar sesión para usarlo."
       },
       "editor": {
         "formLabel": "Editar JSON",
@@ -263,6 +304,8 @@
         "deleteTitle": "No se puede eliminar la última configuración",
         "deleteButton": "Eliminar {{name}}",
         "deleteText": "Eliminar",
+        "makeDefault": "Establecer por defecto",
+        "isDefault": "Por defecto",
         "jsonLabel": "Configuración de Agente (JSON)",
         "jsonPlaceholder": "Cargando perfiles...",
         "jsonLoading": "Cargando...",
@@ -271,7 +314,16 @@
       "errors": {
         "deleteFailed": "Error al eliminar la configuración. Por favor, inténtalo de nuevo.",
         "saveFailed": "Error al guardar la configuración de los agentes. Por favor, inténtalo de nuevo.",
-        "saveConfigFailed": "Error al guardar la configuración. Por favor, inténtalo de nuevo."
+        "saveConfigFailed": "Error al guardar la configuración. Por favor, inténtalo de nuevo.",
+        "schemaNotFound": "Esquema no encontrado para el tipo de ejecutor: {{executor}}"
+      },
+      "tree": {
+        "search": "Buscar configuraciones...",
+        "expandAll": "Expandir todo",
+        "collapseAll": "Contraer todo",
+        "noResults": "No se encontraron configuraciones",
+        "noConfigs": "No hay configuraciones disponibles",
+        "selectConfig": "Selecciona una configuración de la barra lateral para ver y editar sus ajustes."
       }
     },
     "mcp": {
@@ -307,7 +359,8 @@
         "button": "Guardar Configuración MCP",
         "success": "¡Configuración Guardada!",
         "successMessage": "✓ ¡Configuración MCP guardada exitosamente!",
-        "loading": "Cargando configuración actual del servidor MCP..."
+        "loading": "Cargando configuración actual del servidor MCP...",
+        "unsavedChanges": "• Tienes cambios sin guardar"
       }
     },
     "projects": {
@@ -342,6 +395,12 @@
         "unsavedChanges": "• Tienes cambios sin guardar",
         "discard": "Descartar",
         "confirmSwitch": "Tienes cambios sin guardar. ¿Estás seguro de que quieres cambiar de proyecto? Tus cambios se perderán."
+      },
+      "repositories": {
+        "title": "Repositorios",
+        "description": "Administra los repositorios git en este proyecto",
+        "noRepositories": "No hay repositorios configurados",
+        "addRepository": "Agregar Repositorio"
       }
     },
     "repos": {
@@ -382,7 +441,8 @@
         },
         "copyFiles": {
           "label": "Copiar Archivos",
-          "helper": "Lista separada por comas de archivos para copiar del directorio del repositorio original al worktree. Útil para archivos de entorno como .env. ¡Asegúrate de que estén en gitignore!"
+          "helper": "Lista separada por comas de archivos para copiar del directorio del repositorio original al worktree. Útil para archivos de entorno como .env. ¡Asegúrate de que estén en gitignore!",
+          "placeholder": "Rutas de archivos o patrones glob (ej., .env, config/*.json)"
         },
         "devServer": {
           "label": "Script del Servidor de Desarrollo",

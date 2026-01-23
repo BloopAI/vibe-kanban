@@ -1,0 +1,151 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE issues\n            SET\n                status_id = COALESCE($1, status_id),\n                title = COALESCE($2, title),\n                description = CASE WHEN $3 THEN $4 ELSE description END,\n                priority = COALESCE($5, priority),\n                start_date = CASE WHEN $6 THEN $7 ELSE start_date END,\n                target_date = CASE WHEN $8 THEN $9 ELSE target_date END,\n                completed_at = CASE WHEN $10 THEN $11 ELSE completed_at END,\n                sort_order = COALESCE($12, sort_order),\n                parent_issue_id = CASE WHEN $13 THEN $14 ELSE parent_issue_id END,\n                extension_metadata = COALESCE($15, extension_metadata),\n                updated_at = NOW()\n            WHERE id = $16\n            RETURNING\n                id                  AS \"id!: Uuid\",\n                project_id          AS \"project_id!: Uuid\",\n                issue_number        AS \"issue_number!\",\n                simple_id           AS \"simple_id!\",\n                status_id           AS \"status_id!: Uuid\",\n                title               AS \"title!\",\n                description         AS \"description?\",\n                priority            AS \"priority!: IssuePriority\",\n                start_date          AS \"start_date?: DateTime<Utc>\",\n                target_date         AS \"target_date?: DateTime<Utc>\",\n                completed_at        AS \"completed_at?: DateTime<Utc>\",\n                sort_order          AS \"sort_order!\",\n                parent_issue_id     AS \"parent_issue_id?: Uuid\",\n                extension_metadata  AS \"extension_metadata!: Value\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "issue_number!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "simple_id!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "status_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "title!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "description?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "priority!: IssuePriority",
+        "type_info": {
+          "Custom": {
+            "name": "issue_priority",
+            "kind": {
+              "Enum": [
+                "urgent",
+                "high",
+                "medium",
+                "low"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "start_date?: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "target_date?: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "completed_at?: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "sort_order!",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 12,
+        "name": "parent_issue_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 13,
+        "name": "extension_metadata!: Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 14,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 15,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Bool",
+        "Text",
+        {
+          "Custom": {
+            "name": "issue_priority",
+            "kind": {
+              "Enum": [
+                "urgent",
+                "high",
+                "medium",
+                "low"
+              ]
+            }
+          }
+        },
+        "Bool",
+        "Timestamptz",
+        "Bool",
+        "Timestamptz",
+        "Bool",
+        "Timestamptz",
+        "Float8",
+        "Bool",
+        "Uuid",
+        "Jsonb",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "bb909ecf5a21a77fed97037a7ccbee187c34f9f853a95acb98841798802015fb"
+}

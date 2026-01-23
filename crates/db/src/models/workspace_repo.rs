@@ -49,6 +49,14 @@ impl WorkspaceRepo {
         workspace_id: Uuid,
         repos: &[CreateWorkspaceRepo],
     ) -> Result<Vec<Self>, sqlx::Error> {
+        if repos.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Build bulk insert query with VALUES for each repo
+        // SQLite doesn't have great support for bulk inserts with RETURNING,
+        // so we'll use a transaction to batch the inserts efficiently
+        let mut tx = pool.begin().await?;
         let mut results = Vec::with_capacity(repos.len());
 
         for repo in repos {
@@ -68,11 +76,12 @@ impl WorkspaceRepo {
                 repo.repo_id,
                 repo.target_branch
             )
-            .fetch_one(pool)
+            .fetch_one(&mut *tx)
             .await?;
             results.push(workspace_repo);
         }
 
+        tx.commit().await?;
         Ok(results)
     }
 

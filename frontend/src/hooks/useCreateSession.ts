@@ -1,12 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { sessionsApi } from '@/lib/api';
-import type { Session, CreateFollowUpAttempt } from 'shared/types';
+import type {
+  Session,
+  CreateFollowUpAttempt,
+  BaseCodingAgent,
+} from 'shared/types';
 
 interface CreateSessionParams {
   workspaceId: string;
   prompt: string;
   variant: string | null;
-  executor: string;
+  executor: BaseCodingAgent;
 }
 
 /**
@@ -23,16 +27,13 @@ export function useCreateSession() {
       variant,
       executor,
     }: CreateSessionParams): Promise<Session> => {
-      // Step 1: Create the session with the executor
       const session = await sessionsApi.create({
         workspace_id: workspaceId,
-        executor,
       });
 
-      // Step 2: Send the first message as a follow-up
       const body: CreateFollowUpAttempt = {
         prompt,
-        variant,
+        executor_profile_id: { executor, variant },
         retry_process_id: null,
         force_when_dirty: null,
         perform_git_reset: null,

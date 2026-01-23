@@ -63,8 +63,8 @@ export function useWorkspaceSessions(
     }
   }, [workspaceId, sessions]);
 
-  // Derived values from selection state
-  const isNewSessionMode = selection?.mode === 'new';
+  // New session mode when user explicitly chose it OR when no sessions exist yet
+  const isNewSessionMode = selection?.mode === 'new' || sessions.length === 0;
   const selectedSessionId =
     selection?.mode === 'existing' ? selection.sessionId : undefined;
 

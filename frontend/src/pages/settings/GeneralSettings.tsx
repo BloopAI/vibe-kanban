@@ -20,7 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Volume2 } from 'lucide-react';
+import { FolderOpen, Loader2, Volume2 } from 'lucide-react';
 import {
   DEFAULT_PR_DESCRIPTION_PROMPT,
   EditorType,
@@ -36,6 +36,7 @@ import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndi
 import { useTheme } from '@/components/ThemeProvider';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
+import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
 
 export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
@@ -167,6 +168,17 @@ export function GeneralSettings() {
     if (!config) return;
     setDraft(cloneDeep(config));
     setDirty(false);
+  };
+
+  const handleBrowseWorkspaceDir = async () => {
+    const result = await FolderPickerDialog.show({
+      value: draft?.workspace_dir ?? '',
+      title: t('settings.general.git.workspaceDir.dialogTitle'),
+      description: t('settings.general.git.workspaceDir.dialogDescription'),
+    });
+    if (result) {
+      updateDraft({ workspace_dir: result });
+    }
   };
 
   const resetDisclaimer = async () => {
@@ -356,7 +368,9 @@ export function GeneralSettings() {
 
           {(draft?.editor.editor_type === EditorType.VS_CODE ||
             draft?.editor.editor_type === EditorType.CURSOR ||
-            draft?.editor.editor_type === EditorType.WINDSURF) && (
+            draft?.editor.editor_type === EditorType.WINDSURF ||
+            draft?.editor.editor_type === EditorType.GOOGLE_ANTIGRAVITY ||
+            draft?.editor.editor_type === EditorType.ZED) && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="remote-ssh-host">
@@ -459,6 +473,36 @@ export function GeneralSettings() {
                   </code>
                 </>
               )}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="workspace-dir">
+              {t('settings.general.git.workspaceDir.label')}
+            </Label>
+            <div className="flex space-x-2">
+              <Input
+                id="workspace-dir"
+                type="text"
+                placeholder={t('settings.general.git.workspaceDir.placeholder')}
+                value={draft?.workspace_dir ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  updateDraft({ workspace_dir: value || null });
+                }}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleBrowseWorkspaceDir}
+              >
+                <FolderOpen className="h-4 w-4 mr-2" />
+                {t('settings.general.git.workspaceDir.browse')}
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {t('settings.general.git.workspaceDir.helper')}
             </p>
           </div>
         </CardContent>
@@ -707,6 +751,51 @@ export function GeneralSettings() {
             <Button variant="outline" onClick={resetOnboarding}>
               {t('settings.general.safety.onboarding.button')}
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('settings.general.beta.title')}</CardTitle>
+          <CardDescription>
+            {t('settings.general.beta.description')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="beta-workspaces"
+              checked={draft?.beta_workspaces ?? false}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({ beta_workspaces: checked })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="beta-workspaces" className="cursor-pointer">
+                {t('settings.general.beta.workspaces.label')}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.beta.workspaces.helper')}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="commit-reminder"
+              checked={draft?.commit_reminder ?? false}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({ commit_reminder: checked })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="commit-reminder" className="cursor-pointer">
+                {t('settings.general.beta.commitReminder.label')}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.beta.commitReminder.helper')}
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>

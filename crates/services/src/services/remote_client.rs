@@ -4,10 +4,6 @@ use std::time::Duration;
 
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
-use remote::routes::tasks::{
-    AssignSharedTaskRequest, CheckTasksRequest, CreateSharedTaskRequest, SharedTaskResponse,
-    UpdateSharedTaskRequest,
-};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -548,8 +544,8 @@ impl RemoteClient {
     /// Creates a shared task.
     pub async fn create_shared_task(
         &self,
-        request: &CreateSharedTaskRequest,
-    ) -> Result<SharedTaskResponse, RemoteClientError> {
+        request: &remote::routes::tasks::CreateSharedTaskRequest,
+    ) -> Result<remote::routes::tasks::SharedTaskResponse, RemoteClientError> {
         self.post_authed("/v1/tasks", Some(request)).await
     }
 
@@ -557,18 +553,18 @@ impl RemoteClient {
     pub async fn update_shared_task(
         &self,
         task_id: Uuid,
-        request: &UpdateSharedTaskRequest,
-    ) -> Result<SharedTaskResponse, RemoteClientError> {
+        request: &remote::routes::tasks::UpdateSharedTaskRequest,
+    ) -> Result<remote::routes::tasks::SharedTaskResponse, RemoteClientError> {
         self.patch_authed(&format!("/v1/tasks/{task_id}"), request)
             .await
     }
 
-    /// Assigns a shared task to a user.
+    /// Assigns a shared task to another user.
     pub async fn assign_shared_task(
         &self,
         task_id: Uuid,
-        request: &AssignSharedTaskRequest,
-    ) -> Result<SharedTaskResponse, RemoteClientError> {
+        request: &remote::routes::tasks::AssignSharedTaskRequest,
+    ) -> Result<remote::routes::tasks::SharedTaskResponse, RemoteClientError> {
         self.post_authed(&format!("/v1/tasks/{task_id}/assign"), Some(request))
             .await
     }
@@ -577,7 +573,7 @@ impl RemoteClient {
     pub async fn delete_shared_task(
         &self,
         task_id: Uuid,
-    ) -> Result<SharedTaskResponse, RemoteClientError> {
+    ) -> Result<remote::routes::tasks::SharedTaskResponse, RemoteClientError> {
         let res = self
             .send(
                 reqwest::Method::DELETE,
@@ -586,15 +582,15 @@ impl RemoteClient {
                 None::<&()>,
             )
             .await?;
-        res.json::<SharedTaskResponse>()
+        res.json::<remote::routes::tasks::SharedTaskResponse>()
             .await
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
     }
 
-    /// Checks if shared tasks exist.
+    /// Checks which of the given shared task IDs still exist.
     pub async fn check_tasks(&self, task_ids: Vec<Uuid>) -> Result<Vec<Uuid>, RemoteClientError> {
-        let request = CheckTasksRequest { task_ids };
-        self.post_authed("/v1/tasks/check", Some(&request)).await
+        let body = remote::routes::tasks::CheckTasksRequest { task_ids };
+        self.post_authed("/v1/tasks/check", Some(&body)).await
     }
 }
 
