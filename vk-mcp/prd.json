@@ -145,7 +145,7 @@
       ],
       "priority": 8,
       "passes": false,
-      "inProgress": false,
+      "inProgress": true,
       "checkpoint": false,
       "notes": "Reference: crates/db/src/models/merge.rs for Merge::create_direct()"
     },
