@@ -211,10 +211,13 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         // Build CLI args for session resumption
         let mut args = vec!["--resume".to_string(), session_id.to_string()];
 
-        // Use --resume-session-at if message_uuid is available (preferred over --fork-session)
+        // Use --resume-session-at if message_uuid is available to resume at exact point
+        // Fall back to --fork-session if no UUID (preserves history integrity)
         if let Some(uuid) = message_uuid {
             args.push("--resume-session-at".to_string());
             args.push(uuid.to_string());
+        } else {
+            args.push("--fork-session".to_string());
         }
 
         let command_parts = command_builder.build_follow_up(&args)?;
