@@ -27,6 +27,47 @@ use utils::shell::resolve_executable_path_blocking; // TODO: make GitCli async
 
 use crate::services::{filesystem_watcher::ALWAYS_SKIP_DIRS, git::Commit};
 
+/// Identity information for a git author or committer
+#[derive(Debug, Clone)]
+pub struct GitIdentity {
+    pub name: String,
+    pub email: String,
+}
+
+impl GitIdentity {
+    pub fn new(name: impl Into<String>, email: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            email: email.into(),
+        }
+    }
+}
+
+/// A co-author to be added to commit trailers
+#[derive(Debug, Clone)]
+pub struct CoAuthor {
+    pub name: String,
+    pub email: String,
+}
+
+impl CoAuthor {
+    pub fn new(name: impl Into<String>, email: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            email: email.into(),
+        }
+    }
+}
+
+/// Options for customizing git commit behavior
+#[derive(Debug, Clone, Default)]
+pub struct CommitOptions {
+    /// Custom committer identity (uses GIT_COMMITTER_NAME and GIT_COMMITTER_EMAIL env vars)
+    pub committer: Option<GitIdentity>,
+    /// Co-authors to add as trailers in the commit message
+    pub co_authors: Vec<CoAuthor>,
+}
+
 #[derive(Debug, Error)]
 pub enum GitCliError {
     #[error("git executable not found or not runnable")]
@@ -339,7 +380,59 @@ impl GitCli {
 
     /// Commit staged changes with the given message.
     pub fn commit(&self, worktree_path: &Path, message: &str) -> Result<(), GitCliError> {
-        self.git(worktree_path, ["commit", "-m", message])?;
+        self.commit_with_options(worktree_path, message, None)
+    }
+
+    /// Commit staged changes with custom committer identity and co-author trailers.
+    ///
+    /// # Arguments
+    /// * `worktree_path` - Path to the git worktree
+    /// * `message` - Commit message (co-author trailers will be appended)
+    /// * `options` - Optional commit options including committer identity and co-authors
+    pub fn commit_with_options(
+        &self,
+        worktree_path: &Path,
+        message: &str,
+        options: Option<&CommitOptions>,
+    ) -> Result<(), GitCliError> {
+        // Build the full commit message with co-author trailers
+        let full_message = if let Some(opts) = options
+            && !opts.co_authors.is_empty()
+        {
+            let trailers: Vec<String> = opts
+                .co_authors
+                .iter()
+                .map(|ca| format!("Co-Authored-By: {} <{}>", ca.name, ca.email))
+                .collect();
+            format!("{}\n\n{}", message, trailers.join("\n"))
+        } else {
+            message.to_string()
+        };
+
+        // Build environment variables for committer identity
+        let envs: Vec<(OsString, OsString)> = if let Some(opts) = options
+            && let Some(committer) = &opts.committer
+        {
+            vec![
+                (
+                    OsString::from("GIT_COMMITTER_NAME"),
+                    OsString::from(&committer.name),
+                ),
+                (
+                    OsString::from("GIT_COMMITTER_EMAIL"),
+                    OsString::from(&committer.email),
+                ),
+            ]
+        } else {
+            vec![]
+        };
+
+        if envs.is_empty() {
+            self.git(worktree_path, ["commit", "-m", &full_message])?;
+        } else {
+            self.git_with_env(worktree_path, ["commit", "-m", &full_message], &envs)?;
+        }
+
         Ok(())
     }
     /// Fetch a branch to the given remote using native git authentication.

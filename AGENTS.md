@@ -1,10 +1,23 @@
 # Repository Guidelines
 
+## Deployment Model (IMPORTANT)
+
+This fork is deployed as a **single EC2 instance** running the "local" deployment for **multiple users**. Users authenticate via GitHub OAuth (multiplayer features in Phase 1-6).
+
+**DO NOT modify the `crates/remote/` or `remote-frontend/` directories.** These are upstream components we are ignoring. All multiplayer/multi-user features are implemented in the local deployment crates (`local-deployment`, `server`, `db`, `services`, `frontend`).
+
+Key points:
+- User data is stored in the **local SQLite database** (`users` table)
+- Authentication uses GitHub OAuth configured via env vars (`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET`)
+- The `RemoteClient` and `SharePublisher` are for upstream cloud sync features we don't use
+- When you need user data, query the local `db` crate, not any remote API
+
 ## Project Structure & Module Organization
-- `crates/`: Rust workspace crates — `server` (API + bins), `db` (SQLx models/migrations), `executors`, `services`, `utils`, `deployment`, `local-deployment`, `remote`.
+- `crates/`: Rust workspace crates — `server` (API + bins), `db` (SQLx models/migrations), `executors`, `services`, `utils`, `deployment`, `local-deployment`.
+- `crates/remote/`: **DO NOT MODIFY** - Upstream remote service code, not used in our deployment.
 - `frontend/`: React + TypeScript app (Vite, Tailwind). Source in `frontend/src`.
 - `frontend/src/components/dialogs`: Dialog components for the frontend.
-- `remote-frontend/`: Remote deployment frontend.
+- `remote-frontend/`: **DO NOT MODIFY** - Upstream remote frontend, not used in our deployment.
 - `shared/`: Generated TypeScript types (`shared/types.ts`). Do not edit directly.
 - `assets/`, `dev_assets_seed/`, `dev_assets/`: Packaged and local dev assets.
 - `npx-cli/`: Files published to the npm CLI package.
