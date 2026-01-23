@@ -91,7 +91,7 @@ impl LocalContainerService {
         analytics: Option<AnalyticsContext>,
         approvals: Approvals,
         queued_message_service: QueuedMessageService,
-        publisher: Result<SharePublisher, RemoteClientNotConfigured>,
+        _publisher: Result<SharePublisher, RemoteClientNotConfigured>,
         claude_token_rotation: ClaudeTokenRotationService,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
