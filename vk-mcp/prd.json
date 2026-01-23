@@ -184,7 +184,7 @@
       ],
       "priority": 10,
       "passes": false,
-      "inProgress": false,
+      "inProgress": true,
       "checkpoint": true,
       "notes": "Location: crates/server/src/mcp/task_server.rs"
     },
