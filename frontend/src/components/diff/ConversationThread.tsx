@@ -96,10 +96,14 @@ function ResolvedConversationView({
           className="size-icon-sm text-success shrink-0"
           weight="fill"
         />
-        <span className="text-sm font-medium text-success">{t('conversation.thread.resolved')}</span>
+        <span className="text-sm font-medium text-success">
+          {t('conversation.thread.resolved')}
+        </span>
         {resolvedBy && (
           <span className="text-xs text-low">
-            {t('conversation.thread.resolvedBy', { username: resolvedBy.username })}{' '}
+            {t('conversation.thread.resolvedBy', {
+              username: resolvedBy.username,
+            })}{' '}
             {resolvedAtStr && formatRelativeTime(resolvedAtStr)}
           </span>
         )}
@@ -390,9 +394,6 @@ export function ConversationThread({
   }
 
   return (
-    <ActiveConversationView
-      conversation={conversation}
-      projectId={projectId}
-    />
+    <ActiveConversationView conversation={conversation} projectId={projectId} />
   );
 }

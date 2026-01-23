@@ -111,9 +111,7 @@ export function ConversationWidgetLine({
         autoFocus
         disabled={isSubmitting}
       />
-      {error && (
-        <div className="mt-2 text-sm text-error">{error}</div>
-      )}
+      {error && <div className="mt-2 text-sm text-error">{error}</div>}
       <div className="mt-2 flex gap-2">
         <Button
           size="xs"

@@ -128,15 +128,11 @@ export function ReviewProvider({
   const [drafts, setDrafts] = useState<Record<string, ReviewDraft>>({});
 
   // Fetch conversations from backend
-  const {
-    data: conversations = [],
-    isLoading: isLoadingAll,
-  } = useReviewConversations(attemptId);
+  const { data: conversations = [], isLoading: isLoadingAll } =
+    useReviewConversations(attemptId);
 
-  const {
-    data: unresolvedConversations = [],
-    isLoading: isLoadingUnresolved,
-  } = useUnresolvedConversations(attemptId);
+  const { data: unresolvedConversations = [], isLoading: isLoadingUnresolved } =
+    useUnresolvedConversations(attemptId);
 
   // Mutations
   const createConversationMutation = useCreateConversation();

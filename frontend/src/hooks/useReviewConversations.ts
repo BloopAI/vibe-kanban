@@ -201,7 +201,11 @@ export function useResolveConversation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ attemptId, conversationId, summary }: ResolveParams) => {
+    mutationFn: async ({
+      attemptId,
+      conversationId,
+      summary,
+    }: ResolveParams) => {
       const result = await attemptsApi.resolveConversation(
         attemptId,
         conversationId,
@@ -284,7 +288,10 @@ export function useDeleteConversation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ attemptId, conversationId }: DeleteConversationParams) => {
+    mutationFn: async ({
+      attemptId,
+      conversationId,
+    }: DeleteConversationParams) => {
       const result = await attemptsApi.deleteConversation(
         attemptId,
         conversationId
@@ -369,9 +376,8 @@ export function useDeleteMessage() {
  * Utility hook to check if there are any unresolved conversations
  */
 export function useHasUnresolvedConversations(attemptId?: string) {
-  const { data: conversations, isLoading } = useUnresolvedConversations(
-    attemptId
-  );
+  const { data: conversations, isLoading } =
+    useUnresolvedConversations(attemptId);
   return {
     hasUnresolved: (conversations?.length ?? 0) > 0,
     unresolvedCount: conversations?.length ?? 0,
