@@ -270,7 +270,6 @@ impl AppServerClient {
         tool_input: Value,
         tool_call_id: &str,
     ) -> Result<ApprovalStatus, ExecutorError> {
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         if self.auto_approve {
             return Ok(ApprovalStatus::Approved);
         }
