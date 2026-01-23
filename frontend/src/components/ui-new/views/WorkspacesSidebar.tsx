@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
+import { useMemo, useRef } from 'react';
 import {
   PlusIcon,
   ArrowLeftIcon,
@@ -16,10 +16,9 @@ import {
 import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 import type { WorkspaceLayoutMode } from '../containers/WorkspacesSidebarContainer';
 
-const PAGE_SIZE = 50;
-
 interface WorkspacesSidebarProps {
   workspaces: Workspace[];
+  totalWorkspacesCount: number;
   archivedWorkspaces?: Workspace[];
   selectedWorkspaceId: string | null;
   onSelectWorkspace: (id: string) => void;
@@ -40,6 +39,10 @@ interface WorkspacesSidebarProps {
   layoutMode?: WorkspaceLayoutMode;
   /** Handler for toggling layout mode */
   onToggleLayoutMode?: () => void;
+  /** Handler to load more workspaces on scroll */
+  onLoadMore?: () => void;
+  /** Whether there are more workspaces to load */
+  hasMoreWorkspaces?: boolean;
 }
 
 function WorkspaceList({
@@ -79,6 +82,7 @@ function WorkspaceList({
 
 export function WorkspacesSidebar({
   workspaces,
+  totalWorkspacesCount,
   archivedWorkspaces = [],
   selectedWorkspaceId,
   onSelectWorkspace,
@@ -92,64 +96,15 @@ export function WorkspacesSidebar({
   onShowArchiveChange,
   layoutMode = 'flat',
   onToggleLayoutMode,
+  onLoadMore,
+  hasMoreWorkspaces = false,
 }: WorkspacesSidebarProps) {
   const { t } = useTranslation(['tasks', 'common']);
-  const searchLower = searchQuery.toLowerCase();
-  const isSearching = searchQuery.length > 0;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
-
-  // Reset display limit when search changes or archive view changes
-  useEffect(() => {
-    setDisplayLimit(PAGE_SIZE);
-  }, [searchQuery, showArchive]);
-
-  // All filtered workspaces (before pagination)
-  const allFilteredWorkspaces = useMemo(
-    () =>
-      workspaces.filter(
-        (workspace) =>
-          workspace.name.toLowerCase().includes(searchLower) ||
-          workspace.branch.toLowerCase().includes(searchLower)
-      ),
-    [workspaces, searchLower]
-  );
-
-  const allFilteredArchivedWorkspaces = useMemo(
-    () =>
-      archivedWorkspaces.filter(
-        (workspace) =>
-          workspace.name.toLowerCase().includes(searchLower) ||
-          workspace.branch.toLowerCase().includes(searchLower)
-      ),
-    [archivedWorkspaces, searchLower]
-  );
-
-  // Paginated workspaces for display
-  const filteredWorkspaces = useMemo(
-    () =>
-      isSearching
-        ? allFilteredWorkspaces
-        : allFilteredWorkspaces.slice(0, displayLimit),
-    [allFilteredWorkspaces, displayLimit, isSearching]
-  );
-
-  const filteredArchivedWorkspaces = useMemo(
-    () =>
-      isSearching
-        ? allFilteredArchivedWorkspaces
-        : allFilteredArchivedWorkspaces.slice(0, displayLimit),
-    [allFilteredArchivedWorkspaces, displayLimit, isSearching]
-  );
-
-  // Check if there are more workspaces to load
-  const hasMoreWorkspaces = showArchive
-    ? allFilteredArchivedWorkspaces.length > displayLimit
-    : allFilteredWorkspaces.length > displayLimit;
 
   // Handle scroll to load more
-  const handleScroll = useCallback(() => {
-    if (isSearching || !hasMoreWorkspaces) return;
+  const handleScroll = () => {
+    if (!hasMoreWorkspaces || !onLoadMore) return;
 
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -157,25 +112,23 @@ export function WorkspacesSidebar({
     const { scrollTop, scrollHeight, clientHeight } = container;
     // Load more when scrolled within 100px of the bottom
     if (scrollHeight - scrollTop - clientHeight < 100) {
-      setDisplayLimit((prev) => prev + PAGE_SIZE);
+      onLoadMore();
     }
-  }, [isSearching, hasMoreWorkspaces]);
+  };
 
   // Categorize workspaces for accordion layout
-  const { raisedHandWorkspaces, idleWorkspaces, runningWorkspaces } =
-    useMemo(() => {
-      return {
-        raisedHandWorkspaces: filteredWorkspaces.filter(
-          (ws) => ws.hasPendingApproval
-        ),
-        idleWorkspaces: filteredWorkspaces.filter(
-          (ws) => !ws.isRunning && !ws.hasPendingApproval
-        ),
-        runningWorkspaces: filteredWorkspaces.filter(
-          (ws) => ws.isRunning && !ws.hasPendingApproval
-        ),
-      };
-    }, [filteredWorkspaces]);
+  const { raisedHandWorkspaces, idleWorkspaces, runningWorkspaces } = useMemo(
+    () => ({
+      raisedHandWorkspaces: workspaces.filter((ws) => ws.hasPendingApproval),
+      idleWorkspaces: workspaces.filter(
+        (ws) => !ws.isRunning && !ws.hasPendingApproval
+      ),
+      runningWorkspaces: workspaces.filter(
+        (ws) => ws.isRunning && !ws.hasPendingApproval
+      ),
+    }),
+    [workspaces]
+  );
 
   const headerActions: SectionAction[] = [
     {
@@ -221,12 +174,12 @@ export function WorkspacesSidebar({
             <span className="text-sm font-medium text-low px-base">
               {t('common:workspaces.archived')}
             </span>
-            {filteredArchivedWorkspaces.length === 0 ? (
+            {archivedWorkspaces.length === 0 ? (
               <span className="text-sm text-low opacity-60 px-base">
                 {t('common:workspaces.noArchived')}
               </span>
             ) : (
-              filteredArchivedWorkspaces.map((workspace) => (
+              archivedWorkspaces.map((workspace) => (
                 <WorkspaceSummary
                   summary
                   key={workspace.id}
@@ -330,7 +283,7 @@ export function WorkspacesSidebar({
               <span className="text-sm font-medium text-low">
                 {t('common:workspaces.active')}
               </span>
-              <span className="text-xs text-low">{workspaces.length}</span>
+              <span className="text-xs text-low">{totalWorkspacesCount}</span>
             </div>
             {draftTitle && (
               <WorkspaceSummary
@@ -340,7 +293,7 @@ export function WorkspacesSidebar({
                 onClick={onSelectCreate}
               />
             )}
-            {filteredWorkspaces.map((workspace) => (
+            {workspaces.map((workspace) => (
               <WorkspaceSummary
                 key={workspace.id}
                 name={workspace.name}
