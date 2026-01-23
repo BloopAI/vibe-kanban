@@ -1,20 +1,22 @@
 use std::path::PathBuf;
 
 use axum::{
-    Router,
+    Json, Router,
     extract::{Path, State},
     response::Json as ResponseJson,
-    routing::get,
+    routing::{get, post},
 };
 use db::models::{
     coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
+    merge::Merge,
     workspace::Workspace,
     workspace_repo::WorkspaceRepo,
 };
 use deployment::Deployment;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use services::services::git::DiffTarget;
+use services::services::workspace_manager::WorkspaceManager;
 use ts_rs::TS;
 use utils::diff::create_unified_diff;
 use utils::response::ApiResponse;
@@ -67,6 +69,25 @@ pub struct WorkspaceDiffResponse {
     pub workspace_id: String,
     /// List of file diffs
     pub files: Vec<FileDiff>,
+}
+
+/// Request body for closing a workspace
+#[derive(Debug, Deserialize)]
+pub struct CloseWorkspaceRequest {
+    /// Strategy for closing: "merge" or "discard"
+    pub strategy: String,
+}
+
+/// Response for workspace close endpoint
+#[derive(Debug, Serialize, TS)]
+pub struct CloseWorkspaceResponse {
+    pub workspace_id: String,
+    /// Whether the close operation succeeded
+    pub success: bool,
+    /// Message describing the result
+    pub message: String,
+    /// Merge commit SHA (only present for merge strategy)
+    pub merge_commit_sha: Option<String>,
 }
 
 /// Get workspace execution status and diff stats.
@@ -259,6 +280,133 @@ pub async fn get_workspace_diff(
     })))
 }
 
+/// Close a workspace with merge or discard strategy.
+/// Returns 404 if workspace not found.
+/// Returns 400 if workspace already closed (no container_ref) or has running processes.
+/// Returns 409 on merge conflicts.
+#[axum::debug_handler]
+pub async fn close_workspace(
+    State(deployment): State<DeploymentImpl>,
+    Path(workspace_id): Path<Uuid>,
+    Json(request): Json<CloseWorkspaceRequest>,
+) -> Result<ResponseJson<ApiResponse<CloseWorkspaceResponse>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    // Find workspace, return 404 if not found
+    let workspace = Workspace::find_by_id(pool, workspace_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound(format!("Workspace {} not found", workspace_id)))?;
+
+    // Return 400 if workspace already closed (no container_ref)
+    let container_ref = workspace.container_ref.as_ref().ok_or_else(|| {
+        ApiError::BadRequest("Workspace already closed (no active worktree)".to_string())
+    })?;
+
+    // Check for running processes
+    let has_running = ExecutionProcess::has_running_non_dev_server_processes_for_workspace(
+        pool,
+        workspace_id,
+    )
+    .await?;
+    if has_running {
+        return Err(ApiError::BadRequest(
+            "Cannot close workspace with running processes".to_string(),
+        ));
+    }
+
+    // Validate strategy
+    if request.strategy != "merge" && request.strategy != "discard" {
+        return Err(ApiError::BadRequest(format!(
+            "Invalid strategy '{}'. Must be 'merge' or 'discard'",
+            request.strategy
+        )));
+    }
+
+    // Get workspace repos with target branches
+    let workspace_repos =
+        WorkspaceRepo::find_repos_with_target_branch_for_workspace(pool, workspace_id).await?;
+    let repos: Vec<_> = workspace_repos.iter().map(|r| r.repo.clone()).collect();
+
+    let (message, merge_commit_sha) = if request.strategy == "merge" {
+        // Prepare repos with targets for merge
+        let repos_with_targets: Vec<_> = workspace_repos
+            .iter()
+            .map(|r| (r.repo.clone(), r.target_branch.clone()))
+            .collect();
+
+        // Perform merge
+        let commit_message = format!("Merge workspace branch '{}' via close", workspace.branch);
+        let merge_results = WorkspaceManager::close_workspace_merge(
+            &repos_with_targets,
+            &workspace.branch,
+            &commit_message,
+        )
+        .await
+        .map_err(|e| {
+            if let services::services::workspace_manager::WorkspaceError::MergeConflicts {
+                repo_name,
+                message,
+            } = e
+            {
+                ApiError::Conflict(format!(
+                    "Merge conflicts in repo '{}': {}",
+                    repo_name, message
+                ))
+            } else {
+                ApiError::BadRequest(format!("Workspace close failed: {}", e))
+            }
+        })?;
+
+        // Create DirectMerge records for each repo
+        for result in &merge_results {
+            Merge::create_direct(
+                pool,
+                workspace_id,
+                result.repo_id,
+                &result.target_branch,
+                &result.merge_commit_sha,
+            )
+            .await?;
+        }
+
+        // Get the first merge commit SHA for the response
+        let first_sha = merge_results.first().map(|r| r.merge_commit_sha.clone());
+
+        // Now cleanup the workspace (discard worktrees and branches)
+        let workspace_dir = PathBuf::from(container_ref);
+        WorkspaceManager::close_workspace_discard(&workspace_dir, &repos, &workspace.branch)
+            .await
+            .map_err(|e| ApiError::BadRequest(format!("Workspace cleanup failed: {}", e)))?;
+
+        (
+            format!(
+                "Successfully merged workspace into {} repo(s)",
+                merge_results.len()
+            ),
+            first_sha,
+        )
+    } else {
+        // Discard strategy - just cleanup
+        let workspace_dir = PathBuf::from(container_ref);
+        WorkspaceManager::close_workspace_discard(&workspace_dir, &repos, &workspace.branch)
+            .await
+            .map_err(|e| ApiError::BadRequest(format!("Workspace cleanup failed: {}", e)))?;
+
+        ("Successfully discarded workspace changes".to_string(), None)
+    };
+
+    // Update database: set archived and clear container_ref
+    Workspace::set_archived(pool, workspace_id, true).await?;
+    Workspace::clear_container_ref(pool, workspace_id).await?;
+
+    Ok(ResponseJson(ApiResponse::success(CloseWorkspaceResponse {
+        workspace_id: workspace_id.to_string(),
+        success: true,
+        message,
+        merge_commit_sha,
+    })))
+}
+
 /// Diff stats for a workspace
 #[derive(Debug, Clone, Default)]
 struct DiffStats {
@@ -337,4 +485,5 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/{id}/status", get(get_workspace_status))
         .route("/{id}/transcript", get(get_workspace_transcript))
         .route("/{id}/diff", get(get_workspace_diff))
+        .route("/{id}/close", post(close_workspace))
 }
