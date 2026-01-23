@@ -19,8 +19,10 @@ import { projectsApi, repoApi } from '@/lib/api';
 
 interface LocationState {
   initialPrompt?: string | null;
-  preferredRepos?: Array<{ repo_id: string; target_branch: string | null }>
-    | null;
+  preferredRepos?: Array<{
+    repo_id: string;
+    target_branch: string | null;
+  }> | null;
 }
 
 /** Unified repo model - keeps repo and branch together */
