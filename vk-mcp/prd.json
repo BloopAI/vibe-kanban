@@ -53,7 +53,7 @@
       ],
       "priority": 3,
       "passes": false,
-      "inProgress": false,
+      "inProgress": true,
       "checkpoint": false,
       "notes": "Reference: crates/db/src/models/coding_agent_turn.rs for model"
     },
