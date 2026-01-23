@@ -474,6 +474,24 @@ pub async fn merge_task_attempt(
         .parent_task(pool)
         .await?
         .ok_or(ApiError::Workspace(WorkspaceError::TaskNotFound))?;
+
+    // Check approval gate: task must have sufficient approvals before merge
+    if task.status == TaskStatus::InReview {
+        let project = db::models::project::Project::find_by_id(pool, task.project_id)
+            .await?
+            .ok_or(ApiError::Database(SqlxError::RowNotFound))?;
+
+        let approval_count =
+            db::models::task_approval::TaskApproval::count_by_task_id(pool, task.id).await?;
+
+        if approval_count < project.min_approvals_required {
+            return Err(ApiError::BadRequest(format!(
+                "Task requires {} approval(s) to merge, but has {}",
+                project.min_approvals_required, approval_count
+            )));
+        }
+    }
+
     let task_uuid_str = task.id.to_string();
     let first_uuid_section = task_uuid_str.split('-').next().unwrap_or(&task_uuid_str);
 

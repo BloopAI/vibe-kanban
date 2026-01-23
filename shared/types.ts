@@ -24,15 +24,15 @@ export type UpsertClaudeTokenRequest = {
  */
 token: string, };
 
-export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, creator_user_id: string | null, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, creator_user_id: string | null, min_approvals_required: number, created_at: Date, updated_at: Date, };
 
 export type ProjectCreator = { id: string, username: string, avatar_url: string | null, };
 
-export type ProjectWithCreator = { creator: ProjectCreator | null, id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, creator_user_id: string | null, created_at: Date, updated_at: Date, };
+export type ProjectWithCreator = { creator: ProjectCreator | null, id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, creator_user_id: string | null, min_approvals_required: number, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
-export type UpdateProject = { name: string | null, };
+export type UpdateProject = { name: string | null, min_approvals_required: number | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, 
 /**
@@ -70,7 +70,7 @@ export type TaskUser = { id: string, username: string, avatar_url: string | null
 
 export type TaskWithUsers = { creator: TaskUser | null, assignee: TaskUser | null, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, creator_user_id: string | null, assignee_user_id: string | null, created_at: string, updated_at: string, };
 
-export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, creator: TaskUser | null, assignee: TaskUser | null, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, creator_user_id: string | null, assignee_user_id: string | null, created_at: string, updated_at: string, };
+export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, creator: TaskUser | null, assignee: TaskUser | null, approval_count: number, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, creator_user_id: string | null, assignee_user_id: string | null, created_at: string, updated_at: string, };
 
 export type TaskRelationships = { parent_task: Task | null, current_workspace: Workspace, children: Array<Task>, };
 
@@ -81,6 +81,12 @@ export type UpdateTask = { title: string | null, description: string | null, par
  * Set to Some(user_id) to assign, or None to not change, or Some(null) to unassign
  */
 assignee_user_id: string | null | null, };
+
+export type TaskApproval = { id: string, task_id: string, user_id: string, created_at: Date, };
+
+export type TaskApprovalUser = { id: string, username: string, avatar_url: string | null, };
+
+export type TaskApprovalWithUser = { user: TaskApprovalUser, id: string, task_id: string, user_id: string, created_at: Date, };
 
 export type DraftFollowUpData = { message: string, executor_profile_id: ExecutorProfileId, };
 

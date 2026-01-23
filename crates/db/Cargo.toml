@@ -19,3 +19,6 @@ serde_with = { workspace = true }
 strum = "0.27.2"
 strum_macros = "0.27.2"
 
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+

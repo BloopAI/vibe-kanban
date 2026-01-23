@@ -226,6 +226,7 @@ export function ProjectsSettingsSection() {
     try {
       const updateData: UpdateProject = {
         name: draft.name.trim(),
+        min_approvals_required: null,
       };
 
       updateProject.mutate({

@@ -481,8 +481,26 @@ pub async fn attach_existing_pr(
             .await?;
         }
 
-        // If PR is merged, mark task as done and archive workspace
+        // If PR is merged, check approval gate then mark task as done
         if matches!(pr_info.status, MergeStatus::Merged) {
+            if task.status == TaskStatus::InReview {
+                let project =
+                    db::models::project::Project::find_by_id(pool, task.project_id)
+                        .await?
+                        .ok_or(ApiError::Database(sqlx::Error::RowNotFound))?;
+
+                let approval_count =
+                    db::models::task_approval::TaskApproval::count_by_task_id(pool, task.id)
+                        .await?;
+
+                if approval_count < project.min_approvals_required {
+                    return Err(ApiError::BadRequest(format!(
+                        "Task requires {} approval(s) to complete, but has {}",
+                        project.min_approvals_required, approval_count
+                    )));
+                }
+            }
+
             Task::update_status(pool, task.id, TaskStatus::Done).await?;
             if !workspace.pinned {
                 Workspace::set_archived(pool, workspace.id, true).await?;

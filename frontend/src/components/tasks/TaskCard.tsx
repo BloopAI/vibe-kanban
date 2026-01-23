@@ -9,6 +9,7 @@ import { paths } from '@/lib/paths';
 import { attemptsApi } from '@/lib/api';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { TaskCardHeader } from './TaskCardHeader';
+import { TaskApprovalBadge } from './TaskApprovalBadge';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks';
 
@@ -121,6 +122,9 @@ export function TaskCard({
           }
           right={
             <>
+              {task.approval_count > 0 && (
+                <TaskApprovalBadge approvalCount={task.approval_count} />
+              )}
               {task.has_in_progress_attempt && (
                 <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
               )}

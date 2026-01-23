@@ -1377,6 +1377,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "thiserror 2.0.17",
+ "tokio",
  "tracing",
  "ts-rs 11.0.1",
  "utils",
