@@ -142,5 +142,4 @@ pub struct OpenPrInfo {
     pub title: String,
     pub head_branch: String,
     pub base_branch: String,
-    pub head_repo_url: Option<String>,
 }

@@ -15,7 +15,6 @@ use db::models::merge::{MergeStatus, PullRequestInfo};
 use serde::Deserialize;
 use tempfile::NamedTempFile;
 use thiserror::Error;
-use url::Url;
 use utils::shell::resolve_executable_path_blocking;
 
 use crate::services::git_host::types::{
@@ -107,20 +106,6 @@ struct GhPrListExtendedResponse {
     title: String,
     head_ref_name: String,
     base_ref_name: String,
-    head_repository: Option<GhPrHeadRepository>,
-    head_repository_owner: Option<GhPrHeadRepositoryOwner>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct GhPrHeadRepository {
-    name: String,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct GhPrHeadRepositoryOwner {
-    login: String,
 }
 
 #[derive(Debug, Error)]
@@ -307,7 +292,7 @@ impl GhCli {
                 "--state",
                 "open",
                 "--json",
-                "number,url,title,headRefName,baseRefName,headRepository,headRepositoryOwner",
+                "number,url,title,headRefName,baseRefName",
             ],
             None,
         )?;
@@ -442,28 +427,12 @@ impl GhCli {
             })?;
         Ok(prs
             .into_iter()
-            .map(|pr| {
-                let head_repo_url = match (&pr.head_repository, &pr.head_repository_owner) {
-                    (Some(repo), Some(owner)) => Url::parse(&pr.url).ok().and_then(|parsed| {
-                        let host = parsed.host_str()?;
-                        Some(format!(
-                            "{}://{}/{}/{}",
-                            parsed.scheme(),
-                            host,
-                            owner.login,
-                            repo.name
-                        ))
-                    }),
-                    _ => None,
-                };
-                OpenPrInfo {
-                    number: pr.number,
-                    url: pr.url,
-                    title: pr.title,
-                    head_branch: pr.head_ref_name,
-                    base_branch: pr.base_ref_name,
-                    head_repo_url,
-                }
+            .map(|pr| OpenPrInfo {
+                number: pr.number,
+                url: pr.url,
+                title: pr.title,
+                head_branch: pr.head_ref_name,
+                base_branch: pr.base_ref_name,
             })
             .collect())
     }

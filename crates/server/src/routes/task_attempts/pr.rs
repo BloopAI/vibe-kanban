@@ -582,7 +582,6 @@ pub struct CreateWorkspaceFromPrBody {
     pub pr_url: String,
     pub head_branch: String,
     pub base_branch: String,
-    pub head_repo_url: Option<String>,
     pub run_setup: bool,
     pub remote_name: Option<String>,
 }
@@ -638,18 +637,8 @@ pub async fn create_workspace_from_pr(
         None => deployment.git().get_default_remote(&repo.path)?,
     };
 
-    let fetch_url = payload.head_repo_url.as_deref().unwrap_or(&remote.url);
-    if let Err(e) = deployment
-        .git()
-        .fetch_branch(&repo.path, fetch_url, &payload.head_branch)
-    {
-        tracing::error!("Failed to fetch PR branch: {}", e);
-        return Ok(ResponseJson(ApiResponse::error_with_data(
-            CreateFromPrError::BranchFetchFailed {
-                message: e.to_string(),
-            },
-        )));
-    }
+    // Use target branch initially - we'll switch to PR branch via gh pr checkout
+    let target_branch_ref = format!("{}/{}", remote.name, payload.base_branch);
 
     let task_id = Uuid::new_v4();
     let create_task = CreateTask {
@@ -667,11 +656,12 @@ pub async fn create_workspace_from_pr(
 
     let agent_working_dir = Some(repo.name.clone());
 
+    // Create workspace with target branch initially
     let workspace_id = Uuid::new_v4();
     let mut workspace = Workspace::create(
         pool,
         &CreateWorkspace {
-            branch: payload.head_branch.clone(),
+            branch: target_branch_ref.clone(),
             agent_working_dir,
         },
         workspace_id,
@@ -684,7 +674,7 @@ pub async fn create_workspace_from_pr(
         workspace.id,
         &[CreateWorkspaceRepo {
             repo_id: payload.repo_id,
-            target_branch: format!("{}/{}", remote.name, payload.base_branch),
+            target_branch: target_branch_ref.clone(),
         }],
     )
     .await?;
@@ -697,7 +687,8 @@ pub async fn create_workspace_from_pr(
     // Update workspace with container_ref so start_execution can find it
     workspace.container_ref = Some(container_ref.clone());
 
-    // Configure PR branch tracking (non-fatal - workspace is usable without this)
+    // Use gh pr checkout to fetch and switch to the PR branch
+    // This handles SSH/HTTPS auth correctly regardless of fork URL format
     let worktree_path = PathBuf::from(&container_ref).join(&repo.name);
     match GhCli::new().get_repo_info(&remote.url, &worktree_path) {
         Ok(repo_info) => {
@@ -707,13 +698,26 @@ pub async fn create_workspace_from_pr(
                 &repo_info.repo_name,
                 payload.pr_number,
             ) {
-                tracing::warn!("Failed to configure PR branch tracking: {e}");
+                tracing::error!("Failed to checkout PR branch: {e}");
+                return Ok(ResponseJson(ApiResponse::error_with_data(
+                    CreateFromPrError::BranchFetchFailed {
+                        message: e.to_string(),
+                    },
+                )));
             }
+            // Update workspace branch to the actual PR branch
+            Workspace::update_branch_name(pool, workspace.id, &payload.head_branch).await?;
+            workspace.branch = payload.head_branch.clone();
         }
         Err(e) => {
-            tracing::warn!(
-                "Failed to get repo info for PR tracking (gh CLI may not be installed): {e}"
+            tracing::error!(
+                "Failed to get repo info for PR checkout (gh CLI may not be installed): {e}"
             );
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                CreateFromPrError::BranchFetchFailed {
+                    message: format!("Failed to get repository info: {e}"),
+                },
+            )));
         }
     }
 

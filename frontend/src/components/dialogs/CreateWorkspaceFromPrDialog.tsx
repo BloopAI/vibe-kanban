@@ -146,7 +146,6 @@ const CreateWorkspaceFromPrDialogImpl =
           pr_url: selectedPr.url,
           head_branch: selectedPr.head_branch,
           base_branch: selectedPr.base_branch,
-          head_repo_url: selectedPr.head_repo_url,
           run_setup: runSetup,
           remote_name: selectedRemote,
         });
