@@ -13,10 +13,11 @@ export function useSlashCommands(
   agent: BaseCodingAgent | null | undefined,
   opts?: { workspaceId?: string; repoId?: string }
 ) {
+  const { workspaceId, repoId } = opts ?? {};
   const endpoint = useMemo(() => {
     if (!agent) return undefined;
-    return agentsApi.getSlashCommandsStreamUrl(agent, opts);
-  }, [agent, opts?.repoId, opts?.workspaceId]);
+    return agentsApi.getSlashCommandsStreamUrl(agent, { workspaceId, repoId });
+  }, [agent, workspaceId, repoId]);
 
   const initialData = useCallback(
     (): SlashCommandsStreamState => ({
