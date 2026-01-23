@@ -1312,6 +1312,21 @@ export const scratchApi = {
     `/api/scratch/${scratchType}/${id}/stream/ws`,
 };
 
+// Agents API
+export const agentsApi = {
+  getSlashCommandsStreamUrl: (
+    agent: BaseCodingAgent,
+    opts?: { workspaceId?: string; repoId?: string }
+  ): string => {
+    const params = new URLSearchParams();
+    params.set('executor', agent);
+    if (opts?.workspaceId) params.set('workspace_id', opts.workspaceId);
+    if (opts?.repoId) params.set('repo_id', opts.repoId);
+
+    return `/api/agents/slash-commands/ws?${params.toString()}`;
+  },
+};
+
 // Queue API for session follow-up messages
 export const queueApi = {
   /**
