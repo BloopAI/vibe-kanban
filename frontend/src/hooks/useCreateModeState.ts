@@ -23,6 +23,7 @@ interface LocationState {
     repo_id: string;
     target_branch: string | null;
   }> | null;
+  project_id?: string | null;
 }
 
 /** Unified repo model - keeps repo and branch together */
@@ -456,6 +457,11 @@ async function initializeState({
     if (hasPreferredRepos || hasInitialPrompt) {
       const data: Partial<DraftState> = {};
       let appliedNavState = false;
+
+      // Handle project_id from navigation state (e.g., from duplicate/spin-off)
+      if (navState?.project_id && navState.project_id in projectsById) {
+        data.projectId = navState.project_id;
+      }
 
       // Handle preferred repos
       if (hasPreferredRepos) {
