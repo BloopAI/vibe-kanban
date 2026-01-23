@@ -1,6 +1,7 @@
 -- Add tables to Electric publication for sync
 -- These tables need REPLICA IDENTITY FULL for Electric to track changes
 
+SELECT electric_sync_table('public', 'users');
 SELECT electric_sync_table('public', 'projects');
 SELECT electric_sync_table('public', 'project_statuses');
 SELECT electric_sync_table('public', 'tags');
