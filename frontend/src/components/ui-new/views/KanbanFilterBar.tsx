@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   UsersIcon,
@@ -17,12 +17,15 @@ import type { OrganizationMemberWithProfile } from 'shared/types';
 import { UserAvatar } from '@/components/tasks/UserAvatar';
 import { InputField } from '@/components/ui-new/primitives/InputField';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
-import { PropertyDropdown } from './PropertyDropdown';
+import {
+  PropertyDropdown,
+  type PropertyDropdownOption,
+} from '@/components/ui-new/primitives/PropertyDropdown';
 import {
   MultiSelectDropdown,
-  PriorityFilterDropdown,
   type MultiSelectDropdownOption,
-} from './MultiSelectDropdown';
+} from '@/components/ui-new/primitives/MultiSelectDropdown';
+import { PriorityFilterDropdown } from '@/components/ui-new/views/PriorityFilterDropdown';
 
 // =============================================================================
 // Types
@@ -38,7 +41,7 @@ interface KanbanFilterBarProps {
 // Sort options
 // =============================================================================
 
-const SORT_OPTIONS: { value: KanbanSortField; label: string }[] = [
+const SORT_OPTIONS: PropertyDropdownOption<KanbanSortField>[] = [
   { value: 'sort_order', label: 'Manual' },
   { value: 'priority', label: 'Priority' },
   { value: 'created_at', label: 'Created' },
@@ -133,20 +136,6 @@ export function KanbanFilterBar({
     [tags]
   );
 
-  // Toggle sort direction
-  const toggleSortDirection = useCallback(() => {
-    const newDirection = kanbanFilters.sortDirection === 'asc' ? 'desc' : 'asc';
-    setKanbanSort(kanbanFilters.sortField, newDirection);
-  }, [kanbanFilters.sortDirection, kanbanFilters.sortField, setKanbanSort]);
-
-  // Set sort field
-  const handleSortFieldChange = useCallback(
-    (field: KanbanSortField) => {
-      setKanbanSort(field, kanbanFilters.sortDirection);
-    },
-    [kanbanFilters.sortDirection, setKanbanSort]
-  );
-
   return (
     <div className="flex items-center gap-base flex-wrap">
       {/* Search Input */}
@@ -195,7 +184,9 @@ export function KanbanFilterBar({
       <PropertyDropdown
         value={kanbanFilters.sortField}
         options={SORT_OPTIONS}
-        onChange={handleSortFieldChange}
+        onChange={(field: KanbanSortField) =>
+          setKanbanSort(field, kanbanFilters.sortDirection)
+        }
         icon={
           kanbanFilters.sortDirection === 'asc'
             ? SortAscendingIcon
@@ -207,7 +198,11 @@ export function KanbanFilterBar({
       {/* Sort Direction Toggle */}
       <button
         type="button"
-        onClick={toggleSortDirection}
+        onClick={() => {
+          const newDirection =
+            kanbanFilters.sortDirection === 'asc' ? 'desc' : 'asc';
+          setKanbanSort(kanbanFilters.sortField, newDirection);
+        }}
         className={cn(
           'flex items-center justify-center p-half rounded-sm',
           'text-normal bg-panel hover:bg-secondary transition-colors'
