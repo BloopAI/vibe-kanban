@@ -313,7 +313,15 @@ jobs:
       - name: Build backend (Windows)
         if: runner.os == 'Linux' && contains(matrix.target, 'windows')
         run: |
-          cargo xwin build --release --target ${{ matrix.target }} -p server -p review --bin server --bin mcp_task_server --bin review
+          if [[ "${{ matrix.target }}" == "aarch64-pc-windows-msvc" ]]; then
+            # ring requires clang on arm64 windows. See https://github.com/briansmith/ring/issues/2117
+            chmod +x scripts/ring-cc-wrapper.sh scripts/clang
+            export PATH="${{ github.workspace }}/scripts:$PATH"
+            export RING_CC=/usr/lib/llvm-19/bin/clang
+            export DEFAULT_CC=clang-cl
+            export CC_aarch64_pc_windows_msvc="${{ github.workspace }}/scripts/ring-cc-wrapper.sh"
+          fi
+          cargo xwin build --cross-compiler clang-cl --release --target ${{ matrix.target }} -p server -p review --bin server --bin mcp_task_server --bin review
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
