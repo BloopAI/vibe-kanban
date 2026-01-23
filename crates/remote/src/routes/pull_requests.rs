@@ -17,6 +17,7 @@ use crate::{
         issues::IssueRepository,
         pull_requests::{PullRequest, PullRequestRepository},
         types::PullRequestStatus,
+        workspaces::WorkspaceRepository,
     },
 };
 
@@ -29,7 +30,7 @@ pub struct CreatePullRequestRequest {
     pub merge_commit_sha: Option<String>,
     pub target_branch_name: String,
     pub issue_id: Uuid,
-    pub workspace_id: Option<Uuid>,
+    pub local_workspace_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -50,7 +51,7 @@ pub fn router() -> Router<AppState> {
 #[instrument(
     name = "pull_requests.create_pull_request",
     skip(state, ctx, payload),
-    fields(issue_id = %payload.issue_id, user_id = %ctx.user.id)
+    fields(issue_id = %payload.issue_id, local_workspace_id = ?payload.local_workspace_id, user_id = %ctx.user.id)
 )]
 async fn create_pull_request(
     State(state): State<AppState>,
@@ -58,6 +59,27 @@ async fn create_pull_request(
     Json(payload): Json<CreatePullRequestRequest>,
 ) -> Result<Json<PullRequest>, ErrorResponse> {
     ensure_issue_access(state.pool(), ctx.user.id, payload.issue_id).await?;
+
+    // Resolve local_workspace_id to remote workspace_id
+    let workspace_id = match payload.local_workspace_id {
+        Some(local_id) => {
+            let workspace = WorkspaceRepository::find_by_local_id(state.pool(), local_id)
+                .await
+                .map_err(|error| {
+                    tracing::error!(?error, local_workspace_id = %local_id, "failed to find workspace");
+                    ErrorResponse::new(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "failed to find workspace",
+                    )
+                })?
+                .ok_or_else(|| {
+                    tracing::warn!(local_workspace_id = %local_id, "workspace not found");
+                    ErrorResponse::new(StatusCode::NOT_FOUND, "workspace not found")
+                })?;
+            Some(workspace.id)
+        }
+        None => None,
+    };
 
     let pr = PullRequestRepository::create(
         state.pool(),
@@ -68,7 +90,7 @@ async fn create_pull_request(
         payload.merge_commit_sha,
         payload.target_branch_name,
         payload.issue_id,
-        payload.workspace_id,
+        workspace_id,
     )
     .await
     .map_err(|error| {
