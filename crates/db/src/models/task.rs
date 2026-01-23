@@ -20,6 +20,8 @@ pub enum TaskStatus {
     Todo,
     InProgress,
     InReview,
+    Ci,
+    Cd,
     Done,
     Cancelled,
 }

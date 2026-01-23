@@ -543,6 +543,8 @@
       "todo": "할 일",
       "inprogress": "진행 중",
       "inreview": "검토 중",
+      "ci": "CI",
+      "cd": "CD",
       "done": "완료",
       "cancelled": "취소됨"
     },

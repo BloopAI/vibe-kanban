@@ -636,6 +636,8 @@
       "todo": "À faire",
       "inprogress": "En cours",
       "inreview": "En révision",
+      "ci": "CI",
+      "cd": "CD",
       "done": "Terminé",
       "cancelled": "Annulé"
     },

@@ -6,6 +6,8 @@ pub(super) fn to_remote(status: &TaskStatus) -> RemoteTaskStatus {
         TaskStatus::Todo => RemoteTaskStatus::Todo,
         TaskStatus::InProgress => RemoteTaskStatus::InProgress,
         TaskStatus::InReview => RemoteTaskStatus::InReview,
+        TaskStatus::Ci => RemoteTaskStatus::InReview,
+        TaskStatus::Cd => RemoteTaskStatus::InReview,
         TaskStatus::Done => RemoteTaskStatus::Done,
         TaskStatus::Cancelled => RemoteTaskStatus::Cancelled,
     }
