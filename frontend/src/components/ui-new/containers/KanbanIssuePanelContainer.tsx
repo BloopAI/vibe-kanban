@@ -36,7 +36,7 @@ export function KanbanIssuePanelContainer() {
     isLoading: projectLoading,
   } = useProjectContext();
 
-  const { membersWithProfiles, isLoading: orgLoading } = useOrgContext();
+  const { users, isLoading: orgLoading } = useOrgContext();
 
   // Find selected issue if in edit mode
   const selectedIssue = useMemo(() => {
@@ -44,13 +44,12 @@ export function KanbanIssuePanelContainer() {
     return issues.find((i) => i.id === selectedKanbanIssueId) ?? null;
   }, [issues, selectedKanbanIssueId, kanbanCreateMode]);
 
-  // Get current assignee from issue_assignees
-  const currentAssigneeId = useMemo(() => {
-    if (!selectedKanbanIssueId) return null;
-    const assignee = issueAssignees.find(
-      (a) => a.issue_id === selectedKanbanIssueId
-    );
-    return assignee?.user_id ?? null;
+  // Get all current assignees from issue_assignees
+  const currentAssigneeIds = useMemo(() => {
+    if (!selectedKanbanIssueId) return [];
+    return issueAssignees
+      .filter((a) => a.issue_id === selectedKanbanIssueId)
+      .map((a) => a.user_id);
   }, [issueAssignees, selectedKanbanIssueId]);
 
   // Determine mode (only edit when an issue is selected)
@@ -79,7 +78,7 @@ export function KanbanIssuePanelContainer() {
     description: null,
     statusId: defaultStatusId,
     priority: 'medium' as IssuePriority,
-    assigneeId: null,
+    assigneeIds: [],
     tagIds: [],
     createDraftWorkspace: false,
   }));
@@ -94,7 +93,7 @@ export function KanbanIssuePanelContainer() {
         description: null,
         statusId: defaultStatusId,
         priority: 'medium',
-        assigneeId: null,
+        assigneeIds: [],
         tagIds: [],
         createDraftWorkspace: false,
       });
@@ -104,12 +103,12 @@ export function KanbanIssuePanelContainer() {
         description: selectedIssue.description,
         statusId: selectedIssue.status_id,
         priority: selectedIssue.priority,
-        assigneeId: currentAssigneeId,
+        assigneeIds: currentAssigneeIds,
         tagIds: [], // Would come from issue_tags table
         createDraftWorkspace: false,
       });
     }
-  }, [mode, selectedIssue, defaultStatusId, currentAssigneeId]);
+  }, [mode, selectedIssue, defaultStatusId, currentAssigneeIds]);
 
   // Form change handler - persists changes immediately in edit mode
   const handlePropertyChange = useCallback(
@@ -125,22 +124,31 @@ export function KanbanIssuePanelContainer() {
           updateIssue(selectedKanbanIssueId, {
             priority: value as IssuePriority,
           });
-        } else if (field === 'assigneeId') {
-          // Handle assignee change via junction table
-          const currentAssignee = issueAssignees.find(
-            (a) => a.issue_id === selectedKanbanIssueId
-          );
+        } else if (field === 'assigneeIds') {
+          // Handle assignee changes via junction table
+          const newIds = value as string[];
+          const currentIds = issueAssignees
+            .filter((a) => a.issue_id === selectedKanbanIssueId)
+            .map((a) => a.user_id);
 
-          if (currentAssignee) {
-            removeIssueAssignee(currentAssignee.id);
-          }
+          // Remove assignees no longer selected
+          issueAssignees
+            .filter(
+              (a) =>
+                a.issue_id === selectedKanbanIssueId &&
+                !newIds.includes(a.user_id)
+            )
+            .forEach((a) => removeIssueAssignee(a.id));
 
-          if (value) {
-            insertIssueAssignee({
-              issue_id: selectedKanbanIssueId,
-              user_id: value as string,
-            });
-          }
+          // Add new assignees
+          newIds
+            .filter((id) => !currentIds.includes(id))
+            .forEach((userId) =>
+              insertIssueAssignee({
+                issue_id: selectedKanbanIssueId,
+                user_id: userId,
+              })
+            );
         }
       }
     },
@@ -183,13 +191,13 @@ export function KanbanIssuePanelContainer() {
           extension_metadata: null,
         });
 
-        // Create assignee record if an assignee was selected
-        if (formData.assigneeId) {
+        // Create assignee records for all selected assignees
+        formData.assigneeIds.forEach((userId) => {
           insertIssueAssignee({
             issue_id: newIssue.id,
-            user_id: formData.assigneeId,
+            user_id: userId,
           });
-        }
+        });
 
         // TODO: Create workspace if formData.createDraftWorkspace is true
 
@@ -233,7 +241,7 @@ export function KanbanIssuePanelContainer() {
       onFormChange={handlePropertyChange}
       statuses={sortedStatuses}
       tags={tags}
-      users={membersWithProfiles}
+      users={users}
       workspaces={[]}
       comments={[]}
       linkedPrs={[]}

@@ -1,20 +1,33 @@
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { PlusIcon } from '@phosphor-icons/react';
-import type { IssuePriority, ProjectStatus } from 'shared/remote-types';
-import type { OrganizationMemberWithProfile } from 'shared/types';
+import { PlusIcon, UsersIcon } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
+import type { IssuePriority, ProjectStatus, User } from 'shared/remote-types';
 import { StatusDropdown } from '@/components/ui-new/views/StatusDropdown';
 import { PriorityDropdown } from '@/components/ui-new/views/PriorityDropdown';
-import { SearchableAssigneeDropdown } from '@/components/ui-new/views/AssigneeDropdown';
+import {
+  MultiSelectDropdown,
+  type MultiSelectDropdownOption,
+} from '@/components/ui-new/primitives/MultiSelectDropdown';
+import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
+
+const getUserDisplayName = (user: User): string => {
+  return (
+    [user.first_name, user.last_name].filter(Boolean).join(' ') ||
+    user.username ||
+    'User'
+  );
+};
 
 export interface IssuePropertyRowProps {
   statusId: string;
   priority: IssuePriority;
-  assigneeId: string | null;
+  assigneeIds: string[];
   statuses: ProjectStatus[];
-  users: OrganizationMemberWithProfile[];
+  users: User[];
   onStatusChange: (statusId: string) => void;
   onPriorityChange: (priority: IssuePriority) => void;
-  onAssigneeChange: (userId: string | null) => void;
+  onAssigneeChange: (userIds: string[]) => void;
   onAddClick?: () => void;
   disabled?: boolean;
   className?: string;
@@ -23,7 +36,7 @@ export interface IssuePropertyRowProps {
 export function IssuePropertyRow({
   statusId,
   priority,
-  assigneeId,
+  assigneeIds,
   statuses,
   users,
   onStatusChange,
@@ -33,6 +46,23 @@ export function IssuePropertyRow({
   disabled,
   className,
 }: IssuePropertyRowProps) {
+  const { t } = useTranslation('common');
+
+  const assigneeOptions: MultiSelectDropdownOption<string>[] = useMemo(
+    () =>
+      users.map((user) => ({
+        value: user.id,
+        label: getUserDisplayName(user),
+        renderOption: () => (
+          <div className="flex items-center gap-half">
+            <UserAvatar user={user} className="h-4 w-4 text-[8px]" />
+            <span>{getUserDisplayName(user)}</span>
+          </div>
+        ),
+      })),
+    [users]
+  );
+
   return (
     <div className={cn('flex items-center gap-half', className)}>
       <StatusDropdown
@@ -48,10 +78,12 @@ export function IssuePropertyRow({
         disabled={disabled}
       />
 
-      <SearchableAssigneeDropdown
-        assigneeId={assigneeId}
-        users={users}
+      <MultiSelectDropdown
+        values={assigneeIds}
+        options={assigneeOptions}
         onChange={onAssigneeChange}
+        icon={UsersIcon}
+        label={t('kanban.assignee', 'Assignee')}
         disabled={disabled}
       />
 
