@@ -232,6 +232,23 @@ module.exports = {
       },
     },
     {
+      // Ban re-exports (barrel exports) in ui-new index files
+      files: ['src/components/ui-new/**/index.ts'],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: 'ExportNamedDeclaration[source]',
+            message: 'Re-exports are not allowed in ui-new. Export directly from source files.',
+          },
+          {
+            selector: 'ExportAllDeclaration',
+            message: 'Wildcard re-exports (export *) are not allowed in ui-new.',
+          },
+        ],
+      },
+    },
+    {
       // Container components should not have optional props
       files: ['src/components/ui-new/containers/**/*.{ts,tsx}'],
       rules: {
