@@ -12,9 +12,8 @@ import {
   useUiPreferencesStore,
   type KanbanSortField,
 } from '@/stores/useUiPreferencesStore';
-import type { Tag } from 'shared/remote-types';
-import type { OrganizationMemberWithProfile } from 'shared/types';
-import { UserAvatar } from '@/components/tasks/UserAvatar';
+import type { Tag, User } from 'shared/remote-types';
+import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 import { InputField } from '@/components/ui-new/primitives/InputField';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import {
@@ -33,7 +32,7 @@ import { PriorityFilterDropdown } from '@/components/ui-new/views/PriorityFilter
 
 interface KanbanFilterBarProps {
   tags: Tag[];
-  users: OrganizationMemberWithProfile[];
+  users: User[];
   hasActiveFilters: boolean;
 }
 
@@ -53,7 +52,7 @@ const SORT_OPTIONS: PropertyDropdownOption<KanbanSortField>[] = [
 // Helper to get user display name
 // =============================================================================
 
-const getUserDisplayName = (user: OrganizationMemberWithProfile): string => {
+const getUserDisplayName = (user: User): string => {
   return (
     [user.first_name, user.last_name].filter(Boolean).join(' ') ||
     user.username ||
@@ -98,17 +97,11 @@ export function KanbanFilterBar({
         ),
       },
       ...users.map((user) => ({
-        value: user.user_id,
+        value: user.id,
         label: getUserDisplayName(user),
         renderOption: () => (
           <div className="flex items-center gap-base">
-            <UserAvatar
-              firstName={user.first_name}
-              lastName={user.last_name}
-              username={user.username}
-              imageUrl={user.avatar_url}
-              className="h-4 w-4 text-[8px]"
-            />
+            <UserAvatar user={user} className="h-4 w-4 text-[8px]" />
             {getUserDisplayName(user)}
           </div>
         ),
