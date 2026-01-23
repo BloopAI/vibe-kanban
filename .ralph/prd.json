@@ -69,7 +69,7 @@
       ],
       "priority": 4,
       "passes": false,
-      "inProgress": false,
+      "inProgress": true,
       "checkpoint": true,
       "notes": "Final checkpoint - full feature review"
     }
