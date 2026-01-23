@@ -659,7 +659,8 @@
       "startPlaceholder": "Inicia una conversación... (escribe @ para buscar archivos)",
       "starting": "Iniciando...",
       "startConversation": "Iniciar conversación",
-      "anonymous": "Anónimo"
+      "anonymous": "Anónimo",
+      "resolvedBy": "por @{{username}}"
     },
     "approval": {
       "conflictWarning": "Los archivos en conflicto necesitan resolución manual",

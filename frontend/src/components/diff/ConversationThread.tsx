@@ -99,7 +99,7 @@ function ResolvedConversationView({
         <span className="text-sm font-medium text-success">{t('conversation.thread.resolved')}</span>
         {resolvedBy && (
           <span className="text-xs text-low">
-            by @{resolvedBy.username}{' '}
+            {t('conversation.thread.resolvedBy', { username: resolvedBy.username })}{' '}
             {resolvedAtStr && formatRelativeTime(resolvedAtStr)}
           </span>
         )}

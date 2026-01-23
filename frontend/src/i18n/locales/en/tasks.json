@@ -315,7 +315,8 @@
       "startPlaceholder": "Start a conversation... (type @ to search files)",
       "starting": "Starting...",
       "startConversation": "Start conversation",
-      "anonymous": "Anonymous"
+      "anonymous": "Anonymous",
+      "resolvedBy": "by @{{username}}"
     },
     "workspace": {
       "create": "Create",

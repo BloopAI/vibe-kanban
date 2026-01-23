@@ -659,7 +659,8 @@
       "startPlaceholder": "대화 시작... (@를 입력하여 파일 검색)",
       "starting": "시작 중...",
       "startConversation": "대화 시작",
-      "anonymous": "익명"
+      "anonymous": "익명",
+      "resolvedBy": "@{{username}}에 의해"
     },
     "approval": {
       "conflictWarning": "충돌하는 파일은 수동으로 해결해야 합니다",
