@@ -1,9 +1,6 @@
 import type { ReactNode } from 'react';
-import { useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { FunnelIcon, CaretDownIcon, type Icon } from '@phosphor-icons/react';
-import { useTranslation } from 'react-i18next';
-import type { IssuePriority } from 'shared/remote-types';
+import { CaretDownIcon, type Icon } from '@phosphor-icons/react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,11 +10,6 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui-new/primitives/Dropdown';
 import { Badge } from '@/components/ui/badge';
-import { PriorityIcon } from './Icons';
-
-// =============================================================================
-// Multi-Select Dropdown (Generic)
-// =============================================================================
 
 export interface MultiSelectDropdownOption<T extends string = string> {
   value: T;
@@ -44,16 +36,6 @@ export function MultiSelectDropdown<T extends string = string>({
   menuLabel,
   disabled,
 }: MultiSelectDropdownProps<T>) {
-  const toggleValue = useCallback(
-    (value: T) => {
-      const newValues = values.includes(value)
-        ? values.filter((v) => v !== value)
-        : [...values, value];
-      onChange(newValues);
-    },
-    [values, onChange]
-  );
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild disabled={disabled}>
@@ -89,59 +71,17 @@ export function MultiSelectDropdown<T extends string = string>({
           <DropdownMenuCheckboxItem
             key={option.value}
             checked={values.includes(option.value)}
-            onCheckedChange={() => toggleValue(option.value)}
+            onCheckedChange={() => {
+              const newValues = values.includes(option.value)
+                ? values.filter((v) => v !== option.value)
+                : [...values, option.value];
+              onChange(newValues);
+            }}
           >
             {option.renderOption?.() ?? option.label}
           </DropdownMenuCheckboxItem>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-}
-
-// =============================================================================
-// Priority Filter Dropdown (Multi-Select)
-// =============================================================================
-
-const PRIORITIES: IssuePriority[] = ['urgent', 'high', 'medium', 'low'];
-
-const priorityLabels: Record<IssuePriority, string> = {
-  urgent: 'Urgent',
-  high: 'High',
-  medium: 'Medium',
-  low: 'Low',
-};
-
-export interface PriorityFilterDropdownProps {
-  values: IssuePriority[];
-  onChange: (values: IssuePriority[]) => void;
-}
-
-export function PriorityFilterDropdown({
-  values,
-  onChange,
-}: PriorityFilterDropdownProps) {
-  const { t } = useTranslation('common');
-
-  const options = PRIORITIES.map((p) => ({
-    value: p,
-    label: priorityLabels[p],
-    renderOption: () => (
-      <div className="flex items-center gap-base">
-        <PriorityIcon priority={p} />
-        {priorityLabels[p]}
-      </div>
-    ),
-  }));
-
-  return (
-    <MultiSelectDropdown
-      values={values}
-      options={options}
-      onChange={onChange}
-      icon={FunnelIcon}
-      label={t('kanban.priority', 'Priority')}
-      menuLabel={t('kanban.filterByPriority', 'Filter by priority')}
-    />
   );
 }

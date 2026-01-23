@@ -11,10 +11,10 @@ import {
   KanbanCard,
   KanbanCards,
   KanbanHeader,
-  KanbanCardContent,
   type DropResult,
-} from '@/components/ui-new/kanban/Kanban';
-import { KanbanFilterBar } from '@/components/ui-new/kanban/KanbanFilterBar';
+} from '@/components/ui-new/views/KanbanBoard';
+import { KanbanCardContent } from '@/components/ui-new/views/KanbanCardContent';
+import { KanbanFilterBar } from '@/components/ui-new/views/KanbanFilterBar';
 
 function LoadingState() {
   const { t } = useTranslation('common');
