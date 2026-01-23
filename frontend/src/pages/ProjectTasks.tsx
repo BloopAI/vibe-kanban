@@ -45,7 +45,6 @@ import {
 import TaskKanbanBoard, {
   type KanbanColumns,
 } from '@/components/tasks/TaskKanbanBoard';
-import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useHotkeysContext } from 'react-hotkeys-hook';
@@ -691,7 +690,9 @@ export function ProjectTasks() {
   }, [selectedTask, visibleTasksByStatus, handleViewTaskDetails]);
 
   // Status is now managed by the server based on events, not manually
-  const handleDragEnd = useCallback((() => {}) as (event: DragEndEvent) => void, []);
+  const handleDragEnd = useCallback(() => {
+    // no-op: status changes will be driven by server events
+  }, []);
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;
 
