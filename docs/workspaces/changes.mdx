@@ -1,0 +1,142 @@
+---
+title: "Changes Panel"
+description: "Review code modifications and provide feedback to agents"
+---
+
+<Frame>
+<img src="/images/workspaces-changes-panel.png" alt="Changes panel showing file tree and side-by-side diff view with code changes" />
+</Frame>
+
+The changes panel lets you review all code modifications in your workspace and provide feedback to agents.
+
+## Opening Changes
+
+- Click the **Changes** toggle (<Icon icon="code-compare" />) in the navbar
+- Click the changes icon in the context bar
+- Use the command bar: `Cmd/Ctrl + K` → "Toggle Changes Panel"
+
+## File Tree
+
+The changes panel displays a hierarchical file tree:
+
+- **Folders**: Expand/collapse to navigate
+- **Files**: Click to view the diff
+- **Search**: Filter files by name
+- **Expand/Collapse All**: Quick navigation buttons
+
+## Diff Viewer
+
+View code changes with syntax highlighting:
+
+| Feature | Description |
+|---------|-------------|
+| **Additions** | Green highlighting for new lines |
+| **Deletions** | Red highlighting for removed lines |
+| **Context** | Surrounding unchanged lines for reference |
+| **Line numbers** | Original and new line numbers |
+
+## Diff View Modes
+
+Toggle between two display modes:
+
+| Mode | Description |
+|------|-------------|
+| **Unified** | Inline view with changes interleaved |
+| **Side-by-Side** | Original and modified shown in parallel columns |
+
+Switch modes using the diff view toggle in the navbar (when Changes panel is open) or via command bar: `Cmd/Ctrl + K` → "Toggle Diff View Mode".
+
+## Diff Options
+
+Customise the diff display:
+
+| Option | Description |
+|--------|-------------|
+| **Wrap Lines** | Enable/disable line wrapping for long lines |
+| **Ignore Whitespace** | Show/hide whitespace-only changes |
+| **Expand All** | Expand all collapsed diff sections |
+| **Collapse All** | Collapse all diff sections |
+
+Access these via the command bar's Diff Options page.
+
+## Giving Feedback with Comments
+
+<Frame>
+<img src="/images/workspaces-inline-comments.png" alt="Changes panel showing inline comments on code with Add Review Comment button" />
+</Frame>
+
+Add comments directly on code changes to provide feedback to agents.
+
+### Adding Comments
+
+1. Hover over a line in the diff
+2. Click the comment icon that appears
+3. Write your feedback
+4. Submit the comment
+
+### Comment Uses
+
+- **Request changes**: Ask the agent to modify specific code
+- **Ask questions**: Get explanations about implementation choices
+- **Provide context**: Share additional requirements or constraints
+- **Approve sections**: Indicate code that looks good
+
+### Agent Response to Comments
+
+<Frame>
+<img src="/images/workspaces-review-comments-response.png" alt="Chat showing agent responding to review comments by restoring a file" />
+</Frame>
+
+When you send a message with review comments, the agent sees your feedback and acts on it. In this example, the agent restores a file after the user requested the change be reverted.
+
+<Info>
+Comments are visible to the agent in subsequent messages, helping guide further development.
+</Info>
+
+## GitHub Integration
+
+When your workspace is linked to a pull request:
+
+### Viewing GitHub Comments
+
+<Frame>
+<img src="/images/workspaces-show-github-comments.png" alt="Changes panel showing GitHub icon button with Show GitHub comments tooltip" />
+</Frame>
+
+- Click the **GitHub icon** in the changes panel toolbar to toggle GitHub comments
+- Comments from the PR appear inline with the diff
+- Badge shows comment count per file
+
+<Frame>
+<img src="/images/workspaces-github-comments-inline.png" alt="GitHub review comment displayed inline in the diff view" />
+</Frame>
+
+<Note>
+Only submitted review comments are shown. Pending reviews (not yet submitted on GitHub) won't appear until you submit the review.
+</Note>
+
+### Linking to a PR
+
+Workspaces automatically link when:
+
+- You create a PR from the workspace
+- The workspace branch matches an existing PR
+
+<Tip>
+Review GitHub comments alongside your changes to address PR feedback efficiently.
+</Tip>
+
+## Best Practices
+
+1. Open the changes panel after the agent completes work
+2. Review diffs file by file
+3. Add comments for any needed changes
+4. Let the agent address feedback
+5. Re-review and approve
+
+## Related Documentation
+
+- [Preview](/workspaces/preview) - Test your application with the built-in browser
+- [Interface Guide](/workspaces/interface) - Overview of workspace panels
+- [Reviewing Code Changes](/core-features/reviewing-code-changes) - Code review in the classic UI
+- [Git Operations](/workspaces/git-operations) - Create PRs and manage branches

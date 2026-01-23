@@ -1,0 +1,172 @@
+---
+title: "Repositories"
+description: "Add and manage repositories within your workspaces"
+---
+
+<Frame>
+<img src="/images/workspaces-add-repo.png" alt="Repository selection showing selected repo with branch dropdown and list of available repositories" />
+</Frame>
+
+Repositories are the codebases you work with inside a workspace. Each workspace can include one or more repositories, and each repository maintains its own independent git state.
+
+## Adding Repositories
+
+When creating or editing a workspace, you can add repositories from several sources:
+
+### Recent Repositories
+
+<Frame>
+<img src="/images/workspaces-recent-repos.png" alt="Recent repositories list showing previously used repos" />
+</Frame>
+
+Your recently used repositories appear at the top of the list. Click any repository to add it to the workspace.
+
+### Browse Repos on Disk
+
+<Frame>
+<img src="/images/workspaces-browse-repos.png" alt="Select Git Repository dialog with file browser and path input" />
+</Frame>
+
+Click **Browse repos on disk** to find repositories that aren't in your recent list. You can:
+
+- **Enter path manually** - Type the full path and click **Go**
+- **Search current directory** - Filter folders by name
+- **Navigate folders** - Click folder names to browse, use home and up buttons
+- **Select Current** - Use the current directory as the repository
+
+Folders containing git repositories are marked with a **git repo** badge.
+
+### Create New Repo on Disk
+
+<Frame>
+<img src="/images/workspaces-create-repo.png" alt="Create New Repository dialog with name and location fields" />
+</Frame>
+
+Click **Create new repo on disk** to initialise a new git repository:
+
+1. Enter a **Name** for the repository
+2. Choose a **Location** on disk (click the folder icon to browse)
+3. Click **Create Repository**
+
+This creates a new folder with an initialised git repository, ready for use in your workspace.
+
+## Target Branches
+
+<Frame>
+<img src="/images/workspaces-target-branch.png" alt="Branch dropdown showing search and list of available branches" />
+</Frame>
+
+Each repository in a workspace has a **target branch** - the branch your changes will eventually be merged into (typically `main`, `master`, or `develop`).
+
+### Setting the Target Branch
+
+1. Click the branch dropdown next to the repository name
+2. Search or scroll to find the branch you want to target
+3. Select the branch - the workspace creates a working branch based on this target
+
+The dropdown shows:
+- **Current** badge - indicates your current branch
+- **Local branches** - branches on your machine
+- **Remote branches** - branches from origin (e.g., `origin/main`)
+
+<Info>
+Changes you make won't affect the target branch until you create a pull request and merge.
+</Info>
+
+### Changing the Target Branch
+
+To change the target branch after workspace creation:
+
+**From the Git panel:**
+1. Click the target branch dropdown (e.g., **main**) in the Git section of the right sidebar
+2. Select a new target branch
+
+**From the command bar:**
+1. Press `Cmd/Ctrl + K`
+2. Select **Change Target Branch**
+3. Choose the new target branch
+
+<Warning>
+Changing the target branch may require rebasing your changes. See [Resolving Rebase Conflicts](/core-features/resolving-rebase-conflicts) if conflicts occur.
+</Warning>
+
+## Working Branch
+
+When you create a workspace, a **working branch** is automatically created for each repository. This is where your changes are made.
+
+The working branch name is based on your task and branch prefix settings (configured in [Global Settings](/configuration-customisation/global-settings)).
+
+### Viewing the Working Branch
+
+The current working branch is displayed in the **Git** section of the details sidebar, under "Working Branch".
+
+## Multi-Repository Workspaces
+
+<Frame>
+<img src="/images/workspaces-multi-repo.png" alt="Workspace with multiple repositories showing independent git state for each" />
+</Frame>
+
+Workspaces can include multiple repositories for tasks that span several codebases.
+
+### When to Use Multiple Repositories
+
+- **Monorepo alternatives** - Work across frontend and backend repos simultaneously
+- **Shared libraries** - Update a library and its consumers together
+- **Microservices** - Coordinate changes across multiple services
+
+### Independent Git State
+
+Each repository in a multi-repo workspace maintains independent git state:
+
+- Separate working branches
+- Separate target branches
+- Individual commit histories
+- Independent pull requests
+
+### Cross-Repository Context
+
+When working with multiple repositories, the agent can:
+
+- Read code from all repositories
+- Make changes across repositories in a single session
+- Reference patterns from one repo while implementing in another
+
+<Tip>
+Use clear task descriptions that specify which repositories should be modified to help the agent understand your intent.
+</Tip>
+
+## Repository Actions
+
+Access repository-specific actions through the command bar:
+
+| Action | Description |
+|--------|-------------|
+| **Copy Repo Path** | Copy the repository's local path to clipboard |
+| **Open Repo in IDE** | Open the repository in your configured editor |
+| **Repository Settings** | Configure repository-specific settings |
+| **Create PR** | Create a pull request for this repository |
+| **Merge** | Merge the target branch into your working branch |
+| **Rebase** | Rebase your working branch onto the target |
+| **Push** | Push commits to the remote repository |
+
+<Note>
+For multi-repo workspaces, repository actions show which repo they apply to. Select the specific repository when prompted.
+</Note>
+
+## Removing Repositories
+
+<Frame>
+<img src="/images/workspaces-remove-repo.png" alt="Repository with X button to remove it from workspace" />
+</Frame>
+
+To remove a repository from a workspace, click the **X** button next to the repository name.
+
+<Warning>
+Removing a repository doesn't delete any code or branches. It only removes the repository from the current workspace.
+</Warning>
+
+## Related Documentation
+
+- [Creating Workspaces](/workspaces/creating-workspaces) - Setting up new workspaces with repositories
+- [Git Operations](/workspaces/git-operations) - Detailed guide to git commands
+- [Multi-Repo & Sessions](/workspaces/multi-repo-sessions) - Working across multiple repositories
