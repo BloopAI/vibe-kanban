@@ -1139,19 +1139,22 @@ pub async fn rebase_task_attempt(
             GitServiceError::MergeConflicts {
                 message,
                 conflicted_files,
-            } => Ok(ResponseJson(ApiResponse::<(), GitOperationError>::error_with_data(
-                GitOperationError::MergeConflicts {
-                    message,
-                    op: ConflictOp::Rebase,
-                    conflicted_files,
-                    target_branch: new_base_branch.clone(),
-                },
-            ))),
-            GitServiceError::RebaseInProgress => Ok(ResponseJson(
+            } => Ok(ResponseJson(
                 ApiResponse::<(), GitOperationError>::error_with_data(
-                    GitOperationError::RebaseInProgress,
+                    GitOperationError::MergeConflicts {
+                        message,
+                        op: ConflictOp::Rebase,
+                        conflicted_files,
+                        target_branch: new_base_branch.clone(),
+                    },
                 ),
             )),
+            GitServiceError::RebaseInProgress => Ok(ResponseJson(ApiResponse::<
+                (),
+                GitOperationError,
+            >::error_with_data(
+                GitOperationError::RebaseInProgress,
+            ))),
             other => Err(ApiError::GitService(other)),
         };
     }
