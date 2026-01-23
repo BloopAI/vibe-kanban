@@ -2,11 +2,9 @@ import { cn } from '@/lib/utils';
 import { PlusIcon } from '@phosphor-icons/react';
 import type { IssuePriority, ProjectStatus } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
-import {
-  StatusDropdown,
-  PriorityDropdown,
-  SearchableAssigneeDropdown,
-} from './PropertyDropdown';
+import { StatusDropdown } from '@/components/ui-new/views/StatusDropdown';
+import { PriorityDropdown } from '@/components/ui-new/views/PriorityDropdown';
+import { SearchableAssigneeDropdown } from '@/components/ui-new/views/AssigneeDropdown';
 
 export interface IssuePropertyRowProps {
   statusId: string;
