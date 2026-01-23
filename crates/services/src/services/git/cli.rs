@@ -654,6 +654,12 @@ impl GitCli {
         }
         Ok(files)
     }
+
+    /// Delete a local branch (force delete with -D)
+    pub fn delete_branch(&self, repo_path: &Path, branch_name: &str) -> Result<(), GitCliError> {
+        self.git(repo_path, ["branch", "-D", branch_name])
+            .map(|_| ())
+    }
 }
 
 // Private methods

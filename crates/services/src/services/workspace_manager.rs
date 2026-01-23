@@ -410,4 +410,46 @@ impl WorkspaceManager {
 
         Ok(())
     }
+
+    /// Close and discard a workspace: cleanup worktrees and delete branches.
+    /// This handles the git-related cleanup. Database updates (archived, container_ref)
+    /// should be handled by the caller.
+    ///
+    /// # Arguments
+    /// * `workspace_dir` - The container_ref path where worktrees are located
+    /// * `repos` - List of repositories in the workspace
+    /// * `branch_name` - The workspace branch to delete from each repo
+    pub async fn close_workspace_discard(
+        workspace_dir: &Path,
+        repos: &[Repo],
+        branch_name: &str,
+    ) -> Result<(), WorkspaceError> {
+        info!(
+            "Closing workspace (discard): {} with branch '{}'",
+            workspace_dir.display(),
+            branch_name
+        );
+
+        // Step 1: Clean up all worktrees and the workspace directory
+        Self::cleanup_workspace(workspace_dir, repos).await?;
+
+        // Step 2: Delete the workspace branch from each repository
+        let git = super::git::GitService::new();
+        for repo in repos {
+            debug!(
+                "Deleting branch '{}' from repo '{}'",
+                branch_name, repo.name
+            );
+            if let Err(e) = git.delete_branch(&repo.path, branch_name) {
+                // Log but don't fail - branch might already be deleted or never created
+                warn!(
+                    "Failed to delete branch '{}' from repo '{}': {}",
+                    branch_name, repo.name, e
+                );
+            }
+        }
+
+        info!("Successfully closed workspace (discard)");
+        Ok(())
+    }
 }
