@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { UsersIcon, CaretDownIcon, type Icon } from '@phosphor-icons/react';
+import { UsersIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import type { IssuePriority, ProjectStatus } from 'shared/remote-types';
 import { MemberRole, type OrganizationMemberWithProfile } from 'shared/types';
 import { UserAvatar } from '@/components/tasks/UserAvatar';
 import {
@@ -13,156 +12,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui-new/primitives/Dropdown';
 import { SearchableDropdownContainer } from '@/components/ui-new/containers/SearchableDropdownContainer';
-import { StatusDot, PriorityIcon } from './Icons';
 
 // =============================================================================
-// Generic Property Dropdown
+// Helper
 // =============================================================================
 
-export interface PropertyDropdownOption<T extends string = string> {
-  value: T;
-  label: string;
-  renderOption?: () => ReactNode;
-}
-
-export interface PropertyDropdownProps<T extends string = string> {
-  value: T;
-  options: PropertyDropdownOption<T>[];
-  onChange: (value: T) => void;
-  icon?: Icon;
-  label?: string;
-  disabled?: boolean;
-}
-
-export function PropertyDropdown<T extends string = string>({
-  value,
-  options,
-  onChange,
-  icon: IconComponent,
-  label,
-  disabled,
-}: PropertyDropdownProps<T>) {
-  const selectedOption = options.find((opt) => opt.value === value);
-
+const getUserDisplayName = (user: OrganizationMemberWithProfile): string => {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild disabled={disabled}>
-        <button
-          type="button"
-          className={cn(
-            'flex items-center gap-half px-base py-half bg-panel rounded-sm',
-            'text-sm text-normal hover:bg-secondary transition-colors',
-            'disabled:opacity-50 disabled:cursor-not-allowed'
-          )}
-        >
-          {IconComponent ? (
-            <>
-              <IconComponent className="size-icon-xs" weight="bold" />
-              {label && <span>{label}:</span>}
-              <span>{selectedOption?.label}</span>
-            </>
-          ) : (
-            (selectedOption?.renderOption?.() ?? selectedOption?.label)
-          )}
-          <CaretDownIcon className="size-icon-2xs text-low" weight="bold" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
-        {options.map((option) => (
-          <DropdownMenuItem
-            key={option.value}
-            onClick={() => onChange(option.value)}
-          >
-            {option.renderOption?.() ?? <span>{option.label}</span>}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    [user.first_name, user.last_name].filter(Boolean).join(' ') ||
+    user.username ||
+    'User'
   );
-}
-
-// =============================================================================
-// Status Dropdown
-// =============================================================================
-
-export interface StatusDropdownProps {
-  statusId: string;
-  statuses: ProjectStatus[];
-  onChange: (statusId: string) => void;
-  disabled?: boolean;
-}
-
-export function StatusDropdown({
-  statusId,
-  statuses,
-  onChange,
-  disabled,
-}: StatusDropdownProps) {
-  const options = statuses.map((status) => ({
-    value: status.id,
-    label: status.name,
-    renderOption: () => (
-      <div className="flex items-center gap-base">
-        <StatusDot color={status.color} />
-        {status.name}
-      </div>
-    ),
-  }));
-
-  return (
-    <PropertyDropdown
-      value={statusId}
-      options={options}
-      onChange={onChange}
-      disabled={disabled}
-    />
-  );
-}
-
-// =============================================================================
-// Priority Dropdown
-// =============================================================================
-
-const PRIORITIES: IssuePriority[] = ['urgent', 'high', 'medium', 'low'];
-
-const priorityLabels: Record<IssuePriority, string> = {
-  urgent: 'Urgent',
-  high: 'High',
-  medium: 'Medium',
-  low: 'Low',
 };
-
-export interface PriorityDropdownProps {
-  priority: IssuePriority;
-  onChange: (priority: IssuePriority) => void;
-  disabled?: boolean;
-}
-
-export function PriorityDropdown({
-  priority,
-  onChange,
-  disabled,
-}: PriorityDropdownProps) {
-  const options = PRIORITIES.map((p) => ({
-    value: p,
-    label: priorityLabels[p],
-    renderOption: () => (
-      <div className="flex items-center gap-base">
-        <PriorityIcon priority={p} />
-        {priorityLabels[p]}
-      </div>
-    ),
-  }));
-
-  return (
-    <PropertyDropdown
-      value={priority}
-      options={options}
-      onChange={onChange}
-      disabled={disabled}
-    />
-  );
-}
 
 // =============================================================================
 // Assignee Dropdown
@@ -174,14 +35,6 @@ export interface AssigneeDropdownProps {
   onChange: (userId: string | null) => void;
   disabled?: boolean;
 }
-
-const getUserDisplayName = (user: OrganizationMemberWithProfile): string => {
-  return (
-    [user.first_name, user.last_name].filter(Boolean).join(' ') ||
-    user.username ||
-    'User'
-  );
-};
 
 export function AssigneeDropdown({
   assigneeId,
@@ -366,5 +219,3 @@ export function SearchableAssigneeDropdown({
     />
   );
 }
-
-// =============================================================================

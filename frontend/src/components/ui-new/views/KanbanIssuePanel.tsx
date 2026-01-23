@@ -11,12 +11,12 @@ import {
 } from '@phosphor-icons/react';
 import type { IssuePriority, ProjectStatus, Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
-import { IssuePropertyRow } from '@/components/ui-new/kanban/IssuePropertyRow';
-import { IssueTagsRow } from '@/components/ui-new/kanban/IssueTagsRow';
+import { IssuePropertyRow } from '@/components/ui-new/views/IssuePropertyRow';
+import { IssueTagsRow } from '@/components/ui-new/views/IssueTagsRow';
 import {
   IssueWorkspaceCard,
   type WorkspaceWithStats,
-} from '@/components/ui-new/kanban/IssueWorkspaceCard';
+} from '@/components/ui-new/views/IssueWorkspaceCard';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { Toggle } from '@/components/ui-new/primitives/Toggle';
 import { CollapsibleSectionHeader } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
