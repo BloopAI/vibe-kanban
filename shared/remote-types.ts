@@ -10,7 +10,7 @@ export type Notification = { id: string, organization_id: string, user_id: strin
 
 export type NotificationType = "IssueCommentAdded" | "IssueStatusChanged" | "IssueAssigneeChanged" | "IssueDeleted";
 
-export type Workspace = { id: string, project_id: string, owner_user_id: string, issue_id: string | null, local_workspace_id: string, archived: boolean, files_changed: number | null, lines_added: number | null, lines_removed: number | null, created_at: string, updated_at: string, };
+export type Workspace = { id: string, project_id: string, owner_user_id: string, issue_id: string | null, local_workspace_id: string | null, archived: boolean, files_changed: number | null, lines_added: number | null, lines_removed: number | null, created_at: string, updated_at: string, };
 
 export type ProjectStatus = { id: string, project_id: string, name: string, color: string, sort_order: number, hidden: boolean, created_at: string, };
 
@@ -33,8 +33,6 @@ export type IssueComment = { id: string, issue_id: string, author_id: string, me
 export type IssueCommentReaction = { id: string, comment_id: string, user_id: string, emoji: string, created_at: string, };
 
 export type IssuePriority = "urgent" | "high" | "medium" | "low";
-
-export type WorkspacePrStatus = "open" | "merged" | "closed";
 
 export type PullRequestStatus = "open" | "merged" | "closed";
 
