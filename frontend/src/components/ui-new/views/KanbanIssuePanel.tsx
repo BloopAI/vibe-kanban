@@ -1,14 +1,7 @@
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
-import {
-  XIcon,
-  TextBIcon,
-  TextItalicIcon,
-  ImageIcon,
-  LinkIcon,
-  MicrophoneIcon,
-  CheckIcon,
-} from '@phosphor-icons/react';
+import { XIcon } from '@phosphor-icons/react';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type { IssuePriority, ProjectStatus, Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { IssuePropertyRow } from '@/components/ui-new/views/IssuePropertyRow';
@@ -21,7 +14,6 @@ import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { Toggle } from '@/components/ui-new/primitives/Toggle';
 import { CollapsibleSectionHeader } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
 import type { PersistKey } from '@/stores/useUiPreferencesStore';
-import type { Icon } from '@phosphor-icons/react';
 
 export type IssuePanelMode = 'create' | 'edit';
 
@@ -175,39 +167,17 @@ export function KanbanIssuePanel({
               )}
             />
 
-            {/* Description Textarea */}
-            <textarea
-              value={formData.description ?? ''}
-              onChange={(e) =>
-                onFormChange('description', e.target.value || null)
-              }
-              placeholder="Enter task description here..."
-              disabled={isSubmitting}
-              rows={4}
-              className={cn(
-                'w-full mt-base bg-transparent text-normal text-base resize-none',
-                'placeholder:text-low',
-                'focus:outline-none',
-                'disabled:opacity-50'
-              )}
-            />
-
-            {/* Formatting Toolbar */}
-            <div className="flex items-center justify-between mt-base pt-base border-t border-border/50">
-              <div className="flex items-center gap-half">
-                <ToolbarButton icon={TextBIcon} label="Bold" />
-                <ToolbarButton icon={TextItalicIcon} label="Italic" />
-                <ToolbarButton icon={ImageIcon} label="Add image" />
-                <ToolbarButton icon={LinkIcon} label="Add link" />
-                <ToolbarButton icon={MicrophoneIcon} label="Voice input" />
-              </div>
-              <button
-                type="button"
-                className="p-half text-success hover:text-success/80 transition-colors"
-                aria-label="Confirm"
-              >
-                <CheckIcon className="size-icon-sm" weight="bold" />
-              </button>
+            {/* Description WYSIWYG Editor */}
+            <div className="mt-base">
+              <WYSIWYGEditor
+                placeholder="Enter task description here..."
+                value={formData.description ?? ''}
+                onChange={(value) => onFormChange('description', value || null)}
+                disabled={isSubmitting}
+                autoFocus={false}
+                className="min-h-[100px]"
+                showStaticToolbar
+              />
             </div>
           </div>
         </div>
@@ -286,29 +256,6 @@ export function KanbanIssuePanel({
         )}
       </div>
     </div>
-  );
-}
-
-interface ToolbarButtonProps {
-  icon: Icon;
-  label: string;
-  onClick?: () => void;
-}
-
-function ToolbarButton({
-  icon: IconComponent,
-  label,
-  onClick,
-}: ToolbarButtonProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="p-half text-low hover:text-normal transition-colors"
-      aria-label={label}
-    >
-      <IconComponent className="size-icon-sm" weight="bold" />
-    </button>
   );
 }
 
