@@ -311,5 +311,12 @@
     "emptyTooltip": "コンテキスト使用量は次の返信後に表示されます",
     "tooltip": "コンテキスト: {{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "コンテキスト使用量: {{percentage}}%"
+  },
+  "typeahead": {
+    "tags": "タグ",
+    "files": "ファイル",
+    "commands": "コマンド",
+    "noTagsOrFiles": "タグまたはファイルが見つかりません",
+    "noCommands": "このエージェントで利用可能なコマンドはありません。"
   }
 }

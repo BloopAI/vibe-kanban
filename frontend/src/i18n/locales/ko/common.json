@@ -311,5 +311,12 @@
     "emptyTooltip": "컨텍스트 사용량은 다음 응답 후에 표시됩니다",
     "tooltip": "컨텍스트: {{percentage}}% · {{used}} / {{total}} 토큰",
     "ariaLabel": "컨텍스트 사용량: {{percentage}}%"
+  },
+  "typeahead": {
+    "tags": "태그",
+    "files": "파일",
+    "commands": "명령어",
+    "noTagsOrFiles": "태그 또는 파일을 찾을 수 없습니다",
+    "noCommands": "이 에이전트에 사용 가능한 명령어가 없습니다."
   }
 }

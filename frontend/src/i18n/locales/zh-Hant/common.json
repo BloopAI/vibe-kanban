@@ -311,5 +311,12 @@
     "emptyTooltip": "上下文使用量將在下一次回覆後顯示",
     "tooltip": "上下文：{{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "上下文使用量：{{percentage}}%"
+  },
+  "typeahead": {
+    "tags": "標籤",
+    "files": "檔案",
+    "commands": "指令",
+    "noTagsOrFiles": "找不到標籤或檔案",
+    "noCommands": "此代理沒有可用的指令。"
   }
 }

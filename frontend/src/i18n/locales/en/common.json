@@ -311,5 +311,12 @@
     "emptyTooltip": "Context usage appears after the next reply",
     "tooltip": "Context: {{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "Context usage: {{percentage}}%"
+  },
+  "typeahead": {
+    "tags": "Tags",
+    "files": "Files",
+    "commands": "Commands",
+    "noTagsOrFiles": "No tags or files found",
+    "noCommands": "No commands available for this agent."
   }
 }

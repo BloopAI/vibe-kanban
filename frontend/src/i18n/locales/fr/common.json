@@ -311,5 +311,12 @@
     "emptyTooltip": "L'utilisation du contexte apparaît après la prochaine réponse",
     "tooltip": "Contexte : {{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "Utilisation du contexte : {{percentage}}%"
+  },
+  "typeahead": {
+    "tags": "Tags",
+    "files": "Fichiers",
+    "commands": "Commandes",
+    "noTagsOrFiles": "Aucun tag ou fichier trouvé",
+    "noCommands": "Aucune commande disponible pour cet agent."
   }
 }
