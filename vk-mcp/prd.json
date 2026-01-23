@@ -164,8 +164,8 @@
         "Typecheck passes (cargo check)"
       ],
       "priority": 9,
-      "passes": false,
-      "inProgress": true,
+      "passes": true,
+      "inProgress": false,
       "checkpoint": false,
       "notes": ""
     },
