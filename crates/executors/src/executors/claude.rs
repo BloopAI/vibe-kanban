@@ -560,24 +560,13 @@ impl ClaudeLogProcessor {
         }
     }
 
-    /// Extract message UUID for --resume-session-at from safe resume points.
-    /// Returns UUID from:
-    /// - User messages (tool results) - always safe, indicates tool completed
-    /// - Assistant messages without tool_use - completed turns
-    /// Does NOT return UUID from assistant messages with pending tool_use
-    /// as those cause "tool use concurrency" API errors on resume.
+    /// Extract message UUID for --resume-session-at from user messages only.
+    /// Testing revealed that --resume-session-at only works with user message UUIDs
+    /// (tool results). Assistant message UUIDs return "No message found" errors.
     fn extract_resumable_message_uuid(claude_json: &ClaudeJson) -> Option<String> {
         match claude_json {
-            // User messages (tool results) are always safe to resume from
+            // Only user messages (tool results) work with --resume-session-at
             ClaudeJson::User { uuid, .. } => uuid.clone(),
-            // Assistant messages are only safe if they have no pending tool_use
-            ClaudeJson::Assistant { message, uuid, .. } => {
-                let has_tool_use = message
-                    .content
-                    .iter()
-                    .any(|item| matches!(item, ClaudeContentItem::ToolUse { .. }));
-                if has_tool_use { None } else { uuid.clone() }
-            }
             _ => None,
         }
     }
