@@ -40,7 +40,10 @@ interface DraftState {
 }
 
 type DraftAction =
-  | { type: 'INIT_COMPLETE'; data: Partial<Omit<DraftState, 'phase' | 'error'>> }
+  | {
+      type: 'INIT_COMPLETE';
+      data: Partial<Omit<DraftState, 'phase' | 'error'>>;
+    }
   | { type: 'INIT_ERROR'; error: string }
   | { type: 'SET_PROJECT'; projectId: string | null }
   | { type: 'ADD_REPO'; repo: Repo; targetBranch: string }
@@ -91,7 +94,10 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
       }
       return {
         ...state,
-        repos: [...state.repos, { repo: action.repo, targetBranch: action.targetBranch }],
+        repos: [
+          ...state.repos,
+          { repo: action.repo, targetBranch: action.targetBranch },
+        ],
       };
     }
 
@@ -105,7 +111,9 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
       return {
         ...state,
         repos: state.repos.map((r) =>
-          r.repo.id === action.repoId ? { ...r, targetBranch: action.branch } : r
+          r.repo.id === action.repoId
+            ? { ...r, targetBranch: action.branch }
+            : r
         ),
       };
 
@@ -181,7 +189,9 @@ export function useCreateModeState({
   const [state, dispatch] = useReducer(draftReducer, initialState);
 
   // Capture navigation state once on mount
-  const navStateRef = useRef<LocationState | null>(location.state as LocationState | null);
+  const navStateRef = useRef<LocationState | null>(
+    location.state as LocationState | null
+  );
   const hasInitialized = useRef(false);
 
   // Profile validator
@@ -266,7 +276,10 @@ export function useCreateModeState({
           dispatch({ type: 'SET_PROJECT', projectId: newProject.id });
         })
         .catch((e) => {
-          console.error('[useCreateModeState] Failed to create default project:', e);
+          console.error(
+            '[useCreateModeState] Failed to create default project:',
+            e
+          );
         });
     }
   }, [state.phase, state.projectId, projectsById, projectsLoading]);
@@ -307,7 +320,14 @@ export function useCreateModeState({
       })),
       selected_profile: state.profile,
     });
-  }, [state.phase, state.message, state.projectId, state.repos, state.profile, debouncedSave]);
+  }, [
+    state.phase,
+    state.message,
+    state.projectId,
+    state.repos,
+    state.profile,
+    debouncedSave,
+  ]);
 
   // ============================================================================
   // Derived state for backward compatibility
@@ -337,9 +357,12 @@ export function useCreateModeState({
     dispatch({ type: 'SET_MESSAGE', message });
   }, []);
 
-  const setSelectedProfile = useCallback((profile: ExecutorProfileId | null) => {
-    dispatch({ type: 'SET_PROFILE', profile });
-  }, []);
+  const setSelectedProfile = useCallback(
+    (profile: ExecutorProfileId | null) => {
+      dispatch({ type: 'SET_PROFILE', profile });
+    },
+    []
+  );
 
   const addRepo = useCallback((repo: Repo) => {
     // Default branch will be auto-selected by CreateModeReposSectionContainer
@@ -417,7 +440,9 @@ async function initializeState({
       const fetchedRepos = await repoApi.getBatch(repoIds);
 
       const repos: SelectedRepo[] = fetchedRepos.map((repo) => {
-        const pref = navState.preferredRepos!.find((p) => p.repo_id === repo.id);
+        const pref = navState.preferredRepos!.find(
+          (p) => p.repo_id === repo.id
+        );
         return { repo, targetBranch: pref?.target_branch ?? '' };
       });
 
@@ -439,7 +464,9 @@ async function initializeState({
 
     // Priority 3: Restore from scratch
     const scratchData: DraftWorkspaceData | undefined =
-      scratch?.payload?.type === 'DRAFT_WORKSPACE' ? scratch.payload.data : undefined;
+      scratch?.payload?.type === 'DRAFT_WORKSPACE'
+        ? scratch.payload.data
+        : undefined;
 
     if (scratchData) {
       const restoredData: Partial<DraftState> = {};
@@ -455,18 +482,25 @@ async function initializeState({
       }
 
       // Restore profile if still valid
-      if (scratchData.selected_profile && isValidProfile(scratchData.selected_profile)) {
+      if (
+        scratchData.selected_profile &&
+        isValidProfile(scratchData.selected_profile)
+      ) {
         restoredData.profile = scratchData.selected_profile;
       }
 
       // Restore repos
       if (scratchData.repos.length > 0) {
-        const initialRepoMap = new Map((initialRepos ?? []).map((r) => [r.id, r]));
+        const initialRepoMap = new Map(
+          (initialRepos ?? []).map((r) => [r.id, r])
+        );
         const missingIds = scratchData.repos
           .map((r) => r.repo_id)
           .filter((id) => !initialRepoMap.has(id));
 
-        let allRepos: (Repo | RepoWithTargetBranch)[] = [...(initialRepos ?? [])];
+        let allRepos: (Repo | RepoWithTargetBranch)[] = [
+          ...(initialRepos ?? []),
+        ];
         if (missingIds.length > 0) {
           try {
             const fetched = await repoApi.getBatch(missingIds);
@@ -482,7 +516,10 @@ async function initializeState({
         for (const draftRepo of scratchData.repos) {
           const fullRepo = repoMap.get(draftRepo.repo_id);
           if (fullRepo) {
-            restoredRepos.push({ repo: fullRepo, targetBranch: draftRepo.target_branch });
+            restoredRepos.push({
+              repo: fullRepo,
+              targetBranch: draftRepo.target_branch,
+            });
           }
         }
 
