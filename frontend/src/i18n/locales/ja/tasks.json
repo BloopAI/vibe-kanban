@@ -543,6 +543,8 @@
       "todo": "未着手",
       "inprogress": "進行中",
       "inreview": "レビュー中",
+      "ci": "CI",
+      "cd": "CD",
       "done": "完了",
       "cancelled": "キャンセル"
     },

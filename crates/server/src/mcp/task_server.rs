@@ -152,7 +152,7 @@ pub struct ListTasksRequest {
     #[schemars(description = "The ID of the project to list tasks from")]
     pub project_id: Uuid,
     #[schemars(
-        description = "Optional status filter: 'todo', 'inprogress', 'inreview', 'done', 'cancelled'"
+        description = "Optional status filter: 'todo', 'inprogress', 'inreview', 'ci', 'cd', 'done', 'cancelled'"
     )]
     pub status: Option<String>,
     #[schemars(description = "Maximum number of tasks to return (default: 50)")]
@@ -790,7 +790,7 @@ impl TaskServer {
                 Ok(s) => Some(s),
                 Err(_) => {
                     return Self::err(
-                        "Invalid status filter. Valid values: 'todo', 'inprogress', 'inreview', 'done', 'cancelled'".to_string(),
+                        "Invalid status filter. Valid values: 'todo', 'inprogress', 'inreview', 'ci', 'cd', 'done', 'cancelled'".to_string(),
                         Some(status_str.to_string()),
                     );
                 }

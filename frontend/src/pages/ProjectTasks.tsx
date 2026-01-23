@@ -74,6 +74,8 @@ const TASK_STATUSES = [
   'todo',
   'inprogress',
   'inreview',
+  'ci',
+  'cd',
   'done',
   'cancelled',
 ] as const;
@@ -372,6 +374,8 @@ export function ProjectTasks() {
       todo: [],
       inprogress: [],
       inreview: [],
+      ci: [],
+      cd: [],
       done: [],
       cancelled: [],
     };
@@ -414,6 +418,8 @@ export function ProjectTasks() {
       todo: [],
       inprogress: [],
       inreview: [],
+      ci: [],
+      cd: [],
       done: [],
       cancelled: [],
     };

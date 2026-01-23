@@ -543,6 +543,8 @@
       "todo": "Por Hacer",
       "inprogress": "En Progreso",
       "inreview": "En Revisión",
+      "ci": "CI",
+      "cd": "CD",
       "done": "Completado",
       "cancelled": "Cancelado"
     },

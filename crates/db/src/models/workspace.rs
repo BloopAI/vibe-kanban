@@ -391,7 +391,7 @@ impl Workspace {
             GROUP BY w.id, w.container_ref, w.updated_at
             HAVING datetime('now', 'localtime',
                 CASE
-                    WHEN w.archived = 1 OR t.status NOT IN ('inprogress', 'inreview')
+                    WHEN w.archived = 1 OR t.status NOT IN ('inprogress', 'inreview', 'ci', 'cd')
                     THEN '-1 hours'
                     ELSE '-72 hours'
                 END

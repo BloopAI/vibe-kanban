@@ -543,6 +543,8 @@
       "todo": "待辦",
       "inprogress": "進行中",
       "inreview": "審查中",
+      "ci": "CI",
+      "cd": "CD",
       "done": "完成",
       "cancelled": "已取消"
     },
