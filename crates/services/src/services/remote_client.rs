@@ -575,7 +575,12 @@ impl RemoteClient {
         task_id: Uuid,
     ) -> Result<remote::routes::tasks::SharedTaskResponse, RemoteClientError> {
         let res = self
-            .send(reqwest::Method::DELETE, &format!("/v1/tasks/{task_id}"), true, None::<&()>)
+            .send(
+                reqwest::Method::DELETE,
+                &format!("/v1/tasks/{task_id}"),
+                true,
+                None::<&()>,
+            )
             .await?;
         res.json::<remote::routes::tasks::SharedTaskResponse>()
             .await
@@ -583,10 +588,7 @@ impl RemoteClient {
     }
 
     /// Checks which of the given shared task IDs still exist.
-    pub async fn check_tasks(
-        &self,
-        task_ids: Vec<Uuid>,
-    ) -> Result<Vec<Uuid>, RemoteClientError> {
+    pub async fn check_tasks(&self, task_ids: Vec<Uuid>) -> Result<Vec<Uuid>, RemoteClientError> {
         let body = remote::routes::tasks::CheckTasksRequest { task_ids };
         self.post_authed("/v1/tasks/check", Some(&body)).await
     }
