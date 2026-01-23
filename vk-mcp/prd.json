@@ -165,7 +165,7 @@
       ],
       "priority": 9,
       "passes": false,
-      "inProgress": false,
+      "inProgress": true,
       "checkpoint": false,
       "notes": ""
     },
