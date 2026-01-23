@@ -422,6 +422,15 @@
         },
         "path": {
           "label": "Repository Path"
+        },
+        "defaultTargetBranch": {
+          "label": "Default Target Branch",
+          "placeholder": "Select a branch",
+          "helper": "The default base branch for new workspaces. Worktrees branch off from this branch and PRs will target it.",
+          "search": "Search branches",
+          "noBranches": "No branches found",
+          "loading": "Loading branches...",
+          "useCurrent": "Use current branch"
         }
       },
       "scripts": {
