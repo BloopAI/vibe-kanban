@@ -18,7 +18,7 @@ import { projectsApi, repoApi } from '@/lib/api';
 // ============================================================================
 
 interface LocationState {
-  duplicatePrompt?: string | null;
+  initialPrompt?: string | null;
   preferredRepos?: Array<{ repo_id: string; target_branch: string }> | null;
 }
 
@@ -220,7 +220,7 @@ export function useCreateModeState({
     const navState = navStateRef.current;
 
     // Clear navigation state immediately to prevent re-initialization
-    if (navState?.preferredRepos || navState?.duplicatePrompt) {
+    if (navState?.preferredRepos || navState?.initialPrompt) {
       navigate(location.pathname, { replace: true, state: {} });
     }
 
@@ -330,7 +330,7 @@ export function useCreateModeState({
   ]);
 
   // ============================================================================
-  // Derived state for backward compatibility
+  // Derived state
   // ============================================================================
   const repos = useMemo(() => state.repos.map((r) => r.repo), [state.repos]);
 
@@ -434,31 +434,33 @@ async function initializeState({
   dispatch,
 }: InitializeParams): Promise<void> {
   try {
-    // Priority 1: Preferred repos from navigation state (spin-off workspace)
-    if (navState?.preferredRepos && navState.preferredRepos.length > 0) {
-      const repoIds = navState.preferredRepos.map((r) => r.repo_id);
-      const fetchedRepos = await repoApi.getBatch(repoIds);
+    // Priority 1: Navigation state (preferredRepos and/or initialPrompt)
+    const hasPreferredRepos =
+      navState?.preferredRepos && navState.preferredRepos.length > 0;
+    const hasInitialPrompt = !!navState?.initialPrompt;
 
-      const repos: SelectedRepo[] = fetchedRepos.map((repo) => {
-        const pref = navState.preferredRepos!.find(
-          (p) => p.repo_id === repo.id
-        );
-        return { repo, targetBranch: pref?.target_branch ?? '' };
-      });
+    if (hasPreferredRepos || hasInitialPrompt) {
+      const data: Partial<DraftState> = {};
 
-      dispatch({
-        type: 'INIT_COMPLETE',
-        data: { repos },
-      });
-      return;
-    }
+      // Handle preferred repos
+      if (hasPreferredRepos) {
+        const repoIds = navState!.preferredRepos!.map((r) => r.repo_id);
+        const fetchedRepos = await repoApi.getBatch(repoIds);
 
-    // Priority 2: Duplicate prompt from navigation state
-    if (navState?.duplicatePrompt) {
-      dispatch({
-        type: 'INIT_COMPLETE',
-        data: { message: navState.duplicatePrompt },
-      });
+        data.repos = fetchedRepos.map((repo) => {
+          const pref = navState!.preferredRepos!.find(
+            (p) => p.repo_id === repo.id
+          );
+          return { repo, targetBranch: pref?.target_branch ?? '' };
+        });
+      }
+
+      // Handle initial prompt (can be combined with preferred repos)
+      if (hasInitialPrompt) {
+        data.message = navState!.initialPrompt!;
+      }
+
+      dispatch({ type: 'INIT_COMPLETE', data });
       return;
     }
 

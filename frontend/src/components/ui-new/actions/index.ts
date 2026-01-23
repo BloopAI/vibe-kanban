@@ -244,7 +244,7 @@ export const Actions = {
       try {
         const firstMessage = await attemptsApi.getFirstUserMessage(workspaceId);
         ctx.navigate('/workspaces/create', {
-          state: { duplicatePrompt: firstMessage },
+          state: { initialPrompt: firstMessage },
         });
       } catch {
         // Fallback to creating without the prompt
