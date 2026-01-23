@@ -16,6 +16,7 @@ use deployment::Deployment;
 use serde::Serialize;
 use services::services::git::DiffTarget;
 use ts_rs::TS;
+use utils::diff::create_unified_diff;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -45,6 +46,27 @@ pub struct WorkspaceTranscriptResponse {
     pub summary: Option<String>,
     /// The agent session ID (e.g., Claude session ID)
     pub agent_session_id: Option<String>,
+}
+
+/// A single file's diff information
+#[derive(Debug, Serialize, TS)]
+pub struct FileDiff {
+    /// File path (new path for added/modified, old path for deleted)
+    pub path: String,
+    /// Number of lines added
+    pub additions: usize,
+    /// Number of lines deleted
+    pub deletions: usize,
+    /// The unified diff content
+    pub diff_content: String,
+}
+
+/// Response for workspace diff endpoint
+#[derive(Debug, Serialize, TS)]
+pub struct WorkspaceDiffResponse {
+    pub workspace_id: String,
+    /// List of file diffs
+    pub files: Vec<FileDiff>,
 }
 
 /// Get workspace execution status and diff stats.
@@ -139,6 +161,104 @@ pub async fn get_workspace_transcript(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
+/// Get workspace file diffs with full diff content.
+/// Returns 404 if workspace not found or has no container_ref.
+#[axum::debug_handler]
+pub async fn get_workspace_diff(
+    State(deployment): State<DeploymentImpl>,
+    Path(workspace_id): Path<Uuid>,
+) -> Result<ResponseJson<ApiResponse<WorkspaceDiffResponse>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    // Find workspace, return 404 if not found
+    let workspace = Workspace::find_by_id(pool, workspace_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound(format!("Workspace {} not found", workspace_id)))?;
+
+    // Return 404 if no container_ref (workspace not active)
+    let container_ref = workspace
+        .container_ref
+        .as_ref()
+        .ok_or_else(|| ApiError::NotFound("Workspace has no active worktree".to_string()))?;
+
+    let workspace_repos =
+        WorkspaceRepo::find_repos_with_target_branch_for_workspace(pool, workspace.id).await?;
+
+    let mut all_files: Vec<FileDiff> = Vec::new();
+
+    for repo_with_branch in workspace_repos {
+        let worktree_path = PathBuf::from(container_ref).join(&repo_with_branch.repo.name);
+        let repo_path = repo_with_branch.repo.path.clone();
+
+        // Get base commit (merge base) between workspace branch and target branch
+        let base_commit_result = tokio::task::spawn_blocking({
+            let git = deployment.git().clone();
+            let repo_path = repo_path.clone();
+            let workspace_branch = workspace.branch.clone();
+            let target_branch = repo_with_branch.target_branch.clone();
+            move || git.get_base_commit(&repo_path, &workspace_branch, &target_branch)
+        })
+        .await;
+
+        let base_commit = match base_commit_result {
+            Ok(Ok(commit)) => commit,
+            _ => continue,
+        };
+
+        // Get diffs with content
+        let diffs_result = tokio::task::spawn_blocking({
+            let git = deployment.git().clone();
+            let worktree = worktree_path.clone();
+            move || {
+                git.get_diffs(
+                    DiffTarget::Worktree {
+                        worktree_path: &worktree,
+                        base_commit: &base_commit,
+                    },
+                    None,
+                )
+            }
+        })
+        .await;
+
+        if let Ok(Ok(diffs)) = diffs_result {
+            for diff in diffs {
+                // Determine file path (prefer new_path, fall back to old_path)
+                let path = diff
+                    .new_path
+                    .clone()
+                    .or(diff.old_path.clone())
+                    .unwrap_or_else(|| "unknown".to_string());
+
+                // Compute unified diff content
+                let diff_content = if diff.content_omitted {
+                    "[Content omitted - file too large]".to_string()
+                } else {
+                    let old = diff.old_content.as_deref().unwrap_or("");
+                    let new = diff.new_content.as_deref().unwrap_or("");
+                    if old.is_empty() && new.is_empty() {
+                        String::new()
+                    } else {
+                        create_unified_diff(&path, old, new)
+                    }
+                };
+
+                all_files.push(FileDiff {
+                    path,
+                    additions: diff.additions.unwrap_or(0),
+                    deletions: diff.deletions.unwrap_or(0),
+                    diff_content,
+                });
+            }
+        }
+    }
+
+    Ok(ResponseJson(ApiResponse::success(WorkspaceDiffResponse {
+        workspace_id: workspace_id.to_string(),
+        files: all_files,
+    })))
+}
+
 /// Diff stats for a workspace
 #[derive(Debug, Clone, Default)]
 struct DiffStats {
@@ -216,4 +336,5 @@ pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/{id}/status", get(get_workspace_status))
         .route("/{id}/transcript", get(get_workspace_transcript))
+        .route("/{id}/diff", get(get_workspace_diff))
 }
