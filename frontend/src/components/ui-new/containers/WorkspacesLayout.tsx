@@ -6,6 +6,7 @@ import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
 import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import { ChangesViewProvider } from '@/contexts/ChangesViewContext';
+import { SyncErrorProvider } from '@/contexts/SyncErrorContext';
 import { WorkspacesSidebarContainer } from '@/components/ui-new/containers/WorkspacesSidebarContainer';
 import { LogsContentContainer } from '@/components/ui-new/containers/LogsContentContainer';
 import {
@@ -149,24 +150,26 @@ export function WorkspacesLayout() {
   // Kanban mode layout
   if (layoutMode === 'kanban') {
     return (
-      <div className="flex flex-col h-screen">
-        <NavbarContainer />
-        <div className="flex flex-1 min-h-0">
-          {firstOrg ? (
-            <OrgProvider organizationId={firstOrg.id}>
-              <KanbanLayoutContainer
-                kanbanDefaultLayout={kanbanDefaultLayout}
-                onKanbanLayoutChange={onKanbanLayoutChange}
-                isKanbanRightPanelVisible={isKanbanRightPanelVisible}
-              />
-            </OrgProvider>
-          ) : (
-            <div className="flex items-center justify-center h-full w-full">
-              <p className="text-low">Loading...</p>
-            </div>
-          )}
+      <SyncErrorProvider>
+        <div className="flex flex-col h-screen">
+          <NavbarContainer />
+          <div className="flex flex-1 min-h-0">
+            {firstOrg ? (
+              <OrgProvider organizationId={firstOrg.id}>
+                <KanbanLayoutContainer
+                  kanbanDefaultLayout={kanbanDefaultLayout}
+                  onKanbanLayoutChange={onKanbanLayoutChange}
+                  isKanbanRightPanelVisible={isKanbanRightPanelVisible}
+                />
+              </OrgProvider>
+            ) : (
+              <div className="flex items-center justify-center h-full w-full">
+                <p className="text-low">Loading...</p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </SyncErrorProvider>
     );
   }
 
@@ -255,31 +258,33 @@ export function WorkspacesLayout() {
   );
 
   return (
-    <div className="flex flex-col h-screen">
-      <NavbarContainer />
-      <div className="flex flex-1 min-h-0">
-        {isLeftSidebarVisible && (
-          <div className="w-[300px] shrink-0 h-full overflow-hidden">
-            <WorkspacesSidebarContainer
-              onScrollToBottom={handleScrollToBottom}
-            />
-          </div>
-        )}
-
-        <div className="flex-1 min-w-0 h-full">
-          {isCreateMode ? (
-            <CreateModeProvider>{mainContent}</CreateModeProvider>
-          ) : (
-            <ExecutionProcessesProvider
-              key={`${selectedWorkspace?.id}-${selectedSessionId}`}
-              attemptId={selectedWorkspace?.id}
-              sessionId={selectedSessionId}
-            >
-              {mainContent}
-            </ExecutionProcessesProvider>
+    <SyncErrorProvider>
+      <div className="flex flex-col h-screen">
+        <NavbarContainer />
+        <div className="flex flex-1 min-h-0">
+          {isLeftSidebarVisible && (
+            <div className="w-[300px] shrink-0 h-full overflow-hidden">
+              <WorkspacesSidebarContainer
+                onScrollToBottom={handleScrollToBottom}
+              />
+            </div>
           )}
+
+          <div className="flex-1 min-w-0 h-full">
+            {isCreateMode ? (
+              <CreateModeProvider>{mainContent}</CreateModeProvider>
+            ) : (
+              <ExecutionProcessesProvider
+                key={`${selectedWorkspace?.id}-${selectedSessionId}`}
+                attemptId={selectedWorkspace?.id}
+                sessionId={selectedSessionId}
+              >
+                {mainContent}
+              </ExecutionProcessesProvider>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </SyncErrorProvider>
   );
 }
