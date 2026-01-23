@@ -248,8 +248,6 @@ pub struct UpdateTaskRequest {
     pub title: Option<String>,
     #[schemars(description = "New description for the task")]
     pub description: Option<String>,
-    #[schemars(description = "New status: 'todo', 'inprogress', 'inreview', 'done', 'cancelled'")]
-    pub status: Option<String>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -915,7 +913,7 @@ impl TaskServer {
     }
 
     #[tool(
-        description = "Update an existing task/ticket's title, description, or status. `task_id` is required. `title`, `description`, and `status` are optional."
+        description = "Update an existing task/ticket's title or description. `task_id` is required. `title` and `description` are optional."
     )]
     async fn update_task(
         &self,
@@ -923,23 +921,8 @@ impl TaskServer {
             task_id,
             title,
             description,
-            status,
         }): Parameters<UpdateTaskRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let status = if let Some(ref status_str) = status {
-            match TaskStatus::from_str(status_str) {
-                Ok(s) => Some(s),
-                Err(_) => {
-                    return Self::err(
-                        "Invalid status filter. Valid values: 'todo', 'inprogress', 'inreview', 'done', 'cancelled'".to_string(),
-                        Some(status_str.to_string()),
-                    );
-                }
-            }
-        } else {
-            None
-        };
-
         // Expand @tagname references in description
         let expanded_description = match description {
             Some(desc) => Some(self.expand_tags(&desc).await),
@@ -949,7 +932,6 @@ impl TaskServer {
         let payload = UpdateTask {
             title,
             description: expanded_description,
-            status,
             parent_workspace_id: None,
             image_ids: None,
             assignee_user_id: None, // Don't change assignee through MCP

@@ -139,7 +139,6 @@ impl SharePublisher {
             shared_task.project_id,
             shared_task.title,
             shared_task.description,
-            shared_task.status,
             shared_task.id,
         );
 

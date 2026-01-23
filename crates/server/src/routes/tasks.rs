@@ -279,7 +279,7 @@ pub async fn update_task(
         Some(s) => Some(s),                     // Non-empty string = update description
         None => existing_task.description,      // Field omitted = keep existing
     };
-    let status = payload.status.unwrap_or(existing_task.status);
+    let status = existing_task.status;
     let parent_workspace_id = payload
         .parent_workspace_id
         .or(existing_task.parent_workspace_id);

@@ -113,7 +113,6 @@ pub struct CreateTask {
     pub project_id: Uuid,
     pub title: String,
     pub description: Option<String>,
-    pub status: Option<TaskStatus>,
     pub parent_workspace_id: Option<Uuid>,
     pub shared_task_id: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
@@ -129,7 +128,6 @@ impl CreateTask {
             project_id,
             title,
             description,
-            status: Some(TaskStatus::Todo),
             parent_workspace_id: None,
             shared_task_id: None,
             image_ids: None,
@@ -140,14 +138,12 @@ impl CreateTask {
         project_id: Uuid,
         title: String,
         description: Option<String>,
-        status: TaskStatus,
         shared_task_id: Uuid,
     ) -> Self {
         Self {
             project_id,
             title,
             description,
-            status: Some(status),
             parent_workspace_id: None,
             shared_task_id: Some(shared_task_id),
             image_ids: None,
@@ -159,7 +155,6 @@ impl CreateTask {
 pub struct UpdateTask {
     pub title: Option<String>,
     pub description: Option<String>,
-    pub status: Option<TaskStatus>,
     pub parent_workspace_id: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
     /// Set to Some(user_id) to assign, or None to not change, or Some(null) to unassign
@@ -341,7 +336,7 @@ ORDER BY t.created_at DESC"#,
         task_id: Uuid,
         creator_user_id: Option<Uuid>,
     ) -> Result<Self, sqlx::Error> {
-        let status = data.status.clone().unwrap_or_default();
+        let status = TaskStatus::Todo;
         sqlx::query_as!(
             Task,
             r#"INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, shared_task_id, creator_user_id)

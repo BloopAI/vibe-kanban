@@ -17,13 +17,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import BranchSelector from '@/components/tasks/BranchSelector';
@@ -81,7 +74,6 @@ type RepoBranch = { repoId: string; branch: string };
 type TaskFormValues = {
   title: string;
   description: string;
-  status: TaskStatus;
   assigneeUserId: string | null;
   executorProfileId: ExecutorProfileId | null;
   repoBranches: RepoBranch[];
@@ -143,7 +135,6 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
         return {
           title: props.task.title,
           description: props.task.description || '',
-          status: props.task.status,
           assigneeUserId: props.task.assignee_user_id,
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
@@ -154,7 +145,6 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
         return {
           title: props.initialTask.title,
           description: props.initialTask.description || '',
-          status: 'todo',
           assigneeUserId: null,
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
@@ -167,7 +157,6 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
         return {
           title: '',
           description: '',
-          status: 'todo',
           assigneeUserId: null,
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
@@ -185,7 +174,6 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           data: {
             title: value.title,
             description: value.description,
-            status: value.status,
             parent_workspace_id: null,
             image_ids: images.length > 0 ? images.map((img) => img.id) : null,
             assignee_user_id: value.assigneeUserId,
@@ -200,7 +188,6 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
         project_id: projectId,
         title: value.title,
         description: value.description,
-        status: null,
         parent_workspace_id:
           mode === 'subtask' ? props.parentTaskAttemptId : null,
         image_ids: imageIds,
@@ -471,46 +458,6 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
               </div>
             )}
           </form.Field>
-          {/* Edit mode status */}
-          {editMode && (
-            <form.Field name="status">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor="task-status" className="text-sm font-medium">
-                    {t('taskFormDialog.statusLabel')}
-                  </Label>
-                  <Select
-                    value={field.state.value}
-                    onValueChange={(value) =>
-                      field.handleChange(value as TaskStatus)
-                    }
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todo">
-                        {t('taskFormDialog.statusOptions.todo')}
-                      </SelectItem>
-                      <SelectItem value="inprogress">
-                        {t('taskFormDialog.statusOptions.inprogress')}
-                      </SelectItem>
-                      <SelectItem value="inreview">
-                        {t('taskFormDialog.statusOptions.inreview')}
-                      </SelectItem>
-                      <SelectItem value="done">
-                        {t('taskFormDialog.statusOptions.done')}
-                      </SelectItem>
-                      <SelectItem value="cancelled">
-                        {t('taskFormDialog.statusOptions.cancelled')}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </form.Field>
-          )}
 
           {/* Assignee selector - shown in edit mode when users are available */}
           {editMode && isSignedIn && users.length > 0 && (
