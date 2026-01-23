@@ -329,6 +329,24 @@ pub struct GetWorkspaceStatusResponse {
     pub lines_removed: Option<usize>,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetWorkspaceTranscriptRequest {
+    #[schemars(description = "The ID of the workspace to get transcript for")]
+    pub workspace_id: Uuid,
+}
+
+#[derive(Debug, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct GetWorkspaceTranscriptResponse {
+    #[schemars(description = "The workspace ID")]
+    pub workspace_id: String,
+    #[schemars(description = "The prompt that was sent to the coding agent")]
+    pub prompt: Option<String>,
+    #[schemars(description = "The agent's summary/final output")]
+    pub summary: Option<String>,
+    #[schemars(description = "The agent session ID (e.g., Claude session ID)")]
+    pub agent_session_id: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct TaskServer {
     client: reqwest::Client,
@@ -1036,6 +1054,23 @@ impl TaskServer {
         };
 
         TaskServer::success(&status)
+    }
+
+    #[tool(
+        description = "Get workspace transcript with agent's prompt and summary. Returns the prompt sent to the coding agent and its final output/summary."
+    )]
+    async fn get_workspace_transcript(
+        &self,
+        Parameters(GetWorkspaceTranscriptRequest { workspace_id }): Parameters<GetWorkspaceTranscriptRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!("/api/workspaces/{}/transcript", workspace_id));
+        let transcript: GetWorkspaceTranscriptResponse =
+            match self.send_json(self.client.get(&url)).await {
+                Ok(t) => t,
+                Err(e) => return Ok(e),
+            };
+
+        TaskServer::success(&transcript)
     }
 }
 
