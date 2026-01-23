@@ -29,10 +29,7 @@ import { ConversationWidgetLine } from '@/components/diff/ConversationWidgetLine
 import { ConversationRenderer } from '@/components/diff/ConversationRenderer';
 import { ReviewCommentRenderer } from './ReviewCommentRenderer';
 import { GitHubCommentRenderer } from './GitHubCommentRenderer';
-import type {
-  DiffChangeKind,
-  ConversationWithMessages,
-} from 'shared/types';
+import type { DiffChangeKind, ConversationWithMessages } from 'shared/types';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import '@/styles/diff-style-overrides.css';
@@ -200,7 +197,8 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
 
   const { diffFile, additions, deletions, filePath, isValid } =
     useDiffData(input);
-  const { comments, drafts, setDraft, addComment, getConversationsForFile } = useReview();
+  const { comments, drafts, setDraft, addComment, getConversationsForFile } =
+    useReview();
   const { showGitHubComments, getGitHubCommentsForFile } =
     useWorkspaceContext();
 

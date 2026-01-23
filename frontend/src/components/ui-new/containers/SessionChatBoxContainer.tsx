@@ -60,9 +60,7 @@ function computeExecutionStatus(params: {
   return 'idle';
 }
 
-function generateConversationSummary(
-  messages: { content: string }[]
-): string {
+function generateConversationSummary(messages: { content: string }[]): string {
   if (messages.length === 0) return 'Conversation resolved';
 
   const firstMessage = messages[0].content;
@@ -221,7 +219,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     [reviewContext?.unresolvedConversations]
   );
 
-  const [isResolvingConversations, setIsResolvingConversations] = useState(false);
+  const [isResolvingConversations, setIsResolvingConversations] =
+    useState(false);
 
   const handleResolveAllConversations = useCallback(async () => {
     if (!reviewContext || unresolvedConversationsData.length === 0) return;

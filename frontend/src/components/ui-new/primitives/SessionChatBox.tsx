@@ -391,7 +391,9 @@ export function SessionChatBox({
               onClick={unresolvedConversations.onResolveAll}
               disabled={unresolvedConversations.isResolving}
               actionIcon={
-                unresolvedConversations.isResolving ? 'spinner' : ChatsCircleIcon
+                unresolvedConversations.isResolving
+                  ? 'spinner'
+                  : ChatsCircleIcon
               }
               value={
                 unresolvedConversations.isResolving
