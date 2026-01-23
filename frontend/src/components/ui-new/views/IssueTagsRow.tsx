@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { PlusIcon, GitPullRequestIcon, HashIcon } from '@phosphor-icons/react';
 import type { Tag } from 'shared/remote-types';
-import { KanbanBadge } from './Kanban';
+import { KanbanBadge } from '@/components/ui-new/primitives/KanbanBadge';
 import {
   DropdownMenu,
   DropdownMenuContent,

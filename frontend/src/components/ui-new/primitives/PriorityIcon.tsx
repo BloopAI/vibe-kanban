@@ -7,26 +7,6 @@ import {
 } from '@phosphor-icons/react';
 import type { IssuePriority } from 'shared/remote-types';
 
-// =============================================================================
-// Status Dot Component
-// =============================================================================
-
-export interface StatusDotProps {
-  color: string;
-  className?: string;
-}
-
-export const StatusDot = ({ color, className }: StatusDotProps) => (
-  <span
-    className={cn('w-2 h-2 rounded-full shrink-0', className)}
-    style={{ backgroundColor: color }}
-  />
-);
-
-// =============================================================================
-// Priority Icon Component
-// =============================================================================
-
 export interface PriorityIconProps {
   priority: IssuePriority;
   className?: string;
