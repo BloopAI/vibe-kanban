@@ -94,3 +94,17 @@ Started: 2026-01-23
   - Use `create_unified_diff(path, old, new)` from utils::diff for unified diff output
   - Handle `content_omitted` flag for large files
 ---
+
+## 2026-01-23 - US-006
+- What was implemented:
+  - Added `GetWorkspaceDiffRequest` struct with `workspace_id: Uuid`
+  - Added `GetWorkspaceDiffResponse` struct with list of file diffs
+  - Added `FileDiffInfo` struct with path, additions, deletions, diff_content
+  - Added `get_workspace_diff` tool in `#[tool_router] impl TaskServer` block
+  - Tool calls `/api/workspaces/{id}/diff` via `self.client`
+- Files changed:
+  - crates/server/src/mcp/task_server.rs (added request/response/file structs + tool method)
+- **Learnings for future iterations:**
+  - MCP diff tool follows same pattern as status/transcript tools
+  - FileDiffInfo mirrors the API response structure for seamless JSON parsing
+---
