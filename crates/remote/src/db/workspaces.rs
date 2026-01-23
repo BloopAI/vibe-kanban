@@ -166,6 +166,16 @@ impl WorkspaceRepository {
         Ok(())
     }
 
+    pub async fn count_by_issue_id(pool: &PgPool, issue_id: Uuid) -> Result<i64, WorkspaceError> {
+        let count = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) AS "count!" FROM workspaces WHERE issue_id = $1"#,
+            issue_id
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(count)
+    }
+
     pub async fn update(
         pool: &PgPool,
         id: Uuid,

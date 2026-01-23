@@ -12,7 +12,10 @@ use super::{error::ErrorResponse, organization_members::ensure_project_access};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::workspaces::{CreateWorkspaceParams, Workspace, WorkspaceRepository},
+    db::{
+        issues::IssueRepository,
+        workspaces::{CreateWorkspaceParams, Workspace, WorkspaceRepository},
+    },
 };
 
 #[derive(Debug, Deserialize)]
@@ -84,6 +87,16 @@ async fn create_workspace(
             "failed to create workspace",
         )
     })?;
+
+    if let Some(issue_id) = payload.issue_id
+        && let Err(error) =
+            IssueRepository::sync_status_from_workspace_created(state.pool(), issue_id).await
+    {
+        tracing::warn!(
+            ?error,
+            "failed to sync issue status from workspace creation"
+        );
+    }
 
     Ok(Json(workspace))
 }
