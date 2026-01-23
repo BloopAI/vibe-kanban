@@ -1,6 +1,7 @@
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { cn } from '@/lib/utils';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
+import { getModifierKey } from '@/utils/platform';
 
 interface TooltipProps {
   children: React.ReactNode;
@@ -18,6 +19,8 @@ export function Tooltip({
   className,
 }: TooltipProps) {
   const container = usePortalContainer();
+  const formattedShortcut = shortcut?.replace('{mod}', getModifierKey());
+
   return (
     <TooltipPrimitive.Provider delayDuration={300}>
       <TooltipPrimitive.Root>
@@ -33,7 +36,7 @@ export function Tooltip({
             )}
           >
             <span>{content}</span>
-            {shortcut && (
+            {formattedShortcut && (
               <kbd
                 className={cn(
                   'ml-2 inline-flex items-center gap-0.5 px-2 py-0.5',
@@ -41,7 +44,7 @@ export function Tooltip({
                   'font-ibm-plex-mono text-xs text-high'
                 )}
               >
-                {shortcut}
+                {formattedShortcut}
               </kbd>
             )}
           </TooltipPrimitive.Content>

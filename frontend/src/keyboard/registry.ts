@@ -9,6 +9,7 @@ export enum Scope {
   APPROVALS = 'approvals',
   FOLLOW_UP = 'follow-up',
   FOLLOW_UP_READY = 'follow-up-ready',
+  WORKSPACE = 'workspace',
 }
 
 export enum Action {
@@ -89,22 +90,22 @@ export const sequentialBindings: SequentialBinding[] = [
   { id: 'seq-view-chat', keys: ['v', 'h'], description: 'Toggle Chat panel', group: 'View', actionId: 'toggle-left-main-panel' },
 
   // Git (X = eXecute)
-  { id: 'seq-git-pr', keys: ['x', 'p'], scopes: [Scope.KANBAN], description: 'Create Pull Request', group: 'Git', actionId: 'git-create-pr' },
-  { id: 'seq-git-merge', keys: ['x', 'm'], scopes: [Scope.KANBAN], description: 'Merge branch', group: 'Git', actionId: 'git-merge' },
-  { id: 'seq-git-rebase', keys: ['x', 'r'], scopes: [Scope.KANBAN], description: 'Rebase branch', group: 'Git', actionId: 'git-rebase' },
-  { id: 'seq-git-push', keys: ['x', 'u'], scopes: [Scope.KANBAN], description: 'Push changes', group: 'Git', actionId: 'git-push' },
+  { id: 'seq-git-pr', keys: ['x', 'p'], scopes: [Scope.WORKSPACE], description: 'Create Pull Request', group: 'Git', actionId: 'git-create-pr' },
+  { id: 'seq-git-merge', keys: ['x', 'm'], scopes: [Scope.WORKSPACE], description: 'Merge branch', group: 'Git', actionId: 'git-merge' },
+  { id: 'seq-git-rebase', keys: ['x', 'r'], scopes: [Scope.WORKSPACE], description: 'Rebase branch', group: 'Git', actionId: 'git-rebase' },
+  { id: 'seq-git-push', keys: ['x', 'u'], scopes: [Scope.WORKSPACE], description: 'Push changes', group: 'Git', actionId: 'git-push' },
 
   // Yank/Copy (Y)
-  { id: 'seq-yank-path', keys: ['y', 'p'], scopes: [Scope.KANBAN], description: 'Copy path', group: 'Yank', actionId: 'copy-path' },
-  { id: 'seq-yank-logs', keys: ['y', 'l'], scopes: [Scope.KANBAN], description: 'Copy raw logs', group: 'Yank', actionId: 'copy-raw-logs' },
+  { id: 'seq-yank-path', keys: ['y', 'p'], scopes: [Scope.WORKSPACE], description: 'Copy path', group: 'Yank', actionId: 'copy-path' },
+  { id: 'seq-yank-logs', keys: ['y', 'l'], scopes: [Scope.WORKSPACE], description: 'Copy raw logs', group: 'Yank', actionId: 'copy-raw-logs' },
 
   // Toggle (T)
-  { id: 'seq-toggle-dev-server', keys: ['t', 'd'], scopes: [Scope.KANBAN], description: 'Toggle dev server', group: 'Toggle', actionId: 'toggle-dev-server' },
-  { id: 'seq-toggle-wrap', keys: ['t', 'w'], scopes: [Scope.KANBAN], description: 'Toggle line wrapping', group: 'Toggle', actionId: 'toggle-wrap-lines' },
+  { id: 'seq-toggle-dev-server', keys: ['t', 'd'], scopes: [Scope.WORKSPACE], description: 'Toggle dev server', group: 'Toggle', actionId: 'toggle-dev-server' },
+  { id: 'seq-toggle-wrap', keys: ['t', 'w'], scopes: [Scope.WORKSPACE], description: 'Toggle line wrapping', group: 'Toggle', actionId: 'toggle-wrap-lines' },
 
   // Run (R)
-  { id: 'seq-run-setup', keys: ['r', 's'], scopes: [Scope.KANBAN], description: 'Run setup script', group: 'Run', actionId: 'run-setup-script' },
-  { id: 'seq-run-cleanup', keys: ['r', 'c'], scopes: [Scope.KANBAN], description: 'Run cleanup script', group: 'Run', actionId: 'run-cleanup-script' },
+  { id: 'seq-run-setup', keys: ['r', 's'], scopes: [Scope.WORKSPACE], description: 'Run setup script', group: 'Run', actionId: 'run-setup-script' },
+  { id: 'seq-run-cleanup', keys: ['r', 'c'], scopes: [Scope.WORKSPACE], description: 'Run cleanup script', group: 'Run', actionId: 'run-cleanup-script' },
 ];
 
 export const keyBindings: KeyBinding[] = [

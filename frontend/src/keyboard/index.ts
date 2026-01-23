@@ -1,4 +1,5 @@
-// Export all semantic keyboard hooks
 export * from './hooks';
 export * from './registry';
-export * from './useSequentialHotkeys';
+export * from './SequenceTracker';
+export * from './SequenceIndicator';
+export * from './useWorkspaceShortcuts';

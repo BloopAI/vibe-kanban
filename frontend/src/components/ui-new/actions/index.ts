@@ -415,6 +415,7 @@ export const Actions = {
     id: 'open-command-bar',
     label: 'Open Command Bar',
     icon: ListIcon,
+    shortcut: '{mod} K',
     requiresTarget: false,
     execute: async () => {
       // Dynamic import to avoid circular dependency (pages.ts imports Actions)

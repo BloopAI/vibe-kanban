@@ -1,9 +1,10 @@
 import { useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { XIcon } from '@phosphor-icons/react';
+import { XIcon, GearIcon } from '@phosphor-icons/react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal, type NoProps } from '@/lib/modals';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { cn } from '@/lib/utils';
 import {
   sequentialBindings,
@@ -11,11 +12,13 @@ import {
   Scope,
 } from '@/keyboard/registry';
 import { isMac, getModifierKey } from '@/utils/platform';
+import { Tooltip } from '@/components/ui-new/primitives/Tooltip';
 
 interface ShortcutItem {
-  keys: string;
+  keys: string | string[];
   description: string;
   hasScope?: boolean;
+  hint?: string;
 }
 
 interface ShortcutGroup {
@@ -23,25 +26,23 @@ interface ShortcutGroup {
   shortcuts: ShortcutItem[];
 }
 
-/**
- * Build all shortcut groups including single-key, modifier, and sequential shortcuts.
- * Sequential shortcuts are organized by their first key namespace.
- */
 function useShortcutGroups(): ShortcutGroup[] {
+  const { config } = useUserSystem();
+  const sendShortcut = config?.send_message_shortcut ?? 'ModifierEnter';
+
   return useMemo(() => {
     const mod = getModifierKey();
     const enterKey = isMac() ? '↩' : 'Enter';
-    const shiftKey = isMac() ? '⇧' : 'Shift+';
 
     // Quick Actions - single key shortcuts
     const quickActions: ShortcutGroup = {
       name: 'Quick Actions',
       shortcuts: [
-        { keys: 'C', description: 'Create new task/workspace' },
-        { keys: 'D', description: 'Delete selected item' },
-        { keys: '/', description: 'Focus search' },
-        { keys: 'Esc', description: 'Close/cancel' },
         { keys: '?', description: 'Show this help' },
+        { keys: 'Esc', description: 'Close/cancel' },
+        { keys: 'C', description: 'Create new task' },
+        { keys: 'D', description: 'Delete selected' },
+        { keys: '/', description: 'Focus search' },
       ],
     };
 
@@ -56,16 +57,13 @@ function useShortcutGroups(): ShortcutGroup[] {
       ],
     };
 
-    // Modifiers
     const modifiers: ShortcutGroup = {
       name: 'Modifiers',
       shortcuts: [
-        { keys: `${mod}K`, description: 'Open command bar' },
-        { keys: `${mod}${enterKey}`, description: 'Submit / Open details' },
-        {
-          keys: `${mod}${shiftKey}${enterKey}`,
-          description: 'Alt submit / Cycle backward',
-        },
+        { keys: [mod, 'K'], description: 'Open command bar' },
+        sendShortcut === 'Enter'
+          ? { keys: enterKey, description: 'Send message', hint: 'Configurable in Settings → General → Message Input' }
+          : { keys: [mod, enterKey], description: 'Send message', hint: 'Configurable in Settings → General → Message Input' },
       ],
     };
 
@@ -76,13 +74,12 @@ function useShortcutGroups(): ShortcutGroup[] {
       if (!sequentialByFirstKey.has(firstKey)) {
         sequentialByFirstKey.set(firstKey, []);
       }
-      // Check if this binding has KANBAN scope
-      const hasKanbanScope = binding.scopes?.includes(Scope.KANBAN) ?? false;
+      const hasWorkspaceScope = binding.scopes?.includes(Scope.WORKSPACE) ?? false;
 
       sequentialByFirstKey.get(firstKey)!.push({
         keys: formatSequentialKeys(binding.keys),
         description: binding.description,
-        hasScope: hasKanbanScope,
+        hasScope: hasWorkspaceScope,
       });
     }
 
@@ -107,27 +104,40 @@ function useShortcutGroups(): ShortcutGroup[] {
     ].filter((g) => g.shortcuts.length > 0);
 
     return [quickActions, navigation, modifiers, ...sequentialGroups];
-  }, []);
+  }, [sendShortcut]);
 }
 
 function ShortcutRow({ item }: { item: ShortcutItem }) {
+  const keysArray = Array.isArray(item.keys) ? item.keys : [item.keys];
+
   return (
     <div className="flex items-center justify-between py-1">
-      <span className="text-normal text-sm">
+      <span className="text-normal text-sm flex items-center gap-1">
         {item.description}
         {item.hasScope && (
-          <span className="text-low text-xs ml-1">(in workspace)</span>
+          <span className="text-low text-xs">(in workspace)</span>
+        )}
+        {item.hint && (
+          <Tooltip content={item.hint} side="top">
+            <GearIcon className="size-3 text-low cursor-help" />
+          </Tooltip>
         )}
       </span>
-      <kbd
-        className={cn(
-          'inline-flex items-center gap-0.5 px-2 py-0.5',
-          'rounded-sm border border-border bg-secondary',
-          'font-ibm-plex-mono text-xs text-high'
-        )}
-      >
-        {item.keys}
-      </kbd>
+      <div className="flex items-center gap-1">
+        {keysArray.map((key, i) => (
+          <kbd
+            key={i}
+            className={cn(
+              'inline-flex items-center justify-center',
+              'min-w-[24px] h-6 px-1.5',
+              'rounded-sm border border-border bg-secondary',
+              'font-ibm-plex-mono text-xs text-high'
+            )}
+          >
+            {key}
+          </kbd>
+        ))}
+      </div>
     </div>
   );
 }

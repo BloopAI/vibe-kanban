@@ -6,8 +6,9 @@ import {
   useWorkspaceContext,
 } from '@/contexts/WorkspaceContext';
 import { ActionsProvider } from '@/contexts/ActionsContext';
-import { SequentialShortcutsProvider } from '@/contexts/SequentialShortcutsContext';
-import { KeySequenceIndicator } from '@/components/ui-new/KeySequenceIndicator';
+import { SequenceTrackerProvider } from '@/keyboard/SequenceTracker';
+import { SequenceIndicator } from '@/keyboard/SequenceIndicator';
+import { useWorkspaceShortcuts } from '@/keyboard/useWorkspaceShortcuts';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import NiceModal from '@ebay/nice-modal-react';
@@ -36,12 +37,11 @@ function ExecutionProcessesProviderWrapper({
   );
 }
 
-// Handler component for keyboard shortcuts help dialog
-// Must be inside NiceModal.Provider to show the dialog
 function KeyboardShortcutsHandler() {
   useKeyShowHelp(() => {
     KeyboardShortcutsDialog.show();
   }, { scope: Scope.GLOBAL });
+  useWorkspaceShortcuts();
   return null;
 }
 
@@ -64,13 +64,13 @@ export function NewDesignScope({ children }: NewDesignScopeProps) {
           <ExecutionProcessesProviderWrapper>
             <LogsPanelProvider>
               <ActionsProvider>
-                <SequentialShortcutsProvider>
-                  <KeySequenceIndicator />
+                <SequenceTrackerProvider>
+                  <SequenceIndicator />
                   <NiceModal.Provider>
                     <KeyboardShortcutsHandler />
                     {children}
                   </NiceModal.Provider>
-                </SequentialShortcutsProvider>
+                </SequenceTrackerProvider>
               </ActionsProvider>
             </LogsPanelProvider>
           </ExecutionProcessesProviderWrapper>
