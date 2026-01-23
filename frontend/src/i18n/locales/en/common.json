@@ -341,5 +341,12 @@
     "filesCount": "{{count}} Files",
     "noPrCreated": "No PR created",
     "noCommentsYet": "No comments yet"
+  },
+  "syncError": {
+    "networkErrors": "Network Errors",
+    "streamsAffected": "{{count}} stream affected",
+    "streamsAffected_other": "{{count}} streams affected",
+    "status": "(status {{status}})",
+    "refreshPage": "Refresh Page"
   }
 }

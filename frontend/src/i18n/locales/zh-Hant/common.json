@@ -333,10 +333,20 @@
     "noProjectFound": "找不到專案",
     "noOrganizationFound": "找不到組織",
     "unassigned": "未指派",
-    "noTagsAvailable": "No tags available",
-    "createNewTag": "Create new tag",
+    "noTagsAvailable": "無可用標籤",
+    "createNewTag": "建立新標籤",
+    "searchTags": "搜尋標籤...",
+    "selectColorFor": "選擇顏色：",
+    "createTag": "建立",
     "filesCount": "{{count}} 個檔案",
     "noPrCreated": "未建立 PR",
     "noCommentsYet": "尚無評論"
+  },
+  "syncError": {
+    "networkErrors": "網路錯誤",
+    "streamsAffected": "{{count}} 個資料流受影響",
+    "streamsAffected_other": "{{count}} 個資料流受影響",
+    "status": "(狀態 {{status}})",
+    "refreshPage": "重新整理頁面"
   }
 }
