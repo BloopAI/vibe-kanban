@@ -37,6 +37,8 @@ interface WorkspacesMainProps {
   diffStats?: DiffStats;
   /** Callback to scroll to previous user message */
   onScrollToPreviousMessage: () => void;
+  /** Callback to scroll to bottom of conversation */
+  onScrollToBottom: () => void;
 }
 
 export function WorkspacesMain({
@@ -51,6 +53,7 @@ export function WorkspacesMain({
   onStartNewSession,
   diffStats,
   onScrollToPreviousMessage,
+  onScrollToBottom,
 }: WorkspacesMainProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const { session } = workspaceWithSession ?? {};
@@ -118,6 +121,7 @@ export function WorkspacesMain({
                 linesAdded={diffStats?.linesAdded ?? 0}
                 linesRemoved={diffStats?.linesRemoved ?? 0}
                 onScrollToPreviousMessage={onScrollToPreviousMessage}
+                onScrollToBottom={onScrollToBottom}
               />
             </div>
           </MessageEditProvider>
