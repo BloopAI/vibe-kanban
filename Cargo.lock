@@ -4876,6 +4876,7 @@ dependencies = [
  "os_info",
  "rand 0.8.5",
  "regex",
+ "remote",
  "reqwest",
  "rmcp",
  "rust-embed",

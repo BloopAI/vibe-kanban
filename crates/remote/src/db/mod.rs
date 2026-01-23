@@ -20,6 +20,7 @@ pub mod projects;
 pub mod pull_requests;
 pub mod reviews;
 pub mod tags;
+pub mod tasks;
 pub mod types;
 pub mod users;
 pub mod workspaces;

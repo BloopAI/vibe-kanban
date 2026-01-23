@@ -1,0 +1,107 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id                  AS \"id!\",\n                organization_id     AS \"organization_id!: Uuid\",\n                project_id          AS \"project_id!\",\n                creator_user_id     AS \"creator_user_id?: Uuid\",\n                assignee_user_id    AS \"assignee_user_id?: Uuid\",\n                deleted_by_user_id  AS \"deleted_by_user_id?: Uuid\",\n                title               AS \"title!\",\n                description         AS \"description?\",\n                status              AS \"status!: TaskStatus\",\n                deleted_at          AS \"deleted_at?\",\n                shared_at           AS \"shared_at?\",\n                created_at          AS \"created_at!\",\n                updated_at          AS \"updated_at!\"\n            FROM shared_tasks\n            WHERE id = $1\n              AND deleted_at IS NULL\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "organization_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "creator_user_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "assignee_user_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "deleted_by_user_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "title!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "description?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "status!: TaskStatus",
+        "type_info": {
+          "Custom": {
+            "name": "task_status",
+            "kind": {
+              "Enum": [
+                "todo",
+                "inprogress",
+                "inreview",
+                "done",
+                "cancelled"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "deleted_at?",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "shared_at?",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "3ba7efc786500c8a72dec5fb0f76b66da861b8ca8905080ef70a16943e97f004"
+}

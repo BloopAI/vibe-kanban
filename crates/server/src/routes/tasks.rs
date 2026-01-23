@@ -23,10 +23,12 @@ use deployment::Deployment;
 use executors::profile::ExecutorProfileId;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
-use services::services::{container::ContainerService, workspace_manager::WorkspaceManager};
+use services::services::{
+    container::ContainerService, share::ShareError, workspace_manager::WorkspaceManager,
+};
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::response::ApiResponse;
+use utils::{api::oauth::LoginStatus, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{
@@ -423,6 +425,21 @@ pub async fn delete_task(
 
     // Return 202 Accepted to indicate deletion was scheduled
     Ok((StatusCode::ACCEPTED, ResponseJson(ApiResponse::success(()))))
+}
+
+async fn ensure_shared_task_auth(
+    existing_task: &Task,
+    deployment: &DeploymentImpl,
+) -> Result<(), ApiError> {
+    if existing_task.shared_task_id.is_some() {
+        match deployment.get_login_status().await {
+            LoginStatus::LoggedIn { .. } => return Ok(()),
+            LoginStatus::LoggedOut => {
+                return Err(ShareError::MissingAuth.into());
+            }
+        }
+    }
+    Ok(())
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {

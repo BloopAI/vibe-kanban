@@ -115,6 +115,7 @@ pub struct CreateTask {
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
     pub parent_workspace_id: Option<Uuid>,
+    pub shared_task_id: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
 }
 
@@ -130,6 +131,25 @@ impl CreateTask {
             description,
             status: Some(TaskStatus::Todo),
             parent_workspace_id: None,
+            shared_task_id: None,
+            image_ids: None,
+        }
+    }
+
+    pub fn from_shared_task(
+        project_id: Uuid,
+        title: String,
+        description: Option<String>,
+        status: TaskStatus,
+        shared_task_id: Uuid,
+    ) -> Self {
+        Self {
+            project_id,
+            title,
+            description,
+            status: Some(status),
+            parent_workspace_id: None,
+            shared_task_id: Some(shared_task_id),
             image_ids: None,
         }
     }
@@ -516,6 +536,38 @@ ORDER BY t.created_at DESC"#,
         let creator = self.get_creator(pool).await?;
         let assignee = self.get_assignee(pool).await?;
         Ok(TaskWithUsers::new(self, creator, assignee))
+    }
+
+    /// Update the shared_task_id field for a task
+    pub async fn set_shared_task_id(
+        pool: &SqlitePool,
+        task_id: Uuid,
+        shared_task_id: Option<Uuid>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE tasks SET shared_task_id = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            task_id,
+            shared_task_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Unlink shared tasks by setting shared_task_id to NULL for the given shared task IDs
+    pub async fn batch_unlink_shared_tasks(
+        pool: &SqlitePool,
+        shared_task_ids: &[Uuid],
+    ) -> Result<(), sqlx::Error> {
+        for id in shared_task_ids {
+            sqlx::query!(
+                "UPDATE tasks SET shared_task_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE shared_task_id = $1",
+                id
+            )
+            .execute(pool)
+            .await?;
+        }
+        Ok(())
     }
 
     /// Batch fetch users for a list of tasks efficiently

@@ -25,7 +25,7 @@ use db::{
         workspace_repo::WorkspaceRepo,
     },
 };
-use deployment::DeploymentError;
+use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::{
     actions::{
         Executable, ExecutorAction, ExecutorActionType,
@@ -50,6 +50,7 @@ use services::services::{
     image::ImageService,
     notification::NotificationService,
     queued_message::QueuedMessageService,
+    share::SharePublisher,
     workspace_manager::{RepoWorkspaceInput, WorkspaceManager},
 };
 use tokio::{sync::RwLock, task::JoinHandle};

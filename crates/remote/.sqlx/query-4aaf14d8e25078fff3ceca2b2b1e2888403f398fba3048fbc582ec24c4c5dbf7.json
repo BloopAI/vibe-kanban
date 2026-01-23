@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT DISTINCT\n                u.id         as \"user_id\",\n                u.first_name as \"first_name\",\n                u.last_name  as \"last_name\",\n                u.username   as \"username\"\n            FROM shared_tasks st\n            INNER JOIN users u ON u.id = st.assignee_user_id\n            WHERE st.project_id = $1\n            AND st.assignee_user_id IS NOT NULL\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "first_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "username",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "4aaf14d8e25078fff3ceca2b2b1e2888403f398fba3048fbc582ec24c4c5dbf7"
+}

@@ -540,6 +540,56 @@ impl RemoteClient {
         )
         .await
     }
+
+    /// Creates a shared task.
+    pub async fn create_shared_task(
+        &self,
+        request: &remote::routes::tasks::CreateSharedTaskRequest,
+    ) -> Result<remote::routes::tasks::SharedTaskResponse, RemoteClientError> {
+        self.post_authed("/v1/tasks", Some(request)).await
+    }
+
+    /// Updates a shared task.
+    pub async fn update_shared_task(
+        &self,
+        task_id: Uuid,
+        request: &remote::routes::tasks::UpdateSharedTaskRequest,
+    ) -> Result<remote::routes::tasks::SharedTaskResponse, RemoteClientError> {
+        self.patch_authed(&format!("/v1/tasks/{task_id}"), request)
+            .await
+    }
+
+    /// Assigns a shared task to another user.
+    pub async fn assign_shared_task(
+        &self,
+        task_id: Uuid,
+        request: &remote::routes::tasks::AssignSharedTaskRequest,
+    ) -> Result<remote::routes::tasks::SharedTaskResponse, RemoteClientError> {
+        self.post_authed(&format!("/v1/tasks/{task_id}/assign"), Some(request))
+            .await
+    }
+
+    /// Deletes a shared task.
+    pub async fn delete_shared_task(
+        &self,
+        task_id: Uuid,
+    ) -> Result<remote::routes::tasks::SharedTaskResponse, RemoteClientError> {
+        let res = self
+            .send(reqwest::Method::DELETE, &format!("/v1/tasks/{task_id}"), true, None::<&()>)
+            .await?;
+        res.json::<remote::routes::tasks::SharedTaskResponse>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    /// Checks which of the given shared task IDs still exist.
+    pub async fn check_tasks(
+        &self,
+        task_ids: Vec<Uuid>,
+    ) -> Result<Vec<Uuid>, RemoteClientError> {
+        let body = remote::routes::tasks::CheckTasksRequest { task_ids };
+        self.post_authed("/v1/tasks/check", Some(&body)).await
+    }
 }
 
 #[derive(Debug, Serialize)]

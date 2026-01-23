@@ -34,6 +34,7 @@ mod projects;
 mod pull_requests;
 mod review;
 mod tags;
+pub mod tasks;
 mod tokens;
 
 pub fn router(state: AppState) -> Router {
@@ -84,6 +85,7 @@ pub fn router(state: AppState) -> Router {
         .merge(issue_relationships::router())
         .merge(pull_requests::router())
         .merge(notifications::router())
+        .merge(tasks::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,

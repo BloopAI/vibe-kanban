@@ -1,10 +1,6 @@
 {
   "db_name": "SQLite",
-<<<<<<<< HEAD:crates/db/.sqlx/query-87711d59eed54e06a8dad031254aa8ae865ae25a6ed7dbf17e449702833c6616.json
   "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", creator_user_id as \"creator_user_id: Uuid\", assignee_user_id as \"assignee_user_id: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE parent_workspace_id = $1\n               ORDER BY created_at DESC",
-========
-  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE parent_workspace_id = $1\n               ORDER BY created_at DESC",
->>>>>>>> upstream/main:crates/db/.sqlx/query-2d0eceb57648bb3d0eec40aacf4d082e170f9acac64d9261f585d39822b2998d.json
   "describe": {
     "columns": [
       {
@@ -38,7 +34,6 @@
         "type_info": "Blob"
       },
       {
-<<<<<<<< HEAD:crates/db/.sqlx/query-87711d59eed54e06a8dad031254aa8ae865ae25a6ed7dbf17e449702833c6616.json
         "name": "shared_task_id: Uuid",
         "ordinal": 6,
         "type_info": "Blob"
@@ -56,19 +51,11 @@
       {
         "name": "created_at!: DateTime<Utc>",
         "ordinal": 9,
-========
-        "name": "created_at!: DateTime<Utc>",
-        "ordinal": 6,
->>>>>>>> upstream/main:crates/db/.sqlx/query-2d0eceb57648bb3d0eec40aacf4d082e170f9acac64d9261f585d39822b2998d.json
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-<<<<<<<< HEAD:crates/db/.sqlx/query-87711d59eed54e06a8dad031254aa8ae865ae25a6ed7dbf17e449702833c6616.json
         "ordinal": 10,
-========
-        "ordinal": 7,
->>>>>>>> upstream/main:crates/db/.sqlx/query-2d0eceb57648bb3d0eec40aacf4d082e170f9acac64d9261f585d39822b2998d.json
         "type_info": "Text"
       }
     ],
@@ -82,19 +69,12 @@
       true,
       false,
       true,
-<<<<<<<< HEAD:crates/db/.sqlx/query-87711d59eed54e06a8dad031254aa8ae865ae25a6ed7dbf17e449702833c6616.json
       true,
       true,
       true,
-========
->>>>>>>> upstream/main:crates/db/.sqlx/query-2d0eceb57648bb3d0eec40aacf4d082e170f9acac64d9261f585d39822b2998d.json
       false,
       false
     ]
   },
-<<<<<<<< HEAD:crates/db/.sqlx/query-87711d59eed54e06a8dad031254aa8ae865ae25a6ed7dbf17e449702833c6616.json
   "hash": "87711d59eed54e06a8dad031254aa8ae865ae25a6ed7dbf17e449702833c6616"
-========
-  "hash": "2d0eceb57648bb3d0eec40aacf4d082e170f9acac64d9261f585d39822b2998d"
->>>>>>>> upstream/main:crates/db/.sqlx/query-2d0eceb57648bb3d0eec40aacf4d082e170f9acac64d9261f585d39822b2998d.json
 }

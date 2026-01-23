@@ -26,6 +26,7 @@ use crate::{
         organization_members::{self, MemberRole},
         organizations::OrganizationRepository,
         projects::ProjectRepository,
+        tasks::SharedTaskRepository,
     },
 };
 
@@ -595,6 +596,51 @@ pub(crate) async fn ensure_issue_access(
                 );
             }
             membership_error(err, "issue not accessible")
+        })?;
+
+    Ok(organization_id)
+}
+
+pub(crate) async fn ensure_task_access(
+    pool: &PgPool,
+    user_id: Uuid,
+    task_id: Uuid,
+) -> Result<Uuid, ErrorResponse> {
+    let organization_id = SharedTaskRepository::organization_id(pool, task_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %task_id, "failed to load shared task");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?
+        .ok_or_else(|| {
+            warn!(
+                %task_id,
+                %user_id,
+                "shared task not found for access check"
+            );
+            ErrorResponse::new(StatusCode::NOT_FOUND, "shared task not found")
+        })?;
+
+    organization_members::assert_membership(pool, organization_id, user_id)
+        .await
+        .map_err(|err| {
+            if let IdentityError::Database(error) = &err {
+                tracing::error!(
+                    ?error,
+                    %organization_id,
+                    %task_id,
+                    "failed to authorize shared task access"
+                );
+            } else {
+                warn!(
+                    ?err,
+                    %organization_id,
+                    %task_id,
+                    %user_id,
+                    "shared task access denied"
+                );
+            }
+            membership_error(err, "task not accessible")
         })?;
 
     Ok(organization_id)

@@ -108,6 +108,12 @@ impl From<RemoteClientNotConfigured> for ApiError {
     }
 }
 
+impl From<services::services::share::ShareError> for ApiError {
+    fn from(err: services::services::share::ShareError) -> Self {
+        ApiError::BadRequest(err.to_string())
+    }
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status_code, error_type) = match &self {

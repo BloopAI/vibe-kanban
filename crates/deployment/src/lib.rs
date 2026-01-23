@@ -23,7 +23,7 @@ use services::services::{
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
     events::{EventError, EventService},
-    file_search_cache::FileSearchCache,
+    file_search::FileSearchCache,
     filesystem::{FilesystemError, FilesystemService},
     filesystem_watcher::FilesystemWatcherError,
     git::{GitService, GitServiceError},
