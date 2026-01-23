@@ -317,5 +317,12 @@
     "inWorkspace": "(in workspace)",
     "sequentialHint": "Sequential shortcuts: Press the first key, then the second within 500ms.",
     "configurableHint": "Configurable in Settings → General → Message Input"
+  },
+  "typeahead": {
+    "tags": "Tags",
+    "files": "Files",
+    "commands": "Commands",
+    "noTagsOrFiles": "No tags or files found",
+    "noCommands": "No commands available for this agent."
   }
 }

@@ -317,5 +317,12 @@
     "inWorkspace": "(dans l'espace de travail)",
     "sequentialHint": "Raccourcis séquentiels : Appuyez sur la première touche, puis sur la seconde en 500ms.",
     "configurableHint": "Configurable dans Paramètres → Général → Saisie de Message"
+  },
+  "typeahead": {
+    "tags": "Tags",
+    "files": "Fichiers",
+    "commands": "Commandes",
+    "noTagsOrFiles": "Aucun tag ou fichier trouvé",
+    "noCommands": "Aucune commande disponible pour cet agent."
   }
 }

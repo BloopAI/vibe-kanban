@@ -317,5 +317,12 @@
     "inWorkspace": "(ワークスペース内)",
     "sequentialHint": "シーケンシャルショートカット：最初のキーを押し、500ms以内に2番目のキーを押してください。",
     "configurableHint": "設定 → 一般 → メッセージ入力で設定可能"
+  },
+  "typeahead": {
+    "tags": "タグ",
+    "files": "ファイル",
+    "commands": "コマンド",
+    "noTagsOrFiles": "タグまたはファイルが見つかりません",
+    "noCommands": "このエージェントで利用可能なコマンドはありません。"
   }
 }

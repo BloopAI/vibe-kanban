@@ -12,6 +12,7 @@ import {
   $isParagraphNode,
 } from 'lexical';
 import { Tag as TagIcon, FileText } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { WorkspaceContext } from '@/contexts/WorkspaceContext';
 import {
@@ -79,6 +80,7 @@ export function FileTagTypeaheadPlugin({
   const [editor] = useLexicalComposerContext();
   const [options, setOptions] = useState<FileTagOption[]>([]);
   const portalContainer = usePortalContainer();
+  const { t } = useTranslation('common');
   // Use context directly to gracefully handle missing WorkspaceProvider (old UI)
   const workspaceContext = useContext(WorkspaceContext);
   const diffPaths = useMemo(
@@ -220,11 +222,11 @@ export function FileTagTypeaheadPlugin({
           <TypeaheadMenu anchorEl={anchorRef.current}>
             <TypeaheadMenu.Header>
               <TagIcon className="h-3.5 w-3.5" />
-              Tags
+              {t('typeahead.tags')}
             </TypeaheadMenu.Header>
 
             {options.length === 0 ? (
-              <TypeaheadMenu.Empty>No tags or files found</TypeaheadMenu.Empty>
+              <TypeaheadMenu.Empty>{t('typeahead.noTagsOrFiles')}</TypeaheadMenu.Empty>
             ) : (
               <TypeaheadMenu.ScrollArea>
                 {/* Tags Section */}
@@ -257,7 +259,7 @@ export function FileTagTypeaheadPlugin({
                   <>
                     {tagResults.length > 0 && <TypeaheadMenu.Divider />}
                     <TypeaheadMenu.SectionHeader>
-                      Files
+                      {t('typeahead.files')}
                     </TypeaheadMenu.SectionHeader>
                     {fileResults.map((option) => {
                       const index = options.indexOf(option);

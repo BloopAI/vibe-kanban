@@ -7,6 +7,7 @@ import {
 } from '@lexical/react/LexicalTypeaheadMenuPlugin';
 import { $createTextNode } from 'lexical';
 import { Command as CommandIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { BaseCodingAgent, SlashCommandDescription } from 'shared/types';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { useSlashCommands } from '@/hooks/useSlashCommands';
@@ -46,6 +47,7 @@ export function SlashCommandTypeaheadPlugin({
   const [editor] = useLexicalComposerContext();
   const portalContainer = usePortalContainer();
   const taskAttemptId = useTaskAttemptId();
+  const { t } = useTranslation('common');
   const [options, setOptions] = useState<SlashCommandOption[]>([]);
   const [activeQuery, setActiveQuery] = useState<string | null>(null);
 
@@ -137,12 +139,12 @@ export function SlashCommandTypeaheadPlugin({
           <TypeaheadMenu anchorEl={anchorRef.current}>
             <TypeaheadMenu.Header>
               <CommandIcon className="h-3.5 w-3.5" />
-              Commands
+              {t('typeahead.commands')}
             </TypeaheadMenu.Header>
 
             {isEmpty ? (
               <TypeaheadMenu.Empty>
-                No commands available for this agent.
+                {t('typeahead.noCommands')}
               </TypeaheadMenu.Empty>
             ) : options.length === 0 && !showLoadingRow ? null : (
               <TypeaheadMenu.ScrollArea>

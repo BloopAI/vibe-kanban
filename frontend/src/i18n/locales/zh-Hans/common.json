@@ -317,5 +317,12 @@
     "inWorkspace": "(在工作区中)",
     "sequentialHint": "组合快捷键：先按第一个键，然后在500毫秒内按第二个键。",
     "configurableHint": "可在 设置 → 常规 → 消息输入 中配置"
+  },
+  "typeahead": {
+    "tags": "标签",
+    "files": "文件",
+    "commands": "命令",
+    "noTagsOrFiles": "未找到标签或文件",
+    "noCommands": "此代理没有可用的命令。"
   }
 }

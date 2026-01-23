@@ -317,5 +317,12 @@
     "inWorkspace": "(워크스페이스 내)",
     "sequentialHint": "순차 단축키: 첫 번째 키를 누른 후 500ms 이내에 두 번째 키를 누르세요.",
     "configurableHint": "설정 → 일반 → 메시지 입력에서 설정 가능"
+  },
+  "typeahead": {
+    "tags": "태그",
+    "files": "파일",
+    "commands": "명령어",
+    "noTagsOrFiles": "태그 또는 파일을 찾을 수 없습니다",
+    "noCommands": "이 에이전트에 사용 가능한 명령어가 없습니다."
   }
 }

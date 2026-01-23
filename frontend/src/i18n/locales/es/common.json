@@ -317,5 +317,12 @@
     "inWorkspace": "(en espacio de trabajo)",
     "sequentialHint": "Atajos secuenciales: Presiona la primera tecla, luego la segunda en 500ms.",
     "configurableHint": "Configurable en Ajustes → General → Entrada de Mensaje"
+  },
+  "typeahead": {
+    "tags": "Etiquetas",
+    "files": "Archivos",
+    "commands": "Comandos",
+    "noTagsOrFiles": "No se encontraron etiquetas ni archivos",
+    "noCommands": "No hay comandos disponibles para este agente."
   }
 }
