@@ -70,8 +70,8 @@
         "Typecheck passes (cargo check)"
       ],
       "priority": 4,
-      "passes": false,
-      "inProgress": true,
+      "passes": true,
+      "inProgress": false,
       "checkpoint": true,
       "notes": "Location: crates/server/src/mcp/task_server.rs"
     },

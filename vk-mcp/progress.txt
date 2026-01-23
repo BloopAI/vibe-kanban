@@ -66,3 +66,16 @@ Started: 2026-01-23
   - Use `ep.run_reason = 'codingagent'` and `ep.dropped = 0` to filter for valid coding agent executions
   - After adding new SQLx queries, run `pnpm run prepare-db` to update the query cache
 ---
+
+## 2026-01-23 - US-004
+- What was implemented:
+  - Added `GetWorkspaceTranscriptRequest` struct with `workspace_id: Uuid`
+  - Added `GetWorkspaceTranscriptResponse` struct with prompt, summary, agent_session_id
+  - Added `get_workspace_transcript` tool in `#[tool_router] impl TaskServer` block
+  - Tool calls `/api/workspaces/{id}/transcript` via `self.client`
+- Files changed:
+  - crates/server/src/mcp/task_server.rs (added request/response structs + tool method)
+- **Learnings for future iterations:**
+  - MCP transcript tool mirrors the status tool pattern exactly
+  - Both tools follow: request struct → response struct → tool calling API route
+---
