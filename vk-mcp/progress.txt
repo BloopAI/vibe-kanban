@@ -1,0 +1,51 @@
+# Vibe Kanban MCP Extension - Progress Log
+
+Branch: vk-mcp-lifecycle
+Started: 2026-01-23
+
+---
+
+## Codebase Patterns
+- Use `ApiError::NotFound(message)` for 404 responses in API routes
+- Workspace diff stats: reuse `compute_workspace_diff_stats` pattern from `workspace_summary.rs`
+- Use `ExecutionProcess::find_latest_by_workspace_and_run_reason` to get latest execution status
+- Routes are registered in `crates/server/src/routes/mod.rs` via `.merge()` or `.nest()`
+- New route modules should follow existing patterns (axum handlers with `State<DeploymentImpl>`)
+- MCP tools: use `#[tool(description = "...")]` macro in `#[tool_router] impl TaskServer` block
+- MCP request structs: `#[derive(Debug, Deserialize, schemars::JsonSchema)]` with `#[schemars(description)]`
+- MCP response structs: `#[derive(Debug, Serialize, Deserialize, schemars::JsonSchema)]`
+- MCP tools call internal API via `self.send_json(self.client.get(&url))` pattern
+
+---
+
+## Story Progress
+
+## 2026-01-23 - US-001
+- What was implemented:
+  - Added GET /api/workspaces/{id}/status route in crates/server/src/routes/workspaces.rs
+  - Returns workspace_id, status (running/completed/failed/killed/none), diff stats
+  - Added NotFound variant to ApiError for proper 404 handling
+- Files changed:
+  - crates/server/src/routes/workspaces.rs (new)
+  - crates/server/src/routes/mod.rs (added workspaces module + route)
+  - crates/server/src/error.rs (added NotFound variant)
+- **Learnings for future iterations:**
+  - ApiError didn't have a NotFound variant - added it to support 404 responses
+  - Diff stats computation uses spawn_blocking for git operations (blocking I/O)
+  - Routes nested under /api/workspaces are separate from /api/task-attempts (which also deals with workspaces)
+---
+
+## 2026-01-23 - US-002
+- What was implemented:
+  - Added `GetWorkspaceStatusRequest` struct with `workspace_id: Uuid`
+  - Added `GetWorkspaceStatusResponse` struct with status, diff stats fields
+  - Added `get_workspace_status` tool in `#[tool_router] impl TaskServer` block
+  - Tool calls `/api/workspaces/{id}/status` via `self.client`
+- Files changed:
+  - crates/server/src/mcp/task_server.rs (added request/response structs + tool method)
+- **Learnings for future iterations:**
+  - MCP tools follow a consistent pattern: request struct → response struct → tool method
+  - Response structs need both `Serialize` and `Deserialize` since they're parsed from API response
+  - Use `#[schemars(description = "...")]` on each field for MCP schema generation
+  - Tools are added inside the `#[tool_router] impl TaskServer` block, not a separate impl
+---
