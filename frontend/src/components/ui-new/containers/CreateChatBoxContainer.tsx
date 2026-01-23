@@ -104,7 +104,7 @@ export function CreateChatBoxContainer() {
   // Get project ID from context
   const projectId = selectedProjectId;
 
-  const repoId = repos[0]?.id;
+  const repoId = repos.length === 1 ? repos[0]?.id : undefined;
 
   // Determine if we can submit
   const canSubmit =
