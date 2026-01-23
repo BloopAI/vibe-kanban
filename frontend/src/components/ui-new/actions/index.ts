@@ -29,6 +29,7 @@ import {
   SpinnerIcon,
   GitPullRequestIcon,
   GitMergeIcon,
+  GitForkIcon,
   ArrowsClockwiseIcon,
   CrosshairIcon,
   DesktopIcon,
@@ -241,12 +242,21 @@ export const Actions = {
     requiresTarget: true,
     execute: async (ctx, workspaceId) => {
       try {
-        const firstMessage = await attemptsApi.getFirstUserMessage(workspaceId);
+        const [firstMessage, repos] = await Promise.all([
+          attemptsApi.getFirstUserMessage(workspaceId),
+          attemptsApi.getRepos(workspaceId),
+        ]);
         ctx.navigate('/workspaces/create', {
-          state: { duplicatePrompt: firstMessage },
+          state: {
+            initialPrompt: firstMessage,
+            preferredRepos: repos.map((r) => ({
+              repo_id: r.id,
+              target_branch: r.target_branch,
+            })),
+          },
         });
       } catch {
-        // Fallback to creating without the prompt
+        // Fallback to creating without the prompt/repos
         ctx.navigate('/workspaces/create');
       }
     },
@@ -360,6 +370,32 @@ export const Actions = {
       await StartReviewDialog.show({
         workspaceId,
       });
+    },
+  },
+
+  SpinOffWorkspace: {
+    id: 'spin-off-workspace',
+    label: 'Spin off workspace',
+    icon: GitForkIcon,
+    requiresTarget: true,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    execute: async (ctx, workspaceId) => {
+      try {
+        const [workspace, repos] = await Promise.all([
+          getWorkspace(ctx.queryClient, workspaceId),
+          attemptsApi.getRepos(workspaceId),
+        ]);
+        ctx.navigate('/workspaces/create', {
+          state: {
+            preferredRepos: repos.map((r) => ({
+              repo_id: r.id,
+              target_branch: workspace.branch,
+            })),
+          },
+        });
+      } catch {
+        ctx.navigate('/workspaces/create');
+      }
     },
   },
 
