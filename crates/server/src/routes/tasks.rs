@@ -545,17 +545,32 @@ pub async fn continue_ralph_execution(
     // Build repo path
     let repo_path = PathBuf::from(workspace_dir).join(&repo.name);
 
-    // Get Ralph status
-    let status = RalphService::get_status_from_repo(&repo_path)
-        .map_err(|e| ApiError::BadRequest(format!("Failed to read Ralph status: {}", e)))?;
+    // Get Ralph status - check if prd.json exists
+    let status = match RalphService::get_status_from_repo(&repo_path) {
+        Ok(s) => s,
+        Err(RalphError::PrdNotFound) => {
+            return Err(ApiError::BadRequest(
+                "PRD not ready yet. Create prd.json first.".to_string(),
+            ));
+        }
+        Err(e) => {
+            return Err(ApiError::BadRequest(format!("Failed to read Ralph status: {}", e)));
+        }
+    };
 
     // Check if there are remaining stories
     let next_story = status.current_story.ok_or_else(|| {
         ApiError::BadRequest("All stories are complete".to_string())
     })?;
 
-    // Use task.description as the prompt
-    let prompt = task.description.clone().unwrap_or_default();
+    // Determine prompt based on Ralph started state
+    let prompt = if status.started {
+        status.iteration_prompt.clone().unwrap_or_else(|| {
+            "Read .ralph/prompt.md and continue implementing the PRD.".to_string()
+        })
+    } else {
+        task.description.clone().unwrap_or_default()
+    };
 
     let working_dir = workspace
         .agent_working_dir
