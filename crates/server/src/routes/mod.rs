@@ -26,6 +26,7 @@ pub mod tags;
 pub mod task_attempts;
 pub mod tasks;
 pub mod terminal;
+pub mod workspaces;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     // Create routers with different middleware layers
@@ -47,6 +48,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(scratch::router(&deployment))
         .merge(sessions::router(&deployment))
         .merge(terminal::router())
+        .nest("/workspaces", workspaces::router())
         .nest("/images", images::routes())
         .layer(ValidateRequestHeaderLayer::custom(
             middleware::validate_origin,

@@ -76,6 +76,8 @@ pub enum ApiError {
     Conflict(String),
     #[error("Forbidden: {0}")]
     Forbidden(String),
+    #[error("Not found: {0}")]
+    NotFound(String),
     #[error(transparent)]
     CommandBuilder(#[from] CommandBuildError),
     #[error(transparent)]
@@ -182,6 +184,7 @@ impl IntoResponse for ApiError {
             ApiError::BadRequest(_) => (StatusCode::BAD_REQUEST, "BadRequest"),
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
             ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "ForbiddenError"),
+            ApiError::NotFound(_) => (StatusCode::NOT_FOUND, "NotFound"),
             ApiError::Pty(err) => match err {
                 PtyError::SessionNotFound(_) => (StatusCode::NOT_FOUND, "PtyError"),
                 PtyError::SessionClosed => (StatusCode::GONE, "PtyError"),
@@ -265,6 +268,7 @@ impl IntoResponse for ApiError {
             ApiError::BadRequest(msg) => msg.clone(),
             ApiError::Conflict(msg) => msg.clone(),
             ApiError::Forbidden(msg) => msg.clone(),
+            ApiError::NotFound(msg) => msg.clone(),
             _ => format!("{}: {}", error_type, self),
         };
         let response = ApiResponse::<()>::error(&error_message);
