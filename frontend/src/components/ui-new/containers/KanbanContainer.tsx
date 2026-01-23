@@ -5,6 +5,7 @@ import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useKanbanFilters, PRIORITY_ORDER } from '@/hooks/useKanbanFilters';
 import { PlusIcon } from '@phosphor-icons/react';
+import type { User } from 'shared/remote-types';
 import {
   KanbanProvider,
   KanbanBoard,
@@ -43,11 +44,7 @@ export function KanbanContainer() {
     isLoading: projectLoading,
   } = useProjectContext();
 
-  const {
-    projects,
-    membersWithProfiles,
-    isLoading: orgLoading,
-  } = useOrgContext();
+  const { projects, users, usersById, isLoading: orgLoading } = useOrgContext();
 
   // Get project name from first project (context provides the project we're viewing)
   const projectName = projects[0]?.name ?? '';
@@ -127,6 +124,21 @@ export function KanbanContainer() {
     }
     return map;
   }, [issues]);
+
+  // Create a lookup map for issue assignees (issue_id -> User[])
+  const issueAssigneesMap = useMemo(() => {
+    const map: Record<string, User[]> = {};
+    for (const assignee of issueAssignees) {
+      const user = usersById.get(assignee.user_id);
+      if (user) {
+        if (!map[assignee.issue_id]) {
+          map[assignee.issue_id] = [];
+        }
+        map[assignee.issue_id].push(user);
+      }
+    }
+    return map;
+  }, [issueAssignees, usersById]);
 
   // Simple onDragEnd handler - the library handles all visual movement
   const handleDragEnd = useCallback(
@@ -233,7 +245,7 @@ export function KanbanContainer() {
         <h2 className="text-2xl font-medium">{projectName}</h2>
         <KanbanFilterBar
           tags={tags}
-          users={membersWithProfiles}
+          users={users}
           hasActiveFilters={hasActiveFilters}
         />
       </div>
@@ -283,7 +295,7 @@ export function KanbanContainer() {
                           description={issue.description}
                           priority={issue.priority}
                           tags={[]}
-                          assignee={null}
+                          assignees={issueAssigneesMap[issue.id] ?? []}
                         />
                       </KanbanCard>
                     );

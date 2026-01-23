@@ -2,8 +2,12 @@ import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { XIcon } from '@phosphor-icons/react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import type { IssuePriority, ProjectStatus, Tag } from 'shared/remote-types';
-import type { OrganizationMemberWithProfile } from 'shared/types';
+import type {
+  IssuePriority,
+  ProjectStatus,
+  Tag,
+  User,
+} from 'shared/remote-types';
 import { IssuePropertyRow } from '@/components/ui-new/views/IssuePropertyRow';
 import { IssueTagsRow } from '@/components/ui-new/views/IssueTagsRow';
 import {
@@ -22,7 +26,7 @@ export interface IssueFormData {
   description: string | null;
   statusId: string;
   priority: IssuePriority;
-  assigneeId: string | null;
+  assigneeIds: string[];
   tagIds: string[];
   createDraftWorkspace: boolean;
 }
@@ -56,7 +60,7 @@ export interface KanbanIssuePanelProps {
   // Options for dropdowns
   statuses: ProjectStatus[];
   tags: Tag[];
-  users: OrganizationMemberWithProfile[];
+  users: User[];
 
   // Edit mode data
   workspaces?: WorkspaceWithStats[];
@@ -124,13 +128,13 @@ export function KanbanIssuePanel({
           <IssuePropertyRow
             statusId={formData.statusId}
             priority={formData.priority}
-            assigneeId={formData.assigneeId}
+            assigneeIds={formData.assigneeIds}
             statuses={statuses}
             users={users}
             onStatusChange={(statusId) => onFormChange('statusId', statusId)}
             onPriorityChange={(priority) => onFormChange('priority', priority)}
-            onAssigneeChange={(assigneeId) =>
-              onFormChange('assigneeId', assigneeId)
+            onAssigneeChange={(assigneeIds) =>
+              onFormChange('assigneeIds', assigneeIds)
             }
             disabled={isSubmitting}
           />
