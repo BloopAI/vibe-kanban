@@ -38,9 +38,12 @@ function ExecutionProcessesProviderWrapper({
 }
 
 function KeyboardShortcutsHandler() {
-  useKeyShowHelp(() => {
-    KeyboardShortcutsDialog.show();
-  }, { scope: Scope.GLOBAL });
+  useKeyShowHelp(
+    () => {
+      KeyboardShortcutsDialog.show();
+    },
+    { scope: Scope.GLOBAL }
+  );
   useWorkspaceShortcuts();
   return null;
 }

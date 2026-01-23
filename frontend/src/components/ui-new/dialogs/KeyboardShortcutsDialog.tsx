@@ -64,7 +64,11 @@ function useShortcutGroups(): ShortcutGroup[] {
         { keys: [mod, 'K'], description: 'Open command bar' },
         sendShortcut === 'Enter'
           ? { keys: enterKey, description: 'Send message', useHintKey: true }
-          : { keys: [mod, enterKey], description: 'Send message', useHintKey: true },
+          : {
+              keys: [mod, enterKey],
+              description: 'Send message',
+              useHintKey: true,
+            },
       ],
     };
 
@@ -75,7 +79,8 @@ function useShortcutGroups(): ShortcutGroup[] {
       if (!sequentialByFirstKey.has(firstKey)) {
         sequentialByFirstKey.set(firstKey, []);
       }
-      const hasWorkspaceScope = binding.scopes?.includes(Scope.WORKSPACE) ?? false;
+      const hasWorkspaceScope =
+        binding.scopes?.includes(Scope.WORKSPACE) ?? false;
 
       sequentialByFirstKey.get(firstKey)!.push({
         keys: formatSequentialKeys(binding.keys),

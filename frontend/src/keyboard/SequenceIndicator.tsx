@@ -19,9 +19,7 @@ export function SequenceIndicator() {
         className={cn(
           'flex items-center gap-1 rounded-sm border',
           'backdrop-blur-sm px-base py-half shadow-lg',
-          isInvalid
-            ? 'border-error bg-error/10'
-            : 'border-border bg-panel/95'
+          isInvalid ? 'border-error bg-error/10' : 'border-border bg-panel/95'
         )}
       >
         {buffer.map((key, index) => (
@@ -32,17 +30,13 @@ export function SequenceIndicator() {
               'min-w-[24px] h-6 px-1.5',
               'rounded-sm border bg-secondary',
               'font-ibm-plex-mono text-sm',
-              isInvalid
-                ? 'border-error text-error'
-                : 'border-border text-high'
+              isInvalid ? 'border-error text-error' : 'border-border text-high'
             )}
           >
             {key.toUpperCase()}
           </kbd>
         ))}
-        {!isInvalid && (
-          <span className="text-low text-sm ml-1">...</span>
-        )}
+        {!isInvalid && <span className="text-low text-sm ml-1">...</span>}
       </div>
     </div>
   );
