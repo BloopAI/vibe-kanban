@@ -1232,6 +1232,30 @@ impl GitService {
         Ok(())
     }
 
+    /// Merge a branch into a base branch with a merge commit. Returns the merge commit SHA.
+    pub fn merge_into_branch(
+        &self,
+        repo_path: &Path,
+        base_branch: &str,
+        from_branch: &str,
+        commit_message: &str,
+    ) -> Result<String, GitServiceError> {
+        self.ensure_cli_commit_identity(repo_path)?;
+        let git = GitCli::new();
+        git.merge_commit(repo_path, base_branch, from_branch, commit_message)
+            .map_err(|e| {
+                // Check if it's a merge conflict
+                if e.to_string().contains("CONFLICT") || e.to_string().contains("conflict") {
+                    GitServiceError::MergeConflicts {
+                        message: format!("Merge conflicts when merging '{}' into '{}'", from_branch, base_branch),
+                        conflicted_files: vec![],
+                    }
+                } else {
+                    GitServiceError::InvalidRepository(format!("Merge failed: {e}"))
+                }
+            })
+    }
+
     pub fn get_all_branches(&self, repo_path: &Path) -> Result<Vec<GitBranch>, git2::Error> {
         let repo = Repository::open(repo_path)?;
         let current_branch = self.get_current_branch(repo_path).unwrap_or_default();
