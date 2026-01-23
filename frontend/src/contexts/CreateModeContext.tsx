@@ -38,7 +38,7 @@ export function CreateModeProvider({ children }: CreateModeProviderProps) {
     enabled: !!mostRecentWorkspace?.taskId,
   });
 
-  const { repos: lastWorkspaceRepos } = useAttemptRepo(
+  const { repos: lastWorkspaceRepos, isLoading: reposLoading } = useAttemptRepo(
     mostRecentWorkspace?.id,
     {
       enabled: !!mostRecentWorkspace?.id,
@@ -47,7 +47,8 @@ export function CreateModeProvider({ children }: CreateModeProviderProps) {
 
   const state = useCreateModeState({
     initialProjectId: lastWorkspaceTask?.project_id,
-    initialRepos: lastWorkspaceRepos,
+    // Pass undefined while loading to prevent premature initialization
+    initialRepos: reposLoading ? undefined : lastWorkspaceRepos,
   });
 
   const value = useMemo<CreateModeContextValue>(

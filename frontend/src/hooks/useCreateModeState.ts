@@ -254,6 +254,7 @@ export function useCreateModeState({
   // Auto-select project when none selected
   // ============================================================================
   const hasAttemptedAutoSelect = useRef(false);
+  const initialProjectIdRef = useRef(initialProjectId);
 
   useEffect(() => {
     if (state.phase !== 'ready') return;
@@ -263,6 +264,16 @@ export function useCreateModeState({
 
     hasAttemptedAutoSelect.current = true;
 
+    // Priority 1: Use initialProjectId from last workspace
+    if (
+      initialProjectIdRef.current &&
+      initialProjectIdRef.current in projectsById
+    ) {
+      dispatch({ type: 'SET_PROJECT', projectId: initialProjectIdRef.current });
+      return;
+    }
+
+    // Priority 2: Most recently created project
     const projectsList = Object.values(projectsById);
     if (projectsList.length > 0) {
       const sortedProjects = [...projectsList].sort(
@@ -272,7 +283,7 @@ export function useCreateModeState({
       );
       dispatch({ type: 'SET_PROJECT', projectId: sortedProjects[0].id });
     } else {
-      // Create default project
+      // Priority 3: Create default project
       projectsApi
         .create({ name: 'My first project', repositories: [] })
         .then((newProject) => {
