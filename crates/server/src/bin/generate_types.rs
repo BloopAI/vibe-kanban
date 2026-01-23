@@ -163,6 +163,7 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::workspace_summary::WorkspaceSummary::decl(),
         server::routes::task_attempts::workspace_summary::WorkspaceSummaryResponse::decl(),
         server::routes::task_attempts::workspace_summary::DiffStats::decl(),
+        services::services::share::SharedTaskDetails::decl(),
         services::services::filesystem::DirectoryEntry::decl(),
         services::services::filesystem::DirectoryListResponse::decl(),
         services::services::file_search::SearchMode::decl(),
