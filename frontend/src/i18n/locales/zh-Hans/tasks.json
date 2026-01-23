@@ -658,7 +658,8 @@
       "delete": "删除",
       "startPlaceholder": "开始对话...（输入 @ 搜索文件）",
       "starting": "开始中...",
-      "startConversation": "开始对话"
+      "startConversation": "开始对话",
+      "anonymous": "匿名"
     },
     "approval": {
       "conflictWarning": "冲突文件需要手动解决",

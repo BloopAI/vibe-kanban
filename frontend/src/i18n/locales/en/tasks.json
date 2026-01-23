@@ -314,7 +314,8 @@
       "delete": "Delete",
       "startPlaceholder": "Start a conversation... (type @ to search files)",
       "starting": "Starting...",
-      "startConversation": "Start conversation"
+      "startConversation": "Start conversation",
+      "anonymous": "Anonymous"
     },
     "workspace": {
       "create": "Create",

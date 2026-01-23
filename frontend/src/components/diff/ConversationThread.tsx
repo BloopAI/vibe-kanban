@@ -35,7 +35,7 @@ function MessageItem({
 }) {
   const { t } = useTranslation('tasks');
   const author = message.author;
-  const authorName = author?.username || 'Anonymous';
+  const authorName = author?.username || t('conversation.thread.anonymous');
   const createdAtStr = toDateString(message.created_at);
 
   return (

@@ -658,7 +658,8 @@
       "delete": "刪除",
       "startPlaceholder": "開始對話...（輸入 @ 搜尋檔案）",
       "starting": "開始中...",
-      "startConversation": "開始對話"
+      "startConversation": "開始對話",
+      "anonymous": "匿名"
     },
     "approval": {
       "conflictWarning": "衝突檔案需要手動解決",

@@ -658,7 +658,8 @@
       "delete": "削除",
       "startPlaceholder": "会話を開始... (@でファイルを検索)",
       "starting": "開始中...",
-      "startConversation": "会話を開始"
+      "startConversation": "会話を開始",
+      "anonymous": "匿名"
     },
     "approval": {
       "conflictWarning": "競合するファイルは手動で解決する必要があります",

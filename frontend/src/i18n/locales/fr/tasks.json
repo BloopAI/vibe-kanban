@@ -298,7 +298,8 @@
       "delete": "Supprimer",
       "startPlaceholder": "Démarrer une conversation... (tapez @ pour rechercher des fichiers)",
       "starting": "Démarrage...",
-      "startConversation": "Démarrer la conversation"
+      "startConversation": "Démarrer la conversation",
+      "anonymous": "Anonyme"
     },
     "approval": {
       "conflictWarning": "Les fichiers en conflit nécessitent une résolution manuelle",

@@ -658,7 +658,8 @@
       "delete": "Eliminar",
       "startPlaceholder": "Inicia una conversación... (escribe @ para buscar archivos)",
       "starting": "Iniciando...",
-      "startConversation": "Iniciar conversación"
+      "startConversation": "Iniciar conversación",
+      "anonymous": "Anónimo"
     },
     "approval": {
       "conflictWarning": "Los archivos en conflicto necesitan resolución manual",
