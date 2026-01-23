@@ -79,3 +79,18 @@ Started: 2026-01-23
   - MCP transcript tool mirrors the status tool pattern exactly
   - Both tools follow: request struct → response struct → tool calling API route
 ---
+
+## 2026-01-23 - US-005
+- What was implemented:
+  - Added GET /api/workspaces/{id}/diff route in crates/server/src/routes/workspaces.rs
+  - Returns list of files with: path, additions, deletions, diff_content (unified diff format)
+  - Uses `git.get_diffs()` to get file contents, `create_unified_diff()` for diff format
+  - Compares workspace branch to target branch via merge base
+  - Returns 404 if workspace not found or no container_ref
+- Files changed:
+  - crates/server/src/routes/workspaces.rs (added FileDiff, WorkspaceDiffResponse, get_workspace_diff)
+- **Learnings for future iterations:**
+  - `Diff` struct from utils/diff.rs contains old_content/new_content for computing unified diff
+  - Use `create_unified_diff(path, old, new)` from utils::diff for unified diff output
+  - Handle `content_omitted` flag for large files
+---
