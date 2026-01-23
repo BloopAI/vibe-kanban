@@ -312,7 +312,7 @@
     "tooltip": "上下文：{{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "上下文使用量：{{percentage}}%"
   },
-"shortcuts": {
+  "shortcuts": {
     "title": "键盘快捷键",
     "inWorkspace": "(在工作区中)",
     "sequentialHint": "组合快捷键：先按第一个键，然后在500毫秒内按第二个键。",
