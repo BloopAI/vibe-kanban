@@ -70,7 +70,7 @@ jobs:
         id: version
         run: |
           # Get the latest version from npm registry
-          latest_npm_version=$(npm view vibe-kanban version 2>/dev/null || echo "0.0.0")
+          latest_npm_version=$(npm view tob-vibe-kanban version 2>/dev/null || echo "0.0.0")
           echo "Latest npm version: $latest_npm_version"
 
           timestamp=$(date +%Y%m%d%H%M%S)
@@ -339,13 +339,13 @@ jobs:
         run: |
           mkdir -p dist
           if [[ "${{ matrix.name }}" == *"windows"* ]]; then
-            cp target/${{ matrix.target }}/release/server.exe dist/vibe-kanban-${{ matrix.name }}.exe
-            cp target/${{ matrix.target }}/release/mcp_task_server.exe dist/vibe-kanban-mcp-${{ matrix.name }}.exe
-            cp target/${{ matrix.target }}/release/review.exe dist/vibe-kanban-review-${{ matrix.name }}.exe
+            cp target/${{ matrix.target }}/release/server.exe dist/tob-vibe-kanban-${{ matrix.name }}.exe
+            cp target/${{ matrix.target }}/release/mcp_task_server.exe dist/tob-vibe-kanban-mcp-${{ matrix.name }}.exe
+            cp target/${{ matrix.target }}/release/review.exe dist/tob-vibe-kanban-review-${{ matrix.name }}.exe
           else
-            cp target/${{ matrix.target }}/release/server dist/vibe-kanban-${{ matrix.name }}
-            cp target/${{ matrix.target }}/release/mcp_task_server dist/vibe-kanban-mcp-${{ matrix.name }}
-            cp target/${{ matrix.target }}/release/review dist/vibe-kanban-review-${{ matrix.name }}
+            cp target/${{ matrix.target }}/release/server dist/tob-vibe-kanban-${{ matrix.name }}
+            cp target/${{ matrix.target }}/release/mcp_task_server dist/tob-vibe-kanban-mcp-${{ matrix.name }}
+            cp target/${{ matrix.target }}/release/review dist/tob-vibe-kanban-review-${{ matrix.name }}
           fi
 
       # Code signing for macOS only
@@ -365,7 +365,7 @@ jobs:
         uses: BloopAI/apple-code-sign-action@v1
         with:
           input_path: target/${{ matrix.target }}/release/server
-          output_path: vibe-kanban
+          output_path: tob-vibe-kanban
           p12_file: certificate.p12
           p12_password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           sign: true
@@ -373,14 +373,14 @@ jobs:
 
       - name: Package main binary (macOS)
         if: runner.os == 'macOS'
-        run: zip vibe-kanban.zip vibe-kanban
+        run: zip tob-vibe-kanban.zip tob-vibe-kanban
 
       - name: Sign MCP binary (macOS)
         if: runner.os == 'macOS'
         uses: BloopAI/apple-code-sign-action@v1
         with:
           input_path: target/${{ matrix.target }}/release/mcp_task_server
-          output_path: vibe-kanban-mcp
+          output_path: tob-vibe-kanban-mcp
           p12_file: certificate.p12
           p12_password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           sign: true
@@ -388,14 +388,14 @@ jobs:
 
       - name: Package MCP binary (macOS)
         if: runner.os == 'macOS'
-        run: zip vibe-kanban-mcp.zip vibe-kanban-mcp
+        run: zip tob-vibe-kanban-mcp.zip tob-vibe-kanban-mcp
 
       - name: Sign Review binary (macOS)
         if: runner.os == 'macOS'
         uses: BloopAI/apple-code-sign-action@v1
         with:
           input_path: target/${{ matrix.target }}/release/review
-          output_path: vibe-kanban-review
+          output_path: tob-vibe-kanban-review
           p12_file: certificate.p12
           p12_password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           sign: true
@@ -403,7 +403,7 @@ jobs:
 
       - name: Package Review binary (macOS)
         if: runner.os == 'macOS'
-        run: zip vibe-kanban-review.zip vibe-kanban-review
+        run: zip tob-vibe-kanban-review.zip tob-vibe-kanban-review
 
       - name: Notarize signed binaries (macOS)
         if: runner.os == 'macOS'
@@ -411,9 +411,9 @@ jobs:
         continue-on-error: true
         with:
           input_path: |
-            vibe-kanban.zip
-            vibe-kanban-mcp.zip
-            vibe-kanban-review.zip
+            tob-vibe-kanban.zip
+            tob-vibe-kanban-mcp.zip
+            tob-vibe-kanban-review.zip
           sign: false
           notarize: true
           app_store_connect_api_key_json_file: app_store_key.json
@@ -422,9 +422,9 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           mkdir -p dist
-          cp vibe-kanban.zip dist/vibe-kanban-${{ matrix.name }}.zip
-          cp vibe-kanban-mcp.zip dist/vibe-kanban-mcp-${{ matrix.name }}.zip
-          cp vibe-kanban-review.zip dist/vibe-kanban-review-${{ matrix.name }}.zip
+          cp tob-vibe-kanban.zip dist/tob-vibe-kanban-${{ matrix.name }}.zip
+          cp tob-vibe-kanban-mcp.zip dist/tob-vibe-kanban-mcp-${{ matrix.name }}.zip
+          cp tob-vibe-kanban-review.zip dist/tob-vibe-kanban-review-${{ matrix.name }}.zip
 
       - name: Clean up certificates (macOS)
         if: runner.os == 'macOS'
@@ -456,34 +456,34 @@ jobs:
         include:
           - target: x86_64-unknown-linux-musl
             name: linux-x64
-            binary: vibe-kanban
-            mcp_binary: vibe-kanban-mcp
-            review_binary: vibe-kanban-review
+            binary: tob-vibe-kanban
+            mcp_binary: tob-vibe-kanban-mcp
+            review_binary: tob-vibe-kanban-review
           - target: x86_64-pc-windows-msvc
             name: windows-x64
-            binary: vibe-kanban.exe
-            mcp_binary: vibe-kanban-mcp.exe
-            review_binary: vibe-kanban-review.exe
+            binary: tob-vibe-kanban.exe
+            mcp_binary: tob-vibe-kanban-mcp.exe
+            review_binary: tob-vibe-kanban-review.exe
           - target: x86_64-apple-darwin
             name: macos-x64
-            binary: vibe-kanban
-            mcp_binary: vibe-kanban-mcp
-            review_binary: vibe-kanban-review
+            binary: tob-vibe-kanban
+            mcp_binary: tob-vibe-kanban-mcp
+            review_binary: tob-vibe-kanban-review
           - target: aarch64-apple-darwin
             name: macos-arm64
-            binary: vibe-kanban
-            mcp_binary: vibe-kanban-mcp
-            review_binary: vibe-kanban-review
+            binary: tob-vibe-kanban
+            mcp_binary: tob-vibe-kanban-mcp
+            review_binary: tob-vibe-kanban-review
           - target: aarch64-pc-windows-msvc
             name: windows-arm64
-            binary: vibe-kanban.exe
-            mcp_binary: vibe-kanban-mcp.exe
-            review_binary: vibe-kanban-review.exe
+            binary: tob-vibe-kanban.exe
+            mcp_binary: tob-vibe-kanban-mcp.exe
+            review_binary: tob-vibe-kanban-review.exe
           - target: aarch64-unknown-linux-musl
             name: linux-arm64
-            binary: vibe-kanban
-            mcp_binary: vibe-kanban-mcp
-            review_binary: vibe-kanban-review
+            binary: tob-vibe-kanban
+            mcp_binary: tob-vibe-kanban-mcp
+            review_binary: tob-vibe-kanban-review
     steps:
       - uses: actions/checkout@v4
         with:
@@ -510,26 +510,26 @@ jobs:
         if: matrix.name != 'macos-arm64' && matrix.name != 'macos-x64'
         run: |
           mkdir -p npx-cli/dist/${{ matrix.name }}
-          mkdir vibe-kanban-${{ matrix.name }}
-          mkdir vibe-kanban-mcp-${{ matrix.name }}
-          mkdir vibe-kanban-review-${{ matrix.name }}
+          mkdir tob-vibe-kanban-${{ matrix.name }}
+          mkdir tob-vibe-kanban-mcp-${{ matrix.name }}
+          mkdir tob-vibe-kanban-review-${{ matrix.name }}
 
-          cp dist/vibe-kanban-${{ matrix.name }}* vibe-kanban-${{ matrix.name }}/${{ matrix.binary }}
-          cp dist/vibe-kanban-mcp-${{ matrix.name }}* vibe-kanban-mcp-${{ matrix.name }}/${{ matrix.mcp_binary }}
-          cp dist/vibe-kanban-review-${{ matrix.name }}* vibe-kanban-review-${{ matrix.name }}/${{ matrix.review_binary }}
+          cp dist/tob-vibe-kanban-${{ matrix.name }}* tob-vibe-kanban-${{ matrix.name }}/${{ matrix.binary }}
+          cp dist/tob-vibe-kanban-mcp-${{ matrix.name }}* tob-vibe-kanban-mcp-${{ matrix.name }}/${{ matrix.mcp_binary }}
+          cp dist/tob-vibe-kanban-review-${{ matrix.name }}* tob-vibe-kanban-review-${{ matrix.name }}/${{ matrix.review_binary }}
 
-          zip -j npx-cli/dist/${{ matrix.name }}/vibe-kanban.zip vibe-kanban-${{ matrix.name }}/${{ matrix.binary }}
-          zip -j npx-cli/dist/${{ matrix.name }}/vibe-kanban-mcp.zip vibe-kanban-mcp-${{ matrix.name }}/${{ matrix.mcp_binary }}
-          zip -j npx-cli/dist/${{ matrix.name }}/vibe-kanban-review.zip vibe-kanban-review-${{ matrix.name }}/${{ matrix.review_binary }}
+          zip -j npx-cli/dist/${{ matrix.name }}/tob-vibe-kanban.zip tob-vibe-kanban-${{ matrix.name }}/${{ matrix.binary }}
+          zip -j npx-cli/dist/${{ matrix.name }}/tob-vibe-kanban-mcp.zip tob-vibe-kanban-mcp-${{ matrix.name }}/${{ matrix.mcp_binary }}
+          zip -j npx-cli/dist/${{ matrix.name }}/tob-vibe-kanban-review.zip tob-vibe-kanban-review-${{ matrix.name }}/${{ matrix.review_binary }}
 
       - name: Create platform package (macOS)
         if: matrix.name == 'macos-arm64' || matrix.name == 'macos-x64'
         run: |
           mkdir -p npx-cli/dist/${{ matrix.name }}
-          mkdir vibe-kanban-${{ matrix.name }}
-          cp dist/vibe-kanban-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/vibe-kanban.zip
-          cp dist/vibe-kanban-mcp-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/vibe-kanban-mcp.zip
-          cp dist/vibe-kanban-review-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/vibe-kanban-review.zip
+          mkdir tob-vibe-kanban-${{ matrix.name }}
+          cp dist/tob-vibe-kanban-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/tob-vibe-kanban.zip
+          cp dist/tob-vibe-kanban-mcp-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/tob-vibe-kanban-mcp.zip
+          cp dist/tob-vibe-kanban-review-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/tob-vibe-kanban-review.zip
 
       - name: Upload platform package artifact
         uses: actions/upload-artifact@v4
@@ -576,7 +576,7 @@ jobs:
             const crypto = require('crypto');
             const manifest = { version: '$TAG', platforms: {} };
             const platforms = ['linux-x64', 'linux-arm64', 'windows-x64', 'windows-arm64', 'macos-x64', 'macos-arm64'];
-            const binaries = ['vibe-kanban', 'vibe-kanban-mcp', 'vibe-kanban-review'];
+            const binaries = ['tob-vibe-kanban', 'tob-vibe-kanban-mcp', 'tob-vibe-kanban-review'];
 
             for (const platform of platforms) {
               manifest.platforms[platform] = {};
@@ -598,7 +598,7 @@ jobs:
 
           # Upload binaries (use full tag for path, allows multiple pre-releases to coexist)
           for platform in linux-x64 linux-arm64 windows-x64 windows-arm64 macos-x64 macos-arm64; do
-            for binary in vibe-kanban vibe-kanban-mcp vibe-kanban-review; do
+            for binary in tob-vibe-kanban tob-vibe-kanban-mcp tob-vibe-kanban-review; do
               if [ -f "binaries/$platform/$binary.zip" ]; then
                 echo "Uploading binaries/$platform/$binary.zip..."
                 aws s3 cp "binaries/$platform/$binary.zip" \
@@ -653,9 +653,9 @@ jobs:
 
       - name: Zip frontend
         run: |
-          mkdir vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
-          mv frontend/dist vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
-          zip -r vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
+          mkdir tob-vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
+          mv frontend/dist tob-vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
+          zip -r tob-vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip tob-vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
 
       - name: Setup Node for npm pack
         uses: ./.github/actions/setup-node
@@ -676,5 +676,5 @@ jobs:
           prerelease: true
           generate_release_notes: true
           files: |
-            vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip
-            npx-cli/vibe-kanban-*.tgz
+            tob-vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip
+            npx-cli/tob-vibe-kanban-*.tgz

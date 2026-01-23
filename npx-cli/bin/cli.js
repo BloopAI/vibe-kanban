@@ -7,6 +7,7 @@ const fs = require("fs");
 const { ensureBinary, BINARY_TAG, CACHE_DIR, LOCAL_DEV_MODE, LOCAL_DIST_DIR, R2_BASE_URL, getLatestVersion } = require("./download");
 
 const CLI_VERSION = require("../package.json").version;
+const CLI_NAME = "tob-vibe-kanban";
 
 // Resolve effective arch for our published 64-bit binaries only.
 // Any ARM → arm64; anything else → x64. On macOS, handle Rosetta.
@@ -94,7 +95,7 @@ async function extractAndRun(baseName, launch) {
       fs.unlinkSync(binPath);
     }
   } catch (err) {
-    if (process.env.VIBE_KANBAN_DEBUG) {
+    if (process.env.TOB_VIBE_KANBAN_DEBUG) {
       console.warn(`Warning: Could not delete existing binary: ${err.message}`);
     }
   }
@@ -156,7 +157,7 @@ async function main() {
         if (latest && latest !== CLI_VERSION) {
           setTimeout(() => {
             console.log(`\nUpdate available: ${CLI_VERSION} -> ${latest}`);
-            console.log(`Run: npx vibe-kanban@latest`);
+            console.log(`Run: npx ${CLI_NAME}@latest`);
           }, 2000);
         }
       })
@@ -164,7 +165,7 @@ async function main() {
   }
 
   if (isMcpMode) {
-    await extractAndRun("vibe-kanban-mcp", (bin) => {
+    await extractAndRun("tob-vibe-kanban-mcp", (bin) => {
       const proc = spawn(bin, [], { stdio: "inherit" });
       proc.on("exit", (c) => process.exit(c || 0));
       proc.on("error", (e) => {
@@ -177,7 +178,7 @@ async function main() {
       process.on("SIGTERM", () => proc.kill("SIGTERM"));
     });
   } else if (isReviewMode) {
-    await extractAndRun("vibe-kanban-review", (bin) => {
+    await extractAndRun("tob-vibe-kanban-review", (bin) => {
       const reviewArgs = args.slice(1);
       const proc = spawn(bin, reviewArgs, { stdio: "inherit" });
       proc.on("exit", (c) => process.exit(c || 0));
@@ -188,8 +189,8 @@ async function main() {
     });
   } else {
     const modeLabel = LOCAL_DEV_MODE ? " (local dev)" : "";
-    console.log(`Starting vibe-kanban v${CLI_VERSION}${modeLabel}...`);
-    await extractAndRun("vibe-kanban", (bin) => {
+    console.log(`Starting ${CLI_NAME} v${CLI_VERSION}${modeLabel}...`);
+    await extractAndRun("tob-vibe-kanban", (bin) => {
       if (platform === "win32") {
         execSync(`"${bin}"`, { stdio: "inherit" });
       } else {
@@ -201,7 +202,7 @@ async function main() {
 
 main().catch((err) => {
   console.error("Fatal error:", err.message);
-  if (process.env.VIBE_KANBAN_DEBUG) {
+  if (process.env.TOB_VIBE_KANBAN_DEBUG) {
     console.error(err.stack);
   }
   process.exit(1);
