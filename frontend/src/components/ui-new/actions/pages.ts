@@ -9,8 +9,7 @@ export type PageId =
   | 'workspaceActions'
   | 'diffOptions'
   | 'viewOptions'
-  | 'gitActions'
-  | 'repoActions' // Page for repo-specific actions (opened from repo card)
+  | 'repoActions' // Page for repo-specific actions (opened from repo card or CMD+K)
   | 'selectRepo'; // Dynamic page for repo selection (not in Pages record)
 
 // Items that can appear inside a group
@@ -70,12 +69,12 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
         items: [
           { type: 'action', action: Actions.NewWorkspace },
           { type: 'action', action: Actions.OpenInIDE },
-          { type: 'action', action: Actions.CopyPath },
+          { type: 'action', action: Actions.CopyWorkspacePath },
           { type: 'action', action: Actions.CopyRawLogs },
           { type: 'action', action: Actions.ToggleDevServer },
           { type: 'action', action: Actions.OpenInOldUI },
           { type: 'childPages', id: 'workspaceActions' },
-          { type: 'childPages', id: 'gitActions' },
+          { type: 'childPages', id: 'repoActions' },
         ],
       },
       {
@@ -171,31 +170,11 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
     ],
   },
 
-  // Git actions page - git operations
-  gitActions: {
-    id: 'git-actions',
-    title: 'Git Actions',
-    parent: 'root',
-    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    items: [
-      {
-        type: 'group',
-        label: 'Git',
-        items: [
-          { type: 'action', action: Actions.GitCreatePR },
-          { type: 'action', action: Actions.GitMerge },
-          { type: 'action', action: Actions.GitPush },
-          { type: 'action', action: Actions.GitRebase },
-          { type: 'action', action: Actions.GitChangeTarget },
-        ],
-      },
-    ],
-  },
-
-  // Repo actions page - shown when clicking "..." on a repo card
+  // Repository actions page - shown when clicking "..." on a repo card or via CMD+K
   repoActions: {
     id: 'repo-actions',
     title: 'Repository Actions',
+    parent: 'root',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     items: [
       {
@@ -207,6 +186,7 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
           { type: 'action', action: Actions.RepoSettings },
           { type: 'action', action: Actions.GitCreatePR },
           { type: 'action', action: Actions.GitMerge },
+          { type: 'action', action: Actions.GitPush },
           { type: 'action', action: Actions.GitRebase },
           { type: 'action', action: Actions.GitChangeTarget },
         ],

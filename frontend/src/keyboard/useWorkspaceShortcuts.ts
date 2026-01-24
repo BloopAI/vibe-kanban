@@ -61,7 +61,7 @@ export function useWorkspaceShortcuts() {
   useHotkeys('x>r', () => execute(Actions.GitRebase), OPTIONS);
   useHotkeys('x>u', () => execute(Actions.GitPush), OPTIONS);
 
-  useHotkeys('y>p', () => execute(Actions.CopyPath), OPTIONS);
+  useHotkeys('y>p', () => execute(Actions.CopyWorkspacePath), OPTIONS);
   useHotkeys('y>l', () => execute(Actions.CopyRawLogs), OPTIONS);
 
   useHotkeys('t>d', () => execute(Actions.ToggleDevServer), OPTIONS);

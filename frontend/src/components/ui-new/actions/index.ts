@@ -727,9 +727,9 @@ export const Actions = {
     },
   },
 
-  CopyPath: {
-    id: 'copy-path',
-    label: 'Copy path',
+  CopyWorkspacePath: {
+    id: 'copy-workspace-path',
+    label: 'Copy Workspace Path',
     icon: 'copy-icon' as const,
     shortcut: 'Y P',
     requiresTarget: false,
@@ -1144,7 +1144,7 @@ export type ContextBarItem = ActionDefinition | typeof ContextBarDivider;
 
 // ContextBar action groups define which actions appear in each section
 export const ContextBarActionGroups = {
-  primary: [Actions.OpenInIDE, Actions.CopyPath] as ActionDefinition[],
+  primary: [Actions.OpenInIDE, Actions.CopyWorkspacePath] as ActionDefinition[],
   secondary: [
     Actions.ToggleDevServer,
     Actions.TogglePreviewMode,
