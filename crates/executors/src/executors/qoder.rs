@@ -348,25 +348,10 @@ impl StandardCodingAgentExecutor for Qoder {
                                     } => {
                                         if let Some(tid) = tool_use_id {
                                             if let Some(&idx) = call_index_map.get(tid) {
-                                                // Extract result text
+                                                // Extract result text - content can be string or array
                                                 let result_text = result_content
                                                     .as_ref()
-                                                    .map(|items| {
-                                                        items
-                                                            .iter()
-                                                            .filter_map(|item| {
-                                                                if let QoderToolResultItem::Text {
-                                                                    text,
-                                                                } = item
-                                                                {
-                                                                    Some(text.as_str())
-                                                                } else {
-                                                                    None
-                                                                }
-                                                            })
-                                                            .collect::<Vec<_>>()
-                                                            .join("\n")
-                                                    })
+                                                    .map(|v| extract_tool_result_text(v))
                                                     .unwrap_or_default();
 
                                                 let entry = NormalizedEntry {
@@ -390,6 +375,40 @@ impl StandardCodingAgentExecutor for Qoder {
                                     QoderContentItem::Finish { .. } => {
                                         // End of message, no action needed
                                     }
+                                    QoderContentItem::Function {
+                                        id: tool_id,
+                                        name,
+                                        input,
+                                        ..
+                                    } => {
+                                        // Handle function calls the same as tool_use
+                                        let (action_type, content) =
+                                            tool_use_to_action_and_content(
+                                                name,
+                                                input,
+                                                &worktree_str,
+                                            );
+                                        let entry = NormalizedEntry {
+                                            timestamp: None,
+                                            entry_type: NormalizedEntryType::ToolUse {
+                                                tool_name: name.clone(),
+                                                action_type,
+                                                status: ToolStatus::Created,
+                                            },
+                                            content,
+                                            metadata: None,
+                                        };
+                                        let id = entry_index_provider.next();
+                                        if let Some(tid) = tool_id {
+                                            call_index_map.insert(tid.clone(), id);
+                                        }
+                                        msg_store.push_patch(
+                                            ConversationPatch::add_normalized_entry(id, entry),
+                                        );
+                                    }
+                                    QoderContentItem::Unknown => {
+                                        // Skip unknown content item types
+                                    }
                                 }
                             }
                         }
@@ -399,6 +418,54 @@ impl StandardCodingAgentExecutor for Qoder {
                         // Result messages are metadata, typically no action needed
                     }
 
+                    QoderJson::User { message, .. } => {
+                        // User messages contain tool results - process them to update tool status
+                        if let Some(msg) = message {
+                            if let Some(content) = &msg.content {
+                                for item in content {
+                                    if let QoderContentItem::ToolResult {
+                                        tool_use_id,
+                                        content: result_content,
+                                        is_error,
+                                        ..
+                                    } = item
+                                    {
+                                        if let Some(tid) = tool_use_id {
+                                            if let Some(&idx) = call_index_map.get(tid) {
+                                                // Extract result text - content can be string or array
+                                                let result_text = result_content
+                                                    .as_ref()
+                                                    .map(|v| extract_tool_result_text(v))
+                                                    .unwrap_or_default();
+
+                                                let status = if is_error.unwrap_or(false) {
+                                                    ToolStatus::Failed
+                                                } else {
+                                                    ToolStatus::Success
+                                                };
+
+                                                let entry = NormalizedEntry {
+                                                    timestamp: None,
+                                                    entry_type: NormalizedEntryType::ToolUse {
+                                                        tool_name: "tool".to_string(),
+                                                        action_type: ActionType::Other {
+                                                            description: "Tool completed"
+                                                                .to_string(),
+                                                        },
+                                                        status,
+                                                    },
+                                                    content: result_text,
+                                                    metadata: None,
+                                                };
+                                                msg_store
+                                                    .push_patch(ConversationPatch::replace(idx, entry));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     QoderJson::Unknown => {
                         let entry = NormalizedEntry {
                             timestamp: None,
@@ -485,6 +552,18 @@ pub enum QoderJson {
         #[serde(default)]
         done: Option<bool>,
     },
+    /// User messages containing tool results
+    #[serde(rename = "user")]
+    User {
+        #[serde(default)]
+        subtype: Option<String>,
+        #[serde(default)]
+        message: Option<QoderMessage>,
+        #[serde(default)]
+        session_id: Option<String>,
+        #[serde(default)]
+        done: Option<bool>,
+    },
     #[serde(other)]
     Unknown,
 }
@@ -495,6 +574,7 @@ impl QoderJson {
             QoderJson::System { session_id, .. } => session_id.clone(),
             QoderJson::Assistant { session_id, .. } => session_id.clone(),
             QoderJson::Result { session_id, .. } => session_id.clone(),
+            QoderJson::User { session_id, .. } => session_id.clone(),
             QoderJson::Unknown => None,
         }
     }
@@ -551,14 +631,35 @@ pub enum QoderContentItem {
         #[serde(default)]
         input: Option<serde_json::Value>,
     },
+    /// Function call - alternative format for tool use
+    #[serde(rename = "function")]
+    Function {
+        #[serde(default)]
+        id: Option<String>,
+        name: String,
+        #[serde(default)]
+        input: Option<serde_json::Value>,
+        #[serde(default)]
+        finished: Option<bool>,
+    },
     #[serde(rename = "tool_result")]
     ToolResult {
         #[serde(default)]
         tool_use_id: Option<String>,
+        /// Content can be either a string (in user messages) or an array of items (in assistant messages)
         #[serde(default)]
-        content: Option<Vec<QoderToolResultItem>>,
+        content: Option<serde_json::Value>,
         #[serde(default)]
         is_error: Option<bool>,
+        /// Tool name (present in user messages)
+        #[serde(default)]
+        name: Option<String>,
+        /// Metadata JSON string (present in user messages)
+        #[serde(default)]
+        metadata: Option<String>,
+        /// Whether the tool was canceled (present in user messages)
+        #[serde(default)]
+        canceled: Option<bool>,
     },
     #[serde(rename = "finish")]
     Finish {
@@ -567,6 +668,9 @@ pub enum QoderContentItem {
         #[serde(default)]
         time: Option<i64>,
     },
+    /// Fallback for unknown content item types
+    #[serde(other)]
+    Unknown,
 }
 
 // Fallback for unknown content items - we just skip them
@@ -590,6 +694,29 @@ pub enum QoderToolResultItem {
 /* ===========================
    Tool use helpers
    =========================== */
+
+/// Extract text from tool result content which can be either a string or an array of items
+fn extract_tool_result_text(value: &serde_json::Value) -> String {
+    // If it's a string, return it directly
+    if let Some(s) = value.as_str() {
+        return s.to_string();
+    }
+
+    // If it's an array, extract text from each item
+    if let Some(arr) = value.as_array() {
+        return arr
+            .iter()
+            .filter_map(|item| {
+                // Try to get the "text" field from items like {"type": "text", "text": "..."}
+                item.get("text").and_then(|t| t.as_str())
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+    }
+
+    // Fallback: convert to string
+    value.to_string()
+}
 
 fn tool_use_to_action_and_content(
     tool_name: &str,
