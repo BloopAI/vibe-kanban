@@ -362,7 +362,7 @@ export enum ThemeMode { LIGHT = "LIGHT", DARK = "DARK", SYSTEM = "SYSTEM" }
 
 export type EditorConfig = { editor_type: EditorType, custom_command: string | null, remote_ssh_host: string | null, remote_ssh_user: string | null, };
 
-export enum EditorType { VS_CODE = "VS_CODE", CURSOR = "CURSOR", WINDSURF = "WINDSURF", INTELLI_J = "INTELLI_J", ZED = "ZED", XCODE = "XCODE", GOOGLE_ANTIGRAVITY = "GOOGLE_ANTIGRAVITY", CUSTOM = "CUSTOM" }
+export enum EditorType { VS_CODE = "VS_CODE", CURSOR = "CURSOR", WINDSURF = "WINDSURF", INTELLI_J = "INTELLI_J", ZED = "ZED", XCODE = "XCODE", GOOGLE_ANTIGRAVITY = "GOOGLE_ANTIGRAVITY", QODER = "QODER", CUSTOM = "CUSTOM" }
 
 export type EditorOpenError = { "type": "executable_not_found", executable: string, editor_type: EditorType, } | { "type": "invalid_command", details: string, editor_type: EditorType, } | { "type": "launch_failed", executable: string, details: string, editor_type: EditorType, };
 
@@ -413,9 +413,9 @@ working_dir: string | null, };
 
 export type ScriptRequestLanguage = "Bash";
 
-export enum BaseCodingAgent { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI", CODEX = "CODEX", OPENCODE = "OPENCODE", CURSOR_AGENT = "CURSOR_AGENT", QWEN_CODE = "QWEN_CODE", COPILOT = "COPILOT", DROID = "DROID" }
+export enum BaseCodingAgent { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI", CODEX = "CODEX", OPENCODE = "OPENCODE", CURSOR_AGENT = "CURSOR_AGENT", QWEN_CODE = "QWEN_CODE", COPILOT = "COPILOT", DROID = "DROID", QODER = "QODER" }
 
-export type CodingAgent = { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid };
+export type CodingAgent = { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } | { "QODER": Qoder };
 
 export type SlashCommandDescription = { 
 /**
@@ -445,7 +445,7 @@ executor: BaseCodingAgent,
  */
 variant: string | null, };
 
-export type ExecutorConfig = { [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } };
+export type ExecutorConfig = { [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } | { "QODER": Qoder } };
 
 export type ExecutorConfigs = { executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
 
@@ -490,6 +490,8 @@ export type Droid = { append_prompt: AppendPrompt, autonomy: Autonomy, model?: s
 export type Autonomy = "normal" | "low" | "medium" | "high" | "skip-permissions-unsafe";
 
 export type DroidReasoningEffort = "none" | "dynamic" | "off" | "low" | "medium" | "high";
+
+export type Qoder = { append_prompt: AppendPrompt, yolo?: boolean | null, model?: string | null, max_turns?: number | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
 export type AppendPrompt = string | null;
 

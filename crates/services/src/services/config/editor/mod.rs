@@ -51,6 +51,7 @@ pub enum EditorType {
     Zed,
     Xcode,
     GoogleAntigravity,
+    Qoder,
     Custom,
 }
 
@@ -90,6 +91,7 @@ impl EditorConfig {
             EditorType::Zed => "zed",
             EditorType::Xcode => "xed",
             EditorType::GoogleAntigravity => "antigravity",
+            EditorType::Qoder => "qoder",
             EditorType::Custom => {
                 // Custom editor - use user-provided command or fallback to VSCode
                 self.custom_command.as_deref().unwrap_or("code")
@@ -152,6 +154,7 @@ impl EditorConfig {
             EditorType::Cursor => "cursor",
             EditorType::Windsurf => "windsurf",
             EditorType::GoogleAntigravity => "antigravity",
+            EditorType::Qoder => "qoder",
             EditorType::Zed => {
                 return Some(format!("zed://ssh/{user_part}{remote_host}{path_str}"));
             }
