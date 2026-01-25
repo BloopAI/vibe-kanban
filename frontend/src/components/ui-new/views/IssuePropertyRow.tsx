@@ -25,6 +25,8 @@ export interface IssuePropertyRowProps {
   assigneeIds: string[];
   statuses: ProjectStatus[];
   users: User[];
+  parentIssue?: { id: string; simpleId: string } | null;
+  onParentIssueClick?: () => void;
   onStatusChange: (statusId: string) => void;
   onPriorityChange: (priority: IssuePriority) => void;
   onAssigneeChange: (userIds: string[]) => void;
@@ -39,6 +41,8 @@ export function IssuePropertyRow({
   assigneeIds,
   statuses,
   users,
+  parentIssue,
+  onParentIssueClick,
   onStatusChange,
   onPriorityChange,
   onAssigneeChange,
@@ -64,7 +68,7 @@ export function IssuePropertyRow({
   );
 
   return (
-    <div className={cn('flex items-center gap-half', className)}>
+    <div className={cn('flex items-center gap-half flex-wrap', className)}>
       <StatusDropdown
         statusId={statusId}
         statuses={statuses}
@@ -86,6 +90,19 @@ export function IssuePropertyRow({
         label={t('kanban.assignee', 'Assignee')}
         disabled={disabled}
       />
+
+      {parentIssue && (
+        <button
+          type="button"
+          onClick={onParentIssueClick}
+          className="flex items-center gap-half px-base py-half bg-panel rounded-sm text-sm hover:bg-secondary transition-colors whitespace-nowrap"
+        >
+          <span className="text-low">{t('kanban.parentIssue', 'Parent')}:</span>
+          <span className="font-ibm-plex-mono text-normal">
+            {parentIssue.simpleId}
+          </span>
+        </button>
+      )}
 
       {onAddClick && (
         <button
