@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { type IssuePriority } from 'shared/remote-types';
@@ -95,6 +96,9 @@ export function KanbanIssuePanelContainer() {
   // Default status (first one by sort order)
   const defaultStatusId = sortedStatuses[0]?.id ?? '';
 
+  // Track previous issue ID to detect actual issue switches (not just data updates)
+  const prevIssueIdRef = useRef<string | null>(null);
+
   // Display ID: use real simple_id in edit mode, placeholder for create mode
   const displayId = useMemo(() => {
     if (mode === 'edit' && selectedIssue) {
@@ -116,8 +120,53 @@ export function KanbanIssuePanelContainer() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Reset form when switching modes or selecting a different issue
+  // Save status for description (shown in WYSIWYG toolbar)
+  const [descriptionSaveStatus, setDescriptionSaveStatus] = useState<
+    'idle' | 'saved'
+  >('idle');
+
+  // Debounced save for title changes
+  const { debounced: debouncedSaveTitle, cancel: cancelDebouncedTitle } =
+    useDebouncedCallback((title: string) => {
+      if (selectedKanbanIssueId && !kanbanCreateMode) {
+        updateIssue(selectedKanbanIssueId, { title });
+      }
+    }, 500);
+
+  // Debounced save for description changes
+  const {
+    debounced: debouncedSaveDescription,
+    cancel: cancelDebouncedDescription,
+  } = useDebouncedCallback((description: string | null) => {
+    if (selectedKanbanIssueId && !kanbanCreateMode) {
+      updateIssue(selectedKanbanIssueId, { description });
+      setDescriptionSaveStatus('saved');
+      setTimeout(() => setDescriptionSaveStatus('idle'), 1500);
+    }
+  }, 500);
+
+  // Reset save status only when switching to a different issue or mode
   useEffect(() => {
+    setDescriptionSaveStatus('idle');
+  }, [selectedKanbanIssueId, kanbanCreateMode]);
+
+  // Reset form only when switching to a different issue (not on data updates)
+  useEffect(() => {
+    const currentIssueId = selectedKanbanIssueId;
+    const isNewIssue = currentIssueId !== prevIssueIdRef.current;
+
+    if (!isNewIssue) {
+      // Same issue, don't reset form (this is just a data sync from our own edits)
+      return;
+    }
+
+    // Track the new issue ID
+    prevIssueIdRef.current = currentIssueId;
+
+    // Cancel any pending debounced saves when switching issues
+    cancelDebouncedTitle();
+    cancelDebouncedDescription();
+
     if (mode === 'create') {
       setFormData({
         title: '',
@@ -139,7 +188,16 @@ export function KanbanIssuePanelContainer() {
         createDraftWorkspace: false,
       });
     }
-  }, [mode, selectedIssue, defaultStatusId, currentAssigneeIds, currentTagIds]);
+  }, [
+    mode,
+    selectedKanbanIssueId,
+    selectedIssue,
+    defaultStatusId,
+    currentAssigneeIds,
+    currentTagIds,
+    cancelDebouncedTitle,
+    cancelDebouncedDescription,
+  ]);
 
   // Form change handler - persists changes immediately in edit mode
   const handlePropertyChange = useCallback(
@@ -149,7 +207,11 @@ export function KanbanIssuePanelContainer() {
 
       // In edit mode, immediately persist to database
       if (!kanbanCreateMode && selectedKanbanIssueId) {
-        if (field === 'statusId') {
+        if (field === 'title') {
+          debouncedSaveTitle(value as string);
+        } else if (field === 'description') {
+          debouncedSaveDescription(value as string | null);
+        } else if (field === 'statusId') {
           updateIssue(selectedKanbanIssueId, { status_id: value as string });
         } else if (field === 'priority') {
           updateIssue(selectedKanbanIssueId, {
@@ -214,6 +276,8 @@ export function KanbanIssuePanelContainer() {
       kanbanCreateMode,
       selectedKanbanIssueId,
       updateIssue,
+      debouncedSaveTitle,
+      debouncedSaveDescription,
       issueAssignees,
       insertIssueAssignee,
       removeIssueAssignee,
@@ -335,6 +399,9 @@ export function KanbanIssuePanelContainer() {
       onCreateTag={handleCreateTag}
       isSubmitting={isSubmitting}
       isLoading={isLoading}
+      descriptionSaveStatus={
+        mode === 'edit' ? descriptionSaveStatus : undefined
+      }
     />
   );
 }

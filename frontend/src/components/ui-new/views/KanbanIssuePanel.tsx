@@ -71,6 +71,9 @@ export interface KanbanIssuePanelProps {
   // Loading states
   isSubmitting?: boolean;
   isLoading?: boolean;
+
+  // Save status for description field
+  descriptionSaveStatus?: 'idle' | 'saved';
 }
 
 export function KanbanIssuePanel({
@@ -90,6 +93,7 @@ export function KanbanIssuePanel({
   onSubmit,
   onCreateTag,
   isSubmitting,
+  descriptionSaveStatus,
 }: KanbanIssuePanelProps) {
   const isCreateMode = mode === 'create';
 
@@ -182,6 +186,7 @@ export function KanbanIssuePanel({
                 autoFocus={false}
                 className="min-h-[100px]"
                 showStaticToolbar
+                saveStatus={descriptionSaveStatus}
               />
             </div>
           </div>
