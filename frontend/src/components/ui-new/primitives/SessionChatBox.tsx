@@ -575,7 +575,11 @@ export function SessionChatBox({
                       </span>
                     </span>
                   )}
-                  <PrimaryButton variant="tertiary" onClick={onViewCode} className="min-w-0">
+                  <PrimaryButton
+                    variant="tertiary"
+                    onClick={onViewCode}
+                    className="min-w-0"
+                  >
                     <span className="text-sm space-x-half whitespace-nowrap truncate">
                       <span>
                         {t('diff.filesChanged', { count: filesChanged })}

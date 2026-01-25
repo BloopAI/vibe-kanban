@@ -54,7 +54,10 @@ const DropdownMenuTriggerButton = React.forwardRef<
       </span>
     )}
     {children}
-    <CaretDownIcon className="size-icon-2xs text-normal flex-shrink-0" weight="bold" />
+    <CaretDownIcon
+      className="size-icon-2xs text-normal flex-shrink-0"
+      weight="bold"
+    />
   </DropdownMenuPrimitive.Trigger>
 ));
 DropdownMenuTriggerButton.displayName = 'DropdownMenuTriggerButton';
