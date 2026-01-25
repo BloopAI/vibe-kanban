@@ -1,9 +1,11 @@
 import { LayoutIcon, PlusIcon } from '@phosphor-icons/react';
+import { siDiscord } from 'simple-icons';
 import { cn } from '@/lib/utils';
 import type { OrganizationWithRole, RemoteProject } from 'shared/types';
 import { AppBarButton } from './AppBarButton';
 import { AppBarUserPopoverContainer } from '../containers/AppBarUserPopoverContainer';
 import { Tooltip } from './Tooltip';
+import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 
 function getProjectInitials(name: string): string {
   const trimmed = name.trim();
@@ -43,6 +45,8 @@ export function AppBar({
   activeProjectId,
   isSignedIn,
 }: AppBarProps) {
+  const { data: onlineCount } = useDiscordOnlineCount();
+
   return (
     <div
       className={cn(
@@ -108,8 +112,36 @@ export function AppBar({
         </Tooltip>
       )}
 
-      {/* Bottom section: User popover */}
-      <div className="mt-auto pt-base">
+      {/* Bottom section: Discord + User popover */}
+      <div className="mt-auto pt-base flex flex-col items-center gap-base">
+        <Tooltip content="Join our Discord" side="right">
+          <a
+            href="https://discord.gg/AC4nwVtJM3"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              'relative flex items-center justify-center w-10 h-10 rounded-lg',
+              'text-muted transition-colors cursor-pointer',
+              'hover:text-normal hover:bg-tertiary',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand'
+            )}
+            aria-label="Join our Discord"
+          >
+            <svg
+              className="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d={siDiscord.path} />
+            </svg>
+            {onlineCount != null && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-brand text-[10px] font-medium text-white">
+                {onlineCount > 999 ? '999+' : onlineCount}
+              </span>
+            )}
+          </a>
+        </Tooltip>
         <AppBarUserPopoverContainer
           organizations={organizations}
           selectedOrgId={selectedOrgId}
