@@ -16,6 +16,11 @@ export {
   InviteMemberDialog,
   type InviteMemberResult,
 } from './org/InviteMemberDialog';
+export {
+  CreateRemoteProjectDialog,
+  type CreateRemoteProjectDialogProps,
+  type CreateRemoteProjectResult,
+} from './org/CreateRemoteProjectDialog';
 
 // Project-related dialogs
 export {
