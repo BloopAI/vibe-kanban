@@ -14,7 +14,8 @@
     "close": "Fermer",
     "replay": "Rejouer",
     "discard": "Abandonner",
-    "addItem": "Ajouter un élément"
+    "addItem": "Ajouter un élément",
+    "reply": "Répondre"
   },
   "form": {
     "notSpecified": "Non spécifié",
@@ -91,11 +92,14 @@
     "menuItem": "Organisation",
     "loadingPlaceholder": "Chargement des organisations...",
     "selectPlaceholder": "Sélectionner une organisation",
-    "currentBadge": " (actuelle)"
+    "currentBadge": " (actuelle)",
+    "organizations": "Organisations",
+    "createOrganization": "Créer une organisation"
   },
   "navbar": {
     "tryNewUI": "essayer la nouvelle interface"
   },
+  "signIn": "Se connecter",
   "signOut": "Se déconnecter",
   "devMode": {
     "banner": "Mode développement - Ceci est une version de développement"
@@ -339,7 +343,10 @@
     "noPrCreated": "Aucune PR créée",
     "noCommentsYet": "Aucun commentaire",
     "comments": "Commentaires",
-    "enterCommentPlaceholder": "Entrez votre commentaire ici..."
+    "enterCommentPlaceholder": "Entrez votre commentaire ici...",
+    "subIssues": "Sous-tâches",
+    "noSubIssues": "Aucune sous-tâche",
+    "parentIssue": "Parent"
   },
   "syncError": {
     "networkErrors": "Erreurs réseau",
