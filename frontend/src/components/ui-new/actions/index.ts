@@ -40,8 +40,6 @@ import {
   ListIcon,
   MegaphoneIcon,
   QuestionIcon,
-  SquaresFourIcon,
-  KanbanIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import {
@@ -411,29 +409,6 @@ export const Actions = {
       } catch {
         ctx.navigate('/workspaces/create');
       }
-    },
-  },
-
-  // === Layout Mode Actions ===
-  ToggleWorkspacesMode: {
-    id: 'toggle-workspaces-mode',
-    label: 'Workspaces Layout',
-    icon: SquaresFourIcon,
-    requiresTarget: false,
-    isActive: (ctx) => ctx.layoutMode === 'workspaces',
-    execute: () => {
-      useUiPreferencesStore.getState().setLayoutMode('workspaces');
-    },
-  },
-
-  ToggleKanbanMode: {
-    id: 'toggle-kanban-mode',
-    label: 'Kanban Layout',
-    icon: KanbanIcon,
-    requiresTarget: false,
-    isActive: (ctx) => ctx.layoutMode === 'kanban',
-    execute: () => {
-      useUiPreferencesStore.getState().setLayoutMode('kanban');
     },
   },
 
@@ -1165,13 +1140,7 @@ export type NavbarItem = ActionDefinition | typeof NavbarDivider;
 
 // Navbar action groups define which actions appear in each section
 export const NavbarActionGroups = {
-  left: [
-    Actions.ToggleWorkspacesMode,
-    Actions.ToggleKanbanMode,
-    NavbarDivider,
-    Actions.ArchiveWorkspace,
-    Actions.OpenInOldUI,
-  ] as NavbarItem[],
+  left: [Actions.ArchiveWorkspace, Actions.OpenInOldUI] as NavbarItem[],
   right: [
     Actions.ToggleDiffViewMode,
     Actions.ToggleAllDiffs,
