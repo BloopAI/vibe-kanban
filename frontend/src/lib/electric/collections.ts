@@ -128,7 +128,11 @@ function getAuthenticatedShapeOptions(
   // Single debounced error reporter for both network and Electric errors
   const reportError = (error: SyncError) => {
     if (errorHandler.shouldReport(error.message)) {
-      console.error('Electric sync error:', error);
+      // Only log to console when tab is visible - transient errors during
+      // tab switches are expected and will auto-clear on visibility change
+      if (document.visibilityState === 'visible') {
+        console.error('Electric sync error:', error);
+      }
       config?.onError?.(error);
     }
   };
