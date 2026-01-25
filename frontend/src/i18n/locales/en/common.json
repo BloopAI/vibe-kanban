@@ -343,7 +343,10 @@
     "noPrCreated": "No PR created",
     "noCommentsYet": "No comments yet",
     "comments": "Comments",
-    "enterCommentPlaceholder": "Enter your comment here..."
+    "enterCommentPlaceholder": "Enter your comment here...",
+    "subIssues": "Sub-issues",
+    "noSubIssues": "No sub-issues",
+    "parentIssue": "Parent"
   },
   "syncError": {
     "networkErrors": "Network Errors",
