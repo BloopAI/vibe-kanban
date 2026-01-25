@@ -1,0 +1,196 @@
+import { useState, useEffect, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { useTranslation } from 'react-i18next';
+import { defineModal } from '@/lib/modals';
+import { useEntity } from '@/lib/electric/hooks';
+import { PROJECT_ENTITY, type Project } from 'shared/remote-types';
+
+export type CreateRemoteProjectDialogProps = {
+  organizationId: string;
+};
+
+export type CreateRemoteProjectResult = {
+  action: 'created' | 'canceled';
+  project?: Project;
+};
+
+// Generate a random HSL color string for projects
+function generateRandomColor(): string {
+  const hue = Math.floor(Math.random() * 360);
+  const saturation = 65 + Math.floor(Math.random() * 20); // 65-85%
+  const lightness = 45 + Math.floor(Math.random() * 15); // 45-60%
+  return `${hue} ${saturation}% ${lightness}%`;
+}
+
+const CreateRemoteProjectDialogImpl =
+  NiceModal.create<CreateRemoteProjectDialogProps>(({ organizationId }) => {
+    const modal = useModal();
+    const { t } = useTranslation('projects');
+    const [name, setName] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [isCreating, setIsCreating] = useState(false);
+
+    const params = useMemo(
+      () => ({ organization_id: organizationId }),
+      [organizationId]
+    );
+
+    const { insert, error: entityError } = useEntity(PROJECT_ENTITY, params);
+
+    useEffect(() => {
+      // Reset form when dialog opens
+      if (modal.visible) {
+        setName('');
+        setError(null);
+        setIsCreating(false);
+      }
+    }, [modal.visible]);
+
+    useEffect(() => {
+      if (entityError) {
+        setError(entityError.message || 'Failed to create project');
+        setIsCreating(false);
+      }
+    }, [entityError]);
+
+    const validateName = (value: string): string | null => {
+      const trimmedValue = value.trim();
+      if (!trimmedValue) return 'Project name is required';
+      if (trimmedValue.length < 2)
+        return 'Project name must be at least 2 characters';
+      if (trimmedValue.length > 100)
+        return 'Project name must be 100 characters or less';
+      return null;
+    };
+
+    const handleCreate = () => {
+      const nameError = validateName(name);
+      if (nameError) {
+        setError(nameError);
+        return;
+      }
+
+      setError(null);
+      setIsCreating(true);
+
+      try {
+        const project = insert({
+          organization_id: organizationId,
+          name: name.trim(),
+          color: generateRandomColor(),
+        });
+
+        modal.resolve({
+          action: 'created',
+          project,
+        } as CreateRemoteProjectResult);
+        modal.hide();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : 'Failed to create project'
+        );
+        setIsCreating(false);
+      }
+    };
+
+    const handleCancel = () => {
+      modal.resolve({ action: 'canceled' } as CreateRemoteProjectResult);
+      modal.hide();
+    };
+
+    const handleOpenChange = (open: boolean) => {
+      if (!open) {
+        handleCancel();
+      }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' && name.trim() && !isCreating) {
+        e.preventDefault();
+        handleCreate();
+      }
+    };
+
+    return (
+      <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {t('createProjectDialog.title', 'Create Project')}
+            </DialogTitle>
+            <DialogDescription>
+              {t(
+                'createProjectDialog.description',
+                'Create a new project in this organization.'
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="project-name">
+                {t('createProjectDialog.nameLabel', 'Project name')}
+              </Label>
+              <Input
+                id="project-name"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setError(null);
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder={t(
+                  'createProjectDialog.namePlaceholder',
+                  'Enter project name'
+                )}
+                maxLength={100}
+                autoFocus
+                disabled={isCreating}
+              />
+            </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isCreating}
+            >
+              {t('common:buttons.cancel', 'Cancel')}
+            </Button>
+            <Button
+              onClick={handleCreate}
+              disabled={!name.trim() || isCreating}
+            >
+              {isCreating
+                ? t('createProjectDialog.creating', 'Creating...')
+                : t('createProjectDialog.createButton', 'Create Project')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  });
+
+export const CreateRemoteProjectDialog = defineModal<
+  CreateRemoteProjectDialogProps,
+  CreateRemoteProjectResult
+>(CreateRemoteProjectDialogImpl);
