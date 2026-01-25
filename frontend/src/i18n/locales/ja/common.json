@@ -36,7 +36,8 @@
     "reset": "リセット",
     "save": "保存",
     "send": "送信",
-    "addItem": "項目を追加"
+    "addItem": "項目を追加",
+    "reply": "返信"
   },
   "form": {
     "notSpecified": "指定なし",
@@ -94,11 +95,14 @@
     "menuItem": "組織",
     "loadingPlaceholder": "組織を読み込み中...",
     "selectPlaceholder": "組織を選択",
-    "currentBadge": " (現在)"
+    "currentBadge": " (現在)",
+    "organizations": "組織",
+    "createOrganization": "組織を作成"
   },
   "navbar": {
     "tryNewUI": "新しいUIを試す"
   },
+  "signIn": "サインイン",
   "signOut": "サインアウト",
   "devMode": {
     "banner": "開発モード - これは開発ビルドです"
@@ -342,7 +346,10 @@
     "noPrCreated": "PRが作成されていません",
     "noCommentsYet": "コメントはまだありません",
     "comments": "コメント",
-    "enterCommentPlaceholder": "コメントを入力してください..."
+    "enterCommentPlaceholder": "コメントを入力してください...",
+    "subIssues": "サブ課題",
+    "noSubIssues": "サブ課題なし",
+    "parentIssue": "親"
   },
   "syncError": {
     "networkErrors": "ネットワークエラー",

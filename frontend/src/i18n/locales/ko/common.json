@@ -36,7 +36,8 @@
     "reset": "초기화",
     "save": "저장",
     "send": "보내기",
-    "addItem": "항목 추가"
+    "addItem": "항목 추가",
+    "reply": "답장"
   },
   "form": {
     "notSpecified": "지정되지 않음",
@@ -94,11 +95,14 @@
     "menuItem": "조직",
     "loadingPlaceholder": "조직 로딩 중...",
     "selectPlaceholder": "조직 선택",
-    "currentBadge": " (현재)"
+    "currentBadge": " (현재)",
+    "organizations": "조직",
+    "createOrganization": "조직 만들기"
   },
   "navbar": {
     "tryNewUI": "새로운 UI 사용해보기"
   },
+  "signIn": "로그인",
   "signOut": "로그아웃",
   "devMode": {
     "banner": "개발 모드 - 개발 빌드입니다"
@@ -342,7 +346,10 @@
     "noPrCreated": "PR이 생성되지 않음",
     "noCommentsYet": "아직 댓글이 없습니다",
     "comments": "댓글",
-    "enterCommentPlaceholder": "댓글을 입력하세요..."
+    "enterCommentPlaceholder": "댓글을 입력하세요...",
+    "subIssues": "하위 이슈",
+    "noSubIssues": "하위 이슈 없음",
+    "parentIssue": "상위"
   },
   "syncError": {
     "networkErrors": "네트워크 오류",
