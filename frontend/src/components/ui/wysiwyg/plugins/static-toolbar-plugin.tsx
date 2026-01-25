@@ -21,6 +21,7 @@ import {
   Code,
   ListBullets,
   ListNumbers,
+  Check,
   type Icon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
@@ -60,7 +61,11 @@ function ToolbarButton({
   );
 }
 
-export function StaticToolbarPlugin() {
+interface StaticToolbarPluginProps {
+  saveStatus?: 'idle' | 'saved';
+}
+
+export function StaticToolbarPlugin({ saveStatus }: StaticToolbarPluginProps) {
   const [editor] = useLexicalComposerContext();
 
   // Text format state
@@ -194,6 +199,18 @@ export function StaticToolbarPlugin() {
         icon={ListNumbers}
         label="Numbered List"
       />
+
+      {/* Save Status Indicator */}
+      {saveStatus && (
+        <div
+          className={cn(
+            'ml-auto flex items-center transition-opacity duration-300',
+            saveStatus === 'idle' ? 'opacity-0' : 'opacity-100'
+          )}
+        >
+          <Check className="size-icon-sm text-success" weight="bold" />
+        </div>
+      )}
     </div>
   );
 }
