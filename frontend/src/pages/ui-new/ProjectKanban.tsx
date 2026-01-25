@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { OrgProvider, useOrgContext } from '@/contexts/remote/OrgContext';
@@ -13,6 +13,7 @@ import {
 } from '@/stores/useUiPreferencesStore';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
+import { useOrganizationStore } from '@/stores/useOrganizationStore';
 
 /**
  * Inner component that renders the Kanban board once we have the org context
@@ -99,18 +100,15 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
 }
 
 /**
- * Hook to find a project by ID, using orgId from URL if available
+ * Hook to find a project by ID, using orgId from Zustand store
  */
-function useFindProjectById(
-  projectId: string | undefined,
-  orgIdFromUrl: string | null
-) {
+function useFindProjectById(projectId: string | undefined) {
   const { data: orgsData, isLoading: orgsLoading } = useUserOrganizations();
+  const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
   const organizations = orgsData?.organizations ?? [];
 
-  // If orgId is provided in URL, use it directly
-  // Otherwise fall back to searching in the first org
-  const orgIdToUse = orgIdFromUrl ?? organizations[0]?.id ?? null;
+  // Use stored org ID, or fall back to first org
+  const orgIdToUse = selectedOrgId ?? organizations[0]?.id ?? null;
 
   const { data: projects = [], isLoading: projectsLoading } =
     useOrganizationProjects(orgIdToUse);
@@ -122,7 +120,7 @@ function useFindProjectById(
 
   return {
     project,
-    organizationId: orgIdFromUrl ?? project?.organization_id,
+    organizationId: project?.organization_id ?? selectedOrgId,
     isLoading: orgsLoading || projectsLoading,
   };
 }
@@ -137,14 +135,21 @@ function useFindProjectById(
 export function ProjectKanban() {
   const { projectId } = useParams<{ projectId: string }>();
   const [searchParams] = useSearchParams();
-  const orgIdFromUrl = searchParams.get('orgId');
+  const navigate = useNavigate();
   const { t } = useTranslation('common');
+  const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
+
+  // One-time migration: if orgId is in URL, save to store and clean URL
+  useEffect(() => {
+    const orgIdFromUrl = searchParams.get('orgId');
+    if (orgIdFromUrl && projectId) {
+      setSelectedOrgId(orgIdFromUrl);
+      navigate(`/projects/${projectId}`, { replace: true });
+    }
+  }, [searchParams, projectId, setSelectedOrgId, navigate]);
 
   // Find the project and get its organization
-  const { organizationId, isLoading } = useFindProjectById(
-    projectId,
-    orgIdFromUrl
-  );
+  const { organizationId, isLoading } = useFindProjectById(projectId);
 
   if (isLoading) {
     return (

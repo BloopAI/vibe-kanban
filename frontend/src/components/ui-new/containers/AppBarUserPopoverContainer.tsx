@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/auth/useAuth';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { oauthApi } from '@/lib/api';
+import { useOrganizationStore } from '@/stores/useOrganizationStore';
 
 interface AppBarUserPopoverContainerProps {
   organizations: OrganizationWithRole[];
@@ -25,6 +26,7 @@ export function AppBarUserPopoverContainer({
   const location = useLocation();
   const { isSignedIn } = useAuth();
   const { loginStatus, reloadSystem } = useUserSystem();
+  const clearSelectedOrgId = useOrganizationStore((s) => s.clearSelectedOrgId);
 
   // Extract avatar URL from first provider
   const avatarUrl =
@@ -42,6 +44,9 @@ export function AppBarUserPopoverContainer({
   const handleLogout = async () => {
     try {
       await oauthApi.logout();
+
+      // Clear organization selection
+      clearSelectedOrgId();
 
       // Clear user-related query caches so stale data doesn't persist
       queryClient.removeQueries({ queryKey: ['user', 'organizations'] });
