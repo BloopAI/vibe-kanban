@@ -38,7 +38,7 @@ jobs:
       branch_suffix: ${{ steps.branch.outputs.suffix }}
     steps:
       - name: Cache cargo-edit
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         id: cache-cargo-edit
         with:
           path: ~/.cargo/bin/cargo-set-version
@@ -48,7 +48,7 @@ jobs:
         if: steps.cache-cargo-edit.outputs.cache-hit != 'true'
         run: cargo install cargo-edit
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           ssh-key: ${{ secrets.DEPLOY_KEY }}
@@ -125,7 +125,7 @@ jobs:
       VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY: ${{ secrets.PUBLIC_REACT_VIRTUOSO_LICENSE_KEY }}
       VITE_VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
 
@@ -161,7 +161,7 @@ jobs:
           ignore_missing: true
 
       - name: Upload frontend artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: frontend-dist
           path: frontend/dist/
@@ -201,7 +201,7 @@ jobs:
       RUSTUP_HOME: ${{ github.workspace }}/.rustup
       XWIN_CACHE_DIR: ${{ github.workspace }}/.xwin-cache
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
 
@@ -209,7 +209,7 @@ jobs:
         uses: BloopAI/sccache-action@main
 
       - name: Cache Rust toolchain
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .rustup/toolchains
           key: rust-toolchain-${{ runner.os }}-${{ matrix.target }}-${{ env.RUST_TOOLCHAIN }}
@@ -282,7 +282,7 @@ jobs:
           cargo install --locked cargo-sweep --version 0.8.0
 
       - name: Download frontend artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: frontend-dist
           path: frontend/dist/
@@ -441,7 +441,7 @@ jobs:
           rm -rf private_keys/
 
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: backend-binary-${{ matrix.name }}
           path: dist/
@@ -493,18 +493,18 @@ jobs:
             mcp_binary: vibe-kanban-mcp
             review_binary: vibe-kanban-review
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
 
       - name: Download frontend artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: frontend-dist
           path: frontend/dist/
 
       - name: Download backend binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: backend-binary-${{ matrix.name }}
           path: dist/
@@ -540,7 +540,7 @@ jobs:
           cp dist/vibe-kanban-review-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/vibe-kanban-review.zip
 
       - name: Upload platform package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: npx-platform-${{ matrix.name }}
           path: npx-cli/dist/
@@ -550,12 +550,12 @@ jobs:
     needs: [bump-version, package-npx-cli]
     runs-on: ubuntu-latest-m
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
 
       - name: Download all platform packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: npx-platform-*
           path: binaries/
@@ -644,12 +644,12 @@ jobs:
     needs: [bump-version, build-frontend, upload-to-r2]
     runs-on: ubuntu-latest-m
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
 
       - name: Download frontend artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: frontend-dist
           path: frontend/dist/
