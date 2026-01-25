@@ -6,6 +6,7 @@ import { AppBar } from '../primitives/AppBar';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
+import { useAuth } from '@/hooks/auth/useAuth';
 import {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
@@ -16,6 +17,7 @@ import {
 export function SharedAppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isSignedIn } = useAuth();
 
   // AppBar state - organizations and projects
   const { data: orgsData } = useUserOrganizations();
@@ -101,6 +103,7 @@ export function SharedAppLayout() {
           onProjectClick={handleProjectClick}
           isWorkspacesActive={isWorkspacesActive}
           activeProjectId={activeProjectId}
+          isSignedIn={isSignedIn}
         />
         <div className="flex flex-col flex-1 min-w-0">
           <NavbarContainer />
