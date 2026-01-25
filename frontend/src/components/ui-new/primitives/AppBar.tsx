@@ -1,4 +1,4 @@
-import { LayoutIcon } from '@phosphor-icons/react';
+import { LayoutIcon, PlusIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { OrganizationWithRole, RemoteProject } from 'shared/types';
 import { AppBarButton } from './AppBarButton';
@@ -22,8 +22,9 @@ interface AppBarProps {
   selectedOrgId: string;
   onOrgSelect: (orgId: string) => void;
   onCreateOrg: () => void;
+  onCreateProject: () => void;
   onWorkspacesClick: () => void;
-  onProjectClick: (projectId: string) => void;
+  onProjectClick: (projectId: string, organizationId: string) => void;
   isWorkspacesActive: boolean;
   activeProjectId: string | null;
 }
@@ -34,6 +35,7 @@ export function AppBar({
   selectedOrgId,
   onOrgSelect,
   onCreateOrg,
+  onCreateProject,
   onWorkspacesClick,
   onProjectClick,
   isWorkspacesActive,
@@ -61,7 +63,7 @@ export function AppBar({
         <Tooltip key={project.id} content={project.name} side="right">
           <button
             type="button"
-            onClick={() => onProjectClick(project.id)}
+            onClick={() => onProjectClick(project.id, project.organization_id)}
             className={cn(
               'flex items-center justify-center w-10 h-10 rounded-lg',
               'text-sm font-medium transition-colors cursor-pointer',
@@ -84,6 +86,23 @@ export function AppBar({
           </button>
         </Tooltip>
       ))}
+
+      {/* Create project button */}
+      <Tooltip content="Create project" side="right">
+        <button
+          type="button"
+          onClick={onCreateProject}
+          className={cn(
+            'flex items-center justify-center w-10 h-10 rounded-lg',
+            'text-sm font-medium transition-colors cursor-pointer',
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+            'bg-primary text-muted hover:text-normal hover:bg-tertiary'
+          )}
+          aria-label="Create project"
+        >
+          <PlusIcon size={20} />
+        </button>
+      </Tooltip>
 
       {/* Bottom section: User popover */}
       <div className="mt-auto pt-base">
