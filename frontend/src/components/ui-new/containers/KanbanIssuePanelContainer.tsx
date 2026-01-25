@@ -49,6 +49,25 @@ export function KanbanIssuePanelContainer() {
     return issues.find((i) => i.id === selectedKanbanIssueId) ?? null;
   }, [issues, selectedKanbanIssueId, kanbanCreateMode]);
 
+  // Find parent issue if current issue has one
+  const parentIssue = useMemo(() => {
+    if (!selectedIssue?.parent_issue_id) return null;
+    const parent = issues.find((i) => i.id === selectedIssue.parent_issue_id);
+    if (!parent) return null;
+    return { id: parent.id, simpleId: parent.simple_id };
+  }, [issues, selectedIssue]);
+
+  const openKanbanIssuePanel = useUiPreferencesStore(
+    (s) => s.openKanbanIssuePanel
+  );
+
+  // Handler for clicking on parent issue
+  const handleParentIssueClick = useCallback(() => {
+    if (parentIssue) {
+      openKanbanIssuePanel(parentIssue.id);
+    }
+  }, [parentIssue, openKanbanIssuePanel]);
+
   // Get all current assignees from issue_assignees
   const currentAssigneeIds = useMemo(() => {
     if (!selectedKanbanIssueId) return [];
@@ -307,6 +326,8 @@ export function KanbanIssuePanelContainer() {
       tags={tags}
       users={users}
       issueId={selectedKanbanIssueId}
+      parentIssue={parentIssue}
+      onParentIssueClick={handleParentIssueClick}
       workspaces={[]}
       linkedPrs={[]}
       onClose={closeKanbanIssuePanel}
