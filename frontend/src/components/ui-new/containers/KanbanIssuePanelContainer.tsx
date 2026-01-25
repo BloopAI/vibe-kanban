@@ -44,6 +44,28 @@ export function KanbanIssuePanelContainer() {
 
   const { users, isLoading: orgLoading } = useOrgContext();
 
+  // Close panel if selected issue doesn't exist in current project (e.g., stale persisted state)
+  useEffect(() => {
+    // Wait for data to load
+    if (projectLoading || orgLoading) return;
+
+    // Only check in edit mode (when an issue should be selected)
+    if (kanbanCreateMode || !selectedKanbanIssueId) return;
+
+    // If the selected issue doesn't exist in this project, close the panel
+    const issueExists = issues.some((i) => i.id === selectedKanbanIssueId);
+    if (!issueExists) {
+      closeKanbanIssuePanel();
+    }
+  }, [
+    projectLoading,
+    orgLoading,
+    kanbanCreateMode,
+    selectedKanbanIssueId,
+    issues,
+    closeKanbanIssuePanel,
+  ]);
+
   // Find selected issue if in edit mode
   const selectedIssue = useMemo(() => {
     if (kanbanCreateMode || !selectedKanbanIssueId) return null;
