@@ -14,7 +14,8 @@
     "close": "Close",
     "replay": "Replay",
     "discard": "Discard",
-    "addItem": "Add Item"
+    "addItem": "Add Item",
+    "reply": "Reply"
   },
   "form": {
     "notSpecified": "Not specified",
@@ -340,7 +341,9 @@
     "createTag": "Create",
     "filesCount": "{{count}} Files",
     "noPrCreated": "No PR created",
-    "noCommentsYet": "No comments yet"
+    "noCommentsYet": "No comments yet",
+    "comments": "Comments",
+    "enterCommentPlaceholder": "Enter your comment here..."
   },
   "syncError": {
     "networkErrors": "Network Errors",
