@@ -14,7 +14,8 @@
     "close": "關閉",
     "replay": "重播",
     "discard": "放棄",
-    "addItem": "新增項目"
+    "addItem": "新增項目",
+    "reply": "回覆"
   },
   "form": {
     "notSpecified": "未指定",
@@ -91,8 +92,11 @@
     "menuItem": "組織",
     "loadingPlaceholder": "載入組織中...",
     "selectPlaceholder": "選擇組織",
-    "currentBadge": "（目前）"
+    "currentBadge": "（目前）",
+    "organizations": "組織",
+    "createOrganization": "建立組織"
   },
+  "signIn": "登入",
   "signOut": "登出",
   "devMode": {
     "banner": "開發模式 - 這是開發版本"
@@ -339,7 +343,10 @@
     "noPrCreated": "未建立 PR",
     "noCommentsYet": "尚無評論",
     "comments": "評論",
-    "enterCommentPlaceholder": "在此輸入評論..."
+    "enterCommentPlaceholder": "在此輸入評論...",
+    "subIssues": "子任務",
+    "noSubIssues": "無子任務",
+    "parentIssue": "父級"
   },
   "syncError": {
     "networkErrors": "網路錯誤",
