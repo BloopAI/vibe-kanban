@@ -24,7 +24,7 @@ interface AppBarProps {
   onCreateOrg: () => void;
   onCreateProject: () => void;
   onWorkspacesClick: () => void;
-  onProjectClick: (projectId: string, organizationId: string) => void;
+  onProjectClick: (projectId: string) => void;
   isWorkspacesActive: boolean;
   activeProjectId: string | null;
 }
@@ -63,7 +63,7 @@ export function AppBar({
         <Tooltip key={project.id} content={project.name} side="right">
           <button
             type="button"
-            onClick={() => onProjectClick(project.id, project.organization_id)}
+            onClick={() => onProjectClick(project.id)}
             className={cn(
               'flex items-center justify-center w-10 h-10 rounded-lg',
               'text-sm font-medium transition-colors cursor-pointer',
