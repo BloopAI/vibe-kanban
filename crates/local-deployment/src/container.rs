@@ -2,7 +2,6 @@ use std::{
     collections::HashMap,
     io,
     path::{Path, PathBuf},
-    str::FromStr,
     sync::Arc,
     time::Duration,
 };
@@ -20,6 +19,7 @@ use db::{
         execution_process_repo_state::ExecutionProcessRepoState,
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
+        session::{Session, SessionError},
         task::{Task, TaskStatus},
         workspace::Workspace,
         workspace_repo::WorkspaceRepo,
@@ -36,7 +36,6 @@ use executors::{
     env::{ExecutionEnv, RepoContext},
     executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal, InterruptSender},
     logs::{NormalizedEntryType, utils::patch::extract_normalized_entry_from_patch},
-    profile::ExecutorProfileId,
 };
 use futures::{FutureExt, TryStreamExt, stream::select};
 use serde_json::json;
@@ -575,7 +574,7 @@ impl LocalContainerService {
             // Cleanup msg store
             if let Some(msg_arc) = msg_stores.write().await.remove(&exec_id) {
                 msg_arc.push_finished();
-                tokio::time::sleep(Duration::from_millis(50)).await; // Wait for the finish message to propogate
+                tokio::time::sleep(Duration::from_millis(50)).await; // Wait for the finish message to propagate
                 match Arc::try_unwrap(msg_arc) {
                     Ok(inner) => drop(inner),
                     Err(arc) => tracing::error!(
@@ -821,33 +820,30 @@ impl LocalContainerService {
         ctx: &ExecutionContext,
         queued_data: &DraftFollowUpData,
     ) -> Result<ExecutionProcess, ContainerError> {
-        // Get executor from the latest CodingAgent process, or fall back to session's executor
-        let base_executor = match ExecutionProcess::latest_executor_profile_for_session(
-            &self.db.pool,
-            ctx.session.id,
-        )
-        .await
-        .map_err(|e| ContainerError::Other(anyhow!("Failed to get executor profile: {e}")))?
-        {
-            Some(profile) => profile.executor,
-            None => {
-                // No prior execution - use session's executor field
-                let executor_str = ctx.session.executor.as_ref().ok_or_else(|| {
-                    ContainerError::Other(anyhow!(
-                        "No prior execution and no executor configured on session"
-                    ))
-                })?;
-                BaseCodingAgent::from_str(&executor_str.replace('-', "_").to_ascii_uppercase())
-                    .map_err(|_| {
-                        ContainerError::Other(anyhow!("Invalid executor: {}", executor_str))
-                    })?
-            }
-        };
+        let executor_profile_id = queued_data.executor_profile_id.clone();
 
-        let executor_profile_id = ExecutorProfileId {
-            executor: base_executor,
-            variant: queued_data.variant.clone(),
-        };
+        // Validate executor matches session if session has prior executions
+        let expected_executor: Option<String> =
+            ExecutionProcess::latest_executor_profile_for_session(&self.db.pool, ctx.session.id)
+                .await?
+                .map(|profile| profile.executor.to_string())
+                .or_else(|| ctx.session.executor.clone());
+
+        if let Some(expected) = expected_executor {
+            let actual = executor_profile_id.executor.to_string();
+            if expected != actual {
+                return Err(SessionError::ExecutorMismatch { expected, actual }.into());
+            }
+        }
+
+        if ctx.session.executor.is_none() {
+            Session::update_executor(
+                &self.db.pool,
+                ctx.session.id,
+                &executor_profile_id.executor.to_string(),
+            )
+            .await?;
+        }
 
         // Get latest agent session ID for session continuity (from coding agent turns)
         let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(

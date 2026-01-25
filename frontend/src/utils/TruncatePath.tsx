@@ -7,16 +7,16 @@ export function DisplayTruncatedPath({ path }: { path: string }) {
   return (
     <div className="h-[1lh] overflow-hidden">
       <div className="flex flex-row-reverse flex-wrap justify-end relative pl-2">
-        <ElipsisComponent className="bottom-[1lh]" />
-        <ElipsisComponent className="bottom-[2lh]" />
-        <ElipsisComponent className="bottom-[3lh]" />
-        <ElipsisComponent className="bottom-[4lh]" />
-        <ElipsisComponent className="bottom-[5lh]" />
-        <ElipsisComponent className="bottom-[6lh]" />
-        <ElipsisComponent className="bottom-[7lh]" />
-        <ElipsisComponent className="bottom-[8lh]" />
-        <ElipsisComponent className="bottom-[9lh]" />
-        <ElipsisComponent className="bottom-[10lh]" />
+        <EllipsisComponent className="bottom-[1lh]" />
+        <EllipsisComponent className="bottom-[2lh]" />
+        <EllipsisComponent className="bottom-[3lh]" />
+        <EllipsisComponent className="bottom-[4lh]" />
+        <EllipsisComponent className="bottom-[5lh]" />
+        <EllipsisComponent className="bottom-[6lh]" />
+        <EllipsisComponent className="bottom-[7lh]" />
+        <EllipsisComponent className="bottom-[8lh]" />
+        <EllipsisComponent className="bottom-[9lh]" />
+        <EllipsisComponent className="bottom-[10lh]" />
 
         {parts.reverse().map((part, index) => (
           <span className="flex-none font-ibm-plex-mono " key={index}>
@@ -29,7 +29,7 @@ export function DisplayTruncatedPath({ path }: { path: string }) {
   );
 }
 
-const ElipsisComponent = ({ className }: { className: string }) => {
+const EllipsisComponent = ({ className }: { className: string }) => {
   return (
     <div
       className={cn('absolute -translate-x-full tracking-tighter', className)}

@@ -4,9 +4,11 @@ import {
   ExecutionProcessStatus,
   NormalizedEntry,
   PatchType,
+  TokenUsageInfo,
   ToolStatus,
 } from 'shared/types';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
+import { useEntries } from '@/contexts/EntriesContext';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { streamJsonPatchEntries } from '@/utils/streamJsonPatchEntries';
 import type {
@@ -36,6 +38,7 @@ export const useConversationHistory = ({
 }: UseConversationHistoryParams): UseConversationHistoryResult => {
   const { executionProcessesVisible: executionProcessesRaw } =
     useExecutionProcessesContext();
+  const { setTokenUsageInfo } = useEntries();
   const executionProcesses = useRef<ExecutionProcess[]>(executionProcessesRaw);
   const displayedExecutionProcesses = useRef<ExecutionProcessStateStore>({});
   const loadedInitialEntries = useRef(false);
@@ -150,6 +153,7 @@ export const useConversationHistory = ({
       let lastProcessFailedOrKilled = false;
       let needsSetup = false;
       let setupHelpText: string | undefined;
+      let latestTokenUsageInfo: TokenUsageInfo | null = null;
 
       // Create user messages + tool calls for setup/cleanup scripts
       const allEntries = Object.values(executionProcessState)
@@ -191,11 +195,23 @@ export const useConversationHistory = ({
             );
             entries.push(userPatchTypeWithKey);
 
-            // Remove all coding agent added user messages, replace with our custom one
+            // Extract latest token usage info before filtering
+            const tokenUsageEntry = p.entries.findLast(
+              (e) =>
+                e.type === 'NORMALIZED_ENTRY' &&
+                e.content.entry_type.type === 'token_usage_info'
+            );
+            if (tokenUsageEntry?.type === 'NORMALIZED_ENTRY') {
+              latestTokenUsageInfo = tokenUsageEntry.content
+                .entry_type as TokenUsageInfo;
+            }
+
+            // Remove user messages (replaced with custom one) and token usage info (displayed separately)
             const entriesExcludingUser = p.entries.filter(
               (e) =>
                 e.type !== 'NORMALIZED_ENTRY' ||
-                e.content.entry_type.type !== 'user_message'
+                (e.content.entry_type.type !== 'user_message' &&
+                  e.content.entry_type.type !== 'token_usage_info')
             );
 
             const hasPendingApprovalEntry = entriesExcludingUser.some(
@@ -353,9 +369,12 @@ export const useConversationHistory = ({
         );
       }
 
+      // Update token usage info in context
+      setTokenUsageInfo(latestTokenUsageInfo);
+
       return allEntries;
     },
-    []
+    [setTokenUsageInfo]
   );
 
   const emitEntries = useCallback(
@@ -367,7 +386,7 @@ export const useConversationHistory = ({
       const entries = flattenEntriesForEmit(executionProcessState);
       let modifiedAddEntryType = addEntryType;
 
-      // Modify so that if add entry type is 'running' and last entry is a plan, emit special plan type
+      // Modify so that if last entry is ExitPlanMode, emit special plan type
       if (entries.length > 0) {
         const lastEntry = entries[entries.length - 1];
         if (

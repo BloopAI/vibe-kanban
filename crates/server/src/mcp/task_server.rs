@@ -960,8 +960,8 @@ impl TaskServer {
         };
 
         let details = TaskDetails::from_task(updated_task);
-        let repsonse = UpdateTaskResponse { task: details };
-        TaskServer::success(&repsonse)
+        let response = UpdateTaskResponse { task: details };
+        TaskServer::success(&response)
     }
 
     #[tool(description = "Delete a task/ticket. `task_id` is required.")]

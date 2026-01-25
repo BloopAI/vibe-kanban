@@ -1,9 +1,15 @@
 // SDK submodules
 pub mod client;
 pub mod protocol;
+pub mod slash_commands;
 pub mod types;
 
-use std::{collections::HashMap, path::Path, process::Stdio, sync::Arc};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    process::Stdio,
+    sync::Arc,
+};
 
 use async_trait::async_trait;
 use command_group::AsyncCommandGroup;
@@ -28,13 +34,16 @@ use crate::{
     env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
-        codex::client::LogWriter,
+        codex::client::LogWriter, utils::reorder_slash_commands,
     },
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
         TodoItem, ToolStatus,
         stderr_processor::normalize_stderr_logs,
-        utils::{EntryIndexProvider, patch::ConversationPatch},
+        utils::{
+            EntryIndexProvider,
+            patch::{self, ConversationPatch},
+        },
     },
     stdout_dup::create_stdout_pipe_writer,
 };
@@ -242,6 +251,34 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         }
         AvailabilityInfo::NotFound
     }
+
+    async fn available_slash_commands(
+        &self,
+        current_dir: &Path,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let defaults = Self::hardcoded_slash_commands();
+        let this = self.clone();
+        let current_dir = current_dir.to_path_buf();
+
+        let initial = patch::slash_commands(defaults.clone(), true, None);
+
+        let discovery_stream = futures::stream::once(async move {
+            match this.discover_available_slash_commands(&current_dir).await {
+                Ok(commands) => {
+                    let merged = reorder_slash_commands([commands, defaults].concat());
+                    patch::slash_commands(merged, false, None)
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to discover Claude Code slash commands: {}", e);
+                    patch::slash_commands(defaults, false, Some(e.to_string()))
+                }
+            }
+        });
+
+        Ok(Box::pin(
+            futures::stream::once(async move { initial }).chain(discovery_stream),
+        ))
+    }
 }
 
 impl ClaudeCode {
@@ -262,6 +299,7 @@ impl ClaudeCode {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
+            .env("NPM_CONFIG_LOGLEVEL", "error")
             .args(&args);
 
         env.clone()
@@ -350,6 +388,7 @@ pub struct ClaudeLogProcessor {
     strategy: HistoryStrategy,
     streaming_messages: HashMap<String, StreamingMessageState>,
     streaming_message_id: Option<String>,
+    last_assistant_message: Option<String>,
     // Main model name (excluding subagents). Only used internally for context window tracking.
     main_model_name: Option<String>,
     main_model_context_window: u32,
@@ -370,6 +409,7 @@ impl ClaudeLogProcessor {
             strategy,
             streaming_messages: HashMap::new(),
             streaming_message_id: None,
+            last_assistant_message: None,
             main_model_context_window: DEFAULT_CLAUDE_CONTEXT_WINDOW,
             context_tokens_used: 0,
         }
@@ -560,6 +600,7 @@ impl ClaudeLogProcessor {
         content_item: &ClaudeContentItem,
         role: &str,
         worktree_path: &str,
+        last_assistant_message: &mut Option<String>,
     ) -> Option<NormalizedEntry> {
         match content_item {
             ClaudeContentItem::Text { text } => {
@@ -567,6 +608,7 @@ impl ClaudeLogProcessor {
                     "assistant" => NormalizedEntryType::AssistantMessage,
                     _ => return None,
                 };
+                *last_assistant_message = Some(text.clone());
                 Some(NormalizedEntry {
                     timestamp: None,
                     entry_type,
@@ -780,6 +822,7 @@ impl ClaudeLogProcessor {
                 subtype,
                 api_key_source,
                 model,
+                status,
                 ..
             } => {
                 // emit billing warning if required
@@ -800,6 +843,12 @@ impl ClaudeLogProcessor {
                         // Skip system init messages because it doesn't contain the actual model that will be used in assistant messages in case of claude-code-router.
                         // We'll send system initialized message with first assistant message that has a model field.
                     }
+                    Some("status") => {
+                        if let Some(status) = status {
+                            patches.push(add_system_message(status.clone(), entry_index_provider));
+                        }
+                    }
+                    Some("compact_boundary") => {}
                     Some(subtype) => {
                         let entry = NormalizedEntry {
                             timestamp: None,
@@ -838,7 +887,7 @@ impl ClaudeLogProcessor {
                     .as_ref()
                     .and_then(|id| self.streaming_messages.remove(id));
 
-                for (content_index, item) in message.content.iter().enumerate() {
+                for (content_index, item) in message.content.items().enumerate() {
                     let entry_index = streaming_message_state
                         .as_mut()
                         .and_then(|state| state.content_entry_index(content_index));
@@ -896,6 +945,7 @@ impl ClaudeLogProcessor {
                                 item,
                                 &message.role,
                                 worktree_path,
+                                &mut self.last_assistant_message,
                             ) {
                                 let is_new = entry_index.is_none();
                                 let idx =
@@ -920,7 +970,7 @@ impl ClaudeLogProcessor {
                 if matches!(self.strategy, HistoryStrategy::AmpResume)
                     && message
                         .content
-                        .iter()
+                        .items()
                         .any(|c| matches!(c, ClaudeContentItem::Text { .. }))
                 {
                     let cur = entry_index_provider.current();
@@ -932,7 +982,7 @@ impl ClaudeLogProcessor {
                         self.tool_map.clear();
                     }
 
-                    for item in &message.content {
+                    for item in message.content.items() {
                         if let ClaudeContentItem::Text { text } = item {
                             let entry = NormalizedEntry {
                                 timestamp: None,
@@ -949,7 +999,7 @@ impl ClaudeLogProcessor {
                 }
 
                 if *is_synthetic {
-                    for item in &message.content {
+                    for item in message.content.items() {
                         if let ClaudeContentItem::Text { text } = item {
                             let entry = NormalizedEntry {
                                 timestamp: None,
@@ -963,7 +1013,19 @@ impl ClaudeLogProcessor {
                     }
                 }
 
-                for item in &message.content {
+                if let Some(mut text) = message.content.as_text().cloned() {
+                    if text.starts_with("<local-command-stdout>")
+                        && text.ends_with("</local-command-stdout>")
+                    {
+                        text = text
+                            .trim_start_matches("<local-command-stdout>")
+                            .trim_end_matches("</local-command-stdout>")
+                            .to_string();
+                    }
+                    patches.push(add_system_message(text.clone(), entry_index_provider));
+                }
+
+                for item in message.content.items() {
                     if let ClaudeContentItem::ToolResult {
                         tool_use_id,
                         content,
@@ -1167,6 +1229,7 @@ impl ClaudeLogProcessor {
                             delta,
                             worktree_path,
                             entry_index_provider,
+                            &mut self.last_assistant_message,
                         )
                     {
                         patches.push(patch);
@@ -1198,6 +1261,8 @@ impl ClaudeLogProcessor {
             ClaudeJson::Result {
                 is_error,
                 model_usage,
+                subtype,
+                result,
                 ..
             } => {
                 // get the real model context window and correct the context usage entry
@@ -1220,6 +1285,21 @@ impl ClaudeLogProcessor {
                         },
                         content: serde_json::to_string(claude_json)
                             .unwrap_or_else(|_| "error".to_string()),
+                        metadata: Some(
+                            serde_json::to_value(claude_json).unwrap_or(serde_json::Value::Null),
+                        ),
+                    };
+                    let idx = entry_index_provider.next();
+                    patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+                } else if matches!(subtype.as_deref(), Some("success"))
+                    && let Some(text) = result.as_ref().and_then(|v| v.as_str())
+                    && (self.last_assistant_message.is_none()
+                        || matches!(&self.last_assistant_message, Some(message) if !message.contains(text)))
+                {
+                    let entry = NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::AssistantMessage,
+                        content: text.to_string(),
                         metadata: Some(
                             serde_json::to_value(claude_json).unwrap_or(serde_json::Value::Null),
                         ),
@@ -1397,6 +1477,20 @@ impl ClaudeLogProcessor {
     }
 }
 
+fn add_system_message(
+    content: String,
+    entry_index_provider: &EntryIndexProvider,
+) -> json_patch::Patch {
+    let entry = NormalizedEntry {
+        timestamp: None,
+        entry_type: NormalizedEntryType::SystemMessage,
+        content,
+        metadata: None,
+    };
+    let id = entry_index_provider.next();
+    ConversationPatch::add_normalized_entry(id, entry)
+}
+
 fn extract_model_name(
     processor: &mut ClaudeLogProcessor,
     message: &ClaudeMessage,
@@ -1444,6 +1538,7 @@ impl StreamingMessageState {
         delta: &ClaudeContentBlockDelta,
         worktree_path: &str,
         entry_index_provider: &EntryIndexProvider,
+        last_assistant_message: &mut Option<String>,
     ) -> Option<json_patch::Patch> {
         if let std::collections::hash_map::Entry::Vacant(e) = self.contents.entry(index) {
             let new_state = StreamingContentState::from_delta(delta)?;
@@ -1458,6 +1553,7 @@ impl StreamingMessageState {
             &content_item,
             &self.role,
             worktree_path,
+            last_assistant_message,
         )?;
 
         if let Some(existing_index) = entry_state.entry_index {
@@ -1566,6 +1662,11 @@ pub enum ClaudeJson {
         model: Option<String>,
         #[serde(default, rename = "apiKeySource")]
         api_key_source: Option<String>,
+        status: Option<String>,
+        #[serde(default)]
+        slash_commands: Vec<String>,
+        #[serde(default)]
+        plugins: Vec<ClaudePlugin>,
     },
     Assistant {
         message: ClaudeMessage,
@@ -1640,6 +1741,12 @@ pub enum ClaudeJson {
     },
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ClaudePlugin {
+    pub name: String,
+    pub path: PathBuf,
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct ClaudeMessage {
     pub id: Option<String>,
@@ -1647,8 +1754,31 @@ pub struct ClaudeMessage {
     pub message_type: Option<String>,
     pub role: String,
     pub model: Option<String>,
-    pub content: Vec<ClaudeContentItem>,
+    pub content: ClaudeMessageContent,
     pub stop_reason: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(untagged)]
+pub enum ClaudeMessageContent {
+    Array(Vec<ClaudeContentItem>),
+    Text(String),
+}
+
+impl ClaudeMessageContent {
+    fn items(&self) -> impl Iterator<Item = &ClaudeContentItem> {
+        match self {
+            ClaudeMessageContent::Array(items) => items.iter(),
+            ClaudeMessageContent::Text(_) => [].iter(),
+        }
+    }
+
+    fn as_text(&self) -> Option<&String> {
+        match self {
+            ClaudeMessageContent::Text(s) => Some(s),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -2024,12 +2154,17 @@ mod tests {
     }
 
     #[test]
-    fn test_result_message_ignored() {
+    fn test_result_message_emits_final_text_if_not_seen() {
         let result_json = r#"{"type":"result","subtype":"success","is_error":false,"duration_ms":6059,"result":"Final result"}"#;
         let parsed: ClaudeJson = serde_json::from_str(result_json).unwrap();
 
         let entries = normalize(&parsed, "");
-        assert_eq!(entries.len(), 0); // Should be ignored like in old implementation
+        assert_eq!(entries.len(), 1);
+        assert!(matches!(
+            entries[0].entry_type,
+            NormalizedEntryType::AssistantMessage
+        ));
+        assert_eq!(entries[0].content, "Final result");
     }
 
     #[test]

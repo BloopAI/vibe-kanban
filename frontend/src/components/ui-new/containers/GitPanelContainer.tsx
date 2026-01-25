@@ -71,6 +71,7 @@ export function GitPanelContainer({
           prNumber,
           prUrl,
           prStatus,
+          isTargetRemote: repoStatus?.is_target_remote ?? false,
         };
       }),
     [repos, branchStatus]

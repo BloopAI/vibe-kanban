@@ -13,7 +13,8 @@ use crate::{
     approvals::ToolCallMetadata,
     logs::{
         ActionType, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
-        NormalizedEntryError, NormalizedEntryType, TodoItem, ToolResult, ToolStatus,
+        NormalizedEntryError, NormalizedEntryType, TodoItem, TokenUsageInfo, ToolResult,
+        ToolStatus,
         stderr_processor::normalize_stderr_logs,
         utils::{
             EntryIndexProvider,
@@ -66,6 +67,39 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 }
                 OpencodeExecutorEvent::SdkEvent { event } => {
                     state.handle_sdk_event(&event, &worktree_path, &msg_store);
+                }
+                OpencodeExecutorEvent::TokenUsage {
+                    total_tokens,
+                    model_context_window,
+                } => {
+                    add_normalized_entry(
+                        &msg_store,
+                        &entry_index,
+                        NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::TokenUsageInfo(TokenUsageInfo {
+                                total_tokens,
+                                model_context_window,
+                            }),
+                            content: format!(
+                                "Tokens used: {} / Context window: {}",
+                                total_tokens, model_context_window
+                            ),
+                            metadata: None,
+                        },
+                    );
+                }
+                OpencodeExecutorEvent::SlashCommandResult { message } => {
+                    let idx = entry_index.next();
+                    state.add_normalized_entry_with_index(
+                        idx,
+                        NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::AssistantMessage,
+                            content: message,
+                            metadata: None,
+                        },
+                    );
                 }
                 OpencodeExecutorEvent::ApprovalResponse {
                     tool_call_id,

@@ -1,8 +1,21 @@
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use sqlx::{Executor, PgPool, Postgres};
+use ts_rs::TS;
 pub use utils::api::organizations::MemberRole;
 use uuid::Uuid;
 
 use super::identity_errors::IdentityError;
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct OrganizationMember {
+    pub organization_id: Uuid,
+    pub user_id: Uuid,
+    pub role: MemberRole,
+    pub joined_at: DateTime<Utc>,
+    pub last_seen_at: Option<DateTime<Utc>>,
+}
 
 pub(super) async fn add_member<'a, E>(
     executor: E,

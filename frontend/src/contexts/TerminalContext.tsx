@@ -218,6 +218,19 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
     Map<string, { onData: (data: string) => void; onExit?: () => void }>
   >(new Map());
 
+  // Store reconnection state for each connection
+  const reconnectStateRef = useRef<
+    Map<
+      string,
+      {
+        endpoint: string;
+        retryCount: number;
+        retryTimer: ReturnType<typeof setTimeout> | null;
+        intentionallyClosed: boolean;
+      }
+    >
+  >(new Map());
+
   const getTabsForWorkspace = useCallback(
     (workspaceId: string): TerminalTab[] => {
       return state.tabsByWorkspace[workspaceId] || [];
@@ -240,6 +253,16 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
   }, []);
 
   const closeTerminalConnection = useCallback((tabId: string) => {
+    // Mark as intentionally closed to prevent reconnection
+    const reconnectState = reconnectStateRef.current.get(tabId);
+    if (reconnectState) {
+      reconnectState.intentionallyClosed = true;
+      if (reconnectState.retryTimer) {
+        clearTimeout(reconnectState.retryTimer);
+      }
+      reconnectStateRef.current.delete(tabId);
+    }
+
     const conn = terminalConnectionsRef.current.get(tabId);
     if (conn) {
       conn.ws.close();
@@ -326,38 +349,107 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       // Store callbacks in ref so they can be updated without recreating connection
       connectionCallbacksRef.current.set(tabId, { onData, onExit });
 
-      // Create new WebSocket
-      const wsEndpoint = endpoint.replace(/^http/, 'ws');
-      const ws = new WebSocket(wsEndpoint);
+      // Initialize or reset reconnection state
+      const existingReconnectState = reconnectStateRef.current.get(tabId);
+      if (existingReconnectState?.retryTimer) {
+        clearTimeout(existingReconnectState.retryTimer);
+      }
+      reconnectStateRef.current.set(tabId, {
+        endpoint,
+        retryCount: 0,
+        retryTimer: null,
+        intentionallyClosed: false,
+      });
 
-      ws.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data);
-          const callbacks = connectionCallbacksRef.current.get(tabId);
-          if (msg.type === 'output' && msg.data && callbacks) {
-            callbacks.onData(decodeBase64(msg.data));
-          } else if (msg.type === 'exit' && callbacks) {
-            callbacks.onExit?.();
-          }
-        } catch {
-          // Ignore parse errors
+      const connectWebSocket = () => {
+        const reconnectState = reconnectStateRef.current.get(tabId);
+        if (!reconnectState || reconnectState.intentionallyClosed) {
+          return;
         }
+
+        // Create new WebSocket
+        const wsEndpoint = endpoint.replace(/^http/, 'ws');
+        const ws = new WebSocket(wsEndpoint);
+
+        ws.onopen = () => {
+          // Reset retry count on successful connection
+          const state = reconnectStateRef.current.get(tabId);
+          if (state) {
+            state.retryCount = 0;
+          }
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            const callbacks = connectionCallbacksRef.current.get(tabId);
+            if (msg.type === 'output' && msg.data && callbacks) {
+              callbacks.onData(decodeBase64(msg.data));
+            } else if (msg.type === 'exit' && callbacks) {
+              callbacks.onExit?.();
+            }
+          } catch {
+            // Ignore parse errors
+          }
+        };
+
+        ws.onerror = () => {
+          // Error will be followed by onclose, so we handle reconnection there
+        };
+
+        ws.onclose = (event) => {
+          const state = reconnectStateRef.current.get(tabId);
+          if (!state || state.intentionallyClosed) {
+            return;
+          }
+
+          // Don't reconnect on clean close (code 1000) or if shell exited
+          if (event.code === 1000 && event.wasClean) {
+            return;
+          }
+
+          // Exponential backoff: 500ms, 1s, 2s, 4s, 8s (max), up to 6 retries
+          const maxRetries = 6;
+          if (state.retryCount < maxRetries) {
+            const delay = Math.min(8000, 500 * Math.pow(2, state.retryCount));
+            state.retryCount += 1;
+            state.retryTimer = setTimeout(() => {
+              state.retryTimer = null;
+              connectWebSocket();
+            }, delay);
+          }
+        };
+
+        const send = (data: string) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(
+              JSON.stringify({ type: 'input', data: encodeBase64(data) })
+            );
+          }
+        };
+
+        const resize = (cols: number, rows: number) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'resize', cols, rows }));
+          }
+        };
+
+        const connection: TerminalConnection = { ws, send, resize };
+        terminalConnectionsRef.current.set(tabId, connection);
       };
 
+      connectWebSocket();
+
+      // Return functions that use the current connection
       const send = (data: string) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'input', data: encodeBase64(data) }));
-        }
+        const conn = terminalConnectionsRef.current.get(tabId);
+        conn?.send(data);
       };
 
       const resize = (cols: number, rows: number) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'resize', cols, rows }));
-        }
+        const conn = terminalConnectionsRef.current.get(tabId);
+        conn?.resize(cols, rows);
       };
-
-      const connection: TerminalConnection = { ws, send, resize };
-      terminalConnectionsRef.current.set(tabId, connection);
 
       return { send, resize };
     },

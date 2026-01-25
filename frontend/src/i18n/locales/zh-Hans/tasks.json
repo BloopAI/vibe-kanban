@@ -633,7 +633,8 @@
       "requestChanges": "请求更改",
       "approve": "批准",
       "clearReviewComments": "清除审查评论",
-      "edit": "编辑消息"
+      "edit": "编辑消息",
+      "scrollToPreviousMessage": "Go to previous message"
     },
     "approval": {
       "conflictWarning": "冲突文件需要手动解决",

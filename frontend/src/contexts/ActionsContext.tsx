@@ -18,6 +18,8 @@ import {
 import { getActionLabel } from '@/components/ui-new/actions/useActionVisibility';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useDevServer } from '@/hooks/useDevServer';
+import { useLogsPanel } from '@/contexts/LogsPanelContext';
+import { useLogStream } from '@/hooks/useLogStream';
 
 interface ActionsContextValue {
   // Execute an action with optional workspaceId and repoId (for git actions)
@@ -54,6 +56,25 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Get dev server state
   const { start, stop, runningDevServers } = useDevServer(workspaceId);
 
+  // Get logs panel state
+  const { logsPanelContent } = useLogsPanel();
+  const processId =
+    logsPanelContent?.type === 'process' ? logsPanelContent.processId : '';
+  const { logs: processLogs } = useLogStream(processId);
+
+  // Compute currentLogs based on content type
+  const currentLogs = useMemo(() => {
+    if (logsPanelContent?.type === 'tool') {
+      return logsPanelContent.content
+        .split('\n')
+        .map((line) => ({ type: 'STDOUT' as const, content: line }));
+    }
+    if (logsPanelContent?.type === 'process') {
+      return processLogs;
+    }
+    return null;
+  }, [logsPanelContent, processLogs]);
+
   // Build executor context from hooks
   const executorContext = useMemo<ActionExecutorContext>(
     () => ({
@@ -66,6 +87,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       runningDevServers,
       startDevServer: start,
       stopDevServer: stop,
+      currentLogs,
+      logsPanelContent,
     }),
     [
       navigate,
@@ -77,6 +100,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       runningDevServers,
       start,
       stop,
+      currentLogs,
+      logsPanelContent,
     ]
   );
 

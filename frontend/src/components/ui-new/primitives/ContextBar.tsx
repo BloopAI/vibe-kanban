@@ -32,6 +32,7 @@ interface ContextBarButtonProps
   label: string;
   iconClassName?: string;
   tooltip?: string;
+  shortcut?: string;
 }
 
 function ContextBarButton({
@@ -40,6 +41,7 @@ function ContextBarButton({
   className,
   iconClassName,
   tooltip,
+  shortcut,
   ...props
 }: ContextBarButtonProps) {
   const button = (
@@ -61,7 +63,7 @@ function ContextBarButton({
   );
 
   return tooltip ? (
-    <Tooltip content={tooltip} side="left">
+    <Tooltip content={tooltip} shortcut={shortcut} side="left">
       {button}
     </Tooltip>
   ) : (
@@ -161,7 +163,12 @@ export function ContextBar({
       if (iconType === 'ide-icon') {
         // Render IDE icon
         return (
-          <Tooltip key={key} content={tooltip} side="left">
+          <Tooltip
+            key={key}
+            content={tooltip}
+            shortcut={action.shortcut}
+            side="left"
+          >
             <button
               className="flex items-center justify-center transition-colors drop-shadow-[2px_2px_4px_rgba(121,121,121,0.25)]"
               aria-label={tooltip}
@@ -204,6 +211,7 @@ export function ContextBar({
         icon={resolvedIcon}
         label={tooltip}
         tooltip={tooltip}
+        shortcut={action.shortcut}
         onClick={() => onExecuteAction(action)}
         disabled={!enabled}
         iconClassName={iconClassName}

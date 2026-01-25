@@ -515,13 +515,42 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     let normalized = normalize_file_changes(&worktree_path_str, &changes);
                     let patch_state = state.patches.entry(call_id.clone()).or_default();
 
-                    for entry in patch_state.entries.drain(..) {
-                        if let Some(index) = entry.index {
-                            msg_store.push_patch(ConversationPatch::remove(index));
+                    // Update existing entries in place to keep them in MsgStore
+                    let normalized_len = normalized.len();
+                    let mut iter = normalized.into_iter();
+                    for entry in &mut patch_state.entries {
+                        if let Some((path, file_changes)) = iter.next() {
+                            entry.path = path;
+                            entry.changes = file_changes;
+                            entry.awaiting_approval = true;
+                            if let Some(index) = entry.index {
+                                replace_normalized_entry(
+                                    &msg_store,
+                                    index,
+                                    entry.to_normalized_entry(),
+                                );
+                            } else {
+                                let index = add_normalized_entry(
+                                    &msg_store,
+                                    &entry_index,
+                                    entry.to_normalized_entry(),
+                                );
+                                entry.index = Some(index);
+                            }
                         }
                     }
 
-                    for (path, file_changes) in normalized {
+                    // Remove stale entries if new changes have fewer files
+                    if normalized_len < patch_state.entries.len() {
+                        for entry in patch_state.entries.drain(normalized_len..) {
+                            if let Some(index) = entry.index {
+                                msg_store.push_patch(ConversationPatch::remove(index));
+                            }
+                        }
+                    }
+
+                    // Add new entries if changes have more files
+                    for (path, file_changes) in iter {
                         let mut entry = PatchEntry {
                             index: None,
                             path,
@@ -653,6 +682,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 EventMsg::StreamError(StreamErrorEvent {
                     message,
                     codex_error_info,
+                    ..
                 }) => {
                     add_normalized_entry(
                         &msg_store,
@@ -1007,7 +1037,8 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 }
                 EventMsg::AgentReasoningRawContent(..)
                 | EventMsg::AgentReasoningRawContentDelta(..)
-                | EventMsg::TaskStarted(..)
+                | EventMsg::ThreadRolledBack(..)
+                | EventMsg::TurnStarted(..)
                 | EventMsg::UserMessage(..)
                 | EventMsg::TurnDiff(..)
                 | EventMsg::GetHistoryEntryResponse(..)
@@ -1024,13 +1055,23 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 | EventMsg::ReasoningContentDelta(..)
                 | EventMsg::ReasoningRawContentDelta(..)
                 | EventMsg::ListCustomPromptsResponse(..)
+                | EventMsg::ListSkillsResponse(..)
+                | EventMsg::SkillsUpdateAvailable
                 | EventMsg::TurnAborted(..)
                 | EventMsg::ShutdownComplete
                 | EventMsg::EnteredReviewMode(..)
                 | EventMsg::ExitedReviewMode(..)
                 | EventMsg::TerminalInteraction(..)
                 | EventMsg::ElicitationRequest(..)
-                | EventMsg::TaskComplete(..) => {}
+                | EventMsg::TurnComplete(..)
+                | EventMsg::CollabAgentSpawnBegin(..)
+                | EventMsg::CollabAgentSpawnEnd(..)
+                | EventMsg::CollabAgentInteractionBegin(..)
+                | EventMsg::CollabAgentInteractionEnd(..)
+                | EventMsg::CollabWaitingBegin(..)
+                | EventMsg::CollabWaitingEnd(..)
+                | EventMsg::CollabCloseBegin(..)
+                | EventMsg::CollabCloseEnd(..) => {}
             }
         }
     });

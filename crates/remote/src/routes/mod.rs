@@ -31,9 +31,11 @@ pub(crate) mod organization_members;
 mod organizations;
 mod project_statuses;
 mod projects;
+mod pull_requests;
 mod review;
 mod tags;
 mod tokens;
+mod workspaces;
 
 pub fn router(state: AppState) -> Router {
     let trace_layer = TraceLayer::new_for_http()
@@ -81,7 +83,9 @@ pub fn router(state: AppState) -> Router {
         .merge(issue_followers::router())
         .merge(issue_tags::router())
         .merge(issue_relationships::router())
+        .merge(pull_requests::router())
         .merge(notifications::router())
+        .merge(workspaces::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,

@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { cloneDeep, merge, isEqual } from 'lodash';
+import { cloneDeep, isEqual, merge } from 'lodash';
 import {
-  SpinnerIcon,
+  FolderSimpleIcon,
   SpeakerHighIcon,
-  CaretDownIcon,
+  SpinnerIcon,
 } from '@phosphor-icons/react';
+import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
 import {
+  type BaseCodingAgent,
   DEFAULT_PR_DESCRIPTION_PROMPT,
   EditorType,
+  type ExecutorProfileId,
+  type SendMessageShortcut,
   SoundFile,
   ThemeMode,
   UiLanguage,
-  type SendMessageShortcut,
-  type BaseCodingAgent,
-  type ExecutorProfileId,
 } from 'shared/types';
 import { getModifierKey } from '@/utils/platform';
 import { getLanguageOptions } from '@/i18n/languages';
@@ -34,12 +35,12 @@ import {
 } from '../../primitives/Dropdown';
 import {
   SettingsCard,
-  SettingsField,
   SettingsCheckbox,
-  SettingsSelect,
+  SettingsField,
   SettingsInput,
-  SettingsTextarea,
   SettingsSaveBar,
+  SettingsSelect,
+  SettingsTextarea,
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 
@@ -99,6 +100,17 @@ export function GeneralSettingsSection() {
     },
     [t]
   );
+
+  const handleBrowseWorkspaceDir = async () => {
+    const result = await FolderPickerDialog.show({
+      value: draft?.workspace_dir ?? '',
+      title: t('settings.general.git.workspaceDir.dialogTitle'),
+      description: t('settings.general.git.workspaceDir.dialogDescription'),
+    });
+    if (result) {
+      updateDraft({ workspace_dir: result });
+    }
+  };
 
   useEffect(() => {
     if (!config) return;
@@ -415,19 +427,14 @@ export function GeneralSettingsSection() {
             {hasVariants ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button
-                    className={cn(
-                      'flex items-center justify-between w-full px-base py-half rounded-sm border border-border bg-secondary',
-                      'text-base text-normal hover:bg-secondary/80 focus:outline-none focus:ring-1 focus:ring-brand'
-                    )}
-                  >
-                    <span className="truncate">
-                      {draft?.executor_profile?.variant
+                  <DropdownMenuTriggerButton
+                    label={
+                      draft?.executor_profile?.variant
                         ? toPrettyCase(draft.executor_profile.variant)
-                        : t('settings.general.taskExecution.defaultLabel')}
-                    </span>
-                    <CaretDownIcon className="size-icon-xs ml-2 shrink-0" />
-                  </button>
+                        : t('settings.general.taskExecution.defaultLabel')
+                    }
+                    className="w-full justify-between"
+                  />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
                   {Object.keys(selectedAgentProfile).map((variantLabel) => (
@@ -504,6 +511,30 @@ export function GeneralSettingsSection() {
             placeholder={t('settings.general.git.branchPrefix.placeholder')}
             error={!!branchPrefixError}
           />
+        </SettingsField>
+
+        <SettingsField
+          label={t('settings.general.git.workspaceDir.label')}
+          description={t('settings.general.git.workspaceDir.helper')}
+        >
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <SettingsInput
+                value={draft?.workspace_dir ?? ''}
+                onChange={(value) =>
+                  updateDraft({ workspace_dir: value || null })
+                }
+                placeholder={t('settings.general.git.workspaceDir.placeholder')}
+              />
+            </div>
+            <PrimaryButton
+              variant="tertiary"
+              onClick={handleBrowseWorkspaceDir}
+            >
+              <FolderSimpleIcon className="size-icon-sm" weight="bold" />
+              {t('settings.general.git.workspaceDir.browse')}
+            </PrimaryButton>
+          </div>
         </SettingsField>
       </SettingsCard>
 

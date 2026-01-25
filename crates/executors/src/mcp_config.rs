@@ -1,15 +1,26 @@
 //! Utilities for reading and writing external agent config files (not the server's own config).
 //!
-//! These helpers abstract over JSON vs TOML formats used by different agents.
+//! These helpers abstract over JSON vs TOML vs JSONC formats used by different agents.
+//! JSONC (JSON with Comments) is supported with comment preservation using jsonc-parser's CST.
 
-use std::{collections::HashMap, sync::LazyLock};
+use std::{collections::HashMap, path::Path, sync::LazyLock};
 
+use jsonc_parser::{
+    ParseOptions,
+    cst::{CstObject, CstRootNode},
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use tokio::fs;
 use ts_rs::TS;
 
 use crate::executors::{CodingAgent, ExecutorError};
+
+fn is_jsonc_file(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("jsonc"))
+}
 
 static DEFAULT_MCP_JSON: &str = include_str!("../default_mcp.json");
 pub static PRECONFIGURED_MCP_SERVERS: LazyLock<Value> = LazyLock::new(|| {
@@ -45,20 +56,27 @@ impl McpConfig {
     }
 }
 
-/// Read an agent's external config file (JSON or TOML) and normalize it to serde_json::Value.
 pub async fn read_agent_config(
     config_path: &std::path::Path,
     mcp_config: &McpConfig,
 ) -> Result<Value, ExecutorError> {
     if let Ok(file_content) = fs::read_to_string(config_path).await {
         if mcp_config.is_toml_config {
-            // Parse TOML then convert to JSON Value
             if file_content.trim().is_empty() {
                 return Ok(serde_json::json!({}));
             }
             let toml_val: toml::Value = toml::from_str(&file_content)?;
             let json_string = serde_json::to_string(&toml_val)?;
             Ok(serde_json::from_str(&json_string)?)
+        } else if is_jsonc_file(config_path) {
+            if file_content.trim().is_empty() {
+                return Ok(serde_json::json!({}));
+            }
+            match jsonc_parser::parse_to_serde_value(&file_content, &ParseOptions::default()) {
+                Ok(Some(value)) => Ok(value),
+                Ok(None) => Ok(serde_json::json!({})),
+                Err(_) => Ok(serde_json::from_str(&file_content)?),
+            }
         } else {
             Ok(serde_json::from_str(&file_content)?)
         }
@@ -67,22 +85,108 @@ pub async fn read_agent_config(
     }
 }
 
-/// Write an agent's external config (as serde_json::Value) back to disk in the agent's format (JSON or TOML).
 pub async fn write_agent_config(
     config_path: &std::path::Path,
     mcp_config: &McpConfig,
     config: &Value,
 ) -> Result<(), ExecutorError> {
     if mcp_config.is_toml_config {
-        // Convert JSON Value back to TOML
         let toml_value: toml::Value = serde_json::from_str(&serde_json::to_string(config)?)?;
         let toml_content = toml::to_string_pretty(&toml_value)?;
         fs::write(config_path, toml_content).await?;
+    } else if is_jsonc_file(config_path) {
+        write_jsonc_preserving_comments(config_path, config).await?;
     } else {
         let json_content = serde_json::to_string_pretty(config)?;
         fs::write(config_path, json_content).await?;
     }
     Ok(())
+}
+
+async fn write_jsonc_preserving_comments(
+    config_path: &std::path::Path,
+    new_config: &Value,
+) -> Result<(), ExecutorError> {
+    let current_content = fs::read_to_string(config_path)
+        .await
+        .unwrap_or_else(|_| "{}".to_string());
+
+    let output = update_jsonc_content(&current_content, new_config);
+
+    fs::write(config_path, output).await?;
+    Ok(())
+}
+
+fn update_jsonc_content(current_content: &str, new_config: &Value) -> String {
+    let root = CstRootNode::parse(current_content, &ParseOptions::default())
+        .unwrap_or_else(|_| CstRootNode::parse("{}", &ParseOptions::default()).unwrap());
+
+    let root_obj = root.object_value_or_set();
+
+    if let Some(obj) = new_config.as_object() {
+        deep_merge_cst_object(&root_obj, obj);
+    }
+
+    root.to_string()
+}
+
+/// Recursively merges a serde_json Map into an existing CST object.
+/// This preserves comments by navigating into existing nested objects rather than replacing them.
+fn deep_merge_cst_object(cst_obj: &CstObject, new_obj: &Map<String, Value>) {
+    let existing_keys: Vec<String> = cst_obj
+        .properties()
+        .iter()
+        .filter_map(|p| p.name().and_then(|n| n.decoded_value().ok()))
+        .collect();
+
+    for key in &existing_keys {
+        if !new_obj.contains_key(key)
+            && let Some(prop) = cst_obj.get(key)
+        {
+            prop.remove();
+        }
+    }
+
+    for (key, new_value) in new_obj {
+        if let Some(prop) = cst_obj.get(key) {
+            if let (Some(existing_obj), Some(new_obj_map)) =
+                (prop.object_value(), new_value.as_object())
+            {
+                deep_merge_cst_object(&existing_obj, new_obj_map);
+            } else {
+                prop.set_value(serde_json_to_cst_input(new_value));
+            }
+        } else {
+            cst_obj.append(key, serde_json_to_cst_input(new_value));
+        }
+    }
+}
+
+fn serde_json_to_cst_input(value: &Value) -> jsonc_parser::cst::CstInputValue {
+    use jsonc_parser::cst::CstInputValue;
+
+    match value {
+        Value::Null => CstInputValue::Null,
+        Value::Bool(b) => CstInputValue::Bool(*b),
+        Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                CstInputValue::Number(i.to_string())
+            } else if let Some(f) = n.as_f64() {
+                CstInputValue::Number(f.to_string())
+            } else {
+                CstInputValue::Number(n.to_string())
+            }
+        }
+        Value::String(s) => CstInputValue::String(s.clone()),
+        Value::Array(arr) => {
+            CstInputValue::Array(arr.iter().map(serde_json_to_cst_input).collect())
+        }
+        Value::Object(obj) => CstInputValue::Object(
+            obj.iter()
+                .map(|(k, v)| (k.clone(), serde_json_to_cst_input(v)))
+                .collect(),
+        ),
+    }
 }
 
 type ServerMap = Map<String, Value>;

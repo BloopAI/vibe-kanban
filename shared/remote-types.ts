@@ -10,13 +10,13 @@ export type Notification = { id: string, organization_id: string, user_id: strin
 
 export type NotificationType = "IssueCommentAdded" | "IssueStatusChanged" | "IssueAssigneeChanged" | "IssueDeleted";
 
-export type Workspace = { id: string, project_id: string, owner_user_id: string, issue_id: string | null, local_workspace_id: string, archived: boolean, files_changed: number | null, lines_added: number | null, lines_removed: number | null, created_at: string, updated_at: string, };
+export type Workspace = { id: string, project_id: string, owner_user_id: string, issue_id: string | null, local_workspace_id: string | null, archived: boolean, files_changed: number | null, lines_added: number | null, lines_removed: number | null, created_at: string, updated_at: string, };
 
-export type ProjectStatus = { id: string, project_id: string, name: string, color: string, sort_order: number, created_at: string, };
+export type ProjectStatus = { id: string, project_id: string, name: string, color: string, sort_order: number, hidden: boolean, created_at: string, };
 
 export type Tag = { id: string, project_id: string, name: string, color: string, };
 
-export type Issue = { id: string, project_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, extension_metadata: JsonValue, created_at: string, updated_at: string, };
+export type Issue = { id: string, project_id: string, issue_number: number, simple_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, extension_metadata: JsonValue, created_at: string, updated_at: string, };
 
 export type IssueAssignee = { id: string, issue_id: string, user_id: string, assigned_at: string, };
 
@@ -34,9 +34,17 @@ export type IssueCommentReaction = { id: string, comment_id: string, user_id: st
 
 export type IssuePriority = "urgent" | "high" | "medium" | "low";
 
-export type WorkspacePrStatus = "open" | "merged" | "closed";
+export type PullRequestStatus = "open" | "merged" | "closed";
+
+export type PullRequest = { id: string, url: string, number: number, status: PullRequestStatus, merged_at: string | null, merge_commit_sha: string | null, target_branch_name: string, issue_id: string, workspace_id: string | null, created_at: string, updated_at: string, };
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
+
+export type User = { id: string, email: string, first_name: string | null, last_name: string | null, username: string | null, created_at: string, updated_at: string, };
+
+export enum MemberRole { ADMIN = "ADMIN", MEMBER = "MEMBER" }
+
+export type OrganizationMember = { organization_id: string, user_id: string, role: MemberRole, joined_at: string, last_seen_at: string | null, };
 
 export type CreateProjectRequest = { 
 /**
@@ -70,9 +78,9 @@ export type CreateProjectStatusRequest = {
  * Optional client-generated ID. If not provided, server generates one.
  * Using client-generated IDs enables stable optimistic updates.
  */
-id?: string, project_id: string, name: string, color: string, sort_order: number, };
+id?: string, project_id: string, name: string, color: string, sort_order: number, hidden: boolean, };
 
-export type UpdateProjectStatusRequest = { name: string | null, color: string | null, sort_order: number | null, };
+export type UpdateProjectStatusRequest = { name: string | null, color: string | null, sort_order: number | null, hidden: boolean | null, };
 
 export type CreateIssueRequest = { 
 /**
@@ -167,6 +175,18 @@ export const NOTIFICATIONS_SHAPE = defineShape<Notification>(
   '/v1/shape/notifications'
 );
 
+export const ORGANIZATION_MEMBER_METADATA_SHAPE = defineShape<OrganizationMember>(
+  'organization_member_metadata',
+  ['organization_id'] as const,
+  '/v1/shape/organization_members'
+);
+
+export const USERS_SHAPE = defineShape<User>(
+  'users',
+  ['organization_id'] as const,
+  '/v1/shape/users'
+);
+
 export const TAGS_SHAPE = defineShape<Tag>(
   'tags',
   ['project_id'] as const,
@@ -213,6 +233,12 @@ export const ISSUE_RELATIONSHIPS_SHAPE = defineShape<IssueRelationship>(
   'issue_relationships',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/issue_relationships'
+);
+
+export const PULL_REQUESTS_SHAPE = defineShape<PullRequest>(
+  'pull_requests',
+  ['project_id'] as const,
+  '/v1/shape/project/{project_id}/pull_requests'
 );
 
 export const ISSUE_COMMENTS_SHAPE = defineShape<IssueComment>(
@@ -265,6 +291,24 @@ export const NOTIFICATION_ENTITY: EntityDefinition<Notification, CreateNotificat
   shapeScope: 'Organization',
   shape: NOTIFICATIONS_SHAPE,
   mutations: { url: '/v1/notifications' } as EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest>['mutations'],
+};
+
+export const ORGANIZATION_MEMBER_ENTITY: EntityDefinition<OrganizationMember> = {
+  name: 'OrganizationMember',
+  table: 'organization_member_metadata',
+  mutationScope: null,
+  shapeScope: null,
+  shape: ORGANIZATION_MEMBER_METADATA_SHAPE,
+  mutations: null,
+};
+
+export const USER_ENTITY: EntityDefinition<User> = {
+  name: 'User',
+  table: 'users',
+  mutationScope: null,
+  shapeScope: null,
+  shape: USERS_SHAPE,
+  mutations: null,
 };
 
 export const TAG_ENTITY: EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest> = {
@@ -337,6 +381,15 @@ export const ISSUE_RELATIONSHIP_ENTITY: EntityDefinition<IssueRelationship, Crea
   shapeScope: 'Project',
   shape: ISSUE_RELATIONSHIPS_SHAPE,
   mutations: { url: '/v1/issue_relationships' } as EntityDefinition<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest>['mutations'],
+};
+
+export const PULL_REQUEST_ENTITY: EntityDefinition<PullRequest> = {
+  name: 'PullRequest',
+  table: 'pull_requests',
+  mutationScope: null,
+  shapeScope: null,
+  shape: PULL_REQUESTS_SHAPE,
+  mutations: null,
 };
 
 export const ISSUE_COMMENT_ENTITY: EntityDefinition<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> = {

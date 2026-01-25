@@ -633,7 +633,8 @@
       "requestChanges": "Solicitar cambios",
       "approve": "Aprobar",
       "clearReviewComments": "Limpiar comentarios de revisión",
-      "edit": "Editar mensaje"
+      "edit": "Editar mensaje",
+      "scrollToPreviousMessage": "Go to previous message"
     },
     "approval": {
       "conflictWarning": "Los archivos en conflicto necesitan resolución manual",

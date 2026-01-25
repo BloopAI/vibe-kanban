@@ -76,7 +76,12 @@ pub struct AbortConflictsRequest {
 #[serde(tag = "type", rename_all = "snake_case")]
 #[ts(tag = "type", rename_all = "snake_case")]
 pub enum GitOperationError {
-    MergeConflicts { message: String, op: ConflictOp },
+    MergeConflicts {
+        message: String,
+        op: ConflictOp,
+        conflicted_files: Vec<String>,
+        target_branch: String,
+    },
     RebaseInProgress,
 }
 
@@ -429,6 +434,17 @@ pub async fn merge_task_attempt(
         .await?
         .ok_or(RepoError::NotFound)?;
 
+    // Prevent direct merge into remote branches - users must create a PR instead
+    let target_branch_type = deployment
+        .git()
+        .find_branch_type(&repo.path, &workspace_repo.target_branch)?;
+    if target_branch_type == BranchType::Remote {
+        return Err(ApiError::BadRequest(
+            "Cannot merge directly into a remote branch. Please create a pull request instead."
+                .to_string(),
+        ));
+    }
+
     let container_ref = deployment
         .container()
         .ensure_container_exists(&workspace)
@@ -683,6 +699,8 @@ pub struct BranchStatus {
     pub conflict_op: Option<ConflictOp>,
     /// List of files currently in conflicted (unmerged) state
     pub conflicted_files: Vec<String>,
+    /// True if the target branch is a remote branch (merging not allowed, must use PR)
+    pub is_target_remote: bool,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
@@ -831,6 +849,7 @@ pub async fn get_task_attempt_branch_status(
                 is_rebase_in_progress,
                 conflict_op,
                 conflicted_files,
+                is_target_remote: target_branch_type == BranchType::Remote,
             },
         });
     }
@@ -1131,15 +1150,19 @@ pub async fn rebase_task_attempt(
     if let Err(e) = result {
         use services::services::git::GitServiceError;
         return match e {
-            GitServiceError::MergeConflicts(msg) => Ok(ResponseJson(ApiResponse::<
-                (),
-                GitOperationError,
-            >::error_with_data(
-                GitOperationError::MergeConflicts {
-                    message: msg,
-                    op: ConflictOp::Rebase,
-                },
-            ))),
+            GitServiceError::MergeConflicts {
+                message,
+                conflicted_files,
+            } => Ok(ResponseJson(
+                ApiResponse::<(), GitOperationError>::error_with_data(
+                    GitOperationError::MergeConflicts {
+                        message,
+                        op: ConflictOp::Rebase,
+                        conflicted_files,
+                        target_branch: new_base_branch.clone(),
+                    },
+                ),
+            )),
             GitServiceError::RebaseInProgress => Ok(ResponseJson(ApiResponse::<
                 (),
                 GitOperationError,
@@ -1406,9 +1429,7 @@ pub async fn run_setup_script(
         None => {
             Session::create(
                 pool,
-                &CreateSession {
-                    executor: Some("setup-script".to_string()),
-                },
+                &CreateSession { executor: None },
                 Uuid::new_v4(),
                 workspace.id,
             )
@@ -1487,9 +1508,7 @@ pub async fn run_cleanup_script(
         None => {
             Session::create(
                 pool,
-                &CreateSession {
-                    executor: Some("cleanup-script".to_string()),
-                },
+                &CreateSession { executor: None },
                 Uuid::new_v4(),
                 workspace.id,
             )

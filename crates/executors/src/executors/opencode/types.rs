@@ -12,8 +12,15 @@ pub enum OpencodeExecutorEvent {
     SessionStart {
         session_id: String,
     },
+    SlashCommandResult {
+        message: String,
+    },
     SdkEvent {
         event: serde_json::Value,
+    },
+    TokenUsage {
+        total_tokens: u32,
+        model_context_window: u32,
     },
     ApprovalResponse {
         tool_call_id: String,
@@ -115,6 +122,33 @@ pub(super) struct MessageInfo {
     pub(super) provider_id: Option<String>,
     #[serde(rename = "modelID", default)]
     pub(super) model_id: Option<String>,
+    #[serde(default)]
+    pub(super) tokens: Option<MessageTokens>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct MessageTokens {
+    #[serde(default, deserialize_with = "deserialize_f64_as_u32")]
+    pub(super) input: u32,
+    #[serde(default, deserialize_with = "deserialize_f64_as_u32")]
+    pub(super) output: u32,
+    pub(super) cache: Option<MessageTokensCache>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct MessageTokensCache {
+    #[serde(default, deserialize_with = "deserialize_f64_as_u32")]
+    pub(super) read: u32,
+}
+
+fn deserialize_f64_as_u32<'de, D>(deserializer: D) -> Result<u32, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let v = Option::<f64>::deserialize(deserializer)?;
+    Ok(v.filter(|f| f.is_finite() && *f >= 0.0)
+        .map(|f| f.round() as u32)
+        .unwrap_or(0))
 }
 
 impl MessageInfo {
@@ -307,4 +341,30 @@ impl<'de> Deserialize<'de> for SdkError {
         let raw = Value::deserialize(deserializer)?;
         Ok(Self { raw })
     }
+}
+
+// Provider API types (for /provider endpoint - model context windows)
+
+#[derive(Debug, Deserialize)]
+pub(super) struct ProviderListResponse {
+    pub(super) all: Vec<ProviderInfo>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct ProviderInfo {
+    pub(super) id: String,
+    #[serde(default)]
+    pub(super) models: std::collections::HashMap<String, ProviderModelInfo>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub(super) struct ProviderModelInfo {
+    #[serde(default)]
+    pub(super) limit: ProviderModelLimit,
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub(super) struct ProviderModelLimit {
+    #[serde(default, deserialize_with = "deserialize_f64_as_u32")]
+    pub(super) context: u32,
 }

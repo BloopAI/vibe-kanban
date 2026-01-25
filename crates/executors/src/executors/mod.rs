@@ -3,6 +3,7 @@ use std::{path::Path, sync::Arc};
 use async_trait::async_trait;
 use command_group::AsyncGroupChild;
 use enum_dispatch::enum_dispatch;
+use futures::stream::BoxStream;
 use futures_io::Error as FuturesIoError;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -23,6 +24,7 @@ use crate::{
         amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::CursorAgent,
         droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
     },
+    logs::utils::patch,
     mcp_config::McpConfig,
 };
 
@@ -38,6 +40,15 @@ pub mod opencode;
 #[cfg(feature = "qa-mode")]
 pub mod qa_mock;
 pub mod qwen;
+pub mod utils;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+pub struct SlashCommandDescription {
+    /// Command name without the leading slash, e.g. `help` for `/help`.
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -202,12 +213,22 @@ impl AvailabilityInfo {
 pub trait StandardCodingAgentExecutor {
     fn use_approvals(&mut self, _approvals: Arc<dyn ExecutorApprovalService>) {}
 
+    async fn available_slash_commands(
+        &self,
+        _workdir: &Path,
+    ) -> Result<BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::slash_commands(Vec::new(), false, None)
+        })))
+    }
+
     async fn spawn(
         &self,
         current_dir: &Path,
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError>;
+
     async fn spawn_follow_up(
         &self,
         current_dir: &Path,

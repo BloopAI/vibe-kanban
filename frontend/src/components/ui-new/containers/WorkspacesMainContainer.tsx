@@ -1,9 +1,22 @@
-import { useRef, useMemo } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+} from 'react';
 import type { Workspace, Session } from 'shared/types';
 import { createWorkspaceWithSession } from '@/types/attempt';
-import { WorkspacesMain } from '@/components/ui-new/views/WorkspacesMain';
+import {
+  WorkspacesMain,
+  type ConversationListHandle,
+} from '@/components/ui-new/views/WorkspacesMain';
 import { useTask } from '@/hooks/useTask';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+
+export interface WorkspacesMainContainerHandle {
+  scrollToBottom: () => void;
+}
 
 interface WorkspacesMainContainerProps {
   selectedWorkspace: Workspace | null;
@@ -17,17 +30,24 @@ interface WorkspacesMainContainerProps {
   onStartNewSession: () => void;
 }
 
-export function WorkspacesMainContainer({
-  selectedWorkspace,
-  selectedSession,
-  sessions,
-  onSelectSession,
-  isLoading,
-  isNewSessionMode,
-  onStartNewSession,
-}: WorkspacesMainContainerProps) {
+export const WorkspacesMainContainer = forwardRef<
+  WorkspacesMainContainerHandle,
+  WorkspacesMainContainerProps
+>(function WorkspacesMainContainer(
+  {
+    selectedWorkspace,
+    selectedSession,
+    sessions,
+    onSelectSession,
+    isLoading,
+    isNewSessionMode,
+    onStartNewSession,
+  },
+  ref
+) {
   const { diffStats } = useWorkspaceContext();
   const containerRef = useRef<HTMLElement>(null);
+  const conversationListRef = useRef<ConversationListHandle>(null);
 
   // Fetch task to get project_id for file search
   const { data: task } = useTask(selectedWorkspace?.task_id, {
@@ -40,8 +60,27 @@ export function WorkspacesMainContainer({
     return createWorkspaceWithSession(selectedWorkspace, selectedSession);
   }, [selectedWorkspace, selectedSession]);
 
+  const handleScrollToPreviousMessage = useCallback(() => {
+    conversationListRef.current?.scrollToPreviousUserMessage();
+  }, []);
+
+  const handleScrollToBottom = useCallback(() => {
+    conversationListRef.current?.scrollToBottom();
+  }, []);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      scrollToBottom: () => {
+        conversationListRef.current?.scrollToBottom();
+      },
+    }),
+    []
+  );
+
   return (
     <WorkspacesMain
+      conversationListRef={conversationListRef}
       workspaceWithSession={workspaceWithSession}
       sessions={sessions}
       onSelectSession={onSelectSession}
@@ -55,6 +94,8 @@ export function WorkspacesMainContainer({
         linesAdded: diffStats.lines_added,
         linesRemoved: diffStats.lines_removed,
       }}
+      onScrollToPreviousMessage={handleScrollToPreviousMessage}
+      onScrollToBottom={handleScrollToBottom}
     />
   );
-}
+});

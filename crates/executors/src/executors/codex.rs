@@ -3,6 +3,7 @@ pub mod jsonrpc;
 pub mod normalize_logs;
 pub mod review;
 pub mod session;
+pub mod slash_commands;
 use std::{
     collections::HashMap,
     env,
@@ -40,8 +41,8 @@ use workspace_utils::msg_store::MsgStore;
 
 use self::{
     client::{AppServerClient, LogWriter},
-    jsonrpc::JsonRpcPeer,
-    normalize_logs::normalize_logs,
+    jsonrpc::{ExitSignalSender, JsonRpcPeer},
+    normalize_logs::{Error, normalize_logs},
     session::SessionHandler,
 };
 use crate::{
@@ -49,10 +50,10 @@ use crate::{
     command::{CmdOverrides, CommandBuildError, CommandBuilder, CommandParts, apply_overrides},
     env::ExecutionEnv,
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult, SpawnedChild,
-        StandardCodingAgentExecutor,
-        codex::{jsonrpc::ExitSignalSender, normalize_logs::Error},
+        AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult, SlashCommandDescription,
+        SpawnedChild, StandardCodingAgentExecutor,
     },
+    logs::utils::patch,
     stdout_dup::create_stdout_pipe_writer,
 };
 
@@ -168,18 +169,44 @@ impl StandardCodingAgentExecutor for Codex {
         self.approvals = Some(approvals);
     }
 
+    async fn available_slash_commands(
+        &self,
+        _workdir: &Path,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let commands = vec![
+            SlashCommandDescription {
+                name: "compact".to_string(),
+                description: Some(
+                    "summarize conversation to prevent hitting the context limit".to_string(),
+                ),
+            },
+            SlashCommandDescription {
+                name: "init".to_string(),
+                description: Some(
+                    "create an AGENTS.md file with instructions for Codex".to_string(),
+                ),
+            },
+            SlashCommandDescription {
+                name: "status".to_string(),
+                description: Some("show current session configuration and token usage".to_string()),
+            },
+            SlashCommandDescription {
+                name: "mcp".to_string(),
+                description: Some("list configured MCP tools".to_string()),
+            },
+        ];
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::slash_commands(commands, false, None)
+        })))
+    }
+
     async fn spawn(
         &self,
         current_dir: &Path,
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let command_parts = self.build_command_builder()?.build_initial()?;
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
-        let action = CodexSessionAction::Chat {
-            prompt: combined_prompt,
-        };
-        self.spawn_inner(current_dir, command_parts, action, None, env)
+        self.spawn_slash_command(current_dir, prompt, None, env)
             .await
     }
 
@@ -190,12 +217,7 @@ impl StandardCodingAgentExecutor for Codex {
         session_id: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let command_parts = self.build_command_builder()?.build_follow_up(&[])?;
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
-        let action = CodexSessionAction::Chat {
-            prompt: combined_prompt,
-        };
-        self.spawn_inner(current_dir, command_parts, action, Some(session_id), env)
+        self.spawn_slash_command(current_dir, prompt, Some(session_id), env)
             .await
     }
 
@@ -345,134 +367,33 @@ impl Codex {
         resume_session: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let (program_path, args) = command_parts.into_resolved().await?;
-
-        let mut process = Command::new(program_path);
-        process
-            .kill_on_drop(true)
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .current_dir(current_dir)
-            .args(&args)
-            .env("NODE_NO_WARNINGS", "1")
-            .env("NO_COLOR", "1")
-            .env("RUST_LOG", "error");
-
-        env.clone()
-            .with_profile(&self.cmd)
-            .apply_to_command(&mut process);
-
-        let mut child = process.group_spawn()?;
-
-        let child_stdout = child.inner().stdout.take().ok_or_else(|| {
-            ExecutorError::Io(std::io::Error::other("Codex app server missing stdout"))
-        })?;
-        let child_stdin = child.inner().stdin.take().ok_or_else(|| {
-            ExecutorError::Io(std::io::Error::other("Codex app server missing stdin"))
-        })?;
-
-        let new_stdout = create_stdout_pipe_writer(&mut child)?;
-        let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
-
         let params = self.build_new_conversation_params(current_dir);
         let resume_session = resume_session.map(|s| s.to_string());
-        let auto_approve = matches!(
-            (&self.sandbox, &self.ask_for_approval),
-            (Some(SandboxMode::DangerFullAccess), None)
-        );
-        let approvals = self.approvals.clone();
-        tokio::spawn(async move {
-            let exit_signal_tx = ExitSignalSender::new(exit_signal_tx);
-            let log_writer = LogWriter::new(new_stdout);
-            let launch_result = match action {
-                CodexSessionAction::Chat { prompt } => {
-                    Self::launch_codex_app_server(
-                        params,
-                        resume_session,
-                        prompt,
-                        child_stdout,
-                        child_stdin,
-                        log_writer.clone(),
-                        exit_signal_tx.clone(),
-                        approvals,
-                        auto_approve,
-                    )
-                    .await
-                }
-                CodexSessionAction::Review { target } => {
-                    review::launch_codex_review(
-                        params,
-                        resume_session,
-                        target,
-                        child_stdout,
-                        child_stdin,
-                        log_writer.clone(),
-                        exit_signal_tx.clone(),
-                        approvals,
-                        auto_approve,
-                    )
-                    .await
-                }
-            };
-            if let Err(err) = launch_result {
-                match &err {
-                    ExecutorError::Io(io_err)
-                        if io_err.kind() == std::io::ErrorKind::BrokenPipe =>
-                    {
-                        // Broken pipe likely means the parent process exited, so we can ignore it
-                        return;
-                    }
-                    ExecutorError::AuthRequired(message) => {
-                        log_writer
-                            .log_raw(&Error::auth_required(message.clone()).raw())
-                            .await
-                            .ok();
-                        // Send failure signal so the process is marked as failed
-                        exit_signal_tx
-                            .send_exit_signal(ExecutorExitResult::Failure)
-                            .await;
-                        return;
-                    }
-                    _ => {
-                        tracing::error!("Codex spawn error: {}", err);
-                        log_writer
-                            .log_raw(&Error::launch_error(err.to_string()).raw())
-                            .await
-                            .ok();
-                    }
-                }
-                // For other errors, also send failure signal
-                exit_signal_tx
-                    .send_exit_signal(ExecutorExitResult::Failure)
-                    .await;
-            }
-        });
 
-        Ok(SpawnedChild {
-            child,
-            exit_signal: Some(exit_signal_rx),
-            interrupt_sender: None,
-        })
+        self.spawn_app_server(
+            current_dir,
+            command_parts,
+            env,
+            move |client, _| async move {
+                match action {
+                    CodexSessionAction::Chat { prompt } => {
+                        Self::launch_codex_agent(params, resume_session, prompt, client).await
+                    }
+                    CodexSessionAction::Review { target } => {
+                        review::launch_codex_review(params, resume_session, target, client).await
+                    }
+                }
+            },
+        )
+        .await
     }
 
-    #[allow(clippy::too_many_arguments)]
-    async fn launch_codex_app_server(
+    async fn launch_codex_agent(
         conversation_params: NewConversationParams,
         resume_session: Option<String>,
         combined_prompt: String,
-        child_stdout: tokio::process::ChildStdout,
-        child_stdin: tokio::process::ChildStdin,
-        log_writer: LogWriter,
-        exit_signal_tx: ExitSignalSender,
-        approvals: Option<Arc<dyn ExecutorApprovalService>>,
-        auto_approve: bool,
+        client: Arc<AppServerClient>,
     ) -> Result<(), ExecutorError> {
-        let client = AppServerClient::new(log_writer, approvals, auto_approve);
-        let rpc_peer =
-            JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx);
-        client.connect(rpc_peer);
-        client.initialize().await?;
         let auth_status = client.get_auth_status().await?;
         if auth_status.requires_openai_auth.unwrap_or(true) && auth_status.auth_method.is_none() {
             return Err(ExecutorError::AuthRequired(
@@ -512,5 +433,123 @@ impl Codex {
             }
         }
         Ok(())
+    }
+
+    /// Common boilerplate for spawning a Codex app server process
+    /// Handles process spawning, stdout/stderr piping, exit signal handling, client initialization, and error logging.
+    /// Delegates the actual Codex session logic to the provided `task` closure.
+    async fn spawn_app_server<F, Fut>(
+        &self,
+        current_dir: &Path,
+        command_parts: CommandParts,
+        env: &ExecutionEnv,
+        task: F,
+    ) -> Result<SpawnedChild, ExecutorError>
+    where
+        F: FnOnce(Arc<AppServerClient>, ExitSignalSender) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = Result<(), ExecutorError>> + Send + 'static,
+    {
+        let (program_path, args) = command_parts.into_resolved().await?;
+
+        let mut process = Command::new(program_path);
+        process
+            .kill_on_drop(true)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .current_dir(current_dir)
+            .env("NPM_CONFIG_LOGLEVEL", "error")
+            .env("NODE_NO_WARNINGS", "1")
+            .env("NO_COLOR", "1")
+            .env("RUST_LOG", "error")
+            .args(&args);
+
+        env.clone()
+            .with_profile(&self.cmd)
+            .apply_to_command(&mut process);
+
+        let mut child = process.group_spawn()?;
+
+        let child_stdout = child.inner().stdout.take().ok_or_else(|| {
+            ExecutorError::Io(std::io::Error::other("Codex app server missing stdout"))
+        })?;
+        let child_stdin = child.inner().stdin.take().ok_or_else(|| {
+            ExecutorError::Io(std::io::Error::other("Codex app server missing stdin"))
+        })?;
+
+        let new_stdout = create_stdout_pipe_writer(&mut child)?;
+        let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
+
+        let auto_approve = matches!(
+            (&self.sandbox, &self.ask_for_approval),
+            (Some(SandboxMode::DangerFullAccess), None)
+        );
+        let approvals = self.approvals.clone();
+        let repo_context = env.repo_context.clone();
+        let commit_reminder = env.commit_reminder;
+
+        tokio::spawn(async move {
+            let exit_signal_tx = ExitSignalSender::new(exit_signal_tx);
+            let log_writer = LogWriter::new(new_stdout);
+
+            // Initialize the AppServerClient
+            let client = AppServerClient::new(
+                log_writer.clone(),
+                approvals,
+                auto_approve,
+                repo_context,
+                commit_reminder,
+            );
+            let rpc_peer = JsonRpcPeer::spawn(
+                child_stdin,
+                child_stdout,
+                client.clone(),
+                exit_signal_tx.clone(),
+            );
+            client.connect(rpc_peer);
+
+            let result = async {
+                client.initialize().await?;
+                task(client, exit_signal_tx.clone()).await
+            }
+            .await;
+
+            if let Err(err) = result {
+                match &err {
+                    ExecutorError::Io(io_err)
+                        if io_err.kind() == std::io::ErrorKind::BrokenPipe =>
+                    {
+                        // Broken pipe likely means the parent process exited, so we can ignore it
+                        return;
+                    }
+                    ExecutorError::AuthRequired(message) => {
+                        log_writer
+                            .log_raw(&Error::auth_required(message.clone()).raw())
+                            .await
+                            .ok();
+                        exit_signal_tx
+                            .send_exit_signal(ExecutorExitResult::Failure)
+                            .await;
+                        return;
+                    }
+                    _ => {
+                        tracing::error!("Codex spawn error: {}", err);
+                        log_writer
+                            .log_raw(&Error::launch_error(err.to_string()).raw())
+                            .await
+                            .ok();
+                    }
+                }
+                exit_signal_tx
+                    .send_exit_signal(ExecutorExitResult::Failure)
+                    .await;
+            }
+        });
+
+        Ok(SpawnedChild {
+            child,
+            exit_signal: Some(exit_signal_rx),
+            interrupt_sender: None,
+        })
     }
 }

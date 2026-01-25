@@ -1,14 +1,17 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
-import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import { ChangesViewProvider } from '@/contexts/ChangesViewContext';
+import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import { WorkspacesSidebarContainer } from '@/components/ui-new/containers/WorkspacesSidebarContainer';
 import { LogsContentContainer } from '@/components/ui-new/containers/LogsContentContainer';
-import { WorkspacesMainContainer } from '@/components/ui-new/containers/WorkspacesMainContainer';
+import {
+  WorkspacesMainContainer,
+  type WorkspacesMainContainerHandle,
+} from '@/components/ui-new/containers/WorkspacesMainContainer';
 import { RightSidebar } from '@/components/ui-new/containers/RightSidebar';
 import { ChangesPanelContainer } from '@/components/ui-new/containers/ChangesPanelContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
@@ -43,6 +46,12 @@ export function WorkspacesLayout() {
     isNewSessionMode,
     startNewSession,
   } = useWorkspaceContext();
+
+  const mainContainerRef = useRef<WorkspacesMainContainerHandle>(null);
+
+  const handleScrollToBottom = useCallback(() => {
+    mainContainerRef.current?.scrollToBottom();
+  }, []);
 
   // Use workspace-specific panel state (pass undefined when in create mode)
   const {
@@ -125,6 +134,7 @@ export function WorkspacesLayout() {
                     <CreateChatBoxContainer />
                   ) : (
                     <WorkspacesMainContainer
+                      ref={mainContainerRef}
                       selectedWorkspace={selectedWorkspace ?? null}
                       selectedSession={selectedSession}
                       sessions={sessions}
@@ -193,7 +203,9 @@ export function WorkspacesLayout() {
       <div className="flex flex-1 min-h-0">
         {isLeftSidebarVisible && (
           <div className="w-[300px] shrink-0 h-full overflow-hidden">
-            <WorkspacesSidebarContainer />
+            <WorkspacesSidebarContainer
+              onScrollToBottom={handleScrollToBottom}
+            />
           </div>
         )}
 

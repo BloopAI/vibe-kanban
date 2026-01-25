@@ -23,11 +23,12 @@ pub enum TagError {
 }
 
 /// Default tags that are created for each new project
+/// Colors are in HSL format: "H S% L%"
 pub const DEFAULT_TAGS: &[(&str, &str)] = &[
-    ("bug", "#d73a4a"),
-    ("feature", "#0e8a16"),
-    ("documentation", "#0075ca"),
-    ("enhancement", "#a2eeef"),
+    ("bug", "355 65% 53%"),
+    ("feature", "124 82% 30%"),
+    ("documentation", "205 100% 40%"),
+    ("enhancement", "181 72% 78%"),
 ];
 
 pub struct TagRepository;

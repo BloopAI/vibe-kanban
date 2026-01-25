@@ -13,13 +13,23 @@ export function CreateModeReposSectionContainer() {
   const repoIds = useMemo(() => repos.map((r) => r.id), [repos]);
   const { branchesByRepo } = useMultiRepoBranches(repoIds);
 
+  // Auto-select branch for repos that don't have one set
+  // (e.g., repos added by user after initialization)
   useEffect(() => {
     repos.forEach((repo) => {
       const branches = branchesByRepo[repo.id];
+      // Only auto-select if branch is empty (not already set)
       if (branches && !targetBranches[repo.id]) {
-        const currentBranch = branches.find((b) => b.is_current);
-        if (currentBranch) {
-          setTargetBranch(repo.id, currentBranch.name);
+        if (
+          repo.default_target_branch &&
+          branches.some((b) => b.name === repo.default_target_branch)
+        ) {
+          setTargetBranch(repo.id, repo.default_target_branch);
+        } else {
+          const currentBranch = branches.find((b) => b.is_current);
+          if (currentBranch) {
+            setTargetBranch(repo.id, currentBranch.name);
+          }
         }
       }
     });

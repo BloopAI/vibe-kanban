@@ -85,9 +85,9 @@ impl AcpAgentHarness {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .args(&args)
             .env("NPM_CONFIG_LOGLEVEL", "error")
-            .env("NODE_NO_WARNINGS", "1");
+            .env("NODE_NO_WARNINGS", "1")
+            .args(&args);
 
         env.clone()
             .with_profile(cmd_overrides)
@@ -135,9 +135,9 @@ impl AcpAgentHarness {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .args(&args)
             .env("NPM_CONFIG_LOGLEVEL", "error")
-            .env("NODE_NO_WARNINGS", "1");
+            .env("NODE_NO_WARNINGS", "1")
+            .args(&args);
 
         env.clone()
             .with_profile(cmd_overrides)

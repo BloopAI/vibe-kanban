@@ -40,17 +40,17 @@ export function RetryEditorInline({
   // Get sessionId from attempt's session
   const sessionId = attempt.session?.id;
 
-  // Extract variant from the process being retried
-  const processVariant = useMemo<string | null>(() => {
+  // Extract executor and variant from the process being retried
+  const processProfile = useMemo(() => {
     const process = attemptData.processes?.find(
       (p) => p.id === executionProcessId
     );
     if (!process?.executor_action) return null;
-    return extractProfileFromAction(process.executor_action)?.variant ?? null;
+    return extractProfileFromAction(process.executor_action);
   }, [attemptData.processes, executionProcessId]);
 
   const { selectedVariant, setSelectedVariant } = useVariant({
-    processVariant,
+    processVariant: processProfile?.variant ?? null,
     scratchVariant: undefined,
   });
 
@@ -61,17 +61,19 @@ export function RetryEditorInline({
   );
 
   const isSending = retryMutation.isPending;
-  const canSend = !isAttemptRunning && !!message.trim() && !!sessionId;
+  const canSend =
+    !isAttemptRunning && !!message.trim() && !!sessionId && !!processProfile;
 
   const onCancel = () => {
     onCancelled?.();
   };
 
   const onSend = useCallback(() => {
-    if (!canSend) return;
+    if (!canSend || !processProfile) return;
     setSendError(null);
     retryMutation.mutate({
       message,
+      executor: processProfile.executor,
       variant: selectedVariant,
       executionProcessId,
       branchStatus,
@@ -81,6 +83,7 @@ export function RetryEditorInline({
     canSend,
     retryMutation,
     message,
+    processProfile,
     selectedVariant,
     executionProcessId,
     branchStatus,

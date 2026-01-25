@@ -19,6 +19,7 @@ import {
   SettingsCard,
   SettingsField,
   SettingsSaveBar,
+  SettingsTextarea,
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 
@@ -324,18 +325,14 @@ export function McpSettingsSection() {
                 )
               }
             >
-              <textarea
+              <SettingsTextarea
                 value={
                   mcpLoading ? t('settings.mcp.loading.jsonEditor') : mcpServers
                 }
-                onChange={(e) => handleMcpServersChange(e.target.value)}
+                onChange={handleMcpServersChange}
                 disabled={mcpLoading}
+                rows={14}
                 placeholder='{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}'
-                className={cn(
-                  'w-full min-h-[300px] bg-secondary border border-border rounded-sm px-base py-half text-base text-high font-mono',
-                  'placeholder:text-low focus:outline-none focus:ring-1 focus:ring-brand',
-                  'resize-y'
-                )}
               />
             </SettingsField>
 

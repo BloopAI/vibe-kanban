@@ -1,8 +1,6 @@
 pub mod queue;
 pub mod review;
 
-use std::str::FromStr;
-
 use axum::{
     Extension, Json, Router,
     extract::{Query, State},
@@ -13,7 +11,7 @@ use axum::{
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     scratch::{Scratch, ScratchType},
-    session::{CreateSession, Session},
+    session::{CreateSession, Session, SessionError},
     workspace::{Workspace, WorkspaceError},
     workspace_repo::WorkspaceRepo,
 };
@@ -22,7 +20,6 @@ use executors::{
     actions::{
         ExecutorAction, ExecutorActionType, coding_agent_follow_up::CodingAgentFollowUpRequest,
     },
-    executors::BaseCodingAgent,
     profile::ExecutorProfileId,
 };
 use serde::Deserialize;
@@ -91,7 +88,7 @@ pub async fn create_session(
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateFollowUpAttempt {
     pub prompt: String,
-    pub variant: Option<String>,
+    pub executor_profile_id: ExecutorProfileId,
     pub retry_process_id: Option<Uuid>,
     pub force_when_dirty: Option<bool>,
     pub perform_git_reset: Option<bool>,
@@ -118,31 +115,29 @@ pub async fn follow_up(
         .ensure_container_exists(&workspace)
         .await?;
 
-    // Get executor from the latest CodingAgent process, or fall back to session's executor
-    let base_executor =
-        match ExecutionProcess::latest_executor_profile_for_session(pool, session.id).await? {
-            Some(profile) => profile.executor,
-            None => {
-                // No prior execution - use session's executor field
-                let executor_str = session.executor.as_ref().ok_or_else(|| {
-                    ApiError::Workspace(WorkspaceError::ValidationError(
-                        "No prior execution and no executor configured on session".to_string(),
-                    ))
-                })?;
-                BaseCodingAgent::from_str(&executor_str.replace('-', "_").to_ascii_uppercase())
-                    .map_err(|_| {
-                        ApiError::Workspace(WorkspaceError::ValidationError(format!(
-                            "Invalid executor: {}",
-                            executor_str
-                        )))
-                    })?
-            }
-        };
+    let executor_profile_id = payload.executor_profile_id;
 
-    let executor_profile_id = ExecutorProfileId {
-        executor: base_executor,
-        variant: payload.variant,
-    };
+    // Validate executor matches session if session has prior executions
+    let expected_executor: Option<String> =
+        ExecutionProcess::latest_executor_profile_for_session(pool, session.id)
+            .await?
+            .map(|profile| profile.executor.to_string())
+            .or_else(|| session.executor.clone());
+
+    if let Some(expected) = expected_executor {
+        let actual = executor_profile_id.executor.to_string();
+        if expected != actual {
+            return Err(ApiError::Session(SessionError::ExecutorMismatch {
+                expected,
+                actual,
+            }));
+        }
+    }
+
+    if session.executor.is_none() {
+        Session::update_executor(pool, session.id, &executor_profile_id.executor.to_string())
+            .await?;
+    }
 
     // If retry settings provided, perform replace-logic before proceeding
     if let Some(proc_id) = payload.retry_process_id {

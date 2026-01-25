@@ -7,11 +7,17 @@ DROP TYPE IF EXISTS task_status;
 -- We define enums for fields with a fixed set of options
 CREATE TYPE issue_priority AS ENUM ('urgent', 'high', 'medium', 'low');
 
--- 2. MODIFY EXISTING PROJECTS TABLE
+-- 2. MODIFY EXISTING ORGANIZATIONS TABLE
+-- Add issue_prefix for simple IDs (e.g., "BLO" from "Bloop")
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS issue_prefix VARCHAR(10) NOT NULL DEFAULT 'ISS';
+
+-- 3. MODIFY EXISTING PROJECTS TABLE
 -- Add color and updated_at columns, drop unused metadata column
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS color VARCHAR(7) NOT NULL DEFAULT '#000000';
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS color VARCHAR(20) NOT NULL DEFAULT '0 0% 0%';
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 ALTER TABLE projects DROP COLUMN IF EXISTS metadata;
+-- Add issue_counter for sequential issue numbering per project
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS issue_counter INTEGER NOT NULL DEFAULT 0;
 
 -- Add updated_at trigger for projects
 CREATE TRIGGER trg_projects_updated_at
@@ -25,8 +31,9 @@ CREATE TABLE project_statuses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(50) NOT NULL,
-    color VARCHAR(7) NOT NULL,
+    color VARCHAR(20) NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
+    hidden BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     -- Prevents duplicate sort orders within the same project
@@ -51,6 +58,10 @@ CREATE TABLE issues (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
 
+    -- Simple ID fields (e.g., "BLO-5")
+    issue_number INTEGER NOT NULL,
+    simple_id VARCHAR(20) NOT NULL,
+
     -- Status inherits from project_statuses
     status_id UUID NOT NULL REFERENCES project_statuses(id),
 
@@ -74,8 +85,43 @@ CREATE TABLE issues (
     extension_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    -- Ensure unique issue numbers per project
+    CONSTRAINT issues_project_issue_number_uniq UNIQUE (project_id, issue_number)
 );
+
+-- Trigger function to auto-generate issue_number and simple_id
+CREATE OR REPLACE FUNCTION set_issue_simple_id()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_issue_number INTEGER;
+    v_issue_prefix VARCHAR(10);
+BEGIN
+    -- Atomically increment the project's issue_counter and get the new number
+    UPDATE projects
+    SET issue_counter = issue_counter + 1
+    WHERE id = NEW.project_id
+    RETURNING issue_counter INTO v_issue_number;
+
+    -- Get the organization's issue_prefix
+    SELECT o.issue_prefix INTO v_issue_prefix
+    FROM projects p
+    JOIN organizations o ON o.id = p.organization_id
+    WHERE p.id = NEW.project_id;
+
+    -- Set the issue_number and simple_id
+    NEW.issue_number := v_issue_number;
+    NEW.simple_id := v_issue_prefix || '-' || v_issue_number;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_issues_simple_id
+    BEFORE INSERT ON issues
+    FOR EACH ROW
+    EXECUTE FUNCTION set_issue_simple_id();
 
 -- 9. ISSUE ASSIGNEES (Team members)
 CREATE TABLE issue_assignees (
@@ -113,7 +159,7 @@ CREATE TABLE tags (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(50) NOT NULL,
-    color VARCHAR(7) NOT NULL,
+    color VARCHAR(20) NOT NULL,
 
     UNIQUE (project_id, name)
 );
@@ -179,6 +225,7 @@ CREATE TABLE notifications (
 CREATE INDEX idx_issues_project_id ON issues(project_id);
 CREATE INDEX idx_issues_status_id ON issues(status_id);
 CREATE INDEX idx_issues_parent_issue_id ON issues(parent_issue_id);
+CREATE INDEX idx_issues_simple_id ON issues(simple_id);
 CREATE INDEX idx_issue_comments_issue_id ON issue_comments(issue_id);
 
 CREATE INDEX idx_notifications_user_unseen
@@ -200,7 +247,7 @@ CREATE TABLE workspaces (
     project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     owner_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     issue_id UUID REFERENCES issues(id) ON DELETE SET NULL,
-    local_workspace_id UUID NOT NULL,
+    local_workspace_id UUID UNIQUE,
     archived BOOLEAN NOT NULL DEFAULT FALSE,
     files_changed INTEGER,
     lines_added INTEGER,
@@ -237,3 +284,27 @@ CREATE INDEX idx_workspaces_issue_id ON workspaces(issue_id) WHERE issue_id IS N
 CREATE INDEX idx_workspaces_local_workspace_id ON workspaces(local_workspace_id);
 CREATE INDEX idx_workspace_repos_workspace_id ON workspace_repos(workspace_id);
 CREATE INDEX idx_workspace_prs_workspace_repo_id ON workspace_prs(workspace_repo_id);
+
+-- 17. PULL REQUESTS
+-- Direct PR tracking linked to issues (tasks)
+CREATE TYPE pull_request_status AS ENUM ('open', 'merged', 'closed');
+
+CREATE TABLE pull_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    url TEXT NOT NULL,
+    number INTEGER NOT NULL,
+    status pull_request_status NOT NULL DEFAULT 'open',
+    merged_at TIMESTAMPTZ,
+    merge_commit_sha VARCHAR(40),
+    target_branch_name TEXT NOT NULL,
+    issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    workspace_id UUID REFERENCES workspaces(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    UNIQUE (url)
+);
+
+CREATE INDEX idx_pull_requests_issue_id ON pull_requests(issue_id);
+CREATE INDEX idx_pull_requests_workspace_id ON pull_requests(workspace_id) WHERE workspace_id IS NOT NULL;
+CREATE INDEX idx_pull_requests_status ON pull_requests(status);

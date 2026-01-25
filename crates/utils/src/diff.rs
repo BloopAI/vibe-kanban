@@ -6,7 +6,7 @@ use similar::TextDiff;
 use ts_rs::TS;
 use uuid::Uuid;
 
-// Structs compatable with props: https://github.com/MrWangJustToDo/git-diff-view
+// Structs compatible with props: https://github.com/MrWangJustToDo/git-diff-view
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -150,7 +150,7 @@ pub fn extract_unified_diff_hunks(unified_diff: &str) -> Vec<String> {
                 // hunk content
                 hunk.push_str(line);
             } else {
-                // unkown line, flush current hunk
+                // unknown line, flush current hunk
                 if !hunk.is_empty() {
                     hunks.push(hunk.clone());
                 }

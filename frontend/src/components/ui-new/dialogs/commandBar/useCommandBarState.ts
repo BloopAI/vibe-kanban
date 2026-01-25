@@ -34,14 +34,30 @@ const browsing = (page: PageId, stack: PageId[] = []): CommandBarState => ({
   search: '',
 });
 
+const selectingRepo = (
+  pendingAction: GitActionDefinition,
+  stack: PageId[] = []
+): CommandBarState => ({
+  status: 'selectingRepo',
+  stack,
+  search: '',
+  pendingAction,
+});
+
 const noEffect: CommandBarEffect = { type: 'none' };
 
 function reducer(
   state: CommandBarState,
   event: CommandBarEvent,
-  repoCount: number
+  repoCount: number,
+  initialPendingAction?: GitActionDefinition
 ): [CommandBarState, CommandBarEffect] {
   if (event.type === 'RESET') {
+    // If initialPendingAction is provided and there are multiple repos,
+    // start directly in repo selection mode
+    if (initialPendingAction && repoCount > 1) {
+      return [selectingRepo(initialPendingAction), noEffect];
+    }
     return [browsing(event.page), noEffect];
   }
   if (event.type === 'SEARCH_CHANGE') {
@@ -106,19 +122,40 @@ function reducer(
   return [state, noEffect];
 }
 
-export function useCommandBarState(initialPage: PageId, repoCount: number) {
+export function useCommandBarState(
+  initialPage: PageId,
+  repoCount: number,
+  initialPendingAction?: GitActionDefinition
+) {
   // Use refs to avoid stale closures and keep dispatch stable
-  const stateRef = useRef<CommandBarState>(browsing(initialPage));
+  const initialPendingActionRef = useRef(initialPendingAction);
+  initialPendingActionRef.current = initialPendingAction;
+
+  // Compute initial state based on whether we have a pending git action
+  const computeInitialState = (): CommandBarState => {
+    if (initialPendingAction && repoCount > 1) {
+      return selectingRepo(initialPendingAction);
+    }
+    return browsing(initialPage);
+  };
+
+  const stateRef = useRef<CommandBarState>(computeInitialState());
   const repoCountRef = useRef(repoCount);
   repoCountRef.current = repoCount;
 
   const [state, rawDispatch] = useReducer(
     (s: CommandBarState, e: CommandBarEvent) => {
-      const [newState] = reducer(s, e, repoCountRef.current);
+      const [newState] = reducer(
+        s,
+        e,
+        repoCountRef.current,
+        initialPendingActionRef.current
+      );
       stateRef.current = newState;
       return newState;
     },
-    browsing(initialPage)
+    undefined,
+    computeInitialState
   );
 
   // Keep stateRef in sync
@@ -127,7 +164,12 @@ export function useCommandBarState(initialPage: PageId, repoCount: number) {
   // Stable dispatch that doesn't change on every render
   const dispatch = useCallback(
     (event: CommandBarEvent): CommandBarEffect => {
-      const [, effect] = reducer(stateRef.current, event, repoCountRef.current);
+      const [, effect] = reducer(
+        stateRef.current,
+        event,
+        repoCountRef.current,
+        initialPendingActionRef.current
+      );
       rawDispatch(event);
       return effect;
     },

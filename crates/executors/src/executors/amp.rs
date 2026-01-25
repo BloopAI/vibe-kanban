@@ -63,6 +63,7 @@ impl StandardCodingAgentExecutor for Amp {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
+            .env("NPM_CONFIG_LOGLEVEL", "error")
             .args(&args);
 
         env.clone()
@@ -100,6 +101,7 @@ impl StandardCodingAgentExecutor for Amp {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
+            .env("NPM_CONFIG_LOGLEVEL", "error")
             .args(&fork_args)
             .output()
             .await?;
@@ -136,6 +138,7 @@ impl StandardCodingAgentExecutor for Amp {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
+            .env("NPM_CONFIG_LOGLEVEL", "error")
             .args(&continue_args);
 
         env.clone()

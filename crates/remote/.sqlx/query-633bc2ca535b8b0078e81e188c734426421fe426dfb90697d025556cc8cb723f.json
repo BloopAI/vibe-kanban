@@ -1,0 +1,60 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO organizations (name, slug, is_personal, issue_prefix)\n        VALUES ($1, $2, TRUE, $3)\n        RETURNING\n            id           AS \"id!: Uuid\",\n            name         AS \"name!\",\n            slug         AS \"slug!\",\n            is_personal  AS \"is_personal!\",\n            issue_prefix AS \"issue_prefix!\",\n            created_at   AS \"created_at!\",\n            updated_at   AS \"updated_at!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "slug!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_personal!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "issue_prefix!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "633bc2ca535b8b0078e81e188c734426421fe426dfb90697d025556cc8cb723f"
+}

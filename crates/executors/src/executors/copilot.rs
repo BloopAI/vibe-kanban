@@ -119,8 +119,9 @@ impl StandardCodingAgentExecutor for Copilot {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .args(&args)
-            .env("NODE_NO_WARNINGS", "1");
+            .env("NPM_CONFIG_LOGLEVEL", "error")
+            .env("NODE_NO_WARNINGS", "1")
+            .args(&args);
 
         env.clone()
             .with_profile(&self.cmd)
@@ -163,8 +164,9 @@ impl StandardCodingAgentExecutor for Copilot {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .args(&args)
-            .env("NODE_NO_WARNINGS", "1");
+            .env("NPM_CONFIG_LOGLEVEL", "error")
+            .env("NODE_NO_WARNINGS", "1")
+            .args(&args);
 
         env.clone()
             .with_profile(&self.cmd)

@@ -2,7 +2,10 @@ use std::{
     borrow::Cow,
     collections::VecDeque,
     io,
-    sync::{Arc, OnceLock},
+    sync::{
+        Arc, OnceLock,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use async_trait::async_trait;
@@ -10,12 +13,13 @@ use codex_app_server_protocol::{
     AddConversationListenerParams, AddConversationSubscriptionResponse, ApplyPatchApprovalResponse,
     ClientInfo, ClientNotification, ClientRequest, ExecCommandApprovalResponse,
     GetAuthStatusParams, GetAuthStatusResponse, InitializeParams, InitializeResponse, InputItem,
-    JSONRPCError, JSONRPCNotification, JSONRPCRequest, JSONRPCResponse, NewConversationParams,
-    NewConversationResponse, RequestId, ResumeConversationParams, ResumeConversationResponse,
-    ReviewStartParams, ReviewStartResponse, ReviewTarget, SendUserMessageParams,
-    SendUserMessageResponse, ServerNotification, ServerRequest,
+    JSONRPCError, JSONRPCNotification, JSONRPCRequest, JSONRPCResponse, ListMcpServerStatusParams,
+    ListMcpServerStatusResponse, NewConversationParams, NewConversationResponse, RequestId,
+    ResumeConversationParams, ResumeConversationResponse, ReviewStartParams, ReviewStartResponse,
+    ReviewTarget, SendUserMessageParams, SendUserMessageResponse, ServerNotification,
+    ServerRequest,
 };
-use codex_protocol::{ConversationId, protocol::ReviewDecision};
+use codex_protocol::{ThreadId, protocol::ReviewDecision};
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{self, Value};
 use tokio::{
@@ -27,6 +31,7 @@ use workspace_utils::approvals::ApprovalStatus;
 use super::jsonrpc::{JsonRpcCallbacks, JsonRpcPeer};
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
+    env::RepoContext,
     executors::{ExecutorError, codex::normalize_logs::Approval},
 };
 
@@ -34,9 +39,12 @@ pub struct AppServerClient {
     rpc: OnceLock<JsonRpcPeer>,
     log_writer: LogWriter,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
-    conversation_id: Mutex<Option<ConversationId>>,
+    conversation_id: Mutex<Option<ThreadId>>,
     pending_feedback: Mutex<VecDeque<String>>,
     auto_approve: bool,
+    repo_context: RepoContext,
+    commit_reminder: bool,
+    commit_reminder_sent: AtomicBool,
 }
 
 impl AppServerClient {
@@ -44,6 +52,8 @@ impl AppServerClient {
         log_writer: LogWriter,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
         auto_approve: bool,
+        repo_context: RepoContext,
+        commit_reminder: bool,
     ) -> Arc<Self> {
         Arc::new(Self {
             rpc: OnceLock::new(),
@@ -52,6 +62,9 @@ impl AppServerClient {
             auto_approve,
             conversation_id: Mutex::new(None),
             pending_feedback: Mutex::new(VecDeque::new()),
+            repo_context,
+            commit_reminder,
+            commit_reminder_sent: AtomicBool::new(false),
         })
     }
 
@@ -61,6 +74,10 @@ impl AppServerClient {
 
     fn rpc(&self) -> &JsonRpcPeer {
         self.rpc.get().expect("Codex RPC peer not attached")
+    }
+
+    pub fn log_writer(&self) -> &LogWriter {
+        &self.log_writer
     }
 
     pub async fn initialize(&self) -> Result<(), ExecutorError> {
@@ -110,7 +127,7 @@ impl AppServerClient {
 
     pub async fn add_conversation_listener(
         &self,
-        conversation_id: codex_protocol::ConversationId,
+        conversation_id: codex_protocol::ThreadId,
     ) -> Result<AddConversationSubscriptionResponse, ExecutorError> {
         let request = ClientRequest::AddConversationListener {
             request_id: self.next_request_id(),
@@ -124,7 +141,7 @@ impl AppServerClient {
 
     pub async fn send_user_message(
         &self,
-        conversation_id: codex_protocol::ConversationId,
+        conversation_id: codex_protocol::ThreadId,
         message: String,
     ) -> Result<SendUserMessageResponse, ExecutorError> {
         let request = ClientRequest::SendUserMessage {
@@ -162,6 +179,20 @@ impl AppServerClient {
             },
         };
         self.send_request(request, "reviewStart").await
+    }
+
+    pub async fn list_mcp_server_status(
+        &self,
+        cursor: Option<String>,
+    ) -> Result<ListMcpServerStatusResponse, ExecutorError> {
+        let request = ClientRequest::McpServerStatusList {
+            request_id: self.next_request_id(),
+            params: ListMcpServerStatusParams {
+                cursor,
+                limit: None,
+            },
+        };
+        self.send_request(request, "mcpServerStatus/list").await
     }
 
     async fn handle_server_request(
@@ -258,7 +289,6 @@ impl AppServerClient {
         tool_input: Value,
         tool_call_id: &str,
     ) -> Result<ApprovalStatus, ExecutorError> {
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         if self.auto_approve {
             return Ok(ApprovalStatus::Approved);
         }
@@ -270,10 +300,7 @@ impl AppServerClient {
             .await?)
     }
 
-    pub async fn register_session(
-        &self,
-        conversation_id: &ConversationId,
-    ) -> Result<(), ExecutorError> {
+    pub async fn register_session(&self, conversation_id: &ThreadId) -> Result<(), ExecutorError> {
         {
             let mut guard = self.conversation_id.lock().await;
             guard.replace(*conversation_id);
@@ -360,19 +387,17 @@ impl AppServerClient {
             if trimmed.is_empty() {
                 continue;
             }
-            self.spawn_feedback_message(conversation_id, trimmed.to_string());
+            self.spawn_user_message(conversation_id, format!("User feedback: {trimmed}"));
         }
     }
 
-    fn spawn_feedback_message(&self, conversation_id: ConversationId, feedback: String) {
+    fn spawn_user_message(&self, conversation_id: ThreadId, message: String) {
         let peer = self.rpc().clone();
         let request = ClientRequest::SendUserMessage {
             request_id: peer.next_request_id(),
             params: SendUserMessageParams {
                 conversation_id,
-                items: vec![InputItem::Text {
-                    text: format!("User feedback: {feedback}"),
-                }],
+                items: vec![InputItem::Text { text: message }],
             },
         };
         tokio::spawn(async move {
@@ -384,7 +409,7 @@ impl AppServerClient {
                 )
                 .await
             {
-                tracing::error!("failed to send feedback follow-up message: {err}");
+                tracing::error!("failed to send user message: {err}");
             }
         });
     }
@@ -467,6 +492,27 @@ impl JsonRpcCallbacks for AppServerClient {
             .strip_prefix("codex/event/")
             .is_some_and(|suffix| suffix == "task_complete");
 
+        if has_finished
+            && self.commit_reminder
+            && !self.commit_reminder_sent.swap(true, Ordering::SeqCst)
+        {
+            let status =
+                workspace_utils::git::check_uncommitted_changes(&self.repo_context.repo_paths())
+                    .await;
+            if !status.is_empty()
+                && let Some(conversation_id) = *self.conversation_id.lock().await
+            {
+                self.spawn_user_message(
+                    conversation_id,
+                    format!(
+                        "You have uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
+                        status
+                    ),
+                );
+                return Ok(false);
+            }
+        }
+
         Ok(has_finished)
     }
 
@@ -501,7 +547,8 @@ fn request_id(request: &ClientRequest) -> RequestId {
         | ClientRequest::ResumeConversation { request_id, .. }
         | ClientRequest::AddConversationListener { request_id, .. }
         | ClientRequest::SendUserMessage { request_id, .. }
-        | ClientRequest::ReviewStart { request_id, .. } => request_id.clone(),
+        | ClientRequest::ReviewStart { request_id, .. }
+        | ClientRequest::McpServerStatusList { request_id, .. } => request_id.clone(),
         _ => unreachable!("request_id called for unsupported request variant"),
     }
 }

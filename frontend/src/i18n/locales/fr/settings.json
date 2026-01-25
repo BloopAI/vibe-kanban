@@ -422,6 +422,15 @@
         },
         "path": {
           "label": "Chemin du dépôt"
+        },
+        "defaultTargetBranch": {
+          "label": "Branche cible par défaut",
+          "placeholder": "Sélectionner une branche",
+          "helper": "La branche de base par défaut pour les nouveaux espaces de travail. Les worktrees partent de cette branche et les PRs la cibleront.",
+          "search": "Rechercher des branches",
+          "noBranches": "Aucune branche trouvée",
+          "loading": "Chargement des branches...",
+          "useCurrent": "Utiliser la branche actuelle"
         }
       },
       "scripts": {

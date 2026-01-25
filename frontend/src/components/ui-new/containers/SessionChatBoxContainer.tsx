@@ -26,6 +26,7 @@ import { useMessageEditRetry } from '@/hooks/useMessageEditRetry';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useApprovalMutation } from '@/hooks/useApprovalMutation';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
+import { buildAgentPrompt } from '@/utils/promptMessage';
 import {
   SessionChatBox,
   type ExecutionStatus,
@@ -72,6 +73,10 @@ interface SharedProps {
   linesAdded: number;
   /** Number of lines removed */
   linesRemoved: number;
+  /** Callback to scroll to previous user message */
+  onScrollToPreviousMessage: () => void;
+  /** Callback to scroll to bottom of conversation */
+  onScrollToBottom: () => void;
 }
 
 /** Props for existing session mode */
@@ -105,8 +110,16 @@ type SessionChatBoxContainerProps =
   | PlaceholderProps;
 
 export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
-  const { mode, sessions, projectId, filesChanged, linesAdded, linesRemoved } =
-    props;
+  const {
+    mode,
+    sessions,
+    projectId,
+    filesChanged,
+    linesAdded,
+    linesRemoved,
+    onScrollToPreviousMessage,
+    onScrollToBottom,
+  } = props;
 
   // Extract mode-specific values
   const session = mode === 'existing-session' ? props.session : undefined;
@@ -251,6 +264,9 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     return null;
   }, [processes, lastSessionProcesses, sessions]);
 
+  const needsExecutorSelection =
+    isNewSessionMode || (!session?.executor && !latestProfileId?.executor);
+
   // Message editor state
   const {
     localMessage,
@@ -317,7 +333,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     profiles,
     latestProfileId,
     isNewSessionMode,
-    scratchVariant: scratchData?.variant,
+    scratchVariant: scratchData?.executor_profile_id?.variant,
     configExecutorProfile: config?.executor_profile,
   });
 
@@ -325,9 +341,11 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const setSelectedVariant = useCallback(
     (variant: string | null) => {
       setVariantFromHook(variant);
-      saveToScratch(localMessage, variant);
+      if (effectiveExecutor) {
+        saveToScratch(localMessage, { executor: effectiveExecutor, variant });
+      }
     },
-    [setVariantFromHook, saveToScratch, localMessage]
+    [setVariantFromHook, saveToScratch, localMessage, effectiveExecutor]
   );
 
   // Navigate to agent settings to customise variants
@@ -360,16 +378,20 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   });
 
   const handleSend = useCallback(async () => {
-    const messageParts = [reviewMarkdown, localMessage].filter(Boolean);
-    const combinedMessage = messageParts.join('\n\n');
+    const { prompt, isSlashCommand } = buildAgentPrompt(localMessage, [
+      reviewMarkdown,
+    ]);
 
-    const success = await send(combinedMessage, selectedVariant);
+    const success = await send(prompt, selectedVariant);
     if (success) {
       cancelDebouncedSave();
       setLocalMessage('');
       clearUploadedImages();
       if (isNewSessionMode) await clearDraft();
-      reviewContext?.clearComments();
+      if (!isSlashCommand) {
+        reviewContext?.clearComments();
+      }
+      onScrollToBottom();
     }
   }, [
     send,
@@ -382,6 +404,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     isNewSessionMode,
     clearDraft,
     reviewContext,
+    onScrollToBottom,
   ]);
 
   // Track previous process count for queue refresh
@@ -406,16 +429,20 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Queue message handler
   const handleQueueMessage = useCallback(async () => {
-    // Allow queueing if there's a message OR review comments
-    if (!localMessage.trim() && !reviewMarkdown) return;
+    // Allow queueing if there's a message OR review comments, and we have an executor
+    if ((!localMessage.trim() && !reviewMarkdown) || !effectiveExecutor) return;
 
-    // Combine review comments with user message
-    const messageParts = [reviewMarkdown, localMessage].filter(Boolean);
-    const combinedMessage = messageParts.join('\n\n');
+    const { prompt } = buildAgentPrompt(localMessage, [reviewMarkdown]);
 
     cancelDebouncedSave();
-    await saveToScratch(localMessage, selectedVariant);
-    await queueMessage(combinedMessage, selectedVariant);
+    await saveToScratch(localMessage, {
+      executor: effectiveExecutor,
+      variant: selectedVariant,
+    });
+    await queueMessage(prompt, {
+      executor: effectiveExecutor,
+      variant: selectedVariant,
+    });
 
     // Clear local state after queueing (same as handleSend)
     setLocalMessage('');
@@ -424,6 +451,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   }, [
     localMessage,
     reviewMarkdown,
+    effectiveExecutor,
     selectedVariant,
     queueMessage,
     cancelDebouncedSave,
@@ -437,16 +465,25 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const handleEditorChange = useCallback(
     (value: string) => {
       if (isQueued) cancelQueue();
-      handleMessageChange(value, selectedVariant);
+      if (effectiveExecutor) {
+        handleMessageChange(value, {
+          executor: effectiveExecutor,
+          variant: selectedVariant,
+        });
+      } else {
+        setLocalMessage(value);
+      }
       if (sendError) clearError();
     },
     [
       isQueued,
       cancelQueue,
       handleMessageChange,
+      effectiveExecutor,
       selectedVariant,
       sendError,
       clearError,
+      setLocalMessage,
     ]
   );
 
@@ -492,9 +529,11 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Handle edit submission
   const handleSubmitEdit = useCallback(async () => {
-    if (!editContext.activeEdit || !localMessage.trim()) return;
+    if (!editContext.activeEdit || !localMessage.trim() || !effectiveExecutor)
+      return;
     editRetryMutation.mutate({
       message: localMessage,
+      executor: effectiveExecutor,
       variant: selectedVariant,
       executionProcessId: editContext.activeEdit.processId,
       branchStatus,
@@ -503,6 +542,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   }, [
     editContext.activeEdit,
     localMessage,
+    effectiveExecutor,
     selectedVariant,
     branchStatus,
     processes,
@@ -664,6 +704,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     <SessionChatBox
       status={status}
       onViewCode={handleViewCode}
+      onScrollToPreviousMessage={onScrollToPreviousMessage}
       workspaceId={workspaceId}
       projectId={projectId}
       tokenUsageInfo={tokenUsageInfo}
@@ -688,7 +729,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         sessions,
         selectedSessionId: sessionId,
         onSelectSession: onSelectSession ?? (() => {}),
-        isNewSessionMode,
+        isNewSessionMode: needsExecutorSelection,
         onNewSession: onStartNewSession,
       }}
       toolbarActions={{
@@ -708,7 +749,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       todos={todos}
       inProgressTodo={inProgressTodo}
       executor={
-        isNewSessionMode
+        needsExecutorSelection
           ? {
               selected: effectiveExecutor,
               options: executorOptions,

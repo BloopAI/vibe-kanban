@@ -47,19 +47,23 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useRetryUi } from '@/contexts/RetryUiContext';
 import { useFollowUpSend } from '@/hooks/useFollowUpSend';
 import { useVariant } from '@/hooks/useVariant';
-import type { DraftFollowUpData, ExecutorProfileId } from 'shared/types';
-import { extractProfileFromAction } from '@/utils/executor';
+import type {
+  DraftFollowUpData,
+  ExecutorProfileId,
+  QueueStatus,
+} from 'shared/types';
+import { getLatestProfileFromProcesses } from '@/utils/executor';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { useTranslation } from 'react-i18next';
 import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queueApi } from '@/lib/api';
-import type { QueueStatus } from 'shared/types';
 import { imagesApi, attemptsApi } from '@/lib/api';
 import { PrCommentsDialog } from '@/components/dialogs/tasks/PrCommentsDialog';
 import type { NormalizedComment } from '@/components/ui/wysiwyg/nodes/pr-comment-node';
 import type { Session } from 'shared/types';
+import { buildAgentPrompt } from '@/utils/promptMessage';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
@@ -147,18 +151,10 @@ export function TaskFollowUpSection({
   const [localMessage, setLocalMessage] = useState('');
 
   // Variant selection - derive default from latest process
-  const latestProfileId = useMemo<ExecutorProfileId | null>(() => {
-    if (!processes?.length) return null;
-    return (
-      processes
-        .slice()
-        .reverse()
-        .map((p) => extractProfileFromAction(p.executor_action ?? null))
-        .find((pid) => pid !== null) ?? null
-    );
-  }, [processes]);
-
-  const processVariant = latestProfileId?.variant ?? null;
+  const latestProfileId = useMemo(
+    () => getLatestProfileFromProcesses(processes),
+    [processes]
+  );
 
   const currentProfile = useMemo(() => {
     if (!latestProfileId) return null;
@@ -168,8 +164,8 @@ export function TaskFollowUpSection({
   // Variant selection with priority: user selection > scratch > process
   const { selectedVariant, setSelectedVariant: setVariantFromHook } =
     useVariant({
-      processVariant,
-      scratchVariant: scratchData?.variant,
+      processVariant: latestProfileId?.variant ?? null,
+      scratchVariant: scratchData?.executor_profile_id?.variant,
     });
 
   // Ref to track current variant for use in message save callback
@@ -188,7 +184,7 @@ export function TaskFollowUpSection({
   // Uses scratchRef to avoid callback invalidation when scratch updates
   const saveToScratch = useCallback(
     async (message: string, variant: string | null) => {
-      if (!workspaceId) return;
+      if (!workspaceId || !latestProfileId?.executor) return;
       // Don't create empty scratch entries - only save if there's actual content,
       // a variant is selected, or scratch already exists (to allow clearing a draft)
       if (!message.trim() && !variant && !scratchRef.current) return;
@@ -196,14 +192,20 @@ export function TaskFollowUpSection({
         await updateScratch({
           payload: {
             type: 'DRAFT_FOLLOW_UP',
-            data: { message, variant },
+            data: {
+              message,
+              executor_profile_id: {
+                executor: latestProfileId.executor,
+                variant,
+              },
+            },
           },
         });
       } catch (e) {
         console.error('Failed to save follow-up draft', e);
       }
     },
-    [workspaceId, updateScratch]
+    [workspaceId, updateScratch, latestProfileId?.executor]
   );
 
   // Wrapper to update variant and save to scratch immediately
@@ -259,11 +261,11 @@ export function TaskFollowUpSection({
   const queueMutation = useMutation({
     mutationFn: ({
       message,
-      variant,
+      executor_profile_id,
     }: {
       message: string;
-      variant: string | null;
-    }) => queueApi.queue(sessionId!, { message, variant }),
+      executor_profile_id: ExecutorProfileId;
+    }) => queueApi.queue(sessionId!, { message, executor_profile_id }),
     onSuccess: (status) => {
       queryClient.setQueryData([QUEUE_STATUS_KEY, sessionId], status);
     },
@@ -277,9 +279,12 @@ export function TaskFollowUpSection({
   });
 
   const queueMessage = useCallback(
-    async (message: string, variant: string | null) => {
+    async (message: string, executorProfileId: ExecutorProfileId) => {
       if (!sessionId) return;
-      await queueMutation.mutateAsync({ message, variant });
+      await queueMutation.mutateAsync({
+        message,
+        executor_profile_id: executorProfileId,
+      });
     },
     [sessionId, queueMutation]
   );
@@ -347,7 +352,8 @@ export function TaskFollowUpSection({
       conflictMarkdown: conflictResolutionInstructions,
       reviewMarkdown,
       clickedMarkdown,
-      selectedVariant,
+      executor: latestProfileId?.executor ?? null,
+      variant: selectedVariant,
       clearComments,
       clearClickedElements,
       onAfterSendCleanup: () => {
@@ -376,7 +382,7 @@ export function TaskFollowUpSection({
   ]);
 
   const canSendFollowUp = useMemo(() => {
-    if (!canTypeFollowUp) {
+    if (!canTypeFollowUp || !latestProfileId?.executor) {
       return false;
     }
 
@@ -389,6 +395,7 @@ export function TaskFollowUpSection({
     );
   }, [
     canTypeFollowUp,
+    latestProfileId?.executor,
     conflictResolutionInstructions,
     reviewMarkdown,
     clickedMarkdown,
@@ -433,19 +440,24 @@ export function TaskFollowUpSection({
     await saveToScratch(localMessage, selectedVariant);
 
     // Combine all the content that would be sent (same as follow-up send)
-    const parts = [
-      conflictResolutionInstructions,
-      clickedMarkdown,
-      reviewMarkdown,
+    const { prompt } = buildAgentPrompt(
       localMessage,
-    ].filter(Boolean);
-    const combinedMessage = parts.join('\n\n');
-    await queueMessage(combinedMessage, selectedVariant);
+      [conflictResolutionInstructions, clickedMarkdown, reviewMarkdown].filter(
+        Boolean
+      )
+    );
+    if (latestProfileId) {
+      await queueMessage(prompt, {
+        executor: latestProfileId.executor,
+        variant: selectedVariant,
+      });
+    }
   }, [
     localMessage,
     conflictResolutionInstructions,
     reviewMarkdown,
     clickedMarkdown,
+    latestProfileId,
     selectedVariant,
     queueMessage,
     cancelDebouncedSave,
@@ -765,6 +777,7 @@ export function TaskFollowUpSection({
                 disabled={!isEditable}
                 onPasteFiles={handlePasteFiles}
                 projectId={projectId}
+                executor={latestProfileId?.executor ?? null}
                 taskAttemptId={workspaceId}
                 onCmdEnter={handleSubmitShortcut}
                 className="min-h-[40px]"

@@ -10,7 +10,10 @@ use super::{error::ErrorResponse, organization_members::ensure_project_access};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::project_statuses::{ProjectStatus, ProjectStatusRepository},
+    db::{
+        project_statuses::{ProjectStatus, ProjectStatusRepository},
+        types::is_valid_hsl_color,
+    },
     define_mutation_router,
     entities::{
         CreateProjectStatusRequest, ListProjectStatussQuery, ListProjectStatussResponse,
@@ -85,6 +88,13 @@ async fn create_project_status(
 ) -> Result<Json<MutationResponse<ProjectStatus>>, ErrorResponse> {
     ensure_project_access(state.pool(), ctx.user.id, payload.project_id).await?;
 
+    if !is_valid_hsl_color(&payload.color) {
+        return Err(ErrorResponse::new(
+            StatusCode::BAD_REQUEST,
+            "Invalid color format. Expected HSL format: 'H S% L%'",
+        ));
+    }
+
     let response = ProjectStatusRepository::create(
         state.pool(),
         payload.id,
@@ -92,6 +102,7 @@ async fn create_project_status(
         payload.name,
         payload.color,
         payload.sort_order,
+        payload.hidden,
     )
     .await
     .map_err(|error| {
@@ -126,12 +137,22 @@ async fn update_project_status(
 
     ensure_project_access(state.pool(), ctx.user.id, status.project_id).await?;
 
+    if let Some(ref color) = payload.color
+        && !is_valid_hsl_color(color)
+    {
+        return Err(ErrorResponse::new(
+            StatusCode::BAD_REQUEST,
+            "Invalid color format. Expected HSL format: 'H S% L%'",
+        ));
+    }
+
     let response = ProjectStatusRepository::update(
         state.pool(),
         project_status_id,
         payload.name,
         payload.color,
         payload.sort_order,
+        payload.hidden,
     )
     .await
     .map_err(|error| {

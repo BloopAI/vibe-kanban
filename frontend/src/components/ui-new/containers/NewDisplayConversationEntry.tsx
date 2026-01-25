@@ -24,18 +24,16 @@ import {
   ScriptFixerDialog,
   type ScriptType,
 } from '@/components/dialogs/scripts/ScriptFixerDialog';
-import {
-  ChatToolSummary,
-  ChatTodoList,
-  ChatFileEntry,
-  ChatApprovalCard,
-  ChatUserMessage,
-  ChatAssistantMessage,
-  ChatSystemMessage,
-  ChatThinkingMessage,
-  ChatErrorMessage,
-  ChatScriptEntry,
-} from '../primitives/conversation';
+import { ChatToolSummary } from '../primitives/conversation/ChatToolSummary';
+import { ChatTodoList } from '../primitives/conversation/ChatTodoList';
+import { ChatFileEntry } from '../primitives/conversation/ChatFileEntry';
+import { ChatApprovalCard } from '../primitives/conversation/ChatApprovalCard';
+import { ChatUserMessage } from '../primitives/conversation/ChatUserMessage';
+import { ChatAssistantMessage } from '../primitives/conversation/ChatAssistantMessage';
+import { ChatSystemMessage } from '../primitives/conversation/ChatSystemMessage';
+import { ChatThinkingMessage } from '../primitives/conversation/ChatThinkingMessage';
+import { ChatErrorMessage } from '../primitives/conversation/ChatErrorMessage';
+import { ChatScriptEntry } from '../primitives/conversation/ChatScriptEntry';
 import type { DiffInput } from '../primitives/conversation/DiffViewCard';
 
 type Props = {

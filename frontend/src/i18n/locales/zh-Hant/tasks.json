@@ -633,7 +633,8 @@
       "requestChanges": "請求變更",
       "approve": "核准",
       "clearReviewComments": "清除審查評論",
-      "edit": "編輯訊息"
+      "edit": "編輯訊息",
+      "scrollToPreviousMessage": "Go to previous message"
     },
     "approval": {
       "conflictWarning": "衝突檔案需要手動解決",

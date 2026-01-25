@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
@@ -136,7 +136,7 @@ export function XTermInstance({
   }, [theme]);
 
   return (
-    <div ref={resizeRef} className="w-full h-full">
+    <div ref={resizeRef} className="w-full h-full px-2 py-1">
       <div ref={containerRef} className="w-full h-full" />
     </div>
   );

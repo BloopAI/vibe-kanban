@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useScratch } from '@/hooks/useScratch';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';
@@ -14,7 +14,13 @@ export type WorkspaceLayoutMode = 'flat' | 'accordion';
 // Fixed UUID for the universal workspace draft (same as in useCreateModeState.ts)
 const DRAFT_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
 
-export function WorkspacesSidebarContainer() {
+interface WorkspacesSidebarContainerProps {
+  onScrollToBottom: () => void;
+}
+
+export function WorkspacesSidebarContainer({
+  onScrollToBottom,
+}: WorkspacesSidebarContainerProps) {
   const {
     workspaceId: selectedWorkspaceId,
     activeWorkspaces,
@@ -59,12 +65,24 @@ export function WorkspacesSidebarContainer() {
     return title || 'New Workspace';
   }, [draftScratch]);
 
+  // Handle workspace selection - scroll to bottom if re-selecting same workspace
+  const handleSelectWorkspace = useCallback(
+    (id: string) => {
+      if (id === selectedWorkspaceId) {
+        onScrollToBottom();
+      } else {
+        selectWorkspace(id);
+      }
+    },
+    [selectedWorkspaceId, selectWorkspace, onScrollToBottom]
+  );
+
   return (
     <WorkspacesSidebar
       workspaces={activeWorkspaces}
       archivedWorkspaces={archivedWorkspaces}
       selectedWorkspaceId={selectedWorkspaceId ?? null}
-      onSelectWorkspace={selectWorkspace}
+      onSelectWorkspace={handleSelectWorkspace}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
       onAddWorkspace={navigateToCreate}
