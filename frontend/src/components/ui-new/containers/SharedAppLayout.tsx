@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { SyncErrorProvider } from '@/contexts/SyncErrorContext';
 import { NavbarContainer } from './NavbarContainer';
 import { AppBar } from '../primitives/AppBar';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
+import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
@@ -19,15 +20,23 @@ export function SharedAppLayout() {
   // AppBar state - organizations and projects
   const { data: orgsData } = useUserOrganizations();
   const organizations = orgsData?.organizations ?? [];
-  const firstOrg = organizations[0];
 
-  const [selectedOrgId, setSelectedOrgId] = useState<string>('');
+  const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
+  const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
 
+  // Auto-select first org if none selected or selection is invalid
   useEffect(() => {
-    if (firstOrg && !selectedOrgId) {
-      setSelectedOrgId(firstOrg.id);
+    if (organizations.length === 0) return;
+
+    const hasValidSelection = selectedOrgId
+      ? organizations.some((org) => org.id === selectedOrgId)
+      : false;
+
+    if (!selectedOrgId || !hasValidSelection) {
+      const firstNonPersonal = organizations.find((org) => !org.is_personal);
+      setSelectedOrgId((firstNonPersonal ?? organizations[0]).id);
     }
-  }, [firstOrg, selectedOrgId]);
+  }, [organizations, selectedOrgId, setSelectedOrgId]);
 
   const { data: orgProjects = [] } = useOrganizationProjects(
     selectedOrgId || null
@@ -44,8 +53,8 @@ export function SharedAppLayout() {
   }, [navigate]);
 
   const handleProjectClick = useCallback(
-    (projectId: string, organizationId: string) => {
-      navigate(`/projects/${projectId}?orgId=${organizationId}`);
+    (projectId: string) => {
+      navigate(`/projects/${projectId}`);
     },
     [navigate]
   );
@@ -71,7 +80,7 @@ export function SharedAppLayout() {
         await CreateRemoteProjectDialog.show({ organizationId: selectedOrgId });
 
       if (result.action === 'created' && result.project) {
-        navigate(`/projects/${result.project.id}?orgId=${selectedOrgId}`);
+        navigate(`/projects/${result.project.id}`);
       }
     } catch {
       // Dialog cancelled
@@ -84,7 +93,7 @@ export function SharedAppLayout() {
         <AppBar
           projects={orgProjects}
           organizations={organizations}
-          selectedOrgId={selectedOrgId}
+          selectedOrgId={selectedOrgId ?? ''}
           onOrgSelect={setSelectedOrgId}
           onCreateOrg={handleCreateOrg}
           onCreateProject={handleCreateProject}
