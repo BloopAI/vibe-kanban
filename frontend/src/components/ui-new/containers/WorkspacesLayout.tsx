@@ -6,7 +6,6 @@ import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
 import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import { ChangesViewProvider } from '@/contexts/ChangesViewContext';
-import { SyncErrorProvider } from '@/contexts/SyncErrorContext';
 import { WorkspacesSidebarContainer } from '@/components/ui-new/containers/WorkspacesSidebarContainer';
 import { LogsContentContainer } from '@/components/ui-new/containers/LogsContentContainer';
 import {
@@ -16,7 +15,6 @@ import {
 import { RightSidebar } from '@/components/ui-new/containers/RightSidebar';
 import { ChangesPanelContainer } from '@/components/ui-new/containers/ChangesPanelContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
-import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer';
 import { PreviewBrowserContainer } from '@/components/ui-new/containers/PreviewBrowserContainer';
 import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -25,15 +23,11 @@ import {
   PERSIST_KEYS,
   usePaneSize,
   useWorkspacePanelState,
-  useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
 
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
-import { useUserOrganizations } from '@/hooks/useUserOrganizations';
-import { OrgProvider } from '@/contexts/remote/OrgContext';
-import { KanbanLayoutContainer } from '@/components/ui-new/containers/KanbanLayoutContainer';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 
@@ -74,15 +68,6 @@ export function WorkspacesLayout() {
     loading: configLoading,
   } = useUserSystem();
 
-  const layoutMode = useUiPreferencesStore((s) => s.layoutMode);
-  const isKanbanRightPanelVisible = useUiPreferencesStore(
-    (s) => s.isKanbanRightPanelVisible
-  );
-
-  // Get organization for Kanban mode (project is fetched via OrgContext)
-  const { data: orgsData } = useUserOrganizations();
-  const firstOrg = orgsData?.organizations?.[0];
-
   useCommandBarShortcut(() => CommandBarDialog.show());
 
   // Auto-show Workspaces Guide on first visit
@@ -114,12 +99,6 @@ export function WorkspacesLayout() {
     50
   );
 
-  // Kanban panel sizing (75% left / 25% right default)
-  const [kanbanLeftPanelSize, setKanbanLeftPanelSize] = usePaneSize(
-    PERSIST_KEYS.kanbanLeftPanel,
-    75
-  );
-
   const defaultLayout: Layout =
     typeof rightMainPanelSize === 'number'
       ? {
@@ -132,46 +111,6 @@ export function WorkspacesLayout() {
     if (isLeftMainPanelVisible && rightMainPanelMode !== null)
       setRightMainPanelSize(layout['right-main']);
   };
-
-  const kanbanDefaultLayout: Layout =
-    typeof kanbanLeftPanelSize === 'number'
-      ? {
-          'kanban-left': kanbanLeftPanelSize,
-          'kanban-right': 100 - kanbanLeftPanelSize,
-        }
-      : { 'kanban-left': 75, 'kanban-right': 25 };
-
-  const onKanbanLayoutChange = (layout: Layout) => {
-    if (isKanbanRightPanelVisible) {
-      setKanbanLeftPanelSize(layout['kanban-left']);
-    }
-  };
-
-  // Kanban mode layout
-  if (layoutMode === 'kanban') {
-    return (
-      <SyncErrorProvider>
-        <div className="flex flex-col h-screen">
-          <NavbarContainer />
-          <div className="flex flex-1 min-h-0">
-            {firstOrg ? (
-              <OrgProvider organizationId={firstOrg.id}>
-                <KanbanLayoutContainer
-                  kanbanDefaultLayout={kanbanDefaultLayout}
-                  onKanbanLayoutChange={onKanbanLayoutChange}
-                  isKanbanRightPanelVisible={isKanbanRightPanelVisible}
-                />
-              </OrgProvider>
-            ) : (
-              <div className="flex items-center justify-center h-full w-full">
-                <p className="text-low">Loading...</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </SyncErrorProvider>
-    );
-  }
 
   const mainContent = (
     <ReviewProvider attemptId={selectedWorkspace?.id}>
@@ -258,33 +197,26 @@ export function WorkspacesLayout() {
   );
 
   return (
-    <SyncErrorProvider>
-      <div className="flex flex-col h-screen">
-        <NavbarContainer />
-        <div className="flex flex-1 min-h-0">
-          {isLeftSidebarVisible && (
-            <div className="w-[300px] shrink-0 h-full overflow-hidden">
-              <WorkspacesSidebarContainer
-                onScrollToBottom={handleScrollToBottom}
-              />
-            </div>
-          )}
-
-          <div className="flex-1 min-w-0 h-full">
-            {isCreateMode ? (
-              <CreateModeProvider>{mainContent}</CreateModeProvider>
-            ) : (
-              <ExecutionProcessesProvider
-                key={`${selectedWorkspace?.id}-${selectedSessionId}`}
-                attemptId={selectedWorkspace?.id}
-                sessionId={selectedSessionId}
-              >
-                {mainContent}
-              </ExecutionProcessesProvider>
-            )}
-          </div>
+    <div className="flex flex-1 min-h-0 h-full">
+      {isLeftSidebarVisible && (
+        <div className="w-[300px] shrink-0 h-full overflow-hidden">
+          <WorkspacesSidebarContainer onScrollToBottom={handleScrollToBottom} />
         </div>
+      )}
+
+      <div className="flex-1 min-w-0 h-full">
+        {isCreateMode ? (
+          <CreateModeProvider>{mainContent}</CreateModeProvider>
+        ) : (
+          <ExecutionProcessesProvider
+            key={`${selectedWorkspace?.id}-${selectedSessionId}`}
+            attemptId={selectedWorkspace?.id}
+            sessionId={selectedSessionId}
+          >
+            {mainContent}
+          </ExecutionProcessesProvider>
+        )}
       </div>
-    </SyncErrorProvider>
+    </div>
   );
 }
