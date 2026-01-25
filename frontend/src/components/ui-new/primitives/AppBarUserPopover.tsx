@@ -6,6 +6,7 @@ import {
   SignOutIcon,
   UserIcon,
 } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import type { OrganizationWithRole } from 'shared/types';
 import {
@@ -38,6 +39,8 @@ export function AppBarUserPopover({
   onSignIn,
   onLogout,
 }: AppBarUserPopoverProps) {
+  const { t } = useTranslation();
+
   if (!isSignedIn) {
     return (
       <DropdownMenu>
@@ -58,7 +61,7 @@ export function AppBarUserPopover({
         </DropdownMenuTrigger>
         <DropdownMenuContent side="right" align="end" className="min-w-[200px]">
           <DropdownMenuItem icon={SignInIcon} onClick={onSignIn}>
-            Sign in
+            {t('signIn')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -91,7 +94,7 @@ export function AppBarUserPopover({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="end" className="min-w-[200px]">
-        <DropdownMenuLabel>Organizations</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('orgSwitcher.organizations')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {organizations.map((org) => (
           <DropdownMenuItem
@@ -105,11 +108,11 @@ export function AppBarUserPopover({
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem icon={PlusIcon} onClick={onCreateOrg}>
-          Create organization
+          {t('orgSwitcher.createOrganization')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem icon={SignOutIcon} onClick={onLogout}>
-          Log out
+          {t('signOut')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
