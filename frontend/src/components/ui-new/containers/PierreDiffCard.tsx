@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CaretDownIcon,
@@ -7,7 +7,7 @@ import {
   PlusIcon,
 } from '@phosphor-icons/react';
 import { FileDiff } from '@pierre/diffs/react';
-import type { DiffLineAnnotation, AnnotationSide } from '@pierre/diffs';
+import type { DiffLineAnnotation, AnnotationSide, ChangeContent } from '@pierre/diffs';
 import { SplitSide } from '@git-diff-view/react';
 import { cn } from '@/lib/utils';
 import {
@@ -40,7 +40,7 @@ interface PierreDiffCardProps {
   onToggle: () => void;
   projectId: string;
   attemptId: string;
-  className?: string;
+  className: string;
 }
 
 type ExtendedCommentAnnotation =
@@ -61,7 +61,7 @@ export function PierreDiffCard({
   onToggle,
   projectId,
   attemptId,
-  className,
+  className = '',
 }: PierreDiffCardProps) {
   const { t } = useTranslation('tasks');
   const { theme } = useTheme();
@@ -89,16 +89,23 @@ export function PierreDiffCard({
 
   const additions = useMemo(() => {
     return fileDiffMetadata.hunks.reduce((acc, hunk) => {
-      // Cast to any to access lines if types are not fully exposed
-      const lines = (hunk as any).lines || [];
-      return acc + lines.filter((l: any) => l.type === 'added' || l.type === 'new').length;
+      return acc + hunk.hunkContent.reduce((count, content) => {
+        if (content.type === 'change') {
+          return count + (content as ChangeContent).additions.length;
+        }
+        return count;
+      }, 0);
     }, 0);
   }, [fileDiffMetadata]);
 
   const deletions = useMemo(() => {
     return fileDiffMetadata.hunks.reduce((acc, hunk) => {
-      const lines = (hunk as any).lines || [];
-      return acc + lines.filter((l: any) => l.type === 'deleted').length;
+      return acc + hunk.hunkContent.reduce((count, content) => {
+        if (content.type === 'change') {
+          return count + (content as ChangeContent).deletions.length;
+        }
+        return count;
+      }, 0);
     }, 0);
   }, [fileDiffMetadata]);
 
@@ -202,6 +209,26 @@ export function PierreDiffCard({
     [projectId, filePath, addComment]
   );
 
+  // Handle line click to add comment
+  const handleLineClick = useCallback(
+    (props: { lineNumber: number; annotationSide: AnnotationSide }) => {
+      const { lineNumber, annotationSide } = props;
+      const splitSide = mapAnnotationSideToSplitSide(annotationSide);
+      const widgetKey = `${filePath}-${splitSide}-${lineNumber}`;
+      
+      // Don't create a new draft if one already exists
+      if (drafts[widgetKey]) return;
+      
+      setDraft(widgetKey, {
+        filePath,
+        side: splitSide,
+        lineNumber,
+        text: '',
+      });
+    },
+    [filePath, drafts, setDraft]
+  );
+
   const renderHoverUtility = useCallback(
     (getHoveredLine: () => { lineNumber: number; side: AnnotationSide } | undefined) => {
       const line = getHoveredLine();
@@ -233,16 +260,31 @@ export function PierreDiffCard({
     [filePath, drafts, setDraft, t]
   );
 
-  // Suppress internal header since we use the external one
-  const renderHeaderMetadata = useCallback(() => null, []);
+  const fileDiffOptions = useMemo(() => ({
+    diffStyle: globalMode === 'split' ? 'split' as const : 'unified' as const,
+    diffIndicators: 'classic' as const,
+    themeType: actualTheme,
+    overflow: 'scroll' as const,
+    hunkSeparators: 'line-info' as const,
+    disableFileHeader: true,
+    enableHoverUtility: true,
+    onLineClick: handleLineClick,
+  }), [globalMode, actualTheme, handleLineClick]);
+
+  // Large diff placeholder logic
+  const LARGE_DIFF_THRESHOLD = 2000;
+  const [forceExpanded, setForceExpanded] = useState(false);
+  const totalLines = additions + deletions;
+  const isLargeDiff = totalLines > LARGE_DIFF_THRESHOLD;
+  const shouldShowPlaceholder = expanded && isLargeDiff && !forceExpanded;
 
   return (
-    <div className={cn('my-base rounded-sm border', className)}>
+    <div className={cn('pb-base rounded-sm', className)}>
       <div
         className={cn(
           'w-full flex items-center bg-primary px-base gap-base sticky top-0 z-10 border-b border-transparent',
           'cursor-pointer',
-          expanded && 'border-inherit rounded-t-sm'
+          expanded && 'rounded-t-sm'
         )}
         onClick={onToggle}
       >
@@ -316,20 +358,40 @@ export function PierreDiffCard({
 
       {expanded && (
         <div className="bg-primary">
-          <FileDiff
-            fileDiff={fileDiffMetadata}
-            options={{
-              diffStyle: globalMode === 'split' ? 'split' : 'unified',
-              diffIndicators: 'classic',
-              themeType: actualTheme,
-              overflow: 'scroll',
-              hunkSeparators: 'line-info',
-            }}
-            lineAnnotations={annotations}
-            renderAnnotation={renderAnnotation}
-            renderHeaderMetadata={renderHeaderMetadata}
-            renderHoverUtility={renderHoverUtility}
-          />
+          {shouldShowPlaceholder ? (
+            <div className="p-base bg-warning/5 border-t border-warning/20">
+              <div className="flex items-center justify-between gap-base">
+                <div className="text-sm text-low">
+                  <span className="font-medium text-warning">Large file</span>
+                  <span className="ml-2">
+                    {totalLines.toLocaleString()} lines changed
+                    <span className="text-success ml-2">+{additions.toLocaleString()}</span>
+                    <span className="text-error ml-1">-{deletions.toLocaleString()}</span>
+                  </span>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setForceExpanded(true);
+                  }}
+                  className="text-sm text-brand hover:text-brand-hover transition-colors"
+                >
+                  Load diff anyway
+                </button>
+              </div>
+              <p className="text-xs text-low mt-1">
+                Large diffs may slow down your browser.
+              </p>
+            </div>
+          ) : (
+            <FileDiff
+              fileDiff={fileDiffMetadata}
+              options={fileDiffOptions}
+              lineAnnotations={annotations}
+              renderAnnotation={renderAnnotation}
+              renderHoverUtility={renderHoverUtility}
+            />
+          )}
         </div>
       )}
     </div>

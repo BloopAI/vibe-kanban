@@ -42,8 +42,7 @@ export function FileTreeContainer({
     isGitHubCommentsLoading,
   } = useWorkspaceContext();
 
-  // Get selectFile from context to pass line number when navigating
-  const { selectFile } = useChangesView();
+  const { selectFile, scrollToFile } = useChangesView();
 
   // Sync selectedPath with fileInView from context and scroll into view
   useEffect(() => {
@@ -122,13 +121,13 @@ export function FileTreeContainer({
   const handleSelectFile = useCallback(
     (path: string) => {
       setSelectedPath(path);
-      // Find the diff for this path
       const diff = diffs.find((d) => d.newPath === path || d.oldPath === path);
       if (diff) {
+        scrollToFile(path);
         onSelectFile(path, diff);
       }
     },
-    [diffs, onSelectFile]
+    [diffs, onSelectFile, scrollToFile]
   );
 
   // Get list of diff paths that have GitHub comments, sorted to match visual order

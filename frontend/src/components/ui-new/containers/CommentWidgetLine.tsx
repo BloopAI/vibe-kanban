@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PrimaryButton } from '../primitives/PrimaryButton';
 import { CommentCard } from '../primitives/CommentCard';
@@ -13,7 +13,7 @@ interface CommentWidgetLineProps {
   projectId: string;
 }
 
-export function CommentWidgetLine({
+export const CommentWidgetLine = memo(function CommentWidgetLine({
   draft,
   widgetKey,
   onSave,
@@ -72,4 +72,4 @@ export function CommentWidgetLine({
       />
     </CommentCard>
   );
-}
+});
