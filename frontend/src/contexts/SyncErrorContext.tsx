@@ -4,6 +4,7 @@ import {
   useState,
   useCallback,
   useMemo,
+  useEffect,
   type ReactNode,
 } from 'react';
 import type { SyncError } from '@/lib/electric/types';
@@ -84,6 +85,22 @@ export function SyncErrorProvider({ children }: SyncErrorProviderProps) {
       streamError.retry();
     }
   }, [errors]);
+
+  // Auto-retry all failed streams when tab becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && errorsMap.size > 0) {
+        for (const streamError of errorsMap.values()) {
+          streamError.retry();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [errorsMap]);
 
   const value = useMemo<SyncErrorContextValue>(
     () => ({
