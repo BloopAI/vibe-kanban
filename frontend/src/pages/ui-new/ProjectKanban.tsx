@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { OrgProvider, useOrgContext } from '@/contexts/remote/OrgContext';
@@ -99,18 +99,21 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
 }
 
 /**
- * Hook to find a project by ID across all organizations
+ * Hook to find a project by ID, using orgId from URL if available
  */
-function useFindProjectById(projectId: string | undefined) {
+function useFindProjectById(
+  projectId: string | undefined,
+  orgIdFromUrl: string | null
+) {
   const { data: orgsData, isLoading: orgsLoading } = useUserOrganizations();
   const organizations = orgsData?.organizations ?? [];
 
-  // We need to search through all orgs to find the project
-  // For now, we'll use the first org and check if the project is there
-  // A more robust solution would involve fetching projects for all orgs
-  const firstOrg = organizations[0];
+  // If orgId is provided in URL, use it directly
+  // Otherwise fall back to searching in the first org
+  const orgIdToUse = orgIdFromUrl ?? organizations[0]?.id ?? null;
+
   const { data: projects = [], isLoading: projectsLoading } =
-    useOrganizationProjects(firstOrg?.id ?? null);
+    useOrganizationProjects(orgIdToUse);
 
   const project = useMemo(() => {
     if (!projectId) return undefined;
@@ -119,7 +122,7 @@ function useFindProjectById(projectId: string | undefined) {
 
   return {
     project,
-    organizationId: project?.organization_id ?? firstOrg?.id,
+    organizationId: orgIdFromUrl ?? project?.organization_id,
     isLoading: orgsLoading || projectsLoading,
   };
 }
@@ -133,10 +136,15 @@ function useFindProjectById(projectId: string | undefined) {
  */
 export function ProjectKanban() {
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams] = useSearchParams();
+  const orgIdFromUrl = searchParams.get('orgId');
   const { t } = useTranslation('common');
 
   // Find the project and get its organization
-  const { organizationId, isLoading } = useFindProjectById(projectId);
+  const { organizationId, isLoading } = useFindProjectById(
+    projectId,
+    orgIdFromUrl
+  );
 
   if (isLoading) {
     return (

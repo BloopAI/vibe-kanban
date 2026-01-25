@@ -5,6 +5,12 @@ import { NavbarContainer } from './NavbarContainer';
 import { AppBar } from '../primitives/AppBar';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
+import {
+  CreateOrganizationDialog,
+  type CreateOrganizationResult,
+  CreateRemoteProjectDialog,
+  type CreateRemoteProjectResult,
+} from '@/components/dialogs';
 
 export function SharedAppLayout() {
   const navigate = useNavigate();
@@ -38,15 +44,39 @@ export function SharedAppLayout() {
   }, [navigate]);
 
   const handleProjectClick = useCallback(
-    (projectId: string) => {
-      navigate(`/projects/${projectId}`);
+    (projectId: string, organizationId: string) => {
+      navigate(`/projects/${projectId}?orgId=${organizationId}`);
     },
     [navigate]
   );
 
-  const handleCreateOrg = useCallback(() => {
-    // TODO: Implement create organization dialog
+  const handleCreateOrg = useCallback(async () => {
+    try {
+      const result: CreateOrganizationResult =
+        await CreateOrganizationDialog.show();
+
+      if (result.action === 'created' && result.organizationId) {
+        setSelectedOrgId(result.organizationId);
+      }
+    } catch {
+      // Dialog cancelled
+    }
   }, []);
+
+  const handleCreateProject = useCallback(async () => {
+    if (!selectedOrgId) return;
+
+    try {
+      const result: CreateRemoteProjectResult =
+        await CreateRemoteProjectDialog.show({ organizationId: selectedOrgId });
+
+      if (result.action === 'created' && result.project) {
+        navigate(`/projects/${result.project.id}?orgId=${selectedOrgId}`);
+      }
+    } catch {
+      // Dialog cancelled
+    }
+  }, [navigate, selectedOrgId]);
 
   return (
     <SyncErrorProvider>
@@ -57,6 +87,7 @@ export function SharedAppLayout() {
           selectedOrgId={selectedOrgId}
           onOrgSelect={setSelectedOrgId}
           onCreateOrg={handleCreateOrg}
+          onCreateProject={handleCreateProject}
           onWorkspacesClick={handleWorkspacesClick}
           onProjectClick={handleProjectClick}
           isWorkspacesActive={isWorkspacesActive}
