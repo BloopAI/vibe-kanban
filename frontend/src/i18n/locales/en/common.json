@@ -95,11 +95,14 @@
     "menuItem": "Organization",
     "loadingPlaceholder": "Loading organizations...",
     "selectPlaceholder": "Select an organization",
-    "currentBadge": " (current)"
+    "currentBadge": " (current)",
+    "organizations": "Organizations",
+    "createOrganization": "Create organization"
   },
   "navbar": {
     "tryNewUI": "try the new UI"
   },
+  "signIn": "Sign in",
   "signOut": "Sign out",
   "devMode": {
     "banner": "Development Mode - This is a development build"
