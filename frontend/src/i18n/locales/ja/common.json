@@ -340,7 +340,9 @@
     "createTag": "作成",
     "filesCount": "{{count}}ファイル",
     "noPrCreated": "PRが作成されていません",
-    "noCommentsYet": "コメントはまだありません"
+    "noCommentsYet": "コメントはまだありません",
+    "comments": "コメント",
+    "enterCommentPlaceholder": "コメントを入力してください..."
   },
   "syncError": {
     "networkErrors": "ネットワークエラー",

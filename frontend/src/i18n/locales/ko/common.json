@@ -340,7 +340,9 @@
     "createTag": "만들기",
     "filesCount": "{{count}}개 파일",
     "noPrCreated": "PR이 생성되지 않음",
-    "noCommentsYet": "아직 댓글이 없습니다"
+    "noCommentsYet": "아직 댓글이 없습니다",
+    "comments": "댓글",
+    "enterCommentPlaceholder": "댓글을 입력하세요..."
   },
   "syncError": {
     "networkErrors": "네트워크 오류",
