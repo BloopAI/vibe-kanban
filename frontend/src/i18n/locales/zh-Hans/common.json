@@ -340,7 +340,9 @@
     "createTag": "创建",
     "filesCount": "{{count}} 个文件",
     "noPrCreated": "未创建 PR",
-    "noCommentsYet": "暂无评论"
+    "noCommentsYet": "暂无评论",
+    "comments": "评论",
+    "enterCommentPlaceholder": "在此输入评论..."
   },
   "syncError": {
     "networkErrors": "网络错误",

@@ -1,5 +1,4 @@
 import { cn } from '@/lib/utils';
-import { useTranslation } from 'react-i18next';
 import { XIcon } from '@phosphor-icons/react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type {
@@ -17,6 +16,7 @@ import {
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { Toggle } from '@/components/ui-new/primitives/Toggle';
 import { CollapsibleSectionHeader } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
+import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/IssueCommentsSectionContainer';
 import type { PersistKey } from '@/stores/useUiPreferencesStore';
 
 export type IssuePanelMode = 'create' | 'edit';
@@ -29,15 +29,6 @@ export interface IssueFormData {
   assigneeIds: string[];
   tagIds: string[];
   createDraftWorkspace: boolean;
-}
-
-export interface IssueCommentData {
-  id: string;
-  authorId: string;
-  authorName: string;
-  authorImageUrl?: string | null;
-  message: string;
-  createdAt: string;
 }
 
 export interface LinkedPullRequest {
@@ -63,14 +54,13 @@ export interface KanbanIssuePanelProps {
   users: User[];
 
   // Edit mode data
+  issueId?: string | null;
   workspaces?: WorkspaceWithStats[];
-  comments?: IssueCommentData[];
   linkedPrs?: LinkedPullRequest[];
 
   // Actions
   onClose: () => void;
   onSubmit: () => void;
-  onAddComment?: (message: string) => void;
 
   // Tag create callback - returns the new tag ID
   onCreateTag?: (data: { name: string; color: string }) => string;
@@ -88,15 +78,14 @@ export function KanbanIssuePanel({
   statuses,
   tags,
   users,
+  issueId,
   workspaces = [],
-  comments = [],
   linkedPrs = [],
   onClose,
   onSubmit,
   onCreateTag,
   isSubmitting,
 }: KanbanIssuePanelProps) {
-  const { t } = useTranslation('common');
   const isCreateMode = mode === 'create';
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -241,68 +230,12 @@ export function KanbanIssuePanel({
         )}
 
         {/* Comments Section (Edit mode only) */}
-        {!isCreateMode && (
+        {!isCreateMode && issueId && (
           <div className="border-t">
-            <CollapsibleSectionHeader
-              title="Comments"
-              persistKey={'kanban-issue-comments' as PersistKey}
-              defaultExpanded={true}
-              actions={[]}
-            >
-              <div className="px-base pb-base flex flex-col gap-base">
-                {comments.length === 0 ? (
-                  <p className="text-sm text-low">
-                    {t('kanban.noCommentsYet')}
-                  </p>
-                ) : (
-                  comments.map((comment) => (
-                    <CommentItem key={comment.id} comment={comment} />
-                  ))
-                )}
-              </div>
-            </CollapsibleSectionHeader>
+            <IssueCommentsSectionContainer issueId={issueId} />
           </div>
         )}
       </div>
     </div>
   );
-}
-
-interface CommentItemProps {
-  comment: IssueCommentData;
-}
-
-function CommentItem({ comment }: CommentItemProps) {
-  const timeAgo = getTimeAgo(comment.createdAt);
-
-  return (
-    <div className="flex flex-col gap-half">
-      <div className="flex items-center gap-half">
-        <div className="w-5 h-5 rounded-full bg-panel flex items-center justify-center text-xs text-low">
-          {comment.authorName.charAt(0).toUpperCase()}
-        </div>
-        <span className="text-sm text-normal font-medium">
-          {comment.authorName}
-        </span>
-        <span className="text-sm text-low">{timeAgo}</span>
-      </div>
-      <p className="text-base text-normal pl-[28px]">{comment.message}</p>
-    </div>
-  );
-}
-
-function getTimeAgo(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const diffWeeks = Math.floor(diffDays / 7);
-
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return `${diffWeeks}w ago`;
 }

@@ -340,7 +340,9 @@
     "createTag": "Crear",
     "filesCount": "{{count}} Archivos",
     "noPrCreated": "No se creó PR",
-    "noCommentsYet": "Sin comentarios aún"
+    "noCommentsYet": "Sin comentarios aún",
+    "comments": "Comentarios",
+    "enterCommentPlaceholder": "Ingresa tu comentario aquí..."
   },
   "syncError": {
     "networkErrors": "Errores de red",
