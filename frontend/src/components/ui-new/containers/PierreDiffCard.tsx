@@ -1,0 +1,337 @@
+import { useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  CaretDownIcon,
+  ChatCircleIcon,
+  GithubLogoIcon,
+  PlusIcon,
+} from '@phosphor-icons/react';
+import { FileDiff } from '@pierre/diffs/react';
+import type { DiffLineAnnotation, AnnotationSide } from '@pierre/diffs';
+import { SplitSide } from '@git-diff-view/react';
+import { cn } from '@/lib/utils';
+import {
+  transformDiffToFileDiffMetadata,
+  transformCommentsToAnnotations,
+  type CommentAnnotation,
+} from '@/utils/diffDataAdapter';
+import { useTheme } from '@/components/ThemeProvider';
+import { getActualTheme } from '@/utils/theme';
+import { useDiffViewMode } from '@/stores/useDiffViewStore';
+import {
+  useReview,
+  type ReviewDraft,
+} from '@/contexts/ReviewProvider';
+import {
+  useWorkspaceContext,
+} from '@/contexts/WorkspaceContext';
+import { getFileIcon } from '@/utils/fileTypeIcon';
+import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
+import { useOpenInEditor } from '@/hooks/useOpenInEditor';
+import { ReviewCommentRenderer } from './ReviewCommentRenderer';
+import { GitHubCommentRenderer } from './GitHubCommentRenderer';
+import { CommentWidgetLine } from './CommentWidgetLine';
+import { DisplayTruncatedPath } from '@/utils/TruncatePath';
+import type { Diff } from 'shared/types';
+
+interface PierreDiffCardProps {
+  diff: Diff;
+  expanded: boolean;
+  onToggle: () => void;
+  projectId: string;
+  attemptId: string;
+  className?: string;
+}
+
+type ExtendedCommentAnnotation =
+  | CommentAnnotation
+  | { type: 'draft'; draft: ReviewDraft; widgetKey: string };
+
+function mapSideToAnnotationSide(side: SplitSide): AnnotationSide {
+  return side === SplitSide.old ? 'deletions' : 'additions';
+}
+
+function mapAnnotationSideToSplitSide(side: AnnotationSide): SplitSide {
+  return side === 'deletions' ? SplitSide.old : SplitSide.new;
+}
+
+export function PierreDiffCard({
+  diff,
+  expanded,
+  onToggle,
+  projectId,
+  attemptId,
+  className,
+}: PierreDiffCardProps) {
+  const { t } = useTranslation('tasks');
+  const { theme } = useTheme();
+  const actualTheme = getActualTheme(theme);
+  const globalMode = useDiffViewMode();
+  
+  const { comments, drafts, setDraft, addComment } = useReview();
+  const { showGitHubComments, getGitHubCommentsForFile } = useWorkspaceContext();
+
+  // File path logic
+  const filePath = diff.newPath || diff.oldPath || 'unknown';
+  const oldPath = diff.oldPath;
+  const changeKind = diff.change;
+
+  const openInEditor = useOpenInEditor(attemptId);
+  const handleOpenInIde = useCallback(() => {
+    openInEditor({ filePath });
+  }, [openInEditor, filePath]);
+
+  // Transform diff to pierre/diffs metadata
+  const fileDiffMetadata = useMemo(
+    () => transformDiffToFileDiffMetadata(diff),
+    [diff]
+  );
+
+  const additions = useMemo(() => {
+    return fileDiffMetadata.hunks.reduce((acc, hunk) => {
+      // Cast to any to access lines if types are not fully exposed
+      const lines = (hunk as any).lines || [];
+      return acc + lines.filter((l: any) => l.type === 'added' || l.type === 'new').length;
+    }, 0);
+  }, [fileDiffMetadata]);
+
+  const deletions = useMemo(() => {
+    return fileDiffMetadata.hunks.reduce((acc, hunk) => {
+      const lines = (hunk as any).lines || [];
+      return acc + lines.filter((l: any) => l.type === 'deleted').length;
+    }, 0);
+  }, [fileDiffMetadata]);
+
+  const hasStats = additions > 0 || deletions > 0;
+
+  const FileIcon = getFileIcon(filePath, actualTheme);
+
+  // Change Label
+  const getChangeLabel = (kind?: string): string | null => {
+    switch (kind) {
+      case 'added': return 'Added';
+      case 'deleted': return 'Deleted';
+      case 'renamed': return 'Renamed';
+      case 'copied': return 'Copied';
+      case 'permissionChange': return 'Perm';
+      default: return null;
+    }
+  };
+  const changeLabel = getChangeLabel(changeKind);
+
+  const commentsForFile = useMemo(
+    () => comments.filter((c) => c.filePath === filePath),
+    [comments, filePath]
+  );
+
+  const githubCommentsForFile = useMemo(() => {
+    if (!showGitHubComments) return [];
+    return getGitHubCommentsForFile(filePath);
+  }, [showGitHubComments, getGitHubCommentsForFile, filePath]);
+
+  const totalCommentCount = commentsForFile.length + githubCommentsForFile.length;
+
+  const annotations = useMemo(() => {
+    // 1. Get standard comments
+    const baseAnnotations = transformCommentsToAnnotations(
+      commentsForFile,
+      githubCommentsForFile,
+      filePath
+    ) as DiffLineAnnotation<ExtendedCommentAnnotation>[];
+
+    // 2. Add drafts
+    const draftAnnotations: DiffLineAnnotation<ExtendedCommentAnnotation>[] = [];
+    Object.entries(drafts).forEach(([key, draft]) => {
+      if (!draft || draft.filePath !== filePath) return;
+      
+      draftAnnotations.push({
+        side: mapSideToAnnotationSide(draft.side),
+        lineNumber: draft.lineNumber,
+        metadata: {
+          type: 'draft',
+          draft,
+          widgetKey: key,
+        },
+      });
+    });
+
+    return [...baseAnnotations, ...draftAnnotations];
+  }, [commentsForFile, githubCommentsForFile, filePath, drafts]);
+
+  const renderAnnotation = useCallback(
+    (annotation: DiffLineAnnotation<ExtendedCommentAnnotation>) => {
+      const { metadata } = annotation;
+      
+      if (metadata.type === 'draft') {
+        return (
+          <CommentWidgetLine
+            draft={metadata.draft}
+            widgetKey={metadata.widgetKey}
+            onSave={() => {}} 
+            onCancel={() => {}} 
+            projectId={projectId}
+          />
+        );
+      }
+
+      if (metadata.type === 'github') {
+        const githubComment = metadata.comment;
+        const handleCopyToUserComment = () => {
+          addComment({
+            filePath,
+            lineNumber: githubComment.lineNumber,
+            side: githubComment.side,
+            text: githubComment.body,
+          });
+        };
+        return (
+          <GitHubCommentRenderer
+            comment={githubComment}
+            onCopyToUserComment={handleCopyToUserComment}
+          />
+        );
+      }
+
+      return (
+        <ReviewCommentRenderer
+          comment={metadata.comment}
+          projectId={projectId}
+        />
+      );
+    },
+    [projectId, filePath, addComment]
+  );
+
+  const renderHoverUtility = useCallback(
+    (getHoveredLine: () => { lineNumber: number; side: AnnotationSide } | undefined) => {
+      const line = getHoveredLine();
+      if (!line) return null;
+      
+      const { side, lineNumber } = line;
+      const splitSide = mapAnnotationSideToSplitSide(side);
+      const widgetKey = `${filePath}-${splitSide}-${lineNumber}`;
+      
+      if (drafts[widgetKey]) return null;
+
+      return (
+        <button
+          className="flex items-center justify-center size-5 rounded hover:bg-primary-hover text-low hover:text-normal transition-colors"
+          onClick={() => {
+            setDraft(widgetKey, {
+              filePath,
+              side: splitSide,
+              lineNumber,
+              text: '',
+            });
+          }}
+          title={t('comments.addReviewComment')}
+        >
+          <PlusIcon className="size-3.5" weight="bold" />
+        </button>
+      );
+    },
+    [filePath, drafts, setDraft, t]
+  );
+
+  // Suppress internal header since we use the external one
+  const renderHeaderMetadata = useCallback(() => null, []);
+
+  return (
+    <div className={cn('my-base rounded-sm border', className)}>
+      <div
+        className={cn(
+          'w-full flex items-center bg-primary px-base gap-base sticky top-0 z-10 border-b border-transparent',
+          'cursor-pointer',
+          expanded && 'border-inherit rounded-t-sm'
+        )}
+        onClick={onToggle}
+      >
+        <span className="relative shrink-0">
+          <FileIcon className="size-icon-base" />
+        </span>
+        {changeLabel && (
+          <span
+            className={cn(
+              'text-sm shrink-0 bg-primary rounded-sm px-1',
+              changeKind === 'deleted' && 'text-error border border-error/20',
+              changeKind === 'added' && 'text-success border border-success/20'
+            )}
+          >
+            {changeLabel}
+          </span>
+        )}
+        <div
+          className={cn(
+            'text-sm flex-1 min-w-0',
+            changeKind === 'deleted' && 'text-error line-through'
+          )}
+        >
+          <DisplayTruncatedPath path={filePath} />
+        </div>
+        {(changeKind === 'renamed' || changeKind === 'copied') && oldPath && (
+          <span className="text-low text-sm shrink-0">
+            ← {oldPath.split('/').pop()}
+          </span>
+        )}
+        {hasStats && (
+          <span className="text-sm shrink-0">
+            {additions > 0 && (
+              <span className="text-success">+{additions}</span>
+            )}
+            {additions > 0 && deletions > 0 && ' '}
+            {deletions > 0 && <span className="text-error">-{deletions}</span>}
+          </span>
+        )}
+        {totalCommentCount > 0 && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded shrink-0">
+            {commentsForFile.length > 0 && (
+              <span className="inline-flex items-center gap-0.5 text-accent">
+                <ChatCircleIcon className="size-icon-xs" weight="fill" />
+                {commentsForFile.length}
+              </span>
+            )}
+            {githubCommentsForFile.length > 0 && (
+              <span className="inline-flex items-center gap-0.5 text-low">
+                <GithubLogoIcon className="size-icon-xs" weight="fill" />
+                {githubCommentsForFile.length}
+              </span>
+            )}
+          </span>
+        )}
+        <div className="flex items-center gap-1 shrink-0">
+          <span onClick={(e) => e.stopPropagation()}>
+            <OpenInIdeButton
+              onClick={handleOpenInIde}
+              className="size-icon-xs p-0"
+            />
+          </span>
+          <CaretDownIcon
+            className={cn(
+              'size-icon-xs text-low transition-transform',
+              !expanded && '-rotate-90'
+            )}
+          />
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="bg-primary">
+          <FileDiff
+            fileDiff={fileDiffMetadata}
+            options={{
+              diffStyle: globalMode === 'split' ? 'split' : 'unified',
+              diffIndicators: 'classic',
+              themeType: actualTheme,
+              overflow: 'scroll',
+              hunkSeparators: 'line-info',
+            }}
+            lineAnnotations={annotations}
+            renderAnnotation={renderAnnotation}
+            renderHeaderMetadata={renderHeaderMetadata}
+            renderHoverUtility={renderHoverUtility}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
