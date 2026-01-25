@@ -128,10 +128,14 @@ macro_rules! define_mutation_types {
             }
 
             // Update request - all fields optional for partial updates
+            // Using #[serde(default)] + deserialize_with to distinguish "field absent" from "field present with null"
             #[derive(Debug, serde::Deserialize, ts_rs::TS)]
             #[ts(export)]
             pub struct [<Update $entity Request>] {
-                $(pub $field: Option<$ty>,)*
+                $(
+                    #[serde(default, deserialize_with = "crate::mutation_types::some_if_present")]
+                    pub $field: Option<$ty>,
+                )*
             }
 
             // List query params - for filtering by parent
@@ -191,8 +195,20 @@ macro_rules! define_mutation_router {
     };
 }
 
-use serde::Serialize;
+use serde::{Deserialize, Deserializer, Serialize};
 use ts_rs::TS;
+
+/// Deserializer for update request fields that wraps present values in Some().
+/// Combined with #[serde(default)], this allows distinguishing:
+/// - Field absent from JSON → None (via default)
+/// - Field present (with any value, including null) → Some(value)
+pub fn some_if_present<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    T::deserialize(deserializer).map(Some)
+}
 
 /// Response wrapper that includes the Postgres transaction ID for Electric sync.
 /// Used by both db layer and API routes.
