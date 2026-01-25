@@ -17,6 +17,7 @@ import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { Toggle } from '@/components/ui-new/primitives/Toggle';
 import { CollapsibleSectionHeader } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
 import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/IssueCommentsSectionContainer';
+import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/IssueSubIssuesSectionContainer';
 import type { PersistKey } from '@/stores/useUiPreferencesStore';
 
 export type IssuePanelMode = 'create' | 'edit';
@@ -55,6 +56,8 @@ export interface KanbanIssuePanelProps {
 
   // Edit mode data
   issueId?: string | null;
+  parentIssue?: { id: string; simpleId: string } | null;
+  onParentIssueClick?: () => void;
   workspaces?: WorkspaceWithStats[];
   linkedPrs?: LinkedPullRequest[];
 
@@ -79,6 +82,8 @@ export function KanbanIssuePanel({
   tags,
   users,
   issueId,
+  parentIssue,
+  onParentIssueClick,
   workspaces = [],
   linkedPrs = [],
   onClose,
@@ -124,6 +129,8 @@ export function KanbanIssuePanel({
             assigneeIds={formData.assigneeIds}
             statuses={statuses}
             users={users}
+            parentIssue={parentIssue}
+            onParentIssueClick={onParentIssueClick}
             onStatusChange={(statusId) => onFormChange('statusId', statusId)}
             onPriorityChange={(priority) => onFormChange('priority', priority)}
             onAssigneeChange={(assigneeIds) =>
@@ -226,6 +233,13 @@ export function KanbanIssuePanel({
                 ))}
               </div>
             </CollapsibleSectionHeader>
+          </div>
+        )}
+
+        {/* Sub-Issues Section (Edit mode only) */}
+        {!isCreateMode && issueId && (
+          <div className="border-t">
+            <IssueSubIssuesSectionContainer issueId={issueId} />
           </div>
         )}
 
