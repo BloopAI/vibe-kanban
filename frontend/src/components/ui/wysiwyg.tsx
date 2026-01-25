@@ -91,6 +91,8 @@ type WysiwygProps = {
   onCodeClick?: (fullPath: string) => void;
   /** Show a static toolbar below the editor content */
   showStaticToolbar?: boolean;
+  /** Save status indicator for static toolbar */
+  saveStatus?: 'idle' | 'saved';
 };
 
 function WYSIWYGEditor({
@@ -117,6 +119,7 @@ function WYSIWYGEditor({
   findMatchingDiffPath,
   onCodeClick,
   showStaticToolbar = false,
+  saveStatus,
 }: WysiwygProps) {
   // Copy button state
   const [copied, setCopied] = useState(false);
@@ -262,7 +265,9 @@ function WYSIWYGEditor({
                 />
               </div>
 
-              {!disabled && showStaticToolbar && <StaticToolbarPlugin />}
+              {!disabled && showStaticToolbar && (
+                <StaticToolbarPlugin saveStatus={saveStatus} />
+              )}
 
               <ListPlugin />
               <TablePlugin />
