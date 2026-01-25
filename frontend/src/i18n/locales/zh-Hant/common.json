@@ -337,7 +337,9 @@
     "createTag": "建立",
     "filesCount": "{{count}} 個檔案",
     "noPrCreated": "未建立 PR",
-    "noCommentsYet": "尚無評論"
+    "noCommentsYet": "尚無評論",
+    "comments": "評論",
+    "enterCommentPlaceholder": "在此輸入評論..."
   },
   "syncError": {
     "networkErrors": "網路錯誤",

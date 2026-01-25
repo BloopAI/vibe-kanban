@@ -306,8 +306,8 @@ export function KanbanIssuePanelContainer() {
       statuses={sortedStatuses}
       tags={tags}
       users={users}
+      issueId={selectedKanbanIssueId}
       workspaces={[]}
-      comments={[]}
       linkedPrs={[]}
       onClose={closeKanbanIssuePanel}
       onSubmit={handleSubmit}
