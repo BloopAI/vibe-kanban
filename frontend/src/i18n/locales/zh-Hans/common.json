@@ -14,7 +14,8 @@
     "close": "关闭",
     "replay": "重播",
     "discard": "放弃",
-    "addItem": "添加项目"
+    "addItem": "添加项目",
+    "reply": "回复"
   },
   "form": {
     "notSpecified": "未指定",
@@ -94,11 +95,14 @@
     "menuItem": "组织",
     "loadingPlaceholder": "加载组织中...",
     "selectPlaceholder": "选择组织",
-    "currentBadge": "（当前）"
+    "currentBadge": "（当前）",
+    "organizations": "组织",
+    "createOrganization": "创建组织"
   },
   "navbar": {
     "tryNewUI": "试用新界面"
   },
+  "signIn": "登录",
   "signOut": "退出登录",
   "devMode": {
     "banner": "开发模式 - 这是开发版本"
@@ -342,7 +346,10 @@
     "noPrCreated": "未创建 PR",
     "noCommentsYet": "暂无评论",
     "comments": "评论",
-    "enterCommentPlaceholder": "在此输入评论..."
+    "enterCommentPlaceholder": "在此输入评论...",
+    "subIssues": "子任务",
+    "noSubIssues": "无子任务",
+    "parentIssue": "父级"
   },
   "syncError": {
     "networkErrors": "网络错误",
