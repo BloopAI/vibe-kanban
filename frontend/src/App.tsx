@@ -6,7 +6,7 @@ import { Projects } from '@/pages/Projects';
 import { ProjectTasks } from '@/pages/ProjectTasks';
 import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
 import { NormalLayout } from '@/components/layout/NormalLayout';
-import { NewDesignLayout } from '@/components/layout/NewDesignLayout';
+import { SharedAppLayout } from '@/components/ui-new/containers/SharedAppLayout';
 import { usePostHog } from 'posthog-js/react';
 import { useAuth } from '@/hooks';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
@@ -44,6 +44,7 @@ import { TerminalProvider } from '@/contexts/TerminalContext';
 import { Workspaces } from '@/pages/ui-new/Workspaces';
 import { WorkspacesLanding } from '@/pages/ui-new/WorkspacesLanding';
 import { ElectricTestPage } from '@/pages/ui-new/ElectricTestPage';
+import { ProjectKanban } from '@/pages/ui-new/ProjectKanban';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
@@ -133,7 +134,7 @@ function AppContent() {
             {/* ========== LEGACY DESIGN ROUTES ========== */}
             {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
             <Route
-              path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
+              path="/local-projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
               element={
                 <LegacyDesignScope>
                   <FullAttemptLogsPage />
@@ -149,10 +150,10 @@ function AppContent() {
               }
             >
               <Route path="/" element={<Projects />} />
-              <Route path="/projects" element={<Projects />} />
-              <Route path="/projects/:projectId" element={<Projects />} />
+              <Route path="/local-projects" element={<Projects />} />
+              <Route path="/local-projects/:projectId" element={<Projects />} />
               <Route
-                path="/projects/:projectId/tasks"
+                path="/local-projects/:projectId/tasks"
                 element={<ProjectTasks />}
               />
               <Route path="/settings/*" element={<SettingsLayout />}>
@@ -172,30 +173,37 @@ function AppContent() {
                 element={<Navigate to="/settings/mcp" replace />}
               />
               <Route
-                path="/projects/:projectId/tasks/:taskId"
+                path="/local-projects/:projectId/tasks/:taskId"
                 element={<ProjectTasks />}
               />
               <Route
-                path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
+                path="/local-projects/:projectId/tasks/:taskId/attempts/:attemptId"
                 element={<ProjectTasks />}
               />
             </Route>
 
             {/* ========== NEW DESIGN ROUTES ========== */}
+            {/* Unified layout for workspaces and projects - AppBar/Navbar rendered once */}
             <Route
-              path="/workspaces"
               element={
                 <NewDesignScope>
                   <TerminalProvider>
-                    <NewDesignLayout />
+                    <SharedAppLayout />
                   </TerminalProvider>
                 </NewDesignScope>
               }
             >
-              <Route index element={<WorkspacesLanding />} />
-              <Route path="create" element={<Workspaces />} />
-              <Route path="electric-test" element={<ElectricTestPage />} />
-              <Route path=":workspaceId" element={<Workspaces />} />
+              {/* Workspaces routes */}
+              <Route path="/workspaces" element={<WorkspacesLanding />} />
+              <Route path="/workspaces/create" element={<Workspaces />} />
+              <Route
+                path="/workspaces/electric-test"
+                element={<ElectricTestPage />}
+              />
+              <Route path="/workspaces/:workspaceId" element={<Workspaces />} />
+
+              {/* Projects route */}
+              <Route path="/projects/:projectId" element={<ProjectKanban />} />
             </Route>
           </SentryRoutes>
         </SearchProvider>
