@@ -27,6 +27,7 @@ interface AppBarProps {
   onProjectClick: (projectId: string) => void;
   isWorkspacesActive: boolean;
   activeProjectId: string | null;
+  isSignedIn?: boolean;
 }
 
 export function AppBar({
@@ -40,6 +41,7 @@ export function AppBar({
   onProjectClick,
   isWorkspacesActive,
   activeProjectId,
+  isSignedIn,
 }: AppBarProps) {
   return (
     <div
@@ -88,21 +90,23 @@ export function AppBar({
       ))}
 
       {/* Create project button */}
-      <Tooltip content="Create project" side="right">
-        <button
-          type="button"
-          onClick={onCreateProject}
-          className={cn(
-            'flex items-center justify-center w-10 h-10 rounded-lg',
-            'text-sm font-medium transition-colors cursor-pointer',
-            'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-            'bg-primary text-muted hover:text-normal hover:bg-tertiary'
-          )}
-          aria-label="Create project"
-        >
-          <PlusIcon size={20} />
-        </button>
-      </Tooltip>
+      {isSignedIn && (
+        <Tooltip content="Create project" side="right">
+          <button
+            type="button"
+            onClick={onCreateProject}
+            className={cn(
+              'flex items-center justify-center w-10 h-10 rounded-lg',
+              'text-sm font-medium transition-colors cursor-pointer',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+              'bg-primary text-muted hover:text-normal hover:bg-tertiary'
+            )}
+            aria-label="Create project"
+          >
+            <PlusIcon size={20} />
+          </button>
+        </Tooltip>
+      )}
 
       {/* Bottom section: User popover */}
       <div className="mt-auto pt-base">
