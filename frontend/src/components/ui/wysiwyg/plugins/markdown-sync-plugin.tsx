@@ -46,6 +46,13 @@ export function MarkdownSyncPlugin({
         } else {
           $convertFromMarkdownString(value, transformers);
         }
+
+        // Position cursor at end after external value change
+        const root = $getRoot();
+        const lastNode = root.getLastChild();
+        if (lastNode) {
+          lastNode.selectEnd();
+        }
       });
       lastSerializedRef.current = value;
     } catch (err) {
