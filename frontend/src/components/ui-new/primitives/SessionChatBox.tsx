@@ -564,19 +564,19 @@ export function SessionChatBox({
                 <>
                   {stats?.hasConflicts && (
                     <span
-                      className="flex items-center gap-1 text-warning text-sm"
+                      className="flex items-center gap-1 text-warning text-sm min-w-0"
                       title={t('conversation.approval.conflictWarning')}
                     >
-                      <WarningIcon className="size-icon-sm" />
-                      <span>
+                      <WarningIcon className="size-icon-sm flex-shrink-0" />
+                      <span className="truncate">
                         {t('conversation.approval.conflicts', {
                           count: stats.conflictedFilesCount,
                         })}
                       </span>
                     </span>
                   )}
-                  <PrimaryButton variant="tertiary" onClick={onViewCode}>
-                    <span className="text-sm space-x-half whitespace-nowrap">
+                  <PrimaryButton variant="tertiary" onClick={onViewCode} className="min-w-0">
+                    <span className="text-sm space-x-half whitespace-nowrap truncate">
                       <span>
                         {t('diff.filesChanged', { count: filesChanged })}
                       </span>
@@ -621,6 +621,7 @@ export function SessionChatBox({
           <ToolbarDropdown
             label={sessionLabel}
             disabled={isInFeedbackMode || isInEditMode || isInApprovalMode}
+            className="min-w-0 max-w-[120px]"
           >
             {/* New Session option */}
             <DropdownMenuItem

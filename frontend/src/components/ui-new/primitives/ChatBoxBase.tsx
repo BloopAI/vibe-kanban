@@ -170,7 +170,7 @@ export function ChatBoxBase({
       {/* Header - Stats and selector */}
       {visualVariant === VisualVariant.NORMAL && (
         <div className="flex items-center gap-base bg-secondary px-base py-[9px] @chat:rounded-t-md border-b">
-          <div className="flex flex-1 items-center gap-base text-sm">
+          <div className="flex flex-1 items-center gap-base text-sm min-w-0 overflow-hidden">
             {headerLeft}
           </div>
           <Toolbar className="gap-[9px]">{headerRight}</Toolbar>
