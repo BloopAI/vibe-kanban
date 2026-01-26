@@ -164,9 +164,7 @@ pub async fn ai_chat(
             let task = &task_with_status.task;
             system_prompt.push_str(&format!(
                 "- [{:?}] {} (Priority: {:?})\n",
-                task.status,
-                task.title,
-                task.priority
+                task.status, task.title, task.priority
             ));
         }
         system_prompt.push('\n');
