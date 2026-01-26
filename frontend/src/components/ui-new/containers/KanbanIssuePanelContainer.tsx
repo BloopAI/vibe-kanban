@@ -129,16 +129,62 @@ export function KanbanIssuePanelContainer() {
     return 'New Issue';
   }, [mode, selectedIssue]);
 
-  // Form state
-  const [formData, setFormData] = useState<IssueFormData>(() => ({
-    title: '',
-    description: null,
-    statusId: defaultStatusId,
-    priority: 'medium' as IssuePriority,
-    assigneeIds: [],
-    tagIds: [],
-    createDraftWorkspace: false,
-  }));
+  // For create mode - full local state needed
+  const [createFormData, setCreateFormData] = useState<IssueFormData | null>(
+    null
+  );
+
+  // For edit mode - only track text field edits (title, description)
+  // Dropdown fields (status, priority, assignees, tags) derive from server state
+  // When null, no local edits exist; values are read from server state
+  const [localTextEdits, setLocalTextEdits] = useState<{
+    title: string | null;
+    description: string | null;
+  } | null>(null);
+
+  // Compute display values based on mode
+  // - Create mode: use createFormData
+  // - Edit mode: text fields from localTextEdits (if editing) or server, dropdown fields always from server
+  const displayData = useMemo((): IssueFormData => {
+    if (mode === 'create') {
+      return (
+        createFormData ?? {
+          title: '',
+          description: null,
+          statusId: defaultStatusId,
+          priority: 'medium',
+          assigneeIds: [],
+          tagIds: [],
+          createDraftWorkspace: false,
+        }
+      );
+    }
+
+    // Edit mode: dropdown fields from server, text fields from local edits or server
+    return {
+      title:
+        localTextEdits && localTextEdits.title !== null
+          ? localTextEdits.title
+          : (selectedIssue?.title ?? ''),
+      description:
+        localTextEdits && localTextEdits.description !== null
+          ? localTextEdits.description
+          : (selectedIssue?.description ?? null),
+      statusId: selectedIssue?.status_id ?? '', // Always from server
+      priority: selectedIssue?.priority ?? 'medium', // Always from server
+      assigneeIds: currentAssigneeIds, // Always from server
+      tagIds: currentTagIds, // Always from server
+      createDraftWorkspace: false,
+    };
+  }, [
+    mode,
+    createFormData,
+    localTextEdits,
+    selectedIssue,
+    defaultStatusId,
+    currentAssigneeIds,
+    currentTagIds,
+  ]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -172,13 +218,14 @@ export function KanbanIssuePanelContainer() {
     setDescriptionSaveStatus('idle');
   }, [selectedKanbanIssueId, kanbanCreateMode]);
 
-  // Reset form only when switching to a different issue (not on data updates)
+  // Reset local state when switching issues or modes
   useEffect(() => {
     const currentIssueId = selectedKanbanIssueId;
     const isNewIssue = currentIssueId !== prevIssueIdRef.current;
 
     if (!isNewIssue) {
-      // Same issue, don't reset form (this is just a data sync from our own edits)
+      // Same issue - no reset needed
+      // (dropdown fields derive from server state, text fields preserve local edits)
       return;
     }
 
@@ -189,8 +236,12 @@ export function KanbanIssuePanelContainer() {
     cancelDebouncedTitle();
     cancelDebouncedDescription();
 
+    // Clear local text edits (they apply to the previous issue)
+    setLocalTextEdits(null);
+
+    // Initialize create form data if in create mode
     if (mode === 'create') {
-      setFormData({
+      setCreateFormData({
         title: '',
         description: null,
         statusId: defaultStatusId,
@@ -199,24 +250,14 @@ export function KanbanIssuePanelContainer() {
         tagIds: [],
         createDraftWorkspace: false,
       });
-    } else if (selectedIssue) {
-      setFormData({
-        title: selectedIssue.title,
-        description: selectedIssue.description,
-        statusId: selectedIssue.status_id,
-        priority: selectedIssue.priority,
-        assigneeIds: currentAssigneeIds,
-        tagIds: currentTagIds,
-        createDraftWorkspace: false,
-      });
+    } else {
+      // Edit mode: clear createFormData, displayData will derive from selectedIssue
+      setCreateFormData(null);
     }
   }, [
     mode,
     selectedKanbanIssueId,
-    selectedIssue,
     defaultStatusId,
-    currentAssigneeIds,
-    currentTagIds,
     cancelDebouncedTitle,
     cancelDebouncedDescription,
   ]);
@@ -224,72 +265,88 @@ export function KanbanIssuePanelContainer() {
   // Form change handler - persists changes immediately in edit mode
   const handlePropertyChange = useCallback(
     <K extends keyof IssueFormData>(field: K, value: IssueFormData[K]) => {
-      // Always update local form state
-      setFormData((prev) => ({ ...prev, [field]: value }));
+      // Create mode: update createFormData for all fields
+      if (kanbanCreateMode || !selectedKanbanIssueId) {
+        setCreateFormData((prev) =>
+          prev ? { ...prev, [field]: value } : null
+        );
+        return;
+      }
 
-      // In edit mode, immediately persist to database
-      if (!kanbanCreateMode && selectedKanbanIssueId) {
-        if (field === 'title') {
-          debouncedSaveTitle(value as string);
-        } else if (field === 'description') {
-          debouncedSaveDescription(value as string | null);
-        } else if (field === 'statusId') {
-          updateIssue(selectedKanbanIssueId, { status_id: value as string });
-        } else if (field === 'priority') {
-          updateIssue(selectedKanbanIssueId, {
-            priority: value as IssuePriority,
-          });
-        } else if (field === 'assigneeIds') {
-          // Handle assignee changes via junction table
-          const newIds = value as string[];
-          const currentIds = issueAssignees
-            .filter((a) => a.issue_id === selectedKanbanIssueId)
-            .map((a) => a.user_id);
+      // Edit mode: handle text fields vs dropdown fields differently
+      if (field === 'title') {
+        // Text field: update local state, then debounced save
+        setLocalTextEdits((prev) => ({
+          title: value as string,
+          description: prev?.description ?? null,
+        }));
+        debouncedSaveTitle(value as string);
+      } else if (field === 'description') {
+        // Text field: update local state, then debounced save
+        setLocalTextEdits((prev) => ({
+          title: prev?.title ?? null,
+          description: value as string | null,
+        }));
+        debouncedSaveDescription(value as string | null);
+      } else if (field === 'statusId') {
+        // Dropdown field: persist immediately, no local state
+        // (displayData derives from server state via selectedIssue)
+        updateIssue(selectedKanbanIssueId, { status_id: value as string });
+      } else if (field === 'priority') {
+        // Dropdown field: persist immediately
+        updateIssue(selectedKanbanIssueId, {
+          priority: value as IssuePriority,
+        });
+      } else if (field === 'assigneeIds') {
+        // Handle assignee changes via junction table
+        const newIds = value as string[];
+        const currentIds = issueAssignees
+          .filter((a) => a.issue_id === selectedKanbanIssueId)
+          .map((a) => a.user_id);
 
-          // Remove assignees no longer selected
-          issueAssignees
-            .filter(
-              (a) =>
-                a.issue_id === selectedKanbanIssueId &&
-                !newIds.includes(a.user_id)
-            )
-            .forEach((a) => removeIssueAssignee(a.id));
+        // Remove assignees no longer selected
+        issueAssignees
+          .filter(
+            (a) =>
+              a.issue_id === selectedKanbanIssueId &&
+              !newIds.includes(a.user_id)
+          )
+          .forEach((a) => removeIssueAssignee(a.id));
 
-          // Add new assignees
-          newIds
-            .filter((id) => !currentIds.includes(id))
-            .forEach((userId) =>
-              insertIssueAssignee({
-                issue_id: selectedKanbanIssueId,
-                user_id: userId,
-              })
-            );
-        } else if (field === 'tagIds') {
-          // Handle tag changes via junction table
-          const newTagIds = value as string[];
-          const currentIssueTags = issueTags.filter(
-            (it) => it.issue_id === selectedKanbanIssueId
+        // Add new assignees
+        newIds
+          .filter((id) => !currentIds.includes(id))
+          .forEach((userId) =>
+            insertIssueAssignee({
+              issue_id: selectedKanbanIssueId,
+              user_id: userId,
+            })
           );
-          const currentTagIdSet = new Set(
-            currentIssueTags.map((it) => it.tag_id)
-          );
-          const newTagIdSet = new Set(newTagIds);
+      } else if (field === 'tagIds') {
+        // Handle tag changes via junction table
+        const newTagIds = value as string[];
+        const currentIssueTags = issueTags.filter(
+          (it) => it.issue_id === selectedKanbanIssueId
+        );
+        const currentTagIdSet = new Set(
+          currentIssueTags.map((it) => it.tag_id)
+        );
+        const newTagIdSet = new Set(newTagIds);
 
-          // Remove tags that are no longer selected
-          for (const issueTag of currentIssueTags) {
-            if (!newTagIdSet.has(issueTag.tag_id)) {
-              removeIssueTag(issueTag.id);
-            }
+        // Remove tags that are no longer selected
+        for (const issueTag of currentIssueTags) {
+          if (!newTagIdSet.has(issueTag.tag_id)) {
+            removeIssueTag(issueTag.id);
           }
+        }
 
-          // Add newly selected tags
-          for (const tagId of newTagIds) {
-            if (!currentTagIdSet.has(tagId)) {
-              insertIssueTag({
-                issue_id: selectedKanbanIssueId,
-                tag_id: tagId,
-              });
-            }
+        // Add newly selected tags
+        for (const tagId of newTagIds) {
+          if (!currentTagIdSet.has(tagId)) {
+            insertIssueTag({
+              issue_id: selectedKanbanIssueId,
+              tag_id: tagId,
+            });
           }
         }
       }
@@ -311,7 +368,7 @@ export function KanbanIssuePanelContainer() {
 
   // Submit handler
   const handleSubmit = useCallback(async () => {
-    if (!formData.title.trim()) return;
+    if (!displayData.title.trim()) return;
 
     setIsSubmitting(true);
     try {
@@ -319,17 +376,17 @@ export function KanbanIssuePanelContainer() {
         // Create new issue
         const maxSortOrder = Math.max(
           ...issues
-            .filter((i) => i.status_id === formData.statusId)
+            .filter((i) => i.status_id === displayData.statusId)
             .map((i) => i.sort_order),
           0
         );
 
         const newIssue = insertIssue({
           project_id: projectId,
-          status_id: formData.statusId,
-          title: formData.title,
-          description: formData.description,
-          priority: formData.priority,
+          status_id: displayData.statusId,
+          title: displayData.title,
+          description: displayData.description,
+          priority: displayData.priority,
           sort_order: maxSortOrder + 1,
           start_date: null,
           target_date: null,
@@ -339,7 +396,7 @@ export function KanbanIssuePanelContainer() {
         });
 
         // Create assignee records for all selected assignees
-        formData.assigneeIds.forEach((userId) => {
+        displayData.assigneeIds.forEach((userId) => {
           insertIssueAssignee({
             issue_id: newIssue.id,
             user_id: userId,
@@ -347,14 +404,14 @@ export function KanbanIssuePanelContainer() {
         });
 
         // Create tag records if tags were selected
-        for (const tagId of formData.tagIds) {
+        for (const tagId of displayData.tagIds) {
           insertIssueTag({
             issue_id: newIssue.id,
             tag_id: tagId,
           });
         }
 
-        // TODO: Create workspace if formData.createDraftWorkspace is true
+        // TODO: Create workspace if displayData.createDraftWorkspace is true
 
         closeKanbanIssuePanel();
       } else {
@@ -369,7 +426,7 @@ export function KanbanIssuePanelContainer() {
     }
   }, [
     mode,
-    formData,
+    displayData,
     projectId,
     issues,
     insertIssue,
@@ -406,7 +463,7 @@ export function KanbanIssuePanelContainer() {
     <KanbanIssuePanel
       mode={mode}
       displayId={displayId}
-      formData={formData}
+      formData={displayData}
       onFormChange={handlePropertyChange}
       statuses={sortedStatuses}
       tags={tags}
