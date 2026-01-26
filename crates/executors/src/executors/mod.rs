@@ -57,6 +57,8 @@ pub enum BaseAgentCapability {
     SessionFork,
     /// Agent requires a setup script before it can run (e.g., login, installation)
     SetupHelper,
+    /// Agent reports context/token usage information
+    ContextUsage,
 }
 
 #[derive(Debug, Error)]
@@ -172,16 +174,22 @@ impl CodingAgent {
 
     pub fn capabilities(&self) -> Vec<BaseAgentCapability> {
         match self {
-            Self::ClaudeCode(_)
-            | Self::Amp(_)
-            | Self::Gemini(_)
-            | Self::QwenCode(_)
-            | Self::Droid(_)
-            | Self::Opencode(_) => vec![BaseAgentCapability::SessionFork],
+            Self::ClaudeCode(_) => vec![
+                BaseAgentCapability::SessionFork,
+                BaseAgentCapability::ContextUsage,
+            ],
+            Self::Opencode(_) => vec![
+                BaseAgentCapability::SessionFork,
+                BaseAgentCapability::ContextUsage,
+            ],
             Self::Codex(_) => vec![
                 BaseAgentCapability::SessionFork,
                 BaseAgentCapability::SetupHelper,
+                BaseAgentCapability::ContextUsage,
             ],
+            Self::Amp(_) | Self::Gemini(_) | Self::QwenCode(_) | Self::Droid(_) => {
+                vec![BaseAgentCapability::SessionFork]
+            }
             Self::CursorAgent(_) => vec![BaseAgentCapability::SetupHelper],
             Self::Copilot(_) => vec![],
             #[cfg(feature = "qa-mode")]
