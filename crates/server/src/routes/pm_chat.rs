@@ -192,6 +192,7 @@ pub async fn ai_chat(
         // Run claude CLI
         let result = Command::new("claude")
             .arg("--print")
+            .arg("--verbose")
             .arg("--output-format")
             .arg("stream-json")
             .arg("--model")
@@ -217,15 +218,24 @@ pub async fn ai_chat(
                             // Handle different message types
                             if let Some(msg_type) = json.get("type").and_then(|t| t.as_str()) {
                                 match msg_type {
-                                    "assistant" | "text" => {
-                                        if let Some(content) = json.get("content").and_then(|c| c.as_str()) {
-                                            full_response.push_str(content);
-                                            let event = AiChatStreamEvent {
-                                                event_type: "content".to_string(),
-                                                content: Some(content.to_string()),
-                                                error: None,
-                                            };
-                                            yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
+                                    "assistant" => {
+                                        // Extract content from message.content array
+                                        if let Some(message) = json.get("message") {
+                                            if let Some(content_array) = message.get("content").and_then(|c| c.as_array()) {
+                                                for content_item in content_array {
+                                                    if content_item.get("type").and_then(|t| t.as_str()) == Some("text") {
+                                                        if let Some(text) = content_item.get("text").and_then(|t| t.as_str()) {
+                                                            full_response.push_str(text);
+                                                            let event = AiChatStreamEvent {
+                                                                event_type: "content".to_string(),
+                                                                content: Some(text.to_string()),
+                                                                error: None,
+                                                            };
+                                                            yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                     "content_block_delta" => {
@@ -242,10 +252,16 @@ pub async fn ai_chat(
                                         }
                                     }
                                     "result" => {
-                                        // Final result - extract the full content
+                                        // Final result - extract from result field
                                         if let Some(result) = json.get("result").and_then(|r| r.as_str()) {
                                             if full_response.is_empty() {
                                                 full_response = result.to_string();
+                                                let event = AiChatStreamEvent {
+                                                    event_type: "content".to_string(),
+                                                    content: Some(result.to_string()),
+                                                    error: None,
+                                                };
+                                                yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
                                             }
                                         }
                                     }
