@@ -457,9 +457,13 @@ jobs:
         if: runner.os == 'macOS' && steps.check-signing.outputs.signing_enabled != 'true'
         run: |
           mkdir -p dist
-          zip -j dist/vibe-kanban-${{ matrix.name }}.zip target/${{ matrix.target }}/release/server
-          zip -j dist/vibe-kanban-mcp-${{ matrix.name }}.zip target/${{ matrix.target }}/release/mcp_task_server
-          zip -j dist/vibe-kanban-review-${{ matrix.name }}.zip target/${{ matrix.target }}/release/review
+          # Copy and rename binaries to expected names before zipping
+          cp target/${{ matrix.target }}/release/server vibe-kanban
+          cp target/${{ matrix.target }}/release/mcp_task_server vibe-kanban-mcp
+          cp target/${{ matrix.target }}/release/review vibe-kanban-review
+          zip -j dist/vibe-kanban-${{ matrix.name }}.zip vibe-kanban
+          zip -j dist/vibe-kanban-mcp-${{ matrix.name }}.zip vibe-kanban-mcp
+          zip -j dist/vibe-kanban-review-${{ matrix.name }}.zip vibe-kanban-review
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
