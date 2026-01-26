@@ -304,7 +304,7 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
 
     // First, send the user message and show it immediately
     try {
-      await pmChatApi.sendMessage(projectId, content, 'user');
+      await pmChatApi.sendMessage(projectId, { content, role: 'user' });
       // Refresh to show the user message right away
       await queryClient.invalidateQueries({ queryKey: ['pm-chat', projectId] });
     } catch (error) {
