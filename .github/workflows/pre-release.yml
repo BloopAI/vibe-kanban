@@ -150,6 +150,7 @@ jobs:
 
       - name: Create Sentry release
         uses: getsentry/action-release@v3
+        continue-on-error: true
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -328,6 +329,7 @@ jobs:
 
       - name: Setup Sentry CLI
         uses: matbour/setup-sentry-cli@v2
+        continue-on-error: true
         with:
           token: ${{ secrets.SENTRY_AUTH_TOKEN }}
           organization: ${{ secrets.SENTRY_ORG }}
@@ -335,6 +337,7 @@ jobs:
           version: 2.21.2
 
       - name: Upload source maps to Sentry
+        continue-on-error: true
         run: sentry-cli debug-files upload --include-sources target/${{ matrix.target }}/release
 
       - name: Prepare binaries (non-macOS)
