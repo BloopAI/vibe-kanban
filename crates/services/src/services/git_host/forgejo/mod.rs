@@ -27,22 +27,20 @@ pub struct ForgejoProvider {
 impl ForgejoProvider {
     /// Create a new Forgejo provider for the given host and token.
     pub fn new(base_url: String, token: String) -> Result<Self, GitHostError> {
-        // Ensure base_url has the API path
-        let api_url = if base_url.ends_with("/api/v1") {
-            base_url
-        } else {
-            format!("{}/api/v1", base_url.trim_end_matches('/'))
-        };
-
-        let client = GitHostHttpClient::new(api_url, token)?;
-        Ok(Self { client })
+        Ok(Self {
+            client: GitHostHttpClient::new(
+                match base_url.ends_with("/api/v1") {
+                    true => base_url,
+                    false => format!("{}/api/v1", base_url.trim_end_matches('/')),
+                },
+                token,
+            )?,
+        })
     }
 
     /// Create from a remote URL and token.
     pub fn from_remote_url(remote_url: &str, token: String) -> Result<Self, GitHostError> {
-        let host = extract_host(remote_url)?;
-        let base_url = format!("https://{}", host);
-        Self::new(base_url, token)
+        Self::new(format!("https://{}", extract_host(remote_url)?), token)
     }
 
     async fn get_pr_by_number(
@@ -51,19 +49,15 @@ impl ForgejoProvider {
         repo: &str,
         pr_number: i64,
     ) -> Result<PullRequest, GitHostError> {
-        let path = format!("/repos/{}/{}/pulls/{}", owner, repo, pr_number);
-
-        let client = self.client.clone();
-        let path_clone = path.clone();
-
         (|| async {
-            let response = client
-                .get(&path_clone)
-                .send()
-                .await
-                .map_err(|e| GitHostError::HttpError(format!("Request failed: {e}")))?;
-
-            handle_response(response).await
+            handle_response(
+                self.client
+                    .get(&format!("/repos/{}/{}/pulls/{}", owner, repo, pr_number))
+                    .send()
+                    .await
+                    .map_err(|e| GitHostError::HttpError(format!("Request failed: {e}")))?,
+            )
+            .await
         })
         .retry(
             ExponentialBuilder::default()
@@ -87,19 +81,14 @@ impl ForgejoProvider {
     }
 
     fn convert_pr_to_info(pr: &PullRequest) -> PullRequestInfo {
-        let status = if pr.merged {
-            MergeStatus::Merged
-        } else {
-            match pr.state {
-                PullRequestState::Open => MergeStatus::Open,
-                PullRequestState::Closed => MergeStatus::Closed,
-            }
-        };
-
         PullRequestInfo {
             number: pr.number,
             url: pr.html_url.clone(),
-            status,
+            status: match (pr.merged, &pr.state) {
+                (true, _) => MergeStatus::Merged,
+                (false, PullRequestState::Open) => MergeStatus::Open,
+                (false, PullRequestState::Closed) => MergeStatus::Closed,
+            },
             merged_at: pr.merged_at,
             merge_commit_sha: pr.merge_commit_sha.clone(),
         }
@@ -115,27 +104,22 @@ impl GitHostProvider for ForgejoProvider {
         request: &CreatePrRequest,
     ) -> Result<PullRequestInfo, GitHostError> {
         let (owner, repo) = parse_owner_repo(remote_url)?;
-        let path = format!("/repos/{}/{}/pulls", owner, repo);
-
-        let body = CreatePullRequestOption {
-            title: request.title.clone(),
-            body: request.body.clone(),
-            head: request.head_branch.clone(),
-            base: request.base_branch.clone(),
-        };
-
-        let client = self.client.clone();
-        let path_clone = path.clone();
 
         let pr: PullRequest = (|| async {
-            let response = client
-                .post(&path_clone)
-                .json(&body)
-                .send()
-                .await
-                .map_err(|e| GitHostError::HttpError(format!("Request failed: {e}")))?;
-
-            handle_response(response).await
+            handle_response(
+                self.client
+                    .post(&format!("/repos/{}/{}/pulls", owner, repo))
+                    .json(&CreatePullRequestOption {
+                        title: request.title.clone(),
+                        body: request.body.clone(),
+                        head: request.head_branch.clone(),
+                        base: request.base_branch.clone(),
+                    })
+                    .send()
+                    .await
+                    .map_err(|e| GitHostError::HttpError(format!("Request failed: {e}")))?,
+            )
+            .await
         })
         .retry(
             ExponentialBuilder::default()
@@ -176,21 +160,22 @@ impl GitHostProvider for ForgejoProvider {
             .ok_or_else(|| GitHostError::InvalidUrl("PR URL has no path".to_string()))?
             .collect();
 
-        if path_segments.len() < 4 || path_segments[2] != "pulls" {
-            return Err(GitHostError::InvalidUrl(format!(
-                "Invalid Forgejo PR URL format: {}",
-                pr_url
-            )));
+        let invalid_url = || GitHostError::InvalidUrl(format!("Invalid Forgejo PR URL format: {}", pr_url));
+
+        let owner = path_segments.get(0).ok_or_else(invalid_url)?;
+        let repo = path_segments.get(1).ok_or_else(invalid_url)?;
+        let pulls = path_segments.get(2).ok_or_else(invalid_url)?;
+        let pr_number_str = path_segments.get(3).ok_or_else(invalid_url)?;
+
+        if *pulls != "pulls" {
+            return Err(invalid_url());
         }
 
-        let owner = path_segments[0];
-        let repo = path_segments[1];
-        let pr_number: i64 = path_segments[3]
+        let pr_number: i64 = pr_number_str
             .parse()
             .map_err(|_| GitHostError::InvalidUrl("Invalid PR number in URL".to_string()))?;
 
-        let pr = self.get_pr_by_number(owner, repo, pr_number).await?;
-        Ok(Self::convert_pr_to_info(&pr))
+        Ok(Self::convert_pr_to_info(&self.get_pr_by_number(owner, repo, pr_number).await?))
     }
 
     async fn list_prs_for_branch(
