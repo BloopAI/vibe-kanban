@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { OrganizationWithRole } from 'shared/types';
 import { AppBarUserPopover } from '../primitives/AppBarUserPopover';
+import { SettingsDialog } from '../dialogs/SettingsDialog';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
@@ -28,6 +30,8 @@ export function AppBarUserPopoverContainer({
   const { isSignedIn } = useAuth();
   const { loginStatus, reloadSystem } = useUserSystem();
   const clearSelectedOrgId = useOrganizationStore((s) => s.clearSelectedOrgId);
+  const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
+  const [open, setOpen] = useState(false);
 
   // Extract avatar URL from first provider
   const avatarUrl =
@@ -61,14 +65,22 @@ export function AppBarUserPopoverContainer({
     }
   };
 
+  const handleOrgSettings = async (orgId: string) => {
+    setSelectedOrgId(orgId);
+    await SettingsDialog.show({ initialSection: 'organizations' });
+  };
+
   return (
     <AppBarUserPopover
       isSignedIn={isSignedIn}
       avatarUrl={avatarUrl}
       organizations={organizations}
       selectedOrgId={selectedOrgId}
+      open={open}
+      onOpenChange={setOpen}
       onOrgSelect={onOrgSelect}
       onCreateOrg={onCreateOrg}
+      onOrgSettings={handleOrgSettings}
       onSignIn={handleSignIn}
       onLogout={handleLogout}
     />
