@@ -33,7 +33,21 @@
     "viewProcesses": "View processes",
     "viewRelatedTasks": "View related tasks",
     "startReview": "Iniciar revisión",
-    "startingReview": "Iniciando revisión..."
+    "startingReview": "Iniciando revisión...",
+    "share": "Compartir",
+    "reassign": "Reasignar",
+    "stopShare": "Dejar de compartir",
+    "placeHold": "Poner en espera",
+    "releaseHold": "Quitar espera"
+  },
+  "holdTaskDialog": {
+    "title": "Poner tarea en espera",
+    "description": "Poner \"{{taskTitle}}\" en espera evitará que los agentes inicien nuevas sesiones de trabajo. Otros usuarios verán que estás trabajando manualmente en esta tarea.",
+    "commentLabel": "Motivo",
+    "commentPlaceholder": "ej., Estoy arreglando esto localmente primero...",
+    "placeHold": "Poner en espera",
+    "cancel": "Cancelar",
+    "errorRequired": "Por favor proporciona un motivo para poner esta tarea en espera."
   },
   "editBranchName": {
     "dialog": {

@@ -426,7 +426,21 @@
     "task": "任務",
     "duplicate": "複製",
     "startReview": "開始審查",
-    "startingReview": "正在開始審查..."
+    "startingReview": "正在開始審查...",
+    "share": "共享",
+    "reassign": "重新指派",
+    "stopShare": "停止共享",
+    "placeHold": "暫停",
+    "releaseHold": "取消暫停"
+  },
+  "holdTaskDialog": {
+    "title": "暫停任務",
+    "description": "將「{{taskTitle}}」暫停後，代理將無法啟動新的工作區會話。其他使用者將看到您正在手動處理此任務。",
+    "commentLabel": "原因",
+    "commentPlaceholder": "例如：我將先在本地修復此問題...",
+    "placeHold": "暫停",
+    "cancel": "取消",
+    "errorRequired": "請提供暫停此任務的原因。"
   },
   "editBranchName": {
     "dialog": {

@@ -48,9 +48,7 @@ const HoldTaskDialogImpl = NiceModal.create<HoldTaskDialogProps>((props) => {
             <DialogTitle>{t('holdTaskDialog.title')}</DialogTitle>
           </div>
           <DialogDescription className="text-left pt-2">
-            Placing <strong>"{taskTitle}"</strong> on hold will prevent agents
-            from starting new workspace sessions. Other users will see that you
-            are manually working on this task.
+            {t('holdTaskDialog.description', { taskTitle })}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">

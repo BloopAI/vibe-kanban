@@ -519,7 +519,21 @@
     "startReview": "Démarrer la révision",
     "startingReview": "Démarrage de la révision...",
     "task": "Tâche",
-    "duplicate": "Dupliquer"
+    "duplicate": "Dupliquer",
+    "share": "Partager",
+    "reassign": "Réassigner",
+    "stopShare": "Arrêter le partage",
+    "placeHold": "Mettre en attente",
+    "releaseHold": "Libérer"
+  },
+  "holdTaskDialog": {
+    "title": "Mettre la tâche en attente",
+    "description": "Mettre \"{{taskTitle}}\" en attente empêchera les agents de démarrer de nouvelles sessions de travail. Les autres utilisateurs verront que vous travaillez manuellement sur cette tâche.",
+    "commentLabel": "Raison",
+    "commentPlaceholder": "ex: Je corrige cela localement d'abord...",
+    "placeHold": "Mettre en attente",
+    "cancel": "Annuler",
+    "errorRequired": "Veuillez fournir une raison pour mettre cette tâche en attente."
   },
   "editBranchName": {
     "dialog": {

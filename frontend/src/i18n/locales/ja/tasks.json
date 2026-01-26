@@ -33,7 +33,21 @@
     "viewProcesses": "View processes",
     "viewRelatedTasks": "View related tasks",
     "startReview": "レビューを開始",
-    "startingReview": "レビューを開始中..."
+    "startingReview": "レビューを開始中...",
+    "share": "共有",
+    "reassign": "再割り当て",
+    "stopShare": "共有を停止",
+    "placeHold": "保留にする",
+    "releaseHold": "保留を解除"
+  },
+  "holdTaskDialog": {
+    "title": "タスクを保留にする",
+    "description": "「{{taskTitle}}」を保留にすると、エージェントが新しいワークスペースセッションを開始できなくなります。他のユーザーはあなたがこのタスクを手動で作業していることを確認できます。",
+    "commentLabel": "理由",
+    "commentPlaceholder": "例: まずローカルで修正します...",
+    "placeHold": "保留にする",
+    "cancel": "キャンセル",
+    "errorRequired": "このタスクを保留にする理由を入力してください。"
   },
   "editBranchName": {
     "dialog": {

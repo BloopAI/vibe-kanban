@@ -714,11 +714,12 @@
   },
   "holdTaskDialog": {
     "title": "Place Hold on Task",
-    "description": "Enter a reason for placing this task on hold. This will prevent agents from starting new workspace sessions.",
+    "description": "Placing \"{{taskTitle}}\" on hold will prevent agents from starting new workspace sessions. Other users will see that you are manually working on this task.",
     "commentLabel": "Reason",
     "commentPlaceholder": "e.g., I'm fixing this locally first...",
     "placeHold": "Place Hold",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "errorRequired": "Please provide a reason for placing this task on hold."
   },
   "scriptFixer": {
     "title": "Fix Script",
