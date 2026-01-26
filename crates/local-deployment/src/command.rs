@@ -9,32 +9,16 @@ use services::services::container::ContainerError;
 use tokio::time::Duration;
 
 pub async fn kill_process_group(child: &mut AsyncGroupChild) -> Result<(), ContainerError> {
-    kill_process_group_inner(child, false).await
-}
-
-pub async fn kill_process_group_force(child: &mut AsyncGroupChild) -> Result<(), ContainerError> {
-    kill_process_group_inner(child, true).await
-}
-
-async fn kill_process_group_inner(
-    child: &mut AsyncGroupChild,
-    force: bool,
-) -> Result<(), ContainerError> {
+    // hit the whole process group, not just the leader
     #[cfg(unix)]
     {
         if let Some(pid) = child.inner().id() {
             let pgid = getpgid(Some(Pid::from_raw(pid as i32)))
                 .map_err(|e| ContainerError::KillFailed(std::io::Error::other(e)))?;
 
-            let signals: &[Signal] = if force {
-                &[Signal::SIGKILL]
-            } else {
-                &[Signal::SIGINT, Signal::SIGTERM, Signal::SIGKILL]
-            };
-
-            for sig in signals {
+            for sig in [Signal::SIGINT, Signal::SIGTERM, Signal::SIGKILL] {
                 tracing::info!("Sending {:?} to process group {}", sig, pgid);
-                if let Err(e) = killpg(pgid, *sig) {
+                if let Err(e) = killpg(pgid, sig) {
                     tracing::warn!(
                         "Failed to send signal {:?} to process group {}: {}",
                         sig,
@@ -42,10 +26,8 @@ async fn kill_process_group_inner(
                         e
                     );
                 }
-                if !force {
-                    tracing::info!("Waiting 2s for process group {} to exit", pgid);
-                    tokio::time::sleep(Duration::from_secs(2)).await;
-                }
+                tracing::info!("Waiting 2s for process group {} to exit", pgid);
+                tokio::time::sleep(Duration::from_secs(2)).await;
                 if child
                     .inner()
                     .try_wait()

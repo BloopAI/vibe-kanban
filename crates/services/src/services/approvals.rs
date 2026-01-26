@@ -303,12 +303,23 @@ impl Approvals {
 
         for approval_id in approval_ids_to_cancel {
             if let Some((_, pending_approval)) = self.pending.remove(&approval_id) {
-                self.completed
-                    .insert(approval_id.clone(), ApprovalStatus::TimedOut);
+                let status = ApprovalStatus::Denied {
+                    reason: Some("Execution cancelled".to_string()),
+                };
+                self.completed.insert(approval_id.clone(), status.clone());
+
+                // Send the denial to unblock the waiter
+                if pending_approval.response_tx.send(status).is_err() {
+                    tracing::debug!(
+                        "approval '{}' cancellation notification receiver dropped",
+                        approval_id
+                    );
+                }
 
                 if let Some(ref store) = store
-                    && let Some(updated_entry) =
-                        pending_approval.entry.with_tool_status(ToolStatus::Failed)
+                    && let Some(updated_entry) = pending_approval
+                        .entry
+                        .with_tool_status(ToolStatus::Cancelled)
                 {
                     store.push_patch(ConversationPatch::replace(
                         pending_approval.entry_index,
@@ -317,7 +328,7 @@ impl Approvals {
                 }
 
                 tracing::debug!(
-                    "Cancelled approval '{}' for killed execution process {}",
+                    "Cancelled approval '{}' for execution process {}",
                     approval_id,
                     execution_process_id
                 );

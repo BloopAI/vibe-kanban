@@ -152,6 +152,7 @@ pub enum ToolStatus {
         timeout_at: DateTime<Utc>,
     },
     TimedOut,
+    Cancelled,
 }
 
 impl ToolStatus {
