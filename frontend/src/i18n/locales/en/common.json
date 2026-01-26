@@ -94,7 +94,8 @@
     "selectPlaceholder": "Select an organization",
     "currentBadge": " (current)",
     "organizations": "Organizations",
-    "createOrganization": "Create organization"
+    "createOrganization": "Create organization",
+    "orgSettings": "Organization settings"
   },
   "navbar": {
     "tryNewUI": "try the new UI"
