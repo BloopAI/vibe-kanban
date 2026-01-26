@@ -174,6 +174,13 @@ impl LocalContainerService {
     }
 
     pub async fn cleanup_expired_workspaces(db: &DBService) -> Result<(), DeploymentError> {
+        if std::env::var("DISABLE_WORKTREE_CLEANUP").is_ok() {
+            tracing::info!(
+                "Expired workspace cleanup is disabled via DISABLE_WORKTREE_CLEANUP environment variable"
+            );
+            return Ok(());
+        }
+
         let expired_workspaces = Workspace::find_expired_for_cleanup(&db.pool).await?;
         if expired_workspaces.is_empty() {
             tracing::debug!("No expired workspaces found");
