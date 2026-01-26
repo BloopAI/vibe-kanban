@@ -160,22 +160,37 @@ impl GitHostProvider for ForgejoProvider {
             .ok_or_else(|| GitHostError::InvalidUrl("PR URL has no path".to_string()))?
             .collect();
 
-        let invalid_url = || GitHostError::InvalidUrl(format!("Invalid Forgejo PR URL format: {}", pr_url));
-
-        let owner = path_segments.get(0).ok_or_else(invalid_url)?;
-        let repo = path_segments.get(1).ok_or_else(invalid_url)?;
-        let pulls = path_segments.get(2).ok_or_else(invalid_url)?;
-        let pr_number_str = path_segments.get(3).ok_or_else(invalid_url)?;
+        let owner = path_segments
+            .get(0)
+            .ok_or_else(|| GitHostError::InvalidUrl("PR URL missing owner".to_string()))?;
+        let repo = path_segments
+            .get(1)
+            .ok_or_else(|| GitHostError::InvalidUrl("PR URL missing repo".to_string()))?;
+        let pulls = path_segments
+            .get(2)
+            .ok_or_else(|| GitHostError::InvalidUrl("PR URL missing 'pulls' segment".to_string()))?;
+        let pr_number_str = path_segments
+            .get(3)
+            .ok_or_else(|| GitHostError::InvalidUrl("PR URL missing PR number".to_string()))?;
 
         if *pulls != "pulls" {
-            return Err(invalid_url());
+            return Err(GitHostError::InvalidUrl(format!(
+                "Expected 'pulls' in URL path, got '{}'",
+                pulls
+            )));
         }
 
-        let pr_number: i64 = pr_number_str
-            .parse()
-            .map_err(|_| GitHostError::InvalidUrl("Invalid PR number in URL".to_string()))?;
-
-        Ok(Self::convert_pr_to_info(&self.get_pr_by_number(owner, repo, pr_number).await?))
+        Ok(Self::convert_pr_to_info(
+            &self
+                .get_pr_by_number(
+                    owner,
+                    repo,
+                    pr_number_str
+                        .parse()
+                        .map_err(|_| GitHostError::InvalidUrl("Invalid PR number in URL".to_string()))?,
+                )
+                .await?,
+        ))
     }
 
     async fn list_prs_for_branch(
