@@ -14,6 +14,7 @@ pub struct IssueComment {
     pub id: Uuid,
     pub issue_id: Uuid,
     pub author_id: Uuid,
+    pub parent_id: Option<Uuid>,
     pub message: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -39,6 +40,7 @@ impl IssueCommentRepository {
                 id          AS "id!: Uuid",
                 issue_id    AS "issue_id!: Uuid",
                 author_id   AS "author_id!: Uuid",
+                parent_id   AS "parent_id: Uuid",
                 message     AS "message!",
                 created_at  AS "created_at!: DateTime<Utc>",
                 updated_at  AS "updated_at!: DateTime<Utc>"
@@ -58,6 +60,7 @@ impl IssueCommentRepository {
         id: Option<Uuid>,
         issue_id: Uuid,
         author_id: Uuid,
+        parent_id: Option<Uuid>,
         message: String,
     ) -> Result<MutationResponse<IssueComment>, IssueCommentError> {
         let id = id.unwrap_or_else(Uuid::new_v4);
@@ -66,12 +69,13 @@ impl IssueCommentRepository {
         let data = sqlx::query_as!(
             IssueComment,
             r#"
-            INSERT INTO issue_comments (id, issue_id, author_id, message, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO issue_comments (id, issue_id, author_id, parent_id, message, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING
                 id          AS "id!: Uuid",
                 issue_id    AS "issue_id!: Uuid",
                 author_id   AS "author_id!: Uuid",
+                parent_id   AS "parent_id: Uuid",
                 message     AS "message!",
                 created_at  AS "created_at!: DateTime<Utc>",
                 updated_at  AS "updated_at!: DateTime<Utc>"
@@ -79,6 +83,7 @@ impl IssueCommentRepository {
             id,
             issue_id,
             author_id,
+            parent_id,
             message,
             now,
             now
@@ -112,6 +117,7 @@ impl IssueCommentRepository {
                 id          AS "id!: Uuid",
                 issue_id    AS "issue_id!: Uuid",
                 author_id   AS "author_id!: Uuid",
+                parent_id   AS "parent_id: Uuid",
                 message     AS "message!",
                 created_at  AS "created_at!: DateTime<Utc>",
                 updated_at  AS "updated_at!: DateTime<Utc>"
@@ -149,6 +155,7 @@ impl IssueCommentRepository {
                 id          AS "id!: Uuid",
                 issue_id    AS "issue_id!: Uuid",
                 author_id   AS "author_id!: Uuid",
+                parent_id   AS "parent_id: Uuid",
                 message     AS "message!",
                 created_at  AS "created_at!: DateTime<Utc>",
                 updated_at  AS "updated_at!: DateTime<Utc>"

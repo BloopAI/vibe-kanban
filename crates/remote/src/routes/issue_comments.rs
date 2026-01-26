@@ -90,6 +90,7 @@ async fn create_issue_comment(
         payload.id,
         payload.issue_id,
         ctx.user.id,
+        payload.parent_id,
         payload.message,
     )
     .await
