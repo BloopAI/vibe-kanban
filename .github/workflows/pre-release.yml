@@ -31,7 +31,7 @@ env:
 
 jobs:
   bump-version:
-    runs-on: ubuntu-latest-m
+    runs-on: ubuntu-latest
     outputs:
       new_tag: ${{ steps.version.outputs.new_tag }}
       new_version: ${{ steps.version.outputs.new_version }}
@@ -120,7 +120,7 @@ jobs:
 
   build-frontend:
     needs: bump-version
-    runs-on: ubuntu-latest-x64-l
+    runs-on: ubuntu-latest
     env:
       VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY: ${{ secrets.PUBLIC_REACT_VIRTUOSO_LICENSE_KEY }}
       VITE_VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
@@ -174,22 +174,22 @@ jobs:
       matrix:
         include:
           - target: x86_64-unknown-linux-musl
-            os: ubuntu-latest-x64-l
+            os: ubuntu-latest
             name: linux-x64
           - target: aarch64-unknown-linux-musl
-            os: ubuntu-latest-arm64-l
+            os: ubuntu-latest
             name: linux-arm64
           - target: x86_64-pc-windows-msvc
-            os: ubuntu-latest-x64-l
+            os: ubuntu-latest
             name: windows-x64
           - target: x86_64-apple-darwin
-            os: macos-15-xlarge
+            os: macos-latest
             name: macos-x64
           - target: aarch64-apple-darwin
-            os: macos-15-xlarge
+            os: macos-latest
             name: macos-arm64
           - target: aarch64-pc-windows-msvc
-            os: ubuntu-latest-x64-l
+            os: ubuntu-latest
             name: windows-arm64
     env:
       CARGO_INCREMENTAL: "0"
@@ -471,7 +471,7 @@ jobs:
 
   package-binaries-for-release:
     needs: [bump-version, build-frontend, build-backend]
-    runs-on: ubuntu-latest-m
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
@@ -549,7 +549,7 @@ jobs:
 
   create-prerelease:
     needs: [bump-version, build-frontend, package-binaries-for-release]
-    runs-on: ubuntu-latest-m
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
