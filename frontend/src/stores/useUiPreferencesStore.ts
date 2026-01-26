@@ -15,6 +15,8 @@ export type RightMainPanelMode =
 
 export type LayoutMode = 'workspaces' | 'kanban';
 
+export type KanbanViewMode = 'kanban' | 'list';
+
 export type ContextBarPosition =
   | 'top-left'
   | 'top-right'
@@ -129,7 +131,8 @@ export type PersistKey =
   | `user:${string}`
   | `system:${string}`
   | `error:${string}`
-  | `entry:${string}`;
+  | `entry:${string}`
+  | `list-section-${string}`;
 
 type State = {
   // UI preferences
@@ -154,6 +157,10 @@ type State = {
 
   // Kanban filter state
   kanbanFilters: KanbanFilterState;
+
+  // Kanban view mode state
+  kanbanViewMode: KanbanViewMode;
+  listViewStatusFilter: string | null;
 
   // UI preferences actions
   setRepoAction: (repoId: string, action: RepoAction) => void;
@@ -203,6 +210,10 @@ type State = {
   setKanbanTags: (tagIds: string[]) => void;
   setKanbanSort: (field: KanbanSortField, direction: 'asc' | 'desc') => void;
   clearKanbanFilters: () => void;
+
+  // Kanban view mode actions
+  setKanbanViewMode: (mode: KanbanViewMode) => void;
+  setListViewStatusFilter: (statusId: string | null) => void;
 };
 
 export const useUiPreferencesStore = create<State>()(
@@ -230,6 +241,10 @@ export const useUiPreferencesStore = create<State>()(
 
       // Kanban filter state
       kanbanFilters: DEFAULT_KANBAN_FILTER_STATE,
+
+      // Kanban view mode state
+      kanbanViewMode: 'kanban' as KanbanViewMode,
+      listViewStatusFilter: null,
 
       // UI preferences actions
       setRepoAction: (repoId, action) =>
@@ -442,6 +457,12 @@ export const useUiPreferencesStore = create<State>()(
 
       clearKanbanFilters: () =>
         set({ kanbanFilters: DEFAULT_KANBAN_FILTER_STATE }),
+
+      // Kanban view mode actions
+      setKanbanViewMode: (mode) => set({ kanbanViewMode: mode }),
+
+      setListViewStatusFilter: (statusId) =>
+        set({ listViewStatusFilter: statusId }),
     }),
     {
       name: 'ui-preferences',
@@ -464,6 +485,9 @@ export const useUiPreferencesStore = create<State>()(
         workspacePanelStates: state.workspacePanelStates,
         // Kanban filters (persisted)
         kanbanFilters: state.kanbanFilters,
+        // Kanban view mode (persisted)
+        kanbanViewMode: state.kanbanViewMode,
+        listViewStatusFilter: state.listViewStatusFilter,
       }),
     }
   )
