@@ -122,6 +122,7 @@ impl ClaudeCode {
             "--output-format=stream-json",
             "--input-format=stream-json",
             "--include-partial-messages",
+            "--replay-user-messages",
             "--disallowedTools=AskUserQuestion",
         ]);
 
@@ -560,15 +561,17 @@ impl ClaudeLogProcessor {
         }
     }
 
-    /// Extract message UUID for --resume-session-at from assistant messages.
-    /// Both user and assistant message UUIDs work with --resume-session-at, but
-    /// user messages are NOT output to stdout by Claude Code (unless --replay-user-messages
-    /// is used). Assistant messages are always output and have a uuid field that can
-    /// be used to truncate the conversation to that point.
+    /// Extract message UUID for --resume-session-at from user or assistant messages.
+    /// Both user and assistant message UUIDs work with --resume-session-at.
+    /// We extract from both because:
+    /// - Assistant messages: the normal case, captures the last response
+    /// - User messages: important for cancel/interrupt, where Claude adds a
+    ///   "[Request interrupted by user]" user message as the final message
+    /// Note: User messages only appear in stdout when using --replay-user-messages flag.
     fn extract_resumable_message_uuid(claude_json: &ClaudeJson) -> Option<String> {
         match claude_json {
-            // Assistant messages are output to stdout and have a uuid field
             ClaudeJson::Assistant { uuid, .. } => uuid.clone(),
+            ClaudeJson::User { uuid, .. } => uuid.clone(),
             _ => None,
         }
     }
