@@ -1,4 +1,3 @@
-import { SplitSide } from '@git-diff-view/react';
 import {
   parseDiffFromFile,
   type FileContents,
@@ -10,6 +9,7 @@ import {
 import type { Diff, DiffChangeKind } from 'shared/types';
 import type { ReviewComment } from '@/contexts/ReviewProvider';
 import type { NormalizedGitHubComment } from '@/hooks/useGitHubComments';
+import { DiffSide } from '@/types/diff';
 
 /**
  * Discriminated union type for comment annotations.
@@ -56,10 +56,10 @@ function mapChangeKindToChangeType(
 }
 
 /**
- * Maps SplitSide (0 = old, 1 = new) to pierre/diffs AnnotationSide.
+ * Maps DiffSide (0 = old, 1 = new) to pierre/diffs AnnotationSide.
  */
-function mapSideToAnnotationSide(side: SplitSide): AnnotationSide {
-  return side === SplitSide.old ? 'deletions' : 'additions';
+function mapSideToAnnotationSide(side: DiffSide): AnnotationSide {
+  return side === DiffSide.Old ? 'deletions' : 'additions';
 }
 
 /**
@@ -137,7 +137,7 @@ export function transformDiffToFileDiffMetadata(diff: Diff): FileDiffMetadata {
 function createCommentKey(
   filePath: string,
   lineNumber: number,
-  side: SplitSide
+  side: DiffSide
 ): string {
   return `${filePath}:${lineNumber}:${side}`;
 }

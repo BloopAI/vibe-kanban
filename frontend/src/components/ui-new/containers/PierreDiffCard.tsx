@@ -12,8 +12,8 @@ import type {
   AnnotationSide,
   ChangeContent,
 } from '@pierre/diffs';
-import { SplitSide } from '@git-diff-view/react';
 import { cn } from '@/lib/utils';
+import { DiffSide } from '@/types/diff';
 import {
   transformDiffToFileDiffMetadata,
   transformCommentsToAnnotations,
@@ -33,6 +33,18 @@ import { CommentWidgetLine } from './CommentWidgetLine';
 import { DisplayTruncatedPath } from '@/utils/TruncatePath';
 import type { Diff } from 'shared/types';
 
+/**
+ * CSS override for dark mode background.
+ * The @pierre/diffs library sets --diffs-dark-bg via inline styles from the theme,
+ * so we inject this CSS with !important to override it.
+ */
+const DARK_MODE_OVERRIDE_CSS = `
+  [data-diffs] {
+    --diffs-dark-bg: hsl(0, 0%, 20%) !important;
+    --diffs-light-bg: hsl(0, 0%, 100%) !important;
+  }
+`;
+
 interface PierreDiffCardProps {
   diff: Diff;
   expanded: boolean;
@@ -46,12 +58,12 @@ type ExtendedCommentAnnotation =
   | CommentAnnotation
   | { type: 'draft'; draft: ReviewDraft; widgetKey: string };
 
-function mapSideToAnnotationSide(side: SplitSide): AnnotationSide {
-  return side === SplitSide.old ? 'deletions' : 'additions';
+function mapSideToAnnotationSide(side: DiffSide): AnnotationSide {
+  return side === DiffSide.Old ? 'deletions' : 'additions';
 }
 
-function mapAnnotationSideToSplitSide(side: AnnotationSide): SplitSide {
-  return side === 'deletions' ? SplitSide.old : SplitSide.new;
+function mapAnnotationSideToSplitSide(side: AnnotationSide): DiffSide {
+  return side === 'deletions' ? DiffSide.Old : DiffSide.New;
 }
 
 export function PierreDiffCard({
@@ -289,6 +301,7 @@ export function PierreDiffCard({
       disableFileHeader: true,
       enableHoverUtility: true,
       onLineClick: handleLineClick,
+      unsafeCSS: DARK_MODE_OVERRIDE_CSS,
     }),
     [globalMode, actualTheme, handleLineClick]
   );

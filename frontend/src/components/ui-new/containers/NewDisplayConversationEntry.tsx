@@ -9,7 +9,7 @@ import {
   type RepoWithTargetBranch,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
-import { DiffLineType, parseInstance } from '@git-diff-view/react';
+import { parseDiffStats } from '@/utils/diffStatsParser';
 import {
   usePersistedExpanded,
   type PersistKey,
@@ -34,7 +34,7 @@ import { ChatSystemMessage } from '../primitives/conversation/ChatSystemMessage'
 import { ChatThinkingMessage } from '../primitives/conversation/ChatThinkingMessage';
 import { ChatErrorMessage } from '../primitives/conversation/ChatErrorMessage';
 import { ChatScriptEntry } from '../primitives/conversation/ChatScriptEntry';
-import type { DiffInput } from '../primitives/conversation/DiffViewCard';
+import type { DiffInput } from '../primitives/conversation/PierreConversationDiff';
 
 type Props = {
   entry: NormalizedEntry;
@@ -44,34 +44,6 @@ type Props = {
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
-
-/**
- * Parse unified diff to extract addition/deletion counts
- */
-function parseDiffStats(unifiedDiff: string): {
-  additions: number;
-  deletions: number;
-} {
-  let additions = 0;
-  let deletions = 0;
-  try {
-    const parsed = parseInstance.parse(unifiedDiff);
-    for (const h of parsed.hunks) {
-      for (const line of h.lines) {
-        if (line.type === DiffLineType.Add) additions++;
-        else if (line.type === DiffLineType.Delete) deletions++;
-      }
-    }
-  } catch {
-    // Fallback: count lines starting with + or -
-    const lines = unifiedDiff.split('\n');
-    for (const line of lines) {
-      if (line.startsWith('+') && !line.startsWith('+++')) additions++;
-      else if (line.startsWith('-') && !line.startsWith('---')) deletions++;
-    }
-  }
-  return { additions, deletions };
-}
 
 /**
  * Generate tool summary text from action type

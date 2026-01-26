@@ -1,11 +1,11 @@
 import { useMemo, useCallback } from 'react';
-import { SplitSide } from '@git-diff-view/react';
 import { usePrComments } from './usePrComments';
 import {
   usePersistedExpanded,
   PERSIST_KEYS,
 } from '@/stores/useUiPreferencesStore';
 import type { UnifiedPrComment } from 'shared/types';
+import { DiffSide } from '@/types/diff';
 
 /**
  * Normalized GitHub comment for diff view display
@@ -18,7 +18,7 @@ export interface NormalizedGitHubComment {
   url: string | null;
   filePath: string;
   lineNumber: number;
-  side: SplitSide;
+  side: DiffSide;
   diffHunk: string | null;
 }
 
@@ -68,18 +68,18 @@ export function useGitHubComments({
       if (comment.comment_type !== 'review') continue;
       if (comment.line === null) continue; // Skip file-level comments
 
-      normalized.push({
-        id: String(comment.id),
-        author: comment.author,
-        body: comment.body,
-        createdAt: comment.created_at,
-        url: comment.url,
-        filePath: comment.path,
-        lineNumber: Number(comment.line),
-        // Use side from API: "LEFT" = old/deleted side, "RIGHT" = new/added side (default)
-        side: comment.side === 'LEFT' ? SplitSide.old : SplitSide.new,
-        diffHunk: comment.diff_hunk,
-      });
+       normalized.push({
+         id: String(comment.id),
+         author: comment.author,
+         body: comment.body,
+         createdAt: comment.created_at,
+         url: comment.url,
+         filePath: comment.path,
+         lineNumber: Number(comment.line),
+         // Use side from API: "LEFT" = old/deleted side, "RIGHT" = new/added side (default)
+         side: comment.side === 'LEFT' ? DiffSide.Old : DiffSide.New,
+         diffHunk: comment.diff_hunk,
+       });
     }
     return normalized;
   }, [gitHubComments]);

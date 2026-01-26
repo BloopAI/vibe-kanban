@@ -947,9 +947,12 @@ diffs-container[data-theme-type='dark'] {
   --diffs-bg-deletion-number-override: hsl(12, 30%, 16%);
   --diffs-bg-deletion-hover-override: hsl(12, 30%, 23%);
 
-  /* Context/unchanged - dark gray background */
-  --diffs-dark-bg: hsl(0, 0%, 16%);
-  --diffs-bg-context-override: hsl(0, 0%, 14%);
+  /* Context/unchanged - match app's bg-panel (lighter gray, not black) */
+  /* --diffs-bg directly overrides the base since light-dark() may not pick up --diffs-dark-bg */
+  --diffs-bg: hsl(0, 0%, 20%);
+  --diffs-dark-bg: hsl(0, 0%, 20%);
+  --diffs-bg-context-override: hsl(0, 0%, 20%);
+  --diffs-bg-hover-override: hsl(0, 0%, 25%);
 
   /* Line numbers */
   --diffs-fg-number-override: hsl(0, 0%, 56%);

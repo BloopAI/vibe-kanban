@@ -1,4 +1,3 @@
-import { SplitSide } from '@git-diff-view/react';
 import {
   createContext,
   useContext,
@@ -8,19 +7,20 @@ import {
   useCallback,
 } from 'react';
 import { genId } from '@/utils/id';
+import { DiffSide } from '@/types/diff';
 
 export interface ReviewComment {
   id: string;
   filePath: string;
   lineNumber: number;
-  side: SplitSide;
+  side: DiffSide;
   text: string;
   codeLine?: string;
 }
 
 export interface ReviewDraft {
   filePath: string;
-  side: SplitSide;
+  side: DiffSide;
   lineNumber: number;
   text: string;
   codeLine?: string;

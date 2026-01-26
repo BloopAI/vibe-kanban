@@ -1,22 +1,34 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CaretDownIcon } from '@phosphor-icons/react';
+import { FileDiff, PatchDiff } from '@pierre/diffs/react';
 import {
-  DiffView,
-  DiffModeEnum,
-  DiffLineType,
-  parseInstance,
-} from '@git-diff-view/react';
-import { generateDiffFile, type DiffFile } from '@git-diff-view/file';
+  parseDiffFromFile,
+  type FileContents,
+  type FileDiffMetadata,
+  type ChangeContent,
+} from '@pierre/diffs';
 import { cn } from '@/lib/utils';
 import { getFileIcon } from '@/utils/fileTypeIcon';
-import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { useTheme } from '@/components/ThemeProvider';
 import { getActualTheme } from '@/utils/theme';
 import { useDiffViewMode } from '@/stores/useDiffViewStore';
+import { parseDiffStats } from '@/utils/diffStatsParser';
 import { ToolStatus } from 'shared/types';
 import { ToolStatusDot } from './ToolStatusDot';
 import '@/styles/diff-style-overrides.css';
+
+/**
+ * CSS override for dark mode background.
+ * The @pierre/diffs library sets --diffs-dark-bg via inline styles from the theme,
+ * so we inject this CSS with !important to override it.
+ */
+const DARK_MODE_OVERRIDE_CSS = `
+  [data-diffs] {
+    --diffs-dark-bg: hsl(0, 0%, 20%) !important;
+    --diffs-light-bg: hsl(0, 0%, 100%) !important;
+  }
+`;
 
 // Discriminated union for input format flexibility
 export type DiffInput =
@@ -35,25 +47,16 @@ export type DiffInput =
     };
 
 interface DiffViewCardProps {
-  /** Diff data - either raw content or unified diff string */
   input: DiffInput;
-  /** Expansion state */
   expanded?: boolean;
-  /** Toggle expansion callback */
   onToggle?: () => void;
-  /** Optional status indicator */
   status?: ToolStatus;
-  /** Additional className */
   className?: string;
 }
 
 interface DiffData {
-  diffFile: DiffFile | null;
-  diffData: {
-    hunks: string[];
-    oldFile: { fileName: string; fileLang: string };
-    newFile: { fileName: string; fileLang: string };
-  } | null;
+  fileDiffMetadata: FileDiffMetadata | null;
+  unifiedDiff: string | null;
   additions: number;
   deletions: number;
   filePath: string;
@@ -64,23 +67,17 @@ interface DiffData {
 /**
  * Process input to get diff data and statistics
  */
-function useDiffData(input: DiffInput): DiffData {
+export function useDiffData(input: DiffInput): DiffData {
   return useMemo(() => {
     if (input.type === 'content') {
-      // Handle Diff object with oldContent/newContent
       const filePath = input.newPath || input.oldPath || 'unknown';
-      const oldLang =
-        getHighLightLanguageFromPath(input.oldPath || filePath) || 'plaintext';
-      const newLang =
-        getHighLightLanguageFromPath(input.newPath || filePath) || 'plaintext';
-
       const oldContent = input.oldContent || '';
       const newContent = input.newContent || '';
 
       if (oldContent === newContent) {
         return {
-          diffFile: null,
-          diffData: null,
+          fileDiffMetadata: null,
+          unifiedDiff: null,
           additions: 0,
           deletions: 0,
           filePath,
@@ -90,21 +87,34 @@ function useDiffData(input: DiffInput): DiffData {
       }
 
       try {
-        const file = generateDiffFile(
-          input.oldPath || filePath,
-          oldContent,
-          input.newPath || filePath,
-          newContent,
-          oldLang,
-          newLang
-        );
-        file.initRaw();
+        const oldFile: FileContents = {
+          name: input.oldPath || filePath,
+          contents: oldContent,
+        };
+        const newFile: FileContents = {
+          name: filePath,
+          contents: newContent,
+        };
+        const metadata = parseDiffFromFile(oldFile, newFile);
+
+        // Calculate additions/deletions from hunks
+        let additions = 0;
+        let deletions = 0;
+        for (const hunk of metadata.hunks) {
+          for (const content of hunk.hunkContent) {
+            if (content.type === 'change') {
+              const change = content as ChangeContent;
+              additions += change.additions.length;
+              deletions += change.deletions.length;
+            }
+          }
+        }
 
         return {
-          diffFile: file,
-          diffData: null,
-          additions: file.additionLength ?? 0,
-          deletions: file.deletionLength ?? 0,
+          fileDiffMetadata: metadata,
+          unifiedDiff: null,
+          additions,
+          deletions,
           filePath,
           isValid: true,
           hideLineNumbers: false,
@@ -112,8 +122,8 @@ function useDiffData(input: DiffInput): DiffData {
       } catch (e) {
         console.error('Failed to generate diff:', e);
         return {
-          diffFile: null,
-          diffData: null,
+          fileDiffMetadata: null,
+          unifiedDiff: null,
           additions: 0,
           deletions: 0,
           filePath,
@@ -124,32 +134,12 @@ function useDiffData(input: DiffInput): DiffData {
     } else {
       // Handle unified diff string
       const { path, unifiedDiff, hasLineNumbers = true } = input;
-      const lang = getHighLightLanguageFromPath(path) || 'plaintext';
-
-      let additions = 0;
-      let deletions = 0;
-      let isValid = false;
-
-      try {
-        const parsed = parseInstance.parse(unifiedDiff);
-        for (const hunk of parsed.hunks) {
-          for (const line of hunk.lines) {
-            if (line.type === DiffLineType.Add) additions++;
-            else if (line.type === DiffLineType.Delete) deletions++;
-          }
-        }
-        isValid = parsed.hunks.length > 0;
-      } catch (e) {
-        console.error('Failed to parse unified diff:', e);
-      }
+      const { additions, deletions } = parseDiffStats(unifiedDiff);
+      const isValid = unifiedDiff.trim().length > 0;
 
       return {
-        diffFile: null,
-        diffData: {
-          hunks: [unifiedDiff],
-          oldFile: { fileName: path, fileLang: lang },
-          newFile: { fileName: path, fileLang: lang },
-        },
+        fileDiffMetadata: null,
+        unifiedDiff,
         additions,
         deletions,
         filePath: path,
@@ -170,8 +160,8 @@ export function DiffViewCard({
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
   const {
-    diffFile,
-    diffData,
+    fileDiffMetadata,
+    unifiedDiff,
     additions,
     deletions,
     filePath,
@@ -230,8 +220,8 @@ export function DiffViewCard({
       {/* Diff body - shown when expanded */}
       {expanded && (
         <DiffViewBody
-          diffFile={diffFile}
-          diffData={diffData}
+          fileDiffMetadata={fileDiffMetadata}
+          unifiedDiff={unifiedDiff}
           isValid={isValid}
           hideLineNumbers={hideLineNumbers}
           theme={actualTheme}
@@ -243,29 +233,36 @@ export function DiffViewCard({
 
 /**
  * Diff body component that renders the actual diff content
- * Can be used standalone (e.g., inside ChatFileEntry when expanded)
  */
 export function DiffViewBody({
-  diffFile,
-  diffData,
+  fileDiffMetadata,
+  unifiedDiff,
   isValid,
   hideLineNumbers,
   theme,
 }: {
-  diffFile: DiffFile | null;
-  diffData: {
-    hunks: string[];
-    oldFile: { fileName: string; fileLang: string };
-    newFile: { fileName: string; fileLang: string };
-  } | null;
+  fileDiffMetadata: FileDiffMetadata | null;
+  unifiedDiff: string | null;
   isValid: boolean;
   hideLineNumbers?: boolean;
   theme: 'light' | 'dark';
 }) {
   const { t } = useTranslation('tasks');
   const globalMode = useDiffViewMode();
-  const diffMode =
-    globalMode === 'split' ? DiffModeEnum.Split : DiffModeEnum.Unified;
+
+  const options = useMemo(
+    () => ({
+      diffStyle:
+        globalMode === 'split' ? ('split' as const) : ('unified' as const),
+      diffIndicators: 'classic' as const,
+      themeType: theme,
+      overflow: 'scroll' as const,
+      hunkSeparators: 'line-info' as const,
+      disableFileHeader: true,
+      unsafeCSS: DARK_MODE_OVERRIDE_CSS,
+    }),
+    [globalMode, theme]
+  );
 
   if (!isValid) {
     return (
@@ -277,42 +274,23 @@ export function DiffViewBody({
 
   const wrapperClass = hideLineNumbers ? 'edit-diff-hide-nums' : '';
 
-  // For content-based diff (Diff object)
-  if (diffFile) {
+  // For content-based diff
+  if (fileDiffMetadata) {
     return (
       <div className={wrapperClass}>
-        <DiffView
-          diffFile={diffFile}
-          diffViewWrap={false}
-          diffViewTheme={theme}
-          diffViewHighlight
-          diffViewMode={diffMode}
-          diffViewFontSize={12}
-        />
+        <FileDiff fileDiff={fileDiffMetadata} options={options} />
       </div>
     );
   }
 
   // For unified diff string
-  if (diffData) {
+  if (unifiedDiff) {
     return (
       <div className={wrapperClass}>
-        <DiffView
-          data={diffData}
-          diffViewWrap={false}
-          diffViewTheme={theme}
-          diffViewHighlight
-          diffViewMode={diffMode}
-          diffViewFontSize={12}
-        />
+        <PatchDiff patch={unifiedDiff} options={options} />
       </div>
     );
   }
 
   return null;
 }
-
-/**
- * Hook to process diff input - exported for use in ChatFileEntry
- */
-export { useDiffData };
