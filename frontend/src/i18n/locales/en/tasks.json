@@ -619,6 +619,14 @@
       "done": "Done",
       "cancelled": "Cancelled"
     },
+    "priorityLabel": "Priority",
+    "priorityOptions": {
+      "urgent": "Urgent",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "labelsLabel": "Labels",
     "startLabel": "Start",
     "attachImage": "Attach image",
     "dropImagesHere": "Drop images here",

@@ -461,6 +461,24 @@ export const tasksApi = {
     });
     return handleApiResponse<void>(response);
   },
+
+  // Get dependencies for a task (tasks this task depends on)
+  getDependencies: async (taskId: string): Promise<string[]> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/dependencies`);
+    return handleApiResponse<string[]>(response);
+  },
+
+  // Set dependencies for a task (replaces existing)
+  setDependencies: async (
+    taskId: string,
+    dependencyIds: string[]
+  ): Promise<string[]> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/dependencies`, {
+      method: 'PUT',
+      body: JSON.stringify({ dependency_ids: dependencyIds }),
+    });
+    return handleApiResponse<string[]>(response);
+  },
 };
 
 // Sessions API

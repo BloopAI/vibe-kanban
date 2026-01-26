@@ -404,10 +404,15 @@ export function ProjectTasks() {
     });
 
     TASK_STATUSES.forEach((status) => {
-      columns[status].sort(
-        (a, b) =>
+      // Sort by position first, then by created_at (newer first) for tasks with same position
+      columns[status].sort((a, b) => {
+        if (a.position !== b.position) {
+          return a.position - b.position;
+        }
+        return (
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+        );
+      });
     });
 
     return columns;
@@ -707,26 +712,80 @@ export function ProjectTasks() {
       if (!over || !active.data.current) return;
 
       const draggedTaskId = active.id as string;
-      const newStatus = over.id as Task['status'];
+      const overId = over.id as string;
       const task = tasksById[draggedTaskId];
-      if (!task || task.status === newStatus) return;
+      if (!task) return;
 
-      try {
-        await tasksApi.update(draggedTaskId, {
-          title: task.title,
-          description: task.description,
-          status: newStatus,
-          priority: null,
-          position: null,
-          parent_workspace_id: task.parent_workspace_id,
-          image_ids: null,
-          label_ids: null,
-        });
-      } catch (err) {
-        console.error('Failed to update task status:', err);
+      // Check if dropped on another task (reordering) or on a column (status change)
+      const overTask = tasksById[overId];
+      const isStatusChange = TASK_STATUSES.includes(overId as TaskStatus);
+
+      if (isStatusChange) {
+        // Dropped on a column - change status
+        const newStatus = overId as Task['status'];
+        if (task.status === newStatus) return;
+
+        try {
+          await tasksApi.update(draggedTaskId, {
+            title: task.title,
+            description: task.description,
+            status: newStatus,
+            priority: null,
+            position: null,
+            parent_workspace_id: task.parent_workspace_id,
+            image_ids: null,
+            label_ids: null,
+          });
+        } catch (err) {
+          console.error('Failed to update task status:', err);
+        }
+      } else if (overTask) {
+        // Dropped on another task - reorder within the column or move to new column
+        const activeData = active.data.current as { parent?: string };
+        const overData = over.data.current as { parent?: string };
+
+        const sourceStatus = activeData?.parent || task.status;
+        const targetStatus = overData?.parent || overTask.status;
+
+        // Get tasks in target column
+        const targetTasks = kanbanColumns[targetStatus as TaskStatus] || [];
+        const overIndex = targetTasks.findIndex((t) => t.id === overId);
+
+        // Calculate new position
+        let newPosition: number;
+        if (overIndex === 0) {
+          // Dropped at the top
+          newPosition = (targetTasks[0]?.position ?? 0) - 1000;
+        } else if (overIndex === targetTasks.length - 1) {
+          // Dropped at the bottom
+          newPosition =
+            (targetTasks[targetTasks.length - 1]?.position ?? 0) + 1000;
+        } else {
+          // Dropped in the middle - calculate average position
+          const prevPos = targetTasks[overIndex - 1]?.position ?? 0;
+          const nextPos = targetTasks[overIndex]?.position ?? prevPos + 2000;
+          newPosition = Math.floor((prevPos + nextPos) / 2);
+        }
+
+        const statusChanged = sourceStatus !== targetStatus;
+
+        try {
+          await tasksApi.update(draggedTaskId, {
+            title: task.title,
+            description: task.description,
+            status: statusChanged ? (targetStatus as TaskStatus) : null,
+            priority: null,
+            position: newPosition,
+            parent_workspace_id: task.parent_workspace_id,
+            image_ids: null,
+            label_ids: null,
+          });
+        } catch (err) {
+          console.error('Failed to update task position:', err);
+        }
       }
     },
-    [tasksById]
+    [tasksById, kanbanColumns]
   );
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;

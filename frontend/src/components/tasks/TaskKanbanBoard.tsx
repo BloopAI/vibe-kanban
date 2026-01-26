@@ -42,7 +42,7 @@ function TaskKanbanBoard({
               color={statusBoardColors[statusKey]}
               onAddTask={onCreateTask}
             />
-            <KanbanCards>
+            <KanbanCards itemIds={tasks.map((t) => t.id)}>
               {tasks.map((task, index) => (
                 <TaskCard
                   key={task.id}

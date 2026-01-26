@@ -14,7 +14,7 @@ use axum::{
 };
 use db::models::{
     image::TaskImage,
-    label::Label,
+    label::{Label, TaskDependency},
     repo::{Repo, RepoError},
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     workspace::{CreateWorkspace, Workspace},
@@ -412,11 +412,40 @@ pub async fn get_task_labels(
     Ok(ResponseJson(ApiResponse::success(labels)))
 }
 
+/// Get task dependencies (tasks this task depends on)
+pub async fn get_task_dependencies(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<Uuid>>>, ApiError> {
+    let dependencies = TaskDependency::find_dependencies(&deployment.db().pool, task.id).await?;
+    Ok(ResponseJson(ApiResponse::success(dependencies)))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SetDependenciesRequest {
+    pub dependency_ids: Vec<Uuid>,
+}
+
+/// Set task dependencies (replaces existing)
+pub async fn set_task_dependencies(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<SetDependenciesRequest>,
+) -> Result<ResponseJson<ApiResponse<Vec<Uuid>>>, ApiError> {
+    TaskDependency::set_dependencies(&deployment.db().pool, task.id, &payload.dependency_ids)
+        .await?;
+    Ok(ResponseJson(ApiResponse::success(payload.dependency_ids)))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_actions_router = Router::new()
         .route("/", put(update_task))
         .route("/", delete(delete_task))
-        .route("/labels", get(get_task_labels));
+        .route("/labels", get(get_task_labels))
+        .route(
+            "/dependencies",
+            get(get_task_dependencies).put(set_task_dependencies),
+        );
 
     let task_id_router = Router::new()
         .route("/", get(get_task))
