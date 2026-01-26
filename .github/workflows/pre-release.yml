@@ -352,19 +352,31 @@ jobs:
             cp target/${{ matrix.target }}/release/review dist/vibe-kanban-review-${{ matrix.name }}
           fi
 
-      - name: Prepare Apple certificate (macOS)
+      # macOS signing (optional - skipped if secrets not configured)
+      - name: Check if Apple signing is configured
         if: runner.os == 'macOS'
+        id: check-signing
+        run: |
+          if [[ -n "${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}" ]]; then
+            echo "signing_enabled=true" >> $GITHUB_OUTPUT
+          else
+            echo "signing_enabled=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Apple signing secrets not configured - binaries will be unsigned"
+          fi
+
+      - name: Prepare Apple certificate (macOS)
+        if: runner.os == 'macOS' && steps.check-signing.outputs.signing_enabled == 'true'
         run: |
           echo "${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}" | base64 --decode > certificate.p12
 
       - name: Write API Key to file
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && steps.check-signing.outputs.signing_enabled == 'true'
         env:
           API_KEY: ${{ secrets.APP_STORE_API_KEY }}
         run: echo $API_KEY > app_store_key.json
 
       - name: Sign main binary (macOS)
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && steps.check-signing.outputs.signing_enabled == 'true'
         uses: BloopAI/apple-code-sign-action@v1
         with:
           input_path: target/${{ matrix.target }}/release/server
@@ -374,12 +386,12 @@ jobs:
           sign: true
           sign_args: "--code-signature-flags=runtime"
 
-      - name: Package main binary (macOS)
-        if: runner.os == 'macOS'
+      - name: Package signed main binary (macOS)
+        if: runner.os == 'macOS' && steps.check-signing.outputs.signing_enabled == 'true'
         run: zip vibe-kanban.zip vibe-kanban
 
       - name: Sign MCP binary (macOS)
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && steps.check-signing.outputs.signing_enabled == 'true'
         uses: BloopAI/apple-code-sign-action@v1
         with:
           input_path: target/${{ matrix.target }}/release/mcp_task_server
@@ -389,12 +401,12 @@ jobs:
           sign: true
           sign_args: "--code-signature-flags=runtime"
 
-      - name: Package MCP binary (macOS)
-        if: runner.os == 'macOS'
+      - name: Package signed MCP binary (macOS)
+        if: runner.os == 'macOS' && steps.check-signing.outputs.signing_enabled == 'true'
         run: zip vibe-kanban-mcp.zip vibe-kanban-mcp
 
       - name: Sign Review binary (macOS)
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && steps.check-signing.outputs.signing_enabled == 'true'
         uses: BloopAI/apple-code-sign-action@v1
         with:
           input_path: target/${{ matrix.target }}/release/review
@@ -404,12 +416,12 @@ jobs:
           sign: true
           sign_args: "--code-signature-flags=runtime"
 
-      - name: Package Review binary (macOS)
-        if: runner.os == 'macOS'
+      - name: Package signed Review binary (macOS)
+        if: runner.os == 'macOS' && steps.check-signing.outputs.signing_enabled == 'true'
         run: zip vibe-kanban-review.zip vibe-kanban-review
 
       - name: Notarize signed binaries (macOS)
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && steps.check-signing.outputs.signing_enabled == 'true'
         uses: BloopAI/apple-code-sign-action@main
         continue-on-error: true
         with:
@@ -422,7 +434,7 @@ jobs:
           app_store_connect_api_key_json_file: app_store_key.json
 
       - name: Prepare signed binaries (macOS)
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && steps.check-signing.outputs.signing_enabled == 'true'
         run: |
           mkdir -p dist
           cp vibe-kanban.zip dist/vibe-kanban-${{ matrix.name }}.zip
@@ -430,10 +442,19 @@ jobs:
           cp vibe-kanban-review.zip dist/vibe-kanban-review-${{ matrix.name }}.zip
 
       - name: Clean up certificates (macOS)
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && steps.check-signing.outputs.signing_enabled == 'true'
         run: |
           rm -f certificate.p12
           rm -rf private_keys/
+
+      # macOS unsigned binaries (when signing not configured)
+      - name: Package unsigned binaries (macOS)
+        if: runner.os == 'macOS' && steps.check-signing.outputs.signing_enabled != 'true'
+        run: |
+          mkdir -p dist
+          zip -j dist/vibe-kanban-${{ matrix.name }}.zip target/${{ matrix.target }}/release/server
+          zip -j dist/vibe-kanban-mcp-${{ matrix.name }}.zip target/${{ matrix.target }}/release/mcp_task_server
+          zip -j dist/vibe-kanban-review-${{ matrix.name }}.zip target/${{ matrix.target }}/release/review
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
