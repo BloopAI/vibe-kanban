@@ -242,7 +242,7 @@ export function PierreDiffCard({
 
       return (
         <button
-          className="flex items-center justify-center size-5 rounded hover:bg-primary-hover text-low hover:text-normal transition-colors"
+          className="flex items-center justify-center size-icon-base rounded hover:bg-primary-hover text-low hover:text-normal transition-colors"
           onClick={() => {
             setDraft(widgetKey, {
               filePath,
@@ -294,7 +294,7 @@ export function PierreDiffCard({
         {changeLabel && (
           <span
             className={cn(
-              'text-sm shrink-0 bg-primary rounded-sm px-1',
+              'text-sm shrink-0 bg-primary rounded-sm px-half',
               changeKind === 'deleted' && 'text-error border border-error/20',
               changeKind === 'added' && 'text-success border border-success/20'
             )}
@@ -325,7 +325,7 @@ export function PierreDiffCard({
           </span>
         )}
         {totalCommentCount > 0 && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded shrink-0">
+          <span className="inline-flex items-center gap-half px-base py-0.5 text-xs rounded shrink-0">
             {commentsForFile.length > 0 && (
               <span className="inline-flex items-center gap-0.5 text-accent">
                 <ChatCircleIcon className="size-icon-xs" weight="fill" />
@@ -340,7 +340,7 @@ export function PierreDiffCard({
             )}
           </span>
         )}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-half shrink-0">
           <span onClick={(e) => e.stopPropagation()}>
             <OpenInIdeButton
               onClick={handleOpenInIde}
@@ -363,10 +363,10 @@ export function PierreDiffCard({
               <div className="flex items-center justify-between gap-base">
                 <div className="text-sm text-low">
                   <span className="font-medium text-warning">{t('diff.largeDiff.title')}</span>
-                  <span className="ml-2">
+                  <span className="ml-base">
                     {t('diff.largeDiff.linesChanged', { count: totalLines })}
-                    <span className="text-success ml-2">+{additions.toLocaleString()}</span>
-                    <span className="text-error ml-1">-{deletions.toLocaleString()}</span>
+                    <span className="text-success ml-base">+{additions.toLocaleString()}</span>
+                    <span className="text-error ml-half">-{deletions.toLocaleString()}</span>
                   </span>
                 </div>
                 <button
@@ -379,7 +379,7 @@ export function PierreDiffCard({
                   {t('diff.largeDiff.loadAnyway')}
                 </button>
               </div>
-              <p className="text-xs text-low mt-1">
+              <p className="text-xs text-low mt-half">
                 {t('diff.largeDiff.warning')}
               </p>
             </div>

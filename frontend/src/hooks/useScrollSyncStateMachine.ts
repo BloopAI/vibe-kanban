@@ -3,11 +3,8 @@ import { useRef, useCallback, useState } from 'react';
 /**
  * State machine for managing bidirectional scroll sync between file tree and diff view.
  *
- * Problem solved: PR #2223 failed because scrollLockedRef conflicted with setFileInView.
- * When clicking file tree, scroll was locked but virtuoso's rangeChanged fired during scroll,
- * causing setFileInView to be blocked while state got out of sync.
- *
- * This state machine solves it by:
+ * Uses explicit states instead of boolean flags to avoid conflicts between
+ * programmatic scrolling and user-initiated scrolling:
  * - Making states explicit (no boolean flags)
  * - Having clear transition rules
  * - Using cooldown period after programmatic scroll
