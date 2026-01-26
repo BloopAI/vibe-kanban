@@ -314,6 +314,7 @@
     }
   },
   "loading": "작업 로딩 중...",
+  "progress": "{{done}} / {{total}} 작업 완료",
   "preview": {
     "devScript": {
       "cancel": "취소",
@@ -518,6 +519,46 @@
       "finish": "완료"
     }
   },
+  "pmDocs": {
+    "title": "PM 채팅",
+    "chat": "채팅",
+    "docs": "문서",
+    "noProject": "프로젝트가 선택되지 않음",
+    "noMessages": "PM과 대화를 시작하세요",
+    "noDocs": "아직 생성된 문서가 없습니다. PM과 채팅하여 사양을 만드세요.",
+    "messagePlaceholder": "메시지를 입력하세요...",
+    "clearChat": "채팅 기록 지우기",
+    "clearChatTitle": "채팅 기록을 지우시겠습니까?",
+    "clearChatDescription": "모든 채팅 메시지가 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.",
+    "attachFile": "파일 첨부",
+    "dropFiles": "여기에 파일을 드롭하세요",
+    "dragDropHint": "또는 파일을 드래그 앤 드롭",
+    "uploading": "업로드 중",
+    "syncTasks": "작업 및 종속성을 문서에 동기화",
+    "syncSuccess": "작업이 PM 문서에 동기화됨",
+    "assistant": "어시스턴트",
+    "aiThinking": "AI가 생각 중입니다..."
+  },
+  "autoReviewSettings": {
+    "title": "자동 리뷰 설정",
+    "description": "작업이 \"검토 중\" 열로 이동할 때 자동 리뷰를 구성합니다.",
+    "enableAutoReview": "자동 리뷰 활성화",
+    "enableDescription": "작업이 검토 중으로 이동하면 자동으로 AI 리뷰 시작",
+    "selectAI": "리뷰용 AI 선택",
+    "reviewTypes": "리뷰 유형",
+    "pmReview": "PM 사양 리뷰",
+    "pmReviewDescription": "프로젝트 사양 및 요구 사항에 대한 변경 사항 확인",
+    "codeReview": "코드 리뷰",
+    "codeReviewDescription": "코드 품질, 모범 사례, 잠재적 버그 및 보안 문제 확인",
+    "additionalPrompt": "추가 지침 (선택 사항)",
+    "additionalPromptPlaceholder": "사용자 정의 리뷰 지침 추가..."
+  },
+  "taskCard": {
+    "blocked": "차단됨:",
+    "task": "작업",
+    "tasks": "작업",
+    "dependenciesComplete": "모든 종속성 완료"
+  },
   "prComments": {
     "dialog": {
       "title": "PR 댓글 선택",
@@ -545,6 +586,16 @@
       "done": "완료",
       "cancelled": "취소됨"
     },
+    "priorityLabel": "우선순위",
+    "priorityOptions": {
+      "urgent": "긴급",
+      "high": "높음",
+      "medium": "중간",
+      "low": "낮음"
+    },
+    "labelsLabel": "라벨",
+    "dependsOnLabel": "종속 대상",
+    "dependsOnDescription": "이 작업은 선택한 작업이 먼저 완료되어야 합니다.",
     "startLabel": "시작",
     "attachImage": "이미지 첨부",
     "dropImagesHere": "여기에 이미지를 드롭하세요",

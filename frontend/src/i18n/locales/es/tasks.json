@@ -314,6 +314,7 @@
     }
   },
   "loading": "Cargando tareas...",
+  "progress": "{{done}} / {{total}} tareas completadas",
   "preview": {
     "devScript": {
       "cancel": "Cancelar",
@@ -518,6 +519,46 @@
       "finish": "Finalizar"
     }
   },
+  "pmDocs": {
+    "title": "Chat PM",
+    "chat": "Chat",
+    "docs": "Documentos",
+    "noProject": "Ningún proyecto seleccionado",
+    "noMessages": "Inicia una conversación con el PM",
+    "noDocs": "Aún no se ha generado documentación. Chatea con el PM para crear especificaciones.",
+    "messagePlaceholder": "Escribe un mensaje...",
+    "clearChat": "Limpiar historial de chat",
+    "clearChatTitle": "¿Limpiar historial de chat?",
+    "clearChatDescription": "Esto eliminará permanentemente todos los mensajes del chat. Esta acción no se puede deshacer.",
+    "attachFile": "Adjuntar archivo",
+    "dropFiles": "Suelta archivos aquí",
+    "dragDropHint": "o arrastra y suelta archivos",
+    "uploading": "Subiendo",
+    "syncTasks": "Sincronizar tareas y dependencias a documentos",
+    "syncSuccess": "Tareas sincronizadas a documentos PM",
+    "assistant": "Asistente",
+    "aiThinking": "La IA está pensando..."
+  },
+  "autoReviewSettings": {
+    "title": "Configuración de Auto-Revisión",
+    "description": "Configura la revisión automática cuando las tareas se mueven a la columna \"En Revisión\".",
+    "enableAutoReview": "Habilitar Auto-Revisión",
+    "enableDescription": "Iniciar automáticamente la revisión de IA cuando una tarea se mueve a En Revisión",
+    "selectAI": "Seleccionar IA para Revisión",
+    "reviewTypes": "Tipos de Revisión",
+    "pmReview": "Revisión de Especificaciones PM",
+    "pmReviewDescription": "Verificar cambios contra especificaciones y requisitos del proyecto",
+    "codeReview": "Revisión de Código",
+    "codeReviewDescription": "Verificar calidad del código, mejores prácticas, errores potenciales y problemas de seguridad",
+    "additionalPrompt": "Instrucciones Adicionales (Opcional)",
+    "additionalPromptPlaceholder": "Agregar instrucciones de revisión personalizadas..."
+  },
+  "taskCard": {
+    "blocked": "Bloqueado por",
+    "task": "tarea",
+    "tasks": "tareas",
+    "dependenciesComplete": "Todas las dependencias completadas"
+  },
   "prComments": {
     "dialog": {
       "title": "Seleccionar comentarios del PR",
@@ -545,6 +586,16 @@
       "done": "Completado",
       "cancelled": "Cancelado"
     },
+    "priorityLabel": "Prioridad",
+    "priorityOptions": {
+      "urgent": "Urgente",
+      "high": "Alta",
+      "medium": "Media",
+      "low": "Baja"
+    },
+    "labelsLabel": "Etiquetas",
+    "dependsOnLabel": "Depende De",
+    "dependsOnDescription": "Esta tarea depende de que las tareas seleccionadas se completen primero.",
     "startLabel": "Iniciar",
     "attachImage": "Adjuntar imagen",
     "dropImagesHere": "Suelta las imágenes aquí",

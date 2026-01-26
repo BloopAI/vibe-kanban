@@ -314,6 +314,7 @@
     }
   },
   "loading": "タスクを読み込み中...",
+  "progress": "{{done}} / {{total}} タスク完了",
   "preview": {
     "devScript": {
       "cancel": "キャンセル",

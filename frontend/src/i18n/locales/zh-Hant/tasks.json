@@ -15,6 +15,7 @@
     }
   },
   "loading": "載入任務中...",
+  "progress": "{{done}} / {{total}} 任務完成",
   "empty": {
     "noTasks": "找不到此專案的任務。",
     "createFirst": "建立第一個任務",
@@ -518,6 +519,46 @@
       "finish": "完成"
     }
   },
+  "pmDocs": {
+    "title": "PM 聊天",
+    "chat": "聊天",
+    "docs": "文件",
+    "noProject": "未選擇專案",
+    "noMessages": "與 PM 開始對話",
+    "noDocs": "尚未產生文件。與 PM 聊天以建立規格說明。",
+    "messagePlaceholder": "輸入訊息...",
+    "clearChat": "清除聊天記錄",
+    "clearChatTitle": "清除聊天記錄？",
+    "clearChatDescription": "這將永久刪除所有聊天訊息。此操作無法復原。",
+    "attachFile": "附加檔案",
+    "dropFiles": "將檔案拖放到這裡",
+    "dragDropHint": "或拖放檔案",
+    "uploading": "上傳中",
+    "syncTasks": "同步任務和相依性到文件",
+    "syncSuccess": "任務已同步到 PM 文件",
+    "assistant": "助理",
+    "aiThinking": "AI 正在思考..."
+  },
+  "autoReviewSettings": {
+    "title": "自動審查設定",
+    "description": "設定任務移動到「審查中」欄位時的自動審查。",
+    "enableAutoReview": "啟用自動審查",
+    "enableDescription": "當任務移動到審查中時自動開始 AI 審查",
+    "selectAI": "選擇審查用 AI",
+    "reviewTypes": "審查類型",
+    "pmReview": "PM 規格審查",
+    "pmReviewDescription": "根據專案規格和需求檢查變更",
+    "codeReview": "程式碼審查",
+    "codeReviewDescription": "檢查程式碼品質、最佳實務、潛在錯誤和安全問題",
+    "additionalPrompt": "附加說明（選填）",
+    "additionalPromptPlaceholder": "新增自訂審查說明..."
+  },
+  "taskCard": {
+    "blocked": "被封鎖：",
+    "task": "任務",
+    "tasks": "任務",
+    "dependenciesComplete": "所有相依性已完成"
+  },
   "prComments": {
     "dialog": {
       "title": "選擇 PR 評論",
@@ -545,6 +586,16 @@
       "done": "完成",
       "cancelled": "已取消"
     },
+    "priorityLabel": "優先度",
+    "priorityOptions": {
+      "urgent": "緊急",
+      "high": "高",
+      "medium": "中",
+      "low": "低"
+    },
+    "labelsLabel": "標籤",
+    "dependsOnLabel": "相依於",
+    "dependsOnDescription": "此任務相依於所選任務先完成。",
     "startLabel": "開始",
     "attachImage": "附加圖片",
     "dropImagesHere": "將圖片放在這裡",

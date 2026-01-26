@@ -15,6 +15,7 @@
     }
   },
   "loading": "Chargement des tâches...",
+  "progress": "{{done}} / {{total}} tâches terminées",
   "empty": {
     "noTasks": "Aucune tâche trouvée pour ce projet.",
     "createFirst": "Créer la première tâche",
@@ -586,6 +587,46 @@
       "finish": "Terminer"
     }
   },
+  "pmDocs": {
+    "title": "Chat PM",
+    "chat": "Chat",
+    "docs": "Documents",
+    "noProject": "Aucun projet sélectionné",
+    "noMessages": "Démarrer une conversation avec le PM",
+    "noDocs": "Aucune documentation générée pour l'instant. Discutez avec le PM pour créer des spécifications.",
+    "messagePlaceholder": "Tapez un message...",
+    "clearChat": "Effacer l'historique du chat",
+    "clearChatTitle": "Effacer l'historique du chat ?",
+    "clearChatDescription": "Cela supprimera définitivement tous les messages du chat. Cette action est irréversible.",
+    "attachFile": "Joindre un fichier",
+    "dropFiles": "Déposez les fichiers ici",
+    "dragDropHint": "ou glissez-déposez des fichiers",
+    "uploading": "Téléchargement",
+    "syncTasks": "Synchroniser les tâches et dépendances vers les documents",
+    "syncSuccess": "Tâches synchronisées vers les documents PM",
+    "assistant": "Assistant",
+    "aiThinking": "L'IA réfléchit..."
+  },
+  "autoReviewSettings": {
+    "title": "Paramètres de révision automatique",
+    "description": "Configurez la révision automatique lorsque les tâches passent à la colonne \"En révision\".",
+    "enableAutoReview": "Activer la révision automatique",
+    "enableDescription": "Démarrer automatiquement la révision IA lorsqu'une tâche passe en révision",
+    "selectAI": "Sélectionner l'IA pour la révision",
+    "reviewTypes": "Types de révision",
+    "pmReview": "Révision des spécifications PM",
+    "pmReviewDescription": "Vérifier les modifications par rapport aux spécifications et exigences du projet",
+    "codeReview": "Révision de code",
+    "codeReviewDescription": "Vérifier la qualité du code, les bonnes pratiques, les bugs potentiels et les problèmes de sécurité",
+    "additionalPrompt": "Instructions supplémentaires (optionnel)",
+    "additionalPromptPlaceholder": "Ajouter des instructions de révision personnalisées..."
+  },
+  "taskCard": {
+    "blocked": "Bloqué par",
+    "task": "tâche",
+    "tasks": "tâches",
+    "dependenciesComplete": "Toutes les dépendances sont terminées"
+  },
   "prComments": {
     "dialog": {
       "title": "Sélectionner les commentaires de la PR",
@@ -613,6 +654,16 @@
       "done": "Terminé",
       "cancelled": "Annulé"
     },
+    "priorityLabel": "Priorité",
+    "priorityOptions": {
+      "urgent": "Urgent",
+      "high": "Haute",
+      "medium": "Moyenne",
+      "low": "Basse"
+    },
+    "labelsLabel": "Étiquettes",
+    "dependsOnLabel": "Dépend de",
+    "dependsOnDescription": "Cette tâche dépend de l'achèvement préalable des tâches sélectionnées.",
     "startLabel": "Démarrer",
     "attachImage": "Joindre une image",
     "dropImagesHere": "Déposez les images ici",

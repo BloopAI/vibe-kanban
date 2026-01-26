@@ -15,6 +15,7 @@
     }
   },
   "loading": "加载任务中...",
+  "progress": "{{done}} / {{total}} 任务完成",
   "empty": {
     "noTasks": "未找到此项目的任务。",
     "createFirst": "创建第一个任务",
@@ -518,6 +519,46 @@
       "finish": "完成"
     }
   },
+  "pmDocs": {
+    "title": "PM 聊天",
+    "chat": "聊天",
+    "docs": "文档",
+    "noProject": "未选择项目",
+    "noMessages": "与 PM 开始对话",
+    "noDocs": "尚未生成文档。与 PM 聊天以创建规格说明。",
+    "messagePlaceholder": "输入消息...",
+    "clearChat": "清除聊天记录",
+    "clearChatTitle": "清除聊天记录？",
+    "clearChatDescription": "这将永久删除所有聊天消息。此操作无法撤消。",
+    "attachFile": "附加文件",
+    "dropFiles": "将文件拖放到这里",
+    "dragDropHint": "或拖放文件",
+    "uploading": "上传中",
+    "syncTasks": "同步任务和依赖项到文档",
+    "syncSuccess": "任务已同步到 PM 文档",
+    "assistant": "助手",
+    "aiThinking": "AI 正在思考..."
+  },
+  "autoReviewSettings": {
+    "title": "自动审查设置",
+    "description": "配置任务移动到「审查中」列时的自动审查。",
+    "enableAutoReview": "启用自动审查",
+    "enableDescription": "当任务移动到审查中时自动开始 AI 审查",
+    "selectAI": "选择审查用 AI",
+    "reviewTypes": "审查类型",
+    "pmReview": "PM 规格审查",
+    "pmReviewDescription": "根据项目规格和要求检查变更",
+    "codeReview": "代码审查",
+    "codeReviewDescription": "检查代码质量、最佳实践、潜在错误和安全问题",
+    "additionalPrompt": "附加说明（可选）",
+    "additionalPromptPlaceholder": "添加自定义审查说明..."
+  },
+  "taskCard": {
+    "blocked": "被阻止：",
+    "task": "任务",
+    "tasks": "任务",
+    "dependenciesComplete": "所有依赖项已完成"
+  },
   "prComments": {
     "dialog": {
       "title": "选择 PR 评论",
@@ -545,6 +586,16 @@
       "done": "完成",
       "cancelled": "已取消"
     },
+    "priorityLabel": "优先级",
+    "priorityOptions": {
+      "urgent": "紧急",
+      "high": "高",
+      "medium": "中",
+      "low": "低"
+    },
+    "labelsLabel": "标签",
+    "dependsOnLabel": "依赖于",
+    "dependsOnDescription": "此任务依赖于所选任务先完成。",
     "startLabel": "开始",
     "attachImage": "附加图片",
     "dropImagesHere": "在此处放置图片",
