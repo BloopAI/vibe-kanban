@@ -11,18 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './Dropdown';
+import { InlineColorPicker } from './ColorPicker';
+import { PRESET_COLORS } from '@/lib/colors';
 
-// Predefined color palette for tags (HSL format)
-export const TAG_COLORS = [
-  '355 65% 53%', // Red
-  '25 82% 54%', // Orange
-  '45 93% 47%', // Yellow
-  '142 76% 36%', // Green
-  '199 89% 48%', // Blue
-  '262 83% 58%', // Purple
-  '327 73% 52%', // Pink
-  '181 72% 40%', // Teal
-];
+// Re-export for backwards compatibility
+export const TAG_COLORS = PRESET_COLORS;
 
 interface SearchableTagDropdownProps {
   filteredTags: Tag[];
@@ -113,22 +106,14 @@ export function SearchableTagDropdown({
               {t('kanban.selectColorFor')}{' '}
               <span className="font-medium">{searchTerm}</span>
             </div>
-            <div className="flex flex-wrap gap-half">
-              {TAG_COLORS.map((color, idx) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => onColorIndexChange(idx)}
-                  className={cn(
-                    'w-6 h-6 rounded-full transition-all',
-                    idx === colorIndex
-                      ? 'ring-2 ring-brand ring-offset-1'
-                      : 'hover:scale-110'
-                  )}
-                  style={{ backgroundColor: `hsl(${color})` }}
-                />
-              ))}
-            </div>
+            <InlineColorPicker
+              value={TAG_COLORS[colorIndex]}
+              onChange={(color) => {
+                const idx = (TAG_COLORS as readonly string[]).indexOf(color);
+                if (idx !== -1) onColorIndexChange(idx);
+              }}
+              colors={TAG_COLORS}
+            />
             <div className="flex items-center justify-end gap-half pt-half">
               <button
                 type="button"
