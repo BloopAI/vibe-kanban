@@ -12,7 +12,7 @@ import {
   useUiPreferencesStore,
   type KanbanSortField,
 } from '@/stores/useUiPreferencesStore';
-import type { Tag, User } from 'shared/remote-types';
+import type { Tag, User, ProjectStatus } from 'shared/remote-types';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 import { InputField } from '@/components/ui-new/primitives/InputField';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
@@ -25,6 +25,7 @@ import {
   type MultiSelectDropdownOption,
 } from '@/components/ui-new/primitives/MultiSelectDropdown';
 import { PriorityFilterDropdown } from '@/components/ui-new/views/PriorityFilterDropdown';
+import { KanbanDisplaySettingsContainer } from '@/components/ui-new/containers/KanbanDisplaySettingsContainer';
 
 // =============================================================================
 // Types
@@ -34,6 +35,27 @@ interface KanbanFilterBarProps {
   tags: Tag[];
   users: User[];
   hasActiveFilters: boolean;
+  statuses: ProjectStatus[];
+  projectId: string;
+  issueCountByStatus: Record<string, number>;
+  onInsertStatus: (data: {
+    id: string;
+    project_id: string;
+    name: string;
+    color: string;
+    sort_order: number;
+    hidden: boolean;
+  }) => void;
+  onUpdateStatus: (
+    id: string,
+    changes: {
+      name?: string;
+      color?: string;
+      sort_order?: number;
+      hidden?: boolean;
+    }
+  ) => void;
+  onRemoveStatus: (id: string) => void;
 }
 
 // =============================================================================
@@ -68,6 +90,12 @@ export function KanbanFilterBar({
   tags,
   users,
   hasActiveFilters,
+  statuses,
+  projectId,
+  issueCountByStatus,
+  onInsertStatus,
+  onUpdateStatus,
+  onRemoveStatus,
 }: KanbanFilterBarProps) {
   const { t } = useTranslation('common');
 
@@ -212,6 +240,19 @@ export function KanbanFilterBar({
           <SortDescendingIcon className="size-icon-xs" weight="bold" />
         )}
       </button>
+
+      {/* Separator */}
+      <div className="h-4 w-px bg-border" />
+
+      {/* Display Settings */}
+      <KanbanDisplaySettingsContainer
+        statuses={statuses}
+        projectId={projectId}
+        issueCountByStatus={issueCountByStatus}
+        onInsertStatus={onInsertStatus}
+        onUpdateStatus={onUpdateStatus}
+        onRemoveStatus={onRemoveStatus}
+      />
 
       {/* Clear All Button */}
       {hasActiveFilters && (
