@@ -22,6 +22,7 @@ use futures::future::{BoxFuture, FutureExt, Shared};
 use sqlx::{Error as SqlxError, SqlitePool};
 use thiserror::Error;
 use tokio::sync::{RwLock, oneshot};
+use tokio_util::sync::CancellationToken;
 use utils::{
     approvals::{ApprovalRequest, ApprovalResponse, ApprovalStatus},
     log_msg::LogMsg,
@@ -81,6 +82,7 @@ impl Approvals {
     pub async fn create_with_waiter(
         &self,
         request: ApprovalRequest,
+        cancel: CancellationToken,
     ) -> Result<(ApprovalRequest, ApprovalWaiter), ApprovalError> {
         let (tx, rx) = oneshot::channel();
         let waiter: ApprovalWaiter = rx
@@ -133,8 +135,14 @@ impl Approvals {
             );
         }
 
-        self.spawn_timeout_watcher(req_id.clone(), request.timeout_at, waiter.clone());
+        self.spawn_timeout_watcher(req_id.clone(), request.timeout_at, waiter.clone(), cancel);
         Ok((request, waiter))
+    }
+
+    /// Remove a pending approval without resolving it.
+    /// Used for cleanup when the approval is cancelled externally.
+    pub fn remove_pending(&self, id: &str) {
+        self.pending.remove(id);
     }
 
     #[tracing::instrument(skip(self, id, req))]
@@ -193,12 +201,13 @@ impl Approvals {
         }
     }
 
-    #[tracing::instrument(skip(self, id, timeout_at, waiter))]
+    #[tracing::instrument(skip(self, id, timeout_at, waiter, cancel))]
     fn spawn_timeout_watcher(
         &self,
         id: String,
         timeout_at: chrono::DateTime<chrono::Utc>,
         waiter: ApprovalWaiter,
+        cancel: CancellationToken,
     ) {
         let pending = self.pending.clone();
         let completed = self.completed.clone();
@@ -211,19 +220,23 @@ impl Approvals {
         let deadline = tokio::time::Instant::now() + to_wait;
 
         tokio::spawn(async move {
-            let status = tokio::select! {
+            let (status, tool_status) = tokio::select! {
                 biased;
 
-                resolved = waiter.clone() => resolved,
-                _ = tokio::time::sleep_until(deadline) => ApprovalStatus::TimedOut,
+                resolved = waiter.clone() => (resolved, None),
+                _ = cancel.cancelled() => (
+                    ApprovalStatus::Denied { reason: Some("cancelled".to_string()) },
+                    Some(ToolStatus::Cancelled)
+                ),
+                _ = tokio::time::sleep_until(deadline) => (ApprovalStatus::TimedOut, Some(ToolStatus::TimedOut)),
             };
 
-            let is_timeout = matches!(&status, ApprovalStatus::TimedOut);
+            let needs_cleanup = tool_status.is_some();
             completed.insert(id.clone(), status.clone());
 
-            if is_timeout && let Some((_, pending_approval)) = pending.remove(&id) {
+            if needs_cleanup && let Some((_, pending_approval)) = pending.remove(&id) {
                 if pending_approval.response_tx.send(status.clone()).is_err() {
-                    tracing::debug!("approval '{}' timeout notification receiver dropped", id);
+                    tracing::debug!("approval '{}' notification receiver dropped", id);
                 }
 
                 let store = {
@@ -232,19 +245,20 @@ impl Approvals {
                 };
 
                 if let Some(store) = store {
-                    if let Some(updated_entry) = pending_approval
-                        .entry
-                        .with_tool_status(ToolStatus::TimedOut)
-                    {
-                        store.push_patch(ConversationPatch::replace(
-                            pending_approval.entry_index,
-                            updated_entry,
-                        ));
-                    } else {
-                        tracing::warn!(
-                            "Timed out approval '{}' but couldn't update tool status (no tool-use entry).",
-                            id
-                        );
+                    if let Some(tool_status) = tool_status {
+                        if let Some(updated_entry) =
+                            pending_approval.entry.with_tool_status(tool_status)
+                        {
+                            store.push_patch(ConversationPatch::replace(
+                                pending_approval.entry_index,
+                                updated_entry,
+                            ));
+                        } else {
+                            tracing::warn!(
+                                "Approval '{}' ended but couldn't update tool status (no tool-use entry).",
+                                id
+                            );
+                        }
                     }
                 } else {
                     tracing::warn!(
