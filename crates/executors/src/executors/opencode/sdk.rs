@@ -464,6 +464,7 @@ where
     let mut idle_seen = false;
     let mut session_error: Option<String> = None;
 
+    // Drain queued idles so only idles after this request count.
     loop {
         match control_rx.try_recv() {
             Ok(ControlEvent::Idle) => continue,
