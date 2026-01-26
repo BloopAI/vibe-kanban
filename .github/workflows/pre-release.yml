@@ -124,9 +124,17 @@ jobs:
           git add npx-cli/package.json npx-cli/package-lock.json
           git add frontend/package.json Cargo.lock
           git add $(find . -name Cargo.toml)
-          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
+
+          # Only commit if there are staged changes
+          if git diff --staged --quiet; then
+            echo "No version changes to commit"
+          else
+            git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
+            git push
+          fi
+
+          # Create and push tag regardless
           git tag -a ${{ steps.version.outputs.new_tag }} -m "Release ${{ steps.version.outputs.new_tag }}"
-          git push
           git push --tags
 
   build-frontend:
