@@ -23,14 +23,53 @@ import { ToolStatusDot } from './ToolStatusDot';
 import '@/styles/diff-style-overrides.css';
 
 /**
- * CSS override for dark mode background.
- * The @pierre/diffs library sets --diffs-dark-bg via inline styles from the theme,
- * so we inject this CSS with !important to override it.
+ * CSS overrides for @pierre/diffs to match our app's theme.
+ * Injected via unsafeCSS which applies at @layer unsafe (highest priority).
  */
-const DARK_MODE_OVERRIDE_CSS = `
-  [data-diffs] {
-    --diffs-dark-bg: hsl(0, 0%, 20%) !important;
+const PIERRE_DIFFS_THEME_CSS = `
+  /* Light theme overrides */
+  [data-diffs][data-theme-type='light'] {
+    /* Background colors */
     --diffs-light-bg: hsl(0, 0%, 100%) !important;
+    --diffs-bg-context-override: hsl(0, 0%, 100%) !important;
+    
+    /* Addition colors - soft green matching old design */
+    --diffs-light-addition-color: hsl(160, 77%, 35%) !important;
+    --diffs-bg-addition-override: hsl(160, 77%, 88%) !important;
+    --diffs-bg-addition-number-override: hsl(160, 77%, 85%) !important;
+    --diffs-bg-addition-hover-override: hsl(160, 77%, 82%) !important;
+    
+    /* Deletion colors - soft red matching old design */
+    --diffs-light-deletion-color: hsl(10, 100%, 40%) !important;
+    --diffs-bg-deletion-override: hsl(10, 100%, 90%) !important;
+    --diffs-bg-deletion-number-override: hsl(10, 100%, 87%) !important;
+    --diffs-bg-deletion-hover-override: hsl(10, 100%, 84%) !important;
+    
+    /* Line numbers */
+    --diffs-fg-number-override: hsl(0, 0%, 45%) !important;
+  }
+
+  /* Dark theme overrides */
+  [data-diffs][data-theme-type='dark'] {
+    /* Background colors */
+    --diffs-dark-bg: hsl(0, 0%, 20%) !important;
+    --diffs-bg-context-override: hsl(0, 0%, 20%) !important;
+    --diffs-bg-hover-override: hsl(0, 0%, 25%) !important;
+    
+    /* Addition colors - dark green */
+    --diffs-dark-addition-color: hsl(130, 50%, 50%) !important;
+    --diffs-bg-addition-override: hsl(130, 30%, 20%) !important;
+    --diffs-bg-addition-number-override: hsl(130, 30%, 18%) !important;
+    --diffs-bg-addition-hover-override: hsl(130, 30%, 25%) !important;
+    
+    /* Deletion colors - dark red */
+    --diffs-dark-deletion-color: hsl(12, 50%, 55%) !important;
+    --diffs-bg-deletion-override: hsl(12, 30%, 18%) !important;
+    --diffs-bg-deletion-number-override: hsl(12, 30%, 16%) !important;
+    --diffs-bg-deletion-hover-override: hsl(12, 30%, 23%) !important;
+    
+    /* Line numbers */
+    --diffs-fg-number-override: hsl(0, 0%, 56%) !important;
   }
 `;
 
@@ -275,7 +314,7 @@ export function DiffViewBody({
       overflow: wrapText ? ('wrap' as const) : ('scroll' as const),
       hunkSeparators: 'line-info' as const,
       disableFileHeader: true,
-      unsafeCSS: DARK_MODE_OVERRIDE_CSS,
+      unsafeCSS: PIERRE_DIFFS_THEME_CSS,
     }),
     [globalMode, theme, wrapText]
   );
