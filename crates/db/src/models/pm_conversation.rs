@@ -182,15 +182,24 @@ impl PmConversation {
     }
 
     /// Delete all messages for a project
-    pub async fn delete_by_project_id(pool: &SqlitePool, project_id: Uuid) -> Result<u64, sqlx::Error> {
-        let result = sqlx::query!("DELETE FROM pm_conversations WHERE project_id = $1", project_id)
-            .execute(pool)
-            .await?;
+    pub async fn delete_by_project_id(
+        pool: &SqlitePool,
+        project_id: Uuid,
+    ) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query!(
+            "DELETE FROM pm_conversations WHERE project_id = $1",
+            project_id
+        )
+        .execute(pool)
+        .await?;
         Ok(result.rows_affected())
     }
 
     /// Get message count for a project
-    pub async fn count_by_project_id(pool: &SqlitePool, project_id: Uuid) -> Result<i64, sqlx::Error> {
+    pub async fn count_by_project_id(
+        pool: &SqlitePool,
+        project_id: Uuid,
+    ) -> Result<i64, sqlx::Error> {
         sqlx::query_scalar!(
             r#"SELECT COUNT(*) as "count!: i64" FROM pm_conversations WHERE project_id = $1"#,
             project_id

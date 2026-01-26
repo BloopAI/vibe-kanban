@@ -285,12 +285,9 @@ impl TaskDependency {
         depends_on_task_ids: &[Uuid],
     ) -> Result<(), sqlx::Error> {
         // Remove all existing dependencies
-        sqlx::query!(
-            "DELETE FROM task_dependencies WHERE task_id = $1",
-            task_id
-        )
-        .execute(pool)
-        .await?;
+        sqlx::query!("DELETE FROM task_dependencies WHERE task_id = $1", task_id)
+            .execute(pool)
+            .await?;
 
         // Add new dependencies
         for depends_on_id in depends_on_task_ids {

@@ -322,9 +322,7 @@ pub struct GetPmContextResponse {
 pub struct RequestPmReviewRequest {
     #[schemars(description = "The ID of the task to review")]
     pub task_id: Uuid,
-    #[schemars(
-        description = "Additional review instructions to include alongside the PM specs"
-    )]
+    #[schemars(description = "Additional review instructions to include alongside the PM specs")]
     pub additional_instructions: Option<String>,
 }
 
@@ -1196,7 +1194,9 @@ impl TaskServer {
         };
 
         // Build the review prompt based on PM specs
-        let pm_specs = pm_task.description.unwrap_or_else(|| "No detailed specifications provided.".to_string());
+        let pm_specs = pm_task
+            .description
+            .unwrap_or_else(|| "No detailed specifications provided.".to_string());
 
         let review_prompt = format!(
             "## PM-Based Code Review for Task: {}\n\n\
@@ -1212,7 +1212,8 @@ impl TaskServer {
             6. **Test Coverage**: Are there adequate tests for the implementation?\n\
             {}",
             task.title,
-            task.description.unwrap_or_else(|| "No task description provided.".to_string()),
+            task.description
+                .unwrap_or_else(|| "No task description provided.".to_string()),
             pm_specs,
             additional_instructions
                 .map(|i| format!("\n### Additional Instructions\n{}", i))

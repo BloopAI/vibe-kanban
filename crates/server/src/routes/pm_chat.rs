@@ -1,34 +1,36 @@
+use std::{fs, path::PathBuf, process::Stdio};
+
 use axum::{
     Extension, Json, Router,
     body::Body,
     extract::{DefaultBodyLimit, Multipart, Path, State},
     http::{StatusCode, header},
-    response::{Json as ResponseJson, Response, sse::{Event, KeepAlive, Sse}},
-    routing::{get, delete, post},
+    response::{
+        Json as ResponseJson, Response,
+        sse::{Event, KeepAlive, Sse},
+    },
+    routing::{delete, get, post},
 };
+use chrono::Utc;
 use db::models::{
-    pm_conversation::{CreatePmConversation, CreatePmAttachment, PmConversation, PmAttachment, PmMessageRole},
+    label::TaskDependency,
+    pm_conversation::{
+        CreatePmAttachment, CreatePmConversation, PmAttachment, PmConversation, PmMessageRole,
+    },
     project::Project,
     project_repo::ProjectRepo,
     repo::Repo,
     task::Task,
-    label::TaskDependency,
 };
 use deployment::Deployment;
 use futures::stream::Stream;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::fs;
-use std::path::PathBuf;
-use std::process::Stdio;
-use tokio::fs::File;
-use tokio::process::Command;
+use tokio::{fs::File, process::Command};
 use tokio_util::io::ReaderStream;
 use ts_rs::TS;
-use utils::response::ApiResponse;
-use utils::shell::resolve_executable_path;
+use utils::{response::ApiResponse, shell::resolve_executable_path};
 use uuid::Uuid;
-use chrono::Utc;
 
 use crate::{DeploymentImpl, error::ApiError};
 
@@ -140,7 +142,7 @@ pub async fn ai_chat(
 
     // Build system prompt with PM context
     let mut system_prompt = String::from(
-        "You are a helpful Project Manager assistant. You help with project planning, task management, and technical discussions.\n\n"
+        "You are a helpful Project Manager assistant. You help with project planning, task management, and technical discussions.\n\n",
     );
 
     // Add PM docs if available
@@ -151,8 +153,10 @@ pub async fn ai_chat(
     }
 
     // Get task summary
-    let tasks_with_status = Task::find_by_project_id_with_attempt_status(&deployment.db().pool, project.id).await
-        .unwrap_or_default();
+    let tasks_with_status =
+        Task::find_by_project_id_with_attempt_status(&deployment.db().pool, project.id)
+            .await
+            .unwrap_or_default();
 
     if !tasks_with_status.is_empty() {
         system_prompt.push_str("## Current Tasks\n");
@@ -172,7 +176,10 @@ pub async fn ai_chat(
     system_prompt.push_str(&conversation_context);
 
     // Prepare Claude CLI command - clone values for 'static lifetime
-    let model = payload.model.clone().unwrap_or_else(|| "sonnet".to_string());
+    let model = payload
+        .model
+        .clone()
+        .unwrap_or_else(|| "sonnet".to_string());
     let user_content = payload.content.clone();
     let system_prompt_owned = system_prompt;
 
@@ -182,7 +189,9 @@ pub async fn ai_chat(
     // Get the project's workspace path from its repositories
     // This is where Claude CLI should run to have proper codebase context
     let workspace_path = {
-        let project_repos = ProjectRepo::find_by_project_id(&pool, project_id).await.unwrap_or_default();
+        let project_repos = ProjectRepo::find_by_project_id(&pool, project_id)
+            .await
+            .unwrap_or_default();
         if let Some(first_project_repo) = project_repos.first() {
             if let Ok(Some(repo)) = Repo::find_by_id(&pool, first_project_repo.repo_id).await {
                 Some(repo.path)
@@ -206,7 +215,10 @@ pub async fn ai_chat(
     // Execute CLI and get response
     let (response_text, error_text) = if let Some(claude_path) = claude_path_result {
         // Use global claude binary (faster than npx)
-        tracing::info!("Running Claude CLI from global binary at: {:?}", claude_path);
+        tracing::info!(
+            "Running Claude CLI from global binary at: {:?}",
+            claude_path
+        );
 
         // Use tokio timeout - increased to 3 minutes for Claude Code initialization
         // --dangerously-skip-permissions is required to skip permission prompts in non-interactive mode
@@ -245,18 +257,34 @@ pub async fn ai_chat(
                 }
 
                 if stdout.is_empty() {
-                    (None, Some(format!("No response from Claude CLI. Exit code: {:?}. stderr: {}", output.status.code(), stderr)))
+                    (
+                        None,
+                        Some(format!(
+                            "No response from Claude CLI. Exit code: {:?}. stderr: {}",
+                            output.status.code(),
+                            stderr
+                        )),
+                    )
                 } else {
                     (Some(stdout), None)
                 }
             }
             Ok(Err(e)) => {
                 tracing::error!("Failed to run Claude CLI: {}", e);
-                (None, Some(format!("Failed to run Claude CLI: {}. Make sure Claude Code is installed.", e)))
+                (
+                    None,
+                    Some(format!(
+                        "Failed to run Claude CLI: {}. Make sure Claude Code is installed.",
+                        e
+                    )),
+                )
             }
             Err(_) => {
                 tracing::error!("Claude CLI timed out after 180 seconds");
-                (None, Some("Claude CLI timed out after 180 seconds.".to_string()))
+                (
+                    None,
+                    Some("Claude CLI timed out after 180 seconds.".to_string()),
+                )
             }
         }
     } else if let Some(npx_path) = npx_path_result {
@@ -301,18 +329,34 @@ pub async fn ai_chat(
                 }
 
                 if stdout.is_empty() {
-                    (None, Some(format!("No response from Claude CLI. Exit code: {:?}. stderr: {}", output.status.code(), stderr)))
+                    (
+                        None,
+                        Some(format!(
+                            "No response from Claude CLI. Exit code: {:?}. stderr: {}",
+                            output.status.code(),
+                            stderr
+                        )),
+                    )
                 } else {
                     (Some(stdout), None)
                 }
             }
             Ok(Err(e)) => {
                 tracing::error!("Failed to run Claude CLI: {}", e);
-                (None, Some(format!("Failed to run Claude CLI: {}. Make sure Claude Code is installed.", e)))
+                (
+                    None,
+                    Some(format!(
+                        "Failed to run Claude CLI: {}. Make sure Claude Code is installed.",
+                        e
+                    )),
+                )
             }
             Err(_) => {
                 tracing::error!("Claude CLI (npx) timed out after 180 seconds");
-                (None, Some("Claude CLI timed out after 180 seconds.".to_string()))
+                (
+                    None,
+                    Some("Claude CLI timed out after 180 seconds.".to_string()),
+                )
             }
         }
     } else {
@@ -330,7 +374,8 @@ pub async fn ai_chat(
                 content: response.clone(),
                 model: Some(model.clone()),
             },
-        ).await;
+        )
+        .await;
     }
 
     // Create SSE stream with the response
@@ -369,7 +414,8 @@ pub async fn clear_chat(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let rows_affected = PmConversation::delete_by_project_id(&deployment.db().pool, project.id).await?;
+    let rows_affected =
+        PmConversation::delete_by_project_id(&deployment.db().pool, project.id).await?;
 
     deployment
         .track_if_analytics_allowed(
@@ -399,7 +445,9 @@ pub async fn delete_message(
             PmConversation::delete(&deployment.db().pool, message_id).await?;
             Ok(ResponseJson(ApiResponse::success(())))
         }
-        Some(_) => Err(ApiError::BadRequest("Message does not belong to this project".to_string())),
+        Some(_) => Err(ApiError::BadRequest(
+            "Message does not belong to this project".to_string(),
+        )),
         None => Err(ApiError::Database(sqlx::Error::RowNotFound)),
     }
 }
@@ -477,7 +525,8 @@ fn get_mime_type(filename: &str) -> String {
         "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         "csv" => "text/csv",
         _ => "application/octet-stream",
-    }.to_string()
+    }
+    .to_string()
 }
 
 /// Upload an attachment to PM chat
@@ -535,7 +584,8 @@ pub async fn upload_attachment(
                     content: format!("[Attachment: {}]", original_filename),
                     model: None,
                 },
-            ).await?;
+            )
+            .await?;
 
             // Create attachment record
             let attachment = PmAttachment::create(
@@ -549,7 +599,8 @@ pub async fn upload_attachment(
                     file_size,
                     sha256: Some(hash),
                 },
-            ).await?;
+            )
+            .await?;
 
             deployment
                 .track_if_analytics_allowed(
@@ -582,15 +633,17 @@ pub async fn serve_attachment(
 
     // Verify the attachment belongs to this project
     if attachment.project_id != project.id {
-        return Err(ApiError::BadRequest("Attachment does not belong to this project".to_string()));
+        return Err(ApiError::BadRequest(
+            "Attachment does not belong to this project".to_string(),
+        ));
     }
 
     let attachments_dir = get_pm_attachments_dir();
     let file_path = attachments_dir.join(&attachment.file_path);
 
-    let file = File::open(&file_path).await.map_err(|_| {
-        ApiError::BadRequest("Attachment file not found".to_string())
-    })?;
+    let file = File::open(&file_path)
+        .await
+        .map_err(|_| ApiError::BadRequest("Attachment file not found".to_string()))?;
     let metadata = file.metadata().await?;
 
     let stream = ReaderStream::new(file);
@@ -623,7 +676,9 @@ pub async fn delete_attachment(
 
     // Verify the attachment belongs to this project
     if attachment.project_id != project.id {
-        return Err(ApiError::BadRequest("Attachment does not belong to this project".to_string()));
+        return Err(ApiError::BadRequest(
+            "Attachment does not belong to this project".to_string(),
+        ));
     }
 
     // Delete the file from disk
@@ -670,11 +725,9 @@ pub async fn update_pm_docs(
         pm_docs: payload.pm_docs,
     };
 
-    let updated_project = db::models::project::Project::update(
-        &deployment.db().pool,
-        project.id,
-        &update_data,
-    ).await?;
+    let updated_project =
+        db::models::project::Project::update(&deployment.db().pool, project.id, &update_data)
+            .await?;
 
     deployment
         .track_if_analytics_allowed(
@@ -696,7 +749,7 @@ pub struct TaskWithDependencies {
     pub description: Option<String>,
     pub status: String,
     pub priority: String,
-    pub depends_on: Vec<String>, // Task IDs this task depends on
+    pub depends_on: Vec<String>,  // Task IDs this task depends on
     pub depended_by: Vec<String>, // Task IDs that depend on this task
 }
 
@@ -712,13 +765,12 @@ pub async fn get_task_summary(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<TaskSummaryResponse>>, ApiError> {
     // Get all tasks for this project
-    let tasks_with_status = Task::find_by_project_id_with_attempt_status(&deployment.db().pool, project.id).await?;
+    let tasks_with_status =
+        Task::find_by_project_id_with_attempt_status(&deployment.db().pool, project.id).await?;
     let tasks: Vec<Task> = tasks_with_status.iter().map(|t| t.task.clone()).collect();
 
     // Build task map for quick lookup
-    let task_map: std::collections::HashMap<_, _> = tasks.iter()
-        .map(|t| (t.id, t))
-        .collect();
+    let task_map: std::collections::HashMap<_, _> = tasks.iter().map(|t| (t.id, t)).collect();
 
     // Get dependencies for each task
     let mut tasks_with_deps = Vec::new();
@@ -738,10 +790,7 @@ pub async fn get_task_summary(
     }
 
     // Generate formatted summary text
-    let mut summary_lines = vec![
-        "## タスク一覧と依存関係".to_string(),
-        "".to_string(),
-    ];
+    let mut summary_lines = vec!["## タスク一覧と依存関係".to_string(), "".to_string()];
 
     // Group by status
     let status_labels = [
@@ -752,7 +801,8 @@ pub async fn get_task_summary(
     ];
 
     for (status, label) in status_labels.iter() {
-        let status_tasks: Vec<_> = tasks_with_deps.iter()
+        let status_tasks: Vec<_> = tasks_with_deps
+            .iter()
             .filter(|t| t.status == *status)
             .collect();
 
@@ -774,9 +824,12 @@ pub async fn get_task_summary(
 
                 // Dependencies
                 if !task.depends_on.is_empty() {
-                    let dep_names: Vec<_> = task.depends_on.iter()
+                    let dep_names: Vec<_> = task
+                        .depends_on
+                        .iter()
                         .filter_map(|id| {
-                            uuid::Uuid::parse_str(id).ok()
+                            uuid::Uuid::parse_str(id)
+                                .ok()
                                 .and_then(|uuid| task_map.get(&uuid))
                                 .map(|t| t.title.clone())
                         })
@@ -788,15 +841,19 @@ pub async fn get_task_summary(
 
                 // Dependents (blocking)
                 if !task.depended_by.is_empty() {
-                    let blocking_names: Vec<_> = task.depended_by.iter()
+                    let blocking_names: Vec<_> = task
+                        .depended_by
+                        .iter()
                         .filter_map(|id| {
-                            uuid::Uuid::parse_str(id).ok()
+                            uuid::Uuid::parse_str(id)
+                                .ok()
                                 .and_then(|uuid| task_map.get(&uuid))
                                 .map(|t| t.title.clone())
                         })
                         .collect();
                     if !blocking_names.is_empty() {
-                        summary_lines.push(format!("  - ➡️ ブロック中: {}", blocking_names.join(", ")));
+                        summary_lines
+                            .push(format!("  - ➡️ ブロック中: {}", blocking_names.join(", ")));
                     }
                 }
             }
@@ -805,15 +862,18 @@ pub async fn get_task_summary(
     }
 
     // Add dependency chain analysis
-    let blocked_tasks: Vec<_> = tasks_with_deps.iter()
+    let blocked_tasks: Vec<_> = tasks_with_deps
+        .iter()
         .filter(|t| {
-            t.status != "done" && !t.depends_on.is_empty() &&
-            t.depends_on.iter().any(|dep_id| {
-                uuid::Uuid::parse_str(dep_id).ok()
-                    .and_then(|uuid| task_map.get(&uuid))
-                    .map(|dep_task| format!("{:?}", dep_task.status).to_lowercase() != "done")
-                    .unwrap_or(false)
-            })
+            t.status != "done"
+                && !t.depends_on.is_empty()
+                && t.depends_on.iter().any(|dep_id| {
+                    uuid::Uuid::parse_str(dep_id)
+                        .ok()
+                        .and_then(|uuid| task_map.get(&uuid))
+                        .map(|dep_task| format!("{:?}", dep_task.status).to_lowercase() != "done")
+                        .unwrap_or(false)
+                })
         })
         .collect();
 
@@ -821,15 +881,22 @@ pub async fn get_task_summary(
         summary_lines.push("### ⚠️ ブロックされているタスク".to_string());
         summary_lines.push("".to_string());
         for task in blocked_tasks {
-            let blocking_names: Vec<_> = task.depends_on.iter()
+            let blocking_names: Vec<_> = task
+                .depends_on
+                .iter()
                 .filter_map(|id| {
-                    uuid::Uuid::parse_str(id).ok()
+                    uuid::Uuid::parse_str(id)
+                        .ok()
                         .and_then(|uuid| task_map.get(&uuid))
                         .filter(|t| format!("{:?}", t.status).to_lowercase() != "done")
                         .map(|t| t.title.clone())
                 })
                 .collect();
-            summary_lines.push(format!("- **{}** は以下の完了待ち: {}", task.title, blocking_names.join(", ")));
+            summary_lines.push(format!(
+                "- **{}** は以下の完了待ち: {}",
+                task.title,
+                blocking_names.join(", ")
+            ));
         }
         summary_lines.push("".to_string());
     }
@@ -850,11 +917,10 @@ pub async fn sync_task_summary_to_docs(
     use db::models::project::UpdateProject;
 
     // Get task summary
-    let tasks_with_status = Task::find_by_project_id_with_attempt_status(&deployment.db().pool, project.id).await?;
+    let tasks_with_status =
+        Task::find_by_project_id_with_attempt_status(&deployment.db().pool, project.id).await?;
     let tasks: Vec<Task> = tasks_with_status.iter().map(|t| t.task.clone()).collect();
-    let task_map: std::collections::HashMap<_, _> = tasks.iter()
-        .map(|t| (t.id, t))
-        .collect();
+    let task_map: std::collections::HashMap<_, _> = tasks.iter().map(|t| (t.id, t)).collect();
 
     // Generate summary (same logic as above, simplified for docs)
     let mut summary_lines = vec![
@@ -871,7 +937,8 @@ pub async fn sync_task_summary_to_docs(
     ];
 
     for (status_variant, label) in status_labels.iter() {
-        let status_tasks: Vec<_> = tasks.iter()
+        let status_tasks: Vec<_> = tasks
+            .iter()
             .filter(|t| format!("{:?}", t.status) == *status_variant)
             .collect();
 
@@ -879,7 +946,8 @@ pub async fn sync_task_summary_to_docs(
             summary_lines.push(format!("### {}", label));
 
             for task in status_tasks {
-                let deps = TaskDependency::find_dependencies(&deployment.db().pool, task.id).await?;
+                let deps =
+                    TaskDependency::find_dependencies(&deployment.db().pool, task.id).await?;
                 let priority_icon = match format!("{:?}", task.priority).as_str() {
                     "Urgent" => "🔴",
                     "High" => "🟠",
@@ -891,7 +959,8 @@ pub async fn sync_task_summary_to_docs(
                 summary_lines.push(format!("- {} {}", priority_icon, task.title));
 
                 if !deps.is_empty() {
-                    let dep_names: Vec<_> = deps.iter()
+                    let dep_names: Vec<_> = deps
+                        .iter()
                         .filter_map(|id| task_map.get(id).map(|t| t.title.clone()))
                         .collect();
                     if !dep_names.is_empty() {
@@ -914,7 +983,8 @@ pub async fn sync_task_summary_to_docs(
             if parts.len() >= 2 {
                 // Find the end of the task section (next ## or end of doc)
                 let after_task_section = parts[1];
-                let end_of_section = after_task_section.find("\n## ")
+                let end_of_section = after_task_section
+                    .find("\n## ")
                     .map(|pos| &after_task_section[pos..])
                     .unwrap_or("");
                 format!("{}{}{}", parts[0], task_summary, end_of_section)
@@ -934,11 +1004,9 @@ pub async fn sync_task_summary_to_docs(
         pm_docs: Some(new_docs),
     };
 
-    let updated_project = db::models::project::Project::update(
-        &deployment.db().pool,
-        project.id,
-        &update_data,
-    ).await?;
+    let updated_project =
+        db::models::project::Project::update(&deployment.db().pool, project.id, &update_data)
+            .await?;
 
     deployment
         .track_if_analytics_allowed(
@@ -962,6 +1030,9 @@ pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/attachments/{attachment_id}", delete(delete_attachment))
         .route("/attachments/{attachment_id}/file", get(serve_attachment))
         .route("/docs", get(get_pm_docs).put(update_pm_docs))
-        .route("/task-summary", get(get_task_summary).post(sync_task_summary_to_docs))
+        .route(
+            "/task-summary",
+            get(get_task_summary).post(sync_task_summary_to_docs),
+        )
         .layer(DefaultBodyLimit::max(20 * 1024 * 1024)) // 20MB limit for file uploads
 }

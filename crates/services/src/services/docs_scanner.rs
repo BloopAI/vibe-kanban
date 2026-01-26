@@ -69,7 +69,9 @@ pub async fn scan_docs_folder(workspace_path: &Path) -> Vec<ScannedDoc> {
     let mut docs = Vec::new();
     let mut total_size: usize = 0;
 
-    if let Err(e) = scan_directory_recursive(&docs_path, &docs_path, &mut docs, &mut total_size).await {
+    if let Err(e) =
+        scan_directory_recursive(&docs_path, &docs_path, &mut docs, &mut total_size).await
+    {
         tracing::warn!("Error scanning docs folder: {}", e);
     }
 
@@ -146,10 +148,7 @@ async fn scan_directory_recursive(
 
                     // Skip if would exceed total size
                     if *total_size + content_size > MAX_TOTAL_DOCS_SIZE {
-                        tracing::debug!(
-                            "Skipping {:?}: would exceed total size limit",
-                            path
-                        );
+                        tracing::debug!("Skipping {:?}: would exceed total size limit", path);
                         continue;
                     }
 
@@ -181,7 +180,9 @@ pub fn build_docs_context(docs: &[ScannedDoc]) -> Option<String> {
     let mut context = String::new();
     context.push_str("# Project Documentation\n\n");
     context.push_str("The following documentation files are available in the docs/ folder. ");
-    context.push_str("Please review them for project context, requirements, and design decisions.\n\n");
+    context.push_str(
+        "Please review them for project context, requirements, and design decisions.\n\n",
+    );
 
     for doc in docs {
         context.push_str(&format!("## docs/{}\n\n", doc.relative_path));
@@ -200,8 +201,9 @@ pub async fn get_docs_context_for_workspace(workspace_path: &Path) -> Option<Str
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::TempDir;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_scan_empty_docs_folder() {
@@ -219,9 +221,12 @@ mod tests {
         let docs_path = temp_dir.path().join("docs");
         fs::create_dir(&docs_path).await.unwrap();
 
-        fs::write(docs_path.join("requirements.md"), "# Requirements\n\nTest requirements")
-            .await
-            .unwrap();
+        fs::write(
+            docs_path.join("requirements.md"),
+            "# Requirements\n\nTest requirements",
+        )
+        .await
+        .unwrap();
         fs::write(docs_path.join("design.md"), "# Design\n\nTest design")
             .await
             .unwrap();

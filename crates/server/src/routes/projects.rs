@@ -31,7 +31,12 @@ use utils::{
 };
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware, routes::{labels, pm_chat}};
+use crate::{
+    DeploymentImpl,
+    error::ApiError,
+    middleware::load_project_middleware,
+    routes::{labels, pm_chat},
+};
 
 #[derive(Deserialize, TS)]
 pub struct LinkToExistingRequest {

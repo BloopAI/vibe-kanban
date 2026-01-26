@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::{
     extract::{Path, Request, State},
     http::StatusCode,
@@ -9,7 +11,6 @@ use db::models::{
     tag::Tag, task::Task, workspace::Workspace,
 };
 use deployment::Deployment;
-use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::DeploymentImpl;
@@ -21,7 +22,8 @@ pub async fn load_project_middleware(
     next: Next,
 ) -> Result<Response, StatusCode> {
     // Extract project_id from path params - it's named 'id' in the route
-    let project_id = params.get("id")
+    let project_id = params
+        .get("id")
         .and_then(|s| s.parse::<Uuid>().ok())
         .ok_or_else(|| {
             tracing::warn!("Project ID not found in path parameters");
@@ -186,7 +188,8 @@ pub async fn load_label_middleware(
     next: Next,
 ) -> Result<Response, StatusCode> {
     // Extract label_id from path params
-    let label_id = params.get("label_id")
+    let label_id = params
+        .get("label_id")
         .and_then(|s| s.parse::<Uuid>().ok())
         .ok_or_else(|| {
             tracing::warn!("Label ID not found in path parameters");

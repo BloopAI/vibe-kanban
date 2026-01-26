@@ -1,9 +1,6 @@
 use axum::{
-    Extension, Json, Router,
-    extract::State,
-    middleware::from_fn_with_state,
-    response::Json as ResponseJson,
-    routing::get,
+    Extension, Json, Router, extract::State, middleware::from_fn_with_state,
+    response::Json as ResponseJson, routing::get,
 };
 use db::models::{
     label::{CreateLabel, Label, UpdateLabel},
@@ -88,7 +85,10 @@ pub async fn delete_label(
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let label_router = Router::new()
         .route("/", get(get_label).put(update_label).delete(delete_label))
-        .layer(from_fn_with_state(deployment.clone(), load_label_middleware));
+        .layer(from_fn_with_state(
+            deployment.clone(),
+            load_label_middleware,
+        ));
 
     Router::new()
         .route("/", get(get_labels).post(create_label))

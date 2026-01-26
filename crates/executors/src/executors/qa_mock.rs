@@ -20,7 +20,9 @@ use crate::{
     env::ExecutionEnv,
     executors::{
         ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
-        claude::{ClaudeContentItem, ClaudeJson, ClaudeMessage, ClaudeMessageContent, ClaudeToolData},
+        claude::{
+            ClaudeContentItem, ClaudeJson, ClaudeMessage, ClaudeMessageContent, ClaudeToolData,
+        },
     },
     logs::utils::EntryIndexProvider,
 };
