@@ -68,18 +68,18 @@ export function useGitHubComments({
       if (comment.comment_type !== 'review') continue;
       if (comment.line === null) continue; // Skip file-level comments
 
-       normalized.push({
-         id: String(comment.id),
-         author: comment.author,
-         body: comment.body,
-         createdAt: comment.created_at,
-         url: comment.url,
-         filePath: comment.path,
-         lineNumber: Number(comment.line),
-         // Use side from API: "LEFT" = old/deleted side, "RIGHT" = new/added side (default)
-         side: comment.side === 'LEFT' ? DiffSide.Old : DiffSide.New,
-         diffHunk: comment.diff_hunk,
-       });
+      normalized.push({
+        id: String(comment.id),
+        author: comment.author,
+        body: comment.body,
+        createdAt: comment.created_at,
+        url: comment.url,
+        filePath: comment.path,
+        lineNumber: Number(comment.line),
+        // Use side from API: "LEFT" = old/deleted side, "RIGHT" = new/added side (default)
+        side: comment.side === 'LEFT' ? DiffSide.Old : DiffSide.New,
+        diffHunk: comment.diff_hunk,
+      });
     }
     return normalized;
   }, [gitHubComments]);
