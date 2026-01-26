@@ -423,6 +423,11 @@
         "path": {
           "label": "Chemin du dépôt"
         },
+        "defaultWorkingDir": {
+          "label": "Répertoire de travail par défaut",
+          "placeholder": "ex. : packages/frontend",
+          "helper": "Sous-répertoire relatif à la racine du dépôt où l'agent de codage s'exécute pour les espaces de travail à dépôt unique. Défini lors de la création de l'espace de travail. Laissez vide pour utiliser la racine du dépôt."
+        },
         "defaultTargetBranch": {
           "label": "Branche cible par défaut",
           "placeholder": "Sélectionner une branche",

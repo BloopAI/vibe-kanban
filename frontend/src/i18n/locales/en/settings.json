@@ -423,6 +423,11 @@
         "path": {
           "label": "Repository Path"
         },
+        "defaultWorkingDir": {
+          "label": "Default Working Directory",
+          "placeholder": "e.g., packages/frontend",
+          "helper": "Subdirectory relative to the repository root where the coding agent runs for single-repo workspaces. Set when the workspace is created. Leave empty to use the repository root."
+        },
         "defaultTargetBranch": {
           "label": "Default Target Branch",
           "placeholder": "Select a branch",
