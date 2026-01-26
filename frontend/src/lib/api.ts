@@ -362,6 +362,11 @@ export const projectsApi = {
 
 // Task Management APIs
 export const tasksApi = {
+  list: async (projectId: string): Promise<TaskWithAttemptStatus[]> => {
+    const response = await makeRequest(`/api/tasks?project_id=${encodeURIComponent(projectId)}`);
+    return handleApiResponse<TaskWithAttemptStatus[]>(response);
+  },
+
   getById: async (taskId: string): Promise<Task> => {
     const response = await makeRequest(`/api/tasks/${taskId}`);
     return handleApiResponse<Task>(response);

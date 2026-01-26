@@ -302,6 +302,22 @@ pub struct GetTaskRequest {
     pub task_id: Uuid,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetPmContextRequest {
+    #[schemars(description = "The ID of the project to get PM context for")]
+    pub project_id: Uuid,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct GetPmContextResponse {
+    #[schemars(description = "The project ID")]
+    pub project_id: String,
+    #[schemars(description = "Whether this project has a PM task configured")]
+    pub has_pm_task: bool,
+    #[schemars(description = "The PM context if available")]
+    pub pm_context: Option<McpPmContext>,
+}
+
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct GetTaskResponse {
     pub task: TaskDetails,
@@ -326,6 +342,16 @@ pub struct McpRepoContext {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
+pub struct McpPmContext {
+    #[schemars(description = "The PM task ID for this project")]
+    pub pm_task_id: Uuid,
+    #[schemars(description = "The PM task title")]
+    pub pm_task_title: String,
+    #[schemars(description = "The PM task description containing project specs")]
+    pub pm_task_description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
 pub struct McpContext {
     pub project_id: Uuid,
     pub task_id: Uuid,
@@ -336,6 +362,8 @@ pub struct McpContext {
         description = "Repository info and target branches for each repo in this workspace"
     )]
     pub workspace_repos: Vec<McpRepoContext>,
+    #[schemars(description = "PM context if available - contains project specs from the PM task")]
+    pub pm_context: Option<McpPmContext>,
 }
 
 impl TaskServer {
@@ -403,6 +431,43 @@ impl TaskServer {
             })
             .collect();
 
+        // Fetch PM context if project has a PM task configured
+        let pm_context = if let Some(pm_task_id) = ctx.project.pm_task_id {
+            // Try to fetch the PM task details
+            let task_url = self.url(&format!("/api/tasks/{}", pm_task_id));
+            let pm_task_response = tokio::time::timeout(
+                std::time::Duration::from_millis(500),
+                self.client.get(&task_url).send(),
+            )
+            .await
+            .ok()
+            .and_then(|r| r.ok());
+
+            if let Some(resp) = pm_task_response {
+                if resp.status().is_success() {
+                    if let Ok(api_resp) = resp.json::<ApiResponseEnvelope<Task>>().await {
+                        if api_resp.success {
+                            api_resp.data.map(|pm_task| McpPmContext {
+                                pm_task_id,
+                                pm_task_title: pm_task.title,
+                                pm_task_description: pm_task.description,
+                            })
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         Some(McpContext {
             project_id: ctx.project.id,
             task_id: ctx.task.id,
@@ -410,6 +475,7 @@ impl TaskServer {
             workspace_id: ctx.workspace.id,
             workspace_branch: ctx.workspace.branch,
             workspace_repos,
+            pm_context,
         })
     }
 }
@@ -999,14 +1065,57 @@ impl TaskServer {
 
         TaskServer::success(&response)
     }
+
+    #[tool(
+        description = "Get the PM (Project Manager) context for a project. Returns the project specification document stored in the PM task. Use this to understand project requirements, architecture, and guidelines before implementing tasks."
+    )]
+    async fn get_pm_context(
+        &self,
+        Parameters(GetPmContextRequest { project_id }): Parameters<GetPmContextRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        // First, get the project to find the pm_task_id
+        let url = self.url(&format!("/api/projects/{}", project_id));
+        let project: Project = match self.send_json(self.client.get(&url)).await {
+            Ok(p) => p,
+            Err(e) => return Ok(e),
+        };
+
+        // If no PM task is configured, return empty context
+        let Some(pm_task_id) = project.pm_task_id else {
+            return TaskServer::success(&GetPmContextResponse {
+                project_id: project_id.to_string(),
+                has_pm_task: false,
+                pm_context: None,
+            });
+        };
+
+        // Fetch the PM task details
+        let task_url = self.url(&format!("/api/tasks/{}", pm_task_id));
+        let pm_task: Task = match self.send_json(self.client.get(&task_url)).await {
+            Ok(t) => t,
+            Err(e) => return Ok(e),
+        };
+
+        let pm_context = McpPmContext {
+            pm_task_id,
+            pm_task_title: pm_task.title,
+            pm_task_description: pm_task.description,
+        };
+
+        TaskServer::success(&GetPmContextResponse {
+            project_id: project_id.to_string(),
+            has_pm_task: true,
+            pm_context: Some(pm_context),
+        })
+    }
 }
 
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
-        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_workspace_session', 'get_task', 'update_task', 'delete_task', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script'. Make sure to pass `project_id`, `task_id`, or `repo_id` where required. You can use list tools to get the available ids.".to_string();
+        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_workspace_session', 'get_task', 'update_task', 'delete_task', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script', 'get_pm_context'. Use 'get_pm_context' to fetch the project specification and guidelines from the PM task before implementing features. Make sure to pass `project_id`, `task_id`, or `repo_id` where required. You can use list tools to get the available ids.".to_string();
         if self.context.is_some() {
-            let context_instruction = "Use 'get_context' to fetch project/task/workspace metadata for the active Vibe Kanban workspace session when available.";
+            let context_instruction = "Use 'get_context' to fetch project/task/workspace metadata (including PM context if available) for the active Vibe Kanban workspace session when available.";
             instruction = format!("{} {}", context_instruction, instruction);
         }
 

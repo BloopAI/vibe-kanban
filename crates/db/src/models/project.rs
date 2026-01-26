@@ -23,6 +23,8 @@ pub struct Project {
     pub name: String,
     pub default_agent_working_dir: Option<String>,
     pub remote_project_id: Option<Uuid>,
+    /// The PM task for this project - contains project specs and serves as PM AI context
+    pub pm_task_id: Option<Uuid>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -38,6 +40,8 @@ pub struct CreateProject {
 #[derive(Debug, Deserialize, TS)]
 pub struct UpdateProject {
     pub name: Option<String>,
+    /// Set the PM task for this project
+    pub pm_task_id: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -71,6 +75,7 @@ impl Project {
                       name,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      pm_task_id as "pm_task_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -88,6 +93,7 @@ impl Project {
             SELECT p.id as "id!: Uuid", p.name,
                    p.default_agent_working_dir,
                    p.remote_project_id as "remote_project_id: Uuid",
+                   p.pm_task_id as "pm_task_id: Uuid",
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -111,6 +117,7 @@ impl Project {
                       name,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      pm_task_id as "pm_task_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -128,6 +135,7 @@ impl Project {
                       name,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      pm_task_id as "pm_task_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -148,6 +156,7 @@ impl Project {
                       name,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      pm_task_id as "pm_task_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -176,6 +185,7 @@ impl Project {
                           name,
                           default_agent_working_dir,
                           remote_project_id as "remote_project_id: Uuid",
+                          pm_task_id as "pm_task_id: Uuid",
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
@@ -195,20 +205,28 @@ impl Project {
             .ok_or(sqlx::Error::RowNotFound)?;
 
         let name = payload.name.clone().unwrap_or(existing.name);
+        // If pm_task_id is provided in payload, use it; otherwise keep existing
+        let pm_task_id = if payload.pm_task_id.is_some() {
+            payload.pm_task_id
+        } else {
+            existing.pm_task_id
+        };
 
         sqlx::query_as!(
             Project,
             r#"UPDATE projects
-               SET name = $2
+               SET name = $2, pm_task_id = $3
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
                          default_agent_working_dir,
                          remote_project_id as "remote_project_id: Uuid",
+                         pm_task_id as "pm_task_id: Uuid",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             name,
+            pm_task_id,
         )
         .fetch_one(pool)
         .await

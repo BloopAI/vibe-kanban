@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
-import { Link, Loader2, XCircle } from 'lucide-react';
+import { Link, Loader2, XCircle, ClipboardList } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '@/components/ui/actions-dropdown';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { paths } from '@/lib/paths';
 import { attemptsApi } from '@/lib/api';
 import { TaskCardHeader } from './TaskCardHeader';
 import { useTranslation } from 'react-i18next';
+import { Badge } from '@/components/ui/badge';
 
 type Task = TaskWithAttemptStatus;
 
@@ -19,6 +20,7 @@ interface TaskCardProps {
   onViewDetails: (task: Task) => void;
   isOpen?: boolean;
   projectId: string;
+  isPmTask?: boolean;
 }
 
 export function TaskCard({
@@ -28,6 +30,7 @@ export function TaskCard({
   onViewDetails,
   isOpen,
   projectId,
+  isPmTask,
 }: TaskCardProps) {
   const { t } = useTranslation('tasks');
   const navigate = useNavigateWithSearch();
@@ -90,6 +93,12 @@ export function TaskCard({
           title={task.title}
           right={
             <>
+              {isPmTask && (
+                <Badge variant="secondary" className="text-xs px-1.5 py-0 gap-1">
+                  <ClipboardList className="h-3 w-3" />
+                  PM
+                </Badge>
+              )}
               {task.has_in_progress_attempt && (
                 <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
               )}

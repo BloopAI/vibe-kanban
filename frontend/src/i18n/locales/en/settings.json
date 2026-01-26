@@ -399,6 +399,18 @@
         "description": "Manage the git repositories in this project",
         "noRepositories": "No repositories configured",
         "addRepository": "Add Repository"
+      },
+      "pmTask": {
+        "title": "PM Task",
+        "description": "Designate a task as the Project Manager (PM) task. The PM task contains project specifications that AI agents can reference.",
+        "loading": "Loading tasks...",
+        "selector": {
+          "label": "PM Task",
+          "helper": "Select a task to serve as the project specification document. AI agents can access its description via the get_pm_context tool.",
+          "placeholder": "Select a PM task",
+          "none": "None (no PM task)",
+          "noTasks": "No tasks available"
+        }
       }
     },
     "repos": {

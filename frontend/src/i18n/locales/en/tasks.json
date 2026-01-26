@@ -15,6 +15,7 @@
     }
   },
   "loading": "Loading tasks...",
+  "progress": "{{done}} / {{total}} tasks done",
   "empty": {
     "noTasks": "No tasks found for this project.",
     "createFirst": "Create First Task",
