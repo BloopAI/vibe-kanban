@@ -1,15 +1,15 @@
 {
-  "name": "vibe-kanban",
+  "name": "vibe-kanban-pm",
   "private": false,
   "version": "0.0.161",
   "main": "index.js",
   "bin": {
-    "vibe-kanban": "bin/cli.js"
+    "vibe-kanban-pm": "bin/cli.js"
   },
-  "keywords": [],
+  "keywords": ["kanban", "project-management", "pm", "vibekanban"],
   "author": "bloop",
   "license": "",
-  "description": "NPX wrapper around vibe-kanban and vibe-kanban-mcp",
+  "description": "NPX wrapper around vibe-kanban-pm with GitHub Projects-like PM features",
   "dependencies": {
     "adm-zip": "^0.5.16"
   },
