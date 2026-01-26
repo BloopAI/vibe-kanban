@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { organizationsApi } from '@/lib/api';
 import type { OrganizationMemberWithProfile } from 'shared/types';
+import { organizationKeys } from './organizationKeys';
 
 export function useOrganizationMembers(organizationId?: string) {
   return useQuery<OrganizationMemberWithProfile[]>({
-    queryKey: ['organization', 'members', organizationId],
+    queryKey: organizationKeys.members(organizationId ?? ''),
     queryFn: () => {
       if (!organizationId) {
         throw new Error('No organization ID available');
