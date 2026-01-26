@@ -12,7 +12,7 @@ import { getFileIcon } from '@/utils/fileTypeIcon';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { useTheme } from '@/components/ThemeProvider';
 import { getActualTheme } from '@/utils/theme';
-import { useDiffViewMode } from '@/stores/useDiffViewStore';
+import { useDiffViewMode, useWrapTextDiff } from '@/stores/useDiffViewStore';
 import { stripLineEnding } from '@/utils/string';
 import {
   useReview,
@@ -40,19 +40,19 @@ type ExtendLineData =
 // Discriminated union for input format flexibility
 export type DiffInput =
   | {
-      type: 'content';
-      oldContent: string;
-      newContent: string;
-      oldPath: string | undefined;
-      newPath: string;
-      changeKind: DiffChangeKind;
-    }
+    type: 'content';
+    oldContent: string;
+    newContent: string;
+    oldPath: string | undefined;
+    newPath: string;
+    changeKind: DiffChangeKind;
+  }
   | {
-      type: 'unified';
-      path: string;
-      unifiedDiff: string;
-      hasLineNumbers: boolean;
-    };
+    type: 'unified';
+    path: string;
+    unifiedDiff: string;
+    hasLineNumbers: boolean;
+  };
 
 /** Base props shared across all modes */
 interface BaseProps {
@@ -188,6 +188,7 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
   const globalMode = useDiffViewMode();
+  const wrapText = useWrapTextDiff();
   const diffMode =
     globalMode === 'split' ? DiffModeEnum.Split : DiffModeEnum.Unified;
 
@@ -446,6 +447,7 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
           isValid={isValid}
           theme={actualTheme}
           diffMode={diffMode}
+          wrapText={wrapText}
           extendData={extendData}
           onAddWidgetClick={handleAddWidgetClick}
           renderWidgetLine={renderWidgetLine}
@@ -464,6 +466,7 @@ function DiffViewBodyWithComments({
   isValid,
   theme,
   diffMode,
+  wrapText,
   extendData,
   onAddWidgetClick,
   renderWidgetLine,
@@ -473,6 +476,7 @@ function DiffViewBodyWithComments({
   isValid: boolean;
   theme: 'light' | 'dark';
   diffMode: DiffModeEnum;
+  wrapText: boolean;
   extendData: {
     oldFile: Record<string, { data: ExtendLineData }>;
     newFile: Record<string, { data: ExtendLineData }>;
@@ -498,7 +502,7 @@ function DiffViewBodyWithComments({
     <div>
       <DiffView
         diffFile={diffFile}
-        diffViewWrap={false}
+        diffViewWrap={wrapText}
         diffViewTheme={theme}
         diffViewHighlight
         diffViewMode={diffMode}
