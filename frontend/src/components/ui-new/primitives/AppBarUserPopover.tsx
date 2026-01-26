@@ -1,6 +1,7 @@
 import {
   BuildingsIcon,
   CheckIcon,
+  GearIcon,
   PlusIcon,
   SignInIcon,
   SignOutIcon,
@@ -23,8 +24,11 @@ interface AppBarUserPopoverProps {
   avatarUrl: string | null;
   organizations: OrganizationWithRole[];
   selectedOrgId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onOrgSelect: (orgId: string) => void;
   onCreateOrg?: () => void;
+  onOrgSettings?: (orgId: string) => void;
   onSignIn: () => void;
   onLogout: () => void;
 }
@@ -34,8 +38,11 @@ export function AppBarUserPopover({
   avatarUrl,
   organizations,
   selectedOrgId,
+  open,
+  onOpenChange,
   onOrgSelect,
   onCreateOrg,
+  onOrgSettings,
   onSignIn,
   onLogout,
 }: AppBarUserPopoverProps) {
@@ -69,7 +76,7 @@ export function AppBarUserPopover({
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
@@ -101,9 +108,25 @@ export function AppBarUserPopover({
             key={org.id}
             icon={org.id === selectedOrgId ? CheckIcon : BuildingsIcon}
             onClick={() => onOrgSelect(org.id)}
-            className={cn(org.id === selectedOrgId && 'bg-brand/10')}
+            className={cn(org.id === selectedOrgId && 'bg-brand/10', 'group')}
           >
-            {org.name}
+            <span className="flex items-center gap-2 w-full">
+              <span className="flex-1 truncate">{org.name}</span>
+              {onOrgSettings && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenChange(false);
+                    onOrgSettings(org.id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-secondary transition-opacity shrink-0"
+                  aria-label={t('orgSwitcher.orgSettings')}
+                >
+                  <GearIcon className="size-icon-xs" weight="bold" />
+                </button>
+              )}
+            </span>
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
