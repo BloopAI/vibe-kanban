@@ -29,7 +29,12 @@ const HoldTaskDialogImpl = NiceModal.create<HoldTaskDialogProps>((props) => {
   const handleConfirm = () => {
     const trimmedComment = comment.trim();
     if (!trimmedComment) {
-      setError(t('holdTaskDialog.errorRequired', 'Please provide a reason for placing this task on hold.'));
+      setError(
+        t(
+          'holdTaskDialog.errorRequired',
+          'Please provide a reason for placing this task on hold.'
+        )
+      );
       return;
     }
     modal.resolve(trimmedComment);
@@ -54,7 +59,8 @@ const HoldTaskDialogImpl = NiceModal.create<HoldTaskDialogProps>((props) => {
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="hold-comment">
-              {t('holdTaskDialog.commentLabel')} <span className="text-destructive">*</span>
+              {t('holdTaskDialog.commentLabel')}{' '}
+              <span className="text-destructive">*</span>
             </Label>
             <Textarea
               id="hold-comment"
@@ -74,7 +80,9 @@ const HoldTaskDialogImpl = NiceModal.create<HoldTaskDialogProps>((props) => {
           <Button variant="outline" onClick={handleCancel}>
             {t('holdTaskDialog.cancel')}
           </Button>
-          <Button onClick={handleConfirm}>{t('holdTaskDialog.placeHold')}</Button>
+          <Button onClick={handleConfirm}>
+            {t('holdTaskDialog.placeHold')}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
