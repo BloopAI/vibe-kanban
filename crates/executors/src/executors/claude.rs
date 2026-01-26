@@ -17,6 +17,7 @@ use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
+use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 use workspace_utils::{
     approvals::ApprovalStatus, diff::create_unified_diff, log_msg::LogMsg, msg_store::MsgStore,
