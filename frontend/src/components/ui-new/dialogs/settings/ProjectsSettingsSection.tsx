@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { isEqual } from 'lodash';
-import { SpinnerIcon, PlusIcon, TrashIcon, ClipboardText } from '@phosphor-icons/react';
+import { SpinnerIcon, PlusIcon, TrashIcon, ClipboardTextIcon } from '@phosphor-icons/react';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
@@ -412,7 +412,7 @@ export function ProjectsSettingsSection() {
                       >
                         <div className="flex items-center gap-2">
                           {draft.pm_task_id === task.id && (
-                            <ClipboardText className="size-icon-sm text-brand" weight="fill" />
+                            <ClipboardTextIcon className="size-icon-sm text-brand" weight="fill" />
                           )}
                           <span className={cn(draft.pm_task_id === task.id && 'font-medium')}>
                             {task.title}
