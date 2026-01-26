@@ -27,6 +27,13 @@ import '@/styles/diff-style-overrides.css';
  * Injected via unsafeCSS which applies at @layer unsafe (highest priority).
  */
 const PIERRE_DIFFS_THEME_CSS = `
+  [data-separator="line-info"][data-separator-first] {
+    margin-top: 4px;
+  }
+  [data-separator="line-info"][data-separator-last] {
+    margin-bottom: 4px;
+  }
+
   /* Light theme overrides */
   [data-diffs][data-theme-type='light'] {
     /* Background colors */
@@ -51,10 +58,10 @@ const PIERRE_DIFFS_THEME_CSS = `
 
   /* Dark theme overrides */
   [data-diffs][data-theme-type='dark'] {
-    /* Background colors */
-    --diffs-dark-bg: hsl(0, 0%, 20%) !important;
-    --diffs-bg-context-override: hsl(0, 0%, 20%) !important;
-    --diffs-bg-hover-override: hsl(0, 0%, 25%) !important;
+    /* Background colors - match --muted (0 0% 16%) */
+    --diffs-dark-bg: hsl(0, 0%, 16%) !important;
+    --diffs-bg-context-override: hsl(0, 0%, 16%) !important;
+    --diffs-bg-hover-override: hsl(0, 0%, 22%) !important;
     
     /* Addition colors - dark green */
     --diffs-dark-addition-color: hsl(130, 50%, 50%) !important;
