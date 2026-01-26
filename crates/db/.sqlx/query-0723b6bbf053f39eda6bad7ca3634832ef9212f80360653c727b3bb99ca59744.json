@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", creator_user_id as \"creator_user_id: Uuid\", assignee_user_id as \"assignee_user_id: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE shared_task_id IS NOT NULL",
+  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", creator_user_id as \"creator_user_id: Uuid\", assignee_user_id as \"assignee_user_id: Uuid\", hold_user_id as \"hold_user_id: Uuid\", hold_comment, hold_at as \"hold_at: DateTime<Utc>\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE shared_task_id = $1\n               LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -49,18 +49,33 @@
         "type_info": "Blob"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "hold_user_id: Uuid",
         "ordinal": 9,
+        "type_info": "Blob"
+      },
+      {
+        "name": "hold_comment",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "hold_at: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 12,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 13,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       true,
@@ -72,9 +87,12 @@
       true,
       true,
       true,
+      true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "b5a7f41cd0c33746388fdd9c435e215877d31a3c7a321cc4405f1e609cf6e185"
+  "hash": "0723b6bbf053f39eda6bad7ca3634832ef9212f80360653c727b3bb99ca59744"
 }

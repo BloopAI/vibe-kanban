@@ -37,6 +37,9 @@ pub struct Task {
     pub shared_task_id: Option<Uuid>,
     pub creator_user_id: Option<Uuid>, // Foreign key to User who created the task
     pub assignee_user_id: Option<Uuid>, // Foreign key to User assigned to the task
+    pub hold_user_id: Option<Uuid>,    // Foreign key to User who placed the hold
+    pub hold_comment: Option<String>,  // Comment explaining why the hold was placed
+    pub hold_at: Option<DateTime<Utc>>, // When the hold was placed
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -57,6 +60,14 @@ impl From<User> for TaskUser {
             avatar_url: user.avatar_url,
         }
     }
+}
+
+/// Information about a hold placed on a task
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct TaskHoldInfo {
+    pub user: TaskUser,
+    pub comment: String,
+    pub held_at: DateTime<Utc>,
 }
 
 /// Task with creator and assignee information for API responses
@@ -90,6 +101,7 @@ pub struct TaskWithAttemptStatus {
     pub assignee: Option<TaskUser>,
     #[ts(type = "number")]
     pub approval_count: i64,
+    pub hold: Option<TaskHoldInfo>,
 }
 
 impl std::ops::Deref for TaskWithAttemptStatus {
@@ -193,6 +205,9 @@ impl Task {
   t.shared_task_id                AS "shared_task_id: Uuid",
   t.creator_user_id               AS "creator_user_id: Uuid",
   t.assignee_user_id              AS "assignee_user_id: Uuid",
+  t.hold_user_id                  AS "hold_user_id: Uuid",
+  t.hold_comment,
+  t.hold_at                       AS "hold_at: DateTime<Utc>",
   t.created_at                    AS "created_at!: DateTime<Utc>",
   t.updated_at                    AS "updated_at!: DateTime<Utc>",
 
@@ -237,11 +252,16 @@ impl Task {
 
   -- Approval count
   (SELECT COUNT(*) FROM task_approvals WHERE task_id = t.id)
-                                  AS "approval_count!: i64"
+                                  AS "approval_count!: i64",
+
+  -- Hold user info
+  hold_user.username              AS hold_username,
+  hold_user.avatar_url            AS hold_avatar_url
 
 FROM tasks t
 LEFT JOIN users creator ON creator.id = t.creator_user_id
 LEFT JOIN users assignee ON assignee.id = t.assignee_user_id
+LEFT JOIN users hold_user ON hold_user.id = t.hold_user_id
 WHERE t.project_id = $1
 ORDER BY t.created_at DESC"#,
             project_id
@@ -262,6 +282,9 @@ ORDER BY t.created_at DESC"#,
                     shared_task_id: rec.shared_task_id,
                     creator_user_id: rec.creator_user_id,
                     assignee_user_id: rec.assignee_user_id,
+                    hold_user_id: rec.hold_user_id,
+                    hold_comment: rec.hold_comment.clone(),
+                    hold_at: rec.hold_at,
                     created_at: rec.created_at,
                     updated_at: rec.updated_at,
                 },
@@ -279,6 +302,20 @@ ORDER BY t.created_at DESC"#,
                     avatar_url: rec.assignee_avatar_url.clone(),
                 }),
                 approval_count: rec.approval_count,
+                hold: rec.hold_user_id.and_then(|id| {
+                    rec.hold_comment
+                        .clone()
+                        .zip(rec.hold_at)
+                        .map(|(comment, held_at)| TaskHoldInfo {
+                            user: TaskUser {
+                                id,
+                                username: rec.hold_username.clone(),
+                                avatar_url: rec.hold_avatar_url.clone(),
+                            },
+                            comment,
+                            held_at,
+                        })
+                }),
             })
             .collect();
 
@@ -288,7 +325,7 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", creator_user_id as "creator_user_id: Uuid", assignee_user_id as "assignee_user_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", creator_user_id as "creator_user_id: Uuid", assignee_user_id as "assignee_user_id: Uuid", hold_user_id as "hold_user_id: Uuid", hold_comment, hold_at as "hold_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE id = $1"#,
             id
@@ -300,7 +337,7 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", creator_user_id as "creator_user_id: Uuid", assignee_user_id as "assignee_user_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", creator_user_id as "creator_user_id: Uuid", assignee_user_id as "assignee_user_id: Uuid", hold_user_id as "hold_user_id: Uuid", hold_comment, hold_at as "hold_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE rowid = $1"#,
             rowid
@@ -318,7 +355,7 @@ ORDER BY t.created_at DESC"#,
     {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", creator_user_id as "creator_user_id: Uuid", assignee_user_id as "assignee_user_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", creator_user_id as "creator_user_id: Uuid", assignee_user_id as "assignee_user_id: Uuid", hold_user_id as "hold_user_id: Uuid", hold_comment, hold_at as "hold_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE shared_task_id = $1
                LIMIT 1"#,
@@ -331,7 +368,7 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_all_shared(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", creator_user_id as "creator_user_id: Uuid", assignee_user_id as "assignee_user_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", creator_user_id as "creator_user_id: Uuid", assignee_user_id as "assignee_user_id: Uuid", hold_user_id as "hold_user_id: Uuid", hold_comment, hold_at as "hold_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE shared_task_id IS NOT NULL"#
         )
@@ -350,7 +387,7 @@ ORDER BY t.created_at DESC"#,
             Task,
             r#"INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, shared_task_id, creator_user_id)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", creator_user_id as "creator_user_id: Uuid", assignee_user_id as "assignee_user_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", creator_user_id as "creator_user_id: Uuid", assignee_user_id as "assignee_user_id: Uuid", hold_user_id as "hold_user_id: Uuid", hold_comment, hold_at as "hold_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             task_id,
             data.project_id,
             data.title,
@@ -380,7 +417,7 @@ ORDER BY t.created_at DESC"#,
             r#"UPDATE tasks
                SET title = $3, description = $4, status = $5, parent_workspace_id = $6, assignee_user_id = $7
                WHERE id = $1 AND project_id = $2
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", creator_user_id as "creator_user_id: Uuid", assignee_user_id as "assignee_user_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", creator_user_id as "creator_user_id: Uuid", assignee_user_id as "assignee_user_id: Uuid", hold_user_id as "hold_user_id: Uuid", hold_comment, hold_at as "hold_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             project_id,
             title,
@@ -475,7 +512,7 @@ ORDER BY t.created_at DESC"#,
         // Find only child tasks that have this workspace as their parent
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", creator_user_id as "creator_user_id: Uuid", assignee_user_id as "assignee_user_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", creator_user_id as "creator_user_id: Uuid", assignee_user_id as "assignee_user_id: Uuid", hold_user_id as "hold_user_id: Uuid", hold_comment, hold_at as "hold_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE parent_workspace_id = $1
                ORDER BY created_at DESC"#,
@@ -589,5 +626,92 @@ ORDER BY t.created_at DESC"#,
             .filter(|u| user_ids.contains(&u.id))
             .map(|u| (u.id, u))
             .collect())
+    }
+
+    /// Check if the task is currently on hold
+    pub fn is_on_hold(&self) -> bool {
+        self.hold_user_id.is_some()
+    }
+
+    /// Place a hold on this task, preventing workspace sessions from being started
+    pub async fn place_hold(
+        pool: &SqlitePool,
+        task_id: Uuid,
+        user_id: Uuid,
+        comment: String,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE tasks SET hold_user_id = $2, hold_comment = $3, hold_at = datetime('now', 'subsec'), updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            task_id,
+            user_id,
+            comment
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Release (remove) the hold on this task
+    pub async fn release_hold(pool: &SqlitePool, task_id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE tasks SET hold_user_id = NULL, hold_comment = NULL, hold_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            task_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Get the hold user for this task, if one exists
+    pub async fn get_hold_user(&self, pool: &SqlitePool) -> Result<Option<User>, sqlx::Error> {
+        match self.hold_user_id {
+            Some(user_id) => User::find_by_id(pool, user_id).await,
+            None => Ok(None),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_task() -> Task {
+        Task {
+            id: Uuid::new_v4(),
+            project_id: Uuid::new_v4(),
+            title: "Test task".to_string(),
+            description: None,
+            status: TaskStatus::Todo,
+            parent_workspace_id: None,
+            shared_task_id: None,
+            creator_user_id: None,
+            assignee_user_id: None,
+            hold_user_id: None,
+            hold_comment: None,
+            hold_at: None,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn test_is_on_hold_returns_false_when_no_hold() {
+        let task = create_test_task();
+        assert!(!task.is_on_hold());
+    }
+
+    #[test]
+    fn test_is_on_hold_returns_true_when_hold_exists() {
+        let mut task = create_test_task();
+        task.hold_user_id = Some(Uuid::new_v4());
+        task.hold_comment = Some("Test hold".to_string());
+        task.hold_at = Some(Utc::now());
+        assert!(task.is_on_hold());
+    }
+
+    #[test]
+    fn test_task_status_default_is_todo() {
+        let status = TaskStatus::default();
+        assert_eq!(status, TaskStatus::Todo);
     }
 }

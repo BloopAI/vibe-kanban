@@ -20,8 +20,10 @@ import { EditBranchNameDialog } from '@/components/dialogs/tasks/EditBranchNameD
 import { ShareDialog } from '@/components/dialogs/tasks/ShareDialog';
 import { ReassignDialog } from '@/components/dialogs/tasks/ReassignDialog';
 import { StopShareTaskDialog } from '@/components/dialogs/tasks/StopShareTaskDialog';
+import { HoldTaskDialog } from '@/components/dialogs/tasks/HoldTaskDialog';
 import { useProject } from '@/contexts/ProjectContext';
 import { openTaskForm } from '@/lib/openTaskForm';
+import { useTaskMutations } from '@/hooks';
 
 import { useNavigate } from 'react-router-dom';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
@@ -44,6 +46,7 @@ export function ActionsDropdown({
   const openInEditor = useOpenInEditor(attempt?.id);
   const navigate = useNavigate();
   const { userId, isSignedIn } = useAuth();
+  const { placeHold, releaseHold } = useTaskMutations(projectId);
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
@@ -158,12 +161,40 @@ export function ActionsDropdown({
     StopShareTaskDialog.show({ sharedTask });
   };
 
+  const handlePlaceHold = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!task) return;
+    try {
+      const result = await HoldTaskDialog.show({ taskTitle: task.title });
+      // If user provided a comment (not 'canceled'), place the hold
+      if (result && result !== 'canceled') {
+        placeHold.mutate({ taskId: task.id, comment: result });
+      }
+    } catch {
+      // User cancelled
+    }
+  };
+
+  const handleReleaseHold = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!task) return;
+    releaseHold.mutate(task.id);
+  };
+
   const canReassign =
     Boolean(task) &&
     Boolean(sharedTask) &&
     sharedTask?.assignee_user_id === userId;
   const canStopShare =
     Boolean(sharedTask) && sharedTask?.assignee_user_id === userId;
+
+  // Hold permissions: can only place hold if signed in, task exists, and not already on hold
+  const canPlaceHold =
+    isSignedIn && Boolean(task) && !task?.hold && canEditShared;
+  // Can only release hold if signed in and user is the hold owner
+  const canReleaseHold =
+    isSignedIn && Boolean(task?.hold) && task?.hold_user_id === userId;
+  const isOnHold = Boolean(task?.hold);
 
   return (
     <>
@@ -265,6 +296,23 @@ export function ActionsDropdown({
               >
                 {t('common:buttons.delete')}
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {!isOnHold && (
+                <DropdownMenuItem
+                  disabled={!canPlaceHold}
+                  onClick={handlePlaceHold}
+                >
+                  {t('actionsMenu.placeHold')}
+                </DropdownMenuItem>
+              )}
+              {isOnHold && (
+                <DropdownMenuItem
+                  disabled={!canReleaseHold}
+                  onClick={handleReleaseHold}
+                >
+                  {t('actionsMenu.releaseHold')}
+                </DropdownMenuItem>
+              )}
             </>
           )}
         </DropdownMenuContent>

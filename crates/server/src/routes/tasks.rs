@@ -15,7 +15,9 @@ use axum::{
 use db::models::{
     image::TaskImage,
     repo::{Repo, RepoError},
-    task::{CreateTask, Task, TaskUser, TaskWithAttemptStatus, TaskWithUsers, UpdateTask},
+    task::{
+        CreateTask, Task, TaskHoldInfo, TaskUser, TaskWithAttemptStatus, TaskWithUsers, UpdateTask,
+    },
     workspace::{CreateWorkspace, Workspace},
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
@@ -263,6 +265,7 @@ pub async fn create_task_and_start(
         creator,
         assignee: None,    // Newly created task has no assignee yet
         approval_count: 0, // Newly created task has no approvals
+        hold: None,        // Newly created task has no hold
     })))
 }
 
@@ -443,10 +446,95 @@ async fn ensure_shared_task_auth(
     Ok(())
 }
 
+// ===== Hold/Release endpoints =====
+
+/// Request body for placing a hold on a task
+#[derive(Debug, Deserialize, TS)]
+#[ts(export)]
+pub struct PlaceHoldRequest {
+    /// The comment explaining why the hold is being placed
+    pub comment: String,
+}
+
+/// Response for placing a hold on a task
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct HoldResponse {
+    pub task_id: Uuid,
+    pub hold: TaskHoldInfo,
+}
+
+/// Place a hold on a task, preventing workspace sessions from being started
+pub async fn place_hold(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+    headers: HeaderMap,
+    Json(payload): Json<PlaceHoldRequest>,
+) -> Result<ResponseJson<ApiResponse<HoldResponse>>, ApiError> {
+    // Validate comment is not empty
+    let comment = payload.comment.trim();
+    if comment.is_empty() {
+        return Err(ApiError::BadRequest("Hold comment is required".to_string()));
+    }
+
+    // Require authenticated user
+    let user = try_get_authenticated_user(&deployment, &headers)
+        .await
+        .ok_or(ApiError::Unauthorized)?;
+
+    // Check if task is already on hold
+    if task.is_on_hold() {
+        return Err(ApiError::BadRequest("Task is already on hold".to_string()));
+    }
+
+    Task::place_hold(&deployment.db().pool, task.id, user.id, comment.to_string()).await?;
+
+    let hold_info = TaskHoldInfo {
+        user: TaskUser::from(user),
+        comment: comment.to_string(),
+        held_at: chrono::Utc::now(),
+    };
+
+    Ok(ResponseJson(ApiResponse::success(HoldResponse {
+        task_id: task.id,
+        hold: hold_info,
+    })))
+}
+
+/// Release (remove) the hold on a task
+pub async fn release_hold(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+    headers: HeaderMap,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    // Require authenticated user
+    let user = try_get_authenticated_user(&deployment, &headers)
+        .await
+        .ok_or(ApiError::Unauthorized)?;
+
+    // Check if task is on hold
+    if !task.is_on_hold() {
+        return Err(ApiError::BadRequest("Task is not on hold".to_string()));
+    }
+
+    // Only the holder can release the hold
+    if task.hold_user_id != Some(user.id) {
+        return Err(ApiError::Forbidden(
+            "Only the hold owner can release the hold".to_string(),
+        ));
+    }
+
+    Task::release_hold(&deployment.db().pool, task.id).await?;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_actions_router = Router::new()
         .route("/", put(update_task))
         .route("/", delete(delete_task))
+        .route("/hold", put(place_hold))
+        .route("/hold", delete(release_hold))
         .nest("/task-approvals", super::task_approvals::router());
 
     let task_id_router = Router::new()

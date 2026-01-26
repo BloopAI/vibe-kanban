@@ -33,7 +33,21 @@
     "viewProcesses": "View processes",
     "viewRelatedTasks": "View related tasks",
     "startReview": "리뷰 시작",
-    "startingReview": "리뷰 시작 중..."
+    "startingReview": "리뷰 시작 중...",
+    "share": "공유",
+    "reassign": "재할당",
+    "stopShare": "공유 중지",
+    "placeHold": "보류하기",
+    "releaseHold": "보류 해제"
+  },
+  "holdTaskDialog": {
+    "title": "작업 보류하기",
+    "description": "\"{{taskTitle}}\"을(를) 보류하면 에이전트가 새 작업 공간 세션을 시작할 수 없습니다. 다른 사용자들은 당신이 이 작업을 수동으로 처리 중임을 확인할 수 있습니다.",
+    "commentLabel": "사유",
+    "commentPlaceholder": "예: 로컬에서 먼저 수정할 예정입니다...",
+    "placeHold": "보류하기",
+    "cancel": "취소",
+    "errorRequired": "이 작업을 보류하는 사유를 입력해 주세요."
   },
   "editBranchName": {
     "dialog": {

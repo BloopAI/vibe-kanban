@@ -125,6 +125,27 @@ export function useTaskMutations(projectId?: string) {
     },
   });
 
+  const placeHold = useMutation({
+    mutationFn: ({ taskId, comment }: { taskId: string; comment: string }) =>
+      tasksApi.placeHold(taskId, comment),
+    onSuccess: (_, { taskId }) => {
+      invalidateQueries(taskId);
+    },
+    onError: (err) => {
+      console.error('Failed to place hold on task:', err);
+    },
+  });
+
+  const releaseHold = useMutation({
+    mutationFn: (taskId: string) => tasksApi.releaseHold(taskId),
+    onSuccess: (_, taskId) => {
+      invalidateQueries(taskId);
+    },
+    onError: (err) => {
+      console.error('Failed to release hold on task:', err);
+    },
+  });
+
   return {
     createTask,
     createAndStart,
@@ -133,5 +154,7 @@ export function useTaskMutations(projectId?: string) {
     shareTask,
     stopShareTask: unshareSharedTask,
     linkSharedTaskToLocal,
+    placeHold,
+    releaseHold,
   };
 }

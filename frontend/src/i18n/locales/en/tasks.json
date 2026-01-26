@@ -519,7 +519,12 @@
     "startReview": "Start Review",
     "startingReview": "Starting Review...",
     "task": "Task",
-    "duplicate": "Duplicate"
+    "duplicate": "Duplicate",
+    "share": "Share",
+    "reassign": "Reassign",
+    "stopShare": "Stop Sharing",
+    "placeHold": "Place Hold",
+    "releaseHold": "Release Hold"
   },
   "editBranchName": {
     "dialog": {
@@ -706,6 +711,15 @@
     "label": "Assignee",
     "unassigned": "Unassigned",
     "noUsersAvailable": "No users available"
+  },
+  "holdTaskDialog": {
+    "title": "Place Hold on Task",
+    "description": "Placing \"{{taskTitle}}\" on hold will prevent agents from starting new workspace sessions. Other users will see that you are manually working on this task.",
+    "commentLabel": "Reason",
+    "commentPlaceholder": "e.g., I'm fixing this locally first...",
+    "placeHold": "Place Hold",
+    "cancel": "Cancel",
+    "errorRequired": "Please provide a reason for placing this task on hold."
   },
   "scriptFixer": {
     "title": "Fix Script",
