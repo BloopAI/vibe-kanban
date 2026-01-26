@@ -16,6 +16,8 @@ import {
 } from '@/components/ui-new/views/KanbanBoard';
 import { KanbanCardContent } from '@/components/ui-new/views/KanbanCardContent';
 import { KanbanFilterBar } from '@/components/ui-new/views/KanbanFilterBar';
+import { ViewNavTabs } from '@/components/ui-new/primitives/ViewNavTabs';
+import { IssueListView } from '@/components/ui-new/views/IssueListView';
 
 function LoadingState() {
   const { t } = useTranslation('common');
@@ -68,6 +70,14 @@ export function KanbanContainer() {
     (s) => s.selectedKanbanIssueId
   );
   const kanbanFilters = useUiPreferencesStore((s) => s.kanbanFilters);
+  const kanbanViewMode = useUiPreferencesStore((s) => s.kanbanViewMode);
+  const listViewStatusFilter = useUiPreferencesStore(
+    (s) => s.listViewStatusFilter
+  );
+  const setKanbanViewMode = useUiPreferencesStore((s) => s.setKanbanViewMode);
+  const setListViewStatusFilter = useUiPreferencesStore(
+    (s) => s.setListViewStatusFilter
+  );
 
   // Sort all statuses for display settings
   const sortedStatuses = useMemo(
@@ -75,11 +85,24 @@ export function KanbanContainer() {
     [statuses]
   );
 
-  // Filter to only visible statuses for the kanban board
+  // Filter statuses: visible (non-hidden) for kanban, hidden for tabs
   const visibleStatuses = useMemo(
     () => sortedStatuses.filter((s) => !s.hidden),
     [sortedStatuses]
   );
+
+  const hiddenStatuses = useMemo(
+    () => sortedStatuses.filter((s) => s.hidden),
+    [sortedStatuses]
+  );
+
+  // Get statuses to display in list view (all or filtered to one)
+  const listViewStatuses = useMemo(() => {
+    if (listViewStatusFilter) {
+      return sortedStatuses.filter((s) => s.id === listViewStatusFilter);
+    }
+    return sortedStatuses;
+  }, [sortedStatuses, listViewStatusFilter]);
 
   // Compute issue count by status for display settings
   const issueCountByStatus = useMemo(() => {
@@ -265,7 +288,16 @@ export function KanbanContainer() {
   return (
     <div className="flex flex-col h-full space-y-base">
       <div className="px-double pt-double space-y-base">
-        <h2 className="text-2xl font-medium">{projectName}</h2>
+        <div className="flex items-center gap-double">
+          <h2 className="text-2xl font-medium">{projectName}</h2>
+          <ViewNavTabs
+            activeView={kanbanViewMode}
+            onViewChange={setKanbanViewMode}
+            hiddenStatuses={hiddenStatuses}
+            selectedStatusId={listViewStatusFilter}
+            onStatusSelect={setListViewStatusFilter}
+          />
+        </div>
         <KanbanFilterBar
           tags={tags}
           users={users}
@@ -278,63 +310,80 @@ export function KanbanContainer() {
           onRemoveStatus={removeStatus}
         />
       </div>
-      <div className="flex-1 overflow-x-auto px-double">
-        <KanbanProvider onDragEnd={handleDragEnd}>
-          {visibleStatuses.map((status) => {
-            const issueIds = items[status.id] ?? [];
 
-            return (
-              <KanbanBoard key={status.id}>
-                <KanbanHeader>
-                  <div className="sticky border-b top-0 z-20 flex shrink-0 items-center justify-between gap-2 p-base bg-background">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-2 w-2 rounded-full shrink-0"
-                        style={{ backgroundColor: `hsl(${status.color})` }}
-                      />
-                      <p className="m-0 text-sm">{status.name}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleAddTask}
-                      className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors"
-                      aria-label="Add task"
-                    >
-                      <PlusIcon className="size-icon-xs" weight="bold" />
-                    </button>
-                  </div>
-                </KanbanHeader>
-                <KanbanCards id={status.id}>
-                  {issueIds.map((issueId, index) => {
-                    const issue = issueMap[issueId];
-                    if (!issue) return null;
+      {kanbanViewMode === 'kanban' ? (
+        <div className="flex-1 overflow-x-auto px-double">
+          <KanbanProvider onDragEnd={handleDragEnd}>
+            {visibleStatuses.map((status) => {
+              const issueIds = items[status.id] ?? [];
 
-                    return (
-                      <KanbanCard
-                        key={issue.id}
-                        id={issue.id}
-                        name={issue.title}
-                        index={index}
-                        onClick={() => handleCardClick(issue.id)}
-                        isOpen={selectedKanbanIssueId === issue.id}
-                      >
-                        <KanbanCardContent
-                          displayId={issue.simple_id}
-                          title={issue.title}
-                          description={issue.description}
-                          priority={issue.priority}
-                          tags={getTagObjectsForIssue(issue.id)}
-                          assignees={issueAssigneesMap[issue.id] ?? []}
+              return (
+                <KanbanBoard key={status.id}>
+                  <KanbanHeader>
+                    <div className="sticky border-b top-0 z-20 flex shrink-0 items-center justify-between gap-2 p-base bg-background">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="h-2 w-2 rounded-full shrink-0"
+                          style={{ backgroundColor: `hsl(${status.color})` }}
                         />
-                      </KanbanCard>
-                    );
-                  })}
-                </KanbanCards>
-              </KanbanBoard>
-            );
-          })}
-        </KanbanProvider>
-      </div>
+                        <p className="m-0 text-sm">{status.name}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddTask}
+                        className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors"
+                        aria-label="Add task"
+                      >
+                        <PlusIcon className="size-icon-xs" weight="bold" />
+                      </button>
+                    </div>
+                  </KanbanHeader>
+                  <KanbanCards id={status.id}>
+                    {issueIds.map((issueId, index) => {
+                      const issue = issueMap[issueId];
+                      if (!issue) return null;
+
+                      return (
+                        <KanbanCard
+                          key={issue.id}
+                          id={issue.id}
+                          name={issue.title}
+                          index={index}
+                          onClick={() => handleCardClick(issue.id)}
+                          isOpen={selectedKanbanIssueId === issue.id}
+                        >
+                          <KanbanCardContent
+                            displayId={issue.simple_id}
+                            title={issue.title}
+                            description={issue.description}
+                            priority={issue.priority}
+                            tags={getTagObjectsForIssue(issue.id)}
+                            assignees={issueAssigneesMap[issue.id] ?? []}
+                          />
+                        </KanbanCard>
+                      );
+                    })}
+                  </KanbanCards>
+                </KanbanBoard>
+              );
+            })}
+          </KanbanProvider>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto px-double">
+          <KanbanProvider onDragEnd={handleDragEnd} className="!block !w-full">
+            <IssueListView
+              statuses={listViewStatuses}
+              items={items}
+              issueMap={issueMap}
+              issueAssigneesMap={issueAssigneesMap}
+              getTagObjectsForIssue={getTagObjectsForIssue}
+              onIssueClick={handleCardClick}
+              selectedIssueId={selectedKanbanIssueId}
+            />
+          </KanbanProvider>
+        </div>
+      )}
     </div>
   );
 }
