@@ -16,9 +16,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::{
     io::{AsyncWrite, AsyncWriteExt, BufWriter},
-    sync::{Mutex as AsyncMutex, mpsc, oneshot},
+    sync::{Mutex as AsyncMutex, mpsc, mpsc::error::TryRecvError, oneshot},
 };
-use tokio::sync::mpsc::error::TryRecvError;
 use tokio_util::sync::CancellationToken;
 use workspace_utils::{approvals::ApprovalStatus, git};
 
