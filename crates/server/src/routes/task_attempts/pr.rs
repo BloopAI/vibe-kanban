@@ -25,8 +25,8 @@ use services::services::{
     container::ContainerService,
     git::{GitCliError, GitRemote, GitServiceError},
     git_host::{
-        self, CreatePrRequest, GitHostConfig, GitHostError, GitHostProvider,
-        ProviderKind, UnifiedPrComment, github::GhCli,
+        CreatePrRequest, GitHostError, GitHostProvider, GitHostService, ProviderKind,
+        UnifiedPrComment, github::GhCli,
     },
 };
 use ts_rs::TS;
@@ -87,6 +87,7 @@ pub enum GetPrCommentsError {
     CliNotLoggedIn { provider: ProviderKind },
     ApiTokenMissing { host: String },
     HostNotConfigured { host: String },
+    UnsupportedProvider,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -283,33 +284,31 @@ pub async fn create_pr(
         }
     }
 
-    let git_host = match git_host::GitHostService::from_url_with_config(
-        &target_remote.url,
-        &GitHostConfig::from(&*deployment.config().read().await),
-    ) {
-        Ok(host) => host,
-        Err(GitHostError::UnsupportedProvider) => {
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                PrError::UnsupportedProvider,
-            )));
-        }
-        Err(GitHostError::CliNotInstalled { provider }) => {
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                PrError::CliNotInstalled { provider },
-            )));
-        }
-        Err(GitHostError::ApiTokenMissing(host)) => {
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                PrError::ApiTokenMissing { host },
-            )));
-        }
-        Err(GitHostError::HostNotConfigured(host)) => {
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                PrError::HostNotConfigured { host },
-            )));
-        }
-        Err(e) => return Err(ApiError::GitHost(e)),
-    };
+    let git_host =
+        match GitHostService::from_url(&target_remote.url, deployment.config().clone()).await {
+            Ok(host) => host,
+            Err(GitHostError::CliNotInstalled { provider }) => {
+                return Ok(ResponseJson(ApiResponse::error_with_data(
+                    PrError::CliNotInstalled { provider },
+                )));
+            }
+            Err(GitHostError::ApiTokenMissing(host)) => {
+                return Ok(ResponseJson(ApiResponse::error_with_data(
+                    PrError::ApiTokenMissing { host },
+                )));
+            }
+            Err(GitHostError::HostNotConfigured(host)) => {
+                return Ok(ResponseJson(ApiResponse::error_with_data(
+                    PrError::HostNotConfigured { host },
+                )));
+            }
+            Err(GitHostError::UnsupportedProvider) => {
+                return Ok(ResponseJson(ApiResponse::error_with_data(
+                    PrError::UnsupportedProvider,
+                )));
+            }
+            Err(e) => return Err(ApiError::GitHost(e)),
+        };
 
     let provider = git_host.provider_kind();
 
@@ -433,16 +432,8 @@ pub async fn attach_existing_pr(
     let git = deployment.git();
     let remote = git.resolve_remote_for_branch(&repo.path, &workspace_repo.target_branch)?;
 
-    let git_host = match git_host::GitHostService::from_url_with_config(
-        &remote.url,
-        &GitHostConfig::from(&*deployment.config().read().await),
-    ) {
+    let git_host = match GitHostService::from_url(&remote.url, deployment.config().clone()).await {
         Ok(host) => host,
-        Err(GitHostError::UnsupportedProvider) => {
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                PrError::UnsupportedProvider,
-            )));
-        }
         Err(GitHostError::CliNotInstalled { provider }) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 PrError::CliNotInstalled { provider },
@@ -456,6 +447,11 @@ pub async fn attach_existing_pr(
         Err(GitHostError::HostNotConfigured(host)) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 PrError::HostNotConfigured { host },
+            )));
+        }
+        Err(GitHostError::UnsupportedProvider) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                PrError::UnsupportedProvider,
             )));
         }
         Err(e) => return Err(ApiError::GitHost(e)),
@@ -563,10 +559,7 @@ pub async fn get_pr_comments(
     let git = deployment.git();
     let remote = git.resolve_remote_for_branch(&repo.path, &workspace_repo.target_branch)?;
 
-    let git_host = match git_host::GitHostService::from_url_with_config(
-        &remote.url,
-        &GitHostConfig::from(&*deployment.config().read().await),
-    ) {
+    let git_host = match GitHostService::from_url(&remote.url, deployment.config().clone()).await {
         Ok(host) => host,
         Err(GitHostError::CliNotInstalled { provider }) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -581,6 +574,11 @@ pub async fn get_pr_comments(
         Err(GitHostError::HostNotConfigured(host)) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 GetPrCommentsError::HostNotConfigured { host },
+            )));
+        }
+        Err(GitHostError::UnsupportedProvider) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                GetPrCommentsError::UnsupportedProvider,
             )));
         }
         Err(e) => return Err(ApiError::GitHost(e)),
@@ -733,9 +731,10 @@ pub async fn create_workspace_from_pr(
     // Use gh pr checkout to fetch and switch to the PR branch
     // This handles SSH/HTTPS auth correctly regardless of fork URL format
     let worktree_path = PathBuf::from(&container_ref).join(&repo.name);
-    match GhCli::new().get_repo_info(&remote.url, &worktree_path) {
+    let gh_cli = GhCli::new();
+    match gh_cli.get_repo_info(&remote.url, &worktree_path) {
         Ok(repo_info) => {
-            if let Err(e) = GhCli::new().pr_checkout(
+            if let Err(e) = gh_cli.pr_checkout(
                 &worktree_path,
                 &repo_info.owner,
                 &repo_info.repo_name,

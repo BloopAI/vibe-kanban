@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use services::services::{
     file_search::SearchQuery,
     git::{GitBranch, GitRemote},
-    git_host::{GitHostConfig, GitHostError, GitHostProvider, GitHostService, OpenPrInfo, ProviderKind},
+    git_host::{GitHostError, GitHostProvider, GitHostService, OpenPrInfo, ProviderKind},
 };
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -255,11 +255,13 @@ pub async fn list_open_prs(
         None => deployment.git().get_default_remote(&repo.path)?,
     };
 
-    let git_host = match GitHostService::from_url_with_config(
-        &remote.url,
-        &GitHostConfig::from(&*deployment.config().read().await),
-    ) {
+    let git_host = match GitHostService::from_url(&remote.url, deployment.config().clone()).await {
         Ok(host) => host,
+        Err(GitHostError::CliNotInstalled { provider }) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                ListPrsError::CliNotInstalled { provider },
+            )));
+        }
         Err(GitHostError::UnsupportedProvider) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 ListPrsError::UnsupportedProvider,

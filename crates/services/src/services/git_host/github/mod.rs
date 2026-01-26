@@ -23,10 +23,19 @@ pub struct GitHubProvider {
 }
 
 impl GitHubProvider {
-    pub fn new() -> Result<Self, GitHostError> {
-        Ok(Self {
+    pub fn new() -> Self {
+        Self {
             gh_cli: GhCli::new(),
-        })
+        }
+    }
+
+    pub fn matches_url_static(url: &str) -> bool {
+        let url_lower = url.to_lowercase();
+        url_lower.contains("github.com") || url_lower.contains("github.")
+    }
+
+    pub async fn matches_url_configured(&self, _url: &str) -> bool {
+        false
     }
 
     async fn get_repo_info(

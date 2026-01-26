@@ -3,6 +3,8 @@
 //! These types correspond to the Forgejo/Gitea REST API responses.
 //! See: https://codeberg.org/api/swagger
 
+#![allow(dead_code)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 

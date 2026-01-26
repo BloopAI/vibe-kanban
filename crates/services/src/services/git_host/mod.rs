@@ -1,29 +1,22 @@
-mod detection;
-mod http;
 mod types;
 
 pub mod azure;
 pub mod forgejo;
 pub mod github;
 
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, path::Path, sync::Arc};
 
 use async_trait::async_trait;
 use db::models::merge::PullRequestInfo;
-use detection::detect_provider_from_url;
 use enum_dispatch::enum_dispatch;
-
-use crate::services::config::Config;
+use tokio::sync::RwLock;
 pub use types::{
     CreatePrRequest, GitHostError, OpenPrInfo, PrComment, PrCommentAuthor, PrReviewComment,
     ProviderKind, ReviewCommentUser, UnifiedPrComment,
 };
 
 use self::{azure::AzureDevOpsProvider, forgejo::ForgejoProvider, github::GitHubProvider};
-
-pub use http::extract_host;
-// Re-export from below after definition
-// pub use GitHostConfig, GitHostEntry;
+use crate::services::config::Config;
 
 #[async_trait]
 #[enum_dispatch(GitHostService)]
@@ -103,30 +96,25 @@ impl From<&Config> for GitHostConfig {
 }
 
 impl GitHostService {
-    /// Create a GitHostService from a URL using configuration for self-hosted instances.
-    pub fn from_url_with_config(url: &str, config: &GitHostConfig) -> Result<Self, GitHostError> {
-        // First check if host is explicitly configured
-        if let Some(entry) = config.hosts.get(&extract_host(url)?) {
-            return match entry.provider {
-                ProviderKind::GitHub => Ok(Self::GitHub(GitHubProvider::new()?)),
-                ProviderKind::AzureDevOps => Ok(Self::AzureDevOps(AzureDevOpsProvider::new()?)),
-                ProviderKind::Forgejo => Ok(Self::Forgejo(ForgejoProvider::from_remote_url(
-                    url,
-                    entry
-                        .token
-                        .clone()
-                        .ok_or(GitHostError::ApiTokenMissing(extract_host(url)?))?,
-                )?)),
-                ProviderKind::Unknown => Err(GitHostError::UnsupportedProvider),
-            };
+    /// Create a GitHostService from a URL, checking static patterns first then configured hosts.
+    pub async fn from_url(url: &str, config: Arc<RwLock<Config>>) -> Result<Self, GitHostError> {
+        // Static checks first - config not locked
+        if GitHubProvider::matches_url_static(url) {
+            return Ok(Self::GitHub(GitHubProvider::new()));
+        }
+        if AzureDevOpsProvider::matches_url_static(url) {
+            return Ok(Self::AzureDevOps(AzureDevOpsProvider::new()));
+        }
+        if ForgejoProvider::matches_url_static(url) {
+            return Ok(Self::Forgejo(ForgejoProvider::new(config)));
         }
 
-        // Fall back to URL-based detection for well-known hosts
-        match detect_provider_from_url(url) {
-            ProviderKind::GitHub => Ok(Self::GitHub(GitHubProvider::new()?)),
-            ProviderKind::AzureDevOps => Ok(Self::AzureDevOps(AzureDevOpsProvider::new()?)),
-            ProviderKind::Forgejo => Err(GitHostError::ApiTokenMissing(extract_host(url)?)),
-            ProviderKind::Unknown => Err(GitHostError::HostNotConfigured(extract_host(url)?)),
+        // Configured checks - needs lock
+        let forgejo = ForgejoProvider::new(config);
+        if forgejo.matches_url_configured(url).await {
+            return Ok(Self::Forgejo(forgejo));
         }
+
+        Err(GitHostError::UnsupportedProvider)
     }
 }

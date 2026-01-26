@@ -3,56 +3,79 @@
 //! This provider supports both Forgejo and Gitea instances as they share
 //! a compatible API.
 
-pub mod types;
+mod http;
+mod types;
 
-use std::{path::Path, time::Duration};
+use std::{path::Path, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use backon::{ExponentialBuilder, Retryable};
 use db::models::merge::{MergeStatus, PullRequestInfo};
+use http::{GitHostHttpClient, extract_host, handle_response, parse_owner_repo};
+use tokio::sync::RwLock;
 use tracing::info;
 use types::{Comment, CreatePullRequestOption, PullRequest, PullRequestState};
 
 use super::{
     GitHostProvider,
-    http::{GitHostHttpClient, extract_host, handle_response, parse_owner_repo},
     types::{CreatePrRequest, GitHostError, OpenPrInfo, ProviderKind, UnifiedPrComment},
 };
+use crate::services::config::Config;
+
+/// Well-known Forgejo/Gitea hosting services.
+const KNOWN_HOSTS: &[&str] = &["codeberg.org", "gitea.com"];
 
 /// Forgejo/Gitea provider implementation.
 #[derive(Debug, Clone)]
 pub struct ForgejoProvider {
-    client: GitHostHttpClient,
+    config: Arc<RwLock<Config>>,
 }
 
 impl ForgejoProvider {
-    /// Create a new Forgejo provider for the given host and token.
-    pub fn new(base_url: String, token: String) -> Result<Self, GitHostError> {
-        Ok(Self {
-            client: GitHostHttpClient::new(
-                match base_url.ends_with("/api/v1") {
-                    true => base_url,
-                    false => format!("{}/api/v1", base_url.trim_end_matches('/')),
-                },
-                token,
-            )?,
-        })
+    pub fn new(config: Arc<RwLock<Config>>) -> Self {
+        Self { config }
     }
 
-    /// Create from a remote URL and token.
-    pub fn from_remote_url(remote_url: &str, token: String) -> Result<Self, GitHostError> {
-        Self::new(format!("https://{}", extract_host(remote_url)?), token)
+    pub fn matches_url_static(url: &str) -> bool {
+        let url_lower = url.to_lowercase();
+        KNOWN_HOSTS.iter().any(|h| url_lower.contains(h))
+    }
+
+    pub async fn matches_url_configured(&self, url: &str) -> bool {
+        if let Ok(host) = extract_host(url) {
+            if let Some(entry) = self.config.read().await.git_hosts.hosts.get(&host) {
+                return entry.provider == ProviderKind::Forgejo;
+            }
+        }
+        false
+    }
+
+    async fn get_client(&self, url: &str) -> Result<GitHostHttpClient, GitHostError> {
+        let host = extract_host(url)?;
+        GitHostHttpClient::new(
+            format!("https://{}/api/v1", host),
+            self.config
+                .read()
+                .await
+                .git_hosts
+                .hosts
+                .get(&host)
+                .and_then(|e| e.token.clone())
+                .ok_or_else(|| GitHostError::ApiTokenMissing(host.clone()))?,
+        )
     }
 
     async fn get_pr_by_number(
         &self,
+        url: &str,
         owner: &str,
         repo: &str,
         pr_number: i64,
     ) -> Result<PullRequest, GitHostError> {
         (|| async {
             handle_response(
-                self.client
+                self.get_client(url)
+                    .await?
                     .get(&format!("/repos/{}/{}/pulls/{}", owner, repo, pr_number))
                     .send()
                     .await
@@ -108,7 +131,8 @@ impl GitHostProvider for ForgejoProvider {
 
         let pr: PullRequest = (|| async {
             handle_response(
-                self.client
+                self.get_client(remote_url)
+                    .await?
                     .post(&format!("/repos/{}/{}/pulls", owner, repo))
                     .json(&CreatePullRequestOption {
                         title: request.title.clone(),
@@ -151,8 +175,6 @@ impl GitHostProvider for ForgejoProvider {
     }
 
     async fn get_pr_status(&self, pr_url: &str) -> Result<PullRequestInfo, GitHostError> {
-        // Parse PR URL to extract owner, repo, and PR number
-        // Format: https://host/owner/repo/pulls/123
         let url = url::Url::parse(pr_url)
             .map_err(|e| GitHostError::InvalidUrl(format!("Invalid PR URL: {e}")))?;
 
@@ -175,6 +197,7 @@ impl GitHostProvider for ForgejoProvider {
         Ok(Self::convert_pr_to_info(
             &self
                 .get_pr_by_number(
+                    pr_url,
                     path_segments.get(0).ok_or_else(|| {
                         GitHostError::InvalidUrl("PR URL missing owner".to_string())
                     })?,
@@ -205,7 +228,8 @@ impl GitHostProvider for ForgejoProvider {
 
         Ok((|| async {
             handle_response(
-                self.client
+                self.get_client(remote_url)
+                    .await?
                     .get(&format!(
                         "/repos/{}/{}/pulls?state=all&limit=100",
                         owner, repo
@@ -251,7 +275,8 @@ impl GitHostProvider for ForgejoProvider {
 
         let comments: Vec<Comment> = (|| async {
             handle_response(
-                self.client
+                self.get_client(remote_url)
+                    .await?
                     .get(&format!(
                         "/repos/{}/{}/issues/{}/comments",
                         owner, repo, pr_number
@@ -304,7 +329,8 @@ impl GitHostProvider for ForgejoProvider {
 
         Ok((|| async {
             handle_response(
-                self.client
+                self.get_client(remote_url)
+                    .await?
                     .get(&format!(
                         "/repos/{}/{}/pulls?state=open&limit=100",
                         owner, repo
