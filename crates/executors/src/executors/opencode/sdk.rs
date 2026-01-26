@@ -18,6 +18,7 @@ use tokio::{
     io::{AsyncWrite, AsyncWriteExt, BufWriter},
     sync::{Mutex as AsyncMutex, mpsc, oneshot},
 };
+use tokio::sync::mpsc::error::TryRecvError;
 use tokio_util::sync::CancellationToken;
 use workspace_utils::{approvals::ApprovalStatus, git};
 
@@ -463,6 +464,25 @@ where
 {
     let mut idle_seen = false;
     let mut session_error: Option<String> = None;
+
+    loop {
+        match control_rx.try_recv() {
+            Ok(ControlEvent::Idle) => continue,
+            Ok(ControlEvent::AuthRequired { message }) => {
+                return Err(ExecutorError::AuthRequired(message));
+            }
+            Ok(ControlEvent::SessionError { message }) => {
+                append_session_error(&mut session_error, message);
+            }
+            Ok(ControlEvent::Disconnected) if !cancel.is_cancelled() => {
+                return Err(ExecutorError::Io(io::Error::other(
+                    "OpenCode event stream disconnected before request started",
+                )));
+            }
+            Ok(ControlEvent::Disconnected) => return Ok(()),
+            Err(TryRecvError::Empty) | Err(TryRecvError::Disconnected) => break,
+        }
+    }
 
     let request_result = loop {
         tokio::select! {
