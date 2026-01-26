@@ -714,6 +714,7 @@
     "searchPrsPlaceholder": "Buscar PRs por número o título...",
     "noMatchingPrs": "No hay solicitudes de extracción coincidentes",
     "default": "predeterminado",
+    "openPrInBrowser": "Abrir PR en el navegador",
     "errors": {
       "cliNotInstalled": "{{provider}} CLI no está instalado",
       "unsupportedProvider": "Proveedor Git no soportado",

@@ -714,6 +714,7 @@
     "searchPrsPlaceholder": "按編號或標題搜尋 PR...",
     "noMatchingPrs": "沒有符合的拉取請求",
     "default": "預設",
+    "openPrInBrowser": "在瀏覽器中開啟 PR",
     "errors": {
       "cliNotInstalled": "{{provider}} CLI 未安裝",
       "unsupportedProvider": "不支援的 Git 提供者",

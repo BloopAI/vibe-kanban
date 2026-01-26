@@ -714,6 +714,7 @@
     "searchPrsPlaceholder": "Rechercher des PRs par numéro ou titre...",
     "noMatchingPrs": "Aucune pull request correspondante",
     "default": "par défaut",
+    "openPrInBrowser": "Ouvrir la PR dans le navigateur",
     "errors": {
       "cliNotInstalled": "{{provider}} CLI n'est pas installé",
       "unsupportedProvider": "Fournisseur Git non pris en charge",

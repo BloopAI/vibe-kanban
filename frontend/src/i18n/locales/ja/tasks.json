@@ -714,6 +714,7 @@
     "searchPrsPlaceholder": "番号またはタイトルでPRを検索...",
     "noMatchingPrs": "一致するプルリクエストがありません",
     "default": "デフォルト",
+    "openPrInBrowser": "ブラウザでPRを開く",
     "errors": {
       "cliNotInstalled": "{{provider}} CLIがインストールされていません",
       "unsupportedProvider": "Gitプロバイダーがサポートされていません",

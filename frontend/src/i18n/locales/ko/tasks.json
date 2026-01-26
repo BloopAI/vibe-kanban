@@ -714,6 +714,7 @@
     "searchPrsPlaceholder": "번호 또는 제목으로 PR 검색...",
     "noMatchingPrs": "일치하는 풀 리퀘스트가 없습니다",
     "default": "기본값",
+    "openPrInBrowser": "브라우저에서 PR 열기",
     "errors": {
       "cliNotInstalled": "{{provider}} CLI가 설치되어 있지 않습니다",
       "unsupportedProvider": "Git 공급자가 지원되지 않습니다",
