@@ -47,11 +47,15 @@ export function MarkdownSyncPlugin({
           $convertFromMarkdownString(value, transformers);
         }
 
-        // Position cursor at end after external value change
-        const root = $getRoot();
-        const lastNode = root.getLastChild();
-        if (lastNode) {
-          lastNode.selectEnd();
+        // Only position cursor at end if editor already has focus (user is actively editing)
+        // This prevents unwanted focus when value changes externally (e.g., panel opening)
+        const rootElement = editor.getRootElement();
+        if (rootElement?.contains(document.activeElement)) {
+          const root = $getRoot();
+          const lastNode = root.getLastChild();
+          if (lastNode) {
+            lastNode.selectEnd();
+          }
         }
       });
       lastSerializedRef.current = value;
