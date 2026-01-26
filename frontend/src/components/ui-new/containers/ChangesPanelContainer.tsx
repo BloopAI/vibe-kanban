@@ -65,6 +65,7 @@ export function ChangesPanelContainer({
   const diffRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const changesPanelRef = useRef<ChangesPanelHandle>(null);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
+  const visibleRangeRef = useRef<{ startIndex: number; endIndex: number }>({ startIndex: 0, endIndex: 0 });
   const [processedPaths] = useState(() => new Set<string>());
 
   const diffItems = useMemo(() => {
@@ -102,7 +103,9 @@ export function ChangesPanelContainer({
   const getTopFilePath = useCallback(
     (range: { startIndex: number; endIndex: number }): string | null => {
       const container = scrollContainerRef.current;
-      if (!container) return indexToPath(range.startIndex);
+      if (!container) {
+        return indexToPath(range.startIndex);
+      }
 
       const containerTop = container.getBoundingClientRect().top;
 
@@ -134,6 +137,7 @@ export function ChangesPanelContainer({
   );
 
   const {
+    state: syncState,
     fileInView: stateMachineFileInView,
     scrollToFile: stateMachineScrollToFile,
     onRangeChanged,
@@ -144,11 +148,46 @@ export function ChangesPanelContainer({
     getTopFilePath,
   });
 
+  // Keep a ref to syncState for the scroll listener (avoids stale closure)
+  const syncStateRef = useRef(syncState);
+  syncStateRef.current = syncState;
+
   useEffect(() => {
     if (stateMachineFileInView !== null) {
       setFileInView(stateMachineFileInView);
     }
   }, [stateMachineFileInView, setFileInView]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const currentState = syncStateRef.current;
+      if (currentState === 'programmatic-scroll' || currentState === 'sync-cooldown') {
+        return;
+      }
+
+      const range = visibleRangeRef.current;
+      const topPath = getTopFilePath(range);
+      if (topPath !== null) {
+        setFileInView(topPath);
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+    };
+  }, [getTopFilePath, setFileInView]);
+
+  const handleRangeChanged = useCallback(
+    (range: { startIndex: number; endIndex: number }) => {
+      visibleRangeRef.current = range;
+      onRangeChanged(range);
+    },
+    [onRangeChanged]
+  );
 
   const handleScrollToFile = useCallback(
     (path: string, lineNumber?: number) => {
@@ -241,7 +280,7 @@ export function ChangesPanelContainer({
       diffItems={diffItems}
       onDiffRef={handleDiffRef}
       onScrollerRef={handleScrollerRef}
-      onRangeChanged={onRangeChanged}
+      onRangeChanged={handleRangeChanged}
       projectId={projectId}
       attemptId={attemptId}
     />
