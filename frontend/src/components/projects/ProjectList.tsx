@@ -11,6 +11,16 @@ import { AlertCircle, Loader2, Plus } from 'lucide-react';
 import ProjectCard from '@/components/projects/ProjectCard.tsx';
 import { useKeyCreate, Scope } from '@/keyboard';
 import { useProjects } from '@/hooks/useProjects';
+import { Switch } from '@/components/ui/switch';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import GlobalTasksView from '@/components/projects/GlobalTasksView';
+
+const GLOBAL_VIEW_STORAGE_KEY = 'vibe-kanban-global-view';
 
 export function ProjectList() {
   const navigate = useNavigate();
@@ -18,6 +28,14 @@ export function ProjectList() {
   const { projects, isLoading, error: projectsError } = useProjects();
   const [error, setError] = useState('');
   const [focusedProjectId, setFocusedProjectId] = useState<string | null>(null);
+  const [isGlobalView, setIsGlobalView] = useState(() => {
+    return localStorage.getItem(GLOBAL_VIEW_STORAGE_KEY) === 'true';
+  });
+
+  const handleGlobalViewToggle = (checked: boolean) => {
+    setIsGlobalView(checked);
+    localStorage.setItem(GLOBAL_VIEW_STORAGE_KEY, String(checked));
+  };
 
   const handleCreateProject = async () => {
     try {
@@ -51,13 +69,37 @@ export function ProjectList() {
     <div className="space-y-6 p-8 pb-16 md:pb-8 h-full overflow-auto">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
-          <p className="text-muted-foreground">{t('subtitle')}</p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isGlobalView ? t('globalView.title') : t('title')}
+          </h1>
+          <p className="text-muted-foreground">
+            {isGlobalView ? t('globalView.subtitle') : t('subtitle')}
+          </p>
         </div>
-        <Button onClick={handleCreateProject}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t('createProject')}
-        </Button>
+        <div className="flex items-center gap-4">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={isGlobalView}
+                    onCheckedChange={handleGlobalViewToggle}
+                  />
+                  <span className="text-sm">{t('globalView.label')}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t('globalView.subtitle')}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          {!isGlobalView && (
+            <Button onClick={handleCreateProject}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t('createProject')}
+            </Button>
+          )}
+        </div>
       </div>
 
       {(error || projectsError) && (
@@ -69,7 +111,9 @@ export function ProjectList() {
         </Alert>
       )}
 
-      {isLoading ? (
+      {isGlobalView ? (
+        <GlobalTasksView />
+      ) : isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           {t('loading')}
