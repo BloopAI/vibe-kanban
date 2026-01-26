@@ -7,6 +7,7 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { oauthApi } from '@/lib/api';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
+import { organizationKeys } from '@/hooks/organizationKeys';
 
 interface AppBarUserPopoverContainerProps {
   organizations: OrganizationWithRole[];
@@ -35,10 +36,8 @@ export function AppBarUserPopoverContainer({
       : null;
 
   const handleSignIn = async () => {
-    const profile = await OAuthDialog.show();
-    if (profile) {
-      await reloadSystem();
-    }
+    // OAuthDialog handles reloadSystem() and cache invalidation on success
+    await OAuthDialog.show();
   };
 
   const handleLogout = async () => {
@@ -48,9 +47,8 @@ export function AppBarUserPopoverContainer({
       // Clear organization selection
       clearSelectedOrgId();
 
-      // Clear user-related query caches so stale data doesn't persist
-      queryClient.removeQueries({ queryKey: ['user', 'organizations'] });
-      queryClient.removeQueries({ queryKey: ['organizations'] });
+      // Clear organization query caches so stale data doesn't persist
+      queryClient.removeQueries({ queryKey: organizationKeys.all });
 
       await reloadSystem();
 
