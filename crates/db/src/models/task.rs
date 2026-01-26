@@ -37,8 +37,8 @@ pub struct Task {
     pub shared_task_id: Option<Uuid>,
     pub creator_user_id: Option<Uuid>, // Foreign key to User who created the task
     pub assignee_user_id: Option<Uuid>, // Foreign key to User assigned to the task
-    pub hold_user_id: Option<Uuid>,     // Foreign key to User who placed the hold
-    pub hold_comment: Option<String>,   // Comment explaining why the hold was placed
+    pub hold_user_id: Option<Uuid>,    // Foreign key to User who placed the hold
+    pub hold_comment: Option<String>,  // Comment explaining why the hold was placed
     pub hold_at: Option<DateTime<Utc>>, // When the hold was placed
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -303,8 +303,10 @@ ORDER BY t.created_at DESC"#,
                 }),
                 approval_count: rec.approval_count,
                 hold: rec.hold_user_id.and_then(|id| {
-                    rec.hold_comment.clone().zip(rec.hold_at).map(|(comment, held_at)| {
-                        TaskHoldInfo {
+                    rec.hold_comment
+                        .clone()
+                        .zip(rec.hold_at)
+                        .map(|(comment, held_at)| TaskHoldInfo {
                             user: TaskUser {
                                 id,
                                 username: rec.hold_username.clone(),
@@ -312,8 +314,7 @@ ORDER BY t.created_at DESC"#,
                             },
                             comment,
                             held_at,
-                        }
-                    })
+                        })
                 }),
             })
             .collect();

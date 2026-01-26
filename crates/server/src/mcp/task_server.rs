@@ -175,7 +175,9 @@ pub struct TaskSummary {
     pub has_in_progress_attempt: Option<bool>,
     #[schemars(description = "Whether the last execution attempt failed")]
     pub last_attempt_failed: Option<bool>,
-    #[schemars(description = "Whether the task is currently on hold (blocked from new workspace sessions)")]
+    #[schemars(
+        description = "Whether the task is currently on hold (blocked from new workspace sessions)"
+    )]
     pub is_on_hold: Option<bool>,
     #[schemars(description = "Hold comment explaining why the task is on hold")]
     pub hold_comment: Option<String>,
@@ -215,7 +217,9 @@ pub struct TaskDetails {
     pub has_in_progress_attempt: Option<bool>,
     #[schemars(description = "Whether the last execution attempt failed")]
     pub last_attempt_failed: Option<bool>,
-    #[schemars(description = "Whether the task is currently on hold (blocked from new workspace sessions)")]
+    #[schemars(
+        description = "Whether the task is currently on hold (blocked from new workspace sessions)"
+    )]
     pub is_on_hold: Option<bool>,
     #[schemars(description = "Hold comment explaining why the task is on hold")]
     pub hold_comment: Option<String>,

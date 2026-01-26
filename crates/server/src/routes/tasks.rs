@@ -15,7 +15,9 @@ use axum::{
 use db::models::{
     image::TaskImage,
     repo::{Repo, RepoError},
-    task::{CreateTask, Task, TaskHoldInfo, TaskUser, TaskWithAttemptStatus, TaskWithUsers, UpdateTask},
+    task::{
+        CreateTask, Task, TaskHoldInfo, TaskUser, TaskWithAttemptStatus, TaskWithUsers, UpdateTask,
+    },
     workspace::{CreateWorkspace, Workspace},
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
