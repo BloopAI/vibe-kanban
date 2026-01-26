@@ -3,7 +3,8 @@ import { PlusIcon, GitPullRequestIcon, HashIcon } from '@phosphor-icons/react';
 import type { Tag } from 'shared/remote-types';
 import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';
 
-// Re-export TAG_COLORS for backwards compatibility
+// Re-export PRESET_COLORS (and TAG_COLORS for backwards compatibility)
+export { PRESET_COLORS } from '@/lib/colors';
 export { TAG_COLORS } from '@/components/ui-new/primitives/SearchableTagDropdown';
 
 export interface LinkedPullRequest {
