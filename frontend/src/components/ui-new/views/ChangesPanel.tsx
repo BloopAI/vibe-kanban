@@ -23,6 +23,8 @@ interface ChangesPanelProps {
   className?: string;
   diffItems: DiffItemData[];
   onDiffRef?: (path: string, el: HTMLDivElement | null) => void;
+  /** Callback for Virtuoso's scroll container ref */
+  onScrollerRef?: (ref: HTMLElement | Window | null) => void;
   /** Callback when visible range changes (for scroll sync) */
   onRangeChanged?: (range: { startIndex: number; endIndex: number }) => void;
   /** Project ID for @ mentions in comments */
@@ -66,7 +68,7 @@ const DiffItem = memo(function DiffItem({
 
 export const ChangesPanel = forwardRef<ChangesPanelHandle, ChangesPanelProps>(
   function ChangesPanel(
-    { className, diffItems, onDiffRef, onRangeChanged, projectId, attemptId },
+    { className, diffItems, onDiffRef, onScrollerRef, onRangeChanged, projectId, attemptId },
     ref
   ) {
     const { t } = useTranslation(['tasks', 'common']);
@@ -121,17 +123,18 @@ export const ChangesPanel = forwardRef<ChangesPanelHandle, ChangesPanelProps>(
       >
         <Virtuoso
           ref={virtuosoRef}
+          scrollerRef={onScrollerRef}
           data={diffItems}
           defaultItemHeight={defaultItemHeight}
           itemContent={(_index, { diff, initialExpanded }) => (
             <div>
-              <DiffItem
-                diff={diff}
-                initialExpanded={initialExpanded}
-                onRef={onDiffRef}
-                projectId={projectId}
-                attemptId={attemptId}
-              />
+          <DiffItem
+            diff={diff}
+            initialExpanded={initialExpanded}
+            onRef={onDiffRef}
+            projectId={projectId}
+            attemptId={attemptId}
+          />
             </div>
           )}
           computeItemKey={(index, { diff }) =>

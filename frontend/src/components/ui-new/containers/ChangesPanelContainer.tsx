@@ -64,6 +64,7 @@ export function ChangesPanelContainer({
   } = useChangesView();
   const diffRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const changesPanelRef = useRef<ChangesPanelHandle>(null);
+  const scrollContainerRef = useRef<HTMLElement | null>(null);
   const [processedPaths] = useState(() => new Set<string>());
 
   const diffItems = useMemo(() => {
@@ -100,8 +101,13 @@ export function ChangesPanelContainer({
 
   const getTopFilePath = useCallback(
     (range: { startIndex: number; endIndex: number }): string | null => {
+      const container = scrollContainerRef.current;
+      if (!container) return indexToPath(range.startIndex);
+
+      const containerTop = container.getBoundingClientRect().top;
+
       let bestPath: string | null = null;
-      let bestDistance = Infinity;
+      let bestTop = -Infinity;
 
       for (let i = range.startIndex; i <= range.endIndex; i++) {
         const path = indexToPath(i);
@@ -111,10 +117,13 @@ export function ChangesPanelContainer({
         if (!el) continue;
 
         const rect = el.getBoundingClientRect();
-        const distance = Math.abs(rect.top);
+        const relativeTop = rect.top - containerTop;
+        const relativeBottom = rect.bottom - containerTop;
 
-        if (rect.top >= -100 && distance < bestDistance) {
-          bestDistance = distance;
+        const spansContainerTop = relativeTop <= 0 && relativeBottom > 0;
+
+        if (spansContainerTop && relativeTop > bestTop) {
+          bestTop = relativeTop;
           bestPath = path;
         }
       }
@@ -208,6 +217,10 @@ export function ChangesPanelContainer({
     []
   );
 
+  const handleScrollerRef = useCallback((el: HTMLElement | Window | null) => {
+    scrollContainerRef.current = el instanceof HTMLElement ? el : null;
+  }, []);
+
   const projectId = task?.project_id;
   if (!projectId) {
     return (
@@ -227,6 +240,7 @@ export function ChangesPanelContainer({
       className={className}
       diffItems={diffItems}
       onDiffRef={handleDiffRef}
+      onScrollerRef={handleScrollerRef}
       onRangeChanged={onRangeChanged}
       projectId={projectId}
       attemptId={attemptId}
