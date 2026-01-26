@@ -18,9 +18,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::PathBuf;
-use std::process::Stdio;
 use tokio::fs::File;
-use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tokio_util::io::ReaderStream;
 use ts_rs::TS;
@@ -177,130 +175,106 @@ pub async fn ai_chat(
     let pool = deployment.db().pool.clone();
     let project_id = project.id;
 
-    // Create the SSE stream
-    let stream = async_stream::stream! {
-        // Run claude CLI
-        let result = Command::new("claude")
-            .arg("--print")
-            .arg("--verbose")
-            .arg("--output-format")
-            .arg("stream-json")
-            .arg("--model")
-            .arg(&model)
-            .arg("--system-prompt")
-            .arg(&system_prompt_owned)
-            .arg(&user_content)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn();
+    // Run claude CLI and get output
+    let output = Command::new("claude")
+        .arg("--print")
+        .arg("--verbose")
+        .arg("--output-format")
+        .arg("stream-json")
+        .arg("--model")
+        .arg(&model)
+        .arg("--system-prompt")
+        .arg(&system_prompt_owned)
+        .arg(&user_content)
+        .output()
+        .await;
 
-        match result {
-            Ok(mut child) => {
-                let stdout = child.stdout.take();
-                if let Some(stdout) = stdout {
-                    let reader = BufReader::new(stdout);
-                    let mut lines = reader.lines();
-                    let mut full_response = String::new();
+    // Parse the output and extract the result
+    let (response_text, error_text) = match output {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let mut full_response = String::new();
 
-                    while let Ok(Some(line)) = lines.next_line().await {
-                        // Parse Claude's stream-json output
-                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&line) {
-                            // Handle different message types
-                            if let Some(msg_type) = json.get("type").and_then(|t| t.as_str()) {
-                                match msg_type {
-                                    "assistant" => {
-                                        // Extract content from message.content array
-                                        if let Some(message) = json.get("message") {
-                                            if let Some(content_array) = message.get("content").and_then(|c| c.as_array()) {
-                                                for content_item in content_array {
-                                                    if content_item.get("type").and_then(|t| t.as_str()) == Some("text") {
-                                                        if let Some(text) = content_item.get("text").and_then(|t| t.as_str()) {
-                                                            full_response.push_str(text);
-                                                            let event = AiChatStreamEvent {
-                                                                event_type: "content".to_string(),
-                                                                content: Some(text.to_string()),
-                                                                error: None,
-                                                            };
-                                                            yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
-                                                        }
-                                                    }
+            // Parse each line to find the result
+            for line in stdout.lines() {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
+                    if let Some(msg_type) = json.get("type").and_then(|t| t.as_str()) {
+                        match msg_type {
+                            "assistant" => {
+                                if let Some(message) = json.get("message") {
+                                    if let Some(content_array) = message.get("content").and_then(|c| c.as_array()) {
+                                        for content_item in content_array {
+                                            if content_item.get("type").and_then(|t| t.as_str()) == Some("text") {
+                                                if let Some(text) = content_item.get("text").and_then(|t| t.as_str()) {
+                                                    full_response.push_str(text);
                                                 }
                                             }
                                         }
                                     }
-                                    "content_block_delta" => {
-                                        if let Some(delta) = json.get("delta") {
-                                            if let Some(text) = delta.get("text").and_then(|t| t.as_str()) {
-                                                full_response.push_str(text);
-                                                let event = AiChatStreamEvent {
-                                                    event_type: "content".to_string(),
-                                                    content: Some(text.to_string()),
-                                                    error: None,
-                                                };
-                                                yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
-                                            }
-                                        }
-                                    }
-                                    "result" => {
-                                        // Final result - extract from result field
-                                        if let Some(result) = json.get("result").and_then(|r| r.as_str()) {
-                                            if full_response.is_empty() {
-                                                full_response = result.to_string();
-                                                let event = AiChatStreamEvent {
-                                                    event_type: "content".to_string(),
-                                                    content: Some(result.to_string()),
-                                                    error: None,
-                                                };
-                                                yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
-                                            }
-                                        }
-                                    }
-                                    _ => {}
                                 }
                             }
+                            "result" => {
+                                if let Some(result) = json.get("result").and_then(|r| r.as_str()) {
+                                    if full_response.is_empty() {
+                                        full_response = result.to_string();
+                                    }
+                                }
+                            }
+                            _ => {}
                         }
                     }
-
-                    // Wait for process to complete
-                    let _ = child.wait().await;
-
-                    // Save assistant response if we got one
-                    if !full_response.is_empty() {
-                        let _ = PmConversation::create(
-                            &pool,
-                            &CreatePmConversation {
-                                project_id,
-                                role: PmMessageRole::Assistant,
-                                content: full_response,
-                                model: Some(model.clone()),
-                            },
-                        ).await;
-                    }
-
-                    let done_event = AiChatStreamEvent {
-                        event_type: "done".to_string(),
-                        content: None,
-                        error: None,
-                    };
-                    yield Ok(Event::default().data(serde_json::to_string(&done_event).unwrap_or_default()));
-                } else {
-                    let error_event = AiChatStreamEvent {
-                        event_type: "error".to_string(),
-                        content: None,
-                        error: Some("Failed to capture stdout".to_string()),
-                    };
-                    yield Ok(Event::default().data(serde_json::to_string(&error_event).unwrap_or_default()));
                 }
             }
-            Err(e) => {
-                let error_event = AiChatStreamEvent {
-                    event_type: "error".to_string(),
-                    content: None,
-                    error: Some(format!("Failed to run claude CLI: {}. Make sure Claude Code is installed.", e)),
-                };
-                yield Ok(Event::default().data(serde_json::to_string(&error_event).unwrap_or_default()));
+
+            if full_response.is_empty() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                (None, Some(format!("No response from Claude CLI. stderr: {}", stderr)))
+            } else {
+                (Some(full_response), None)
             }
         }
+        Err(e) => (None, Some(format!("Failed to run claude CLI: {}. Make sure Claude Code is installed.", e))),
+    };
+
+    // Save assistant response if we got one
+    if let Some(ref response) = response_text {
+        let _ = PmConversation::create(
+            &pool,
+            &CreatePmConversation {
+                project_id,
+                role: PmMessageRole::Assistant,
+                content: response.clone(),
+                model: Some(model.clone()),
+            },
+        ).await;
+    }
+
+    // Create SSE stream with the response
+    let stream = async_stream::stream! {
+        if let Some(content) = response_text {
+            let event = AiChatStreamEvent {
+                event_type: "content".to_string(),
+                content: Some(content),
+                error: None,
+            };
+            yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
+        }
+
+        if let Some(error) = error_text {
+            let event = AiChatStreamEvent {
+                event_type: "error".to_string(),
+                content: None,
+                error: Some(error),
+            };
+            yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
+        }
+
+        let done_event = AiChatStreamEvent {
+            event_type: "done".to_string(),
+            content: None,
+            error: None,
+        };
+        yield Ok(Event::default().data(serde_json::to_string(&done_event).unwrap_or_default()));
     };
 
     Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
