@@ -29,6 +29,7 @@ import {
   TaskRelationships,
   Tag,
   TagSearchParams,
+  TaskApprovalWithUser,
   TaskWithAttemptStatus,
   UpdateProject,
   UpdateTask,
@@ -465,6 +466,28 @@ export const tasksApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<Task | null>(response);
+  },
+};
+
+// Task Approvals API
+export const taskApprovalsApi = {
+  list: async (taskId: string): Promise<TaskApprovalWithUser[]> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/task-approvals`);
+    return handleApiResponse<TaskApprovalWithUser[]>(response);
+  },
+
+  approve: async (taskId: string): Promise<TaskApprovalWithUser> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/task-approvals`, {
+      method: 'POST',
+    });
+    return handleApiResponse<TaskApprovalWithUser>(response);
+  },
+
+  unapprove: async (taskId: string): Promise<void> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/task-approvals`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
   },
 };
 

@@ -24,6 +24,8 @@ pub struct Project {
     pub default_agent_working_dir: Option<String>,
     pub remote_project_id: Option<Uuid>,
     pub creator_user_id: Option<Uuid>,
+    #[ts(type = "number")]
+    pub min_approvals_required: i64,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -74,6 +76,8 @@ pub struct CreateProject {
 #[derive(Debug, Deserialize, TS)]
 pub struct UpdateProject {
     pub name: Option<String>,
+    #[ts(type = "number | null")]
+    pub min_approvals_required: Option<i64>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -108,6 +112,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       creator_user_id as "creator_user_id: Uuid",
+                      min_approvals_required as "min_approvals_required!: i64",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -126,6 +131,7 @@ impl Project {
                    p.default_agent_working_dir,
                    p.remote_project_id as "remote_project_id: Uuid",
                    p.creator_user_id as "creator_user_id: Uuid",
+                   p.min_approvals_required as "min_approvals_required!: i64",
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -150,6 +156,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       creator_user_id as "creator_user_id: Uuid",
+                      min_approvals_required as "min_approvals_required!: i64",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -168,6 +175,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       creator_user_id as "creator_user_id: Uuid",
+                      min_approvals_required as "min_approvals_required!: i64",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -189,6 +197,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       creator_user_id as "creator_user_id: Uuid",
+                      min_approvals_required as "min_approvals_required!: i64",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -220,6 +229,7 @@ impl Project {
                           default_agent_working_dir,
                           remote_project_id as "remote_project_id: Uuid",
                           creator_user_id as "creator_user_id: Uuid",
+                          min_approvals_required as "min_approvals_required!: i64",
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
@@ -240,21 +250,26 @@ impl Project {
             .ok_or(sqlx::Error::RowNotFound)?;
 
         let name = payload.name.clone().unwrap_or(existing.name);
+        let min_approvals_required = payload
+            .min_approvals_required
+            .unwrap_or(existing.min_approvals_required);
 
         sqlx::query_as!(
             Project,
             r#"UPDATE projects
-               SET name = $2
+               SET name = $2, min_approvals_required = $3
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
                          default_agent_working_dir,
                          remote_project_id as "remote_project_id: Uuid",
                          creator_user_id as "creator_user_id: Uuid",
+                         min_approvals_required as "min_approvals_required!: i64",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             name,
+            min_approvals_required,
         )
         .fetch_one(pool)
         .await

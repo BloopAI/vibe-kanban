@@ -261,7 +261,8 @@ pub async fn create_task_and_start(
         last_attempt_failed: false,
         executor: payload.executor_profile_id.executor.to_string(),
         creator,
-        assignee: None, // Newly created task has no assignee yet
+        assignee: None,    // Newly created task has no assignee yet
+        approval_count: 0, // Newly created task has no approvals
     })))
 }
 
@@ -445,7 +446,8 @@ async fn ensure_shared_task_auth(
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_actions_router = Router::new()
         .route("/", put(update_task))
-        .route("/", delete(delete_task));
+        .route("/", delete(delete_task))
+        .nest("/task-approvals", super::task_approvals::router());
 
     let task_id_router = Router::new()
         .route("/", get(get_task))

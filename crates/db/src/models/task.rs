@@ -88,6 +88,8 @@ pub struct TaskWithAttemptStatus {
     pub executor: String,
     pub creator: Option<TaskUser>,
     pub assignee: Option<TaskUser>,
+    #[ts(type = "number")]
+    pub approval_count: i64,
 }
 
 impl std::ops::Deref for TaskWithAttemptStatus {
@@ -231,7 +233,11 @@ impl Task {
 
   -- Assignee user info
   assignee.username               AS assignee_username,
-  assignee.avatar_url             AS assignee_avatar_url
+  assignee.avatar_url             AS assignee_avatar_url,
+
+  -- Approval count
+  (SELECT COUNT(*) FROM task_approvals WHERE task_id = t.id)
+                                  AS "approval_count!: i64"
 
 FROM tasks t
 LEFT JOIN users creator ON creator.id = t.creator_user_id
@@ -272,6 +278,7 @@ ORDER BY t.created_at DESC"#,
                     username: rec.assignee_username.clone(),
                     avatar_url: rec.assignee_avatar_url.clone(),
                 }),
+                approval_count: rec.approval_count,
             })
             .collect();
 

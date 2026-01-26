@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM task_approvals WHERE task_id = $1 AND user_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "81df7565ff0f212c8eb763a1c7946e19bbfbb09a7f3c43d972a744101b9365a0"
+}

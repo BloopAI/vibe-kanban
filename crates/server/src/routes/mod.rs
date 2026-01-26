@@ -25,6 +25,7 @@ pub mod repo;
 pub mod scratch;
 pub mod sessions;
 pub mod tags;
+pub mod task_approvals;
 pub mod task_attempts;
 pub mod tasks;
 pub mod terminal;

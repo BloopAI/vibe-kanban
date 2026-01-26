@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      creator_user_id as \"creator_user_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE rowid = $1",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      creator_user_id as \"creator_user_id: Uuid\",\n                      min_approvals_required as \"min_approvals_required!: i64\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE remote_project_id = $1\n               LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -29,13 +29,18 @@
         "type_info": "Blob"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "min_approvals_required!: i64",
         "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 6,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 6,
+        "ordinal": 7,
         "type_info": "Text"
       }
     ],
@@ -49,8 +54,9 @@
       true,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "c0029cdac86c861828deba9c93715f673e921274fb14d7b954572feb6d5685f7"
+  "hash": "bffb546d199ec6912d5ce187c7de0c6de3f3331d113f81a20fe2cecee64a4a26"
 }
