@@ -1,0 +1,279 @@
+---
+title: "Settings Overview"
+description: "Configure application-wide settings including themes, editor, agents, and more"
+sidebarTitle: "Overview"
+---
+
+<Note>
+This is the new Settings UI currently in <Badge color="orange">Beta</Badge>. It provides the same configuration options with a redesigned interface accessible from the Workspaces UI.
+</Note>
+
+The new Settings dialog provides a streamlined, tabbed interface for configuring Vibe Kanban.
+
+## Accessing Settings
+
+<Frame>
+<img src="/images/settings-beta-accessing.png" alt="Workspaces navbar showing the Settings gear icon with tooltip" />
+</Frame>
+
+- Click the **Settings** icon (<Icon icon="gear" />) in the Workspaces navbar
+- Press `Cmd/Ctrl + K` and select **Settings**
+
+## Settings Tabs
+
+<Frame>
+<img src="/images/settings-beta-general.png" alt="Settings dialog showing the tabbed interface with General, Projects, Repositories, Organization Settings, Agents, and MCP Servers tabs" />
+</Frame>
+
+The settings dialog is organised into the following tabs:
+
+| Tab | Description |
+|-----|-------------|
+| **General** | Appearance (theme, language) and editor configuration |
+| **Projects** | Project-specific settings |
+| **Repositories** | Repository settings including dev server scripts |
+| **Organization Settings** | Organisation-level configuration |
+| **Agents** | Agent profiles and variants |
+| **MCP Servers** | Model Context Protocol server configuration |
+
+## General
+
+Configure appearance, default agent, and editor settings.
+
+### Appearance
+
+Customise how the application looks and feels:
+
+- **Theme** - Choose between Light and Dark colour schemes
+- **Language** - Select your preferred language (Browser Default follows your system language)
+
+### Default Coding Agent
+
+<Frame>
+<img src="/images/settings-beta-default-coding-agent.png" alt="Default Coding Agent section showing agent and variant dropdowns" />
+</Frame>
+
+Choose the default coding agent for tasks.
+
+- **Agent** - Select your preferred coding agent (e.g., Claude Code, Gemini CLI, Codex)
+- **Variant** - Choose a variant if available (e.g., Default, Opus, Approvals)
+
+<Tip>
+You can override the default agent configuration per attempt in the create attempt dialog.
+</Tip>
+
+### Editor
+
+<Frame>
+<img src="/images/settings-beta-editor.png" alt="Editor settings showing Editor Type dropdown and Remote SSH Host input" />
+</Frame>
+
+Configure your code editing experience.
+
+#### Selecting Your Editor
+
+Choose from various supported editors:
+
+- **VS Code** - Microsoft's popular code editor
+- **Cursor** - VSCode fork with AI-native features
+- **Windsurf** - VSCode fork optimized for collaborative development
+- **Zed** - High-performance code editor
+- **Antigravity** - Google's AI-native code editor
+- **Neovim**, **Emacs**, **Sublime Text** - Other popular editors
+- **Custom** - Use a custom shell command
+
+### Remote SSH Configuration
+
+When running Vibe Kanban on a remote server (e.g., accessed via Cloudflare tunnel, ngrok, or as a systemctl service), you can configure VSCode-based editors to open projects via SSH instead of assuming localhost.
+
+This feature is available for **VS Code**, **Cursor**, and **Windsurf** editors.
+
+#### When to Use Remote SSH
+
+Enable remote SSH configuration when:
+- Vibe Kanban runs on a remote server (VPS, cloud instance, etc.)
+- You access the web UI through a tunnel or reverse proxy
+- Your code files are on a different machine than your browser
+- You want your local editor to connect to the remote server via SSH
+
+#### Configuration Fields
+
+- **Remote SSH Host** (Optional) - The hostname or IP address of your remote server (e.g., `example.com`, `192.168.1.100`, `my-server`). Must be accessible via SSH from your local machine.
+
+#### How It Works
+
+When remote SSH is configured, clicking "Open in Editor" (or Cursor/Windsurf):
+1. Generates a special protocol URL like: `vscode://vscode-remote/ssh-remote+user@host/path/to/project`
+2. Opens in your default browser, which launches your local editor
+3. Your editor connects to the remote server via SSH
+4. The project or task worktree opens in the remote context
+
+This works for both project-level and task worktree opening.
+
+#### Prerequisites
+
+- SSH access configured between your local machine and remote server
+- SSH keys or credentials set up (no password prompts)
+- VSCode Remote-SSH extension installed (or equivalent for Cursor/Windsurf)
+- The remote server path must be accessible via SSH
+
+<Tip>
+Test your SSH connection first with `ssh user@host` to ensure it works without prompting for passwords.
+</Tip>
+
+### Git
+
+<Frame>
+<img src="/images/settings-beta-git.png" alt="Git settings showing Branch Prefix and Workspace Directory fields" />
+</Frame>
+
+Configure git branch naming preferences.
+
+#### Branch Prefix
+
+Set a prefix for auto-generated branch names (e.g., `vk` results in `vk/1a2b-task-name`). Leave empty for no prefix.
+
+#### Workspace Directory
+
+Workspaces will be created in a `.vibe-kanban-workspaces` subdirectory within this path. Leave empty to use the system default.
+
+<Warning>
+Changes to Workspace Directory require an app restart.
+</Warning>
+
+### Notifications
+
+Toggle sound effects and push notifications to stay informed about task status changes.
+
+### Telemetry
+
+Enable or disable telemetry data collection to help improve Vibe Kanban.
+
+### Message Input
+
+<Frame>
+<img src="/images/settings-beta-message-input.png" alt="Message Input settings showing Send message with dropdown" />
+</Frame>
+
+Configure how messages are sent in the chat input.
+
+- **Send message with** - Choose the keyboard shortcut to send messages (e.g., `⌘/Ctrl + Enter`)
+
+### Tags
+
+<Frame>
+<img src="/images/settings-beta-tags.png" alt="Tags section showing task tags table with tag names, content, and actions" />
+</Frame>
+
+Create reusable text snippets that can be inserted into task descriptions using `@tag_name`.
+
+- **Add Tag +** - Create a new tag
+- **Tag Name** - The @mention name for the tag
+- **Content** - The text that will be inserted
+- **Actions** - Edit or delete existing tags
+
+<Card title="Learn more about tags" icon="tag" href="/settings-beta/creating-task-tags">
+  Complete guide to creating and managing tags
+</Card>
+
+### Beta Features
+
+Enable or disable beta features to try new functionality before general release.
+
+#### Workspaces <Badge color="orange">Beta</Badge>
+
+The new Workspaces UI is a complete redesign of the task execution experience with multi-repository support, multiple agent sessions, and an integrated preview browser. When enabled, you can access it by clicking on any task attempt.
+
+To enable or disable Workspaces:
+1. Find the **Beta Features** section
+2. Toggle **Enable Workspaces Beta**
+
+<Card title="Workspaces Documentation" icon="window" href="/workspaces">
+  Complete guide to using the new Workspaces UI
+</Card>
+
+### Safety & Disclaimers
+
+Manage acknowledgments and reset options for onboarding, safety disclaimers, and telemetry notices.
+
+- **Onboarding** - Reset the onboarding process to rerun the initial setup
+- **Safety Disclaimer** - Reset or review the safety disclaimer prompt
+- **Telemetry Notice** - Reset or review the telemetry data collection acknowledgment
+
+## Projects
+
+Configure project-specific settings. Select a project to view and modify its settings.
+
+## Repositories
+
+Configure scripts that run when a repository is used in workspaces, including dev server, setup, and cleanup commands.
+
+<Card title="Projects & Repositories" icon="folder-tree" href="/settings-beta/projects-repositories">
+  Configure project settings and repository scripts
+</Card>
+
+## Organization Settings
+
+Configure organisation-level settings that apply across all users and projects.
+
+## Agents
+
+<Frame>
+<img src="/images/settings-beta-agents.png" alt="Agents tab showing agent list, configuration variants, and settings options" />
+</Frame>
+
+Define and customise agent variants using a form-based interface. The Agents tab uses a finder-style two-column layout:
+
+- **Left column (Agents)** - Available coding agents (Claude Code, Codex, Opencode, Cursor Agent, etc.)
+- **Right column (Configurations)** - Different variants for the selected agent (Default, Opus, Approvals, Plan, etc.)
+
+### Variant Settings
+
+Configure options for the selected variant:
+
+- **Append prompt** - Extra text appended to the prompt
+- **Claude Code Router** - Route requests across multiple instances
+- **Plan** - Enable planning mode
+- **Approvals** - Require approval for actions
+- **Model** - Specify which model to use
+- **Dangerously Skip Permissions** - Skip permission prompts (use with caution)
+
+### Managing Configurations
+
+- **Create** - Add new configurations, optionally cloning from existing ones
+- **Delete** - Remove configurations (cannot delete the only configuration)
+- **Set Default** - Mark any configuration as the default for that agent
+
+<Note>
+The beta settings UI uses form-based configuration only. For JSON editing, use the [classic settings](/configuration-customisation/agent-configurations).
+</Note>
+
+<Card title="Agent Profiles & Variants" icon="robot" href="/settings-beta/agent-configurations">
+  Detailed guide with examples for configuring agent variants
+</Card>
+
+## MCP Servers
+
+<Frame>
+<img src="/images/settings-beta-mcp.png" alt="MCP Servers tab showing agent selection, JSON configuration, and popular servers" />
+</Frame>
+
+Configure Model Context Protocol servers to extend coding agent capabilities with custom tools and resources.
+
+- **Agent** - Choose which agent to configure MCP servers for (e.g., Claude Code)
+- **Server Configuration (JSON)** - Edit the MCP server configuration directly in JSON format
+- **Popular servers** - Click a card to insert a pre-configured MCP server into the JSON
+
+<Info>
+Changes will be saved to the agent's configuration file (e.g., `~/.claude.json` for Claude Code).
+</Info>
+
+<Card title="Connecting MCP Servers" icon="server" href="/settings-beta/mcp-servers">
+  Configure MCP servers within Vibe Kanban for your coding agents
+</Card>
+
+## Related Documentation
+
+- [Classic Settings](/configuration-customisation/global-settings) - Original settings page documentation
+- [Agent Configurations](/settings-beta/agent-configurations) - Detailed agent profile configuration
+- [Workspaces](/workspaces) - The new Workspaces UI where beta settings are accessed

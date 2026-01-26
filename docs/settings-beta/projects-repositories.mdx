@@ -1,0 +1,83 @@
+---
+title: "Projects & Repositories"
+description: "Configure project-specific settings and repository scripts in the Settings dialog"
+---
+
+<Note>
+This is the new Settings UI currently in <Badge color="orange">Beta</Badge>. It provides the same configuration options with a redesigned interface accessible from the Workspaces UI.
+</Note>
+
+## Projects
+
+<Frame>
+<img src="/images/settings-beta-projects.png" alt="Projects tab showing project selection and project-specific settings" />
+</Frame>
+
+The Projects tab allows you to configure settings specific to individual projects.
+
+### Accessing Project Settings
+
+1. Open **Settings** from the Workspaces navbar
+2. Select the **Projects** tab
+3. Choose a project from the dropdown to view and modify its settings
+
+<Tip>
+Project settings override global settings where applicable.
+</Tip>
+
+## Repositories
+
+<Frame>
+<img src="/images/settings-beta-repositories.png" alt="Repositories tab showing repository selection, general settings, and scripts configuration" />
+</Frame>
+
+The Repositories tab allows you to configure scripts that run when a repository is used in workspaces.
+
+### Accessing Repository Settings
+
+1. Open **Settings** from the Workspaces navbar
+2. Select the **Repositories** tab
+3. Choose a repository from the dropdown to view and modify its settings
+
+### General Settings
+
+Configure basic repository information:
+
+- **Display Name** - A friendly name for this repository
+- **Repository Path** - The local path to the repository
+
+### Scripts & Configuration
+
+Configure dev server, setup, cleanup, and copy files for this repository. These scripts run whenever the repository is used in any workspace.
+
+#### Dev Server Script
+
+Command to start your development server (e.g., `npm run dev`, `yarn dev`, `pnpm dev`).
+
+<Tip>
+Configure dev server scripts to enable the built-in preview browser in Workspaces.
+</Tip>
+
+#### Setup Script
+
+Commands to run before starting work (e.g., `npm install`, `pip install -r requirements.txt`).
+
+Use this to ensure dependencies are installed and the environment is ready.
+
+#### Cleanup Script
+
+Commands to run when a workspace closes.
+
+Use this for cleanup tasks like stopping background processes or removing temporary files.
+
+## Related Documentation
+
+<CardGroup cols={2}>
+<Card title="Workspaces Preview" icon="eye" href="/workspaces/preview">
+  Learn how the dev server integrates with the preview panel
+</Card>
+
+<Card title="Multi-Repository Sessions" icon="folder-tree" href="/workspaces/multi-repo-sessions">
+  Working with multiple repositories in a single workspace
+</Card>
+</CardGroup>

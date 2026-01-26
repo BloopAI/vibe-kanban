@@ -89,6 +89,16 @@
         ]
       },
       {
+        "group": "Settings (Beta)",
+        "pages": [
+          "settings-beta/index",
+          "settings-beta/projects-repositories",
+          "settings-beta/agent-configurations",
+          "settings-beta/mcp-servers",
+          "settings-beta/creating-task-tags"
+        ]
+      },
+      {
         "group": "Integrations",
         "pages": [
           "integrations/github-integration",
