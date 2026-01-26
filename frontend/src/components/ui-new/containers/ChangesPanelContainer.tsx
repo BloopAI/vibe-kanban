@@ -56,8 +56,12 @@ export function ChangesPanelContainer({
   const { data: task } = useTask(workspace?.task_id, {
     enabled: !!workspace?.task_id,
   });
-  const { selectedFilePath, selectedLineNumber, setFileInView, registerScrollToFile } =
-    useChangesView();
+  const {
+    selectedFilePath,
+    selectedLineNumber,
+    setFileInView,
+    registerScrollToFile,
+  } = useChangesView();
   const diffRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const changesPanelRef = useRef<ChangesPanelHandle>(null);
   const [processedPaths] = useState(() => new Set<string>());
@@ -124,7 +128,10 @@ export function ChangesPanelContainer({
             if (fileEl) {
               const selector = `[data-line="${lineNumber}"]`;
               const commentEl = fileEl.querySelector(selector);
-              commentEl?.scrollIntoView({ behavior: 'instant', block: 'center' });
+              commentEl?.scrollIntoView({
+                behavior: 'instant',
+                block: 'center',
+              });
             }
           }
           onScrollComplete();

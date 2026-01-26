@@ -7,7 +7,11 @@ import {
   PlusIcon,
 } from '@phosphor-icons/react';
 import { FileDiff } from '@pierre/diffs/react';
-import type { DiffLineAnnotation, AnnotationSide, ChangeContent } from '@pierre/diffs';
+import type {
+  DiffLineAnnotation,
+  AnnotationSide,
+  ChangeContent,
+} from '@pierre/diffs';
 import { SplitSide } from '@git-diff-view/react';
 import { cn } from '@/lib/utils';
 import {
@@ -18,13 +22,8 @@ import {
 import { useTheme } from '@/components/ThemeProvider';
 import { getActualTheme } from '@/utils/theme';
 import { useDiffViewMode } from '@/stores/useDiffViewStore';
-import {
-  useReview,
-  type ReviewDraft,
-} from '@/contexts/ReviewProvider';
-import {
-  useWorkspaceContext,
-} from '@/contexts/WorkspaceContext';
+import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { getFileIcon } from '@/utils/fileTypeIcon';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
@@ -67,9 +66,10 @@ export function PierreDiffCard({
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
   const globalMode = useDiffViewMode();
-  
+
   const { comments, drafts, setDraft, addComment } = useReview();
-  const { showGitHubComments, getGitHubCommentsForFile } = useWorkspaceContext();
+  const { showGitHubComments, getGitHubCommentsForFile } =
+    useWorkspaceContext();
 
   // File path logic
   const filePath = diff.newPath || diff.oldPath || 'unknown';
@@ -89,23 +89,29 @@ export function PierreDiffCard({
 
   const additions = useMemo(() => {
     return fileDiffMetadata.hunks.reduce((acc, hunk) => {
-      return acc + hunk.hunkContent.reduce((count, content) => {
-        if (content.type === 'change') {
-          return count + (content as ChangeContent).additions.length;
-        }
-        return count;
-      }, 0);
+      return (
+        acc +
+        hunk.hunkContent.reduce((count, content) => {
+          if (content.type === 'change') {
+            return count + (content as ChangeContent).additions.length;
+          }
+          return count;
+        }, 0)
+      );
     }, 0);
   }, [fileDiffMetadata]);
 
   const deletions = useMemo(() => {
     return fileDiffMetadata.hunks.reduce((acc, hunk) => {
-      return acc + hunk.hunkContent.reduce((count, content) => {
-        if (content.type === 'change') {
-          return count + (content as ChangeContent).deletions.length;
-        }
-        return count;
-      }, 0);
+      return (
+        acc +
+        hunk.hunkContent.reduce((count, content) => {
+          if (content.type === 'change') {
+            return count + (content as ChangeContent).deletions.length;
+          }
+          return count;
+        }, 0)
+      );
     }, 0);
   }, [fileDiffMetadata]);
 
@@ -116,12 +122,18 @@ export function PierreDiffCard({
   // Change Label
   const getChangeLabel = (kind?: string): string | null => {
     switch (kind) {
-      case 'added': return 'Added';
-      case 'deleted': return 'Deleted';
-      case 'renamed': return 'Renamed';
-      case 'copied': return 'Copied';
-      case 'permissionChange': return 'Perm';
-      default: return null;
+      case 'added':
+        return 'Added';
+      case 'deleted':
+        return 'Deleted';
+      case 'renamed':
+        return 'Renamed';
+      case 'copied':
+        return 'Copied';
+      case 'permissionChange':
+        return 'Perm';
+      default:
+        return null;
     }
   };
   const changeLabel = getChangeLabel(changeKind);
@@ -136,7 +148,8 @@ export function PierreDiffCard({
     return getGitHubCommentsForFile(filePath);
   }, [showGitHubComments, getGitHubCommentsForFile, filePath]);
 
-  const totalCommentCount = commentsForFile.length + githubCommentsForFile.length;
+  const totalCommentCount =
+    commentsForFile.length + githubCommentsForFile.length;
 
   const annotations = useMemo(() => {
     // 1. Get standard comments
@@ -147,10 +160,11 @@ export function PierreDiffCard({
     ) as DiffLineAnnotation<ExtendedCommentAnnotation>[];
 
     // 2. Add drafts
-    const draftAnnotations: DiffLineAnnotation<ExtendedCommentAnnotation>[] = [];
+    const draftAnnotations: DiffLineAnnotation<ExtendedCommentAnnotation>[] =
+      [];
     Object.entries(drafts).forEach(([key, draft]) => {
       if (!draft || draft.filePath !== filePath) return;
-      
+
       draftAnnotations.push({
         side: mapSideToAnnotationSide(draft.side),
         lineNumber: draft.lineNumber,
@@ -168,14 +182,14 @@ export function PierreDiffCard({
   const renderAnnotation = useCallback(
     (annotation: DiffLineAnnotation<ExtendedCommentAnnotation>) => {
       const { metadata } = annotation;
-      
+
       if (metadata.type === 'draft') {
         return (
           <CommentWidgetLine
             draft={metadata.draft}
             widgetKey={metadata.widgetKey}
-            onSave={() => {}} 
-            onCancel={() => {}} 
+            onSave={() => {}}
+            onCancel={() => {}}
             projectId={projectId}
           />
         );
@@ -215,10 +229,10 @@ export function PierreDiffCard({
       const { lineNumber, annotationSide } = props;
       const splitSide = mapAnnotationSideToSplitSide(annotationSide);
       const widgetKey = `${filePath}-${splitSide}-${lineNumber}`;
-      
+
       // Don't create a new draft if one already exists
       if (drafts[widgetKey]) return;
-      
+
       setDraft(widgetKey, {
         filePath,
         side: splitSide,
@@ -230,14 +244,18 @@ export function PierreDiffCard({
   );
 
   const renderHoverUtility = useCallback(
-    (getHoveredLine: () => { lineNumber: number; side: AnnotationSide } | undefined) => {
+    (
+      getHoveredLine: () =>
+        | { lineNumber: number; side: AnnotationSide }
+        | undefined
+    ) => {
       const line = getHoveredLine();
       if (!line) return null;
-      
+
       const { side, lineNumber } = line;
       const splitSide = mapAnnotationSideToSplitSide(side);
       const widgetKey = `${filePath}-${splitSide}-${lineNumber}`;
-      
+
       if (drafts[widgetKey]) return null;
 
       return (
@@ -260,16 +278,20 @@ export function PierreDiffCard({
     [filePath, drafts, setDraft, t]
   );
 
-  const fileDiffOptions = useMemo(() => ({
-    diffStyle: globalMode === 'split' ? 'split' as const : 'unified' as const,
-    diffIndicators: 'classic' as const,
-    themeType: actualTheme,
-    overflow: 'scroll' as const,
-    hunkSeparators: 'line-info' as const,
-    disableFileHeader: true,
-    enableHoverUtility: true,
-    onLineClick: handleLineClick,
-  }), [globalMode, actualTheme, handleLineClick]);
+  const fileDiffOptions = useMemo(
+    () => ({
+      diffStyle:
+        globalMode === 'split' ? ('split' as const) : ('unified' as const),
+      diffIndicators: 'classic' as const,
+      themeType: actualTheme,
+      overflow: 'scroll' as const,
+      hunkSeparators: 'line-info' as const,
+      disableFileHeader: true,
+      enableHoverUtility: true,
+      onLineClick: handleLineClick,
+    }),
+    [globalMode, actualTheme, handleLineClick]
+  );
 
   // Large diff placeholder logic
   const LARGE_DIFF_THRESHOLD = 2000;
@@ -362,11 +384,17 @@ export function PierreDiffCard({
             <div className="p-base bg-warning/5 border-t border-warning/20">
               <div className="flex items-center justify-between gap-base">
                 <div className="text-sm text-low">
-                  <span className="font-medium text-warning">{t('diff.largeDiff.title')}</span>
+                  <span className="font-medium text-warning">
+                    {t('diff.largeDiff.title')}
+                  </span>
                   <span className="ml-base">
                     {t('diff.largeDiff.linesChanged', { count: totalLines })}
-                    <span className="text-success ml-base">+{additions.toLocaleString()}</span>
-                    <span className="text-error ml-half">-{deletions.toLocaleString()}</span>
+                    <span className="text-success ml-base">
+                      +{additions.toLocaleString()}
+                    </span>
+                    <span className="text-error ml-half">
+                      -{deletions.toLocaleString()}
+                    </span>
                   </span>
                 </div>
                 <button

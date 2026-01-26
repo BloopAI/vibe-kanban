@@ -917,17 +917,17 @@ diffs-container[data-theme-type='light'] {
   --diffs-bg-addition-override: hsl(160, 77%, 88%);
   --diffs-bg-addition-number-override: hsl(160, 77%, 85%);
   --diffs-bg-addition-hover-override: hsl(160, 77%, 82%);
-  
+
   /* Deletion colors - soft red (HSL 10 100% 90%) */
   --diffs-light-deletion-color: hsl(10, 100%, 45%);
   --diffs-bg-deletion-override: hsl(10, 100%, 90%);
   --diffs-bg-deletion-number-override: hsl(10, 100%, 87%);
   --diffs-bg-deletion-hover-override: hsl(10, 100%, 84%);
-  
+
   /* Context/unchanged - white background */
   --diffs-light-bg: hsl(0, 0%, 100%);
   --diffs-bg-context-override: hsl(0, 0%, 98%);
-  
+
   /* Line numbers */
   --diffs-fg-number-override: hsl(0, 0%, 39%);
 }
@@ -940,17 +940,17 @@ diffs-container[data-theme-type='dark'] {
   --diffs-bg-addition-override: hsl(130, 30%, 20%);
   --diffs-bg-addition-number-override: hsl(130, 30%, 18%);
   --diffs-bg-addition-hover-override: hsl(130, 30%, 25%);
-  
+
   /* Deletion colors - dark red (HSL 12 30% 18%) */
   --diffs-dark-deletion-color: hsl(12, 50%, 55%);
   --diffs-bg-deletion-override: hsl(12, 30%, 18%);
   --diffs-bg-deletion-number-override: hsl(12, 30%, 16%);
   --diffs-bg-deletion-hover-override: hsl(12, 30%, 23%);
-  
+
   /* Context/unchanged - dark gray background */
   --diffs-dark-bg: hsl(0, 0%, 16%);
   --diffs-bg-context-override: hsl(0, 0%, 14%);
-  
+
   /* Line numbers */
   --diffs-fg-number-override: hsl(0, 0%, 56%);
 }

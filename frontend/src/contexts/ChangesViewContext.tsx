@@ -83,13 +83,16 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
     setFileInView(path);
   }, []);
 
-  const scrollToFile = useCallback((path: string, lineNumber?: number) => {
-    if (scrollToFileCallbackRef.current) {
-      scrollToFileCallbackRef.current(path, lineNumber);
-    } else {
-      selectFile(path, lineNumber);
-    }
-  }, [selectFile]);
+  const scrollToFile = useCallback(
+    (path: string, lineNumber?: number) => {
+      if (scrollToFileCallbackRef.current) {
+        scrollToFileCallbackRef.current(path, lineNumber);
+      } else {
+        selectFile(path, lineNumber);
+      }
+    },
+    [selectFile]
+  );
 
   const viewFileInChanges = useCallback(
     (filePath: string) => {

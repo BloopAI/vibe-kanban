@@ -70,7 +70,12 @@ const DEFAULT_COOLDOWN_DELAY = 200;
 export function useScrollSyncStateMachine(
   options: ScrollSyncOptions
 ): ScrollSyncResult {
-  const { debounceDelay = DEFAULT_DEBOUNCE_DELAY, cooldownDelay = DEFAULT_COOLDOWN_DELAY, pathToIndex, indexToPath } = options;
+  const {
+    debounceDelay = DEFAULT_DEBOUNCE_DELAY,
+    cooldownDelay = DEFAULT_COOLDOWN_DELAY,
+    pathToIndex,
+    indexToPath,
+  } = options;
 
   // Use refs for state to avoid stale closure issues in callbacks
   const stateRef = useRef<SyncState>('idle');
@@ -182,7 +187,10 @@ export function useScrollSyncStateMachine(
       const currentState = stateRef.current;
 
       // Only update fileInView during idle or user-scrolling
-      if (currentState === 'programmatic-scroll' || currentState === 'sync-cooldown') {
+      if (
+        currentState === 'programmatic-scroll' ||
+        currentState === 'sync-cooldown'
+      ) {
         return;
       }
 

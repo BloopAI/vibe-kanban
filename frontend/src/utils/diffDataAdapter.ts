@@ -91,7 +91,8 @@ export function transformDiffToFileDiffMetadata(diff: Diff): FileDiffMetadata {
 
     return {
       name: filePath,
-      prevName: diff.oldPath !== diff.newPath ? diff.oldPath ?? undefined : undefined,
+      prevName:
+        diff.oldPath !== diff.newPath ? (diff.oldPath ?? undefined) : undefined,
       type: changeType,
       hunks: [],
       splitLineCount: 0,
@@ -124,7 +125,8 @@ export function transformDiffToFileDiffMetadata(diff: Diff): FileDiffMetadata {
   return {
     ...metadata,
     type: changeType,
-    prevName: diff.oldPath !== diff.newPath ? diff.oldPath ?? undefined : undefined,
+    prevName:
+      diff.oldPath !== diff.newPath ? (diff.oldPath ?? undefined) : undefined,
   };
 }
 

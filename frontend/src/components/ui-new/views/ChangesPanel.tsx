@@ -73,7 +73,10 @@ export const ChangesPanel = forwardRef<ChangesPanelHandle, ChangesPanelProps>(
     const virtuosoRef = useRef<VirtuosoHandle>(null);
 
     useImperativeHandle(ref, () => ({
-      scrollToIndex: (index: number, options?: { align?: 'start' | 'center' | 'end' }) => {
+      scrollToIndex: (
+        index: number,
+        options?: { align?: 'start' | 'center' | 'end' }
+      ) => {
         virtuosoRef.current?.scrollToIndex({
           index,
           align: options?.align ?? 'start',
@@ -83,7 +86,10 @@ export const ChangesPanel = forwardRef<ChangesPanelHandle, ChangesPanelProps>(
     }));
 
     const handleRangeChanged = (range: ListRange) => {
-      onRangeChanged?.({ startIndex: range.startIndex, endIndex: range.endIndex });
+      onRangeChanged?.({
+        startIndex: range.startIndex,
+        endIndex: range.endIndex,
+      });
     };
 
     const defaultItemHeight = useMemo(
@@ -117,9 +123,9 @@ export const ChangesPanel = forwardRef<ChangesPanelHandle, ChangesPanelProps>(
           ref={virtuosoRef}
           data={diffItems}
           defaultItemHeight={defaultItemHeight}
-           itemContent={(_index, { diff, initialExpanded }) => (
-             <div>
-               <DiffItem
+          itemContent={(_index, { diff, initialExpanded }) => (
+            <div>
+              <DiffItem
                 diff={diff}
                 initialExpanded={initialExpanded}
                 onRef={onDiffRef}
