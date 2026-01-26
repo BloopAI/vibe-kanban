@@ -1,21 +1,31 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, Settings2 } from 'lucide-react';
 import { tasksApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { cn } from '@/lib/utils';
 import { Loader } from '@/components/ui/loader';
+import { useAutoReviewSettings } from '@/hooks/useAutoReviewSettings';
+import { AutoReviewSettingsDialog } from '@/components/dialogs/tasks/AutoReviewSettingsDialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface PmDocsPanelProps {
   pmTaskId: string | null | undefined;
+  projectId?: string;
   className?: string;
 }
 
-export function PmDocsPanel({ pmTaskId, className }: PmDocsPanelProps) {
+export function PmDocsPanel({ pmTaskId, projectId, className }: PmDocsPanelProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const [isExpanded, setIsExpanded] = useState(true);
+  const { settings: autoReviewSettings, updateSettings } = useAutoReviewSettings(projectId);
 
   const {
     data: pmTask,
@@ -34,6 +44,15 @@ export function PmDocsPanel({ pmTaskId, className }: PmDocsPanelProps) {
 
   const toggleExpanded = () => setIsExpanded(!isExpanded);
 
+  const handleOpenSettings = () => {
+    if (!projectId) return;
+    AutoReviewSettingsDialog.show({
+      projectId,
+      currentSettings: autoReviewSettings,
+      onSave: updateSettings,
+    });
+  };
+
   return (
     <div
       className={cn(
@@ -50,14 +69,45 @@ export function PmDocsPanel({ pmTaskId, className }: PmDocsPanelProps) {
             <span>{t('tasks:pmDocs.title', 'PM Docs')}</span>
           </div>
         )}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={toggleExpanded}
-          className={cn('h-6 w-6 p-0', !isExpanded && 'mx-auto')}
-        >
-          {isExpanded ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
-        </Button>
+        <div className="flex items-center gap-1">
+          {isExpanded && projectId && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleOpenSettings}
+                    className="h-6 w-6 p-0"
+                  >
+                    <Settings2
+                      size={14}
+                      className={cn(
+                        autoReviewSettings.enabled
+                          ? 'text-primary'
+                          : 'text-muted-foreground'
+                      )}
+                    />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {t('tasks:autoReviewSettings.title', 'Auto-Review Settings')}
+                  {autoReviewSettings.enabled && (
+                    <span className="ml-1 text-primary">(ON)</span>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleExpanded}
+            className={cn('h-6 w-6 p-0', !isExpanded && 'mx-auto')}
+          >
+            {isExpanded ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+          </Button>
+        </div>
       </div>
 
       {/* Content */}

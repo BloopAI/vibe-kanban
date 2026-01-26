@@ -59,8 +59,15 @@ import type {
   ExecutorProfileId,
   ImageResponse,
 } from 'shared/types';
-import { useProjectLabels, useTaskLabels } from '@/hooks/useLabels';
+import {
+  useProjectLabels,
+  useTaskLabels,
+  useTaskDependencies,
+  useSetTaskDependencies,
+} from '@/hooks/useLabels';
 import { Badge } from '@/components/ui/badge';
+import { useProjectTasks } from '@/hooks/useProjectTasks';
+import { Link } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -123,6 +130,21 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { data: taskLabels = [] } = useTaskLabels(
     editMode ? props.task.id : undefined
   );
+  const { tasks: projectTasks } = useProjectTasks(projectId);
+  const { data: taskDependencies = [] } = useTaskDependencies(
+    editMode ? props.task.id : undefined
+  );
+  const setDependencies = useSetTaskDependencies(
+    editMode ? props.task.id : undefined
+  );
+  const [selectedDependencies, setSelectedDependencies] = useState<string[]>([]);
+
+  // Sync dependencies from server
+  useEffect(() => {
+    if (taskDependencies.length > 0) {
+      setSelectedDependencies(taskDependencies);
+    }
+  }, [taskDependencies]);
   const { data: projectRepos = [] } = useProjectRepos(projectId, {
     enabled: modal.visible,
   });
@@ -663,6 +685,94 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
               )}
             </form.Field>
           </div>
+
+          {/* Dependencies (edit mode only) */}
+          {editMode && (
+            <div className="space-y-2">
+              <FormLabel className="text-sm font-medium flex items-center gap-2">
+                <Link className="h-4 w-4" />
+                {t('taskFormDialog.dependsOnLabel', 'Depends On')}
+              </FormLabel>
+              <div className="flex flex-wrap gap-1 min-h-[40px] p-2 border rounded-md bg-background">
+                {selectedDependencies.map((depId) => {
+                  const depTask = projectTasks.find((t) => t.id === depId);
+                  if (!depTask) return null;
+                  return (
+                    <Badge
+                      key={depId}
+                      variant="outline"
+                      className="cursor-pointer"
+                      onClick={() => {
+                        const newDeps = selectedDependencies.filter(
+                          (id) => id !== depId
+                        );
+                        setSelectedDependencies(newDeps);
+                        setDependencies.mutate(newDeps);
+                      }}
+                    >
+                      {depTask.title.length > 30
+                        ? depTask.title.substring(0, 30) + '...'
+                        : depTask.title}
+                      <X className="h-3 w-3 ml-1" />
+                    </Badge>
+                  );
+                })}
+                {projectTasks.filter(
+                  (t) =>
+                    t.id !== props.task.id &&
+                    !selectedDependencies.includes(t.id)
+                ).length > 0 && (
+                  <Select
+                    value=""
+                    onValueChange={(value) => {
+                      const newDeps = [...selectedDependencies, value];
+                      setSelectedDependencies(newDeps);
+                      setDependencies.mutate(newDeps);
+                    }}
+                  >
+                    <SelectTrigger className="w-auto h-6 border-dashed text-muted-foreground">
+                      <Plus className="h-3 w-3" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projectTasks
+                        .filter(
+                          (t) =>
+                            t.id !== props.task.id &&
+                            !selectedDependencies.includes(t.id)
+                        )
+                        .map((task) => (
+                          <SelectItem key={task.id} value={task.id}>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={cn(
+                                  'w-2 h-2 rounded-full',
+                                  task.status === 'done'
+                                    ? 'bg-green-500'
+                                    : task.status === 'inprogress'
+                                      ? 'bg-blue-500'
+                                      : task.status === 'inreview'
+                                        ? 'bg-yellow-500'
+                                        : 'bg-gray-400'
+                                )}
+                              />
+                              {task.title.length > 40
+                                ? task.title.substring(0, 40) + '...'
+                                : task.title}
+                            </div>
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t(
+                  'taskFormDialog.dependsOnDescription',
+                  'This task depends on the selected tasks to be completed first.'
+                )}
+              </p>
+            </div>
+          )}
 
           {/* Edit mode status */}
           {editMode && (

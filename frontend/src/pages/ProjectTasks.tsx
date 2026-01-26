@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
-import { tasksApi } from '@/lib/api';
+import { tasksApi, attemptsApi, sessionsApi } from '@/lib/api';
+import { useAutoReviewSettings } from '@/hooks/useAutoReviewSettings';
 import type { RepoBranchStatus, Workspace } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
@@ -148,6 +149,9 @@ export function ProjectTasks() {
     isLoading: projectLoading,
     error: projectError,
   } = useProject();
+
+  // Auto-review settings for the project
+  const { settings: autoReviewSettings } = useAutoReviewSettings(projectId);
 
   useEffect(() => {
     enableScope(Scope.KANBAN);
@@ -706,6 +710,73 @@ export function ProjectTasks() {
     }
   }, [selectedTask, visibleTasksByStatus, handleViewTaskDetails]);
 
+  // Helper function to trigger auto-review when task moves to inreview
+  const triggerAutoReview = useCallback(
+    async (taskId: string) => {
+      if (!autoReviewSettings.enabled) return;
+      if (!autoReviewSettings.executorProfileId) {
+        console.warn('Auto-review enabled but no executor profile configured');
+        return;
+      }
+
+      try {
+        // Get latest workspace for the task
+        const workspaces = await attemptsApi.getAll(taskId);
+        if (!workspaces || workspaces.length === 0) {
+          console.warn('No workspace found for task, cannot start auto-review');
+          return;
+        }
+
+        // Sort by created_at to get the latest workspace
+        const latestWorkspace = [...workspaces].sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0];
+
+        // Create a new session or find existing one
+        const session = await sessionsApi.create({
+          workspace_id: latestWorkspace.id,
+          executor: autoReviewSettings.executorProfileId.executor,
+        });
+
+        // Build the review prompt
+        const promptParts: string[] = [];
+
+        if (autoReviewSettings.includePmReview && project?.pm_task_id) {
+          promptParts.push(
+            'Please review this task against the project specifications and requirements defined in the PM docs.'
+          );
+        }
+
+        if (autoReviewSettings.includeCodeReview) {
+          promptParts.push(
+            'Also perform a code review checking for code quality, best practices, potential bugs, and security issues.'
+          );
+        }
+
+        if (autoReviewSettings.additionalPrompt) {
+          promptParts.push(autoReviewSettings.additionalPrompt);
+        }
+
+        if (promptParts.length === 0) {
+          promptParts.push('Please review the changes in this task.');
+        }
+
+        // Start the review
+        await sessionsApi.startReview(session.id, {
+          executor_profile_id: autoReviewSettings.executorProfileId,
+          additional_prompt: promptParts.join('\n\n'),
+          use_all_workspace_commits: true,
+        });
+
+        console.log('Auto-review started for task:', taskId);
+      } catch (err) {
+        console.error('Failed to start auto-review:', err);
+      }
+    },
+    [autoReviewSettings, project?.pm_task_id]
+  );
+
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       const { active, over } = event;
@@ -736,6 +807,11 @@ export function ProjectTasks() {
             image_ids: null,
             label_ids: null,
           });
+
+          // Trigger auto-review if task moved to inreview
+          if (newStatus === 'inreview') {
+            void triggerAutoReview(draggedTaskId);
+          }
         } catch (err) {
           console.error('Failed to update task status:', err);
         }
@@ -780,12 +856,17 @@ export function ProjectTasks() {
             image_ids: null,
             label_ids: null,
           });
+
+          // Trigger auto-review if task moved to inreview
+          if (statusChanged && targetStatus === 'inreview') {
+            void triggerAutoReview(draggedTaskId);
+          }
         } catch (err) {
           console.error('Failed to update task position:', err);
         }
       }
     },
-    [tasksById, kanbanColumns]
+    [tasksById, kanbanColumns, triggerAutoReview]
   );
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;
@@ -848,7 +929,7 @@ export function ProjectTasks() {
     ) : (
       <div className="w-full h-full flex overflow-hidden">
         {/* PM Docs Sidebar */}
-        <PmDocsPanel pmTaskId={project?.pm_task_id} />
+        <PmDocsPanel pmTaskId={project?.pm_task_id} projectId={projectId} />
 
         {/* Main Kanban Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
