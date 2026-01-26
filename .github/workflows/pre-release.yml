@@ -638,3 +638,17 @@ jobs:
             release-binaries/vibe-kanban-review-windows-arm64.zip
             release-binaries/vibe-kanban-review-macos-x64.zip
             release-binaries/vibe-kanban-review-macos-arm64.zip
+
+      - name: Configure npm authentication
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
+      - name: Publish to npm
+        run: |
+          cd npx-cli
+          PACKAGE_FILE=$(ls *.tgz | head -n1)
+          echo "Publishing $PACKAGE_FILE to npm..."
+          npm publish "$PACKAGE_FILE"
+          echo "✅ Successfully published to npm!"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
