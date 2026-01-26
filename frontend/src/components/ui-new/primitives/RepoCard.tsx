@@ -239,15 +239,17 @@ export function RepoCard({
         </div>
       )}
 
-      {/* Actions row */}
-      <div className="my-base">
-        <SplitButton
-          options={availableActionOptions}
-          selectedValue={effectiveSelectedAction}
-          onSelectionChange={setSelectedAction}
-          onAction={(action) => onActionsClick?.(action)}
-        />
-      </div>
+      {/* Actions row - only show when there are available actions */}
+      {availableActionOptions.length > 0 && (
+        <div className="my-base">
+          <SplitButton
+            options={availableActionOptions}
+            selectedValue={effectiveSelectedAction}
+            onSelectionChange={setSelectedAction}
+            onAction={(action) => onActionsClick?.(action)}
+          />
+        </div>
+      )}
     </div>
   );
 }
