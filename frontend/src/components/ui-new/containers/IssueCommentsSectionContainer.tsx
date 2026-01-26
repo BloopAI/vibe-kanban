@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback, useState, useRef } from 'react';
 import { IssueProvider, useIssueContext } from '@/contexts/remote/IssueContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useCurrentUser } from '@/hooks/auth/useCurrentUser';
@@ -7,6 +7,7 @@ import {
   type IssueCommentData,
   type ReactionGroup,
 } from '@/components/ui-new/views/IssueCommentsSection';
+import type { WYSIWYGEditorRef } from '@/components/ui/wysiwyg';
 
 interface IssueCommentsSectionContainerProps {
   issueId: string;
@@ -31,6 +32,9 @@ function IssueCommentsSectionContent() {
   const issueContext = useIssueContext();
   const { data: currentUser } = useCurrentUser();
   const currentUserId = currentUser?.user_id ?? '';
+
+  // Ref to comment editor for programmatic focus
+  const commentEditorRef = useRef<WYSIWYGEditorRef>(null);
 
   // UI state for comment input
   const [commentInput, setCommentInput] = useState('');
@@ -191,6 +195,10 @@ function IssueCommentsSectionContent() {
       firstLine.length > 100 ? `${firstLine.slice(0, 100)}...` : firstLine;
     const quote = `> ${authorName} wrote:\n> ${truncatedLine}`;
     setCommentInput(quote);
+    // Focus editor after setting value (setTimeout ensures value is set first)
+    setTimeout(() => {
+      commentEditorRef.current?.focus();
+    }, 0);
   }, []);
 
   return (
@@ -210,6 +218,7 @@ function IssueCommentsSectionContent() {
       onToggleReaction={handleToggleReaction}
       onReply={handleReply}
       isLoading={issueContext.isLoading}
+      commentEditorRef={commentEditorRef}
     />
   );
 }
