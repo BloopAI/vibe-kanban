@@ -18,16 +18,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+import { Label as FormLabel } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Trash2, Settings2 } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 import { projectsApi } from '@/lib/api';
 import { repoBranchKeys } from '@/hooks/useRepoBranches';
-import type { Project, Repo, UpdateProject } from 'shared/types';
+import type { Project, Repo, UpdateProject, Label as TaskLabel } from 'shared/types';
+import { useAutoReviewSettings } from '@/hooks/useAutoReviewSettings';
+import { AutoReviewSettingsDialog } from '@/components/dialogs/tasks/AutoReviewSettingsDialog';
+import { useProjectLabels, useCreateLabel, useDeleteLabel, useUpdateLabel } from '@/hooks/useLabels';
+import { useUserSystem } from '@/components/ConfigProvider';
 
 interface ProjectFormState {
   name: string;
@@ -71,6 +75,38 @@ export function ProjectSettings() {
   const [repoError, setRepoError] = useState<string | null>(null);
   const [addingRepo, setAddingRepo] = useState(false);
   const [deletingRepoId, setDeletingRepoId] = useState<string | null>(null);
+
+
+  // Auto-review settings
+  const { settings: autoReviewSettings, updateSettings } = useAutoReviewSettings(
+    selectedProjectId || undefined
+  );
+
+  // Labels state
+  const { data: labels = [], isLoading: labelsLoading } = useProjectLabels(selectedProjectId || undefined);
+  const createLabel = useCreateLabel(selectedProjectId || undefined);
+  const deleteLabel = useDeleteLabel(selectedProjectId || undefined);
+  const updateLabel = useUpdateLabel(selectedProjectId || undefined);
+  const [newLabelName, setNewLabelName] = useState('');
+  const [newLabelColor, setNewLabelColor] = useState('#3b82f6');
+  const [newLabelExecutor, setNewLabelExecutor] = useState<string | null>(null);
+  const [isAddingLabel, setIsAddingLabel] = useState(false);
+
+  // Get available executors
+  const { profiles } = useUserSystem();
+  const executorOptions = useMemo(() => {
+    if (!profiles) return [];
+    return Object.keys(profiles);
+  }, [profiles]);
+
+  const handleOpenAutoReviewSettings = () => {
+    if (!selectedProjectId) return;
+    AutoReviewSettingsDialog.show({
+      projectId: selectedProjectId,
+      currentSettings: autoReviewSettings,
+      onSave: updateSettings,
+    });
+  };
 
   // Check for unsaved changes (project name)
   const hasUnsavedChanges = useMemo(() => {
@@ -292,7 +328,8 @@ export function ProjectSettings() {
     try {
       const updateData: UpdateProject = {
         name: draft.name.trim(),
-        pm_task_id: selectedProject.pm_task_id ?? null,
+        pm_task_id: null, // Deprecated - PM is now native to project
+        pm_docs: null, // Keep existing pm_docs unchanged
       };
 
       updateProject.mutate({
@@ -304,6 +341,43 @@ export function ProjectSettings() {
       console.error('Error saving project settings:', err);
       setSaving(false);
     }
+  };
+
+  // Label handlers
+  const handleAddLabel = async () => {
+    if (!newLabelName.trim()) return;
+    setIsAddingLabel(true);
+    try {
+      await createLabel.mutateAsync({
+        name: newLabelName.trim(),
+        color: newLabelColor,
+        executor: newLabelExecutor,
+      });
+      setNewLabelName('');
+      setNewLabelColor('#3b82f6');
+      setNewLabelExecutor(null);
+    } finally {
+      setIsAddingLabel(false);
+    }
+  };
+
+  const handleDeleteLabel = async (labelId: string) => {
+    if (window.confirm(t('settings.projects.labels.deleteConfirm', 'Are you sure you want to delete this label?'))) {
+      await deleteLabel.mutateAsync(labelId);
+    }
+  };
+
+  const handleUpdateLabelExecutor = async (labelId: string, executor: string | null) => {
+    const label = labels.find((l: TaskLabel) => l.id === labelId);
+    if (!label) return;
+    await updateLabel.mutateAsync({
+      labelId,
+      data: {
+        name: label.name,
+        color: label.color,
+        executor,
+      },
+    });
   };
 
   const handleDiscard = () => {
@@ -366,9 +440,9 @@ export function ProjectSettings() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="project-selector">
+            <FormLabel htmlFor="project-selector">
               {t('settings.projects.selector.label')}
-            </Label>
+            </FormLabel>
             <Select
               value={selectedProjectId}
               onValueChange={handleProjectSelect}
@@ -410,9 +484,9 @@ export function ProjectSettings() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="project-name">
+                <FormLabel htmlFor="project-name">
                   {t('settings.projects.general.name.label')}
-                </Label>
+                </FormLabel>
                 <Input
                   id="project-name"
                   type="text"
@@ -458,6 +532,127 @@ export function ProjectSettings() {
                   </Button>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Labels Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('settings.projects.labels.title', 'Labels')}</CardTitle>
+              <CardDescription>
+                {t('settings.projects.labels.description', 'Create and manage labels to categorize tasks.')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {labelsLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    {t('settings.projects.labels.loading', 'Loading labels...')}
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {labels.map((label: TaskLabel) => (
+                    <div
+                      key={label.id}
+                      className="flex items-center justify-between p-3 border rounded-md hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-4 h-4 rounded"
+                          style={{ backgroundColor: label.color }}
+                        />
+                        <span className="font-medium">{label.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={label.executor || '_none'}
+                          onValueChange={(value) =>
+                            handleUpdateLabelExecutor(label.id, value === '_none' ? null : value)
+                          }
+                        >
+                          <SelectTrigger className="w-[140px] h-8 text-xs">
+                            <SelectValue placeholder={t('settings.projects.labels.selectExecutor', 'Default Agent')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_none">
+                              <span className="text-muted-foreground">{t('settings.projects.labels.noDefaultAgent', 'None')}</span>
+                            </SelectItem>
+                            {executorOptions.map((executor) => (
+                              <SelectItem key={executor} value={executor}>
+                                {executor.replace(/_/g, ' ')}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteLabel(label.id)}
+                          title="Delete label"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {labels.length === 0 && (
+                    <div className="text-center py-4 text-sm text-muted-foreground">
+                      {t('settings.projects.labels.noLabels', 'No labels configured')}
+                    </div>
+                  )}
+
+                  {/* Add new label */}
+                  <div className="flex flex-wrap items-center gap-2 p-3 border border-dashed rounded-md">
+                    <input
+                      type="color"
+                      value={newLabelColor}
+                      onChange={(e) => setNewLabelColor(e.target.value)}
+                      className="w-8 h-8 rounded border cursor-pointer"
+                    />
+                    <Input
+                      type="text"
+                      value={newLabelName}
+                      onChange={(e) => setNewLabelName(e.target.value)}
+                      placeholder={t('settings.projects.labels.namePlaceholder', 'Label name')}
+                      className="flex-1 min-w-[120px]"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddLabel()}
+                    />
+                    <Select
+                      value={newLabelExecutor || '_none'}
+                      onValueChange={(value) => setNewLabelExecutor(value === '_none' ? null : value)}
+                    >
+                      <SelectTrigger className="w-[140px] h-9">
+                        <SelectValue placeholder={t('settings.projects.labels.selectExecutor', 'Default Agent')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">
+                          <span className="text-muted-foreground">{t('settings.projects.labels.noDefaultAgent', 'None')}</span>
+                        </SelectItem>
+                        {executorOptions.map((executor) => (
+                          <SelectItem key={executor} value={executor}>
+                            {executor.replace(/_/g, ' ')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      onClick={handleAddLabel}
+                      disabled={!newLabelName.trim() || isAddingLabel}
+                      size="sm"
+                    >
+                      {isAddingLabel ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                      <span className="ml-1">{t('settings.projects.labels.add', 'Add')}</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -540,6 +735,39 @@ export function ProjectSettings() {
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Auto-Review Settings Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Auto-Review</CardTitle>
+              <CardDescription>
+                Configure automated code reviews for this project
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-3 border rounded-md">
+                <div className="space-y-1">
+                  <div className="font-medium">
+                    Auto-Review Configuration
+                    {autoReviewSettings.enabled && (
+                      <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                        Enabled
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {autoReviewSettings.enabled
+                      ? 'Automated reviews are enabled for this project.'
+                      : 'Automated reviews are currently disabled.'}
+                  </div>
+                </div>
+                <Button variant="outline" onClick={handleOpenAutoReviewSettings}>
+                  <Settings2 className="h-4 w-4 mr-2" />
+                  Configure
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

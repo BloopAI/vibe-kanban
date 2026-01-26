@@ -2,13 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { isEqual } from 'lodash';
-import { SpinnerIcon, PlusIcon, TrashIcon, ClipboardTextIcon } from '@phosphor-icons/react';
+import { SpinnerIcon, PlusIcon, TrashIcon, GearIcon } from '@phosphor-icons/react';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
-import { projectsApi, tasksApi } from '@/lib/api';
+import { projectsApi } from '@/lib/api';
 import { repoBranchKeys } from '@/hooks/useRepoBranches';
-import type { Project, Repo, UpdateProject, TaskWithAttemptStatus } from 'shared/types';
+import { useAutoReviewSettings } from '@/hooks/useAutoReviewSettings';
+import { AutoReviewSettingsDialog } from '@/components/dialogs/tasks/AutoReviewSettingsDialog';
+import { useProjectLabels, useCreateLabel, useDeleteLabel } from '@/hooks/useLabels';
+import type { Project, Repo, UpdateProject, Label } from 'shared/types';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -27,13 +30,11 @@ import {
 
 interface ProjectFormState {
   name: string;
-  pm_task_id: string | null;
 }
 
 function projectToFormState(project: Project): ProjectFormState {
   return {
     name: project.name,
-    pm_task_id: project.pm_task_id ?? null,
   };
 }
 
@@ -65,9 +66,17 @@ export function ProjectsSettingsSection() {
   const [addingRepo, setAddingRepo] = useState(false);
   const [deletingRepoId, setDeletingRepoId] = useState<string | null>(null);
 
-  // Tasks state (for PM task selection)
-  const [tasks, setTasks] = useState<TaskWithAttemptStatus[]>([]);
-  const [loadingTasks, setLoadingTasks] = useState(false);
+
+  // Auto-review settings
+  const { settings: autoReviewSettings, updateSettings: updateAutoReviewSettings } = useAutoReviewSettings(selectedProjectId || undefined);
+
+  // Labels state
+  const { data: labels = [], isLoading: labelsLoading } = useProjectLabels(selectedProjectId || undefined);
+  const createLabel = useCreateLabel(selectedProjectId || undefined);
+  const deleteLabel = useDeleteLabel(selectedProjectId || undefined);
+  const [newLabelName, setNewLabelName] = useState('');
+  const [newLabelColor, setNewLabelColor] = useState('#3b82f6');
+  const [isAddingLabel, setIsAddingLabel] = useState(false);
 
   // Check for unsaved changes
   const hasUnsavedChanges = useMemo(() => {
@@ -138,21 +147,6 @@ export function ProjectsSettingsSection() {
         setRepositories([]);
       })
       .finally(() => setLoadingRepos(false));
-  }, [selectedProjectId]);
-
-  // Fetch tasks when project changes (for PM task selection)
-  useEffect(() => {
-    if (!selectedProjectId) {
-      setTasks([]);
-      return;
-    }
-
-    setLoadingTasks(true);
-    tasksApi
-      .list(selectedProjectId)
-      .then(setTasks)
-      .catch(() => setTasks([]))
-      .finally(() => setLoadingTasks(false));
   }, [selectedProjectId]);
 
   const handleAddRepository = async () => {
@@ -247,7 +241,8 @@ export function ProjectsSettingsSection() {
     try {
       const updateData: UpdateProject = {
         name: draft.name.trim(),
-        pm_task_id: draft.pm_task_id,
+        pm_task_id: null, // Deprecated - PM is now native to project
+        pm_docs: null, // Keep existing pm_docs unchanged
       };
 
       updateProject.mutate({
@@ -264,6 +259,39 @@ export function ProjectsSettingsSection() {
   const handleDiscard = () => {
     if (!selectedProject) return;
     setDraft(projectToFormState(selectedProject));
+  };
+
+  // Auto-Review settings handler
+  const handleOpenAutoReviewSettings = () => {
+    if (!selectedProjectId) return;
+    AutoReviewSettingsDialog.show({
+      projectId: selectedProjectId,
+      currentSettings: autoReviewSettings,
+      onSave: updateAutoReviewSettings,
+    });
+  };
+
+  // Label handlers
+  const handleAddLabel = async () => {
+    if (!newLabelName.trim()) return;
+    setIsAddingLabel(true);
+    try {
+      await createLabel.mutateAsync({
+        name: newLabelName.trim(),
+        color: newLabelColor,
+        executor: null,
+      });
+      setNewLabelName('');
+      setNewLabelColor('#3b82f6');
+    } finally {
+      setIsAddingLabel(false);
+    }
+  };
+
+  const handleDeleteLabel = async (labelId: string) => {
+    if (window.confirm(t('settings.projects.labels.deleteConfirm'))) {
+      await deleteLabel.mutateAsync(labelId);
+    }
   };
 
   const updateDraft = (updates: Partial<ProjectFormState>) => {
@@ -373,63 +401,6 @@ export function ProjectsSettingsSection() {
             </SettingsField>
           </SettingsCard>
 
-          {/* PM Task Settings */}
-          <SettingsCard
-            title={t('settings.projects.pmTask.title')}
-            description={t('settings.projects.pmTask.description')}
-          >
-            <SettingsField
-              label={t('settings.projects.pmTask.selector.label')}
-              description={t('settings.projects.pmTask.selector.helper')}
-            >
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <DropdownMenuTriggerButton
-                    label={
-                      loadingTasks
-                        ? t('settings.projects.pmTask.loading')
-                        : draft.pm_task_id
-                          ? tasks.find((t) => t.id === draft.pm_task_id)
-                              ?.title || t('settings.projects.pmTask.selector.placeholder')
-                          : t('settings.projects.pmTask.selector.placeholder')
-                    }
-                    className="w-full justify-between"
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-60 overflow-auto">
-                  <DropdownMenuItem
-                    onClick={() => updateDraft({ pm_task_id: null })}
-                  >
-                    <span className="text-low">
-                      {t('settings.projects.pmTask.selector.none')}
-                    </span>
-                  </DropdownMenuItem>
-                  {tasks.length > 0 ? (
-                    tasks.map((task) => (
-                      <DropdownMenuItem
-                        key={task.id}
-                        onClick={() => updateDraft({ pm_task_id: task.id })}
-                      >
-                        <div className="flex items-center gap-2">
-                          {draft.pm_task_id === task.id && (
-                            <ClipboardTextIcon className="size-icon-sm text-brand" weight="fill" />
-                          )}
-                          <span className={cn(draft.pm_task_id === task.id && 'font-medium')}>
-                            {task.title}
-                          </span>
-                        </div>
-                      </DropdownMenuItem>
-                    ))
-                  ) : (
-                    <DropdownMenuItem disabled>
-                      {t('settings.projects.pmTask.selector.noTasks')}
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </SettingsField>
-          </SettingsCard>
-
           {/* Repositories */}
           <SettingsCard
             title={t('settings.projects.repositories.title')}
@@ -497,6 +468,112 @@ export function ProjectsSettingsSection() {
                   )}
                   {t('settings.projects.repositories.addRepository')}
                 </button>
+              </div>
+            )}
+          </SettingsCard>
+
+          {/* Auto-Review Settings */}
+          <SettingsCard
+            title={t('settings.projects.autoReview.title')}
+            description={t('settings.projects.autoReview.description')}
+          >
+            <div className="flex items-center justify-between p-3 border border-border/50 rounded-sm">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  'w-2 h-2 rounded-full',
+                  autoReviewSettings.enabled ? 'bg-success' : 'bg-low'
+                )} />
+                <span className="text-sm text-normal">
+                  {autoReviewSettings.enabled
+                    ? t('settings.projects.autoReview.enabled')
+                    : t('settings.projects.autoReview.disabled')
+                  }
+                </span>
+              </div>
+              <button
+                onClick={handleOpenAutoReviewSettings}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-normal bg-secondary hover:bg-secondary/80 rounded-sm transition-colors"
+              >
+                <GearIcon className="size-icon-sm" />
+                {t('settings.projects.autoReview.configure')}
+              </button>
+            </div>
+          </SettingsCard>
+
+          {/* Labels Management */}
+          <SettingsCard
+            title={t('settings.projects.labels.title')}
+            description={t('settings.projects.labels.description')}
+          >
+            {labelsLoading ? (
+              <div className="flex items-center justify-center py-4 gap-2">
+                <SpinnerIcon className="size-icon-sm animate-spin" />
+                <span className="text-sm text-low">
+                  {t('settings.projects.labels.loading')}
+                </span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {labels.map((label: Label) => (
+                  <div
+                    key={label.id}
+                    className="flex items-center justify-between p-3 border border-border/50 rounded-sm hover:bg-secondary/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-4 h-4 rounded-sm"
+                        style={{ backgroundColor: label.color }}
+                      />
+                      <span className="text-normal">{label.name}</span>
+                    </div>
+                    <IconButton
+                      icon={TrashIcon}
+                      onClick={() => handleDeleteLabel(label.id)}
+                      aria-label="Delete label"
+                      title="Delete label"
+                    />
+                  </div>
+                ))}
+
+                {labels.length === 0 && (
+                  <div className="text-center py-4 text-sm text-low">
+                    {t('settings.projects.labels.noLabels')}
+                  </div>
+                )}
+
+                {/* Add new label */}
+                <div className="flex items-center gap-2 p-2 border border-dashed border-border/50 rounded-sm">
+                  <input
+                    type="color"
+                    value={newLabelColor}
+                    onChange={(e) => setNewLabelColor(e.target.value)}
+                    className="w-8 h-8 rounded-sm border border-border/50 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={newLabelName}
+                    onChange={(e) => setNewLabelName(e.target.value)}
+                    placeholder={t('settings.projects.labels.namePlaceholder')}
+                    className="flex-1 px-3 py-1.5 text-sm bg-secondary rounded-sm border border-border/50 text-normal placeholder:text-low focus:outline-none focus:ring-1 focus:ring-brand"
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddLabel()}
+                  />
+                  <button
+                    onClick={handleAddLabel}
+                    disabled={!newLabelName.trim() || isAddingLabel}
+                    className={cn(
+                      'flex items-center gap-1 px-3 py-1.5 text-sm rounded-sm transition-colors',
+                      'bg-brand text-white hover:bg-brand/90',
+                      (!newLabelName.trim() || isAddingLabel) && 'opacity-50 cursor-not-allowed'
+                    )}
+                  >
+                    {isAddingLabel ? (
+                      <SpinnerIcon className="size-icon-sm animate-spin" />
+                    ) : (
+                      <PlusIcon className="size-icon-sm" weight="bold" />
+                    )}
+                    {t('settings.projects.labels.add')}
+                  </button>
+                </div>
               </div>
             )}
           </SettingsCard>

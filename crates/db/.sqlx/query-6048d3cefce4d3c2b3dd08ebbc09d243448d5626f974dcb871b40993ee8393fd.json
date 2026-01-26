@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM pm_conversations WHERE project_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "6048d3cefce4d3c2b3dd08ebbc09d243448d5626f974dcb871b40993ee8393fd"
+}

@@ -172,9 +172,24 @@
     "noAttempts": "No attempts yet"
   },
   "pmDocs": {
-    "title": "PM Docs",
-    "noDescription": "No documentation available",
-    "notFound": "PM task not found"
+    "title": "PM Chat",
+    "chat": "Chat",
+    "docs": "Docs",
+    "noProject": "No project selected",
+    "noMessages": "Start a conversation with the PM",
+    "noDocs": "No documentation generated yet. Chat with the PM to create specs.",
+    "messagePlaceholder": "Type a message...",
+    "clearChat": "Clear chat history",
+    "clearChatTitle": "Clear chat history?",
+    "clearChatDescription": "This will permanently delete all chat messages. This action cannot be undone.",
+    "attachFile": "Attach file",
+    "dropFiles": "Drop files here",
+    "dragDropHint": "or drag & drop files",
+    "uploading": "Uploading",
+    "syncTasks": "Sync tasks & dependencies to docs",
+    "syncSuccess": "Tasks synced to PM docs",
+    "assistant": "Assistant",
+    "aiThinking": "AI is thinking..."
   },
   "autoReviewSettings": {
     "title": "Auto-Review Settings",

@@ -19,7 +19,6 @@ interface TaskKanbanBoardProps {
   selectedTaskId?: string;
   onCreateTask?: () => void;
   projectId: string;
-  pmTaskId?: string | null;
 }
 
 function TaskKanbanBoard({
@@ -29,7 +28,6 @@ function TaskKanbanBoard({
   selectedTaskId,
   onCreateTask,
   projectId,
-  pmTaskId,
 }: TaskKanbanBoardProps) {
   // Flatten all tasks for dependency checking
   const allTasks = useMemo(
@@ -58,7 +56,6 @@ function TaskKanbanBoard({
                   onViewDetails={onViewTaskDetails}
                   isOpen={selectedTaskId === task.id}
                   projectId={projectId}
-                  isPmTask={pmTaskId === task.id}
                   allTasks={allTasks}
                 />
               ))}

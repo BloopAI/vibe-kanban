@@ -52,6 +52,7 @@ use utils::{
 use uuid::Uuid;
 
 use crate::services::{
+    docs_scanner::get_docs_context_for_workspace,
     git::{GitService, GitServiceError},
     notification::NotificationService,
     workspace_manager::WorkspaceError as WorkspaceManagerError,
@@ -927,7 +928,18 @@ pub trait ContainerService {
         )
         .await?;
 
-        let prompt = task.to_prompt();
+        // Build prompt with docs context if available
+        let task_prompt = task.to_prompt();
+        let prompt = if let Some(container_ref) = &workspace.container_ref {
+            let workspace_path = PathBuf::from(container_ref);
+            if let Some(docs_context) = get_docs_context_for_workspace(&workspace_path).await {
+                format!("{}\n\n# Task\n\n{}", docs_context, task_prompt)
+            } else {
+                task_prompt
+            }
+        } else {
+            task_prompt
+        };
 
         let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 

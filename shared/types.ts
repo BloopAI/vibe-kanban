@@ -7,16 +7,26 @@
 export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, 
 /**
  * The PM task for this project - contains project specs and serves as PM AI context
+ * @deprecated Use pm_docs instead - kept for backward compatibility
  */
-pm_task_id: string | null, created_at: Date, updated_at: Date, };
+pm_task_id: string | null, 
+/**
+ * PM documentation/specifications in Markdown format, generated from PM chat
+ */
+pm_docs: string | null, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
 export type UpdateProject = { name: string | null, 
 /**
  * Set the PM task for this project
+ * @deprecated Use pm_docs instead
  */
-pm_task_id: string | null, };
+pm_task_id: string | null, 
+/**
+ * PM documentation/specifications in Markdown format
+ */
+pm_docs: string | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, 
 /**
@@ -71,6 +81,22 @@ export type TaskLabel = { task_id: string, label_id: string, created_at: string,
 export type TaskDependency = { task_id: string, depends_on_task_id: string, created_at: string, };
 
 export type CreateTaskDependency = { task_id: string, depends_on_task_id: string, };
+
+export type PmConversation = { id: string, project_id: string, role: string, content: string, model: string | null, created_at: Date, updated_at: Date, };
+
+export type PmAttachment = { id: string, conversation_id: string, project_id: string, file_name: string, file_path: string, mime_type: string, file_size: bigint, sha256: string | null, created_at: Date, };
+
+export type PmMessageRole = "user" | "assistant" | "system";
+
+export type CreatePmConversation = { project_id: string, role: PmMessageRole, content: string, model: string | null, };
+
+export type CreatePmAttachment = { conversation_id: string, project_id: string, file_name: string, file_path: string, mime_type: string, file_size: bigint, sha256: string | null, };
+
+export type SendMessageRequest = { content: string, role: string | null, };
+
+export type PmChatResponse = { messages: Array<PmConversation>, pm_docs: string | null, };
+
+export type UpdatePmDocsRequest = { pm_docs: string | null, };
 
 export type DraftFollowUpData = { message: string, executor_profile_id: ExecutorProfileId, };
 

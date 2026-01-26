@@ -18,6 +18,7 @@ pub mod health;
 pub mod images;
 pub mod labels;
 pub mod oauth;
+pub mod pm_chat;
 pub mod organizations;
 pub mod projects;
 pub mod repo;

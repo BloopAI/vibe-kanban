@@ -199,7 +199,7 @@
         }
       },
       "taskTemplates": {
-        "title": "Tags",
+        "title": "Tags & Labels",
         "description": "Create reusable text snippets that can be inserted into task descriptions using @tag_name."
       },
       "tags": {
@@ -400,17 +400,23 @@
         "noRepositories": "No repositories configured",
         "addRepository": "Add Repository"
       },
-      "pmTask": {
-        "title": "PM Task",
-        "description": "Designate a task as the Project Manager (PM) task. The PM task contains project specifications that AI agents can reference.",
-        "loading": "Loading tasks...",
-        "selector": {
-          "label": "PM Task",
-          "helper": "Select a task to serve as the project specification document. AI agents can access its description via the get_pm_context tool.",
-          "placeholder": "Select a PM task",
-          "none": "None (no PM task)",
-          "noTasks": "No tasks available"
-        }
+      "autoReview": {
+        "title": "Auto-Review",
+        "description": "Configure automatic AI review when tasks move to the In Review column.",
+        "enabled": "Auto-review is enabled",
+        "disabled": "Auto-review is disabled",
+        "configure": "Configure"
+      },
+      "labels": {
+        "title": "Labels",
+        "description": "Create and manage labels to categorize tasks. Set a default agent for each label to auto-select it when creating tasks with that label.",
+        "loading": "Loading labels...",
+        "noLabels": "No labels yet. Create labels to organize your tasks.",
+        "namePlaceholder": "Label name",
+        "add": "Add",
+        "deleteConfirm": "Are you sure you want to delete this label?",
+        "selectExecutor": "Default Agent",
+        "noDefaultAgent": "None"
       }
     },
     "repos": {

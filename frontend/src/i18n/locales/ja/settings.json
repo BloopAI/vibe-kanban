@@ -399,6 +399,24 @@
         "description": "このプロジェクトのGitリポジトリを管理",
         "noRepositories": "リポジトリが設定されていません",
         "addRepository": "リポジトリを追加"
+      },
+      "autoReview": {
+        "title": "自動レビュー",
+        "description": "タスクがレビュー中カラムに移動したときの自動AIレビューを設定します。",
+        "enabled": "自動レビューが有効です",
+        "disabled": "自動レビューが無効です",
+        "configure": "設定"
+      },
+      "labels": {
+        "title": "ラベル",
+        "description": "タスクを分類するためのラベルを作成・管理します。ラベルにデフォルトエージェントを設定すると、そのラベルが付いたタスクで自動的にエージェントが選択されます。",
+        "loading": "ラベルを読み込み中...",
+        "noLabels": "ラベルがまだありません。タスクを整理するためのラベルを作成してください。",
+        "namePlaceholder": "ラベル名",
+        "add": "追加",
+        "deleteConfirm": "このラベルを削除してもよろしいですか？",
+        "selectExecutor": "デフォルトエージェント",
+        "noDefaultAgent": "なし"
       }
     },
     "repos": {

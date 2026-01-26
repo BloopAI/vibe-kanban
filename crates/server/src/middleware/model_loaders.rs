@@ -9,16 +9,25 @@ use db::models::{
     tag::Tag, task::Task, workspace::Workspace,
 };
 use deployment::Deployment;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::DeploymentImpl;
 
 pub async fn load_project_middleware(
     State(deployment): State<DeploymentImpl>,
-    Path(project_id): Path<Uuid>,
+    Path(params): Path<HashMap<String, String>>,
     request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
+    // Extract project_id from path params - it's named 'id' in the route
+    let project_id = params.get("id")
+        .and_then(|s| s.parse::<Uuid>().ok())
+        .ok_or_else(|| {
+            tracing::warn!("Project ID not found in path parameters");
+            StatusCode::BAD_REQUEST
+        })?;
+
     // Load the project from the database
     let project = match Project::find_by_id(&deployment.db().pool, project_id).await {
         Ok(Some(project)) => project,
@@ -172,10 +181,18 @@ pub async fn load_session_middleware(
 
 pub async fn load_label_middleware(
     State(deployment): State<DeploymentImpl>,
-    Path(label_id): Path<Uuid>,
+    Path(params): Path<HashMap<String, String>>,
     mut request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
+    // Extract label_id from path params
+    let label_id = params.get("label_id")
+        .and_then(|s| s.parse::<Uuid>().ok())
+        .ok_or_else(|| {
+            tracing::warn!("Label ID not found in path parameters");
+            StatusCode::BAD_REQUEST
+        })?;
+
     let label = match Label::find_by_id(&deployment.db().pool, label_id).await {
         Ok(Some(label)) => label,
         Ok(None) => {

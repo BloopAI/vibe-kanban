@@ -533,9 +533,24 @@
     }
   },
   "pmDocs": {
-    "title": "PMドキュメント",
-    "noDescription": "ドキュメントがありません",
-    "notFound": "PMタスクが見つかりません"
+    "title": "PMチャット",
+    "chat": "チャット",
+    "docs": "ドキュメント",
+    "noProject": "プロジェクトが選択されていません",
+    "noMessages": "PMとの会話を始めましょう",
+    "noDocs": "ドキュメントはまだありません。PMとチャットして仕様を作成してください。",
+    "messagePlaceholder": "メッセージを入力...",
+    "clearChat": "チャット履歴をクリア",
+    "clearChatTitle": "チャット履歴をクリアしますか？",
+    "clearChatDescription": "すべてのチャットメッセージが完全に削除されます。この操作は取り消せません。",
+    "attachFile": "ファイルを添付",
+    "dropFiles": "ファイルをここにドロップ",
+    "dragDropHint": "またはドラッグ＆ドロップ",
+    "uploading": "アップロード中",
+    "syncTasks": "タスクと依存関係をドキュメントに同期",
+    "syncSuccess": "タスク情報をPMドキュメントに同期しました",
+    "assistant": "アシスタント",
+    "aiThinking": "AIが考えています..."
   },
   "autoReviewSettings": {
     "title": "自動レビュー設定",

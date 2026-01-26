@@ -24,7 +24,10 @@ pub struct Project {
     pub default_agent_working_dir: Option<String>,
     pub remote_project_id: Option<Uuid>,
     /// The PM task for this project - contains project specs and serves as PM AI context
+    /// @deprecated Use pm_docs instead - kept for backward compatibility
     pub pm_task_id: Option<Uuid>,
+    /// PM documentation/specifications in Markdown format, generated from PM chat
+    pub pm_docs: Option<String>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -41,7 +44,10 @@ pub struct CreateProject {
 pub struct UpdateProject {
     pub name: Option<String>,
     /// Set the PM task for this project
+    /// @deprecated Use pm_docs instead
     pub pm_task_id: Option<Uuid>,
+    /// PM documentation/specifications in Markdown format
+    pub pm_docs: Option<String>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -76,6 +82,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       pm_task_id as "pm_task_id: Uuid",
+                      pm_docs,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -94,6 +101,7 @@ impl Project {
                    p.default_agent_working_dir,
                    p.remote_project_id as "remote_project_id: Uuid",
                    p.pm_task_id as "pm_task_id: Uuid",
+                   p.pm_docs,
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -118,6 +126,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       pm_task_id as "pm_task_id: Uuid",
+                      pm_docs,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -136,6 +145,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       pm_task_id as "pm_task_id: Uuid",
+                      pm_docs,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -157,6 +167,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       pm_task_id as "pm_task_id: Uuid",
+                      pm_docs,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -186,6 +197,7 @@ impl Project {
                           default_agent_working_dir,
                           remote_project_id as "remote_project_id: Uuid",
                           pm_task_id as "pm_task_id: Uuid",
+                          pm_docs,
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
@@ -211,22 +223,30 @@ impl Project {
         } else {
             existing.pm_task_id
         };
+        // If pm_docs is provided in payload, use it; otherwise keep existing
+        let pm_docs = if payload.pm_docs.is_some() {
+            payload.pm_docs.clone()
+        } else {
+            existing.pm_docs
+        };
 
         sqlx::query_as!(
             Project,
             r#"UPDATE projects
-               SET name = $2, pm_task_id = $3
+               SET name = $2, pm_task_id = $3, pm_docs = $4
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
                          default_agent_working_dir,
                          remote_project_id as "remote_project_id: Uuid",
                          pm_task_id as "pm_task_id: Uuid",
+                         pm_docs,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             name,
             pm_task_id,
+            pm_docs,
         )
         .fetch_one(pool)
         .await

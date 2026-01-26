@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                conversation_id as \"conversation_id!: Uuid\",\n                project_id as \"project_id!: Uuid\",\n                file_name,\n                file_path,\n                mime_type,\n                file_size,\n                sha256,\n                created_at as \"created_at!: DateTime<Utc>\"\n            FROM pm_attachments\n            WHERE conversation_id = $1\n            ORDER BY created_at ASC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "conversation_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_name",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_path",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "mime_type",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_size",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "sha256",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "eb93e75fa6594ea20d584cbc3b0b581b4cebd855d4809ec0bdf75c5ac3ddfd91"
+}

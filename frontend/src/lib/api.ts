@@ -92,6 +92,11 @@ import {
   Workspace,
   StartReviewRequest,
   ReviewError,
+  PmChatResponse,
+  PmConversation,
+  SendMessageRequest,
+  UpdatePmDocsRequest,
+  PmAttachment,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -414,6 +419,235 @@ export const labelsApi = {
   getTaskLabels: async (taskId: string): Promise<Label[]> => {
     const response = await makeRequest(`/api/tasks/${taskId}/labels`);
     return handleApiResponse<Label[]>(response);
+  },
+};
+
+// PM Chat API (nested under projects)
+export const pmChatApi = {
+  // Get all PM chat messages and pm_docs for a project
+  getChat: async (projectId: string): Promise<PmChatResponse> => {
+    const response = await makeRequest(`/api/projects/${projectId}/pm-chat`);
+    return handleApiResponse<PmChatResponse>(response);
+  },
+
+  // Send a new message
+  sendMessage: async (
+    projectId: string,
+    data: SendMessageRequest
+  ): Promise<PmConversation> => {
+    const response = await makeRequest(`/api/projects/${projectId}/pm-chat`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<PmConversation>(response);
+  },
+
+  // Clear all messages
+  clearChat: async (projectId: string): Promise<void> => {
+    const response = await makeRequest(`/api/projects/${projectId}/pm-chat`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  // Delete a specific message
+  deleteMessage: async (
+    projectId: string,
+    messageId: string
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/pm-chat/messages/${messageId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
+  // Get PM docs
+  getPmDocs: async (projectId: string): Promise<string | null> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/pm-chat/docs`
+    );
+    return handleApiResponse<string | null>(response);
+  },
+
+  // Update PM docs
+  updatePmDocs: async (
+    projectId: string,
+    data: UpdatePmDocsRequest
+  ): Promise<Project> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/pm-chat/docs`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<Project>(response);
+  },
+
+  // Get attachments
+  getAttachments: async (projectId: string): Promise<PmAttachment[]> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/pm-chat/attachments`
+    );
+    return handleApiResponse<PmAttachment[]>(response);
+  },
+
+  // Upload an attachment
+  uploadAttachment: async (projectId: string, file: File): Promise<PmAttachment> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Note: Don't use makeRequest here as it sets Content-Type to application/json
+    // For multipart/form-data, browser must set the content-type with boundary
+    const response = await fetch(`/api/projects/${projectId}/pm-chat/attachments`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Upload failed' }));
+      throw new Error(error.message || 'Failed to upload attachment');
+    }
+
+    const result = await response.json();
+    return result.data;
+  },
+
+  // Delete an attachment
+  deleteAttachment: async (projectId: string, attachmentId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/pm-chat/attachments/${attachmentId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
+  // Get attachment file URL
+  getAttachmentUrl: (projectId: string, attachmentId: string): string => {
+    return `/api/projects/${projectId}/pm-chat/attachments/${attachmentId}/file`;
+  },
+
+  // Get task summary with dependencies
+  getTaskSummary: async (
+    projectId: string
+  ): Promise<{
+    tasks: Array<{
+      id: string;
+      title: string;
+      description: string | null;
+      status: string;
+      priority: string;
+      depends_on: string[];
+      depended_by: string[];
+    }>;
+    summary_text: string;
+  }> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/pm-chat/task-summary`
+    );
+    return handleApiResponse(response);
+  },
+
+  // Sync task summary to PM docs
+  syncTaskSummary: async (projectId: string): Promise<Project> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/pm-chat/task-summary`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<Project>(response);
+  },
+
+  // AI Chat - sends message and streams AI response
+  aiChat: (
+    projectId: string,
+    content: string,
+    model?: string,
+    onContent: (content: string) => void = () => {},
+    onDone: () => void = () => {},
+    onError: (error: string) => void = () => {}
+  ): { abort: () => void } => {
+    const abortController = new AbortController();
+
+    const fetchStream = async () => {
+      try {
+        const response = await fetch(`/api/projects/${projectId}/pm-chat/ai-chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ content, model }),
+          signal: abortController.signal,
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ message: 'AI chat failed' }));
+          onError(error.message || 'Failed to get AI response');
+          return;
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          onError('Failed to get response stream');
+          return;
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') {
+                onDone();
+                return;
+              }
+              try {
+                const event = JSON.parse(data);
+                if (event.type === 'content' && event.content) {
+                  onContent(event.content);
+                } else if (event.type === 'done') {
+                  onDone();
+                  return;
+                } else if (event.type === 'error') {
+                  onError(event.error || 'Unknown error');
+                  return;
+                }
+              } catch {
+                // Skip invalid JSON
+              }
+            }
+          }
+        }
+
+        onDone();
+      } catch (error) {
+        if ((error as Error).name === 'AbortError') {
+          return;
+        }
+        onError((error as Error).message || 'AI chat failed');
+      }
+    };
+
+    fetchStream();
+
+    return {
+      abort: () => abortController.abort(),
+    };
   },
 };
 

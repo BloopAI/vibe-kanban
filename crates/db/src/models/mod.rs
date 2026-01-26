@@ -5,6 +5,7 @@ pub mod execution_process_repo_state;
 pub mod image;
 pub mod label;
 pub mod merge;
+pub mod pm_conversation;
 pub mod project;
 pub mod project_repo;
 pub mod repo;

@@ -742,7 +742,7 @@ export function ProjectTasks() {
         // Build the review prompt
         const promptParts: string[] = [];
 
-        if (autoReviewSettings.includePmReview && project?.pm_task_id) {
+        if (autoReviewSettings.includePmReview && project?.pm_docs) {
           promptParts.push(
             'Please review this task against the project specifications and requirements defined in the PM docs.'
           );
@@ -774,7 +774,7 @@ export function ProjectTasks() {
         console.error('Failed to start auto-review:', err);
       }
     },
-    [autoReviewSettings, project?.pm_task_id]
+    [autoReviewSettings, project?.pm_docs]
   );
 
   const handleDragEnd = useCallback(
@@ -903,67 +903,74 @@ export function ProjectTasks() {
       : `${truncated}...`;
   };
 
-  const kanbanContent =
-    tasks.length === 0 ? (
-      <div className="max-w-7xl mx-auto mt-8">
-        <Card>
-          <CardContent className="text-center py-8">
-            <p className="text-muted-foreground">{t('empty.noTasks')}</p>
-            <Button className="mt-4" onClick={handleCreateNewTask}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t('empty.createFirst')}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    ) : !hasVisibleTasks ? (
-      <div className="max-w-7xl mx-auto mt-8">
-        <Card>
-          <CardContent className="text-center py-8">
-            <p className="text-muted-foreground">
-              {t('empty.noSearchResults')}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    ) : (
-      <div className="w-full h-full flex overflow-hidden">
-        {/* PM Docs Sidebar */}
-        <PmDocsPanel pmTaskId={project?.pm_task_id} projectId={projectId} />
-
-        {/* Main Kanban Area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Project Progress Bar */}
-          {projectProgress.total > 0 && (
-            <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/30">
-              <span className="text-sm text-muted-foreground whitespace-nowrap">
-                {t('progress', { done: projectProgress.done, total: projectProgress.total })}
-              </span>
-              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden max-w-xs">
-                <div
-                  className="h-full bg-primary transition-all duration-300"
-                  style={{ width: `${projectProgress.percent}%` }}
-                />
-              </div>
-              <span className="text-sm font-medium text-muted-foreground">
-                {projectProgress.percent}%
-              </span>
-            </div>
-          )}
-          <div className="flex-1 overflow-x-auto overflow-y-auto overscroll-x-contain">
-            <TaskKanbanBoard
-              columns={kanbanColumns}
-              onDragEnd={handleDragEnd}
-              onViewTaskDetails={handleViewTaskDetails}
-              selectedTaskId={selectedTask?.id}
-              onCreateTask={handleCreateNewTask}
-              projectId={projectId!}
-              pmTaskId={project?.pm_task_id}
+  // Main content area - always shows PM Chat sidebar
+  const mainContent = tasks.length === 0 ? (
+    // Empty state - no tasks
+    <div className="flex-1 flex items-center justify-center">
+      <Card className="max-w-md">
+        <CardContent className="text-center py-8">
+          <p className="text-muted-foreground">{t('empty.noTasks')}</p>
+          <Button className="mt-4" onClick={handleCreateNewTask}>
+            <Plus className="h-4 w-4 mr-2" />
+            {t('empty.createFirst')}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  ) : !hasVisibleTasks ? (
+    // No search results
+    <div className="flex-1 flex items-center justify-center">
+      <Card className="max-w-md">
+        <CardContent className="text-center py-8">
+          <p className="text-muted-foreground">
+            {t('empty.noSearchResults')}
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  ) : (
+    // Normal kanban board with progress
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Project Progress Bar */}
+      {projectProgress.total > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/30">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
+            {t('progress', { done: projectProgress.done, total: projectProgress.total })}
+          </span>
+          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden max-w-xs">
+            <div
+              className="h-full bg-primary transition-all duration-300"
+              style={{ width: `${projectProgress.percent}%` }}
             />
           </div>
+          <span className="text-sm font-medium text-muted-foreground">
+            {projectProgress.percent}%
+          </span>
         </div>
+      )}
+      <div className="flex-1 overflow-x-auto overflow-y-auto overscroll-x-contain">
+        <TaskKanbanBoard
+          columns={kanbanColumns}
+          onDragEnd={handleDragEnd}
+          onViewTaskDetails={handleViewTaskDetails}
+          selectedTaskId={selectedTask?.id}
+          onCreateTask={handleCreateNewTask}
+          projectId={projectId!}
+        />
       </div>
-    );
+    </div>
+  );
+
+  // Kanban content always includes PM Chat sidebar
+  const kanbanContent = (
+    <div className="w-full h-full flex overflow-hidden">
+      {/* PM Docs Sidebar - always visible */}
+      <PmDocsPanel projectId={projectId} />
+
+      {/* Main Area */}
+      {mainContent}
+    </div>
+  );
 
   const rightHeader = selectedTask ? (
     <NewCardHeader

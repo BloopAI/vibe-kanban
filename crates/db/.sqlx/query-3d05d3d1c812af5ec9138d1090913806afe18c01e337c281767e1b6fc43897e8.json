@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO pm_attachments (\n                id, conversation_id, project_id, file_name, file_path, mime_type, file_size, sha256\n            ) VALUES (\n                $1, $2, $3, $4, $5, $6, $7, $8\n            )\n            RETURNING\n                id as \"id!: Uuid\",\n                conversation_id as \"conversation_id!: Uuid\",\n                project_id as \"project_id!: Uuid\",\n                file_name,\n                file_path,\n                mime_type,\n                file_size,\n                sha256,\n                created_at as \"created_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "conversation_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_name",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_path",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "mime_type",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_size",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "sha256",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "3d05d3d1c812af5ec9138d1090913806afe18c01e337c281767e1b6fc43897e8"
+}

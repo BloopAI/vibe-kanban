@@ -5,7 +5,6 @@ import {
   Link2,
   Loader2,
   XCircle,
-  ClipboardList,
   AlertTriangle,
   ArrowUp,
   ArrowDown,
@@ -20,7 +19,6 @@ import { paths } from '@/lib/paths';
 import { attemptsApi } from '@/lib/api';
 import { TaskCardHeader } from './TaskCardHeader';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useTaskLabels, useTaskDependencies } from '@/hooks/useLabels';
 import {
@@ -110,7 +108,6 @@ interface TaskCardProps {
   onViewDetails: (task: Task) => void;
   isOpen?: boolean;
   projectId: string;
-  isPmTask?: boolean;
   allTasks?: Task[];
 }
 
@@ -121,7 +118,6 @@ export function TaskCard({
   onViewDetails,
   isOpen,
   projectId,
-  isPmTask,
   allTasks = [],
 }: TaskCardProps) {
   const { t } = useTranslation('tasks');
@@ -233,12 +229,6 @@ export function TaskCard({
                 </TooltipProvider>
               )}
               <PriorityIndicator priority={task.priority} />
-              {isPmTask && (
-                <Badge variant="secondary" className="text-xs px-1.5 py-0 gap-1">
-                  <ClipboardList className="h-3 w-3" />
-                  PM
-                </Badge>
-              )}
               {task.has_in_progress_attempt && (
                 <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
               )}
