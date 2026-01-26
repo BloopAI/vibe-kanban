@@ -32,6 +32,11 @@ export interface ScrollSyncOptions {
   pathToIndex: Map<string, number>;
   /** Function to get file path from virtuoso index */
   indexToPath: (index: number) => string | null;
+  /** Custom function to determine which file is at the top of the visible range */
+  getTopFilePath?: (range: {
+    startIndex: number;
+    endIndex: number;
+  }) => string | null;
 }
 
 export interface ScrollSyncResult {
@@ -75,6 +80,7 @@ export function useScrollSyncStateMachine(
     cooldownDelay = DEFAULT_COOLDOWN_DELAY,
     pathToIndex,
     indexToPath,
+    getTopFilePath,
   } = options;
 
   // Use refs for state to avoid stale closure issues in callbacks
@@ -194,8 +200,10 @@ export function useScrollSyncStateMachine(
         return;
       }
 
-      // Get the file at the start of the visible range
-      const path = indexToPath(range.startIndex);
+      // Use DOM measurement if available, otherwise fall back to index-based
+      const path = getTopFilePath
+        ? getTopFilePath(range)
+        : indexToPath(range.startIndex);
       if (path !== null) {
         setFileInView(path);
       }
@@ -213,7 +221,7 @@ export function useScrollSyncStateMachine(
         }, debounceDelay);
       }
     },
-    [indexToPath, debounceDelay, setFileInView, setState]
+    [getTopFilePath, indexToPath, debounceDelay, setFileInView, setState]
   );
 
   /**

@@ -98,6 +98,32 @@ export function ChangesPanelContainer({
     [diffItems]
   );
 
+  const getTopFilePath = useCallback(
+    (range: { startIndex: number; endIndex: number }): string | null => {
+      let bestPath: string | null = null;
+      let bestDistance = Infinity;
+
+      for (let i = range.startIndex; i <= range.endIndex; i++) {
+        const path = indexToPath(i);
+        if (!path) continue;
+
+        const el = diffRefs.current.get(path);
+        if (!el) continue;
+
+        const rect = el.getBoundingClientRect();
+        const distance = Math.abs(rect.top);
+
+        if (rect.top >= -100 && distance < bestDistance) {
+          bestDistance = distance;
+          bestPath = path;
+        }
+      }
+
+      return bestPath ?? indexToPath(range.startIndex);
+    },
+    [indexToPath]
+  );
+
   const {
     fileInView: stateMachineFileInView,
     scrollToFile: stateMachineScrollToFile,
@@ -106,6 +132,7 @@ export function ChangesPanelContainer({
   } = useScrollSyncStateMachine({
     pathToIndex,
     indexToPath,
+    getTopFilePath,
   });
 
   useEffect(() => {
