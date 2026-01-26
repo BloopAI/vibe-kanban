@@ -342,21 +342,22 @@ export function PierreDiffCard({
     [filePath, drafts, setDraft, t]
   );
 
-  const fileDiffOptions = useMemo(
-    () => ({
-      diffStyle:
-        globalMode === 'split' ? ('split' as const) : ('unified' as const),
-      diffIndicators: 'classic' as const,
-      themeType: actualTheme,
-      overflow: wrapText ? ('wrap' as const) : ('scroll' as const),
-      hunkSeparators: 'line-info' as const,
-      disableFileHeader: true,
-      enableHoverUtility: true,
-      onLineClick: handleLineClick,
-      unsafeCSS: PIERRE_DIFFS_THEME_CSS,
-    }),
-    [globalMode, actualTheme, wrapText, handleLineClick]
-  );
+   const fileDiffOptions = useMemo(
+     () => ({
+       diffStyle:
+         globalMode === 'split' ? ('split' as const) : ('unified' as const),
+       diffIndicators: 'classic' as const,
+       themeType: actualTheme,
+       overflow: wrapText ? ('wrap' as const) : ('scroll' as const),
+       hunkSeparators: 'line-info' as const,
+       disableFileHeader: true,
+       enableHoverUtility: true,
+       onLineClick: handleLineClick,
+       theme: { dark: 'github-dark', light: 'github-light' } as const,
+       unsafeCSS: PIERRE_DIFFS_THEME_CSS,
+     }),
+     [globalMode, actualTheme, wrapText, handleLineClick]
+   );
 
   // Large diff placeholder logic
   const LARGE_DIFF_THRESHOLD = 2000;
