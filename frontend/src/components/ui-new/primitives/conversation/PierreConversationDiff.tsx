@@ -319,12 +319,13 @@ export function DiffViewBody({
       diffIndicators: 'classic' as const,
       themeType: theme,
       overflow: wrapText ? ('wrap' as const) : ('scroll' as const),
-      hunkSeparators: 'line-info' as const,
+      hunkSeparators: () => document.createDocumentFragment(),
       disableFileHeader: true,
+      disableLineNumbers: hideLineNumbers,
       theme: { dark: 'github-dark', light: 'github-light' } as const,
       unsafeCSS: PIERRE_DIFFS_THEME_CSS,
     }),
-    [globalMode, theme, wrapText]
+    [globalMode, theme, wrapText, hideLineNumbers]
   );
 
   if (!isValid) {
@@ -335,24 +336,14 @@ export function DiffViewBody({
     );
   }
 
-  const wrapperClass = hideLineNumbers ? 'edit-diff-hide-nums' : '';
-
   // For content-based diff
   if (fileDiffMetadata) {
-    return (
-      <div className={wrapperClass}>
-        <FileDiff fileDiff={fileDiffMetadata} options={options} />
-      </div>
-    );
+    return <FileDiff fileDiff={fileDiffMetadata} options={options} />;
   }
 
   // For unified diff string
   if (unifiedDiff) {
-    return (
-      <div className={wrapperClass}>
-        <PatchDiff patch={unifiedDiff} options={options} />
-      </div>
-    );
+    return <PatchDiff patch={unifiedDiff} options={options} />;
   }
 
   return null;
