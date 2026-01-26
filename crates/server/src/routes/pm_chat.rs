@@ -9,6 +9,8 @@ use axum::{
 use db::models::{
     pm_conversation::{CreatePmConversation, CreatePmAttachment, PmConversation, PmAttachment, PmMessageRole},
     project::Project,
+    project_repo::ProjectRepo,
+    repo::Repo,
     task::Task,
     label::TaskDependency,
 };
@@ -18,11 +20,13 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::PathBuf;
+use std::process::Stdio;
 use tokio::fs::File;
 use tokio::process::Command;
 use tokio_util::io::ReaderStream;
 use ts_rs::TS;
 use utils::response::ApiResponse;
+use utils::shell::resolve_executable_path;
 use uuid::Uuid;
 use chrono::Utc;
 
@@ -175,65 +179,145 @@ pub async fn ai_chat(
     let pool = deployment.db().pool.clone();
     let project_id = project.id;
 
-    // Run claude CLI and get output
-    let output = Command::new("claude")
-        .arg("--print")
-        .arg("--verbose")
-        .arg("--output-format")
-        .arg("stream-json")
-        .arg("--model")
-        .arg(&model)
-        .arg("--system-prompt")
-        .arg(&system_prompt_owned)
-        .arg(&user_content)
-        .output()
-        .await;
+    // Get the project's workspace path from its repositories
+    // This is where Claude CLI should run to have proper codebase context
+    let workspace_path = {
+        let project_repos = ProjectRepo::find_by_project_id(&pool, project_id).await.unwrap_or_default();
+        if let Some(first_project_repo) = project_repos.first() {
+            if let Ok(Some(repo)) = Repo::find_by_id(&pool, first_project_repo.repo_id).await {
+                Some(repo.path)
+            } else {
+                None
+            }
+        } else {
+            // Fall back to default_agent_working_dir if no repos
+            project.default_agent_working_dir.map(PathBuf::from)
+        }
+    };
 
-    // Parse the output and extract the result
-    let (response_text, error_text) = match output {
-        Ok(output) => {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let mut full_response = String::new();
+    tracing::info!("PM Chat AI workspace path: {:?}", workspace_path);
 
-            // Parse each line to find the result
-            for line in stdout.lines() {
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
-                    if let Some(msg_type) = json.get("type").and_then(|t| t.as_str()) {
-                        match msg_type {
-                            "assistant" => {
-                                if let Some(message) = json.get("message") {
-                                    if let Some(content_array) = message.get("content").and_then(|c| c.as_array()) {
-                                        for content_item in content_array {
-                                            if content_item.get("type").and_then(|t| t.as_str()) == Some("text") {
-                                                if let Some(text) = content_item.get("text").and_then(|t| t.as_str()) {
-                                                    full_response.push_str(text);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            "result" => {
-                                if let Some(result) = json.get("result").and_then(|r| r.as_str()) {
-                                    if full_response.is_empty() {
-                                        full_response = result.to_string();
-                                    }
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
+    // Run claude CLI - try global claude binary first, then fallback to npx
+    // Use simple --print mode without stream-json to avoid known bugs
+    // See: https://github.com/anthropics/claude-code/issues/1920, #8126, #3187
+    let claude_path_result = resolve_executable_path("claude").await;
+    let npx_path_result = resolve_executable_path("npx").await;
+
+    // Execute CLI and get response
+    let (response_text, error_text) = if let Some(claude_path) = claude_path_result {
+        // Use global claude binary (faster than npx)
+        tracing::info!("Running Claude CLI from global binary at: {:?}", claude_path);
+
+        // Use tokio timeout - increased to 3 minutes for Claude Code initialization
+        // --dangerously-skip-permissions is required to skip permission prompts in non-interactive mode
+        let mut command = Command::new(&claude_path);
+        command
+            .arg("--print")
+            .arg("--dangerously-skip-permissions")
+            .arg("--model")
+            .arg(&model)
+            .arg("--system-prompt")
+            .arg(&system_prompt_owned)
+            .arg(&user_content)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        // Set working directory to project workspace if available
+        if let Some(ref path) = workspace_path {
+            tracing::info!("Setting Claude CLI working directory to: {:?}", path);
+            command.current_dir(path);
+        }
+
+        let output_future = command.output();
+
+        let output = tokio::time::timeout(std::time::Duration::from_secs(180), output_future).await;
+
+        // Parse the output - with --print (no stream-json), output is plain text
+        match output {
+            Ok(Ok(output)) => {
+                let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                let stderr = String::from_utf8_lossy(&output.stderr);
+
+                tracing::debug!("Claude CLI stdout length: {}", stdout.len());
+                if !stderr.is_empty() {
+                    tracing::warn!("Claude CLI stderr: {}", stderr);
+                }
+
+                if stdout.is_empty() {
+                    (None, Some(format!("No response from Claude CLI. Exit code: {:?}. stderr: {}", output.status.code(), stderr)))
+                } else {
+                    (Some(stdout), None)
                 }
             }
-
-            if full_response.is_empty() {
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                (None, Some(format!("No response from Claude CLI. stderr: {}", stderr)))
-            } else {
-                (Some(full_response), None)
+            Ok(Err(e)) => {
+                tracing::error!("Failed to run Claude CLI: {}", e);
+                (None, Some(format!("Failed to run Claude CLI: {}. Make sure Claude Code is installed.", e)))
+            }
+            Err(_) => {
+                tracing::error!("Claude CLI timed out after 180 seconds");
+                (None, Some("Claude CLI timed out after 180 seconds.".to_string()))
             }
         }
-        Err(e) => (None, Some(format!("Failed to run claude CLI: {}. Make sure Claude Code is installed.", e))),
+    } else if let Some(npx_path) = npx_path_result {
+        // Fallback to npx if global claude not found
+        tracing::info!("Running Claude CLI with npx at: {:?}", npx_path);
+
+        let mut command = Command::new(&npx_path);
+        command
+            .arg("-y")
+            .arg("@anthropic-ai/claude-code@latest")
+            .arg("--print")
+            .arg("--dangerously-skip-permissions")
+            .arg("--model")
+            .arg(&model)
+            .arg("--system-prompt")
+            .arg(&system_prompt_owned)
+            .arg(&user_content)
+            .env("NPM_CONFIG_LOGLEVEL", "error")
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        // Set working directory to project workspace if available
+        if let Some(ref path) = workspace_path {
+            tracing::info!("Setting Claude CLI working directory to: {:?}", path);
+            command.current_dir(path);
+        }
+
+        let output_future = command.output();
+
+        let output = tokio::time::timeout(std::time::Duration::from_secs(180), output_future).await;
+
+        // Parse the output - with --print (no stream-json), output is plain text
+        match output {
+            Ok(Ok(output)) => {
+                let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                let stderr = String::from_utf8_lossy(&output.stderr);
+
+                tracing::debug!("Claude CLI stdout length: {}", stdout.len());
+                if !stderr.is_empty() {
+                    tracing::warn!("Claude CLI stderr: {}", stderr);
+                }
+
+                if stdout.is_empty() {
+                    (None, Some(format!("No response from Claude CLI. Exit code: {:?}. stderr: {}", output.status.code(), stderr)))
+                } else {
+                    (Some(stdout), None)
+                }
+            }
+            Ok(Err(e)) => {
+                tracing::error!("Failed to run Claude CLI: {}", e);
+                (None, Some(format!("Failed to run Claude CLI: {}. Make sure Claude Code is installed.", e)))
+            }
+            Err(_) => {
+                tracing::error!("Claude CLI (npx) timed out after 180 seconds");
+                (None, Some("Claude CLI timed out after 180 seconds.".to_string()))
+            }
+        }
+    } else {
+        tracing::error!("Neither claude nor npx found in PATH");
+        (None, Some("Claude CLI not found. Please install Claude Code (https://claude.ai/code) or ensure Node.js is installed.".to_string()))
     };
 
     // Save assistant response if we got one

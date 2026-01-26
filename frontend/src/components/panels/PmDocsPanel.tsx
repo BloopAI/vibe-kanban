@@ -213,11 +213,11 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
   const queryClient = useQueryClient();
   const { settings: autoReviewSettings, updateSettings } = useAutoReviewSettings(projectId);
 
-  // Available AI models
+  // Available AI models (Claude CLI models)
   const aiModels = [
-    { value: 'sonnet', label: 'Claude Sonnet' },
-    { value: 'opus', label: 'Claude Opus' },
-    { value: 'haiku', label: 'Claude Haiku' },
+    { value: 'sonnet', label: 'Sonnet' },
+    { value: 'opus', label: 'Opus' },
+    { value: 'haiku', label: 'Haiku' },
   ];
 
   const {
