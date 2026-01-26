@@ -4,6 +4,7 @@ use std::{
     io,
     path::Path,
     sync::Arc,
+    sync::atomic::{AtomicBool, Ordering},
     time::Duration,
 };
 
@@ -343,6 +344,7 @@ async fn run_session_inner(
         _ = cancel.cancelled() => return Ok(()),
         res = connect_event_stream(&client, &config.base_url, &config.directory, None) => res?,
     };
+    let session_idle = Arc::new(AtomicBool::new(false));
     let event_handle = tokio::spawn(spawn_event_listener(
         EventListenerConfig {
             client: client.clone(),
@@ -354,10 +356,12 @@ async fn run_session_inner(
             auto_approve: config.auto_approve,
             control_tx,
             models_cache_key: config.models_cache_key.clone(),
+            session_idle: session_idle.clone(),
         },
         event_resp,
     ));
 
+    session_idle.store(false, Ordering::Release);
     let prompt_fut = Box::pin(prompt(
         &client,
         &config.base_url,
@@ -382,7 +386,10 @@ async fn run_session_inner(
     }
 
     // Handle commit reminder if enabled
-    if config.commit_reminder && !cancel.is_cancelled() {
+    if config.commit_reminder
+        && !cancel.is_cancelled()
+        && session_idle.load(Ordering::Acquire)
+    {
         let uncommitted_changes =
             git::check_uncommitted_changes(&config.repo_context.repo_paths()).await;
         if !uncommitted_changes.is_empty() {
@@ -400,6 +407,7 @@ async fn run_session_inner(
                 })
                 .await;
 
+            session_idle.store(false, Ordering::Release);
             let reminder_fut = Box::pin(prompt(
                 &client,
                 &config.base_url,
@@ -1137,6 +1145,7 @@ pub struct EventListenerConfig {
     pub auto_approve: bool,
     pub control_tx: mpsc::UnboundedSender<ControlEvent>,
     pub models_cache_key: String,
+    pub session_idle: Arc<AtomicBool>,
 }
 
 pub async fn spawn_event_listener(config: EventListenerConfig, initial_resp: reqwest::Response) {
@@ -1150,6 +1159,7 @@ pub async fn spawn_event_listener(config: EventListenerConfig, initial_resp: req
         auto_approve,
         control_tx,
         models_cache_key,
+        session_idle,
     } = config;
 
     let mut seen_permissions: HashSet<String> = HashSet::new();
@@ -1204,6 +1214,7 @@ pub async fn spawn_event_listener(config: EventListenerConfig, initial_resp: req
                 base_retry_delay: &mut base_retry_delay,
                 last_event_id: &mut last_event_id,
                 models_cache_key: &models_cache_key,
+                session_idle: &session_idle,
             },
             current_resp,
         )
@@ -1260,6 +1271,7 @@ pub(super) struct EventStreamContext<'a> {
     last_event_id: &'a mut Option<String>,
     /// Cache key for model context windows, derived from config that affects available models.
     pub models_cache_key: &'a str,
+    pub session_idle: &'a Arc<AtomicBool>,
 }
 
 async fn process_event_stream(
@@ -1313,6 +1325,7 @@ async fn process_event_stream(
                 maybe_emit_token_usage(&ctx, &data).await;
             }
             "session.idle" => {
+                ctx.session_idle.store(true, Ordering::Release);
                 let _ = ctx.control_tx.send(ControlEvent::Idle);
                 return Ok(EventStreamOutcome::Idle);
             }
