@@ -163,13 +163,13 @@ pub async fn ai_chat(
         for task_with_status in &tasks_with_status {
             let task = &task_with_status.task;
             system_prompt.push_str(&format!(
-                "- [{}] {} (Priority: {:?})\n",
-                format!("{:?}", task.status),
+                "- [{:?}] {} (Priority: {:?})\n",
+                task.status,
                 task.title,
                 task.priority
             ));
         }
-        system_prompt.push_str("\n");
+        system_prompt.push('\n');
     }
 
     system_prompt.push_str("## Conversation History\n");
