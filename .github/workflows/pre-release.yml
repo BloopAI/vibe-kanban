@@ -111,7 +111,9 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add package.json pnpm-lock.yaml npx-cli/package.json frontend/package.json Cargo.lock
+          git add package.json package-lock.json pnpm-lock.yaml
+          git add npx-cli/package.json npx-cli/package-lock.json
+          git add frontend/package.json Cargo.lock
           git add $(find . -name Cargo.toml)
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
           git tag -a ${{ steps.version.outputs.new_tag }} -m "Release ${{ steps.version.outputs.new_tag }}"
