@@ -1003,8 +1003,14 @@ impl ClaudeLogProcessor {
             ClaudeJson::User {
                 message,
                 is_synthetic,
+                is_replay,
                 ..
             } => {
+                // Skip replay messages entirely - they're historical context from resumed sessions
+                if *is_replay {
+                    return patches;
+                }
+
                 if matches!(self.strategy, HistoryStrategy::AmpResume)
                     && message
                         .content
@@ -1719,6 +1725,8 @@ pub enum ClaudeJson {
         uuid: Option<String>,
         #[serde(default, rename = "isSynthetic")]
         is_synthetic: bool,
+        #[serde(default, rename = "isReplay")]
+        is_replay: bool,
     },
     ToolUse {
         tool_name: String,
