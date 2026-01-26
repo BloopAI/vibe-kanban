@@ -3,8 +3,10 @@ use std::{
     future::Future,
     io,
     path::Path,
-    sync::Arc,
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Duration,
 };
 
@@ -386,10 +388,7 @@ async fn run_session_inner(
     }
 
     // Handle commit reminder if enabled
-    if config.commit_reminder
-        && !cancel.is_cancelled()
-        && session_idle.load(Ordering::Acquire)
-    {
+    if config.commit_reminder && !cancel.is_cancelled() && session_idle.load(Ordering::Acquire) {
         let uncommitted_changes =
             git::check_uncommitted_changes(&config.repo_context.repo_paths()).await;
         if !uncommitted_changes.is_empty() {
