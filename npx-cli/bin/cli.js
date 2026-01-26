@@ -156,7 +156,7 @@ async function main() {
         if (latest && latest !== CLI_VERSION) {
           setTimeout(() => {
             console.log(`\nUpdate available: ${CLI_VERSION} -> ${latest}`);
-            console.log(`Run: npx vibe-kanban@latest`);
+            console.log(`Run: npx vibe-kanban-pm@latest`);
           }, 2000);
         }
       })
@@ -188,7 +188,7 @@ async function main() {
     });
   } else {
     const modeLabel = LOCAL_DEV_MODE ? " (local dev)" : "";
-    console.log(`Starting vibe-kanban v${CLI_VERSION}${modeLabel}...`);
+    console.log(`Starting vibe-kanban-pm v${CLI_VERSION}${modeLabel}...`);
     await extractAndRun("vibe-kanban", (bin) => {
       if (platform === "win32") {
         execSync(`"${bin}"`, { stdio: "inherit" });

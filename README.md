@@ -8,51 +8,92 @@
   </a>
 </p>
 
-<p align="center">Get 10X more out of Claude Code, Gemini CLI, Codex, Amp and other coding agents...</p>
+<p align="center">Vibe Kanban PM - GitHub Projects-like PM features for AI coding agents</p>
 <p align="center">
-  <a href="https://www.npmjs.com/package/vibe-kanban"><img alt="npm" src="https://img.shields.io/npm/v/vibe-kanban?style=flat-square" /></a>
-  <a href="https://github.com/BloopAI/vibe-kanban/blob/main/.github/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/BloopAI/vibe-kanban/.github%2Fworkflows%2Fpublish.yml" /></a>
-  <a href="https://deepwiki.com/BloopAI/vibe-kanban"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+  <a href="https://www.npmjs.com/package/vibe-kanban-pm"><img alt="npm" src="https://img.shields.io/npm/v/vibe-kanban-pm?style=flat-square" /></a>
 </p>
-
-<h1 align="center">
-  <a href="https://jobs.polymer.co/vibe-kanban?source=github"><strong>We're hiring!</strong></a>
-</h1>
-
-![](frontend/public/vibe-kanban-screenshot-overview.png)
 
 ## Overview
 
-AI coding agents are increasingly writing the world's code and human engineers now spend the majority of their time planning, reviewing, and orchestrating tasks. Vibe Kanban streamlines this process, enabling you to:
+**Vibe Kanban PM** is a fork of [Vibe Kanban](https://github.com/BloopAI/vibe-kanban) with added GitHub Projects-like PM (Project Management) features. This version includes all the original features plus:
 
-- Easily switch between different coding agents
-- Orchestrate the execution of multiple coding agents in parallel or in sequence
-- Quickly review work and start dev servers
-- Track the status of tasks that your coding agents are working on
-- Centralise configuration of coding agent MCP configs
-- Open projects remotely via SSH when running Vibe Kanban on a remote server
+### PM Features
 
-You can watch a video overview [here](https://youtu.be/TFT3KnZOOAk).
+- **PM Task**: Designate a task as the project-level specification document (source of truth)
+- **PM Docs Sidebar**: Collapsible sidebar showing PM documentation on the tasks page
+- **Labels System**: Create and assign colored labels to tasks for better organization
+- **Task Priorities**: Set priority levels (Urgent/High/Medium/Low) with visual indicators
+- **Task Dependencies**: Define task dependencies to track blocking relationships
+- **Dependency Indicators**: Visual indicators showing blocked status or all dependencies complete
+- **Drag-and-Drop Reordering**: Reorder tasks within and across columns
+- **Auto-Review on In Review**: Automatically trigger AI review when tasks move to "In Review"
+- **Auto-Review Settings**: Configure AI selection, review types, and custom instructions
+- **MCP Tool**: `request_pm_review` tool for AI agents to request PM spec reviews
+- **i18n Support**: English and Japanese translations
 
 ## Installation
 
-Make sure you have authenticated with your favourite coding agent. A full list of supported coding agents can be found in the [docs](https://vibekanban.com/docs). Then in your terminal run:
+```bash
+npx vibe-kanban-pm
+```
+
+### MCP Mode
 
 ```bash
-npx vibe-kanban
+npx vibe-kanban-pm --mcp
 ```
+
+### Review Mode
+
+```bash
+npx vibe-kanban-pm review
+```
+
+## PM Features Usage
+
+### Setting Up PM Task
+
+1. Go to **Project Settings**
+2. Select a task as the **PM Task** - this task will serve as your project specification
+3. The PM task's description will appear in the PM Docs sidebar
+
+### Using Labels
+
+1. Click on a task to open the edit dialog
+2. In the **Labels** section, click the "+" button to add labels
+3. Create new labels with custom colors or select existing ones
+
+### Setting Task Dependencies
+
+1. Open a task in edit mode
+2. In the **Depends On** section, click "+" to add dependencies
+3. Select tasks that must be completed before this task
+4. Blocked tasks show an amber indicator, completed dependencies show a green indicator
+
+### Auto-Review Configuration
+
+1. Click the settings icon in the PM Docs sidebar header
+2. Enable **Auto-Review**
+3. Select which AI agent to use for reviews
+4. Choose review types:
+   - **PM Spec Review**: Check against project specifications
+   - **Code Review**: Check code quality and best practices
+5. Add optional custom instructions
+
+When a task is dragged to the "In Review" column, the configured AI will automatically start a review.
+
+## Original Vibe Kanban Features
+
+- Easily switch between different coding agents
+- Orchestrate execution of multiple coding agents in parallel or sequence
+- Quickly review work and start dev servers
+- Track task status for coding agents
+- Centralize MCP configuration
+- Open projects remotely via SSH
 
 ## Documentation
 
-Please head to the [website](https://vibekanban.com/docs) for the latest documentation and user guides.
-
-## Support
-
-We use [GitHub Discussions](https://github.com/BloopAI/vibe-kanban/discussions) for feature requests. Please open a discussion to create a feature request. For bugs please open an issue on this repo.
-
-## Contributing
-
-We would prefer that ideas and changes are first raised with the core team via [GitHub Discussions](https://github.com/BloopAI/vibe-kanban/discussions) or [Discord](https://discord.gg/AC4nwVtJM3), where we can discuss implementation details and alignment with the existing roadmap. Please do not open PRs without first discussing your proposal with the team.
+For general Vibe Kanban documentation, visit [vibekanban.com/docs](https://vibekanban.com/docs).
 
 ## Development
 
@@ -145,3 +186,7 @@ When running Vibe Kanban on a remote server (e.g., via systemctl, Docker, or clo
 When configured, the "Open in VSCode" buttons will generate URLs like `vscode://vscode-remote/ssh-remote+user@host/path` that open your local editor and connect to the remote server.
 
 See the [documentation](https://vibekanban.com/docs/configuration-customisation/global-settings#remote-ssh-configuration) for detailed setup instructions.
+
+## Credits
+
+This project is based on [Vibe Kanban](https://github.com/BloopAI/vibe-kanban) by BloopAI.
