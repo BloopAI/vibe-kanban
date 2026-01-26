@@ -97,7 +97,8 @@
     "selectPlaceholder": "選擇組織",
     "currentBadge": "（目前）",
     "organizations": "組織",
-    "createOrganization": "建立組織"
+    "createOrganization": "建立組織",
+    "orgSettings": "組織設定"
   },
   "signIn": "登入",
   "signOut": "登出",
