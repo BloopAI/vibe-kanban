@@ -198,6 +198,12 @@
     "viewModes": {
       "inline": "Inline view",
       "split": "Split view"
+    },
+    "largeDiff": {
+      "title": "大きなファイル",
+      "linesChanged": "{{count}} 行が変更されました",
+      "loadAnyway": "差分を読み込む",
+      "warning": "大きな差分はブラウザを遅くする可能性があります。"
     }
   },
   "empty": {

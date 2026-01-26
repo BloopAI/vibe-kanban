@@ -362,9 +362,9 @@ export function PierreDiffCard({
             <div className="p-base bg-warning/5 border-t border-warning/20">
               <div className="flex items-center justify-between gap-base">
                 <div className="text-sm text-low">
-                  <span className="font-medium text-warning">Large file</span>
+                  <span className="font-medium text-warning">{t('diff.largeDiff.title')}</span>
                   <span className="ml-2">
-                    {totalLines.toLocaleString()} lines changed
+                    {t('diff.largeDiff.linesChanged', { count: totalLines })}
                     <span className="text-success ml-2">+{additions.toLocaleString()}</span>
                     <span className="text-error ml-1">-{deletions.toLocaleString()}</span>
                   </span>
@@ -376,11 +376,11 @@ export function PierreDiffCard({
                   }}
                   className="text-sm text-brand hover:text-brand-hover transition-colors"
                 >
-                  Load diff anyway
+                  {t('diff.largeDiff.loadAnyway')}
                 </button>
               </div>
               <p className="text-xs text-low mt-1">
-                Large diffs may slow down your browser.
+                {t('diff.largeDiff.warning')}
               </p>
             </div>
           ) : (

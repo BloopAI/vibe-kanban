@@ -161,7 +161,13 @@
     "collapseAll": "Collapse all diffs",
     "filesChanged_one": "{{count}} file changed",
     "filesChanged_other": "{{count}} files changed",
-    "noChanges": "No changes have been made yet"
+    "noChanges": "No changes have been made yet",
+    "largeDiff": {
+      "title": "Large file",
+      "linesChanged": "{{count}} lines changed",
+      "loadAnyway": "Load diff anyway",
+      "warning": "Large diffs may slow down your browser."
+    }
   },
   "taskPanel": {
     "noTaskSelected": "No task selected",

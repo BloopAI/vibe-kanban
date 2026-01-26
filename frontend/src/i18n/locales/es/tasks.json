@@ -198,6 +198,12 @@
     "viewModes": {
       "inline": "Inline view",
       "split": "Split view"
+    },
+    "largeDiff": {
+      "title": "Archivo grande",
+      "linesChanged": "{{count}} líneas cambiadas",
+      "loadAnyway": "Cargar diff de todos modos",
+      "warning": "Los diffs grandes pueden ralentizar tu navegador."
     }
   },
   "empty": {

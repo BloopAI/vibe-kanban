@@ -174,7 +174,13 @@
     "collapseAll": "折叠所有差异",
     "filesChanged_one": "{{count}} 个文件已更改",
     "filesChanged_other": "{{count}} 个文件已更改",
-    "noChanges": "尚未进行任何更改"
+    "noChanges": "尚未进行任何更改",
+    "largeDiff": {
+      "title": "大文件",
+      "linesChanged": "{{count}} 行已更改",
+      "loadAnyway": "仍然加载差异",
+      "warning": "大型差异可能会降低浏览器速度。"
+    }
   },
   "taskPanel": {
     "noTaskSelected": "未选择任务",

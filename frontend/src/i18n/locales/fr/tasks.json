@@ -161,7 +161,13 @@
     "collapseAll": "Réduire tous les diffs",
     "filesChanged_one": "{{count}} fichier modifié",
     "filesChanged_other": "{{count}} fichiers modifiés",
-    "noChanges": "Aucune modification n'a encore été effectuée"
+    "noChanges": "Aucune modification n'a encore été effectuée",
+    "largeDiff": {
+      "title": "Fichier volumineux",
+      "linesChanged": "{{count}} lignes modifiées",
+      "loadAnyway": "Charger le diff quand même",
+      "warning": "Les gros diffs peuvent ralentir votre navigateur."
+    }
   },
   "taskPanel": {
     "noTaskSelected": "Aucune tâche sélectionnée",
