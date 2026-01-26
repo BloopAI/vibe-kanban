@@ -35,6 +35,8 @@ export function getIdeName(editorType: EditorType | undefined | null): string {
       return 'IDE';
     case EditorType.GOOGLE_ANTIGRAVITY:
       return 'Antigravity';
+    case EditorType.QODER:
+      return 'Qoder';
   }
 }
 
@@ -76,6 +78,9 @@ export function IdeIcon({ editorType, className = 'h-4 w-4' }: IdeIconProps) {
       ideIconPath = isDark
         ? '/ide/antigravity-dark.svg'
         : '/ide/antigravity-light.svg';
+      break;
+    case EditorType.QODER:
+      ideIconPath = isDark ? '/ide/qoder-dark.svg' : '/ide/qoder-light.svg';
       break;
   }
 

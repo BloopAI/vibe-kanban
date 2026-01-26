@@ -324,6 +324,44 @@
           "model": "glm-4.6"
         }
       }
+    },
+    "QODER": {
+      "DEFAULT": {
+        "QODER": {
+          "yolo": true,
+          "model": "auto"
+        }
+      },
+      "EFFICIENT": {
+        "QODER": {
+          "yolo": true,
+          "model": "efficient"
+        }
+      },
+      "LITE": {
+        "QODER": {
+          "yolo": true,
+          "model": "lite"
+        }
+      },
+      "PERFORMANCE": {
+        "QODER": {
+          "yolo": true,
+          "model": "performance"
+        }
+      },
+      "ULTIMATE": {
+        "QODER": {
+          "yolo": true,
+          "model": "ultimate"
+        }
+      },
+      "APPROVALS": {
+        "QODER": {
+          "yolo": false,
+          "model": "auto"
+        }
+      }
     }
   }
 }
