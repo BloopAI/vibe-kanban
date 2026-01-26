@@ -25,8 +25,8 @@ use services::services::{
     container::ContainerService,
     git::{GitCliError, GitRemote, GitServiceError},
     git_host::{
-        self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
-        github::GhCli,
+        self, CreatePrRequest, GitHostConfig, GitHostError, GitHostProvider,
+        ProviderKind, UnifiedPrComment, github::GhCli,
     },
 };
 use ts_rs::TS;
@@ -56,6 +56,8 @@ pub enum PrError {
     GitCliNotInstalled,
     TargetBranchNotFound { branch: String },
     UnsupportedProvider,
+    ApiTokenMissing { host: String },
+    HostNotConfigured { host: String },
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -83,6 +85,8 @@ pub enum GetPrCommentsError {
     NoPrAttached,
     CliNotInstalled { provider: ProviderKind },
     CliNotLoggedIn { provider: ProviderKind },
+    ApiTokenMissing { host: String },
+    HostNotConfigured { host: String },
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -279,7 +283,10 @@ pub async fn create_pr(
         }
     }
 
-    let git_host = match git_host::GitHostService::from_url(&target_remote.url) {
+    let git_host = match git_host::GitHostService::from_url_with_config(
+        &target_remote.url,
+        &GitHostConfig::from(&*deployment.config().read().await),
+    ) {
         Ok(host) => host,
         Err(GitHostError::UnsupportedProvider) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -289,6 +296,16 @@ pub async fn create_pr(
         Err(GitHostError::CliNotInstalled { provider }) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 PrError::CliNotInstalled { provider },
+            )));
+        }
+        Err(GitHostError::ApiTokenMissing(host)) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                PrError::ApiTokenMissing { host },
+            )));
+        }
+        Err(GitHostError::HostNotConfigured(host)) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                PrError::HostNotConfigured { host },
             )));
         }
         Err(e) => return Err(ApiError::GitHost(e)),
@@ -416,7 +433,10 @@ pub async fn attach_existing_pr(
     let git = deployment.git();
     let remote = git.resolve_remote_for_branch(&repo.path, &workspace_repo.target_branch)?;
 
-    let git_host = match git_host::GitHostService::from_url(&remote.url) {
+    let git_host = match git_host::GitHostService::from_url_with_config(
+        &remote.url,
+        &GitHostConfig::from(&*deployment.config().read().await),
+    ) {
         Ok(host) => host,
         Err(GitHostError::UnsupportedProvider) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -426,6 +446,16 @@ pub async fn attach_existing_pr(
         Err(GitHostError::CliNotInstalled { provider }) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 PrError::CliNotInstalled { provider },
+            )));
+        }
+        Err(GitHostError::ApiTokenMissing(host)) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                PrError::ApiTokenMissing { host },
+            )));
+        }
+        Err(GitHostError::HostNotConfigured(host)) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                PrError::HostNotConfigured { host },
             )));
         }
         Err(e) => return Err(ApiError::GitHost(e)),
@@ -533,11 +563,24 @@ pub async fn get_pr_comments(
     let git = deployment.git();
     let remote = git.resolve_remote_for_branch(&repo.path, &workspace_repo.target_branch)?;
 
-    let git_host = match git_host::GitHostService::from_url(&remote.url) {
+    let git_host = match git_host::GitHostService::from_url_with_config(
+        &remote.url,
+        &GitHostConfig::from(&*deployment.config().read().await),
+    ) {
         Ok(host) => host,
         Err(GitHostError::CliNotInstalled { provider }) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 GetPrCommentsError::CliNotInstalled { provider },
+            )));
+        }
+        Err(GitHostError::ApiTokenMissing(host)) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                GetPrCommentsError::ApiTokenMissing { host },
+            )));
+        }
+        Err(GitHostError::HostNotConfigured(host)) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                GetPrCommentsError::HostNotConfigured { host },
             )));
         }
         Err(e) => return Err(ApiError::GitHost(e)),

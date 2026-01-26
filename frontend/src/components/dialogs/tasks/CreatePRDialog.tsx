@@ -189,7 +189,9 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
                 ? 'GitHub'
                 : result.error.provider === 'azure_dev_ops'
                   ? 'Azure DevOps'
-                  : 'Git host';
+                  : result.error.provider === 'forgejo'
+                    ? 'Forgejo'
+                    : 'Git host';
             const action =
               result.error.type === 'cli_not_installed'
                 ? 'not installed'
@@ -214,6 +216,22 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
           setError(
             t('createPrDialog.errors.targetBranchNotFound', {
               branch: result.error.branch,
+            })
+          );
+          setGhCliHelp(null);
+          return;
+        } else if (result.error.type === 'api_token_missing') {
+          setError(
+            t('createPrDialog.errors.apiTokenMissing', {
+              host: result.error.host,
+            })
+          );
+          setGhCliHelp(null);
+          return;
+        } else if (result.error.type === 'host_not_configured') {
+          setError(
+            t('createPrDialog.errors.hostNotConfigured', {
+              host: result.error.host,
             })
           );
           setGhCliHelp(null);

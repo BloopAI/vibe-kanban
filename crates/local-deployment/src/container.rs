@@ -1102,8 +1102,28 @@ impl ContainerService for LocalContainerService {
         let repo_names: Vec<String> = repos.iter().map(|r| r.name.clone()).collect();
         let repo_context = RepoContext::new(current_dir.clone(), repo_names);
 
-        let commit_reminder = self.config.read().await.commit_reminder;
+        let (commit_reminder, git_host_tokens) = {
+            let config = self.config.read().await;
+            let tokens: Vec<(String, String)> = config
+                .git_hosts
+                .hosts
+                .iter()
+                .filter_map(|(domain, entry)| {
+                    entry.token.as_ref().map(|token| {
+                        // Sanitize domain for env var name: replace dots and hyphens with underscores, uppercase
+                        let sanitized = domain.replace('.', "_").replace('-', "_").to_uppercase();
+                        (format!("GIT_HOST_TOKEN_{}", sanitized), token.clone())
+                    })
+                })
+                .collect();
+            (config.commit_reminder, tokens)
+        };
         let mut env = ExecutionEnv::new(repo_context, commit_reminder);
+
+        // Inject git host tokens into environment
+        for (key, value) in git_host_tokens {
+            env.insert(key, value);
+        }
 
         // Load task and project context for environment variables
         let task = workspace

@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use db::{
     DBService,
@@ -11,12 +11,13 @@ use db::{
 use serde_json::json;
 use sqlx::error::Error as SqlxError;
 use thiserror::Error;
-use tokio::time::interval;
+use tokio::{sync::RwLock, time::interval};
 use tracing::{debug, error, info};
 
 use crate::services::{
     analytics::AnalyticsContext,
-    git_host::{self, GitHostError, GitHostProvider},
+    config::Config,
+    git_host::{self, GitHostConfig, GitHostError, GitHostProvider},
 };
 
 #[derive(Debug, Error)]
@@ -32,6 +33,7 @@ enum PrMonitorError {
 /// Service to monitor PRs and update task status when they are merged
 pub struct PrMonitorService {
     db: DBService,
+    config: Arc<RwLock<Config>>,
     poll_interval: Duration,
     analytics: Option<AnalyticsContext>,
 }
@@ -39,10 +41,12 @@ pub struct PrMonitorService {
 impl PrMonitorService {
     pub async fn spawn(
         db: DBService,
+        config: Arc<RwLock<Config>>,
         analytics: Option<AnalyticsContext>,
     ) -> tokio::task::JoinHandle<()> {
         let service = Self {
             db,
+            config,
             poll_interval: Duration::from_secs(60), // Check every minute
             analytics,
         };
@@ -91,7 +95,10 @@ impl PrMonitorService {
 
     /// Check the status of a specific PR
     async fn check_pr_status(&self, pr_merge: &PrMerge) -> Result<(), PrMonitorError> {
-        let git_host = git_host::GitHostService::from_url(&pr_merge.pr_info.url)?;
+        let git_host = git_host::GitHostService::from_url_with_config(
+            &pr_merge.pr_info.url,
+            &GitHostConfig::from(&*self.config.read().await),
+        )?;
         let pr_status = git_host.get_pr_status(&pr_merge.pr_info.url).await?;
 
         debug!(

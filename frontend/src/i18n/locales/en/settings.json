@@ -166,6 +166,35 @@
           "helper": "Custom prompt for the AI agent when generating PR descriptions. Use {pr_number} and {pr_url} as placeholders."
         }
       },
+      "gitHosts": {
+        "title": "Git Hosts",
+        "description": "Configure API access for self-hosted git providers like Forgejo and Gitea.",
+        "addHost": "Add Git Host",
+        "removeHost": "Remove",
+        "tokenConfigured": "Token configured",
+        "noToken": "No token",
+        "providers": {
+          "forgejo": "Forgejo / Gitea"
+        },
+        "form": {
+          "domain": "Domain",
+          "domainHelper": "The hostname of your git server (e.g., git.mycompany.com)",
+          "domainPlaceholder": "git.example.com",
+          "provider": "Provider",
+          "providerHelper": "The type of git hosting software running on this server",
+          "providerPlaceholder": "Select provider",
+          "token": "API Token",
+          "tokenHelper": "Personal access token for API authentication. Create one in your git host settings.",
+          "tokenHelperForgejo": "Required scopes: read:issue, write:repository",
+          "tokenPlaceholder": "Enter your API token",
+          "add": "Add Host"
+        },
+        "errors": {
+          "domainRequired": "Domain is required",
+          "invalidDomain": "Invalid domain format",
+          "tokenRequired": "API token is required for this provider"
+        }
+      },
       "notifications": {
         "title": "Notifications",
         "description": "Control when and how you receive notifications.",

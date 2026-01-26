@@ -2,12 +2,21 @@
 
 use super::types::ProviderKind;
 
-/// Detect the git hosting provider from a remote URL.
+/// Well-known Forgejo/Gitea hosting services.
+const KNOWN_FORGEJO_HOSTS: &[&str] = &[
+    "codeberg.org",
+    "gitea.com",
+];
+
+/// Detect the git hosting provider from a remote URL using well-known patterns.
 ///
 /// Supports:
 /// - GitHub.com: `https://github.com/owner/repo` or `git@github.com:owner/repo.git`
 /// - GitHub Enterprise: URLs containing `github.` (e.g., `https://github.company.com/owner/repo`)
 /// - Azure DevOps: `https://dev.azure.com/org/project/_git/repo` or legacy `https://org.visualstudio.com/...`
+/// - Forgejo/Gitea: Known hosts like codeberg.org, gitea.com
+///
+/// For self-hosted instances, use `detect_provider_with_config` which checks user configuration.
 pub fn detect_provider_from_url(url: &str) -> ProviderKind {
     let url_lower = url.to_lowercase();
 
@@ -31,6 +40,13 @@ pub fn detect_provider_from_url(url: &str) -> ProviderKind {
     // GitHub Enterprise (contains "github." but not the Azure patterns above)
     if url_lower.contains("github.") {
         return ProviderKind::GitHub;
+    }
+
+    // Check known Forgejo/Gitea hosts
+    for host in KNOWN_FORGEJO_HOSTS {
+        if url_lower.contains(host) {
+            return ProviderKind::Forgejo;
+        }
     }
 
     ProviderKind::Unknown
@@ -137,6 +153,26 @@ mod tests {
     }
 
     #[test]
+    fn test_forgejo_codeberg() {
+        assert_eq!(
+            detect_provider_from_url("https://codeberg.org/owner/repo"),
+            ProviderKind::Forgejo
+        );
+        assert_eq!(
+            detect_provider_from_url("git@codeberg.org:owner/repo.git"),
+            ProviderKind::Forgejo
+        );
+    }
+
+    #[test]
+    fn test_forgejo_gitea_com() {
+        assert_eq!(
+            detect_provider_from_url("https://gitea.com/owner/repo"),
+            ProviderKind::Forgejo
+        );
+    }
+
+    #[test]
     fn test_unknown_provider() {
         assert_eq!(
             detect_provider_from_url("https://gitlab.com/owner/repo"),
@@ -144,6 +180,11 @@ mod tests {
         );
         assert_eq!(
             detect_provider_from_url("https://bitbucket.org/owner/repo"),
+            ProviderKind::Unknown
+        );
+        // Self-hosted instances are unknown without config
+        assert_eq!(
+            detect_provider_from_url("https://git.mycompany.com/owner/repo"),
             ProviderKind::Unknown
         );
     }

@@ -1,0 +1,209 @@
+//! Shared HTTP client infrastructure for API-based git hosting providers.
+
+use std::time::Duration;
+
+use backon::{ExponentialBuilder, Retryable};
+use reqwest::{Client, RequestBuilder, Response, StatusCode};
+use serde::de::DeserializeOwned;
+use tracing::warn;
+
+use super::types::GitHostError;
+
+/// HTTP client wrapper with retry logic for git hosting APIs.
+#[derive(Debug, Clone)]
+pub struct GitHostHttpClient {
+    client: Client,
+    base_url: String,
+    token: String,
+}
+
+impl GitHostHttpClient {
+    /// Create a new HTTP client for a git hosting API.
+    pub fn new(base_url: String, token: String) -> Result<Self, GitHostError> {
+        let client = Client::builder()
+            .user_agent("vibe-kanban")
+            .timeout(Duration::from_secs(30))
+            .build()
+            .map_err(|e| GitHostError::HttpError(format!("Failed to create HTTP client: {e}")))?;
+
+        Ok(Self {
+            client,
+            base_url,
+            token,
+        })
+    }
+
+    /// Get the base URL for this client.
+    pub fn base_url(&self) -> &str {
+        &self.base_url
+    }
+
+    /// Build a GET request with authentication.
+    pub fn get(&self, path: &str) -> RequestBuilder {
+        self.client
+            .get(format!("{}{}", self.base_url, path))
+            .header("Authorization", format!("token {}", self.token))
+            .header("Accept", "application/json")
+    }
+
+    /// Build a POST request with authentication.
+    pub fn post(&self, path: &str) -> RequestBuilder {
+        self.client
+            .post(format!("{}{}", self.base_url, path))
+            .header("Authorization", format!("token {}", self.token))
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+    }
+
+    /// Execute a request with retry logic.
+    pub async fn execute_with_retry<T, F, Fut>(
+        &self,
+        request_fn: F,
+    ) -> Result<T, GitHostError>
+    where
+        T: DeserializeOwned,
+        F: Fn() -> Fut,
+        Fut: std::future::Future<Output = Result<Response, GitHostError>>,
+    {
+        request_fn
+            .retry(
+                ExponentialBuilder::default()
+                    .with_min_delay(Duration::from_secs(1))
+                    .with_max_delay(Duration::from_secs(30))
+                    .with_max_times(3)
+                    .with_jitter(),
+            )
+            .when(|e: &GitHostError| e.should_retry())
+            .notify(|err: &GitHostError, dur: Duration| {
+                warn!(
+                    "Git host API call failed, retrying after {:.2}s: {}",
+                    dur.as_secs_f64(),
+                    err
+                );
+            })
+            .await?
+            .json::<T>()
+            .await
+            .map_err(|e| GitHostError::HttpError(format!("Failed to parse response: {e}")))
+    }
+}
+
+/// Parse an HTTP response and map errors to GitHostError.
+pub async fn handle_response(response: Response) -> Result<Response, GitHostError> {
+    let status = response.status();
+
+    if status.is_success() {
+        return Ok(response);
+    }
+
+    let error_text = response
+        .text()
+        .await
+        .unwrap_or_else(|_| "Unknown error".to_string());
+
+    match status {
+        StatusCode::UNAUTHORIZED => Err(GitHostError::AuthFailed(error_text)),
+        StatusCode::FORBIDDEN => Err(GitHostError::InsufficientPermissions(error_text)),
+        StatusCode::NOT_FOUND => Err(GitHostError::RepoNotFoundOrNoAccess(error_text)),
+        StatusCode::UNPROCESSABLE_ENTITY => Err(GitHostError::PullRequest(error_text)),
+        _ => Err(GitHostError::HttpError(format!(
+            "HTTP {} - {}",
+            status, error_text
+        ))),
+    }
+}
+
+/// Extract owner and repo from a git remote URL.
+/// Supports both HTTPS and SSH formats.
+pub fn parse_owner_repo(url: &str) -> Result<(String, String), GitHostError> {
+    // Try to parse as URL first
+    if let Ok(parsed) = url::Url::parse(url) {
+        let path = parsed.path().trim_start_matches('/').trim_end_matches(".git");
+        let parts: Vec<&str> = path.split('/').collect();
+        if parts.len() >= 2 {
+            return Ok((parts[0].to_string(), parts[1].to_string()));
+        }
+    }
+
+    // Try SSH format: git@host:owner/repo.git
+    if let Some(path_start) = url.find(':') {
+        let path = &url[path_start + 1..];
+        let path = path.trim_end_matches(".git");
+        let parts: Vec<&str> = path.split('/').collect();
+        if parts.len() >= 2 {
+            return Ok((parts[0].to_string(), parts[1].to_string()));
+        }
+    }
+
+    Err(GitHostError::InvalidUrl(format!(
+        "Cannot extract owner/repo from URL: {}",
+        url
+    )))
+}
+
+/// Extract the host from a git remote URL.
+pub fn extract_host(url: &str) -> Result<String, GitHostError> {
+    // Try to parse as URL first
+    if let Ok(parsed) = url::Url::parse(url) {
+        if let Some(host) = parsed.host_str() {
+            return Ok(host.to_string());
+        }
+    }
+
+    // Try SSH format: git@host:owner/repo.git
+    if url.starts_with("git@") {
+        if let Some(colon_pos) = url.find(':') {
+            let host = &url[4..colon_pos];
+            return Ok(host.to_string());
+        }
+    }
+
+    Err(GitHostError::InvalidUrl(format!(
+        "Cannot extract host from URL: {}",
+        url
+    )))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_owner_repo_https() {
+        let (owner, repo) = parse_owner_repo("https://codeberg.org/owner/repo").unwrap();
+        assert_eq!(owner, "owner");
+        assert_eq!(repo, "repo");
+    }
+
+    #[test]
+    fn test_parse_owner_repo_https_with_git_suffix() {
+        let (owner, repo) = parse_owner_repo("https://codeberg.org/owner/repo.git").unwrap();
+        assert_eq!(owner, "owner");
+        assert_eq!(repo, "repo");
+    }
+
+    #[test]
+    fn test_parse_owner_repo_ssh() {
+        let (owner, repo) = parse_owner_repo("git@codeberg.org:owner/repo.git").unwrap();
+        assert_eq!(owner, "owner");
+        assert_eq!(repo, "repo");
+    }
+
+    #[test]
+    fn test_extract_host_https() {
+        let host = extract_host("https://codeberg.org/owner/repo").unwrap();
+        assert_eq!(host, "codeberg.org");
+    }
+
+    #[test]
+    fn test_extract_host_ssh() {
+        let host = extract_host("git@codeberg.org:owner/repo.git").unwrap();
+        assert_eq!(host, "codeberg.org");
+    }
+
+    #[test]
+    fn test_extract_host_self_hosted() {
+        let host = extract_host("https://git.mycompany.com/team/project").unwrap();
+        assert_eq!(host, "git.mycompany.com");
+    }
+}

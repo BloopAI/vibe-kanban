@@ -8,6 +8,7 @@ use ts_rs::TS;
 pub enum ProviderKind {
     GitHub,
     AzureDevOps,
+    Forgejo,
     Unknown,
 }
 
@@ -16,6 +17,7 @@ impl std::fmt::Display for ProviderKind {
         match self {
             ProviderKind::GitHub => write!(f, "GitHub"),
             ProviderKind::AzureDevOps => write!(f, "Azure DevOps"),
+            ProviderKind::Forgejo => write!(f, "Forgejo"),
             ProviderKind::Unknown => write!(f, "Unknown"),
         }
     }
@@ -50,6 +52,14 @@ pub enum GitHostError {
     UnsupportedProvider,
     #[error("CLI returned unexpected output: {0}")]
     UnexpectedOutput(String),
+    #[error("API token not configured for host: {0}")]
+    ApiTokenMissing(String),
+    #[error("Git host not configured for: {0}")]
+    HostNotConfigured(String),
+    #[error("HTTP request failed: {0}")]
+    HttpError(String),
+    #[error("Invalid URL: {0}")]
+    InvalidUrl(String),
 }
 
 impl GitHostError {
@@ -61,6 +71,9 @@ impl GitHostError {
                 | GitHostError::RepoNotFoundOrNoAccess(_)
                 | GitHostError::CliNotInstalled { .. }
                 | GitHostError::UnsupportedProvider
+                | GitHostError::ApiTokenMissing(_)
+                | GitHostError::HostNotConfigured(_)
+                | GitHostError::InvalidUrl(_)
         )
     }
 }
