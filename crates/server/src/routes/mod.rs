@@ -16,6 +16,7 @@ pub mod execution_processes;
 pub mod frontend;
 pub mod health;
 pub mod images;
+pub mod labels;
 pub mod oauth;
 pub mod organizations;
 pub mod projects;

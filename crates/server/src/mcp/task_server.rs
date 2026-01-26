@@ -1016,8 +1016,11 @@ impl TaskServer {
             title,
             description: expanded_description,
             status,
+            priority: None,
+            position: None,
             parent_workspace_id: None,
             image_ids: None,
+            label_ids: None,
         };
         let url = self.url(&format!("/api/tasks/{}", task_id));
         let updated_task: Task = match self.send_json(self.client.put(&url).json(&payload)).await {

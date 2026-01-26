@@ -11,11 +11,13 @@ import {
   CreateAndStartTaskRequest,
   CreateTaskAttemptBody,
   CreateTag,
+  CreateLabel,
   DirectoryListResponse,
   DirectoryEntry,
   ExecutionProcess,
   ExecutionProcessRepoState,
   GitBranch,
+  Label,
   Project,
   Repo,
   RepoWithTargetBranch,
@@ -32,6 +34,7 @@ import {
   UpdateProject,
   UpdateTask,
   UpdateTag,
+  UpdateLabel,
   UserSystemInfo,
   McpServerQuery,
   UpdateMcpServersBody,
@@ -357,6 +360,60 @@ export const projectsApi = {
       }
     );
     return handleApiResponse<void>(response);
+  },
+};
+
+// Labels API (nested under projects)
+export const labelsApi = {
+  list: async (projectId: string): Promise<Label[]> => {
+    const response = await makeRequest(`/api/projects/${projectId}/labels`);
+    return handleApiResponse<Label[]>(response);
+  },
+
+  getById: async (projectId: string, labelId: string): Promise<Label> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/labels/${labelId}`
+    );
+    return handleApiResponse<Label>(response);
+  },
+
+  create: async (projectId: string, data: CreateLabel): Promise<Label> => {
+    const response = await makeRequest(`/api/projects/${projectId}/labels`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Label>(response);
+  },
+
+  update: async (
+    projectId: string,
+    labelId: string,
+    data: UpdateLabel
+  ): Promise<Label> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/labels/${labelId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<Label>(response);
+  },
+
+  delete: async (projectId: string, labelId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/labels/${labelId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
+  // Get labels for a specific task
+  getTaskLabels: async (taskId: string): Promise<Label[]> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/labels`);
+    return handleApiResponse<Label[]>(response);
   },
 };
 
