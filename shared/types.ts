@@ -64,13 +64,15 @@ export type UpdateTag = { tag_name: string | null, content: string | null, };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "ci" | "cd" | "done" | "cancelled";
 
-export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, creator_user_id: string | null, assignee_user_id: string | null, created_at: string, updated_at: string, };
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, creator_user_id: string | null, assignee_user_id: string | null, hold_user_id: string | null, hold_comment: string | null, hold_at: string | null, created_at: string, updated_at: string, };
 
 export type TaskUser = { id: string, username: string, avatar_url: string | null, };
 
-export type TaskWithUsers = { creator: TaskUser | null, assignee: TaskUser | null, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, creator_user_id: string | null, assignee_user_id: string | null, created_at: string, updated_at: string, };
+export type TaskHoldInfo = { user: TaskUser, comment: string, held_at: string, };
 
-export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, creator: TaskUser | null, assignee: TaskUser | null, approval_count: number, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, creator_user_id: string | null, assignee_user_id: string | null, created_at: string, updated_at: string, };
+export type TaskWithUsers = { creator: TaskUser | null, assignee: TaskUser | null, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, creator_user_id: string | null, assignee_user_id: string | null, hold_user_id: string | null, hold_comment: string | null, hold_at: string | null, created_at: string, updated_at: string, };
+
+export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, creator: TaskUser | null, assignee: TaskUser | null, approval_count: number, hold: TaskHoldInfo | null, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, creator_user_id: string | null, assignee_user_id: string | null, hold_user_id: string | null, hold_comment: string | null, hold_at: string | null, created_at: string, updated_at: string, };
 
 export type TaskRelationships = { parent_task: Task | null, current_workspace: Workspace, children: Array<Task>, };
 
@@ -87,6 +89,14 @@ export type TaskApproval = { id: string, task_id: string, user_id: string, creat
 export type TaskApprovalUser = { id: string, username: string, avatar_url: string | null, };
 
 export type TaskApprovalWithUser = { user: TaskApprovalUser, id: string, task_id: string, user_id: string, created_at: Date, };
+
+export type PlaceHoldRequest = { 
+/**
+ * The comment explaining why the hold is being placed
+ */
+comment: string, };
+
+export type HoldResponse = { task_id: string, hold: TaskHoldInfo, };
 
 export type DraftFollowUpData = { message: string, executor_profile_id: ExecutorProfileId, };
 

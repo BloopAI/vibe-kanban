@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE tasks SET hold_user_id = NULL, hold_comment = NULL, hold_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "16515d4846ad5563cf0d3182389db54cc5920c209bdde4713385fa14607fe304"
+}

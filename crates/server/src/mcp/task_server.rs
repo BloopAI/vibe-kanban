@@ -175,6 +175,10 @@ pub struct TaskSummary {
     pub has_in_progress_attempt: Option<bool>,
     #[schemars(description = "Whether the last execution attempt failed")]
     pub last_attempt_failed: Option<bool>,
+    #[schemars(description = "Whether the task is currently on hold (blocked from new workspace sessions)")]
+    pub is_on_hold: Option<bool>,
+    #[schemars(description = "Hold comment explaining why the task is on hold")]
+    pub hold_comment: Option<String>,
 }
 
 impl TaskSummary {
@@ -187,6 +191,8 @@ impl TaskSummary {
             updated_at: task.updated_at.to_rfc3339(),
             has_in_progress_attempt: Some(task.has_in_progress_attempt),
             last_attempt_failed: Some(task.last_attempt_failed),
+            is_on_hold: Some(task.hold.is_some()),
+            hold_comment: task.hold.as_ref().map(|h| h.comment.clone()),
         }
     }
 }
@@ -209,19 +215,25 @@ pub struct TaskDetails {
     pub has_in_progress_attempt: Option<bool>,
     #[schemars(description = "Whether the last execution attempt failed")]
     pub last_attempt_failed: Option<bool>,
+    #[schemars(description = "Whether the task is currently on hold (blocked from new workspace sessions)")]
+    pub is_on_hold: Option<bool>,
+    #[schemars(description = "Hold comment explaining why the task is on hold")]
+    pub hold_comment: Option<String>,
 }
 
 impl TaskDetails {
     fn from_task(task: Task) -> Self {
         Self {
             id: task.id.to_string(),
-            title: task.title,
-            description: task.description,
+            title: task.title.clone(),
+            description: task.description.clone(),
             status: task.status.to_string(),
             created_at: task.created_at.to_rfc3339(),
             updated_at: task.updated_at.to_rfc3339(),
             has_in_progress_attempt: None,
             last_attempt_failed: None,
+            is_on_hold: Some(task.is_on_hold()),
+            hold_comment: task.hold_comment,
         }
     }
 }

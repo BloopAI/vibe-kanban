@@ -101,6 +101,7 @@ import {
   AddMessageResponse,
   ResolveConversationResponse,
   ConversationError,
+  HoldResponse,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -455,6 +456,21 @@ export const tasksApi = {
 
   unshare: async (sharedTaskId: string): Promise<void> => {
     const response = await makeRequest(`/api/shared-tasks/${sharedTaskId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  placeHold: async (taskId: string, comment: string): Promise<HoldResponse> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/hold`, {
+      method: 'PUT',
+      body: JSON.stringify({ comment }),
+    });
+    return handleApiResponse<HoldResponse>(response);
+  },
+
+  releaseHold: async (taskId: string): Promise<void> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/hold`, {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);

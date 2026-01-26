@@ -208,6 +208,15 @@ pub async fn create_task_attempt(
         .await?
         .ok_or(SqlxError::RowNotFound)?;
 
+    // Block workspace session creation if task is on hold
+    if task.is_on_hold() {
+        let hold_comment = task.hold_comment.as_deref().unwrap_or("No reason given");
+        return Err(ApiError::BadRequest(format!(
+            "Task is on hold: {}. Release the hold before starting a new workspace session.",
+            hold_comment
+        )));
+    }
+
     // Compute agent_working_dir based on repo count:
     // - Single repo: use repo name as working dir (agent runs in repo directory)
     // - Multiple repos: use None (agent runs in workspace root)

@@ -750,6 +750,7 @@ export const Actions = {
           creator: null,
           assignee: null,
           approval_count: 0,
+          hold: null,
         },
         repoId,
         targetBranch: repo?.target_branch,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
-import { Link, Loader2, XCircle } from 'lucide-react';
+import { Link, Loader2, PauseCircle, XCircle } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '@/components/ui/actions-dropdown';
 import { Button } from '@/components/ui/button';
@@ -124,6 +124,11 @@ export function TaskCard({
             <>
               {task.approval_count > 0 && (
                 <TaskApprovalBadge approvalCount={task.approval_count} />
+              )}
+              {task.hold && (
+                <span title={`On hold: ${task.hold.comment}`}>
+                  <PauseCircle className="h-4 w-4 text-amber-500" />
+                </span>
               )}
               {task.has_in_progress_attempt && (
                 <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
