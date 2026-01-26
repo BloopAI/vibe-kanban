@@ -9,9 +9,10 @@ const BINARY_TAG = "__BINARY_TAG__"; // e.g., v0.0.135-20251215122030
 const CACHE_DIR = path.join(require("os").homedir(), ".vibe-kanban-pm", "bin");
 
 // Local development mode: use binaries from npx-cli/dist/ instead of R2
-// Only activate if dist/ exists (i.e., running from source after local-build.sh)
+// Only activate if running from source repo (local-build.sh exists) or env var is set
 const LOCAL_DIST_DIR = path.join(__dirname, "..", "dist");
-const LOCAL_DEV_MODE = fs.existsSync(LOCAL_DIST_DIR) || process.env.VIBE_KANBAN_LOCAL === "1";
+const IS_SOURCE_REPO = fs.existsSync(path.join(__dirname, "..", "..", "local-build.sh"));
+const LOCAL_DEV_MODE = (IS_SOURCE_REPO && fs.existsSync(LOCAL_DIST_DIR)) || process.env.VIBE_KANBAN_LOCAL === "1";
 
 async function fetchJson(url) {
   return new Promise((resolve, reject) => {
@@ -106,6 +107,20 @@ async function ensureBinary(platform, binaryName, onProgress) {
     throw new Error(
       `Local binary not found: ${localZipPath}\n` +
       `Run ./local-build.sh first to build the binaries.`
+    );
+  }
+
+  // Check if R2 URL is configured
+  if (R2_BASE_URL.startsWith("__")) {
+    // Binaries not hosted - check if bundled in package
+    const bundledZipPath = path.join(LOCAL_DIST_DIR, platform, `${binaryName}.zip`);
+    if (fs.existsSync(bundledZipPath)) {
+      return bundledZipPath;
+    }
+    throw new Error(
+      `Binary not available for ${platform}.\n` +
+      `This package only includes Linux x64 binaries.\n` +
+      `For other platforms, please build from source or wait for a proper release.`
     );
   }
 
