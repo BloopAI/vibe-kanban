@@ -1,10 +1,8 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { VirtuosoHandle } from 'react-virtuoso';
 import type { Tag } from 'shared/remote-types';
-import {
-  SearchableTagDropdown,
-  TAG_COLORS,
-} from '@/components/ui-new/primitives/SearchableTagDropdown';
+import { SearchableTagDropdown } from '@/components/ui-new/primitives/SearchableTagDropdown';
+import { PRESET_COLORS } from '@/lib/colors';
 
 interface SearchableTagDropdownContainerProps {
   tags: Tag[];
@@ -41,7 +39,7 @@ export function SearchableTagDropdownContainer({
   }, [isCreating]);
 
   // Derive newTagColor from colorIndex
-  const newTagColor = TAG_COLORS[colorIndex];
+  const newTagColor = PRESET_COLORS[colorIndex];
 
   // Filter tags based on search term
   const filteredTags = useMemo(() => {
@@ -104,13 +102,13 @@ export function SearchableTagDropdownContainer({
             e.preventDefault();
             e.stopPropagation();
             setColorIndex(
-              (prev) => (prev - 1 + TAG_COLORS.length) % TAG_COLORS.length
+              (prev) => (prev - 1 + PRESET_COLORS.length) % PRESET_COLORS.length
             );
             return;
           case 'ArrowRight':
             e.preventDefault();
             e.stopPropagation();
-            setColorIndex((prev) => (prev + 1) % TAG_COLORS.length);
+            setColorIndex((prev) => (prev + 1) % PRESET_COLORS.length);
             return;
           case 'Enter':
             e.preventDefault();
