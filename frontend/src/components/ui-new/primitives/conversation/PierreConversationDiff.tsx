@@ -34,6 +34,14 @@ const PIERRE_DIFFS_THEME_CSS = `
     margin-bottom: 4px;
   }
 
+  [data-disable-line-numbers][data-indicators='classic'] [data-column-content] {
+    padding-inline-start: calc(2ch + 1ch);
+  }
+  [data-disable-line-numbers][data-indicators='classic'] [data-line-type='change-addition'] [data-column-content]::before,
+  [data-disable-line-numbers][data-indicators='classic'] [data-line-type='change-deletion'] [data-column-content]::before {
+    left: 1ch;
+  }
+
   /* Light theme overrides */
   [data-diffs][data-theme-type='light'] {
     /* Background colors */
