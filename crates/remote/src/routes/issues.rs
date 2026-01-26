@@ -89,6 +89,7 @@ async fn create_issue(
         payload.completed_at,
         payload.sort_order,
         payload.parent_issue_id,
+        payload.parent_issue_sort_order,
         payload.extension_metadata,
     )
     .await
@@ -133,6 +134,7 @@ async fn update_issue(
         payload.completed_at,
         payload.sort_order,
         payload.parent_issue_id,
+        payload.parent_issue_sort_order,
         payload.extension_metadata,
     )
     .await

@@ -80,6 +80,7 @@ CREATE TABLE issues (
 
     -- Parent Issue (Self-referential)
     parent_issue_id UUID REFERENCES issues(id) ON DELETE SET NULL,
+    parent_issue_sort_order DOUBLE PRECISION,
 
     -- Extension Metadata (JSONB for flexibility)
     extension_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,

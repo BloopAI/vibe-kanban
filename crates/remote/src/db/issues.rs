@@ -31,6 +31,7 @@ pub struct Issue {
     pub completed_at: Option<DateTime<Utc>>,
     pub sort_order: f64,
     pub parent_issue_id: Option<Uuid>,
+    pub parent_issue_sort_order: Option<f64>,
     pub extension_metadata: Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -69,6 +70,7 @@ impl IssueRepository {
                 completed_at        AS "completed_at?: DateTime<Utc>",
                 sort_order          AS "sort_order!",
                 parent_issue_id     AS "parent_issue_id?: Uuid",
+                parent_issue_sort_order AS "parent_issue_sort_order?",
                 extension_metadata  AS "extension_metadata!: Value",
                 created_at          AS "created_at!: DateTime<Utc>",
                 updated_at          AS "updated_at!: DateTime<Utc>"
@@ -123,6 +125,7 @@ impl IssueRepository {
                 completed_at        AS "completed_at?: DateTime<Utc>",
                 sort_order          AS "sort_order!",
                 parent_issue_id     AS "parent_issue_id?: Uuid",
+                parent_issue_sort_order AS "parent_issue_sort_order?",
                 extension_metadata  AS "extension_metadata!: Value",
                 created_at          AS "created_at!: DateTime<Utc>",
                 updated_at          AS "updated_at!: DateTime<Utc>"
@@ -151,6 +154,7 @@ impl IssueRepository {
         completed_at: Option<DateTime<Utc>>,
         sort_order: f64,
         parent_issue_id: Option<Uuid>,
+        parent_issue_sort_order: Option<f64>,
         extension_metadata: Value,
     ) -> Result<MutationResponse<Issue>, IssueError> {
         let mut tx = pool.begin().await?;
@@ -163,9 +167,9 @@ impl IssueRepository {
             INSERT INTO issues (
                 id, project_id, status_id, title, description, priority,
                 start_date, target_date, completed_at, sort_order,
-                parent_issue_id, extension_metadata
+                parent_issue_id, parent_issue_sort_order, extension_metadata
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             RETURNING
                 id                  AS "id!: Uuid",
                 project_id          AS "project_id!: Uuid",
@@ -180,6 +184,7 @@ impl IssueRepository {
                 completed_at        AS "completed_at?: DateTime<Utc>",
                 sort_order          AS "sort_order!",
                 parent_issue_id     AS "parent_issue_id?: Uuid",
+                parent_issue_sort_order AS "parent_issue_sort_order?",
                 extension_metadata  AS "extension_metadata!: Value",
                 created_at          AS "created_at!: DateTime<Utc>",
                 updated_at          AS "updated_at!: DateTime<Utc>"
@@ -195,6 +200,7 @@ impl IssueRepository {
             completed_at,
             sort_order,
             parent_issue_id,
+            parent_issue_sort_order,
             extension_metadata
         )
         .fetch_one(&mut *tx)
@@ -226,6 +232,7 @@ impl IssueRepository {
         completed_at: Option<Option<DateTime<Utc>>>,
         sort_order: Option<f64>,
         parent_issue_id: Option<Option<Uuid>>,
+        parent_issue_sort_order: Option<Option<f64>>,
         extension_metadata: Option<Value>,
     ) -> Result<MutationResponse<Issue>, IssueError> {
         let mut tx = pool.begin().await?;
@@ -242,6 +249,8 @@ impl IssueRepository {
         let completed_at_value = completed_at.flatten();
         let update_parent_issue_id = parent_issue_id.is_some();
         let parent_issue_id_value = parent_issue_id.flatten();
+        let update_parent_issue_sort_order = parent_issue_sort_order.is_some();
+        let parent_issue_sort_order_value = parent_issue_sort_order.flatten();
 
         let data = sqlx::query_as!(
             Issue,
@@ -257,9 +266,10 @@ impl IssueRepository {
                 completed_at = CASE WHEN $10 THEN $11 ELSE completed_at END,
                 sort_order = COALESCE($12, sort_order),
                 parent_issue_id = CASE WHEN $13 THEN $14 ELSE parent_issue_id END,
-                extension_metadata = COALESCE($15, extension_metadata),
+                parent_issue_sort_order = CASE WHEN $15 THEN $16 ELSE parent_issue_sort_order END,
+                extension_metadata = COALESCE($17, extension_metadata),
                 updated_at = NOW()
-            WHERE id = $16
+            WHERE id = $18
             RETURNING
                 id                  AS "id!: Uuid",
                 project_id          AS "project_id!: Uuid",
@@ -274,6 +284,7 @@ impl IssueRepository {
                 completed_at        AS "completed_at?: DateTime<Utc>",
                 sort_order          AS "sort_order!",
                 parent_issue_id     AS "parent_issue_id?: Uuid",
+                parent_issue_sort_order AS "parent_issue_sort_order?",
                 extension_metadata  AS "extension_metadata!: Value",
                 created_at          AS "created_at!: DateTime<Utc>",
                 updated_at          AS "updated_at!: DateTime<Utc>"
@@ -292,6 +303,8 @@ impl IssueRepository {
             sort_order,
             update_parent_issue_id,
             parent_issue_id_value,
+            update_parent_issue_sort_order,
+            parent_issue_sort_order_value,
             extension_metadata,
             id
         )
@@ -365,6 +378,7 @@ impl IssueRepository {
             None,
             None,
             None,
+            None,
         )
         .await?;
 
@@ -408,6 +422,7 @@ impl IssueRepository {
             pool,
             issue_id,
             Some(in_progress_status.id),
+            None,
             None,
             None,
             None,

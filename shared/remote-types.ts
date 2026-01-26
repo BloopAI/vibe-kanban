@@ -16,7 +16,7 @@ export type ProjectStatus = { id: string, project_id: string, name: string, colo
 
 export type Tag = { id: string, project_id: string, name: string, color: string, };
 
-export type Issue = { id: string, project_id: string, issue_number: number, simple_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, extension_metadata: JsonValue, created_at: string, updated_at: string, };
+export type Issue = { id: string, project_id: string, issue_number: number, simple_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, parent_issue_sort_order: number | null, extension_metadata: JsonValue, created_at: string, updated_at: string, };
 
 export type IssueAssignee = { id: string, issue_id: string, user_id: string, assigned_at: string, };
 
@@ -28,7 +28,7 @@ export type IssueRelationship = { id: string, issue_id: string, related_issue_id
 
 export type IssueRelationshipType = "blocking" | "related" | "has_duplicate";
 
-export type IssueComment = { id: string, issue_id: string, author_id: string, message: string, created_at: string, updated_at: string, };
+export type IssueComment = { id: string, issue_id: string, author_id: string, parent_id: string | null, message: string, created_at: string, updated_at: string, };
 
 export type IssueCommentReaction = { id: string, comment_id: string, user_id: string, emoji: string, created_at: string, };
 
@@ -87,9 +87,9 @@ export type CreateIssueRequest = {
  * Optional client-generated ID. If not provided, server generates one.
  * Using client-generated IDs enables stable optimistic updates.
  */
-id?: string, project_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, extension_metadata: JsonValue, };
+id?: string, project_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, parent_issue_sort_order: number | null, extension_metadata: JsonValue, };
 
-export type UpdateIssueRequest = { status_id: string | null, title: string | null, description: string | null | null, priority: IssuePriority | null, start_date: string | null | null, target_date: string | null | null, completed_at: string | null | null, sort_order: number | null, parent_issue_id: string | null | null, extension_metadata: JsonValue | null, };
+export type UpdateIssueRequest = { status_id: string | null, title: string | null, description: string | null | null, priority: IssuePriority | null, start_date: string | null | null, target_date: string | null | null, completed_at: string | null | null, sort_order: number | null, parent_issue_id: string | null | null, parent_issue_sort_order: number | null | null, extension_metadata: JsonValue | null, };
 
 export type CreateIssueAssigneeRequest = { 
 /**
@@ -132,9 +132,9 @@ export type CreateIssueCommentRequest = {
  * Optional client-generated ID. If not provided, server generates one.
  * Using client-generated IDs enables stable optimistic updates.
  */
-id?: string, issue_id: string, message: string, };
+id?: string, issue_id: string, message: string, parent_id: string | null, };
 
-export type UpdateIssueCommentRequest = { message: string | null, };
+export type UpdateIssueCommentRequest = { message: string | null, parent_id: string | null | null, };
 
 export type CreateIssueCommentReactionRequest = { 
 /**

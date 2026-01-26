@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO issues (\n                id, project_id, status_id, title, description, priority,\n                start_date, target_date, completed_at, sort_order,\n                parent_issue_id, extension_metadata\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)\n            RETURNING\n                id                  AS \"id!: Uuid\",\n                project_id          AS \"project_id!: Uuid\",\n                issue_number        AS \"issue_number!\",\n                simple_id           AS \"simple_id!\",\n                status_id           AS \"status_id!: Uuid\",\n                title               AS \"title!\",\n                description         AS \"description?\",\n                priority            AS \"priority!: IssuePriority\",\n                start_date          AS \"start_date?: DateTime<Utc>\",\n                target_date         AS \"target_date?: DateTime<Utc>\",\n                completed_at        AS \"completed_at?: DateTime<Utc>\",\n                sort_order          AS \"sort_order!\",\n                parent_issue_id     AS \"parent_issue_id?: Uuid\",\n                extension_metadata  AS \"extension_metadata!: Value\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "query": "\n            UPDATE issues\n            SET\n                status_id = COALESCE($1, status_id),\n                title = COALESCE($2, title),\n                description = CASE WHEN $3 THEN $4 ELSE description END,\n                priority = COALESCE($5, priority),\n                start_date = CASE WHEN $6 THEN $7 ELSE start_date END,\n                target_date = CASE WHEN $8 THEN $9 ELSE target_date END,\n                completed_at = CASE WHEN $10 THEN $11 ELSE completed_at END,\n                sort_order = COALESCE($12, sort_order),\n                parent_issue_id = CASE WHEN $13 THEN $14 ELSE parent_issue_id END,\n                parent_issue_sort_order = CASE WHEN $15 THEN $16 ELSE parent_issue_sort_order END,\n                extension_metadata = COALESCE($17, extension_metadata),\n                updated_at = NOW()\n            WHERE id = $18\n            RETURNING\n                id                  AS \"id!: Uuid\",\n                project_id          AS \"project_id!: Uuid\",\n                issue_number        AS \"issue_number!\",\n                simple_id           AS \"simple_id!\",\n                status_id           AS \"status_id!: Uuid\",\n                title               AS \"title!\",\n                description         AS \"description?\",\n                priority            AS \"priority!: IssuePriority\",\n                start_date          AS \"start_date?: DateTime<Utc>\",\n                target_date         AS \"target_date?: DateTime<Utc>\",\n                completed_at        AS \"completed_at?: DateTime<Utc>\",\n                sort_order          AS \"sort_order!\",\n                parent_issue_id     AS \"parent_issue_id?: Uuid\",\n                parent_issue_sort_order AS \"parent_issue_sort_order?\",\n                extension_metadata  AS \"extension_metadata!: Value\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -82,16 +82,21 @@
       },
       {
         "ordinal": 13,
+        "name": "parent_issue_sort_order?",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 14,
         "name": "extension_metadata!: Value",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -99,9 +104,8 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Uuid",
-        "Uuid",
         "Varchar",
+        "Bool",
         "Text",
         {
           "Custom": {
@@ -116,12 +120,19 @@
             }
           }
         },
+        "Bool",
         "Timestamptz",
+        "Bool",
         "Timestamptz",
+        "Bool",
         "Timestamptz",
         "Float8",
+        "Bool",
         "Uuid",
-        "Jsonb"
+        "Bool",
+        "Float8",
+        "Jsonb",
+        "Uuid"
       ]
     },
     "nullable": [
@@ -138,10 +149,11 @@
       true,
       false,
       true,
+      true,
       false,
       false,
       false
     ]
   },
-  "hash": "84719f342a06cebbbc0a0910dc3534aa79ad32763757b58f13290b5a75f22316"
+  "hash": "0333a69bd9b013ce1ee18332d5b50d4c2cc8c97b096ff1da68cd016705c2a06b"
 }

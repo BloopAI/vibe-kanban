@@ -118,6 +118,7 @@ crate::define_entity!(
         completed_at: Option<DateTime<Utc>>,
         sort_order: f64,
         parent_issue_id: Option<uuid::Uuid>,
+        parent_issue_sort_order: Option<f64>,
         extension_metadata: Value,
     ],
 );
