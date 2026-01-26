@@ -171,6 +171,11 @@
     "attemptsCount": "Attempts ({{count}})",
     "noAttempts": "No attempts yet"
   },
+  "pmDocs": {
+    "title": "PM Docs",
+    "noDescription": "No documentation available",
+    "notFound": "PM task not found"
+  },
   "processes": {
     "noLogsAvailable": "No logs available",
     "selectAttempt": "Select an attempt to view execution processes.",

@@ -318,6 +318,28 @@ pub struct GetPmContextResponse {
     pub pm_context: Option<McpPmContext>,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct RequestPmReviewRequest {
+    #[schemars(description = "The ID of the task to review")]
+    pub task_id: Uuid,
+    #[schemars(
+        description = "Additional review instructions to include alongside the PM specs"
+    )]
+    pub additional_instructions: Option<String>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct RequestPmReviewResponse {
+    #[schemars(description = "The task ID being reviewed")]
+    pub task_id: String,
+    #[schemars(description = "Whether this project has a PM task configured")]
+    pub has_pm_task: bool,
+    #[schemars(description = "The generated review prompt based on PM specs")]
+    pub review_prompt: String,
+    #[schemars(description = "Summary of what the review should check")]
+    pub review_checklist: Vec<String>,
+}
+
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct GetTaskResponse {
     pub task: TaskDetails,
@@ -1111,12 +1133,114 @@ impl TaskServer {
             pm_context: Some(pm_context),
         })
     }
+
+    #[tool(
+        description = "Request a PM-based review for a task. This generates a review prompt based on the project's PM specifications. Use this when a task is ready for review (status: inreview) to verify the implementation matches the project requirements."
+    )]
+    async fn request_pm_review(
+        &self,
+        Parameters(RequestPmReviewRequest {
+            task_id,
+            additional_instructions,
+        }): Parameters<RequestPmReviewRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        // First, get the task to find the project_id
+        let task_url = self.url(&format!("/api/tasks/{}", task_id));
+        let task: Task = match self.send_json(self.client.get(&task_url)).await {
+            Ok(t) => t,
+            Err(e) => return Ok(e),
+        };
+
+        // Get the project to find the pm_task_id
+        let project_url = self.url(&format!("/api/projects/{}", task.project_id));
+        let project: Project = match self.send_json(self.client.get(&project_url)).await {
+            Ok(p) => p,
+            Err(e) => return Ok(e),
+        };
+
+        // If no PM task is configured, return a basic review prompt
+        let Some(pm_task_id) = project.pm_task_id else {
+            let basic_prompt = format!(
+                "Review the implementation of task '{}' ({}).\n\n\
+                No PM specifications are configured for this project.\n\n\
+                Please review the code changes for:\n\
+                - Code quality and best practices\n\
+                - Potential bugs or edge cases\n\
+                - Security considerations\n\
+                - Test coverage{}",
+                task.title,
+                task_id,
+                additional_instructions
+                    .map(|i| format!("\n\nAdditional instructions:\n{}", i))
+                    .unwrap_or_default()
+            );
+
+            return TaskServer::success(&RequestPmReviewResponse {
+                task_id: task_id.to_string(),
+                has_pm_task: false,
+                review_prompt: basic_prompt,
+                review_checklist: vec![
+                    "Code quality and best practices".to_string(),
+                    "Potential bugs or edge cases".to_string(),
+                    "Security considerations".to_string(),
+                    "Test coverage".to_string(),
+                ],
+            });
+        };
+
+        // Fetch the PM task details
+        let pm_task_url = self.url(&format!("/api/tasks/{}", pm_task_id));
+        let pm_task: Task = match self.send_json(self.client.get(&pm_task_url)).await {
+            Ok(t) => t,
+            Err(e) => return Ok(e),
+        };
+
+        // Build the review prompt based on PM specs
+        let pm_specs = pm_task.description.unwrap_or_else(|| "No detailed specifications provided.".to_string());
+
+        let review_prompt = format!(
+            "## PM-Based Code Review for Task: {}\n\n\
+            ### Task Description\n{}\n\n\
+            ### Project Specifications (from PM)\n{}\n\n\
+            ### Review Instructions\n\
+            Please review the implementation and verify:\n\n\
+            1. **Specification Compliance**: Does the implementation match the project specifications?\n\
+            2. **Requirements Coverage**: Are all requirements from the PM specs addressed?\n\
+            3. **Architecture Alignment**: Does the code follow the architectural patterns described in the specs?\n\
+            4. **Code Quality**: Is the code maintainable, readable, and follows best practices?\n\
+            5. **Edge Cases**: Are edge cases and error scenarios properly handled?\n\
+            6. **Test Coverage**: Are there adequate tests for the implementation?\n\
+            {}",
+            task.title,
+            task.description.unwrap_or_else(|| "No task description provided.".to_string()),
+            pm_specs,
+            additional_instructions
+                .map(|i| format!("\n### Additional Instructions\n{}", i))
+                .unwrap_or_default()
+        );
+
+        let review_checklist = vec![
+            "Specification compliance with PM docs".to_string(),
+            "All requirements addressed".to_string(),
+            "Architecture alignment".to_string(),
+            "Code quality and best practices".to_string(),
+            "Edge cases and error handling".to_string(),
+            "Test coverage".to_string(),
+        ];
+
+        TaskServer::success(&RequestPmReviewResponse {
+            task_id: task_id.to_string(),
+            has_pm_task: true,
+            review_prompt,
+            review_checklist,
+        })
+    }
 }
 
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
-        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_workspace_session', 'get_task', 'update_task', 'delete_task', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script', 'get_pm_context'. Use 'get_pm_context' to fetch the project specification and guidelines from the PM task before implementing features. Make sure to pass `project_id`, `task_id`, or `repo_id` where required. You can use list tools to get the available ids.".to_string();
+        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_workspace_session', 'get_task', 'update_task', 'delete_task', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script', 'get_pm_context', 'request_pm_review'. Use 'get_pm_context' to fetch the project specification and guidelines from the PM task before implementing features. Use 'request_pm_review' to generate a review checklist based on PM specs when a task moves to inreview status. Make sure to pass `project_id`, `task_id`, or `repo_id` where required. You can use list tools to get the available ids.".to_string();
         if self.context.is_some() {
             let context_instruction = "Use 'get_context' to fetch project/task/workspace metadata (including PM context if available) for the active Vibe Kanban workspace session when available.";
             instruction = format!("{} {}", context_instruction, instruction);

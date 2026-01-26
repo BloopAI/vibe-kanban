@@ -56,6 +56,7 @@ import { DiffsPanel } from '@/components/panels/DiffsPanel';
 import TaskAttemptPanel from '@/components/panels/TaskAttemptPanel';
 import TaskPanel from '@/components/panels/TaskPanel';
 import TodoPanel from '@/components/tasks/TodoPanel';
+import { PmDocsPanel } from '@/components/panels/PmDocsPanel';
 import { NewCard, NewCardHeader } from '@/components/ui/new-card';
 import {
   Breadcrumb,
@@ -786,34 +787,40 @@ export function ProjectTasks() {
         </Card>
       </div>
     ) : (
-      <div className="w-full h-full flex flex-col overflow-hidden">
-        {/* Project Progress Bar */}
-        {projectProgress.total > 0 && (
-          <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/30">
-            <span className="text-sm text-muted-foreground whitespace-nowrap">
-              {t('progress', { done: projectProgress.done, total: projectProgress.total })}
-            </span>
-            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden max-w-xs">
-              <div
-                className="h-full bg-primary transition-all duration-300"
-                style={{ width: `${projectProgress.percent}%` }}
-              />
+      <div className="w-full h-full flex overflow-hidden">
+        {/* PM Docs Sidebar */}
+        <PmDocsPanel pmTaskId={project?.pm_task_id} />
+
+        {/* Main Kanban Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Project Progress Bar */}
+          {projectProgress.total > 0 && (
+            <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/30">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
+                {t('progress', { done: projectProgress.done, total: projectProgress.total })}
+              </span>
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden max-w-xs">
+                <div
+                  className="h-full bg-primary transition-all duration-300"
+                  style={{ width: `${projectProgress.percent}%` }}
+                />
+              </div>
+              <span className="text-sm font-medium text-muted-foreground">
+                {projectProgress.percent}%
+              </span>
             </div>
-            <span className="text-sm font-medium text-muted-foreground">
-              {projectProgress.percent}%
-            </span>
+          )}
+          <div className="flex-1 overflow-x-auto overflow-y-auto overscroll-x-contain">
+            <TaskKanbanBoard
+              columns={kanbanColumns}
+              onDragEnd={handleDragEnd}
+              onViewTaskDetails={handleViewTaskDetails}
+              selectedTaskId={selectedTask?.id}
+              onCreateTask={handleCreateNewTask}
+              projectId={projectId!}
+              pmTaskId={project?.pm_task_id}
+            />
           </div>
-        )}
-        <div className="flex-1 overflow-x-auto overflow-y-auto overscroll-x-contain">
-          <TaskKanbanBoard
-            columns={kanbanColumns}
-            onDragEnd={handleDragEnd}
-            onViewTaskDetails={handleViewTaskDetails}
-            selectedTaskId={selectedTask?.id}
-            onCreateTask={handleCreateNewTask}
-            projectId={projectId!}
-            pmTaskId={project?.pm_task_id}
-          />
         </div>
       </div>
     );
