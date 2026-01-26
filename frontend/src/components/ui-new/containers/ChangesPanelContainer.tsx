@@ -65,7 +65,10 @@ export function ChangesPanelContainer({
   const diffRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const changesPanelRef = useRef<ChangesPanelHandle>(null);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
-  const visibleRangeRef = useRef<{ startIndex: number; endIndex: number }>({ startIndex: 0, endIndex: 0 });
+  const visibleRangeRef = useRef<{ startIndex: number; endIndex: number }>({
+    startIndex: 0,
+    endIndex: 0,
+  });
   const [processedPaths] = useState(() => new Set<string>());
 
   const diffItems = useMemo(() => {
@@ -164,7 +167,10 @@ export function ChangesPanelContainer({
 
     const handleScroll = () => {
       const currentState = syncStateRef.current;
-      if (currentState === 'programmatic-scroll' || currentState === 'sync-cooldown') {
+      if (
+        currentState === 'programmatic-scroll' ||
+        currentState === 'sync-cooldown'
+      ) {
         return;
       }
 

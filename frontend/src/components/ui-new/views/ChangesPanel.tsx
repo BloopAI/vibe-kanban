@@ -68,7 +68,15 @@ const DiffItem = memo(function DiffItem({
 
 export const ChangesPanel = forwardRef<ChangesPanelHandle, ChangesPanelProps>(
   function ChangesPanel(
-    { className, diffItems, onDiffRef, onScrollerRef, onRangeChanged, projectId, attemptId },
+    {
+      className,
+      diffItems,
+      onDiffRef,
+      onScrollerRef,
+      onRangeChanged,
+      projectId,
+      attemptId,
+    },
     ref
   ) {
     const { t } = useTranslation(['tasks', 'common']);
@@ -128,13 +136,13 @@ export const ChangesPanel = forwardRef<ChangesPanelHandle, ChangesPanelProps>(
           defaultItemHeight={defaultItemHeight}
           itemContent={(_index, { diff, initialExpanded }) => (
             <div>
-          <DiffItem
-            diff={diff}
-            initialExpanded={initialExpanded}
-            onRef={onDiffRef}
-            projectId={projectId}
-            attemptId={attemptId}
-          />
+              <DiffItem
+                diff={diff}
+                initialExpanded={initialExpanded}
+                onRef={onDiffRef}
+                projectId={projectId}
+                attemptId={attemptId}
+              />
             </div>
           )}
           computeItemKey={(index, { diff }) =>
