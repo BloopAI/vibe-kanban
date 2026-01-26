@@ -21,7 +21,11 @@ import {
 } from '@/utils/diffDataAdapter';
 import { useTheme } from '@/components/ThemeProvider';
 import { getActualTheme } from '@/utils/theme';
-import { useDiffViewMode } from '@/stores/useDiffViewStore';
+import {
+  useDiffViewMode,
+  useWrapTextDiff,
+  useIgnoreWhitespaceDiff,
+} from '@/stores/useDiffViewStore';
 import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { getFileIcon } from '@/utils/fileTypeIcon';
@@ -78,6 +82,8 @@ export function PierreDiffCard({
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
   const globalMode = useDiffViewMode();
+  const wrapText = useWrapTextDiff();
+  const ignoreWhitespace = useIgnoreWhitespaceDiff();
 
   const { comments, drafts, setDraft, addComment } = useReview();
   const { showGitHubComments, getGitHubCommentsForFile } =
@@ -95,8 +101,8 @@ export function PierreDiffCard({
 
   // Transform diff to pierre/diffs metadata
   const fileDiffMetadata = useMemo(
-    () => transformDiffToFileDiffMetadata(diff),
-    [diff]
+    () => transformDiffToFileDiffMetadata(diff, { ignoreWhitespace }),
+    [diff, ignoreWhitespace]
   );
 
   const additions = useMemo(() => {
@@ -296,14 +302,14 @@ export function PierreDiffCard({
         globalMode === 'split' ? ('split' as const) : ('unified' as const),
       diffIndicators: 'classic' as const,
       themeType: actualTheme,
-      overflow: 'scroll' as const,
+      overflow: wrapText ? ('wrap' as const) : ('scroll' as const),
       hunkSeparators: 'line-info' as const,
       disableFileHeader: true,
       enableHoverUtility: true,
       onLineClick: handleLineClick,
       unsafeCSS: DARK_MODE_OVERRIDE_CSS,
     }),
-    [globalMode, actualTheme, handleLineClick]
+    [globalMode, actualTheme, wrapText, handleLineClick]
   );
 
   // Large diff placeholder logic

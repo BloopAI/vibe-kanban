@@ -12,7 +12,11 @@ import { cn } from '@/lib/utils';
 import { getFileIcon } from '@/utils/fileTypeIcon';
 import { useTheme } from '@/components/ThemeProvider';
 import { getActualTheme } from '@/utils/theme';
-import { useDiffViewMode } from '@/stores/useDiffViewStore';
+import {
+  useDiffViewMode,
+  useWrapTextDiff,
+  useIgnoreWhitespaceDiff,
+} from '@/stores/useDiffViewStore';
 import { parseDiffStats } from '@/utils/diffStatsParser';
 import { ToolStatus } from 'shared/types';
 import { ToolStatusDot } from './ToolStatusDot';
@@ -67,7 +71,10 @@ interface DiffData {
 /**
  * Process input to get diff data and statistics
  */
-export function useDiffData(input: DiffInput): DiffData {
+export function useDiffData(
+  input: DiffInput,
+  options?: { ignoreWhitespace?: boolean }
+): DiffData {
   return useMemo(() => {
     if (input.type === 'content') {
       const filePath = input.newPath || input.oldPath || 'unknown';
@@ -95,7 +102,11 @@ export function useDiffData(input: DiffInput): DiffData {
           name: filePath,
           contents: newContent,
         };
-        const metadata = parseDiffFromFile(oldFile, newFile);
+        const metadata = parseDiffFromFile(
+          oldFile,
+          newFile,
+          options?.ignoreWhitespace ? { ignoreWhitespace: true } : undefined
+        );
 
         // Calculate additions/deletions from hunks
         let additions = 0;
@@ -147,7 +158,7 @@ export function useDiffData(input: DiffInput): DiffData {
         hideLineNumbers: !hasLineNumbers,
       };
     }
-  }, [input]);
+  }, [input, options?.ignoreWhitespace]);
 }
 
 export function DiffViewCard({
@@ -159,6 +170,8 @@ export function DiffViewCard({
 }: DiffViewCardProps) {
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
+  const wrapText = useWrapTextDiff();
+  const ignoreWhitespace = useIgnoreWhitespaceDiff();
   const {
     fileDiffMetadata,
     unifiedDiff,
@@ -167,7 +180,7 @@ export function DiffViewCard({
     filePath,
     isValid,
     hideLineNumbers,
-  } = useDiffData(input);
+  } = useDiffData(input, { ignoreWhitespace });
 
   const FileIcon = getFileIcon(filePath, actualTheme);
   const hasStats = additions > 0 || deletions > 0;
@@ -225,6 +238,7 @@ export function DiffViewCard({
           isValid={isValid}
           hideLineNumbers={hideLineNumbers}
           theme={actualTheme}
+          wrapText={wrapText}
         />
       )}
     </div>
@@ -240,12 +254,14 @@ export function DiffViewBody({
   isValid,
   hideLineNumbers,
   theme,
+  wrapText,
 }: {
   fileDiffMetadata: FileDiffMetadata | null;
   unifiedDiff: string | null;
   isValid: boolean;
   hideLineNumbers?: boolean;
   theme: 'light' | 'dark';
+  wrapText?: boolean;
 }) {
   const { t } = useTranslation('tasks');
   const globalMode = useDiffViewMode();
@@ -256,12 +272,12 @@ export function DiffViewBody({
         globalMode === 'split' ? ('split' as const) : ('unified' as const),
       diffIndicators: 'classic' as const,
       themeType: theme,
-      overflow: 'scroll' as const,
+      overflow: wrapText ? ('wrap' as const) : ('scroll' as const),
       hunkSeparators: 'line-info' as const,
       disableFileHeader: true,
       unsafeCSS: DARK_MODE_OVERRIDE_CSS,
     }),
-    [globalMode, theme]
+    [globalMode, theme, wrapText]
   );
 
   if (!isValid) {

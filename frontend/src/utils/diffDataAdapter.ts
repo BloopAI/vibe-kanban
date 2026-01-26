@@ -78,7 +78,10 @@ function getFilePath(diff: Diff): string {
  * @param diff - The vibe-kanban Diff object
  * @returns FileDiffMetadata for use with pierre/diffs components
  */
-export function transformDiffToFileDiffMetadata(diff: Diff): FileDiffMetadata {
+export function transformDiffToFileDiffMetadata(
+  diff: Diff,
+  options?: { ignoreWhitespace?: boolean }
+): FileDiffMetadata {
   const filePath = getFilePath(diff);
 
   // Handle contentOmitted case - create placeholder metadata
@@ -112,7 +115,11 @@ export function transformDiffToFileDiffMetadata(diff: Diff): FileDiffMetadata {
   };
 
   // Use pierre/diffs parser to generate diff metadata
-  const metadata = parseDiffFromFile(oldFile, newFile);
+  const metadata = parseDiffFromFile(
+    oldFile,
+    newFile,
+    options?.ignoreWhitespace ? { ignoreWhitespace: true } : undefined
+  );
 
   // Override the type based on our DiffChangeKind mapping
   // parseDiffFromFile may not correctly detect renames/copies
