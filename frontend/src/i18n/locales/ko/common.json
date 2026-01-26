@@ -97,7 +97,8 @@
     "selectPlaceholder": "조직 선택",
     "currentBadge": " (현재)",
     "organizations": "조직",
-    "createOrganization": "조직 만들기"
+    "createOrganization": "조직 만들기",
+    "orgSettings": "조직 설정"
   },
   "navbar": {
     "tryNewUI": "새로운 UI 사용해보기"

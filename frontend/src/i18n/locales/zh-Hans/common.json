@@ -97,7 +97,8 @@
     "selectPlaceholder": "选择组织",
     "currentBadge": "（当前）",
     "organizations": "组织",
-    "createOrganization": "创建组织"
+    "createOrganization": "创建组织",
+    "orgSettings": "组织设置"
   },
   "navbar": {
     "tryNewUI": "试用新界面"
