@@ -294,7 +294,7 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
     });
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!messageInput.trim() || !projectId || isAiResponding) return;
 
     const content = messageInput.trim();
@@ -302,6 +302,18 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
     setIsAiResponding(true);
     setStreamingResponse('');
 
+    // First, send the user message and show it immediately
+    try {
+      await pmChatApi.sendMessage(projectId, content, 'user');
+      // Refresh to show the user message right away
+      await queryClient.invalidateQueries({ queryKey: ['pm-chat', projectId] });
+    } catch (error) {
+      console.error('Failed to send user message:', error);
+      setIsAiResponding(false);
+      return;
+    }
+
+    // Then start the AI response stream
     abortControllerRef.current = pmChatApi.aiChat(
       projectId,
       content,
@@ -321,7 +333,7 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
         setIsAiResponding(false);
         setStreamingResponse('');
         console.error('AI chat error:', error);
-        // Invalidate to show the user message at least
+        // Invalidate to show the assistant error or partial response
         queryClient.invalidateQueries({ queryKey: ['pm-chat', projectId] });
       }
     );

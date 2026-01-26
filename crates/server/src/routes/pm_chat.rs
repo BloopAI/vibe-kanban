@@ -115,23 +115,13 @@ pub async fn send_message(
 }
 
 /// Send a message and get an AI response using Claude CLI
+/// Note: The user message should be sent via send_message() first, then call this endpoint
 pub async fn ai_chat(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<AiChatRequest>,
 ) -> Result<Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>>, ApiError> {
-    // Save the user message first
-    let _user_message = PmConversation::create(
-        &deployment.db().pool,
-        &CreatePmConversation {
-            project_id: project.id,
-            role: PmMessageRole::User,
-            content: payload.content.clone(),
-            model: None,
-        },
-    ).await?;
-
-    // Get conversation history for context
+    // Get conversation history for context (user message should already be saved)
     let messages = PmConversation::find_by_project_id(&deployment.db().pool, project.id).await?;
 
     // Build conversation context
