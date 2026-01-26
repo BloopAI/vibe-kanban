@@ -2,7 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { isEqual } from 'lodash';
-import { SpinnerIcon, PlusIcon, TrashIcon, GearIcon } from '@phosphor-icons/react';
+import {
+  SpinnerIcon,
+  PlusIcon,
+  TrashIcon,
+  GearIcon,
+} from '@phosphor-icons/react';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
@@ -10,7 +15,11 @@ import { projectsApi } from '@/lib/api';
 import { repoBranchKeys } from '@/hooks/useRepoBranches';
 import { useAutoReviewSettings } from '@/hooks/useAutoReviewSettings';
 import { AutoReviewSettingsDialog } from '@/components/dialogs/tasks/AutoReviewSettingsDialog';
-import { useProjectLabels, useCreateLabel, useDeleteLabel } from '@/hooks/useLabels';
+import {
+  useProjectLabels,
+  useCreateLabel,
+  useDeleteLabel,
+} from '@/hooks/useLabels';
 import type { Project, Repo, UpdateProject, Label } from 'shared/types';
 import { cn } from '@/lib/utils';
 import {
@@ -66,12 +75,16 @@ export function ProjectsSettingsSection() {
   const [addingRepo, setAddingRepo] = useState(false);
   const [deletingRepoId, setDeletingRepoId] = useState<string | null>(null);
 
-
   // Auto-review settings
-  const { settings: autoReviewSettings, updateSettings: updateAutoReviewSettings } = useAutoReviewSettings(selectedProjectId || undefined);
+  const {
+    settings: autoReviewSettings,
+    updateSettings: updateAutoReviewSettings,
+  } = useAutoReviewSettings(selectedProjectId || undefined);
 
   // Labels state
-  const { data: labels = [], isLoading: labelsLoading } = useProjectLabels(selectedProjectId || undefined);
+  const { data: labels = [], isLoading: labelsLoading } = useProjectLabels(
+    selectedProjectId || undefined
+  );
   const createLabel = useCreateLabel(selectedProjectId || undefined);
   const deleteLabel = useDeleteLabel(selectedProjectId || undefined);
   const [newLabelName, setNewLabelName] = useState('');
@@ -479,15 +492,16 @@ export function ProjectsSettingsSection() {
           >
             <div className="flex items-center justify-between p-3 border border-border/50 rounded-sm">
               <div className="flex items-center gap-3">
-                <div className={cn(
-                  'w-2 h-2 rounded-full',
-                  autoReviewSettings.enabled ? 'bg-success' : 'bg-low'
-                )} />
+                <div
+                  className={cn(
+                    'w-2 h-2 rounded-full',
+                    autoReviewSettings.enabled ? 'bg-success' : 'bg-low'
+                  )}
+                />
                 <span className="text-sm text-normal">
                   {autoReviewSettings.enabled
                     ? t('settings.projects.autoReview.enabled')
-                    : t('settings.projects.autoReview.disabled')
-                  }
+                    : t('settings.projects.autoReview.disabled')}
                 </span>
               </div>
               <button
@@ -563,7 +577,8 @@ export function ProjectsSettingsSection() {
                     className={cn(
                       'flex items-center gap-1 px-3 py-1.5 text-sm rounded-sm transition-colors',
                       'bg-brand text-white hover:bg-brand/90',
-                      (!newLabelName.trim() || isAddingLabel) && 'opacity-50 cursor-not-allowed'
+                      (!newLabelName.trim() || isAddingLabel) &&
+                        'opacity-50 cursor-not-allowed'
                     )}
                   >
                     {isAddingLabel ? (

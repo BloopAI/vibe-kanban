@@ -202,7 +202,8 @@ export function TaskCard({
                     </TooltipTrigger>
                     <TooltipContent side="top">
                       <p className="text-xs">
-                        {t('taskCard.blocked', 'Blocked by')} {incompleteDependencies.length}{' '}
+                        {t('taskCard.blocked', 'Blocked by')}{' '}
+                        {incompleteDependencies.length}{' '}
                         {incompleteDependencies.length === 1
                           ? t('taskCard.task', 'task')
                           : t('taskCard.tasks', 'tasks')}
@@ -222,7 +223,10 @@ export function TaskCard({
                     </TooltipTrigger>
                     <TooltipContent side="top">
                       <p className="text-xs">
-                        {t('taskCard.dependenciesComplete', 'All dependencies complete')}
+                        {t(
+                          'taskCard.dependenciesComplete',
+                          'All dependencies complete'
+                        )}
                       </p>
                     </TooltipContent>
                   </Tooltip>

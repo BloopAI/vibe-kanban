@@ -30,10 +30,7 @@ function TaskKanbanBoard({
   projectId,
 }: TaskKanbanBoardProps) {
   // Flatten all tasks for dependency checking
-  const allTasks = useMemo(
-    () => Object.values(columns).flat(),
-    [columns]
-  );
+  const allTasks = useMemo(() => Object.values(columns).flat(), [columns]);
 
   return (
     <KanbanProvider onDragEnd={onDragEnd}>

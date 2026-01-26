@@ -496,19 +496,27 @@ export const pmChatApi = {
   },
 
   // Upload an attachment
-  uploadAttachment: async (projectId: string, file: File): Promise<PmAttachment> => {
+  uploadAttachment: async (
+    projectId: string,
+    file: File
+  ): Promise<PmAttachment> => {
     const formData = new FormData();
     formData.append('file', file);
 
     // Note: Don't use makeRequest here as it sets Content-Type to application/json
     // For multipart/form-data, browser must set the content-type with boundary
-    const response = await fetch(`/api/projects/${projectId}/pm-chat/attachments`, {
-      method: 'POST',
-      body: formData,
-    });
+    const response = await fetch(
+      `/api/projects/${projectId}/pm-chat/attachments`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Upload failed' }));
+      const error = await response
+        .json()
+        .catch(() => ({ message: 'Upload failed' }));
       throw new Error(error.message || 'Failed to upload attachment');
     }
 
@@ -517,7 +525,10 @@ export const pmChatApi = {
   },
 
   // Delete an attachment
-  deleteAttachment: async (projectId: string, attachmentId: string): Promise<void> => {
+  deleteAttachment: async (
+    projectId: string,
+    attachmentId: string
+  ): Promise<void> => {
     const response = await makeRequest(
       `/api/projects/${projectId}/pm-chat/attachments/${attachmentId}`,
       {
@@ -577,17 +588,22 @@ export const pmChatApi = {
 
     const fetchStream = async () => {
       try {
-        const response = await fetch(`/api/projects/${projectId}/pm-chat/ai-chat`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ content, model }),
-          signal: abortController.signal,
-        });
+        const response = await fetch(
+          `/api/projects/${projectId}/pm-chat/ai-chat`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ content, model }),
+            signal: abortController.signal,
+          }
+        );
 
         if (!response.ok) {
-          const error = await response.json().catch(() => ({ message: 'AI chat failed' }));
+          const error = await response
+            .json()
+            .catch(() => ({ message: 'AI chat failed' }));
           onError(error.message || 'Failed to get AI response');
           return;
         }
@@ -600,11 +616,14 @@ export const pmChatApi = {
 
         const decoder = new TextDecoder();
         let buffer = '';
+        let isReading = true;
 
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
+        while (isReading) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            isReading = false;
+            continue;
+          }
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
@@ -655,7 +674,9 @@ export const pmChatApi = {
 // Task Management APIs
 export const tasksApi = {
   list: async (projectId: string): Promise<TaskWithAttemptStatus[]> => {
-    const response = await makeRequest(`/api/tasks?project_id=${encodeURIComponent(projectId)}`);
+    const response = await makeRequest(
+      `/api/tasks?project_id=${encodeURIComponent(projectId)}`
+    );
     return handleApiResponse<TaskWithAttemptStatus[]>(response);
   },
 

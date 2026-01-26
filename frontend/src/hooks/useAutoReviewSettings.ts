@@ -22,7 +22,8 @@ function getStorageKey(projectId: string): string {
 }
 
 export function useAutoReviewSettings(projectId: string | undefined) {
-  const [settings, setSettings] = useState<AutoReviewSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] =
+    useState<AutoReviewSettings>(DEFAULT_SETTINGS);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load settings from localStorage
@@ -57,7 +58,10 @@ export function useAutoReviewSettings(projectId: string | undefined) {
       setSettings(newSettings);
 
       try {
-        localStorage.setItem(getStorageKey(projectId), JSON.stringify(newSettings));
+        localStorage.setItem(
+          getStorageKey(projectId),
+          JSON.stringify(newSettings)
+        );
       } catch (error) {
         console.error('Failed to save auto-review settings:', error);
       }

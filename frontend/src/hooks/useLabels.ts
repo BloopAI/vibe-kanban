@@ -78,7 +78,9 @@ export function useSetTaskDependencies(taskId: string | undefined) {
         ? tasksApi.setDependencies(taskId, dependencyIds)
         : Promise.reject('No task ID'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task-dependencies', taskId] });
+      queryClient.invalidateQueries({
+        queryKey: ['task-dependencies', taskId],
+      });
     },
   });
 }

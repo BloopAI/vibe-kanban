@@ -137,7 +137,9 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const setDependencies = useSetTaskDependencies(
     editMode ? props.task.id : undefined
   );
-  const [selectedDependencies, setSelectedDependencies] = useState<string[]>([]);
+  const [selectedDependencies, setSelectedDependencies] = useState<string[]>(
+    []
+  );
 
   // Sync dependencies from server
   useEffect(() => {
@@ -206,7 +208,13 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           autoStart: true,
         };
     }
-  }, [mode, props, system.config?.executor_profile, defaultRepoBranches, taskLabels]);
+  }, [
+    mode,
+    props,
+    system.config?.executor_profile,
+    defaultRepoBranches,
+    taskLabels,
+  ]);
 
   // Form submission handler
   const handleSubmit = async ({ value }: { value: TaskFormValues }) => {
@@ -575,9 +583,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                       ]);
 
                       // Auto-select executor if label has one configured
-                      const label = projectLabels.find(
-                        (l) => l.id === labelId
-                      );
+                      const label = projectLabels.find((l) => l.id === labelId);
                       if (
                         label?.executor &&
                         !executorField.state.value &&
@@ -594,7 +600,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                             // Parse key format "executor" or "executor:variant"
                             const [executor, variant] = key.split(':');
                             executorField.handleChange({
-                              executor: executor as ExecutorProfileId['executor'],
+                              executor:
+                                executor as ExecutorProfileId['executor'],
                               variant: variant || null,
                             });
                             break;
