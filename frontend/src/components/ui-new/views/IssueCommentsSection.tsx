@@ -23,7 +23,7 @@ import {
   DropdownMenuItem,
 } from '@/components/ui-new/primitives/Dropdown';
 import { EmojiPicker } from '@/components/ui-new/primitives/EmojiPicker';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import WYSIWYGEditor, { type WYSIWYGEditorRef } from '@/components/ui/wysiwyg';
 import { formatRelativeTime } from '@/utils/date';
 import type { User } from 'shared/remote-types';
 import type { PersistKey } from '@/stores/useUiPreferencesStore';
@@ -61,6 +61,8 @@ interface IssueCommentsSectionProps {
   onToggleReaction: (commentId: string, emoji: string) => void;
   onReply: (authorName: string, message: string) => void;
   isLoading?: boolean;
+  /** Ref to the comment input editor for programmatic focus */
+  commentEditorRef?: React.Ref<WYSIWYGEditorRef>;
 }
 
 export function IssueCommentsSection({
@@ -78,6 +80,7 @@ export function IssueCommentsSection({
   reactionsByCommentId,
   onToggleReaction,
   onReply,
+  commentEditorRef,
 }: IssueCommentsSectionProps) {
   const { t } = useTranslation('common');
 
@@ -114,6 +117,7 @@ export function IssueCommentsSection({
         {/* Comment Input with WYSIWYG */}
         <div className="flex flex-col gap-double bg-primary border border-border rounded-sm p-double">
           <WYSIWYGEditor
+            ref={commentEditorRef}
             value={commentInput}
             onChange={onCommentInputChange}
             placeholder={t('kanban.enterCommentPlaceholder')}
