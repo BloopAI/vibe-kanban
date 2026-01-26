@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf, process::Stdio};
+use std::{env, fs, path::PathBuf, process::Stdio};
 
 use axum::{
     Extension, Json, Router,
@@ -7,7 +7,7 @@ use axum::{
     http::{StatusCode, header},
     response::{
         Json as ResponseJson, Response,
-        sse::{Event, KeepAlive, Sse},
+        sse::{Event, KeepAlive, KeepAliveStream, Sse},
     },
     routing::{delete, get, post},
 };
@@ -18,12 +18,11 @@ use db::models::{
         CreatePmAttachment, CreatePmConversation, PmAttachment, PmConversation, PmMessageRole,
     },
     project::Project,
-    project_repo::ProjectRepo,
-    repo::Repo,
     task::Task,
 };
 use deployment::Deployment;
-use futures::stream::Stream;
+use futures::stream::BoxStream;
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tokio::{fs::File, process::Command};
@@ -33,6 +32,9 @@ use utils::{response::ApiResponse, shell::resolve_executable_path};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
+
+/// Type alias for boxed SSE stream to unify different stream implementations
+type SseStream = KeepAliveStream<BoxStream<'static, Result<Event, std::convert::Infallible>>>;
 
 /// Request payload for sending a chat message
 #[derive(Debug, Clone, Deserialize, TS)]
@@ -118,31 +120,42 @@ pub async fn send_message(
     Ok(ResponseJson(ApiResponse::success(message)))
 }
 
-/// Send a message and get an AI response using Claude CLI
-/// Note: The user message should be sent via send_message() first, then call this endpoint
+/// Send a message and get an AI response
+/// Uses Anthropic API directly if ANTHROPIC_API_KEY is set (fast, streaming)
+/// Falls back to Claude CLI otherwise (slower)
 pub async fn ai_chat(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<AiChatRequest>,
-) -> Result<Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>>, ApiError> {
-    // Get conversation history for context (user message should already be saved)
+) -> Result<Sse<SseStream>, ApiError> {
+    // Get conversation history for context
     let messages = PmConversation::find_by_project_id(&deployment.db().pool, project.id).await?;
-
-    // Build conversation context
-    let mut conversation_context = String::new();
-    for msg in messages.iter().rev().take(20).rev() {
-        let role = match msg.role.as_str() {
-            "user" => "User",
-            "assistant" => "Assistant",
-            "system" => "System",
-            _ => "User",
-        };
-        conversation_context.push_str(&format!("{}: {}\n\n", role, msg.content));
-    }
 
     // Build system prompt with PM context
     let mut system_prompt = String::from(
-        "You are a helpful Project Manager assistant. You help with project planning, task management, and technical discussions.\n\n",
+        r#"You are an expert Project Manager assistant for a Kanban-style project management app. Your role is to actively help users:
+
+1. **Create actionable task lists**: When brainstorming or planning, format tasks clearly:
+   - Use checkboxes: `- [ ] タスク名`
+   - Include priority: `[優先度: 高/中/低]`
+   - Add estimates when helpful: `[見積: 2時間]`
+
+2. **Write structured documentation**: Format specs and docs in markdown:
+   - Use headers: `## 機能仕様`, `### 実装詳細`
+   - Include acceptance criteria
+   - Document dependencies and blockers
+
+3. **Provide copy-ready outputs**: When users want to save to docs or create tasks:
+   - Start with: "📋 **ドキュメントに追加できる内容:**" or "✅ **タスクとして登録:**"
+   - Format content so it can be directly copied
+
+4. **Be proactive**: Suggest breaking down vague ideas into specific tasks. Ask clarifying questions to refine requirements.
+
+5. **Use Japanese by default** when the user writes in Japanese.
+
+Remember: Users can copy your outputs to the Docs tab or create tasks manually. Make your suggestions easy to use!
+
+"#,
     );
 
     // Add PM docs if available
@@ -170,230 +183,201 @@ pub async fn ai_chat(
         system_prompt.push('\n');
     }
 
-    system_prompt.push_str("## Conversation History\n");
-    system_prompt.push_str(&conversation_context);
-
-    // Prepare Claude CLI command - clone values for 'static lifetime
-    let model = payload
-        .model
-        .clone()
-        .unwrap_or_else(|| "sonnet".to_string());
+    let model_name = payload.model.clone().unwrap_or_else(|| "haiku".to_string());
     let user_content = payload.content.clone();
-    let system_prompt_owned = system_prompt;
-
     let pool = deployment.db().pool.clone();
     let project_id = project.id;
 
-    // Get the project's workspace path from its repositories
-    // This is where Claude CLI should run to have proper codebase context
-    let workspace_path = {
-        let project_repos = ProjectRepo::find_by_project_id(&pool, project_id)
-            .await
-            .unwrap_or_default();
-        if let Some(first_project_repo) = project_repos.first() {
-            if let Ok(Some(repo)) = Repo::find_by_id(&pool, first_project_repo.repo_id).await {
-                Some(repo.path)
-            } else {
-                None
-            }
-        } else {
-            // Fall back to default_agent_working_dir if no repos
-            project.default_agent_working_dir.map(PathBuf::from)
-        }
-    };
-
-    tracing::info!("PM Chat AI workspace path: {:?}", workspace_path);
-
-    // Run claude CLI - try global claude binary first, then fallback to npx
-    // Use simple --print mode without stream-json to avoid known bugs
-    // See: https://github.com/anthropics/claude-code/issues/1920, #8126, #3187
-    let claude_path_result = resolve_executable_path("claude").await;
-    let npx_path_result = resolve_executable_path("npx").await;
-
-    // Execute CLI and get response
-    let (response_text, error_text) = if let Some(claude_path) = claude_path_result {
-        // Use global claude binary (faster than npx)
-        tracing::info!(
-            "Running Claude CLI from global binary at: {:?}",
-            claude_path
-        );
-
-        // Use tokio timeout - increased to 3 minutes for Claude Code initialization
-        // --dangerously-skip-permissions is required to skip permission prompts in non-interactive mode
-        let mut command = Command::new(&claude_path);
-        command
-            .arg("--print")
-            .arg("--dangerously-skip-permissions")
-            .arg("--model")
-            .arg(&model)
-            .arg("--system-prompt")
-            .arg(&system_prompt_owned)
-            .arg(&user_content)
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        // Set working directory to project workspace if available
-        if let Some(ref path) = workspace_path {
-            tracing::info!("Setting Claude CLI working directory to: {:?}", path);
-            command.current_dir(path);
-        }
-
-        let output_future = command.output();
-
-        let output = tokio::time::timeout(std::time::Duration::from_secs(180), output_future).await;
-
-        // Parse the output - with --print (no stream-json), output is plain text
-        match output {
-            Ok(Ok(output)) => {
-                let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                let stderr = String::from_utf8_lossy(&output.stderr);
-
-                tracing::debug!("Claude CLI stdout length: {}", stdout.len());
-                if !stderr.is_empty() {
-                    tracing::warn!("Claude CLI stderr: {}", stderr);
-                }
-
-                if stdout.is_empty() {
-                    (
-                        None,
-                        Some(format!(
-                            "No response from Claude CLI. Exit code: {:?}. stderr: {}",
-                            output.status.code(),
-                            stderr
-                        )),
-                    )
-                } else {
-                    (Some(stdout), None)
-                }
-            }
-            Ok(Err(e)) => {
-                tracing::error!("Failed to run Claude CLI: {}", e);
-                (
-                    None,
-                    Some(format!(
-                        "Failed to run Claude CLI: {}. Make sure Claude Code is installed.",
-                        e
-                    )),
-                )
-            }
-            Err(_) => {
-                tracing::error!("Claude CLI timed out after 180 seconds");
-                (
-                    None,
-                    Some("Claude CLI timed out after 180 seconds.".to_string()),
-                )
-            }
-        }
-    } else if let Some(npx_path) = npx_path_result {
-        // Fallback to npx if global claude not found
-        tracing::info!("Running Claude CLI with npx at: {:?}", npx_path);
-
-        let mut command = Command::new(&npx_path);
-        command
-            .arg("-y")
-            .arg("@anthropic-ai/claude-code@latest")
-            .arg("--print")
-            .arg("--dangerously-skip-permissions")
-            .arg("--model")
-            .arg(&model)
-            .arg("--system-prompt")
-            .arg(&system_prompt_owned)
-            .arg(&user_content)
-            .env("NPM_CONFIG_LOGLEVEL", "error")
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        // Set working directory to project workspace if available
-        if let Some(ref path) = workspace_path {
-            tracing::info!("Setting Claude CLI working directory to: {:?}", path);
-            command.current_dir(path);
-        }
-
-        let output_future = command.output();
-
-        let output = tokio::time::timeout(std::time::Duration::from_secs(180), output_future).await;
-
-        // Parse the output - with --print (no stream-json), output is plain text
-        match output {
-            Ok(Ok(output)) => {
-                let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                let stderr = String::from_utf8_lossy(&output.stderr);
-
-                tracing::debug!("Claude CLI stdout length: {}", stdout.len());
-                if !stderr.is_empty() {
-                    tracing::warn!("Claude CLI stderr: {}", stderr);
-                }
-
-                if stdout.is_empty() {
-                    (
-                        None,
-                        Some(format!(
-                            "No response from Claude CLI. Exit code: {:?}. stderr: {}",
-                            output.status.code(),
-                            stderr
-                        )),
-                    )
-                } else {
-                    (Some(stdout), None)
-                }
-            }
-            Ok(Err(e)) => {
-                tracing::error!("Failed to run Claude CLI: {}", e);
-                (
-                    None,
-                    Some(format!(
-                        "Failed to run Claude CLI: {}. Make sure Claude Code is installed.",
-                        e
-                    )),
-                )
-            }
-            Err(_) => {
-                tracing::error!("Claude CLI (npx) timed out after 180 seconds");
-                (
-                    None,
-                    Some("Claude CLI timed out after 180 seconds.".to_string()),
-                )
-            }
-        }
-    } else {
-        tracing::error!("Neither claude nor npx found in PATH");
-        (None, Some("Claude CLI not found. Please install Claude Code (https://claude.ai/code) or ensure Node.js is installed.".to_string()))
-    };
-
-    // Save assistant response if we got one
-    if let Some(ref response) = response_text {
-        let _ = PmConversation::create(
-            &pool,
-            &CreatePmConversation {
-                project_id,
-                role: PmMessageRole::Assistant,
-                content: response.clone(),
-                model: Some(model.clone()),
-            },
+    // Check for Anthropic API key - if available, use direct API (much faster)
+    if let Ok(api_key) = env::var("ANTHROPIC_API_KEY") {
+        tracing::info!("Using Anthropic API directly for PM Chat (fast mode)");
+        return create_api_stream(
+            api_key,
+            model_name,
+            system_prompt,
+            user_content,
+            messages,
+            pool,
+            project_id,
         )
         .await;
     }
 
-    // Create SSE stream with the response
-    let stream = async_stream::stream! {
-        if let Some(content) = response_text {
-            let event = AiChatStreamEvent {
-                event_type: "content".to_string(),
-                content: Some(content),
-                error: None,
-            };
-            yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
-        }
+    // Fallback to CLI mode
+    tracing::info!("ANTHROPIC_API_KEY not set, using Claude CLI (slower)");
 
-        if let Some(error) = error_text {
+    // Build conversation context for CLI
+    let mut conversation_context = String::new();
+    for msg in messages.iter().rev().take(20).rev() {
+        let role = match msg.role.as_str() {
+            "user" => "User",
+            "assistant" => "Assistant",
+            "system" => "System",
+            _ => "User",
+        };
+        conversation_context.push_str(&format!("{}: {}\n\n", role, msg.content));
+    }
+    system_prompt.push_str("## Conversation History\n");
+    system_prompt.push_str(&conversation_context);
+
+    create_cli_stream(model_name, system_prompt, user_content, pool, project_id).await
+}
+
+/// Create a streaming response using Anthropic API directly
+async fn create_api_stream(
+    api_key: String,
+    model_name: String,
+    system_prompt: String,
+    user_content: String,
+    history: Vec<PmConversation>,
+    pool: sqlx::SqlitePool,
+    project_id: Uuid,
+) -> Result<Sse<SseStream>, ApiError> {
+    // Map model shorthand to full model name
+    let model = match model_name.as_str() {
+        "haiku" => "claude-3-5-haiku-latest",
+        "sonnet" => "claude-sonnet-4-20250514",
+        "opus" => "claude-opus-4-20250514",
+        _ => &model_name,
+    }
+    .to_string();
+
+    // Build messages array from history
+    let mut api_messages: Vec<serde_json::Value> = Vec::new();
+    for msg in history.iter().rev().take(20).rev() {
+        let role = match msg.role.as_str() {
+            "assistant" => "assistant",
+            _ => "user",
+        };
+        api_messages.push(serde_json::json!({
+            "role": role,
+            "content": msg.content
+        }));
+    }
+    // Add current user message
+    api_messages.push(serde_json::json!({
+        "role": "user",
+        "content": user_content
+    }));
+
+    let request_body = serde_json::json!({
+        "model": model,
+        "max_tokens": 4096,
+        "system": system_prompt,
+        "messages": api_messages,
+        "stream": true
+    });
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post("https://api.anthropic.com/v1/messages")
+        .header("x-api-key", &api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("content-type", "application/json")
+        .json(&request_body)
+        .send()
+        .await;
+
+    let response = match response {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!("Failed to call Anthropic API: {}", e);
+            let stream = async_stream::stream! {
+                let event = AiChatStreamEvent {
+                    event_type: "error".to_string(),
+                    content: None,
+                    error: Some(format!("Failed to call Anthropic API: {}", e)),
+                };
+                yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
+                let done = AiChatStreamEvent { event_type: "done".to_string(), content: None, error: None };
+                yield Ok(Event::default().data(serde_json::to_string(&done).unwrap_or_default()));
+            };
+            return Ok(Sse::new(stream.boxed()).keep_alive(KeepAlive::default()));
+        }
+    };
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        tracing::error!("Anthropic API error {}: {}", status, body);
+        let stream = async_stream::stream! {
             let event = AiChatStreamEvent {
                 event_type: "error".to_string(),
                 content: None,
-                error: Some(error),
+                error: Some(format!("Anthropic API error {}: {}", status, body)),
             };
             yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
+            let done = AiChatStreamEvent { event_type: "done".to_string(), content: None, error: None };
+            yield Ok(Event::default().data(serde_json::to_string(&done).unwrap_or_default()));
+        };
+        return Ok(Sse::new(stream.boxed()).keep_alive(KeepAlive::default()));
+    }
+
+    let mut byte_stream = response.bytes_stream();
+    let model_for_save = model_name.clone();
+
+    let stream = async_stream::stream! {
+        let mut full_response = String::new();
+        let mut buffer = String::new();
+
+        while let Some(chunk_result) = byte_stream.next().await {
+            match chunk_result {
+                Ok(bytes) => {
+                    buffer.push_str(&String::from_utf8_lossy(&bytes));
+
+                    // Process complete SSE events
+                    while let Some(pos) = buffer.find("\n\n") {
+                        let event_str = buffer[..pos].to_string();
+                        buffer = buffer[pos + 2..].to_string();
+
+                        for line in event_str.lines() {
+                            if let Some(data) = line.strip_prefix("data: ") {
+                                if data == "[DONE]" {
+                                    continue;
+                                }
+                                if let Ok(json) = serde_json::from_str::<serde_json::Value>(data) {
+                                    // Extract text from content_block_delta events
+                                    if json.get("type").and_then(|t| t.as_str()) == Some("content_block_delta")
+                                        && let Some(delta) = json.get("delta")
+                                        && let Some(text) = delta.get("text").and_then(|t| t.as_str())
+                                    {
+                                        full_response.push_str(text);
+                                        let event = AiChatStreamEvent {
+                                            event_type: "content".to_string(),
+                                            content: Some(text.to_string()),
+                                            error: None,
+                                        };
+                                        yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Stream error: {}", e);
+                    let event = AiChatStreamEvent {
+                        event_type: "error".to_string(),
+                        content: None,
+                        error: Some(format!("Stream error: {}", e)),
+                    };
+                    yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
+                    break;
+                }
+            }
+        }
+
+        // Save assistant response
+        if !full_response.is_empty() {
+            let _ = PmConversation::create(
+                &pool,
+                &CreatePmConversation {
+                    project_id,
+                    role: PmMessageRole::Assistant,
+                    content: full_response,
+                    model: Some(model_for_save),
+                },
+            ).await;
         }
 
         let done_event = AiChatStreamEvent {
@@ -404,7 +388,129 @@ pub async fn ai_chat(
         yield Ok(Event::default().data(serde_json::to_string(&done_event).unwrap_or_default()));
     };
 
-    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
+    Ok(Sse::new(stream.boxed()).keep_alive(KeepAlive::default()))
+}
+
+/// Create a streaming response using Claude CLI (fallback, slower)
+async fn create_cli_stream(
+    model: String,
+    system_prompt: String,
+    user_content: String,
+    pool: sqlx::SqlitePool,
+    project_id: Uuid,
+) -> Result<Sse<SseStream>, ApiError> {
+    let claude_path_result = resolve_executable_path("claude").await;
+    let npx_path_result = resolve_executable_path("npx").await;
+
+    // Execute CLI and get response
+    let (response_text, error_text) = if let Some(claude_path) = claude_path_result {
+        tracing::info!("Running Claude CLI from: {:?}", claude_path);
+
+        let mut command = Command::new(&claude_path);
+        command
+            .arg("--print")
+            .arg("--dangerously-skip-permissions")
+            .arg("--model")
+            .arg(&model)
+            .arg("--system-prompt")
+            .arg(&system_prompt)
+            .arg(&user_content)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        let output =
+            tokio::time::timeout(std::time::Duration::from_secs(180), command.output()).await;
+
+        match output {
+            Ok(Ok(output)) => {
+                let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if stdout.is_empty() {
+                    (None, Some("No response from Claude CLI".to_string()))
+                } else {
+                    (Some(stdout), None)
+                }
+            }
+            Ok(Err(e)) => (None, Some(format!("CLI error: {}", e))),
+            Err(_) => (None, Some("CLI timed out".to_string())),
+        }
+    } else if let Some(npx_path) = npx_path_result {
+        tracing::info!("Running Claude CLI via npx");
+
+        let mut command = Command::new(&npx_path);
+        command
+            .arg("-y")
+            .arg("@anthropic-ai/claude-code@latest")
+            .arg("--print")
+            .arg("--dangerously-skip-permissions")
+            .arg("--model")
+            .arg(&model)
+            .arg("--system-prompt")
+            .arg(&system_prompt)
+            .arg(&user_content)
+            .env("NPM_CONFIG_LOGLEVEL", "error")
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        let output =
+            tokio::time::timeout(std::time::Duration::from_secs(180), command.output()).await;
+
+        match output {
+            Ok(Ok(output)) => {
+                let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if stdout.is_empty() {
+                    (None, Some("No response from Claude CLI".to_string()))
+                } else {
+                    (Some(stdout), None)
+                }
+            }
+            Ok(Err(e)) => (None, Some(format!("CLI error: {}", e))),
+            Err(_) => (None, Some("CLI timed out".to_string())),
+        }
+    } else {
+        (
+            None,
+            Some("Claude CLI not found. Set ANTHROPIC_API_KEY for faster responses.".to_string()),
+        )
+    };
+
+    // Save response if we got one
+    if let Some(ref response) = response_text {
+        let _ = PmConversation::create(
+            &pool,
+            &CreatePmConversation {
+                project_id,
+                role: PmMessageRole::Assistant,
+                content: response.clone(),
+                model: Some(model),
+            },
+        )
+        .await;
+    }
+
+    let stream = async_stream::stream! {
+        if let Some(content) = response_text {
+            let event = AiChatStreamEvent {
+                event_type: "content".to_string(),
+                content: Some(content),
+                error: None,
+            };
+            yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
+        }
+        if let Some(error) = error_text {
+            let event = AiChatStreamEvent {
+                event_type: "error".to_string(),
+                content: None,
+                error: Some(error),
+            };
+            yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
+        }
+        let done = AiChatStreamEvent { event_type: "done".to_string(), content: None, error: None };
+        yield Ok(Event::default().data(serde_json::to_string(&done).unwrap_or_default()));
+    };
+
+    Ok(Sse::new(stream.boxed()).keep_alive(KeepAlive::default()))
 }
 
 /// Clear all PM chat messages for a project
