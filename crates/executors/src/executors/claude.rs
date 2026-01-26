@@ -560,13 +560,15 @@ impl ClaudeLogProcessor {
         }
     }
 
-    /// Extract message UUID for --resume-session-at from user messages only.
-    /// Testing revealed that --resume-session-at only works with user message UUIDs
-    /// (tool results). Assistant message UUIDs return "No message found" errors.
+    /// Extract message UUID for --resume-session-at from assistant messages.
+    /// Both user and assistant message UUIDs work with --resume-session-at, but
+    /// user messages are NOT output to stdout by Claude Code (unless --replay-user-messages
+    /// is used). Assistant messages are always output and have a uuid field that can
+    /// be used to truncate the conversation to that point.
     fn extract_resumable_message_uuid(claude_json: &ClaudeJson) -> Option<String> {
         match claude_json {
-            // Only user messages (tool results) work with --resume-session-at
-            ClaudeJson::User { uuid, .. } => uuid.clone(),
+            // Assistant messages are output to stdout and have a uuid field
+            ClaudeJson::Assistant { uuid, .. } => uuid.clone(),
             _ => None,
         }
     }
