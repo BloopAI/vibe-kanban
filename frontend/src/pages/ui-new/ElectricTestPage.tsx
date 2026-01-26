@@ -752,7 +752,7 @@ function CommentsList({ issueId }: { issueId: string }) {
 
   const handleCreate = () => {
     if (!newMessage.trim()) return;
-    insert({ issue_id: issueId, message: newMessage.trim() });
+    insert({ issue_id: issueId, message: newMessage.trim(), parent_id: null });
     setNewMessage('');
   };
 
