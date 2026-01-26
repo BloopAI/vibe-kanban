@@ -1,4 +1,4 @@
-name: Create GitHub Pre-Release
+name: Create Release
 
 on:
   workflow_dispatch:
@@ -556,7 +556,7 @@ jobs:
           path: release-binaries/
           retention-days: 1
 
-  create-prerelease:
+  create-release:
     needs: [bump-version, build-frontend, package-binaries-for-release]
     runs-on: ubuntu-latest
     steps:
@@ -601,12 +601,12 @@ jobs:
           sed -i "s|__BINARY_TAG__|${{ needs.bump-version.outputs.new_tag }}|g" bin/download.js
           npm pack
 
-      - name: Create GitHub Pre-Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.bump-version.outputs.new_tag }}
-          name: Pre-release ${{ needs.bump-version.outputs.new_tag }}
-          prerelease: true
+          name: Release ${{ needs.bump-version.outputs.new_tag }}
+          prerelease: false
           generate_release_notes: true
           files: |
             vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip
