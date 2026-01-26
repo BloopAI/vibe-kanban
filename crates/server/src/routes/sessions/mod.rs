@@ -196,7 +196,11 @@ pub async fn follow_up(
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt: prompt.clone(),
             session_id: turn.agent_session_id.expect("query filters for non-null"),
-            message_uuid: if is_reset { turn.agent_message_uuid } else { None },
+            message_uuid: if is_reset {
+                turn.agent_message_uuid
+            } else {
+                None
+            },
             executor_profile_id: executor_profile_id.clone(),
             working_dir: working_dir.clone(),
         })
