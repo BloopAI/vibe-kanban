@@ -324,6 +324,19 @@
           "model": "glm-4.6"
         }
       }
+    },
+    "KILO_CODE": {
+      "DEFAULT": {
+        "KILO_CODE": {
+          "auto": true
+        }
+      },
+      "JSON": {
+        "KILO_CODE": {
+          "auto": true,
+          "json": true
+        }
+      }
     }
   }
 }

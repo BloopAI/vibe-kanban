@@ -374,6 +374,7 @@ enum Adapter {
     Codex,
     Opencode,
     Copilot,
+    KiloCode,
 }
 
 fn apply_adapter(adapter: Adapter, canonical: Value) -> Value {
@@ -389,6 +390,7 @@ fn apply_adapter(adapter: Adapter, canonical: Value) -> Value {
         Adapter::Codex => adapt_codex(servers_only, meta),
         Adapter::Opencode => adapt_opencode(servers_only, meta),
         Adapter::Copilot => adapt_copilot(servers_only, meta),
+        Adapter::KiloCode => adapt_passthrough(servers_only, meta),
     }
 }
 
@@ -403,6 +405,7 @@ impl CodingAgent {
             CodingAgent::Codex(_) => Codex,
             CodingAgent::Opencode(_) => Opencode,
             CodingAgent::Copilot(..) => Copilot,
+            CodingAgent::KiloCode(_) => KiloCode,
             #[cfg(feature = "qa-mode")]
             CodingAgent::QaMock(_) => Passthrough, // QA mock doesn't need MCP
         };
