@@ -249,19 +249,19 @@ export function PierreDiffCard({
         | { lineNumber: number; side: AnnotationSide }
         | undefined
     ) => {
-      const line = getHoveredLine();
-      if (!line) return null;
-
-      const { side, lineNumber } = line;
-      const splitSide = mapAnnotationSideToSplitSide(side);
-      const widgetKey = `${filePath}-${splitSide}-${lineNumber}`;
-
-      if (drafts[widgetKey]) return null;
-
       return (
         <button
           className="flex items-center justify-center size-icon-base rounded hover:bg-primary-hover text-low hover:text-normal transition-colors"
           onClick={() => {
+            const line = getHoveredLine();
+            if (!line) return;
+
+            const { side, lineNumber } = line;
+            const splitSide = mapAnnotationSideToSplitSide(side);
+            const widgetKey = `${filePath}-${splitSide}-${lineNumber}`;
+
+            if (drafts[widgetKey]) return;
+
             setDraft(widgetKey, {
               filePath,
               side: splitSide,

@@ -954,3 +954,33 @@ diffs-container[data-theme-type='dark'] {
   /* Line numbers */
   --diffs-fg-number-override: hsl(0, 0%, 56%);
 }
+
+/* =============================================================================
+   Hover Utility Button Positioning
+   ============================================================================= */
+
+/*
+ * The [data-hover-slot] in shadow DOM is positioned at right:0 of the number column.
+ * The slotted content needs to appear BETWEEN the number and code columns.
+ * Using left:100% positions it just to the right of the hover slot container.
+ */
+diffs-container [slot='hover-slot'] {
+  left: 100%;
+  right: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 4px;
+}
+
+/* Style the hover utility button */
+diffs-container [slot='hover-slot'] button {
+  background-color: hsl(var(--bg-panel));
+  border: 1px solid hsl(var(--border) / 0.5);
+  box-shadow: 0 1px 2px hsl(0 0% 0% / 0.1);
+}
+
+diffs-container [slot='hover-slot'] button:hover {
+  background-color: hsl(var(--bg-primary-hover));
+  border-color: hsl(var(--border));
+}
