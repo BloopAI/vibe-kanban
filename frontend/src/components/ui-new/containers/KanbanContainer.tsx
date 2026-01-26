@@ -35,12 +35,16 @@ export function KanbanContainer() {
 
   // Get data from contexts (set up by WorkspacesLayout)
   const {
+    projectId,
     issues,
     statuses,
     tags,
     issueAssignees,
     issueTags,
     updateIssue,
+    insertStatus,
+    updateStatus,
+    removeStatus,
     getTagObjectsForIssue,
     isLoading: projectLoading,
   } = useProjectContext();
@@ -65,10 +69,28 @@ export function KanbanContainer() {
   );
   const kanbanFilters = useUiPreferencesStore((s) => s.kanbanFilters);
 
+  // Sort all statuses for display settings
   const sortedStatuses = useMemo(
     () => [...statuses].sort((a, b) => a.sort_order - b.sort_order),
     [statuses]
   );
+
+  // Filter to only visible statuses for the kanban board
+  const visibleStatuses = useMemo(
+    () => sortedStatuses.filter((s) => !s.hidden),
+    [sortedStatuses]
+  );
+
+  // Compute issue count by status for display settings
+  const issueCountByStatus = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const status of statuses) {
+      counts[status.id] = issues.filter(
+        (i) => i.status_id === status.id
+      ).length;
+    }
+    return counts;
+  }, [statuses, issues]);
 
   // Track items as arrays of IDs grouped by status
   const [items, setItems] = useState<Record<string, string[]>>({});
@@ -232,7 +254,7 @@ export function KanbanContainer() {
     return <LoadingState />;
   }
 
-  if (sortedStatuses.length === 0) {
+  if (visibleStatuses.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-low">{t('kanban.noStatusesFound')}</p>
@@ -248,11 +270,17 @@ export function KanbanContainer() {
           tags={tags}
           users={users}
           hasActiveFilters={hasActiveFilters}
+          statuses={sortedStatuses}
+          projectId={projectId}
+          issueCountByStatus={issueCountByStatus}
+          onInsertStatus={insertStatus}
+          onUpdateStatus={updateStatus}
+          onRemoveStatus={removeStatus}
         />
       </div>
       <div className="flex-1 overflow-x-auto px-double">
         <KanbanProvider onDragEnd={handleDragEnd}>
-          {sortedStatuses.map((status) => {
+          {visibleStatuses.map((status) => {
             const issueIds = items[status.id] ?? [];
 
             return (
