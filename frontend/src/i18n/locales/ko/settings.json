@@ -399,6 +399,24 @@
         "description": "이 프로젝트의 Git 저장소 관리",
         "noRepositories": "구성된 저장소가 없습니다",
         "addRepository": "저장소 추가"
+      },
+      "autoReview": {
+        "title": "자동 리뷰",
+        "description": "작업이 검토 중 열로 이동할 때 자동 AI 리뷰를 구성합니다.",
+        "enabled": "자동 리뷰가 활성화되어 있습니다",
+        "disabled": "자동 리뷰가 비활성화되어 있습니다",
+        "configure": "구성"
+      },
+      "labels": {
+        "title": "라벨",
+        "description": "작업을 분류할 라벨을 만들고 관리합니다. 각 라벨에 기본 에이전트를 설정하여 해당 라벨이 있는 작업을 만들 때 자동으로 선택되도록 합니다.",
+        "loading": "라벨 로딩 중...",
+        "noLabels": "아직 라벨이 없습니다. 작업을 정리할 라벨을 만드세요.",
+        "namePlaceholder": "라벨 이름",
+        "add": "추가",
+        "deleteConfirm": "이 라벨을 삭제하시겠습니까?",
+        "selectExecutor": "기본 에이전트",
+        "noDefaultAgent": "없음"
       }
     },
     "repos": {

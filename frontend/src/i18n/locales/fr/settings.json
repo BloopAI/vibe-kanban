@@ -399,6 +399,24 @@
         "description": "Gérer les dépôts git dans ce projet",
         "noRepositories": "Aucun dépôt configuré",
         "addRepository": "Ajouter un dépôt"
+      },
+      "autoReview": {
+        "title": "Auto-Review",
+        "description": "Configurez la révision automatique par IA lorsque les tâches passent dans la colonne En révision.",
+        "enabled": "La révision automatique est activée",
+        "disabled": "La révision automatique est désactivée",
+        "configure": "Configurer"
+      },
+      "labels": {
+        "title": "Étiquettes",
+        "description": "Créez et gérez des étiquettes pour catégoriser les tâches. Définissez un agent par défaut pour chaque étiquette afin de le sélectionner automatiquement lors de la création de tâches avec cette étiquette.",
+        "loading": "Chargement des étiquettes...",
+        "noLabels": "Pas encore d'étiquettes. Créez des étiquettes pour organiser vos tâches.",
+        "namePlaceholder": "Nom de l'étiquette",
+        "add": "Ajouter",
+        "deleteConfirm": "Êtes-vous sûr de vouloir supprimer cette étiquette ?",
+        "selectExecutor": "Agent par défaut",
+        "noDefaultAgent": "Aucun"
       }
     },
     "repos": {

@@ -399,6 +399,24 @@
         "description": "管理此專案中的 Git 儲存庫",
         "noRepositories": "未設定儲存庫",
         "addRepository": "新增儲存庫"
+      },
+      "autoReview": {
+        "title": "自動審查",
+        "description": "設定當任務移動到審查中欄位時的自動 AI 審查。",
+        "enabled": "自動審查已啟用",
+        "disabled": "自動審查已停用",
+        "configure": "設定"
+      },
+      "labels": {
+        "title": "標籤",
+        "description": "建立和管理標籤以對任務進行分類。為每個標籤設定預設代理，以便在建立具有該標籤的任務時自動選擇它。",
+        "loading": "正在載入標籤...",
+        "noLabels": "還沒有標籤。建立標籤來整理您的任務。",
+        "namePlaceholder": "標籤名稱",
+        "add": "新增",
+        "deleteConfirm": "您確定要刪除此標籤嗎？",
+        "selectExecutor": "預設代理",
+        "noDefaultAgent": "無"
       }
     },
     "repos": {

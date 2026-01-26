@@ -399,6 +399,24 @@
         "description": "Administra los repositorios git en este proyecto",
         "noRepositories": "No hay repositorios configurados",
         "addRepository": "Agregar Repositorio"
+      },
+      "autoReview": {
+        "title": "Auto-Review",
+        "description": "Configura la revisión automática de IA cuando las tareas se mueven a la columna En Revisión.",
+        "enabled": "La revisión automática está habilitada",
+        "disabled": "La revisión automática está deshabilitada",
+        "configure": "Configurar"
+      },
+      "labels": {
+        "title": "Etiquetas",
+        "description": "Crea y administra etiquetas para categorizar tareas. Establece un agente predeterminado para cada etiqueta para seleccionarlo automáticamente al crear tareas con esa etiqueta.",
+        "loading": "Cargando etiquetas...",
+        "noLabels": "Aún no hay etiquetas. Crea etiquetas para organizar tus tareas.",
+        "namePlaceholder": "Nombre de etiqueta",
+        "add": "Agregar",
+        "deleteConfirm": "¿Estás seguro de que deseas eliminar esta etiqueta?",
+        "selectExecutor": "Agente predeterminado",
+        "noDefaultAgent": "Ninguno"
       }
     },
     "repos": {

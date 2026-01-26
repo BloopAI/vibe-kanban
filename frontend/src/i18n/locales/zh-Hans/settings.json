@@ -399,6 +399,24 @@
         "description": "管理此项目中的 Git 仓库",
         "noRepositories": "未配置仓库",
         "addRepository": "添加仓库"
+      },
+      "autoReview": {
+        "title": "自动审查",
+        "description": "配置当任务移动到审查中列时的自动 AI 审查。",
+        "enabled": "自动审查已启用",
+        "disabled": "自动审查已禁用",
+        "configure": "配置"
+      },
+      "labels": {
+        "title": "标签",
+        "description": "创建和管理标签以对任务进行分类。为每个标签设置默认代理，以便在创建带有该标签的任务时自动选择它。",
+        "loading": "正在加载标签...",
+        "noLabels": "还没有标签。创建标签来组织您的任务。",
+        "namePlaceholder": "标签名称",
+        "add": "添加",
+        "deleteConfirm": "您确定要删除此标签吗？",
+        "selectExecutor": "默认代理",
+        "noDefaultAgent": "无"
       }
     },
     "repos": {
