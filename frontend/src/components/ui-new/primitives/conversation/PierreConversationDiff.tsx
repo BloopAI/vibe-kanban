@@ -312,20 +312,20 @@ export function DiffViewBody({
   const { t } = useTranslation('tasks');
   const globalMode = useDiffViewMode();
 
-   const options = useMemo(
-     () => ({
-       diffStyle:
-         globalMode === 'split' ? ('split' as const) : ('unified' as const),
-       diffIndicators: 'classic' as const,
-       themeType: theme,
-       overflow: wrapText ? ('wrap' as const) : ('scroll' as const),
-       hunkSeparators: 'line-info' as const,
-       disableFileHeader: true,
-       theme: { dark: 'github-dark', light: 'github-light' } as const,
-       unsafeCSS: PIERRE_DIFFS_THEME_CSS,
-     }),
-     [globalMode, theme, wrapText]
-   );
+  const options = useMemo(
+    () => ({
+      diffStyle:
+        globalMode === 'split' ? ('split' as const) : ('unified' as const),
+      diffIndicators: 'classic' as const,
+      themeType: theme,
+      overflow: wrapText ? ('wrap' as const) : ('scroll' as const),
+      hunkSeparators: 'line-info' as const,
+      disableFileHeader: true,
+      theme: { dark: 'github-dark', light: 'github-light' } as const,
+      unsafeCSS: PIERRE_DIFFS_THEME_CSS,
+    }),
+    [globalMode, theme, wrapText]
+  );
 
   if (!isValid) {
     return (
