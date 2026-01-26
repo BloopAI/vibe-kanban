@@ -978,9 +978,11 @@ diffs-container [slot='hover-slot'] button {
   background-color: hsl(var(--bg-panel));
   border: 1px solid hsl(var(--border) / 0.5);
   box-shadow: 0 1px 2px hsl(0 0% 0% / 0.1);
+  color: hsl(var(--text-low));
 }
 
 diffs-container [slot='hover-slot'] button:hover {
-  background-color: hsl(var(--bg-primary-hover));
+  background-color: hsl(var(--bg-panel));
   border-color: hsl(var(--border));
+  color: hsl(var(--text-low));
 }

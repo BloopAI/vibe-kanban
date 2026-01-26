@@ -251,7 +251,7 @@ export function PierreDiffCard({
     ) => {
       return (
         <button
-          className="flex items-center justify-center size-icon-base rounded hover:bg-primary-hover text-low hover:text-normal transition-colors"
+          className="flex items-center justify-center size-icon-base rounded text-low hover:bg-panel transition-colors"
           onClick={() => {
             const line = getHoveredLine();
             if (!line) return;
