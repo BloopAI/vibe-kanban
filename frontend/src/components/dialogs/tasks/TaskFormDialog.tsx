@@ -4,7 +4,15 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useDropzone } from 'react-dropzone';
 import { useForm, useStore } from '@tanstack/react-form';
-import { Image as ImageIcon } from 'lucide-react';
+import {
+  Image as ImageIcon,
+  AlertTriangle,
+  ArrowUp,
+  ArrowDown,
+  Minus,
+  X,
+  Plus,
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -15,7 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { Label as FormLabel } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import {
   Select,
@@ -47,9 +55,19 @@ import { useHotkeysContext } from 'react-hotkeys-hook';
 import { cn } from '@/lib/utils';
 import type {
   TaskStatus,
+  TaskPriority,
   ExecutorProfileId,
   ImageResponse,
 } from 'shared/types';
+import {
+  useProjectLabels,
+  useTaskLabels,
+  useTaskDependencies,
+  useSetTaskDependencies,
+} from '@/hooks/useLabels';
+import { Badge } from '@/components/ui/badge';
+import { useProjectTasks } from '@/hooks/useProjectTasks';
+import { Link } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -57,6 +75,7 @@ interface Task {
   title: string;
   description: string | null;
   status: TaskStatus;
+  priority: TaskPriority;
   created_at: string;
   updated_at: string;
 }
@@ -78,6 +97,8 @@ type TaskFormValues = {
   title: string;
   description: string;
   status: TaskStatus;
+  priority: TaskPriority;
+  labelIds: string[];
   executorProfileId: ExecutorProfileId | null;
   repoBranches: RepoBranch[];
   autoStart: boolean;
@@ -105,6 +126,25 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { data: taskImages } = useTaskImages(
     editMode ? props.task.id : undefined
   );
+  const { data: projectLabels = [] } = useProjectLabels(projectId);
+  const { data: taskLabels = [] } = useTaskLabels(
+    editMode ? props.task.id : undefined
+  );
+  const { tasks: projectTasks } = useProjectTasks(projectId);
+  const { data: taskDependencies = [] } = useTaskDependencies(
+    editMode ? props.task.id : undefined
+  );
+  const setDependencies = useSetTaskDependencies(
+    editMode ? props.task.id : undefined
+  );
+  const [selectedDependencies, setSelectedDependencies] = useState<string[]>([]);
+
+  // Sync dependencies from server
+  useEffect(() => {
+    if (taskDependencies.length > 0) {
+      setSelectedDependencies(taskDependencies);
+    }
+  }, [taskDependencies]);
   const { data: projectRepos = [] } = useProjectRepos(projectId, {
     enabled: modal.visible,
   });
@@ -133,6 +173,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           title: props.task.title,
           description: props.task.description || '',
           status: props.task.status,
+          priority: props.task.priority || 'medium',
+          labelIds: taskLabels.map((l) => l.id),
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: false,
@@ -143,6 +185,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           title: props.initialTask.title,
           description: props.initialTask.description || '',
           status: 'todo',
+          priority: 'medium',
+          labelIds: [],
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: true,
@@ -155,12 +199,14 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           title: '',
           description: '',
           status: 'todo',
+          priority: 'medium',
+          labelIds: [],
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: true,
         };
     }
-  }, [mode, props, system.config?.executor_profile, defaultRepoBranches]);
+  }, [mode, props, system.config?.executor_profile, defaultRepoBranches, taskLabels]);
 
   // Form submission handler
   const handleSubmit = async ({ value }: { value: TaskFormValues }) => {
@@ -172,8 +218,11 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             title: value.title,
             description: value.description,
             status: value.status,
+            priority: value.priority,
+            position: null,
             parent_workspace_id: null,
             image_ids: images.length > 0 ? images.map((img) => img.id) : null,
+            label_ids: value.labelIds.length > 0 ? value.labelIds : null,
           },
         },
         { onSuccess: () => modal.remove() }
@@ -186,10 +235,12 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
         title: value.title,
         description: value.description,
         status: null,
+        priority: value.priority,
+        position: null,
         parent_workspace_id:
           mode === 'subtask' ? props.parentTaskAttemptId : null,
         image_ids: imageIds,
-        shared_task_id: null,
+        label_ids: value.labelIds.length > 0 ? value.labelIds : null,
       };
       const shouldAutoStart = value.autoStart && !forceCreateOnlyRef.current;
       if (shouldAutoStart) {
@@ -456,14 +507,284 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
               </div>
             )}
           </form.Field>
+          {/* Priority and Labels row */}
+          <div className="flex gap-3">
+            {/* Priority Selector */}
+            <form.Field name="priority">
+              {(field) => (
+                <div className="space-y-2 flex-1">
+                  <FormLabel
+                    htmlFor="task-priority"
+                    className="text-sm font-medium"
+                  >
+                    {t('taskFormDialog.priorityLabel', 'Priority')}
+                  </FormLabel>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={(value) =>
+                      field.handleChange(value as TaskPriority)
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="urgent">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-red-500" />
+                          {t('taskFormDialog.priorityOptions.urgent', 'Urgent')}
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="high">
+                        <div className="flex items-center gap-2">
+                          <ArrowUp className="h-4 w-4 text-orange-500" />
+                          {t('taskFormDialog.priorityOptions.high', 'High')}
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="medium">
+                        <div className="flex items-center gap-2">
+                          <Minus className="h-4 w-4 text-blue-500" />
+                          {t('taskFormDialog.priorityOptions.medium', 'Medium')}
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="low">
+                        <div className="flex items-center gap-2">
+                          <ArrowDown className="h-4 w-4 text-gray-400" />
+                          {t('taskFormDialog.priorityOptions.low', 'Low')}
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </form.Field>
+
+            {/* Labels Selector */}
+            <form.Field name="labelIds">
+              {(labelField) => (
+                <form.Field name="executorProfileId">
+                  {(executorField) => {
+                    // Helper to add label and auto-select executor if configured
+                    const handleLabelSelect = (labelId: string) => {
+                      if (labelField.state.value.includes(labelId)) return;
+
+                      labelField.handleChange([
+                        ...labelField.state.value,
+                        labelId,
+                      ]);
+
+                      // Auto-select executor if label has one configured
+                      const label = projectLabels.find(
+                        (l) => l.id === labelId
+                      );
+                      if (
+                        label?.executor &&
+                        !executorField.state.value &&
+                        profiles
+                      ) {
+                        // Find first profile that matches the executor name
+                        for (const [key, config] of Object.entries(profiles)) {
+                          // config is nested like { "CLAUDE_CODE": {...} }
+                          const configKeys = Object.keys(config || {});
+                          if (
+                            configKeys.length > 0 &&
+                            configKeys[0] === label.executor.toUpperCase()
+                          ) {
+                            // Parse key format "executor" or "executor:variant"
+                            const [executor, variant] = key.split(':');
+                            executorField.handleChange({
+                              executor: executor as ExecutorProfileId['executor'],
+                              variant: variant || null,
+                            });
+                            break;
+                          }
+                        }
+                      }
+                    };
+
+                    return (
+                      <div className="space-y-2 flex-1">
+                        <FormLabel
+                          htmlFor="task-labels"
+                          className="text-sm font-medium"
+                        >
+                          {t('taskFormDialog.labelsLabel', 'Labels')}
+                        </FormLabel>
+                        <div className="flex flex-wrap gap-1 min-h-[40px] p-2 border rounded-md bg-background">
+                          {labelField.state.value.map((labelId) => {
+                            const label = projectLabels.find(
+                              (l) => l.id === labelId
+                            );
+                            if (!label) return null;
+                            return (
+                              <Badge
+                                key={labelId}
+                                variant="secondary"
+                                className="cursor-pointer"
+                                style={{
+                                  backgroundColor: `${label.color}20`,
+                                  color: label.color,
+                                  borderColor: `${label.color}40`,
+                                }}
+                                onClick={() => {
+                                  labelField.handleChange(
+                                    labelField.state.value.filter(
+                                      (id) => id !== labelId
+                                    )
+                                  );
+                                }}
+                              >
+                                {label.name}
+                                {label.executor && (
+                                  <span className="ml-1 opacity-60">
+                                    ({label.executor})
+                                  </span>
+                                )}
+                                <X className="h-3 w-3 ml-1" />
+                              </Badge>
+                            );
+                          })}
+                          {projectLabels.length > 0 && (
+                            <Select value="" onValueChange={handleLabelSelect}>
+                              <SelectTrigger className="w-auto h-6 border-dashed text-muted-foreground">
+                                <Plus className="h-3 w-3" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {projectLabels
+                                  .filter(
+                                    (l) =>
+                                      !labelField.state.value.includes(l.id)
+                                  )
+                                  .map((label) => (
+                                    <SelectItem key={label.id} value={label.id}>
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className="w-3 h-3 rounded-full"
+                                          style={{
+                                            backgroundColor: label.color,
+                                          }}
+                                        />
+                                        {label.name}
+                                        {label.executor && (
+                                          <span className="text-muted-foreground text-xs">
+                                            ({label.executor})
+                                          </span>
+                                        )}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }}
+                </form.Field>
+              )}
+            </form.Field>
+          </div>
+
+          {/* Dependencies (edit mode only) */}
+          {editMode && (
+            <div className="space-y-2">
+              <FormLabel className="text-sm font-medium flex items-center gap-2">
+                <Link className="h-4 w-4" />
+                {t('taskFormDialog.dependsOnLabel', 'Depends On')}
+              </FormLabel>
+              <div className="flex flex-wrap gap-1 min-h-[40px] p-2 border rounded-md bg-background">
+                {selectedDependencies.map((depId) => {
+                  const depTask = projectTasks.find((t) => t.id === depId);
+                  if (!depTask) return null;
+                  return (
+                    <Badge
+                      key={depId}
+                      variant="outline"
+                      className="cursor-pointer"
+                      onClick={() => {
+                        const newDeps = selectedDependencies.filter(
+                          (id) => id !== depId
+                        );
+                        setSelectedDependencies(newDeps);
+                        setDependencies.mutate(newDeps);
+                      }}
+                    >
+                      {depTask.title.length > 30
+                        ? depTask.title.substring(0, 30) + '...'
+                        : depTask.title}
+                      <X className="h-3 w-3 ml-1" />
+                    </Badge>
+                  );
+                })}
+                {projectTasks.filter(
+                  (t) =>
+                    t.id !== props.task.id &&
+                    !selectedDependencies.includes(t.id)
+                ).length > 0 && (
+                  <Select
+                    value=""
+                    onValueChange={(value) => {
+                      const newDeps = [...selectedDependencies, value];
+                      setSelectedDependencies(newDeps);
+                      setDependencies.mutate(newDeps);
+                    }}
+                  >
+                    <SelectTrigger className="w-auto h-6 border-dashed text-muted-foreground">
+                      <Plus className="h-3 w-3" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projectTasks
+                        .filter(
+                          (t) =>
+                            t.id !== props.task.id &&
+                            !selectedDependencies.includes(t.id)
+                        )
+                        .map((task) => (
+                          <SelectItem key={task.id} value={task.id}>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={cn(
+                                  'w-2 h-2 rounded-full',
+                                  task.status === 'done'
+                                    ? 'bg-green-500'
+                                    : task.status === 'inprogress'
+                                      ? 'bg-blue-500'
+                                      : task.status === 'inreview'
+                                        ? 'bg-yellow-500'
+                                        : 'bg-gray-400'
+                                )}
+                              />
+                              {task.title.length > 40
+                                ? task.title.substring(0, 40) + '...'
+                                : task.title}
+                            </div>
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t(
+                  'taskFormDialog.dependsOnDescription',
+                  'This task depends on the selected tasks to be completed first.'
+                )}
+              </p>
+            </div>
+          )}
+
           {/* Edit mode status */}
           {editMode && (
             <form.Field name="status">
               {(field) => (
                 <div className="space-y-2">
-                  <Label htmlFor="task-status" className="text-sm font-medium">
+                  <FormLabel
+                    htmlFor="task-status"
+                    className="text-sm font-medium"
+                  >
                     {t('taskFormDialog.statusLabel')}
-                  </Label>
+                  </FormLabel>
                   <Select
                     value={field.state.value}
                     onValueChange={(value) =>
@@ -637,12 +958,12 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                         className="data-[state=checked]:bg-gray-900 dark:data-[state=checked]:bg-gray-100"
                         aria-label={t('taskFormDialog.startLabel')}
                       />
-                      <Label
+                      <FormLabel
                         htmlFor="autostart-switch"
                         className="text-sm cursor-pointer"
                       >
                         {t('taskFormDialog.startLabel')}
-                      </Label>
+                      </FormLabel>
                     </div>
                   )}
                 </form.Field>

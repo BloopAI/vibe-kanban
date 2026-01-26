@@ -12,12 +12,17 @@ import type { DragEndEvent, Modifier } from '@dnd-kit/core';
 import {
   DndContext,
   PointerSensor,
-  rectIntersection,
-  useDraggable,
   useDroppable,
   useSensor,
   useSensors,
+  closestCenter,
 } from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -91,12 +96,18 @@ export const KanbanCard = ({
   isOpen,
   dragDisabled = false,
 }: KanbanCardProps) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id,
-      data: { index, parent },
-      disabled: dragDisabled,
-    });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id,
+    data: { index, parent },
+    disabled: dragDisabled,
+  });
 
   // Combine DnD ref and forwarded ref
   const combinedRef = (node: HTMLDivElement | null) => {
@@ -107,6 +118,13 @@ export const KanbanCard = ({
       (forwardedRef as React.MutableRefObject<HTMLDivElement | null>).current =
         node;
     }
+  };
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 1000 : 1,
+    opacity: isDragging ? 0.5 : 1,
   };
 
   return (
@@ -123,12 +141,7 @@ export const KanbanCard = ({
       tabIndex={tabIndex}
       onClick={onClick}
       onKeyDown={onKeyDown}
-      style={{
-        zIndex: isDragging ? 1000 : 1,
-        transform: transform
-          ? `translateX(${transform.x}px) translateY(${transform.y}px)`
-          : 'none',
-      }}
+      style={style}
     >
       {children ?? <p className="m-0 font-medium text-sm">{name}</p>}
     </Card>
@@ -138,10 +151,17 @@ export const KanbanCard = ({
 export type KanbanCardsProps = {
   children: ReactNode;
   className?: string;
+  itemIds?: string[];
 };
 
-export const KanbanCards = ({ children, className }: KanbanCardsProps) => (
-  <div className={cn('flex flex-1 flex-col', className)}>{children}</div>
+export const KanbanCards = ({
+  children,
+  className,
+  itemIds = [],
+}: KanbanCardsProps) => (
+  <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+    <div className={cn('flex flex-1 flex-col', className)}>{children}</div>
+  </SortableContext>
 );
 
 export type KanbanHeaderProps =
@@ -278,7 +298,7 @@ export const KanbanProvider = ({
 
   return (
     <DndContext
-      collisionDetection={rectIntersection}
+      collisionDetection={closestCenter}
       onDragEnd={onDragEnd}
       sensors={sensors}
       modifiers={[restrictToFirstScrollableAncestorCustom]}

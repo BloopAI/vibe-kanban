@@ -532,6 +532,31 @@
       "tooltip": "クリックで表示、ダブルクリックで編集"
     }
   },
+  "pmDocs": {
+    "title": "PMドキュメント",
+    "noDescription": "ドキュメントがありません",
+    "notFound": "PMタスクが見つかりません"
+  },
+  "autoReviewSettings": {
+    "title": "自動レビュー設定",
+    "description": "タスクが「レビュー中」カラムに移動したときの自動レビューを設定します。",
+    "enableAutoReview": "自動レビューを有効化",
+    "enableDescription": "タスクがレビュー中に移動したときに自動でAIレビューを開始",
+    "selectAI": "レビュー用AIを選択",
+    "reviewTypes": "レビュータイプ",
+    "pmReview": "PM仕様レビュー",
+    "pmReviewDescription": "プロジェクト仕様と要件に対して変更をチェック",
+    "codeReview": "コードレビュー",
+    "codeReviewDescription": "コード品質、ベストプラクティス、潜在的なバグ、セキュリティ問題をチェック",
+    "additionalPrompt": "追加の指示（オプション）",
+    "additionalPromptPlaceholder": "カスタムレビュー指示を追加..."
+  },
+  "taskCard": {
+    "blocked": "ブロック中:",
+    "task": "タスク",
+    "tasks": "タスク",
+    "dependenciesComplete": "すべての依存タスクが完了"
+  },
   "taskFormDialog": {
     "createTitle": "新規タスクを作成",
     "editTitle": "タスクを編集",
@@ -545,6 +570,16 @@
       "done": "完了",
       "cancelled": "キャンセル"
     },
+    "priorityLabel": "優先度",
+    "priorityOptions": {
+      "urgent": "緊急",
+      "high": "高",
+      "medium": "中",
+      "low": "低"
+    },
+    "labelsLabel": "ラベル",
+    "dependsOnLabel": "依存タスク",
+    "dependsOnDescription": "このタスクは選択したタスクが先に完了する必要があります。",
     "startLabel": "開始",
     "attachImage": "画像を添付",
     "dropImagesHere": "画像をここにドロップ",

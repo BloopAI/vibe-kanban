@@ -4,11 +4,19 @@
 
 // If you are an AI, and you absolutely have to edit this file, please confirm with the user first.
 
-export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, 
+/**
+ * The PM task for this project - contains project specs and serves as PM AI context
+ */
+pm_task_id: string | null, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
-export type UpdateProject = { name: string | null, };
+export type UpdateProject = { name: string | null, 
+/**
+ * Set the PM task for this project
+ */
+pm_task_id: string | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, 
 /**
@@ -40,15 +48,29 @@ export type UpdateTag = { tag_name: string | null, content: string | null, };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
-export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, created_at: string, updated_at: string, };
+export type TaskPriority = "low" | "medium" | "high" | "urgent";
 
-export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, created_at: string, updated_at: string, };
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, priority: TaskPriority, position: number, parent_workspace_id: string | null, created_at: string, updated_at: string, };
+
+export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, priority: TaskPriority, position: number, parent_workspace_id: string | null, created_at: string, updated_at: string, };
 
 export type TaskRelationships = { parent_task: Task | null, current_workspace: Workspace, children: Array<Task>, };
 
-export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, };
+export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, priority: TaskPriority | null, position: number | null, parent_workspace_id: string | null, image_ids: Array<string> | null, label_ids: Array<string> | null, };
 
-export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, };
+export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, priority: TaskPriority | null, position: number | null, parent_workspace_id: string | null, image_ids: Array<string> | null, label_ids: Array<string> | null, };
+
+export type Label = { id: string, project_id: string, name: string, color: string, executor: string | null, created_at: string, updated_at: string, };
+
+export type CreateLabel = { project_id: string, name: string, color: string | null, executor: string | null, };
+
+export type UpdateLabel = { name: string | null, color: string | null, executor: string | null, };
+
+export type TaskLabel = { task_id: string, label_id: string, created_at: string, };
+
+export type TaskDependency = { task_id: string, depends_on_task_id: string, created_at: string, };
+
+export type CreateTaskDependency = { task_id: string, depends_on_task_id: string, };
 
 export type DraftFollowUpData = { message: string, executor_profile_id: ExecutorProfileId, };
 

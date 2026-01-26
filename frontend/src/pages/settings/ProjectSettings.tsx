@@ -292,6 +292,7 @@ export function ProjectSettings() {
     try {
       const updateData: UpdateProject = {
         name: draft.name.trim(),
+        pm_task_id: selectedProject.pm_task_id ?? null,
       };
 
       updateProject.mutate({

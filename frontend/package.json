@@ -20,6 +20,7 @@
     "@codemirror/lint": "^6.8.5",
     "@codemirror/view": "^6.38.1",
     "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@ebay/nice-modal-react": "^1.2.13",
     "@git-diff-view/file": "^0.0.30",

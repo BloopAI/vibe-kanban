@@ -15,6 +15,7 @@
     }
   },
   "loading": "Loading tasks...",
+  "progress": "{{done}} / {{total}} tasks done",
   "empty": {
     "noTasks": "No tasks found for this project.",
     "createFirst": "Create First Task",
@@ -169,6 +170,31 @@
     "errorLoadingAttempts": "Failed to load attempts",
     "attemptsCount": "Attempts ({{count}})",
     "noAttempts": "No attempts yet"
+  },
+  "pmDocs": {
+    "title": "PM Docs",
+    "noDescription": "No documentation available",
+    "notFound": "PM task not found"
+  },
+  "autoReviewSettings": {
+    "title": "Auto-Review Settings",
+    "description": "Configure automatic review when tasks move to the \"In Review\" column.",
+    "enableAutoReview": "Enable Auto-Review",
+    "enableDescription": "Automatically start AI review when a task moves to In Review",
+    "selectAI": "Select AI for Review",
+    "reviewTypes": "Review Types",
+    "pmReview": "PM Spec Review",
+    "pmReviewDescription": "Check changes against project specifications and requirements",
+    "codeReview": "Code Review",
+    "codeReviewDescription": "Check code quality, best practices, potential bugs, and security issues",
+    "additionalPrompt": "Additional Instructions (Optional)",
+    "additionalPromptPlaceholder": "Add custom review instructions..."
+  },
+  "taskCard": {
+    "blocked": "Blocked by",
+    "task": "task",
+    "tasks": "tasks",
+    "dependenciesComplete": "All dependencies complete"
   },
   "processes": {
     "noLogsAvailable": "No logs available",
@@ -613,6 +639,16 @@
       "done": "Done",
       "cancelled": "Cancelled"
     },
+    "priorityLabel": "Priority",
+    "priorityOptions": {
+      "urgent": "Urgent",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "labelsLabel": "Labels",
+    "dependsOnLabel": "Depends On",
+    "dependsOnDescription": "This task depends on the selected tasks to be completed first.",
     "startLabel": "Start",
     "attachImage": "Attach image",
     "dropImagesHere": "Drop images here",

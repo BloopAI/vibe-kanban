@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id)\n               VALUES ($1, $2, $3, $4, $5, $6)\n               RETURNING id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", priority as \"priority!: TaskPriority\", position as \"position!: i32\", parent_workspace_id as \"parent_workspace_id: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE rowid = $1",
   "describe": {
     "columns": [
       {
@@ -29,23 +29,33 @@
         "type_info": "Text"
       },
       {
-        "name": "parent_workspace_id: Uuid",
+        "name": "priority!: TaskPriority",
         "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "position!: i32",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "parent_workspace_id: Uuid",
+        "ordinal": 7,
         "type_info": "Blob"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 6,
+        "ordinal": 8,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 7,
+        "ordinal": 9,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 6
+      "Right": 1
     },
     "nullable": [
       true,
@@ -53,10 +63,12 @@
       false,
       true,
       false,
+      false,
+      false,
       true,
       false,
       false
     ]
   },
-  "hash": "80ccff0d54cf0584c36df27da8e8f3298b726d6e2da2d7cee69ff1df8591819e"
+  "hash": "710997d2c897818396866e8583842036060df1fc4e448000d4f1c08de415938f"
 }

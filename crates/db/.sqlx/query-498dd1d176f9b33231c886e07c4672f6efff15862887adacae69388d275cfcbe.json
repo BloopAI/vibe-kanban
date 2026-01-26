@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COUNT(*) as \"count!: i64\"\n               FROM task_dependencies td\n               JOIN tasks t ON t.id = td.depends_on_task_id\n               WHERE td.task_id = $1 AND t.status != 'done'",
+  "describe": {
+    "columns": [
+      {
+        "name": "count!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "498dd1d176f9b33231c886e07c4672f6efff15862887adacae69388d275cfcbe"
+}

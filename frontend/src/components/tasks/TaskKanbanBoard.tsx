@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import {
   type DragEndEvent,
   KanbanBoard,
@@ -19,6 +19,7 @@ interface TaskKanbanBoardProps {
   selectedTaskId?: string;
   onCreateTask?: () => void;
   projectId: string;
+  pmTaskId?: string | null;
 }
 
 function TaskKanbanBoard({
@@ -28,7 +29,14 @@ function TaskKanbanBoard({
   selectedTaskId,
   onCreateTask,
   projectId,
+  pmTaskId,
 }: TaskKanbanBoardProps) {
+  // Flatten all tasks for dependency checking
+  const allTasks = useMemo(
+    () => Object.values(columns).flat(),
+    [columns]
+  );
+
   return (
     <KanbanProvider onDragEnd={onDragEnd}>
       {Object.entries(columns).map(([status, tasks]) => {
@@ -40,7 +48,7 @@ function TaskKanbanBoard({
               color={statusBoardColors[statusKey]}
               onAddTask={onCreateTask}
             />
-            <KanbanCards>
+            <KanbanCards itemIds={tasks.map((t) => t.id)}>
               {tasks.map((task, index) => (
                 <TaskCard
                   key={task.id}
@@ -50,6 +58,8 @@ function TaskKanbanBoard({
                   onViewDetails={onViewTaskDetails}
                   isOpen={selectedTaskId === task.id}
                   projectId={projectId}
+                  isPmTask={pmTaskId === task.id}
+                  allTasks={allTasks}
                 />
               ))}
             </KanbanCards>

@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { isEqual } from 'lodash';
-import { SpinnerIcon, PlusIcon, TrashIcon } from '@phosphor-icons/react';
+import { SpinnerIcon, PlusIcon, TrashIcon, ClipboardTextIcon } from '@phosphor-icons/react';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
-import { projectsApi } from '@/lib/api';
+import { projectsApi, tasksApi } from '@/lib/api';
 import { repoBranchKeys } from '@/hooks/useRepoBranches';
-import type { Project, Repo, UpdateProject } from 'shared/types';
+import type { Project, Repo, UpdateProject, TaskWithAttemptStatus } from 'shared/types';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -27,11 +27,13 @@ import {
 
 interface ProjectFormState {
   name: string;
+  pm_task_id: string | null;
 }
 
 function projectToFormState(project: Project): ProjectFormState {
   return {
     name: project.name,
+    pm_task_id: project.pm_task_id ?? null,
   };
 }
 
@@ -62,6 +64,10 @@ export function ProjectsSettingsSection() {
   const [repoError, setRepoError] = useState<string | null>(null);
   const [addingRepo, setAddingRepo] = useState(false);
   const [deletingRepoId, setDeletingRepoId] = useState<string | null>(null);
+
+  // Tasks state (for PM task selection)
+  const [tasks, setTasks] = useState<TaskWithAttemptStatus[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
 
   // Check for unsaved changes
   const hasUnsavedChanges = useMemo(() => {
@@ -132,6 +138,21 @@ export function ProjectsSettingsSection() {
         setRepositories([]);
       })
       .finally(() => setLoadingRepos(false));
+  }, [selectedProjectId]);
+
+  // Fetch tasks when project changes (for PM task selection)
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setTasks([]);
+      return;
+    }
+
+    setLoadingTasks(true);
+    tasksApi
+      .list(selectedProjectId)
+      .then(setTasks)
+      .catch(() => setTasks([]))
+      .finally(() => setLoadingTasks(false));
   }, [selectedProjectId]);
 
   const handleAddRepository = async () => {
@@ -226,6 +247,7 @@ export function ProjectsSettingsSection() {
     try {
       const updateData: UpdateProject = {
         name: draft.name.trim(),
+        pm_task_id: draft.pm_task_id,
       };
 
       updateProject.mutate({
@@ -348,6 +370,63 @@ export function ProjectsSettingsSection() {
                 onChange={(value) => updateDraft({ name: value })}
                 placeholder={t('settings.projects.general.name.placeholder')}
               />
+            </SettingsField>
+          </SettingsCard>
+
+          {/* PM Task Settings */}
+          <SettingsCard
+            title={t('settings.projects.pmTask.title')}
+            description={t('settings.projects.pmTask.description')}
+          >
+            <SettingsField
+              label={t('settings.projects.pmTask.selector.label')}
+              description={t('settings.projects.pmTask.selector.helper')}
+            >
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <DropdownMenuTriggerButton
+                    label={
+                      loadingTasks
+                        ? t('settings.projects.pmTask.loading')
+                        : draft.pm_task_id
+                          ? tasks.find((t) => t.id === draft.pm_task_id)
+                              ?.title || t('settings.projects.pmTask.selector.placeholder')
+                          : t('settings.projects.pmTask.selector.placeholder')
+                    }
+                    className="w-full justify-between"
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-60 overflow-auto">
+                  <DropdownMenuItem
+                    onClick={() => updateDraft({ pm_task_id: null })}
+                  >
+                    <span className="text-low">
+                      {t('settings.projects.pmTask.selector.none')}
+                    </span>
+                  </DropdownMenuItem>
+                  {tasks.length > 0 ? (
+                    tasks.map((task) => (
+                      <DropdownMenuItem
+                        key={task.id}
+                        onClick={() => updateDraft({ pm_task_id: task.id })}
+                      >
+                        <div className="flex items-center gap-2">
+                          {draft.pm_task_id === task.id && (
+                            <ClipboardTextIcon className="size-icon-sm text-brand" weight="fill" />
+                          )}
+                          <span className={cn(draft.pm_task_id === task.id && 'font-medium')}>
+                            {task.title}
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <DropdownMenuItem disabled>
+                      {t('settings.projects.pmTask.selector.noTasks')}
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </SettingsField>
           </SettingsCard>
 

@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
-import { tasksApi } from '@/lib/api';
+import { tasksApi, attemptsApi, sessionsApi } from '@/lib/api';
+import { useAutoReviewSettings } from '@/hooks/useAutoReviewSettings';
 import type { RepoBranchStatus, Workspace } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
@@ -56,6 +57,7 @@ import { DiffsPanel } from '@/components/panels/DiffsPanel';
 import TaskAttemptPanel from '@/components/panels/TaskAttemptPanel';
 import TaskPanel from '@/components/panels/TaskPanel';
 import TodoPanel from '@/components/tasks/TodoPanel';
+import { PmDocsPanel } from '@/components/panels/PmDocsPanel';
 import { NewCard, NewCardHeader } from '@/components/ui/new-card';
 import {
   Breadcrumb,
@@ -143,9 +145,13 @@ export function ProjectTasks() {
 
   const {
     projectId,
+    project,
     isLoading: projectLoading,
     error: projectError,
   } = useProject();
+
+  // Auto-review settings for the project
+  const { settings: autoReviewSettings } = useAutoReviewSettings(projectId);
 
   useEffect(() => {
     enableScope(Scope.KANBAN);
@@ -402,10 +408,15 @@ export function ProjectTasks() {
     });
 
     TASK_STATUSES.forEach((status) => {
-      columns[status].sort(
-        (a, b) =>
+      // Sort by position first, then by created_at (newer first) for tasks with same position
+      columns[status].sort((a, b) => {
+        if (a.position !== b.position) {
+          return a.position - b.position;
+        }
+        return (
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+        );
+      });
     });
 
     return columns;
@@ -434,6 +445,14 @@ export function ProjectTasks() {
       ),
     [visibleTasksByStatus]
   );
+
+  // Calculate project progress (completed tasks / total tasks)
+  const projectProgress = useMemo(() => {
+    if (tasks.length === 0) return { total: 0, done: 0, percent: 0 };
+    const done = tasks.filter((t) => t.status === 'done').length;
+    const percent = Math.round((done / tasks.length) * 100);
+    return { total: tasks.length, done, percent };
+  }, [tasks]);
 
   useKeyNavUp(
     () => {
@@ -691,29 +710,163 @@ export function ProjectTasks() {
     }
   }, [selectedTask, visibleTasksByStatus, handleViewTaskDetails]);
 
+  // Helper function to trigger auto-review when task moves to inreview
+  const triggerAutoReview = useCallback(
+    async (taskId: string) => {
+      if (!autoReviewSettings.enabled) return;
+      if (!autoReviewSettings.executorProfileId) {
+        console.warn('Auto-review enabled but no executor profile configured');
+        return;
+      }
+
+      try {
+        // Get latest workspace for the task
+        const workspaces = await attemptsApi.getAll(taskId);
+        if (!workspaces || workspaces.length === 0) {
+          console.warn('No workspace found for task, cannot start auto-review');
+          return;
+        }
+
+        // Sort by created_at to get the latest workspace
+        const latestWorkspace = [...workspaces].sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0];
+
+        // Create a new session or find existing one
+        const session = await sessionsApi.create({
+          workspace_id: latestWorkspace.id,
+          executor: autoReviewSettings.executorProfileId.executor,
+        });
+
+        // Build the review prompt
+        const promptParts: string[] = [];
+
+        if (autoReviewSettings.includePmReview && project?.pm_task_id) {
+          promptParts.push(
+            'Please review this task against the project specifications and requirements defined in the PM docs.'
+          );
+        }
+
+        if (autoReviewSettings.includeCodeReview) {
+          promptParts.push(
+            'Also perform a code review checking for code quality, best practices, potential bugs, and security issues.'
+          );
+        }
+
+        if (autoReviewSettings.additionalPrompt) {
+          promptParts.push(autoReviewSettings.additionalPrompt);
+        }
+
+        if (promptParts.length === 0) {
+          promptParts.push('Please review the changes in this task.');
+        }
+
+        // Start the review
+        await sessionsApi.startReview(session.id, {
+          executor_profile_id: autoReviewSettings.executorProfileId,
+          additional_prompt: promptParts.join('\n\n'),
+          use_all_workspace_commits: true,
+        });
+
+        console.log('Auto-review started for task:', taskId);
+      } catch (err) {
+        console.error('Failed to start auto-review:', err);
+      }
+    },
+    [autoReviewSettings, project?.pm_task_id]
+  );
+
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       const { active, over } = event;
       if (!over || !active.data.current) return;
 
       const draggedTaskId = active.id as string;
-      const newStatus = over.id as Task['status'];
+      const overId = over.id as string;
       const task = tasksById[draggedTaskId];
-      if (!task || task.status === newStatus) return;
+      if (!task) return;
 
-      try {
-        await tasksApi.update(draggedTaskId, {
-          title: task.title,
-          description: task.description,
-          status: newStatus,
-          parent_workspace_id: task.parent_workspace_id,
-          image_ids: null,
-        });
-      } catch (err) {
-        console.error('Failed to update task status:', err);
+      // Check if dropped on another task (reordering) or on a column (status change)
+      const overTask = tasksById[overId];
+      const isStatusChange = TASK_STATUSES.includes(overId as TaskStatus);
+
+      if (isStatusChange) {
+        // Dropped on a column - change status
+        const newStatus = overId as Task['status'];
+        if (task.status === newStatus) return;
+
+        try {
+          await tasksApi.update(draggedTaskId, {
+            title: task.title,
+            description: task.description,
+            status: newStatus,
+            priority: null,
+            position: null,
+            parent_workspace_id: task.parent_workspace_id,
+            image_ids: null,
+            label_ids: null,
+          });
+
+          // Trigger auto-review if task moved to inreview
+          if (newStatus === 'inreview') {
+            void triggerAutoReview(draggedTaskId);
+          }
+        } catch (err) {
+          console.error('Failed to update task status:', err);
+        }
+      } else if (overTask) {
+        // Dropped on another task - reorder within the column or move to new column
+        const activeData = active.data.current as { parent?: string };
+        const overData = over.data.current as { parent?: string };
+
+        const sourceStatus = activeData?.parent || task.status;
+        const targetStatus = overData?.parent || overTask.status;
+
+        // Get tasks in target column
+        const targetTasks = kanbanColumns[targetStatus as TaskStatus] || [];
+        const overIndex = targetTasks.findIndex((t) => t.id === overId);
+
+        // Calculate new position
+        let newPosition: number;
+        if (overIndex === 0) {
+          // Dropped at the top
+          newPosition = (targetTasks[0]?.position ?? 0) - 1000;
+        } else if (overIndex === targetTasks.length - 1) {
+          // Dropped at the bottom
+          newPosition =
+            (targetTasks[targetTasks.length - 1]?.position ?? 0) + 1000;
+        } else {
+          // Dropped in the middle - calculate average position
+          const prevPos = targetTasks[overIndex - 1]?.position ?? 0;
+          const nextPos = targetTasks[overIndex]?.position ?? prevPos + 2000;
+          newPosition = Math.floor((prevPos + nextPos) / 2);
+        }
+
+        const statusChanged = sourceStatus !== targetStatus;
+
+        try {
+          await tasksApi.update(draggedTaskId, {
+            title: task.title,
+            description: task.description,
+            status: statusChanged ? (targetStatus as TaskStatus) : null,
+            priority: null,
+            position: newPosition,
+            parent_workspace_id: task.parent_workspace_id,
+            image_ids: null,
+            label_ids: null,
+          });
+
+          // Trigger auto-review if task moved to inreview
+          if (statusChanged && targetStatus === 'inreview') {
+            void triggerAutoReview(draggedTaskId);
+          }
+        } catch (err) {
+          console.error('Failed to update task position:', err);
+        }
       }
     },
-    [tasksById]
+    [tasksById, kanbanColumns, triggerAutoReview]
   );
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;
@@ -774,15 +927,41 @@ export function ProjectTasks() {
         </Card>
       </div>
     ) : (
-      <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain">
-        <TaskKanbanBoard
-          columns={kanbanColumns}
-          onDragEnd={handleDragEnd}
-          onViewTaskDetails={handleViewTaskDetails}
-          selectedTaskId={selectedTask?.id}
-          onCreateTask={handleCreateNewTask}
-          projectId={projectId!}
-        />
+      <div className="w-full h-full flex overflow-hidden">
+        {/* PM Docs Sidebar */}
+        <PmDocsPanel pmTaskId={project?.pm_task_id} projectId={projectId} />
+
+        {/* Main Kanban Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Project Progress Bar */}
+          {projectProgress.total > 0 && (
+            <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/30">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
+                {t('progress', { done: projectProgress.done, total: projectProgress.total })}
+              </span>
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden max-w-xs">
+                <div
+                  className="h-full bg-primary transition-all duration-300"
+                  style={{ width: `${projectProgress.percent}%` }}
+                />
+              </div>
+              <span className="text-sm font-medium text-muted-foreground">
+                {projectProgress.percent}%
+              </span>
+            </div>
+          )}
+          <div className="flex-1 overflow-x-auto overflow-y-auto overscroll-x-contain">
+            <TaskKanbanBoard
+              columns={kanbanColumns}
+              onDragEnd={handleDragEnd}
+              onViewTaskDetails={handleViewTaskDetails}
+              selectedTaskId={selectedTask?.id}
+              onCreateTask={handleCreateNewTask}
+              projectId={projectId!}
+              pmTaskId={project?.pm_task_id}
+            />
+          </div>
+        </div>
       </div>
     );
 

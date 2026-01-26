@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT OR IGNORE INTO task_dependencies (task_id, depends_on_task_id) VALUES ($1, $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "9dba33dc5eba7d4feb3149508c3327cde46215e14bd94aa3df774d434d22ac53"
+}

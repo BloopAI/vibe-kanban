@@ -5,8 +5,8 @@ use axum::{
     response::Response,
 };
 use db::models::{
-    execution_process::ExecutionProcess, project::Project, session::Session, tag::Tag, task::Task,
-    workspace::Workspace,
+    execution_process::ExecutionProcess, label::Label, project::Project, session::Session,
+    tag::Tag, task::Task, workspace::Workspace,
 };
 use deployment::Deployment;
 use uuid::Uuid;
@@ -167,5 +167,27 @@ pub async fn load_session_middleware(
     };
 
     request.extensions_mut().insert(session);
+    Ok(next.run(request).await)
+}
+
+pub async fn load_label_middleware(
+    State(deployment): State<DeploymentImpl>,
+    Path(label_id): Path<Uuid>,
+    mut request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let label = match Label::find_by_id(&deployment.db().pool, label_id).await {
+        Ok(Some(label)) => label,
+        Ok(None) => {
+            tracing::warn!("Label {} not found", label_id);
+            return Err(StatusCode::NOT_FOUND);
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch label {}: {}", label_id, e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    request.extensions_mut().insert(label);
     Ok(next.run(request).await)
 }

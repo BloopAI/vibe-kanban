@@ -14,6 +14,7 @@ use axum::{
 };
 use db::models::{
     image::TaskImage,
+    label::{Label, TaskDependency},
     repo::{Repo, RepoError},
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     workspace::{CreateWorkspace, Workspace},
@@ -120,6 +121,11 @@ pub async fn create_task(
 
     if let Some(image_ids) = &payload.image_ids {
         TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
+    }
+
+    // Assign labels if provided
+    if let Some(label_ids) = &payload.label_ids {
+        Label::set_task_labels(&deployment.db().pool, task.id, label_ids).await?;
     }
 
     deployment
@@ -259,6 +265,8 @@ pub async fn update_task(
         None => existing_task.description,      // Field omitted = keep existing
     };
     let status = payload.status.unwrap_or(existing_task.status);
+    let priority = payload.priority.unwrap_or(existing_task.priority);
+    let position = payload.position.unwrap_or(existing_task.position);
     let parent_workspace_id = payload
         .parent_workspace_id
         .or(existing_task.parent_workspace_id);
@@ -270,6 +278,8 @@ pub async fn update_task(
         title,
         description,
         status,
+        priority,
+        position,
         parent_workspace_id,
     )
     .await?;
@@ -277,6 +287,11 @@ pub async fn update_task(
     if let Some(image_ids) = &payload.image_ids {
         TaskImage::delete_by_task_id(&deployment.db().pool, task.id).await?;
         TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
+    }
+
+    // Update labels if provided
+    if let Some(label_ids) = &payload.label_ids {
+        Label::set_task_labels(&deployment.db().pool, task.id, label_ids).await?;
     }
 
     Ok(ResponseJson(ApiResponse::success(task)))
@@ -389,10 +404,48 @@ pub async fn delete_task(
     Ok((StatusCode::ACCEPTED, ResponseJson(ApiResponse::success(()))))
 }
 
+pub async fn get_task_labels(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<db::models::label::Label>>>, ApiError> {
+    let labels = Label::find_by_task_id(&deployment.db().pool, task.id).await?;
+    Ok(ResponseJson(ApiResponse::success(labels)))
+}
+
+/// Get task dependencies (tasks this task depends on)
+pub async fn get_task_dependencies(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<Uuid>>>, ApiError> {
+    let dependencies = TaskDependency::find_dependencies(&deployment.db().pool, task.id).await?;
+    Ok(ResponseJson(ApiResponse::success(dependencies)))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SetDependenciesRequest {
+    pub dependency_ids: Vec<Uuid>,
+}
+
+/// Set task dependencies (replaces existing)
+pub async fn set_task_dependencies(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<SetDependenciesRequest>,
+) -> Result<ResponseJson<ApiResponse<Vec<Uuid>>>, ApiError> {
+    TaskDependency::set_dependencies(&deployment.db().pool, task.id, &payload.dependency_ids)
+        .await?;
+    Ok(ResponseJson(ApiResponse::success(payload.dependency_ids)))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_actions_router = Router::new()
         .route("/", put(update_task))
-        .route("/", delete(delete_task));
+        .route("/", delete(delete_task))
+        .route("/labels", get(get_task_labels))
+        .route(
+            "/dependencies",
+            get(get_task_dependencies).put(set_task_dependencies),
+        );
 
     let task_id_router = Router::new()
         .route("/", get(get_task))
