@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                cat.id as \"id!: Uuid\",\n                cat.execution_process_id as \"execution_process_id!: Uuid\",\n                cat.agent_session_id,\n                cat.agent_message_uuid,\n                cat.prompt,\n                cat.summary,\n                cat.seen as \"seen!: bool\",\n                cat.created_at as \"created_at!: DateTime<Utc>\",\n                cat.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes ep\n               JOIN coding_agent_turns cat ON ep.id = cat.execution_process_id\n               WHERE ep.session_id = $1\n                 AND ep.run_reason = 'codingagent'\n                 AND ep.dropped = FALSE\n                 AND cat.agent_session_id IS NOT NULL\n               ORDER BY ep.created_at DESC\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "execution_process_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "agent_session_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "agent_message_uuid",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "prompt",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "summary",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "seen!: bool",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "9be89396c844fc94bd70fcb517674f7983160f5c2b061418b6721dd678489a99"
+}

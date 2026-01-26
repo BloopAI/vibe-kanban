@@ -6,6 +6,7 @@ use axum::{
     response::Json as ResponseJson,
 };
 use db::models::{
+    coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     merge::{Merge, MergeStatus},
     project_repo::ProjectRepo,
@@ -150,12 +151,9 @@ async fn trigger_pr_description_follow_up(
         return Ok(());
     };
 
-    // Get latest agent session info if one exists (for coding agent continuity)
-    let latest_session_info = ExecutionProcess::find_latest_coding_agent_turn_session_info(
-        &deployment.db().pool,
-        session.id,
-    )
-    .await?;
+    // Get latest agent turn if one exists (for coding agent continuity)
+    let latest_turn =
+        CodingAgentTurn::find_latest_for_session(&deployment.db().pool, session.id).await?;
 
     let working_dir = workspace
         .agent_working_dir
@@ -164,11 +162,11 @@ async fn trigger_pr_description_follow_up(
         .cloned();
 
     // Build the action type (follow-up if session exists, otherwise initial)
-    let action_type = if let Some((agent_session_id, agent_message_uuid)) = latest_session_info {
+    let action_type = if let Some(turn) = latest_turn {
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt,
-            session_id: agent_session_id,
-            message_uuid: agent_message_uuid,
+            session_id: turn.agent_session_id.expect("query filters for non-null"),
+            message_uuid: turn.agent_message_uuid,
             executor_profile_id: executor_profile_id.clone(),
             working_dir: working_dir.clone(),
         })

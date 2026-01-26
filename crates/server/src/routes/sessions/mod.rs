@@ -9,6 +9,7 @@ use axum::{
     routing::{get, post},
 };
 use db::models::{
+    coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     scratch::{Scratch, ScratchType},
     session::{CreateSession, Session, SessionError},
@@ -174,8 +175,7 @@ pub async fn follow_up(
         let _ = ExecutionProcess::drop_at_and_after(pool, process.session_id, proc_id).await?;
     }
 
-    let latest_session_info =
-        ExecutionProcess::find_latest_coding_agent_turn_session_info(pool, session.id).await?;
+    let latest_turn = CodingAgentTurn::find_latest_for_session(pool, session.id).await?;
 
     let prompt = payload.prompt;
 
@@ -192,11 +192,11 @@ pub async fn follow_up(
     // For normal follow-ups, we just resume the session without truncating history.
     let is_reset = payload.retry_process_id.is_some();
 
-    let action_type = if let Some((agent_session_id, agent_message_uuid)) = latest_session_info {
+    let action_type = if let Some(turn) = latest_turn {
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt: prompt.clone(),
-            session_id: agent_session_id,
-            message_uuid: if is_reset { agent_message_uuid } else { None },
+            session_id: turn.agent_session_id.expect("query filters for non-null"),
+            message_uuid: if is_reset { turn.agent_message_uuid } else { None },
             executor_profile_id: executor_profile_id.clone(),
             working_dir: working_dir.clone(),
         })

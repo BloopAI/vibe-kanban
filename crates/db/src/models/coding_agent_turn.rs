@@ -24,6 +24,37 @@ pub struct CreateCodingAgentTurn {
 }
 
 impl CodingAgentTurn {
+    /// Find latest coding agent turn for a session (with agent_session_id set)
+    pub async fn find_latest_for_session(
+        pool: &SqlitePool,
+        session_id: Uuid,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            CodingAgentTurn,
+            r#"SELECT
+                cat.id as "id!: Uuid",
+                cat.execution_process_id as "execution_process_id!: Uuid",
+                cat.agent_session_id,
+                cat.agent_message_uuid,
+                cat.prompt,
+                cat.summary,
+                cat.seen as "seen!: bool",
+                cat.created_at as "created_at!: DateTime<Utc>",
+                cat.updated_at as "updated_at!: DateTime<Utc>"
+               FROM execution_processes ep
+               JOIN coding_agent_turns cat ON ep.id = cat.execution_process_id
+               WHERE ep.session_id = $1
+                 AND ep.run_reason = 'codingagent'
+                 AND ep.dropped = FALSE
+                 AND cat.agent_session_id IS NOT NULL
+               ORDER BY ep.created_at DESC
+               LIMIT 1"#,
+            session_id
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     /// Find coding agent turn by execution process ID
     pub async fn find_by_execution_process_id(
         pool: &SqlitePool,
