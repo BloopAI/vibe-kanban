@@ -98,25 +98,30 @@ pub fn extract_host(url: &str) -> Result<String, GitHostError> {
 /// Extract owner and repo from a git remote URL.
 /// Supports both HTTPS and SSH formats.
 pub fn parse_owner_repo(url: &str) -> Result<(String, String), GitHostError> {
+    let extract_from_path = |path: &str| -> Option<(String, String)> {
+        let mut parts = path
+            .trim_start_matches('/')
+            .trim_end_matches(".git")
+            .split('/');
+        let owner = parts.next()?;
+        let repo = parts.next()?;
+        if owner.is_empty() || repo.is_empty() {
+            return None;
+        }
+        Some((owner.to_string(), repo.to_string()))
+    };
+
     // Try to parse as URL first
     if let Ok(parsed) = url::Url::parse(url) {
-        let path = parsed
-            .path()
-            .trim_start_matches('/')
-            .trim_end_matches(".git");
-        let parts: Vec<&str> = path.split('/').collect();
-        if parts.len() >= 2 {
-            return Ok((parts[0].to_string(), parts[1].to_string()));
+        if let Some(result) = extract_from_path(parsed.path()) {
+            return Ok(result);
         }
     }
 
     // Try SSH format: git@host:owner/repo.git
     if let Some(path_start) = url.find(':') {
-        let path = &url[path_start + 1..];
-        let path = path.trim_end_matches(".git");
-        let parts: Vec<&str> = path.split('/').collect();
-        if parts.len() >= 2 {
-            return Ok((parts[0].to_string(), parts[1].to_string()));
+        if let Some(result) = extract_from_path(&url[path_start + 1..]) {
+            return Ok(result);
         }
     }
 
