@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   useUiPreferencesStore,
   useWorkspacePanelState,
+  type LayoutMode,
 } from '@/stores/useUiPreferencesStore';
 import { useDiffViewStore, useDiffViewMode } from '@/stores/useDiffViewStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
@@ -34,7 +36,11 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
   const diffPaths = useDiffViewStore((s) => s.diffPaths);
   const diffViewMode = useDiffViewMode();
   const expanded = useUiPreferencesStore((s) => s.expanded);
-  const layoutMode = useUiPreferencesStore((s) => s.layoutMode);
+  // Derive layoutMode from current route instead of persisted state
+  const location = useLocation();
+  const layoutMode: LayoutMode = location.pathname.startsWith('/projects')
+    ? 'kanban'
+    : 'workspaces';
   const { config } = useUserSystem();
   const { isStarting, isStopping, runningDevServers } =
     useDevServer(workspaceId);
@@ -92,7 +98,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       logsPanelContent,
     };
   }, [
-    layoutMode,
+    location.pathname,
     panelState.rightMainPanelMode,
     panelState.isLeftSidebarVisible,
     panelState.isLeftMainPanelVisible,
