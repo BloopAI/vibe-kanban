@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState, useEffect } from 'react';
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
@@ -53,8 +53,8 @@ export function KanbanContainer() {
 
   const { projects, users, usersById, isLoading: orgLoading } = useOrgContext();
 
-  // Get project name from first project (context provides the project we're viewing)
-  const projectName = projects[0]?.name ?? '';
+  // Get project name by finding the project matching current projectId
+  const projectName = projects.find((p) => p.id === projectId)?.name ?? '';
 
   // Apply filters
   const { filteredIssues, hasActiveFilters } = useKanbanFilters({
@@ -78,6 +78,20 @@ export function KanbanContainer() {
   const setListViewStatusFilter = useUiPreferencesStore(
     (s) => s.setListViewStatusFilter
   );
+
+  // Reset tab selection when navigating between projects
+  const prevProjectIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (
+      prevProjectIdRef.current !== null &&
+      prevProjectIdRef.current !== projectId
+    ) {
+      setKanbanViewMode('kanban');
+      setListViewStatusFilter(null);
+    }
+    prevProjectIdRef.current = projectId;
+  }, [projectId, setKanbanViewMode, setListViewStatusFilter]);
 
   // Sort all statuses for display settings
   const sortedStatuses = useMemo(
