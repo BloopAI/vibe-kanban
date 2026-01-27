@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { SyncErrorProvider } from '@/contexts/SyncErrorContext';
 import { NavbarContainer } from './NavbarContainer';
@@ -33,6 +33,7 @@ export function SharedAppLayout() {
 
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
+  const prevOrgIdRef = useRef<string | null>(null);
 
   // Auto-select first org if none selected or selection is invalid
   useEffect(() => {
@@ -48,9 +49,32 @@ export function SharedAppLayout() {
     }
   }, [organizations, selectedOrgId, setSelectedOrgId]);
 
-  const { data: orgProjects = [] } = useOrganizationProjects(
+  const { data: orgProjects = [], isLoading } = useOrganizationProjects(
     selectedOrgId || null
   );
+
+  // Navigate to latest project when org changes
+  useEffect(() => {
+    if (
+      prevOrgIdRef.current !== null &&
+      prevOrgIdRef.current !== selectedOrgId &&
+      selectedOrgId &&
+      !isLoading
+    ) {
+      if (orgProjects.length > 0) {
+        const sortedProjects = [...orgProjects].sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        navigate(`/projects/${sortedProjects[0].id}`);
+      } else {
+        navigate('/workspaces');
+      }
+      prevOrgIdRef.current = selectedOrgId;
+    } else if (prevOrgIdRef.current === null && selectedOrgId) {
+      prevOrgIdRef.current = selectedOrgId;
+    }
+  }, [selectedOrgId, orgProjects, isLoading, navigate]);
 
   // Navigation state for AppBar active indicators
   const isWorkspacesActive = location.pathname.startsWith('/workspaces');

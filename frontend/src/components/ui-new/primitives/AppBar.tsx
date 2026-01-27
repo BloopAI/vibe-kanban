@@ -112,8 +112,14 @@ export function AppBar({
         </Tooltip>
       )}
 
-      {/* Bottom section: Discord + User popover */}
+      {/* Bottom section: User popover + Discord */}
       <div className="mt-auto pt-base flex flex-col items-center gap-base">
+        <AppBarUserPopoverContainer
+          organizations={organizations}
+          selectedOrgId={selectedOrgId}
+          onOrgSelect={onOrgSelect}
+          onCreateOrg={onCreateOrg}
+        />
         <Tooltip content="Join our Discord" side="right">
           <a
             href="https://discord.gg/AC4nwVtJM3"
@@ -121,9 +127,9 @@ export function AppBar({
             rel="noopener noreferrer"
             className={cn(
               'relative flex items-center justify-center w-10 h-10 rounded-lg',
-              'text-muted transition-colors cursor-pointer',
-              'hover:text-normal hover:bg-tertiary',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand'
+              'text-sm font-medium transition-colors cursor-pointer',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+              'bg-primary text-normal hover:opacity-80'
             )}
             aria-label="Join our Discord"
           >
@@ -142,12 +148,6 @@ export function AppBar({
             )}
           </a>
         </Tooltip>
-        <AppBarUserPopoverContainer
-          organizations={organizations}
-          selectedOrgId={selectedOrgId}
-          onOrgSelect={onOrgSelect}
-          onCreateOrg={onCreateOrg}
-        />
       </div>
     </div>
   );
