@@ -12,8 +12,8 @@ use utils::diff::{Diff, DiffChangeKind, FileDiffDetails, compute_line_change_cou
 
 mod cli;
 
-use cli::{ChangeType, GitCli, GitCliError, StatusDiffEntry, StatusDiffOptions};
-pub use cli::{StatusEntry, WorktreeStatus};
+use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
+pub use cli::{GitCli, GitCliError, StatusEntry, WorktreeStatus};
 
 pub fn is_valid_branch_prefix(prefix: &str) -> bool {
     if prefix.is_empty() {

@@ -6,7 +6,8 @@ use std::{
 
 use git2::{PushOptions, Repository, build::CheckoutBuilder};
 use tempfile::TempDir;
-use workspace_git::{GitService, GitServiceError};
+use workspace_git::{GitCli, GitCliError, GitService};
+// Avoid direct git CLI usage in tests; exercise GitService instead.
 
 fn write_file<P: AsRef<Path>>(base: P, rel: &str, content: &str) {
     let path = base.as_ref().join(rel);
@@ -15,35 +16,6 @@ fn write_file<P: AsRef<Path>>(base: P, rel: &str, content: &str) {
     }
     let mut f = fs::File::create(&path).unwrap();
     f.write_all(content.as_bytes()).unwrap();
-}
-
-// Test helper: run git commands directly for test setup (not part of production code)
-fn git_cmd(repo_path: &Path, args: &[&str]) -> Result<String, String> {
-    use std::process::Command;
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(repo_path)
-        .args(args)
-        .output()
-        .map_err(|e| e.to_string())?;
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    } else {
-        Err(String::from_utf8_lossy(&output.stderr).to_string())
-    }
-}
-
-fn git_has_staged_changes(repo_path: &Path) -> bool {
-    use std::process::Command;
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(repo_path)
-        .arg("diff")
-        .arg("--cached")
-        .arg("--quiet")
-        .status()
-        .expect("git diff failed");
-    !output.success()
 }
 
 fn commit_all(repo: &Repository, message: &str) {
@@ -98,7 +70,8 @@ fn push_ref(repo: &Repository, local: &str, remote: &str) {
 }
 
 fn add_path(repo_path: &Path, path: &str) {
-    git_cmd(repo_path, &["add", path]).unwrap();
+    let git = GitCli::new();
+    git.git(repo_path, ["add", path]).unwrap();
 }
 
 use workspace_git::DiffTarget;
@@ -305,10 +278,10 @@ fn push_reports_non_fast_forward() {
     let remote = local_repo.find_remote("origin").expect("origin remote");
     let remote_url_string = remote.url().expect("origin url").to_string();
 
-    let service = GitService::new();
-    let result = service.push_to_remote(&local_path, "main", false);
+    let git_cli = GitCli::new();
+    let result = git_cli.push(&local_path, &remote_url_string, "main", false);
     match result {
-        Err(GitServiceError::PushRejected(msg)) => {
+        Err(GitCliError::PushRejected(msg)) => {
             let lower = msg.to_ascii_lowercase();
             assert!(
                 lower.contains("failed to push some refs") || lower.contains("fetch first"),
@@ -344,17 +317,18 @@ fn fetch_with_missing_ref_returns_error() {
     let local_path = temp_dir.path().join("local");
     Repository::clone(remote_url, &local_path).expect("clone local");
 
-    let service = GitService::new();
-    let result = service.fetch_branch(&local_path, remote_url, "missing");
+    let git_cli = GitCli::new();
+    let refspec = "+refs/heads/missing:refs/remotes/origin/missing";
+    let result = git_cli.fetch_with_refspec(&local_path, remote_url, refspec);
     match result {
-        Err(GitServiceError::InvalidRepository(msg)) => {
+        Err(GitCliError::CommandFailed(msg)) => {
             assert!(
                 msg.to_ascii_lowercase()
                     .contains("couldn't find remote ref"),
                 "unexpected stderr: {msg}"
             );
         }
-        Err(other) => panic!("expected invalid repository error, got {other:?}"),
+        Err(other) => panic!("expected command failed, got {other:?}"),
         Ok(_) => panic!("fetch unexpectedly succeeded"),
     }
 }
@@ -401,9 +375,9 @@ fn push_and_fetch_roundtrip_updates_tracking_branch() {
     let remote = producer_repo.find_remote("origin").expect("origin remote");
     let remote_url_string = remote.url().expect("origin url").to_string();
 
-    let service = GitService::new();
-    service
-        .push_to_remote(&producer_path, "main", false)
+    let git_cli = GitCli::new();
+    git_cli
+        .push(&producer_path, &remote_url_string, "main", false)
         .expect("push succeeded");
 
     let new_oid = producer_repo
@@ -413,17 +387,13 @@ fn push_and_fetch_roundtrip_updates_tracking_branch() {
         .expect("producer head oid");
     assert_ne!(old_oid, new_oid, "producer created new commit");
 
-    // Use raw git command for this test because we need a specific refspec
-    // that fetches into the tracking branch, not the local branch
-    git_cmd(
-        &consumer_path,
-        &[
-            "fetch",
+    git_cli
+        .fetch_with_refspec(
+            &consumer_path,
             &remote_url_string,
             "+refs/heads/main:refs/remotes/origin/main",
-        ],
-    )
-    .expect("fetch succeeded");
+        )
+        .expect("fetch succeeded");
 
     let updated_oid = consumer_repo
         .find_reference("refs/remotes/origin/main")
@@ -990,8 +960,11 @@ fn sparse_checkout_respected_in_worktree_diffs_and_commit() {
     let _ = s.commit(&repo_path, "baseline").unwrap();
 
     // enable sparse-checkout for 'included' only
-    git_cmd(&repo_path, &["sparse-checkout", "init", "--cone"]).unwrap();
-    git_cmd(&repo_path, &["sparse-checkout", "set", "included"]).unwrap();
+    let cli = GitCli::new();
+    cli.git(&repo_path, ["sparse-checkout", "init", "--cone"])
+        .unwrap();
+    cli.git(&repo_path, ["sparse-checkout", "set", "included"])
+        .unwrap();
 
     // create feature branch and worktree
     create_branch_from_head(&repo, "feature");
@@ -1230,7 +1203,10 @@ fn merge_leaves_no_staged_changes_on_target_branch() {
         .expect("merge should succeed");
 
     // THE KEY CHECK: Verify no staged changes remain on target branch
-    let has_staged = git_has_staged_changes(&repo_path);
+    let git_cli = GitCli::new();
+    let has_staged = git_cli
+        .has_staged_changes(&repo_path)
+        .expect("should be able to check staged changes");
 
     assert!(
         !has_staged,
@@ -1239,7 +1215,7 @@ fn merge_leaves_no_staged_changes_on_target_branch() {
 
     // Debug info if test fails
     if has_staged {
-        let status_output = git_cmd(&repo_path, &["status", "--porcelain"]).unwrap();
+        let status_output = git_cli.git(&repo_path, ["status", "--porcelain"]).unwrap();
         panic!("Found staged changes after merge:\n{status_output}");
     }
 }
@@ -1296,8 +1272,13 @@ fn worktree_to_worktree_merge_leaves_no_staged_changes() {
     );
 
     // Verify no staged changes were introduced
-    let has_staged_main = git_has_staged_changes(&repo_path);
-    let has_staged_target = git_has_staged_changes(&worktree_b_path);
+    let git_cli = GitCli::new();
+    let has_staged_main = git_cli
+        .has_staged_changes(&repo_path)
+        .expect("should be able to check staged changes in main repo");
+    let has_staged_target = git_cli
+        .has_staged_changes(&worktree_b_path)
+        .expect("should be able to check staged changes in target worktree");
 
     assert!(
         !has_staged_main,
@@ -1358,8 +1339,9 @@ fn merge_into_orphaned_branch_uses_libgit2_fallback() {
     );
 
     // Verify no working tree was affected (since branch wasn't checked out anywhere)
-    let main_has_staged = git_has_staged_changes(&repo_path);
-    let worktree_has_staged = git_has_staged_changes(&worktree_path);
+    let main_git_cli = GitCli::new();
+    let main_has_staged = main_git_cli.has_staged_changes(&repo_path).unwrap();
+    let worktree_has_staged = main_git_cli.has_staged_changes(&worktree_path).unwrap();
 
     assert!(
         !main_has_staged,
