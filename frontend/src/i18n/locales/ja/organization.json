@@ -83,5 +83,10 @@
     "description": "組織のサブスクリプションと請求設定を管理",
     "manageButton": "請求を管理",
     "openInBrowser": "新しいブラウザタブで開きます"
+  },
+  "personalOrg": {
+    "cannotInvite": "個人組織には追加のメンバーを含めることができません。",
+    "createOrgPrompt": "他の人と協力するには組織を作成してください。",
+    "createOrgButton": "組織を作成"
   }
 }

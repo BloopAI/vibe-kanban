@@ -83,5 +83,10 @@
     "description": "Gérez l'abonnement et les paramètres de facturation de votre organisation",
     "manageButton": "Gérer la facturation",
     "openInBrowser": "S'ouvre dans un nouvel onglet du navigateur"
+  },
+  "personalOrg": {
+    "cannotInvite": "Les organisations personnelles ne peuvent pas avoir de membres supplémentaires.",
+    "createOrgPrompt": "Créez une organisation pour collaborer avec d'autres.",
+    "createOrgButton": "Créer une organisation"
   }
 }

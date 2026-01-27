@@ -83,5 +83,10 @@
     "description": "管理您组织的订阅和账单设置",
     "manageButton": "管理账单",
     "openInBrowser": "在新浏览器标签页中打开"
+  },
+  "personalOrg": {
+    "cannotInvite": "个人组织不能添加其他成员。",
+    "createOrgPrompt": "创建组织以与他人协作。",
+    "createOrgButton": "创建组织"
   }
 }
