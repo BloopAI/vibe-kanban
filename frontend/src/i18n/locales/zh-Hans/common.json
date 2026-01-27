@@ -347,7 +347,11 @@
     "enterCommentPlaceholder": "在此输入评论...",
     "subIssues": "子任务",
     "noSubIssues": "无子任务",
-    "parentIssue": "父级"
+    "parentIssue": "父级",
+    "viewTabs": {
+      "active": "活动",
+      "all": "全部"
+    }
   },
   "syncError": {
     "networkErrors": "网络错误",
