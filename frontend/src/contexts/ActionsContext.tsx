@@ -13,6 +13,7 @@ import {
   type ActionDefinition,
   type ActionExecutorContext,
   type ActionVisibilityContext,
+  ActionTargetType,
   resolveLabel,
 } from '@/components/ui-new/actions';
 import { getActionLabel } from '@/components/ui-new/actions/useActionVisibility';
@@ -22,11 +23,14 @@ import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { useLogStream } from '@/hooks/useLogStream';
 
 interface ActionsContextValue {
-  // Execute an action with optional workspaceId and repoId (for git actions)
+  // Execute an action with optional workspaceId and repoId/projectId
+  // For git actions: repoIdOrProjectId is repoId
+  // For issue actions: repoIdOrProjectId is projectId, issueIds are required
   executeAction: (
     action: ActionDefinition,
     workspaceId?: string,
-    repoId?: string
+    repoIdOrProjectId?: string,
+    issueIds?: string[]
   ) => Promise<void>;
 
   // Get resolved label for an action (supports dynamic labels via visibility context)
@@ -35,6 +39,9 @@ interface ActionsContextValue {
     workspace?: Workspace,
     ctx?: ActionVisibilityContext
   ) => string;
+
+  // Open command bar in status selection mode
+  openStatusSelection: (projectId: string, issueIds: string[]) => Promise<void>;
 
   // The executor context (for components that need direct access)
   executorContext: ActionExecutorContext;
@@ -75,6 +82,19 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     return null;
   }, [logsPanelContent, processLogs]);
 
+  // Open status selection in command bar (uses dynamic import to avoid circular deps)
+  const openStatusSelection = useCallback(
+    async (projectId: string, issueIds: string[]) => {
+      const { CommandBarDialog } = await import(
+        '@/components/ui-new/dialogs/CommandBarDialog'
+      );
+      await CommandBarDialog.show({
+        pendingStatusSelection: { projectId, issueIds },
+      });
+    },
+    []
+  );
+
   // Build executor context from hooks
   const executorContext = useMemo<ActionExecutorContext>(
     () => ({
@@ -89,6 +109,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       stopDevServer: stop,
       currentLogs,
       logsPanelContent,
+      openStatusSelection,
     }),
     [
       navigate,
@@ -102,6 +123,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       stop,
       currentLogs,
       logsPanelContent,
+      openStatusSelection,
     ]
   );
 
@@ -110,25 +132,45 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     async (
       action: ActionDefinition,
       workspaceId?: string,
-      repoId?: string
+      repoIdOrProjectId?: string,
+      issueIds?: string[]
     ): Promise<void> => {
       try {
-        if (action.requiresTarget === 'git') {
-          if (!workspaceId || !repoId) {
-            throw new Error(
-              `Action "${action.id}" requires both workspace and repository`
+        switch (action.requiresTarget) {
+          case ActionTargetType.NONE:
+            await action.execute(executorContext);
+            break;
+
+          case ActionTargetType.WORKSPACE:
+            if (!workspaceId) {
+              throw new Error(
+                `Action "${action.id}" requires a workspace target`
+              );
+            }
+            await action.execute(executorContext, workspaceId);
+            break;
+
+          case ActionTargetType.GIT:
+            if (!workspaceId || !repoIdOrProjectId) {
+              throw new Error(
+                `Action "${action.id}" requires both workspace and repository`
+              );
+            }
+            await action.execute(
+              executorContext,
+              workspaceId,
+              repoIdOrProjectId
             );
-          }
-          await action.execute(executorContext, workspaceId, repoId);
-        } else if (action.requiresTarget === true) {
-          if (!workspaceId) {
-            throw new Error(
-              `Action "${action.id}" requires a workspace target`
-            );
-          }
-          await action.execute(executorContext, workspaceId);
-        } else {
-          await action.execute(executorContext);
+            break;
+
+          case ActionTargetType.ISSUE:
+            if (!repoIdOrProjectId || !issueIds || issueIds.length === 0) {
+              throw new Error(
+                `Action "${action.id}" requires project and issue selection`
+              );
+            }
+            await action.execute(executorContext, repoIdOrProjectId, issueIds);
+            break;
         }
       } catch (error) {
         // Show error to user via alert dialog
@@ -163,9 +205,10 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     () => ({
       executeAction,
       getLabel,
+      openStatusSelection,
       executorContext,
     }),
-    [executeAction, getLabel, executorContext]
+    [executeAction, getLabel, openStatusSelection, executorContext]
   );
 
   return (
