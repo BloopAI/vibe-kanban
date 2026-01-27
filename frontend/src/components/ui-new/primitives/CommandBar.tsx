@@ -122,6 +122,20 @@ export function CommandBar({
                     <span>{item.repo.display_name}</span>
                   </CommandItem>
                 );
+              } else if (item.type === 'status') {
+                return (
+                  <CommandItem
+                    key={item.status.id}
+                    value={`${item.status.id} ${item.status.name}`}
+                    onSelect={() => onSelect(item)}
+                  >
+                    <div
+                      className="h-4 w-4 rounded-full shrink-0"
+                      style={{ backgroundColor: `hsl(${item.status.color})` }}
+                    />
+                    <span>{item.status.name}</span>
+                  </CommandItem>
+                );
               } else if (item.type === 'action') {
                 const label = getLabel(item.action);
                 return (
