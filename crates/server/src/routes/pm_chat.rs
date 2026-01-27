@@ -84,7 +84,7 @@ impl PmChatAgent {
         match self {
             PmChatAgent::ClaudeCli => true,
             PmChatAgent::CodexCli => true,
-            PmChatAgent::GeminiCli => false, // Gemini CLI is mostly interactive
+            PmChatAgent::GeminiCli => true, // Gemini CLI supports --output-format stream-json
             PmChatAgent::OpencodeCli => true,
         }
     }
@@ -639,12 +639,33 @@ async fn create_mcp_cli_stream(
                 .arg("exec")
                 .arg("--json")
                 .arg("--full-auto")
-                .arg(format!("{}\n\n{}", system_prompt, user_content));
+                .arg("--config")
+                .arg(&config_path);
+
+            // Add model if specified (o3, o4-mini, gpt-4.1, etc.)
+            if !model.is_empty() && model != "default" {
+                command.arg("--model").arg(&model);
+            }
+
+            command.arg(format!("{}\n\n{}", system_prompt, user_content));
         }
         PmChatAgent::GeminiCli => {
-            // Gemini CLI is more interactive, use simple prompt mode
-            // Note: Gemini CLI doesn't have great non-interactive support
-            command.arg(format!("{}\n\n{}", system_prompt, user_content));
+            // Gemini CLI supports streaming JSON output and non-interactive mode
+            command
+                .arg("--output-format")
+                .arg("stream-json")
+                .arg("--yolo") // Auto-approve all actions (non-interactive mode)
+                .arg("--mcp-config")
+                .arg(&config_path)
+                .arg("--system-prompt")
+                .arg(&system_prompt);
+
+            // Add model if specified (gemini-2.5-pro, gemini-2.5-flash, etc.)
+            if !model.is_empty() && model != "default" {
+                command.arg("--model").arg(&model);
+            }
+
+            command.arg(&user_content);
         }
         PmChatAgent::OpencodeCli => {
             // OpenCode CLI uses run subcommand with --format json
