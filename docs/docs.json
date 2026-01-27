@@ -71,6 +71,7 @@
           "workspaces/repositories",
           "workspaces/sessions",
           "workspaces/chat-interface",
+          "workspaces/slash-commands",
           "workspaces/interface",
           "workspaces/command-bar",
           "workspaces/multi-repo-sessions",
