@@ -33,6 +33,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     // Create routers with different middleware layers
     let base_routes = Router::new()
         .route("/health", get(health::health_check))
+        .route("/pm-chat/ai-agents", get(pm_chat::get_available_agents))
         .merge(config::router())
         .merge(containers::router(&deployment))
         .merge(projects::router(&deployment))
