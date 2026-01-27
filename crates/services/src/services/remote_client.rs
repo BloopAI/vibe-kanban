@@ -22,7 +22,7 @@ use utils::{
             ListOrganizationsResponse, Organization, RevokeInvitationRequest,
             UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
         },
-        workspaces::DeleteWorkspaceRequest,
+        workspaces::{CreateWorkspaceRequest, DeleteWorkspaceRequest},
     },
     jwt::extract_expiration,
 };
@@ -550,6 +550,27 @@ impl RemoteClient {
             &DeleteWorkspaceRequest { local_workspace_id },
         )
         .await
+    }
+
+    /// Creates a workspace on the remote server, linking it to a local workspace and an issue.
+    pub async fn create_workspace(
+        &self,
+        project_id: Uuid,
+        local_workspace_id: Uuid,
+        issue_id: Uuid,
+    ) -> Result<(), RemoteClientError> {
+        self.send(
+            reqwest::Method::POST,
+            "/workspaces",
+            true,
+            Some(&CreateWorkspaceRequest {
+                project_id,
+                local_workspace_id,
+                issue_id,
+            }),
+        )
+        .await?;
+        Ok(())
     }
 }
 
