@@ -68,6 +68,16 @@ const PIERRE_DIFFS_THEME_CSS = `
     width: 22px !important;
   }
 
+  /* Make annotation content span full width including under line numbers */
+  [data-annotation-content] {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+  }
+  
+  [data-line-annotation] {
+    grid-column: 1 / -1 !important;
+  }
+
   /* Light theme overrides */
   [data-diffs][data-theme-type='light'] {
     /* Background colors - use standard CSS variables */
