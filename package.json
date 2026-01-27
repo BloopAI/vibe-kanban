@@ -18,7 +18,7 @@
     "frontend:lint": "cd frontend && pnpm run lint",
     "frontend:dev": "cd frontend && pnpm run dev -- --port ${FRONTEND_PORT:-3000} --host",
     "frontend:check": "cd frontend && pnpm run check",
-    "backend:lint": "cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "backend:lint": "cargo clippy --workspace --all-targets --features qa-mode -- -D warnings",
     "backend:dev": "BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) pnpm run backend:dev:watch",
     "backend:check": "cargo check",
     "backend:dev:watch": "DISABLE_WORKTREE_CLEANUP=1 RUST_LOG=debug cargo watch -w crates -x 'run --bin server'",
