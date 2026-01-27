@@ -306,7 +306,9 @@ export function ReposSettingsSection() {
             >
               <SettingsInput
                 value={draft.default_working_dir}
-                onChange={(value) => updateDraft({ default_working_dir: value })}
+                onChange={(value) =>
+                  updateDraft({ default_working_dir: value })
+                }
                 placeholder={t(
                   'settings.repos.general.defaultWorkingDir.placeholder'
                 )}
