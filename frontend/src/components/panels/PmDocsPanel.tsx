@@ -48,6 +48,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import type { PmConversation, PmAttachment, PmChatAgent } from 'shared/types';
+import { usePmChat } from '@/contexts/PmChatContext';
 
 interface PmDocsPanelProps {
   projectId?: string;
@@ -221,14 +222,25 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
   const [uploadingFiles, setUploadingFiles] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>('sonnet');
   const [selectedAgent, setSelectedAgent] = useState<PmChatAgent | undefined>(undefined);
-  const [isAiResponding, setIsAiResponding] = useState(false);
-  const [streamingResponse, setStreamingResponse] = useState('');
   const [isComposing, setIsComposing] = useState(false); // IME composition state
   const [panelWidth, setPanelWidth] = useState(320); // Default width 320px
   const [isResizing, setIsResizing] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<WorkspaceDoc | null>(null);
-  const abortControllerRef = useRef<{ abort: () => void } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Use context for streaming state (persists across route changes)
+  const {
+    streamState,
+    startStream,
+    appendToStream,
+    endStream,
+    setAbortController,
+    abortStream,
+  } = usePmChat();
+
+  // Derive stream state for current project
+  const isAiResponding = streamState.isAiResponding && streamState.projectId === projectId;
+  const streamingResponse = streamState.projectId === projectId ? streamState.streamingResponse : '';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
@@ -238,20 +250,25 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
     useAutoReviewSettings(projectId);
 
   // Available AI models per agent (memoized to avoid dependency issues)
+  // Updated 2025-01: Latest models for each CLI
   const modelsByAgent = useMemo(
     () =>
       ({
         CLAUDE_CLI: [
-          { value: 'sonnet', label: 'Sonnet' },
-          { value: 'opus', label: 'Opus' },
-          { value: 'haiku', label: 'Haiku' },
+          { value: 'sonnet', label: 'Sonnet (4.5)' },
+          { value: 'opus', label: 'Opus (4.5)' },
+          { value: 'haiku', label: 'Haiku (3.5)' },
         ],
         CODEX_CLI: [
+          { value: 'codex-1', label: 'Codex-1 (o3 optimized)' },
+          { value: 'codex-mini-latest', label: 'Codex Mini' },
+          { value: 'gpt-5.2-codex', label: 'GPT-5.2 Codex' },
           { value: 'o3', label: 'o3' },
           { value: 'o4-mini', label: 'o4-mini' },
           { value: 'gpt-4.1', label: 'GPT-4.1' },
         ],
         GEMINI_CLI: [
+          { value: 'gemini-3-flash', label: 'Gemini 3 Flash' },
           { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
           { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
         ],
@@ -358,6 +375,8 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatData?.messages, attachments]);
 
+  // Note: Stream cleanup is now handled by PmChatContext which persists across route changes
+
   // Resize handlers
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -404,8 +423,7 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
 
     const content = messageInput.trim();
     setMessageInput('');
-    setIsAiResponding(true);
-    setStreamingResponse('');
+    startStream(projectId);
 
     // First, send the user message and show it immediately
     try {
@@ -414,33 +432,27 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
       await queryClient.invalidateQueries({ queryKey: ['pm-chat', projectId] });
     } catch (error) {
       console.error('Failed to send user message:', error);
-      setIsAiResponding(false);
+      endStream();
       return;
     }
 
     // Then start the AI response stream
-    abortControllerRef.current = pmChatApi.aiChat(
+    const controller = pmChatApi.aiChat(
       projectId,
       content,
       selectedModel,
       // onContent - limit to 100KB to prevent memory issues
       (newContent: string) => {
-        setStreamingResponse((prev) => {
-          const updated = prev + newContent;
-          // Limit streaming content to prevent browser memory issues
-          return updated.length > 100000 ? updated.slice(-100000) : updated;
-        });
+        appendToStream(newContent);
       },
       // onDone
       () => {
-        setIsAiResponding(false);
-        setStreamingResponse('');
+        endStream();
         queryClient.invalidateQueries({ queryKey: ['pm-chat', projectId] });
       },
       // onError
       (error: string) => {
-        setIsAiResponding(false);
-        setStreamingResponse('');
+        endStream();
         console.error('AI chat error:', error);
         // Invalidate to show the assistant error or partial response
         queryClient.invalidateQueries({ queryKey: ['pm-chat', projectId] });
@@ -462,15 +474,11 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
       // agent - pass the selected AI agent (CLI)
       selectedAgent
     );
+    setAbortController(controller);
   };
 
   const handleStopAi = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-    setIsAiResponding(false);
-    setStreamingResponse('');
+    abortStream();
     queryClient.invalidateQueries({ queryKey: ['pm-chat', projectId] });
   };
 

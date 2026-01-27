@@ -34,6 +34,7 @@ import { DisclaimerDialog } from '@/components/dialogs/global/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
 import { ReleaseNotesDialog } from '@/components/dialogs/global/ReleaseNotesDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
+import { PmChatProvider } from './contexts/PmChatContext';
 
 // Design scope components
 import { LegacyDesignScope } from '@/components/legacy-design/LegacyDesignScope';
@@ -155,6 +156,14 @@ function AppContent() {
                 path="/projects/:projectId/tasks"
                 element={<ProjectTasks />}
               />
+              <Route
+                path="/projects/:projectId/tasks/:taskId"
+                element={<ProjectTasks />}
+              />
+              <Route
+                path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
+                element={<ProjectTasks />}
+              />
               <Route path="/settings/*" element={<SettingsLayout />}>
                 <Route index element={<Navigate to="general" replace />} />
                 <Route path="general" element={<GeneralSettings />} />
@@ -170,14 +179,6 @@ function AppContent() {
               <Route
                 path="/mcp-servers"
                 element={<Navigate to="/settings/mcp" replace />}
-              />
-              <Route
-                path="/projects/:projectId/tasks/:taskId"
-                element={<ProjectTasks />}
-              />
-              <Route
-                path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
-                element={<ProjectTasks />}
               />
             </Route>
 
@@ -210,16 +211,18 @@ function App() {
       <UserSystemProvider>
         <ClickedElementsProvider>
           <ProjectProvider>
-            <HotkeysProvider
-              initiallyActiveScopes={[
-                'global',
-                'workspace',
-                'kanban',
-                'projects',
-              ]}
-            >
-              <AppContent />
-            </HotkeysProvider>
+            <PmChatProvider>
+              <HotkeysProvider
+                initiallyActiveScopes={[
+                  'global',
+                  'workspace',
+                  'kanban',
+                  'projects',
+                ]}
+              >
+                <AppContent />
+              </HotkeysProvider>
+            </PmChatProvider>
           </ProjectProvider>
         </ClickedElementsProvider>
       </UserSystemProvider>

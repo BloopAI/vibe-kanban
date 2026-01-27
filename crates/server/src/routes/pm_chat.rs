@@ -624,6 +624,7 @@ async fn create_mcp_cli_stream(
                 .arg("--verbose")
                 .arg("--output-format")
                 .arg("stream-json")
+                .arg("--no-session-persistence")
                 .arg("--dangerously-skip-permissions")
                 .arg("--mcp-config")
                 .arg(&config_path)
@@ -635,14 +636,13 @@ async fn create_mcp_cli_stream(
         }
         PmChatAgent::CodexCli => {
             // Codex CLI uses exec subcommand with --json for streaming
+            // Note: Codex doesn't support --mcp-config flag, MCP servers must be pre-configured
             command
                 .arg("exec")
                 .arg("--json")
-                .arg("--full-auto")
-                .arg("--config")
-                .arg(&config_path);
+                .arg("--full-auto");
 
-            // Add model if specified (o3, o4-mini, gpt-4.1, etc.)
+            // Add model if specified (o3, o4-mini, gpt-4.1, codex-1, etc.)
             if !model.is_empty() && model != "default" {
                 command.arg("--model").arg(&model);
             }
@@ -651,21 +651,19 @@ async fn create_mcp_cli_stream(
         }
         PmChatAgent::GeminiCli => {
             // Gemini CLI supports streaming JSON output and non-interactive mode
+            // Note: Gemini doesn't support --mcp-config flag, MCP servers must be pre-configured via `gemini mcp`
             command
                 .arg("--output-format")
                 .arg("stream-json")
-                .arg("--yolo") // Auto-approve all actions (non-interactive mode)
-                .arg("--mcp-config")
-                .arg(&config_path)
-                .arg("--system-prompt")
-                .arg(&system_prompt);
+                .arg("--yolo"); // Auto-approve all actions (non-interactive mode)
 
-            // Add model if specified (gemini-2.5-pro, gemini-2.5-flash, etc.)
+            // Add model if specified (gemini-3-flash, gemini-2.5-pro, etc.)
             if !model.is_empty() && model != "default" {
                 command.arg("--model").arg(&model);
             }
 
-            command.arg(&user_content);
+            // Gemini doesn't have --system-prompt, include in the message
+            command.arg(format!("{}\n\n{}", system_prompt, user_content));
         }
         PmChatAgent::OpencodeCli => {
             // OpenCode CLI uses run subcommand with --format json
@@ -732,22 +730,29 @@ async fn create_mcp_cli_stream(
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
 
-            // Stream each line as it comes (stream-json format)
-            // Format:
-            // {"type":"system","subtype":"init",...} - initialization
-            // {"type":"assistant","message":{"content":[{"type":"text","text":"..."}],...}} - assistant messages
-            // {"type":"result","result":"...",...} - final result
+            // Stream each line as it comes
+            // Each CLI has a different JSON format:
+            // - Claude: {"type":"assistant","message":{"content":[{"type":"text","text":"..."}]}}
+            // - Codex: {"type":"item.completed","item":{"type":"agent_message","text":"..."}}
+            // - Gemini: {"type":"message","role":"assistant","content":"...","delta":true}
             while let Ok(Some(line)) = lines.next_line().await {
                 if line.is_empty() {
                     continue;
                 }
 
-                // Parse stream-json format from Claude CLI
+                // Skip non-JSON lines (like "Loading extension: ...")
+                if !line.starts_with('{') {
+                    tracing::debug!("CLI non-JSON output: {}", line);
+                    continue;
+                }
+
                 if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&line) {
                     let event_type = json_value.get("type").and_then(|t| t.as_str());
+                    let mut extracted_text: Option<String> = None;
 
                     match event_type {
-                        // Assistant message - extract text from content array
+                        // === Claude CLI format ===
+                        // {"type":"assistant","message":{"content":[{"type":"text","text":"..."}]}}
                         Some("assistant") => {
                             if let Some(message) = json_value.get("message")
                                 && let Some(content_array) = message.get("content").and_then(|c| c.as_array())
@@ -756,56 +761,89 @@ async fn create_mcp_cli_stream(
                                     if let Some(text) = block.get("text").and_then(|t| t.as_str())
                                         && !text.is_empty()
                                     {
-                                        // Append to full response
-                                        {
-                                            let mut response = full_response_clone.lock().await;
-                                            response.push_str(text);
-                                        }
-
-                                        // Send as SSE event
-                                        let event = AiChatStreamEvent {
-                                            event_type: "content".to_string(),
-                                            content: Some(text.to_string()),
-                                            error: None,
-                                            task_id: None,
-                                            task_title: None,
-                                        };
-                                        yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
+                                        extracted_text = Some(text.to_string());
                                     }
                                 }
                             }
                         }
-                        // Result - final message (may contain full response if not streamed)
+
+                        // === Codex CLI format ===
+                        // {"type":"item.completed","item":{"type":"agent_message","text":"..."}}
+                        // {"type":"item.completed","item":{"type":"reasoning","text":"..."}}
+                        Some("item.completed") => {
+                            if let Some(item) = json_value.get("item") {
+                                let item_type = item.get("type").and_then(|t| t.as_str());
+                                // Only extract agent_message, skip reasoning
+                                if item_type == Some("agent_message") {
+                                    if let Some(text) = item.get("text").and_then(|t| t.as_str())
+                                        && !text.is_empty()
+                                    {
+                                        extracted_text = Some(text.to_string());
+                                    }
+                                }
+                            }
+                        }
+
+                        // === Gemini CLI format ===
+                        // {"type":"message","role":"assistant","content":"...","delta":true}
+                        Some("message") => {
+                            let role = json_value.get("role").and_then(|r| r.as_str());
+                            if role == Some("assistant") {
+                                if let Some(content) = json_value.get("content").and_then(|c| c.as_str())
+                                    && !content.is_empty()
+                                {
+                                    extracted_text = Some(content.to_string());
+                                }
+                            }
+                        }
+
+                        // === Result events (Claude & Gemini) ===
                         Some("result") => {
+                            // Claude: {"type":"result","result":"..."}
                             if let Some(result_text) = json_value.get("result").and_then(|r| r.as_str()) {
                                 let current_response = full_response_clone.lock().await.clone();
-                                // Only use result if we haven't already received content
                                 if current_response.is_empty() && !result_text.is_empty() {
-                                    {
-                                        let mut response = full_response_clone.lock().await;
-                                        response.push_str(result_text);
-                                    }
-                                    let event = AiChatStreamEvent {
-                                        event_type: "content".to_string(),
-                                        content: Some(result_text.to_string()),
-                                        error: None,
-                                        task_id: None,
-                                        task_title: None,
-                                    };
-                                    yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
+                                    extracted_text = Some(result_text.to_string());
                                 }
                             }
+                            // Gemini result is just stats, no text content
                         }
-                        // System messages (init, hook_started, etc.) - log for debugging
-                        Some("system") => {
-                            let subtype = json_value.get("subtype").and_then(|s| s.as_str()).unwrap_or("unknown");
-                            tracing::debug!("Claude CLI system event: {}", subtype);
+
+                        // System/init events - log for debugging
+                        Some("system") | Some("init") | Some("thread.started") | Some("turn.started") | Some("turn.completed") => {
+                            tracing::debug!("CLI event: {:?}", event_type);
                         }
-                        // Unknown types - ignore
-                        _ => {}
+
+                        // Unknown types - log and skip
+                        _ => {
+                            tracing::debug!("CLI unknown event type: {:?}", event_type);
+                        }
+                    }
+
+                    // If we extracted text, send it as SSE event
+                    if let Some(text) = extracted_text {
+                        // Append to full response
+                        {
+                            let mut response = full_response_clone.lock().await;
+                            if !response.is_empty() && !text.starts_with(' ') {
+                                response.push(' ');
+                            }
+                            response.push_str(&text);
+                        }
+
+                        // Send as SSE event
+                        let event = AiChatStreamEvent {
+                            event_type: "content".to_string(),
+                            content: Some(text),
+                            error: None,
+                            task_id: None,
+                            task_title: None,
+                        };
+                        yield Ok(Event::default().data(serde_json::to_string(&event).unwrap_or_default()));
                     }
                 } else {
                     // If not valid JSON, treat as plain text (fallback)
+                    tracing::debug!("CLI non-JSON line: {}", line);
                     {
                         let mut response = full_response_clone.lock().await;
                         if !response.is_empty() {
