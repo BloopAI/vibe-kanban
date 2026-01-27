@@ -32,6 +32,7 @@ export function AppBarUserPopoverContainer({
   const clearSelectedOrgId = useOrganizationStore((s) => s.clearSelectedOrgId);
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
   const [open, setOpen] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
 
   // Extract avatar URL from first provider
   const avatarUrl =
@@ -74,6 +75,7 @@ export function AppBarUserPopoverContainer({
     <AppBarUserPopover
       isSignedIn={isSignedIn}
       avatarUrl={avatarUrl}
+      avatarError={avatarError}
       organizations={organizations}
       selectedOrgId={selectedOrgId}
       open={open}
@@ -83,6 +85,7 @@ export function AppBarUserPopoverContainer({
       onOrgSettings={handleOrgSettings}
       onSignIn={handleSignIn}
       onLogout={handleLogout}
+      onAvatarError={() => setAvatarError(true)}
     />
   );
 }
