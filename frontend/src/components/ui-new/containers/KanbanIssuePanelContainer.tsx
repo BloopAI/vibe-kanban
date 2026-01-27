@@ -8,6 +8,7 @@ import {
   KanbanIssuePanel,
   type IssueFormData,
 } from '@/components/ui-new/views/KanbanIssuePanel';
+import { useActions } from '@/contexts/ActionsContext';
 
 /**
  * KanbanIssuePanelContainer manages the issue detail/create panel.
@@ -43,6 +44,9 @@ export function KanbanIssuePanelContainer() {
   } = useProjectContext();
 
   const { users, isLoading: orgLoading } = useOrgContext();
+
+  // Get openStatusSelection from actions context
+  const { openStatusSelection } = useActions();
 
   // Close panel if selected issue doesn't exist in current project (e.g., stale persisted state)
   useEffect(() => {
@@ -289,9 +293,8 @@ export function KanbanIssuePanelContainer() {
         }));
         debouncedSaveDescription(value as string | null);
       } else if (field === 'statusId') {
-        // Dropdown field: persist immediately, no local state
-        // (displayData derives from server state via selectedIssue)
-        updateIssue(selectedKanbanIssueId, { status_id: value as string });
+        // Status changes go through the command bar status selection
+        openStatusSelection(projectId, [selectedKanbanIssueId]);
       } else if (field === 'priority') {
         // Dropdown field: persist immediately
         updateIssue(selectedKanbanIssueId, {
@@ -354,9 +357,11 @@ export function KanbanIssuePanelContainer() {
     [
       kanbanCreateMode,
       selectedKanbanIssueId,
+      projectId,
       updateIssue,
       debouncedSaveTitle,
       debouncedSaveDescription,
+      openStatusSelection,
       issueAssignees,
       insertIssueAssignee,
       removeIssueAssignee,
