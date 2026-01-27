@@ -12,11 +12,21 @@ use ts_rs::TS;
 use crate::diff::{Diff, DiffChangeKind, FileDiffDetails, compute_line_change_counts};
 
 mod cli;
-mod utils;
 
 use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
 pub use cli::{GitCli, GitCliError, StatusEntry, WorktreeStatus};
-pub use utils::is_valid_branch_prefix;
+
+pub fn is_valid_branch_prefix(prefix: &str) -> bool {
+    if prefix.is_empty() {
+        return true;
+    }
+
+    if prefix.contains('/') {
+        return false;
+    }
+
+    git2::Branch::name_is_valid(&format!("{prefix}/x")).unwrap_or_default()
+}
 
 /// Directories that should always be skipped regardless of gitignore.
 /// .git is not in .gitignore but should never be watched.
@@ -1945,5 +1955,39 @@ impl GitService {
         }
 
         Ok(stats)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_valid_branch_prefixes() {
+        assert!(is_valid_branch_prefix(""));
+        assert!(is_valid_branch_prefix("vk"));
+        assert!(is_valid_branch_prefix("feature"));
+        assert!(is_valid_branch_prefix("hotfix-123"));
+        assert!(is_valid_branch_prefix("foo.bar"));
+        assert!(is_valid_branch_prefix("foo_bar"));
+        assert!(is_valid_branch_prefix("FOO-Bar"));
+    }
+
+    #[test]
+    fn test_invalid_branch_prefixes() {
+        assert!(!is_valid_branch_prefix("foo/bar"));
+        assert!(!is_valid_branch_prefix("foo..bar"));
+        assert!(!is_valid_branch_prefix("foo@{"));
+        assert!(!is_valid_branch_prefix("foo.lock"));
+        assert!(!is_valid_branch_prefix("foo bar"));
+        assert!(!is_valid_branch_prefix("foo?"));
+        assert!(!is_valid_branch_prefix("foo*"));
+        assert!(!is_valid_branch_prefix("foo~"));
+        assert!(!is_valid_branch_prefix("foo^"));
+        assert!(!is_valid_branch_prefix("foo:"));
+        assert!(!is_valid_branch_prefix("foo["));
+        assert!(!is_valid_branch_prefix("/foo"));
+        assert!(!is_valid_branch_prefix("foo/"));
+        assert!(!is_valid_branch_prefix(".foo"));
     }
 }
