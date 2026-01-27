@@ -24,6 +24,14 @@ import { MemberRole } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 import { defineModal } from '@/lib/modals';
 
+const isSubscriptionError = (message: string): boolean => {
+  const lowerMessage = message.toLowerCase();
+  return (
+    lowerMessage.includes('subscription required') ||
+    lowerMessage.includes('subscribe to add more')
+  );
+};
+
 export type InviteMemberResult = {
   action: 'invited' | 'canceled';
 };
@@ -40,6 +48,7 @@ const InviteMemberDialogImpl = NiceModal.create<InviteMemberDialogProps>(
     const [email, setEmail] = useState('');
     const [role, setRole] = useState<MemberRole>(MemberRole.MEMBER);
     const [error, setError] = useState<string | null>(null);
+    const [isUpgradeNeeded, setIsUpgradeNeeded] = useState(false);
 
     const { createInvitation } = useOrganizationMutations({
       onInviteSuccess: () => {
@@ -47,8 +56,14 @@ const InviteMemberDialogImpl = NiceModal.create<InviteMemberDialogProps>(
         modal.hide();
       },
       onInviteError: (err) => {
+        const message =
+          err instanceof Error ? err.message : 'Failed to send invitation';
+        const needsUpgrade = isSubscriptionError(message);
+        setIsUpgradeNeeded(needsUpgrade);
         setError(
-          err instanceof Error ? err.message : 'Failed to send invitation'
+          needsUpgrade
+            ? 'To add more members, please upgrade your plan'
+            : message
         );
       },
     });
@@ -59,6 +74,7 @@ const InviteMemberDialogImpl = NiceModal.create<InviteMemberDialogProps>(
         setEmail('');
         setRole(MemberRole.MEMBER);
         setError(null);
+        setIsUpgradeNeeded(false);
       }
     }, [modal.visible]);
 
@@ -130,6 +146,7 @@ const InviteMemberDialogImpl = NiceModal.create<InviteMemberDialogProps>(
                 onChange={(e) => {
                   setEmail(e.target.value);
                   setError(null);
+                  setIsUpgradeNeeded(false);
                 }}
                 placeholder={t('inviteDialog.emailPlaceholder')}
                 autoFocus
@@ -165,7 +182,22 @@ const InviteMemberDialogImpl = NiceModal.create<InviteMemberDialogProps>(
 
             {error && (
               <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription className="text-error">
+                  {error}
+                  {isUpgradeNeeded && (
+                    <>
+                      {' '}
+                      <a
+                        href="https://vibekanban.com/upgrade"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline font-medium"
+                      >
+                        https://vibekanban.com/upgrade
+                      </a>
+                    </>
+                  )}
+                </AlertDescription>
               </Alert>
             )}
           </div>
