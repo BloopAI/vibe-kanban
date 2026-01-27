@@ -35,6 +35,7 @@ export interface IssueCommentData {
   message: string;
   createdAt: string;
   author?: User | null;
+  canModify: boolean;
 }
 
 export interface ReactionGroup {
@@ -192,26 +193,28 @@ function CommentItem({
           <span className="font-medium text-low">·</span>
           <span className="font-light text-low">{timeAgo}</span>
         </div>
-        {/* Menu dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="size-5 flex items-center justify-center text-low hover:text-normal">
-              <DotsThreeIcon size={16} weight="bold" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem icon={PencilSimpleIcon} onSelect={onStartEdit}>
-              {t('buttons.edit')}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              icon={TrashIcon}
-              variant="destructive"
-              onSelect={onDelete}
-            >
-              {t('buttons.delete')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Menu dropdown - only shown if user can modify */}
+        {comment.canModify && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="size-5 flex items-center justify-center text-low hover:text-normal">
+                <DotsThreeIcon size={16} weight="bold" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem icon={PencilSimpleIcon} onSelect={onStartEdit}>
+                {t('buttons.edit')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                icon={TrashIcon}
+                variant="destructive"
+                onSelect={onDelete}
+              >
+                {t('buttons.delete')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {/* Message - editable or read-only */}
