@@ -57,7 +57,7 @@ pub fn make_path_relative(path: &str, worktree_path: &str) -> String {
                     result
                 }
                 Err(e) => {
-                    tracing::warn!(
+                    tracing::debug!(
                         "Failed to make canonical path relative: '{}' relative to '{}', error: {}, returning original",
                         canon_path.display(),
                         canon_worktree.display(),
