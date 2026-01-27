@@ -271,9 +271,18 @@ export function KanbanIssuePanelContainer() {
     <K extends keyof IssueFormData>(field: K, value: IssueFormData[K]) => {
       // Create mode: update createFormData for all fields
       if (kanbanCreateMode || !selectedKanbanIssueId) {
-        setCreateFormData((prev) =>
-          prev ? { ...prev, [field]: value } : null
-        );
+        setCreateFormData((prev) => {
+          const base = prev ?? {
+            title: '',
+            description: null,
+            statusId: defaultStatusId,
+            priority: 'medium' as const,
+            assigneeIds: [],
+            tagIds: [],
+            createDraftWorkspace: false,
+          };
+          return { ...base, [field]: value };
+        });
         return;
       }
 
@@ -358,6 +367,7 @@ export function KanbanIssuePanelContainer() {
       kanbanCreateMode,
       selectedKanbanIssueId,
       projectId,
+      defaultStatusId,
       updateIssue,
       debouncedSaveTitle,
       debouncedSaveDescription,
