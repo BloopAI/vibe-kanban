@@ -332,6 +332,7 @@
   },
   "kanban": {
     "noStatusesFound": "No statuses found for this project",
+    "noVisibleStatuses": "All statuses are hidden. Use display settings or switch to another tab to view issues.",
     "noProjectFound": "No project found",
     "noOrganizationFound": "No organization found",
     "unassigned": "Unassigned",
