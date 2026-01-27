@@ -1,40 +1,39 @@
 import type { ProjectStatus } from 'shared/remote-types';
-import {
-  PropertyDropdown,
-  type PropertyDropdownOption,
-} from '@/components/ui-new/primitives/PropertyDropdown';
+import { cn } from '@/lib/utils';
 import { StatusDot } from '@/components/ui-new/primitives/StatusDot';
 
 export interface StatusDropdownProps {
   statusId: string;
   statuses: ProjectStatus[];
-  onChange: (statusId: string) => void;
+  onClick: () => void;
   disabled?: boolean;
 }
 
+/**
+ * Status trigger button that displays the current status and opens
+ * the ChangeStatusDialog when clicked.
+ */
 export function StatusDropdown({
   statusId,
   statuses,
-  onChange,
+  onClick,
   disabled,
 }: StatusDropdownProps) {
-  const options: PropertyDropdownOption<string>[] = statuses.map((status) => ({
-    value: status.id,
-    label: status.name,
-    renderOption: () => (
-      <div className="flex items-center gap-base">
-        <StatusDot color={status.color} />
-        {status.name}
-      </div>
-    ),
-  }));
+  const currentStatus = statuses.find((s) => s.id === statusId);
 
   return (
-    <PropertyDropdown
-      value={statusId}
-      options={options}
-      onChange={onChange}
+    <button
+      type="button"
+      onClick={onClick}
       disabled={disabled}
-    />
+      className={cn(
+        'flex items-center gap-base px-base py-half bg-panel rounded-sm',
+        'text-sm text-normal hover:bg-secondary transition-colors',
+        'disabled:opacity-50 disabled:cursor-not-allowed'
+      )}
+    >
+      <StatusDot color={currentStatus?.color ?? '0 0% 50%'} />
+      {currentStatus?.name ?? 'Select status'}
+    </button>
   );
 }

@@ -27,7 +27,7 @@ export interface IssuePropertyRowProps {
   users: User[];
   parentIssue?: { id: string; simpleId: string } | null;
   onParentIssueClick?: () => void;
-  onStatusChange: (statusId: string) => void;
+  onStatusClick: () => void;
   onPriorityChange: (priority: IssuePriority) => void;
   onAssigneeChange: (userIds: string[]) => void;
   onAddClick?: () => void;
@@ -43,7 +43,7 @@ export function IssuePropertyRow({
   users,
   parentIssue,
   onParentIssueClick,
-  onStatusChange,
+  onStatusClick,
   onPriorityChange,
   onAssigneeChange,
   onAddClick,
@@ -72,7 +72,7 @@ export function IssuePropertyRow({
       <StatusDropdown
         statusId={statusId}
         statuses={statuses}
-        onChange={onStatusChange}
+        onClick={onStatusClick}
         disabled={disabled}
       />
 

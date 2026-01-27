@@ -10,7 +10,9 @@ export type PageId =
   | 'diffOptions'
   | 'viewOptions'
   | 'repoActions' // Page for repo-specific actions (opened from repo card or CMD+K)
-  | 'selectRepo'; // Dynamic page for repo selection (not in Pages record)
+  | 'issueActions' // Page for issue-specific actions (kanban mode)
+  | 'selectRepo' // Dynamic page for repo selection (not in Pages record)
+  | 'selectStatus'; // Dynamic page for status selection (not in Pages record)
 
 // Items that can appear inside a group
 export type CommandBarGroupItem =
@@ -34,11 +36,19 @@ export interface RepoItem {
   display_name: string;
 }
 
+// Status item for dynamic status selection page
+export interface StatusItem {
+  id: string;
+  name: string;
+  color: string;
+}
+
 // Resolved types (after childPages expansion)
 export type ResolvedGroupItem =
   | { type: 'action'; action: ActionDefinition }
   | { type: 'page'; pageId: PageId; label: string; icon: Icon }
-  | { type: 'repo'; repo: RepoItem };
+  | { type: 'repo'; repo: RepoItem }
+  | { type: 'status'; status: StatusItem };
 
 export interface ResolvedGroup {
   label: string;
@@ -55,8 +65,8 @@ export interface CommandBarPage {
   isVisible?: (ctx: ActionVisibilityContext) => boolean;
 }
 
-// Static page IDs (excludes dynamic pages like selectRepo)
-export type StaticPageId = Exclude<PageId, 'selectRepo'>;
+// Static page IDs (excludes dynamic pages like selectRepo and selectStatus)
+export type StaticPageId = Exclude<PageId, 'selectRepo' | 'selectStatus'>;
 
 export const Pages: Record<StaticPageId, CommandBarPage> = {
   // Root page - shown when opening via CMD+K
@@ -76,6 +86,7 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
           { type: 'action', action: Actions.OpenInOldUI },
           { type: 'childPages', id: 'workspaceActions' },
           { type: 'childPages', id: 'repoActions' },
+          { type: 'childPages', id: 'issueActions' },
         ],
       },
       {
@@ -191,6 +202,22 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
           { type: 'action', action: Actions.GitRebase },
           { type: 'action', action: Actions.GitChangeTarget },
         ],
+      },
+    ],
+  },
+
+  // Issue actions page - shown when an issue is selected in kanban mode
+  issueActions: {
+    id: 'issue-actions',
+    title: 'Issue Actions',
+    parent: 'root',
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    items: [
+      {
+        type: 'group',
+        label: 'Actions',
+        items: [{ type: 'action', action: Actions.ChangeIssueStatus }],
       },
     ],
   },
