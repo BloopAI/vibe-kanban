@@ -19,6 +19,7 @@ concurrency:
 permissions:
   contents: write
   packages: write
+  id-token: write  # Required for OIDC trusted publishing
 
 env:
   NODE_VERSION: 22
@@ -37,9 +38,8 @@ jobs:
       - name: Setup Node
         uses: ./.github/actions/setup-node
 
-      - name: Configure npm authentication
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+      - name: Upgrade npm for OIDC support
+        run: npm install -g npm@latest
 
       - name: Download release assets
         uses: actions/github-script@v8
@@ -110,16 +110,14 @@ jobs:
       - name: Publish to npm
         run: |
           cd npx-cli
-          
+
           # Publish the exact same package that was tested
           PACKAGE_FILE="${{ steps.verify.outputs.package-file }}"
-          
+
           echo "Publishing $PACKAGE_FILE to npm..."
-          npm publish "$PACKAGE_FILE"
-          
+          npm publish "$PACKAGE_FILE" --provenance --access public
+
           echo "✅ Successfully published to npm!"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Update release description
         uses: actions/github-script@v8
