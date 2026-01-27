@@ -554,9 +554,9 @@ pub async fn push_task_attempt_branch(
         .push_to_remote(&worktree_path, &workspace.branch, false)
     {
         Ok(_) => Ok(ResponseJson(ApiResponse::success(()))),
-        Err(GitServiceError::PushRejected(_)) => Ok(ResponseJson(
-            ApiResponse::error_with_data(PushError::ForcePushRequired),
-        )),
+        Err(GitServiceError::PushRejected(_)) => Ok(ResponseJson(ApiResponse::error_with_data(
+            PushError::ForcePushRequired,
+        ))),
         Err(e) => Err(ApiError::GitService(e)),
     }
 }
