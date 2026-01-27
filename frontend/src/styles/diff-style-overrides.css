@@ -976,16 +976,14 @@ diffs-container [slot='hover-slot'] {
   padding-left: 4px;
 }
 
-/* Style the hover utility button */
-diffs-container [slot='hover-slot'] button {
-  background-color: hsl(var(--bg-panel));
-  border: 1px solid hsl(var(--border) / 0.5);
-  box-shadow: 0 1px 2px hsl(0 0% 0% / 0.1);
-  color: hsl(var(--text-low));
-}
-
-diffs-container [slot='hover-slot'] button:hover {
-  background-color: hsl(var(--bg-panel));
-  border-color: hsl(var(--border));
-  color: hsl(var(--text-low));
+/* Style the hover utility button - no visual changes on hover */
+diffs-container [slot='hover-slot'] button,
+diffs-container [slot='hover-slot'] button:hover,
+diffs-container [slot='hover-slot'] button:focus,
+diffs-container [slot='hover-slot'] button:active {
+  background-color: hsl(var(--brand) / 0.2);
+  color: hsl(var(--brand));
+  border: none;
+  outline: none;
+  box-shadow: none;
 }
