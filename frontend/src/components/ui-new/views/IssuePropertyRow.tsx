@@ -3,13 +3,21 @@ import { cn } from '@/lib/utils';
 import { PlusIcon, UsersIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import type { IssuePriority, ProjectStatus, User } from 'shared/remote-types';
-import { StatusDropdown } from '@/components/ui-new/views/StatusDropdown';
-import { PriorityDropdown } from '@/components/ui-new/views/PriorityDropdown';
 import {
   MultiSelectDropdown,
   type MultiSelectDropdownOption,
 } from '@/components/ui-new/primitives/MultiSelectDropdown';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
+import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { StatusDot } from '@/components/ui-new/primitives/StatusDot';
+import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
+
+const priorityLabels: Record<IssuePriority, string> = {
+  urgent: 'Urgent',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+};
 
 const getUserDisplayName = (user: User): string => {
   return (
@@ -28,7 +36,7 @@ export interface IssuePropertyRowProps {
   parentIssue?: { id: string; simpleId: string } | null;
   onParentIssueClick?: () => void;
   onStatusClick: () => void;
-  onPriorityChange: (priority: IssuePriority) => void;
+  onPriorityClick: () => void;
   onAssigneeChange: (userIds: string[]) => void;
   onAddClick?: () => void;
   disabled?: boolean;
@@ -44,7 +52,7 @@ export function IssuePropertyRow({
   parentIssue,
   onParentIssueClick,
   onStatusClick,
-  onPriorityChange,
+  onPriorityClick,
   onAssigneeChange,
   onAddClick,
   disabled,
@@ -69,18 +77,25 @@ export function IssuePropertyRow({
 
   return (
     <div className={cn('flex items-center gap-half flex-wrap', className)}>
-      <StatusDropdown
-        statusId={statusId}
-        statuses={statuses}
+      <PrimaryButton
+        variant="tertiary"
         onClick={onStatusClick}
         disabled={disabled}
-      />
+      >
+        <StatusDot
+          color={statuses.find((s) => s.id === statusId)?.color ?? '0 0% 50%'}
+        />
+        {statuses.find((s) => s.id === statusId)?.name ?? 'Select status'}
+      </PrimaryButton>
 
-      <PriorityDropdown
-        priority={priority}
-        onChange={onPriorityChange}
+      <PrimaryButton
+        variant="tertiary"
+        onClick={onPriorityClick}
         disabled={disabled}
-      />
+      >
+        <PriorityIcon priority={priority} />
+        {priorityLabels[priority]}
+      </PrimaryButton>
 
       <MultiSelectDropdown
         values={assigneeIds}
