@@ -12,3 +12,16 @@ pub struct CreateWorkspaceRequest {
     pub local_workspace_id: Uuid,
     pub issue_id: Uuid,
 }
+
+#[derive(Debug, Serialize)]
+pub struct UpdateWorkspaceRequest {
+    pub local_workspace_id: Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub archived: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub files_changed: Option<Option<i32>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lines_added: Option<Option<i32>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lines_removed: Option<Option<i32>>,
+}

@@ -180,6 +180,7 @@ impl Deployment for LocalDeployment {
             analytics_ctx,
             approvals.clone(),
             queued_message_service.clone(),
+            remote_client.clone().ok(),
         )
         .await;
 

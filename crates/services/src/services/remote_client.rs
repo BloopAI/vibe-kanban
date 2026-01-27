@@ -23,7 +23,7 @@ use utils::{
             UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
         },
         pull_requests::{PullRequestStatus, UpsertPullRequestRequest},
-        workspaces::{CreateWorkspaceRequest, DeleteWorkspaceRequest},
+        workspaces::{CreateWorkspaceRequest, DeleteWorkspaceRequest, UpdateWorkspaceRequest},
     },
     jwt::extract_expiration,
 };
@@ -551,6 +551,31 @@ impl RemoteClient {
             &DeleteWorkspaceRequest { local_workspace_id },
         )
         .await
+    }
+
+    /// Updates a workspace on the remote server.
+    pub async fn update_workspace(
+        &self,
+        local_workspace_id: Uuid,
+        archived: Option<bool>,
+        files_changed: Option<i32>,
+        lines_added: Option<i32>,
+        lines_removed: Option<i32>,
+    ) -> Result<(), RemoteClientError> {
+        self.send(
+            reqwest::Method::PATCH,
+            "/workspaces",
+            true,
+            Some(&UpdateWorkspaceRequest {
+                local_workspace_id,
+                archived,
+                files_changed: files_changed.map(Some),
+                lines_added: lines_added.map(Some),
+                lines_removed: lines_removed.map(Some),
+            }),
+        )
+        .await?;
+        Ok(())
     }
 
     /// Creates a workspace on the remote server, linking it to a local workspace and an issue.
