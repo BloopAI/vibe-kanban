@@ -8,6 +8,7 @@ import {
   type ReactionGroup,
 } from '@/components/ui-new/views/IssueCommentsSection';
 import type { WYSIWYGEditorRef } from '@/components/ui/wysiwyg';
+import { MemberRole } from 'shared/remote-types';
 
 interface IssueCommentsSectionContainerProps {
   issueId: string;
@@ -28,10 +29,16 @@ export function IssueCommentsSectionContainer({
 }
 
 function IssueCommentsSectionContent() {
-  const { usersById } = useOrgContext();
+  const { usersById, membersById } = useOrgContext();
   const issueContext = useIssueContext();
   const { data: currentUser } = useCurrentUser();
   const currentUserId = currentUser?.user_id ?? '';
+
+  // Check if current user is admin
+  const currentUserMember = currentUserId
+    ? membersById.get(currentUserId)
+    : undefined;
+  const isCurrentUserAdmin = currentUserMember?.role === MemberRole.ADMIN;
 
   // Ref to comment editor for programmatic focus
   const commentEditorRef = useRef<WYSIWYGEditorRef>(null);
@@ -48,6 +55,8 @@ function IssueCommentsSectionContent() {
     return issueContext.comments
       .map((comment) => {
         const author = usersById.get(comment.author_id);
+        const isAuthor = comment.author_id === currentUserId;
+        const canModify = isAuthor || isCurrentUserAdmin;
         return {
           id: comment.id,
           authorId: comment.author_id,
@@ -58,13 +67,14 @@ function IssueCommentsSectionContent() {
           message: comment.message,
           createdAt: comment.created_at,
           author: author ?? null,
+          canModify,
         };
       })
       .sort(
         (a, b) =>
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
-  }, [issueContext.comments, usersById]);
+  }, [issueContext.comments, usersById, currentUserId, isCurrentUserAdmin]);
 
   // Group reactions by comment, then by emoji
   const reactionsByCommentId = useMemo(() => {
