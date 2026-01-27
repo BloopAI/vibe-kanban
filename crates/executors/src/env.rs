@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use tokio::process::Command;
-use workspace_utils::git::GitCli;
+use workspace_utils::git::GitService;
 
 use crate::command::CmdOverrides;
 
@@ -38,7 +38,7 @@ impl RepoContext {
         }
 
         tokio::task::spawn_blocking(move || {
-            let git = GitCli::new();
+            let git = GitService::new();
             let mut all_status = String::new();
 
             for repo_path in &repo_paths {

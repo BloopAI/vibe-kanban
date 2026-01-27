@@ -15,7 +15,7 @@ mod cli;
 mod utils;
 
 use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
-pub use cli::{GitCli, GitCliError};
+pub use cli::{GitCli, GitCliError, StatusEntry, WorktreeStatus};
 pub use utils::is_valid_branch_prefix;
 
 /// Directories that should always be skipped regardless of gitignore.
@@ -1132,15 +1132,22 @@ impl GitService {
         Ok((ahead, behind))
     }
 
+    /// Return the full worktree status including all entries
+    pub fn get_worktree_status(
+        &self,
+        worktree_path: &Path,
+    ) -> Result<WorktreeStatus, GitServiceError> {
+        let cli = GitCli::new();
+        cli.get_worktree_status(worktree_path)
+            .map_err(|e| GitServiceError::InvalidRepository(format!("git status failed: {e}")))
+    }
+
     /// Return (uncommitted_tracked_changes, untracked_files) counts in worktree
     pub fn get_worktree_change_counts(
         &self,
         worktree_path: &Path,
     ) -> Result<(usize, usize), GitServiceError> {
-        let cli = GitCli::new();
-        let st = cli
-            .get_worktree_status(worktree_path)
-            .map_err(|e| GitServiceError::InvalidRepository(format!("git status failed: {e}")))?;
+        let st = self.get_worktree_status(worktree_path)?;
         Ok((st.uncommitted_tracked, st.untracked))
     }
 
