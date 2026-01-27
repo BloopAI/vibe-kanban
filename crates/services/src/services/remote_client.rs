@@ -22,6 +22,7 @@ use utils::{
             ListOrganizationsResponse, Organization, RevokeInvitationRequest,
             UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
         },
+        workspaces::DeleteWorkspaceRequest,
     },
     jwt::extract_expiration,
 };
@@ -389,6 +390,19 @@ impl RemoteClient {
         Ok(())
     }
 
+    async fn delete_authed_with_body<B>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<(), RemoteClientError>
+    where
+        B: Serialize,
+    {
+        self.send(reqwest::Method::DELETE, path, true, Some(body))
+            .await?;
+        Ok(())
+    }
+
     fn map_api_error(&self, err: RemoteClientError) -> RemoteClientError {
         if let RemoteClientError::Http { body, .. } = &err
             && let Ok(api_err) = serde_json::from_str::<ApiErrorResponse>(body)
@@ -522,6 +536,18 @@ impl RemoteClient {
         self.patch_authed(
             &format!("/v1/organizations/{org_id}/members/{user_id}/role"),
             request,
+        )
+        .await
+    }
+
+    /// Deletes a workspace on the remote server by its local workspace ID.
+    pub async fn delete_workspace(
+        &self,
+        local_workspace_id: Uuid,
+    ) -> Result<(), RemoteClientError> {
+        self.delete_authed_with_body(
+            "/workspaces",
+            &DeleteWorkspaceRequest { local_workspace_id },
         )
         .await
     }

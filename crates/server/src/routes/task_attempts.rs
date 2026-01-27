@@ -107,6 +107,12 @@ pub struct UpdateWorkspace {
     pub name: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct DeleteWorkspaceQuery {
+    #[serde(default)]
+    pub delete_remote: bool,
+}
+
 pub async fn get_task_attempts(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskAttemptQuery>,
@@ -1637,6 +1643,7 @@ pub async fn get_first_user_message(
 pub async fn delete_workspace(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
+    Query(query): Query<DeleteWorkspaceQuery>,
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
     let pool = &deployment.db().pool;
 
@@ -1705,6 +1712,29 @@ pub async fn delete_workspace(
             }),
         )
         .await;
+
+    // Attempt remote workspace deletion if requested
+    if query.delete_remote {
+        if let Ok(client) = deployment.remote_client() {
+            match client.delete_workspace(workspace.id).await {
+                Ok(()) => {
+                    tracing::info!("Deleted remote workspace for {}", workspace.id);
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to delete remote workspace for {}: {}",
+                        workspace.id,
+                        e
+                    );
+                }
+            }
+        } else {
+            tracing::debug!(
+                "Remote client not available, skipping remote deletion for {}",
+                workspace.id
+            );
+        }
+    }
 
     // Spawn background cleanup task for filesystem resources
     if let Some(workspace_dir) = workspace_dir {
