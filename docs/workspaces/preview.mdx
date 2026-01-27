@@ -139,6 +139,76 @@ If your preview isn't loading, check the logs for error messages or port conflic
 3. Test changes incrementally
 4. Use device modes to verify responsive design
 
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="Preview shows blank page">
+**Possible causes:**
+- Dev server hasn't finished starting
+- Wrong URL being loaded
+- Application has a JavaScript error
+
+**Solutions:**
+1. Check the Logs panel for the dev server output - wait for "ready" or similar message
+2. Verify the correct URL is detected (shown in the preview address bar)
+3. Open browser DevTools (right-click → Inspect) to check for console errors
+4. Try refreshing the preview with the reload button
+</Accordion>
+
+<Accordion title="Preview doesn't update after changes">
+**Possible causes:**
+- Hot reload isn't working
+- Build error preventing update
+- Browser caching
+
+**Solutions:**
+1. Check Logs panel for build errors
+2. Try a hard refresh (Cmd/Ctrl + Shift + R)
+3. Restart the dev server using the Play button
+4. Verify your framework supports hot module replacement (HMR)
+</Accordion>
+
+<Accordion title="'No dev server script configured' message">
+**What to do:**
+1. Click **Edit Dev Server Script** in the preview panel
+2. Enter your dev server command (see table below)
+3. Click **Save and Test**
+
+| Framework | Command |
+|-----------|---------|
+| Vite | `npm run dev` or `pnpm dev` |
+| Next.js | `npm run dev` |
+| Create React App | `npm start` |
+| Vue CLI | `npm run serve` |
+| Angular | `ng serve` |
+| Django | `python manage.py runserver` |
+| Rails | `rails server` |
+| Go | `go run main.go` |
+</Accordion>
+
+<Accordion title="Port conflict error">
+**What it means:** Another process is using the same port your dev server wants.
+
+**Solutions:**
+1. Find and stop the conflicting process
+2. Change your dev server port in your project config
+3. Close other workspaces that might have dev servers running
+4. Run `lsof -i :3000` (replace 3000 with your port) to find what's using it
+</Accordion>
+
+<Accordion title="Preview works but assets/images don't load">
+**Possible causes:**
+- Relative paths not resolving correctly
+- Assets served from wrong directory
+- CORS issues
+
+**Solutions:**
+1. Check that asset paths in your code are correct
+2. Verify your dev server is configured to serve static assets
+3. Check browser DevTools Network tab for failed requests
+</Accordion>
+</AccordionGroup>
+
 ## Related Documentation
 
 - [Changes Panel](/workspaces/changes) - Review code modifications

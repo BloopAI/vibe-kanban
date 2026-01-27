@@ -129,25 +129,46 @@ Click **Customise** to configure agent settings.
 
 ## Approval Workflow
 
-When an agent needs approval before proceeding, you'll see an approval card:
+Some agents (especially with planning mode enabled) ask for your approval before making changes. This gives you control over what gets implemented.
+
+### Why Approvals Exist
+
+- **Prevent unwanted changes** - Review the plan before code is written
+- **Catch misunderstandings early** - Ensure the agent understood your request
+- **Guide the approach** - Steer the agent toward your preferred solution
 
 ### Reviewing Plans
 
-1. The agent presents a plan with proposed changes
-2. Review the plan details (expand to see full content)
-3. Choose to **Approve** or **Request Changes**
+When the agent needs approval, you'll see an approval card in the chat:
+
+1. **Read the plan summary** - What the agent intends to do
+2. **Expand for details** - Click to see the full plan with specific files and changes
+3. **Choose an action:**
+   - **Approve** - Agent proceeds with the plan
+   - **Request Changes** - Provide feedback for revision
 
 ### Requesting Changes
 
-If you want modifications:
+If the plan isn't quite right:
 
-1. Type your feedback in the chat input
+1. Type your feedback in the chat input explaining what should be different
 2. Click **Request Changes**
-3. The agent will revise based on your feedback
+3. The agent revises the plan based on your feedback
+4. Review the new plan and approve or request more changes
 
-<Note>
-Approval requests have a timeout. If you don't respond, you may need to restart the task.
-</Note>
+<Tip>
+**Be specific in your feedback.** Instead of "that's not right", say "don't modify the database schema - just add the validation to the existing User model."
+</Tip>
+
+<Warning>
+**Approval timeouts:** If you don't respond to an approval request, it may timeout. You'll need to send a new message to restart the task.
+</Warning>
+
+### Disabling Approvals
+
+If you want the agent to work autonomously without asking for approval:
+1. Use an agent variant without planning mode
+2. Or configure `dangerously_skip_permissions` in agent settings (use with caution)
 
 ## Editing Messages
 
@@ -187,17 +208,35 @@ Editing a message creates a new branch in the conversation. Subsequent messages 
 <img src="/images/workspaces-token-usage.png" alt="Context gauge showing 13% usage with 27K of 200K tokens used" />
 </Frame>
 
-The context gauge shows how much of the agent's context window is used:
+The context gauge shows how much of the agent's context window is used. Understanding this helps you get better results.
 
-| Colour | Usage Level |
-|--------|-------------|
-| Grey | Low usage |
-| Default | Normal usage |
-| Orange | High usage - consider starting a new session |
-| Red | Critical - near context limit |
+#### What are Tokens?
+
+**Tokens** are how AI models measure text. Roughly:
+- 1 token ≈ 4 characters or ¾ of a word
+- A 200K context window can hold about 150,000 words
+
+The context window includes everything the agent "remembers": your messages, its responses, code it has read, and file contents.
+
+#### Why Token Usage Matters
+
+When usage is high:
+- Agent may "forget" earlier parts of the conversation
+- Responses may become less accurate
+- Agent might re-read files it already read
+- Complex reasoning may suffer
+
+#### Usage Levels
+
+| Colour | Usage | What to Do |
+|--------|-------|------------|
+| Grey | 0-30% | All good, continue working |
+| Default | 30-60% | Normal usage, keep going |
+| Orange | 60-80% | Consider starting a new session soon |
+| Red | 80%+ | Start a new session - agent is near its limit |
 
 <Tip>
-When context usage is high, start a new session to give the agent fresh context.
+**Pro tip:** When starting a new session due to high token usage, briefly summarise what was accomplished. The new agent won't know what happened before.
 </Tip>
 
 ### Tasks Progress
