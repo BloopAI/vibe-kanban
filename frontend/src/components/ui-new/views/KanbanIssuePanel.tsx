@@ -135,7 +135,7 @@ export function KanbanIssuePanel({
             users={users}
             parentIssue={parentIssue}
             onParentIssueClick={onParentIssueClick}
-            onStatusChange={(statusId) => onFormChange('statusId', statusId)}
+            onStatusClick={() => onFormChange('statusId', formData.statusId)}
             onPriorityChange={(priority) => onFormChange('priority', priority)}
             onAssigneeChange={(assigneeIds) =>
               onFormChange('assigneeIds', assigneeIds)
