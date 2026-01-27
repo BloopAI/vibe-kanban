@@ -64,6 +64,7 @@ export interface KanbanIssuePanelProps {
   // Actions
   onClose: () => void;
   onSubmit: () => void;
+  onCmdEnterSubmit?: () => void;
 
   // Tag create callback - returns the new tag ID
   onCreateTag?: (data: { name: string; color: string }) => string;
@@ -91,6 +92,7 @@ export function KanbanIssuePanel({
   linkedPrs = [],
   onClose,
   onSubmit,
+  onCmdEnterSubmit,
   onCreateTag,
   isSubmitting,
   descriptionSaveStatus,
@@ -100,6 +102,13 @@ export function KanbanIssuePanel({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       onClose();
+    }
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      onCmdEnterSubmit?.();
     }
   };
 
@@ -166,6 +175,7 @@ export function KanbanIssuePanel({
               type="text"
               value={formData.title}
               onChange={(e) => onFormChange('title', e.target.value)}
+              onKeyDown={handleTitleKeyDown}
               placeholder="Enter a title here..."
               disabled={isSubmitting}
               className={cn(
@@ -182,6 +192,7 @@ export function KanbanIssuePanel({
                 placeholder="Enter task description here..."
                 value={formData.description ?? ''}
                 onChange={(value) => onFormChange('description', value || null)}
+                onCmdEnter={onCmdEnterSubmit}
                 disabled={isSubmitting}
                 autoFocus={false}
                 className="min-h-[100px]"
