@@ -54,18 +54,7 @@ impl<'a> OrganizationRepository<'a> {
     }
 
     pub async fn is_personal(&self, organization_id: Uuid) -> Result<bool, IdentityError> {
-        let result = sqlx::query_scalar!(
-            r#"
-            SELECT is_personal
-            FROM organizations
-            WHERE id = $1
-            "#,
-            organization_id
-        )
-        .fetch_optional(self.pool)
-        .await?;
-
-        result.ok_or(IdentityError::NotFound)
+        is_personal_org(self.pool, organization_id).await
     }
 
     pub async fn ensure_personal_org_and_admin_membership(
@@ -289,6 +278,23 @@ impl<'a> OrganizationRepository<'a> {
 
         Ok(())
     }
+}
+
+pub async fn is_personal_org<'e, E>(
+    executor: E,
+    organization_id: Uuid,
+) -> Result<bool, IdentityError>
+where
+    E: Executor<'e, Database = Postgres>,
+{
+    let result: Option<bool> = sqlx::query_scalar!(
+        r#"SELECT is_personal FROM organizations WHERE id = $1"#,
+        organization_id
+    )
+    .fetch_optional(executor)
+    .await?;
+
+    result.ok_or(IdentityError::NotFound)
 }
 
 async fn find_organization_by_slug(
