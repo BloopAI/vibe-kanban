@@ -271,7 +271,7 @@ function CommentItem({
                       : 'bg-secondary border-border text-low hover:text-normal'
                   )}
                 >
-                  <span>{reaction.emoji}</span>
+                  <span className="color-emoji">{reaction.emoji}</span>
                   <span className="text-xs">{reaction.count}</span>
                 </button>
               </TooltipTrigger>
