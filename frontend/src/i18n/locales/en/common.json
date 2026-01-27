@@ -94,7 +94,8 @@
     "currentBadge": " (current)"
   },
   "navbar": {
-    "tryNewUI": "try the new UI"
+    "tryNewUI": "try the new UI",
+    "stopAllDevServers": "Stop all dev servers"
   },
   "signOut": "Sign out",
   "devMode": {

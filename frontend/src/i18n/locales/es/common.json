@@ -94,7 +94,8 @@
     "currentBadge": " (actual)"
   },
   "navbar": {
-    "tryNewUI": "prueba la nueva interfaz"
+    "tryNewUI": "prueba la nueva interfaz",
+    "stopAllDevServers": "Detener todos los servidores de desarrollo"
   },
   "signOut": "Cerrar sesión",
   "devMode": {

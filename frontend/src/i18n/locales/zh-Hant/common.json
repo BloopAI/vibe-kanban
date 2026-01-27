@@ -93,6 +93,10 @@
     "selectPlaceholder": "選擇組織",
     "currentBadge": "（目前）"
   },
+  "navbar": {
+    "tryNewUI": "試用新介面",
+    "stopAllDevServers": "停止所有開發伺服器"
+  },
   "signOut": "登出",
   "devMode": {
     "banner": "開發模式 - 這是開發版本"
