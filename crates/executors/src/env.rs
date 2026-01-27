@@ -57,8 +57,11 @@ impl RepoContext {
                             status_output.push_str(&String::from_utf8_lossy(&entry.path));
                             status_output.push('\n');
                         }
-                        all_status
-                            .push_str(&format!("\n{}:\n{}", repo_path.display(), status_output));
+                        all_status.push_str(&format!(
+                            "\n{}:\n{}",
+                            repo_path.display(),
+                            status_output
+                        ));
                     }
                     _ => {}
                 }
