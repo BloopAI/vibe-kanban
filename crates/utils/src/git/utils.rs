@@ -1,35 +1,53 @@
 use std::path::PathBuf;
 
-use tokio::process::Command;
+use super::GitCli;
 
+/// Check for uncommitted changes across multiple repository paths.
+/// Returns a formatted string describing any uncommitted changes found.
 pub async fn check_uncommitted_changes(repo_paths: &[PathBuf]) -> String {
     if repo_paths.is_empty() {
         return String::new();
     }
 
-    let mut all_status = String::new();
+    let repo_paths = repo_paths.to_vec();
 
-    for repo_path in repo_paths {
-        if !repo_path.join(".git").exists() {
-            continue;
+    // Run in blocking task since GitCli uses synchronous git commands
+    tokio::task::spawn_blocking(move || {
+        let git = GitCli::new();
+        let mut all_status = String::new();
+
+        for repo_path in &repo_paths {
+            // Skip if not a git repository
+            if !repo_path.join(".git").exists() {
+                continue;
+            }
+
+            // Use GitCli.has_changes for a simple check, then get details if needed
+            match git.has_changes(repo_path) {
+                Ok(true) => {
+                    // Get the actual status output for display
+                    if let Ok(status_output) =
+                        git.git(repo_path, ["--no-optional-locks", "status", "--porcelain"])
+                    {
+                        if !status_output.is_empty() {
+                            all_status
+                                .push_str(&format!("\n{}:\n{}", repo_path.display(), status_output));
+                        }
+                    }
+                }
+                Ok(false) => {
+                    // No changes, skip
+                }
+                Err(_) => {
+                    // Git command failed, skip this repo
+                }
+            }
         }
 
-        let output = Command::new("git")
-            .args(["status", "--porcelain"])
-            .current_dir(repo_path)
-            .env("GIT_TERMINAL_PROMPT", "0")
-            .output()
-            .await;
-
-        if let Ok(out) = output
-            && !out.stdout.is_empty()
-        {
-            let status = String::from_utf8_lossy(&out.stdout);
-            all_status.push_str(&format!("\n{}:\n{}", repo_path.display(), status));
-        }
-    }
-
-    all_status
+        all_status
+    })
+    .await
+    .unwrap_or_default()
 }
 
 pub fn is_valid_branch_prefix(prefix: &str) -> bool {
