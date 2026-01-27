@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT DISTINCT r.id as \"id!: Uuid\",\n                      r.path,\n                      r.name,\n                      r.display_name,\n                      r.setup_script,\n                      r.cleanup_script,\n                      r.copy_files,\n                      r.parallel_setup_script as \"parallel_setup_script!: bool\",\n                      r.dev_server_script,\n                      r.created_at as \"created_at!: DateTime<Utc>\",\n                      r.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM repos r\n               JOIN workspace_repos wr ON r.id = wr.repo_id\n               JOIN workspaces w ON wr.workspace_id = w.id\n               WHERE w.task_id = $1\n               ORDER BY r.display_name ASC",
+  "query": "SELECT r.id as \"id!: Uuid\",\n                      r.path,\n                      r.name,\n                      r.display_name,\n                      r.setup_script,\n                      r.cleanup_script,\n                      r.copy_files,\n                      r.parallel_setup_script as \"parallel_setup_script!: bool\",\n                      r.dev_server_script,\n                      r.default_target_branch,\n                      r.created_at as \"created_at!: DateTime<Utc>\",\n                      r.updated_at as \"updated_at!: DateTime<Utc>\",\n                      wr.target_branch\n               FROM repos r\n               JOIN workspace_repos wr ON r.id = wr.repo_id\n               WHERE wr.workspace_id = $1\n               ORDER BY r.display_name ASC",
   "describe": {
     "columns": [
       {
@@ -49,13 +49,23 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "default_target_branch",
         "ordinal": 9,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "target_branch",
+        "ordinal": 12,
         "type_info": "Text"
       }
     ],
@@ -72,9 +82,11 @@
       true,
       false,
       true,
+      true,
+      false,
       false,
       false
     ]
   },
-  "hash": "1a91842cd32944b358169caa306d79bfa1fc5a7141a7b767a3bfb578ea33d215"
+  "hash": "e2342e075844228f067215bc779d2551852462fad92195690c3f37d2b89ab422"
 }

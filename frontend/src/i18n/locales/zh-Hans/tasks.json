@@ -692,5 +692,36 @@
     "statusSuccess": "成功完成",
     "statusFailed": "失败，退出代码 {{exitCode}}",
     "statusKilled": "进程已被终止"
+  },
+  "createWorkspaceFromPr": {
+    "title": "从 PR 创建工作区",
+    "description": "选择一个打开的拉取请求来创建工作区。将使用 PR 标题自动创建任务。",
+    "repositoryLabel": "仓库",
+    "remoteLabel": "远程仓库",
+    "pullRequestLabel": "拉取请求",
+    "loadingRepositories": "正在加载仓库...",
+    "loadingRemotes": "正在加载远程仓库...",
+    "noRepositoriesFound": "未找到仓库",
+    "loadingPullRequests": "正在加载拉取请求...",
+    "selectRepositoryFirst": "请先选择仓库",
+    "noPullRequestsFound": "未找到打开的拉取请求",
+    "runSetupScript": "运行设置脚本",
+    "creating": "创建中...",
+    "createWorkspace": "创建工作区",
+    "selectRepository": "选择仓库",
+    "selectRemote": "选择远程仓库",
+    "selectPullRequest": "选择拉取请求",
+    "searchPrsPlaceholder": "按编号或标题搜索 PR...",
+    "noMatchingPrs": "没有匹配的拉取请求",
+    "default": "默认",
+    "openPrInBrowser": "在浏览器中打开 PR",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLI 未安装",
+      "unsupportedProvider": "不支持的 Git 提供商",
+      "failedToLoadPrs": "加载拉取请求失败",
+      "prNotFound": "未找到拉取请求",
+      "repoNotInProject": "仓库不在任何项目中",
+      "failedToCreateWorkspace": "创建工作区失败"
+    }
   }
 }

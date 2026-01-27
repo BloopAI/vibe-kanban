@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useScratch } from '@/hooks/useScratch';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';
@@ -13,6 +13,8 @@ export type WorkspaceLayoutMode = 'flat' | 'accordion';
 
 // Fixed UUID for the universal workspace draft (same as in useCreateModeState.ts)
 const DRAFT_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
+
+const PAGE_SIZE = 50;
 
 interface WorkspacesSidebarContainerProps {
   onScrollToBottom: () => void;
@@ -44,6 +46,67 @@ export function WorkspacesSidebarContainer({
     ? 'accordion'
     : 'flat';
   const toggleLayoutMode = () => setAccordionLayout(!isAccordionLayout);
+
+  // Pagination state for infinite scroll
+  const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
+
+  // Reset display limit when search changes or archive view changes
+  useEffect(() => {
+    setDisplayLimit(PAGE_SIZE);
+  }, [searchQuery, showArchive]);
+
+  const searchLower = searchQuery.toLowerCase();
+  const isSearching = searchQuery.length > 0;
+
+  // Filter workspaces by search
+  const filteredActiveWorkspaces = useMemo(
+    () =>
+      activeWorkspaces.filter(
+        (workspace) =>
+          workspace.name.toLowerCase().includes(searchLower) ||
+          workspace.branch.toLowerCase().includes(searchLower)
+      ),
+    [activeWorkspaces, searchLower]
+  );
+
+  const filteredArchivedWorkspaces = useMemo(
+    () =>
+      archivedWorkspaces.filter(
+        (workspace) =>
+          workspace.name.toLowerCase().includes(searchLower) ||
+          workspace.branch.toLowerCase().includes(searchLower)
+      ),
+    [archivedWorkspaces, searchLower]
+  );
+
+  // Apply pagination (only when not searching)
+  const paginatedActiveWorkspaces = useMemo(
+    () =>
+      isSearching
+        ? filteredActiveWorkspaces
+        : filteredActiveWorkspaces.slice(0, displayLimit),
+    [filteredActiveWorkspaces, displayLimit, isSearching]
+  );
+
+  const paginatedArchivedWorkspaces = useMemo(
+    () =>
+      isSearching
+        ? filteredArchivedWorkspaces
+        : filteredArchivedWorkspaces.slice(0, displayLimit),
+    [filteredArchivedWorkspaces, displayLimit, isSearching]
+  );
+
+  // Check if there are more workspaces to load
+  const hasMoreWorkspaces = showArchive
+    ? filteredArchivedWorkspaces.length > displayLimit
+    : filteredActiveWorkspaces.length > displayLimit;
+
+  // Handle scroll to load more
+  const handleLoadMore = useCallback(() => {
+    if (!isSearching && hasMoreWorkspaces) {
+      setDisplayLimit((prev) => prev + PAGE_SIZE);
+    }
+  }, [isSearching, hasMoreWorkspaces]);
 
   // Read persisted draft for sidebar placeholder
   const { scratch: draftScratch } = useScratch(
@@ -79,8 +142,9 @@ export function WorkspacesSidebarContainer({
 
   return (
     <WorkspacesSidebar
-      workspaces={activeWorkspaces}
-      archivedWorkspaces={archivedWorkspaces}
+      workspaces={paginatedActiveWorkspaces}
+      totalWorkspacesCount={activeWorkspaces.length}
+      archivedWorkspaces={paginatedArchivedWorkspaces}
       selectedWorkspaceId={selectedWorkspaceId ?? null}
       onSelectWorkspace={handleSelectWorkspace}
       searchQuery={searchQuery}
@@ -93,6 +157,8 @@ export function WorkspacesSidebarContainer({
       onShowArchiveChange={setShowArchive}
       layoutMode={layoutMode}
       onToggleLayoutMode={toggleLayoutMode}
+      onLoadMore={handleLoadMore}
+      hasMoreWorkspaces={hasMoreWorkspaces && !isSearching}
     />
   );
 }

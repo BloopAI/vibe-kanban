@@ -1,0 +1,95 @@
+---
+title: "Workspaces Overview"
+description: "A redesigned task execution experience with multi-repo support, multiple agent sessions, and an integrated preview browser"
+sidebarTitle: "Overview"
+---
+
+<Note>
+Workspaces is currently in <Badge color="orange">Beta</Badge>. You can enable it in **Settings → Beta Features → Enable Workspaces Beta**.
+</Note>
+
+<Frame>
+<img src="/images/workspaces-overview.png" alt="Workspaces UI showing the four-panel layout with workspace sidebar, conversation, changes panel, and details sidebar" />
+</Frame>
+
+The Workspaces UI is a complete redesign of the task execution experience, providing an IDE-like interface optimised for AI-assisted development workflows.
+
+## Key Concepts
+
+| Concept | Description | Example |
+|---------|-------------|---------|
+| **Workspace** | A task execution environment where you work with agents | "Add user authentication" |
+| **Repository** | A git repository included in a workspace | `frontend`, `backend` |
+| **Session** | A conversation thread with a coding agent | Claude Code session for implementing a feature |
+
+**How they relate:**
+- A **workspace** is your working environment for a specific task
+- A workspace can contain one or more **repositories** (each with independent git state)
+- Within a workspace, you can have multiple **sessions** to chat with different agents or start fresh conversations
+
+For example, you create a workspace for "Add authentication" that includes both `frontend` and `backend` repositories. Within that workspace, you might have one session for implementing the backend API and another session for the frontend UI.
+
+## Key Features
+
+<CardGroup cols={2}>
+<Card title="Multi-Repository Support" icon="folder-tree" href="/workspaces/multi-repo-sessions">
+  Work across multiple repositories within a single workspace. Reference code from one repo while implementing changes in another.
+</Card>
+
+<Card title="Multiple Sessions" icon="messages" href="/workspaces/multi-repo-sessions">
+  Run multiple agent conversations simultaneously. Work around token limits by starting fresh sessions while keeping context.
+</Card>
+
+<Card title="Integrated Preview" icon="browser" href="/workspaces/preview">
+  Built-in browser preview without leaving the workspace. Test across desktop, mobile, and custom viewport sizes.
+</Card>
+
+<Card title="Changes Panel" icon="code-compare" href="/workspaces/changes">
+  Review code modifications with syntax-highlighted diffs. Add inline comments to provide feedback to agents.
+</Card>
+
+<Card title="Integrated Terminal" icon="rectangle-terminal" href="/workspaces/interface#terminal-section">
+  Built-in terminal for running commands directly in your workspace. New to the Workspaces UI.
+</Card>
+
+<Card title="Workspace Notes" icon="note-sticky" href="/workspaces/interface#notes-section">
+  Notes for each workspace to document important information. New to the Workspaces UI.
+</Card>
+
+<Card title="Command Bar" icon="command" href="/workspaces/command-bar">
+  Central navigation hub for quick actions. Access every workspace action with keyboard shortcuts.
+</Card>
+</CardGroup>
+
+## Enabling Workspaces
+
+<Steps>
+<Step title="Open Settings">
+  Click the ⚙️ icon in the sidebar or navigate to **Settings** from the menu.
+</Step>
+
+<Step title="Find Beta Features">
+  Scroll down to the **Beta Features** section.
+</Step>
+
+<Step title="Enable Workspaces">
+  Toggle **Enable Workspaces Beta** to enable the new UI.
+</Step>
+
+<Step title="Access Workspaces">
+  Click on any task attempt to open it in the new Workspaces UI.
+</Step>
+</Steps>
+
+## Returning to Classic UI
+
+You can return to the classic kanban board interface at any time:
+
+- **From the navbar**: Click the exit icon on the left side of the workspaces navbar
+- **From settings**: Disable **Enable Workspaces Beta** in Settings → Beta Features
+- **From command bar**: Press `Cmd/Ctrl + K` and select "Open in Old UI"
+
+<Info>
+Your workspaces and task data are preserved when switching between the classic and new UI. You can switch back and forth without losing any work.
+</Info>
+

@@ -18,9 +18,9 @@ score: bigint, };
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
-export type Repo = { id: string, path: string, name: string, display_name: string, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, dev_server_script: string | null, created_at: Date, updated_at: Date, };
+export type Repo = { id: string, path: string, name: string, display_name: string, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, dev_server_script: string | null, default_target_branch: string | null, created_at: Date, updated_at: Date, };
 
-export type UpdateRepo = { display_name?: string | null, setup_script?: string | null, cleanup_script?: string | null, copy_files?: string | null, parallel_setup_script?: boolean | null, dev_server_script?: string | null, };
+export type UpdateRepo = { display_name?: string | null, setup_script?: string | null, cleanup_script?: string | null, copy_files?: string | null, parallel_setup_script?: boolean | null, dev_server_script?: string | null, default_target_branch?: string | null, };
 
 export type ProjectRepo = { id: string, project_id: string, repo_id: string, };
 
@@ -30,7 +30,7 @@ export type WorkspaceRepo = { id: string, workspace_id: string, repo_id: string,
 
 export type CreateWorkspaceRepo = { repo_id: string, target_branch: string, };
 
-export type RepoWithTargetBranch = { target_branch: string, id: string, path: string, name: string, display_name: string, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, dev_server_script: string | null, created_at: Date, updated_at: Date, };
+export type RepoWithTargetBranch = { target_branch: string, id: string, path: string, name: string, display_name: string, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, dev_server_script: string | null, default_target_branch: string | null, created_at: Date, updated_at: Date, };
 
 export type Tag = { id: string, tag_name: string, content: string, created_at: string, updated_at: string, };
 
@@ -280,6 +280,18 @@ export type UnifiedPrComment = { "comment_type": "general", id: string, author: 
 
 export type ProviderKind = "git_hub" | "azure_dev_ops" | "unknown";
 
+export type OpenPrInfo = { number: bigint, url: string, title: string, head_branch: string, base_branch: string, };
+
+export type GitRemote = { name: string, url: string, };
+
+export type ListPrsError = { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "auth_failed", message: string, } | { "type": "unsupported_provider" };
+
+export type CreateWorkspaceFromPrBody = { repo_id: string, pr_number: bigint, pr_title: string, pr_url: string, head_branch: string, base_branch: string, run_setup: boolean, remote_name: string | null, };
+
+export type CreateWorkspaceFromPrResponse = { workspace: Workspace, task: Task, };
+
+export type CreateFromPrError = { "type": "pr_not_found" } | { "type": "branch_fetch_failed", message: string, } | { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "auth_failed", message: string, } | { "type": "unsupported_provider" } | { "type": "repo_not_in_project" };
+
 export type RepoBranchStatus = { repo_id: string, repo_name: string, commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, target_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, 
 /**
  * True if a `git rebase` is currently in progress in this worktree
@@ -362,7 +374,7 @@ export enum ThemeMode { LIGHT = "LIGHT", DARK = "DARK", SYSTEM = "SYSTEM" }
 
 export type EditorConfig = { editor_type: EditorType, custom_command: string | null, remote_ssh_host: string | null, remote_ssh_user: string | null, };
 
-export enum EditorType { VS_CODE = "VS_CODE", CURSOR = "CURSOR", WINDSURF = "WINDSURF", INTELLI_J = "INTELLI_J", ZED = "ZED", XCODE = "XCODE", GOOGLE_ANTIGRAVITY = "GOOGLE_ANTIGRAVITY", CUSTOM = "CUSTOM" }
+export enum EditorType { VS_CODE = "VS_CODE", VS_CODE_INSIDERS = "VS_CODE_INSIDERS", CURSOR = "CURSOR", WINDSURF = "WINDSURF", INTELLI_J = "INTELLI_J", ZED = "ZED", XCODE = "XCODE", GOOGLE_ANTIGRAVITY = "GOOGLE_ANTIGRAVITY", CUSTOM = "CUSTOM" }
 
 export type EditorOpenError = { "type": "executable_not_found", executable: string, editor_type: EditorType, } | { "type": "invalid_command", details: string, editor_type: EditorType, } | { "type": "launch_failed", executable: string, details: string, editor_type: EditorType, };
 
@@ -416,6 +428,12 @@ export type ScriptRequestLanguage = "Bash";
 export enum BaseCodingAgent { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI", CODEX = "CODEX", OPENCODE = "OPENCODE", CURSOR_AGENT = "CURSOR_AGENT", QWEN_CODE = "QWEN_CODE", COPILOT = "COPILOT", DROID = "DROID" }
 
 export type CodingAgent = { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid };
+
+export type SlashCommandDescription = { 
+/**
+ * Command name without the leading slash, e.g. `help` for `/help`.
+ */
+name: string, description?: string | null, };
 
 export type AvailabilityInfo = { "type": "LOGIN_DETECTED", last_auth_timestamp: bigint, } | { "type": "INSTALLATION_FOUND" } | { "type": "NOT_FOUND" };
 
@@ -471,7 +489,11 @@ export type Opencode = { append_prompt: AppendPrompt, model?: string | null, var
 /**
  * Auto-approve agent actions
  */
-auto_approve: boolean, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
+auto_approve: boolean, 
+/**
+ * Enable auto-compaction when the context length approaches the model's context window limit
+ */
+auto_compact: boolean, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
 export type QwenCode = { append_prompt: AppendPrompt, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 

@@ -692,5 +692,36 @@
     "statusSuccess": "Completed successfully",
     "statusFailed": "Failed with exit code {{exitCode}}",
     "statusKilled": "Process was killed"
+  },
+  "createWorkspaceFromPr": {
+    "title": "Create Workspace from PR",
+    "description": "Select an open pull request to create a workspace from. A task will be created automatically using the PR title.",
+    "repositoryLabel": "Repository",
+    "remoteLabel": "Remote",
+    "pullRequestLabel": "Pull Request",
+    "loadingRepositories": "Loading repositories...",
+    "loadingRemotes": "Loading remotes...",
+    "noRepositoriesFound": "No repositories found",
+    "loadingPullRequests": "Loading pull requests...",
+    "selectRepositoryFirst": "Select a repository first",
+    "noPullRequestsFound": "No open pull requests found",
+    "runSetupScript": "Run setup script",
+    "creating": "Creating...",
+    "createWorkspace": "Create Workspace",
+    "selectRepository": "Select a repository",
+    "selectRemote": "Select a remote",
+    "selectPullRequest": "Select a pull request",
+    "searchPrsPlaceholder": "Search PRs by number or title...",
+    "noMatchingPrs": "No matching pull requests",
+    "default": "default",
+    "openPrInBrowser": "Open PR in browser",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLI is not installed",
+      "unsupportedProvider": "Git provider not supported",
+      "failedToLoadPrs": "Failed to load pull requests",
+      "prNotFound": "Pull request not found",
+      "repoNotInProject": "Repository is not in any project",
+      "failedToCreateWorkspace": "Failed to create workspace"
+    }
   }
 }

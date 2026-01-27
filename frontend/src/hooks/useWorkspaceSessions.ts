@@ -58,12 +58,10 @@ export function useWorkspaceSessions(
         return { mode: 'existing', sessionId: sessions[0].id };
       });
     } else {
-      // No sessions - reset selection (handles workspace change before fetch completes)
       setSelection(undefined);
     }
   }, [workspaceId, sessions]);
 
-  // New session mode when user explicitly chose it OR when no sessions exist yet
   const isNewSessionMode = selection?.mode === 'new' || sessions.length === 0;
   const selectedSessionId =
     selection?.mode === 'existing' ? selection.sessionId : undefined;

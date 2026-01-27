@@ -8,6 +8,7 @@ interface PrimaryButtonProps {
   onClick?: () => void;
   disabled?: boolean;
   children?: React.ReactNode;
+  className?: string;
 }
 
 export function PrimaryButton({
@@ -17,6 +18,7 @@ export function PrimaryButton({
   onClick,
   disabled,
   children,
+  className,
 }: PrimaryButtonProps) {
   const variantStyles = disabled
     ? 'cursor-not-allowed bg-panel'
@@ -30,7 +32,8 @@ export function PrimaryButton({
     <button
       className={cn(
         'rounded-sm px-base py-half text-cta h-cta flex gap-half items-center',
-        variantStyles
+        variantStyles,
+        className
       )}
       onClick={onClick}
       disabled={disabled}

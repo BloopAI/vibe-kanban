@@ -1,0 +1,270 @@
+---
+title: "Git Operations"
+description: "Create pull requests, merge, rebase, and manage branches in Workspaces"
+---
+
+<Frame>
+<img src="/images/workspaces-git-panel.png" alt="Git section in the details sidebar showing repository status, branches, and commit information" />
+</Frame>
+
+Workspaces provide integrated git operations for managing your code changes.
+
+## Repository Status
+
+The Git section in the right sidebar shows:
+
+| Information | Description |
+|-------------|-------------|
+| **Repository name** | Current repository with status |
+| **Current branch** | Your working branch |
+| **Target branch** | Branch you'll merge into |
+| **Uncommitted changes** | Number of modified files |
+| **Ahead/Behind** | Commits relative to target branch |
+| **Conflict indicator** | Shows when merge conflicts exist |
+
+## Creating Pull Requests
+
+<Frame>
+<img src="/images/workspaces-create-pr.png" alt="Create pull request dialog with title, description, and draft mode options" />
+</Frame>
+
+Create PRs directly from your workspace.
+
+### Creating a PR
+
+**From the Git panel:**
+1. Click **Open pull request** in the Git section of the right sidebar
+2. Fill in the PR details
+
+**From the command bar:**
+1. Press `Cmd/Ctrl + K`
+2. Select **Create Pull Request**
+
+**PR details:**
+   - **Auto-generate PR description with AI** - Let AI write the description based on your changes
+   - **Title** - PR title (auto-filled from task name)
+   - **Description** - Optional details about the changes
+   - **Base Branch** - The branch to merge into
+   - **Create as draft** - Mark as draft PR
+4. Click **Create PR**
+
+Once created, your PR appears on GitHub with your commits, description, and CI checks running.
+
+<Frame>
+<img src="/images/workspaces-github-pr.png" alt="GitHub pull request page showing the created PR with commits, checks, and comments" />
+</Frame>
+
+### Draft PRs
+
+Enable **Draft** mode when:
+
+- Work is still in progress
+- You want early feedback before completion
+- CI checks should run but reviewers shouldn't merge yet
+
+### Multi-Repo PRs
+
+For workspaces with multiple repositories:
+
+- Create PRs for each repo separately
+- Use the Repo Actions in the command bar
+- Reference related PRs in descriptions
+
+<Tip>
+Create PRs early to get CI feedback and enable team visibility into your progress.
+</Tip>
+
+## Merging Changes
+
+Merge your branch into the target branch.
+
+### Merge Process
+
+**From the Git panel:**
+1. Click the dropdown arrow next to **Open pull request**
+2. Select **Merge**
+
+**From the command bar:**
+1. Press `Cmd/Ctrl + K` and select **Merge**
+
+Changes are merged into the target branch after confirmation.
+
+### Before Merging
+
+The workspace checks if you're behind the target branch:
+
+- **Up to date**: Merge proceeds normally
+- **Behind target**: You'll be prompted to rebase first
+
+<Warning>
+Always ensure CI checks pass and code reviews are complete before merging.
+</Warning>
+
+## Rebasing
+
+Keep your branch up to date with the target branch.
+
+### Rebase Process
+
+**From the Git panel:**
+1. Click the target branch dropdown (e.g., **main**)
+2. Select **Rebase** from the menu
+
+**From the command bar:**
+1. Press `Cmd/Ctrl + K` and select **Rebase**
+
+Your commits are replayed on top of the target branch after confirmation.
+
+### Handling Conflicts
+
+<Frame>
+<img src="/images/workspaces-conflict-dialog.png" alt="Conflict resolution dialog showing list of conflicting files with resolve and abort options" />
+</Frame>
+
+If conflicts occur during rebase:
+
+1. The workspace shows a conflict resolution dialog
+2. List of conflicting files is displayed
+3. Resolve conflicts in your editor
+4. Mark files as resolved
+5. Continue or abort the rebase
+
+### When to Rebase
+
+- Before creating a pull request
+- When the target branch has new commits
+- Before merging to ensure a clean history
+- When prompted due to being behind target
+
+## Changing Target Branch
+
+Switch the branch you're merging into.
+
+### Changing the Target
+
+**From the Git panel:**
+1. Click the target branch dropdown (e.g., **main**) in the Git section
+2. Select a new target branch from the list
+
+**From the command bar:**
+1. Press `Cmd/Ctrl + K` and select **Change Target Branch**
+2. Choose the new target branch
+
+The workspace updates to show the new ahead/behind status.
+
+### Use Cases
+
+- Switch from `develop` to `main` for release
+- Target a feature branch instead of main
+- Correct an incorrectly set target
+
+## Pushing Changes
+
+Push your commits to the remote repository.
+
+### When Push is Available
+
+The Push command appears when:
+
+- You have unpushed commits
+- A pull request is open for the branch
+
+### Pushing
+
+**From the Git panel:**
+- Click the **Push** button when it appears (shows when you have unpushed commits)
+
+**From the command bar:**
+- Press `Cmd/Ctrl + K` and select **Push**
+
+Commits are pushed to the remote repository.
+
+<Info>
+Push is contextual - it only appears when there are changes to push and a PR exists.
+</Info>
+
+## Multi-Repository Git Operations
+
+For workspaces with multiple repositories, manage each repo independently.
+
+### Per-Repository Actions
+
+Access via command bar's **Repo Actions** page:
+
+| Action | Description |
+|--------|-------------|
+| Create PR | Create PR for specific repository |
+| Merge | Merge specific repository only |
+| Rebase | Rebase specific repository |
+| Change Target | Change target for specific repo |
+
+### Coordinating Changes
+
+When working across repos:
+
+1. Make related changes in each repository
+2. Create linked PRs referencing each other
+3. Merge in the correct order based on dependencies
+4. Verify integration after merging
+
+## Conflict Resolution
+
+When git conflicts occur:
+
+### Conflict Dialog
+
+The workspace displays a conflict resolution dialog showing:
+
+- List of conflicting files
+- Options to resolve or abort
+
+### Resolution Steps
+
+1. Open conflicting files in your editor
+2. Resolve the conflicts manually
+3. Save the resolved files
+4. Return to the workspace
+5. Continue the operation
+
+### Aborting
+
+If you can't resolve conflicts:
+
+- Click **Abort** in the conflict dialog
+- The operation is cancelled
+- Your branch returns to its previous state
+
+<Warning>
+Unresolved conflicts block git operations. Always resolve or abort before continuing work.
+</Warning>
+
+## Best Practices
+
+### Branch Hygiene
+
+- Rebase regularly to stay current with target
+- Create PRs early for visibility
+- Use descriptive branch names
+- Delete merged branches
+
+### PR Workflow
+
+1. Complete your changes
+2. Review diffs in the changes panel
+3. Rebase if behind target
+4. Create a PR (draft if work continues)
+5. Address review feedback
+6. Merge when approved
+
+### Multi-Repo Coordination
+
+- Plan cross-repo changes upfront
+- Document dependencies between PRs
+- Merge in dependency order
+- Test integration thoroughly
+
+## Related Documentation
+
+- [Multi-Repo & Sessions](/workspaces/multi-repo-sessions) - Working with multiple repositories
+- [Command Bar](/workspaces/command-bar) - Git commands and shortcuts
+- [GitHub Integration](/integrations/github-integration) - GitHub setup and features

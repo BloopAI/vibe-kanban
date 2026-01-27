@@ -1,9 +1,9 @@
 import * as React from 'react';
 import {
-  PencilSimpleLineIcon,
-  CheckIcon,
   ArrowCounterClockwiseIcon,
+  CheckIcon,
   type Icon,
+  PencilSimpleLineIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
@@ -119,10 +119,10 @@ export function InputField({
           onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
           disabled={disabled}
-          className="flex-1 text-base text-high bg-transparent placeholder:text-low placeholder:opacity-80 focus:outline-none min-w-0"
+          className="flex-1 text-sm text-high bg-transparent placeholder:text-low placeholder:opacity-80 focus:outline-none min-w-0"
         />
       ) : (
-        <span className="flex-1 text-base text-normal truncate min-w-0">
+        <span className="flex-1 text-sm text-normal truncate min-w-0">
           {value || <span className="text-low opacity-80">{placeholder}</span>}
         </span>
       )}

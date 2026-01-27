@@ -20,7 +20,7 @@ jobs:
   test:
     runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node
         uses: ./.github/actions/setup-node

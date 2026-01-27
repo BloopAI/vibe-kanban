@@ -275,12 +275,13 @@ impl Approvals {
                 .await
                 && let Some(entry) = pending_approval.entry.with_tool_status(ToolStatus::Denied {
                     reason: Some("Cancelled".to_string()),
-                }) {
-                    store.push_patch(ConversationPatch::replace(
-                        pending_approval.entry_index,
-                        entry,
-                    ));
-                }
+                })
+            {
+                store.push_patch(ConversationPatch::replace(
+                    pending_approval.entry_index,
+                    entry,
+                ));
+            }
 
             tracing::debug!("Cancelled approval '{}'", id);
         }

@@ -89,6 +89,18 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         },
                     );
                 }
+                OpencodeExecutorEvent::SlashCommandResult { message } => {
+                    let idx = entry_index.next();
+                    state.add_normalized_entry_with_index(
+                        idx,
+                        NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::AssistantMessage,
+                            content: message,
+                            metadata: None,
+                        },
+                    );
+                }
                 OpencodeExecutorEvent::ApprovalResponse {
                     tool_call_id,
                     status,
@@ -98,6 +110,20 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         status,
                         &worktree_path,
                         &msg_store,
+                    );
+                }
+                OpencodeExecutorEvent::SystemMessage { content } => {
+                    let idx = entry_index.next();
+                    msg_store.push_patch(
+                        crate::logs::utils::ConversationPatch::add_normalized_entry(
+                            idx,
+                            NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::SystemMessage,
+                                content,
+                                metadata: None,
+                            },
+                        ),
                     );
                 }
                 OpencodeExecutorEvent::Error { message } => {

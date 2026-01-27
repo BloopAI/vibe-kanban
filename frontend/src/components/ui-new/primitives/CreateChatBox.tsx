@@ -38,6 +38,7 @@ interface CreateChatBoxProps {
   saveAsDefault?: SaveAsDefaultProps;
   error?: string | null;
   projectId?: string;
+  repoId?: string;
   agent?: BaseCodingAgent | null;
   onPasteFiles?: (files: File[]) => void;
   localImages?: LocalImageMetadata[];
@@ -57,6 +58,7 @@ export function CreateChatBox({
   saveAsDefault,
   error,
   projectId,
+  repoId,
   agent,
   onPasteFiles,
   localImages,
@@ -97,6 +99,8 @@ export function CreateChatBox({
       onCmdEnter={handleCmdEnter}
       disabled={isSending}
       projectId={projectId}
+      repoId={repoId}
+      executor={executor.selected}
       autoFocus
       variant={variant}
       error={error}

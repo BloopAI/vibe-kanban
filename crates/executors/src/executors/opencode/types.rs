@@ -12,6 +12,9 @@ pub enum OpencodeExecutorEvent {
     SessionStart {
         session_id: String,
     },
+    SlashCommandResult {
+        message: String,
+    },
     SdkEvent {
         event: serde_json::Value,
     },
@@ -22,6 +25,9 @@ pub enum OpencodeExecutorEvent {
     ApprovalResponse {
         tool_call_id: String,
         status: ApprovalStatus,
+    },
+    SystemMessage {
+        content: String,
     },
     Error {
         message: String,

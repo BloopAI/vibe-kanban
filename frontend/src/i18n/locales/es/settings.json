@@ -422,6 +422,15 @@
         },
         "path": {
           "label": "Ruta del Repositorio"
+        },
+        "defaultTargetBranch": {
+          "label": "Rama Objetivo Predeterminada",
+          "placeholder": "Seleccionar una rama",
+          "helper": "La rama base predeterminada para nuevos workspaces. Los worktrees se ramifican desde esta rama y los PRs la tendrán como objetivo.",
+          "search": "Buscar ramas",
+          "noBranches": "No se encontraron ramas",
+          "loading": "Cargando ramas...",
+          "useCurrent": "Usar rama actual"
         }
       },
       "scripts": {

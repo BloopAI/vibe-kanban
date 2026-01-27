@@ -692,5 +692,36 @@
     "statusSuccess": "Completado exitosamente",
     "statusFailed": "Falló con código de salida {{exitCode}}",
     "statusKilled": "El proceso fue terminado"
+  },
+  "createWorkspaceFromPr": {
+    "title": "Crear Espacio de Trabajo desde PR",
+    "description": "Selecciona una solicitud de extracción abierta para crear un espacio de trabajo. Se creará una tarea automáticamente usando el título del PR.",
+    "repositoryLabel": "Repositorio",
+    "remoteLabel": "Remoto",
+    "pullRequestLabel": "Solicitud de Extracción",
+    "loadingRepositories": "Cargando repositorios...",
+    "loadingRemotes": "Cargando remotos...",
+    "noRepositoriesFound": "No se encontraron repositorios",
+    "loadingPullRequests": "Cargando solicitudes de extracción...",
+    "selectRepositoryFirst": "Selecciona un repositorio primero",
+    "noPullRequestsFound": "No se encontraron solicitudes de extracción abiertas",
+    "runSetupScript": "Ejecutar script de configuración",
+    "creating": "Creando...",
+    "createWorkspace": "Crear Espacio de Trabajo",
+    "selectRepository": "Seleccionar un repositorio",
+    "selectRemote": "Seleccionar un remoto",
+    "selectPullRequest": "Seleccionar una solicitud de extracción",
+    "searchPrsPlaceholder": "Buscar PRs por número o título...",
+    "noMatchingPrs": "No hay solicitudes de extracción coincidentes",
+    "default": "predeterminado",
+    "openPrInBrowser": "Abrir PR en el navegador",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLI no está instalado",
+      "unsupportedProvider": "Proveedor Git no soportado",
+      "failedToLoadPrs": "Error al cargar solicitudes de extracción",
+      "prNotFound": "Solicitud de extracción no encontrada",
+      "repoNotInProject": "El repositorio no está en ningún proyecto",
+      "failedToCreateWorkspace": "Error al crear espacio de trabajo"
+    }
   }
 }

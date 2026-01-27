@@ -692,5 +692,36 @@
     "statusSuccess": "正常に完了しました",
     "statusFailed": "終了コード {{exitCode}} で失敗しました",
     "statusKilled": "プロセスが強制終了されました"
+  },
+  "createWorkspaceFromPr": {
+    "title": "PRからワークスペースを作成",
+    "description": "オープンなプルリクエストを選択してワークスペースを作成します。PRのタイトルを使用してタスクが自動的に作成されます。",
+    "repositoryLabel": "リポジトリ",
+    "remoteLabel": "リモート",
+    "pullRequestLabel": "プルリクエスト",
+    "loadingRepositories": "リポジトリを読み込み中...",
+    "loadingRemotes": "リモートを読み込み中...",
+    "noRepositoriesFound": "リポジトリが見つかりません",
+    "loadingPullRequests": "プルリクエストを読み込み中...",
+    "selectRepositoryFirst": "最初にリポジトリを選択してください",
+    "noPullRequestsFound": "オープンなプルリクエストが見つかりません",
+    "runSetupScript": "セットアップスクリプトを実行",
+    "creating": "作成中...",
+    "createWorkspace": "ワークスペースを作成",
+    "selectRepository": "リポジトリを選択",
+    "selectRemote": "リモートを選択",
+    "selectPullRequest": "プルリクエストを選択",
+    "searchPrsPlaceholder": "番号またはタイトルでPRを検索...",
+    "noMatchingPrs": "一致するプルリクエストがありません",
+    "default": "デフォルト",
+    "openPrInBrowser": "ブラウザでPRを開く",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLIがインストールされていません",
+      "unsupportedProvider": "Gitプロバイダーがサポートされていません",
+      "failedToLoadPrs": "プルリクエストの読み込みに失敗しました",
+      "prNotFound": "プルリクエストが見つかりません",
+      "repoNotInProject": "リポジトリがどのプロジェクトにも属していません",
+      "failedToCreateWorkspace": "ワークスペースの作成に失敗しました"
+    }
   }
 }

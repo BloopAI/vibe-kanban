@@ -21,6 +21,7 @@ import {
   type LocalImageMetadata,
 } from './wysiwyg/context/task-attempt-context';
 import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
+import { SlashCommandTypeaheadPlugin } from './wysiwyg/plugins/slash-command-typeahead-plugin';
 import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plugin';
 import { ImageKeyboardPlugin } from './wysiwyg/plugins/image-keyboard-plugin';
 import { ReadOnlyLinkPlugin } from './wysiwyg/plugins/read-only-link-plugin';
@@ -44,6 +45,7 @@ import { Button } from '@/components/ui/button';
 import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 import type { SendMessageShortcut } from 'shared/types';
+import type { BaseCodingAgent } from 'shared/types';
 
 /** Markdown string representing the editor content */
 export type SerializedEditorState = string;
@@ -61,6 +63,8 @@ type WysiwygProps = {
   workspaceId?: string;
   /** Project ID for file search in typeahead (fallback if workspaceId not provided) */
   projectId?: string;
+  /** Enables `/` command autocomplete (agent-specific). */
+  executor?: BaseCodingAgent | null;
   onCmdEnter?: () => void;
   onShiftCmdEnter?: () => void;
   /** Keyboard shortcut mode for sending messages */
@@ -69,6 +73,8 @@ type WysiwygProps = {
   taskAttemptId?: string;
   /** Task ID for resolving .vibe-images paths when taskAttemptId is not available */
   taskId?: string;
+  /** Repo ID for slash commands when no workspace yet */
+  repoId?: string;
   /** Local images for immediate rendering (before saved to server) */
   localImages?: LocalImageMetadata[];
   /** Optional edit callback - shows edit button in read-only mode when provided */
@@ -93,11 +99,13 @@ function WYSIWYGEditor({
   className,
   workspaceId,
   projectId,
+  executor = null,
   onCmdEnter,
   onShiftCmdEnter,
   sendShortcut,
   taskAttemptId,
   taskId,
+  repoId,
   localImages,
   onEdit,
   onDelete,
@@ -222,7 +230,7 @@ function WYSIWYGEditor({
 
   const editorContent = (
     <div className="wysiwyg text-base">
-      <TaskAttemptContext.Provider value={taskAttemptId}>
+      <TaskAttemptContext.Provider value={taskAttemptId || workspaceId}>
         <TaskContext.Provider value={taskId}>
           <LocalImagesContext.Provider value={localImages ?? []}>
             <LexicalComposer initialConfig={initialConfig}>
@@ -263,6 +271,12 @@ function WYSIWYGEditor({
                     workspaceId={workspaceId}
                     projectId={projectId}
                   />
+                  {executor && (
+                    <SlashCommandTypeaheadPlugin
+                      agent={executor}
+                      repoId={repoId}
+                    />
+                  )}
                   <KeyboardCommandsPlugin
                     onCmdEnter={onCmdEnter}
                     onShiftCmdEnter={onShiftCmdEnter}

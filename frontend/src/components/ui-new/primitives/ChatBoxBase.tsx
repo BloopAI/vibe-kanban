@@ -6,6 +6,7 @@ import { toPrettyCase } from '@/utils/string';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { useUserSystem } from '@/components/ConfigProvider';
+import type { BaseCodingAgent } from 'shared/types';
 import { Toolbar, ToolbarDropdown } from './Toolbar';
 import {
   DropdownMenuItem,
@@ -46,6 +47,8 @@ interface ChatBoxBaseProps {
   disabled?: boolean;
   workspaceId?: string;
   projectId?: string;
+  repoId?: string;
+  executor?: BaseCodingAgent | null;
   autoFocus?: boolean;
 
   // Variant selection
@@ -99,6 +102,8 @@ export function ChatBoxBase({
   disabled,
   workspaceId,
   projectId,
+  repoId,
+  executor,
   autoFocus,
   variant,
   error,
@@ -165,7 +170,7 @@ export function ChatBoxBase({
       {/* Header - Stats and selector */}
       {visualVariant === VisualVariant.NORMAL && (
         <div className="flex items-center gap-base bg-secondary px-base py-[9px] @chat:rounded-t-md border-b">
-          <div className="flex flex-1 items-center gap-base text-sm">
+          <div className="flex flex-1 items-center gap-base text-sm min-w-0 overflow-hidden">
             {headerLeft}
           </div>
           <Toolbar className="gap-[9px]">{headerRight}</Toolbar>
@@ -187,6 +192,8 @@ export function ChatBoxBase({
           className="min-h-double max-h-[50vh] overflow-y-auto"
           workspaceId={workspaceId}
           projectId={projectId}
+          repoId={repoId}
+          executor={executor ?? null}
           autoFocus={autoFocus}
           onPasteFiles={onPasteFiles}
           localImages={localImages}

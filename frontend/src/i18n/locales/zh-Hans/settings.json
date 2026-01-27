@@ -422,6 +422,15 @@
         },
         "path": {
           "label": "仓库路径"
+        },
+        "defaultTargetBranch": {
+          "label": "默认目标分支",
+          "placeholder": "选择分支",
+          "helper": "新工作区的默认基础分支。工作树从此分支创建，PR 将以此分支为目标。",
+          "search": "搜索分支",
+          "noBranches": "未找到分支",
+          "loading": "正在加载分支...",
+          "useCurrent": "使用当前分支"
         }
       },
       "scripts": {

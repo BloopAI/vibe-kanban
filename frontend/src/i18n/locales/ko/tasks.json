@@ -692,5 +692,36 @@
     "statusSuccess": "성공적으로 완료됨",
     "statusFailed": "종료 코드 {{exitCode}}(으)로 실패함",
     "statusKilled": "프로세스가 종료되었습니다"
+  },
+  "createWorkspaceFromPr": {
+    "title": "PR에서 워크스페이스 만들기",
+    "description": "열린 풀 리퀘스트를 선택하여 워크스페이스를 만듭니다. PR 제목을 사용하여 태스크가 자동으로 생성됩니다.",
+    "repositoryLabel": "저장소",
+    "remoteLabel": "리모트",
+    "pullRequestLabel": "풀 리퀘스트",
+    "loadingRepositories": "저장소 로드 중...",
+    "loadingRemotes": "리모트 로드 중...",
+    "noRepositoriesFound": "저장소를 찾을 수 없습니다",
+    "loadingPullRequests": "풀 리퀘스트 로드 중...",
+    "selectRepositoryFirst": "먼저 저장소를 선택하세요",
+    "noPullRequestsFound": "열린 풀 리퀘스트가 없습니다",
+    "runSetupScript": "설정 스크립트 실행",
+    "creating": "만드는 중...",
+    "createWorkspace": "워크스페이스 만들기",
+    "selectRepository": "저장소 선택",
+    "selectRemote": "리모트 선택",
+    "selectPullRequest": "풀 리퀘스트 선택",
+    "searchPrsPlaceholder": "번호 또는 제목으로 PR 검색...",
+    "noMatchingPrs": "일치하는 풀 리퀘스트가 없습니다",
+    "default": "기본값",
+    "openPrInBrowser": "브라우저에서 PR 열기",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLI가 설치되어 있지 않습니다",
+      "unsupportedProvider": "Git 공급자가 지원되지 않습니다",
+      "failedToLoadPrs": "풀 리퀘스트 로드 실패",
+      "prNotFound": "풀 리퀘스트를 찾을 수 없습니다",
+      "repoNotInProject": "저장소가 어떤 프로젝트에도 없습니다",
+      "failedToCreateWorkspace": "워크스페이스 만들기 실패"
+    }
   }
 }

@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { isEqual } from 'lodash';
-import { SpinnerIcon } from '@phosphor-icons/react';
+import { GitBranchIcon, SpinnerIcon } from '@phosphor-icons/react';
+import { useRepoBranches } from '@/hooks/useRepoBranches';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { repoApi } from '@/lib/api';
 import type { Repo, UpdateRepo } from 'shared/types';
+import { SearchableDropdownContainer } from '../../containers/SearchableDropdownContainer';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +26,7 @@ import {
 
 interface RepoScriptsFormState {
   display_name: string;
+  default_target_branch: string;
   setup_script: string;
   parallel_setup_script: boolean;
   cleanup_script: string;
@@ -34,6 +37,7 @@ interface RepoScriptsFormState {
 function repoToFormState(repo: Repo): RepoScriptsFormState {
   return {
     display_name: repo.display_name,
+    default_target_branch: repo.default_target_branch ?? '',
     setup_script: repo.setup_script ?? '',
     parallel_setup_script: repo.parallel_setup_script,
     cleanup_script: repo.cleanup_script ?? '',
@@ -58,6 +62,24 @@ export function ReposSettingsSection() {
 
   // Selected repo state
   const [selectedRepoId, setSelectedRepoId] = useState<string>('');
+
+  // Fetch branches for the selected repo
+  const { data: branches = [], isLoading: branchesLoading } = useRepoBranches(
+    selectedRepoId || null,
+    { enabled: !!selectedRepoId }
+  );
+
+  // Add "Use current branch" option at the top of branches list
+  const branchItems = useMemo(() => {
+    const clearOption = {
+      name: '',
+      is_current: false,
+      is_remote: false,
+      last_commit_date: new Date(),
+    };
+    return [clearOption, ...branches];
+  }, [branches]);
+
   const [selectedRepo, setSelectedRepo] = useState<Repo | null>(null);
 
   // Form state
@@ -128,6 +150,7 @@ export function ReposSettingsSection() {
     try {
       const updateData: UpdateRepo = {
         display_name: draft.display_name.trim() || null,
+        default_target_branch: draft.default_target_branch.trim() || null,
         setup_script: draft.setup_script.trim() || null,
         cleanup_script: draft.cleanup_script.trim() || null,
         copy_files: draft.copy_files.trim() || null,
@@ -272,6 +295,53 @@ export function ReposSettingsSection() {
               <div className="text-sm text-low font-mono bg-secondary px-base py-half rounded-sm">
                 {selectedRepo.path}
               </div>
+            </SettingsField>
+
+            <SettingsField
+              label={t('settings.repos.general.defaultTargetBranch.label')}
+              description={t(
+                'settings.repos.general.defaultTargetBranch.helper'
+              )}
+            >
+              <SearchableDropdownContainer
+                items={branchItems}
+                selectedValue={draft.default_target_branch || null}
+                getItemKey={(b) => b.name || '__clear__'}
+                getItemLabel={(b) =>
+                  b.name ||
+                  t('settings.repos.general.defaultTargetBranch.useCurrent')
+                }
+                filterItem={(b, query) =>
+                  b.name === '' ||
+                  b.name.toLowerCase().includes(query.toLowerCase())
+                }
+                getItemBadge={(b) => (b.is_current ? 'Current' : undefined)}
+                onSelect={(b) => updateDraft({ default_target_branch: b.name })}
+                placeholder={t(
+                  'settings.repos.general.defaultTargetBranch.search'
+                )}
+                emptyMessage={t(
+                  'settings.repos.general.defaultTargetBranch.noBranches'
+                )}
+                contentClassName="w-[var(--radix-dropdown-menu-trigger-width)]"
+                trigger={
+                  <DropdownMenuTriggerButton
+                    icon={GitBranchIcon}
+                    label={
+                      branchesLoading
+                        ? t(
+                            'settings.repos.general.defaultTargetBranch.loading'
+                          )
+                        : draft.default_target_branch ||
+                          t(
+                            'settings.repos.general.defaultTargetBranch.placeholder'
+                          )
+                    }
+                    className="w-full justify-between"
+                    disabled={branchesLoading}
+                  />
+                }
+              />
             </SettingsField>
           </SettingsCard>
 

@@ -134,3 +134,12 @@ impl UnifiedPrComment {
         }
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct OpenPrInfo {
+    pub number: i64,
+    pub url: String,
+    pub title: String,
+    pub head_branch: String,
+    pub base_branch: String,
+}

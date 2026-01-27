@@ -161,6 +161,15 @@ impl<'a> OrganizationRepository<'a> {
             IdentityError::from(e)
         })?;
 
+        // Create initial project with default tags and statuses
+        ProjectRepository::create_initial_project_tx(&mut tx, org.id)
+            .await
+            .map_err(|e| {
+                IdentityError::Database(sqlx::Error::Protocol(format!(
+                    "Failed to create initial project: {e}"
+                )))
+            })?;
+
         add_member(&mut *tx, org.id, creator_user_id, MemberRole::Admin).await?;
 
         tx.commit().await?;

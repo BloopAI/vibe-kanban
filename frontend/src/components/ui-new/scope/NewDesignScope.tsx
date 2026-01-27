@@ -6,9 +6,14 @@ import {
   useWorkspaceContext,
 } from '@/contexts/WorkspaceContext';
 import { ActionsProvider } from '@/contexts/ActionsContext';
+import { SequenceTrackerProvider } from '@/keyboard/SequenceTracker';
+import { SequenceIndicator } from '@/keyboard/SequenceIndicator';
+import { useWorkspaceShortcuts } from '@/keyboard/useWorkspaceShortcuts';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import NiceModal from '@ebay/nice-modal-react';
+import { useKeyShowHelp, Scope } from '@/keyboard';
+import { KeyboardShortcutsDialog } from '@/components/ui-new/dialogs/KeyboardShortcutsDialog';
 import '@/styles/new/index.css';
 
 interface NewDesignScopeProps {
@@ -32,6 +37,17 @@ function ExecutionProcessesProviderWrapper({
   );
 }
 
+function KeyboardShortcutsHandler() {
+  useKeyShowHelp(
+    () => {
+      KeyboardShortcutsDialog.show();
+    },
+    { scope: Scope.GLOBAL }
+  );
+  useWorkspaceShortcuts();
+  return null;
+}
+
 export function NewDesignScope({ children }: NewDesignScopeProps) {
   const ref = useRef<HTMLDivElement>(null);
   const posthog = usePostHog();
@@ -51,7 +67,13 @@ export function NewDesignScope({ children }: NewDesignScopeProps) {
           <ExecutionProcessesProviderWrapper>
             <LogsPanelProvider>
               <ActionsProvider>
-                <NiceModal.Provider>{children}</NiceModal.Provider>
+                <SequenceTrackerProvider>
+                  <SequenceIndicator />
+                  <NiceModal.Provider>
+                    <KeyboardShortcutsHandler />
+                    {children}
+                  </NiceModal.Provider>
+                </SequenceTrackerProvider>
               </ActionsProvider>
             </LogsPanelProvider>
           </ExecutionProcessesProviderWrapper>

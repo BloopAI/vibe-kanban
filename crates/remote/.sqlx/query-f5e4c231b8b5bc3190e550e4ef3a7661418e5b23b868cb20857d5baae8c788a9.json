@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE workspaces SET\n                archived = CASE WHEN $1 THEN $2 ELSE archived END,\n                files_changed = CASE WHEN $3 THEN $4 ELSE files_changed END,\n                lines_added = CASE WHEN $5 THEN $6 ELSE lines_added END,\n                lines_removed = CASE WHEN $7 THEN $8 ELSE lines_removed END,\n                updated_at = NOW()\n            WHERE id = $9\n            RETURNING\n                id                  AS \"id!: Uuid\",\n                project_id          AS \"project_id!: Uuid\",\n                owner_user_id       AS \"owner_user_id!: Uuid\",\n                issue_id            AS \"issue_id: Uuid\",\n                local_workspace_id  AS \"local_workspace_id: Uuid\",\n                archived            AS \"archived!: bool\",\n                files_changed       AS \"files_changed: i32\",\n                lines_added         AS \"lines_added: i32\",\n                lines_removed       AS \"lines_removed: i32\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "owner_user_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "issue_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "local_workspace_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "archived!: bool",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "files_changed: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "lines_added: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "lines_removed: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Bool",
+        "Bool",
+        "Int4",
+        "Bool",
+        "Int4",
+        "Bool",
+        "Int4",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "f5e4c231b8b5bc3190e550e4ef3a7661418e5b23b868cb20857d5baae8c788a9"
+}

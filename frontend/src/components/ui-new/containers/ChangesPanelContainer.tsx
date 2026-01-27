@@ -27,13 +27,20 @@ const COLLAPSE_BY_CHANGE_TYPE: Record<DiffChangeKind, boolean> = {
 const COLLAPSE_MAX_LINES = 200;
 
 function shouldAutoCollapse(diff: Diff): boolean {
-  // Collapse based on change type
+  const totalLines = (diff.additions ?? 0) + (diff.deletions ?? 0);
+
+  // For renamed files, only collapse if there are no content changes
+  // OR if the diff is large
+  if (diff.change === 'renamed') {
+    return totalLines === 0 || totalLines > COLLAPSE_MAX_LINES;
+  }
+
+  // Collapse based on change type for other types
   if (COLLAPSE_BY_CHANGE_TYPE[diff.change]) {
     return true;
   }
 
   // Collapse large diffs
-  const totalLines = (diff.additions ?? 0) + (diff.deletions ?? 0);
   if (totalLines > COLLAPSE_MAX_LINES) {
     return true;
   }

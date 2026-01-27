@@ -1214,10 +1214,7 @@ impl ContainerService for LocalContainerService {
             {
                 match tokio::time::timeout(Duration::from_secs(5), monitor_handle).await {
                     Ok(_) => {
-                        tracing::debug!(
-                            "Process {} exited gracefully",
-                            execution_process.id
-                        );
+                        tracing::debug!("Process {} exited gracefully", execution_process.id);
                     }
                     Err(_) => {
                         tracing::debug!(

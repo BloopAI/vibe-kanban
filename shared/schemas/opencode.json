@@ -34,6 +34,11 @@
       "type": "boolean",
       "default": true
     },
+    "auto_compact": {
+      "description": "Enable auto-compaction when the context length approaches the model's context window limit",
+      "type": "boolean",
+      "default": true
+    },
     "base_command_override": {
       "title": "Base Command Override",
       "description": "Override the base command with a custom command",

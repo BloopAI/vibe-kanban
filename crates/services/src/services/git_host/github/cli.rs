@@ -18,7 +18,7 @@ use thiserror::Error;
 use utils::shell::resolve_executable_path_blocking;
 
 use crate::services::git_host::types::{
-    CreatePrRequest, PrComment, PrCommentAuthor, PrReviewComment, ReviewCommentUser,
+    CreatePrRequest, OpenPrInfo, PrComment, PrCommentAuthor, PrReviewComment, ReviewCommentUser,
 };
 
 #[derive(Debug, Clone)]
@@ -95,6 +95,17 @@ struct GhPrResponse {
     state: String,
     merged_at: Option<DateTime<Utc>>,
     merge_commit: Option<GhMergeCommit>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GhPrListExtendedResponse {
+    number: i64,
+    url: String,
+    #[serde(default)]
+    title: String,
+    head_ref_name: String,
+    base_ref_name: String,
 }
 
 #[derive(Debug, Error)]
@@ -271,6 +282,23 @@ impl GhCli {
         Self::parse_pr_list(&raw)
     }
 
+    pub fn list_open_prs(&self, owner: &str, repo: &str) -> Result<Vec<OpenPrInfo>, GhCliError> {
+        let raw = self.run(
+            [
+                "pr",
+                "list",
+                "--repo",
+                &format!("{owner}/{repo}"),
+                "--state",
+                "open",
+                "--json",
+                "number,url,title,headRefName,baseRefName",
+            ],
+            None,
+        )?;
+        Self::parse_open_pr_list(&raw)
+    }
+
     /// Fetch comments for a pull request.
     pub fn get_pr_comments(
         &self,
@@ -308,6 +336,27 @@ impl GhCli {
             None,
         )?;
         Self::parse_pr_review_comments(&raw)
+    }
+
+    pub fn pr_checkout(
+        &self,
+        repo_path: &Path,
+        owner: &str,
+        repo: &str,
+        pr_number: i64,
+    ) -> Result<(), GhCliError> {
+        self.run(
+            [
+                "pr",
+                "checkout",
+                &pr_number.to_string(),
+                "--repo",
+                &format!("{owner}/{repo}"),
+                "--force",
+            ],
+            Some(repo_path),
+        )?;
+        Ok(())
     }
 }
 
@@ -368,6 +417,25 @@ impl GhCli {
             ))
         })?;
         Ok(prs.into_iter().map(Self::pr_response_to_info).collect())
+    }
+
+    fn parse_open_pr_list(raw: &str) -> Result<Vec<OpenPrInfo>, GhCliError> {
+        let prs: Vec<GhPrListExtendedResponse> =
+            serde_json::from_str(raw.trim()).map_err(|err| {
+                GhCliError::UnexpectedOutput(format!(
+                    "Failed to parse gh pr list response: {err}; raw: {raw}"
+                ))
+            })?;
+        Ok(prs
+            .into_iter()
+            .map(|pr| OpenPrInfo {
+                number: pr.number,
+                url: pr.url,
+                title: pr.title,
+                head_branch: pr.head_ref_name,
+                base_branch: pr.base_ref_name,
+            })
+            .collect())
     }
 
     fn pr_response_to_info(pr: GhPrResponse) -> PullRequestInfo {

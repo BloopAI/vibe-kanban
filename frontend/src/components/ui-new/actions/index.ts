@@ -29,6 +29,7 @@ import {
   SpinnerIcon,
   GitPullRequestIcon,
   GitMergeIcon,
+  GitForkIcon,
   ArrowsClockwiseIcon,
   CrosshairIcon,
   DesktopIcon,
@@ -61,6 +62,7 @@ import { StartReviewDialog } from '@/components/dialogs/tasks/StartReviewDialog'
 import posthog from 'posthog-js';
 import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
 import { SettingsDialog } from '@/components/ui-new/dialogs/SettingsDialog';
+import { CreateWorkspaceFromPrDialog } from '@/components/dialogs/CreateWorkspaceFromPrDialog';
 
 // Mirrored sidebar icon for right sidebar toggle
 const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
@@ -238,15 +240,28 @@ export const Actions = {
     id: 'duplicate-workspace',
     label: 'Duplicate',
     icon: CopyIcon,
+    shortcut: 'W D',
     requiresTarget: true,
     execute: async (ctx, workspaceId) => {
       try {
-        const firstMessage = await attemptsApi.getFirstUserMessage(workspaceId);
+        const [workspace, firstMessage, repos] = await Promise.all([
+          getWorkspace(ctx.queryClient, workspaceId),
+          attemptsApi.getFirstUserMessage(workspaceId),
+          attemptsApi.getRepos(workspaceId),
+        ]);
+        const task = await tasksApi.getById(workspace.task_id);
         ctx.navigate('/workspaces/create', {
-          state: { duplicatePrompt: firstMessage },
+          state: {
+            initialPrompt: firstMessage,
+            preferredRepos: repos.map((r) => ({
+              repo_id: r.id,
+              target_branch: r.target_branch,
+            })),
+            project_id: task.project_id,
+          },
         });
       } catch {
-        // Fallback to creating without the prompt
+        // Fallback to creating without the prompt/repos
         ctx.navigate('/workspaces/create');
       }
     },
@@ -256,6 +271,7 @@ export const Actions = {
     id: 'rename-workspace',
     label: 'Rename',
     icon: PencilSimpleIcon,
+    shortcut: 'W R',
     requiresTarget: true,
     execute: async (ctx, workspaceId) => {
       const workspace = await getWorkspace(ctx.queryClient, workspaceId);
@@ -270,6 +286,7 @@ export const Actions = {
     id: 'pin-workspace',
     label: (workspace?: Workspace) => (workspace?.pinned ? 'Unpin' : 'Pin'),
     icon: PushPinIcon,
+    shortcut: 'W P',
     requiresTarget: true,
     execute: async (ctx, workspaceId) => {
       const workspace = await getWorkspace(ctx.queryClient, workspaceId);
@@ -285,6 +302,7 @@ export const Actions = {
     label: (workspace?: Workspace) =>
       workspace?.archived ? 'Unarchive' : 'Archive',
     icon: ArchiveIcon,
+    shortcut: 'W A',
     requiresTarget: true,
     isVisible: (ctx) => ctx.hasWorkspace,
     isActive: (ctx) => ctx.workspaceArchived,
@@ -312,6 +330,7 @@ export const Actions = {
     id: 'delete-workspace',
     label: 'Delete',
     icon: TrashIcon,
+    shortcut: 'W X',
     variant: 'destructive',
     requiresTarget: true,
     execute: async (ctx, workspaceId) => {
@@ -363,21 +382,61 @@ export const Actions = {
     },
   },
 
+  SpinOffWorkspace: {
+    id: 'spin-off-workspace',
+    label: 'Spin off workspace',
+    icon: GitForkIcon,
+    requiresTarget: true,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    execute: async (ctx, workspaceId) => {
+      try {
+        const [workspace, repos] = await Promise.all([
+          getWorkspace(ctx.queryClient, workspaceId),
+          attemptsApi.getRepos(workspaceId),
+        ]);
+        const task = await tasksApi.getById(workspace.task_id);
+        ctx.navigate('/workspaces/create', {
+          state: {
+            preferredRepos: repos.map((r) => ({
+              repo_id: r.id,
+              target_branch: workspace.branch,
+            })),
+            project_id: task.project_id,
+          },
+        });
+      } catch {
+        ctx.navigate('/workspaces/create');
+      }
+    },
+  },
+
   // === Global/Navigation Actions ===
   NewWorkspace: {
     id: 'new-workspace',
     label: 'New Workspace',
     icon: PlusIcon,
+    shortcut: 'G N',
     requiresTarget: false,
     execute: (ctx) => {
       ctx.navigate('/workspaces/create');
     },
   },
 
+  CreateWorkspaceFromPR: {
+    id: 'create-workspace-from-pr',
+    label: 'Create Workspace from PR',
+    icon: GitPullRequestIcon,
+    requiresTarget: false,
+    execute: async () => {
+      await CreateWorkspaceFromPrDialog.show({});
+    },
+  } satisfies GlobalActionDefinition,
+
   Settings: {
     id: 'settings',
     label: 'Settings',
     icon: GearIcon,
+    shortcut: 'G S',
     requiresTarget: false,
     execute: async () => {
       await SettingsDialog.show();
@@ -408,6 +467,7 @@ export const Actions = {
     id: 'open-command-bar',
     label: 'Open Command Bar',
     icon: ListIcon,
+    shortcut: '{mod} K',
     requiresTarget: false,
     execute: async () => {
       // Dynamic import to avoid circular dependency (pages.ts imports Actions)
@@ -461,6 +521,7 @@ export const Actions = {
         ? 'Disable Line Wrapping'
         : 'Enable Line Wrapping',
     icon: TextAlignLeftIcon,
+    shortcut: 'T W',
     requiresTarget: false,
     isVisible: (ctx) =>
       ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
@@ -478,6 +539,7 @@ export const Actions = {
         ? 'Hide Left Sidebar'
         : 'Show Left Sidebar',
     icon: SidebarSimpleIcon,
+    shortcut: 'V S',
     requiresTarget: false,
     isActive: (ctx) => ctx.isLeftSidebarVisible,
     execute: () => {
@@ -489,6 +551,7 @@ export const Actions = {
     id: 'toggle-left-main-panel',
     label: 'Toggle Chat Panel',
     icon: ChatsTeardropIcon,
+    shortcut: 'V H',
     requiresTarget: false,
     isActive: (ctx) => ctx.isLeftMainPanelVisible,
     isEnabled: (ctx) =>
@@ -520,6 +583,7 @@ export const Actions = {
     id: 'toggle-changes-mode',
     label: 'Toggle Changes Panel',
     icon: GitDiffIcon,
+    shortcut: 'V C',
     requiresTarget: false,
     isVisible: (ctx) => !ctx.isCreateMode,
     isActive: (ctx) =>
@@ -543,6 +607,7 @@ export const Actions = {
     id: 'toggle-logs-mode',
     label: 'Toggle Logs Panel',
     icon: TerminalIcon,
+    shortcut: 'V L',
     requiresTarget: false,
     isVisible: (ctx) => !ctx.isCreateMode,
     isActive: (ctx) => ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS,
@@ -565,6 +630,7 @@ export const Actions = {
     id: 'toggle-preview-mode',
     label: 'Toggle Preview Panel',
     icon: DesktopIcon,
+    shortcut: 'V P',
     requiresTarget: false,
     isVisible: (ctx) => !ctx.isCreateMode,
     isActive: (ctx) =>
@@ -672,10 +738,11 @@ export const Actions = {
     },
   },
 
-  CopyPath: {
-    id: 'copy-path',
-    label: 'Copy path',
+  CopyWorkspacePath: {
+    id: 'copy-workspace-path',
+    label: 'Copy Workspace Path',
     icon: 'copy-icon' as const,
+    shortcut: 'Y P',
     requiresTarget: false,
     isVisible: (ctx) => ctx.hasWorkspace,
     execute: async (ctx) => {
@@ -688,6 +755,7 @@ export const Actions = {
     id: 'copy-raw-logs',
     label: 'Copy Raw Logs',
     icon: CopyIcon,
+    shortcut: 'Y L',
     requiresTarget: false,
     isVisible: (ctx) =>
       ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS &&
@@ -703,6 +771,7 @@ export const Actions = {
     id: 'toggle-dev-server',
     label: 'Dev Server',
     icon: PlayIcon,
+    shortcut: 'T D',
     requiresTarget: false,
     isVisible: (ctx) => ctx.hasWorkspace,
     isEnabled: (ctx) =>
@@ -754,6 +823,7 @@ export const Actions = {
     id: 'git-create-pr',
     label: 'Create Pull Request',
     icon: GitPullRequestIcon,
+    shortcut: 'X P',
     requiresTarget: 'git',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (ctx, workspaceId, repoId) => {
@@ -785,6 +855,7 @@ export const Actions = {
     id: 'git-merge',
     label: 'Merge',
     icon: GitMergeIcon,
+    shortcut: 'X M',
     requiresTarget: 'git',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (ctx, workspaceId, repoId) => {
@@ -860,6 +931,7 @@ export const Actions = {
     id: 'git-rebase',
     label: 'Rebase',
     icon: ArrowsClockwiseIcon,
+    shortcut: 'X R',
     requiresTarget: 'git',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (ctx, workspaceId, repoId) => {
@@ -922,6 +994,7 @@ export const Actions = {
     id: 'git-push',
     label: 'Push',
     icon: ArrowUpIcon,
+    shortcut: 'X U',
     requiresTarget: 'git',
     isVisible: (ctx) =>
       ctx.hasWorkspace &&
@@ -1000,6 +1073,7 @@ export const Actions = {
     id: 'run-setup-script',
     label: 'Run Setup Script',
     icon: TerminalIcon,
+    shortcut: 'R S',
     requiresTarget: true,
     isVisible: (ctx) => ctx.hasWorkspace,
     isEnabled: (ctx) => !ctx.isAttemptRunning,
@@ -1021,6 +1095,7 @@ export const Actions = {
     id: 'run-cleanup-script',
     label: 'Run Cleanup Script',
     icon: TerminalIcon,
+    shortcut: 'R C',
     requiresTarget: true,
     isVisible: (ctx) => ctx.hasWorkspace,
     isEnabled: (ctx) => !ctx.isAttemptRunning,
@@ -1080,7 +1155,7 @@ export type ContextBarItem = ActionDefinition | typeof ContextBarDivider;
 
 // ContextBar action groups define which actions appear in each section
 export const ContextBarActionGroups = {
-  primary: [Actions.OpenInIDE, Actions.CopyPath] as ActionDefinition[],
+  primary: [Actions.OpenInIDE, Actions.CopyWorkspacePath] as ActionDefinition[],
   secondary: [
     Actions.ToggleDevServer,
     Actions.TogglePreviewMode,

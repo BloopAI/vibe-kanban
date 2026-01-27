@@ -1,0 +1,141 @@
+---
+title: "Sessions"
+description: "Create and manage multiple conversation sessions within a workspace"
+---
+
+<Frame>
+<img src="/images/workspaces-sessions.png" alt="Session dropdown showing multiple sessions with New Session option" />
+</Frame>
+
+Sessions are conversation threads with coding agents within a workspace. Each session maintains its own conversation history, allowing you to work on different aspects of a task or try alternative approaches.
+
+## Understanding Sessions
+
+When you create a workspace, it starts with one session. You can create additional sessions to:
+
+- **Work on different parts** of a task simultaneously
+- **Try alternative approaches** without losing your original conversation
+- **Work around token limits** by starting fresh conversations
+- **Use different agents** for different aspects of the work
+
+<Info>
+All sessions within a workspace share the same repositories and git state. Changes made by one session are visible to others.
+</Info>
+
+## Creating a New Session
+
+<Steps>
+<Step title="Open the Session Dropdown">
+  Click the session dropdown (showing "Latest" or the session name) in the chat toolbar.
+</Step>
+
+<Step title="Click New Session">
+  Select **+ New Session** from the dropdown menu.
+
+  <Frame>
+  <img src="/images/workspaces-create-new-session.png" alt="Session dropdown showing New Session option and list of existing sessions" />
+  </Frame>
+</Step>
+
+<Step title="Start Your Conversation">
+  The new session opens with a fresh conversation. Describe what you want the agent to work on.
+
+  <Tip>
+  Give context about what's already been done in other sessions if relevant. The agent doesn't have access to conversations from other sessions.
+  </Tip>
+</Step>
+</Steps>
+
+## Switching Between Sessions
+
+To switch to a different session:
+
+1. Click the session dropdown in the chat toolbar
+2. Select the session you want to switch to
+
+The dropdown shows:
+- **Session name** - Based on the initial task or auto-generated
+- **Latest** indicator - Shows which session was most recently active
+
+<Note>
+Switching sessions doesn't interrupt any running agent processes. Each session's agent continues working independently.
+</Note>
+
+## Session States
+
+Sessions can be in different states:
+
+| State | Description |
+|-------|-------------|
+| **Running** | Agent is actively processing and making changes |
+| **Idle** | Waiting for your input |
+| **Needs Attention** | Agent is waiting for approval or has a question |
+
+The workspace sidebar shows the overall workspace state based on its sessions.
+
+## Managing Sessions
+
+### Renaming Sessions
+
+Sessions are automatically named based on the initial task description. Currently, session names cannot be manually changed.
+
+### Viewing Session History
+
+Each session maintains its complete conversation history. Scroll up in the conversation panel to view earlier messages and agent actions.
+
+### Stopping an Agent
+
+If an agent is running in the current session:
+
+1. Click the **Stop** button in the navbar, or
+2. Use the keyboard shortcut to stop execution
+
+<Warning>
+Stopping an agent may leave changes in an incomplete state. Review the changes panel to see what was modified.
+</Warning>
+
+## Multiple Agents in Sessions
+
+Different sessions can use different agents:
+
+1. Create a new session
+2. Select a different agent from the **Agent** dropdown before sending your message
+3. Each session remembers which agent it's using
+
+<Tip>
+Use specialised agents for different tasks - for example, one agent for backend work and another for frontend changes.
+</Tip>
+
+## Session Best Practices
+
+### When to Create New Sessions
+
+- **Task complexity** - Break complex tasks into smaller sessions
+- **Token limits** - Start fresh when conversations get long
+- **Different approaches** - Try alternative solutions without losing progress
+- **Parallel work** - Have agents work on independent parts simultaneously
+
+### Keeping Sessions Organised
+
+- **One focus per session** - Keep each session focused on a specific goal
+- **Use workspace notes** - Document which session is for what purpose
+- **Review before switching** - Check the changes panel before switching sessions
+
+## Resolving Conflicts Between Sessions
+
+When multiple sessions make changes to the same files:
+
+1. The changes panel shows all modifications across sessions
+2. Review changes carefully before committing
+3. Use the inline comment feature to mark areas needing attention
+
+<Note>
+Git handles most conflicts automatically. For complex conflicts, see [Resolving Rebase Conflicts](/core-features/resolving-rebase-conflicts).
+</Note>
+
+## Related Documentation
+
+- [Creating Workspaces](/workspaces/creating-workspaces) - Setting up new workspaces
+- [Interface Guide](/workspaces/interface) - Understanding the workspace layout
+- [Multi-Repo & Sessions](/workspaces/multi-repo-sessions) - Working with multiple repositories
+- [Command Bar](/workspaces/command-bar) - Quick actions and keyboard shortcuts

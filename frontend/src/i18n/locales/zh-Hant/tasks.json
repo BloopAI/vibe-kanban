@@ -692,5 +692,36 @@
     "statusSuccess": "成功完成",
     "statusFailed": "失敗，結束代碼 {{exitCode}}",
     "statusKilled": "程序已被終止"
+  },
+  "createWorkspaceFromPr": {
+    "title": "從 PR 建立工作區",
+    "description": "選擇一個開啟的拉取請求來建立工作區。將使用 PR 標題自動建立任務。",
+    "repositoryLabel": "儲存庫",
+    "remoteLabel": "遠端儲存庫",
+    "pullRequestLabel": "拉取請求",
+    "loadingRepositories": "正在載入儲存庫...",
+    "loadingRemotes": "正在載入遠端儲存庫...",
+    "noRepositoriesFound": "找不到儲存庫",
+    "loadingPullRequests": "正在載入拉取請求...",
+    "selectRepositoryFirst": "請先選擇儲存庫",
+    "noPullRequestsFound": "找不到開啟的拉取請求",
+    "runSetupScript": "執行設定腳本",
+    "creating": "建立中...",
+    "createWorkspace": "建立工作區",
+    "selectRepository": "選擇儲存庫",
+    "selectRemote": "選擇遠端儲存庫",
+    "selectPullRequest": "選擇拉取請求",
+    "searchPrsPlaceholder": "按編號或標題搜尋 PR...",
+    "noMatchingPrs": "沒有符合的拉取請求",
+    "default": "預設",
+    "openPrInBrowser": "在瀏覽器中開啟 PR",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLI 未安裝",
+      "unsupportedProvider": "不支援的 Git 提供者",
+      "failedToLoadPrs": "載入拉取請求失敗",
+      "prNotFound": "找不到拉取請求",
+      "repoNotInProject": "儲存庫不在任何專案中",
+      "failedToCreateWorkspace": "建立工作區失敗"
+    }
   }
 }

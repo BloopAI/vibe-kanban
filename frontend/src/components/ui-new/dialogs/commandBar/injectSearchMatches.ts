@@ -18,7 +18,7 @@ const INJECTABLE_PAGES: Array<{
   { id: 'workspaceActions', condition: (ctx) => ctx.hasWorkspace },
   { id: 'diffOptions', condition: () => true },
   { id: 'viewOptions', condition: () => true },
-  { id: 'gitActions', condition: (ctx) => ctx.hasGitRepos },
+  { id: 'repoActions', condition: (ctx) => ctx.hasGitRepos },
 ];
 
 export function injectSearchMatches(

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import {
   PlusIcon,
   ArrowLeftIcon,
@@ -18,6 +18,7 @@ import type { WorkspaceLayoutMode } from '../containers/WorkspacesSidebarContain
 
 interface WorkspacesSidebarProps {
   workspaces: Workspace[];
+  totalWorkspacesCount: number;
   archivedWorkspaces?: Workspace[];
   selectedWorkspaceId: string | null;
   onSelectWorkspace: (id: string) => void;
@@ -38,6 +39,10 @@ interface WorkspacesSidebarProps {
   layoutMode?: WorkspaceLayoutMode;
   /** Handler for toggling layout mode */
   onToggleLayoutMode?: () => void;
+  /** Handler to load more workspaces on scroll */
+  onLoadMore?: () => void;
+  /** Whether there are more workspaces to load */
+  hasMoreWorkspaces?: boolean;
 }
 
 function WorkspaceList({
@@ -77,6 +82,7 @@ function WorkspaceList({
 
 export function WorkspacesSidebar({
   workspaces,
+  totalWorkspacesCount,
   archivedWorkspaces = [],
   selectedWorkspaceId,
   onSelectWorkspace,
@@ -90,43 +96,39 @@ export function WorkspacesSidebar({
   onShowArchiveChange,
   layoutMode = 'flat',
   onToggleLayoutMode,
+  onLoadMore,
+  hasMoreWorkspaces = false,
 }: WorkspacesSidebarProps) {
   const { t } = useTranslation(['tasks', 'common']);
-  const searchLower = searchQuery.toLowerCase();
-  const isSearching = searchQuery.length > 0;
-  const DISPLAY_LIMIT = 10;
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const filteredWorkspaces = workspaces
-    .filter(
-      (workspace) =>
-        workspace.name.toLowerCase().includes(searchLower) ||
-        workspace.branch.toLowerCase().includes(searchLower)
-    )
-    .slice(0, isSearching ? undefined : DISPLAY_LIMIT);
+  // Handle scroll to load more
+  const handleScroll = () => {
+    if (!hasMoreWorkspaces || !onLoadMore) return;
 
-  const filteredArchivedWorkspaces = archivedWorkspaces
-    .filter(
-      (workspace) =>
-        workspace.name.toLowerCase().includes(searchLower) ||
-        workspace.branch.toLowerCase().includes(searchLower)
-    )
-    .slice(0, isSearching ? undefined : DISPLAY_LIMIT);
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    // Load more when scrolled within 100px of the bottom
+    if (scrollHeight - scrollTop - clientHeight < 100) {
+      onLoadMore();
+    }
+  };
 
   // Categorize workspaces for accordion layout
-  const { raisedHandWorkspaces, idleWorkspaces, runningWorkspaces } =
-    useMemo(() => {
-      return {
-        raisedHandWorkspaces: filteredWorkspaces.filter(
-          (ws) => ws.hasPendingApproval
-        ),
-        idleWorkspaces: filteredWorkspaces.filter(
-          (ws) => !ws.isRunning && !ws.hasPendingApproval
-        ),
-        runningWorkspaces: filteredWorkspaces.filter(
-          (ws) => ws.isRunning && !ws.hasPendingApproval
-        ),
-      };
-    }, [filteredWorkspaces]);
+  const { raisedHandWorkspaces, idleWorkspaces, runningWorkspaces } = useMemo(
+    () => ({
+      raisedHandWorkspaces: workspaces.filter((ws) => ws.hasPendingApproval),
+      idleWorkspaces: workspaces.filter(
+        (ws) => !ws.isRunning && !ws.hasPendingApproval
+      ),
+      runningWorkspaces: workspaces.filter(
+        (ws) => ws.isRunning && !ws.hasPendingApproval
+      ),
+    }),
+    [workspaces]
+  );
 
   const headerActions: SectionAction[] = [
     {
@@ -161,19 +163,23 @@ export function WorkspacesSidebar({
       </div>
 
       {/* Scrollable workspace list */}
-      <div className="flex-1 overflow-y-auto py-base">
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto py-base"
+      >
         {showArchive ? (
           /* Archived workspaces view */
           <div className="flex flex-col gap-base">
             <span className="text-sm font-medium text-low px-base">
               {t('common:workspaces.archived')}
             </span>
-            {filteredArchivedWorkspaces.length === 0 ? (
+            {archivedWorkspaces.length === 0 ? (
               <span className="text-sm text-low opacity-60 px-base">
                 {t('common:workspaces.noArchived')}
               </span>
             ) : (
-              filteredArchivedWorkspaces.map((workspace) => (
+              archivedWorkspaces.map((workspace) => (
                 <WorkspaceSummary
                   summary
                   key={workspace.id}
@@ -273,9 +279,12 @@ export function WorkspacesSidebar({
         ) : (
           /* Active workspaces flat view */
           <div className="flex flex-col gap-base">
-            <span className="text-sm font-medium text-low px-base">
-              {t('common:workspaces.active')}
-            </span>
+            <div className="flex items-center justify-between px-base">
+              <span className="text-sm font-medium text-low">
+                {t('common:workspaces.active')}
+              </span>
+              <span className="text-xs text-low">{totalWorkspacesCount}</span>
+            </div>
             {draftTitle && (
               <WorkspaceSummary
                 name={draftTitle}
@@ -284,7 +293,7 @@ export function WorkspacesSidebar({
                 onClick={onSelectCreate}
               />
             )}
-            {filteredWorkspaces.map((workspace) => (
+            {workspaces.map((workspace) => (
               <WorkspaceSummary
                 key={workspace.id}
                 name={workspace.name}

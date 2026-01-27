@@ -311,5 +311,18 @@
     "emptyTooltip": "L'utilisation du contexte apparaît après la prochaine réponse",
     "tooltip": "Contexte : {{percentage}}% · {{used}} / {{total}} tokens",
     "ariaLabel": "Utilisation du contexte : {{percentage}}%"
+  },
+  "shortcuts": {
+    "title": "Raccourcis Clavier",
+    "inWorkspace": "(dans l'espace de travail)",
+    "sequentialHint": "Raccourcis séquentiels : Appuyez sur la première touche, puis sur la seconde en 500ms.",
+    "configurableHint": "Configurable dans Paramètres → Général → Saisie de Message"
+  },
+  "typeahead": {
+    "tags": "Tags",
+    "files": "Fichiers",
+    "commands": "Commandes",
+    "noTagsOrFiles": "Aucun tag ou fichier trouvé",
+    "noCommands": "Aucune commande disponible pour cet agent."
   }
 }

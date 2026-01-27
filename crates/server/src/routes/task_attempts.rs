@@ -1792,6 +1792,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let task_attempts_router = Router::new()
         .route("/", get(get_task_attempts).post(create_task_attempt))
+        .route("/from-pr", post(pr::create_workspace_from_pr))
         .route("/count", get(get_workspace_count))
         .route("/stream/ws", get(stream_workspaces_ws))
         .route("/summary", post(workspace_summary::get_workspace_summaries))

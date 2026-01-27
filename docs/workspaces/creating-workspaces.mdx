@@ -1,0 +1,174 @@
+---
+title: "Creating Workspaces"
+description: "Learn how to create and configure workspaces for your development tasks"
+---
+
+<Frame>
+<img src="/images/workspaces-create-new.png" alt="Create workspace view showing project selection, repository list, and task input" />
+</Frame>
+
+A workspace is your task execution environment where you work with coding agents. Each workspace can include one or more repositories and supports multiple conversation sessions.
+
+## Creating a New Workspace
+
+<Steps>
+<Step title="Open the Create View">
+  Click the **+** button at the top of the workspace sidebar, or use the command bar (`Cmd/Ctrl + K`) and select **New Workspace**.
+
+  <Frame>
+  <img src="/images/workspaces-sidebar-create-button.png" alt="Workspace sidebar showing the plus button for creating new workspaces" />
+  </Frame>
+</Step>
+
+<Step title="Select a Project">
+  Choose a project from the **Project** dropdown in the right panel. Projects group related repositories together.
+
+  <Frame>
+  <img src="/images/workspaces-select-project.png" alt="Project dropdown showing selected project" />
+  </Frame>
+
+  <Note>
+  If you haven't created a project yet, see [Creating a New Project](#creating-a-new-project) below.
+  </Note>
+</Step>
+
+<Step title="Add Repositories">
+  <Frame>
+  <img src="/images/workspaces-add-repo.png" alt="Repository selection showing selected repo with branch dropdown and list of available repositories" />
+  </Frame>
+
+  Select which repositories to include in your workspace:
+
+  - **Recent repositories** - Click any repo from the list to add it
+  - **Browse repos on disk** - Find repositories not in the recent list
+  - **Create new repo on disk** - Initialise a new git repository
+
+  <Tip>
+  You can add multiple repositories to a single workspace if your task spans multiple codebases. Each repository maintains independent git state.
+  </Tip>
+</Step>
+
+<Step title="Set Target Branches">
+  For each selected repository, set the **target branch** - this is the branch your changes will eventually be merged into (e.g., `main` or `develop`).
+
+  Click the branch dropdown next to each repository to change the target branch.
+
+  <Info>
+  The workspace will create a new working branch from your target branch. Your changes won't affect the target branch until you create a pull request.
+  </Info>
+</Step>
+
+<Step title="Describe Your Task">
+  In the chat input at the bottom, describe what you want to accomplish. Be specific about:
+
+  - What feature or fix you need
+  - Any constraints or requirements
+  - Files or areas of the codebase to focus on
+
+  <Tip>
+  Clear, detailed task descriptions help the agent understand your requirements and produce better results.
+  </Tip>
+</Step>
+
+<Step title="Select an Agent">
+  Choose which coding agent to use from the **Agent** dropdown. Available agents depend on your configuration.
+
+  <Note>
+  See [Agent Configurations](/configuration-customisation/agent-configurations) for details on setting up different agents.
+  </Note>
+</Step>
+
+<Step title="Create the Workspace">
+  Click **Create** to start the workspace. The agent will begin working on your task immediately.
+</Step>
+</Steps>
+
+## Creating a New Project
+
+If you need to create a new project before setting up your workspace:
+
+<Steps>
+<Step title="Open the Project Dropdown">
+  In the create workspace view, click the **Project** dropdown.
+
+  <Frame>
+  <img src="/images/workspaces-project-dropdown.png" alt="Project dropdown showing Create new project option and list of existing projects" />
+  </Frame>
+</Step>
+
+<Step title="Select Create New Project">
+  Click **+ Create new project** at the top of the dropdown list.
+</Step>
+
+<Step title="Enter Project Details">
+  <Frame>
+  <img src="/images/workspaces-create-project.png" alt="Create Project dialog with name field" />
+  </Frame>
+
+  Enter a name for your project and click **Create**.
+</Step>
+
+<Step title="Continue with Workspace Creation">
+  Your new project is automatically selected. Continue adding repositories and configuring your workspace.
+</Step>
+</Steps>
+
+<Note>
+After creating a project, you can configure additional settings like setup scripts, dev server scripts, and cleanup scripts in the project settings. See [Creating Projects](/core-features/creating-projects) for more details.
+</Note>
+
+## Workspace Settings
+
+Once a workspace is created, you can configure additional settings:
+
+### Working Branch
+
+The workspace automatically creates a working branch for your changes. You can view and change this in the **Git** section of the details sidebar.
+
+### Dev Server
+
+If your project has a dev server script configured, you can start it using:
+- The **Play** icon (<Icon icon="play" />) in the context bar
+- The command bar: `Cmd/Ctrl + K` → **Start Dev Server**
+
+<Note>
+Configure dev server scripts in your project settings. See [Testing Your Application](/core-features/testing-your-application) for setup instructions.
+</Note>
+
+### Workspace Notes
+
+Use the **Notes** section in the details sidebar to document important information about the workspace - requirements, decisions, or anything you want to remember.
+
+## Duplicating a Workspace
+
+To create a copy of an existing workspace:
+
+1. Open the command bar (`Cmd/Ctrl + K`)
+2. Go to **Workspace Actions**
+3. Select **Duplicate Workspace**
+
+The duplicate includes the same repositories and branch configuration but starts with a fresh conversation.
+
+## Archiving Workspaces
+
+When you're done with a workspace, archive it to keep your workspace list clean:
+
+**From the navbar:**
+- Click the **Archive** button (<Icon icon="box-archive" />) in the top left of the navbar
+
+**From the command bar:**
+1. Press `Cmd/Ctrl + K`
+2. Go to **Workspace Actions** → **Archive**
+
+Archived workspaces can be viewed by clicking **View Archive** at the bottom of the sidebar.
+
+<Tip>
+Use the **Pin** feature to keep important active workspaces at the top of your list.
+</Tip>
+
+## Related Documentation
+
+- [Interface Guide](/workspaces/interface) - Learn about the workspace layout and panels
+- [Multi-Repo & Sessions](/workspaces/multi-repo-sessions) - Working with multiple repositories
+- [Sessions](/workspaces/sessions) - Creating and managing conversation sessions
+- [Command Bar](/workspaces/command-bar) - Quick actions and keyboard shortcuts
