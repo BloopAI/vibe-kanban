@@ -1,4 +1,12 @@
-import { CaretLeftIcon, CopyIcon, FolderIcon } from '@phosphor-icons/react';
+import {
+  CaretLeftIcon,
+  CopyIcon,
+  FolderIcon,
+  ArrowFatLineUpIcon,
+  ArrowUpIcon,
+  MinusIcon,
+  ArrowDownIcon,
+} from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
   Command,
@@ -134,6 +142,31 @@ export function CommandBar({
                       style={{ backgroundColor: `hsl(${item.status.color})` }}
                     />
                     <span>{item.status.name}</span>
+                  </CommandItem>
+                );
+              } else if (item.type === 'priority') {
+                const priorityConfig = {
+                  urgent: {
+                    icon: ArrowFatLineUpIcon,
+                    colorClass: 'text-error',
+                  },
+                  high: { icon: ArrowUpIcon, colorClass: 'text-brand' },
+                  medium: { icon: MinusIcon, colorClass: 'text-low' },
+                  low: { icon: ArrowDownIcon, colorClass: 'text-success' },
+                } as const;
+                const config = priorityConfig[item.priority.id];
+                const IconComponent = config.icon;
+                return (
+                  <CommandItem
+                    key={item.priority.id}
+                    value={`${item.priority.id} ${item.priority.name}`}
+                    onSelect={() => onSelect(item)}
+                  >
+                    <IconComponent
+                      className={`h-4 w-4 ${config.colorClass}`}
+                      weight="bold"
+                    />
+                    <span>{item.priority.name}</span>
                   </CommandItem>
                 );
               } else if (item.type === 'action') {
