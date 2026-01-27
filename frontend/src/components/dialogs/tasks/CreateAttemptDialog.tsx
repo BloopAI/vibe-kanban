@@ -22,6 +22,7 @@ import {
 import { useTaskAttemptsWithSessions } from '@/hooks/useTaskAttempts';
 import { useProject } from '@/contexts/ProjectContext';
 import { useUserSystem } from '@/components/ConfigProvider';
+import { useTaskLabels } from '@/hooks/useLabels';
 import { paths } from '@/lib/paths';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
@@ -70,6 +71,9 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
     const { data: projectRepos = [], isLoading: isLoadingRepos } =
       useProjectRepos(projectId, { enabled: modal.visible });
 
+    // Get task labels to check for executor
+    const { data: taskLabels = [] } = useTaskLabels(taskId);
+
     const {
       configs: repoBranchConfigs,
       isLoading: isLoadingBranches,
@@ -99,6 +103,7 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
     }, [modal.visible, resetBranchSelection]);
 
     const defaultProfile: ExecutorProfileId | null = useMemo(() => {
+      // Priority 1: Use last attempt's executor if available
       if (latestAttempt?.session?.executor) {
         const lastExec = latestAttempt.session.executor as BaseCodingAgent;
         // If the last attempt used the same executor as the user's current preference,
@@ -115,8 +120,19 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
           variant,
         };
       }
+
+      // Priority 2: Use label's executor if task has a label with executor
+      const labelWithExecutor = taskLabels.find((label) => label.executor);
+      if (labelWithExecutor?.executor) {
+        return {
+          executor: labelWithExecutor.executor as BaseCodingAgent,
+          variant: null,
+        };
+      }
+
+      // Priority 3: Use user's default config
       return config?.executor_profile ?? null;
-    }, [latestAttempt?.session?.executor, config?.executor_profile]);
+    }, [latestAttempt?.session?.executor, config?.executor_profile, taskLabels]);
 
     const effectiveProfile = userSelectedProfile ?? defaultProfile;
 

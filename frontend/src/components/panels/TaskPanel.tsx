@@ -9,10 +9,13 @@ import type { TaskWithAttemptStatus } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { NewCardContent } from '../ui/new-card';
 import { Button } from '../ui/button';
-import { PlusIcon } from 'lucide-react';
+import { PlusIcon, Link, Tag, Cpu } from 'lucide-react';
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { DataTable, type ColumnDef } from '@/components/ui/table';
+import { useTaskLabels, useTaskDependencies } from '@/hooks/useLabels';
+import { useProjectTasks } from '@/hooks/useProjectTasks';
+import { Badge } from '@/components/ui/badge';
 
 interface TaskPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -32,6 +35,19 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
 
   const { data: parentAttempt, isLoading: isParentLoading } =
     useTaskAttemptWithSession(task?.parent_workspace_id || undefined);
+
+  // Labels and dependencies
+  const { data: labels = [] } = useTaskLabels(task?.id);
+  const { data: dependencies = [] } = useTaskDependencies(task?.id);
+  const { tasksById } = useProjectTasks(projectId || '');
+
+  // Get labels with executor (execution models)
+  const executorLabels = labels.filter((label) => label.executor);
+
+  // Get dependency task details
+  const dependencyTasks = dependencies
+    .map((depId) => tasksById[depId])
+    .filter(Boolean);
 
   const formatTimeAgo = (iso: string) => {
     const d = new Date(iso);
@@ -107,6 +123,74 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
             <WYSIWYGEditor value={titleContent} disabled />
             {descriptionContent && (
               <WYSIWYGEditor value={descriptionContent} disabled />
+            )}
+          </div>
+
+          {/* Labels, Dependencies, Execution Model Section */}
+          <div className="mt-4 space-y-3 flex-shrink-0">
+            {/* Labels */}
+            {labels.length > 0 && (
+              <div className="flex items-start gap-2">
+                <Tag className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <div className="flex flex-wrap gap-1">
+                  {labels.map((label) => (
+                    <Badge
+                      key={label.id}
+                      variant="outline"
+                      className="text-xs"
+                      style={{
+                        backgroundColor: label.color + '20',
+                        borderColor: label.color,
+                        color: label.color,
+                      }}
+                    >
+                      {label.name}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Dependencies */}
+            {dependencyTasks.length > 0 && (
+              <div className="flex items-start gap-2">
+                <Link className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">
+                    {t('taskPanel.dependsOn', { count: dependencyTasks.length })}
+                  </span>
+                  {dependencyTasks.map((depTask) => (
+                    <span
+                      key={depTask.id}
+                      className="text-sm text-foreground cursor-pointer hover:underline"
+                      onClick={() => {
+                        if (projectId) {
+                          navigate(paths.task(projectId, depTask.id));
+                        }
+                      }}
+                    >
+                      {depTask.title}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Execution Model */}
+            {executorLabels.length > 0 && (
+              <div className="flex items-start gap-2">
+                <Cpu className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">
+                    {t('taskPanel.executionModel')}
+                  </span>
+                  {executorLabels.map((label) => (
+                    <span key={label.id} className="text-sm text-foreground">
+                      {label.executor}
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 

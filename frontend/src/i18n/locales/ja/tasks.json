@@ -440,11 +440,13 @@
   },
   "navigateToParent": "親タスクの試行に移動",
   "taskPanel": {
-    "attemptsCount": "Attempts ({{count}})",
-    "errorLoadingAttempts": "Failed to load attempts",
-    "loadingAttempts": "Loading attempts...",
-    "noAttempts": "No attempts yet",
-    "noTaskSelected": "No task selected"
+    "attemptsCount": "試行 ({{count}})",
+    "errorLoadingAttempts": "試行の読み込みに失敗しました",
+    "loadingAttempts": "試行を読み込み中...",
+    "noAttempts": "試行がありません",
+    "noTaskSelected": "タスクが選択されていません",
+    "dependsOn": "依存タスク",
+    "executionModel": "実行モデル"
   },
   "todos": {
     "title_one": "Todos ({{count}})",

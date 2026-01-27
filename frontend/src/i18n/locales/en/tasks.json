@@ -169,7 +169,9 @@
     "loadingAttempts": "Loading attempts...",
     "errorLoadingAttempts": "Failed to load attempts",
     "attemptsCount": "Attempts ({{count}})",
-    "noAttempts": "No attempts yet"
+    "noAttempts": "No attempts yet",
+    "dependsOn": "Depends on",
+    "executionModel": "Execution Model"
   },
   "pmDocs": {
     "title": "PM Chat",

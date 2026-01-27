@@ -28,6 +28,10 @@ export function useTaskMutations(projectId?: string) {
     mutationFn: (data: CreateTask) => tasksApi.create(data),
     onSuccess: (createdTask: Task) => {
       invalidateQueries();
+      // Invalidate task labels cache for the new task
+      queryClient.invalidateQueries({
+        queryKey: ['task-labels', createdTask.id],
+      });
       // Invalidate parent's relationships cache if this is a subtask
       if (createdTask.parent_workspace_id) {
         queryClient.invalidateQueries({
@@ -50,6 +54,10 @@ export function useTaskMutations(projectId?: string) {
       tasksApi.createAndStart(data),
     onSuccess: (createdTask: TaskWithAttemptStatus) => {
       invalidateQueries();
+      // Invalidate task labels cache for the new task
+      queryClient.invalidateQueries({
+        queryKey: ['task-labels', createdTask.id],
+      });
       // Invalidate parent's relationships cache if this is a subtask
       if (createdTask.parent_workspace_id) {
         queryClient.invalidateQueries({
@@ -72,6 +80,10 @@ export function useTaskMutations(projectId?: string) {
       tasksApi.update(taskId, data),
     onSuccess: (updatedTask: Task) => {
       invalidateQueries(updatedTask.id);
+      // Invalidate task labels cache when task is updated (labels may have changed)
+      queryClient.invalidateQueries({
+        queryKey: ['task-labels', updatedTask.id],
+      });
     },
     onError: (err) => {
       console.error('Failed to update task:', err);
