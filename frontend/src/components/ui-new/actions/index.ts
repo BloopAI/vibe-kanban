@@ -105,6 +105,13 @@ export interface ActionExecutorContext {
   logsPanelContent: LogsPanelContent | null;
   // Command bar navigation
   openStatusSelection: (projectId: string, issueIds: string[]) => Promise<void>;
+  // Kanban issue panel
+  openKanbanIssuePanel: (
+    issueId: string | null,
+    createMode?: boolean,
+    defaultStatusId?: string | null
+  ) => void;
+  setKanbanCreateDefaultStatusId: (statusId: string | null) => void;
 }
 
 // Context for evaluating action visibility and state conditions
@@ -147,6 +154,7 @@ export interface ActionVisibilityContext {
 
   // Kanban state
   hasSelectedKanbanIssue: boolean;
+  isCreatingIssue: boolean;
 }
 
 // Base properties shared by all actions
@@ -1149,6 +1157,20 @@ export const Actions = {
   },
 
   // === Issue Actions ===
+  CreateIssue: {
+    id: 'create-issue',
+    label: 'Create Issue',
+    icon: PlusIcon,
+    shortcut: 'I C',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban' && !ctx.isCreatingIssue,
+    execute: (ctx) => {
+      // Opens the issue panel in create mode without a pre-selected status
+      // The status will default based on the current view/tab
+      ctx.openKanbanIssuePanel(null, true, null);
+    },
+  } satisfies GlobalActionDefinition,
+
   ChangeIssueStatus: {
     id: 'change-issue-status',
     label: 'Change Status',
@@ -1161,6 +1183,30 @@ export const Actions = {
       await ctx.openStatusSelection(projectId, issueIds);
     },
   } satisfies IssueActionDefinition,
+
+  ChangeNewIssueStatus: {
+    id: 'change-new-issue-status',
+    label: 'Change Status',
+    icon: ArrowsLeftRightIcon,
+    shortcut: 'I S',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban' && ctx.isCreatingIssue,
+    execute: async () => {
+      // Opens status selection for the issue being created
+      // The CommandBarDialog will handle this specially for create mode
+      // ProjectId will be resolved from route params inside the dialog
+      const { CommandBarDialog } = await import(
+        '@/components/ui-new/dialogs/CommandBarDialog'
+      );
+      await CommandBarDialog.show({
+        pendingStatusSelection: {
+          projectId: '',
+          issueIds: [],
+          isCreateMode: true,
+        },
+      });
+    },
+  } satisfies GlobalActionDefinition,
 } as const satisfies Record<string, ActionDefinition>;
 
 // Helper to resolve dynamic label
