@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import type { ProjectStatus } from 'shared/remote-types';
 import type { KanbanViewMode } from '@/stores/useUiPreferencesStore';
 import {
@@ -24,6 +25,7 @@ export function ViewNavTabs({
   onStatusSelect,
   className,
 }: ViewNavTabsProps) {
+  const { t } = useTranslation('common');
   const isActiveTab = activeView === 'kanban';
   const isAllTab = activeView === 'list' && selectedStatusId === null;
 
@@ -37,7 +39,7 @@ export function ViewNavTabs({
           onStatusSelect(null);
         }}
       >
-        Active
+        {t('kanban.viewTabs.active')}
       </ButtonGroupItem>
 
       {/* All (List) tab */}
@@ -48,7 +50,7 @@ export function ViewNavTabs({
           onStatusSelect(null);
         }}
       >
-        All
+        {t('kanban.viewTabs.all')}
       </ButtonGroupItem>
 
       {/* Hidden status tabs */}

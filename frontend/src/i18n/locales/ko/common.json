@@ -347,7 +347,11 @@
     "enterCommentPlaceholder": "댓글을 입력하세요...",
     "subIssues": "하위 이슈",
     "noSubIssues": "하위 이슈 없음",
-    "parentIssue": "상위"
+    "parentIssue": "상위",
+    "viewTabs": {
+      "active": "활성",
+      "all": "전체"
+    }
   },
   "syncError": {
     "networkErrors": "네트워크 오류",
