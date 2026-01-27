@@ -166,7 +166,7 @@ pub async fn compute_workspace_diff_stats(
     deployment: &DeploymentImpl,
     workspace: &Workspace,
 ) -> Option<DiffStats> {
-    let stats = services::services::remote_sync::compute_diff_stats(
+    let stats = services::services::diff_stream::compute_diff_stats(
         &deployment.db().pool,
         deployment.git(),
         workspace,

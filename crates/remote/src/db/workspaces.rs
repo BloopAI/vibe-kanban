@@ -146,6 +146,19 @@ impl WorkspaceRepository {
         Ok(record)
     }
 
+    pub async fn exists_by_local_id(
+        pool: &PgPool,
+        local_workspace_id: Uuid,
+    ) -> Result<bool, WorkspaceError> {
+        let exists = sqlx::query_scalar!(
+            r#"SELECT EXISTS(SELECT 1 FROM workspaces WHERE local_workspace_id = $1) AS "exists!""#,
+            local_workspace_id
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(exists)
+    }
+
     pub async fn delete_by_local_id(
         pool: &PgPool,
         local_workspace_id: Uuid,

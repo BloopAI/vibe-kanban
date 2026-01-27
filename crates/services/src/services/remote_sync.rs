@@ -1,88 +1,38 @@
-use std::path::PathBuf;
 
-use db::models::{workspace::Workspace, workspace_repo::WorkspaceRepo};
-use git::{DiffTarget, GitService};
-use sqlx::SqlitePool;
 use tracing::{debug, error};
+use utils::api::pull_requests::PullRequestStatus;
 use uuid::Uuid;
 
-use super::remote_client::{RemoteClient, RemoteClientError};
-
-#[derive(Debug, Clone, Default)]
-pub struct DiffStats {
-    pub files_changed: usize,
-    pub lines_added: usize,
-    pub lines_removed: usize,
-}
-
-/// Computes diff stats for a workspace by comparing against target branches.
-pub async fn compute_diff_stats(
-    pool: &SqlitePool,
-    git: &GitService,
-    workspace: &Workspace,
-) -> Option<DiffStats> {
-    let container_ref = workspace.container_ref.as_ref()?;
-
-    let workspace_repos =
-        WorkspaceRepo::find_repos_with_target_branch_for_workspace(pool, workspace.id)
-            .await
-            .ok()?;
-
-    let mut stats = DiffStats::default();
-
-    for repo_with_branch in workspace_repos {
-        let worktree_path = PathBuf::from(container_ref).join(&repo_with_branch.repo.name);
-        let repo_path = repo_with_branch.repo.path.clone();
-
-        let base_commit_result = tokio::task::spawn_blocking({
-            let git = git.clone();
-            let repo_path = repo_path.clone();
-            let workspace_branch = workspace.branch.clone();
-            let target_branch = repo_with_branch.target_branch.clone();
-            move || git.get_base_commit(&repo_path, &workspace_branch, &target_branch)
-        })
-        .await;
-
-        let base_commit = match base_commit_result {
-            Ok(Ok(commit)) => commit,
-            _ => continue,
-        };
-
-        let diffs_result = tokio::task::spawn_blocking({
-            let git = git.clone();
-            let worktree = worktree_path.clone();
-            move || {
-                git.get_diffs(
-                    DiffTarget::Worktree {
-                        worktree_path: &worktree,
-                        base_commit: &base_commit,
-                    },
-                    None,
-                )
-            }
-        })
-        .await;
-
-        if let Ok(Ok(diffs)) = diffs_result {
-            for diff in diffs {
-                stats.files_changed += 1;
-                stats.lines_added += diff.additions.unwrap_or(0);
-                stats.lines_removed += diff.deletions.unwrap_or(0);
-            }
-        }
-    }
-
-    Some(stats)
-}
+use super::{diff_stream::DiffStats, remote_client::RemoteClient};
 
 /// Syncs workspace data to the remote server.
-/// If the workspace doesn't exist on remote (404), logs debug and returns.
+/// First checks if the workspace exists on remote, then updates if it does.
 pub async fn sync_workspace_to_remote(
     client: &RemoteClient,
     workspace_id: Uuid,
     archived: Option<bool>,
     stats: Option<&DiffStats>,
 ) {
+    // First check if workspace exists on remote
+    match client.workspace_exists(workspace_id).await {
+        Ok(false) => {
+            debug!(
+                "Workspace {} not found on remote, skipping sync",
+                workspace_id
+            );
+            return;
+        }
+        Err(e) => {
+            error!(
+                "Failed to check workspace {} existence on remote: {}",
+                workspace_id, e
+            );
+            return;
+        }
+        Ok(true) => {}
+    }
+
+    // Workspace exists, proceed with update
     match client
         .update_workspace(
             workspace_id,
@@ -96,14 +46,61 @@ pub async fn sync_workspace_to_remote(
         Ok(()) => {
             debug!("Synced workspace {} to remote", workspace_id);
         }
-        Err(RemoteClientError::Http { status: 404, .. }) => {
-            debug!(
-                "Workspace {} not found on remote, skipping sync",
-                workspace_id
-            );
-        }
         Err(e) => {
             error!("Failed to sync workspace {} to remote: {}", workspace_id, e);
+        }
+    }
+}
+
+/// Syncs PR data to the remote server.
+/// First checks if the workspace exists on remote, then upserts the PR if it does.
+pub async fn sync_pr_to_remote(
+    client: &RemoteClient,
+    url: String,
+    number: i32,
+    status: PullRequestStatus,
+    merged_at: Option<chrono::DateTime<chrono::Utc>>,
+    merge_commit_sha: Option<String>,
+    target_branch_name: String,
+    workspace_id: Uuid,
+) {
+    // First check if workspace exists on remote
+    match client.workspace_exists(workspace_id).await {
+        Ok(false) => {
+            debug!(
+                "PR #{} workspace {} not found on remote, skipping sync",
+                number, workspace_id
+            );
+            return;
+        }
+        Err(e) => {
+            error!(
+                "Failed to check workspace {} existence on remote: {}",
+                workspace_id, e
+            );
+            return;
+        }
+        Ok(true) => {}
+    }
+
+    // Workspace exists, proceed with PR upsert
+    match client
+        .upsert_pull_request(
+            url,
+            number,
+            status,
+            merged_at,
+            merge_commit_sha,
+            target_branch_name,
+            workspace_id,
+        )
+        .await
+    {
+        Ok(()) => {
+            debug!("Synced PR #{} to remote", number);
+        }
+        Err(e) => {
+            error!("Failed to sync PR #{} to remote: {}", number, e);
         }
     }
 }

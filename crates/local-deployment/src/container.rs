@@ -611,22 +611,22 @@ impl LocalContainerService {
                 if matches!(
                     &ctx.execution_process.run_reason,
                     ExecutionProcessRunReason::CodingAgent
-                )
-                    && let Some(client) = &container.remote_client {
-                        let stats = remote_sync::compute_diff_stats(
-                            &container.db.pool,
-                            &container.git,
-                            &ctx.workspace,
-                        )
-                        .await;
-                        remote_sync::sync_workspace_to_remote(
-                            client,
-                            ctx.workspace.id,
-                            Some(ctx.workspace.archived),
-                            stats.as_ref(),
-                        )
-                        .await;
-                    }
+                ) && let Some(client) = &container.remote_client
+                {
+                    let stats = diff_stream::compute_diff_stats(
+                        &container.db.pool,
+                        &container.git,
+                        &ctx.workspace,
+                    )
+                    .await;
+                    remote_sync::sync_workspace_to_remote(
+                        client,
+                        ctx.workspace.id,
+                        Some(ctx.workspace.archived),
+                        stats.as_ref(),
+                    )
+                    .await;
+                }
             }
 
             // Now that commit/next-action/finalization steps for this process are complete,

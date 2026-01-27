@@ -207,7 +207,12 @@ async fn upsert_pull_request(
         })?;
 
     let pr = if let Some(existing) = existing_pr {
-        // Update existing PR
+        if existing.issue_id != issue_id {
+            return Err(ErrorResponse::new(
+                StatusCode::FORBIDDEN,
+                "PR URL belongs to a different issue",
+            ));
+        }
         PullRequestRepository::update(
             state.pool(),
             existing.id,

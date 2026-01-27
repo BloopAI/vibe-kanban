@@ -19,7 +19,8 @@ use utils::api::pull_requests::PullRequestStatus;
 use crate::services::{
     analytics::AnalyticsContext,
     git_host::{self, GitHostError, GitHostProvider},
-    remote_client::{RemoteClient, RemoteClientError},
+    remote_client::RemoteClient,
+    remote_sync,
 };
 
 #[derive(Debug, Error)]
@@ -179,30 +180,16 @@ impl PrMonitorService {
             None
         };
 
-        match client
-            .upsert_pull_request(
-                pr_merge.pr_info.url.clone(),
-                pr_merge.pr_info.number as i32,
-                pr_status,
-                merged_at,
-                merge_commit_sha,
-                pr_merge.target_branch_name.clone(),
-                pr_merge.workspace_id,
-            )
-            .await
-        {
-            Ok(()) => {
-                debug!("Synced PR #{} to remote", pr_merge.pr_info.number);
-            }
-            Err(RemoteClientError::Http { status: 404, .. }) => {
-                info!(
-                    "PR #{} workspace {} not found on remote, skipping sync",
-                    pr_merge.pr_info.number, pr_merge.workspace_id
-                );
-            }
-            Err(e) => {
-                error!("Failed to sync PR to remote: {}", e);
-            }
-        }
+        remote_sync::sync_pr_to_remote(
+            client,
+            pr_merge.pr_info.url.clone(),
+            pr_merge.pr_info.number as i32,
+            pr_status,
+            merged_at,
+            merge_commit_sha,
+            pr_merge.target_branch_name.clone(),
+            pr_merge.workspace_id,
+        )
+        .await;
     }
 }

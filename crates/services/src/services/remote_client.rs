@@ -547,10 +547,30 @@ impl RemoteClient {
         local_workspace_id: Uuid,
     ) -> Result<(), RemoteClientError> {
         self.delete_authed_with_body(
-            "/workspaces",
+            "/v1/workspaces",
             &DeleteWorkspaceRequest { local_workspace_id },
         )
         .await
+    }
+
+    /// Checks if a workspace exists on the remote server.
+    pub async fn workspace_exists(
+        &self,
+        local_workspace_id: Uuid,
+    ) -> Result<bool, RemoteClientError> {
+        match self
+            .send(
+                reqwest::Method::HEAD,
+                &format!("/v1/workspaces/exists/{local_workspace_id}"),
+                true,
+                None::<&()>,
+            )
+            .await
+        {
+            Ok(_) => Ok(true),
+            Err(RemoteClientError::Http { status: 404, .. }) => Ok(false),
+            Err(e) => Err(e),
+        }
     }
 
     /// Updates a workspace on the remote server.
@@ -564,7 +584,7 @@ impl RemoteClient {
     ) -> Result<(), RemoteClientError> {
         self.send(
             reqwest::Method::PATCH,
-            "/workspaces",
+            "/v1/workspaces",
             true,
             Some(&UpdateWorkspaceRequest {
                 local_workspace_id,
@@ -587,7 +607,7 @@ impl RemoteClient {
     ) -> Result<(), RemoteClientError> {
         self.send(
             reqwest::Method::POST,
-            "/workspaces",
+            "/v1/workspaces",
             true,
             Some(&CreateWorkspaceRequest {
                 project_id,

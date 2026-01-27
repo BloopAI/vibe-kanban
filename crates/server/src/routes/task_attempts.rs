@@ -46,7 +46,7 @@ use git::{ConflictOp, GitCliError, GitServiceError};
 use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
-    container::ContainerService, file_search::SearchQuery, remote_sync,
+    container::ContainerService, diff_stream, file_search::SearchQuery, remote_sync,
     workspace_manager::WorkspaceManager,
 };
 use sqlx::Error as SqlxError;
@@ -163,20 +163,16 @@ pub async fn update_workspace(
 
     // Sync to remote if archived status changed
     if request.archived.is_some()
-        && let Ok(client) = deployment.remote_client() {
-            let ws = updated.clone();
-            let stats =
-                remote_sync::compute_diff_stats(&deployment.db().pool, deployment.git(), &ws).await;
-            tokio::spawn(async move {
-                remote_sync::sync_workspace_to_remote(
-                    &client,
-                    ws.id,
-                    request.archived,
-                    stats.as_ref(),
-                )
+        && let Ok(client) = deployment.remote_client()
+    {
+        let ws = updated.clone();
+        let stats =
+            diff_stream::compute_diff_stats(&deployment.db().pool, deployment.git(), &ws).await;
+        tokio::spawn(async move {
+            remote_sync::sync_workspace_to_remote(&client, ws.id, request.archived, stats.as_ref())
                 .await;
-            });
-        }
+        });
+    }
 
     Ok(ResponseJson(ApiResponse::success(updated)))
 }
