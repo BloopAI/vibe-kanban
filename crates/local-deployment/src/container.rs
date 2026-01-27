@@ -58,7 +58,7 @@ use utils::{
     text::{git_branch_id, short_uuid, truncate_to_char_boundary},
 };
 use uuid::Uuid;
-use workspace_git::{GitCli, GitService};
+use workspace_git::GitService;
 
 use crate::{command, copy};
 
@@ -280,17 +280,18 @@ impl LocalContainerService {
         workspace_root: &Path,
         repos: &[Repo],
     ) -> Result<Vec<(Repo, PathBuf)>, ContainerError> {
-        let git = GitCli::new();
+        let git = GitService::new();
         let mut repos_with_changes = Vec::new();
 
         for repo in repos {
             let worktree_path = workspace_root.join(&repo.name);
 
-            match git.has_changes(&worktree_path) {
-                Ok(true) => {
+            match git.is_worktree_clean(&worktree_path) {
+                Ok(false) => {
+                    // false = dirty = has changes
                     repos_with_changes.push((repo.clone(), worktree_path));
                 }
-                Ok(false) => {
+                Ok(true) => {
                     tracing::debug!("No changes in repo '{}'", repo.name);
                 }
                 Err(e) => {
