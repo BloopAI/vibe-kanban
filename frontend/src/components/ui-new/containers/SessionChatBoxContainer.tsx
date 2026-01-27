@@ -745,7 +745,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         conflictedFilesCount,
       }}
       error={sendError}
-      agent={latestProfileId?.executor}
+      agent={effectiveExecutor}
       todos={todos}
       inProgressTodo={inProgressTodo}
       executor={
