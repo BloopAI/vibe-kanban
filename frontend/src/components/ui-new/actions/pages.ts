@@ -1,4 +1,5 @@
 import type { Icon } from '@phosphor-icons/react';
+import type { IssuePriority } from 'shared/remote-types';
 import { type ActionDefinition, type ActionVisibilityContext } from './index';
 import { Actions } from './index';
 import { RIGHT_MAIN_PANEL_MODES } from '@/stores/useUiPreferencesStore';
@@ -12,7 +13,8 @@ export type PageId =
   | 'repoActions' // Page for repo-specific actions (opened from repo card or CMD+K)
   | 'issueActions' // Page for issue-specific actions (kanban mode)
   | 'selectRepo' // Dynamic page for repo selection (not in Pages record)
-  | 'selectStatus'; // Dynamic page for status selection (not in Pages record)
+  | 'selectStatus' // Dynamic page for status selection (not in Pages record)
+  | 'selectPriority'; // Dynamic page for priority selection (not in Pages record)
 
 // Items that can appear inside a group
 export type CommandBarGroupItem =
@@ -43,12 +45,19 @@ export interface StatusItem {
   color: string;
 }
 
+// Priority item for dynamic priority selection page
+export interface PriorityItem {
+  id: IssuePriority;
+  name: string;
+}
+
 // Resolved types (after childPages expansion)
 export type ResolvedGroupItem =
   | { type: 'action'; action: ActionDefinition }
   | { type: 'page'; pageId: PageId; label: string; icon: Icon }
   | { type: 'repo'; repo: RepoItem }
-  | { type: 'status'; status: StatusItem };
+  | { type: 'status'; status: StatusItem }
+  | { type: 'priority'; priority: PriorityItem };
 
 export interface ResolvedGroup {
   label: string;
@@ -65,8 +74,11 @@ export interface CommandBarPage {
   isVisible?: (ctx: ActionVisibilityContext) => boolean;
 }
 
-// Static page IDs (excludes dynamic pages like selectRepo and selectStatus)
-export type StaticPageId = Exclude<PageId, 'selectRepo' | 'selectStatus'>;
+// Static page IDs (excludes dynamic pages like selectRepo, selectStatus, and selectPriority)
+export type StaticPageId = Exclude<
+  PageId,
+  'selectRepo' | 'selectStatus' | 'selectPriority'
+>;
 
 export const Pages: Record<StaticPageId, CommandBarPage> = {
   // Root page - shown when opening via CMD+K
@@ -219,6 +231,9 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
         items: [
           { type: 'action', action: Actions.CreateIssue },
           { type: 'action', action: Actions.ChangeIssueStatus },
+          { type: 'action', action: Actions.ChangeNewIssueStatus },
+          { type: 'action', action: Actions.ChangePriority },
+          { type: 'action', action: Actions.ChangeNewIssuePriority },
         ],
       },
     ],
