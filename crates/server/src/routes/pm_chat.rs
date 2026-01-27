@@ -459,9 +459,9 @@ fn create_mcp_config_for_agent(
         tracing::info!("Using compiled MCP binary: {:?}", binary_path);
         (binary_path.to_string_lossy().to_string(), vec![])
     } else {
-        // Fallback: use npx to run vibe-kanban with --mcp flag
-        tracing::info!("MCP binary not found, using npx vibe-kanban --mcp");
-        ("npx".to_string(), vec!["-y".to_string(), "vibe-kanban@latest".to_string(), "--mcp".to_string()])
+        // Fallback: use npx to run vibe-kanban-pm with --mcp flag
+        tracing::info!("MCP binary not found, using npx vibe-kanban-pm --mcp");
+        ("npx".to_string(), vec!["-y".to_string(), "vibe-kanban-pm@latest".to_string(), "--mcp".to_string()])
     };
 
     match agent {
