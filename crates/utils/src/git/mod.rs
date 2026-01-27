@@ -16,7 +16,7 @@ mod utils;
 
 use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
 pub use cli::{GitCli, GitCliError};
-pub use utils::{check_uncommitted_changes, is_valid_branch_prefix};
+pub use utils::is_valid_branch_prefix;
 
 /// Directories that should always be skipped regardless of gitignore.
 /// .git is not in .gitignore but should never be watched.
