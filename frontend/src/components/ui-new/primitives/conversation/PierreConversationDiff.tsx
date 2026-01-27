@@ -63,6 +63,8 @@ const PIERRE_DIFFS_THEME_CSS = `
 
   /* Light theme overrides */
   [data-diffs][data-theme-type='light'] {
+    --diffs-gap-style: none !important;
+    
     /* Background colors - use standard CSS variables */
     --diffs-light-bg: hsl(var(--bg-primary)) !important;
     --diffs-bg-context-override: hsl(var(--bg-primary)) !important;
@@ -86,6 +88,8 @@ const PIERRE_DIFFS_THEME_CSS = `
 
   /* Dark theme overrides */
   [data-diffs][data-theme-type='dark'] {
+    --diffs-gap-style: none !important;
+    
     /* Background colors - use standard CSS variables */
     --diffs-dark-bg: hsl(var(--bg-panel)) !important;
     --diffs-bg-context-override: hsl(var(--bg-panel)) !important;
