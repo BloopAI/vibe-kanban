@@ -395,4 +395,13 @@
   }
 }
 
+/* Color emoji utility - uses system color emoji fonts for reactions */
+@layer utilities {
+  .new-design .color-emoji {
+    font-family:
+      'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji',
+      'Android Emoji', 'EmojiSymbols', sans-serif;
+  }
+}
+
 @config '../../../tailwind.new.config.js';
