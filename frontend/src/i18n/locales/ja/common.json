@@ -332,6 +332,7 @@
   },
   "kanban": {
     "noStatusesFound": "このプロジェクトのステータスが見つかりません",
+    "noVisibleStatuses": "すべてのステータスが非表示です。表示設定を使用するか、別のタブに切り替えて課題を表示してください。",
     "noProjectFound": "プロジェクトが見つかりません",
     "noOrganizationFound": "組織が見つかりません",
     "unassigned": "未割り当て",

@@ -332,6 +332,7 @@
   },
   "kanban": {
     "noStatusesFound": "找不到此專案的狀態",
+    "noVisibleStatuses": "所有狀態已隱藏。請使用顯示設定或切換到其他標籤頁查看問題。",
     "noProjectFound": "找不到專案",
     "noOrganizationFound": "找不到組織",
     "unassigned": "未指派",

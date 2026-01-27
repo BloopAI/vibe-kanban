@@ -332,6 +332,7 @@
   },
   "kanban": {
     "noStatusesFound": "未找到此项目的状态",
+    "noVisibleStatuses": "所有状态已隐藏。请使用显示设置或切换到其他标签页查看问题。",
     "noProjectFound": "未找到项目",
     "noOrganizationFound": "未找到组织",
     "unassigned": "未分配",
