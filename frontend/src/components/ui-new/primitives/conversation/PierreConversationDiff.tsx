@@ -42,6 +42,25 @@ const PIERRE_DIFFS_THEME_CSS = `
     left: 1ch;
   }
 
+  /* Show scrollbar only on hover */
+  [data-code] {
+    padding-bottom: 0 !important;
+  }
+  [data-code]::-webkit-scrollbar {
+    height: 8px !important;
+    background: transparent !important;
+  }
+  [data-code]::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+  [data-code]::-webkit-scrollbar-thumb {
+    background-color: transparent !important;
+    border-radius: 4px !important;
+  }
+  [data-code]:hover::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--text-low) / 0.3) !important;
+  }
+
   /* Light theme overrides */
   [data-diffs][data-theme-type='light'] {
     /* Background colors - use standard CSS variables */
