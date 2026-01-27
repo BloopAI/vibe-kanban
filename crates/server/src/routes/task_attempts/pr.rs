@@ -29,7 +29,10 @@ use services::services::{
     },
 };
 use ts_rs::TS;
-use utils::{git::{GitCliError, GitRemote, GitServiceError}, response::ApiResponse};
+use utils::{
+    git::{GitCliError, GitRemote, GitServiceError},
+    response::ApiResponse,
+};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};

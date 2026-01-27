@@ -45,13 +45,14 @@ use executors::{
 use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
-    container::ContainerService,
-    file_search::SearchQuery,
-    workspace_manager::WorkspaceManager,
+    container::ContainerService, file_search::SearchQuery, workspace_manager::WorkspaceManager,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::{git::{ConflictOp, GitCliError, GitServiceError}, response::ApiResponse};
+use utils::{
+    git::{ConflictOp, GitCliError, GitServiceError},
+    response::ApiResponse,
+};
 use uuid::Uuid;
 
 use crate::{

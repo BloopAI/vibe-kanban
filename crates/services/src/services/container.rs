@@ -53,8 +53,7 @@ use utils::{
 use uuid::Uuid;
 
 use crate::services::{
-    notification::NotificationService,
-    workspace_manager::WorkspaceError as WorkspaceManagerError,
+    notification::NotificationService, workspace_manager::WorkspaceError as WorkspaceManagerError,
     worktree_manager::WorktreeError,
 };
 pub type ContainerRef = String;

@@ -35,7 +35,10 @@ use services::services::{
 use sqlx::Error as SqlxError;
 use thiserror::Error;
 use tokio::sync::RwLock;
-use utils::{git::{GitService, GitServiceError}, sentry as sentry_utils};
+use utils::{
+    git::{GitService, GitServiceError},
+    sentry as sentry_utils,
+};
 
 #[derive(Debug, Clone, Copy, Error)]
 #[error("Remote client not configured")]

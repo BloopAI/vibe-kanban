@@ -5,8 +5,8 @@ use std::{
 };
 
 use git2::{PushOptions, Repository, build::CheckoutBuilder};
-use utils::git::{GitCli, GitCliError, GitService};
 use tempfile::TempDir;
+use utils::git::{GitCli, GitCliError, GitService};
 // Avoid direct git CLI usage in tests; exercise GitService instead.
 
 fn write_file<P: AsRef<Path>>(base: P, rel: &str, content: &str) {
