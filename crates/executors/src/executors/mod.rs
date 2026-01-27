@@ -21,8 +21,8 @@ use crate::{
     command::CommandBuildError,
     env::ExecutionEnv,
     executors::{
-        amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::CursorAgent,
-        droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
+        amp::Amp, claude::ClaudeCode, codebuddy::CodeBuddy, codex::Codex, copilot::Copilot,
+        cursor::CursorAgent, droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
     },
     logs::utils::patch,
     mcp_config::McpConfig,
@@ -31,6 +31,7 @@ use crate::{
 pub mod acp;
 pub mod amp;
 pub mod claude;
+pub mod codebuddy;
 pub mod codex;
 pub mod copilot;
 pub mod cursor;
@@ -115,6 +116,10 @@ pub enum CodingAgent {
     QwenCode,
     Copilot,
     Droid,
+    #[serde(rename = "CODEBUDDY", alias = "CODE_BUDDY")]
+    #[strum_discriminants(strum(serialize = "CODEBUDDY"))]
+    #[strum_discriminants(serde(rename = "CODEBUDDY", alias = "CODE_BUDDY"))]
+    CodeBuddy,
     #[cfg(feature = "qa-mode")]
     QaMock(QaMockExecutor),
 }
@@ -177,7 +182,8 @@ impl CodingAgent {
             | Self::Gemini(_)
             | Self::QwenCode(_)
             | Self::Droid(_)
-            | Self::Opencode(_) => vec![BaseAgentCapability::SessionFork],
+            | Self::Opencode(_)
+            | Self::CodeBuddy(_) => vec![BaseAgentCapability::SessionFork],
             Self::Codex(_) => vec![
                 BaseAgentCapability::SessionFork,
                 BaseAgentCapability::SetupHelper,
