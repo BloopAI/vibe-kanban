@@ -6,6 +6,9 @@ import ReviewPage from "./pages/ReviewPage";
 import AccountPage from "./pages/AccountPage";
 import AccountCompletePage from "./pages/AccountCompletePage";
 import OrganizationPage from "./pages/OrganizationPage";
+import UpgradePage from "./pages/UpgradePage";
+import UpgradeCompletePage from "./pages/UpgradeCompletePage";
+import UpgradeSuccessPage from "./pages/UpgradeSuccessPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 const router = createBrowserRouter([
@@ -36,6 +39,18 @@ const router = createBrowserRouter([
   {
     path: "/account/organizations/:orgId",
     element: <OrganizationPage />,
+  },
+  {
+    path: "/upgrade",
+    element: <UpgradePage />,
+  },
+  {
+    path: "/upgrade/complete",
+    element: <UpgradeCompletePage />,
+  },
+  {
+    path: "/upgrade/success",
+    element: <UpgradeSuccessPage />,
   },
   {
     path: "*",

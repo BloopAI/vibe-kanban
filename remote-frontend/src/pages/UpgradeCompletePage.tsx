@@ -4,7 +4,7 @@ import { redeemOAuth } from "../api";
 import { storeTokens } from "../auth";
 import { retrieveVerifier, clearVerifier } from "../pkce";
 
-export default function AccountCompletePage() {
+export default function UpgradeCompletePage() {
   const navigate = useNavigate();
   const { search } = useLocation();
   const qp = useMemo(() => new URLSearchParams(search), [search]);
@@ -44,9 +44,9 @@ export default function AccountCompletePage() {
 
         setSuccess(true);
 
-        // Redirect to account page after brief delay
+        // Redirect back to upgrade page after brief delay
         setTimeout(() => {
-          navigate("/account", { replace: true });
+          navigate("/upgrade", { replace: true });
         }, 1000);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to complete login");
@@ -64,7 +64,7 @@ export default function AccountCompletePage() {
         body={error}
         isError
         showRetry
-        onRetry={() => navigate("/account", { replace: true })}
+        onRetry={() => navigate("/upgrade", { replace: true })}
       />
     );
   }
@@ -73,7 +73,7 @@ export default function AccountCompletePage() {
     return (
       <StatusCard
         title="Login successful!"
-        body="Redirecting to your account..."
+        body="Redirecting to complete your subscription..."
         isSuccess
       />
     );
