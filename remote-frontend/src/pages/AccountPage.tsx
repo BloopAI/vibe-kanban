@@ -11,11 +11,7 @@ import {
   type ProfileResponse,
   type OrganizationWithRole,
 } from "../api";
-import {
-  generateVerifier,
-  generateChallenge,
-  storeVerifier,
-} from "../pkce";
+import { generateVerifier, generateChallenge, storeVerifier } from "../pkce";
 
 export default function AccountPage() {
   const navigate = useNavigate();
@@ -232,7 +228,10 @@ export default function AccountPage() {
                   value={newOrgName}
                   onChange={(e) => {
                     setNewOrgName(e.target.value);
-                    if (!newOrgSlug || newOrgSlug === generateSlug(newOrgName)) {
+                    if (
+                      !newOrgSlug ||
+                      newOrgSlug === generateSlug(newOrgName)
+                    ) {
                       setNewOrgSlug(generateSlug(e.target.value));
                     }
                   }}
