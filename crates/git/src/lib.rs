@@ -47,9 +47,9 @@ pub enum GitServiceError {
     #[error(transparent)]
     Git(#[from] GitError),
     #[error(transparent)]
-    IoError(#[from] std::io::Error),
-    #[error(transparent)]
     GitCLI(#[from] GitCliError),
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
     #[error("Invalid repository: {0}")]
     InvalidRepository(String),
     #[error("Branch not found: {0}")]
@@ -63,6 +63,8 @@ pub enum GitServiceError {
     BranchesDiverged(String),
     #[error("{0} has uncommitted changes: {1}")]
     WorktreeDirty(String, String),
+    #[error("Rebase in progress; resolve or abort it before retrying")]
+    RebaseInProgress,
 }
 /// Service for managing Git operations in task execution workflows
 #[derive(Clone)]
@@ -1401,7 +1403,7 @@ impl GitService {
         // aborting (which might destroy user changes mid-rebase).
         let git = GitCli::new();
         if git.is_rebase_in_progress(worktree_path).unwrap_or(false) {
-            return Err(GitCliError::RebaseInProgress.into());
+            return Err(GitServiceError::RebaseInProgress);
         }
 
         // Get the target base branch reference
@@ -1417,7 +1419,7 @@ impl GitService {
         match git.rebase_onto(worktree_path, new_base_branch, old_base_branch, task_branch) {
             Ok(()) => {}
             Err(GitCliError::RebaseInProgress) => {
-                return Err(GitCliError::RebaseInProgress.into());
+                return Err(GitServiceError::RebaseInProgress);
             }
             Err(GitCliError::CommandFailed(stderr)) => {
                 // If the CLI indicates conflicts, return a concise, actionable error.
