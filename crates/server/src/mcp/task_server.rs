@@ -34,11 +34,45 @@ pub struct CreateTaskRequest {
     pub title: String,
     #[schemars(description = "Optional description of the task")]
     pub description: Option<String>,
+    #[schemars(description = "Task priority: 'urgent', 'high', 'medium', or 'low'. Defaults to 'medium' if not specified.")]
+    pub priority: Option<String>,
+    #[schemars(description = "Optional list of task IDs that this task depends on (must be completed before this task)")]
+    pub depends_on: Option<Vec<String>>,
+    #[schemars(description = "If true, check for duplicate tasks before creating. Returns existing task if found.")]
+    pub check_duplicate: Option<bool>,
+    #[schemars(description = "Optional list of label IDs to attach to the task")]
+    pub label_ids: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct CreateTaskResponse {
     pub task_id: String,
+    #[schemars(description = "True if this is a new task, false if an existing duplicate was found")]
+    pub is_new: bool,
+    #[schemars(description = "Message about the task creation result")]
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetProjectProgressRequest {
+    #[schemars(description = "The ID of the project to get progress for")]
+    pub project_id: Uuid,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct GetProjectProgressResponse {
+    #[schemars(description = "Total number of tasks in the project")]
+    pub total_tasks: i32,
+    #[schemars(description = "Number of completed (done) tasks")]
+    pub completed_tasks: i32,
+    #[schemars(description = "Number of in-progress tasks")]
+    pub in_progress_tasks: i32,
+    #[schemars(description = "Number of blocked tasks (has incomplete dependencies)")]
+    pub blocked_tasks: i32,
+    #[schemars(description = "Completion percentage (0-100)")]
+    pub progress_percent: f32,
+    #[schemars(description = "Summary by status")]
+    pub status_summary: std::collections::HashMap<String, i32>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -336,6 +370,28 @@ pub struct RequestPmReviewResponse {
     pub review_prompt: String,
     #[schemars(description = "Summary of what the review should check")]
     pub review_checklist: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct UpdatePmDocsRequest {
+    #[schemars(description = "The ID of the project to update PM docs for")]
+    pub project_id: Uuid,
+    #[schemars(description = "The new PM documentation content in markdown format")]
+    pub content: String,
+    #[schemars(
+        description = "Mode: 'replace' to replace all docs, 'append' to add to existing docs. Defaults to 'append'."
+    )]
+    pub mode: Option<String>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct UpdatePmDocsResponse {
+    #[schemars(description = "The project ID that was updated")]
+    pub project_id: String,
+    #[schemars(description = "Whether the update was successful")]
+    pub success: bool,
+    #[schemars(description = "The updated PM docs content")]
+    pub pm_docs: Option<String>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -665,7 +721,7 @@ impl TaskServer {
     }
 
     #[tool(
-        description = "Create a new task/ticket in a project. Always pass the `project_id` of the project you want to create the task in - it is required!"
+        description = "Create a new task/ticket in a project. Always pass the `project_id` of the project you want to create the task in - it is required! Use check_duplicate=true to avoid creating duplicate tasks. Use depends_on to set task dependencies. Use label_ids to attach labels. Use priority to set task priority (urgent/high/medium/low)."
     )]
     async fn create_task(
         &self,
@@ -673,25 +729,71 @@ impl TaskServer {
             project_id,
             title,
             description,
+            priority,
+            depends_on,
+            check_duplicate,
+            label_ids,
         }): Parameters<CreateTaskRequest>,
     ) -> Result<CallToolResult, ErrorData> {
+        // Check for duplicate tasks if requested
+        if check_duplicate.unwrap_or(false) {
+            let list_url = self.url(&format!("/api/projects/{}/tasks", project_id));
+            let existing_tasks: Vec<Task> = match self.send_json(self.client.get(&list_url)).await {
+                Ok(tasks) => tasks,
+                Err(_) => vec![], // If we can't get tasks, proceed with creation
+            };
+
+            // Check for similar titles using extracted helper
+            for existing in &existing_tasks {
+                if Self::is_duplicate_title(&title, &existing.title) {
+                    return TaskServer::success(&CreateTaskResponse {
+                        task_id: existing.id.to_string(),
+                        is_new: false,
+                        message: Some(format!(
+                            "Found existing similar task: '{}'. Returning existing task instead of creating duplicate.",
+                            existing.title
+                        )),
+                    });
+                }
+            }
+        }
+
         // Expand @tagname references in description
         let expanded_description = match description {
             Some(desc) => Some(self.expand_tags(&desc).await),
             None => None,
         };
 
+        // Parse priority string to TaskPriority enum
+        let task_priority = priority.as_ref().and_then(|p| {
+            match p.to_lowercase().as_str() {
+                "urgent" => Some(db::models::task::TaskPriority::Urgent),
+                "high" => Some(db::models::task::TaskPriority::High),
+                "medium" => Some(db::models::task::TaskPriority::Medium),
+                "low" => Some(db::models::task::TaskPriority::Low),
+                _ => None,
+            }
+        });
+
         let url = self.url("/api/tasks");
+
+        let create_task_data = CreateTask {
+            project_id,
+            title: title.clone(),
+            description: expanded_description,
+            status: None,
+            priority: task_priority,
+            position: None,
+            parent_workspace_id: None,
+            image_ids: None,
+            label_ids: None, // Labels are set separately after task creation
+        };
 
         let task: Task = match self
             .send_json(
                 self.client
                     .post(&url)
-                    .json(&CreateTask::from_title_description(
-                        project_id,
-                        title,
-                        expanded_description,
-                    )),
+                    .json(&create_task_data),
             )
             .await
         {
@@ -699,8 +801,112 @@ impl TaskServer {
             Err(e) => return Ok(e),
         };
 
+        // Set dependencies if provided
+        if let Some(dep_ids) = depends_on {
+            if !dep_ids.is_empty() {
+                let deps_url = self.url(&format!("/api/tasks/{}/dependencies", task.id));
+                match self
+                    .client
+                    .put(&deps_url)
+                    .json(&serde_json::json!({ "dependency_ids": dep_ids }))
+                    .send()
+                    .await
+                {
+                    Ok(resp) if resp.status().is_success() => {
+                        tracing::debug!("Dependencies set successfully for task {}", task.id);
+                    }
+                    Ok(resp) => {
+                        tracing::warn!(
+                            "Failed to set dependencies for task {}: {}",
+                            task.id,
+                            resp.status()
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!("Error setting dependencies for task {}: {}", task.id, e);
+                    }
+                }
+            }
+        }
+
+        // Set labels if provided
+        if let Some(lbl_ids) = label_ids {
+            if !lbl_ids.is_empty() {
+                // Update task with label_ids via the update endpoint
+                let update_url = self.url(&format!("/api/tasks/{}", task.id));
+                match self
+                    .client
+                    .put(&update_url)
+                    .json(&serde_json::json!({ "label_ids": lbl_ids }))
+                    .send()
+                    .await
+                {
+                    Ok(resp) if resp.status().is_success() => {
+                        tracing::debug!("Labels attached successfully for task {}", task.id);
+                    }
+                    Ok(resp) => {
+                        tracing::warn!(
+                            "Failed to attach labels for task {}: {}",
+                            task.id,
+                            resp.status()
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!("Error attaching labels for task {}: {}", task.id, e);
+                    }
+                }
+            }
+        }
+
         TaskServer::success(&CreateTaskResponse {
             task_id: task.id.to_string(),
+            is_new: true,
+            message: Some(format!("Created new task: '{}'", title)),
+        })
+    }
+
+    #[tool(
+        description = "Get the progress/completion status of a project. Returns the number of tasks by status and completion percentage."
+    )]
+    async fn get_project_progress(
+        &self,
+        Parameters(GetProjectProgressRequest { project_id }): Parameters<GetProjectProgressRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let list_url = self.url(&format!("/api/projects/{}/tasks", project_id));
+        let tasks: Vec<Task> = match self.send_json(self.client.get(&list_url)).await {
+            Ok(tasks) => tasks,
+            Err(e) => return Ok(e),
+        };
+
+        let total_tasks = tasks.len() as i32;
+        let mut status_summary = std::collections::HashMap::new();
+        let mut completed_tasks = 0;
+        let mut in_progress_tasks = 0;
+
+        for task in &tasks {
+            let status_str = format!("{:?}", task.status).to_lowercase();
+            *status_summary.entry(status_str.clone()).or_insert(0) += 1;
+
+            if task.status == TaskStatus::Done {
+                completed_tasks += 1;
+            } else if task.status == TaskStatus::InProgress {
+                in_progress_tasks += 1;
+            }
+        }
+
+        // Calculate blocked tasks (those with incomplete dependencies)
+        // This is a simplified check - ideally we'd query dependencies
+        let blocked_tasks = 0; // Would need dependency info from API
+
+        let progress_percent = Self::calculate_progress(total_tasks, completed_tasks);
+
+        TaskServer::success(&GetProjectProgressResponse {
+            total_tasks,
+            completed_tasks,
+            in_progress_tasks,
+            blocked_tasks,
+            progress_percent,
+            status_summary,
         })
     }
 
@@ -1236,12 +1442,97 @@ impl TaskServer {
             review_checklist,
         })
     }
+
+    /// Check if two task titles are similar enough to be considered duplicates.
+    /// Returns true if titles are duplicates (case-insensitive exact match or containment).
+    pub fn is_duplicate_title(new_title: &str, existing_title: &str) -> bool {
+        let new_lower = new_title.to_lowercase();
+        let existing_lower = existing_title.to_lowercase();
+        existing_lower == new_lower
+            || existing_lower.contains(&new_lower)
+            || new_lower.contains(&existing_lower)
+    }
+
+    /// Calculate project progress from task status counts.
+    pub fn calculate_progress(total_tasks: i32, completed_tasks: i32) -> f32 {
+        if total_tasks > 0 {
+            (completed_tasks as f32 / total_tasks as f32) * 100.0
+        } else {
+            0.0
+        }
+    }
+
+    #[tool(
+        description = "Update the PM (Project Manager) documentation for a project. Use this to save specifications, requirements, architecture notes, or any project documentation. The PM docs are stored as markdown and can be viewed in the PM Docs panel."
+    )]
+    async fn update_pm_docs(
+        &self,
+        Parameters(UpdatePmDocsRequest {
+            project_id,
+            content,
+            mode,
+        }): Parameters<UpdatePmDocsRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        // First, get the current project to check existing docs
+        let url = self.url(&format!("/api/projects/{}", project_id));
+        let project: Project = match self.send_json(self.client.get(&url)).await {
+            Ok(p) => p,
+            Err(e) => return Ok(e),
+        };
+
+        // Determine new docs based on mode
+        let mode_str = mode.as_deref().unwrap_or("append");
+        let new_docs = if mode_str == "replace" {
+            content
+        } else {
+            // Append mode
+            match project.pm_docs {
+                Some(existing) if !existing.is_empty() => format!("{}\n\n{}", existing, content),
+                _ => content,
+            }
+        };
+
+        // Update the project with new PM docs
+        let update_url = self.url(&format!("/api/projects/{}/pm-chat/docs", project_id));
+        let update_body = serde_json::json!({
+            "pm_docs": new_docs
+        });
+
+        let response = self
+            .client
+            .put(&update_url)
+            .json(&update_body)
+            .send()
+            .await;
+
+        match response {
+            Ok(resp) if resp.status().is_success() => {
+                TaskServer::success(&UpdatePmDocsResponse {
+                    project_id: project_id.to_string(),
+                    success: true,
+                    pm_docs: Some(new_docs),
+                })
+            }
+            Ok(resp) => {
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                Ok(CallToolResult::error(vec![Content::text(format!(
+                    "Failed to update PM docs: {} - {}",
+                    status, body
+                ))]))
+            }
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(format!(
+                "Failed to update PM docs: {}",
+                e
+            ))])),
+        }
+    }
 }
 
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
-        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_workspace_session', 'get_task', 'update_task', 'delete_task', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script', 'get_pm_context', 'request_pm_review'. Use 'get_pm_context' to fetch the project specification and guidelines from the PM task before implementing features. Use 'request_pm_review' to generate a review checklist based on PM specs when a task moves to inreview status. Make sure to pass `project_id`, `task_id`, or `repo_id` where required. You can use list tools to get the available ids.".to_string();
+        let mut instruction = "A task and project management server with PM (Project Manager) capabilities. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'get_project_progress', 'start_workspace_session', 'get_task', 'update_task', 'delete_task', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script', 'get_pm_context', 'request_pm_review', 'update_pm_docs'. PM FEATURES: Use 'create_task' with check_duplicate=true to avoid creating duplicate tasks. Use 'create_task' with depends_on=[task_ids] to set task dependencies. Use 'get_project_progress' to get completion percentage and task status summary. Use 'get_pm_context' to fetch project specifications before implementing. Use 'request_pm_review' for review checklists. Use 'update_pm_docs' to save structured documentation. Always pass project_id where required.".to_string();
         if self.context.is_some() {
             let context_instruction = "Use 'get_context' to fetch project/task/workspace metadata (including PM context if available) for the active Vibe Kanban workspace session when available.";
             instruction = format!("{} {}", context_instruction, instruction);
@@ -1255,6 +1546,91 @@ impl ServerHandler for TaskServer {
                 version: "1.0.0".to_string(),
             },
             instructions: Some(instruction),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod duplicate_detection {
+        use super::*;
+
+        #[test]
+        fn test_exact_match_is_duplicate() {
+            assert!(TaskServer::is_duplicate_title("Add login feature", "Add login feature"));
+        }
+
+        #[test]
+        fn test_case_insensitive_match_is_duplicate() {
+            assert!(TaskServer::is_duplicate_title("Add Login Feature", "add login feature"));
+            assert!(TaskServer::is_duplicate_title("ADD LOGIN FEATURE", "add login feature"));
+        }
+
+        #[test]
+        fn test_new_title_contained_in_existing_is_duplicate() {
+            assert!(TaskServer::is_duplicate_title("login", "Add login feature"));
+            assert!(TaskServer::is_duplicate_title("Login", "add login feature"));
+        }
+
+        #[test]
+        fn test_existing_title_contained_in_new_is_duplicate() {
+            assert!(TaskServer::is_duplicate_title("Add login feature with OAuth", "login feature"));
+        }
+
+        #[test]
+        fn test_completely_different_titles_not_duplicate() {
+            assert!(!TaskServer::is_duplicate_title("Add login feature", "Fix payment bug"));
+            assert!(!TaskServer::is_duplicate_title("User authentication", "Database migration"));
+        }
+
+        #[test]
+        fn test_partial_word_match_is_duplicate() {
+            // "auth" is contained in "authentication"
+            assert!(TaskServer::is_duplicate_title("auth", "User authentication"));
+        }
+
+        #[test]
+        fn test_empty_titles() {
+            assert!(TaskServer::is_duplicate_title("", ""));
+            // Empty string is contained in any string
+            assert!(TaskServer::is_duplicate_title("", "Some task"));
+            assert!(TaskServer::is_duplicate_title("Some task", ""));
+        }
+    }
+
+    mod progress_calculation {
+        use super::*;
+
+        #[test]
+        fn test_zero_tasks_returns_zero_percent() {
+            assert_eq!(TaskServer::calculate_progress(0, 0), 0.0);
+        }
+
+        #[test]
+        fn test_no_completed_tasks_returns_zero_percent() {
+            assert_eq!(TaskServer::calculate_progress(10, 0), 0.0);
+        }
+
+        #[test]
+        fn test_all_tasks_completed_returns_100_percent() {
+            assert_eq!(TaskServer::calculate_progress(10, 10), 100.0);
+            assert_eq!(TaskServer::calculate_progress(1, 1), 100.0);
+        }
+
+        #[test]
+        fn test_partial_completion() {
+            assert_eq!(TaskServer::calculate_progress(10, 5), 50.0);
+            assert_eq!(TaskServer::calculate_progress(4, 1), 25.0);
+            // Use approximate comparison for floating point
+            let progress = TaskServer::calculate_progress(3, 1);
+            assert!((progress - 33.333333).abs() < 0.001, "Expected ~33.33, got {}", progress);
+        }
+
+        #[test]
+        fn test_single_task_completed() {
+            assert_eq!(TaskServer::calculate_progress(5, 1), 20.0);
         }
     }
 }

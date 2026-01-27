@@ -51,6 +51,8 @@ import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useHotkeysContext } from 'react-hotkeys-hook';
+import { calculatePositionForIndex } from '@/utils/positionCalculator';
+import { useQueryClient } from '@tanstack/react-query';
 import { TasksLayout, type LayoutMode } from '@/components/layout/TasksLayout';
 import { PreviewPanel } from '@/components/panels/PreviewPanel';
 import { DiffsPanel } from '@/components/panels/DiffsPanel';
@@ -142,6 +144,7 @@ export function ProjectTasks() {
   const isXL = useMediaQuery('(min-width: 1280px)');
   const isMobile = !isXL;
   const posthog = usePostHog();
+  const queryClient = useQueryClient();
 
   const {
     projectId,
@@ -792,18 +795,29 @@ export function ProjectTasks() {
       const isStatusChange = TASK_STATUSES.includes(overId as TaskStatus);
 
       if (isStatusChange) {
-        // Dropped on a column - change status
+        // Dropped on a column - change status only
         const newStatus = overId as Task['status'];
         if (task.status === newStatus) return;
 
+        // Optimistic update
+        const cacheKey = ['tasks', { projectId }];
+        const previousTasks = queryClient.getQueryData<Task[]>(cacheKey);
+
+        queryClient.setQueryData<Task[]>(cacheKey, (old) => {
+          if (!old) return old;
+          return old.map((t) =>
+            t.id === draggedTaskId ? { ...t, status: newStatus } : t
+          );
+        });
+
         try {
           await tasksApi.update(draggedTaskId, {
-            title: task.title,
-            description: task.description,
+            title: null,
+            description: null,
             status: newStatus,
             priority: null,
             position: null,
-            parent_workspace_id: task.parent_workspace_id,
+            parent_workspace_id: null,
             image_ids: null,
             label_ids: null,
           });
@@ -814,6 +828,8 @@ export function ProjectTasks() {
           }
         } catch (err) {
           console.error('Failed to update task status:', err);
+          // Rollback on error
+          queryClient.setQueryData(cacheKey, previousTasks);
         }
       } else if (overTask) {
         // Dropped on another task - reorder within the column or move to new column
@@ -822,37 +838,44 @@ export function ProjectTasks() {
 
         const sourceStatus = activeData?.parent || task.status;
         const targetStatus = overData?.parent || overTask.status;
+        const statusChanged = sourceStatus !== targetStatus;
 
         // Get tasks in target column
         const targetTasks = kanbanColumns[targetStatus as TaskStatus] || [];
         const overIndex = targetTasks.findIndex((t) => t.id === overId);
 
-        // Calculate new position
-        let newPosition: number;
-        if (overIndex === 0) {
-          // Dropped at the top
-          newPosition = (targetTasks[0]?.position ?? 0) - 1000;
-        } else if (overIndex === targetTasks.length - 1) {
-          // Dropped at the bottom
-          newPosition =
-            (targetTasks[targetTasks.length - 1]?.position ?? 0) + 1000;
-        } else {
-          // Dropped in the middle - calculate average position
-          const prevPos = targetTasks[overIndex - 1]?.position ?? 0;
-          const nextPos = targetTasks[overIndex]?.position ?? prevPos + 2000;
-          newPosition = Math.floor((prevPos + nextPos) / 2);
-        }
+        // Calculate new position using the improved position calculator
+        const newPosition = calculatePositionForIndex(
+          overIndex,
+          targetTasks.map((t) => ({ id: t.id, position: t.position })),
+          statusChanged ? undefined : draggedTaskId
+        );
 
-        const statusChanged = sourceStatus !== targetStatus;
+        // Optimistic update
+        const cacheKey = ['tasks', { projectId }];
+        const previousTasks = queryClient.getQueryData<Task[]>(cacheKey);
+
+        queryClient.setQueryData<Task[]>(cacheKey, (old) => {
+          if (!old) return old;
+          return old.map((t) =>
+            t.id === draggedTaskId
+              ? {
+                  ...t,
+                  status: statusChanged ? (targetStatus as TaskStatus) : t.status,
+                  position: newPosition,
+                }
+              : t
+          );
+        });
 
         try {
           await tasksApi.update(draggedTaskId, {
-            title: task.title,
-            description: task.description,
+            title: null,
+            description: null,
             status: statusChanged ? (targetStatus as TaskStatus) : null,
             priority: null,
             position: newPosition,
-            parent_workspace_id: task.parent_workspace_id,
+            parent_workspace_id: null,
             image_ids: null,
             label_ids: null,
           });
@@ -863,10 +886,12 @@ export function ProjectTasks() {
           }
         } catch (err) {
           console.error('Failed to update task position:', err);
+          // Rollback on error
+          queryClient.setQueryData(cacheKey, previousTasks);
         }
       }
     },
-    [tasksById, kanbanColumns, triggerAutoReview]
+    [tasksById, kanbanColumns, triggerAutoReview, projectId, queryClient]
   );
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;

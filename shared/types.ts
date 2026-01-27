@@ -98,6 +98,14 @@ export type PmChatResponse = { messages: Array<PmConversation>, pm_docs: string 
 
 export type UpdatePmDocsRequest = { pm_docs: string | null, };
 
+export type PmChatAgent = "CLAUDE_CLI" | "CODEX_CLI" | "GEMINI_CLI" | "OPENCODE_CLI";
+
+export type AiChatRequest = { content: string, model: string | null, agent: PmChatAgent | null, };
+
+export type AvailablePmChatAgentsResponse = { agents: Array<PmChatAgentInfo>, };
+
+export type PmChatAgentInfo = { agent: PmChatAgent, display_name: string, available: boolean, supports_streaming: boolean, };
+
 export type DraftFollowUpData = { message: string, executor_profile_id: ExecutorProfileId, };
 
 export type DraftWorkspaceData = { message: string, project_id: string | null, repos: Array<DraftWorkspaceRepo>, selected_profile: ExecutorProfileId | null, };
@@ -285,6 +293,10 @@ export type OpenEditorRequest = { editor_type: string | null, file_path: string 
 export type OpenEditorResponse = { url: string | null, };
 
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, };
+
+export type TaskPositionUpdate = { task_id: string, position: number, };
+
+export type BatchUpdatePositionsRequest = { updates: Array<TaskPositionUpdate>, };
 
 export type CreatePrApiRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };
 

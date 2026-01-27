@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -13,9 +13,10 @@ import {
   Paperclip,
   File,
   X,
-  RefreshCw,
   Bot,
   Square,
+  FolderOpen,
+  GripVertical,
 } from 'lucide-react';
 import {
   Select,
@@ -46,7 +47,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import type { PmConversation, PmAttachment } from 'shared/types';
+import type { PmConversation, PmAttachment, PmChatAgent } from 'shared/types';
 
 interface PmDocsPanelProps {
   projectId?: string;
@@ -171,7 +172,13 @@ function ChatMessage({
       </div>
       {/* Show message content unless it's just an attachment placeholder */}
       {!isAttachmentMessage && (
-        <div className="whitespace-pre-wrap break-words">{message.content}</div>
+        isUser ? (
+          <div className="whitespace-pre-wrap break-words">{message.content}</div>
+        ) : (
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <WYSIWYGEditor value={message.content} disabled className="text-sm" />
+          </div>
+        )
       )}
       {/* Show attachments */}
       {messageAttachments.length > 0 && (
@@ -197,6 +204,13 @@ function ChatMessage({
   );
 }
 
+// Workspace doc type for display
+interface WorkspaceDoc {
+  path: string;
+  repo_name: string;
+  content: string;
+}
+
 export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -206,12 +220,19 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>('sonnet');
+  const [selectedAgent, setSelectedAgent] = useState<PmChatAgent | undefined>(undefined);
   const [isAiResponding, setIsAiResponding] = useState(false);
   const [streamingResponse, setStreamingResponse] = useState('');
+  const [isComposing, setIsComposing] = useState(false); // IME composition state
+  const [panelWidth, setPanelWidth] = useState(320); // Default width 320px
+  const [isResizing, setIsResizing] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<WorkspaceDoc | null>(null);
   const abortControllerRef = useRef<{ abort: () => void } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const resizeRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { settings: autoReviewSettings, updateSettings } =
     useAutoReviewSettings(projectId);
@@ -238,6 +259,31 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
     queryFn: () => (projectId ? pmChatApi.getAttachments(projectId) : []),
     enabled: !!projectId,
   });
+
+  // Query for workspace docs (files in docs/ folder)
+  const { data: workspaceDocs, isLoading: isLoadingDocs } = useQuery({
+    queryKey: ['pm-chat-workspace-docs', projectId],
+    queryFn: () => (projectId ? pmChatApi.getWorkspaceDocs(projectId) : null),
+    enabled: !!projectId && activeTab === 'docs',
+  });
+
+  // Query for available AI agents (CLIs)
+  const { data: availableAgentsData } = useQuery({
+    queryKey: ['pm-chat-available-agents'],
+    queryFn: () => pmChatApi.getAvailableAgents(),
+  });
+
+  // Get list of available agents for the selector
+  const availableAgents = useMemo(
+    () => availableAgentsData?.agents?.filter((a) => a.available) ?? [],
+    [availableAgentsData?.agents]
+  );
+  // Set default agent if none selected and we have available agents
+  useEffect(() => {
+    if (!selectedAgent && availableAgents.length > 0) {
+      setSelectedAgent(availableAgents[0].agent);
+    }
+  }, [selectedAgent, availableAgents]);
 
   const deleteMessageMutation = useMutation({
     mutationFn: (messageId: string) =>
@@ -278,19 +324,40 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
     },
   });
 
-  // Sync task summary to PM docs
-  const syncTaskSummaryMutation = useMutation({
-    mutationFn: () => pmChatApi.syncTaskSummary(projectId!),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pm-chat', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
-    },
-  });
-
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatData?.messages, attachments]);
+
+  // Resize handlers
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Calculate new width from right edge
+      const newWidth = window.innerWidth - e.clientX;
+      // Constrain between min and max
+      const constrainedWidth = Math.max(280, Math.min(600, newWidth));
+      setPanelWidth(constrainedWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   const toggleExpanded = () => setIsExpanded(!isExpanded);
 
@@ -327,9 +394,13 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
       projectId,
       content,
       selectedModel,
-      // onContent
+      // onContent - limit to 100KB to prevent memory issues
       (newContent: string) => {
-        setStreamingResponse((prev) => prev + newContent);
+        setStreamingResponse((prev) => {
+          const updated = prev + newContent;
+          // Limit streaming content to prevent browser memory issues
+          return updated.length > 100000 ? updated.slice(-100000) : updated;
+        });
       },
       // onDone
       () => {
@@ -344,7 +415,23 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
         console.error('AI chat error:', error);
         // Invalidate to show the assistant error or partial response
         queryClient.invalidateQueries({ queryKey: ['pm-chat', projectId] });
-      }
+      },
+      // onTaskCreated - refresh task list when AI creates a task
+      () => {
+        queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
+        queryClient.invalidateQueries({ queryKey: ['task-summary', projectId] });
+      },
+      // onDocsUpdated - refresh docs when AI updates them
+      () => {
+        queryClient.invalidateQueries({ queryKey: ['pm-chat', projectId] });
+        queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      },
+      // onToolUse - can show additional indicator if needed
+      (toolInfo: string) => {
+        console.log('AI using tool:', toolInfo);
+      },
+      // agent - pass the selected AI agent (CLI)
+      selectedAgent
     );
   };
 
@@ -359,10 +446,19 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // Prevent sending during IME composition (Japanese/Chinese input)
+    if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  const handleCompositionStart = () => {
+    setIsComposing(true);
+  };
+
+  const handleCompositionEnd = () => {
+    setIsComposing(false);
   };
 
   const handleFileSelect = useCallback(
@@ -419,14 +515,35 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
     fileInputRef.current?.click();
   };
 
+  const handleFolderClick = () => {
+    folderInputRef.current?.click();
+  };
+
   return (
     <div
       className={cn(
-        'h-full flex flex-col bg-muted/30 border-r transition-all duration-200',
-        isExpanded ? 'w-80' : 'w-10',
+        'h-full flex flex-col bg-muted/30 border-r relative',
+        !isExpanded && 'w-10',
+        isResizing && 'select-none',
         className
       )}
+      style={isExpanded ? { width: `${panelWidth}px` } : undefined}
     >
+      {/* Resize handle */}
+      {isExpanded && (
+        <div
+          ref={resizeRef}
+          onMouseDown={handleResizeStart}
+          className={cn(
+            'absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-primary/20 z-10',
+            isResizing && 'bg-primary/30'
+          )}
+        >
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 opacity-0 hover:opacity-100 bg-muted rounded p-0.5">
+            <GripVertical size={12} className="text-muted-foreground" />
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between p-2 border-b bg-muted/50">
         {isExpanded && (
@@ -511,33 +628,6 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
                     )}
                     {autoReviewSettings.enabled && (
                       <span className="ml-1 text-primary">(ON)</span>
-                    )}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => syncTaskSummaryMutation.mutate()}
-                      className="h-6 w-6 p-0"
-                      disabled={syncTaskSummaryMutation.isPending}
-                    >
-                      <RefreshCw
-                        size={14}
-                        className={cn(
-                          'text-muted-foreground',
-                          syncTaskSummaryMutation.isPending && 'animate-spin'
-                        )}
-                      />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    {t(
-                      'tasks:pmDocs.syncTasks',
-                      'Sync tasks & dependencies to docs'
                     )}
                   </TooltipContent>
                 </Tooltip>
@@ -669,8 +759,8 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
                                 className="animate-spin text-muted-foreground"
                               />
                             </div>
-                            <div className="whitespace-pre-wrap break-words">
-                              {streamingResponse}
+                            <div className="prose prose-sm dark:prose-invert max-w-none">
+                              <WYSIWYGEditor value={streamingResponse} disabled className="text-sm" />
                             </div>
                           </div>
                         )}
@@ -712,12 +802,22 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
                       className="hidden"
                       onChange={(e) => handleFileSelect(e.target.files)}
                     />
+                    <input
+                      ref={folderInputRef}
+                      type="file"
+                      {...({ webkitdirectory: '' } as React.InputHTMLAttributes<HTMLInputElement>)}
+                      multiple
+                      className="hidden"
+                      onChange={(e) => handleFileSelect(e.target.files)}
+                    />
                     <div className="flex gap-2">
                       <div className="flex-1 flex flex-col gap-1">
                         <Textarea
                           value={messageInput}
                           onChange={(e) => setMessageInput(e.target.value)}
                           onKeyDown={handleKeyDown}
+                          onCompositionStart={handleCompositionStart}
+                          onCompositionEnd={handleCompositionEnd}
                           placeholder={t(
                             'tasks:pmDocs.messagePlaceholder',
                             'Type a message...'
@@ -745,10 +845,56 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent side="top">
-                                {t('tasks:pmDocs.attachFile', 'Attach file')}
+                                {t('tasks:pmDocs.attachFile', 'Attach files')}
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={handleFolderClick}
+                                  className="h-6 w-6 p-0"
+                                  disabled={
+                                    uploadingFiles.length > 0 || isAiResponding
+                                  }
+                                >
+                                  <FolderOpen
+                                    size={14}
+                                    className="text-muted-foreground"
+                                  />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                {t('tasks:pmDocs.attachFolder', 'Attach folder')}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          {/* Agent selector */}
+                          {availableAgents.length > 1 && (
+                            <Select
+                              value={selectedAgent}
+                              onValueChange={(v) => setSelectedAgent(v as PmChatAgent)}
+                              disabled={isAiResponding}
+                            >
+                              <SelectTrigger className="h-6 w-auto text-[10px] border-0 bg-transparent px-1">
+                                <SelectValue placeholder="CLI" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableAgents.map((agent) => (
+                                  <SelectItem
+                                    key={agent.agent}
+                                    value={agent.agent}
+                                    className="text-xs"
+                                  >
+                                    {agent.display_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
                           {/* Model selector */}
                           <Select
                             value={selectedModel}
@@ -795,16 +941,61 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
                   </div>
                 </div>
               ) : (
-                <div className="flex-1 overflow-y-auto p-3">
-                  {chatData?.pm_docs ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <WYSIWYGEditor value={chatData.pm_docs} disabled />
+                <div className="flex-1 overflow-y-auto">
+                  {selectedDoc ? (
+                    // Show selected document content
+                    <div className="flex flex-col h-full">
+                      <div className="flex items-center gap-2 p-2 border-b bg-muted/30">
+                        <button
+                          onClick={() => setSelectedDoc(null)}
+                          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                        >
+                          ← {t('common:actions.back', 'Back')}
+                        </button>
+                        <span className="text-xs font-medium truncate flex-1">
+                          {selectedDoc.path}
+                        </span>
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-2">
+                        <WYSIWYGEditor
+                          value={selectedDoc.content}
+                          disabled
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                  ) : isLoadingDocs ? (
+                    <div className="flex items-center justify-center p-4">
+                      <Loader2 size={16} className="animate-spin" />
+                    </div>
+                  ) : workspaceDocs?.docs && workspaceDocs.docs.length > 0 ? (
+                    // Show list of documents
+                    <div className="p-2 space-y-1">
+                      {workspaceDocs.docs.map((doc, index) => (
+                        <button
+                          key={`${doc.repo_name}-${doc.path}-${index}`}
+                          onClick={() => setSelectedDoc(doc)}
+                          className="w-full text-left p-2 rounded hover:bg-muted/50 transition-colors group"
+                        >
+                          <div className="flex items-center gap-2">
+                            <FileText size={14} className="text-muted-foreground shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium truncate group-hover:text-primary">
+                                {doc.path}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground">
+                                {doc.repo_name}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
                     </div>
                   ) : (
-                    <div className="text-sm text-muted-foreground italic">
+                    <div className="text-sm text-muted-foreground italic p-4 text-center">
                       {t(
-                        'tasks:pmDocs.noDocs',
-                        'No documentation generated yet. Chat with the PM to create specs.'
+                        'tasks:pmDocs.noWorkspaceDocs',
+                        'No documentation files found in docs/ folder'
                       )}
                     </div>
                   )}

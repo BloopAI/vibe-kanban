@@ -437,6 +437,33 @@ pub async fn set_task_dependencies(
     Ok(ResponseJson(ApiResponse::success(payload.dependency_ids)))
 }
 
+#[derive(Debug, Deserialize, TS)]
+pub struct TaskPositionUpdate {
+    pub task_id: Uuid,
+    pub position: i32,
+}
+
+#[derive(Debug, Deserialize, TS)]
+pub struct BatchUpdatePositionsRequest {
+    pub updates: Vec<TaskPositionUpdate>,
+}
+
+/// Batch update task positions for drag-and-drop reordering
+pub async fn batch_update_positions(
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<BatchUpdatePositionsRequest>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let updates: Vec<(Uuid, i32)> = payload
+        .updates
+        .iter()
+        .map(|u| (u.task_id, u.position))
+        .collect();
+
+    Task::batch_update_positions(&deployment.db().pool, &updates).await?;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_actions_router = Router::new()
         .route("/", put(update_task))
@@ -456,6 +483,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/", get(get_tasks).post(create_task))
         .route("/stream/ws", get(stream_tasks_ws))
         .route("/create-and-start", post(create_task_and_start))
+        .route("/batch-update-positions", post(batch_update_positions))
         .nest("/{task_id}", task_id_router);
 
     // mount under /projects/:project_id/tasks

@@ -97,6 +97,8 @@ import {
   SendMessageRequest,
   UpdatePmDocsRequest,
   PmAttachment,
+  PmChatAgent,
+  AvailablePmChatAgentsResponse,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -575,14 +577,34 @@ export const pmChatApi = {
     return handleApiResponse<Project>(response);
   },
 
-  // AI Chat - sends message and streams AI response
+  // Get workspace documentation files from project repos
+  getWorkspaceDocs: async (
+    projectId: string
+  ): Promise<{
+    docs: Array<{
+      path: string;
+      repo_name: string;
+      content: string;
+    }>;
+  }> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/pm-chat/workspace-docs`
+    );
+    return handleApiResponse(response);
+  },
+
+  // AI Chat - sends message and streams AI response with tool support
   aiChat: (
     projectId: string,
     content: string,
     model?: string,
     onContent: (content: string) => void = () => {},
     onDone: () => void = () => {},
-    onError: (error: string) => void = () => {}
+    onError: (error: string) => void = () => {},
+    onTaskCreated?: (taskId: string, taskTitle: string) => void,
+    onDocsUpdated?: () => void,
+    onToolUse?: (toolName: string) => void,
+    agent?: PmChatAgent
   ): { abort: () => void } => {
     const abortController = new AbortController();
 
@@ -595,7 +617,7 @@ export const pmChatApi = {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ content, model }),
+            body: JSON.stringify({ content, model, agent }),
             signal: abortController.signal,
           }
         );
@@ -639,7 +661,29 @@ export const pmChatApi = {
               try {
                 const event = JSON.parse(data);
                 if (event.type === 'content' && event.content) {
-                  onContent(event.content);
+                  // Append newline for line-based streaming
+                  onContent(event.content + '\n');
+                } else if (event.type === 'thinking') {
+                  // Thinking indicator - can be shown to user or just logged
+                  console.log('AI thinking:', event.content);
+                } else if (event.type === 'tool_use' && event.content) {
+                  // Tool is being used - show indicator
+                  onToolUse?.(event.content);
+                  onContent(event.content + '\n');
+                } else if (event.type === 'task_created') {
+                  // Task was created - refresh task list
+                  if (event.content) {
+                    onContent('\n' + event.content + '\n');
+                  }
+                  if (event.task_id && event.task_title) {
+                    onTaskCreated?.(event.task_id, event.task_title);
+                  }
+                } else if (event.type === 'docs_updated') {
+                  // Docs were updated - refresh docs
+                  if (event.content) {
+                    onContent('\n' + event.content + '\n');
+                  }
+                  onDocsUpdated?.();
                 } else if (event.type === 'done') {
                   onDone();
                   return;
@@ -668,6 +712,12 @@ export const pmChatApi = {
     return {
       abort: () => abortController.abort(),
     };
+  },
+
+  // Get available AI agents for PM Chat
+  getAvailableAgents: async (): Promise<AvailablePmChatAgentsResponse> => {
+    const response = await makeRequest('/api/pm-chat/ai-agents');
+    return handleApiResponse<AvailablePmChatAgentsResponse>(response);
   },
 };
 
@@ -734,6 +784,17 @@ export const tasksApi = {
       body: JSON.stringify({ dependency_ids: dependencyIds }),
     });
     return handleApiResponse<string[]>(response);
+  },
+
+  // Batch update task positions (for drag-and-drop reordering)
+  batchUpdatePositions: async (
+    updates: Array<{ task_id: string; position: number }>
+  ): Promise<void> => {
+    const response = await makeRequest(`/api/tasks/batch-update-positions`, {
+      method: 'POST',
+      body: JSON.stringify({ updates }),
+    });
+    return handleApiResponse<void>(response);
   },
 };
 

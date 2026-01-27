@@ -4,6 +4,8 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useDropzone } from 'react-dropzone';
 import { useForm, useStore } from '@tanstack/react-form';
+import { useMutation } from '@tanstack/react-query';
+import { tasksApi } from '@/lib/api';
 import {
   Image as ImageIcon,
   AlertTriangle,
@@ -134,12 +136,18 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { data: taskDependencies = [] } = useTaskDependencies(
     editMode ? props.task.id : undefined
   );
-  const setDependencies = useSetTaskDependencies(
+  // For edit mode, use the hook; for create mode, we'll set dependencies after task creation
+  const setDependenciesMutation = useSetTaskDependencies(
     editMode ? props.task.id : undefined
   );
   const [selectedDependencies, setSelectedDependencies] = useState<string[]>(
     []
   );
+  // For setting dependencies after task creation in create mode
+  const setNewTaskDependencies = useMutation({
+    mutationFn: ({ taskId, dependencyIds }: { taskId: string; dependencyIds: string[] }) =>
+      tasksApi.setDependencies(taskId, dependencyIds),
+  });
 
   // Sync dependencies from server
   useEffect(() => {
@@ -256,16 +264,29 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           repo_id: rb.repoId,
           target_branch: rb.branch,
         }));
-        await createAndStart.mutateAsync(
-          {
-            task,
-            executor_profile_id: value.executorProfileId!,
-            repos,
-          },
-          { onSuccess: () => modal.remove() }
-        );
+        const createdTask = await createAndStart.mutateAsync({
+          task,
+          executor_profile_id: value.executorProfileId!,
+          repos,
+        });
+        // Set dependencies after task creation
+        if (selectedDependencies.length > 0) {
+          await setNewTaskDependencies.mutateAsync({
+            taskId: createdTask.id,
+            dependencyIds: selectedDependencies,
+          });
+        }
+        modal.remove();
       } else {
-        await createTask.mutateAsync(task, { onSuccess: () => modal.remove() });
+        const createdTask = await createTask.mutateAsync(task);
+        // Set dependencies after task creation
+        if (selectedDependencies.length > 0) {
+          await setNewTaskDependencies.mutateAsync({
+            taskId: createdTask.id,
+            dependencyIds: selectedDependencies,
+          });
+        }
+        modal.remove();
       }
     }
   };
@@ -477,6 +498,19 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                   {t('taskFormDialog.dropImagesHere')}
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* Task ID (edit mode only - GitHub style) */}
+          {editMode && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="font-mono font-semibold text-primary">
+                #{props.task.id.slice(0, 8)}
+              </span>
+              <span className="text-xs">•</span>
+              <span className="text-xs">
+                {new Date(props.task.created_at).toLocaleDateString()}
+              </span>
             </div>
           )}
 
@@ -693,8 +727,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             </form.Field>
           </div>
 
-          {/* Dependencies (edit mode only) */}
-          {editMode && (
+          {/* Dependencies (available in both create and edit modes) */}
+          {projectTasks.length > 0 && (
             <div className="space-y-2">
               <FormLabel className="text-sm font-medium flex items-center gap-2">
                 <Link className="h-4 w-4" />
@@ -708,25 +742,31 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                     <Badge
                       key={depId}
                       variant="outline"
-                      className="cursor-pointer"
+                      className="cursor-pointer group hover:border-primary"
                       onClick={() => {
                         const newDeps = selectedDependencies.filter(
                           (id) => id !== depId
                         );
                         setSelectedDependencies(newDeps);
-                        setDependencies.mutate(newDeps);
+                        // In edit mode, save immediately; in create mode, save after task creation
+                        if (editMode) {
+                          setDependenciesMutation.mutate(newDeps);
+                        }
                       }}
                     >
-                      {depTask.title.length > 30
-                        ? depTask.title.substring(0, 30) + '...'
+                      <span className="font-mono text-primary mr-1">
+                        #{depTask.id.slice(0, 8)}
+                      </span>
+                      {depTask.title.length > 25
+                        ? depTask.title.substring(0, 25) + '...'
                         : depTask.title}
-                      <X className="h-3 w-3 ml-1" />
+                      <X className="h-3 w-3 ml-1 opacity-50 group-hover:opacity-100" />
                     </Badge>
                   );
                 })}
                 {projectTasks.filter(
                   (t) =>
-                    t.id !== props.task.id &&
+                    (editMode ? t.id !== props.task.id : true) &&
                     !selectedDependencies.includes(t.id)
                 ).length > 0 && (
                   <Select
@@ -734,7 +774,10 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                     onValueChange={(value) => {
                       const newDeps = [...selectedDependencies, value];
                       setSelectedDependencies(newDeps);
-                      setDependencies.mutate(newDeps);
+                      // In edit mode, save immediately; in create mode, save after task creation
+                      if (editMode) {
+                        setDependenciesMutation.mutate(newDeps);
+                      }
                     }}
                   >
                     <SelectTrigger className="w-auto h-6 border-dashed text-muted-foreground">
@@ -744,7 +787,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                       {projectTasks
                         .filter(
                           (t) =>
-                            t.id !== props.task.id &&
+                            (editMode ? t.id !== props.task.id : true) &&
                             !selectedDependencies.includes(t.id)
                         )
                         .map((task) => (
@@ -752,7 +795,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                             <div className="flex items-center gap-2">
                               <span
                                 className={cn(
-                                  'w-2 h-2 rounded-full',
+                                  'w-2 h-2 rounded-full shrink-0',
                                   task.status === 'done'
                                     ? 'bg-green-500'
                                     : task.status === 'inprogress'
@@ -762,8 +805,11 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                                         : 'bg-gray-400'
                                 )}
                               />
-                              {task.title.length > 40
-                                ? task.title.substring(0, 40) + '...'
+                              <span className="font-mono text-muted-foreground text-xs">
+                                #{task.id.slice(0, 8)}
+                              </span>
+                              {task.title.length > 30
+                                ? task.title.substring(0, 30) + '...'
                                 : task.title}
                             </div>
                           </SelectItem>

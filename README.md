@@ -31,6 +31,28 @@
 - **MCP Tool**: `request_pm_review` tool for AI agents to request PM spec reviews
 - **i18n Support**: English and Japanese translations
 
+## System Requirements
+
+### Runtime Requirements
+
+- **Operating Systems**: macOS, Linux, Windows (WSL2 recommended)
+- **Node.js**: v18 or higher
+- **Disk Space**: ~100MB for application and dependencies
+- **Memory**: Minimum 512MB RAM (1GB+ recommended)
+
+### Browser Compatibility
+
+- Chrome/Edge: Latest 2 versions
+- Firefox: Latest 2 versions
+- Safari: Latest 2 versions
+
+### Optional Dependencies
+
+- **Git**: Required for project management features and worktree operations
+- **SSH**: Required for remote project access
+- **VSCode**: Required for "Open in VSCode" integration
+  - With Remote-SSH extension for remote projects
+
 ## Installation
 
 ```bash
