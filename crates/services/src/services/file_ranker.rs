@@ -4,24 +4,12 @@ use std::{
     sync::Arc,
 };
 
-use chrono::{DateTime, Utc};
 use dashmap::DashMap;
 use db::models::project::{SearchMatchType, SearchResult};
 use once_cell::sync::Lazy;
 use tokio::task;
 
-use super::git::{GitService, GitServiceError};
-
-/// Statistics for a single file based on git history
-#[derive(Clone, Debug)]
-pub struct FileStat {
-    /// Index in the commit history (0 = HEAD, 1 = parent of HEAD, ...)
-    pub last_index: usize,
-    /// Number of times this file was changed in recent commits
-    pub commit_count: u32,
-    /// Timestamp of the most recent change
-    pub last_time: DateTime<Utc>,
-}
+use super::git::{FileStat, GitService, GitServiceError};
 
 /// File statistics for a repository
 pub type FileStats = HashMap<String, FileStat>;

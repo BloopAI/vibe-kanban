@@ -3,6 +3,10 @@ name = "utils"
 version = "0.0.162"
 edition = "2024"
 
+[features]
+default = []
+cloud = []
+
 [dependencies]
 tokio-util = { version = "0.7", features = ["io", "codec"] }
 bytes = "1.0"
@@ -33,6 +37,7 @@ similar = "2"
 git2 = { workspace = true }
 dirs = "5.0"
 thiserror = { workspace = true }
+tempfile = "3.21"
 url = "2.5"
 reqwest = { workspace = true }
 sqlx = { version = "0.8.6", default-features = false, features = ["postgres", "uuid", "chrono"] }

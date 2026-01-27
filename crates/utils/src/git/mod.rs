@@ -8,14 +8,30 @@ use git2::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
-use utils::diff::{Diff, DiffChangeKind, FileDiffDetails, compute_line_change_counts};
+
+use crate::diff::{Diff, DiffChangeKind, FileDiffDetails, compute_line_change_counts};
 
 mod cli;
+mod utils;
 
 use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
 pub use cli::{GitCli, GitCliError};
+pub use utils::{check_uncommitted_changes, is_valid_branch_prefix};
 
-use super::file_ranker::FileStat;
+/// Directories that should always be skipped regardless of gitignore.
+/// .git is not in .gitignore but should never be watched.
+pub const ALWAYS_SKIP_DIRS: &[&str] = &[".git", "node_modules"];
+
+/// Statistics for a single file based on git history
+#[derive(Clone, Debug)]
+pub struct FileStat {
+    /// Index in the commit history (0 = HEAD, 1 = parent of HEAD, ...)
+    pub last_index: usize,
+    /// Number of times this file was changed in recent commits
+    pub commit_count: u32,
+    /// Timestamp of the most recent change
+    pub last_time: DateTime<Utc>,
+}
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
