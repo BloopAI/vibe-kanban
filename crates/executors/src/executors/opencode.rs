@@ -106,7 +106,7 @@ impl Opencode {
         let log_writer = LogWriter::new(stdout);
 
         let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
-        let (interrupt_tx, interrupt_rx) = tokio::sync::oneshot::channel();
+        let cancel = tokio_util::sync::CancellationToken::new();
 
         // Prepare config values that will be moved into the spawned task
         let directory = current_dir.to_string_lossy().to_string();
@@ -121,6 +121,7 @@ impl Opencode {
         let auto_approve = self.auto_approve;
         let resume_session_id = resume_session.map(|s| s.to_string());
         let models_cache_key = self.compute_models_cache_key();
+        let cancel_for_task = cancel.clone();
 
         tokio::spawn(async move {
             // Wait for server to print listening URL
@@ -149,7 +150,7 @@ impl Opencode {
                 models_cache_key,
             };
 
-            let result = run_session(config, log_writer.clone(), interrupt_rx).await;
+            let result = run_session(config, log_writer.clone(), cancel_for_task).await;
             let exit_result = match result {
                 Ok(()) => ExecutorExitResult::Success,
                 Err(err) => {
@@ -165,7 +166,7 @@ impl Opencode {
         Ok(SpawnedChild {
             child,
             exit_signal: Some(exit_signal_rx),
-            interrupt_sender: Some(interrupt_tx),
+            cancel: Some(cancel),
         })
     }
 }

@@ -375,6 +375,7 @@ impl Codex {
 
         let new_stdout = create_stdout_pipe_writer(&mut child)?;
         let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
+        let cancel = tokio_util::sync::CancellationToken::new();
 
         let params = self.build_new_conversation_params(current_dir);
         let resume_session = resume_session.map(|s| s.to_string());
@@ -385,6 +386,7 @@ impl Codex {
         let approvals = self.approvals.clone();
         let repo_context = env.repo_context.clone();
         let commit_reminder = env.commit_reminder;
+        let cancel_for_task = cancel.clone();
         tokio::spawn(async move {
             let exit_signal_tx = ExitSignalSender::new(exit_signal_tx);
             let log_writer = LogWriter::new(new_stdout);
@@ -402,6 +404,7 @@ impl Codex {
                         auto_approve,
                         repo_context.clone(),
                         commit_reminder,
+                        cancel_for_task,
                     )
                     .await
                 }
@@ -418,6 +421,7 @@ impl Codex {
                         auto_approve,
                         repo_context,
                         commit_reminder,
+                        cancel_for_task,
                     )
                     .await
                 }
@@ -459,7 +463,7 @@ impl Codex {
         Ok(SpawnedChild {
             child,
             exit_signal: Some(exit_signal_rx),
-            interrupt_sender: None,
+            cancel: Some(cancel),
         })
     }
 
@@ -476,6 +480,7 @@ impl Codex {
         auto_approve: bool,
         repo_context: crate::env::RepoContext,
         commit_reminder: bool,
+        cancel: tokio_util::sync::CancellationToken,
     ) -> Result<(), ExecutorError> {
         let client = AppServerClient::new(
             log_writer,
@@ -483,9 +488,15 @@ impl Codex {
             auto_approve,
             repo_context,
             commit_reminder,
+            cancel.clone(),
         );
-        let rpc_peer =
-            JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx);
+        let rpc_peer = JsonRpcPeer::spawn(
+            child_stdin,
+            child_stdout,
+            client.clone(),
+            exit_signal_tx,
+            cancel,
+        );
         client.connect(rpc_peer);
         client.initialize().await?;
         let auth_status = client.get_auth_status().await?;

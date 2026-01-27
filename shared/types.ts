@@ -551,7 +551,7 @@ value: JsonValue, };
 
 export type ToolResultValueType = { "type": "markdown" } | { "type": "json" };
 
-export type ToolStatus = { "status": "created" } | { "status": "success" } | { "status": "failed" } | { "status": "denied", reason: string | null, } | { "status": "pending_approval", approval_id: string, requested_at: string, timeout_at: string, } | { "status": "timed_out" } | { "status": "cancelled" };
+export type ToolStatus = { "status": "created" } | { "status": "success" } | { "status": "failed" } | { "status": "denied", reason: string | null, } | { "status": "pending_approval", approval_id: string, requested_at: string, timeout_at: string, } | { "status": "timed_out" };
 
 export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry } | { "type": "STDOUT", "content": string } | { "type": "STDERR", "content": string } | { "type": "DIFF", "content": Diff };
 

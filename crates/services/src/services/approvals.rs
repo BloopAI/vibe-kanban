@@ -261,6 +261,31 @@ impl Approvals {
         map.get(execution_process_id).cloned()
     }
 
+    pub(crate) async fn cancel(&self, id: &str) {
+        if let Some((_, pending_approval)) = self.pending.remove(id) {
+            self.completed.insert(
+                id.to_string(),
+                ApprovalStatus::Denied {
+                    reason: Some("Cancelled".to_string()),
+                },
+            );
+
+            if let Some(store) = self
+                .msg_store_by_id(&pending_approval.execution_process_id)
+                .await
+                && let Some(entry) = pending_approval.entry.with_tool_status(ToolStatus::Denied {
+                    reason: Some("Cancelled".to_string()),
+                }) {
+                    store.push_patch(ConversationPatch::replace(
+                        pending_approval.entry_index,
+                        entry,
+                    ));
+                }
+
+            tracing::debug!("Cancelled approval '{}'", id);
+        }
+    }
+
     /// Check which execution processes have pending approvals.
     /// Returns a set of execution_process_ids that have at least one pending approval.
     pub fn get_pending_execution_process_ids(
@@ -279,61 +304,6 @@ impl Approvals {
                 }
             })
             .collect()
-    }
-
-    pub fn has_pending_for_execution_process(&self, execution_process_id: Uuid) -> bool {
-        self.pending
-            .iter()
-            .any(|entry| entry.value().execution_process_id == execution_process_id)
-    }
-
-    pub async fn cancel_for_execution_process(&self, execution_process_id: Uuid) {
-        let approval_ids_to_cancel: Vec<String> = self
-            .pending
-            .iter()
-            .filter(|entry| entry.value().execution_process_id == execution_process_id)
-            .map(|entry| entry.key().clone())
-            .collect();
-
-        if approval_ids_to_cancel.is_empty() {
-            return;
-        }
-
-        let store = self.msg_store_by_id(&execution_process_id).await;
-
-        for approval_id in approval_ids_to_cancel {
-            if let Some((_, pending_approval)) = self.pending.remove(&approval_id) {
-                let status = ApprovalStatus::Denied {
-                    reason: Some("Execution cancelled".to_string()),
-                };
-                self.completed.insert(approval_id.clone(), status.clone());
-
-                // Send the denial to unblock the waiter
-                if pending_approval.response_tx.send(status).is_err() {
-                    tracing::debug!(
-                        "approval '{}' cancellation notification receiver dropped",
-                        approval_id
-                    );
-                }
-
-                if let Some(ref store) = store
-                    && let Some(updated_entry) = pending_approval
-                        .entry
-                        .with_tool_status(ToolStatus::Cancelled)
-                {
-                    store.push_patch(ConversationPatch::replace(
-                        pending_approval.entry_index,
-                        updated_entry,
-                    ));
-                }
-
-                tracing::debug!(
-                    "Cancelled approval '{}' for execution process {}",
-                    approval_id,
-                    execution_process_id
-                );
-            }
-        }
     }
 }
 

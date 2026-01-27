@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use codex_app_server_protocol::{NewConversationParams, ReviewTarget};
+use tokio_util::sync::CancellationToken;
 
 use super::{
     client::{AppServerClient, LogWriter},
@@ -22,6 +23,7 @@ pub async fn launch_codex_review(
     auto_approve: bool,
     repo_context: RepoContext,
     commit_reminder: bool,
+    cancel: CancellationToken,
 ) -> Result<(), ExecutorError> {
     let client = AppServerClient::new(
         log_writer,
@@ -29,8 +31,15 @@ pub async fn launch_codex_review(
         auto_approve,
         repo_context,
         commit_reminder,
+        cancel.clone(),
     );
-    let rpc_peer = JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx);
+    let rpc_peer = JsonRpcPeer::spawn(
+        child_stdin,
+        child_stdout,
+        client.clone(),
+        exit_signal_tx,
+        cancel,
+    );
     client.connect(rpc_peer);
     client.initialize().await?;
     let auth_status = client.get_auth_status().await?;
