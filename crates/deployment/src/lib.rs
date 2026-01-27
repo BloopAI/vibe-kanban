@@ -129,7 +129,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 user_id: self.user_id().to_string(),
                 analytics_service: analytics_service.clone(),
             });
-        PrMonitorService::spawn(db, analytics).await
+        PrMonitorService::spawn(db, analytics, None).await
     }
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {
