@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { SyncErrorProvider } from '@/contexts/SyncErrorContext';
 import { NavbarContainer } from './NavbarContainer';
@@ -13,15 +13,23 @@ import {
   CreateRemoteProjectDialog,
   type CreateRemoteProjectResult,
 } from '@/components/dialogs';
+import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
+import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 
 export function SharedAppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isSignedIn } = useAuth();
 
+  // Register CMD+K shortcut globally for all routes under SharedAppLayout
+  useCommandBarShortcut(() => CommandBarDialog.show());
+
   // AppBar state - organizations and projects
   const { data: orgsData } = useUserOrganizations();
-  const organizations = orgsData?.organizations ?? [];
+  const organizations = useMemo(
+    () => orgsData?.organizations ?? [],
+    [orgsData?.organizations]
+  );
 
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
@@ -72,7 +80,7 @@ export function SharedAppLayout() {
     } catch {
       // Dialog cancelled
     }
-  }, []);
+  }, [setSelectedOrgId]);
 
   const handleCreateProject = useCallback(async () => {
     if (!selectedOrgId) return;

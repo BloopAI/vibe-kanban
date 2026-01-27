@@ -11,15 +11,10 @@ import {
 } from '@/components/ui-new/actions';
 import { isActionVisible } from '@/components/ui-new/actions/useActionVisibility';
 
-const INJECTABLE_PAGES: Array<{
-  id: StaticPageId;
-  condition: (ctx: ActionVisibilityContext) => boolean;
-}> = [
-  { id: 'workspaceActions', condition: (ctx) => ctx.hasWorkspace },
-  { id: 'diffOptions', condition: () => true },
-  { id: 'viewOptions', condition: () => true },
-  { id: 'repoActions', condition: (ctx) => ctx.hasGitRepos },
-];
+// Derive injectable pages from Pages - all child pages of root
+const INJECTABLE_PAGE_IDS = (Object.keys(Pages) as StaticPageId[]).filter(
+  (id) => id !== 'root' && Pages[id].parent === 'root'
+);
 
 export function injectSearchMatches(
   searchQuery: string,
@@ -28,24 +23,24 @@ export function injectSearchMatches(
 ): ResolvedGroup[] {
   const searchLower = searchQuery.toLowerCase();
 
-  return INJECTABLE_PAGES.reduce<ResolvedGroup[]>(
-    (groups, { id, condition }) => {
-      if (!condition(ctx)) return groups;
+  return INJECTABLE_PAGE_IDS.reduce<ResolvedGroup[]>((groups, id) => {
+    const page = Pages[id];
 
-      const items = getPageActions(id)
-        .filter((a) => isActionVisible(a, ctx))
-        .filter((a) => {
-          const label = resolveLabel(a, workspace);
-          return (
-            label.toLowerCase().includes(searchLower) ||
-            a.id.toLowerCase().includes(searchLower)
-          );
-        })
-        .map((action) => ({ type: 'action' as const, action }));
+    // Check page visibility condition
+    if (page.isVisible && !page.isVisible(ctx)) return groups;
 
-      if (items.length) groups.push({ label: Pages[id].title || id, items });
-      return groups;
-    },
-    []
-  );
+    const items = getPageActions(id)
+      .filter((a) => isActionVisible(a, ctx))
+      .filter((a) => {
+        const label = resolveLabel(a, workspace);
+        return (
+          label.toLowerCase().includes(searchLower) ||
+          a.id.toLowerCase().includes(searchLower)
+        );
+      })
+      .map((action) => ({ type: 'action' as const, action }));
+
+    if (items.length) groups.push({ label: page.title || id, items });
+    return groups;
+  }, []);
 }

@@ -2,7 +2,11 @@ import { useCallback, useRef, useEffect } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useActions } from '@/contexts/ActionsContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { Actions, type ActionDefinition } from '@/components/ui-new/actions';
+import {
+  Actions,
+  type ActionDefinition,
+  ActionTargetType,
+} from '@/components/ui-new/actions';
 import { Scope } from './registry';
 
 const SEQUENCE_TIMEOUT_MS = 1500;
@@ -32,12 +36,17 @@ export function useWorkspaceShortcuts() {
     const currentExecuteAction = executeActionRef.current;
     const firstRepoId = currentRepos?.[0]?.id;
 
-    if (action.requiresTarget === 'git') {
-      currentExecuteAction(action, currentWorkspaceId, firstRepoId);
-    } else if (action.requiresTarget === true) {
-      currentExecuteAction(action, currentWorkspaceId);
-    } else {
-      currentExecuteAction(action);
+    switch (action.requiresTarget) {
+      case ActionTargetType.GIT:
+        currentExecuteAction(action, currentWorkspaceId, firstRepoId);
+        break;
+      case ActionTargetType.WORKSPACE:
+        currentExecuteAction(action, currentWorkspaceId);
+        break;
+      case ActionTargetType.NONE:
+      case ActionTargetType.ISSUE:
+        currentExecuteAction(action);
+        break;
     }
   }, []);
 
