@@ -62,7 +62,7 @@ export function EmojiPicker({ onSelect, children }: EmojiPickerProps) {
                 className={cn(
                   'size-7 flex items-center justify-center rounded-sm',
                   'hover:bg-secondary transition-colors',
-                  'text-base'
+                  'text-base color-emoji'
                 )}
               >
                 {emoji}
