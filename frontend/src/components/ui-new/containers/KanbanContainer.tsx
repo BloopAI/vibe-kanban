@@ -305,14 +305,6 @@ export function KanbanContainer() {
     return <LoadingState />;
   }
 
-  if (visibleStatuses.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-low">{t('kanban.noStatusesFound')}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col h-full space-y-base">
       <div className="px-double pt-double space-y-base">
@@ -341,63 +333,69 @@ export function KanbanContainer() {
       </div>
 
       {kanbanViewMode === 'kanban' ? (
-        <div className="flex-1 overflow-x-auto px-double">
-          <KanbanProvider onDragEnd={handleDragEnd}>
-            {visibleStatuses.map((status) => {
-              const issueIds = items[status.id] ?? [];
+        visibleStatuses.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-low">{t('kanban.noVisibleStatuses')}</p>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-x-auto px-double">
+            <KanbanProvider onDragEnd={handleDragEnd}>
+              {visibleStatuses.map((status) => {
+                const issueIds = items[status.id] ?? [];
 
-              return (
-                <KanbanBoard key={status.id}>
-                  <KanbanHeader>
-                    <div className="sticky border-b top-0 z-20 flex shrink-0 items-center justify-between gap-2 p-base bg-background">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="h-2 w-2 rounded-full shrink-0"
-                          style={{ backgroundColor: `hsl(${status.color})` }}
-                        />
-                        <p className="m-0 text-sm">{status.name}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleAddTask(status.id)}
-                        className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors"
-                        aria-label="Add task"
-                      >
-                        <PlusIcon className="size-icon-xs" weight="bold" />
-                      </button>
-                    </div>
-                  </KanbanHeader>
-                  <KanbanCards id={status.id}>
-                    {issueIds.map((issueId, index) => {
-                      const issue = issueMap[issueId];
-                      if (!issue) return null;
-
-                      return (
-                        <KanbanCard
-                          key={issue.id}
-                          id={issue.id}
-                          name={issue.title}
-                          index={index}
-                          onClick={() => handleCardClick(issue.id)}
-                          isOpen={selectedKanbanIssueId === issue.id}
-                        >
-                          <KanbanCardContent
-                            displayId={issue.simple_id}
-                            title={issue.title}
-                            description={issue.description}
-                            priority={issue.priority}
-                            tags={getTagObjectsForIssue(issue.id)}
-                            assignees={issueAssigneesMap[issue.id] ?? []}
+                return (
+                  <KanbanBoard key={status.id}>
+                    <KanbanHeader>
+                      <div className="sticky border-b top-0 z-20 flex shrink-0 items-center justify-between gap-2 p-base bg-background">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="h-2 w-2 rounded-full shrink-0"
+                            style={{ backgroundColor: `hsl(${status.color})` }}
                           />
-                        </KanbanCard>
-                      );
-                    })}
-                  </KanbanCards>
-                </KanbanBoard>
-              );
-            })}
-          </KanbanProvider>
-        </div>
+                          <p className="m-0 text-sm">{status.name}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleAddTask(status.id)}
+                          className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors"
+                          aria-label="Add task"
+                        >
+                          <PlusIcon className="size-icon-xs" weight="bold" />
+                        </button>
+                      </div>
+                    </KanbanHeader>
+                    <KanbanCards id={status.id}>
+                      {issueIds.map((issueId, index) => {
+                        const issue = issueMap[issueId];
+                        if (!issue) return null;
+
+                        return (
+                          <KanbanCard
+                            key={issue.id}
+                            id={issue.id}
+                            name={issue.title}
+                            index={index}
+                            onClick={() => handleCardClick(issue.id)}
+                            isOpen={selectedKanbanIssueId === issue.id}
+                          >
+                            <KanbanCardContent
+                              displayId={issue.simple_id}
+                              title={issue.title}
+                              description={issue.description}
+                              priority={issue.priority}
+                              tags={getTagObjectsForIssue(issue.id)}
+                              assignees={issueAssigneesMap[issue.id] ?? []}
+                            />
+                          </KanbanCard>
+                        );
+                      })}
+                    </KanbanCards>
+                  </KanbanBoard>
+                );
+              })}
+            </KanbanProvider>
+          </div>
+        )
       ) : (
         <div className="flex-1 overflow-y-auto px-double">
           <KanbanProvider onDragEnd={handleDragEnd} className="!block !w-full">
