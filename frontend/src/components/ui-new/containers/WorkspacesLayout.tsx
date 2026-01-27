@@ -26,9 +26,6 @@ import {
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
 
-import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
-import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
-
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 
 export function WorkspacesLayout() {
@@ -67,8 +64,6 @@ export function WorkspacesLayout() {
     updateAndSaveConfig,
     loading: configLoading,
   } = useUserSystem();
-
-  useCommandBarShortcut(() => CommandBarDialog.show());
 
   // Auto-show Workspaces Guide on first visit
   useEffect(() => {

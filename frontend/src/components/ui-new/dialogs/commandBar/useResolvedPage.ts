@@ -4,6 +4,7 @@ import {
   SlidersIcon,
   SquaresFourIcon,
   GitBranchIcon,
+  KanbanIcon,
 } from '@phosphor-icons/react';
 import type { Workspace } from 'shared/types';
 import {
@@ -14,6 +15,7 @@ import {
   type ResolvedGroup,
   type ResolvedGroupItem,
   type RepoItem,
+  type StatusItem,
 } from '@/components/ui-new/actions/pages';
 import type { ActionVisibilityContext } from '@/components/ui-new/actions';
 import {
@@ -34,6 +36,7 @@ const PAGE_ICONS = {
   diffOptions: SlidersIcon,
   viewOptions: SquaresFourIcon,
   repoActions: GitBranchIcon,
+  issueActions: KanbanIcon,
 } as const satisfies Record<StaticPageId, typeof StackIcon>;
 
 function expandGroupItems(
@@ -75,7 +78,8 @@ export function useResolvedPage(
   search: string,
   ctx: ActionVisibilityContext,
   workspace: Workspace | undefined,
-  repos: RepoItem[]
+  repos: RepoItem[],
+  statuses: StatusItem[]
 ): ResolvedCommandBarPage {
   return useMemo(() => {
     if (pageId === 'selectRepo') {
@@ -91,6 +95,22 @@ export function useResolvedPage(
       };
     }
 
+    if (pageId === 'selectStatus') {
+      return {
+        id: 'selectStatus',
+        title: 'Select Status',
+        groups: [
+          {
+            label: 'Statuses',
+            items: statuses.map((s) => ({
+              type: 'status' as const,
+              status: s,
+            })),
+          },
+        ],
+      };
+    }
+
     const groups = buildPageGroups(pageId as StaticPageId, ctx);
     if (pageId === 'root' && search.trim()) {
       groups.push(...injectSearchMatches(search, ctx, workspace));
@@ -101,5 +121,5 @@ export function useResolvedPage(
       title: Pages[pageId as StaticPageId].title,
       groups,
     };
-  }, [pageId, search, ctx, workspace, repos]);
+  }, [pageId, search, ctx, workspace, repos, statuses]);
 }

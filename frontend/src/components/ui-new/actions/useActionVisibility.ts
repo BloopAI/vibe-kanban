@@ -36,6 +36,9 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
   const diffPaths = useDiffViewStore((s) => s.diffPaths);
   const diffViewMode = useDiffViewMode();
   const expanded = useUiPreferencesStore((s) => s.expanded);
+  const selectedKanbanIssueId = useUiPreferencesStore(
+    (s) => s.selectedKanbanIssueId
+  );
   // Derive layoutMode from current route instead of persisted state
   const location = useLocation();
   const layoutMode: LayoutMode = location.pathname.startsWith('/projects')
@@ -96,9 +99,10 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       hasUnpushedCommits,
       isAttemptRunning: isAttemptRunningVisible,
       logsPanelContent,
+      hasSelectedKanbanIssue: !!selectedKanbanIssueId,
     };
   }, [
-    location.pathname,
+    layoutMode,
     panelState.rightMainPanelMode,
     panelState.isLeftSidebarVisible,
     panelState.isLeftMainPanelVisible,
@@ -116,6 +120,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     branchStatus,
     isAttemptRunningVisible,
     logsPanelContent,
+    selectedKanbanIssueId,
   ]);
 }
 
