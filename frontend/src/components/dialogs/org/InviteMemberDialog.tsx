@@ -23,14 +23,9 @@ import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
 import { MemberRole } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 import { defineModal } from '@/lib/modals';
-
-const isSubscriptionError = (message: string): boolean => {
-  const lowerMessage = message.toLowerCase();
-  return (
-    lowerMessage.includes('subscription required') ||
-    lowerMessage.includes('subscribe to add more')
-  );
-};
+import { ApiError } from '@/lib/api';
+import { REMOTE_API_URL } from '@/lib/remoteApi';
+import { ArrowSquareOut } from '@phosphor-icons/react';
 
 export type InviteMemberResult = {
   action: 'invited' | 'canceled';
@@ -48,7 +43,7 @@ const InviteMemberDialogImpl = NiceModal.create<InviteMemberDialogProps>(
     const [email, setEmail] = useState('');
     const [role, setRole] = useState<MemberRole>(MemberRole.MEMBER);
     const [error, setError] = useState<string | null>(null);
-    const [isUpgradeNeeded, setIsUpgradeNeeded] = useState(false);
+    const [isSubscriptionRequired, setIsSubscriptionRequired] = useState(false);
 
     const { createInvitation } = useOrganizationMutations({
       onInviteSuccess: () => {
@@ -56,15 +51,15 @@ const InviteMemberDialogImpl = NiceModal.create<InviteMemberDialogProps>(
         modal.hide();
       },
       onInviteError: (err) => {
-        const message =
-          err instanceof Error ? err.message : 'Failed to send invitation';
-        const needsUpgrade = isSubscriptionError(message);
-        setIsUpgradeNeeded(needsUpgrade);
-        setError(
-          needsUpgrade
-            ? 'To add more members, please upgrade your plan'
-            : message
-        );
+        if (err instanceof ApiError && err.statusCode === 402) {
+          setIsSubscriptionRequired(true);
+          setError(t('inviteDialog.subscriptionRequired'));
+        } else {
+          setIsSubscriptionRequired(false);
+          setError(
+            err instanceof Error ? err.message : 'Failed to send invitation'
+          );
+        }
       },
     });
 
@@ -74,7 +69,7 @@ const InviteMemberDialogImpl = NiceModal.create<InviteMemberDialogProps>(
         setEmail('');
         setRole(MemberRole.MEMBER);
         setError(null);
-        setIsUpgradeNeeded(false);
+        setIsSubscriptionRequired(false);
       }
     }, [modal.visible]);
 
@@ -146,7 +141,6 @@ const InviteMemberDialogImpl = NiceModal.create<InviteMemberDialogProps>(
                 onChange={(e) => {
                   setEmail(e.target.value);
                   setError(null);
-                  setIsUpgradeNeeded(false);
                 }}
                 placeholder={t('inviteDialog.emailPlaceholder')}
                 autoFocus
@@ -181,21 +175,26 @@ const InviteMemberDialogImpl = NiceModal.create<InviteMemberDialogProps>(
             </div>
 
             {error && (
-              <Alert variant="destructive">
-                <AlertDescription className="text-error">
+              <Alert
+                variant={isSubscriptionRequired ? 'default' : 'destructive'}
+              >
+                <AlertDescription>
                   {error}
-                  {isUpgradeNeeded && (
-                    <>
-                      {' '}
+                  {isSubscriptionRequired && REMOTE_API_URL && (
+                    <div className="mt-2">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        {t('inviteDialog.upgradePrompt')}
+                      </p>
                       <a
-                        href="https://vibekanban.com/upgrade"
+                        href={`${REMOTE_API_URL}/account/organizations/${organizationId}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="underline font-medium"
+                        className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
                       >
-                        https://vibekanban.com/upgrade
+                        {t('inviteDialog.upgradeButton')}
+                        <ArrowSquareOut className="h-3 w-3" />
                       </a>
-                    </>
+                    </div>
                   )}
                 </AlertDescription>
               </Alert>
