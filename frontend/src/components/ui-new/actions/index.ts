@@ -41,6 +41,7 @@ import {
   MegaphoneIcon,
   QuestionIcon,
   ArrowsLeftRightIcon,
+  ArrowFatLineUpIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import {
@@ -105,6 +106,10 @@ export interface ActionExecutorContext {
   logsPanelContent: LogsPanelContent | null;
   // Command bar navigation
   openStatusSelection: (projectId: string, issueIds: string[]) => Promise<void>;
+  openPrioritySelection: (
+    projectId: string,
+    issueIds: string[]
+  ) => Promise<void>;
   // Kanban issue panel
   openKanbanIssuePanel: (
     issueId: string | null,
@@ -1200,6 +1205,43 @@ export const Actions = {
       );
       await CommandBarDialog.show({
         pendingStatusSelection: {
+          projectId: '',
+          issueIds: [],
+          isCreateMode: true,
+        },
+      });
+    },
+  } satisfies GlobalActionDefinition,
+
+  ChangePriority: {
+    id: 'change-issue-priority',
+    label: 'Change Priority',
+    icon: ArrowFatLineUpIcon,
+    shortcut: 'I P',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      await ctx.openPrioritySelection(projectId, issueIds);
+    },
+  } satisfies IssueActionDefinition,
+
+  ChangeNewIssuePriority: {
+    id: 'change-new-issue-priority',
+    label: 'Change Priority',
+    icon: ArrowFatLineUpIcon,
+    shortcut: 'I P',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban' && ctx.isCreatingIssue,
+    execute: async () => {
+      // Opens priority selection for the issue being created
+      // The CommandBarDialog will handle this specially for create mode
+      // ProjectId will be resolved from route params inside the dialog
+      const { CommandBarDialog } = await import(
+        '@/components/ui-new/dialogs/CommandBarDialog'
+      );
+      await CommandBarDialog.show({
+        pendingPrioritySelection: {
           projectId: '',
           issueIds: [],
           isCreateMode: true,
