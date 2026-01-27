@@ -21,7 +21,7 @@ use notify_debouncer_full::{
     DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache, new_debouncer,
 };
 use thiserror::Error;
-use workspace_git::ALWAYS_SKIP_DIRS;
+use utils::path::ALWAYS_SKIP_DIRS;
 
 pub type WatcherComponents = (
     Arc<Mutex<Debouncer<RecommendedWatcher, RecommendedCache>>>,

@@ -15,7 +15,8 @@ mod validation;
 
 use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
 pub use cli::{GitCli, GitCliError, StatusEntry, WorktreeStatus};
-pub use validation::{ALWAYS_SKIP_DIRS, is_valid_branch_prefix};
+pub use utils::path::ALWAYS_SKIP_DIRS;
+pub use validation::is_valid_branch_prefix;
 
 /// Statistics for a single file based on git history
 #[derive(Clone, Debug)]

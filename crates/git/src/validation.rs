@@ -1,7 +1,3 @@
-/// Directories that should always be skipped regardless of gitignore.
-/// .git is not in .gitignore but should never be watched.
-pub const ALWAYS_SKIP_DIRS: &[&str] = &[".git", "node_modules"];
-
 pub fn is_valid_branch_prefix(prefix: &str) -> bool {
     if prefix.is_empty() {
         return true;
