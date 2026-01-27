@@ -12,8 +12,8 @@ use utils::diff::{Diff, DiffChangeKind, FileDiffDetails, compute_line_change_cou
 
 mod cli;
 
-use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
-pub use cli::{GitCli, GitCliError, StatusEntry, WorktreeStatus};
+use cli::{ChangeType, GitCli, GitCliError, StatusDiffEntry, StatusDiffOptions};
+pub use cli::{StatusEntry, WorktreeStatus};
 
 pub fn is_valid_branch_prefix(prefix: &str) -> bool {
     if prefix.is_empty() {
@@ -47,8 +47,6 @@ pub enum GitServiceError {
     #[error(transparent)]
     Git(#[from] GitError),
     #[error(transparent)]
-    GitCLI(#[from] GitCliError),
-    #[error(transparent)]
     IoError(#[from] std::io::Error),
     #[error("Invalid repository: {0}")]
     InvalidRepository(String),
@@ -65,6 +63,24 @@ pub enum GitServiceError {
     WorktreeDirty(String, String),
     #[error("Rebase in progress; resolve or abort it before retrying")]
     RebaseInProgress,
+    #[error("git executable not found or not runnable")]
+    GitNotAvailable,
+    #[error("authentication failed: {0}")]
+    AuthFailed(String),
+    #[error("push rejected: {0}")]
+    PushRejected(String),
+}
+
+impl From<GitCliError> for GitServiceError {
+    fn from(e: GitCliError) -> Self {
+        match e {
+            GitCliError::NotAvailable => GitServiceError::GitNotAvailable,
+            GitCliError::AuthFailed(msg) => GitServiceError::AuthFailed(msg),
+            GitCliError::PushRejected(msg) => GitServiceError::PushRejected(msg),
+            GitCliError::RebaseInProgress => GitServiceError::RebaseInProgress,
+            GitCliError::CommandFailed(msg) => GitServiceError::InvalidRepository(msg),
+        }
+    }
 }
 /// Service for managing Git operations in task execution workflows
 #[derive(Clone)]
@@ -1664,7 +1680,7 @@ impl GitService {
     ) -> Result<String, GitServiceError> {
         let cli = GitCli::new();
         cli.get_remote_url(repo_path, remote_name)
-            .map_err(GitServiceError::GitCLI)
+            .map_err(GitServiceError::from)
     }
 
     pub fn get_default_remote(&self, repo_path: &Path) -> Result<GitRemote, GitServiceError> {
@@ -1691,7 +1707,7 @@ impl GitService {
         let git_cli = GitCli::new();
         git_cli
             .check_remote_branch_exists(repo_path, remote_url, branch_name)
-            .map_err(GitServiceError::GitCLI)
+            .map_err(GitServiceError::from)
     }
 
     pub fn fetch_branch(
@@ -1704,7 +1720,7 @@ impl GitService {
         let refspec = format!("+refs/heads/{branch_name}:refs/heads/{branch_name}");
         git_cli
             .fetch_with_refspec(repo_path, remote_url, &refspec)
-            .map_err(GitServiceError::GitCLI)
+            .map_err(GitServiceError::from)
     }
 
     pub fn resolve_remote_for_branch(

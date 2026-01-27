@@ -7,11 +7,17 @@ use std::{
 use git2::{Repository, build::CheckoutBuilder};
 use tempfile::TempDir;
 use utils::diff::DiffChangeKind;
-use workspace_git::{DiffTarget, GitCli, GitService};
+use workspace_git::{DiffTarget, GitService};
 
 fn add_path(repo_path: &Path, path: &str) {
-    let git = GitCli::new();
-    git.git(repo_path, ["add", path]).unwrap();
+    use std::process::Command;
+    Command::new("git")
+        .arg("-C")
+        .arg(repo_path)
+        .arg("add")
+        .arg(path)
+        .status()
+        .expect("git add failed");
 }
 
 fn get_commit_author(repo_path: &Path, commit_sha: &str) -> (Option<String>, Option<String>) {

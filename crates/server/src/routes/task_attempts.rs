@@ -51,7 +51,7 @@ use sqlx::Error as SqlxError;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
-use workspace_git::{ConflictOp, GitCliError, GitServiceError};
+use workspace_git::{ConflictOp, GitServiceError};
 
 use crate::{
     DeploymentImpl, error::ApiError, middleware::load_workspace_middleware,
@@ -554,7 +554,7 @@ pub async fn push_task_attempt_branch(
         .push_to_remote(&worktree_path, &workspace.branch, false)
     {
         Ok(_) => Ok(ResponseJson(ApiResponse::success(()))),
-        Err(GitServiceError::GitCLI(GitCliError::PushRejected(_))) => Ok(ResponseJson(
+        Err(GitServiceError::PushRejected(_)) => Ok(ResponseJson(
             ApiResponse::error_with_data(PushError::ForcePushRequired),
         )),
         Err(e) => Err(ApiError::GitService(e)),
