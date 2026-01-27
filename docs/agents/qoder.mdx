@@ -1,0 +1,81 @@
+---
+title: "Qoder"
+description: "Set up Qoder CLI agent"
+icon: "robot"
+---
+
+<Steps>
+<Step title="Install Qoder CLI">
+  You can install Qoder CLI using one of the following methods:
+
+  **Using cURL**
+  ```bash
+  curl -fsSL https://qoder.com/install | bash
+  ```
+
+  **Using Homebrew (macOS, Linux)**
+  ```bash
+  brew install qoderai/qoder/qodercli --cask
+  ```
+
+  **Using NPM**
+  ```bash
+  npm install -g @qoder-ai/qodercli
+  ```
+
+  Verify the installation:
+  ```bash
+  qodercli --version
+  ```
+</Step>
+
+<Step title="Sign in to Qoder">
+  Before using Qoder, you need to authenticate. You can sign in using the interactive TUI:
+
+  ```bash
+  qodercli
+  ```
+
+  Then in the interactive prompt, enter:
+  ```
+  /login
+  ```
+
+  Choose your preferred login method:
+  - **Login with browser**: Opens a sign-in page in your default web browser
+  - **Login with personal access token**: Paste your Qoder Personal Access Token
+
+  You can get your personal access token at: https://qoder.com/account/integrations
+
+  For more details, see the [Qoder CLI documentation](https://docs.qoder.com/cli/quick-start).
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+
+  ```bash
+  npx vibe-kanban
+  ```
+
+  You can now select Qoder when creating task attempts.
+</Step>
+</Steps>
+
+## Features
+
+Qoder CLI provides powerful agentic coding capabilities:
+
+- **Quest Mode**: Delegate tasks based on specifications for asynchronous execution
+- **Code Review**: Conduct code reviews for local changes
+- **Memory System**: Uses AGENTS.md files to remember project context
+- **MCP Integration**: Supports Model Context Protocol tools for enhanced capabilities
+- **Built-in Tools**: File operations, shell commands, and more
+
+## Configuration Variants
+
+Vibe Kanban provides the following Qoder configuration variants:
+
+- **DEFAULT**: Standard execution with auto-approval enabled
+- **APPROVALS**: Requires user approval for actions
+
+You can customize these or create new variants in Settings → Agents.
