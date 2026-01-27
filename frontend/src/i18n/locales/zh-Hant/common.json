@@ -350,7 +350,11 @@
     "enterCommentPlaceholder": "在此輸入評論...",
     "subIssues": "子任務",
     "noSubIssues": "無子任務",
-    "parentIssue": "父級"
+    "parentIssue": "父級",
+    "viewTabs": {
+      "active": "活動",
+      "all": "全部"
+    }
   },
   "syncError": {
     "networkErrors": "網路錯誤",
