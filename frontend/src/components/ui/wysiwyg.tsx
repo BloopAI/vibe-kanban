@@ -262,35 +262,35 @@ function WYSIWYGEditor({
               <ListPlugin />
               <TablePlugin />
               <CodeHighlightPlugin />
-               {/* Only include editing plugins when not in read-only mode */}
-               {!disabled && (
-                 <>
-                   {autoFocus && <AutoFocusPlugin />}
-                   <HistoryPlugin />
-                   <MarkdownShortcutPlugin transformers={extendedTransformers} />
-                   <TypeaheadOpenProvider>
-                     <FileTagTypeaheadPlugin
-                       workspaceId={workspaceId}
-                       projectId={projectId}
-                     />
-                     {executor && (
-                       <SlashCommandTypeaheadPlugin
-                         agent={executor}
-                         repoId={repoId}
-                       />
-                     )}
-                     <KeyboardCommandsPlugin
-                       onCmdEnter={onCmdEnter}
-                       onShiftCmdEnter={onShiftCmdEnter}
-                       onChange={onChange}
-                       transformers={extendedTransformers}
-                       sendShortcut={sendShortcut}
-                     />
-                   </TypeaheadOpenProvider>
-                   <ImageKeyboardPlugin />
-                   <CodeBlockShortcutPlugin />
-                 </>
-               )}
+              {/* Only include editing plugins when not in read-only mode */}
+              {!disabled && (
+                <>
+                  {autoFocus && <AutoFocusPlugin />}
+                  <HistoryPlugin />
+                  <MarkdownShortcutPlugin transformers={extendedTransformers} />
+                  <TypeaheadOpenProvider>
+                    <FileTagTypeaheadPlugin
+                      workspaceId={workspaceId}
+                      projectId={projectId}
+                    />
+                    {executor && (
+                      <SlashCommandTypeaheadPlugin
+                        agent={executor}
+                        repoId={repoId}
+                      />
+                    )}
+                    <KeyboardCommandsPlugin
+                      onCmdEnter={onCmdEnter}
+                      onShiftCmdEnter={onShiftCmdEnter}
+                      onChange={onChange}
+                      transformers={extendedTransformers}
+                      sendShortcut={sendShortcut}
+                    />
+                  </TypeaheadOpenProvider>
+                  <ImageKeyboardPlugin />
+                  <CodeBlockShortcutPlugin />
+                </>
+              )}
               {/* Link sanitization for read-only mode */}
               {disabled && <ReadOnlyLinkPlugin />}
               {/* Clickable code for file paths in read-only mode */}
