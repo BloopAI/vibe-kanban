@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
-use agent_client_protocol::{self as acp, ErrorCode};
+use agent_client_protocol::{self as acp};
 use async_trait::async_trait;
 use tokio::sync::{Mutex, mpsc};
+use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
 use workspace_utils::approvals::ApprovalStatus;
 
@@ -17,6 +18,7 @@ pub struct AcpClient {
     event_tx: mpsc::UnboundedSender<AcpEvent>,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     feedback_queue: Arc<Mutex<Vec<String>>>,
+    cancel: CancellationToken,
 }
 
 impl AcpClient {
@@ -24,11 +26,13 @@ impl AcpClient {
     pub fn new(
         event_tx: mpsc::UnboundedSender<AcpEvent>,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
+        cancel: CancellationToken,
     ) -> Self {
         Self {
             event_tx,
             approvals,
             feedback_queue: Arc::new(Mutex::new(Vec::new())),
+            cancel,
         }
     }
 
@@ -94,25 +98,34 @@ impl acp::Client for AcpClient {
         }
 
         let tool_call_id = args.tool_call.tool_call_id.0.to_string();
-        let status = match self
+        let approval_service = self
             .approvals
             .as_ref()
             .ok_or(ExecutorApprovalError::ServiceUnavailable)
-            .map_err(|_| acp::Error::invalid_request())?
+            .map_err(|_| acp::Error::invalid_request())?;
+
+        let status = match approval_service
             .request_tool_approval(
                 args.tool_call.fields.title.as_deref().unwrap_or("tool"),
                 serde_json::json!({ "tool_call": args.tool_call }),
                 &tool_call_id,
+                self.cancel.clone(),
             )
             .await
         {
             Ok(s) => s,
-            Err(err) => {
-                warn!("Failed to request tool approval: {}", err);
-                return Err(acp::Error::new(
-                    ErrorCode::INTERNAL_ERROR.code,
-                    format!("Approval request failed: {}", err),
+            Err(ExecutorApprovalError::Cancelled) => {
+                debug!("ACP approval cancelled for tool_call_id={}", tool_call_id);
+                return Ok(acp::RequestPermissionResponse::new(
+                    acp::RequestPermissionOutcome::Cancelled,
                 ));
+            }
+            Err(err) => {
+                tracing::error!(
+                    "ACP approval failed for tool_call_id={}: {err}",
+                    tool_call_id
+                );
+                return Err(acp::Error::internal_error());
             }
         };
 

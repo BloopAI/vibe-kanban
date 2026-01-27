@@ -52,9 +52,8 @@ export function useAttemptExecution(attemptId?: string, taskId?: string) {
     };
   }, [executionProcesses, setupProcesses, processDetailQueries]);
 
-  // Stop execution function
   const stopExecution = useCallback(async () => {
-    if (!attemptId || !isAttemptRunning || isStopping) return;
+    if (!attemptId || isStopping) return;
 
     try {
       setIsStopping(true);
@@ -65,7 +64,7 @@ export function useAttemptExecution(attemptId?: string, taskId?: string) {
     } finally {
       setIsStopping(false);
     }
-  }, [attemptId, isAttemptRunning, isStopping, setIsStopping]);
+  }, [attemptId, isStopping, setIsStopping]);
 
   const isLoading =
     streamLoading || processDetailQueries.some((q) => q.isLoading);
