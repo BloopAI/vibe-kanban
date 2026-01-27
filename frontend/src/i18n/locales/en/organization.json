@@ -83,5 +83,10 @@
     "description": "Manage your organization's subscription and billing settings",
     "manageButton": "Manage Billing",
     "openInBrowser": "Opens in a new browser tab"
+  },
+  "personalOrg": {
+    "cannotInvite": "Personal organizations cannot have additional members.",
+    "createOrgPrompt": "Create an organization to collaborate with others.",
+    "createOrgButton": "Create Organization"
   }
 }
