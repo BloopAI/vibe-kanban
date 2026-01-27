@@ -83,5 +83,10 @@
     "description": "管理您組織的訂閱與帳單設定",
     "manageButton": "管理帳單",
     "openInBrowser": "在新瀏覽器分頁中開啟"
+  },
+  "personalOrg": {
+    "cannotInvite": "個人組織不能新增其他成員。",
+    "createOrgPrompt": "建立組織以與他人協作。",
+    "createOrgButton": "建立組織"
   }
 }

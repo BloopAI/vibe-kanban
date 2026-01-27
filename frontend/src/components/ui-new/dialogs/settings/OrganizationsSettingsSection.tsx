@@ -7,6 +7,7 @@ import {
   TrashIcon,
   SignInIcon,
   ArrowSquareOutIcon,
+  InfoIcon,
 } from '@phosphor-icons/react';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
@@ -368,6 +369,32 @@ export function OrganizationsSettingsSection() {
             ) : undefined
           }
         >
+          {isPersonalOrg && (
+            <div className="bg-info/10 border border-info/50 rounded-sm p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <InfoIcon
+                  className="size-icon-sm text-info flex-shrink-0 mt-0.5"
+                  weight="bold"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-high">
+                    {t('personalOrg.cannotInvite')}
+                  </p>
+                  <p className="text-sm text-low mt-1">
+                    {t('personalOrg.createOrgPrompt')}
+                  </p>
+                  <PrimaryButton
+                    variant="secondary"
+                    value={t('personalOrg.createOrgButton')}
+                    onClick={handleCreateOrganization}
+                    className="mt-3"
+                  >
+                    <PlusIcon className="size-icon-xs mr-1" weight="bold" />
+                  </PrimaryButton>
+                </div>
+              </div>
+            </div>
+          )}
           {loadingMembers ? (
             <div className="flex items-center justify-center py-4 gap-2">
               <SpinnerIcon className="size-icon-sm animate-spin" />
