@@ -38,6 +38,8 @@ fn generate_types_content() -> String {
         db::models::scratch::DraftWorkspaceRepo::decl(),
         db::models::scratch::PreviewSettingsData::decl(),
         db::models::scratch::WorkspaceNotesData::decl(),
+        db::models::scratch::WorkspacePanelStateData::decl(),
+        db::models::scratch::UiPreferencesData::decl(),
         db::models::scratch::ScratchPayload::decl(),
         db::models::scratch::ScratchType::decl(),
         db::models::scratch::Scratch::decl(),

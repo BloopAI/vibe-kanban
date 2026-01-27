@@ -62,9 +62,49 @@ export type PreviewSettingsData = { url: string, screen_size: string | null, res
 
 export type WorkspaceNotesData = { content: string, };
 
-export type ScratchPayload = { "type": "DRAFT_TASK", "data": string } | { "type": "DRAFT_FOLLOW_UP", "data": DraftFollowUpData } | { "type": "DRAFT_WORKSPACE", "data": DraftWorkspaceData } | { "type": "PREVIEW_SETTINGS", "data": PreviewSettingsData } | { "type": "WORKSPACE_NOTES", "data": WorkspaceNotesData };
+export type WorkspacePanelStateData = { right_main_panel_mode: string | null, is_left_main_panel_visible: boolean, };
 
-export enum ScratchType { DRAFT_TASK = "DRAFT_TASK", DRAFT_FOLLOW_UP = "DRAFT_FOLLOW_UP", DRAFT_WORKSPACE = "DRAFT_WORKSPACE", PREVIEW_SETTINGS = "PREVIEW_SETTINGS", WORKSPACE_NOTES = "WORKSPACE_NOTES" }
+export type UiPreferencesData = { 
+/**
+ * Preferred repo actions per repo
+ */
+repo_actions: { [key in string]?: string }, 
+/**
+ * Expanded/collapsed state for UI sections
+ */
+expanded: { [key in string]?: boolean }, 
+/**
+ * Context bar position
+ */
+context_bar_position: string | null, 
+/**
+ * Pane sizes
+ */
+pane_sizes: { [key in string]?: JsonValue }, 
+/**
+ * Collapsed paths per workspace in file tree
+ */
+collapsed_paths: { [key in string]?: Array<string> }, 
+/**
+ * Global left sidebar visibility
+ */
+is_left_sidebar_visible: boolean | null, 
+/**
+ * Global right sidebar visibility
+ */
+is_right_sidebar_visible: boolean | null, 
+/**
+ * Global terminal visibility
+ */
+is_terminal_visible: boolean | null, 
+/**
+ * Workspace-specific panel states
+ */
+workspace_panel_states: { [key in string]?: WorkspacePanelStateData }, };
+
+export type ScratchPayload = { "type": "DRAFT_TASK", "data": string } | { "type": "DRAFT_FOLLOW_UP", "data": DraftFollowUpData } | { "type": "DRAFT_WORKSPACE", "data": DraftWorkspaceData } | { "type": "PREVIEW_SETTINGS", "data": PreviewSettingsData } | { "type": "WORKSPACE_NOTES", "data": WorkspaceNotesData } | { "type": "UI_PREFERENCES", "data": UiPreferencesData };
+
+export enum ScratchType { DRAFT_TASK = "DRAFT_TASK", DRAFT_FOLLOW_UP = "DRAFT_FOLLOW_UP", DRAFT_WORKSPACE = "DRAFT_WORKSPACE", PREVIEW_SETTINGS = "PREVIEW_SETTINGS", WORKSPACE_NOTES = "WORKSPACE_NOTES", UI_PREFERENCES = "UI_PREFERENCES" }
 
 export type Scratch = { id: string, payload: ScratchPayload, created_at: string, updated_at: string, };
 

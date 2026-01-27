@@ -11,6 +11,7 @@ import { SharedAppLayout } from '@/components/ui-new/containers/SharedAppLayout'
 import { usePostHog } from 'posthog-js/react';
 import { useAuth } from '@/hooks';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
+import { useUiPreferencesScratch } from '@/hooks/useUiPreferencesScratch';
 
 import {
   AgentSettings,
@@ -57,6 +58,9 @@ function AppContent() {
 
   // Track previous path for back navigation
   usePreviousPath();
+
+  // Sync UI preferences with server scratch storage
+  useUiPreferencesScratch();
 
   // Handle opt-in/opt-out and user identification when config loads
   useEffect(() => {

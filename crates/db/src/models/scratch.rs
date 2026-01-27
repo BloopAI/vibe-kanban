@@ -42,6 +42,45 @@ pub struct WorkspaceNotesData {
     pub content: String,
 }
 
+/// Workspace-specific panel state
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct WorkspacePanelStateData {
+    pub right_main_panel_mode: Option<String>,
+    pub is_left_main_panel_visible: bool,
+}
+
+/// Data for UI preferences scratch (global preferences stored per-user or per-device)
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct UiPreferencesData {
+    /// Preferred repo actions per repo
+    #[serde(default)]
+    pub repo_actions: std::collections::HashMap<String, String>,
+    /// Expanded/collapsed state for UI sections
+    #[serde(default)]
+    pub expanded: std::collections::HashMap<String, bool>,
+    /// Context bar position
+    #[serde(default)]
+    pub context_bar_position: Option<String>,
+    /// Pane sizes
+    #[serde(default)]
+    pub pane_sizes: std::collections::HashMap<String, serde_json::Value>,
+    /// Collapsed paths per workspace in file tree
+    #[serde(default)]
+    pub collapsed_paths: std::collections::HashMap<String, Vec<String>>,
+    /// Global left sidebar visibility
+    #[serde(default)]
+    pub is_left_sidebar_visible: Option<bool>,
+    /// Global right sidebar visibility
+    #[serde(default)]
+    pub is_right_sidebar_visible: Option<bool>,
+    /// Global terminal visibility
+    #[serde(default)]
+    pub is_terminal_visible: Option<bool>,
+    /// Workspace-specific panel states
+    #[serde(default)]
+    pub workspace_panel_states: std::collections::HashMap<String, WorkspacePanelStateData>,
+}
+
 /// Linked issue data for draft workspace scratch
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct DraftWorkspaceLinkedIssue {
@@ -87,6 +126,7 @@ pub enum ScratchPayload {
     DraftWorkspace(DraftWorkspaceData),
     PreviewSettings(PreviewSettingsData),
     WorkspaceNotes(WorkspaceNotesData),
+    UiPreferences(UiPreferencesData),
 }
 
 impl ScratchPayload {
