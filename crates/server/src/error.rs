@@ -359,8 +359,14 @@ impl From<RepoServiceError> for ApiError {
             RepoServiceError::Git(git_err) => {
                 ApiError::BadRequest(format!("Git error: {}", git_err))
             }
+            RepoServiceError::GitCli(cli_err) => {
+                ApiError::BadRequest(format!("Git error: {}", cli_err))
+            }
             RepoServiceError::InvalidFolderName(name) => {
                 ApiError::BadRequest(format!("Invalid folder name: {}", name))
+            }
+            RepoServiceError::InvalidGitUrl(url) => {
+                ApiError::BadRequest(format!("Invalid git URL: {}", url))
             }
         }
     }

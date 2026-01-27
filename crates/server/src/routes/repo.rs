@@ -42,6 +42,15 @@ pub struct BatchRepoRequest {
     pub ids: Vec<Uuid>,
 }
 
+#[derive(Debug, Deserialize, TS)]
+#[ts(export)]
+pub struct CloneRepoRequest {
+    /// The git URL to clone from (HTTPS or SSH)
+    pub url: String,
+    /// Optional display name for the repository
+    pub display_name: Option<String>,
+}
+
 pub async fn register_repo(
     State(deployment): State<DeploymentImpl>,
     ResponseJson(payload): ResponseJson<RegisterRepoRequest>,
@@ -71,6 +80,31 @@ pub async fn init_repo(
             &payload.folder_name,
         )
         .await?;
+
+    Ok(ResponseJson(ApiResponse::success(repo)))
+}
+
+pub async fn clone_repo(
+    State(deployment): State<DeploymentImpl>,
+    ResponseJson(payload): ResponseJson<CloneRepoRequest>,
+) -> Result<ResponseJson<ApiResponse<Repo>>, ApiError> {
+    let repo = deployment
+        .repo()
+        .clone_repo(
+            &deployment.db().pool,
+            &payload.url,
+            payload.display_name.as_deref(),
+        )
+        .await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "repo_cloned",
+            serde_json::json!({
+                "repo_id": repo.id.to_string(),
+            }),
+        )
+        .await;
 
     Ok(ResponseJson(ApiResponse::success(repo)))
 }
@@ -210,6 +244,7 @@ pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/repos", get(get_repos).post(register_repo))
         .route("/repos/init", post(init_repo))
+        .route("/repos/clone", post(clone_repo))
         .route("/repos/batch", post(get_repos_batch))
         .route("/repos/{repo_id}", get(get_repo).put(update_repo))
         .route("/repos/{repo_id}/branches", get(get_repo_branches))

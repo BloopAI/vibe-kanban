@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import {
   Dialog,
@@ -13,18 +12,18 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { WarningIcon } from '@phosphor-icons/react';
-import { CreateProject, Project } from 'shared/types';
+import { AlertCircle } from 'lucide-react';
+import { Repo } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { defineModal } from '@/lib/modals';
 import { repoApi } from '@/lib/api';
 
-export interface CreateProjectDialogProps {}
+export interface CloneRepoDialogProps {
+  title?: string;
+  description?: string;
+}
 
-export type CreateProjectDialogResult =
-  | { status: 'saved'; project: Project }
-  | { status: 'canceled' };
+export type CloneRepoDialogResult = Repo | null;
 
 /**
  * Extract repository name from a git URL.
@@ -53,32 +52,20 @@ function extractRepoNameFromUrl(url: string): string | null {
   return name;
 }
 
-const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
-  () => {
-    const { t } = useTranslation(['tasks', 'common']);
+const CloneRepoDialogImpl = NiceModal.create<CloneRepoDialogProps>(
+  ({ title = 'Clone Repository', description = 'Enter a Git repository URL to clone.' }) => {
     const modal = useModal();
     const [gitUrl, setGitUrl] = useState('');
-    const [isCloning, setIsCloning] = useState(false);
-    const [cloneError, setCloneError] = useState<string | null>(null);
-
-    const { createProject } = useProjectMutations({
-      onCreateSuccess: (project) => {
-        modal.resolve({
-          status: 'saved',
-          project,
-        } as CreateProjectDialogResult);
-        modal.hide();
-      },
-      onCreateError: () => {
-        setIsCloning(false);
-      },
-    });
+    const [error, setError] = useState<string | null>(null);
 
     const cloneRepo = useMutation({
       mutationFn: (url: string) => repoApi.clone({ url }),
+      onSuccess: (repo) => {
+        modal.resolve(repo);
+        modal.hide();
+      },
       onError: (error: Error) => {
-        setCloneError(error.message);
-        setIsCloning(false);
+        setError(error.message);
       },
     });
 
@@ -86,37 +73,20 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
     useEffect(() => {
       if (modal.visible) {
         setGitUrl('');
-        setCloneError(null);
-        setIsCloning(false);
+        setError(null);
       }
     }, [modal.visible]);
 
-    const handleCreate = async () => {
+    const handleClone = async () => {
       const url = gitUrl.trim();
       if (!url) return;
 
-      setIsCloning(true);
-      setCloneError(null);
-
-      try {
-        // Clone the repository
-        const repo = await cloneRepo.mutateAsync(url);
-
-        // Create the project with the cloned repository
-        const projectName = repo.display_name || repo.name;
-        const createData: CreateProject = {
-          name: projectName,
-          repositories: [{ display_name: projectName, git_repo_path: repo.path }],
-        };
-
-        createProject.mutate(createData);
-      } catch {
-        // Error already handled in onError
-      }
+      setError(null);
+      cloneRepo.mutate(url);
     };
 
     const handleCancel = () => {
-      modal.resolve({ status: 'canceled' } as CreateProjectDialogResult);
+      modal.resolve(null);
       modal.hide();
     };
 
@@ -127,32 +97,21 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && gitUrl.trim() && !isCloning) {
+      if (e.key === 'Enter' && gitUrl.trim() && !cloneRepo.isPending) {
         e.preventDefault();
-        handleCreate();
+        handleClone();
       }
     };
 
-    const isPending = isCloning || createProject.isPending;
-    const error =
-      cloneError ||
-      (createProject.isError
-        ? createProject.error instanceof Error
-          ? createProject.error.message
-          : t('projects.create.errors.createFailed')
-        : null);
-
-    // Derive suggested project name from URL
+    // Derive suggested repo name from URL
     const suggestedName = extractRepoNameFromUrl(gitUrl);
 
     return (
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>{t('projects.create.dialog.title')}</DialogTitle>
-            <DialogDescription>
-              Enter a Git repository URL to clone and create a new project.
-            </DialogDescription>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -163,17 +122,16 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
                 value={gitUrl}
                 onChange={(e) => {
                   setGitUrl(e.target.value);
-                  setCloneError(null);
+                  setError(null);
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder="https://github.com/user/repo.git or git@github.com:user/repo.git"
                 autoFocus
-                disabled={isPending}
+                disabled={cloneRepo.isPending}
               />
               {suggestedName && (
                 <p className="text-xs text-muted-foreground">
-                  Project will be named:{' '}
-                  <span className="font-medium">{suggestedName}</span>
+                  Repository name: <span className="font-medium">{suggestedName}</span>
                 </p>
               )}
             </div>
@@ -181,7 +139,7 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
 
           {error && (
             <Alert variant="destructive">
-              <WarningIcon className="h-4 w-4" />
+              <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -190,19 +148,15 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
             <Button
               variant="outline"
               onClick={handleCancel}
-              disabled={isPending}
+              disabled={cloneRepo.isPending}
             >
-              {t('common:buttons.cancel')}
+              Cancel
             </Button>
             <Button
-              onClick={handleCreate}
-              disabled={!gitUrl.trim() || isPending}
+              onClick={handleClone}
+              disabled={!gitUrl.trim() || cloneRepo.isPending}
             >
-              {isPending
-                ? isCloning
-                  ? 'Cloning...'
-                  : t('common:states.saving')
-                : t('common:buttons.create')}
+              {cloneRepo.isPending ? 'Cloning...' : 'Clone'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -211,7 +165,6 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
   }
 );
 
-export const CreateProjectDialog = defineModal<
-  CreateProjectDialogProps,
-  CreateProjectDialogResult
->(CreateProjectDialogImpl);
+export const CloneRepoDialog = defineModal<CloneRepoDialogProps, CloneRepoDialogResult>(
+  CloneRepoDialogImpl
+);
