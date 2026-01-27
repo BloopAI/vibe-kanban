@@ -83,5 +83,10 @@
     "description": "조직의 구독 및 결제 설정 관리",
     "manageButton": "결제 관리",
     "openInBrowser": "새 브라우저 탭에서 열림"
+  },
+  "personalOrg": {
+    "cannotInvite": "개인 조직에는 추가 멤버를 포함할 수 없습니다.",
+    "createOrgPrompt": "다른 사람과 협업하려면 조직을 만드세요.",
+    "createOrgButton": "조직 만들기"
   }
 }
