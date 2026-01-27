@@ -50,8 +50,8 @@ use services::services::{
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
 use utils::response::ApiResponse;
-use workspace_git::{ConflictOp, GitCliError, GitServiceError};
 use uuid::Uuid;
+use workspace_git::{ConflictOp, GitCliError, GitServiceError};
 
 use crate::{
     DeploymentImpl, error::ApiError, middleware::load_workspace_middleware,

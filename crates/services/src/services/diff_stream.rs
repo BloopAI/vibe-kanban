@@ -23,8 +23,8 @@ use utils::{
     diff::{self, Diff},
     log_msg::LogMsg,
 };
-use workspace_git::{Commit, DiffTarget, GitService, GitServiceError};
 use uuid::Uuid;
+use workspace_git::{Commit, DiffTarget, GitService, GitServiceError};
 
 use crate::services::filesystem_watcher::{self, FilesystemWatcherError};
 

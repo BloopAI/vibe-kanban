@@ -30,8 +30,8 @@ use services::services::{
 };
 use ts_rs::TS;
 use utils::response::ApiResponse;
-use workspace_git::{GitCliError, GitRemote, GitServiceError};
 use uuid::Uuid;
+use workspace_git::{GitCliError, GitRemote, GitServiceError};
 
 use crate::{DeploymentImpl, error::ApiError};
 

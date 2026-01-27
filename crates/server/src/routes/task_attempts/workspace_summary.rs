@@ -12,8 +12,8 @@ use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils::response::ApiResponse;
-use workspace_git::DiffTarget;
 use uuid::Uuid;
+use workspace_git::DiffTarget;
 
 use crate::{DeploymentImpl, error::ApiError};
 

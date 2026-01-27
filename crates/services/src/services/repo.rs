@@ -4,8 +4,8 @@ use db::models::repo::Repo as RepoModel;
 use sqlx::SqlitePool;
 use thiserror::Error;
 use utils::path::expand_tilde;
-use workspace_git::{GitService, GitServiceError};
 use uuid::Uuid;
+use workspace_git::{GitService, GitServiceError};
 
 #[derive(Debug, Error)]
 pub enum RepoError {

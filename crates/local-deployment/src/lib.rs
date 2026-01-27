@@ -27,8 +27,8 @@ use utils::{
     assets::{config_path, credentials_path},
     msg_store::MsgStore,
 };
-use workspace_git::GitService;
 use uuid::Uuid;
+use workspace_git::GitService;
 
 use crate::{container::LocalContainerService, pty::PtyService};
 mod command;

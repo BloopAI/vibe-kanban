@@ -49,8 +49,8 @@ use utils::{
     msg_store::MsgStore,
     text::{git_branch_id, short_uuid},
 };
-use workspace_git::{GitService, GitServiceError};
 use uuid::Uuid;
+use workspace_git::{GitService, GitServiceError};
 
 use crate::services::{
     notification::NotificationService, workspace_manager::WorkspaceError as WorkspaceManagerError,

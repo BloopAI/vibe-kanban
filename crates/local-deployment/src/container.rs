@@ -57,8 +57,8 @@ use utils::{
     msg_store::MsgStore,
     text::{git_branch_id, short_uuid, truncate_to_char_boundary},
 };
-use workspace_git::{GitCli, GitService};
 use uuid::Uuid;
+use workspace_git::{GitCli, GitService};
 
 use crate::{command, copy};
 
