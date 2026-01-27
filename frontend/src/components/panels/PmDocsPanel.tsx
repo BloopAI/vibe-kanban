@@ -237,12 +237,31 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
   const { settings: autoReviewSettings, updateSettings } =
     useAutoReviewSettings(projectId);
 
-  // Available AI models (Claude CLI models)
-  const aiModels = [
-    { value: 'sonnet', label: 'Sonnet' },
-    { value: 'opus', label: 'Opus' },
-    { value: 'haiku', label: 'Haiku' },
-  ];
+  // Available AI models per agent (memoized to avoid dependency issues)
+  const modelsByAgent = useMemo(
+    () =>
+      ({
+        CLAUDE_CLI: [
+          { value: 'sonnet', label: 'Sonnet' },
+          { value: 'opus', label: 'Opus' },
+          { value: 'haiku', label: 'Haiku' },
+        ],
+        CODEX_CLI: [
+          { value: 'o3', label: 'o3' },
+          { value: 'o4-mini', label: 'o4-mini' },
+          { value: 'gpt-4.1', label: 'GPT-4.1' },
+        ],
+        GEMINI_CLI: [
+          { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+          { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+        ],
+        OPENCODE_CLI: [{ value: 'default', label: 'Default' }],
+      }) as Record<string, { value: string; label: string }[]>,
+    []
+  );
+
+  // Get models for currently selected agent
+  const aiModels = selectedAgent ? modelsByAgent[selectedAgent] ?? [] : [];
 
   const {
     data: chatData,
@@ -284,6 +303,16 @@ export function PmDocsPanel({ projectId, className }: PmDocsPanelProps) {
       setSelectedAgent(availableAgents[0].agent);
     }
   }, [selectedAgent, availableAgents]);
+
+  // Reset model when agent changes
+  useEffect(() => {
+    if (selectedAgent && modelsByAgent[selectedAgent]) {
+      const models = modelsByAgent[selectedAgent];
+      if (models.length > 0 && !models.find((m) => m.value === selectedModel)) {
+        setSelectedModel(models[0].value);
+      }
+    }
+  }, [selectedAgent, selectedModel, modelsByAgent]);
 
   const deleteMessageMutation = useMutation({
     mutationFn: (messageId: string) =>
