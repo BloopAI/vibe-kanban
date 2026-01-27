@@ -22,6 +22,7 @@ import {
 interface AppBarUserPopoverProps {
   isSignedIn: boolean;
   avatarUrl: string | null;
+  avatarError: boolean;
   organizations: OrganizationWithRole[];
   selectedOrgId: string;
   open: boolean;
@@ -31,11 +32,13 @@ interface AppBarUserPopoverProps {
   onOrgSettings?: (orgId: string) => void;
   onSignIn: () => void;
   onLogout: () => void;
+  onAvatarError: () => void;
 }
 
 export function AppBarUserPopover({
   isSignedIn,
   avatarUrl,
+  avatarError,
   organizations,
   selectedOrgId,
   open,
@@ -45,6 +48,7 @@ export function AppBarUserPopover({
   onOrgSettings,
   onSignIn,
   onLogout,
+  onAvatarError,
 }: AppBarUserPopoverProps) {
   const { t } = useTranslation();
 
@@ -84,16 +88,18 @@ export function AppBarUserPopover({
             'flex items-center justify-center w-10 h-10 rounded-lg',
             'transition-colors cursor-pointer overflow-hidden',
             'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-            !avatarUrl && 'bg-panel text-normal font-medium text-sm',
-            !avatarUrl && 'hover:bg-panel/70'
+            (!avatarUrl || avatarError) &&
+              'bg-panel text-normal font-medium text-sm',
+            (!avatarUrl || avatarError) && 'hover:bg-panel/70'
           )}
           aria-label="Account"
         >
-          {avatarUrl ? (
+          {avatarUrl && !avatarError ? (
             <img
               src={avatarUrl}
               alt="User avatar"
               className="w-full h-full object-cover"
+              onError={onAvatarError}
             />
           ) : (
             <UserIcon className="size-icon-sm" weight="bold" />
