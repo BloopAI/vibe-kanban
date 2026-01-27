@@ -5,8 +5,9 @@ use db::models::{
     workspace::Workspace, workspace_repo::WorkspaceRepo,
 };
 use deployment::Deployment;
-use services::services::{container::ContainerService, git::WorktreeResetOptions};
+use services::services::container::ContainerService;
 use sqlx::SqlitePool;
+use utils::git::WorktreeResetOptions;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};

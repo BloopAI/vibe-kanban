@@ -23,14 +23,13 @@ use executors::actions::{
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
-    git::{GitCliError, GitRemote, GitServiceError},
     git_host::{
         self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
         github::GhCli,
     },
 };
 use ts_rs::TS;
-use utils::response::ApiResponse;
+use utils::{git::{GitCliError, GitRemote, GitServiceError}, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};

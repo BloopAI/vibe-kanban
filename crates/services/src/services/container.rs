@@ -45,6 +45,7 @@ use sqlx::Error as SqlxError;
 use thiserror::Error;
 use tokio::{sync::RwLock, task::JoinHandle};
 use utils::{
+    git::{GitService, GitServiceError},
     log_msg::LogMsg,
     msg_store::MsgStore,
     text::{git_branch_id, short_uuid},
@@ -52,7 +53,6 @@ use utils::{
 use uuid::Uuid;
 
 use crate::services::{
-    git::{GitService, GitServiceError},
     notification::NotificationService,
     workspace_manager::WorkspaceError as WorkspaceManagerError,
     worktree_manager::WorktreeError,

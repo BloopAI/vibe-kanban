@@ -10,9 +10,11 @@ static WORKSPACE_DIR_OVERRIDE: OnceLock<PathBuf> = OnceLock::new();
 use git2::{Error as GitError, Repository};
 use thiserror::Error;
 use tracing::{debug, info, trace};
-use utils::{path::normalize_macos_private_alias, shell::resolve_executable_path};
-
-use super::git::{GitService, GitServiceError};
+use utils::{
+    git::{GitService, GitServiceError},
+    path::normalize_macos_private_alias,
+    shell::resolve_executable_path,
+};
 
 // Global synchronization for worktree creation to prevent race conditions
 static WORKTREE_CREATION_LOCKS: LazyLock<Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>> =

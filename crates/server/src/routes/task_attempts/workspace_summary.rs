@@ -10,9 +10,8 @@ use db::models::{
 };
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
-use services::services::git::DiffTarget;
 use ts_rs::TS;
-use utils::response::ApiResponse;
+use utils::{git::DiffTarget, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};

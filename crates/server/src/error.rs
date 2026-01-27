@@ -16,7 +16,6 @@ use local_deployment::pty::PtyError;
 use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
-    git::GitServiceError,
     git_host::GitHostError,
     image::ImageError,
     project::ProjectServiceError,
@@ -25,7 +24,7 @@ use services::services::{
     worktree_manager::WorktreeError,
 };
 use thiserror::Error;
-use utils::response::ApiResponse;
+use utils::{git::GitServiceError, response::ApiResponse};
 
 #[derive(Debug, Error, ts_rs::TS)]
 #[ts(type = "string")]
@@ -116,10 +115,10 @@ impl IntoResponse for ApiError {
             },
             // Promote certain GitService errors to conflict status with concise messages
             ApiError::GitService(git_err) => match git_err {
-                services::services::git::GitServiceError::MergeConflicts { .. } => {
+                utils::git::GitServiceError::MergeConflicts { .. } => {
                     (StatusCode::CONFLICT, "GitServiceError")
                 }
-                services::services::git::GitServiceError::RebaseInProgress => {
+                utils::git::GitServiceError::RebaseInProgress => {
                     (StatusCode::CONFLICT, "GitServiceError")
                 }
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "GitServiceError"),
@@ -203,10 +202,10 @@ impl IntoResponse for ApiError {
                 }
             },
             ApiError::GitService(git_err) => match git_err {
-                services::services::git::GitServiceError::MergeConflicts { message, .. } => {
+                utils::git::GitServiceError::MergeConflicts { message, .. } => {
                     message.clone()
                 }
-                services::services::git::GitServiceError::RebaseInProgress => {
+                utils::git::GitServiceError::RebaseInProgress => {
                     "A rebase is already in progress. Resolve conflicts or abort the rebase, then retry.".to_string()
                 }
                 _ => format!("{}: {}", error_type, self),

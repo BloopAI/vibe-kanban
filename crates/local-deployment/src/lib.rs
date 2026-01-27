@@ -13,7 +13,6 @@ use services::services::{
     events::EventService,
     file_search::FileSearchCache,
     filesystem::FilesystemService,
-    git::GitService,
     image::ImageService,
     oauth_credentials::OAuthCredentials,
     project::ProjectService,
@@ -26,6 +25,7 @@ use tokio::sync::RwLock;
 use utils::{
     api::oauth::LoginStatus,
     assets::{config_path, credentials_path},
+    git::GitService,
     msg_store::MsgStore,
 };
 use uuid::Uuid;

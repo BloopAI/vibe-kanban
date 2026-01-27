@@ -47,12 +47,11 @@ use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
     file_search::SearchQuery,
-    git::{ConflictOp, GitCliError, GitServiceError},
     workspace_manager::WorkspaceManager,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::response::ApiResponse;
+use utils::{git::{ConflictOp, GitCliError, GitServiceError}, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{
@@ -1148,7 +1147,7 @@ pub async fn rebase_task_attempt(
         &workspace.branch.clone(),
     );
     if let Err(e) = result {
-        use services::services::git::GitServiceError;
+        use utils::git::GitServiceError;
         return match e {
             GitServiceError::MergeConflicts {
                 message,

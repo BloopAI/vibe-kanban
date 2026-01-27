@@ -21,14 +21,12 @@ use tokio::{sync::mpsc, task::JoinHandle};
 use tokio_stream::wrappers::{IntervalStream, ReceiverStream};
 use utils::{
     diff::{self, Diff},
+    git::{Commit, DiffTarget, GitService, GitServiceError},
     log_msg::LogMsg,
 };
 use uuid::Uuid;
 
-use crate::services::{
-    filesystem_watcher::{self, FilesystemWatcherError},
-    git::{Commit, DiffTarget, GitService, GitServiceError},
-};
+use crate::services::filesystem_watcher::{self, FilesystemWatcherError};
 
 /// Maximum cumulative diff bytes to stream before omitting content (200MB)
 pub const MAX_CUMULATIVE_DIFF_BYTES: usize = 200 * 1024 * 1024;

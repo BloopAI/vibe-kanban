@@ -20,11 +20,9 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 use ts_rs::TS;
+use utils::git::GitService;
 
-use super::{
-    file_ranker::{FileRanker, FileStats},
-    git::GitService,
-};
+use super::file_ranker::{FileRanker, FileStats};
 
 /// Search mode for different use cases
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

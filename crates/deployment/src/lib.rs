@@ -25,7 +25,6 @@ use services::services::{
     file_search::FileSearchCache,
     filesystem::{FilesystemError, FilesystemService},
     filesystem_watcher::FilesystemWatcherError,
-    git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
     pr_monitor::PrMonitorService,
     project::ProjectService,
@@ -36,7 +35,7 @@ use services::services::{
 use sqlx::Error as SqlxError;
 use thiserror::Error;
 use tokio::sync::RwLock;
-use utils::sentry as sentry_utils;
+use utils::{git::{GitService, GitServiceError}, sentry as sentry_utils};
 
 #[derive(Debug, Clone, Copy, Error)]
 #[error("Remote client not configured")]

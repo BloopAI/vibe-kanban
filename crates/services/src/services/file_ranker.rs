@@ -8,8 +8,7 @@ use dashmap::DashMap;
 use db::models::project::{SearchMatchType, SearchResult};
 use once_cell::sync::Lazy;
 use tokio::task;
-
-use super::git::{FileStat, GitService, GitServiceError};
+use utils::git::{FileStat, GitService, GitServiceError};
 
 /// File statistics for a repository
 pub type FileStats = HashMap<String, FileStat>;

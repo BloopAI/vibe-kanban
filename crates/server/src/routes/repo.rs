@@ -13,11 +13,10 @@ use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use services::services::{
     file_search::SearchQuery,
-    git::{GitBranch, GitRemote},
     git_host::{GitHostError, GitHostProvider, GitHostService, OpenPrInfo, ProviderKind},
 };
 use ts_rs::TS;
-use utils::response::ApiResponse;
+use utils::{git::{GitBranch, GitRemote}, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{
