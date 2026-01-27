@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useParams,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import { isLoggedIn } from "../auth";
 import {
   getOrganization,
@@ -44,20 +49,27 @@ export default function OrganizationPage() {
   const [invitations, setInvitations] = useState<OrganizationInvitation[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  const [billingStatus, setBillingStatus] = useState<BillingStatusResponse | null>(null);
+  const [billingStatus, setBillingStatus] =
+    useState<BillingStatusResponse | null>(null);
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
 
-  const [githubAppStatus, setGithubAppStatus] = useState<GitHubAppStatus | null>(null);
+  const [githubAppStatus, setGithubAppStatus] =
+    useState<GitHubAppStatus | null>(null);
   const [githubAppLoading, setGithubAppLoading] = useState(false);
   const [githubAppError, setGithubAppError] = useState<string | null>(null);
-  const [showGithubDisconnectConfirm, setShowGithubDisconnectConfirm] = useState(false);
+  const [showGithubDisconnectConfirm, setShowGithubDisconnectConfirm] =
+    useState(false);
   const [githubAppSuccess, setGithubAppSuccess] = useState<string | null>(null);
-  const [repoToggleLoading, setRepoToggleLoading] = useState<string | null>(null);
+  const [repoToggleLoading, setRepoToggleLoading] = useState<string | null>(
+    null,
+  );
   const [repositories, setRepositories] = useState<GitHubAppRepository[]>([]);
   const [reposLoading, setReposLoading] = useState(false);
   const [repoSearch, setRepoSearch] = useState("");
-  const [repoFilter, setRepoFilter] = useState<"all" | "enabled" | "disabled">("all");
+  const [repoFilter, setRepoFilter] = useState<"all" | "enabled" | "disabled">(
+    "all",
+  );
   const [bulkLoading, setBulkLoading] = useState(false);
 
   const [isEditingName, setIsEditingName] = useState(false);
@@ -108,7 +120,9 @@ export default function OrganizationPage() {
       searchParams.delete("billing");
       setSearchParams(searchParams, { replace: true });
       if (billingResult === "success") {
-        getBillingStatus(orgId).then(setBillingStatus).catch(() => {});
+        getBillingStatus(orgId)
+          .then(setBillingStatus)
+          .catch(() => {});
       }
     }
   }, [orgId, navigate, searchParams, setSearchParams]);
@@ -217,7 +231,9 @@ export default function OrganizationPage() {
     try {
       await updateMemberRole(orgId, userId, newRole);
       setMembers(
-        members.map((m) => (m.user_id === userId ? { ...m, role: newRole } : m)),
+        members.map((m) =>
+          m.user_id === userId ? { ...m, role: newRole } : m,
+        ),
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to update role");
@@ -248,7 +264,9 @@ export default function OrganizationPage() {
         setIsSubscriptionRequired(true);
         setInviteError("Subscription required to add more members.");
       } else {
-        setInviteError(e instanceof Error ? e.message : "Failed to send invite");
+        setInviteError(
+          e instanceof Error ? e.message : "Failed to send invite",
+        );
       }
     } finally {
       setInviteLoading(false);
@@ -281,7 +299,9 @@ export default function OrganizationPage() {
       // Redirect to GitHub to install the app
       window.location.href = install_url;
     } catch (e) {
-      setGithubAppError(e instanceof Error ? e.message : "Failed to start installation");
+      setGithubAppError(
+        e instanceof Error ? e.message : "Failed to start installation",
+      );
       setGithubAppLoading(false);
     }
   };
@@ -294,11 +314,17 @@ export default function OrganizationPage() {
 
     try {
       await disconnectGitHubApp(orgId);
-      setGithubAppStatus({ installed: false, installation: null, repositories: [] });
+      setGithubAppStatus({
+        installed: false,
+        installation: null,
+        repositories: [],
+      });
       setShowGithubDisconnectConfirm(false);
       setGithubAppSuccess("GitHub App disconnected");
     } catch (e) {
-      setGithubAppError(e instanceof Error ? e.message : "Failed to disconnect");
+      setGithubAppError(
+        e instanceof Error ? e.message : "Failed to disconnect",
+      );
     } finally {
       setGithubAppLoading(false);
     }
@@ -310,7 +336,9 @@ export default function OrganizationPage() {
       const repos = await fetchGitHubAppRepositories(organizationId);
       setRepositories(repos);
     } catch (e) {
-      setGithubAppError(e instanceof Error ? e.message : "Failed to load repositories");
+      setGithubAppError(
+        e instanceof Error ? e.message : "Failed to load repositories",
+      );
     } finally {
       setReposLoading(false);
     }
@@ -322,14 +350,22 @@ export default function OrganizationPage() {
     setRepoToggleLoading(repoId);
 
     try {
-      const updatedRepo = await updateRepositoryReviewEnabled(orgId, repoId, enabled);
+      const updatedRepo = await updateRepositoryReviewEnabled(
+        orgId,
+        repoId,
+        enabled,
+      );
       setRepositories((prev) =>
         prev.map((r) =>
-          r.id === repoId ? { ...r, review_enabled: updatedRepo.review_enabled } : r,
+          r.id === repoId
+            ? { ...r, review_enabled: updatedRepo.review_enabled }
+            : r,
         ),
       );
     } catch (e) {
-      setGithubAppError(e instanceof Error ? e.message : "Failed to update repository");
+      setGithubAppError(
+        e instanceof Error ? e.message : "Failed to update repository",
+      );
     } finally {
       setRepoToggleLoading(null);
     }
@@ -345,7 +381,9 @@ export default function OrganizationPage() {
         prev.map((r) => ({ ...r, review_enabled: enabled })),
       );
     } catch (e) {
-      setGithubAppError(e instanceof Error ? e.message : "Failed to update repositories");
+      setGithubAppError(
+        e instanceof Error ? e.message : "Failed to update repositories",
+      );
     } finally {
       setBulkLoading(false);
     }
@@ -376,7 +414,9 @@ export default function OrganizationPage() {
       );
       window.location.href = url;
     } catch (e) {
-      setBillingError(e instanceof Error ? e.message : "Failed to start checkout");
+      setBillingError(
+        e instanceof Error ? e.message : "Failed to start checkout",
+      );
     } finally {
       setBillingLoading(false);
     }
@@ -395,7 +435,9 @@ export default function OrganizationPage() {
       );
       window.location.href = url;
     } catch (e) {
-      setBillingError(e instanceof Error ? e.message : "Failed to open billing portal");
+      setBillingError(
+        e instanceof Error ? e.message : "Failed to open billing portal",
+      );
     } finally {
       setBillingLoading(false);
     }
@@ -683,7 +725,11 @@ export default function OrganizationPage() {
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
                       <span className="text-xs text-gray-500">
-                        {(member.first_name?.[0] || member.email?.[0] || "?").toUpperCase()}
+                        {(
+                          member.first_name?.[0] ||
+                          member.email?.[0] ||
+                          "?"
+                        ).toUpperCase()}
                       </span>
                     </div>
                   )}
@@ -782,52 +828,57 @@ export default function OrganizationPage() {
         )}
 
         {/* Billing Card (admin only, non-personal orgs, when billing is enabled) */}
-        {isAdmin && !organization?.is_personal && billingStatus?.billing_enabled && (
-          <div className="bg-white shadow rounded-lg p-6">
-            {billingError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-700">{billingError}</p>
-                <button
-                  onClick={() => setBillingError(null)}
-                  className="text-xs text-red-600 hover:text-red-800 mt-1"
-                >
-                  Dismiss
-                </button>
-              </div>
-            )}
+        {isAdmin &&
+          !organization?.is_personal &&
+          billingStatus?.billing_enabled && (
+            <div className="bg-white shadow rounded-lg p-6">
+              {billingError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-700">{billingError}</p>
+                  <button
+                    onClick={() => setBillingError(null)}
+                    className="text-xs text-red-600 hover:text-red-800 mt-1"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
 
-            {billingStatus.seat_info?.subscription ? (
-              <>
-                {billingStatus.seat_info.subscription.cancel_at_period_end && (
-                  <p className="text-sm text-amber-600 mb-3">
-                    Subscription will end on{" "}
-                    {new Date(billingStatus.seat_info.subscription.current_period_end).toLocaleDateString()}
-                  </p>
-                )}
-                <button
-                  onClick={handleManageSubscription}
-                  disabled={billingLoading}
-                  className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
-                >
-                  {billingLoading ? "Loading..." : "Manage Subscription"}
-                </button>
-              </>
-            ) : (
-              <>
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                  Upgrade to Team Plan
-                </h2>
-                <button
-                  onClick={handleSubscribe}
-                  disabled={billingLoading}
-                  className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
-                >
-                  {billingLoading ? "Loading..." : "Upgrade"}
-                </button>
-              </>
-            )}
-          </div>
-        )}
+              {billingStatus.seat_info?.subscription ? (
+                <>
+                  {billingStatus.seat_info.subscription
+                    .cancel_at_period_end && (
+                    <p className="text-sm text-amber-600 mb-3">
+                      Subscription will end on{" "}
+                      {new Date(
+                        billingStatus.seat_info.subscription.current_period_end,
+                      ).toLocaleDateString()}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleManageSubscription}
+                    disabled={billingLoading}
+                    className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                  >
+                    {billingLoading ? "Loading..." : "Manage Subscription"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                    Upgrade to Team Plan
+                  </h2>
+                  <button
+                    onClick={handleSubscribe}
+                    disabled={billingLoading}
+                    className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                  >
+                    {billingLoading ? "Loading..." : "Upgrade"}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
         {/* GitHub Integration Card (admin only, non-personal orgs) */}
         {isAdmin && !organization?.is_personal && githubAppStatus !== null && (
@@ -836,7 +887,8 @@ export default function OrganizationPage() {
               GitHub Integration
             </h2>
             <p className="text-sm text-gray-600 mb-4">
-              Connect a GitHub App to automatically track pull requests from your repositories.
+              Connect a GitHub App to automatically track pull requests from
+              your repositories.
             </p>
 
             {/* Success message */}
@@ -917,9 +969,11 @@ export default function OrganizationPage() {
                     <>
                       <div className="text-sm text-gray-600 mb-3">
                         <p>
-                          {repositories.filter((r) => r.review_enabled).length} of{" "}
-                          {repositories.length}{" "}
-                          {repositories.length === 1 ? "repository" : "repositories"}{" "}
+                          {repositories.filter((r) => r.review_enabled).length}{" "}
+                          of {repositories.length}{" "}
+                          {repositories.length === 1
+                            ? "repository"
+                            : "repositories"}{" "}
                           have reviews enabled.
                         </p>
                       </div>
@@ -937,7 +991,14 @@ export default function OrganizationPage() {
                             />
                             <select
                               value={repoFilter}
-                              onChange={(e) => setRepoFilter(e.target.value as "all" | "enabled" | "disabled")}
+                              onChange={(e) =>
+                                setRepoFilter(
+                                  e.target.value as
+                                    | "all"
+                                    | "enabled"
+                                    | "disabled",
+                                )
+                              }
                               className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300"
                             >
                               <option value="all">All</option>
@@ -982,9 +1043,15 @@ export default function OrganizationPage() {
                                       type="checkbox"
                                       checked={repo.review_enabled}
                                       onChange={(e) =>
-                                        handleToggleRepoReview(repo.id, e.target.checked)
+                                        handleToggleRepoReview(
+                                          repo.id,
+                                          e.target.checked,
+                                        )
                                       }
-                                      disabled={repoToggleLoading === repo.id || bulkLoading}
+                                      disabled={
+                                        repoToggleLoading === repo.id ||
+                                        bulkLoading
+                                      }
                                       className="sr-only peer"
                                     />
                                     <div
@@ -1010,7 +1077,11 @@ export default function OrganizationPage() {
                     Tip: Trigger reviews on-demand
                   </p>
                   <p className="text-sm text-blue-700">
-                    Comment <code className="px-1 py-0.5 bg-blue-100 rounded text-xs font-mono">!reviewfast</code> on any pull request to trigger an AI code review instantly.
+                    Comment{" "}
+                    <code className="px-1 py-0.5 bg-blue-100 rounded text-xs font-mono">
+                      !reviewfast
+                    </code>{" "}
+                    on any pull request to trigger an AI code review instantly.
                   </p>
                 </div>
 
@@ -1018,8 +1089,8 @@ export default function OrganizationPage() {
                 {showGithubDisconnectConfirm ? (
                   <div className="bg-red-50 rounded-lg p-4">
                     <p className="text-sm text-red-700 mb-3">
-                      Are you sure you want to disconnect the GitHub App? You will need
-                      to reinstall it from GitHub to reconnect.
+                      Are you sure you want to disconnect the GitHub App? You
+                      will need to reinstall it from GitHub to reconnect.
                     </p>
                     <div className="flex gap-2">
                       <button
@@ -1027,7 +1098,9 @@ export default function OrganizationPage() {
                         disabled={githubAppLoading}
                         className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50"
                       >
-                        {githubAppLoading ? "Disconnecting..." : "Yes, disconnect"}
+                        {githubAppLoading
+                          ? "Disconnecting..."
+                          : "Yes, disconnect"}
                       </button>
                       <button
                         onClick={() => setShowGithubDisconnectConfirm(false)}
