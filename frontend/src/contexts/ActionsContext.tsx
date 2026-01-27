@@ -44,6 +44,12 @@ interface ActionsContextValue {
   // Open command bar in status selection mode
   openStatusSelection: (projectId: string, issueIds: string[]) => Promise<void>;
 
+  // Open command bar in priority selection mode
+  openPrioritySelection: (
+    projectId: string,
+    issueIds: string[]
+  ) => Promise<void>;
+
   // The executor context (for components that need direct access)
   executorContext: ActionExecutorContext;
 }
@@ -104,6 +110,19 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     []
   );
 
+  // Open priority selection in command bar (uses dynamic import to avoid circular deps)
+  const openPrioritySelection = useCallback(
+    async (projectId: string, issueIds: string[]) => {
+      const { CommandBarDialog } = await import(
+        '@/components/ui-new/dialogs/CommandBarDialog'
+      );
+      await CommandBarDialog.show({
+        pendingPrioritySelection: { projectId, issueIds },
+      });
+    },
+    []
+  );
+
   // Build executor context from hooks
   const executorContext = useMemo<ActionExecutorContext>(
     () => ({
@@ -119,6 +138,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       currentLogs,
       logsPanelContent,
       openStatusSelection,
+      openPrioritySelection,
       openKanbanIssuePanel,
       setKanbanCreateDefaultStatusId,
     }),
@@ -135,6 +155,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       currentLogs,
       logsPanelContent,
       openStatusSelection,
+      openPrioritySelection,
       openKanbanIssuePanel,
       setKanbanCreateDefaultStatusId,
     ]
@@ -219,9 +240,16 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       executeAction,
       getLabel,
       openStatusSelection,
+      openPrioritySelection,
       executorContext,
     }),
-    [executeAction, getLabel, openStatusSelection, executorContext]
+    [
+      executeAction,
+      getLabel,
+      openStatusSelection,
+      openPrioritySelection,
+      executorContext,
+    ]
   );
 
   return (

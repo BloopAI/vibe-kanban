@@ -2,7 +2,6 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
-import { type IssuePriority } from 'shared/remote-types';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import {
   KanbanIssuePanel,
@@ -22,6 +21,9 @@ export function KanbanIssuePanelContainer() {
   const kanbanCreateMode = useUiPreferencesStore((s) => s.kanbanCreateMode);
   const kanbanCreateDefaultStatusId = useUiPreferencesStore(
     (s) => s.kanbanCreateDefaultStatusId
+  );
+  const kanbanCreateDefaultPriority = useUiPreferencesStore(
+    (s) => s.kanbanCreateDefaultPriority
   );
   const closeKanbanIssuePanel = useUiPreferencesStore(
     (s) => s.closeKanbanIssuePanel
@@ -48,8 +50,8 @@ export function KanbanIssuePanelContainer() {
 
   const { users, isLoading: orgLoading } = useOrgContext();
 
-  // Get openStatusSelection from actions context
-  const { openStatusSelection } = useActions();
+  // Get openStatusSelection and openPrioritySelection from actions context
+  const { openStatusSelection, openPrioritySelection } = useActions();
 
   // Close panel if selected issue doesn't exist in current project (e.g., stale persisted state)
   useEffect(() => {
@@ -164,11 +166,12 @@ export function KanbanIssuePanelContainer() {
         tagIds: [],
         createDraftWorkspace: false,
       };
-      // If kanbanCreateDefaultStatusId is explicitly set, use it (user selected via command bar)
-      // Otherwise use the statusId from the form data
+      // If kanbanCreateDefaultStatusId/kanbanCreateDefaultPriority are explicitly set,
+      // use them (user selected via command bar). Otherwise use the form data defaults.
       return {
         ...base,
         statusId: kanbanCreateDefaultStatusId ?? base.statusId,
+        priority: kanbanCreateDefaultPriority ?? base.priority,
       };
     }
 
@@ -195,6 +198,7 @@ export function KanbanIssuePanelContainer() {
     selectedIssue,
     defaultStatusId,
     kanbanCreateDefaultStatusId,
+    kanbanCreateDefaultPriority,
     currentAssigneeIds,
     currentTagIds,
   ]);
@@ -298,6 +302,21 @@ export function KanbanIssuePanelContainer() {
           return;
         }
 
+        // For priority, open the priority selection dialog
+        if (field === 'priority') {
+          const { CommandBarDialog } = await import(
+            '@/components/ui-new/dialogs/CommandBarDialog'
+          );
+          await CommandBarDialog.show({
+            pendingPrioritySelection: {
+              projectId,
+              issueIds: [],
+              isCreateMode: true,
+            },
+          });
+          return;
+        }
+
         // For other fields, just update the form data
         setCreateFormData((prev) => {
           const base = prev ?? {
@@ -333,10 +352,8 @@ export function KanbanIssuePanelContainer() {
         // Status changes go through the command bar status selection
         openStatusSelection(projectId, [selectedKanbanIssueId]);
       } else if (field === 'priority') {
-        // Dropdown field: persist immediately
-        updateIssue(selectedKanbanIssueId, {
-          priority: value as IssuePriority,
-        });
+        // Priority changes go through the command bar priority selection
+        openPrioritySelection(projectId, [selectedKanbanIssueId]);
       } else if (field === 'assigneeIds') {
         // Handle assignee changes via junction table
         const newIds = value as string[];
@@ -396,10 +413,10 @@ export function KanbanIssuePanelContainer() {
       selectedKanbanIssueId,
       projectId,
       defaultStatusId,
-      updateIssue,
       debouncedSaveTitle,
       debouncedSaveDescription,
       openStatusSelection,
+      openPrioritySelection,
       issueAssignees,
       insertIssueAssignee,
       removeIssueAssignee,
