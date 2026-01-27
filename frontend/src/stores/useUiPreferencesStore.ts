@@ -151,6 +151,7 @@ type State = {
   isKanbanRightPanelVisible: boolean;
   selectedKanbanIssueId: string | null;
   kanbanCreateMode: boolean;
+  kanbanCreateDefaultStatusId: string | null;
   previewRefreshKey: number;
 
   // Workspace-specific panel state
@@ -183,7 +184,12 @@ type State = {
   setKanbanRightPanelVisible: (value: boolean) => void;
   setSelectedKanbanIssueId: (id: string | null) => void;
   setKanbanCreateMode: (value: boolean) => void;
-  openKanbanIssuePanel: (issueId: string | null, createMode?: boolean) => void;
+  setKanbanCreateDefaultStatusId: (statusId: string | null) => void;
+  openKanbanIssuePanel: (
+    issueId: string | null,
+    createMode?: boolean,
+    defaultStatusId?: string | null
+  ) => void;
   closeKanbanIssuePanel: () => void;
   toggleRightMainPanelMode: (
     mode: RightMainPanelMode,
@@ -235,6 +241,7 @@ export const useUiPreferencesStore = create<State>()(
       isKanbanRightPanelVisible: false,
       selectedKanbanIssueId: null,
       kanbanCreateMode: false,
+      kanbanCreateDefaultStatusId: null,
       previewRefreshKey: 0,
 
       // Workspace-specific panel state
@@ -319,10 +326,18 @@ export const useUiPreferencesStore = create<State>()(
 
       setKanbanCreateMode: (value) => set({ kanbanCreateMode: value }),
 
-      openKanbanIssuePanel: (issueId, createMode = false) =>
+      setKanbanCreateDefaultStatusId: (statusId) =>
+        set({ kanbanCreateDefaultStatusId: statusId }),
+
+      openKanbanIssuePanel: (
+        issueId,
+        createMode = false,
+        defaultStatusId = null
+      ) =>
         set({
           selectedKanbanIssueId: issueId,
           kanbanCreateMode: createMode,
+          kanbanCreateDefaultStatusId: defaultStatusId,
           isKanbanRightPanelVisible: true,
         }),
 
@@ -330,6 +345,7 @@ export const useUiPreferencesStore = create<State>()(
         set({
           selectedKanbanIssueId: null,
           kanbanCreateMode: false,
+          kanbanCreateDefaultStatusId: null,
           isKanbanRightPanelVisible: false,
         }),
 

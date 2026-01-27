@@ -206,18 +206,20 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
     ],
   },
 
-  // Issue actions page - shown when an issue is selected in kanban mode
+  // Issue actions page - shown in kanban mode
   issueActions: {
     id: 'issue-actions',
     title: 'Issue Actions',
     parent: 'root',
-    isVisible: (ctx) =>
-      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban',
     items: [
       {
         type: 'group',
         label: 'Actions',
-        items: [{ type: 'action', action: Actions.ChangeIssueStatus }],
+        items: [
+          { type: 'action', action: Actions.CreateIssue },
+          { type: 'action', action: Actions.ChangeIssueStatus },
+        ],
       },
     ],
   },

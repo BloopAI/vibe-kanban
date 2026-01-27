@@ -31,6 +31,8 @@ import {
 export interface PendingStatusSelection {
   projectId: string;
   issueIds: string[];
+  /** When true, this is for changing status of an issue being created (not yet saved) */
+  isCreateMode?: boolean;
 }
 
 export interface CommandBarDialogProps {
@@ -212,14 +214,25 @@ function CommandBarContent({
 /** Wrapper that provides ProjectContext for status selection */
 function CommandBarWithProjectContext({
   pendingStatusSelection,
+  propProjectId,
   ...props
 }: Omit<CommandBarContentProps, 'statuses' | 'onStatusUpdate'> & {
   pendingStatusSelection: PendingStatusSelection;
 }) {
+  // For create mode, projectId may be empty - use propProjectId as fallback
+  const effectiveProjectId =
+    pendingStatusSelection.projectId || propProjectId || '';
+
+  // If no project ID available, render nothing (shouldn't happen in practice)
+  if (!effectiveProjectId) {
+    return null;
+  }
+
   return (
-    <ProjectProvider projectId={pendingStatusSelection.projectId}>
+    <ProjectProvider projectId={effectiveProjectId}>
       <CommandBarWithStatuses
         {...props}
+        propProjectId={propProjectId}
         pendingStatusSelection={pendingStatusSelection}
       />
     </ProjectProvider>
@@ -231,6 +244,9 @@ function CommandBarWithStatuses(
   props: Omit<CommandBarContentProps, 'statuses' | 'onStatusUpdate'>
 ) {
   const { statuses, updateIssue } = useProjectContext();
+  const setKanbanCreateDefaultStatusId = useUiPreferencesStore(
+    (s) => s.setKanbanCreateDefaultStatusId
+  );
 
   const sortedStatuses: StatusItem[] = useMemo(
     () =>
@@ -242,11 +258,23 @@ function CommandBarWithStatuses(
 
   const handleStatusUpdate = useCallback(
     (issueIds: string[], statusId: string) => {
+      // Check if this is for create mode (empty issueIds array with isCreateMode flag)
+      if (props.pendingStatusSelection?.isCreateMode) {
+        // Update the default status for the issue being created
+        setKanbanCreateDefaultStatusId(statusId);
+        return;
+      }
+
+      // Normal edit mode: update existing issues
       for (const issueId of issueIds) {
         updateIssue(issueId, { status_id: statusId });
       }
     },
-    [updateIssue]
+    [
+      updateIssue,
+      props.pendingStatusSelection?.isCreateMode,
+      setKanbanCreateDefaultStatusId,
+    ]
   );
 
   return (
