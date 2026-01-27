@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use tokio::process::Command;
-use workspace_utils::git::GitService;
+use workspace_utils::git::GitCli;
 
 use crate::command::CmdOverrides;
 
@@ -38,7 +38,7 @@ impl RepoContext {
         }
 
         tokio::task::spawn_blocking(move || {
-            let git = GitService::new();
+            let git = GitCli::new();
             let mut all_status = String::new();
 
             for repo_path in &repo_paths {
@@ -47,25 +47,20 @@ impl RepoContext {
                     continue;
                 }
 
-                match git.is_worktree_clean(repo_path) {
-                    Ok(true) => {
-                        // Clean, skip
-                    }
-                    Ok(false) => {
-                        // Has changes - get counts for display
-                        if let Ok((tracked, untracked)) = git.get_worktree_change_counts(repo_path)
-                        {
-                            all_status.push_str(&format!(
-                                "\n{}: {} uncommitted tracked change(s), {} untracked file(s)",
-                                repo_path.display(),
-                                tracked,
-                                untracked
-                            ));
+                match git.get_worktree_status(repo_path) {
+                    Ok(status) if !status.entries.is_empty() => {
+                        let mut status_output = String::new();
+                        for entry in &status.entries {
+                            status_output.push(entry.staged);
+                            status_output.push(entry.unstaged);
+                            status_output.push(' ');
+                            status_output.push_str(&String::from_utf8_lossy(&entry.path));
+                            status_output.push('\n');
                         }
+                        all_status
+                            .push_str(&format!("\n{}:\n{}", repo_path.display(), status_output));
                     }
-                    Err(_) => {
-                        // Git error, skip
-                    }
+                    _ => {}
                 }
             }
 

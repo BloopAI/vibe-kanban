@@ -156,11 +156,8 @@ impl GitCli {
 
     /// Return true if there are any changes in the working tree (staged or unstaged).
     pub fn has_changes(&self, worktree_path: &Path) -> Result<bool, GitCliError> {
-        let out = self.git(
-            worktree_path,
-            ["--no-optional-locks", "status", "--porcelain"],
-        )?;
-        Ok(!out.is_empty())
+        let status = self.get_worktree_status(worktree_path)?;
+        Ok(!status.entries.is_empty())
     }
 
     /// Diff status vs a base branch using a temporary index (always includes untracked).
