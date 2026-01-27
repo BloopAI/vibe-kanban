@@ -30,8 +30,11 @@ pub async fn check_uncommitted_changes(repo_paths: &[PathBuf]) -> String {
                         git.git(repo_path, ["--no-optional-locks", "status", "--porcelain"])
                     {
                         if !status_output.is_empty() {
-                            all_status
-                                .push_str(&format!("\n{}:\n{}", repo_path.display(), status_output));
+                            all_status.push_str(&format!(
+                                "\n{}:\n{}",
+                                repo_path.display(),
+                                status_output
+                            ));
                         }
                     }
                 }
