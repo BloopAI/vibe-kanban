@@ -44,9 +44,10 @@ const PIERRE_DIFFS_THEME_CSS = `
 
   /* Light theme overrides */
   [data-diffs][data-theme-type='light'] {
-    /* Background colors */
-    --diffs-light-bg: hsl(0, 0%, 100%) !important;
-    --diffs-bg-context-override: hsl(0, 0%, 100%) !important;
+    /* Background colors - use standard CSS variables */
+    --diffs-light-bg: hsl(var(--bg-primary)) !important;
+    --diffs-bg-context-override: hsl(var(--bg-primary)) !important;
+    --diffs-bg-separator-override: hsl(var(--bg-primary)) !important;
     
     /* Addition colors - soft green matching old design */
     --diffs-light-addition-color: hsl(160, 77%, 35%) !important;
@@ -61,14 +62,15 @@ const PIERRE_DIFFS_THEME_CSS = `
     --diffs-bg-deletion-hover-override: hsl(10, 100%, 84%) !important;
     
     /* Line numbers */
-    --diffs-fg-number-override: hsl(0, 0%, 45%) !important;
+    --diffs-fg-number-override: hsl(var(--text-low)) !important;
   }
 
   /* Dark theme overrides */
   [data-diffs][data-theme-type='dark'] {
-    /* Background colors - match --muted (0 0% 16%) */
-    --diffs-dark-bg: hsl(0, 0%, 16%) !important;
-    --diffs-bg-context-override: hsl(0, 0%, 16%) !important;
+    /* Background colors - use standard CSS variables */
+    --diffs-dark-bg: hsl(var(--bg-panel)) !important;
+    --diffs-bg-context-override: hsl(var(--bg-panel)) !important;
+    --diffs-bg-separator-override: hsl(var(--bg-panel)) !important;
     --diffs-bg-hover-override: hsl(0, 0%, 22%) !important;
     
     /* Addition colors - dark green */
@@ -84,7 +86,7 @@ const PIERRE_DIFFS_THEME_CSS = `
     --diffs-bg-deletion-hover-override: hsl(12, 30%, 23%) !important;
     
     /* Line numbers */
-    --diffs-fg-number-override: hsl(0, 0%, 56%) !important;
+    --diffs-fg-number-override: hsl(var(--text-low)) !important;
   }
 `;
 

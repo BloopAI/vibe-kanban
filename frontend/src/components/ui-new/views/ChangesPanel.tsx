@@ -134,6 +134,9 @@ export const ChangesPanel = forwardRef<ChangesPanelHandle, ChangesPanelProps>(
           scrollerRef={onScrollerRef}
           data={diffItems}
           defaultItemHeight={defaultItemHeight}
+          components={{
+            Header: () => <div className="h-base" />,
+          }}
           itemContent={(_index, { diff, initialExpanded }) => (
             <div>
               <DiffItem

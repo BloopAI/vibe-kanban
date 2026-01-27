@@ -49,11 +49,31 @@ const PIERRE_DIFFS_THEME_CSS = `
     margin-bottom: 4px;
   }
 
+  /* Add space for hover comment button between line numbers and code */
+  [data-indicators='classic'] [data-column-content] {
+    position: relative !important;
+    padding-inline-start: 34px !important;
+  }
+
+  /* Move +/- indicator right to make room for hover button */
+  [data-indicators='classic'] [data-line-type='change-addition'] [data-column-content]::before,
+  [data-indicators='classic'] [data-line-type='change-deletion'] [data-column-content]::before {
+    left: 22px !important;
+  }
+
+  /* Position hover utility dynamically based on line number column width */
+  [data-hover-slot] {
+    right: auto !important;
+    left: calc(var(--diffs-column-number-width, 3ch) - 25px) !important;
+    width: 22px !important;
+  }
+
   /* Light theme overrides */
   [data-diffs][data-theme-type='light'] {
-    /* Background colors */
-    --diffs-light-bg: hsl(0, 0%, 100%) !important;
-    --diffs-bg-context-override: hsl(0, 0%, 100%) !important;
+    /* Background colors - use standard CSS variables */
+    --diffs-light-bg: hsl(var(--bg-primary)) !important;
+    --diffs-bg-context-override: hsl(var(--bg-primary)) !important;
+    --diffs-bg-separator-override: hsl(var(--bg-primary)) !important;
     
     /* Addition colors - soft green matching old design */
     --diffs-light-addition-color: hsl(160, 77%, 35%) !important;
@@ -68,14 +88,15 @@ const PIERRE_DIFFS_THEME_CSS = `
     --diffs-bg-deletion-hover-override: hsl(10, 100%, 84%) !important;
     
     /* Line numbers */
-    --diffs-fg-number-override: hsl(0, 0%, 45%) !important;
+    --diffs-fg-number-override: hsl(var(--text-low)) !important;
   }
 
   /* Dark theme overrides */
   [data-diffs][data-theme-type='dark'] {
-    /* Background colors - match --muted (0 0% 16%) */
-    --diffs-dark-bg: hsl(0, 0%, 16%) !important;
-    --diffs-bg-context-override: hsl(0, 0%, 16%) !important;
+    /* Background colors - use standard CSS variables */
+    --diffs-dark-bg: hsl(var(--bg-panel)) !important;
+    --diffs-bg-context-override: hsl(var(--bg-panel)) !important;
+    --diffs-bg-separator-override: hsl(var(--bg-panel)) !important;
     --diffs-bg-hover-override: hsl(0, 0%, 22%) !important;
     
     /* Addition colors - dark green */
@@ -91,7 +112,7 @@ const PIERRE_DIFFS_THEME_CSS = `
     --diffs-bg-deletion-hover-override: hsl(12, 30%, 23%) !important;
     
     /* Line numbers */
-    --diffs-fg-number-override: hsl(0, 0%, 56%) !important;
+    --diffs-fg-number-override: hsl(var(--text-low)) !important;
   }
 `;
 
@@ -315,7 +336,7 @@ export function PierreDiffCard({
     ) => {
       return (
         <button
-          className="flex items-center justify-center size-icon-base rounded text-low hover:bg-panel transition-colors"
+          className="flex items-center justify-center size-icon-base rounded text-brand bg-brand/20 hover:text-brand hover:bg-brand/20 hover:scale-125 transition-transform"
           onClick={() => {
             const line = getHoveredLine();
             if (!line) return;
@@ -445,7 +466,7 @@ export function PierreDiffCard({
       </div>
 
       {expanded && (
-        <div className="bg-primary">
+        <div className="bg-primary rounded-b-sm overflow-hidden">
           {shouldShowPlaceholder ? (
             <div className="p-base bg-warning/5 border-t border-warning/20">
               <div className="flex items-center justify-between gap-base">
