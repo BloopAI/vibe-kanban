@@ -31,7 +31,7 @@ use services::services::{
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
-use workspace_git::{GitRemote, GitServiceError};
+use workspace_git::{GitCliError, GitRemote, GitServiceError};
 
 use crate::{DeploymentImpl, error::ApiError};
 
@@ -248,12 +248,12 @@ pub async fn create_pr(
                 },
             )));
         }
-        Err(GitServiceError::AuthFailed(_)) => {
+        Err(GitServiceError::GitCLI(GitCliError::AuthFailed(_))) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 PrError::GitCliNotLoggedIn,
             )));
         }
-        Err(GitServiceError::GitNotAvailable) => {
+        Err(GitServiceError::GitCLI(GitCliError::NotAvailable)) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 PrError::GitCliNotInstalled,
             )));
@@ -265,12 +265,12 @@ pub async fn create_pr(
     if let Err(e) = git.push_to_remote(&worktree_path, &workspace.branch, false) {
         tracing::error!("Failed to push branch to remote: {}", e);
         match e {
-            GitServiceError::AuthFailed(_) => {
+            GitServiceError::GitCLI(GitCliError::AuthFailed(_)) => {
                 return Ok(ResponseJson(ApiResponse::error_with_data(
                     PrError::GitCliNotLoggedIn,
                 )));
             }
-            GitServiceError::GitNotAvailable => {
+            GitServiceError::GitCLI(GitCliError::NotAvailable) => {
                 return Ok(ResponseJson(ApiResponse::error_with_data(
                     PrError::GitCliNotInstalled,
                 )));

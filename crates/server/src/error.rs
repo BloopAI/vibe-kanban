@@ -119,7 +119,7 @@ impl IntoResponse for ApiError {
                 workspace_git::GitServiceError::MergeConflicts { .. } => {
                     (StatusCode::CONFLICT, "GitServiceError")
                 }
-                workspace_git::GitServiceError::RebaseInProgress => {
+                workspace_git::GitServiceError::GitCLI(workspace_git::GitCliError::RebaseInProgress) => {
                     (StatusCode::CONFLICT, "GitServiceError")
                 }
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "GitServiceError"),
@@ -206,7 +206,7 @@ impl IntoResponse for ApiError {
                 workspace_git::GitServiceError::MergeConflicts { message, .. } => {
                     message.clone()
                 }
-                workspace_git::GitServiceError::RebaseInProgress => {
+                workspace_git::GitServiceError::GitCLI(workspace_git::GitCliError::RebaseInProgress) => {
                     "A rebase is already in progress. Resolve conflicts or abort the rebase, then retry.".to_string()
                 }
                 _ => format!("{}: {}", error_type, self),

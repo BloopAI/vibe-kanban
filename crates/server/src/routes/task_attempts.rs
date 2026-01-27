@@ -51,7 +51,7 @@ use sqlx::Error as SqlxError;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
-use workspace_git::{ConflictOp, GitServiceError};
+use workspace_git::{ConflictOp, GitCliError, GitServiceError};
 
 use crate::{
     DeploymentImpl, error::ApiError, middleware::load_workspace_middleware,
@@ -554,7 +554,7 @@ pub async fn push_task_attempt_branch(
         .push_to_remote(&worktree_path, &workspace.branch, false)
     {
         Ok(_) => Ok(ResponseJson(ApiResponse::success(()))),
-        Err(GitServiceError::PushRejected(_)) => Ok(ResponseJson(ApiResponse::error_with_data(
+        Err(GitServiceError::GitCLI(GitCliError::PushRejected(_))) => Ok(ResponseJson(ApiResponse::error_with_data(
             PushError::ForcePushRequired,
         ))),
         Err(e) => Err(ApiError::GitService(e)),
@@ -1146,7 +1146,6 @@ pub async fn rebase_task_attempt(
         &workspace.branch.clone(),
     );
     if let Err(e) = result {
-        use workspace_git::GitServiceError;
         return match e {
             GitServiceError::MergeConflicts {
                 message,
@@ -1161,7 +1160,7 @@ pub async fn rebase_task_attempt(
                     },
                 ),
             )),
-            GitServiceError::RebaseInProgress => Ok(ResponseJson(ApiResponse::<
+            GitServiceError::GitCLI(GitCliError::RebaseInProgress) => Ok(ResponseJson(ApiResponse::<
                 (),
                 GitOperationError,
             >::error_with_data(

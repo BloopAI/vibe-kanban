@@ -48,6 +48,8 @@ pub enum GitServiceError {
     Git(#[from] GitError),
     #[error(transparent)]
     IoError(#[from] std::io::Error),
+    #[error(transparent)]
+    GitCLI(#[from] GitCliError),
     #[error("Invalid repository: {0}")]
     InvalidRepository(String),
     #[error("Branch not found: {0}")]
@@ -61,26 +63,6 @@ pub enum GitServiceError {
     BranchesDiverged(String),
     #[error("{0} has uncommitted changes: {1}")]
     WorktreeDirty(String, String),
-    #[error("Rebase in progress; resolve or abort it before retrying")]
-    RebaseInProgress,
-    #[error("git executable not found or not runnable")]
-    GitNotAvailable,
-    #[error("authentication failed: {0}")]
-    AuthFailed(String),
-    #[error("push rejected: {0}")]
-    PushRejected(String),
-}
-
-impl From<GitCliError> for GitServiceError {
-    fn from(e: GitCliError) -> Self {
-        match e {
-            GitCliError::NotAvailable => GitServiceError::GitNotAvailable,
-            GitCliError::AuthFailed(msg) => GitServiceError::AuthFailed(msg),
-            GitCliError::PushRejected(msg) => GitServiceError::PushRejected(msg),
-            GitCliError::RebaseInProgress => GitServiceError::RebaseInProgress,
-            GitCliError::CommandFailed(msg) => GitServiceError::InvalidRepository(msg),
-        }
-    }
 }
 /// Service for managing Git operations in task execution workflows
 #[derive(Clone)]
@@ -1419,7 +1401,7 @@ impl GitService {
         // aborting (which might destroy user changes mid-rebase).
         let git = GitCli::new();
         if git.is_rebase_in_progress(worktree_path).unwrap_or(false) {
-            return Err(GitServiceError::RebaseInProgress);
+            return Err(GitCliError::RebaseInProgress.into());
         }
 
         // Get the target base branch reference
@@ -1435,7 +1417,7 @@ impl GitService {
         match git.rebase_onto(worktree_path, new_base_branch, old_base_branch, task_branch) {
             Ok(()) => {}
             Err(GitCliError::RebaseInProgress) => {
-                return Err(GitServiceError::RebaseInProgress);
+                return Err(GitCliError::RebaseInProgress.into());
             }
             Err(GitCliError::CommandFailed(stderr)) => {
                 // If the CLI indicates conflicts, return a concise, actionable error.
