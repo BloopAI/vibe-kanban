@@ -13,6 +13,7 @@ use tokio::{io::AsyncWriteExt, process::Command, sync::mpsc};
 use tokio_util::{
     compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt},
     io::ReaderStream,
+    sync::CancellationToken,
 };
 use tracing::error;
 use workspace_utils::{approvals::ApprovalStatus, stream_lines::LinesStreamExt};
@@ -96,6 +97,8 @@ impl AcpAgentHarness {
         let mut child = command.group_spawn()?;
 
         let (exit_tx, exit_rx) = tokio::sync::oneshot::channel::<ExecutorExitResult>();
+        let cancel = CancellationToken::new();
+
         Self::bootstrap_acp_connection(
             &mut child,
             current_dir.to_path_buf(),
@@ -106,13 +109,14 @@ impl AcpAgentHarness {
             self.model.clone(),
             self.mode.clone(),
             approvals,
+            cancel.clone(),
         )
         .await?;
 
         Ok(SpawnedChild {
             child,
             exit_signal: Some(exit_rx),
-            interrupt_sender: None,
+            cancel: Some(cancel),
         })
     }
 
@@ -146,6 +150,8 @@ impl AcpAgentHarness {
         let mut child = command.group_spawn()?;
 
         let (exit_tx, exit_rx) = tokio::sync::oneshot::channel::<ExecutorExitResult>();
+        let cancel = CancellationToken::new();
+
         Self::bootstrap_acp_connection(
             &mut child,
             current_dir.to_path_buf(),
@@ -156,13 +162,14 @@ impl AcpAgentHarness {
             self.model.clone(),
             self.mode.clone(),
             approvals,
+            cancel.clone(),
         )
         .await?;
 
         Ok(SpawnedChild {
             child,
             exit_signal: Some(exit_rx),
-            interrupt_sender: None,
+            cancel: Some(cancel),
         })
     }
 
@@ -177,6 +184,7 @@ impl AcpAgentHarness {
         model: Option<String>,
         mode: Option<String>,
         approvals: Option<std::sync::Arc<dyn ExecutorApprovalService>>,
+        cancel: CancellationToken,
     ) -> Result<(), ExecutorError> {
         // Take child's stdio for ACP wiring
         let orig_stdout = child.inner().stdout.take().ok_or_else(|| {
@@ -292,7 +300,8 @@ impl AcpAgentHarness {
                         let session_manager = std::sync::Arc::new(session_manager);
 
                         // Create ACP client with approvals support
-                        let client = AcpClient::new(event_tx.clone(), approvals.clone());
+                        let client =
+                            AcpClient::new(event_tx.clone(), approvals.clone(), cancel.clone());
                         let client_feedback_handle = client.clone();
 
                         client.record_user_prompt_event(&prompt);
@@ -439,9 +448,22 @@ impl AcpAgentHarness {
                         let mut current_req = Some(initial_req);
 
                         while let Some(req) = current_req.take() {
+                            if cancel.is_cancelled() {
+                                tracing::debug!("ACP executor cancelled, stopping prompt loop");
+                                break;
+                            }
+
                             tracing::trace!(?req, "sending ACP prompt request");
                             // Send the prompt and await completion to obtain stop_reason
-                            match conn.prompt(req).await {
+                            let prompt_result = tokio::select! {
+                                _ = cancel.cancelled() => {
+                                    tracing::debug!("ACP executor cancelled during prompt");
+                                    break;
+                                }
+                                result = conn.prompt(req) => result,
+                            };
+
+                            match prompt_result {
                                 Ok(resp) => {
                                     // Emit done with stop_reason
                                     let stop_reason = serde_json::to_string(&resp.stop_reason)

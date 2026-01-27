@@ -27,6 +27,10 @@ export {
   ProjectEditorSelectionDialog,
   type ProjectEditorSelectionDialogProps,
 } from './projects/ProjectEditorSelectionDialog';
+export {
+  LinkProjectDialog,
+  type LinkProjectResult,
+} from './projects/LinkProjectDialog';
 
 // Task-related dialogs
 export {

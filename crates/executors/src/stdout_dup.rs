@@ -229,7 +229,7 @@ pub fn spawn_local_output_process()
     let spawned = SpawnedChild {
         child,
         exit_signal: None,
-        interrupt_sender: None,
+        cancel: None,
     };
 
     Ok((spawned, writer))

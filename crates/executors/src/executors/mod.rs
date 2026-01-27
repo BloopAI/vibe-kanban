@@ -295,17 +295,17 @@ pub enum ExecutorExitResult {
 /// and mark it according to the result.
 pub type ExecutorExitSignal = tokio::sync::oneshot::Receiver<ExecutorExitResult>;
 
-/// Sender for requesting graceful interrupt of an executor.
-/// When sent, the executor should attempt to interrupt gracefully before being killed.
-pub type InterruptSender = tokio::sync::oneshot::Sender<()>;
+/// Cancellation token for requesting graceful shutdown of an executor.
+/// When cancelled, the executor should attempt to cancel gracefully before being killed.
+pub type CancellationToken = tokio_util::sync::CancellationToken;
 
 #[derive(Debug)]
 pub struct SpawnedChild {
     pub child: AsyncGroupChild,
     /// Executor → Container: signals when executor wants to exit
     pub exit_signal: Option<ExecutorExitSignal>,
-    /// Container → Executor: signals when container wants to interrupt
-    pub interrupt_sender: Option<InterruptSender>,
+    /// Container → Executor: signals when container wants to cancel the execution
+    pub cancel: Option<CancellationToken>,
 }
 
 impl From<AsyncGroupChild> for SpawnedChild {
@@ -313,7 +313,7 @@ impl From<AsyncGroupChild> for SpawnedChild {
         Self {
             child,
             exit_signal: None,
-            interrupt_sender: None,
+            cancel: None,
         }
     }
 }

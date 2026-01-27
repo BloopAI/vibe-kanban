@@ -1,18 +1,21 @@
 use std::sync::Arc;
 
-use futures::FutureExt;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::{ChildStdin, ChildStdout},
-    sync::{Mutex, oneshot},
+    sync::Mutex,
 };
+use tokio_util::sync::CancellationToken;
 
 use super::types::{CLIMessage, ControlRequestType, ControlResponseMessage, ControlResponseType};
-use crate::executors::{
-    ExecutorError,
-    claude::{
-        client::ClaudeAgentClient,
-        types::{Message, PermissionMode, SDKControlRequest, SDKControlRequestType},
+use crate::{
+    approvals::ExecutorApprovalError,
+    executors::{
+        ExecutorError,
+        claude::{
+            client::ClaudeAgentClient,
+            types::{Message, PermissionMode, SDKControlRequest, SDKControlRequestType},
+        },
     },
 };
 
@@ -27,7 +30,7 @@ impl ProtocolPeer {
         stdin: ChildStdin,
         stdout: ChildStdout,
         client: Arc<ClaudeAgentClient>,
-        interrupt_rx: oneshot::Receiver<()>,
+        cancel: CancellationToken,
     ) -> Self {
         let peer = Self {
             stdin: Arc::new(Mutex::new(stdin)),
@@ -35,7 +38,7 @@ impl ProtocolPeer {
 
         let reader_peer = peer.clone();
         tokio::spawn(async move {
-            if let Err(e) = reader_peer.read_loop(stdout, client, interrupt_rx).await {
+            if let Err(e) = reader_peer.read_loop(stdout, client, cancel).await {
                 tracing::error!("Protocol reader loop error: {}", e);
             }
         });
@@ -47,12 +50,10 @@ impl ProtocolPeer {
         &self,
         stdout: ChildStdout,
         client: Arc<ClaudeAgentClient>,
-        interrupt_rx: oneshot::Receiver<()>,
+        cancel: CancellationToken,
     ) -> Result<(), ExecutorError> {
         let mut reader = BufReader::new(stdout);
         let mut buffer = String::new();
-        // Fuse the receiver so it returns Pending forever after completing
-        let mut interrupt_rx = interrupt_rx.fuse();
 
         loop {
             buffer.clear();
@@ -88,10 +89,11 @@ impl ProtocolPeer {
                         }
                     }
                 }
-                _ = &mut interrupt_rx => {
+                _ = cancel.cancelled() => {
                     if let Err(e) = self.interrupt().await {
                         tracing::debug!("Failed to send interrupt to Claude: {e}");
                     }
+                    break;
                 }
             }
         }
@@ -123,6 +125,8 @@ impl ProtocolPeer {
                         {
                             tracing::error!("Failed to send permission result: {e}");
                         }
+                    }
+                    Err(ExecutorError::ExecutorApprovalError(ExecutorApprovalError::Cancelled)) => {
                     }
                     Err(e) => {
                         tracing::error!("Error in on_can_use_tool: {e}");

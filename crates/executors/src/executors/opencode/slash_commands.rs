@@ -516,6 +516,7 @@ pub async fn execute(
             auto_approve: config.auto_approve,
             control_tx,
             models_cache_key: config.models_cache_key.clone(),
+            cancel: cancel.clone(),
         },
         event_resp,
     ));
