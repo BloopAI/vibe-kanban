@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::{
     io::{AsyncWrite, AsyncWriteExt, BufWriter},
-    sync::{Mutex as AsyncMutex, mpsc, mpsc::error::TryRecvError},
+    sync::{Mutex as AsyncMutex, mpsc},
 };
 use tokio_util::sync::CancellationToken;
 use workspace_utils::{approvals::ApprovalStatus, git};
@@ -417,26 +417,6 @@ where
 {
     let mut idle_seen = false;
     let mut session_error: Option<String> = None;
-
-    // Drain queued idles so only idles after this request count.
-    loop {
-        match control_rx.try_recv() {
-            Ok(ControlEvent::Idle) => continue,
-            Ok(ControlEvent::AuthRequired { message }) => {
-                return Err(ExecutorError::AuthRequired(message));
-            }
-            Ok(ControlEvent::SessionError { message }) => {
-                append_session_error(&mut session_error, message);
-            }
-            Ok(ControlEvent::Disconnected) if !cancel.is_cancelled() => {
-                return Err(ExecutorError::Io(io::Error::other(
-                    "OpenCode event stream disconnected before request started",
-                )));
-            }
-            Ok(ControlEvent::Disconnected) => return Ok(()),
-            Err(TryRecvError::Empty) | Err(TryRecvError::Disconnected) => break,
-        }
-    }
 
     let request_result = loop {
         tokio::select! {
