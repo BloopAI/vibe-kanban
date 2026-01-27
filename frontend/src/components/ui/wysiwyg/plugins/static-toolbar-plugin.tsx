@@ -6,6 +6,7 @@ import {
   FORMAT_TEXT_COMMAND,
   SELECTION_CHANGE_COMMAND,
   COMMAND_PRIORITY_CRITICAL,
+  UNDO_COMMAND,
 } from 'lexical';
 import {
   INSERT_UNORDERED_LIST_COMMAND,
@@ -22,6 +23,7 @@ import {
   ListBullets,
   ListNumbers,
   Check,
+  ArrowCounterClockwise,
   type Icon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
@@ -137,6 +139,16 @@ export function StaticToolbarPlugin({ saveStatus }: StaticToolbarPluginProps) {
 
   return (
     <div className="flex items-center gap-half mt-base pt-base border-t border-border/50">
+      {/* Undo button */}
+      <ToolbarButton
+        onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)}
+        icon={ArrowCounterClockwise}
+        label="Undo"
+      />
+
+      {/* Separator */}
+      <div className="w-px h-4 bg-border mx-half" />
+
       {/* Text formatting buttons */}
       <ToolbarButton
         active={isBold}
