@@ -35,6 +35,14 @@ export interface PendingStatusSelection {
   isCreateMode?: boolean;
 }
 
+/** Options for starting in priority selection mode */
+export interface PendingPrioritySelection {
+  projectId: string;
+  issueIds: string[];
+  /** When true, this is for changing priority of an issue being created (not yet saved) */
+  isCreateMode?: boolean;
+}
+
 export interface CommandBarDialogProps {
   page?: PageId;
   workspaceId?: string;
@@ -43,6 +51,8 @@ export interface CommandBarDialogProps {
   pendingGitAction?: GitActionDefinition;
   /** When provided, opens directly in status selection mode */
   pendingStatusSelection?: PendingStatusSelection;
+  /** When provided, opens directly in priority selection mode */
+  pendingPrioritySelection?: PendingPrioritySelection;
   /** Issue context for kanban mode - projectId */
   projectId?: string;
   /** Issue context for kanban mode - selected issue IDs */
@@ -56,10 +66,15 @@ interface CommandBarContentProps {
   initialRepoId?: string;
   pendingGitAction?: GitActionDefinition;
   pendingStatusSelection?: PendingStatusSelection;
+  pendingPrioritySelection?: PendingPrioritySelection;
   propProjectId?: string;
   propIssueIds?: string[];
   statuses: StatusItem[];
   onStatusUpdate?: (issueIds: string[], statusId: string) => void;
+  onPriorityUpdate?: (
+    issueIds: string[],
+    priority: 'urgent' | 'high' | 'medium' | 'low'
+  ) => void;
 }
 
 function CommandBarContent({
@@ -68,10 +83,12 @@ function CommandBarContent({
   initialRepoId,
   pendingGitAction,
   pendingStatusSelection,
+  pendingPrioritySelection,
   propProjectId,
   propIssueIds,
   statuses,
   onStatusUpdate,
+  onPriorityUpdate,
 }: CommandBarContentProps) {
   const modal = useModal();
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -109,7 +126,7 @@ function CommandBarContent({
   );
 
   // Reset state and capture focus when dialog opens
-  // Also trigger status selection if pendingStatusSelection is provided
+  // Also trigger status/priority selection if pending selection is provided
   useEffect(() => {
     if (modal.visible) {
       dispatch({ type: 'RESET', page });
@@ -123,8 +140,23 @@ function CommandBarContent({
           issueIds: pendingStatusSelection.issueIds,
         });
       }
+
+      // If we have pending priority selection, transition to that state
+      if (pendingPrioritySelection) {
+        dispatch({
+          type: 'START_PRIORITY_SELECTION',
+          projectId: pendingPrioritySelection.projectId,
+          issueIds: pendingPrioritySelection.issueIds,
+        });
+      }
     }
-  }, [modal.visible, page, dispatch, pendingStatusSelection]);
+  }, [
+    modal.visible,
+    page,
+    dispatch,
+    pendingStatusSelection,
+    pendingPrioritySelection,
+  ]);
 
   // Resolve current page to renderable data
   const resolvedPage = useResolvedPage(
@@ -171,6 +203,9 @@ function CommandBarContent({
       } else if (effect.type === 'updateStatus') {
         modal.hide();
         onStatusUpdate?.(effect.issueIds, effect.statusId);
+      } else if (effect.type === 'updatePriority') {
+        modal.hide();
+        onPriorityUpdate?.(effect.issueIds, effect.priority);
       }
     },
     [
@@ -183,6 +218,7 @@ function CommandBarContent({
       repos,
       initialRepoId,
       onStatusUpdate,
+      onPriorityUpdate,
     ]
   );
 
@@ -211,17 +247,26 @@ function CommandBarContent({
   );
 }
 
-/** Wrapper that provides ProjectContext for status selection */
+/** Wrapper that provides ProjectContext for status/priority selection */
 function CommandBarWithProjectContext({
   pendingStatusSelection,
+  pendingPrioritySelection,
   propProjectId,
   ...props
-}: Omit<CommandBarContentProps, 'statuses' | 'onStatusUpdate'> & {
-  pendingStatusSelection: PendingStatusSelection;
+}: Omit<
+  CommandBarContentProps,
+  'statuses' | 'onStatusUpdate' | 'onPriorityUpdate'
+> & {
+  pendingStatusSelection?: PendingStatusSelection;
+  pendingPrioritySelection?: PendingPrioritySelection;
 }) {
   // For create mode, projectId may be empty - use propProjectId as fallback
+  // Also check pendingPrioritySelection for priority changes
   const effectiveProjectId =
-    pendingStatusSelection.projectId || propProjectId || '';
+    pendingStatusSelection?.projectId ||
+    pendingPrioritySelection?.projectId ||
+    propProjectId ||
+    '';
 
   // If no project ID available, render nothing (shouldn't happen in practice)
   if (!effectiveProjectId) {
@@ -234,18 +279,25 @@ function CommandBarWithProjectContext({
         {...props}
         propProjectId={propProjectId}
         pendingStatusSelection={pendingStatusSelection}
+        pendingPrioritySelection={pendingPrioritySelection}
       />
     </ProjectProvider>
   );
 }
 
-/** Inner component that uses ProjectContext to get statuses */
+/** Inner component that uses ProjectContext to get statuses and handle updates */
 function CommandBarWithStatuses(
-  props: Omit<CommandBarContentProps, 'statuses' | 'onStatusUpdate'>
+  props: Omit<
+    CommandBarContentProps,
+    'statuses' | 'onStatusUpdate' | 'onPriorityUpdate'
+  >
 ) {
   const { statuses, updateIssue } = useProjectContext();
   const setKanbanCreateDefaultStatusId = useUiPreferencesStore(
     (s) => s.setKanbanCreateDefaultStatusId
+  );
+  const setKanbanCreateDefaultPriority = useUiPreferencesStore(
+    (s) => s.setKanbanCreateDefaultPriority
   );
 
   const sortedStatuses: StatusItem[] = useMemo(
@@ -277,11 +329,33 @@ function CommandBarWithStatuses(
     ]
   );
 
+  const handlePriorityUpdate = useCallback(
+    (issueIds: string[], priority: 'urgent' | 'high' | 'medium' | 'low') => {
+      // Check if this is for create mode (empty issueIds array with isCreateMode flag)
+      if (props.pendingPrioritySelection?.isCreateMode) {
+        // Update the default priority for the issue being created
+        setKanbanCreateDefaultPriority(priority);
+        return;
+      }
+
+      // Normal edit mode: update existing issues
+      for (const issueId of issueIds) {
+        updateIssue(issueId, { priority });
+      }
+    },
+    [
+      updateIssue,
+      props.pendingPrioritySelection?.isCreateMode,
+      setKanbanCreateDefaultPriority,
+    ]
+  );
+
   return (
     <CommandBarContent
       {...props}
       statuses={sortedStatuses}
       onStatusUpdate={handleStatusUpdate}
+      onPriorityUpdate={handlePriorityUpdate}
     />
   );
 }
@@ -293,11 +367,12 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
     repoId: initialRepoId,
     pendingGitAction,
     pendingStatusSelection,
+    pendingPrioritySelection,
     projectId: propProjectId,
     issueIds: propIssueIds,
   }) => {
-    // If we have pending status selection, wrap with ProjectProvider
-    if (pendingStatusSelection) {
+    // If we have pending status or priority selection, wrap with ProjectProvider
+    if (pendingStatusSelection || pendingPrioritySelection) {
       return (
         <CommandBarWithProjectContext
           page={page}
@@ -305,13 +380,14 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
           initialRepoId={initialRepoId}
           pendingGitAction={pendingGitAction}
           pendingStatusSelection={pendingStatusSelection}
+          pendingPrioritySelection={pendingPrioritySelection}
           propProjectId={propProjectId}
           propIssueIds={propIssueIds}
         />
       );
     }
 
-    // Normal command bar without status context
+    // Normal command bar without status/priority context
     return (
       <CommandBarContent
         page={page}

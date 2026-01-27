@@ -23,6 +23,13 @@ export type CommandBarState =
       search: string;
       pendingProjectId: string;
       pendingIssueIds: string[];
+    }
+  | {
+      status: 'selectingPriority';
+      stack: PageId[];
+      search: string;
+      pendingProjectId: string;
+      pendingIssueIds: string[];
     };
 
 export type CommandBarEvent =
@@ -30,7 +37,8 @@ export type CommandBarEvent =
   | { type: 'SEARCH_CHANGE'; query: string }
   | { type: 'GO_BACK' }
   | { type: 'SELECT_ITEM'; item: ResolvedGroupItem }
-  | { type: 'START_STATUS_SELECTION'; projectId: string; issueIds: string[] };
+  | { type: 'START_STATUS_SELECTION'; projectId: string; issueIds: string[] }
+  | { type: 'START_PRIORITY_SELECTION'; projectId: string; issueIds: string[] };
 
 export type CommandBarEffect =
   | { type: 'none' }
@@ -40,6 +48,12 @@ export type CommandBarEffect =
       projectId: string;
       issueIds: string[];
       statusId: string;
+    }
+  | {
+      type: 'updatePriority';
+      projectId: string;
+      issueIds: string[];
+      priority: 'urgent' | 'high' | 'medium' | 'low';
     };
 
 const browsing = (page: PageId, stack: PageId[] = []): CommandBarState => ({
@@ -65,6 +79,18 @@ const selectingStatus = (
   stack: PageId[] = []
 ): CommandBarState => ({
   status: 'selectingStatus',
+  stack,
+  search: '',
+  pendingProjectId,
+  pendingIssueIds,
+});
+
+const selectingPriority = (
+  pendingProjectId: string,
+  pendingIssueIds: string[],
+  stack: PageId[] = []
+): CommandBarState => ({
+  status: 'selectingPriority',
   stack,
   search: '',
   pendingProjectId,
@@ -103,6 +129,13 @@ function reducer(
     ];
   }
 
+  if (event.type === 'START_PRIORITY_SELECTION') {
+    return [
+      selectingPriority(event.projectId, event.issueIds, state.stack),
+      noEffect,
+    ];
+  }
+
   if (event.type === 'SELECT_ITEM') {
     if (state.status === 'selectingRepo' && event.item.type === 'repo') {
       return [
@@ -123,6 +156,21 @@ function reducer(
           projectId: state.pendingProjectId,
           issueIds: state.pendingIssueIds,
           statusId: event.item.status.id,
+        },
+      ];
+    }
+
+    if (
+      state.status === 'selectingPriority' &&
+      event.item.type === 'priority'
+    ) {
+      return [
+        browsing('root'),
+        {
+          type: 'updatePriority',
+          projectId: state.pendingProjectId,
+          issueIds: state.pendingIssueIds,
+          priority: event.item.priority.id,
         },
       ];
     }
@@ -227,7 +275,9 @@ export function useCommandBarState(
       ? 'selectRepo'
       : state.status === 'selectingStatus'
         ? 'selectStatus'
-        : state.page;
+        : state.status === 'selectingPriority'
+          ? 'selectPriority'
+          : state.page;
 
   return {
     state,

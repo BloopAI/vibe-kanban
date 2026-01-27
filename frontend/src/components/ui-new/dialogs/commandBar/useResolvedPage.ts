@@ -16,6 +16,7 @@ import {
   type ResolvedGroupItem,
   type RepoItem,
   type StatusItem,
+  type PriorityItem,
 } from '@/components/ui-new/actions/pages';
 import type { ActionVisibilityContext } from '@/components/ui-new/actions';
 import {
@@ -73,6 +74,14 @@ function buildPageGroups(
     .filter((g): g is ResolvedGroup => g !== null);
 }
 
+// Static priority items
+const PRIORITY_ITEMS: PriorityItem[] = [
+  { id: 'urgent', name: 'Urgent' },
+  { id: 'high', name: 'High' },
+  { id: 'medium', name: 'Medium' },
+  { id: 'low', name: 'Low' },
+];
+
 export function useResolvedPage(
   pageId: PageId,
   search: string,
@@ -105,6 +114,22 @@ export function useResolvedPage(
             items: statuses.map((s) => ({
               type: 'status' as const,
               status: s,
+            })),
+          },
+        ],
+      };
+    }
+
+    if (pageId === 'selectPriority') {
+      return {
+        id: 'selectPriority',
+        title: 'Select Priority',
+        groups: [
+          {
+            label: 'Priority',
+            items: PRIORITY_ITEMS.map((p) => ({
+              type: 'priority' as const,
+              priority: p,
             })),
           },
         ],
