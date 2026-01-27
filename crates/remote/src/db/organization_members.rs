@@ -43,7 +43,7 @@ where
     Ok(())
 }
 
-pub(super) async fn check_user_role(
+pub(crate) async fn check_user_role(
     pool: &PgPool,
     organization_id: Uuid,
     user_id: Uuid,
