@@ -46,29 +46,114 @@ Configure basic repository information:
 - **Display Name** - A friendly name for this repository
 - **Repository Path** - The local path to the repository
 
-### Scripts & Configuration
+## Scripts & Configuration
 
-Configure dev server, setup, cleanup, and copy files for this repository. These scripts run whenever the repository is used in any workspace.
+Configure dev server, setup, and cleanup scripts for this repository. These scripts run whenever the repository is used in any workspace, ensuring a consistent development environment.
 
-#### Dev Server Script
+### Dev Server Script
 
-Command to start your development server (e.g., `npm run dev`, `yarn dev`, `pnpm dev`).
+Command to start your development server. This enables the built-in preview browser in Workspaces, allowing you to see your application running as you make changes.
+
+**Common examples:**
+
+| Framework | Command |
+|-----------|---------|
+| Vite | `npm run dev` |
+| Next.js | `npm run dev` |
+| Create React App | `npm start` |
+| Django | `python manage.py runserver` |
+| Rails | `rails server` |
 
 <Tip>
-Configure dev server scripts to enable the built-in preview browser in Workspaces.
+The dev server must output its URL (e.g., `http://localhost:3000`) to stdout for Vibe Kanban to detect and display it in the preview panel.
 </Tip>
 
-#### Setup Script
+<Card title="Preview Panel Documentation" icon="eye" href="/workspaces/preview">
+  Learn how to use the built-in preview browser with your dev server
+</Card>
 
-Commands to run before starting work (e.g., `npm install`, `pip install -r requirements.txt`).
+### Setup Script
 
-Use this to ensure dependencies are installed and the environment is ready.
+Commands that run **before** the coding agent starts working. Use this to prepare the development environment.
 
-#### Cleanup Script
+**Why use a setup script?**
 
-Commands to run when a workspace closes.
+- **Install dependencies** - Ensure all packages are installed before the agent modifies code
+- **Build prerequisites** - Compile shared libraries or generate files the agent needs
+- **Environment preparation** - Set up databases, pull Docker images, or configure services
 
-Use this for cleanup tasks like stopping background processes or removing temporary files.
+**Examples:**
+
+```bash
+# Node.js project
+npm install
+
+# Python project
+pip install -r requirements.txt
+
+# Multiple commands
+npm install && npm run build:deps
+
+# Rust project
+cargo fetch
+```
+
+<Info>
+Setup scripts run in the repository's root directory. They execute once when the workspace starts, not on every agent message.
+</Info>
+
+### Cleanup Script
+
+Commands that run **when a workspace closes**. Use this to clean up resources and stop background processes.
+
+**Why use a cleanup script?**
+
+- **Stop services** - Terminate background processes that might conflict with other workspaces
+- **Free resources** - Release database connections, Docker containers, or other resources
+- **Clean temporary files** - Remove build artifacts or cache files
+
+**Examples:**
+
+```bash
+# Stop Docker containers
+docker compose down
+
+# Kill background processes
+pkill -f "node server.js"
+
+# Clean build artifacts
+rm -rf dist/ .cache/
+
+# Multiple cleanup tasks
+docker compose down && rm -rf tmp/
+```
+
+<Warning>
+Cleanup scripts should be idempotent—safe to run even if the resources don't exist. Use commands that don't fail if there's nothing to clean up.
+</Warning>
+
+## Best Practices
+
+<AccordionGroup>
+<Accordion title="Keep scripts fast">
+Long-running setup scripts delay workspace startup. Install dependencies in setup, but avoid lengthy build processes unless necessary.
+</Accordion>
+
+<Accordion title="Use relative paths">
+Scripts run from the repository root. Use relative paths or environment variables rather than hardcoded absolute paths.
+</Accordion>
+
+<Accordion title="Handle errors gracefully">
+Add `|| true` to commands that might fail but shouldn't block the workspace:
+```bash
+npm install || true
+```
+</Accordion>
+
+<Accordion title="Test scripts locally">
+Run your scripts manually in a terminal before configuring them in Vibe Kanban to ensure they work correctly.
+</Accordion>
+</AccordionGroup>
 
 ## Related Documentation
 
