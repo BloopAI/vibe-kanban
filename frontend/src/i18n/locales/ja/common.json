@@ -347,7 +347,11 @@
     "enterCommentPlaceholder": "コメントを入力してください...",
     "subIssues": "サブ課題",
     "noSubIssues": "サブ課題なし",
-    "parentIssue": "親"
+    "parentIssue": "親",
+    "viewTabs": {
+      "active": "アクティブ",
+      "all": "すべて"
+    }
   },
   "syncError": {
     "networkErrors": "ネットワークエラー",

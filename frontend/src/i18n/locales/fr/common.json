@@ -347,7 +347,11 @@
     "enterCommentPlaceholder": "Entrez votre commentaire ici...",
     "subIssues": "Sous-tâches",
     "noSubIssues": "Aucune sous-tâche",
-    "parentIssue": "Parent"
+    "parentIssue": "Parent",
+    "viewTabs": {
+      "active": "Actif",
+      "all": "Tout"
+    }
   },
   "syncError": {
     "networkErrors": "Erreurs réseau",
