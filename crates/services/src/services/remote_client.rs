@@ -6,7 +6,6 @@ use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use thiserror::Error;
 use tracing::warn;
 use url::Url;
@@ -23,7 +22,6 @@ use utils::{
             ListOrganizationsResponse, Organization, RevokeInvitationRequest,
             UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
         },
-        projects::{ListProjectsResponse, RemoteProject},
     },
     jwt::extract_expiration,
 };
@@ -408,26 +406,6 @@ impl RemoteClient {
         self.get_authed("/v1/organizations").await
     }
 
-    /// Lists projects for a given organization.
-    pub async fn list_projects(
-        &self,
-        organization_id: Uuid,
-    ) -> Result<ListProjectsResponse, RemoteClientError> {
-        self.get_authed(&format!("/v1/projects?organization_id={organization_id}"))
-            .await
-    }
-
-    pub async fn get_project(&self, project_id: Uuid) -> Result<RemoteProject, RemoteClientError> {
-        self.get_authed(&format!("/v1/projects/{project_id}")).await
-    }
-
-    pub async fn create_project(
-        &self,
-        request: &CreateRemoteProjectPayload,
-    ) -> Result<RemoteProject, RemoteClientError> {
-        self.post_authed("/v1/projects", Some(request)).await
-    }
-
     /// Gets a specific organization by ID.
     pub async fn get_organization(
         &self,
@@ -540,14 +518,6 @@ impl RemoteClient {
         )
         .await
     }
-}
-
-#[derive(Debug, Serialize)]
-pub struct CreateRemoteProjectPayload {
-    pub organization_id: Uuid,
-    pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<Value>,
 }
 
 fn map_reqwest_error(e: reqwest::Error) -> RemoteClientError {

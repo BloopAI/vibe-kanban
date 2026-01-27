@@ -10,7 +10,6 @@ use db::models::{
 };
 use sqlx::SqlitePool;
 use thiserror::Error;
-use utils::api::projects::RemoteProject;
 use uuid::Uuid;
 
 use super::{
@@ -123,38 +122,6 @@ impl ProjectService {
         let project = Project::update(pool, existing.id, &payload).await?;
 
         Ok(project)
-    }
-
-    /// Link a project to a remote project and sync shared tasks
-    pub async fn link_to_remote(
-        &self,
-        pool: &SqlitePool,
-        project_id: Uuid,
-        remote_project: RemoteProject,
-    ) -> Result<Project> {
-        Project::set_remote_project_id(pool, project_id, Some(remote_project.id)).await?;
-
-        let project = Project::find_by_id(pool, project_id)
-            .await?
-            .ok_or(ProjectError::ProjectNotFound)?;
-
-        Ok(project)
-    }
-
-    pub async fn unlink_from_remote(
-        &self,
-        pool: &SqlitePool,
-        project: &Project,
-    ) -> Result<Project> {
-        if project.remote_project_id.is_some() {
-            Project::set_remote_project_id(pool, project.id, None).await?;
-        }
-
-        let updated = Project::find_by_id(pool, project.id)
-            .await?
-            .ok_or(ProjectError::ProjectNotFound)?;
-
-        Ok(updated)
     }
 
     pub async fn add_repository(

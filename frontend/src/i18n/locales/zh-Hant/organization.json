@@ -63,16 +63,5 @@
     "description": "您需要登入才能管理組織設定。",
     "action": "登入"
   },
-  "confirmRemoveMember": "您確定要從組織中移除此成員嗎？",
-  "sharedProjects": {
-    "title": "共享專案",
-    "description": "{{orgName}} 中的遠端專案及其與本地專案的連結",
-    "loading": "載入專案中...",
-    "noProjects": "此組織中找不到共享專案",
-    "notLinked": "未連結",
-    "linkedTo": "連結到：{{projectName}}",
-    "linked": "已連結",
-    "linkProject": "連結專案...",
-    "noAvailableProjects": "沒有可用的專案"
-  }
+  "confirmRemoveMember": "您確定要從組織中移除此成員嗎？"
 }

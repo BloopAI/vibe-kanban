@@ -63,16 +63,5 @@
     "description": "조직 설정을 관리하려면 로그인해야 합니다.",
     "action": "로그인"
   },
-  "confirmRemoveMember": "Are you sure you want to remove this member from the organization?",
-  "sharedProjects": {
-    "title": "공유 프로젝트",
-    "description": "{{orgName}}의 원격 프로젝트와 로컬 프로젝트에 대한 연결",
-    "loading": "프로젝트 로딩 중...",
-    "noProjects": "이 조직에서 공유 프로젝트를 찾을 수 없습니다",
-    "notLinked": "연결되지 않음",
-    "linkedTo": "연결됨: {{projectName}}",
-    "linked": "연결됨",
-    "linkProject": "프로젝트 연결...",
-    "noAvailableProjects": "사용 가능한 프로젝트가 없습니다"
-  }
+  "confirmRemoveMember": "Are you sure you want to remove this member from the organization?"
 }

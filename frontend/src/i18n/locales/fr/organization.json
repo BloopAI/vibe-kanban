@@ -63,16 +63,5 @@
     "description": "Vous devez être connecté pour gérer les paramètres de l'organisation.",
     "action": "Connexion"
   },
-  "confirmRemoveMember": "Êtes-vous sûr de vouloir retirer ce membre de l'organisation ?",
-  "sharedProjects": {
-    "title": "Projets partagés",
-    "description": "Projets distants dans {{orgName}} et leurs liens vers les projets locaux",
-    "loading": "Chargement des projets...",
-    "noProjects": "Aucun projet partagé trouvé dans cette organisation",
-    "notLinked": "Non lié",
-    "linkedTo": "Lié à : {{projectName}}",
-    "linked": "Lié",
-    "linkProject": "Lier un projet...",
-    "noAvailableProjects": "Aucun projet disponible"
-  }
+  "confirmRemoveMember": "Êtes-vous sûr de vouloir retirer ce membre de l'organisation ?"
 }

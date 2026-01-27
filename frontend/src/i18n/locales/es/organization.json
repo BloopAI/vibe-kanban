@@ -63,16 +63,5 @@
     "description": "Debes iniciar sesión para administrar la configuración de la organización.",
     "action": "Iniciar sesión"
   },
-  "confirmRemoveMember": "Are you sure you want to remove this member from the organization?",
-  "sharedProjects": {
-    "title": "Proyectos Compartidos",
-    "description": "Proyectos remotos en {{orgName}} y sus vínculos a proyectos locales",
-    "loading": "Cargando proyectos...",
-    "noProjects": "No se encontraron proyectos compartidos en esta organización",
-    "notLinked": "No vinculado",
-    "linkedTo": "Vinculado a: {{projectName}}",
-    "linked": "Vinculado",
-    "linkProject": "Vincular proyecto...",
-    "noAvailableProjects": "No hay proyectos disponibles"
-  }
+  "confirmRemoveMember": "Are you sure you want to remove this member from the organization?"
 }

@@ -63,11 +63,8 @@ import {
   CreateInvitationResponse,
   RevokeInvitationRequest,
   UpdateMemberRoleRequest,
-  CreateRemoteProjectRequest,
-  LinkToExistingRequest,
   UpdateMemberRoleResponse,
   Invitation,
-  RemoteProject,
   ListInvitationsResponse,
   OpenEditorResponse,
   OpenEditorRequest,
@@ -297,38 +294,6 @@ export const projectsApi = {
       options
     );
     return handleApiResponse<SearchResult[]>(response);
-  },
-
-  linkToExisting: async (
-    localProjectId: string,
-    data: LinkToExistingRequest
-  ): Promise<Project> => {
-    const response = await makeRequest(`/api/projects/${localProjectId}/link`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<Project>(response);
-  },
-
-  createAndLink: async (
-    localProjectId: string,
-    data: CreateRemoteProjectRequest
-  ): Promise<Project> => {
-    const response = await makeRequest(
-      `/api/projects/${localProjectId}/link/create`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
-    return handleApiResponse<Project>(response);
-  },
-
-  unlink: async (projectId: string): Promise<Project> => {
-    const response = await makeRequest(`/api/projects/${projectId}/link`, {
-      method: 'DELETE',
-    });
-    return handleApiResponse<Project>(response);
   },
 
   getRepositories: async (projectId: string): Promise<Repo[]> => {
@@ -1215,11 +1180,6 @@ export const organizationsApi = {
   getUserOrganizations: async (): Promise<ListOrganizationsResponse> => {
     const response = await makeRequest('/api/organizations');
     return handleApiResponse<ListOrganizationsResponse>(response);
-  },
-
-  getProjects: async (orgId: string): Promise<RemoteProject[]> => {
-    const response = await makeRequest(`/api/organizations/${orgId}/projects`);
-    return handleApiResponse<RemoteProject[]>(response);
   },
 
   createOrganization: async (

@@ -63,16 +63,5 @@
     "description": "You need to be logged in to manage organization settings.",
     "action": "Login"
   },
-  "confirmRemoveMember": "Are you sure you want to remove this member from the organization?",
-  "sharedProjects": {
-    "title": "Shared Projects",
-    "description": "Remote projects in {{orgName}} and their links to local projects",
-    "loading": "Loading projects...",
-    "noProjects": "No shared projects found in this organization",
-    "notLinked": "Not linked",
-    "linkedTo": "Linked to: {{projectName}}",
-    "linked": "Linked",
-    "linkProject": "Link project...",
-    "noAvailableProjects": "No available projects"
-  }
+  "confirmRemoveMember": "Are you sure you want to remove this member from the organization?"
 }

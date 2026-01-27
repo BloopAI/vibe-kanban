@@ -63,16 +63,5 @@
     "description": "您需要登录才能管理组织设置。",
     "action": "登录"
   },
-  "confirmRemoveMember": "您确定要从组织中移除此成员吗？",
-  "sharedProjects": {
-    "title": "共享项目",
-    "description": "{{orgName}} 中的远程项目及其与本地项目的链接",
-    "loading": "加载项目中...",
-    "noProjects": "此组织中未找到共享项目",
-    "notLinked": "未链接",
-    "linkedTo": "链接到：{{projectName}}",
-    "linked": "已链接",
-    "linkProject": "链接项目...",
-    "noAvailableProjects": "没有可用的项目"
-  }
+  "confirmRemoveMember": "您确定要从组织中移除此成员吗？"
 }
