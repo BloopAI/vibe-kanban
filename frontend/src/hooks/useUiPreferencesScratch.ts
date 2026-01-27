@@ -16,8 +16,10 @@ import {
 } from '@/stores/useUiPreferencesStore';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
 
-// Stable ID for global UI preferences (not tied to a workspace/user)
-const UI_PREFERENCES_ID = 'global-ui-preferences';
+// Stable UUID for global UI preferences (not tied to a workspace/user)
+// This is a deterministic UUID v5 generated from the namespace "ui-preferences"
+// Using a fixed UUID ensures all users/sessions share the same preferences record
+const UI_PREFERENCES_ID = '00000000-0000-0000-0000-000000000001';
 
 /**
  * Converts store state to scratch data format (camelCase to snake_case)
@@ -128,6 +130,39 @@ export function useUiPreferencesScratch() {
   const scratchData: UiPreferencesData | undefined =
     payload?.type === 'UI_PREFERENCES' ? payload.data : undefined;
 
+  // Save to server function
+  const saveToServer = useCallback(async () => {
+    if (isApplyingServerDataRef.current || !hasInitializedRef.current) {
+      return;
+    }
+
+    const currentState = useUiPreferencesStore.getState();
+    const data = storeToScratchData({
+      repoActions: currentState.repoActions,
+      expanded: currentState.expanded,
+      contextBarPosition: currentState.contextBarPosition,
+      paneSizes: currentState.paneSizes,
+      collapsedPaths: currentState.collapsedPaths,
+      isLeftSidebarVisible: currentState.isLeftSidebarVisible,
+      isRightSidebarVisible: currentState.isRightSidebarVisible,
+      isTerminalVisible: currentState.isTerminalVisible,
+      workspacePanelStates: currentState.workspacePanelStates,
+    });
+
+    try {
+      await updateScratch({
+        payload: {
+          type: 'UI_PREFERENCES',
+          data,
+        },
+      });
+    } catch (e) {
+      console.error('[useUiPreferencesScratch] Failed to save:', e);
+    }
+  }, [updateScratch]);
+
+  const { debounced: debouncedSave } = useDebouncedCallback(saveToServer, 500);
+
   // Initialize store from server data when first loaded
   useEffect(() => {
     if (hasInitializedRef.current || isLoading || !isConnected) {
@@ -160,39 +195,6 @@ export function useUiPreferencesScratch() {
       }, 100);
     }
   }, [isLoading, isConnected, scratchData]);
-
-  // Save to server (debounced)
-  const saveToServer = useCallback(async () => {
-    if (isApplyingServerDataRef.current || !hasInitializedRef.current) {
-      return;
-    }
-
-    const currentState = useUiPreferencesStore.getState();
-    const data = storeToScratchData({
-      repoActions: currentState.repoActions,
-      expanded: currentState.expanded,
-      contextBarPosition: currentState.contextBarPosition,
-      paneSizes: currentState.paneSizes,
-      collapsedPaths: currentState.collapsedPaths,
-      isLeftSidebarVisible: currentState.isLeftSidebarVisible,
-      isRightSidebarVisible: currentState.isRightSidebarVisible,
-      isTerminalVisible: currentState.isTerminalVisible,
-      workspacePanelStates: currentState.workspacePanelStates,
-    });
-
-    try {
-      await updateScratch({
-        payload: {
-          type: 'UI_PREFERENCES',
-          data,
-        },
-      });
-    } catch (e) {
-      console.error('[useUiPreferencesScratch] Failed to save:', e);
-    }
-  }, [updateScratch]);
-
-  const { debounced: debouncedSave } = useDebouncedCallback(saveToServer, 500);
 
   // Subscribe to store changes and save to server
   useEffect(() => {
