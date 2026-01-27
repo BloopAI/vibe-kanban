@@ -21,6 +21,7 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useDevServer } from '@/hooks/useDevServer';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { useLogStream } from '@/hooks/useLogStream';
+import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 
 interface ActionsContextValue {
   // Execute an action with optional workspaceId and repoId/projectId
@@ -62,6 +63,14 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
 
   // Get dev server state
   const { start, stop, runningDevServers } = useDevServer(workspaceId);
+
+  // Get kanban panel actions from store
+  const openKanbanIssuePanel = useUiPreferencesStore(
+    (s) => s.openKanbanIssuePanel
+  );
+  const setKanbanCreateDefaultStatusId = useUiPreferencesStore(
+    (s) => s.setKanbanCreateDefaultStatusId
+  );
 
   // Get logs panel state
   const { logsPanelContent } = useLogsPanel();
@@ -110,6 +119,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       currentLogs,
       logsPanelContent,
       openStatusSelection,
+      openKanbanIssuePanel,
+      setKanbanCreateDefaultStatusId,
     }),
     [
       navigate,
@@ -124,6 +135,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       currentLogs,
       logsPanelContent,
       openStatusSelection,
+      openKanbanIssuePanel,
+      setKanbanCreateDefaultStatusId,
     ]
   );
 
