@@ -18,12 +18,17 @@ import {
   updateRepositoryReviewEnabled,
   fetchGitHubAppRepositories,
   bulkUpdateRepositoryReviewEnabled,
+  getBillingStatus,
+  createBillingPortalSession,
+  createCheckoutSession,
+  ApiError,
   type Organization,
   type OrganizationMemberWithProfile,
   type OrganizationInvitation,
   type MemberRole,
   type GitHubAppStatus,
   type GitHubAppRepository,
+  type BillingStatusResponse,
 } from "../api";
 
 export default function OrganizationPage() {
@@ -39,7 +44,10 @@ export default function OrganizationPage() {
   const [invitations, setInvitations] = useState<OrganizationInvitation[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // GitHub App state
+  const [billingStatus, setBillingStatus] = useState<BillingStatusResponse | null>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
+
   const [githubAppStatus, setGithubAppStatus] = useState<GitHubAppStatus | null>(null);
   const [githubAppLoading, setGithubAppLoading] = useState(false);
   const [githubAppError, setGithubAppError] = useState<string | null>(null);
@@ -52,24 +60,21 @@ export default function OrganizationPage() {
   const [repoFilter, setRepoFilter] = useState<"all" | "enabled" | "disabled">("all");
   const [bulkLoading, setBulkLoading] = useState(false);
 
-  // Edit name state
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [editNameError, setEditNameError] = useState<string | null>(null);
   const [editNameLoading, setEditNameLoading] = useState(false);
 
-  // Delete state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Invite state
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<MemberRole>("MEMBER");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [isSubscriptionRequired, setIsSubscriptionRequired] = useState(false);
 
-  // Action loading states
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const isAdmin = userRole === "ADMIN";
@@ -83,13 +88,11 @@ export default function OrganizationPage() {
     if (!orgId) return;
     loadData();
 
-    // Check for GitHub App callback params
     const githubAppResult = searchParams.get("github_app");
     const githubAppErrorParam = searchParams.get("github_app_error");
 
     if (githubAppResult === "installed") {
       setGithubAppSuccess("GitHub App installed successfully!");
-      // Clear the query param
       searchParams.delete("github_app");
       setSearchParams(searchParams, { replace: true });
     }
@@ -98,6 +101,15 @@ export default function OrganizationPage() {
       setGithubAppError(githubAppErrorParam);
       searchParams.delete("github_app_error");
       setSearchParams(searchParams, { replace: true });
+    }
+
+    const billingResult = searchParams.get("billing");
+    if (billingResult) {
+      searchParams.delete("billing");
+      setSearchParams(searchParams, { replace: true });
+      if (billingResult === "success") {
+        getBillingStatus(orgId).then(setBillingStatus).catch(() => {});
+      }
     }
   }, [orgId, navigate, searchParams, setSearchParams]);
 
@@ -117,24 +129,29 @@ export default function OrganizationPage() {
       setCurrentUserId(profile.user_id);
       setEditedName(orgData.organization.name);
 
-      // Load invitations if admin
       if (orgData.user_role === "ADMIN") {
         const invitationsData = await listInvitations(orgId);
         setInvitations(invitationsData.filter((i) => i.status === "PENDING"));
       }
 
-      // Load GitHub App status for non-personal orgs
       if (!orgData.organization.is_personal) {
         try {
           const ghStatus = await getGitHubAppStatus(orgId);
           setGithubAppStatus(ghStatus);
-          // If installed, load repos asynchronously
           if (ghStatus.installed) {
             loadRepositories(orgId);
           }
         } catch {
-          // GitHub App may not be configured on the server
           setGithubAppStatus(null);
+        }
+
+        if (orgData.user_role === "ADMIN") {
+          try {
+            const billing = await getBillingStatus(orgId);
+            setBillingStatus(billing);
+          } catch {
+            setBillingStatus(null);
+          }
         }
       }
     } catch (e) {
@@ -215,6 +232,7 @@ export default function OrganizationPage() {
 
     setInviteLoading(true);
     setInviteError(null);
+    setIsSubscriptionRequired(false);
 
     try {
       const invitation = await createInvitation(
@@ -226,7 +244,12 @@ export default function OrganizationPage() {
       setInviteEmail("");
       setShowInviteForm(false);
     } catch (e) {
-      setInviteError(e instanceof Error ? e.message : "Failed to send invite");
+      if (e instanceof ApiError && e.status === 402) {
+        setIsSubscriptionRequired(true);
+        setInviteError("Subscription required to add more members.");
+      } else {
+        setInviteError(e instanceof Error ? e.message : "Failed to send invite");
+      }
     } finally {
       setInviteLoading(false);
     }
@@ -338,6 +361,45 @@ export default function OrganizationPage() {
       return true;
     })
     .sort((a, b) => a.repo_full_name.localeCompare(b.repo_full_name));
+
+  const handleSubscribe = async () => {
+    if (!orgId) return;
+
+    setBillingLoading(true);
+    setBillingError(null);
+
+    try {
+      const { url } = await createCheckoutSession(
+        orgId,
+        `${window.location.origin}/account/organizations/${orgId}?billing=success`,
+        `${window.location.origin}/account/organizations/${orgId}?billing=cancelled`,
+      );
+      window.location.href = url;
+    } catch (e) {
+      setBillingError(e instanceof Error ? e.message : "Failed to start checkout");
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    if (!orgId) return;
+
+    setBillingLoading(true);
+    setBillingError(null);
+
+    try {
+      const { url } = await createBillingPortalSession(
+        orgId,
+        `${window.location.origin}/account/organizations/${orgId}`,
+      );
+      window.location.href = url;
+    } catch (e) {
+      setBillingError(e instanceof Error ? e.message : "Failed to open billing portal");
+    } finally {
+      setBillingLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -570,7 +632,29 @@ export default function OrganizationPage() {
                 </select>
               </div>
               {inviteError && (
-                <p className="text-sm text-red-600">{inviteError}</p>
+                <div
+                  className={
+                    isSubscriptionRequired
+                      ? "bg-amber-50 border border-amber-200 rounded-lg p-3"
+                      : ""
+                  }
+                >
+                  <p
+                    className={`text-sm ${isSubscriptionRequired ? "text-amber-700" : "text-red-600"}`}
+                  >
+                    {inviteError}
+                  </p>
+                  {isSubscriptionRequired && (
+                    <button
+                      type="button"
+                      onClick={handleSubscribe}
+                      disabled={billingLoading}
+                      className="mt-2 px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                    >
+                      {billingLoading ? "Loading..." : "Upgrade to Team Plan"}
+                    </button>
+                  )}
+                </div>
               )}
               <button
                 type="submit"
@@ -694,6 +778,54 @@ export default function OrganizationPage() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Billing Card (admin only, non-personal orgs, when billing is enabled) */}
+        {isAdmin && !organization?.is_personal && billingStatus?.billing_enabled && (
+          <div className="bg-white shadow rounded-lg p-6">
+            {billingError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-700">{billingError}</p>
+                <button
+                  onClick={() => setBillingError(null)}
+                  className="text-xs text-red-600 hover:text-red-800 mt-1"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
+            {billingStatus.seat_info?.subscription ? (
+              <>
+                {billingStatus.seat_info.subscription.cancel_at_period_end && (
+                  <p className="text-sm text-amber-600 mb-3">
+                    Subscription will end on{" "}
+                    {new Date(billingStatus.seat_info.subscription.current_period_end).toLocaleDateString()}
+                  </p>
+                )}
+                <button
+                  onClick={handleManageSubscription}
+                  disabled={billingLoading}
+                  className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {billingLoading ? "Loading..." : "Manage Subscription"}
+                </button>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                  Upgrade to Team Plan
+                </h2>
+                <button
+                  onClick={handleSubscribe}
+                  disabled={billingLoading}
+                  className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {billingLoading ? "Loading..." : "Upgrade"}
+                </button>
+              </>
+            )}
           </div>
         )}
 

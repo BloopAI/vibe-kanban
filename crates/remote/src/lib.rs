@@ -1,5 +1,6 @@
 mod app;
 mod auth;
+mod billing;
 pub mod config;
 pub mod db;
 pub mod entities;
@@ -15,6 +16,7 @@ mod state;
 use std::{env, sync::OnceLock};
 
 pub use app::Server;
+pub use billing::{BillingCheckError, BillingService};
 use sentry_tracing::{EventFilter, SentryLayer};
 pub use state::AppState;
 use tracing::Level;
