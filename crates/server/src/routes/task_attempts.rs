@@ -49,10 +49,8 @@ use services::services::{
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::{
-    git::{ConflictOp, GitCliError, GitServiceError},
-    response::ApiResponse,
-};
+use utils::response::ApiResponse;
+use workspace_git::{ConflictOp, GitCliError, GitServiceError};
 use uuid::Uuid;
 
 use crate::{
@@ -1148,7 +1146,7 @@ pub async fn rebase_task_attempt(
         &workspace.branch.clone(),
     );
     if let Err(e) = result {
-        use utils::git::GitServiceError;
+        use workspace_git::GitServiceError;
         return match e {
             GitServiceError::MergeConflicts {
                 message,

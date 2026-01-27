@@ -16,10 +16,8 @@ use services::services::{
     git_host::{GitHostError, GitHostProvider, GitHostService, OpenPrInfo, ProviderKind},
 };
 use ts_rs::TS;
-use utils::{
-    git::{GitBranch, GitRemote},
-    response::ApiResponse,
-};
+use utils::response::ApiResponse;
+use workspace_git::{GitBranch, GitRemote};
 use uuid::Uuid;
 
 use crate::{

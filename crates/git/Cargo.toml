@@ -1,0 +1,19 @@
+[package]
+name = "workspace-git"
+version = "0.0.162"
+edition = "2024"
+
+[features]
+default = []
+cloud = []
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "5.0"
+git2 = { workspace = true }
+serde = { workspace = true }
+tempfile = "3.21"
+thiserror = { workspace = true }
+tracing = { workspace = true }
+ts-rs = { workspace = true }
+utils = { path = "../utils" }

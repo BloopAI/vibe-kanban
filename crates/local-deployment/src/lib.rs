@@ -25,9 +25,9 @@ use tokio::sync::RwLock;
 use utils::{
     api::oauth::LoginStatus,
     assets::{config_path, credentials_path},
-    git::GitService,
     msg_store::MsgStore,
 };
+use workspace_git::GitService;
 use uuid::Uuid;
 
 use crate::{container::LocalContainerService, pty::PtyService};

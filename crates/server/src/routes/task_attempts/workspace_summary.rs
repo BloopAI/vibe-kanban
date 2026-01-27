@@ -11,7 +11,8 @@ use db::models::{
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
-use utils::{git::DiffTarget, response::ApiResponse};
+use utils::response::ApiResponse;
+use workspace_git::DiffTarget;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};

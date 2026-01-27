@@ -6,7 +6,7 @@ use std::{
 
 use git2::{PushOptions, Repository, build::CheckoutBuilder};
 use tempfile::TempDir;
-use utils::git::{GitCli, GitCliError, GitService};
+use workspace_git::{GitCli, GitCliError, GitService};
 // Avoid direct git CLI usage in tests; exercise GitService instead.
 
 fn write_file<P: AsRef<Path>>(base: P, rel: &str, content: &str) {
@@ -74,7 +74,7 @@ fn add_path(repo_path: &Path, path: &str) {
     git.git(repo_path, ["add", path]).unwrap();
 }
 
-use utils::git::DiffTarget;
+use workspace_git::DiffTarget;
 
 // Non-conflicting setup used by several tests
 fn setup_repo_with_worktree(root: &TempDir) -> (PathBuf, PathBuf) {

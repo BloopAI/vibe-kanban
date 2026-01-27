@@ -37,7 +37,6 @@ similar = "2"
 git2 = { workspace = true }
 dirs = "5.0"
 thiserror = { workspace = true }
-tempfile = "3.21"
 url = "2.5"
 reqwest = { workspace = true }
 sqlx = { version = "0.8.6", default-features = false, features = ["postgres", "uuid", "chrono"] }

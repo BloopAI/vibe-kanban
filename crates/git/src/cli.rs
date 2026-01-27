@@ -25,7 +25,7 @@ use std::{
 use thiserror::Error;
 
 use super::{ALWAYS_SKIP_DIRS, Commit};
-use crate::shell::resolve_executable_path_blocking;
+use utils::shell::resolve_executable_path_blocking;
 
 #[derive(Debug, Error)]
 pub enum GitCliError {

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
 
-use crate::diff::{Diff, DiffChangeKind, FileDiffDetails, compute_line_change_counts};
+use utils::diff::{Diff, DiffChangeKind, FileDiffDetails, compute_line_change_counts};
 
 mod cli;
 

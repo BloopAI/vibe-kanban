@@ -21,9 +21,9 @@ use tokio::{sync::mpsc, task::JoinHandle};
 use tokio_stream::wrappers::{IntervalStream, ReceiverStream};
 use utils::{
     diff::{self, Diff},
-    git::{Commit, DiffTarget, GitService, GitServiceError},
     log_msg::LogMsg,
 };
+use workspace_git::{Commit, DiffTarget, GitService, GitServiceError};
 use uuid::Uuid;
 
 use crate::services::filesystem_watcher::{self, FilesystemWatcherError};

@@ -45,11 +45,11 @@ use sqlx::Error as SqlxError;
 use thiserror::Error;
 use tokio::{sync::RwLock, task::JoinHandle};
 use utils::{
-    git::{GitService, GitServiceError},
     log_msg::LogMsg,
     msg_store::MsgStore,
     text::{git_branch_id, short_uuid},
 };
+use workspace_git::{GitService, GitServiceError};
 use uuid::Uuid;
 
 use crate::services::{

@@ -2011,6 +2011,7 @@ dependencies = [
  "tokio",
  "tracing",
  "utils",
+ "workspace-git",
 ]
 
 [[package]]
@@ -2571,6 +2572,7 @@ dependencies = [
  "uuid",
  "walkdir",
  "winsplit",
+ "workspace-git",
  "xdg",
 ]
 
@@ -4072,6 +4074,7 @@ dependencies = [
  "tracing",
  "utils",
  "uuid",
+ "workspace-git",
 ]
 
 [[package]]
@@ -6700,6 +6703,7 @@ dependencies = [
  "url",
  "utils",
  "uuid",
+ "workspace-git",
 ]
 
 [[package]]
@@ -6752,6 +6756,7 @@ dependencies = [
  "url",
  "utils",
  "uuid",
+ "workspace-git",
 ]
 
 [[package]]
@@ -8351,7 +8356,6 @@ dependencies = [
  "shlex",
  "similar",
  "sqlx",
- "tempfile",
  "thiserror 2.0.17",
  "tokio",
  "tokio-stream",
@@ -9269,6 +9273,21 @@ name = "wit-bindgen"
 version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f17a85883d4e6d00e8a97c586de764dabcc06133f7f1d55dce5cdc070ad7fe59"
+
+[[package]]
+name = "workspace-git"
+version = "0.0.162"
+dependencies = [
+ "chrono",
+ "dirs 5.0.1",
+ "git2",
+ "serde",
+ "tempfile",
+ "thiserror 2.0.17",
+ "tracing",
+ "ts-rs 11.0.1",
+ "utils",
+]
 
 [[package]]
 name = "writeable"

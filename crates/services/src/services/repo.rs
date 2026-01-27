@@ -3,10 +3,8 @@ use std::path::{Path, PathBuf};
 use db::models::repo::Repo as RepoModel;
 use sqlx::SqlitePool;
 use thiserror::Error;
-use utils::{
-    git::{GitService, GitServiceError},
-    path::expand_tilde,
-};
+use utils::path::expand_tilde;
+use workspace_git::{GitService, GitServiceError};
 use uuid::Uuid;
 
 #[derive(Debug, Error)]
