@@ -267,9 +267,37 @@ export function KanbanContainer() {
     [openKanbanIssuePanel]
   );
 
-  const handleAddTask = useCallback(() => {
-    openKanbanIssuePanel(null, true);
-  }, [openKanbanIssuePanel]);
+  const handleAddTask = useCallback(
+    (statusId?: string) => {
+      openKanbanIssuePanel(null, true, statusId ?? null);
+    },
+    [openKanbanIssuePanel]
+  );
+
+  // Handler for create issue button in ViewNavTabs
+  // Determines default status based on current view/tab
+  const handleCreateIssueFromNav = useCallback(() => {
+    let defaultStatusId: string | null = null;
+
+    if (kanbanViewMode === 'kanban') {
+      // "Active" tab: first non-hidden status by sort order
+      defaultStatusId = visibleStatuses[0]?.id ?? null;
+    } else if (listViewStatusFilter) {
+      // Hidden status tab: use that specific status
+      defaultStatusId = listViewStatusFilter;
+    } else {
+      // "All" tab: first status by sort order
+      defaultStatusId = sortedStatuses[0]?.id ?? null;
+    }
+
+    openKanbanIssuePanel(null, true, defaultStatusId);
+  }, [
+    kanbanViewMode,
+    listViewStatusFilter,
+    visibleStatuses,
+    sortedStatuses,
+    openKanbanIssuePanel,
+  ]);
 
   const isLoading = projectLoading || orgLoading;
 
@@ -296,6 +324,7 @@ export function KanbanContainer() {
             hiddenStatuses={hiddenStatuses}
             selectedStatusId={listViewStatusFilter}
             onStatusSelect={setListViewStatusFilter}
+            onCreateIssue={handleCreateIssueFromNav}
           />
         </div>
         <KanbanFilterBar
@@ -330,7 +359,7 @@ export function KanbanContainer() {
                       </div>
                       <button
                         type="button"
-                        onClick={handleAddTask}
+                        onClick={() => handleAddTask(status.id)}
                         className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors"
                         aria-label="Add task"
                       >

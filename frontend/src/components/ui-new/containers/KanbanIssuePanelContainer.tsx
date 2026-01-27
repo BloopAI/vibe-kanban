@@ -20,6 +20,9 @@ export function KanbanIssuePanelContainer() {
     (s) => s.selectedKanbanIssueId
   );
   const kanbanCreateMode = useUiPreferencesStore((s) => s.kanbanCreateMode);
+  const kanbanCreateDefaultStatusId = useUiPreferencesStore(
+    (s) => s.kanbanCreateDefaultStatusId
+  );
   const closeKanbanIssuePanel = useUiPreferencesStore(
     (s) => s.closeKanbanIssuePanel
   );
@@ -119,8 +122,9 @@ export function KanbanIssuePanelContainer() {
     [statuses]
   );
 
-  // Default status (first one by sort order)
-  const defaultStatusId = sortedStatuses[0]?.id ?? '';
+  // Default status: use kanbanCreateDefaultStatusId if set, otherwise first by sort order
+  const defaultStatusId =
+    kanbanCreateDefaultStatusId ?? sortedStatuses[0]?.id ?? '';
 
   // Track previous issue ID to detect actual issue switches (not just data updates)
   const prevIssueIdRef = useRef<string | null>(null);
@@ -151,17 +155,21 @@ export function KanbanIssuePanelContainer() {
   // - Edit mode: text fields from localTextEdits (if editing) or server, dropdown fields always from server
   const displayData = useMemo((): IssueFormData => {
     if (mode === 'create') {
-      return (
-        createFormData ?? {
-          title: '',
-          description: null,
-          statusId: defaultStatusId,
-          priority: 'medium',
-          assigneeIds: [],
-          tagIds: [],
-          createDraftWorkspace: false,
-        }
-      );
+      const base = createFormData ?? {
+        title: '',
+        description: null,
+        statusId: defaultStatusId,
+        priority: 'medium',
+        assigneeIds: [],
+        tagIds: [],
+        createDraftWorkspace: false,
+      };
+      // If kanbanCreateDefaultStatusId is explicitly set, use it (user selected via command bar)
+      // Otherwise use the statusId from the form data
+      return {
+        ...base,
+        statusId: kanbanCreateDefaultStatusId ?? base.statusId,
+      };
     }
 
     // Edit mode: dropdown fields from server, text fields from local edits or server
@@ -186,6 +194,7 @@ export function KanbanIssuePanelContainer() {
     localTextEdits,
     selectedIssue,
     defaultStatusId,
+    kanbanCreateDefaultStatusId,
     currentAssigneeIds,
     currentTagIds,
   ]);
@@ -268,9 +277,28 @@ export function KanbanIssuePanelContainer() {
 
   // Form change handler - persists changes immediately in edit mode
   const handlePropertyChange = useCallback(
-    <K extends keyof IssueFormData>(field: K, value: IssueFormData[K]) => {
+    async <K extends keyof IssueFormData>(
+      field: K,
+      value: IssueFormData[K]
+    ) => {
       // Create mode: update createFormData for all fields
       if (kanbanCreateMode || !selectedKanbanIssueId) {
+        // For statusId, open the status selection dialog
+        if (field === 'statusId') {
+          const { CommandBarDialog } = await import(
+            '@/components/ui-new/dialogs/CommandBarDialog'
+          );
+          await CommandBarDialog.show({
+            pendingStatusSelection: {
+              projectId,
+              issueIds: [],
+              isCreateMode: true,
+            },
+          });
+          return;
+        }
+
+        // For other fields, just update the form data
         setCreateFormData((prev) => {
           const base = prev ?? {
             title: '',
@@ -490,6 +518,7 @@ export function KanbanIssuePanelContainer() {
       linkedPrs={[]}
       onClose={closeKanbanIssuePanel}
       onSubmit={handleSubmit}
+      onCmdEnterSubmit={handleSubmit}
       onCreateTag={handleCreateTag}
       isSubmitting={isSubmitting}
       isLoading={isLoading}

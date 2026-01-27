@@ -39,6 +39,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
   const selectedKanbanIssueId = useUiPreferencesStore(
     (s) => s.selectedKanbanIssueId
   );
+  const kanbanCreateMode = useUiPreferencesStore((s) => s.kanbanCreateMode);
   // Derive layoutMode from current route instead of persisted state
   const location = useLocation();
   const layoutMode: LayoutMode = location.pathname.startsWith('/projects')
@@ -100,6 +101,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       isAttemptRunning: isAttemptRunningVisible,
       logsPanelContent,
       hasSelectedKanbanIssue: !!selectedKanbanIssueId,
+      isCreatingIssue: kanbanCreateMode,
     };
   }, [
     layoutMode,
@@ -121,6 +123,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     isAttemptRunningVisible,
     logsPanelContent,
     selectedKanbanIssueId,
+    kanbanCreateMode,
   ]);
 }
 
