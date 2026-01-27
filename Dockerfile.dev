@@ -41,4 +41,7 @@ exec "$@"\n\
 ' > /entrypoint.sh && chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["pnpm", "run", "dev"]
+
+# Default to dev mode. Set VITE_MODE=preview for bundled assets (faster over network)
+ENV VITE_MODE=dev
+CMD ["/bin/bash", "-c", "if [ \"$VITE_MODE\" = 'preview' ]; then pnpm run dev:preview; else pnpm run dev; fi"]

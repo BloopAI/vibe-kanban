@@ -38,6 +38,8 @@ services:
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
       - SESSION_SECRET=${SESSION_SECRET:-dev-session-secret-change-in-production}
+      # Set VITE_MODE=preview for faster page loads over network (bundles assets instead of 1000+ ESM requests)
+      - VITE_MODE=${VITE_MODE:-dev}
     stdin_open: true
     tty: true
     healthcheck:

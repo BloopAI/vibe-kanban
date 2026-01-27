@@ -93,6 +93,16 @@ export default defineConfig({
       ".trycloudflare.com", // allow all cloudflared tunnels
     ],
   },
+  preview: {
+    port: parseInt(process.env.FRONTEND_PORT || "3000"),
+    proxy: {
+      "/api": {
+        target: `http://localhost:${process.env.BACKEND_PORT || "3001"}`,
+        changeOrigin: true,
+        ws: true,
+      }
+    },
+  },
   optimizeDeps: {
     exclude: ["wa-sqlite"],
   },

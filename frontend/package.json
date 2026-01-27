@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "VITE_OPEN=${VITE_OPEN:-false} vite",
+    "dev:preview": "tsc && vite build && vite preview",
     "build": "tsc && vite build",
     "check": "tsc --noEmit",
     "preview": "vite preview",
