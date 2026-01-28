@@ -209,6 +209,7 @@
   "actions": {
     "browseRepos": "浏览磁盘上的仓库",
     "createNewRepo": "在磁盘上创建新仓库",
+    "cloneFromGitUrl": "从 Git URL 克隆",
     "viewInChangesPanel": "在更改面板中查看",
     "copyPath": "复制路径",
     "copyWorktreePath": "复制工作树路径",
