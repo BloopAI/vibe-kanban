@@ -20,10 +20,12 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { FolderOpen, Loader2, Volume2 } from 'lucide-react';
+import { FolderOpen, Loader2, Plus, Trash2, Volume2 } from 'lucide-react';
 import {
   DEFAULT_PR_DESCRIPTION_PROMPT,
   EditorType,
+  type GitHostEntry,
+  type ProviderKind,
   SoundFile,
   ThemeMode,
   UiLanguage,
@@ -580,6 +582,74 @@ export function GeneralSettings() {
 
       <Card>
         <CardHeader>
+          <CardTitle>{t('settings.general.gitHosts.title')}</CardTitle>
+          <CardDescription>
+            {t('settings.general.gitHosts.description')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Existing hosts */}
+          {Object.entries(draft?.git_hosts?.hosts ?? {}).length > 0 && (
+            <div className="space-y-2">
+              {Object.entries(draft?.git_hosts?.hosts ?? {}).map(
+                ([domain, entry]) => {
+                  if (!entry) return null;
+                  return (
+                    <div
+                      key={domain}
+                      className="flex items-center gap-2 p-3 rounded-md bg-muted border"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">
+                          {domain}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {toPrettyCase(entry.provider)} •{' '}
+                          {entry.token
+                            ? t('settings.general.gitHosts.tokenConfigured')
+                            : t('settings.general.gitHosts.noToken')}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const newHosts = { ...draft!.git_hosts.hosts };
+                          delete newHosts[domain];
+                          updateDraft({
+                            git_hosts: { hosts: newHosts },
+                          });
+                        }}
+                        aria-label={t('settings.general.gitHosts.removeHost')}
+                        title={t('settings.general.gitHosts.removeHost')}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          )}
+
+          {/* Add new host form */}
+          <GitHostAddForm
+            onAdd={(domain, entry) => {
+              updateDraft({
+                git_hosts: {
+                  hosts: {
+                    ...(draft?.git_hosts?.hosts ?? {}),
+                    [domain]: entry,
+                  },
+                },
+              });
+            }}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>{t('settings.general.notifications.title')}</CardTitle>
           <CardDescription>
             {t('settings.general.notifications.description')}
@@ -828,6 +898,160 @@ export function GeneralSettings() {
             </Button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Provider options for git host configuration
+const GIT_HOST_PROVIDER_OPTIONS: { value: ProviderKind; label: string }[] = [
+  { value: 'forgejo', label: 'Forgejo / Gitea' },
+];
+
+// Form to add a new git host configuration
+function GitHostAddForm({
+  onAdd,
+}: {
+  onAdd: (domain: string, entry: GitHostEntry) => void;
+}) {
+  const { t } = useTranslation(['settings', 'common']);
+  const [showForm, setShowForm] = useState(false);
+  const [domain, setDomain] = useState('');
+  const [provider, setProvider] = useState<ProviderKind>('forgejo');
+  const [token, setToken] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAdd = () => {
+    // Validate domain
+    const trimmedDomain = domain.trim().toLowerCase();
+    if (!trimmedDomain) {
+      setError(t('settings.general.gitHosts.errors.domainRequired'));
+      return;
+    }
+
+    // Basic domain validation
+    if (!/^[a-z0-9][a-z0-9.-]*[a-z0-9]$/.test(trimmedDomain)) {
+      setError(t('settings.general.gitHosts.errors.invalidDomain'));
+      return;
+    }
+
+    // Validate token (required for API-based providers)
+    const trimmedToken = token.trim();
+    if (!trimmedToken) {
+      setError(t('settings.general.gitHosts.errors.tokenRequired'));
+      return;
+    }
+
+    onAdd(trimmedDomain, {
+      provider,
+      token: trimmedToken,
+    });
+
+    // Reset form
+    setDomain('');
+    setProvider('forgejo');
+    setToken('');
+    setError(null);
+    setShowForm(false);
+  };
+
+  const handleCancel = () => {
+    setDomain('');
+    setProvider('forgejo');
+    setToken('');
+    setError(null);
+    setShowForm(false);
+  };
+
+  if (!showForm) {
+    return (
+      <Button
+        variant="outline"
+        onClick={() => setShowForm(true)}
+        className="w-full justify-center"
+      >
+        <Plus className="h-4 w-4 mr-2" />
+        {t('settings.general.gitHosts.addHost')}
+      </Button>
+    );
+  }
+
+  return (
+    <div className="space-y-4 p-4 rounded-md bg-muted/50 border">
+      <div className="space-y-2">
+        <Label htmlFor="git-host-domain">
+          {t('settings.general.gitHosts.form.domain')}
+        </Label>
+        <Input
+          id="git-host-domain"
+          value={domain}
+          onChange={(e) => {
+            setDomain(e.target.value);
+            setError(null);
+          }}
+          placeholder={t('settings.general.gitHosts.form.domainPlaceholder')}
+          className={error ? 'border-destructive' : undefined}
+        />
+        <p className="text-sm text-muted-foreground">
+          {t('settings.general.gitHosts.form.domainHelper')}
+        </p>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="git-host-provider">
+          {t('settings.general.gitHosts.form.provider')}
+        </Label>
+        <Select
+          value={provider}
+          onValueChange={(value: ProviderKind) => setProvider(value)}
+        >
+          <SelectTrigger id="git-host-provider">
+            <SelectValue
+              placeholder={t('settings.general.gitHosts.form.providerPlaceholder')}
+            />
+          </SelectTrigger>
+          <SelectContent>
+            {GIT_HOST_PROVIDER_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-sm text-muted-foreground">
+          {t('settings.general.gitHosts.form.providerHelper')}
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="git-host-token">
+          {t('settings.general.gitHosts.form.token')}
+        </Label>
+        <Input
+          id="git-host-token"
+          type="password"
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+          placeholder={t('settings.general.gitHosts.form.tokenPlaceholder')}
+        />
+        <p className="text-sm text-muted-foreground">
+          {t('settings.general.gitHosts.form.tokenHelper')}
+        </p>
+        {provider === 'forgejo' && (
+          <p className="text-sm text-muted-foreground">
+            {t('settings.general.gitHosts.form.tokenHelperForgejo')}
+          </p>
+        )}
+      </div>
+
+      <div className="flex gap-2 justify-end">
+        <Button variant="outline" onClick={handleCancel}>
+          {t('common:buttons.cancel')}
+        </Button>
+        <Button onClick={handleAdd}>
+          {t('settings.general.gitHosts.form.add')}
+        </Button>
       </div>
     </div>
   );

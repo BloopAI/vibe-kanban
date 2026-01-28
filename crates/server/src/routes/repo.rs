@@ -255,8 +255,13 @@ pub async fn list_open_prs(
         None => deployment.git().get_default_remote(&repo.path)?,
     };
 
-    let git_host = match GitHostService::from_url(&remote.url) {
+    let git_host = match GitHostService::from_url(&remote.url, deployment.config().clone()).await {
         Ok(host) => host,
+        Err(GitHostError::CliNotInstalled { provider }) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                ListPrsError::CliNotInstalled { provider },
+            )));
+        }
         Err(GitHostError::UnsupportedProvider) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 ListPrsError::UnsupportedProvider,

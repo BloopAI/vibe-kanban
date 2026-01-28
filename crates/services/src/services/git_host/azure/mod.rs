@@ -23,10 +23,22 @@ pub struct AzureDevOpsProvider {
 }
 
 impl AzureDevOpsProvider {
-    pub fn new() -> Result<Self, GitHostError> {
-        Ok(Self {
+    pub fn new() -> Self {
+        Self {
             az_cli: AzCli::new(),
-        })
+        }
+    }
+
+    pub fn matches_url_static(url: &str) -> bool {
+        let url_lower = url.to_lowercase();
+        url_lower.contains("dev.azure.com")
+            || url_lower.contains(".visualstudio.com")
+            || url_lower.contains("ssh.dev.azure.com")
+            || url_lower.contains("/_git/")
+    }
+
+    pub async fn matches_url_configured(&self, _url: &str) -> bool {
+        false
     }
 
     async fn get_repo_info(
