@@ -64,6 +64,9 @@ interface ActionsContextValue {
     mode?: 'addChild' | 'setParent'
   ) => Promise<void>;
 
+  // Open workspace selection dialog to link a workspace to an issue
+  openWorkspaceSelection: (projectId: string, issueId: string) => Promise<void>;
+
   // The executor context (for components that need direct access)
   executorContext: ActionExecutorContext;
 }
@@ -165,6 +168,17 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     []
   );
 
+  // Open workspace selection dialog (uses dynamic import to avoid circular deps)
+  const openWorkspaceSelection = useCallback(
+    async (projectId: string, issueId: string) => {
+      const { WorkspaceSelectionDialog } = await import(
+        '@/components/ui-new/dialogs/WorkspaceSelectionDialog'
+      );
+      await WorkspaceSelectionDialog.show({ projectId, issueId });
+    },
+    []
+  );
+
   // Build executor context from hooks
   const executorContext = useMemo<ActionExecutorContext>(
     () => ({
@@ -183,6 +197,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openPrioritySelection,
       openAssigneeSelection,
       openSubIssueSelection,
+      openWorkspaceSelection,
       openKanbanIssuePanel,
       setKanbanCreateDefaultStatusId,
     }),
@@ -202,6 +217,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openPrioritySelection,
       openAssigneeSelection,
       openSubIssueSelection,
+      openWorkspaceSelection,
       openKanbanIssuePanel,
       setKanbanCreateDefaultStatusId,
     ]
@@ -289,6 +305,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openPrioritySelection,
       openAssigneeSelection,
       openSubIssueSelection,
+      openWorkspaceSelection,
       executorContext,
     }),
     [
@@ -298,6 +315,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openPrioritySelection,
       openAssigneeSelection,
       openSubIssueSelection,
+      openWorkspaceSelection,
       executorContext,
     ]
   );
