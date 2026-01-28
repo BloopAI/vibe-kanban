@@ -185,10 +185,10 @@ impl RepoService {
 
         // Handle SSH format: git@github.com:user/repo.git
         let path = if url.contains(':') && !url.starts_with("http") {
-            url.split(':').last()?
+            url.split(':').next_back()?
         } else {
             // Handle HTTPS format: https://github.com/user/repo.git
-            url.split('/').last()?
+            url.split('/').next_back()?
         };
 
         // Remove .git suffix if present
