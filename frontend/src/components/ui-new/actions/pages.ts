@@ -234,6 +234,8 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
           { type: 'action', action: Actions.ChangeNewIssueStatus },
           { type: 'action', action: Actions.ChangePriority },
           { type: 'action', action: Actions.ChangeNewIssuePriority },
+          { type: 'action', action: Actions.ChangeAssignees },
+          { type: 'action', action: Actions.ChangeNewIssueAssignees },
         ],
       },
     ],
