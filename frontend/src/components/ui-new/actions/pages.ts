@@ -1,5 +1,5 @@
 import type { Icon } from '@phosphor-icons/react';
-import type { IssuePriority } from 'shared/remote-types';
+import type { Issue, IssuePriority } from 'shared/remote-types';
 import { type ActionDefinition, type ActionVisibilityContext } from './index';
 import { Actions } from './index';
 import { RIGHT_MAIN_PANEL_MODES } from '@/stores/useUiPreferencesStore';
@@ -14,7 +14,8 @@ export type PageId =
   | 'issueActions' // Page for issue-specific actions (kanban mode)
   | 'selectRepo' // Dynamic page for repo selection (not in Pages record)
   | 'selectStatus' // Dynamic page for status selection (not in Pages record)
-  | 'selectPriority'; // Dynamic page for priority selection (not in Pages record)
+  | 'selectPriority' // Dynamic page for priority selection (not in Pages record)
+  | 'selectSubIssue'; // Dynamic page for sub-issue selection (not in Pages record)
 
 // Items that can appear inside a group
 export type CommandBarGroupItem =
@@ -57,7 +58,8 @@ export type ResolvedGroupItem =
   | { type: 'page'; pageId: PageId; label: string; icon: Icon }
   | { type: 'repo'; repo: RepoItem }
   | { type: 'status'; status: StatusItem }
-  | { type: 'priority'; priority: PriorityItem };
+  | { type: 'priority'; priority: PriorityItem }
+  | { type: 'issue'; issue: Issue };
 
 export interface ResolvedGroup {
   label: string;
@@ -74,10 +76,10 @@ export interface CommandBarPage {
   isVisible?: (ctx: ActionVisibilityContext) => boolean;
 }
 
-// Static page IDs (excludes dynamic pages like selectRepo, selectStatus, and selectPriority)
+// Static page IDs (excludes dynamic pages like selectRepo, selectStatus, selectPriority, and selectSubIssue)
 export type StaticPageId = Exclude<
   PageId,
-  'selectRepo' | 'selectStatus' | 'selectPriority'
+  'selectRepo' | 'selectStatus' | 'selectPriority' | 'selectSubIssue'
 >;
 
 export const Pages: Record<StaticPageId, CommandBarPage> = {
@@ -236,6 +238,8 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
           { type: 'action', action: Actions.ChangeNewIssuePriority },
           { type: 'action', action: Actions.ChangeAssignees },
           { type: 'action', action: Actions.ChangeNewIssueAssignees },
+          { type: 'action', action: Actions.MakeSubIssueOf },
+          { type: 'action', action: Actions.AddSubIssue },
         ],
       },
     ],

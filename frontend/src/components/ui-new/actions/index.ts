@@ -43,6 +43,7 @@ import {
   ArrowsLeftRightIcon,
   ArrowFatLineUpIcon,
   UsersIcon,
+  TreeStructureIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import {
@@ -115,6 +116,11 @@ export interface ActionExecutorContext {
     projectId: string,
     issueIds: string[],
     isCreateMode?: boolean
+  ) => Promise<void>;
+  openSubIssueSelection: (
+    projectId: string,
+    issueId: string,
+    mode?: 'addChild' | 'setParent'
   ) => Promise<void>;
   // Kanban issue panel
   openKanbanIssuePanel: (
@@ -1243,6 +1249,36 @@ export const Actions = {
       await ctx.openAssigneeSelection('', [], true);
     },
   } satisfies GlobalActionDefinition,
+
+  MakeSubIssueOf: {
+    id: 'make-sub-issue-of',
+    label: 'Make Sub-issue of',
+    icon: TreeStructureIcon,
+    shortcut: 'I M',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openSubIssueSelection(projectId, issueIds[0], 'setParent');
+      }
+    },
+  } satisfies IssueActionDefinition,
+
+  AddSubIssue: {
+    id: 'add-sub-issue',
+    label: 'Add Sub-issue',
+    icon: PlusIcon,
+    shortcut: 'I B',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openSubIssueSelection(projectId, issueIds[0], 'addChild');
+      }
+    },
+  } satisfies IssueActionDefinition,
 } as const satisfies Record<string, ActionDefinition>;
 
 // Helper to resolve dynamic label

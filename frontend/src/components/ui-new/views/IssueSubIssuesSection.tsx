@@ -2,7 +2,10 @@ import { useTranslation } from 'react-i18next';
 import { Droppable } from '@hello-pangea/dnd';
 import type { IssuePriority } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
-import { CollapsibleSectionHeader } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
+import {
+  CollapsibleSectionHeader,
+  type SectionAction,
+} from '@/components/ui-new/primitives/CollapsibleSectionHeader';
 import { SubIssueRow } from '@/components/ui-new/primitives/SubIssueRow';
 import { PERSIST_KEYS, type PersistKey } from '@/stores/useUiPreferencesStore';
 
@@ -23,6 +26,7 @@ export interface IssueSubIssuesSectionProps {
   onSubIssueClick: (issueId: string) => void;
   isLoading?: boolean;
   isReordering?: boolean;
+  actions?: SectionAction[];
 }
 
 export function IssueSubIssuesSection({
@@ -31,6 +35,7 @@ export function IssueSubIssuesSection({
   onSubIssueClick,
   isLoading,
   isReordering,
+  actions,
 }: IssueSubIssuesSectionProps) {
   const { t } = useTranslation('common');
 
@@ -39,6 +44,7 @@ export function IssueSubIssuesSection({
       title={t('kanban.subIssues', 'Sub-issues')}
       persistKey={PERSIST_KEYS.kanbanIssueSubIssues as PersistKey}
       defaultExpanded={true}
+      actions={actions}
     >
       <Droppable droppableId={parentIssueId}>
         {(provided) => (
