@@ -60,7 +60,7 @@ jobs:
           cache-all-crates: true
 
       - name: Install sqlx-cli
-        uses: taiki-e/cache-cargo-install-action@v2
+        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
         with:
           tool: sqlx-cli
           no-default-features: true
