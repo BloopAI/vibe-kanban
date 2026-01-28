@@ -25,26 +25,15 @@ pub struct GitHubOAuthConfig {
 impl GitHubOAuthConfig {
     /// Load config from environment variables
     ///
-    /// The redirect URI is determined in the following order:
-    /// 1. GITHUB_REDIRECT_URI - full URL (e.g., https://example.com/api/local-auth/github/callback)
-    /// 2. APP_URL - base URL, callback path is appended (e.g., https://example.com)
-    /// 3. Default: http://localhost:3000/api/local-auth/github/callback
+    /// The redirect URI is constructed from APP_URL (defaults to http://localhost:3000)
     pub fn from_env() -> Option<Self> {
         let client_id = std::env::var("GITHUB_CLIENT_ID").ok()?;
         let client_secret = std::env::var("GITHUB_CLIENT_SECRET").ok()?;
 
-        // Determine redirect URI from env vars
-        let redirect_uri = if let Ok(uri) = std::env::var("GITHUB_REDIRECT_URI") {
-            // Direct override takes precedence
-            uri
-        } else if let Ok(app_url) = std::env::var("APP_URL") {
-            // Build callback URL from APP_URL
-            let base = app_url.trim_end_matches('/');
-            format!("{}/api/local-auth/github/callback", base)
-        } else {
-            // Default for local development
-            "http://localhost:3000/api/local-auth/github/callback".to_string()
-        };
+        let base_url = std::env::var("APP_URL")
+            .unwrap_or_else(|_| "http://localhost:3000".to_string());
+        let base = base_url.trim_end_matches('/');
+        let redirect_uri = format!("{}/api/local-auth/github/callback", base);
 
         Some(Self {
             client_id,
