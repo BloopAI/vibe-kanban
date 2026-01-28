@@ -209,6 +209,7 @@
   "actions": {
     "browseRepos": "瀏覽磁碟上的儲存庫",
     "createNewRepo": "在磁碟上建立新儲存庫",
+    "cloneFromGitUrl": "從 Git URL 複製",
     "viewInChangesPanel": "在變更面板中檢視",
     "copyPath": "複製路徑",
     "copyWorktreePath": "複製工作樹路徑",

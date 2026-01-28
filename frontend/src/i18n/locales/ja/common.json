@@ -209,6 +209,7 @@
   "actions": {
     "browseRepos": "ディスク上のリポジトリを参照",
     "createNewRepo": "ディスク上に新しいリポジトリを作成",
+    "cloneFromGitUrl": "Git URLからクローン",
     "viewInChangesPanel": "変更パネルで表示",
     "copyPath": "パスをコピー",
     "copyWorktreePath": "ワークツリーパスをコピー",

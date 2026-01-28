@@ -209,6 +209,7 @@
   "actions": {
     "browseRepos": "Parcourir les dépôts sur le disque",
     "createNewRepo": "Créer un nouveau dépôt sur le disque",
+    "cloneFromGitUrl": "Cloner depuis une URL Git",
     "viewInChangesPanel": "Voir dans le panneau des modifications",
     "copyPath": "Copier le chemin",
     "copyWorktreePath": "Copier le chemin du worktree",
