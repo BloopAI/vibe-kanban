@@ -50,6 +50,13 @@ interface ActionsContextValue {
     issueIds: string[]
   ) => Promise<void>;
 
+  // Open assignee selection dialog
+  openAssigneeSelection: (
+    projectId: string,
+    issueIds: string[],
+    isCreateMode?: boolean
+  ) => Promise<void>;
+
   // The executor context (for components that need direct access)
   executorContext: ActionExecutorContext;
 }
@@ -123,6 +130,17 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     []
   );
 
+  // Open assignee selection dialog (uses dynamic import to avoid circular deps)
+  const openAssigneeSelection = useCallback(
+    async (projectId: string, issueIds: string[], isCreateMode = false) => {
+      const { AssigneeSelectionDialog } = await import(
+        '@/components/ui-new/dialogs/AssigneeSelectionDialog'
+      );
+      await AssigneeSelectionDialog.show({ projectId, issueIds, isCreateMode });
+    },
+    []
+  );
+
   // Build executor context from hooks
   const executorContext = useMemo<ActionExecutorContext>(
     () => ({
@@ -139,6 +157,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       logsPanelContent,
       openStatusSelection,
       openPrioritySelection,
+      openAssigneeSelection,
       openKanbanIssuePanel,
       setKanbanCreateDefaultStatusId,
     }),
@@ -156,6 +175,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       logsPanelContent,
       openStatusSelection,
       openPrioritySelection,
+      openAssigneeSelection,
       openKanbanIssuePanel,
       setKanbanCreateDefaultStatusId,
     ]
@@ -241,6 +261,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       getLabel,
       openStatusSelection,
       openPrioritySelection,
+      openAssigneeSelection,
       executorContext,
     }),
     [
@@ -248,6 +269,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       getLabel,
       openStatusSelection,
       openPrioritySelection,
+      openAssigneeSelection,
       executorContext,
     ]
   );

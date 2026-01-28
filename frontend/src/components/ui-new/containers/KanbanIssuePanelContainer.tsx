@@ -8,7 +8,6 @@ import {
   type IssueFormData,
 } from '@/components/ui-new/views/KanbanIssuePanel';
 import { useActions } from '@/contexts/ActionsContext';
-import { AssigneeSelectionDialog } from '@/components/ui-new/dialogs/AssigneeSelectionDialog';
 
 /**
  * KanbanIssuePanelContainer manages the issue detail/create panel.
@@ -29,9 +28,6 @@ export function KanbanIssuePanelContainer() {
   const kanbanCreateDefaultAssigneeIds = useUiPreferencesStore(
     (s) => s.kanbanCreateDefaultAssigneeIds
   );
-  const setKanbanCreateDefaultAssigneeIds = useUiPreferencesStore(
-    (s) => s.setKanbanCreateDefaultAssigneeIds
-  );
   const closeKanbanIssuePanel = useUiPreferencesStore(
     (s) => s.closeKanbanIssuePanel
   );
@@ -47,7 +43,6 @@ export function KanbanIssuePanelContainer() {
     insertIssue,
     updateIssue,
     insertIssueAssignee,
-    removeIssueAssignee,
     insertIssueTag,
     removeIssueTag,
     insertTag,
@@ -55,10 +50,11 @@ export function KanbanIssuePanelContainer() {
     isLoading: projectLoading,
   } = useProjectContext();
 
-  const { users, isLoading: orgLoading } = useOrgContext();
+  const { isLoading: orgLoading } = useOrgContext();
 
-  // Get openStatusSelection and openPrioritySelection from actions context
-  const { openStatusSelection, openPrioritySelection } = useActions();
+  // Get action methods from actions context
+  const { openStatusSelection, openPrioritySelection, openAssigneeSelection } =
+    useActions();
 
   // Close panel if selected issue doesn't exist in current project (e.g., stale persisted state)
   useEffect(() => {
@@ -328,13 +324,7 @@ export function KanbanIssuePanelContainer() {
 
         // For assigneeIds, open the assignee selection dialog
         if (field === 'assigneeIds') {
-          AssigneeSelectionDialog.show({
-            users,
-            initialAssigneeIds: kanbanCreateDefaultAssigneeIds ?? [],
-            onConfirm: (newIds) => {
-              setKanbanCreateDefaultAssigneeIds(newIds);
-            },
-          });
+          openAssigneeSelection(projectId, [], true);
           return;
         }
 
@@ -376,49 +366,8 @@ export function KanbanIssuePanelContainer() {
         // Priority changes go through the command bar priority selection
         openPrioritySelection(projectId, [selectedKanbanIssueId]);
       } else if (field === 'assigneeIds') {
-        // Open assignee selection dialog
-        // Determine current assignee IDs based on mode
-        const currentIds = kanbanCreateMode
-          ? (kanbanCreateDefaultAssigneeIds ?? [])
-          : issueAssignees
-              .filter((a) => a.issue_id === selectedKanbanIssueId)
-              .map((a) => a.user_id);
-
-        AssigneeSelectionDialog.show({
-          users,
-          initialAssigneeIds: currentIds,
-          onConfirm: (newIds) => {
-            if (kanbanCreateMode || !selectedKanbanIssueId) {
-              // Create mode: store in preferences for later use
-              setKanbanCreateDefaultAssigneeIds(newIds);
-            } else {
-              // Edit mode: apply changes via junction table
-              const currentAssigneeRecords = issueAssignees.filter(
-                (a) => a.issue_id === selectedKanbanIssueId
-              );
-              const currentAssigneeIdSet = new Set(
-                currentAssigneeRecords.map((a) => a.user_id)
-              );
-
-              // Remove assignees no longer selected
-              for (const record of currentAssigneeRecords) {
-                if (!newIds.includes(record.user_id)) {
-                  removeIssueAssignee(record.id);
-                }
-              }
-
-              // Add new assignees
-              for (const userId of newIds) {
-                if (!currentAssigneeIdSet.has(userId)) {
-                  insertIssueAssignee({
-                    issue_id: selectedKanbanIssueId,
-                    user_id: userId,
-                  });
-                }
-              }
-            }
-          },
-        });
+        // Assignee changes go through the assignee selection dialog
+        openAssigneeSelection(projectId, [selectedKanbanIssueId], false);
       } else if (field === 'tagIds') {
         // Handle tag changes via junction table
         const newTagIds = value as string[];
@@ -457,12 +406,7 @@ export function KanbanIssuePanelContainer() {
       debouncedSaveDescription,
       openStatusSelection,
       openPrioritySelection,
-      users,
-      kanbanCreateDefaultAssigneeIds,
-      setKanbanCreateDefaultAssigneeIds,
-      issueAssignees,
-      insertIssueAssignee,
-      removeIssueAssignee,
+      openAssigneeSelection,
       issueTags,
       insertIssueTag,
       removeIssueTag,
