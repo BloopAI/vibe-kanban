@@ -22,7 +22,7 @@ use utils::{
             ListOrganizationsResponse, Organization, RevokeInvitationRequest,
             UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
         },
-        pull_requests::{PullRequestStatus, UpsertPullRequestRequest},
+        pull_requests::UpsertPullRequestRequest,
         workspaces::{CreateWorkspaceRequest, DeleteWorkspaceRequest, UpdateWorkspaceRequest},
     },
     jwt::extract_expiration,
@@ -623,27 +623,13 @@ impl RemoteClient {
     /// Creates if not exists, updates if exists.
     pub async fn upsert_pull_request(
         &self,
-        url: String,
-        number: i32,
-        status: PullRequestStatus,
-        merged_at: Option<chrono::DateTime<chrono::Utc>>,
-        merge_commit_sha: Option<String>,
-        target_branch_name: String,
-        local_workspace_id: Uuid,
+        request: UpsertPullRequestRequest,
     ) -> Result<(), RemoteClientError> {
         self.send(
             reqwest::Method::PUT,
             "/v1/pull_requests",
             true,
-            Some(&UpsertPullRequestRequest {
-                url,
-                number,
-                status,
-                merged_at,
-                merge_commit_sha,
-                target_branch_name,
-                local_workspace_id,
-            }),
+            Some(&request),
         )
         .await?;
         Ok(())

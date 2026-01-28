@@ -1816,6 +1816,18 @@ pub async fn link_workspace(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+/// Unlinks a local workspace from the remote server by deleting the remote workspace.
+pub async fn unlink_workspace(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let client = deployment.remote_client()?;
+
+    client.delete_workspace(workspace.id).await?;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
         .route(
@@ -1849,6 +1861,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/first-message", get(get_first_user_message))
         .route("/mark-seen", put(mark_seen))
         .route("/link", post(link_workspace))
+        .route("/unlink", post(unlink_workspace))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_workspace_middleware,
