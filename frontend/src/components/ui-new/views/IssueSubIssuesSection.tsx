@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Droppable } from '@hello-pangea/dnd';
 import type { IssuePriority } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { CollapsibleSectionHeader } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
@@ -13,18 +14,23 @@ export interface SubIssueData {
   statusColor: string;
   assignees: OrganizationMemberWithProfile[];
   createdAt: string;
+  parentIssueSortOrder: number | null;
 }
 
 export interface IssueSubIssuesSectionProps {
+  parentIssueId: string;
   subIssues: SubIssueData[];
   onSubIssueClick: (issueId: string) => void;
   isLoading?: boolean;
+  isReordering?: boolean;
 }
 
 export function IssueSubIssuesSection({
+  parentIssueId,
   subIssues,
   onSubIssueClick,
   isLoading,
+  isReordering,
 }: IssueSubIssuesSectionProps) {
   const { t } = useTranslation('common');
 
@@ -34,30 +40,55 @@ export function IssueSubIssuesSection({
       persistKey={PERSIST_KEYS.kanbanIssueSubIssues as PersistKey}
       defaultExpanded={true}
     >
-      <div className="px-base pb-base flex flex-col">
-        {isLoading ? (
-          <p className="text-low py-half">
-            {t('common.loading', 'Loading...')}
-          </p>
-        ) : subIssues.length === 0 ? (
-          <p className="text-low py-half">
-            {t('kanban.noSubIssues', 'No sub-issues')}
-          </p>
-        ) : (
-          subIssues.map((subIssue) => (
-            <SubIssueRow
-              key={subIssue.id}
-              simpleId={subIssue.simpleId}
-              title={subIssue.title}
-              priority={subIssue.priority}
-              statusColor={subIssue.statusColor}
-              assignees={subIssue.assignees}
-              createdAt={subIssue.createdAt}
-              onClick={() => onSubIssueClick(subIssue.id)}
-            />
-          ))
+      <Droppable droppableId={parentIssueId}>
+        {(provided) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className="px-base pb-base flex flex-col relative"
+          >
+            {isReordering && (
+              <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
+                <p className="text-low">{t('common.loading', 'Loading...')}</p>
+              </div>
+            )}
+            {isLoading ? (
+              <p className="text-low py-half">
+                {t('common.loading', 'Loading...')}
+              </p>
+            ) : subIssues.length === 0 ? (
+              <p className="text-low py-half">
+                {t('kanban.noSubIssues', 'No sub-issues')}
+              </p>
+            ) : (
+              subIssues.map((subIssue, index) => (
+                <SubIssueRow
+                  key={subIssue.id}
+                  id={subIssue.id}
+                  index={index}
+                  simpleId={subIssue.simpleId}
+                  title={subIssue.title}
+                  priority={subIssue.priority}
+                  statusColor={subIssue.statusColor}
+                  assignees={subIssue.assignees}
+                  createdAt={subIssue.createdAt}
+                  onClick={() => onSubIssueClick(subIssue.id)}
+                />
+              ))
+            )}
+            {provided.placeholder}
+
+            {/* Loading overlay - preserves height while showing loading state */}
+            {isReordering && (
+              <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                <span className="text-low text-sm">
+                  {t('common.saving', 'Saving...')}
+                </span>
+              </div>
+            )}
+          </div>
         )}
-      </div>
+      </Droppable>
     </CollapsibleSectionHeader>
   );
 }

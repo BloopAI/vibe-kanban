@@ -1,5 +1,7 @@
 'use client';
 
+import { Draggable } from '@hello-pangea/dnd';
+import { DotsSixVerticalIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { IssuePriority } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
@@ -31,6 +33,8 @@ function formatRelativeTime(dateString: string): string {
 }
 
 export interface SubIssueRowProps {
+  id: string;
+  index: number;
   simpleId: string;
   title: string;
   priority: IssuePriority;
@@ -42,6 +46,8 @@ export interface SubIssueRowProps {
 }
 
 export function SubIssueRow({
+  id,
+  index,
   simpleId,
   title,
   priority,
@@ -52,39 +58,58 @@ export function SubIssueRow({
   className,
 }: SubIssueRowProps) {
   return (
-    <div
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (onClick && (e.key === 'Enter' || e.key === ' ')) {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-      className={cn(
-        'flex items-center gap-half px-base py-half rounded-sm transition-colors',
-        onClick && 'cursor-pointer hover:bg-secondary',
-        className
-      )}
-    >
-      {/* Left side: Priority, ID, Status, Title */}
-      <div className="flex items-center gap-half flex-1 min-w-0">
-        <PriorityIcon priority={priority} />
-        <span className="font-ibm-plex-mono text-sm text-normal shrink-0">
-          {simpleId}
-        </span>
-        <StatusDot color={statusColor} />
-        <span className="text-base text-high truncate">{title}</span>
-      </div>
+    <Draggable draggableId={id} index={index}>
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          role={onClick ? 'button' : undefined}
+          tabIndex={onClick ? 0 : undefined}
+          onClick={onClick}
+          onKeyDown={(e) => {
+            if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+              e.preventDefault();
+              onClick();
+            }
+          }}
+          className={cn(
+            'flex items-center gap-half px-base py-half rounded-sm transition-colors',
+            onClick && 'cursor-pointer hover:bg-secondary',
+            snapshot.isDragging && 'bg-secondary shadow-lg cursor-grabbing',
+            className
+          )}
+        >
+          {/* Drag handle */}
+          <div
+            {...provided.dragHandleProps}
+            className="cursor-grab shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DotsSixVerticalIcon
+              className="size-icon-xs text-low"
+              weight="bold"
+            />
+          </div>
 
-      {/* Right side: Assignee, Age */}
-      <div className="flex items-center gap-half shrink-0">
-        <KanbanAssignee assignees={assignees} />
-        <span className="text-sm text-low">
-          {formatRelativeTime(createdAt)}
-        </span>
-      </div>
-    </div>
+          {/* Left side: Priority, ID, Status, Title */}
+          <div className="flex items-center gap-half flex-1 min-w-0">
+            <PriorityIcon priority={priority} />
+            <span className="font-ibm-plex-mono text-sm text-normal shrink-0">
+              {simpleId}
+            </span>
+            <StatusDot color={statusColor} />
+            <span className="text-base text-high truncate">{title}</span>
+          </div>
+
+          {/* Right side: Assignee, Age */}
+          <div className="flex items-center gap-half shrink-0">
+            <KanbanAssignee assignees={assignees} />
+            <span className="text-sm text-low">
+              {formatRelativeTime(createdAt)}
+            </span>
+          </div>
+        </div>
+      )}
+    </Draggable>
   );
 }
