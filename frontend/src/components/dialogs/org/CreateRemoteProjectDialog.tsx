@@ -82,7 +82,7 @@ const CreateRemoteProjectDialogImpl =
       setIsCreating(true);
 
       try {
-        const project = insert({
+        const { data: project } = insert({
           organization_id: organizationId,
           name: name.trim(),
           color: color,
