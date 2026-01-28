@@ -1,0 +1,693 @@
+{
+  "dropzone": {
+    "dropImagesHere": "Görüntüleri buraya bırakın",
+    "supportedFormats": "PNG, JPG, GIF, WebP, SVG desteklenir"
+  },
+  "gitPanel": {
+    "create": {
+      "warnings": {
+        "noReposSelected": "Başlamak için lütfen en az bir depo seçin"
+      }
+    },
+    "advanced": {
+      "workingBranch": "Çalışma Dalı",
+      "placeholder": "Örn: acme Corp"
+    }
+  },
+  "loading": "Görevler yükleniyor...",
+  "empty": {
+    "noTasks": "Bu proje için görev bulunamadı.",
+    "createFirst": "İlk Görevi Oluştur",
+    "noSearchResults": "Aramanızla eşleşen görev yok."
+  },
+  "actions": {
+    "addTask": "Görev ekle"
+  },
+  "filters": {
+    "sharedToggleAria": "Paylaşılan görevleri değiştir",
+    "sharedToggleTooltip": "Paylaşılan içeriği göster/gizle"
+  },
+  "rebase": {
+    "common": {
+      "action": "Rebase",
+      "inProgress": "Rebase yapılıyor...",
+      "withTarget": "{{branch}} üzerine rebase yap"
+    },
+    "dialog": {
+      "title": "Görev Denemesini Rebase Yap",
+      "description": "Bu görev denemesini rebase yapmak için yeni bir temel dal seçin.",
+      "upstreamLabel": "Üst Akış Dalı (Upstream)",
+      "upstreamPlaceholder": "Bir üst akış dalı seçin",
+      "targetLabel": "Hedef Dal",
+      "targetPlaceholder": "Bir hedef dal seçin",
+      "advanced": "Gelişmiş"
+    },
+    "status": {
+      "inProgress": "Rebase devam ediyor{{counts}}",
+      "needed": "Rebase gerekli{{dirty}}{{counts}}",
+      "dirtyMarker": " (kirli)"
+    }
+  },
+  "branches": {
+    "changeTarget": {
+      "dialog": {
+        "title": "Hedef dalı değiştir",
+        "description": "Görev denemesi için yeni bir hedef dal seçin.",
+        "placeholder": "Bir hedef dal seçin",
+        "action": "Dalı Değiştir",
+        "inProgress": "Değiştiriliyor..."
+      }
+    }
+  },
+  "repos": {
+    "changeRepo": {
+      "dialog": {
+        "title": "Depoyu Değiştir",
+        "description": "Git işlemleri için bir depo seçin.",
+        "label": "Depo",
+        "placeholder": "Bir depo seçin",
+        "action": "Depoyu Değiştir"
+      }
+    },
+    "selector": {
+      "placeholder": "Depo seçin",
+      "empty": "Kullanılabilir depo yok"
+    }
+  },
+  "preview": {
+    "title": "Önizleme",
+    "selectAttempt": "Önizlemeyi görmek için bir deneme seçin",
+    "troubleAlert": {
+      "title": "Uygulamanızı önizlerken sorun yaşıyoruz:",
+      "item1": "Geliştirme sunucusu başarıyla başladı mı? Çözmeniz gereken bir hata olabilir veya bağımlılıkların yüklenmesi gerekebilir.",
+      "item2": "Geliştirme sunucunuz URL ve portu terminale şu formatta yazdı mı?",
+      "item2Suffix": "? (çalıştığını bu şekilde anlıyoruz)",
+      "item3": "Web Companion'ı (tıkla-düzenle için gerekli) kurdunuz mu? Kurmadıysanız, lütfen",
+      "item3Link": "buradaki kurulum talimatlarını izleyin",
+      "fixScript": "Geliştirme Betiğini Düzelt"
+    },
+    "noServer": {
+      "title": "Çalışan geliştirme sunucusu yok",
+      "startPrompt": "Önizlemeyi görmek için lütfen bir geliştirme sunucusu başlatın",
+      "setupTitle": "Önizleme özelliğini kullanmak için bir geliştirme sunucusu betiği ayarlamalısınız",
+      "setupPrompt": "Canlı önizleme ve tıkla-düzenle özelliğini kullanmak için lütfen bu projeye bir geliştirme sunucusu betiği ekleyin.",
+      "companionPrompt": "Tıkla-düzenle işlevselliği için tarayıcı companion'ını projenize ekleyin.",
+      "companionLink": "Kurulum kılavuzunu görüntüle",
+      "startButton": "Geliştirme Sunucusunu Başlat",
+      "configureButton": "Yapılandır",
+      "stopAndEditButton": "Sunucuyu Durdur ve Sorunları Çöz",
+      "fixScript": "Geliştirme Betiğini Düzelt",
+      "editDevScript": "Geliştirme Sunucusu Betiğini Düzenle",
+      "learnMore": "Uygulamaları test etme hakkında daha fazla bilgi edinin"
+    },
+    "devScript": {
+      "saveAndStart": "Kaydet ve Başlat",
+      "saveOnly": "Sadece Kaydet",
+      "saveChanges": "Değişiklikleri Kaydet",
+      "cancel": "İptal",
+      "errors": {
+        "notLoaded": "Proje yüklenemedi",
+        "empty": "Geliştirme betiği boş olamaz"
+      }
+    },
+    "logs": {
+      "title": "Sunucu Günlükleri",
+      "hide": "Gizle",
+      "show": "Göster",
+      "label": "Günlükler",
+      "viewFull": "Tam günlükleri görüntüle"
+    },
+    "noDevScript": "Yapılandırılmış geliştirme betiği yok",
+    "noDevScriptHint": "Önizlemeyi kullanmak için proje ayarlarında bir geliştirme betiği yapılandırın",
+    "iframe": {
+      "title": "Geliştirme sunucusu önizlemesi"
+    },
+    "toolbar": {
+      "refresh": "Önizlemeyi yenile",
+      "copyUrl": "URL'yi kopyala",
+      "openInTab": "Yeni sekmede aç",
+      "stopDevServer": "Sunucuyu durdur",
+      "clickToEdit": "URL'yi düzenlemek için tıkla",
+      "resetUrl": "Algılanan URL'ye sıfırla",
+      "clearUrlOverride": "URL geçersiz kılmayı temizle",
+      "desktopView": "Masaüstü görünümü",
+      "mobileView": "Mobil görünüm (390x844)",
+      "responsiveView": "Duyarlı görünüm (yeniden boyutlandırılabilir)",
+      "startDevServer": "Geliştirme sunucusunu başlat",
+      "submitUrl": "URL'yi gönder"
+    },
+    "loading": {
+      "startingServer": "Geliştirme sunucusu başlatılıyor...",
+      "waitingForServer": "Sunucu bekleniyor...",
+      "loadingPreview": "Önizleme yükleniyor...",
+      "manualUrlHint": "Henüz bir URL algılanmadı. Yukarıdaki araç çubuğuna manuel olarak bir URL girebilirsiniz."
+    },
+    "browser": {
+      "title": "Sunucu Önizlemesi",
+      "devServerFallback": "Geliştirme Sunucusu"
+    },
+    "urlInput": {
+      "placeholder": "URL girin..."
+    }
+  },
+  "diff": {
+    "viewModes": {
+      "inline": "Satır içi görünüm",
+      "split": "Ayrılmış görünüm"
+    },
+    "ignoreWhitespace": "Boşluk değişikliklerini yoksay",
+    "errorLoadingDiff": "Fark yüklenemedi: {{error}}",
+    "expandAll": "Tüm farkları genişlet",
+    "collapseAll": "Tüm farkları daralt",
+    "filesChanged_one": "{{count}} dosya değişti",
+    "filesChanged_other": "{{count}} dosya değişti",
+    "noChanges": "Henüz herhangi bir değişiklik yapılmadı"
+  },
+  "taskPanel": {
+    "noTaskSelected": "Görev seçilmedi",
+    "loadingAttempts": "Denemeler yükleniyor...",
+    "errorLoadingAttempts": "Denemeler yüklenemedi",
+    "attemptsCount": "Denemeler ({{count}})",
+    "noAttempts": "Henüz deneme yok"
+  },
+  "processes": {
+    "noLogsAvailable": "Günlük yok",
+    "selectAttempt": "Yürütme süreçlerini görüntülemek için bir deneme seçin.",
+    "errorLoadingUpdates": "Süreçler için canlı güncellemeler yüklenemedi.",
+    "reconnecting": "Yeniden bağlanıyor...",
+    "loading": "Yürütme süreçleri yükleniyor...",
+    "noProcesses": "Bu deneme için yürütme süreci bulunamadı.",
+    "processId": "Süreç Kimliği: {{id}}",
+    "deleted": "Silindi",
+    "deletedTooltip": "Geri yükleme ile silindi: zaman çizelgesi bir kontrol noktasına geri yüklendi ve sonraki yürütmeler kaldırıldı",
+    "agent": "Ajan:",
+    "exit": "Çıkış: {{code}}",
+    "started": "Başlangıç: {{date}}",
+    "completed": "Tamamlanma: {{date}}",
+    "detailsTitle": "Süreç Detayları",
+    "backToList": "Listeye dön",
+    "loadingDetails": "Süreç detayları yükleniyor...",
+    "errorLoadingDetails": "Süreç detayları yüklenemedi. Lütfen tekrar deneyin.",
+    "copyLogs": "Günlükleri kopyala",
+    "logsCopied": "Kopyalandı!"
+  },
+  "taskHeader": {
+    "editTask": "Görevi düzenle",
+    "deleteTask": "Görevi sil",
+    "closePanel": "Paneli kapat"
+  },
+  "navigateToParent": "Üst görev denemesine git",
+  "toolbar": {
+    "actions": "İşlemler",
+    "noAttempts": "Henüz deneme yok",
+    "startFirstAttempt": "Bu görev üzerinde çalışmaya başlamak için ilk denemenizi başlatın",
+    "startAttempt": "Denemeyi Başlat"
+  },
+  "followUp": {
+    "stop": "Durdur",
+    "clearReviewComments": "İnceleme Yorumlarını Temizle",
+    "resolveConflicts": "Çakışmaları çöz",
+    "send": "Gönder",
+    "unqueuing": "Sıradan çıkarılıyor…",
+    "edit": "Düzenle",
+    "queuing": "Sıraya alınıyor…",
+    "queueForNextTurn": "Bir sonraki tur için sıraya al",
+    "queue": "Sıraya al",
+    "cancelQueue": "Sırayı İptal Et",
+    "queuedMessage": "Mesaj sıraya alındı - mevcut çalışma bittiğinde yürütülecek",
+    "runSetupScript": "Kurulum betiğini çalıştır",
+    "runCleanupScript": "Temizlik betiğini çalıştır",
+    "noSetupScript": "Bu proje için kurulum betiği yapılandırılmamış",
+    "noCleanupScript": "Bu proje için temizlik betiği yapılandırılmamış",
+    "scriptsDisabledWhileRunning": "Bir süreç çalışırken betikler çalıştırılamaz"
+  },
+  "todos": {
+    "title_one": "Yapılacaklar ({{count}})",
+    "title_other": "Yapılacaklar ({{count}})"
+  },
+  "todoPopup": {
+    "title": "Görevler",
+    "progress": "{{completed}}/{{total}} tamamlandı",
+    "noTasks": "Görev yok"
+  },
+  "projects": {
+    "create": {
+      "dialog": {
+        "title": "Proje Oluştur",
+        "description": "Yeni projeniz için bir ad girin."
+      },
+      "form": {
+        "nameLabel": "Ad",
+        "namePlaceholder": "Benim Projem"
+      },
+      "errors": {
+        "createFailed": "Proje oluşturulamadı"
+      }
+    }
+  },
+  "conversation": {
+    "executors": "Uygulayıcılar",
+    "saveAsDefault": "Varsayılan olarak kaydet",
+    "you": "Siz",
+    "thinking": "Düşünüyor",
+    "todo": "Yapılacak",
+    "todos": "Yapılacaklar",
+    "completed": "tamamlandı",
+    "incomplete": "tamamlanmamış",
+    "pending": "bekliyor",
+    "inProgress": "devam ediyor",
+    "skipped": "atlandı",
+    "error": "Hata",
+    "retry": "Tekrar Dene",
+    "showMore": "Daha fazla göster",
+    "showLess": "Daha az göster",
+    "actions": {
+      "cancel": "İptal",
+      "submitFeedback": "Geri Bildirim Gönder",
+      "stop": "Durdur",
+      "stopping": "Durduruluyor",
+      "loading": "Yükleniyor",
+      "send": "Gönder",
+      "sending": "Gönderiliyor",
+      "queue": "Sıraya Al",
+      "cancelQueue": "Sırayı İptal Et",
+      "requestChanges": "Değişiklik İste",
+      "approve": "Onayla",
+      "clearReviewComments": "İnceleme yorumlarını temizle",
+      "edit": "Mesajı düzenle",
+      "scrollToPreviousMessage": "Önceki mesaja git"
+    },
+    "approval": {
+      "conflictWarning": "Çakışan dosyaların manuel çözülmesi gerekiyor",
+      "conflicts_one": "{{count}} çakışma",
+      "conflicts_other": "{{count}} çakışma"
+    },
+    "sessions": {
+      "newSession": "Yeni Oturum",
+      "latest": "En Son",
+      "previous": "Önceki",
+      "label": "Oturumlar",
+      "noPreviousSessions": "Önceki oturum yok"
+    },
+    "reviewComments": {
+      "count_one": "{{count}} inceleme yorumu dahil edilecek",
+      "count_other": "{{count}} inceleme yorumu dahil edilecek"
+    },
+    "workspace": {
+      "create": "Oluştur",
+      "creating": "Oluşturuluyor..."
+    },
+    "fileEntry": {
+      "created": "Oluşturuldu",
+      "modified": "Düzenlendi",
+      "deleted": "Silindi",
+      "renamed": "Yeniden adlandırıldı"
+    },
+    "script": {
+      "running": "Çalışıyor...",
+      "exitCode": "Çıkış kodu: {{code}}",
+      "completedSuccessfully": "Başarıyla tamamlandı",
+      "clickToViewLogs": "Günlükleri görüntülemek için tıklayın"
+    },
+    "updatedTodos": "Güncellenmiş Yapılacaklar",
+    "viewInChangesPanel": "Değişiklikler panelinde görüntüle",
+    "unableToRenderDiff": "Fark oluşturulamıyor."
+  },
+  "attempt": {
+    "actions": {
+      "openInIde": "Denemeyi IDE'de aç",
+      "openMenu": "Menüyü aç",
+      "startDevServer": "Sunucuyu başlat",
+      "stopDevServer": "Sunucuyu durdur"
+    },
+    "labels": {
+      "attempt": "Deneme",
+      "agent": "Ajan",
+      "branch": "Dal",
+      "diffs": "Farklar",
+      "summaryAndActions": "Özet ve İşlemler"
+    },
+    "agent": "Ajan",
+    "path": "Yol",
+    "openInEditor": "Değişiklikleri {{editor}} içinde gör",
+    "copied": "Kopyalandı!",
+    "clickToCopy": "Çalışma ağacı yolunu kopyala",
+    "stopDev": "Geliştirmeyi Durdur",
+    "pauseDev": "Geliştirmeyi Duraklat",
+    "startDev": "Geliştirmeyi Başlat",
+    "viewDevLogs": "Sunucu günlüklerini görüntüle",
+    "stopping": "Durduruluyor...",
+    "stopAttempt": "Denemeyi Durdur",
+    "newAttempt": "Yeni Deneme",
+    "viewHistory": "Deneme geçmişini görüntüle",
+    "createSubtask": "Alt Görev Oluştur",
+    "preview": "Önizleme",
+    "diffs": "Farklar",
+    "gitActions": "Git İşlemleri",
+    "tryNewUI": "yeni arayüzü dene"
+  },
+  "git": {
+    "labels": {
+      "taskBranch": "Görev Dalı"
+    },
+    "branch": {
+      "current": "mevcut"
+    },
+    "forcePushDialog": {
+      "title": "Zorla Push (Force Push) Gerekli",
+      "description": "Uzak dal{{branchLabel}} yerel dalınızdan ayrılmış. Normal push reddedildi.",
+      "warning": "Zorla push yapmak, uzak değişikliklerin üzerine yerel değişikliklerinizi yazacaktır. Bu işlem geri alınamaz.",
+      "note": "Sadece uzak dal geçmişini değiştirmek istediğinizden eminseniz devam edin.",
+      "error": "Zorla push başarısız oldu"
+    },
+    "status": {
+      "commits_one": "commit",
+      "commits_other": "commit",
+      "conflicts": "Çakışmalar",
+      "upToDate": "Güncel",
+      "ahead": "önde",
+      "behind": "geride"
+    },
+    "states": {
+      "merged": "Birleştirildi!",
+      "merging": "Birleştiriliyor...",
+      "merge": "Birleştir (Merge)",
+      "rebasing": "Rebase yapılıyor...",
+      "rebase": "Rebase",
+      "pushed": "Push edildi!",
+      "pushing": "Push ediliyor...",
+      "push": "Push",
+      "pushFailed": "Başarısız",
+      "forcePush": "Zorla Push",
+      "forcePushing": "Zorla Push ediliyor...",
+      "creating": "Oluşturuluyor...",
+      "createPr": "PR Oluştur"
+    },
+    "errors": {
+      "changeTargetBranch": "Hedef dal değiştirilemedi",
+      "pushChanges": "Değişiklikler push edilemedi",
+      "mergeChanges": "Değişiklikler birleştirilemedi",
+      "rebaseBranch": "Dal rebase edilemedi",
+      "branchStatusUnavailable": "Dal durumu alınamadı. Yine de hedef dalı değiştirebilirsiniz."
+    },
+    "pr": {
+      "open": "PR #{{number}} aç",
+      "number": "PR #{{number}}",
+      "merged": "PR #{{prNumber}} birleştirildi"
+    },
+    "actions": {
+      "title": "Git İşlemleri",
+      "changeTarget": "Hedefi değiştir",
+      "prMerged": "PR #{{number}} zaten birleştirilmiş",
+      "loginRequired": {
+        "title": "Git işlemlerini yönetmek için giriş yapın",
+        "description": "Bu görev için dalları push edebilmek, değişiklikleri birleştirebilmek veya çekme istekleri açabilmek için Vibe Kanban'a giriş yapın.",
+        "action": "Giriş yap"
+      }
+    },
+    "mergeDialog": {
+      "title": "Değişiklikleri Birleştir",
+      "description": "Bu işlem değişikliklerinizi hedef dal ile birleştirecektir. Devam etmek istediğinizden emin misiniz?"
+    },
+    "createRepo": {
+      "dialog": {
+        "title": "Yeni Depo Oluştur",
+        "description": "Yeni bir git deposu başlatın"
+      },
+      "form": {
+        "nameLabel": "Ad",
+        "namePlaceholder": "benim-projem",
+        "locationLabel": "Konum",
+        "locationPlaceholder": "Mevcut dizin"
+      },
+      "browseDialog": {
+        "title": "Üst Dizini Seçin",
+        "description": "Yeni deponun nerede oluşturulacağını seçin"
+      },
+      "errors": {
+        "nameRequired": "Depo adı gereklidir",
+        "createFailed": "Depo oluşturulamadı"
+      },
+      "buttons": {
+        "createRepository": "Depo Oluştur"
+      },
+      "states": {
+        "creating": "Oluşturuluyor..."
+      }
+    }
+  },
+  "createAttemptDialog": {
+    "title": "Deneme Oluştur",
+    "description": "Bir kodlama ajanı ile yeni bir deneme başlatın. Bir git çalışma ağacı ve görev dalı oluşturulacaktır.",
+    "baseBranch": "Temel dal",
+    "loadingBranches": "Dallar yükleniyor...",
+    "selectBranch": "Dal seçin",
+    "error": "Deneme oluşturulamadı. Lütfen tekrar deneyin.",
+    "creating": "Oluşturuluyor...",
+    "start": "Başlat"
+  },
+  "repoBranchSelector": {
+    "label": "Temel dal"
+  },
+  "attemptRepoSelector": {
+    "label": "Depolar",
+    "addButton": "Ekle",
+    "empty": "Depo seçilmedi. En az bir depo ekleyin.",
+    "selectBranch": "Dal seçin",
+    "addRepo": {
+      "title": "Git Deposunu Seç",
+      "description": "Bu denemeye eklenecek bir git deposu seçin"
+    }
+  },
+  "viewProcessesDialog": {
+    "title": "Yürütme süreçleri"
+  },
+  "viewRelatedTasksDialog": {
+    "title": "İlgili görevler",
+    "empty": "Bu deneme için ilgili görev yok",
+    "error": "İlgili görevler yüklenemedi",
+    "tasksCount": "Görevler ({{count}})",
+    "columns": {
+      "title": "Başlık",
+      "description": "Açıklama",
+      "status": "Durum"
+    }
+  },
+  "attemptHeaderActions": {
+    "preview": "Önizleme",
+    "diffs": "Farklar",
+    "relatedTasks": "İlgili görevler",
+    "tryNewUI": "yeni arayüzü dene"
+  },
+  "actionsMenu": {
+    "attempt": "Deneme",
+    "openInIde": "Denemeyi IDE'de aç",
+    "viewProcesses": "Süreçleri görüntüle",
+    "viewRelatedTasks": "İlgili görevleri görüntüle",
+    "createNewAttempt": "Yeni deneme oluştur",
+    "createSubtask": "Alt görev oluştur",
+    "gitActions": "Git işlemleri",
+    "editBranchName": "Dal adını düzenle",
+    "startReview": "İncelemeyi Başlat",
+    "startingReview": "İnceleme Başlatılıyor...",
+    "task": "Görev",
+    "duplicate": "Çoğalt"
+  },
+  "editBranchName": {
+    "dialog": {
+      "title": "Dal Adını Düzenle",
+      "description": "Dal için yeni bir ad girin. Açık bir PR varsa yeniden adlandırılamaz.",
+      "branchNameLabel": "Dal Adı",
+      "placeholder": "Örn: feature/benim-dalim",
+      "renaming": "Yeniden adlandırılıyor...",
+      "action": "Dalı Yeniden Adlandır"
+    }
+  },
+  "startReviewDialog": {
+    "title": "İncelemeyi Başlat",
+    "description": "Kodlama ajanından değişikliklerinizi incelemesini ve geri bildirim vermesini isteyin.",
+    "additionalInstructions": "Ek Talimatlar (isteğe bağlı)",
+    "reviewComments": "İnceleme Yorumları ({{count}})",
+    "includeGitContext": "Git bağlamını dahil et",
+    "includeGitContextDescription": "Ajana bu daldaki tüm değişiklikleri nasıl göreceğini söyler",
+    "newSession": "Yeni Oturum"
+  },
+  "resolveConflicts": {
+    "dialog": {
+      "title": "Çakışmaları Çöz",
+      "description": "Çakışmalar algılandı. Ajanın bunları nasıl çözmesini istediğinizi seçin.",
+      "sessionLabel": "Oturum",
+      "existingSession": "Mevcut oturumda devam et",
+      "newSession": "Yeni bir oturum başlat",
+      "resolve": "Çakışmaları Çöz",
+      "resolving": "Başlatılıyor...",
+      "filesWithConflicts_one": "{{count}} dosyada çakışma var",
+      "filesWithConflicts_other": "{{count}} dosyada çakışma var",
+      "andMore": "...ve {{count}} daha fazla"
+    }
+  },
+  "createPrDialog": {
+    "title": "Çekme İsteği (PR) Oluştur",
+    "description": "Bu görev denemesi için bir çekme isteği oluşturun.",
+    "titleLabel": "Başlık",
+    "titlePlaceholder": "PR başlığını girin",
+    "descriptionLabel": "Açıklama (isteğe bağlı)",
+    "descriptionPlaceholder": "PR açıklamasını girin",
+    "baseBranchLabel": "Temel Dal",
+    "loadingBranches": "Dallar yükleniyor...",
+    "selectBaseBranch": "Temel dalı seçin",
+    "draftLabel": "Taslak olarak oluştur",
+    "autoGenerateLabel": "Yapay zeka ile PR açıklamasını otomatik oluştur",
+    "creating": "Oluşturuluyor...",
+    "createButton": "PR Oluştur",
+    "errors": {
+      "insufficientPermissions": "Yetersiz izinler. Lütfen CLI'nın gerekli izinlere sahip olduğundan emin olun.",
+      "repoNotFoundOrNoAccess": "Depo bulunamadı veya erişim yok. Lütfen depo erişiminizi kontrol edin ve kimliğinizin doğrulandığından emin olun.",
+      "failedToCreate": "PR oluşturulamadı",
+      "gitCliNotLoggedIn": "Git kimlik doğrulaması yapılmamış. \"gh auth login\" komutunu çalıştırın (veya Git kimlik bilgilerini yapılandırın) ve tekrar deneyin.",
+      "gitCliNotInstalled": "Git CLI kurulu değil. Bir PR oluşturmak için Git'i kurun.",
+      "targetBranchNotFound": "Hedef dal '{{branch}}' uzak sunucuda mevcut değil. Lütfen bir çekme isteği oluşturmadan önce dalın mevcut olduğundan emin olun."
+    },
+    "loginRequired": {
+      "title": "Çekme isteği oluşturmak için giriş yapın",
+      "description": "Bu görev için bir çekme isteği açmadan önce giriş yapmanız gerekir. Sizi giriş sayfasına yönlendireceğiz.",
+      "action": "Giriş yap"
+    }
+  },
+  "showcases": {
+    "taskPanel": {
+      "companion": {
+        "title": "Vibe Kanban Companion İşaretle ve Tıkla",
+        "description": "Önizleme penceresindeki herhangi bir UI bileşenine tıklayarak onu tam olarak seçin. Kodlama ajanı kesin DOM seçicilerini ve bileşen hiyerarşisini alarak belirsiz geri bildirimleri ortadan kaldırır."
+      },
+      "installation": {
+        "title": "Sunucu ve Companion Kurulumu",
+        "description": "Önizlemeler için bir geliştirme sunucusu komutu ayarlayın, ayarlarda yapılandırılabilir bir kurulum betiği ile birlikte. Vibe Kanban web companion'ını otomatik olarak kurmak için bir kodlama ajanı kullanın."
+      },
+      "codeReview": {
+        "title": "Yerleşik Kod İnceleme",
+        "description": "Artı simgesiyle doğrudan fark görünümünde satıra özel yorumlar ekleyin. Tüm geri bildirimler toplanır ve kodlama ajanına tam bir inceleme olarak gönderilir."
+      },
+      "pullRequest": {
+        "title": "Görevden PR Oluştur",
+        "description": "Değişikliklerinizi birleştirin veya doğrudan görev denemelerinden çekme istekleri oluşturun. PR diyaloğu, akıcı iş akışları için görev detaylarınızdan başlık ve açıklamayı önceden doldurur."
+      },
+      "tags": {
+        "title": "Özel İstem Etiketleri",
+        "description": "Özel istemleri etiket olarak kaydedin ve bunları yeni görevlere veya takip mesajlarına gömün. İş akışınızda tutarlılığı korumak için yaygın talimatları yeniden kullanın."
+      }
+    },
+    "buttons": {
+      "previous": "Önceki",
+      "next": "Sonraki",
+      "finish": "Bitir"
+    }
+  },
+  "prComments": {
+    "dialog": {
+      "title": "PR Yorumlarını Seç",
+      "noComments": "bu PR'da yorum bulunamadı",
+      "selectAll": "Tümünü Seç",
+      "deselectAll": "Tümünün Seçimini Kaldır",
+      "add": "Ekle",
+      "selectedCount": "{{total}} yorumdan {{selected}} tanesi seçildi"
+    },
+    "card": {
+      "review": "İnceleme",
+      "tooltip": "Görüntülemek için tıklayın, düzenlemek için çift tıklayın"
+    }
+  },
+  "taskFormDialog": {
+    "createTitle": "Yeni Görev Oluştur",
+    "editTitle": "Görevi Düzenle",
+    "titlePlaceholder": "Görev başlığı...",
+    "descriptionPlaceholder": "Daha fazla detay ekleyin (isteğe bağlı). Dosyaları aramak için @ yazın.",
+    "statusLabel": "Durum",
+    "statusOptions": {
+      "todo": "Yapılacak",
+      "inprogress": "Devam Ediyor",
+      "inreview": "İncelemede",
+      "done": "Tamamlandı",
+      "cancelled": "İptal Edildi"
+    },
+    "startLabel": "Başlat",
+    "attachImage": "Görüntü ekle",
+    "dropImagesHere": "Görüntüleri buraya bırakın",
+    "updating": "Güncelleniyor...",
+    "updateTask": "Görevi Güncelle",
+    "starting": "Başlatılıyor...",
+    "creating": "Oluşturuluyor...",
+    "create": "Oluştur",
+    "discardDialog": {
+      "title": "Kaydedilmemiş değişiklikler atılsın mı?",
+      "description": "Kaydedilmemiş değişiklikleriniz var. Bunları atmak istediğinizden emin misiniz?",
+      "continueEditing": "Düzenlemeye Devam Et",
+      "discardChanges": "Değişiklikleri At"
+    }
+  },
+  "terminal": {
+    "selectWorkspace": "Terminali açmak için bir çalışma alanı seçin"
+  },
+  "restoreLogsDialog": {
+    "title": "Tekrar Denemeyi Onayla",
+    "historyChange": {
+      "title": "Geçmiş değişikliği",
+      "willDelete": "Bu süreci silecek",
+      "andLaterProcesses_one": "ve sonraki {{count}} süreci",
+      "andLaterProcesses_other": "ve sonraki {{count}} süreci",
+      "fromHistory": "geçmişten.",
+      "codingAgentRuns_one": "{{count}} kodlama ajanı çalışması",
+      "codingAgentRuns_other": "{{count}} kodlama ajanı çalışması",
+      "scriptProcesses_one": "{{count}} betik süreci",
+      "scriptProcesses_other": "{{count}} betik süreci",
+      "setupCleanupBreakdown": "({{setup}} kurulum, {{cleanup}} temizlik)",
+      "permanentWarning": "Bu, geçmişi kalıcı olarak değiştirir ve geri alınamaz."
+    },
+    "uncommittedChanges": {
+      "title": "Commit edilmemiş değişiklikler algılandı",
+      "description_one": "{{count}} commit edilmemiş değişikliğiniz var",
+      "description_other": "{{count}} commit edilmemiş değişikliğiniz var",
+      "andUntracked_one": " ve {{count}} takip edilmeyen dosya",
+      "andUntracked_other": " ve {{count}} takip edilmeyen dosya",
+      "acknowledgeLabel": "Bu değişikliklerin etkilenebileceğini anlıyorum"
+    },
+    "resetWorktree": {
+      "title": "Çalışma ağacını sıfırla",
+      "enabled": "Etkin",
+      "disabled": "Devre Dışı",
+      "disabledUncommitted": "Devre Dışı (commit edilmemiş değişiklikler algılandı)",
+      "restoreDescription": "Çalışma ağacınız bu commit'e geri yüklenecektir.",
+      "rollbackCommits_one": "Mevcut HEAD'den {{count}} commit geri al.",
+      "rollbackCommits_other": "Mevcut HEAD'den {{count}} commit geri al.",
+      "discardChanges_one": "{{count}} commit edilmemiş değişikliği at.",
+      "discardChanges_other": "{{count}} commit edilmemiş değişikliği at.",
+      "untrackedPresent_one": "{{count}} takip edilmeyen dosya mevcut (sıfırlamadan etkilenmez).",
+      "untrackedPresent_other": "{{count}} takip edilmeyen dosya mevcut (sıfırlamadan etkilenmez).",
+      "forceReset": "Zorla sıfırla (commit edilmemiş değişiklikleri at)",
+      "uncommittedWillDiscard": "Commit edilmemiş değişiklikler atılacaktır.",
+      "uncommittedPresentHint": "Commit edilmemiş değişiklikler mevcut. Devam etmek için Zorla sıfırla'yı açın veya commit/stash yapın."
+    },
+    "buttons": {
+      "retry": "Tekrar Dene"
+    }
+  },
+  "scriptFixer": {
+    "title": "Betiği Düzelt",
+    "setupScriptTitle": "Kurulum Betiğini Düzelt",
+    "cleanupScriptTitle": "Temizlik Betiğini Düzelt",
+    "devServerTitle": "Sunucu Betiğini Düzelt",
+    "scriptLabel": "Betik (düzenle)",
+    "logsLabel": "Son Yürütme Günlükleri",
+    "saveButton": "Kaydet",
+    "saveAndTestButton": "Kaydet ve Test Et",
+    "saving": "Kaydediliyor...",
+    "testing": "Test ediliyor...",
+    "noLogs": "Kullanılabilir yürütme günlüğü yok",
+    "selectRepo": "Depo",
+    "fixScript": "Betiği Düzelt",
+    "statusRunning": "Çalışıyor...",
+    "statusSuccess": "Başarıyla tamamlandı",
+    "statusFailed": "Çıkış kodu {{exitCode}} ile başarısız oldu",
+    "statusKilled": "Süreç sonlandırıldı"
+  }
+}

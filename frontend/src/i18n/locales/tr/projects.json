@@ -1,0 +1,59 @@
+{
+  "title": "Projeler",
+  "subtitle": "Projelerinizi yönetin ve ilerlemelerini takip edin",
+  "createProject": "Proje Oluştur",
+  "linkToOrganization": "Uzak Projeye Bağla",
+  "loading": "Projeler yükleniyor...",
+  "repoSearch": {
+    "searching": "Depolar aranıyor...",
+    "stillSearching": "Hala aranıyor... ({{seconds}}s)",
+    "takingLonger": "Bu normalden uzun sürüyor. Aşağıdan manuel olarak göz atabilirsiniz.",
+    "noReposFound": "Ortak konumlarda depo bulunamadı.",
+    "browseHint": "Bir depoya göz atmak için aşağıdaki seçeneği kullanın."
+  },
+  "errors": {
+    "fetchFailed": "Projeler getirilemedi",
+    "deleteFailed": "Proje silinemedi"
+  },
+  "empty": {
+    "title": "Henüz proje yok",
+    "description": "İlk projenizi oluşturarak başlayın.",
+    "createFirst": "İlk projenizi oluşturun"
+  },
+  "linkDialog": {
+    "title": "Projeyi Uzak Projeye Bağla",
+    "description": "İş birliği ve senkronizasyon için bu yerel projeyi uzak bir projeye bağlayın.",
+    "projectLabel": "Proje",
+    "organizationLabel": "Organizasyon",
+    "loadingOrganizations": "Organizasyonlar yükleniyor...",
+    "noOrganizations": "Kullanılabilir organizasyon yok. Önce bir organizasyon oluşturun.",
+    "selectOrganization": "Bir organizasyon seçin",
+    "loginRequired": {
+      "title": "Giriş Gerekli",
+      "description": "Projeleri bağlamak için giriş yapmanız gerekir.",
+      "action": "Giriş Yap"
+    },
+    "linkModeLabel": "Bağlantı Modu",
+    "linkToExisting": "Mevcut Olana Bağla",
+    "createNew": "Yeni Oluştur",
+    "remoteProjectLabel": "Uzak Proje",
+    "loadingRemoteProjects": "Uzak projeler yükleniyor...",
+    "noRemoteProjects": "Bu organizasyonda uzak proje bulunamadı. Bunun yerine yeni bir tane oluşturmayı deneyin.",
+    "selectRemoteProject": "Bir uzak proje seçin",
+    "newProjectNameLabel": "Yeni Uzak Proje Adı",
+    "newProjectNamePlaceholder": "Proje adını girin",
+    "linking": "Bağlanıyor...",
+    "linkButton": "Projeyi Bağla",
+    "errors": {
+      "selectOrganization": "Lütfen bir organizasyon seçin",
+      "selectRemoteProject": "Lütfen bir uzak proje seçin",
+      "enterProjectName": "Lütfen bir proje adı girin",
+      "linkFailed": "Proje bağlanamadı"
+    }
+  },
+  "unlinkFromOrganization": "Uzak Proje Bağlantısını Kes",
+  "projectNotFound": "Aradığınız proje mevcut değil veya silinmiş.",
+  "viewProject": "Projeyi Görüntüle",
+  "openInIDE": "IDE'de aç",
+  "createdDate": "{{date}} tarihinde oluşturuldu"
+}

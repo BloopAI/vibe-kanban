@@ -1,0 +1,328 @@
+{
+  "buttons": {
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "send": "Gönder",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "create": "Oluştur",
+    "continue": "Devam Et",
+    "reset": "Sıfırla",
+    "manage": "Yönet",
+    "connect": "Bağlan",
+    "disconnect": "Bağlantıyı Kes",
+    "close": "Kapat",
+    "replay": "Tekrar Oynat",
+    "discard": "Değişiklikleri At",
+    "addItem": "Öğe Ekle"
+  },
+  "form": {
+    "notSpecified": "Belirtilmemiş",
+    "selectOption": "Bir seçenek seçin..."
+  },
+  "states": {
+    "loading": "Yükleniyor...",
+    "loadingHistory": "Geçmiş Yükleniyor",
+    "saving": "Kaydediliyor...",
+    "error": "Hata",
+    "success": "Başarılı",
+    "reconnecting": "Yeniden Bağlanıyor"
+  },
+  "language": {
+    "browserDefault": "Tarayıcı Varsayılanı"
+  },
+  "conversation": {
+    "plan": "Plan",
+    "planToggle": {
+      "show": "Planı göster",
+      "hide": "Planı gizle"
+    },
+    "toolDetailsToggle": {
+      "show": "Detayları göster",
+      "hide": "Detayları gizle"
+    },
+    "args": "Argümanlar",
+    "output": "Çıktı",
+    "result": "Sonuç",
+    "deniedByUser": "{{toolName}} kullanıcı tarafından reddedildi",
+    "taskCompleted": "Görev tamamlandı",
+    "ran": "Çalıştırıldı",
+    "tool": "Araç",
+    "toolSummary": {
+      "read": "{{path}} okundu",
+      "searched": "\"{{query}}\" için arama yapıldı",
+      "fetched": "{{url}} getirildi",
+      "ranCommand": "Komut çalıştırıldı",
+      "createdTask": "Görev oluşturuldu: {{description}}",
+      "todoOperation": "{{operation}} yapılacaklar"
+    },
+    "fixScript": "Betiği Düzelt"
+  },
+  "folderPicker": {
+    "legend": "Gezinmek için klasör adlarına tıklayın • Seçmek için işlem düğmelerini kullanın",
+    "manualPathLabel": "Yolu manuel girin:",
+    "go": "Git",
+    "searchLabel": "Mevcut dizinde ara:",
+    "selectCurrent": "Mevcut Olanı Seç",
+    "gitRepo": "git deposu",
+    "selectPath": "Yolu Seç"
+  },
+  "branchSelector": {
+    "placeholder": "Bir dal seçin",
+    "searchPlaceholder": "Dallarda ara...",
+    "empty": "Dal bulunamadı",
+    "badges": {
+      "current": "mevcut",
+      "remote": "uzak"
+    },
+    "currentDisabled": "Mevcut dal seçilemez"
+  },
+  "breadcrumb": {
+    "more": "Daha Fazla"
+  },
+  "orgMembers": {
+    "moreCount": "+{{count}} daha fazla"
+  },
+  "orgSwitcher": {
+    "title": "Organizasyon Değiştir",
+    "description": "Geçiş yapmak için bir organizasyon seçin.",
+    "loadError": "Organizasyonlar yüklenemedi. Lütfen tekrar deneyin.",
+    "noOrganizations": "Herhangi bir organizasyona üye değilsiniz.",
+    "menuItem": "Organizasyon",
+    "loadingPlaceholder": "Organizasyonlar yükleniyor...",
+    "selectPlaceholder": "Bir organizasyon seçin",
+    "currentBadge": " (mevcut)"
+  },
+  "navbar": {
+    "tryNewUI": "yeni arayüzü dene"
+  },
+  "signOut": "Oturumu kapat",
+  "devMode": {
+    "banner": "Geliştirme Modu - Bu bir geliştirme sürümüdür"
+  },
+  "oauth": {
+    "title": "Vibe Kanban'a Giriş Yap",
+    "description": "Organizasyonlara katılmak ve görevleri ekibinizle paylaşmak için giriş yapın",
+    "continueWithGitHub": "GitHub ile Devam Et",
+    "continueWithGoogle": "Google ile Devam Et",
+    "waitingTitle": "Kimlik Doğrulamayı Tamamla",
+    "waitingDescription": "Kimlik doğrulama için bir açılır pencere açıldı",
+    "waitingForAuth": "Kimlik doğrulaması bekleniyor...",
+    "popupInstructions": "Açılır pencere açılmadıysa, lütfen açılır pencere engelleyici ayarlarınızı kontrol edin.",
+    "back": "Geri",
+    "successTitle": "Kimlik Doğrulama Başarılı!",
+    "welcomeBack": "Tekrar hoş geldin, {{name}}",
+    "errorTitle": "Kimlik Doğrulama Başarısız",
+    "errorDescription": "Hesabınız doğrulanırken bir sorun oluştu",
+    "tryAgain": "Tekrar Dene"
+  },
+  "toolbar": {
+    "sortBy": "Sırala",
+    "groupBy": "Grupla"
+  },
+  "sorting": {
+    "ascending": "Artan",
+    "descending": "Azalan"
+  },
+  "grouping": {
+    "date": "Tarih",
+    "assignee": "Atanan",
+    "label": "Etiket"
+  },
+  "workspaces": {
+    "title": "Çalışma Alanları",
+    "searchPlaceholder": "Ara...",
+    "active": "Aktif",
+    "archived": "Arşivlenmiş",
+    "loading": "Yükleniyor...",
+    "selectToStart": "Başlamak için bir çalışma alanı seçin",
+    "draft": "Taslak",
+    "viewArchive": "Arşivi Görüntüle",
+    "backToActive": "Aktif Olana Dön",
+    "noArchived": "Arşivlenmiş çalışma alanı yok",
+    "noWorkspaces": "Çalışma alanı yok",
+    "needsAttention": "İlgi Gerektiriyor",
+    "idle": "Boşta",
+    "running": "Çalışıyor",
+    "pin": "Sabitle",
+    "unpin": "Sabitlemeyi Kaldır",
+    "archive": "Arşivle",
+    "more": "Daha fazla işlem",
+    "rename": {
+      "title": "Çalışma Alanını Yeniden Adlandır",
+      "description": "Bu çalışma alanı için yeni bir ad girin.",
+      "nameLabel": "Ad",
+      "placeholder": "Çalışma alanı adını girin",
+      "action": "Yeniden Adlandır",
+      "renaming": "Yeniden adlandırılıyor..."
+    }
+  },
+  "fileTree": {
+    "searchPlaceholder": "Dosyalarda ara...",
+    "noResults": "Eşleşen dosya yok",
+    "title": "Dosyalar",
+    "showGitHubComments": "GitHub yorumlarını göster",
+    "hideGitHubComments": "GitHub yorumlarını gizle",
+    "prevGitHubComment": "Yorum içeren önceki dosya",
+    "nextGitHubComment": "Yorum içeren sonraki dosya"
+  },
+  "sections": {
+    "changes": "Değişiklikler",
+    "repositories": "Depolar",
+    "addRepositories": "Depo Ekle",
+    "project": "Proje",
+    "processes": "Süreçler",
+    "devServer": "Geliştirme Sunucusu",
+    "advanced": "Gelişmiş",
+    "workingBranch": "Çalışma Dalı",
+    "recent": "Son",
+    "other": "Diğer",
+    "devServerPreview": "Sunucu Önizleme",
+    "terminal": "Terminal",
+    "notes": "Notlar"
+  },
+  "notes": {
+    "placeholder": "Bu çalışma alanı hakkında notlar ekleyin...",
+    "selectWorkspace": "Notları görüntülemek için bir çalışma alanı seçin"
+  },
+  "repos": {
+    "loading": "Depolar yükleniyor...",
+    "noRecentRepos": "Son kullanılan depo bulunamadı",
+    "noReposAdded": "Hiç depo eklenmedi",
+    "noReposAddedHint": "Aşağıdaki seçeneklerden bu çalışma alanına bir veya daha fazla depo ekleyin"
+  },
+  "actions": {
+    "browseRepos": "Diskteki depolara göz at",
+    "createNewRepo": "Diskte yeni depo oluştur",
+    "viewInChangesPanel": "Değişiklikler panelinde görüntüle",
+    "copyPath": "Yolu kopyala",
+    "copyWorktreePath": "Çalışma ağacı yolunu kopyala",
+    "openInIde": "IDE'de aç",
+    "repoSettings": "Depo ayarları",
+    "cancel": "İptal",
+    "saveChanges": "Değişiklikleri Kaydet",
+    "copied": "Kopyalandı",
+    "collapse": "Daralt"
+  },
+  "comments": {
+    "addReviewComment": "İnceleme Yorumu Ekle",
+    "addPlaceholder": "Bir yorum ekle...",
+    "editPlaceholder": "Yorumu düzenle...",
+    "copyToReview": "İncelemeye kopyala"
+  },
+  "confirm": {
+    "defaultConfirm": "Onayla",
+    "defaultCancel": "İptal"
+  },
+  "dialogs": {
+    "selectGitRepository": "Git Deposunu Seç",
+    "chooseExistingRepo": "Dosya sisteminizden mevcut bir depo seçin"
+  },
+  "empty": {
+    "noChanges": "Görüntülenecek değişiklik yok"
+  },
+  "commandBar": {
+    "noResults": "Sonuç bulunamadı.",
+    "back": "Geri",
+    "defaultPlaceholder": "Bir komut yazın veya arama yapın..."
+  },
+  "chatBox": {
+    "variants": "Varyantlar",
+    "customise": "Özelleştir"
+  },
+  "projects": {
+    "noProjectFound": "Proje bulunamadı",
+    "createFirstPrompt": "Görevler üzerinde çalışmaya başlamak için önce bir proje oluşturun.",
+    "createNew": "Yeni proje oluştur",
+    "noProjectsFound": "Proje bulunamadı"
+  },
+  "betaWorkspaces": {
+    "title": "Yeni arayüzü deneyin",
+    "intro": "Vibe Kanban'ın arayüzünü sıfırdan yeniden oluşturduk ve sizi denemeye davet ettik.",
+    "newUiDescription": "Yeni arayüz günlük işler için optimize edilmiştir: ajanlarla çalışma, değişiklikleri önizleme ve kod inceleme. Ayrıca eski arayüzde bulunmayan özelliklerin kilidini açar:",
+    "newFeatures": {
+      "multiRepo": "Aynı anda birden fazla depoyu düzenleyin",
+      "multiAgent": "Tek bir çalışma alanında birden fazla ajan konuşması (farklı ajanlar arasında bile) çalıştırın",
+      "commandBar": "Komut çubuğu ile daha hızlı gezinin"
+    },
+    "oldUiDescription": "Şimdilik birkaç şey hala mevcut arayüzde kalıyor:",
+    "oldFeatures": {
+      "kanban": "Kanban panosunda görevleri yönetme",
+      "settings": "Ayarları değiştirme",
+      "projects": "Projeleri yönetme"
+    },
+    "transition": "Önümüzdeki birkaç haftalık geçiş sürecinde her ikisi arasında hareket edeceksiniz.",
+    "optOutNote": "Ayrılmak mı istiyorsunuz? Ayarlar'dan istediğiniz zaman mevcut arayüze geri dönebilirsiniz.",
+    "joinBeta": "Beta'ya Katıl",
+    "maybeLater": "Belki Sonra"
+  },
+  "workspacesGuide": {
+    "welcome": {
+      "title": "Hoş Geldiniz",
+      "content": "Vibe Kanban için yeniden tasarlanan Çalışma Alanlarına hoş geldiniz. Bunu erken geri bildirimler için seçili kullanıcılara sunuyoruz. Düşüncelerinizi istediğiniz zaman gezinti çubuğundaki geri bildirim simgesini kullanarak paylaşın."
+    },
+    "commandBar": {
+      "title": "Komut Çubuğu",
+      "content": "Komut çubuğu gezinme için merkezi merkezinizdir. Arama yapmak ve bir çalışma alanındaki her işleme erişmek için CMD+K ile açın."
+    },
+    "contextBar": {
+      "title": "Bağlam Çubuğu",
+      "content": "Bağlam çubuğu paneller arasında hızlıca geçiş yapmanızı sağlar. Sizin için en uygun yere sürükleyin."
+    },
+    "sidebar": {
+      "title": "Çalışma Alanı Yan Çubuğu",
+      "content": "Tüm çalışma alanlarınızın durumunu bir bakışta görün. Bildirimler hangilerinin ilgi gerektirdiğini vurgular. Yan çubuğunuzu temiz tutmak için birleştirilmiş çalışma alanlarını arşivleyin."
+    },
+    "multiRepo": {
+      "title": "Çoklu Depo Desteği",
+      "content": "Tek bir çalışma alanına birden fazla depo ekleyin. Bir depoda çalışırken diğerinden koda referans verin veya aynı anda birkaç depoda değişiklikleri uygulayın."
+    },
+    "sessions": {
+      "title": "Çoklu Oturumlar",
+      "content": "Tek bir çalışma alanı içinde farklı ajanlarla yapılan oturumlar da dahil olmak üzere birden fazla ajan konuşma oturumu oluşturun. Bu, konuşma sınırlarını aşmanıza veya ayrı kanallarda inceleme ajanları başlatmanıza yardımcı olur."
+    },
+    "preview": {
+      "title": "Değişiklikleri Önizle",
+      "content": "Bağlam değiştirmeden yerleşik bir tarayıcıda çalışmanızı önizleyin. Masaüstü, mobil ve özel görünüm boyutlarında test edin."
+    },
+    "diffs": {
+      "title": "Farklar ve Yorumlar",
+      "content": "Yeniden tasarlanan farklar paneli, değişikliklerinizin bir dosya ağacını içerir. Ajana geri bildirim vermek için doğrudan farklar üzerine yorum yapın ve çalışma alanınız bir PR'a bağlı olduğunda GitHub yorumlarını görüntüleyin."
+    },
+    "classicUi": {
+      "title": "Klasik Arayüze Dön",
+      "content": "Klasik kanban panosuna dönmek için gezinti çubuğunun sol tarafındaki çıkış simgesine tıklayın. Yeni arayüzü tamamen devre dışı bırakmak için ayarlarda \"Beta Özellikleri\" altındaki \"Çalışma Alanları Betasını Etkinleştir\" seçeneğini güncelleyin."
+    }
+  },
+  "logs": {
+    "searchLogs": "Günlüklerde ara",
+    "selectProcessToView": "Günlükleri görüntülemek için bir süreç seçin"
+  },
+  "processes": {
+    "noProcesses": "Süreç yok",
+    "terminal": "Terminal"
+  },
+  "search": {
+    "matchCount": "{{current}} / {{total}}",
+    "noMatches": "Eşleşme yok"
+  },
+  "contextUsage": {
+    "label": "Bağlam kullanımı",
+    "emptyTooltip": "Bağlam kullanımı bir sonraki yanıttan sonra görünecek",
+    "tooltip": "Bağlam: %{{percentage}} · {{used}} / {{total}} jeton",
+    "ariaLabel": "Bağlam kullanımı: %{{percentage}}"
+  },
+  "shortcuts": {
+    "title": "Klavye Kısayolları",
+    "inWorkspace": "(çalışma alanında)",
+    "sequentialHint": "Sıralı kısayollar: İlk tuşa basın, ardından 500 ms içinde ikinciye basın.",
+    "configurableHint": "Ayarlar → Genel → Mesaj Girişi bölümünden yapılandırılabilir"
+  },
+  "typeahead": {
+    "tags": "Etiketler",
+    "files": "Dosyalar",
+    "commands": "Komutlar",
+    "noTagsOrFiles": "Etiket veya dosya bulunamadı",
+    "noCommands": "Bu ajan için kullanılabilir komut yok."
+  }
+}
