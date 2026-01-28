@@ -124,13 +124,10 @@ export interface ActionExecutorContext {
     mode?: 'addChild' | 'setParent'
   ) => Promise<void>;
   openWorkspaceSelection: (projectId: string, issueId: string) => Promise<void>;
-  // Kanban issue panel
-  openKanbanIssuePanel: (
-    issueId: string | null,
-    createMode?: boolean,
-    defaultStatusId?: string | null
-  ) => void;
-  setKanbanCreateDefaultStatusId: (statusId: string | null) => void;
+  // Kanban navigation (URL-based)
+  navigateToCreateIssue: (options?: { statusId?: string }) => void;
+  // Default status for issue creation based on current kanban tab
+  defaultCreateStatusId?: string;
 }
 
 // Context for evaluating action visibility and state conditions
@@ -1145,9 +1142,7 @@ export const Actions = {
     requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => ctx.layoutMode === 'kanban' && !ctx.isCreatingIssue,
     execute: (ctx) => {
-      // Opens the issue panel in create mode without a pre-selected status
-      // The status will default based on the current view/tab
-      ctx.openKanbanIssuePanel(null, true, null);
+      ctx.navigateToCreateIssue({ statusId: ctx.defaultCreateStatusId });
     },
   } satisfies GlobalActionDefinition,
 
