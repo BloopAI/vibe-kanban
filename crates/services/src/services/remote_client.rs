@@ -22,6 +22,8 @@ use utils::{
             ListOrganizationsResponse, Organization, RevokeInvitationRequest,
             UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
         },
+        pull_requests::UpsertPullRequestRequest,
+        workspaces::{CreateWorkspaceRequest, DeleteWorkspaceRequest, UpdateWorkspaceRequest},
     },
     jwt::extract_expiration,
 };
@@ -389,6 +391,19 @@ impl RemoteClient {
         Ok(())
     }
 
+    async fn delete_authed_with_body<B>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<(), RemoteClientError>
+    where
+        B: Serialize,
+    {
+        self.send(reqwest::Method::DELETE, path, true, Some(body))
+            .await?;
+        Ok(())
+    }
+
     fn map_api_error(&self, err: RemoteClientError) -> RemoteClientError {
         if let RemoteClientError::Http { body, .. } = &err
             && let Ok(api_err) = serde_json::from_str::<ApiErrorResponse>(body)
@@ -527,6 +542,100 @@ impl RemoteClient {
             request,
         )
         .await
+    }
+
+    /// Deletes a workspace on the remote server by its local workspace ID.
+    pub async fn delete_workspace(
+        &self,
+        local_workspace_id: Uuid,
+    ) -> Result<(), RemoteClientError> {
+        self.delete_authed_with_body(
+            "/v1/workspaces",
+            &DeleteWorkspaceRequest { local_workspace_id },
+        )
+        .await
+    }
+
+    /// Checks if a workspace exists on the remote server.
+    pub async fn workspace_exists(
+        &self,
+        local_workspace_id: Uuid,
+    ) -> Result<bool, RemoteClientError> {
+        match self
+            .send(
+                reqwest::Method::HEAD,
+                &format!("/v1/workspaces/exists/{local_workspace_id}"),
+                true,
+                None::<&()>,
+            )
+            .await
+        {
+            Ok(_) => Ok(true),
+            Err(RemoteClientError::Http { status: 404, .. }) => Ok(false),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Updates a workspace on the remote server.
+    pub async fn update_workspace(
+        &self,
+        local_workspace_id: Uuid,
+        archived: Option<bool>,
+        files_changed: Option<i32>,
+        lines_added: Option<i32>,
+        lines_removed: Option<i32>,
+    ) -> Result<(), RemoteClientError> {
+        self.send(
+            reqwest::Method::PATCH,
+            "/v1/workspaces",
+            true,
+            Some(&UpdateWorkspaceRequest {
+                local_workspace_id,
+                archived,
+                files_changed: files_changed.map(Some),
+                lines_added: lines_added.map(Some),
+                lines_removed: lines_removed.map(Some),
+            }),
+        )
+        .await?;
+        Ok(())
+    }
+
+    /// Creates a workspace on the remote server, linking it to a local workspace and an issue.
+    pub async fn create_workspace(
+        &self,
+        project_id: Uuid,
+        local_workspace_id: Uuid,
+        issue_id: Uuid,
+    ) -> Result<(), RemoteClientError> {
+        self.send(
+            reqwest::Method::POST,
+            "/v1/workspaces",
+            true,
+            Some(&CreateWorkspaceRequest {
+                project_id,
+                local_workspace_id,
+                issue_id,
+            }),
+        )
+        .await?;
+        Ok(())
+    }
+
+    /// Upserts a pull request on the remote server.
+    /// Creates if not exists, updates if exists.
+    pub async fn upsert_pull_request(
+        &self,
+        request: UpsertPullRequestRequest,
+    ) -> Result<(), RemoteClientError> {
+        self.send(
+            reqwest::Method::PUT,
+            "/v1/pull_requests",
+            true,
+            Some(&request),
+        )
+        .await?;
+        Ok(())
     }
 }
 
