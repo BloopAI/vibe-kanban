@@ -80,13 +80,15 @@ export function OrgProvider({ organizationId, children }: OrgProviderProps) {
     () => ({ organization_id: organizationId }),
     [organizationId]
   );
+  const enabled = Boolean(organizationId);
 
   // Entity subscriptions (Electric sync)
-  const projectsResult = useEntity(PROJECT_ENTITY, params);
-  const notificationsResult = useEntity(NOTIFICATION_ENTITY, {
-    ...params,
-    user_id: '', // Will be filled by Electric based on auth
-  });
+  const projectsResult = useEntity(PROJECT_ENTITY, params, { enabled });
+  const notificationsResult = useEntity(
+    NOTIFICATION_ENTITY,
+    { ...params, user_id: '' }, // user_id will be filled by Electric based on auth
+    { enabled }
+  );
 
   // Members data from API
   const membersQuery = useQuery({

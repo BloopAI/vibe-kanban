@@ -2996,7 +2996,7 @@ dependencies = [
  "git2",
  "serde",
  "tempfile",
- "thiserror 2.0.17",
+ "thiserror 2.0.18",
  "tracing",
  "ts-rs 11.0.1",
  "utils",

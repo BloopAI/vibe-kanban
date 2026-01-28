@@ -148,17 +148,28 @@ interface ProjectProviderProps {
 
 export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
   const params = useMemo(() => ({ project_id: projectId }), [projectId]);
+  const enabled = Boolean(projectId);
 
   // Entity subscriptions
-  const issuesResult = useEntity(ISSUE_ENTITY, params);
-  const statusesResult = useEntity(PROJECT_STATUS_ENTITY, params);
-  const tagsResult = useEntity(TAG_ENTITY, params);
-  const issueAssigneesResult = useEntity(ISSUE_ASSIGNEE_ENTITY, params);
-  const issueFollowersResult = useEntity(ISSUE_FOLLOWER_ENTITY, params);
-  const issueTagsResult = useEntity(ISSUE_TAG_ENTITY, params);
-  const issueRelationshipsResult = useEntity(ISSUE_RELATIONSHIP_ENTITY, params);
-  const workspacesResult = useEntity(WORKSPACE_ENTITY, params);
-  const pullRequestsResult = useEntity(PULL_REQUEST_ENTITY, params);
+  const issuesResult = useEntity(ISSUE_ENTITY, params, { enabled });
+  const statusesResult = useEntity(PROJECT_STATUS_ENTITY, params, { enabled });
+  const tagsResult = useEntity(TAG_ENTITY, params, { enabled });
+  const issueAssigneesResult = useEntity(ISSUE_ASSIGNEE_ENTITY, params, {
+    enabled,
+  });
+  const issueFollowersResult = useEntity(ISSUE_FOLLOWER_ENTITY, params, {
+    enabled,
+  });
+  const issueTagsResult = useEntity(ISSUE_TAG_ENTITY, params, { enabled });
+  const issueRelationshipsResult = useEntity(
+    ISSUE_RELATIONSHIP_ENTITY,
+    params,
+    { enabled }
+  );
+  const workspacesResult = useEntity(WORKSPACE_ENTITY, params, { enabled });
+  const pullRequestsResult = useEntity(PULL_REQUEST_ENTITY, params, {
+    enabled,
+  });
 
   // Combined loading state
   const isLoading =
