@@ -55,7 +55,7 @@ impl ExecutorApprovalService for ExecutorApprovalBridge {
 
         let (request, waiter) = self
             .approvals
-            .create_with_waiter(request, cancel)
+            .create_with_waiter(request, cancel.clone())
             .await
             .map_err(ExecutorApprovalError::request_failed)?;
 

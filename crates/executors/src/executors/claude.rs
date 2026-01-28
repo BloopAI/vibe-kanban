@@ -337,7 +337,7 @@ impl ClaudeCode {
         let hooks = self.get_hooks(env.commit_reminder);
 
         // Create cancellation token for graceful shutdown
-        let cancel = tokio_util::sync::CancellationToken::new();
+        let cancel = CancellationToken::new();
 
         // Spawn task to handle the SDK client with control protocol
         let prompt_clone = combined_prompt.clone();
