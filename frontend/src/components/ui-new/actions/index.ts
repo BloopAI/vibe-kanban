@@ -42,6 +42,7 @@ import {
   QuestionIcon,
   ArrowsLeftRightIcon,
   ArrowFatLineUpIcon,
+  UsersIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import {
@@ -109,6 +110,11 @@ export interface ActionExecutorContext {
   openPrioritySelection: (
     projectId: string,
     issueIds: string[]
+  ) => Promise<void>;
+  openAssigneeSelection: (
+    projectId: string,
+    issueIds: string[],
+    isCreateMode?: boolean
   ) => Promise<void>;
   // Kanban issue panel
   openKanbanIssuePanel: (
@@ -1208,6 +1214,33 @@ export const Actions = {
           isCreateMode: true,
         },
       });
+    },
+  } satisfies GlobalActionDefinition,
+
+  ChangeAssignees: {
+    id: 'change-assignees',
+    label: 'Change Assignees',
+    icon: UsersIcon,
+    shortcut: 'I A',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      await ctx.openAssigneeSelection(projectId, issueIds, false);
+    },
+  } satisfies IssueActionDefinition,
+
+  ChangeNewIssueAssignees: {
+    id: 'change-new-issue-assignees',
+    label: 'Change Assignees',
+    icon: UsersIcon,
+    shortcut: 'I A',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban' && ctx.isCreatingIssue,
+    execute: async (ctx) => {
+      // Opens assignee selection for the issue being created
+      // ProjectId will be resolved from route params inside the dialog
+      await ctx.openAssigneeSelection('', [], true);
     },
   } satisfies GlobalActionDefinition,
 } as const satisfies Record<string, ActionDefinition>;
