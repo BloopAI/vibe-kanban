@@ -152,6 +152,7 @@ type State = {
   kanbanCreateMode: boolean;
   kanbanCreateDefaultStatusId: string | null;
   kanbanCreateDefaultPriority: IssuePriority | null;
+  kanbanCreateDefaultAssigneeIds: string[] | null;
   previewRefreshKey: number;
 
   // Workspace-specific panel state
@@ -186,6 +187,7 @@ type State = {
   setKanbanCreateMode: (value: boolean) => void;
   setKanbanCreateDefaultStatusId: (statusId: string | null) => void;
   setKanbanCreateDefaultPriority: (priority: IssuePriority | null) => void;
+  setKanbanCreateDefaultAssigneeIds: (assigneeIds: string[] | null) => void;
   openKanbanIssuePanel: (
     issueId: string | null,
     createMode?: boolean,
@@ -244,6 +246,7 @@ export const useUiPreferencesStore = create<State>()(
       kanbanCreateMode: false,
       kanbanCreateDefaultStatusId: null,
       kanbanCreateDefaultPriority: null,
+      kanbanCreateDefaultAssigneeIds: null,
       previewRefreshKey: 0,
 
       // Workspace-specific panel state
@@ -334,6 +337,9 @@ export const useUiPreferencesStore = create<State>()(
       setKanbanCreateDefaultPriority: (priority) =>
         set({ kanbanCreateDefaultPriority: priority }),
 
+      setKanbanCreateDefaultAssigneeIds: (assigneeIds) =>
+        set({ kanbanCreateDefaultAssigneeIds: assigneeIds }),
+
       openKanbanIssuePanel: (
         issueId,
         createMode = false,
@@ -344,6 +350,7 @@ export const useUiPreferencesStore = create<State>()(
           kanbanCreateMode: createMode,
           kanbanCreateDefaultStatusId: defaultStatusId,
           kanbanCreateDefaultPriority: null,
+          kanbanCreateDefaultAssigneeIds: null,
           isKanbanRightPanelVisible: true,
         }),
 
@@ -353,6 +360,7 @@ export const useUiPreferencesStore = create<State>()(
           kanbanCreateMode: false,
           kanbanCreateDefaultStatusId: null,
           kanbanCreateDefaultPriority: null,
+          kanbanCreateDefaultAssigneeIds: null,
           isKanbanRightPanelVisible: false,
         }),
 
