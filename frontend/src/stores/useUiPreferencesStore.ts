@@ -1,6 +1,5 @@
 import { useMemo, useCallback } from 'react';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
 
 export const RIGHT_MAIN_PANEL_MODES = {
@@ -149,197 +148,166 @@ type State = {
   ) => void;
 };
 
-export const useUiPreferencesStore = create<State>()(
-  persist(
-    (set, get) => ({
-      // UI preferences state
-      repoActions: {},
-      expanded: {},
-      contextBarPosition: 'middle-right',
-      paneSizes: {},
-      collapsedPaths: {},
+export const useUiPreferencesStore = create<State>()((set, get) => ({
+  // UI preferences state
+  repoActions: {},
+  expanded: {},
+  contextBarPosition: 'middle-right',
+  paneSizes: {},
+  collapsedPaths: {},
 
-      // Global layout state
-      isLeftSidebarVisible: true,
-      isRightSidebarVisible: true,
-      isTerminalVisible: true,
-      previewRefreshKey: 0,
+  // Global layout state
+  isLeftSidebarVisible: true,
+  isRightSidebarVisible: true,
+  isTerminalVisible: true,
+  previewRefreshKey: 0,
 
-      // Workspace-specific panel state
-      workspacePanelStates: {},
+  // Workspace-specific panel state
+  workspacePanelStates: {},
 
-      // UI preferences actions
-      setRepoAction: (repoId, action) =>
-        set((s) => ({ repoActions: { ...s.repoActions, [repoId]: action } })),
-      setExpanded: (key, value) =>
-        set((s) => ({ expanded: { ...s.expanded, [key]: value } })),
-      toggleExpanded: (key, defaultValue = true) =>
-        set((s) => ({
-          expanded: {
-            ...s.expanded,
-            [key]: !(s.expanded[key] ?? defaultValue),
-          },
-        })),
-      setExpandedAll: (keys, value) =>
-        set((s) => ({
-          expanded: {
-            ...s.expanded,
-            ...Object.fromEntries(keys.map((k) => [k, value])),
-          },
-        })),
-      setContextBarPosition: (position) =>
-        set({ contextBarPosition: position }),
-      setPaneSize: (key, size) =>
-        set((s) => ({ paneSizes: { ...s.paneSizes, [key]: size } })),
-      setCollapsedPaths: (key, paths) =>
-        set((s) => ({ collapsedPaths: { ...s.collapsedPaths, [key]: paths } })),
-
-      // Layout actions
-      toggleLeftSidebar: () =>
-        set((s) => ({ isLeftSidebarVisible: !s.isLeftSidebarVisible })),
-
-      toggleLeftMainPanel: (workspaceId) => {
-        if (!workspaceId) return;
-        const state = get();
-        const wsState =
-          state.workspacePanelStates[workspaceId] ??
-          DEFAULT_WORKSPACE_PANEL_STATE;
-        if (
-          wsState.isLeftMainPanelVisible &&
-          wsState.rightMainPanelMode === null
-        )
-          return;
-        set({
-          workspacePanelStates: {
-            ...state.workspacePanelStates,
-            [workspaceId]: {
-              ...wsState,
-              isLeftMainPanelVisible: !wsState.isLeftMainPanelVisible,
-            },
-          },
-        });
+  // UI preferences actions
+  setRepoAction: (repoId, action) =>
+    set((s) => ({ repoActions: { ...s.repoActions, [repoId]: action } })),
+  setExpanded: (key, value) =>
+    set((s) => ({ expanded: { ...s.expanded, [key]: value } })),
+  toggleExpanded: (key, defaultValue = true) =>
+    set((s) => ({
+      expanded: {
+        ...s.expanded,
+        [key]: !(s.expanded[key] ?? defaultValue),
       },
-
-      toggleRightSidebar: () =>
-        set((s) => ({ isRightSidebarVisible: !s.isRightSidebarVisible })),
-
-      toggleTerminal: () =>
-        set((s) => ({ isTerminalVisible: !s.isTerminalVisible })),
-
-      setTerminalVisible: (value) => set({ isTerminalVisible: value }),
-
-      toggleRightMainPanelMode: (mode, workspaceId) => {
-        if (!workspaceId) return;
-        const state = get();
-        const wsState =
-          state.workspacePanelStates[workspaceId] ??
-          DEFAULT_WORKSPACE_PANEL_STATE;
-        const isCurrentlyActive = wsState.rightMainPanelMode === mode;
-
-        set({
-          workspacePanelStates: {
-            ...state.workspacePanelStates,
-            [workspaceId]: {
-              ...wsState,
-              rightMainPanelMode: isCurrentlyActive ? null : mode,
-            },
-          },
-          isLeftSidebarVisible: isCurrentlyActive
-            ? true
-            : isWideScreen()
-              ? state.isLeftSidebarVisible
-              : false,
-        });
+    })),
+  setExpandedAll: (keys, value) =>
+    set((s) => ({
+      expanded: {
+        ...s.expanded,
+        ...Object.fromEntries(keys.map((k) => [k, value])),
       },
+    })),
+  setContextBarPosition: (position) => set({ contextBarPosition: position }),
+  setPaneSize: (key, size) =>
+    set((s) => ({ paneSizes: { ...s.paneSizes, [key]: size } })),
+  setCollapsedPaths: (key, paths) =>
+    set((s) => ({ collapsedPaths: { ...s.collapsedPaths, [key]: paths } })),
 
-      setRightMainPanelMode: (mode, workspaceId) => {
-        if (!workspaceId) return;
-        const state = get();
-        const wsState =
-          state.workspacePanelStates[workspaceId] ??
-          DEFAULT_WORKSPACE_PANEL_STATE;
-        set({
-          workspacePanelStates: {
-            ...state.workspacePanelStates,
-            [workspaceId]: {
-              ...wsState,
-              rightMainPanelMode: mode,
-            },
-          },
-          ...(mode !== null && {
-            isLeftSidebarVisible: isWideScreen()
-              ? state.isLeftSidebarVisible
-              : false,
-          }),
-        });
+  // Layout actions
+  toggleLeftSidebar: () =>
+    set((s) => ({ isLeftSidebarVisible: !s.isLeftSidebarVisible })),
+
+  toggleLeftMainPanel: (workspaceId) => {
+    if (!workspaceId) return;
+    const state = get();
+    const wsState =
+      state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+    if (wsState.isLeftMainPanelVisible && wsState.rightMainPanelMode === null)
+      return;
+    set({
+      workspacePanelStates: {
+        ...state.workspacePanelStates,
+        [workspaceId]: {
+          ...wsState,
+          isLeftMainPanelVisible: !wsState.isLeftMainPanelVisible,
+        },
       },
+    });
+  },
 
-      setLeftSidebarVisible: (value) => set({ isLeftSidebarVisible: value }),
+  toggleRightSidebar: () =>
+    set((s) => ({ isRightSidebarVisible: !s.isRightSidebarVisible })),
 
-      setLeftMainPanelVisible: (value, workspaceId) => {
-        if (!workspaceId) return;
-        const state = get();
-        const wsState =
-          state.workspacePanelStates[workspaceId] ??
-          DEFAULT_WORKSPACE_PANEL_STATE;
-        set({
-          workspacePanelStates: {
-            ...state.workspacePanelStates,
-            [workspaceId]: {
-              ...wsState,
-              isLeftMainPanelVisible: value,
-            },
-          },
-        });
+  toggleTerminal: () =>
+    set((s) => ({ isTerminalVisible: !s.isTerminalVisible })),
+
+  setTerminalVisible: (value) => set({ isTerminalVisible: value }),
+
+  toggleRightMainPanelMode: (mode, workspaceId) => {
+    if (!workspaceId) return;
+    const state = get();
+    const wsState =
+      state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+    const isCurrentlyActive = wsState.rightMainPanelMode === mode;
+
+    set({
+      workspacePanelStates: {
+        ...state.workspacePanelStates,
+        [workspaceId]: {
+          ...wsState,
+          rightMainPanelMode: isCurrentlyActive ? null : mode,
+        },
       },
+      isLeftSidebarVisible: isCurrentlyActive
+        ? true
+        : isWideScreen()
+          ? state.isLeftSidebarVisible
+          : false,
+    });
+  },
 
-      triggerPreviewRefresh: () =>
-        set((s) => ({ previewRefreshKey: s.previewRefreshKey + 1 })),
-
-      // Workspace-specific panel state actions
-      getWorkspacePanelState: (workspaceId) => {
-        const state = get();
-        return (
-          state.workspacePanelStates[workspaceId] ??
-          DEFAULT_WORKSPACE_PANEL_STATE
-        );
+  setRightMainPanelMode: (mode, workspaceId) => {
+    if (!workspaceId) return;
+    const state = get();
+    const wsState =
+      state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+    set({
+      workspacePanelStates: {
+        ...state.workspacePanelStates,
+        [workspaceId]: {
+          ...wsState,
+          rightMainPanelMode: mode,
+        },
       },
-
-      setWorkspacePanelState: (workspaceId, panelState) => {
-        const state = get();
-        const currentWsState =
-          state.workspacePanelStates[workspaceId] ??
-          DEFAULT_WORKSPACE_PANEL_STATE;
-        set({
-          workspacePanelStates: {
-            ...state.workspacePanelStates,
-            [workspaceId]: {
-              ...currentWsState,
-              ...panelState,
-            },
-          },
-        });
-      },
-    }),
-    {
-      name: 'ui-preferences',
-      partialize: (state) => ({
-        // UI preferences (all persisted)
-        repoActions: state.repoActions,
-        expanded: state.expanded,
-        contextBarPosition: state.contextBarPosition,
-        paneSizes: state.paneSizes,
-        collapsedPaths: state.collapsedPaths,
-        // Global layout (persist sidebar visibility)
-        isLeftSidebarVisible: state.isLeftSidebarVisible,
-        isRightSidebarVisible: state.isRightSidebarVisible,
-        isTerminalVisible: state.isTerminalVisible,
-        // Workspace-specific panel state (persisted)
-        workspacePanelStates: state.workspacePanelStates,
+      ...(mode !== null && {
+        isLeftSidebarVisible: isWideScreen()
+          ? state.isLeftSidebarVisible
+          : false,
       }),
-    }
-  )
-);
+    });
+  },
+
+  setLeftSidebarVisible: (value) => set({ isLeftSidebarVisible: value }),
+
+  setLeftMainPanelVisible: (value, workspaceId) => {
+    if (!workspaceId) return;
+    const state = get();
+    const wsState =
+      state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+    set({
+      workspacePanelStates: {
+        ...state.workspacePanelStates,
+        [workspaceId]: {
+          ...wsState,
+          isLeftMainPanelVisible: value,
+        },
+      },
+    });
+  },
+
+  triggerPreviewRefresh: () =>
+    set((s) => ({ previewRefreshKey: s.previewRefreshKey + 1 })),
+
+  // Workspace-specific panel state actions
+  getWorkspacePanelState: (workspaceId) => {
+    const state = get();
+    return (
+      state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE
+    );
+  },
+
+  setWorkspacePanelState: (workspaceId, panelState) => {
+    const state = get();
+    const currentWsState =
+      state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+    set({
+      workspacePanelStates: {
+        ...state.workspacePanelStates,
+        [workspaceId]: {
+          ...currentWsState,
+          ...panelState,
+        },
+      },
+    });
+  },
+}));
 
 // Hook for repo action preference
 export function useRepoAction(
