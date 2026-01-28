@@ -4,6 +4,7 @@ import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useKanbanFilters, PRIORITY_ORDER } from '@/hooks/useKanbanFilters';
+import { bulkUpdateIssues, type BulkUpdateIssueItem } from '@/lib/remoteApi';
 import { PlusIcon } from '@phosphor-icons/react';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import {
@@ -43,7 +44,6 @@ export function KanbanContainer() {
     tags,
     issueAssignees,
     issueTags,
-    updateIssue,
     insertStatus,
     updateStatus,
     removeStatus,
@@ -86,6 +86,9 @@ export function KanbanContainer() {
   // Reset tab selection when navigating between projects
   const prevProjectIdRef = useRef<string | null>(null);
 
+  // Track when drag-drop sync is in progress to prevent flicker
+  const isSyncingRef = useRef(false);
+
   useEffect(() => {
     if (
       prevProjectIdRef.current !== null &&
@@ -108,6 +111,15 @@ export function KanbanContainer() {
     () => sortedStatuses.filter((s) => !s.hidden),
     [sortedStatuses]
   );
+
+  // Map status ID to 1-based column index for sort_order calculation
+  const statusColumnIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    visibleStatuses.forEach((status, index) => {
+      map.set(status.id, index + 1);
+    });
+    return map;
+  }, [visibleStatuses]);
 
   const hiddenStatuses = useMemo(
     () => sortedStatuses.filter((s) => s.hidden),
@@ -138,6 +150,11 @@ export function KanbanContainer() {
 
   // Sync items from filtered issues when they change
   useEffect(() => {
+    // Skip rebuild during drag-drop sync to prevent flicker
+    if (isSyncingRef.current) {
+      return;
+    }
+
     const { sortField, sortDirection } = kanbanFilters;
     const grouped: Record<string, string[]> = {};
 
@@ -204,10 +221,20 @@ export function KanbanContainer() {
     return map;
   }, [issueAssignees, membersWithProfilesById]);
 
+  // Calculate sort_order based on column index and issue position
+  // Formula: 1000 * [COLUMN_INDEX] + [ISSUE_INDEX] (both 1-based)
+  const calculateSortOrder = useCallback(
+    (statusId: string, issueIndex: number): number => {
+      const columnIndex = statusColumnIndexMap.get(statusId) ?? 1;
+      return 1000 * columnIndex + (issueIndex + 1);
+    },
+    [statusColumnIndexMap]
+  );
+
   // Simple onDragEnd handler - the library handles all visual movement
   const handleDragEnd = useCallback(
     (result: DropResult) => {
-      const { source, destination, draggableId } = result;
+      const { source, destination } = result;
 
       // Dropped outside a valid droppable
       if (!destination) return;
@@ -230,52 +257,73 @@ export function KanbanContainer() {
 
       const sourceId = source.droppableId;
       const destId = destination.droppableId;
+      const isCrossColumn = sourceId !== destId;
 
-      // Update local state
+      // Update local state and capture new items for bulk update
+      let newItems: Record<string, string[]> = {};
       setItems((prev) => {
         const sourceItems = [...(prev[sourceId] ?? [])];
         const [moved] = sourceItems.splice(source.index, 1);
 
-        if (sourceId === destId) {
+        if (!isCrossColumn) {
           // Within-column reorder
           sourceItems.splice(destination.index, 0, moved);
-          return { ...prev, [sourceId]: sourceItems };
+          newItems = { ...prev, [sourceId]: sourceItems };
         } else {
           // Cross-column move
           const destItems = [...(prev[destId] ?? [])];
           destItems.splice(destination.index, 0, moved);
-          return {
+          newItems = {
             ...prev,
             [sourceId]: sourceItems,
             [destId]: destItems,
           };
         }
+        return newItems;
       });
 
-      // Calculate fractional sort_order from neighbors
-      const destIssues = issues
-        .filter((i) => i.status_id === destId && i.id !== draggableId)
-        .sort((a, b) => a.sort_order - b.sort_order);
+      // Build bulk updates for all issues in affected columns
+      const updates: BulkUpdateIssueItem[] = [];
 
-      let newSortOrder: number;
-      if (destIssues.length === 0) {
-        newSortOrder = 1000;
-      } else if (destination.index === 0) {
-        newSortOrder = destIssues[0].sort_order / 2;
-      } else if (destination.index >= destIssues.length) {
-        newSortOrder = destIssues[destIssues.length - 1].sort_order + 1000;
-      } else {
-        const before = destIssues[destination.index - 1].sort_order;
-        const after = destIssues[destination.index].sort_order;
-        newSortOrder = (before + after) / 2;
+      // Always update destination column
+      const destIssueIds = newItems[destId] ?? [];
+      destIssueIds.forEach((issueId, index) => {
+        updates.push({
+          id: issueId,
+          changes: {
+            status_id: destId,
+            sort_order: calculateSortOrder(destId, index),
+          },
+        });
+      });
+
+      // Update source column if cross-column move
+      if (isCrossColumn) {
+        const sourceIssueIds = newItems[sourceId] ?? [];
+        sourceIssueIds.forEach((issueId, index) => {
+          updates.push({
+            id: issueId,
+            changes: {
+              sort_order: calculateSortOrder(sourceId, index),
+            },
+          });
+        });
       }
 
-      updateIssue(draggableId, {
-        status_id: destId,
-        sort_order: newSortOrder,
-      });
+      // Perform bulk update
+      isSyncingRef.current = true;
+      bulkUpdateIssues(updates)
+        .catch((err) => {
+          console.error('Failed to bulk update sort order:', err);
+        })
+        .finally(() => {
+          // Delay clearing flag to let Electric sync complete
+          setTimeout(() => {
+            isSyncingRef.current = false;
+          }, 500);
+        });
     },
-    [updateIssue, issues, kanbanFilters.sortField]
+    [kanbanFilters.sortField, calculateSortOrder]
   );
 
   const handleCardClick = useCallback(
