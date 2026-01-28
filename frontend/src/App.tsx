@@ -202,8 +202,12 @@ function AppContent() {
               />
               <Route path="/workspaces/:workspaceId" element={<Workspaces />} />
 
-              {/* Projects route */}
+              {/* Projects routes */}
               <Route path="/projects/:projectId" element={<ProjectKanban />} />
+              <Route
+                path="/projects/:projectId/issues/:issueId"
+                element={<ProjectKanban />}
+              />
             </Route>
           </SentryRoutes>
         </SearchProvider>

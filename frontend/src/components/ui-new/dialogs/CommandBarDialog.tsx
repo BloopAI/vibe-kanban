@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
@@ -8,7 +8,6 @@ import { CommandDialog } from '@/components/ui-new/primitives/Command';
 import { CommandBar } from '@/components/ui-new/primitives/CommandBar';
 import { useActions } from '@/contexts/ActionsContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { attemptKeys } from '@/hooks/useAttempt';
 import type { Issue } from 'shared/remote-types';
 import type {
@@ -27,6 +26,7 @@ import {
   ProjectProvider,
   useProjectContext,
 } from '@/contexts/remote/ProjectContext';
+import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 
 /** Options for starting in status selection mode */
 export interface PendingStatusSelection {
@@ -116,18 +116,17 @@ function CommandBarContent({
   const { workspaceId: contextWorkspaceId, repos } = useWorkspaceContext();
   const visibilityContext = useActionVisibilityContext();
 
-  // Get issue context from props, route params, or store
-  const { projectId: routeProjectId } = useParams<{ projectId: string }>();
-  const selectedKanbanIssueId = useUiPreferencesStore(
-    (s) => s.selectedKanbanIssueId
-  );
+  // Get issue context from props or route params (URL is single source of truth)
+  const { projectId: routeProjectId, issueId: routeIssueId } = useParams<{
+    projectId: string;
+    issueId?: string;
+  }>();
 
   // Effective issue context
   const effectiveProjectId = propProjectId ?? routeProjectId;
   const effectiveIssueIds = useMemo(
-    () =>
-      propIssueIds ?? (selectedKanbanIssueId ? [selectedKanbanIssueId] : []),
-    [propIssueIds, selectedKanbanIssueId]
+    () => propIssueIds ?? (routeIssueId ? [routeIssueId] : []),
+    [propIssueIds, routeIssueId]
   );
 
   const effectiveWorkspaceId = workspaceId ?? contextWorkspaceId;
@@ -352,14 +351,23 @@ function CommandBarWithStatuses(
   >
 ) {
   const { statuses, issues, updateIssue } = useProjectContext();
-  const openKanbanIssuePanel = useUiPreferencesStore(
-    (s) => s.openKanbanIssuePanel
-  );
-  const setKanbanCreateDefaultStatusId = useUiPreferencesStore(
-    (s) => s.setKanbanCreateDefaultStatusId
-  );
-  const setKanbanCreateDefaultPriority = useUiPreferencesStore(
-    (s) => s.setKanbanCreateDefaultPriority
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId: string }>();
+
+  // Update URL params for create mode defaults
+  const updateCreateDefaults = useCallback(
+    (updates: { statusId?: string; priority?: string }) => {
+      const newParams = new URLSearchParams(searchParams);
+      if (updates.statusId !== undefined) {
+        newParams.set('statusId', updates.statusId);
+      }
+      if (updates.priority !== undefined) {
+        newParams.set('priority', updates.priority);
+      }
+      setSearchParams(newParams, { replace: true });
+    },
+    [searchParams, setSearchParams]
   );
   const kanbanViewMode = useUiPreferencesStore((s) => s.kanbanViewMode);
   const listViewStatusFilter = useUiPreferencesStore(
@@ -459,8 +467,8 @@ function CommandBarWithStatuses(
     (issueIds: string[], statusId: string) => {
       // Check if this is for create mode (empty issueIds array with isCreateMode flag)
       if (props.pendingStatusSelection?.isCreateMode) {
-        // Update the default status for the issue being created
-        setKanbanCreateDefaultStatusId(statusId);
+        // Update the URL params for the issue being created
+        updateCreateDefaults({ statusId });
         return;
       }
 
@@ -472,7 +480,7 @@ function CommandBarWithStatuses(
     [
       updateIssue,
       props.pendingStatusSelection?.isCreateMode,
-      setKanbanCreateDefaultStatusId,
+      updateCreateDefaults,
     ]
   );
 
@@ -480,8 +488,8 @@ function CommandBarWithStatuses(
     (issueIds: string[], priority: 'urgent' | 'high' | 'medium' | 'low') => {
       // Check if this is for create mode (empty issueIds array with isCreateMode flag)
       if (props.pendingPrioritySelection?.isCreateMode) {
-        // Update the default priority for the issue being created
-        setKanbanCreateDefaultPriority(priority);
+        // Update the URL params for the issue being created
+        updateCreateDefaults({ priority });
         return;
       }
 
@@ -493,7 +501,7 @@ function CommandBarWithStatuses(
     [
       updateIssue,
       props.pendingPrioritySelection?.isCreateMode,
-      setKanbanCreateDefaultPriority,
+      updateCreateDefaults,
     ]
   );
 
@@ -513,6 +521,8 @@ function CommandBarWithStatuses(
 
   const handleCreateSubIssue = useCallback(
     (parentIssueId: string) => {
+      if (!projectId) return;
+
       // Compute default status based on current view/tab (same logic as KanbanContainer)
       let defaultStatusId: string | null = null;
       if (kanbanViewMode === 'kanban') {
@@ -527,11 +537,15 @@ function CommandBarWithStatuses(
           [...statuses].sort((a, b) => a.sort_order - b.sort_order)[0]?.id ??
           null;
       }
-      // Open issue creation panel with parent issue and default status pre-set
-      openKanbanIssuePanel(null, true, defaultStatusId, parentIssueId);
+      // Navigate to create mode with parent issue and default status pre-set
+      const params = new URLSearchParams({ mode: 'create' });
+      if (defaultStatusId) params.set('statusId', defaultStatusId);
+      params.set('parentIssueId', parentIssueId);
+      navigate(`/projects/${projectId}?${params.toString()}`);
     },
     [
-      openKanbanIssuePanel,
+      projectId,
+      navigate,
       kanbanViewMode,
       listViewStatusFilter,
       visibleStatuses,

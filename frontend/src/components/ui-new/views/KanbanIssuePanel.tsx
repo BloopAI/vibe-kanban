@@ -1,11 +1,12 @@
 import { cn } from '@/lib/utils';
-import { XIcon } from '@phosphor-icons/react';
+import { XIcon, LinkIcon } from '@phosphor-icons/react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type { IssuePriority, ProjectStatus, Tag } from 'shared/remote-types';
 import { IssuePropertyRow } from '@/components/ui-new/views/IssuePropertyRow';
 import { IssueTagsRow } from '@/components/ui-new/views/IssueTagsRow';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { Toggle } from '@/components/ui-new/primitives/Toggle';
+import { CopyButton } from '@/components/ui-new/containers/CopyButton';
 import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/IssueCommentsSectionContainer';
 import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/IssueSubIssuesSectionContainer';
 import { IssueWorkspacesSectionContainer } from '@/components/ui-new/containers/IssueWorkspacesSectionContainer';
@@ -66,6 +67,9 @@ export interface KanbanIssuePanelProps {
 
   // Ref for title input (for auto-focus from container)
   titleInputRef?: React.RefObject<HTMLInputElement>;
+
+  // Copy link callback (edit mode only)
+  onCopyLink?: () => void;
 }
 
 export function KanbanIssuePanel({
@@ -86,6 +90,7 @@ export function KanbanIssuePanel({
   isSubmitting,
   descriptionSaveStatus,
   titleInputRef,
+  onCopyLink,
 }: KanbanIssuePanelProps) {
   const isCreateMode = mode === 'create';
 
@@ -109,9 +114,14 @@ export function KanbanIssuePanel({
     >
       {/* Header */}
       <div className="flex items-center justify-between px-base py-half border-b shrink-0">
-        <span className="font-ibm-plex-mono text-base text-normal">
-          {displayId}
-        </span>
+        <div className="flex items-center gap-half">
+          <span className="font-ibm-plex-mono text-base text-normal">
+            {displayId}
+          </span>
+          {!isCreateMode && onCopyLink && (
+            <CopyButton onCopy={onCopyLink} disabled={false} icon={LinkIcon} />
+          )}
+        </div>
         <button
           type="button"
           onClick={onClose}
