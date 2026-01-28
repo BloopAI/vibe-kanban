@@ -240,6 +240,7 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
           { type: 'action', action: Actions.ChangeNewIssueAssignees },
           { type: 'action', action: Actions.MakeSubIssueOf },
           { type: 'action', action: Actions.AddSubIssue },
+          { type: 'action', action: Actions.LinkWorkspace },
         ],
       },
     ],

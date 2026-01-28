@@ -1,8 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
+import { PlusIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
+import { useActions } from '@/contexts/ActionsContext';
 import type { WorkspaceWithStats } from '@/components/ui-new/views/IssueWorkspaceCard';
 import { IssueWorkspacesSection } from '@/components/ui-new/views/IssueWorkspacesSection';
+import type { SectionAction } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
 
 interface IssueWorkspacesSectionContainerProps {
   issueId: string;
@@ -15,6 +19,9 @@ interface IssueWorkspacesSectionContainerProps {
 export function IssueWorkspacesSectionContainer({
   issueId,
 }: IssueWorkspacesSectionContainerProps) {
+  const { projectId } = useParams<{ projectId: string }>();
+  const { openWorkspaceSelection } = useActions();
+
   const {
     getWorkspacesForIssue,
     pullRequests,
@@ -56,10 +63,29 @@ export function IssueWorkspacesSectionContainer({
 
   const isLoading = projectLoading || orgLoading;
 
+  // Handle clicking '+' to link a workspace
+  const handleAddWorkspace = useCallback(() => {
+    if (projectId) {
+      openWorkspaceSelection(projectId, issueId);
+    }
+  }, [projectId, issueId, openWorkspaceSelection]);
+
+  // Actions for the section header
+  const actions: SectionAction[] = useMemo(
+    () => [
+      {
+        icon: PlusIcon,
+        onClick: handleAddWorkspace,
+      },
+    ],
+    [handleAddWorkspace]
+  );
+
   return (
     <IssueWorkspacesSection
       workspaces={workspacesWithStats}
       isLoading={isLoading}
+      actions={actions}
     />
   );
 }

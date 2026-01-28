@@ -255,10 +255,15 @@ function CommandBarContent({
     ]
   );
 
-  // Restore focus when dialog closes
+  // Restore focus when dialog closes (unless another dialog has taken focus)
   const handleCloseAutoFocus = useCallback((event: Event) => {
     event.preventDefault();
-    previousFocusRef.current?.focus();
+    // Don't restore focus if another dialog has taken over (e.g., action opened a new dialog)
+    const activeElement = document.activeElement;
+    const isInDialog = activeElement?.closest('[role="dialog"]');
+    if (!isInDialog) {
+      previousFocusRef.current?.focus();
+    }
   }, []);
 
   return (
