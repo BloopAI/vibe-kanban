@@ -147,14 +147,9 @@ type State = {
   isLeftSidebarVisible: boolean;
   isRightSidebarVisible: boolean;
   isTerminalVisible: boolean;
-  isKanbanRightPanelVisible: boolean;
-  selectedKanbanIssueId: string | null;
-  kanbanCreateMode: boolean;
-  kanbanCreateDefaultStatusId: string | null;
-  kanbanCreateDefaultPriority: IssuePriority | null;
-  kanbanCreateDefaultAssigneeIds: string[] | null;
-  kanbanCreateDefaultParentIssueId: string | null;
   previewRefreshKey: number;
+  // Note: Kanban issue panel state (selectedKanbanIssueId, createMode, etc.)
+  // is now derived from URL via useKanbanNavigation hook
 
   // Workspace-specific panel state
   workspacePanelStates: Record<string, WorkspacePanelState>;
@@ -183,20 +178,8 @@ type State = {
   toggleRightSidebar: () => void;
   toggleTerminal: () => void;
   setTerminalVisible: (value: boolean) => void;
-  setKanbanRightPanelVisible: (value: boolean) => void;
-  setSelectedKanbanIssueId: (id: string | null) => void;
-  setKanbanCreateMode: (value: boolean) => void;
-  setKanbanCreateDefaultStatusId: (statusId: string | null) => void;
-  setKanbanCreateDefaultPriority: (priority: IssuePriority | null) => void;
-  setKanbanCreateDefaultAssigneeIds: (assigneeIds: string[] | null) => void;
-  setKanbanCreateDefaultParentIssueId: (parentIssueId: string | null) => void;
-  openKanbanIssuePanel: (
-    issueId: string | null,
-    createMode?: boolean,
-    defaultStatusId?: string | null,
-    defaultParentIssueId?: string | null
-  ) => void;
-  closeKanbanIssuePanel: () => void;
+  // Note: Kanban panel actions (openKanbanIssuePanel, closeKanbanIssuePanel, etc.)
+  // are now handled by navigation via useKanbanNavigation hook
   toggleRightMainPanelMode: (
     mode: RightMainPanelMode,
     workspaceId?: string
@@ -244,13 +227,6 @@ export const useUiPreferencesStore = create<State>()(
       isLeftSidebarVisible: true,
       isRightSidebarVisible: true,
       isTerminalVisible: true,
-      isKanbanRightPanelVisible: false,
-      selectedKanbanIssueId: null,
-      kanbanCreateMode: false,
-      kanbanCreateDefaultStatusId: null,
-      kanbanCreateDefaultPriority: null,
-      kanbanCreateDefaultAssigneeIds: null,
-      kanbanCreateDefaultParentIssueId: null,
       previewRefreshKey: 0,
 
       // Workspace-specific panel state
@@ -327,52 +303,6 @@ export const useUiPreferencesStore = create<State>()(
         set((s) => ({ isTerminalVisible: !s.isTerminalVisible })),
 
       setTerminalVisible: (value) => set({ isTerminalVisible: value }),
-
-      setKanbanRightPanelVisible: (value) =>
-        set({ isKanbanRightPanelVisible: value }),
-
-      setSelectedKanbanIssueId: (id) => set({ selectedKanbanIssueId: id }),
-
-      setKanbanCreateMode: (value) => set({ kanbanCreateMode: value }),
-
-      setKanbanCreateDefaultStatusId: (statusId) =>
-        set({ kanbanCreateDefaultStatusId: statusId }),
-
-      setKanbanCreateDefaultPriority: (priority) =>
-        set({ kanbanCreateDefaultPriority: priority }),
-
-      setKanbanCreateDefaultAssigneeIds: (assigneeIds) =>
-        set({ kanbanCreateDefaultAssigneeIds: assigneeIds }),
-
-      setKanbanCreateDefaultParentIssueId: (parentIssueId) =>
-        set({ kanbanCreateDefaultParentIssueId: parentIssueId }),
-
-      openKanbanIssuePanel: (
-        issueId,
-        createMode = false,
-        defaultStatusId = null,
-        defaultParentIssueId = null
-      ) =>
-        set({
-          selectedKanbanIssueId: issueId,
-          kanbanCreateMode: createMode,
-          kanbanCreateDefaultStatusId: defaultStatusId,
-          kanbanCreateDefaultPriority: null,
-          kanbanCreateDefaultAssigneeIds: null,
-          kanbanCreateDefaultParentIssueId: defaultParentIssueId,
-          isKanbanRightPanelVisible: true,
-        }),
-
-      closeKanbanIssuePanel: () =>
-        set({
-          selectedKanbanIssueId: null,
-          kanbanCreateMode: false,
-          kanbanCreateDefaultStatusId: null,
-          kanbanCreateDefaultPriority: null,
-          kanbanCreateDefaultAssigneeIds: null,
-          kanbanCreateDefaultParentIssueId: null,
-          isKanbanRightPanelVisible: false,
-        }),
 
       toggleRightMainPanelMode: (mode, workspaceId) => {
         if (!workspaceId) return;
@@ -520,9 +450,7 @@ export const useUiPreferencesStore = create<State>()(
         isLeftSidebarVisible: state.isLeftSidebarVisible,
         isRightSidebarVisible: state.isRightSidebarVisible,
         isTerminalVisible: state.isTerminalVisible,
-        isKanbanRightPanelVisible: state.isKanbanRightPanelVisible,
-        selectedKanbanIssueId: state.selectedKanbanIssueId,
-        kanbanCreateMode: state.kanbanCreateMode,
+        // Note: Kanban panel state is derived from URL via useKanbanNavigation
         // Workspace-specific panel state (persisted)
         workspacePanelStates: state.workspacePanelStates,
         // Kanban filters (persisted)

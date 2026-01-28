@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import {
   useUiPreferencesStore,
   useWorkspacePanelState,
@@ -36,10 +36,12 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
   const diffPaths = useDiffViewStore((s) => s.diffPaths);
   const diffViewMode = useDiffViewMode();
   const expanded = useUiPreferencesStore((s) => s.expanded);
-  const selectedKanbanIssueId = useUiPreferencesStore(
-    (s) => s.selectedKanbanIssueId
-  );
-  const kanbanCreateMode = useUiPreferencesStore((s) => s.kanbanCreateMode);
+
+  // Derive kanban state from URL (URL is single source of truth)
+  const { issueId: selectedKanbanIssueId } = useParams<{ issueId?: string }>();
+  const [searchParams] = useSearchParams();
+  const kanbanCreateMode = searchParams.get('mode') === 'create';
+
   // Derive layoutMode from current route instead of persisted state
   const location = useLocation();
   const layoutMode: LayoutMode = location.pathname.startsWith('/projects')

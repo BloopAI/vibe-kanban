@@ -3,9 +3,10 @@ import {
   useContext,
   useCallback,
   useMemo,
+  useState,
   type ReactNode,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
@@ -21,7 +22,6 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useDevServer } from '@/hooks/useDevServer';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { useLogStream } from '@/hooks/useLogStream';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 
 interface ActionsContextValue {
   // Execute an action with optional workspaceId and repoId/projectId
@@ -67,6 +67,9 @@ interface ActionsContextValue {
   // Open workspace selection dialog to link a workspace to an issue
   openWorkspaceSelection: (projectId: string, issueId: string) => Promise<void>;
 
+  // Set default status for issue creation based on current kanban tab
+  setDefaultCreateStatusId: (statusId: string | undefined) => void;
+
   // The executor context (for components that need direct access)
   executorContext: ActionExecutorContext;
 }
@@ -79,6 +82,7 @@ interface ActionsProviderProps {
 
 export function ActionsProvider({ children }: ActionsProviderProps) {
   const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId?: string }>();
   const queryClient = useQueryClient();
   // Get workspace context (ActionsProvider is nested inside WorkspaceProvider)
   const { selectWorkspace, activeWorkspaces, workspaceId, workspace } =
@@ -87,12 +91,20 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Get dev server state
   const { start, stop, runningDevServers } = useDevServer(workspaceId);
 
-  // Get kanban panel actions from store
-  const openKanbanIssuePanel = useUiPreferencesStore(
-    (s) => s.openKanbanIssuePanel
-  );
-  const setKanbanCreateDefaultStatusId = useUiPreferencesStore(
-    (s) => s.setKanbanCreateDefaultStatusId
+  // Default status for issue creation based on current kanban tab
+  const [defaultCreateStatusId, setDefaultCreateStatusId] = useState<
+    string | undefined
+  >();
+
+  // Navigate to create issue mode (URL-based navigation)
+  const navigateToCreateIssue = useCallback(
+    (options?: { statusId?: string }) => {
+      if (!projectId) return;
+      const params = new URLSearchParams({ mode: 'create' });
+      if (options?.statusId) params.set('statusId', options.statusId);
+      navigate(`/projects/${projectId}?${params.toString()}`);
+    },
+    [navigate, projectId]
   );
 
   // Get logs panel state
@@ -198,8 +210,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openAssigneeSelection,
       openSubIssueSelection,
       openWorkspaceSelection,
-      openKanbanIssuePanel,
-      setKanbanCreateDefaultStatusId,
+      navigateToCreateIssue,
+      defaultCreateStatusId,
     }),
     [
       navigate,
@@ -218,8 +230,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openAssigneeSelection,
       openSubIssueSelection,
       openWorkspaceSelection,
-      openKanbanIssuePanel,
-      setKanbanCreateDefaultStatusId,
+      navigateToCreateIssue,
+      defaultCreateStatusId,
     ]
   );
 
@@ -306,6 +318,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openAssigneeSelection,
       openSubIssueSelection,
       openWorkspaceSelection,
+      setDefaultCreateStatusId,
       executorContext,
     }),
     [
