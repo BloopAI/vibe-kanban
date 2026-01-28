@@ -467,11 +467,14 @@ impl RemoteClient {
         invitation_id: Uuid,
     ) -> Result<(), RemoteClientError> {
         let body = RevokeInvitationRequest { invitation_id };
-        self.post_authed(
+        self.send(
+            reqwest::Method::POST,
             &format!("/v1/organizations/{org_id}/invitations/revoke"),
+            true,
             Some(&body),
         )
-        .await
+        .await?;
+        Ok(())
     }
 
     /// Accepts an invitation.
