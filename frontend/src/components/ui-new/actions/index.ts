@@ -879,7 +879,11 @@ export const Actions = {
           repoId,
         });
 
-        if (result.action === 'resolved' || result.action === 'continued' || result.action === 'aborted') {
+        if (
+          result.action === 'resolved' ||
+          result.action === 'continued' ||
+          result.action === 'aborted'
+        ) {
           invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
         }
         return;

@@ -210,7 +210,9 @@ const ResolveConflictsDialogImpl =
             }),
           ]);
 
-          modal.resolve({ action: 'continued' } as ResolveConflictsDialogResult);
+          modal.resolve({
+            action: 'continued',
+          } as ResolveConflictsDialogResult);
           modal.hide();
         } catch (err) {
           console.error('Failed to continue operation:', err);
@@ -293,9 +295,7 @@ const ResolveConflictsDialogImpl =
                 </DialogDescription>
               </DialogHeader>
 
-              {error && (
-                <div className="text-sm text-destructive">{error}</div>
-              )}
+              {error && <div className="text-sm text-destructive">{error}</div>}
 
               <DialogFooter className="sm:!justify-between">
                 <Button
