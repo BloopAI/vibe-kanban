@@ -6751,7 +6751,6 @@ dependencies = [
  "once_cell",
  "os_info",
  "regex",
- "remote",
  "reqwest",
  "rust-embed",
  "secrecy",
