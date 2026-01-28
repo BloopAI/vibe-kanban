@@ -1,20 +1,25 @@
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
-import { GitPullRequestIcon, FileIcon } from '@phosphor-icons/react';
+import { GitPullRequestIcon } from '@phosphor-icons/react';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 import type { OrganizationMemberWithProfile } from 'shared/types';
+
+export interface WorkspacePr {
+  number: number;
+  url: string;
+  status: 'open' | 'merged' | 'closed';
+}
 
 export interface WorkspaceWithStats {
   id: string;
   localWorkspaceId: string | null;
+  archived: boolean;
   filesChanged: number;
   linesAdded: number;
   linesRemoved: number;
-  prNumber?: number;
-  prUrl?: string;
-  prStatus?: 'open' | 'merged' | 'closed' | null;
+  prs: WorkspacePr[];
   owner: OrganizationMemberWithProfile | null;
-  createdAt: string;
+  updatedAt: string;
 }
 
 export interface IssueWorkspaceCardProps {
@@ -29,8 +34,7 @@ export function IssueWorkspaceCard({
   className,
 }: IssueWorkspaceCardProps) {
   const { t } = useTranslation('common');
-  const timeAgo = getTimeAgo(workspace.createdAt);
-  const displayId = workspace.localWorkspaceId ?? workspace.id.slice(0, 8);
+  const timeAgo = getTimeAgo(workspace.updatedAt);
 
   return (
     <div
@@ -53,74 +57,77 @@ export function IssueWorkspaceCard({
           : undefined
       }
     >
-      {/* Row 1: Workspace ID */}
-      <div className="flex items-center gap-half">
-        <span className="font-ibm-plex-mono text-sm text-high font-medium">
-          {displayId}
+      {/* Row 1: Status badge (left), Owner avatar (right) */}
+      <div className="flex items-center justify-between">
+        <span
+          className={cn(
+            'px-1.5 py-0.5 rounded text-xs font-medium',
+            workspace.archived
+              ? 'bg-secondary text-low'
+              : 'bg-success/10 text-success'
+          )}
+        >
+          {workspace.archived
+            ? t('workspaces.archived')
+            : t('workspaces.active')}
         </span>
+
+        {workspace.owner && (
+          <UserAvatar
+            user={workspace.owner}
+            className="h-5 w-5 text-[10px] border-2 border-panel"
+          />
+        )}
       </div>
 
-      {/* Row 2: Files, Stats, PR Link, Avatar */}
+      {/* Row 2: Stats (left), PR buttons (right) */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-base text-sm text-low">
-          {/* Time ago + Files */}
-          <span className="flex items-center gap-half">
-            {timeAgo}
-            {workspace.filesChanged > 0 && (
-              <>
-                <span className="text-low/50">·</span>
-                <FileIcon className="size-icon-2xs" weight="bold" />
-                <span>
-                  {t('kanban.filesCount', { count: workspace.filesChanged })}
-                </span>
-              </>
-            )}
-          </span>
-
-          {/* Diff stats */}
-          {(workspace.linesAdded > 0 || workspace.linesRemoved > 0) && (
-            <span className="flex items-center gap-half">
+        <div className="flex items-center gap-half text-sm text-low">
+          <span>{timeAgo}</span>
+          {workspace.filesChanged > 0 && (
+            <>
               <span className="text-low/50">·</span>
-              {workspace.linesAdded > 0 && (
-                <span className="text-success">+{workspace.linesAdded}</span>
-              )}
-              {workspace.linesRemoved > 0 && (
-                <span className="text-error">-{workspace.linesRemoved}</span>
-              )}
-            </span>
+              <span>{workspace.filesChanged} files</span>
+            </>
+          )}
+          {workspace.linesAdded > 0 && (
+            <>
+              <span className="text-low/50">·</span>
+              <span className="text-success">+{workspace.linesAdded}</span>
+            </>
+          )}
+          {workspace.linesRemoved > 0 && (
+            <>
+              <span className="text-low/50">·</span>
+              <span className="text-error">-{workspace.linesRemoved}</span>
+            </>
           )}
         </div>
 
-        <div className="flex items-center gap-base">
-          {/* PR Link */}
-          {workspace.prNumber && workspace.prUrl ? (
-            <a
-              href={workspace.prUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className={cn(
-                'flex items-center gap-half text-sm transition-colors',
-                workspace.prStatus === 'merged'
-                  ? 'text-success hover:text-success/80'
-                  : workspace.prStatus === 'closed'
-                    ? 'text-error hover:text-error/80'
-                    : 'text-brand hover:text-brand-hover'
-              )}
-            >
-              <GitPullRequestIcon className="size-icon-xs" weight="bold" />
-              <span>#{workspace.prNumber.toString().padStart(3, '0')}</span>
-            </a>
+        <div className="flex items-center gap-half">
+          {workspace.prs.length > 0 ? (
+            workspace.prs.map((pr) => (
+              <a
+                key={pr.number}
+                href={pr.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className={cn(
+                  'flex items-center gap-half px-1.5 py-0.5 rounded text-xs font-medium transition-colors',
+                  pr.status === 'merged'
+                    ? 'bg-success/10 text-success hover:bg-success/20'
+                    : pr.status === 'closed'
+                      ? 'bg-error/10 text-error hover:bg-error/20'
+                      : 'bg-brand/10 text-brand hover:bg-brand/20'
+                )}
+              >
+                <GitPullRequestIcon className="size-icon-2xs" weight="bold" />
+                <span>#{pr.number}</span>
+              </a>
+            ))
           ) : (
-            <span className="text-sm text-low">{t('kanban.noPrCreated')}</span>
-          )}
-
-          {/* Owner Avatar */}
-          {workspace.owner && (
-            <UserAvatar
-              user={workspace.owner}
-              className="h-5 w-5 text-[10px] border-2 border-panel"
-            />
+            <span className="text-xs text-low">{t('kanban.noPrCreated')}</span>
           )}
         </div>
       </div>
