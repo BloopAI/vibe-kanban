@@ -20,7 +20,7 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 use ts_rs::TS;
-use workspace_git::GitService;
+use git::GitService;
 
 use super::file_ranker::{FileRanker, FileStats};
 

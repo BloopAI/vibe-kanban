@@ -50,7 +50,7 @@ use utils::{
     text::{git_branch_id, short_uuid},
 };
 use uuid::Uuid;
-use workspace_git::{GitService, GitServiceError};
+use git::{GitService, GitServiceError};
 
 use crate::services::{
     notification::NotificationService, workspace_manager::WorkspaceError as WorkspaceManagerError,

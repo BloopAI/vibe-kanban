@@ -58,7 +58,7 @@ use utils::{
     text::{git_branch_id, short_uuid, truncate_to_char_boundary},
 };
 use uuid::Uuid;
-use workspace_git::GitService;
+use git::GitService;
 
 use crate::{command, copy};
 

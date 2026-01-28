@@ -5,7 +5,7 @@ use sqlx::SqlitePool;
 use thiserror::Error;
 use utils::path::expand_tilde;
 use uuid::Uuid;
-use workspace_git::{GitService, GitServiceError};
+use git::{GitService, GitServiceError};
 
 #[derive(Debug, Error)]
 pub enum RepoError {

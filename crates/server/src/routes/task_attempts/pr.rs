@@ -31,7 +31,7 @@ use services::services::{
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
-use workspace_git::{GitCliError, GitRemote, GitServiceError};
+use git::{GitCliError, GitRemote, GitServiceError};
 
 use crate::{DeploymentImpl, error::ApiError};
 

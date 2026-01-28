@@ -28,7 +28,7 @@ use utils::{
     msg_store::MsgStore,
 };
 use uuid::Uuid;
-use workspace_git::GitService;
+use git::GitService;
 
 use crate::{container::LocalContainerService, pty::PtyService};
 mod command;

@@ -8,7 +8,7 @@ use deployment::Deployment;
 use services::services::container::ContainerService;
 use sqlx::SqlitePool;
 use uuid::Uuid;
-use workspace_git::WorktreeResetOptions;
+use git::WorktreeResetOptions;
 
 use crate::{DeploymentImpl, error::ApiError};
 

@@ -11,7 +11,7 @@ use git2::{Error as GitError, Repository};
 use thiserror::Error;
 use tracing::{debug, info, trace};
 use utils::{path::normalize_macos_private_alias, shell::resolve_executable_path};
-use workspace_git::{GitService, GitServiceError};
+use git::{GitService, GitServiceError};
 
 // Global synchronization for worktree creation to prevent race conditions
 static WORKTREE_CREATION_LOCKS: LazyLock<Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>> =

@@ -18,7 +18,7 @@ use services::services::{
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
-use workspace_git::{GitBranch, GitRemote};
+use git::{GitBranch, GitRemote};
 
 use crate::{
     DeploymentImpl,

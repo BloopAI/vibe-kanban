@@ -24,7 +24,7 @@ use utils::{
     log_msg::LogMsg,
 };
 use uuid::Uuid;
-use workspace_git::{Commit, DiffTarget, GitService, GitServiceError};
+use git::{Commit, DiffTarget, GitService, GitServiceError};
 
 use crate::services::filesystem_watcher::{self, FilesystemWatcherError};
 
