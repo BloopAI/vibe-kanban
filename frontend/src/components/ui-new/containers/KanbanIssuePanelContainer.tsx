@@ -8,6 +8,7 @@ import {
   type IssueFormData,
 } from '@/components/ui-new/views/KanbanIssuePanel';
 import { useActions } from '@/contexts/ActionsContext';
+import { AssigneeSelectionDialog } from '@/components/ui-new/dialogs/AssigneeSelectionDialog';
 
 /**
  * KanbanIssuePanelContainer manages the issue detail/create panel.
@@ -24,6 +25,12 @@ export function KanbanIssuePanelContainer() {
   );
   const kanbanCreateDefaultPriority = useUiPreferencesStore(
     (s) => s.kanbanCreateDefaultPriority
+  );
+  const kanbanCreateDefaultAssigneeIds = useUiPreferencesStore(
+    (s) => s.kanbanCreateDefaultAssigneeIds
+  );
+  const setKanbanCreateDefaultAssigneeIds = useUiPreferencesStore(
+    (s) => s.setKanbanCreateDefaultAssigneeIds
   );
   const closeKanbanIssuePanel = useUiPreferencesStore(
     (s) => s.closeKanbanIssuePanel
@@ -166,12 +173,13 @@ export function KanbanIssuePanelContainer() {
         tagIds: [],
         createDraftWorkspace: false,
       };
-      // If kanbanCreateDefaultStatusId/kanbanCreateDefaultPriority are explicitly set,
+      // If kanbanCreateDefault* fields are explicitly set,
       // use them (user selected via command bar). Otherwise use the form data defaults.
       return {
         ...base,
         statusId: kanbanCreateDefaultStatusId ?? base.statusId,
         priority: kanbanCreateDefaultPriority ?? base.priority,
+        assigneeIds: kanbanCreateDefaultAssigneeIds ?? base.assigneeIds,
       };
     }
 
@@ -199,6 +207,7 @@ export function KanbanIssuePanelContainer() {
     defaultStatusId,
     kanbanCreateDefaultStatusId,
     kanbanCreateDefaultPriority,
+    kanbanCreateDefaultAssigneeIds,
     currentAssigneeIds,
     currentTagIds,
   ]);
@@ -317,6 +326,18 @@ export function KanbanIssuePanelContainer() {
           return;
         }
 
+        // For assigneeIds, open the assignee selection dialog
+        if (field === 'assigneeIds') {
+          AssigneeSelectionDialog.show({
+            users,
+            initialAssigneeIds: kanbanCreateDefaultAssigneeIds ?? [],
+            onConfirm: (newIds) => {
+              setKanbanCreateDefaultAssigneeIds(newIds);
+            },
+          });
+          return;
+        }
+
         // For other fields, just update the form data
         setCreateFormData((prev) => {
           const base = prev ?? {
@@ -355,30 +376,49 @@ export function KanbanIssuePanelContainer() {
         // Priority changes go through the command bar priority selection
         openPrioritySelection(projectId, [selectedKanbanIssueId]);
       } else if (field === 'assigneeIds') {
-        // Handle assignee changes via junction table
-        const newIds = value as string[];
-        const currentIds = issueAssignees
-          .filter((a) => a.issue_id === selectedKanbanIssueId)
-          .map((a) => a.user_id);
+        // Open assignee selection dialog
+        // Determine current assignee IDs based on mode
+        const currentIds = kanbanCreateMode
+          ? (kanbanCreateDefaultAssigneeIds ?? [])
+          : issueAssignees
+              .filter((a) => a.issue_id === selectedKanbanIssueId)
+              .map((a) => a.user_id);
 
-        // Remove assignees no longer selected
-        issueAssignees
-          .filter(
-            (a) =>
-              a.issue_id === selectedKanbanIssueId &&
-              !newIds.includes(a.user_id)
-          )
-          .forEach((a) => removeIssueAssignee(a.id));
+        AssigneeSelectionDialog.show({
+          users,
+          initialAssigneeIds: currentIds,
+          onConfirm: (newIds) => {
+            if (kanbanCreateMode || !selectedKanbanIssueId) {
+              // Create mode: store in preferences for later use
+              setKanbanCreateDefaultAssigneeIds(newIds);
+            } else {
+              // Edit mode: apply changes via junction table
+              const currentAssigneeRecords = issueAssignees.filter(
+                (a) => a.issue_id === selectedKanbanIssueId
+              );
+              const currentAssigneeIdSet = new Set(
+                currentAssigneeRecords.map((a) => a.user_id)
+              );
 
-        // Add new assignees
-        newIds
-          .filter((id) => !currentIds.includes(id))
-          .forEach((userId) =>
-            insertIssueAssignee({
-              issue_id: selectedKanbanIssueId,
-              user_id: userId,
-            })
-          );
+              // Remove assignees no longer selected
+              for (const record of currentAssigneeRecords) {
+                if (!newIds.includes(record.user_id)) {
+                  removeIssueAssignee(record.id);
+                }
+              }
+
+              // Add new assignees
+              for (const userId of newIds) {
+                if (!currentAssigneeIdSet.has(userId)) {
+                  insertIssueAssignee({
+                    issue_id: selectedKanbanIssueId,
+                    user_id: userId,
+                  });
+                }
+              }
+            }
+          },
+        });
       } else if (field === 'tagIds') {
         // Handle tag changes via junction table
         const newTagIds = value as string[];
@@ -417,6 +457,9 @@ export function KanbanIssuePanelContainer() {
       debouncedSaveDescription,
       openStatusSelection,
       openPrioritySelection,
+      users,
+      kanbanCreateDefaultAssigneeIds,
+      setKanbanCreateDefaultAssigneeIds,
       issueAssignees,
       insertIssueAssignee,
       removeIssueAssignee,
@@ -441,7 +484,7 @@ export function KanbanIssuePanelContainer() {
           0
         );
 
-        const newIssue = insertIssue({
+        const { data: newIssue, persisted } = insertIssue({
           project_id: projectId,
           status_id: displayData.statusId,
           title: displayData.title,
@@ -452,8 +495,12 @@ export function KanbanIssuePanelContainer() {
           target_date: null,
           completed_at: null,
           parent_issue_id: null,
+          parent_issue_sort_order: null,
           extension_metadata: null,
         });
+
+        // Wait for the issue to be confirmed by the backend before creating related records
+        await persisted;
 
         // Create assignee records for all selected assignees
         displayData.assigneeIds.forEach((userId) => {
@@ -498,7 +545,7 @@ export function KanbanIssuePanelContainer() {
   // Tag create callback - returns the new tag ID so it can be auto-selected
   const handleCreateTag = useCallback(
     (data: { name: string; color: string }): string => {
-      const newTag = insertTag({
+      const { data: newTag } = insertTag({
         project_id: projectId,
         name: data.name,
         color: data.color,
@@ -527,7 +574,6 @@ export function KanbanIssuePanelContainer() {
       onFormChange={handlePropertyChange}
       statuses={sortedStatuses}
       tags={tags}
-      users={users}
       issueId={selectedKanbanIssueId}
       parentIssue={parentIssue}
       onParentIssueClick={handleParentIssueClick}
