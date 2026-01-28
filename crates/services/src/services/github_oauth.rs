@@ -24,13 +24,16 @@ pub struct GitHubOAuthConfig {
 
 impl GitHubOAuthConfig {
     /// Load config from environment variables
+    ///
+    /// The redirect URI is constructed from APP_HOST and APP_PORT
     pub fn from_env() -> Option<Self> {
         let client_id = std::env::var("GITHUB_CLIENT_ID").ok()?;
         let client_secret = std::env::var("GITHUB_CLIENT_SECRET").ok()?;
+        let app_host = std::env::var("APP_HOST").ok()?;
+        let app_port = std::env::var("APP_PORT").ok()?;
 
-        // Default redirect URI - can be overridden
-        let redirect_uri = std::env::var("GITHUB_REDIRECT_URI")
-            .unwrap_or_else(|_| "http://localhost:3000/api/local-auth/github/callback".to_string());
+        let base_url = format!("{}:{}", app_host.trim_end_matches('/'), app_port);
+        let redirect_uri = format!("{}/api/local-auth/github/callback", base_url);
 
         Some(Self {
             client_id,
