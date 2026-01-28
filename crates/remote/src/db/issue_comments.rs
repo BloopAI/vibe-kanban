@@ -13,7 +13,7 @@ use crate::mutation_types::{DeleteResponse, MutationResponse};
 pub struct IssueComment {
     pub id: Uuid,
     pub issue_id: Uuid,
-    pub author_id: Uuid,
+    pub author_id: Option<Uuid>,
     pub parent_id: Option<Uuid>,
     pub message: String,
     pub created_at: DateTime<Utc>,
@@ -39,7 +39,7 @@ impl IssueCommentRepository {
             SELECT
                 id          AS "id!: Uuid",
                 issue_id    AS "issue_id!: Uuid",
-                author_id   AS "author_id!: Uuid",
+                author_id   AS "author_id: Uuid",
                 parent_id   AS "parent_id: Uuid",
                 message     AS "message!",
                 created_at  AS "created_at!: DateTime<Utc>",
@@ -74,7 +74,7 @@ impl IssueCommentRepository {
             RETURNING
                 id          AS "id!: Uuid",
                 issue_id    AS "issue_id!: Uuid",
-                author_id   AS "author_id!: Uuid",
+                author_id   AS "author_id: Uuid",
                 parent_id   AS "parent_id: Uuid",
                 message     AS "message!",
                 created_at  AS "created_at!: DateTime<Utc>",
@@ -116,7 +116,7 @@ impl IssueCommentRepository {
             RETURNING
                 id          AS "id!: Uuid",
                 issue_id    AS "issue_id!: Uuid",
-                author_id   AS "author_id!: Uuid",
+                author_id   AS "author_id: Uuid",
                 parent_id   AS "parent_id: Uuid",
                 message     AS "message!",
                 created_at  AS "created_at!: DateTime<Utc>",
@@ -154,7 +154,7 @@ impl IssueCommentRepository {
             SELECT
                 id          AS "id!: Uuid",
                 issue_id    AS "issue_id!: Uuid",
-                author_id   AS "author_id!: Uuid",
+                author_id   AS "author_id: Uuid",
                 parent_id   AS "parent_id: Uuid",
                 message     AS "message!",
                 created_at  AS "created_at!: DateTime<Utc>",

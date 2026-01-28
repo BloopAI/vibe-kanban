@@ -1,10 +1,10 @@
 export const paths = {
-  projects: () => '/projects',
-  projectTasks: (projectId: string) => `/projects/${projectId}/tasks`,
+  projects: () => '/local-projects',
+  projectTasks: (projectId: string) => `/local-projects/${projectId}/tasks`,
   task: (projectId: string, taskId: string) =>
-    `/projects/${projectId}/tasks/${taskId}`,
+    `/local-projects/${projectId}/tasks/${taskId}`,
   attempt: (projectId: string, taskId: string, attemptId: string) =>
-    `/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}`,
+    `/local-projects/${projectId}/tasks/${taskId}/attempts/${attemptId}`,
   attemptFull: (projectId: string, taskId: string, attemptId: string) =>
-    `/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/full`,
+    `/local-projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/full`,
 };
