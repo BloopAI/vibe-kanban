@@ -166,6 +166,18 @@
           "helper": "生成PR描述时AI代理使用的自定义提示。使用{pr_number}和{pr_url}作为占位符。"
         }
       },
+      "commits": {
+        "title": "提交",
+        "description": "配置任务尝试的提交行为",
+        "reminder": {
+          "label": "提交提醒",
+          "helper": "提示支持的代理在停止前提交更改。"
+        },
+        "customPrompt": {
+          "useCustom": "使用自定义提示",
+          "helper": "提交提醒的自定义提示。使用 {uncommitted_changes} 作为 git 状态输出的占位符。"
+        }
+      },
       "notifications": {
         "title": "通知",
         "description": "控制何时以及如何接收通知。",
@@ -265,10 +277,6 @@
         "workspaces": {
           "label": "启用工作区 Beta",
           "helper": "查看任务尝试时使用新的工作区界面。任务将首先在任务视图中打开，尝试将在新的工作区视图中打开。"
-        },
-        "commitReminder": {
-          "label": "提交提醒",
-          "helper": "提示支持的代理在停止前提交更改。"
         }
       }
     },

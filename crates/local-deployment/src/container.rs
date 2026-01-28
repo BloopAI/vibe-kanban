@@ -1138,8 +1138,11 @@ impl ContainerService for LocalContainerService {
         let repo_names: Vec<String> = repos.iter().map(|r| r.name.clone()).collect();
         let repo_context = RepoContext::new(current_dir.clone(), repo_names);
 
-        let commit_reminder = self.config.read().await.commit_reminder;
-        let mut env = ExecutionEnv::new(repo_context, commit_reminder);
+        let config = self.config.read().await;
+        let commit_reminder = config.commit_reminder;
+        let commit_reminder_prompt = config.commit_reminder_prompt.clone();
+        drop(config);
+        let mut env = ExecutionEnv::new(repo_context, commit_reminder, commit_reminder_prompt);
 
         // Load task and project context for environment variables
         let task = workspace

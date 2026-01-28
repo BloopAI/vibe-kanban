@@ -166,6 +166,18 @@
           "helper": "PR 설명 생성 시 AI 에이전트용 사용자 정의 프롬프트. {pr_number}와 {pr_url}을 플레이스홀더로 사용하세요."
         }
       },
+      "commits": {
+        "title": "커밋",
+        "description": "작업 시도의 커밋 동작 구성",
+        "reminder": {
+          "label": "커밋 알림",
+          "helper": "지원되는 에이전트에게 중지 전 변경사항 커밋을 요청합니다."
+        },
+        "customPrompt": {
+          "useCustom": "사용자 정의 프롬프트 사용",
+          "helper": "커밋 알림용 사용자 정의 프롬프트. {uncommitted_changes}를 git 상태 출력의 플레이스홀더로 사용하세요."
+        }
+      },
       "notifications": {
         "title": "알림",
         "description": "알림을 받는 시기와 방법을 제어하세요.",
@@ -265,10 +277,6 @@
         "workspaces": {
           "label": "워크스페이스 베타 활성화",
           "helper": "작업 시도를 볼 때 새로운 워크스페이스 인터페이스를 사용합니다. 작업은 먼저 작업 보기에서 열리고, 시도는 새로운 워크스페이스 보기에서 열립니다."
-        },
-        "commitReminder": {
-          "label": "커밋 알림",
-          "helper": "지원되는 에이전트에게 중지 전 변경사항 커밋을 요청합니다."
         }
       }
     },

@@ -174,6 +174,7 @@ impl Opencode {
         let models_cache_key = self.compute_models_cache_key();
         let cancel_for_task = cancel.clone();
         let commit_reminder = env.commit_reminder;
+        let commit_reminder_prompt = env.commit_reminder_prompt.clone();
         let repo_context = env.repo_context.clone();
 
         tokio::spawn(async move {
@@ -203,6 +204,7 @@ impl Opencode {
                 server_password,
                 models_cache_key,
                 commit_reminder,
+                commit_reminder_prompt,
                 repo_context,
             };
 

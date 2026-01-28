@@ -36,6 +36,9 @@ use crate::{
     executors::{ExecutorError, codex::normalize_logs::Approval},
 };
 
+const DEFAULT_COMMIT_REMINDER_PROMPT: &str =
+    "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{uncommitted_changes}";
+
 pub struct AppServerClient {
     rpc: OnceLock<JsonRpcPeer>,
     log_writer: LogWriter,
@@ -45,6 +48,7 @@ pub struct AppServerClient {
     auto_approve: bool,
     repo_context: RepoContext,
     commit_reminder: bool,
+    commit_reminder_prompt: Option<String>,
     commit_reminder_sent: AtomicBool,
     cancel: CancellationToken,
 }
@@ -56,6 +60,7 @@ impl AppServerClient {
         auto_approve: bool,
         repo_context: RepoContext,
         commit_reminder: bool,
+        commit_reminder_prompt: Option<String>,
         cancel: CancellationToken,
     ) -> Arc<Self> {
         Arc::new(Self {
@@ -67,6 +72,7 @@ impl AppServerClient {
             pending_feedback: Mutex::new(VecDeque::new()),
             repo_context,
             commit_reminder,
+            commit_reminder_prompt,
             commit_reminder_sent: AtomicBool::new(false),
             cancel,
         })
@@ -511,13 +517,12 @@ impl JsonRpcCallbacks for AppServerClient {
             if !status.is_empty()
                 && let Some(conversation_id) = *self.conversation_id.lock().await
             {
-                self.spawn_user_message(
-                    conversation_id,
-                    format!(
-                        "You have uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
-                        status
-                    ),
-                );
+                let prompt_template = self
+                    .commit_reminder_prompt
+                    .as_deref()
+                    .unwrap_or(DEFAULT_COMMIT_REMINDER_PROMPT);
+                let prompt = prompt_template.replace("{uncommitted_changes}", &status);
+                self.spawn_user_message(conversation_id, prompt);
                 return Ok(false);
             }
         }

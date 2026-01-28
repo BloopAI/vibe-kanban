@@ -26,12 +26,16 @@ pub const STOP_GIT_CHECK_CALLBACK_ID: &str = "STOP_GIT_CHECK_CALLBACK_ID";
 // Prefix for denial messages from the user, mirrors claude code CLI behavior
 const TOOL_DENY_PREFIX: &str = "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To tell you how to proceed, the user said: ";
 
+pub const DEFAULT_COMMIT_REMINDER_PROMPT: &str =
+    "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{uncommitted_changes}";
+
 /// Claude Agent client with control protocol support
 pub struct ClaudeAgentClient {
     log_writer: LogWriter,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool, // true when approvals is None
     repo_context: RepoContext,
+    commit_reminder_prompt: Option<String>,
     cancel: CancellationToken,
 }
 
@@ -41,6 +45,7 @@ impl ClaudeAgentClient {
         log_writer: LogWriter,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
         repo_context: RepoContext,
+        commit_reminder_prompt: Option<String>,
         cancel: CancellationToken,
     ) -> Arc<Self> {
         let auto_approve = approvals.is_none();
@@ -49,6 +54,7 @@ impl ClaudeAgentClient {
             approvals,
             auto_approve,
             repo_context,
+            commit_reminder_prompt,
             cancel,
         })
     }
@@ -176,12 +182,14 @@ impl ClaudeAgentClient {
             return Ok(if status.is_empty() {
                 serde_json::json!({"decision": "approve"})
             } else {
+                let prompt_template = self
+                    .commit_reminder_prompt
+                    .as_deref()
+                    .unwrap_or(DEFAULT_COMMIT_REMINDER_PROMPT);
+                let prompt = prompt_template.replace("{uncommitted_changes}", &status);
                 serde_json::json!({
                     "decision": "block",
-                    "reason": format!(
-                        "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
-                        status
-                    )
+                    "reason": prompt
                 })
             });
         }

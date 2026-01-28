@@ -166,6 +166,18 @@
           "helper": "Prompt personalizado para el agente de IA al generar descripciones de PR. Usa {pr_number} y {pr_url} como marcadores de posición."
         }
       },
+      "commits": {
+        "title": "Commits",
+        "description": "Configura el comportamiento de commits para los intentos de tareas",
+        "reminder": {
+          "label": "Recordatorio de commit",
+          "helper": "Solicitar a los agentes compatibles que confirmen los cambios antes de detenerse."
+        },
+        "customPrompt": {
+          "useCustom": "Usar prompt personalizado",
+          "helper": "Prompt personalizado para el recordatorio de commit. Usa {uncommitted_changes} como marcador de posición para la salida del estado de git."
+        }
+      },
       "notifications": {
         "title": "Notificaciones",
         "description": "Controla cuándo y cómo recibes notificaciones.",
@@ -265,10 +277,6 @@
         "workspaces": {
           "label": "Habilitar Beta de Workspaces",
           "helper": "Usa la nueva interfaz de workspaces al ver intentos de tareas. Las tareas se abrirán primero en la vista de tareas, y los intentos se abrirán en la nueva vista de workspaces."
-        },
-        "commitReminder": {
-          "label": "Recordatorio de commit",
-          "helper": "Solicitar a los agentes compatibles que confirmen los cambios antes de detenerse."
         }
       }
     },

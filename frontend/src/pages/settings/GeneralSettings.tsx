@@ -22,6 +22,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FolderOpen, Loader2, Volume2 } from 'lucide-react';
 import {
+  DEFAULT_COMMIT_REMINDER_PROMPT,
   DEFAULT_PR_DESCRIPTION_PROMPT,
   EditorType,
   SoundFile,
@@ -580,6 +581,79 @@ export function GeneralSettings() {
 
       <Card>
         <CardHeader>
+          <CardTitle>{t('settings.general.commits.title')}</CardTitle>
+          <CardDescription>
+            {t('settings.general.commits.description')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="commit-reminder"
+              checked={draft?.commit_reminder ?? true}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({ commit_reminder: checked })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="commit-reminder" className="cursor-pointer">
+                {t('settings.general.commits.reminder.label')}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.commits.reminder.helper')}
+              </p>
+            </div>
+          </div>
+          {draft?.commit_reminder && (
+            <>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="use-custom-commit-prompt"
+                  checked={draft?.commit_reminder_prompt != null}
+                  onCheckedChange={(checked: boolean) => {
+                    if (checked) {
+                      updateDraft({
+                        commit_reminder_prompt: DEFAULT_COMMIT_REMINDER_PROMPT,
+                      });
+                    } else {
+                      updateDraft({ commit_reminder_prompt: null });
+                    }
+                  }}
+                />
+                <Label htmlFor="use-custom-commit-prompt" className="cursor-pointer">
+                  {t('settings.general.commits.customPrompt.useCustom')}
+                </Label>
+              </div>
+              <div className="space-y-2">
+                <textarea
+                  id="commit-custom-prompt"
+                  className={`flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                    draft?.commit_reminder_prompt == null
+                      ? 'opacity-50 cursor-not-allowed'
+                      : ''
+                  }`}
+                  value={
+                    draft?.commit_reminder_prompt ??
+                    DEFAULT_COMMIT_REMINDER_PROMPT
+                  }
+                  disabled={draft?.commit_reminder_prompt == null}
+                  onChange={(e) =>
+                    updateDraft({
+                      commit_reminder_prompt: e.target.value,
+                    })
+                  }
+                />
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.general.commits.customPrompt.helper')}
+                </p>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>{t('settings.general.notifications.title')}</CardTitle>
           <CardDescription>
             {t('settings.general.notifications.description')}
@@ -778,23 +852,6 @@ export function GeneralSettings() {
               </Label>
               <p className="text-sm text-muted-foreground">
                 {t('settings.general.beta.workspaces.helper')}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="commit-reminder"
-              checked={draft?.commit_reminder ?? false}
-              onCheckedChange={(checked: boolean) =>
-                updateDraft({ commit_reminder: checked })
-              }
-            />
-            <div className="space-y-0.5">
-              <Label htmlFor="commit-reminder" className="cursor-pointer">
-                {t('settings.general.beta.commitReminder.label')}
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                {t('settings.general.beta.commitReminder.helper')}
               </p>
             </div>
           </div>

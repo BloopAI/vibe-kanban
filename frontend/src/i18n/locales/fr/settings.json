@@ -166,6 +166,18 @@
           "helper": "Prompt personnalisé pour l'agent IA lors de la génération des descriptions de PR. Utilisez {pr_number} et {pr_url} comme variables."
         }
       },
+      "commits": {
+        "title": "Commits",
+        "description": "Configurez le comportement de commit pour les tentatives de tâches",
+        "reminder": {
+          "label": "Rappel de commit",
+          "helper": "Demander aux agents compatibles de commiter les modifications avant de s'arrêter."
+        },
+        "customPrompt": {
+          "useCustom": "Utiliser un prompt personnalisé",
+          "helper": "Prompt personnalisé pour le rappel de commit. Utilisez {uncommitted_changes} comme variable pour la sortie du statut git."
+        }
+      },
       "notifications": {
         "title": "Notifications",
         "description": "Contrôlez quand et comment vous recevez des notifications.",
@@ -265,10 +277,6 @@
         "workspaces": {
           "label": "Activer la bêta des espaces de travail",
           "helper": "Utiliser la nouvelle interface des espaces de travail lors de la visualisation des tentatives de tâches. Les tâches s'ouvriront d'abord en vue tâche, et les tentatives s'ouvriront dans la nouvelle vue des espaces de travail."
-        },
-        "commitReminder": {
-          "label": "Rappel de commit",
-          "helper": "Demander aux agents compatibles de commiter les modifications avant de s'arrêter."
         }
       }
     },
