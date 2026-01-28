@@ -5,7 +5,11 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import { useEntity } from '@/lib/electric/hooks';
+import {
+  useEntity,
+  type InsertResult,
+  type MutationResult,
+} from '@/lib/electric/hooks';
 import {
   PROJECT_ENTITY,
   NOTIFICATION_ENTITY,
@@ -46,15 +50,18 @@ export interface OrgContextValue {
   retry: () => void;
 
   // Project mutations
-  insertProject: (data: CreateProjectRequest) => Project;
-  updateProject: (id: string, changes: Partial<UpdateProjectRequest>) => void;
-  removeProject: (id: string) => void;
+  insertProject: (data: CreateProjectRequest) => InsertResult<Project>;
+  updateProject: (
+    id: string,
+    changes: Partial<UpdateProjectRequest>
+  ) => MutationResult;
+  removeProject: (id: string) => MutationResult;
 
   // Notification mutations
   updateNotification: (
     id: string,
     changes: Partial<UpdateNotificationRequest>
-  ) => void;
+  ) => MutationResult;
 
   // Lookup helpers
   getProject: (projectId: string) => Project | undefined;
