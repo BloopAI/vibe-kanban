@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT\n                id as \"id!: Uuid\",\n                execution_process_id as \"execution_process_id!: Uuid\",\n                agent_session_id,\n                prompt,\n                summary,\n                seen as \"seen!: bool\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM coding_agent_turns\n               WHERE execution_process_id = $1",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                execution_process_id as \"execution_process_id!: Uuid\",\n                agent_session_id,\n                agent_message_id,\n                prompt,\n                summary,\n                seen as \"seen!: bool\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM coding_agent_turns\n               WHERE agent_session_id = ?\n               ORDER BY updated_at DESC\n               LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -19,28 +19,33 @@
         "type_info": "Text"
       },
       {
-        "name": "prompt",
+        "name": "agent_message_id",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "summary",
+        "name": "prompt",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "seen!: bool",
+        "name": "summary",
         "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "seen!: bool",
+        "ordinal": 6,
         "type_info": "Integer"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 6,
+        "ordinal": 7,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 7,
+        "ordinal": 8,
         "type_info": "Text"
       }
     ],
@@ -53,10 +58,11 @@
       true,
       true,
       true,
+      true,
       false,
       false,
       false
     ]
   },
-  "hash": "6950a29b30e8094180b0e927d380ea681a961c090c00f243555509fe09b4eace"
+  "hash": "04e5a05c7cad438d39c4c8590410889ab1eefa7376d474a10c119d3f4d9143c7"
 }

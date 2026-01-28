@@ -514,7 +514,7 @@ executor_profile_id: ExecutorProfileId,
  */
 working_dir: string | null, };
 
-export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, 
+export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, reset_to_message_id: string | null, 
 /**
  * Executor profile specification
  */

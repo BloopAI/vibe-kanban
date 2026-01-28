@@ -18,6 +18,8 @@ use crate::{
 pub struct CodingAgentFollowUpRequest {
     pub prompt: String,
     pub session_id: String,
+    #[serde(default)]
+    pub reset_to_message_id: Option<String>,
     /// Executor profile specification
     #[serde(alias = "profile_variant_label")]
     // Backwards compatibility with ProfileVariantIds, esp stored in DB under ExecutorAction
@@ -62,7 +64,13 @@ impl Executable for CodingAgentFollowUpRequest {
             tracing::info!("QA mode: using mock executor for follow-up instead of real agent");
             let executor = crate::executors::qa_mock::QaMockExecutor;
             return executor
-                .spawn_follow_up(&effective_dir, &self.prompt, &self.session_id, env)
+                .spawn_follow_up(
+                    &effective_dir,
+                    &self.prompt,
+                    &self.session_id,
+                    self.reset_to_message_id.as_deref(),
+                    env,
+                )
                 .await;
         }
 
@@ -78,7 +86,13 @@ impl Executable for CodingAgentFollowUpRequest {
             agent.use_approvals(approvals.clone());
 
             agent
-                .spawn_follow_up(&effective_dir, &self.prompt, &self.session_id, env)
+                .spawn_follow_up(
+                    &effective_dir,
+                    &self.prompt,
+                    &self.session_id,
+                    self.reset_to_message_id.as_deref(),
+                    env,
+                )
                 .await
         }
     }

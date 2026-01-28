@@ -237,11 +237,13 @@ pub trait StandardCodingAgentExecutor {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError>;
 
+    /// Continue a session, optionally resetting to a specific message.
     async fn spawn_follow_up(
         &self,
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError>;
 
@@ -253,7 +255,10 @@ pub trait StandardCodingAgentExecutor {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         match session_id {
-            Some(id) => self.spawn_follow_up(current_dir, prompt, id, env).await,
+            Some(id) => {
+                self.spawn_follow_up(current_dir, prompt, id, None, env)
+                    .await
+            }
             None => self.spawn(current_dir, prompt, env).await,
         }
     }

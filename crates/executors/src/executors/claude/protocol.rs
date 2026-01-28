@@ -54,10 +54,20 @@ impl ProtocolPeer {
     ) -> Result<(), ExecutorError> {
         let mut reader = BufReader::new(stdout);
         let mut buffer = String::new();
+        let mut interrupt_sent = false;
 
         loop {
             buffer.clear();
             tokio::select! {
+                biased;
+                _ = cancel.cancelled(), if !interrupt_sent => {
+                    interrupt_sent = true;
+                    tracing::info!("Cancellation received in read_loop, sending interrupt to Claude");
+                    if let Err(e) = self.interrupt().await {
+                        tracing::warn!("Failed to send interrupt to Claude: {e}");
+                    }
+                    // Continue the loop to read Claude's response (it should send a result)
+                }
                 line_result = reader.read_line(&mut buffer) => {
                     match line_result {
                         Ok(0) => break, // EOF
@@ -88,12 +98,6 @@ impl ProtocolPeer {
                             break;
                         }
                     }
-                }
-                _ = cancel.cancelled() => {
-                    if let Err(e) = self.interrupt().await {
-                        tracing::debug!("Failed to send interrupt to Claude: {e}");
-                    }
-                    break;
                 }
             }
         }

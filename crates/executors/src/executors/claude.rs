@@ -17,6 +17,7 @@ use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
+use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 use workspace_utils::{
     approvals::ApprovalStatus, diff::create_unified_diff, log_msg::LogMsg, msg_store::MsgStore,
@@ -121,6 +122,7 @@ impl ClaudeCode {
             "--output-format=stream-json",
             "--input-format=stream-json",
             "--include-partial-messages",
+            "--replay-user-messages",
             "--disallowedTools=AskUserQuestion",
         ]);
 
@@ -203,14 +205,21 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await?;
-        let command_parts = command_builder.build_follow_up(&[
-            "--fork-session".to_string(),
-            "--resume".to_string(),
-            session_id.to_string(),
-        ])?;
+
+        let mut args = vec!["--resume".to_string(), session_id.to_string()];
+
+        // --resume-session-at truncates Claude's conversation history to the specified
+        // message and continues from there.
+        if let Some(uuid) = reset_to_message_id {
+            args.push("--resume-session-at".to_string());
+            args.push(uuid.to_string());
+        }
+
+        let command_parts = command_builder.build_follow_up(&args)?;
         self.spawn_internal(current_dir, prompt, command_parts, env)
             .await
     }
@@ -326,7 +335,7 @@ impl ClaudeCode {
         let hooks = self.get_hooks(env.commit_reminder);
 
         // Create cancellation token for graceful shutdown
-        let cancel = tokio_util::sync::CancellationToken::new();
+        let cancel = CancellationToken::new();
 
         // Spawn task to handle the SDK client with control protocol
         let prompt_clone = combined_prompt.clone();
@@ -435,12 +444,15 @@ impl ClaudeLogProcessor {
             let worktree_path = current_dir_clone.to_string_lossy().to_string();
             let mut session_id_extracted = false;
             let mut processor = Self::new_with_strategy(strategy);
+            // Track pending assistant UUID - only committed when we see a Result message
+            let mut pending_assistant_uuid: Option<String> = None;
 
             while let Some(Ok(msg)) = stream.next().await {
                 let chunk = match msg {
                     LogMsg::Stdout(x) => x,
                     LogMsg::JsonPatch(_)
                     | LogMsg::SessionId(_)
+                    | LogMsg::MessageId(_)
                     | LogMsg::Stderr(_)
                     | LogMsg::Ready => continue,
                     LogMsg::Finished => break,
@@ -470,12 +482,33 @@ impl ClaudeLogProcessor {
 
                     match serde_json::from_str::<ClaudeJson>(trimmed) {
                         Ok(claude_json) => {
-                            // Extract session ID if present
                             if !session_id_extracted
                                 && let Some(session_id) = Self::extract_session_id(&claude_json)
                             {
                                 msg_store.push_session_id(session_id);
                                 session_id_extracted = true;
+                            }
+
+                            // Track message UUIDs for --resume-session-at:
+                            // - User messages: always valid, push immediately and clear pending
+                            // - Assistant messages: may have incomplete tool calls, store as pending
+                            // - Result messages: confirms assistant turn is complete, commit pending
+                            match &claude_json {
+                                ClaudeJson::User { uuid, .. } => {
+                                    pending_assistant_uuid = None;
+                                    if let Some(uuid) = uuid {
+                                        msg_store.push_message_id(uuid.clone());
+                                    }
+                                }
+                                ClaudeJson::Assistant { uuid, .. } => {
+                                    pending_assistant_uuid = uuid.clone();
+                                }
+                                ClaudeJson::Result { .. } => {
+                                    if let Some(uuid) = pending_assistant_uuid.take() {
+                                        msg_store.push_message_id(uuid);
+                                    }
+                                }
+                                _ => {}
                             }
 
                             let patches = processor.normalize_entries(
@@ -971,8 +1004,14 @@ impl ClaudeLogProcessor {
             ClaudeJson::User {
                 message,
                 is_synthetic,
+                is_replay,
                 ..
             } => {
+                // Skip replay messages entirely - they're historical context from resumed sessions
+                if *is_replay {
+                    return patches;
+                }
+
                 if matches!(self.strategy, HistoryStrategy::AmpResume)
                     && message
                         .content
@@ -1677,12 +1716,18 @@ pub enum ClaudeJson {
     Assistant {
         message: ClaudeMessage,
         session_id: Option<String>,
+        #[serde(default)]
+        uuid: Option<String>,
     },
     User {
         message: ClaudeMessage,
         session_id: Option<String>,
+        #[serde(default)]
+        uuid: Option<String>,
         #[serde(default, rename = "isSynthetic")]
         is_synthetic: bool,
+        #[serde(default, rename = "isReplay")]
+        is_replay: bool,
     },
     ToolUse {
         tool_name: String,
