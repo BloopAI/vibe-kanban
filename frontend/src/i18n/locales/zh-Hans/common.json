@@ -231,7 +231,23 @@
   },
   "dialogs": {
     "selectGitRepository": "选择 Git 仓库",
-    "chooseExistingRepo": "从文件系统中选择现有仓库"
+    "chooseExistingRepo": "从文件系统中选择现有仓库",
+    "cloneRepo": {
+      "title": "克隆仓库",
+      "description": "输入要克隆的 Git 仓库 URL。",
+      "gitUrlLabel": "Git 仓库 URL",
+      "gitUrlPlaceholder": "https://github.com/user/repo.git 或 git@github.com:user/repo.git",
+      "repoName": "仓库名称：{{name}}",
+      "cloning": "正在克隆...",
+      "clone": "克隆"
+    },
+    "createProject": {
+      "title": "创建项目",
+      "description": "输入 Git 仓库 URL 以克隆并创建新项目。",
+      "projectName": "项目名称：{{name}}",
+      "creating": "正在创建...",
+      "create": "创建"
+    }
   },
   "empty": {
     "noChanges": "没有要显示的更改"

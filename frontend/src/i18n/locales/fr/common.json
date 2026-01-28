@@ -231,7 +231,23 @@
   },
   "dialogs": {
     "selectGitRepository": "Sélectionner un dépôt Git",
-    "chooseExistingRepo": "Choisissez un dépôt existant depuis votre système de fichiers"
+    "chooseExistingRepo": "Choisissez un dépôt existant depuis votre système de fichiers",
+    "cloneRepo": {
+      "title": "Cloner le dépôt",
+      "description": "Entrez l'URL d'un dépôt Git à cloner.",
+      "gitUrlLabel": "URL du dépôt Git",
+      "gitUrlPlaceholder": "https://github.com/user/repo.git ou git@github.com:user/repo.git",
+      "repoName": "Nom du dépôt : {{name}}",
+      "cloning": "Clonage...",
+      "clone": "Cloner"
+    },
+    "createProject": {
+      "title": "Créer un projet",
+      "description": "Entrez l'URL d'un dépôt Git à cloner pour créer un nouveau projet.",
+      "projectName": "Le projet sera nommé : {{name}}",
+      "creating": "Création...",
+      "create": "Créer"
+    }
   },
   "empty": {
     "noChanges": "Aucune modification à afficher"

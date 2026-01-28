@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -53,6 +54,7 @@ function extractRepoNameFromUrl(url: string): string | null {
 }
 
 const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
+  const { t } = useTranslation();
   const modal = useModal();
   const [gitUrl, setGitUrl] = useState('');
   const [isCloning, setIsCloning] = useState(false);
@@ -143,15 +145,15 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
     <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>Create Project</DialogTitle>
+          <DialogTitle>{t('dialogs.createProject.title')}</DialogTitle>
           <DialogDescription>
-            Enter a Git repository URL to clone and create a new project.
+            {t('dialogs.createProject.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="git-url">Git Repository URL</Label>
+            <Label htmlFor="git-url">{t('dialogs.cloneRepo.gitUrlLabel')}</Label>
             <Input
               id="git-url"
               value={gitUrl}
@@ -160,14 +162,13 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
                 setCloneError(null);
               }}
               onKeyDown={handleKeyDown}
-              placeholder="https://github.com/user/repo.git or git@github.com:user/repo.git"
+              placeholder={t('dialogs.cloneRepo.gitUrlPlaceholder')}
               autoFocus
               disabled={isPending}
             />
             {suggestedName && (
               <p className="text-xs text-muted-foreground">
-                Project will be named:{' '}
-                <span className="font-medium">{suggestedName}</span>
+                {t('dialogs.createProject.projectName', { name: suggestedName })}
               </p>
             )}
           </div>
@@ -182,7 +183,7 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
 
         <DialogFooter>
           <Button variant="outline" onClick={handleCancel} disabled={isPending}>
-            Cancel
+            {t('buttons.cancel')}
           </Button>
           <Button
             onClick={handleCreate}
@@ -190,9 +191,9 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
           >
             {isPending
               ? isCloning
-                ? 'Cloning...'
-                : 'Creating...'
-              : 'Create'}
+                ? t('dialogs.cloneRepo.cloning')
+                : t('dialogs.createProject.creating')
+              : t('dialogs.createProject.create')}
           </Button>
         </DialogFooter>
       </DialogContent>

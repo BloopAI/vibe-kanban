@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -53,10 +54,14 @@ function extractRepoNameFromUrl(url: string): string | null {
 }
 
 const CloneRepoDialogImpl = NiceModal.create<CloneRepoDialogProps>(
-  ({ title = 'Clone Repository', description = 'Enter a Git repository URL to clone.' }) => {
+  ({ title, description }) => {
+    const { t } = useTranslation();
     const modal = useModal();
     const [gitUrl, setGitUrl] = useState('');
     const [error, setError] = useState<string | null>(null);
+
+    const dialogTitle = title ?? t('dialogs.cloneRepo.title');
+    const dialogDescription = description ?? t('dialogs.cloneRepo.description');
 
     const cloneRepo = useMutation({
       mutationFn: (url: string) => repoApi.clone({ url }),
@@ -110,13 +115,13 @@ const CloneRepoDialogImpl = NiceModal.create<CloneRepoDialogProps>(
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>{description}</DialogDescription>
+            <DialogTitle>{dialogTitle}</DialogTitle>
+            <DialogDescription>{dialogDescription}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="git-url">Git Repository URL</Label>
+              <Label htmlFor="git-url">{t('dialogs.cloneRepo.gitUrlLabel')}</Label>
               <Input
                 id="git-url"
                 value={gitUrl}
@@ -125,13 +130,13 @@ const CloneRepoDialogImpl = NiceModal.create<CloneRepoDialogProps>(
                   setError(null);
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="https://github.com/user/repo.git or git@github.com:user/repo.git"
+                placeholder={t('dialogs.cloneRepo.gitUrlPlaceholder')}
                 autoFocus
                 disabled={cloneRepo.isPending}
               />
               {suggestedName && (
                 <p className="text-xs text-muted-foreground">
-                  Repository name: <span className="font-medium">{suggestedName}</span>
+                  {t('dialogs.cloneRepo.repoName', { name: suggestedName })}
                 </p>
               )}
             </div>
@@ -150,13 +155,13 @@ const CloneRepoDialogImpl = NiceModal.create<CloneRepoDialogProps>(
               onClick={handleCancel}
               disabled={cloneRepo.isPending}
             >
-              Cancel
+              {t('buttons.cancel')}
             </Button>
             <Button
               onClick={handleClone}
               disabled={!gitUrl.trim() || cloneRepo.isPending}
             >
-              {cloneRepo.isPending ? 'Cloning...' : 'Clone'}
+              {cloneRepo.isPending ? t('dialogs.cloneRepo.cloning') : t('dialogs.cloneRepo.clone')}
             </Button>
           </DialogFooter>
         </DialogContent>

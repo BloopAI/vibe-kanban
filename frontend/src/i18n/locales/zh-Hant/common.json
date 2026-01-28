@@ -231,7 +231,23 @@
   },
   "dialogs": {
     "selectGitRepository": "選擇 Git 儲存庫",
-    "chooseExistingRepo": "從檔案系統中選擇現有儲存庫"
+    "chooseExistingRepo": "從檔案系統中選擇現有儲存庫",
+    "cloneRepo": {
+      "title": "複製儲存庫",
+      "description": "輸入要複製的 Git 儲存庫 URL。",
+      "gitUrlLabel": "Git 儲存庫 URL",
+      "gitUrlPlaceholder": "https://github.com/user/repo.git 或 git@github.com:user/repo.git",
+      "repoName": "儲存庫名稱：{{name}}",
+      "cloning": "正在複製...",
+      "clone": "複製"
+    },
+    "createProject": {
+      "title": "建立專案",
+      "description": "輸入 Git 儲存庫 URL 以複製並建立新專案。",
+      "projectName": "專案名稱：{{name}}",
+      "creating": "正在建立...",
+      "create": "建立"
+    }
   },
   "empty": {
     "noChanges": "沒有要顯示的變更"

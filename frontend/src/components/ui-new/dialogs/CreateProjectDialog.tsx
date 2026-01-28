@@ -151,13 +151,13 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
           <DialogHeader>
             <DialogTitle>{t('projects.create.dialog.title')}</DialogTitle>
             <DialogDescription>
-              Enter a Git repository URL to clone and create a new project.
+              {t('common:dialogs.createProject.description')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="git-url">Git Repository URL</Label>
+              <Label htmlFor="git-url">{t('common:dialogs.cloneRepo.gitUrlLabel')}</Label>
               <Input
                 id="git-url"
                 value={gitUrl}
@@ -166,14 +166,13 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
                   setCloneError(null);
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="https://github.com/user/repo.git or git@github.com:user/repo.git"
+                placeholder={t('common:dialogs.cloneRepo.gitUrlPlaceholder')}
                 autoFocus
                 disabled={isPending}
               />
               {suggestedName && (
                 <p className="text-xs text-muted-foreground">
-                  Project will be named:{' '}
-                  <span className="font-medium">{suggestedName}</span>
+                  {t('common:dialogs.createProject.projectName', { name: suggestedName })}
                 </p>
               )}
             </div>
@@ -200,7 +199,7 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
             >
               {isPending
                 ? isCloning
-                  ? 'Cloning...'
+                  ? t('common:dialogs.cloneRepo.cloning')
                   : t('common:states.saving')
                 : t('common:buttons.create')}
             </Button>
