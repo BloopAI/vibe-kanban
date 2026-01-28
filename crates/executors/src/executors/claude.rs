@@ -444,6 +444,8 @@ impl ClaudeLogProcessor {
             let worktree_path = current_dir_clone.to_string_lossy().to_string();
             let mut session_id_extracted = false;
             let mut processor = Self::new_with_strategy(strategy);
+            // Track pending assistant UUID - only committed when we see a Result message
+            let mut pending_assistant_uuid: Option<String> = None;
 
             while let Some(Ok(msg)) = stream.next().await {
                 let chunk = match msg {
@@ -487,8 +489,26 @@ impl ClaudeLogProcessor {
                                 session_id_extracted = true;
                             }
 
-                            if let Some(uuid) = Self::extract_resumable_message_uuid(&claude_json) {
-                                msg_store.push_message_uuid(uuid);
+                            // Track message UUIDs for --resume-session-at:
+                            // - User messages: always valid, push immediately and clear pending
+                            // - Assistant messages: may have incomplete tool calls, store as pending
+                            // - Result messages: confirms assistant turn is complete, commit pending
+                            match &claude_json {
+                                ClaudeJson::User { uuid, .. } => {
+                                    pending_assistant_uuid = None;
+                                    if let Some(uuid) = uuid {
+                                        msg_store.push_message_uuid(uuid.clone());
+                                    }
+                                }
+                                ClaudeJson::Assistant { uuid, .. } => {
+                                    pending_assistant_uuid = uuid.clone();
+                                }
+                                ClaudeJson::Result { .. } => {
+                                    if let Some(uuid) = pending_assistant_uuid.take() {
+                                        msg_store.push_message_uuid(uuid);
+                                    }
+                                }
+                                _ => {}
                             }
 
                             let patches = processor.normalize_entries(
@@ -554,21 +574,6 @@ impl ClaudeLogProcessor {
             ClaudeJson::ControlResponse { .. } => None,
             ClaudeJson::ControlCancelRequest { .. } => None,
             ClaudeJson::Unknown { .. } => None,
-        }
-    }
-
-    /// Extract message UUID for --resume-session-at from user or assistant messages.
-    /// Both user and assistant message UUIDs work with --resume-session-at.
-    /// We extract from both because:
-    /// - Assistant messages: the normal case, captures the last response
-    /// - User messages: important for cancel/interrupt, where Claude adds a
-    ///   "[Request interrupted by user]" user message as the final message
-    /// Note: User messages only appear in stdout when using --replay-user-messages flag.
-    fn extract_resumable_message_uuid(claude_json: &ClaudeJson) -> Option<String> {
-        match claude_json {
-            ClaudeJson::Assistant { uuid, .. } => uuid.clone(),
-            ClaudeJson::User { uuid, .. } => uuid.clone(),
-            _ => None,
         }
     }
 
