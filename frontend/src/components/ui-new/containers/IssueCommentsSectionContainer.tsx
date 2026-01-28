@@ -140,6 +140,7 @@ function IssueCommentsSectionContent() {
     issueContext.insertComment({
       issue_id: issueContext.issueId,
       message: commentInput.trim(),
+      parent_id: null,
     });
     setCommentInput('');
   }, [commentInput, issueContext]);
