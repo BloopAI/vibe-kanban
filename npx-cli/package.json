@@ -8,6 +8,10 @@
   },
   "keywords": [],
   "author": "bloop",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BloopAI/vibe-kanban"
+  },
   "license": "",
   "description": "NPX wrapper around vibe-kanban and vibe-kanban-mcp",
   "dependencies": {
