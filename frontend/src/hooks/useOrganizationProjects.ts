@@ -6,16 +6,18 @@ export function useOrganizationProjects(organizationId: string | null) {
   const { isSignedIn } = useAuth();
 
   // Only subscribe to Electric when signed in AND have an org
-  const shouldFetch = isSignedIn && !!organizationId;
+  const enabled = isSignedIn && !!organizationId;
 
-  const { data, isLoading, error } = useEntity(PROJECT_ENTITY, {
-    organization_id: organizationId || '',
-  });
+  const { data, isLoading, error } = useEntity(
+    PROJECT_ENTITY,
+    { organization_id: organizationId || '' },
+    { enabled }
+  );
 
   return {
-    data: shouldFetch ? data : [],
-    isLoading: shouldFetch ? isLoading : false,
-    isError: shouldFetch ? !!error : false,
-    error: shouldFetch ? error : null,
+    data,
+    isLoading,
+    isError: !!error,
+    error,
   };
 }
