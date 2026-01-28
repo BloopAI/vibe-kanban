@@ -55,6 +55,7 @@ pub enum ExecutionProcessStatus {
 pub enum ExecutionProcessRunReason {
     SetupScript,
     CleanupScript,
+    ArchiveScript,
     CodingAgent,
     DevServer,
 }

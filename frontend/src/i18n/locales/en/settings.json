@@ -457,6 +457,10 @@
           "label": "Cleanup Script",
           "helper": "This script runs from within the worktree after coding agent execution, only if changes were made. Use it for quality assurance tasks like running linters, formatters, tests, or other validation steps."
         },
+        "archive": {
+          "label": "Archive Script",
+          "helper": "This script runs from within the worktree when the workspace is archived. Use it for cleanup tasks like stopping services, releasing resources, or saving state."
+        },
         "copyFiles": {
           "label": "Copy Files",
           "helper": "Comma-separated list of files to copy from the original repository directory to the worktree. Useful for environment files like .env. Make sure these are gitignored!",

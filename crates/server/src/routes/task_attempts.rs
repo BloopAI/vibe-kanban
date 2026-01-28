@@ -148,6 +148,10 @@ pub async fn update_workspace(
     Json(request): Json<UpdateWorkspace>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
     let pool = &deployment.db().pool;
+
+    // Check if we're archiving the workspace (transitioning from not-archived to archived)
+    let is_archiving = request.archived == Some(true) && !workspace.archived;
+
     Workspace::update(
         pool,
         workspace.id,
@@ -156,6 +160,25 @@ pub async fn update_workspace(
         request.name.as_deref(),
     )
     .await?;
+
+    // If archiving, try to run the archive script (fire-and-forget, non-blocking)
+    if is_archiving {
+        // Spawn the archive script execution in the background
+        let deployment_clone = deployment.clone();
+        let workspace_clone = workspace.clone();
+        tokio::spawn(async move {
+            if let Err(e) =
+                run_archive_script_internal(&deployment_clone, &workspace_clone).await
+            {
+                tracing::warn!(
+                    workspace_id = %workspace_clone.id,
+                    error = %e,
+                    "Failed to run archive script on workspace archive"
+                );
+            }
+        });
+    }
+
     let updated = Workspace::find_by_id(pool, workspace.id)
         .await?
         .ok_or(WorkspaceError::TaskNotFound)?;
@@ -182,6 +205,92 @@ pub async fn update_workspace(
     }
 
     Ok(ResponseJson(ApiResponse::success(updated)))
+}
+
+/// Internal helper to run archive script, returns Result for error handling
+async fn run_archive_script_internal(
+    deployment: &DeploymentImpl,
+    workspace: &Workspace,
+) -> Result<(), ApiError> {
+    let pool = &deployment.db().pool;
+
+    // Check if any non-dev-server processes are already running for this workspace
+    if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
+        .await?
+    {
+        tracing::debug!(
+            workspace_id = %workspace.id,
+            "Skipping archive script: another process is already running"
+        );
+        return Ok(());
+    }
+
+    // Try to ensure container exists, but don't fail if it doesn't
+    if deployment
+        .container()
+        .ensure_container_exists(workspace)
+        .await
+        .is_err()
+    {
+        tracing::debug!(
+            workspace_id = %workspace.id,
+            "Skipping archive script: container does not exist"
+        );
+        return Ok(());
+    }
+
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let executor_action = match deployment.container().archive_actions_for_repos(&repos) {
+        Some(action) => action,
+        None => {
+            tracing::debug!(
+                workspace_id = %workspace.id,
+                "No archive script configured for workspace repos"
+            );
+            return Ok(());
+        }
+    };
+
+    // Get or create a session for archive script
+    let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
+        Some(s) => s,
+        None => {
+            Session::create(
+                pool,
+                &CreateSession { executor: None },
+                Uuid::new_v4(),
+                workspace.id,
+            )
+            .await?
+        }
+    };
+
+    deployment
+        .container()
+        .start_execution(
+            workspace,
+            &session,
+            &executor_action,
+            &ExecutionProcessRunReason::ArchiveScript,
+        )
+        .await?;
+
+    if let Ok(Some(task)) = workspace.parent_task(pool).await {
+        if let Ok(Some(project)) = task.parent_project(pool).await {
+            deployment
+                .track_if_analytics_allowed(
+                    "archive_script_auto_executed",
+                    serde_json::json!({
+                        "task_id": task.id.to_string(),
+                        "project_id": project.id.to_string(),
+                        "workspace_id": workspace.id.to_string(),
+                    }),
+                )
+                .await;
+        }
+    }
+
+    Ok(())
 }
 
 #[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
@@ -1588,6 +1697,84 @@ pub async fn run_cleanup_script(
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
+pub async fn run_archive_script(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<ExecutionProcess, RunScriptError>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    // Check if any non-dev-server processes are already running for this workspace
+    if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
+        .await?
+    {
+        return Ok(ResponseJson(ApiResponse::error_with_data(
+            RunScriptError::ProcessAlreadyRunning,
+        )));
+    }
+
+    deployment
+        .container()
+        .ensure_container_exists(&workspace)
+        .await?;
+
+    let task = workspace
+        .parent_task(pool)
+        .await?
+        .ok_or(SqlxError::RowNotFound)?;
+
+    let project = task
+        .parent_project(pool)
+        .await?
+        .ok_or(SqlxError::RowNotFound)?;
+
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let executor_action = match deployment.container().archive_actions_for_repos(&repos) {
+        Some(action) => action,
+        None => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                RunScriptError::NoScriptConfigured,
+            )));
+        }
+    };
+
+    // Get or create a session for archive script
+    let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
+        Some(s) => s,
+        None => {
+            Session::create(
+                pool,
+                &CreateSession { executor: None },
+                Uuid::new_v4(),
+                workspace.id,
+            )
+            .await?
+        }
+    };
+
+    let execution_process = deployment
+        .container()
+        .start_execution(
+            &workspace,
+            &session,
+            &executor_action,
+            &ExecutionProcessRunReason::ArchiveScript,
+        )
+        .await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "archive_script_executed",
+            serde_json::json!({
+                "task_id": task.id.to_string(),
+                "project_id": project.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(execution_process)))
+}
+
 #[axum::debug_handler]
 pub async fn gh_cli_setup_handler(
     Extension(workspace): Extension<Workspace>,
@@ -1847,6 +2034,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
                 .route("/start-dev-server", post(start_dev_server))
                 .route("/run-setup-script", post(run_setup_script))
                 .route("/run-cleanup-script", post(run_cleanup_script))
+                .route("/run-archive-script", post(run_archive_script))
                 .route("/branch-status", get(get_task_attempt_branch_status))
                 .route("/diff/ws", get(stream_task_attempt_diff_ws))
                 .route("/merge", post(merge_task_attempt))
@@ -1863,6 +2051,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
                 .route("/change-target-branch", post(change_target_branch))
                 .route("/rename-branch", post(rename_branch))
                 .route("/repos", get(get_task_attempt_repos))
+                .route("/search", get(search_workspace_files))
                 .route("/first-message", get(get_first_user_message))
                 .route("/mark-seen", put(mark_seen))
                 .route("/link", post(link_workspace))

@@ -443,6 +443,43 @@ pub trait ContainerService {
         Some(root_action)
     }
 
+    fn archive_actions_for_repos(&self, repos: &[Repo]) -> Option<ExecutorAction> {
+        let repos_with_archive: Vec<_> = repos
+            .iter()
+            .filter(|r| r.archive_script.is_some())
+            .collect();
+
+        if repos_with_archive.is_empty() {
+            return None;
+        }
+
+        let mut iter = repos_with_archive.iter();
+        let first = iter.next()?;
+        let mut root_action = ExecutorAction::new(
+            ExecutorActionType::ScriptRequest(ScriptRequest {
+                script: first.archive_script.clone().unwrap(),
+                language: ScriptRequestLanguage::Bash,
+                context: ScriptContext::ArchiveScript,
+                working_dir: Some(first.name.clone()),
+            }),
+            None,
+        );
+
+        for repo in iter {
+            root_action = root_action.append_action(ExecutorAction::new(
+                ExecutorActionType::ScriptRequest(ScriptRequest {
+                    script: repo.archive_script.clone().unwrap(),
+                    language: ScriptRequestLanguage::Bash,
+                    context: ScriptContext::ArchiveScript,
+                    working_dir: Some(repo.name.clone()),
+                }),
+                None,
+            ));
+        }
+
+        Some(root_action)
+    }
+
     fn setup_actions_for_repos(&self, repos: &[Repo]) -> Option<ExecutorAction> {
         let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 

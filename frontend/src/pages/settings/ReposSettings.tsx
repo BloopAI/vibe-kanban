@@ -34,6 +34,7 @@ interface RepoScriptsFormState {
   setup_script: string;
   parallel_setup_script: boolean;
   cleanup_script: string;
+  archive_script: string;
   copy_files: string;
   dev_server_script: string;
 }
@@ -44,6 +45,7 @@ function repoToFormState(repo: Repo): RepoScriptsFormState {
     setup_script: repo.setup_script ?? '',
     parallel_setup_script: repo.parallel_setup_script,
     cleanup_script: repo.cleanup_script ?? '',
+    archive_script: repo.archive_script ?? '',
     copy_files: repo.copy_files ?? '',
     dev_server_script: repo.dev_server_script ?? '',
   };
@@ -179,6 +181,7 @@ export function ReposSettings() {
         display_name: draft.display_name.trim() || null,
         setup_script: draft.setup_script.trim() || null,
         cleanup_script: draft.cleanup_script.trim() || null,
+        archive_script: draft.archive_script.trim() || null,
         copy_files: draft.copy_files.trim() || null,
         parallel_setup_script: draft.parallel_setup_script,
         dev_server_script: draft.dev_server_script.trim() || null,
@@ -416,6 +419,27 @@ export function ReposSettings() {
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.repos.scripts.cleanup.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="archive-script">
+                  {t('settings.repos.scripts.archive.label')}
+                </Label>
+                <AutoExpandingTextarea
+                  id="archive-script"
+                  value={draft.archive_script}
+                  onChange={(e) =>
+                    updateDraft({
+                      archive_script: e.target.value,
+                    })
+                  }
+                  placeholder={placeholders.archive}
+                  maxRows={12}
+                  className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                />
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.repos.scripts.archive.helper')}
                 </p>
               </div>
 

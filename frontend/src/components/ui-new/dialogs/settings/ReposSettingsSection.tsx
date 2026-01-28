@@ -31,6 +31,7 @@ interface RepoScriptsFormState {
   setup_script: string;
   parallel_setup_script: boolean;
   cleanup_script: string;
+  archive_script: string;
   copy_files: string;
   dev_server_script: string;
 }
@@ -43,6 +44,7 @@ function repoToFormState(repo: Repo): RepoScriptsFormState {
     setup_script: repo.setup_script ?? '',
     parallel_setup_script: repo.parallel_setup_script,
     cleanup_script: repo.cleanup_script ?? '',
+    archive_script: repo.archive_script ?? '',
     copy_files: repo.copy_files ?? '',
     dev_server_script: repo.dev_server_script ?? '',
   };
@@ -156,6 +158,7 @@ export function ReposSettingsSection() {
         default_target_branch: draft.default_target_branch.trim() || null,
         setup_script: draft.setup_script.trim() || null,
         cleanup_script: draft.cleanup_script.trim() || null,
+        archive_script: draft.archive_script.trim() || null,
         copy_files: draft.copy_files.trim() || null,
         parallel_setup_script: draft.parallel_setup_script,
         dev_server_script: draft.dev_server_script.trim() || null,
@@ -412,6 +415,18 @@ export function ReposSettingsSection() {
                 value={draft.cleanup_script}
                 onChange={(value) => updateDraft({ cleanup_script: value })}
                 placeholder={placeholders.cleanup}
+                monospace
+              />
+            </SettingsField>
+
+            <SettingsField
+              label={t('settings.repos.scripts.archive.label')}
+              description={t('settings.repos.scripts.archive.helper')}
+            >
+              <SettingsTextarea
+                value={draft.archive_script}
+                onChange={(value) => updateDraft({ archive_script: value })}
+                placeholder={placeholders.archive}
                 monospace
               />
             </SettingsField>

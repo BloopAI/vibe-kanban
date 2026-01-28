@@ -24,6 +24,7 @@ pub struct Repo {
     pub display_name: String,
     pub setup_script: Option<String>,
     pub cleanup_script: Option<String>,
+    pub archive_script: Option<String>,
     pub copy_files: Option<String>,
     pub parallel_setup_script: bool,
     pub dev_server_script: Option<String>,
@@ -61,6 +62,14 @@ pub struct UpdateRepo {
     )]
     #[ts(optional, type = "string | null")]
     pub cleanup_script: Option<Option<String>>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "double_option"
+    )]
+    #[ts(optional, type = "string | null")]
+    pub archive_script: Option<Option<String>>,
 
     #[serde(
         default,
@@ -115,6 +124,7 @@ impl Repo {
                       display_name,
                       setup_script,
                       cleanup_script,
+                      archive_script,
                       copy_files,
                       parallel_setup_script as "parallel_setup_script!: bool",
                       dev_server_script,
@@ -155,6 +165,7 @@ impl Repo {
                       display_name,
                       setup_script,
                       cleanup_script,
+                      archive_script,
                       copy_files,
                       parallel_setup_script as "parallel_setup_script!: bool",
                       dev_server_script,
@@ -212,6 +223,7 @@ impl Repo {
                          display_name,
                          setup_script,
                          cleanup_script,
+                         archive_script,
                          copy_files,
                          parallel_setup_script as "parallel_setup_script!: bool",
                          dev_server_script,
@@ -248,6 +260,7 @@ impl Repo {
                       display_name,
                       setup_script,
                       cleanup_script,
+                      archive_script,
                       copy_files,
                       parallel_setup_script as "parallel_setup_script!: bool",
                       dev_server_script,
@@ -286,6 +299,10 @@ impl Repo {
             None => existing.cleanup_script,
             Some(v) => v.clone(),
         };
+        let archive_script = match &payload.archive_script {
+            None => existing.archive_script,
+            Some(v) => v.clone(),
+        };
         let copy_files = match &payload.copy_files {
             None => existing.copy_files,
             Some(v) => v.clone(),
@@ -313,19 +330,21 @@ impl Repo {
                SET display_name = $1,
                    setup_script = $2,
                    cleanup_script = $3,
-                   copy_files = $4,
-                   parallel_setup_script = $5,
-                   dev_server_script = $6,
-                   default_target_branch = $7,
-                   default_working_dir = $8,
+                   archive_script = $4,
+                   copy_files = $5,
+                   parallel_setup_script = $6,
+                   dev_server_script = $7,
+                   default_target_branch = $8,
+                   default_working_dir = $9,
                    updated_at = datetime('now', 'subsec')
-               WHERE id = $9
+               WHERE id = $10
                RETURNING id as "id!: Uuid",
                          path,
                          name,
                          display_name,
                          setup_script,
                          cleanup_script,
+                         archive_script,
                          copy_files,
                          parallel_setup_script as "parallel_setup_script!: bool",
                          dev_server_script,
@@ -336,6 +355,7 @@ impl Repo {
             display_name,
             setup_script,
             cleanup_script,
+            archive_script,
             copy_files,
             parallel_setup_script,
             dev_server_script,

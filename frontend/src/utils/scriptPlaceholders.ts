@@ -2,6 +2,7 @@ interface ScriptPlaceholders {
   setup: string;
   dev: string;
   cleanup: string;
+  archive: string;
 }
 
 interface ScriptPlaceholderStrategy {
@@ -20,6 +21,9 @@ REM Add dev server start command here...`,
       cleanup: `@echo off
 REM Add cleanup commands here...
 REM This runs after coding agent execution - only if changes were made`,
+      archive: `@echo off
+REM Add archive commands here...
+REM This runs when the workspace is archived`,
     };
   }
 }
@@ -33,6 +37,8 @@ class UnixScriptPlaceholderStrategy implements ScriptPlaceholderStrategy {
 # Add dev server start command here...`,
       cleanup: `# Add cleanup commands here...
 # This runs after coding agent execution - only if changes were made`,
+      archive: `# Add archive commands here...
+# This runs when the workspace is archived`,
     };
   }
 }

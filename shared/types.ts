@@ -18,9 +18,9 @@ score: bigint, };
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
-export type Repo = { id: string, path: string, name: string, display_name: string, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, dev_server_script: string | null, default_target_branch: string | null, default_working_dir: string | null, created_at: Date, updated_at: Date, };
+export type Repo = { id: string, path: string, name: string, display_name: string, setup_script: string | null, cleanup_script: string | null, archive_script: string | null, copy_files: string | null, parallel_setup_script: boolean, dev_server_script: string | null, default_target_branch: string | null, default_working_dir: string | null, created_at: Date, updated_at: Date, };
 
-export type UpdateRepo = { display_name?: string | null, setup_script?: string | null, cleanup_script?: string | null, copy_files?: string | null, parallel_setup_script?: boolean | null, dev_server_script?: string | null, default_target_branch?: string | null, default_working_dir?: string | null, };
+export type UpdateRepo = { display_name?: string | null, setup_script?: string | null, cleanup_script?: string | null, archive_script?: string | null, copy_files?: string | null, parallel_setup_script?: boolean | null, dev_server_script?: string | null, default_target_branch?: string | null, default_working_dir?: string | null, };
 
 export type ProjectRepo = { id: string, project_id: string, repo_id: string, };
 
@@ -30,7 +30,7 @@ export type WorkspaceRepo = { id: string, workspace_id: string, repo_id: string,
 
 export type CreateWorkspaceRepo = { repo_id: string, target_branch: string, };
 
-export type RepoWithTargetBranch = { target_branch: string, id: string, path: string, name: string, display_name: string, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, dev_server_script: string | null, default_target_branch: string | null, default_working_dir: string | null, created_at: Date, updated_at: Date, };
+export type RepoWithTargetBranch = { target_branch: string, id: string, path: string, name: string, display_name: string, setup_script: string | null, cleanup_script: string | null, archive_script: string | null, copy_files: string | null, parallel_setup_script: boolean, dev_server_script: string | null, default_target_branch: string | null, default_working_dir: string | null, created_at: Date, updated_at: Date, };
 
 export type Tag = { id: string, tag_name: string, content: string, created_at: string, updated_at: string, };
 
@@ -90,7 +90,7 @@ dropped: boolean, started_at: string, completed_at: string | null, created_at: s
 
 export enum ExecutionProcessStatus { running = "running", completed = "completed", failed = "failed", killed = "killed" }
 
-export type ExecutionProcessRunReason = "setupscript" | "cleanupscript" | "codingagent" | "devserver";
+export type ExecutionProcessRunReason = "setupscript" | "cleanupscript" | "archivescript" | "codingagent" | "devserver";
 
 export type ExecutionProcessRepoState = { id: string, execution_process_id: string, repo_id: string, before_head_commit: string | null, after_head_commit: string | null, merge_commit: string | null, created_at: Date, updated_at: Date, };
 
@@ -418,7 +418,7 @@ export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path
 
 export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest | { "type": "ReviewRequest" } & ReviewRequest;
 
-export type ScriptContext = "SetupScript" | "CleanupScript" | "DevServer" | "ToolInstallScript";
+export type ScriptContext = "SetupScript" | "CleanupScript" | "ArchiveScript" | "DevServer" | "ToolInstallScript";
 
 export type ScriptRequest = { script: string, language: ScriptRequestLanguage, context: ScriptContext, 
 /**

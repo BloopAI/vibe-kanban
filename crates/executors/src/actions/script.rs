@@ -23,6 +23,7 @@ pub enum ScriptRequestLanguage {
 pub enum ScriptContext {
     SetupScript,
     CleanupScript,
+    ArchiveScript,
     DevServer,
     ToolInstallScript,
 }

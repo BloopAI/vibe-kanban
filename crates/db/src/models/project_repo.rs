@@ -79,6 +79,7 @@ impl ProjectRepo {
                       r.display_name,
                       r.setup_script,
                       r.cleanup_script,
+                      r.archive_script,
                       r.copy_files,
                       r.parallel_setup_script as "parallel_setup_script!: bool",
                       r.dev_server_script,
