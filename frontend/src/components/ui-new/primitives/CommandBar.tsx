@@ -19,7 +19,11 @@ import {
 } from './Command';
 import type { ActionDefinition, ActionIcon } from '../actions';
 import { isSpecialIcon } from '../actions';
-import type { ResolvedGroup, ResolvedGroupItem } from '../actions/pages';
+import type {
+  ResolvedGroup,
+  ResolvedGroupItem,
+  StatusItem,
+} from '../actions/pages';
 import { IdeIcon } from '@/components/ide/IdeIcon';
 
 /**
@@ -61,6 +65,8 @@ interface CommandBarProps {
   search: string;
   // Called when search changes
   onSearchChange: (search: string) => void;
+  // Statuses for looking up issue status colors
+  statuses?: StatusItem[];
 }
 
 export function CommandBar({
@@ -71,6 +77,7 @@ export function CommandBar({
   getLabel,
   search,
   onSearchChange,
+  statuses = [],
 }: CommandBarProps) {
   const { t } = useTranslation('common');
 
@@ -167,6 +174,43 @@ export function CommandBar({
                       weight="bold"
                     />
                     <span>{item.priority.name}</span>
+                  </CommandItem>
+                );
+              } else if (item.type === 'issue') {
+                const priorityConfig = {
+                  urgent: {
+                    icon: ArrowFatLineUpIcon,
+                    colorClass: 'text-error',
+                  },
+                  high: { icon: ArrowUpIcon, colorClass: 'text-brand' },
+                  medium: { icon: MinusIcon, colorClass: 'text-low' },
+                  low: { icon: ArrowDownIcon, colorClass: 'text-success' },
+                } as const;
+                const config = priorityConfig[item.issue.priority];
+                const PriorityIcon = config.icon;
+                const statusColor =
+                  statuses.find((s) => s.id === item.issue.status_id)?.color ??
+                  '0 0% 50%';
+                return (
+                  <CommandItem
+                    key={item.issue.id}
+                    value={`${item.issue.id} ${item.issue.simple_id} ${item.issue.title}`}
+                    onSelect={() => onSelect(item)}
+                  >
+                    <PriorityIcon
+                      className={`h-4 w-4 shrink-0 ${config.colorClass}`}
+                      weight="bold"
+                    />
+                    <span className="font-mono text-low shrink-0">
+                      {item.issue.simple_id}
+                    </span>
+                    <div
+                      className="h-2 w-2 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: `hsl(${statusColor})`,
+                      }}
+                    />
+                    <span className="truncate">{item.issue.title}</span>
                   </CommandItem>
                 );
               } else if (item.type === 'action') {

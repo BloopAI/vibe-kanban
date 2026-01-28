@@ -57,6 +57,13 @@ interface ActionsContextValue {
     isCreateMode?: boolean
   ) => Promise<void>;
 
+  // Open sub-issue selection in command bar
+  openSubIssueSelection: (
+    projectId: string,
+    parentIssueId: string,
+    mode?: 'addChild' | 'setParent'
+  ) => Promise<void>;
+
   // The executor context (for components that need direct access)
   executorContext: ActionExecutorContext;
 }
@@ -141,6 +148,23 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     []
   );
 
+  // Open sub-issue selection in command bar (uses dynamic import to avoid circular deps)
+  const openSubIssueSelection = useCallback(
+    async (
+      projectId: string,
+      parentIssueId: string,
+      mode: 'addChild' | 'setParent' = 'addChild'
+    ) => {
+      const { CommandBarDialog } = await import(
+        '@/components/ui-new/dialogs/CommandBarDialog'
+      );
+      await CommandBarDialog.show({
+        pendingSubIssueSelection: { projectId, parentIssueId, mode },
+      });
+    },
+    []
+  );
+
   // Build executor context from hooks
   const executorContext = useMemo<ActionExecutorContext>(
     () => ({
@@ -158,6 +182,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openStatusSelection,
       openPrioritySelection,
       openAssigneeSelection,
+      openSubIssueSelection,
       openKanbanIssuePanel,
       setKanbanCreateDefaultStatusId,
     }),
@@ -176,6 +201,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openStatusSelection,
       openPrioritySelection,
       openAssigneeSelection,
+      openSubIssueSelection,
       openKanbanIssuePanel,
       setKanbanCreateDefaultStatusId,
     ]
@@ -262,6 +288,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openStatusSelection,
       openPrioritySelection,
       openAssigneeSelection,
+      openSubIssueSelection,
       executorContext,
     }),
     [
@@ -270,6 +297,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openStatusSelection,
       openPrioritySelection,
       openAssigneeSelection,
+      openSubIssueSelection,
       executorContext,
     ]
   );

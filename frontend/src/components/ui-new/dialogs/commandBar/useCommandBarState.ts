@@ -30,6 +30,13 @@ export type CommandBarState =
       search: string;
       pendingProjectId: string;
       pendingIssueIds: string[];
+    }
+  | {
+      status: 'selectingSubIssue';
+      stack: PageId[];
+      search: string;
+      pendingProjectId: string;
+      pendingParentIssueId: string;
     };
 
 export type CommandBarEvent =
@@ -38,7 +45,12 @@ export type CommandBarEvent =
   | { type: 'GO_BACK' }
   | { type: 'SELECT_ITEM'; item: ResolvedGroupItem }
   | { type: 'START_STATUS_SELECTION'; projectId: string; issueIds: string[] }
-  | { type: 'START_PRIORITY_SELECTION'; projectId: string; issueIds: string[] };
+  | { type: 'START_PRIORITY_SELECTION'; projectId: string; issueIds: string[] }
+  | {
+      type: 'START_SUB_ISSUE_SELECTION';
+      projectId: string;
+      parentIssueId: string;
+    };
 
 export type CommandBarEffect =
   | { type: 'none' }
@@ -54,6 +66,12 @@ export type CommandBarEffect =
       projectId: string;
       issueIds: string[];
       priority: 'urgent' | 'high' | 'medium' | 'low';
+    }
+  | {
+      type: 'addSubIssue';
+      projectId: string;
+      parentIssueId: string;
+      childIssueId: string;
     };
 
 const browsing = (page: PageId, stack: PageId[] = []): CommandBarState => ({
@@ -97,6 +115,18 @@ const selectingPriority = (
   pendingIssueIds,
 });
 
+const selectingSubIssue = (
+  pendingProjectId: string,
+  pendingParentIssueId: string,
+  stack: PageId[] = []
+): CommandBarState => ({
+  status: 'selectingSubIssue',
+  stack,
+  search: '',
+  pendingProjectId,
+  pendingParentIssueId,
+});
+
 const noEffect: CommandBarEffect = { type: 'none' };
 
 function reducer(
@@ -136,6 +166,13 @@ function reducer(
     ];
   }
 
+  if (event.type === 'START_SUB_ISSUE_SELECTION') {
+    return [
+      selectingSubIssue(event.projectId, event.parentIssueId, state.stack),
+      noEffect,
+    ];
+  }
+
   if (event.type === 'SELECT_ITEM') {
     if (state.status === 'selectingRepo' && event.item.type === 'repo') {
       return [
@@ -171,6 +208,18 @@ function reducer(
           projectId: state.pendingProjectId,
           issueIds: state.pendingIssueIds,
           priority: event.item.priority.id,
+        },
+      ];
+    }
+
+    if (state.status === 'selectingSubIssue' && event.item.type === 'issue') {
+      return [
+        browsing('root'),
+        {
+          type: 'addSubIssue',
+          projectId: state.pendingProjectId,
+          parentIssueId: state.pendingParentIssueId,
+          childIssueId: event.item.issue.id,
         },
       ];
     }
@@ -277,7 +326,9 @@ export function useCommandBarState(
         ? 'selectStatus'
         : state.status === 'selectingPriority'
           ? 'selectPriority'
-          : state.page;
+          : state.status === 'selectingSubIssue'
+            ? 'selectSubIssue'
+            : state.page;
 
   return {
     state,

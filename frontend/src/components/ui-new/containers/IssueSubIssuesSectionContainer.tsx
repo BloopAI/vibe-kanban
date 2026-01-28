@@ -1,13 +1,17 @@
 import { useMemo, useCallback, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
+import { PlusIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
+import { useActions } from '@/contexts/ActionsContext';
 import { bulkUpdateIssues } from '@/lib/remoteApi';
 import {
   IssueSubIssuesSection,
   type SubIssueData,
 } from '@/components/ui-new/views/IssueSubIssuesSection';
+import type { SectionAction } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
 
 interface IssueSubIssuesSectionContainerProps {
   issueId: string;
@@ -21,6 +25,9 @@ interface IssueSubIssuesSectionContainerProps {
 export function IssueSubIssuesSectionContainer({
   issueId,
 }: IssueSubIssuesSectionContainerProps) {
+  const { projectId } = useParams<{ projectId: string }>();
+  const { openSubIssueSelection } = useActions();
+
   const {
     issues,
     statuses,
@@ -126,6 +133,24 @@ export function IssueSubIssuesSectionContainer({
 
   const isLoading = projectLoading || orgLoading;
 
+  // Handle clicking '+' to add a sub-issue
+  const handleAddSubIssue = useCallback(() => {
+    if (projectId) {
+      openSubIssueSelection(projectId, issueId);
+    }
+  }, [projectId, issueId, openSubIssueSelection]);
+
+  // Actions for the section header
+  const actions: SectionAction[] = useMemo(
+    () => [
+      {
+        icon: PlusIcon,
+        onClick: handleAddSubIssue,
+      },
+    ],
+    [handleAddSubIssue]
+  );
+
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       <IssueSubIssuesSection
@@ -134,6 +159,7 @@ export function IssueSubIssuesSectionContainer({
         onSubIssueClick={handleSubIssueClick}
         isLoading={isLoading}
         isReordering={isReordering}
+        actions={actions}
       />
     </DragDropContext>
   );
