@@ -4,16 +4,11 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type { IssuePriority, ProjectStatus, Tag } from 'shared/remote-types';
 import { IssuePropertyRow } from '@/components/ui-new/views/IssuePropertyRow';
 import { IssueTagsRow } from '@/components/ui-new/views/IssueTagsRow';
-import {
-  IssueWorkspaceCard,
-  type WorkspaceWithStats,
-} from '@/components/ui-new/views/IssueWorkspaceCard';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { Toggle } from '@/components/ui-new/primitives/Toggle';
-import { CollapsibleSectionHeader } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
 import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/IssueCommentsSectionContainer';
 import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/IssueSubIssuesSectionContainer';
-import type { PersistKey } from '@/stores/useUiPreferencesStore';
+import { IssueWorkspacesSectionContainer } from '@/components/ui-new/containers/IssueWorkspacesSectionContainer';
 
 export type IssuePanelMode = 'create' | 'edit';
 
@@ -52,7 +47,6 @@ export interface KanbanIssuePanelProps {
   issueId?: string | null;
   parentIssue?: { id: string; simpleId: string } | null;
   onParentIssueClick?: () => void;
-  workspaces?: WorkspaceWithStats[];
   linkedPrs?: LinkedPullRequest[];
 
   // Actions
@@ -81,7 +75,6 @@ export function KanbanIssuePanel({
   issueId,
   parentIssue,
   onParentIssueClick,
-  workspaces = [],
   linkedPrs = [],
   onClose,
   onSubmit,
@@ -224,23 +217,9 @@ export function KanbanIssuePanel({
         )}
 
         {/* Workspaces Section (Edit mode only) */}
-        {!isCreateMode && (
+        {!isCreateMode && issueId && (
           <div className="border-t">
-            <CollapsibleSectionHeader
-              title="Workspaces"
-              persistKey={'kanban-issue-workspaces' as PersistKey}
-              defaultExpanded={true}
-              actions={[]}
-            >
-              <div className="px-base pb-base flex flex-col gap-base">
-                {workspaces.map((workspace) => (
-                  <IssueWorkspaceCard
-                    key={workspace.id}
-                    workspace={workspace}
-                  />
-                ))}
-              </div>
-            </CollapsibleSectionHeader>
+            <IssueWorkspacesSectionContainer issueId={issueId} />
           </div>
         )}
 
