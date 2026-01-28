@@ -56,7 +56,10 @@
       "createdTask": "Tâche créée : {{description}}",
       "todoOperation": "{{operation}} tâches à faire"
     },
-    "fixScript": "Corriger le script"
+    "fixScript": "Corriger le script",
+    "subagent": {
+      "defaultType": "Sous-agent"
+    }
   },
   "folderPicker": {
     "legend": "Cliquez sur les noms de dossiers pour naviguer • Utilisez les boutons d'action pour sélectionner",

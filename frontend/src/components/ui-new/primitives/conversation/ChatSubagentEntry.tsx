@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   CaretDownIcon,
   RobotIcon,
@@ -36,6 +37,8 @@ export function ChatSubagentEntry({
   status,
   workspaceId,
 }: ChatSubagentEntryProps) {
+  const { t } = useTranslation('common');
+
   // Determine status icon
   const StatusIcon = useMemo(() => {
     if (!status) return null;
@@ -62,10 +65,10 @@ export function ChatSubagentEntry({
 
   // Format the subagent type for display
   const formattedType = useMemo(() => {
-    if (!subagentType) return 'Subagent';
+    if (!subagentType) return t('conversation.subagent.defaultType');
     // Capitalize first letter and format
     return subagentType.charAt(0).toUpperCase() + subagentType.slice(1);
-  }, [subagentType]);
+  }, [subagentType, t]);
 
   // Extract the result content for display
   const resultContent = useMemo(() => {
@@ -131,7 +134,7 @@ export function ChatSubagentEntry({
       {expanded && hasContent && (
         <div className="border-t p-double bg-panel/50">
           <div className="text-xs font-medium text-low mb-base uppercase tracking-wide">
-            Output
+            {t('conversation.output')}
           </div>
           <div className="prose prose-sm dark:prose-invert max-w-none">
             <ChatMarkdown content={resultContent!} workspaceId={workspaceId} />

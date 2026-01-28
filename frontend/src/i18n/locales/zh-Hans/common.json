@@ -56,7 +56,10 @@
       "createdTask": "创建任务：{{description}}",
       "todoOperation": "{{operation}} 待办事项"
     },
-    "fixScript": "修复脚本"
+    "fixScript": "修复脚本",
+    "subagent": {
+      "defaultType": "子代理"
+    }
   },
   "folderPicker": {
     "legend": "点击文件夹名称进行导航 • 使用操作按钮进行选择",
