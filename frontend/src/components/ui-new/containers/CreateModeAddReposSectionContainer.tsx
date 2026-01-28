@@ -1,29 +1,31 @@
-import { useMemo } from 'react';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GitBranchIcon } from '@phosphor-icons/react';
 import { useCreateMode } from '@/contexts/CreateModeContext';
-import { RecentReposListContainer } from './RecentReposListContainer';
-import { BrowseRepoButtonContainer } from './BrowseRepoButtonContainer';
-import { CreateRepoButtonContainer } from './CreateRepoButtonContainer';
+import { CloneRepoDialog } from '@/components/dialogs/shared/CloneRepoDialog';
+import { IconListItem } from '@/components/ui-new/primitives/IconListItem';
 
 export function CreateModeAddReposSectionContainer() {
   const { t } = useTranslation(['common']);
-  const { repos, addRepo } = useCreateMode();
-  const registeredRepoPaths = useMemo(() => repos.map((r) => r.path), [repos]);
+  const { addRepo } = useCreateMode();
+
+  const handleCloneRepo = useCallback(async () => {
+    const repo = await CloneRepoDialog.show({
+      title: t('common:dialogs.cloneRepo.title'),
+      description: t('common:dialogs.cloneRepo.description'),
+    });
+    if (repo) {
+      addRepo(repo);
+    }
+  }, [addRepo, t]);
 
   return (
     <div className="flex flex-col gap-base p-base">
-      <p className="text-xs text-low font-medium">
-        {t('common:sections.recent')}
-      </p>
-      <RecentReposListContainer
-        registeredRepoPaths={registeredRepoPaths}
-        onRepoRegistered={addRepo}
+      <IconListItem
+        icon={GitBranchIcon}
+        label={t('common:actions.cloneFromGitUrl')}
+        onClick={handleCloneRepo}
       />
-      <p className="text-xs text-low font-medium">
-        {t('common:sections.other')}
-      </p>
-      <BrowseRepoButtonContainer disabled={false} onRepoRegistered={addRepo} />
-      <CreateRepoButtonContainer onRepoCreated={addRepo} />
     </div>
   );
 }

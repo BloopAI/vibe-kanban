@@ -209,6 +209,7 @@
   "actions": {
     "browseRepos": "Browse repos on disk",
     "createNewRepo": "Create new repo on disk",
+    "cloneFromGitUrl": "Clone from Git URL",
     "viewInChangesPanel": "View in changes panel",
     "copyPath": "Copy path",
     "copyWorktreePath": "Copy worktree path",
