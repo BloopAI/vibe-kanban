@@ -193,7 +193,7 @@ pub async fn follow_up(
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt: prompt.clone(),
             session_id: info.session_id,
-            reset_to_message_uuid: if is_reset { info.message_uuid } else { None },
+            reset_to_message_id: if is_reset { info.message_id } else { None },
             executor_profile_id: executor_profile_id.clone(),
             working_dir: working_dir.clone(),
         })

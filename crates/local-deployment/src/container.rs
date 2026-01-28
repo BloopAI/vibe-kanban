@@ -895,7 +895,7 @@ impl LocalContainerService {
             ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
                 prompt: queued_data.message.clone(),
                 session_id: info.session_id,
-                reset_to_message_uuid: None,
+                reset_to_message_id: None,
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir: working_dir.clone(),
             })

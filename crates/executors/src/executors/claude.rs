@@ -205,7 +205,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        reset_to_message_uuid: Option<&str>,
+        reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await?;
@@ -214,7 +214,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 
         // --resume-session-at truncates Claude's conversation history to the specified
         // message and continues from there.
-        if let Some(uuid) = reset_to_message_uuid {
+        if let Some(uuid) = reset_to_message_id {
             args.push("--resume-session-at".to_string());
             args.push(uuid.to_string());
         }
@@ -452,7 +452,7 @@ impl ClaudeLogProcessor {
                     LogMsg::Stdout(x) => x,
                     LogMsg::JsonPatch(_)
                     | LogMsg::SessionId(_)
-                    | LogMsg::MessageUuid(_)
+                    | LogMsg::MessageId(_)
                     | LogMsg::Stderr(_)
                     | LogMsg::Ready => continue,
                     LogMsg::Finished => break,
@@ -497,7 +497,7 @@ impl ClaudeLogProcessor {
                                 ClaudeJson::User { uuid, .. } => {
                                     pending_assistant_uuid = None;
                                     if let Some(uuid) = uuid {
-                                        msg_store.push_message_uuid(uuid.clone());
+                                        msg_store.push_message_id(uuid.clone());
                                     }
                                 }
                                 ClaudeJson::Assistant { uuid, .. } => {
@@ -505,7 +505,7 @@ impl ClaudeLogProcessor {
                                 }
                                 ClaudeJson::Result { .. } => {
                                     if let Some(uuid) = pending_assistant_uuid.take() {
-                                        msg_store.push_message_uuid(uuid);
+                                        msg_store.push_message_id(uuid);
                                     }
                                 }
                                 _ => {}

@@ -9,7 +9,7 @@ pub struct CodingAgentTurn {
     pub id: Uuid,
     pub execution_process_id: Uuid,
     pub agent_session_id: Option<String>,
-    pub agent_message_uuid: Option<String>,
+    pub agent_message_id: Option<String>,
     pub prompt: Option<String>,  // The prompt sent to the executor
     pub summary: Option<String>, // Final assistant message/summary
     pub seen: bool,              // Whether user has viewed this turn
@@ -27,7 +27,7 @@ pub struct CreateCodingAgentTurn {
 #[derive(Debug)]
 pub struct CodingAgentResumeInfo {
     pub session_id: String,
-    pub message_uuid: Option<String>,
+    pub message_id: Option<String>,
 }
 
 impl CodingAgentTurn {
@@ -41,7 +41,7 @@ impl CodingAgentTurn {
             CodingAgentResumeInfo,
             r#"SELECT
                 cat.agent_session_id as "session_id!",
-                cat.agent_message_uuid as "message_uuid"
+                cat.agent_message_id as "message_id"
                FROM execution_processes ep
                JOIN coding_agent_turns cat ON ep.id = cat.execution_process_id
                WHERE ep.session_id = $1
@@ -67,7 +67,7 @@ impl CodingAgentTurn {
                 id as "id!: Uuid",
                 execution_process_id as "execution_process_id!: Uuid",
                 agent_session_id,
-                agent_message_uuid,
+                agent_message_id,
                 prompt,
                 summary,
                 seen as "seen!: bool",
@@ -91,7 +91,7 @@ impl CodingAgentTurn {
                 id as "id!: Uuid",
                 execution_process_id as "execution_process_id!: Uuid",
                 agent_session_id,
-                agent_message_uuid,
+                agent_message_id,
                 prompt,
                 summary,
                 seen as "seen!: bool",
@@ -124,7 +124,7 @@ impl CodingAgentTurn {
         sqlx::query_as!(
             CodingAgentTurn,
             r#"INSERT INTO coding_agent_turns (
-                id, execution_process_id, agent_session_id, agent_message_uuid, prompt, summary, seen,
+                id, execution_process_id, agent_session_id, agent_message_id, prompt, summary, seen,
                 created_at, updated_at
                )
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -132,7 +132,7 @@ impl CodingAgentTurn {
                 id as "id!: Uuid",
                 execution_process_id as "execution_process_id!: Uuid",
                 agent_session_id,
-                agent_message_uuid,
+                agent_message_id,
                 prompt,
                 summary,
                 seen as "seen!: bool",
@@ -141,7 +141,7 @@ impl CodingAgentTurn {
             id,
             data.execution_process_id,
             None::<String>, // agent_session_id initially None until parsed from output
-            None::<String>, // agent_message_uuid initially None until parsed from output
+            None::<String>, // agent_message_id initially None until parsed from output
             data.prompt,
             None::<String>, // summary initially None
             false,          // seen - defaults to unseen
@@ -173,18 +173,18 @@ impl CodingAgentTurn {
         Ok(())
     }
 
-    /// Update coding agent turn with agent message UUID (for --resume-session-at)
-    pub async fn update_agent_message_uuid(
+    /// Update coding agent turn with agent message ID (for --resume-session-at)
+    pub async fn update_agent_message_id(
         pool: &SqlitePool,
         execution_process_id: Uuid,
-        agent_message_uuid: &str,
+        agent_message_id: &str,
     ) -> Result<(), sqlx::Error> {
         let now = Utc::now();
         sqlx::query!(
             r#"UPDATE coding_agent_turns
-               SET agent_message_uuid = $1, updated_at = $2
+               SET agent_message_id = $1, updated_at = $2
                WHERE execution_process_id = $3"#,
-            agent_message_uuid,
+            agent_message_id,
             now,
             execution_process_id
         )

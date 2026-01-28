@@ -19,7 +19,7 @@ pub struct CodingAgentFollowUpRequest {
     pub prompt: String,
     pub session_id: String,
     #[serde(default)]
-    pub reset_to_message_uuid: Option<String>,
+    pub reset_to_message_id: Option<String>,
     /// Executor profile specification
     #[serde(alias = "profile_variant_label")]
     // Backwards compatibility with ProfileVariantIds, esp stored in DB under ExecutorAction
@@ -68,7 +68,7 @@ impl Executable for CodingAgentFollowUpRequest {
                     &effective_dir,
                     &self.prompt,
                     &self.session_id,
-                    self.reset_to_message_uuid.as_deref(),
+                    self.reset_to_message_id.as_deref(),
                     env,
                 )
                 .await;
@@ -90,7 +90,7 @@ impl Executable for CodingAgentFollowUpRequest {
                     &effective_dir,
                     &self.prompt,
                     &self.session_id,
-                    self.reset_to_message_uuid.as_deref(),
+                    self.reset_to_message_id.as_deref(),
                     env,
                 )
                 .await

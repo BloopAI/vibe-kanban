@@ -86,7 +86,7 @@ impl StandardCodingAgentExecutor for Amp {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        _reset_to_message_uuid: Option<&str>,
+        _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         // 1) Fork the thread synchronously to obtain new thread id

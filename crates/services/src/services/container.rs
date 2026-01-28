@@ -889,17 +889,17 @@ pub trait ContainerService {
                                 );
                             }
                         }
-                        LogMsg::MessageUuid(agent_message_uuid) => {
-                            if let Err(e) = CodingAgentTurn::update_agent_message_uuid(
+                        LogMsg::MessageId(agent_message_id) => {
+                            if let Err(e) = CodingAgentTurn::update_agent_message_id(
                                 &db.pool,
                                 execution_id,
-                                agent_message_uuid,
+                                agent_message_id,
                             )
                             .await
                             {
                                 tracing::error!(
-                                    "Failed to update agent_message_uuid {} for execution process {}: {}",
-                                    agent_message_uuid,
+                                    "Failed to update agent_message_id {} for execution process {}: {}",
+                                    agent_message_id,
                                     execution_id,
                                     e
                                 );

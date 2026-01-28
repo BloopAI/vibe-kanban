@@ -166,7 +166,7 @@ async fn trigger_pr_description_follow_up(
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt,
             session_id: info.session_id,
-            reset_to_message_uuid: None,
+            reset_to_message_id: None,
             executor_profile_id: executor_profile_id.clone(),
             working_dir: working_dir.clone(),
         })

@@ -243,7 +243,7 @@ pub trait StandardCodingAgentExecutor {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        reset_to_message_uuid: Option<&str>,
+        reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError>;
 

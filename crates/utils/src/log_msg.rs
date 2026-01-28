@@ -6,7 +6,7 @@ pub const EV_STDOUT: &str = "stdout";
 pub const EV_STDERR: &str = "stderr";
 pub const EV_JSON_PATCH: &str = "json_patch";
 pub const EV_SESSION_ID: &str = "session_id";
-pub const EV_MESSAGE_UUID: &str = "message_uuid";
+pub const EV_MESSAGE_ID: &str = "message_id";
 pub const EV_READY: &str = "ready";
 pub const EV_FINISHED: &str = "finished";
 
@@ -16,7 +16,7 @@ pub enum LogMsg {
     Stderr(String),
     JsonPatch(Patch),
     SessionId(String),
-    MessageUuid(String),
+    MessageId(String),
     Ready,
     Finished,
 }
@@ -28,7 +28,7 @@ impl LogMsg {
             LogMsg::Stderr(_) => EV_STDERR,
             LogMsg::JsonPatch(_) => EV_JSON_PATCH,
             LogMsg::SessionId(_) => EV_SESSION_ID,
-            LogMsg::MessageUuid(_) => EV_MESSAGE_UUID,
+            LogMsg::MessageId(_) => EV_MESSAGE_ID,
             LogMsg::Ready => EV_READY,
             LogMsg::Finished => EV_FINISHED,
         }
@@ -43,7 +43,7 @@ impl LogMsg {
                 Event::default().event(EV_JSON_PATCH).data(data)
             }
             LogMsg::SessionId(s) => Event::default().event(EV_SESSION_ID).data(s.clone()),
-            LogMsg::MessageUuid(s) => Event::default().event(EV_MESSAGE_UUID).data(s.clone()),
+            LogMsg::MessageId(s) => Event::default().event(EV_MESSAGE_ID).data(s.clone()),
             LogMsg::Ready => Event::default().event(EV_READY).data(""),
             LogMsg::Finished => Event::default().event(EV_FINISHED).data(""),
         }
@@ -82,7 +82,7 @@ impl LogMsg {
                 EV_JSON_PATCH.len() + json_len + OVERHEAD
             }
             LogMsg::SessionId(s) => EV_SESSION_ID.len() + s.len() + OVERHEAD,
-            LogMsg::MessageUuid(s) => EV_MESSAGE_UUID.len() + s.len() + OVERHEAD,
+            LogMsg::MessageId(s) => EV_MESSAGE_ID.len() + s.len() + OVERHEAD,
             LogMsg::Ready => EV_READY.len() + OVERHEAD,
             LogMsg::Finished => EV_FINISHED.len() + OVERHEAD,
         }
