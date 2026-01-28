@@ -877,8 +877,8 @@ impl LocalContainerService {
         }
 
         // Get latest agent turn for session continuity (from coding agent turns)
-        let latest_turn =
-            CodingAgentTurn::find_latest_for_session(&self.db.pool, ctx.session.id).await?;
+        let latest_session_info =
+            CodingAgentTurn::find_latest_session_info(&self.db.pool, ctx.session.id).await?;
 
         let repos =
             WorkspaceRepo::find_repos_for_workspace(&self.db.pool, ctx.workspace.id).await?;
@@ -891,11 +891,11 @@ impl LocalContainerService {
             .filter(|dir| !dir.is_empty())
             .cloned();
 
-        let action_type = if let Some(turn) = latest_turn {
+        let action_type = if let Some(info) = latest_session_info {
             ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
                 prompt: queued_data.message.clone(),
-                session_id: turn.agent_session_id.expect("query filters for non-null"),
-                message_uuid: turn.agent_message_uuid,
+                session_id: info.session_id,
+                message_uuid: info.message_uuid,
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir: working_dir.clone(),
             })

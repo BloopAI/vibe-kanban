@@ -66,9 +66,9 @@ pub async fn start_review(
         .ensure_container_exists(&workspace)
         .await?;
 
-    let agent_session_id = CodingAgentTurn::find_latest_for_session(pool, session.id)
+    let agent_session_id = CodingAgentTurn::find_latest_session_info(pool, session.id)
         .await?
-        .and_then(|t| t.agent_session_id);
+        .map(|info| info.session_id);
 
     let context: Option<Vec<ExecutorRepoReviewContext>> = if payload.use_all_workspace_commits {
         let repos =

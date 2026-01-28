@@ -23,24 +23,25 @@ pub struct CreateCodingAgentTurn {
     pub prompt: Option<String>,
 }
 
+/// Session info from a coding agent turn, used for follow-up requests
+#[derive(Debug)]
+pub struct CodingAgentTurnSessionInfo {
+    pub session_id: String,
+    pub message_uuid: Option<String>,
+}
+
 impl CodingAgentTurn {
-    /// Find latest coding agent turn for a session (with agent_session_id set)
-    pub async fn find_latest_for_session(
+    /// Find session info from the latest coding agent turn for a session.
+    /// Only returns turns that have an agent_session_id set.
+    pub async fn find_latest_session_info(
         pool: &SqlitePool,
         session_id: Uuid,
-    ) -> Result<Option<Self>, sqlx::Error> {
+    ) -> Result<Option<CodingAgentTurnSessionInfo>, sqlx::Error> {
         sqlx::query_as!(
-            CodingAgentTurn,
+            CodingAgentTurnSessionInfo,
             r#"SELECT
-                cat.id as "id!: Uuid",
-                cat.execution_process_id as "execution_process_id!: Uuid",
-                cat.agent_session_id,
-                cat.agent_message_uuid,
-                cat.prompt,
-                cat.summary,
-                cat.seen as "seen!: bool",
-                cat.created_at as "created_at!: DateTime<Utc>",
-                cat.updated_at as "updated_at!: DateTime<Utc>"
+                cat.agent_session_id as "session_id!",
+                cat.agent_message_uuid as "message_uuid"
                FROM execution_processes ep
                JOIN coding_agent_turns cat ON ep.id = cat.execution_process_id
                WHERE ep.session_id = $1

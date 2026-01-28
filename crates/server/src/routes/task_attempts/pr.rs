@@ -152,8 +152,8 @@ async fn trigger_pr_description_follow_up(
     };
 
     // Get latest agent turn if one exists (for coding agent continuity)
-    let latest_turn =
-        CodingAgentTurn::find_latest_for_session(&deployment.db().pool, session.id).await?;
+    let latest_session_info =
+        CodingAgentTurn::find_latest_session_info(&deployment.db().pool, session.id).await?;
 
     let working_dir = workspace
         .agent_working_dir
@@ -162,11 +162,11 @@ async fn trigger_pr_description_follow_up(
         .cloned();
 
     // Build the action type (follow-up if session exists, otherwise initial)
-    let action_type = if let Some(turn) = latest_turn {
+    let action_type = if let Some(info) = latest_session_info {
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt,
-            session_id: turn.agent_session_id.expect("query filters for non-null"),
-            message_uuid: turn.agent_message_uuid,
+            session_id: info.session_id,
+            message_uuid: info.message_uuid,
             executor_profile_id: executor_profile_id.clone(),
             working_dir: working_dir.clone(),
         })
