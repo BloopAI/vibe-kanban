@@ -34,11 +34,7 @@ CREATE TABLE project_statuses (
     color VARCHAR(20) NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
     hidden BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    -- Prevents duplicate sort orders within the same project
-    CONSTRAINT project_statuses_project_sort_order_uniq
-        UNIQUE (project_id, sort_order)
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 

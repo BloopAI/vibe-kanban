@@ -20,6 +20,7 @@ import {
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { getRandomPresetColor, PRESET_COLORS } from '@/lib/colors';
+import { bulkUpdateProjectStatuses } from '@/lib/remoteApi';
 import {
   Popover,
   PopoverContent,
@@ -425,92 +426,92 @@ export function KanbanDisplaySettingsContainer({
     if (!destination || source.index === destination.index) return;
 
     setLocalStatuses((prev) => {
-      const oldIndex = source.index;
-      const newIndex = destination.index;
-
       const newStatuses = [...prev];
-      const [moved] = newStatuses.splice(oldIndex, 1);
-      newStatuses.splice(newIndex, 0, moved);
+      const [moved] = newStatuses.splice(source.index, 1);
+      newStatuses.splice(destination.index, 0, moved);
 
-      // Calculate sort_order for the moved item only
-      // Use Math.floor to ensure integer values (backend expects i32)
-      // This avoids unique constraint violations when saving
-      let newSortOrder: number;
-      if (newIndex === 0) {
-        // First position: half of the next item's sort_order (or 1000 if only one item)
-        const nextItem = newStatuses[1];
-        newSortOrder = nextItem ? Math.floor(nextItem.sort_order / 2) : 1000;
-      } else if (newIndex === newStatuses.length - 1) {
-        // Last position: previous item + 1000
-        newSortOrder = newStatuses[newIndex - 1].sort_order + 1000;
-      } else {
-        // Middle: average of neighbors
-        const before = newStatuses[newIndex - 1].sort_order;
-        const after = newStatuses[newIndex + 1].sort_order;
-        newSortOrder = Math.floor((before + after) / 2);
-      }
-
-      newStatuses[newIndex] = { ...moved, sort_order: newSortOrder };
-      return newStatuses;
+      // Reassign sequential sort_order values 0, 1, 2, ...
+      return newStatuses.map((s, index) => ({ ...s, sort_order: index }));
     });
     setHasChanges(true);
   }, []);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     setIsSaving(true);
 
-    // Find original statuses for comparison
-    const originalMap = new Map(statuses.map((s) => [s.id, s]));
+    try {
+      // Find original statuses for comparison
+      const originalMap = new Map(statuses.map((s) => [s.id, s]));
 
-    // Process deletions (statuses that were in original but not in local)
-    const localIds = new Set(localStatuses.map((s) => s.id));
-    for (const original of statuses) {
-      if (!localIds.has(original.id)) {
-        onRemoveStatus(original.id);
+      // Process deletions (statuses that were in original but not in local)
+      const localIds = new Set(localStatuses.map((s) => s.id));
+      for (const original of statuses) {
+        if (!localIds.has(original.id)) {
+          onRemoveStatus(original.id);
+        }
       }
-    }
 
-    // Process additions and updates
-    for (const local of localStatuses) {
-      const original = originalMap.get(local.id);
-
-      if (!original) {
-        // New status
-        onInsertStatus({
-          id: local.id,
-          project_id: projectId,
-          name: local.name,
-          color: local.color,
-          sort_order: local.sort_order,
-          hidden: local.hidden,
-        });
-      } else {
-        // Check for changes
-        const changes: Partial<{
+      // Collect updates for existing statuses
+      const bulkUpdates: {
+        id: string;
+        changes: Partial<{
           name: string;
           color: string;
           sort_order: number;
           hidden: boolean;
-        }> = {};
+        }>;
+      }[] = [];
 
-        if (local.name !== original.name) changes.name = local.name;
-        if (local.color !== original.color) changes.color = local.color;
-        if (local.sort_order !== original.sort_order)
-          changes.sort_order = local.sort_order;
-        if (local.hidden !== original.hidden) changes.hidden = local.hidden;
+      // Process additions and collect updates
+      for (const local of localStatuses) {
+        const original = originalMap.get(local.id);
 
-        if (Object.keys(changes).length > 0) {
-          onUpdateStatus(local.id, changes);
+        if (!original) {
+          // New status - use individual insert
+          onInsertStatus({
+            id: local.id,
+            project_id: projectId,
+            name: local.name,
+            color: local.color,
+            sort_order: local.sort_order,
+            hidden: local.hidden,
+          });
+        } else {
+          // Existing status - always include sort_order, plus any other changes
+          const changes: Partial<{
+            name: string;
+            color: string;
+            sort_order: number;
+            hidden: boolean;
+          }> = {
+            sort_order: local.sort_order, // Always include sort_order
+          };
+
+          if (local.name !== original.name) changes.name = local.name;
+          if (local.color !== original.color) changes.color = local.color;
+          if (local.hidden !== original.hidden) changes.hidden = local.hidden;
+
+          bulkUpdates.push({ id: local.id, changes });
         }
       }
-    }
 
-    // Brief delay to show feedback, then close
-    setTimeout(() => {
+      // Use bulk update if there are multiple updates, otherwise use individual
+      if (bulkUpdates.length > 1) {
+        await bulkUpdateProjectStatuses(bulkUpdates);
+      } else if (bulkUpdates.length === 1) {
+        onUpdateStatus(bulkUpdates[0].id, bulkUpdates[0].changes);
+      }
+
+      // Brief delay to show feedback, then close
+      setTimeout(() => {
+        setIsSaving(false);
+        setHasChanges(false);
+        setOpen(false);
+      }, 300);
+    } catch (err) {
+      console.error('Failed to save status changes:', err);
       setIsSaving(false);
-      setHasChanges(false);
-      setOpen(false);
-    }, 300);
+    }
   }, [
     localStatuses,
     statuses,

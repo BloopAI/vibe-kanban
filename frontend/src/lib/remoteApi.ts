@@ -1,4 +1,7 @@
-import type { UpdateIssueRequest } from 'shared/remote-types';
+import type {
+  UpdateIssueRequest,
+  UpdateProjectStatusRequest,
+} from 'shared/remote-types';
 import { getCachedToken } from './api';
 
 export const REMOTE_API_URL = import.meta.env.VITE_VK_SHARED_API_BASE || '';
@@ -22,19 +25,11 @@ export const makeRequest = async (path: string, options: RequestInit = {}) => {
   });
 };
 
-// =============================================================================
-// Bulk Update Issues
-// =============================================================================
-
 export interface BulkUpdateIssueItem {
   id: string;
   changes: Partial<UpdateIssueRequest>;
 }
 
-/**
- * Bulk update multiple issues with arbitrary fields.
- * Project is inferred from the first issue; all issues must belong to the same project.
- */
 export async function bulkUpdateIssues(
   updates: BulkUpdateIssueItem[]
 ): Promise<void> {
@@ -47,5 +42,25 @@ export async function bulkUpdateIssues(
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || 'Failed to bulk update issues');
+  }
+}
+
+export interface BulkUpdateProjectStatusItem {
+  id: string;
+  changes: Partial<UpdateProjectStatusRequest>;
+}
+
+export async function bulkUpdateProjectStatuses(
+  updates: BulkUpdateProjectStatusItem[]
+): Promise<void> {
+  const response = await makeRequest('/v1/project_statuses/bulk', {
+    method: 'POST',
+    body: JSON.stringify({
+      updates: updates.map((u) => ({ id: u.id, ...u.changes })),
+    }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to bulk update project statuses');
   }
 }
