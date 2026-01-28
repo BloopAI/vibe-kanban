@@ -172,7 +172,7 @@ CREATE TABLE issue_tags (
 CREATE TABLE issue_comments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
-    author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    author_id UUID REFERENCES users(id) ON DELETE SET NULL,
     parent_id UUID REFERENCES issue_comments(id) ON DELETE SET NULL,
 
     message TEXT NOT NULL,
