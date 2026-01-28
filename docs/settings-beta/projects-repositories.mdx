@@ -111,25 +111,49 @@ Commands that run **when a workspace closes**. Use this to clean up resources an
 - **Stop services** - Terminate background processes that might conflict with other workspaces
 - **Free resources** - Release database connections, Docker containers, or other resources
 - **Clean temporary files** - Remove build artifacts or cache files
+- **Format code** - Run formatters to ensure consistent code style after agent changes
 
 **Examples:**
 
+| Use Case | Command |
+|----------|---------|
+| Stop Docker containers | `docker compose down` |
+| Kill background processes | `pkill -f "node server.js"` |
+| Clean build artifacts | `rm -rf dist/ .cache/` |
+| Stop PostgreSQL | `pg_ctl stop -D /usr/local/var/postgres` |
+| Kill process on port | `lsof -ti:3000 \| xargs kill -9 2>/dev/null` |
+
+**Code formatting examples:**
+
+| Language/Tool | Command |
+|---------------|---------|
+| JavaScript/TypeScript (Prettier) | `npx prettier --write .` |
+| JavaScript/TypeScript (ESLint) | `npx eslint --fix .` |
+| Rust (cargo fmt) | `cargo fmt` |
+| Rust (Clippy) | `cargo clippy --fix --allow-dirty` |
+| Python (Black) | `black .` |
+| Python (Ruff) | `ruff check --fix .` |
+| Go | `go fmt ./...` |
+
+**Combining multiple commands:**
+
 ```bash
-# Stop Docker containers
-docker compose down
-
-# Kill background processes
-pkill -f "node server.js"
-
-# Clean build artifacts
-rm -rf dist/ .cache/
-
-# Multiple cleanup tasks
+# Chain commands with &&
 docker compose down && rm -rf tmp/
+
+# Format code after agent changes
+npx prettier --write . && npx eslint --fix .
+
+# Rust formatting and linting
+cargo fmt && cargo clippy --fix --allow-dirty
+
+# Use || true to ignore failures
+pkill -f "node server.js" || true
+rm -rf .cache/ || true
 ```
 
 <Warning>
-Cleanup scripts should be idempotent—safe to run even if the resources don't exist. Use commands that don't fail if there's nothing to clean up.
+Cleanup scripts should be idempotent—safe to run even if the resources don't exist. Use `|| true` to prevent failures when there's nothing to clean up.
 </Warning>
 
 ## Best Practices
