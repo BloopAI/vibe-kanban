@@ -121,7 +121,9 @@ const CloneRepoDialogImpl = NiceModal.create<CloneRepoDialogProps>(
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="git-url">{t('dialogs.cloneRepo.gitUrlLabel')}</Label>
+              <Label htmlFor="git-url">
+                {t('dialogs.cloneRepo.gitUrlLabel')}
+              </Label>
               <Input
                 id="git-url"
                 value={gitUrl}
@@ -161,7 +163,9 @@ const CloneRepoDialogImpl = NiceModal.create<CloneRepoDialogProps>(
               onClick={handleClone}
               disabled={!gitUrl.trim() || cloneRepo.isPending}
             >
-              {cloneRepo.isPending ? t('dialogs.cloneRepo.cloning') : t('dialogs.cloneRepo.clone')}
+              {cloneRepo.isPending
+                ? t('dialogs.cloneRepo.cloning')
+                : t('dialogs.cloneRepo.clone')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -170,6 +174,7 @@ const CloneRepoDialogImpl = NiceModal.create<CloneRepoDialogProps>(
   }
 );
 
-export const CloneRepoDialog = defineModal<CloneRepoDialogProps, CloneRepoDialogResult>(
-  CloneRepoDialogImpl
-);
+export const CloneRepoDialog = defineModal<
+  CloneRepoDialogProps,
+  CloneRepoDialogResult
+>(CloneRepoDialogImpl);

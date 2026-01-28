@@ -153,7 +153,9 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="git-url">{t('dialogs.cloneRepo.gitUrlLabel')}</Label>
+            <Label htmlFor="git-url">
+              {t('dialogs.cloneRepo.gitUrlLabel')}
+            </Label>
             <Input
               id="git-url"
               value={gitUrl}
@@ -168,7 +170,9 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
             />
             {suggestedName && (
               <p className="text-xs text-muted-foreground">
-                {t('dialogs.createProject.projectName', { name: suggestedName })}
+                {t('dialogs.createProject.projectName', {
+                  name: suggestedName,
+                })}
               </p>
             )}
           </div>
@@ -185,10 +189,7 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
           <Button variant="outline" onClick={handleCancel} disabled={isPending}>
             {t('buttons.cancel')}
           </Button>
-          <Button
-            onClick={handleCreate}
-            disabled={!gitUrl.trim() || isPending}
-          >
+          <Button onClick={handleCreate} disabled={!gitUrl.trim() || isPending}>
             {isPending
               ? isCloning
                 ? t('dialogs.cloneRepo.cloning')

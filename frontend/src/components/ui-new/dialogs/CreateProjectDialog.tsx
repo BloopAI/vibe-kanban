@@ -106,7 +106,9 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
         const projectName = repo.display_name || repo.name;
         const createData: CreateProject = {
           name: projectName,
-          repositories: [{ display_name: projectName, git_repo_path: repo.path }],
+          repositories: [
+            { display_name: projectName, git_repo_path: repo.path },
+          ],
         };
 
         createProject.mutate(createData);
@@ -157,7 +159,9 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="git-url">{t('common:dialogs.cloneRepo.gitUrlLabel')}</Label>
+              <Label htmlFor="git-url">
+                {t('common:dialogs.cloneRepo.gitUrlLabel')}
+              </Label>
               <Input
                 id="git-url"
                 value={gitUrl}
@@ -172,7 +176,9 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
               />
               {suggestedName && (
                 <p className="text-xs text-muted-foreground">
-                  {t('common:dialogs.createProject.projectName', { name: suggestedName })}
+                  {t('common:dialogs.createProject.projectName', {
+                    name: suggestedName,
+                  })}
                 </p>
               )}
             </div>
