@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { PlusIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
@@ -20,6 +20,7 @@ export function IssueWorkspacesSectionContainer({
   issueId,
 }: IssueWorkspacesSectionContainerProps) {
   const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const { openWorkspaceSelection } = useActions();
 
   const {
@@ -34,31 +35,32 @@ export function IssueWorkspacesSectionContainer({
   const workspacesWithStats: WorkspaceWithStats[] = useMemo(() => {
     const rawWorkspaces = getWorkspacesForIssue(issueId);
 
-    return rawWorkspaces
-      .filter((w) => !w.archived)
-      .map((workspace) => {
-        // Find linked PR for this workspace
-        const linkedPr = pullRequests.find(
-          (pr) => pr.workspace_id === workspace.id
-        );
+    return rawWorkspaces.map((workspace) => {
+      // Find all linked PRs for this workspace
+      const linkedPrs = pullRequests
+        .filter((pr) => pr.workspace_id === workspace.id)
+        .map((pr) => ({
+          number: pr.number,
+          url: pr.url,
+          status: pr.status as 'open' | 'merged' | 'closed',
+        }));
 
-        // Get owner
-        const owner =
-          membersWithProfilesById.get(workspace.owner_user_id) ?? null;
+      // Get owner
+      const owner =
+        membersWithProfilesById.get(workspace.owner_user_id) ?? null;
 
-        return {
-          id: workspace.id,
-          localWorkspaceId: workspace.local_workspace_id,
-          filesChanged: workspace.files_changed ?? 0,
-          linesAdded: workspace.lines_added ?? 0,
-          linesRemoved: workspace.lines_removed ?? 0,
-          prNumber: linkedPr?.number,
-          prUrl: linkedPr?.url,
-          prStatus: linkedPr?.status as 'open' | 'merged' | 'closed' | null,
-          owner,
-          createdAt: workspace.created_at,
-        };
-      });
+      return {
+        id: workspace.id,
+        localWorkspaceId: workspace.local_workspace_id,
+        archived: workspace.archived,
+        filesChanged: workspace.files_changed ?? 0,
+        linesAdded: workspace.lines_added ?? 0,
+        linesRemoved: workspace.lines_removed ?? 0,
+        prs: linkedPrs,
+        owner,
+        updatedAt: workspace.updated_at,
+      };
+    });
   }, [issueId, getWorkspacesForIssue, pullRequests, membersWithProfilesById]);
 
   const isLoading = projectLoading || orgLoading;
@@ -69,6 +71,16 @@ export function IssueWorkspacesSectionContainer({
       openWorkspaceSelection(projectId, issueId);
     }
   }, [projectId, issueId, openWorkspaceSelection]);
+
+  // Handle clicking a workspace card to open it
+  const handleWorkspaceClick = useCallback(
+    (localWorkspaceId: string | null) => {
+      if (localWorkspaceId) {
+        navigate(`/workspaces/${localWorkspaceId}`);
+      }
+    },
+    [navigate]
+  );
 
   // Actions for the section header
   const actions: SectionAction[] = useMemo(
@@ -86,6 +98,7 @@ export function IssueWorkspacesSectionContainer({
       workspaces={workspacesWithStats}
       isLoading={isLoading}
       actions={actions}
+      onWorkspaceClick={handleWorkspaceClick}
     />
   );
 }
