@@ -105,6 +105,9 @@ function AppContent() {
     let cancelled = false;
 
     const showNextStep = async () => {
+      // Don't show dialogs on login page - NiceModal.Provider is not available there
+      if (window.location.pathname === '/login') return;
+
       // 1) Disclaimer - first step
       if (!config.disclaimer_acknowledged) {
         await DisclaimerDialog.show();
