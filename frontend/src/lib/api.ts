@@ -493,6 +493,21 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
+  linkToIssue: async (
+    workspaceId: string,
+    projectId: string,
+    issueId: string
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${workspaceId}/link`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ project_id: projectId, issue_id: issueId }),
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
   searchFiles: async (
     workspaceId: string,
     query: string,
