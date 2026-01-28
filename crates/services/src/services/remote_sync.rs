@@ -1,4 +1,3 @@
-
 use tracing::{debug, error};
 use utils::api::pull_requests::PullRequestStatus;
 use uuid::Uuid;

@@ -180,16 +180,23 @@ impl PrMonitorService {
             None
         };
 
-        remote_sync::sync_pr_to_remote(
-            client,
-            pr_merge.pr_info.url.clone(),
-            pr_merge.pr_info.number as i32,
-            pr_status,
-            merged_at,
-            merge_commit_sha,
-            pr_merge.target_branch_name.clone(),
-            pr_merge.workspace_id,
-        )
-        .await;
+        let client = client.clone();
+        let url = pr_merge.pr_info.url.clone();
+        let number = pr_merge.pr_info.number as i32;
+        let target_branch_name = pr_merge.target_branch_name.clone();
+        let workspace_id = pr_merge.workspace_id;
+        tokio::spawn(async move {
+            remote_sync::sync_pr_to_remote(
+                &client,
+                url,
+                number,
+                pr_status,
+                merged_at,
+                merge_commit_sha,
+                target_branch_name,
+                workspace_id,
+            )
+            .await;
+        });
     }
 }
