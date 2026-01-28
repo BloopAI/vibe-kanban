@@ -355,8 +355,7 @@ impl StandardCodingAgentExecutor for Opencode {
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
-        // Try multiple config file names (.json and .jsonc) in XDG/platform config dirs
-        #[cfg(unix)]
+        #[cfg(not(windows))]
         {
             let base_dirs = xdg::BaseDirectories::with_prefix("opencode");
             // First try opencode.json, then opencode.jsonc
@@ -365,18 +364,18 @@ impl StandardCodingAgentExecutor for Opencode {
                 .filter(|p| p.exists())
                 .or_else(|| base_dirs.get_config_file("opencode.jsonc"))
         }
-        #[cfg(not(unix))]
+        #[cfg(windows)]
         {
-            dirs::config_dir().and_then(|config| {
-                let opencode_dir = config.join("opencode");
-                let json_path = opencode_dir.join("opencode.json");
-                let jsonc_path = opencode_dir.join("opencode.jsonc");
-                if json_path.exists() {
-                    Some(json_path)
-                } else {
-                    Some(jsonc_path)
-                }
-            })
+            let config_dir = std::env::var("XDG_CONFIG_HOME")
+                .map(std::path::PathBuf::from)
+                .ok()
+                .or_else(|| dirs::home_dir().map(|p| p.join(".config")))
+                .map(|p| p.join("opencode"))?;
+
+            let path = Some(config_dir.join("opencode.json"))
+                .filter(|p| p.exists())
+                .unwrap_or_else(|| config_dir.join("opencode.jsonc"));
+            Some(path)
         }
     }
 
@@ -387,30 +386,48 @@ impl StandardCodingAgentExecutor for Opencode {
             .unwrap_or(false);
 
         // Check multiple installation indicator paths:
-        // 1. XDG config dir: ~/.config/opencode (Unix)
-        // 2. Platform config dir: ~/Library/Application Support/opencode (macOS)
-        // 3. OpenCode Desktop app: ~/Library/Application Support/ai.opencode.desktop (macOS)
-        // 4. OpenCode CLI home: ~/.opencode (cross-platform)
+        // 1. XDG config dir: $XDG_CONFIG_HOME/opencode
+        // 2. XDG data dir: $XDG_DATA_HOME/opencode
+        // 3. XDG state dir: $XDG_STATE_HOME/opencode
+        // 4. OpenCode CLI home: ~/.opencode
+        #[cfg(not(windows))]
         let installation_indicator_found = {
-            // Check XDG/platform config directory
-            let config_dir_exists = dirs::config_dir()
-                .map(|config| config.join("opencode").exists())
+            let base_dirs = xdg::BaseDirectories::with_prefix("opencode");
+
+            let config_dir_exists = base_dirs
+                .get_config_home()
+                .map(|config| config.exists())
                 .unwrap_or(false);
 
-            // Check OpenCode Desktop app directory (macOS)
-            let desktop_app_exists = dirs::config_dir()
-                .map(|config| config.join("ai.opencode.desktop").exists())
+            let data_dir_exists = base_dirs
+                .get_data_home()
+                .map(|data| data.exists())
                 .unwrap_or(false);
 
-            // Check ~/.opencode directory (CLI installation)
-            let home_opencode_exists = dirs::home_dir()
-                .map(|home| home.join(".opencode").exists())
+            let state_dir_exists = base_dirs
+                .get_state_home()
+                .map(|state| state.exists())
                 .unwrap_or(false);
 
-            config_dir_exists || desktop_app_exists || home_opencode_exists
+            config_dir_exists || data_dir_exists || state_dir_exists
         };
 
-        if mcp_config_found || installation_indicator_found {
+        #[cfg(windows)]
+        let installation_indicator_found = std::env::var("XDG_CONFIG_HOME")
+            .ok()
+            .map(PathBuf::from)
+            .and_then(|p| p.join("opencode").exists().then_some(()))
+            .or_else(|| {
+                dirs::home_dir()
+                    .and_then(|p| p.join(".config").join("opencode").exists().then_some(()))
+            })
+            .is_some();
+
+        let home_opencode_exists = dirs::home_dir()
+            .map(|home| home.join(".opencode").exists())
+            .unwrap_or(false);
+
+        if mcp_config_found || installation_indicator_found || home_opencode_exists {
             AvailabilityInfo::InstallationFound
         } else {
             AvailabilityInfo::NotFound
