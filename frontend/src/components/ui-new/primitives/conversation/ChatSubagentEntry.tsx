@@ -42,10 +42,15 @@ export function ChatSubagentEntry({
     switch (status.status) {
       case 'success':
         return (
-          <CheckCircleIcon className="size-icon-xs text-success" weight="fill" />
+          <CheckCircleIcon
+            className="size-icon-xs text-success"
+            weight="fill"
+          />
         );
       case 'failed':
-        return <XCircleIcon className="size-icon-xs text-error" weight="fill" />;
+        return (
+          <XCircleIcon className="size-icon-xs text-error" weight="fill" />
+        );
       case 'created':
         return (
           <CircleNotchIcon className="size-icon-xs text-low animate-spin" />
