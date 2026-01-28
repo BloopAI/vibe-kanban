@@ -200,37 +200,25 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             .await
     }
 
-    async fn spawn_fork(
+    async fn spawn_follow_up(
         &self,
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        reset_to_message_uuid: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await?;
-        let args = vec!["--resume".to_string(), session_id.to_string()];
-        let command_parts = command_builder.build_follow_up(&args)?;
-        self.spawn_internal(current_dir, prompt, command_parts, env)
-            .await
-    }
 
-    async fn spawn_resume(
-        &self,
-        current_dir: &Path,
-        prompt: &str,
-        session_id: &str,
-        message_uuid: &str,
-        env: &ExecutionEnv,
-    ) -> Result<SpawnedChild, ExecutorError> {
-        let command_builder = self.build_command_builder().await?;
+        let mut args = vec!["--resume".to_string(), session_id.to_string()];
+
         // --resume-session-at truncates Claude's conversation history to the specified
         // message and continues from there.
-        let args = vec![
-            "--resume".to_string(),
-            session_id.to_string(),
-            "--resume-session-at".to_string(),
-            message_uuid.to_string(),
-        ];
+        if let Some(uuid) = reset_to_message_uuid {
+            args.push("--resume-session-at".to_string());
+            args.push(uuid.to_string());
+        }
+
         let command_parts = command_builder.build_follow_up(&args)?;
         self.spawn_internal(current_dir, prompt, command_parts, env)
             .await

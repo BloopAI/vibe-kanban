@@ -141,11 +141,12 @@ impl StandardCodingAgentExecutor for Copilot {
         Ok(child.into())
     }
 
-    async fn spawn_fork(
+    async fn spawn_follow_up(
         &self,
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        _reset_to_message_uuid: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let log_dir = Self::create_temp_log_dir(current_dir).await?;

@@ -109,11 +109,12 @@ impl StandardCodingAgentExecutor for CursorAgent {
         Ok(child.into())
     }
 
-    async fn spawn_fork(
+    async fn spawn_follow_up(
         &self,
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        _reset_to_message_uuid: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;

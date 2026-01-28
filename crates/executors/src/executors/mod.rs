@@ -63,10 +63,8 @@ pub enum BaseAgentCapability {
 
 #[derive(Debug, Error)]
 pub enum ExecutorError {
-    #[error("Fork is not supported: {0}")]
-    ForkNotSupported(String),
-    #[error("Resume is not supported by this executor")]
-    ResumeNotSupported,
+    #[error("Follow-up is not supported: {0}")]
+    FollowUpNotSupported(String),
     #[error(transparent)]
     SpawnError(#[from] FuturesIoError),
     #[error("Unknown executor type: {0}")]
@@ -239,29 +237,19 @@ pub trait StandardCodingAgentExecutor {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError>;
 
-    /// Fork a new branch from an existing session.
-    /// This is the common case for continuing a session.
-    async fn spawn_fork(
+    /// Continue a session, optionally resetting to a specific message.
+    ///
+    /// - `reset_to_message_uuid`: If provided, truncates conversation history to that
+    ///   point before continuing. Only supported by some executors (e.g., Claude).
+    ///   Other executors ignore this parameter.
+    async fn spawn_follow_up(
         &self,
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        reset_to_message_uuid: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError>;
-
-    /// Resume from a specific message in a session's history.
-    /// This truncates the conversation to that point and continues from there.
-    /// Currently only supported by Claude.
-    async fn spawn_resume(
-        &self,
-        _current_dir: &Path,
-        _prompt: &str,
-        _session_id: &str,
-        _message_uuid: &str,
-        _env: &ExecutionEnv,
-    ) -> Result<SpawnedChild, ExecutorError> {
-        Err(ExecutorError::ResumeNotSupported)
-    }
 
     async fn spawn_review(
         &self,
@@ -271,7 +259,7 @@ pub trait StandardCodingAgentExecutor {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         match session_id {
-            Some(id) => self.spawn_fork(current_dir, prompt, id, env).await,
+            Some(id) => self.spawn_follow_up(current_dir, prompt, id, None, env).await,
             None => self.spawn(current_dir, prompt, env).await,
         }
     }

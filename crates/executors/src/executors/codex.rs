@@ -210,11 +210,12 @@ impl StandardCodingAgentExecutor for Codex {
             .await
     }
 
-    async fn spawn_fork(
+    async fn spawn_follow_up(
         &self,
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        _reset_to_message_uuid: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         self.spawn_slash_command(current_dir, prompt, Some(session_id), env)
@@ -414,7 +415,7 @@ impl Codex {
             Some(session_id) => {
                 let (rollout_path, _forked_session_id) =
                     SessionHandler::fork_rollout_file(&session_id)
-                        .map_err(|e| ExecutorError::ForkNotSupported(e.to_string()))?;
+                        .map_err(|e| ExecutorError::FollowUpNotSupported(e.to_string()))?;
                 let overrides = conversation_params;
                 let response = client
                     .resume_conversation(rollout_path.clone(), overrides)

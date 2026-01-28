@@ -18,9 +18,10 @@ use crate::{
 pub struct CodingAgentFollowUpRequest {
     pub prompt: String,
     pub session_id: String,
-    /// Last user message UUID from Claude for --resume-session-at
-    #[serde(default)]
-    pub message_uuid: Option<String>,
+    /// If set, truncates conversation history to this message before continuing.
+    /// Only supported by some executors (e.g., Claude with --resume-session-at).
+    #[serde(default, alias = "message_uuid")]
+    pub reset_to_message_uuid: Option<String>,
     /// Executor profile specification
     #[serde(alias = "profile_variant_label")]
     // Backwards compatibility with ProfileVariantIds, esp stored in DB under ExecutorAction
@@ -65,7 +66,13 @@ impl Executable for CodingAgentFollowUpRequest {
             tracing::info!("QA mode: using mock executor for follow-up instead of real agent");
             let executor = crate::executors::qa_mock::QaMockExecutor;
             return executor
-                .spawn_fork(&effective_dir, &self.prompt, &self.session_id, env)
+                .spawn_follow_up(
+                    &effective_dir,
+                    &self.prompt,
+                    &self.session_id,
+                    self.reset_to_message_uuid.as_deref(),
+                    env,
+                )
                 .await;
         }
 
@@ -80,18 +87,15 @@ impl Executable for CodingAgentFollowUpRequest {
 
             agent.use_approvals(approvals.clone());
 
-            match &self.message_uuid {
-                Some(uuid) => {
-                    agent
-                        .spawn_resume(&effective_dir, &self.prompt, &self.session_id, uuid, env)
-                        .await
-                }
-                None => {
-                    agent
-                        .spawn_fork(&effective_dir, &self.prompt, &self.session_id, env)
-                        .await
-                }
-            }
+            agent
+                .spawn_follow_up(
+                    &effective_dir,
+                    &self.prompt,
+                    &self.session_id,
+                    self.reset_to_message_uuid.as_deref(),
+                    env,
+                )
+                .await
         }
     }
 }
