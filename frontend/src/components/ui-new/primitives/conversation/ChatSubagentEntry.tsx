@@ -39,28 +39,49 @@ export function ChatSubagentEntry({
 }: ChatSubagentEntryProps) {
   const { t } = useTranslation('common');
 
-  // Determine status icon
+  // Determine status icon - consistent with ToolStatusDot
   const StatusIcon = useMemo(() => {
     if (!status) return null;
-    switch (status.status) {
-      case 'success':
-        return (
-          <CheckCircleIcon
-            className="size-icon-xs text-success"
-            weight="fill"
-          />
-        );
-      case 'failed':
-        return (
-          <XCircleIcon className="size-icon-xs text-error" weight="fill" />
-        );
-      case 'created':
-        return (
-          <CircleNotchIcon className="size-icon-xs text-low animate-spin" />
-        );
-      default:
-        return null;
+    const statusType = status.status;
+
+    // Map status to visual state (consistent with ToolStatusDot)
+    const isSuccess = statusType === 'success';
+    const isError =
+      statusType === 'failed' ||
+      statusType === 'denied' ||
+      statusType === 'timed_out';
+    const isPending =
+      statusType === 'created' || statusType === 'pending_approval';
+
+    if (isSuccess) {
+      return (
+        <CheckCircleIcon
+          className="size-icon-xs text-success"
+          weight="fill"
+        />
+      );
     }
+    if (isError) {
+      return (
+        <XCircleIcon className="size-icon-xs text-error" weight="fill" />
+      );
+    }
+    if (isPending) {
+      return (
+        <CircleNotchIcon className="size-icon-xs text-low animate-spin" />
+      );
+    }
+    return null;
+  }, [status]);
+
+  // Determine if status is an error state (for styling)
+  const isErrorStatus = useMemo(() => {
+    if (!status) return false;
+    return (
+      status.status === 'failed' ||
+      status.status === 'denied' ||
+      status.status === 'timed_out'
+    );
   }, [status]);
 
   // Format the subagent type for display
@@ -90,9 +111,9 @@ export function ChatSubagentEntry({
     <div
       className={cn(
         'rounded-sm border overflow-hidden',
-        status?.status === 'failed' && 'border-error bg-error/5',
+        isErrorStatus && 'border-error bg-error/5',
         status?.status === 'success' && 'border-success/50',
-        !status || status.status === 'created' ? 'border-border' : '',
+        !isErrorStatus && status?.status !== 'success' && 'border-border',
         className
       )}
     >
@@ -100,7 +121,7 @@ export function ChatSubagentEntry({
       <div
         className={cn(
           'flex items-center px-double py-base gap-base',
-          status?.status === 'failed' && 'bg-error/10',
+          isErrorStatus && 'bg-error/10',
           status?.status === 'success' && 'bg-success/5',
           onToggle && hasContent && 'cursor-pointer'
         )}
