@@ -63,6 +63,9 @@ export interface KanbanIssuePanelProps {
 
   // Save status for description field
   descriptionSaveStatus?: 'idle' | 'saved';
+
+  // Ref for title input (for auto-focus from container)
+  titleInputRef?: React.RefObject<HTMLInputElement>;
 }
 
 export function KanbanIssuePanel({
@@ -82,6 +85,7 @@ export function KanbanIssuePanel({
   onCreateTag,
   isSubmitting,
   descriptionSaveStatus,
+  titleInputRef,
 }: KanbanIssuePanelProps) {
   const isCreateMode = mode === 'create';
 
@@ -157,6 +161,7 @@ export function KanbanIssuePanel({
           <div className="bg-primary rounded-sm p-base">
             {/* Title Input */}
             <input
+              ref={titleInputRef}
               type="text"
               value={formData.title}
               onChange={(e) => onFormChange('title', e.target.value)}

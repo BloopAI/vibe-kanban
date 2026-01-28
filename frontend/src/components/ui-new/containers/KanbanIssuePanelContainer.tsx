@@ -134,6 +134,16 @@ export function KanbanIssuePanelContainer() {
   // Track previous issue ID to detect actual issue switches (not just data updates)
   const prevIssueIdRef = useRef<string | null>(null);
 
+  // Ref for title input auto-focus
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus title input in create mode
+  useEffect(() => {
+    if (mode === 'create' && titleInputRef.current) {
+      titleInputRef.current.focus();
+    }
+  }, [mode]);
+
   // Display ID: use real simple_id in edit mode, placeholder for create mode
   const displayId = useMemo(() => {
     if (mode === 'edit' && selectedIssue) {
@@ -531,6 +541,7 @@ export function KanbanIssuePanelContainer() {
       descriptionSaveStatus={
         mode === 'edit' ? descriptionSaveStatus : undefined
       }
+      titleInputRef={titleInputRef}
     />
   );
 }
