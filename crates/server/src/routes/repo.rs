@@ -10,6 +10,7 @@ use db::models::{
     repo::{Repo, UpdateRepo},
 };
 use deployment::Deployment;
+use git::{GitBranch, GitRemote};
 use serde::{Deserialize, Serialize};
 use services::services::{
     file_search::SearchQuery,
@@ -18,7 +19,6 @@ use services::services::{
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
-use git::{GitBranch, GitRemote};
 
 use crate::{
     DeploymentImpl,

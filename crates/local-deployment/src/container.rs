@@ -38,6 +38,7 @@ use executors::{
     logs::{NormalizedEntryType, utils::patch::extract_normalized_entry_from_patch},
 };
 use futures::{FutureExt, TryStreamExt, stream::select};
+use git::GitService;
 use serde_json::json;
 use services::services::{
     analytics::AnalyticsContext,
@@ -58,7 +59,6 @@ use utils::{
     text::{git_branch_id, short_uuid, truncate_to_char_boundary},
 };
 use uuid::Uuid;
-use git::GitService;
 
 use crate::{command, copy};
 

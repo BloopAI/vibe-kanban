@@ -40,6 +40,7 @@ use executors::{
     profile::ExecutorProfileId,
 };
 use futures::{StreamExt, future, stream::BoxStream};
+use git::{GitService, GitServiceError};
 use json_patch::Patch;
 use sqlx::Error as SqlxError;
 use thiserror::Error;
@@ -50,7 +51,6 @@ use utils::{
     text::{git_branch_id, short_uuid},
 };
 use uuid::Uuid;
-use git::{GitService, GitServiceError};
 
 use crate::services::{
     notification::NotificationService, workspace_manager::WorkspaceError as WorkspaceManagerError,

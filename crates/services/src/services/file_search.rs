@@ -10,6 +10,7 @@ use db::models::{
     project_repo::ProjectRepo,
 };
 use fst::{Map, MapBuilder};
+use git::GitService;
 use ignore::WalkBuilder;
 use moka::future::Cache;
 use notify::{RecommendedWatcher, RecursiveMode};
@@ -20,7 +21,6 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 use ts_rs::TS;
-use git::GitService;
 
 use super::file_ranker::{FileRanker, FileStats};
 

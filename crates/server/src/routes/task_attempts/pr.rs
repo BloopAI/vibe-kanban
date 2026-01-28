@@ -20,6 +20,7 @@ use executors::actions::{
     ExecutorAction, ExecutorActionType, coding_agent_follow_up::CodingAgentFollowUpRequest,
     coding_agent_initial::CodingAgentInitialRequest,
 };
+use git::{GitCliError, GitRemote, GitServiceError};
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
@@ -31,7 +32,6 @@ use services::services::{
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
-use git::{GitCliError, GitRemote, GitServiceError};
 
 use crate::{DeploymentImpl, error::ApiError};
 

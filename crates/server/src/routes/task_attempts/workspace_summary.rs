@@ -9,11 +9,11 @@ use db::models::{
     workspace_repo::WorkspaceRepo,
 };
 use deployment::Deployment;
+use git::DiffTarget;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
-use git::DiffTarget;
 
 use crate::{DeploymentImpl, error::ApiError};
 

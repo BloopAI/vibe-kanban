@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use tokio::process::Command;
 use git::GitService;
+use tokio::process::Command;
 
 use crate::command::CmdOverrides;
 

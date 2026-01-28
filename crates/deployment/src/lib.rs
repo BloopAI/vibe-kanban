@@ -13,6 +13,7 @@ use db::{
 };
 use executors::executors::ExecutorError;
 use futures::{StreamExt, TryStreamExt};
+use git::{GitService, GitServiceError};
 use git2::Error as Git2Error;
 use serde_json::Value;
 use services::services::{
@@ -36,7 +37,6 @@ use sqlx::Error as SqlxError;
 use thiserror::Error;
 use tokio::sync::RwLock;
 use utils::sentry as sentry_utils;
-use git::{GitService, GitServiceError};
 
 #[derive(Debug, Clone, Copy, Error)]
 #[error("Remote client not configured")]

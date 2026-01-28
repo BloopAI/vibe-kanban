@@ -42,6 +42,7 @@ use executors::{
     executors::{CodingAgent, ExecutorError},
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
+use git::{ConflictOp, GitCliError, GitServiceError};
 use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
@@ -51,7 +52,6 @@ use sqlx::Error as SqlxError;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
-use git::{ConflictOp, GitCliError, GitServiceError};
 
 use crate::{
     DeploymentImpl, error::ApiError, middleware::load_workspace_middleware,

@@ -11,6 +11,7 @@ use db::models::{
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::{command::CommandBuildError, executors::ExecutorError};
+use git::GitServiceError;
 use git2::Error as Git2Error;
 use local_deployment::pty::PtyError;
 use services::services::{
@@ -25,7 +26,6 @@ use services::services::{
 };
 use thiserror::Error;
 use utils::response::ApiResponse;
-use git::GitServiceError;
 
 #[derive(Debug, Error, ts_rs::TS)]
 #[ts(type = "string")]
@@ -119,9 +119,7 @@ impl IntoResponse for ApiError {
                 git::GitServiceError::MergeConflicts { .. } => {
                     (StatusCode::CONFLICT, "GitServiceError")
                 }
-                git::GitServiceError::RebaseInProgress => {
-                    (StatusCode::CONFLICT, "GitServiceError")
-                }
+                git::GitServiceError::RebaseInProgress => (StatusCode::CONFLICT, "GitServiceError"),
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "GitServiceError"),
             },
             ApiError::GitHost(_) => (StatusCode::INTERNAL_SERVER_ERROR, "GitHostError"),

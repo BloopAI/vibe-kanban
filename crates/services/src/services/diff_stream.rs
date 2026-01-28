@@ -12,6 +12,7 @@ use std::{
 use db::{DBService, models::workspace_repo::WorkspaceRepo};
 use executors::logs::utils::{ConversationPatch, patch::escape_json_pointer_segment};
 use futures::StreamExt;
+use git::{Commit, DiffTarget, GitService, GitServiceError};
 use notify::{RecommendedWatcher, RecursiveMode};
 use notify_debouncer_full::{
     DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache, new_debouncer,
@@ -24,7 +25,6 @@ use utils::{
     log_msg::LogMsg,
 };
 use uuid::Uuid;
-use git::{Commit, DiffTarget, GitService, GitServiceError};
 
 use crate::services::filesystem_watcher::{self, FilesystemWatcherError};
 
