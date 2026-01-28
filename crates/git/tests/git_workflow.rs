@@ -7,7 +7,7 @@ use std::{
 use git2::{Repository, build::CheckoutBuilder};
 use tempfile::TempDir;
 use utils::diff::DiffChangeKind;
-use workspace_git::{DiffTarget, GitCli, GitService};
+use git::{DiffTarget, GitCli, GitService};
 
 fn add_path(repo_path: &Path, path: &str) {
     let git = GitCli::new();

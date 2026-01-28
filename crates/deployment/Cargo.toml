@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 db = { path = "../db" }
 utils = { path = "../utils" }
-workspace_git = { path = "../git", package = "workspace-git" }
+workspace_git = { path = "../git", package = "git" }
 services = { path = "../services" }
 executors = { path = "../executors" }
 async-trait = { workspace = true } 

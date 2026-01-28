@@ -1,5 +1,5 @@
 [package]
-name = "workspace-git"
+name = "git"
 version = "0.0.162"
 edition = "2024"
 
