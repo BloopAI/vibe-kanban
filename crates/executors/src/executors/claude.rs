@@ -1118,13 +1118,13 @@ impl ClaudeLogProcessor {
                             };
 
                             // Extract subagent_type from the original tool_data
-                            let subagent_type = if let ClaudeToolData::Task { subagent_type, .. } =
-                                &info.tool_data
-                            {
-                                subagent_type.clone()
-                            } else {
-                                None
-                            };
+                            let subagent_type =
+                                if let ClaudeToolData::Task { subagent_type, .. } = &info.tool_data
+                                {
+                                    subagent_type.clone()
+                                } else {
+                                    None
+                                };
 
                             let entry = NormalizedEntry {
                                 timestamp: None,
