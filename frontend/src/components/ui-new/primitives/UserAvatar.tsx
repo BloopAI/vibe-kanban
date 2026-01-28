@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import type { OrganizationMemberWithProfile } from 'shared/types';
+import { Tooltip } from './Tooltip';
 
 export interface UserAvatarProps {
   user: OrganizationMemberWithProfile;
@@ -62,24 +63,27 @@ export const UserAvatar = ({ user, className }: UserAvatarProps) => {
     : null;
 
   return (
-    <div
-      className={cn(
-        'flex size-icon-base shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-secondary text-xs font-medium text-low',
-        className
-      )}
-      title={label}
-      aria-label={label}
-    >
-      {imageUrl && (
-        <img
-          src={imageUrl}
-          alt={label}
-          className="h-full w-full object-cover"
-          loading="lazy"
-          onError={handleImageError}
-        />
-      )}
-      <span style={imageUrl ? { display: 'none' } : undefined}>{initials}</span>
-    </div>
+    <Tooltip content={label}>
+      <div
+        className={cn(
+          'flex size-icon-base shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-secondary text-xs font-medium text-low',
+          className
+        )}
+        aria-label={label}
+      >
+        {imageUrl && (
+          <img
+            src={imageUrl}
+            alt={label}
+            className="h-full w-full object-cover"
+            loading="lazy"
+            onError={handleImageError}
+          />
+        )}
+        <span style={imageUrl ? { display: 'none' } : undefined}>
+          {initials}
+        </span>
+      </div>
+    </Tooltip>
   );
 };
