@@ -747,6 +747,48 @@ impl GitCli {
         }
         Ok(files)
     }
+
+    /// Clone a repository from a URL to the specified target directory.
+    /// Uses native git authentication (SSH agent, credential helpers, etc.)
+    pub fn clone(&self, url: &str, target_path: &Path) -> Result<(), GitCliError> {
+        self.ensure_available()?;
+
+        let git = resolve_executable_path_blocking("git").ok_or(GitCliError::NotAvailable)?;
+        let envs = vec![(OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0"))];
+
+        let mut cmd = Command::new(&git);
+        cmd.arg("clone")
+            .arg(url)
+            .arg(target_path)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        for (k, v) in &envs {
+            cmd.env(k, v);
+        }
+
+        tracing::info!(
+            "Cloning repository from {} to {}",
+            url,
+            target_path.display()
+        );
+
+        let out = cmd
+            .output()
+            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
+
+        if !out.status.success() {
+            let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+            return Err(self.classify_cli_error(stderr));
+        }
+
+        tracing::info!(
+            "Successfully cloned repository to {}",
+            target_path.display()
+        );
+        Ok(())
+    }
 }
 
 // Private methods

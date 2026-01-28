@@ -231,7 +231,23 @@
   },
   "dialogs": {
     "selectGitRepository": "Git 저장소 선택",
-    "chooseExistingRepo": "파일 시스템에서 기존 저장소를 선택하세요"
+    "chooseExistingRepo": "파일 시스템에서 기존 저장소를 선택하세요",
+    "cloneRepo": {
+      "title": "저장소 클론",
+      "description": "클론할 Git 저장소 URL을 입력하세요.",
+      "gitUrlLabel": "Git 저장소 URL",
+      "gitUrlPlaceholder": "https://github.com/user/repo.git 또는 git@github.com:user/repo.git",
+      "repoName": "저장소 이름: {{name}}",
+      "cloning": "클론 중...",
+      "clone": "클론"
+    },
+    "createProject": {
+      "title": "프로젝트 생성",
+      "description": "Git 저장소를 클론하여 새 프로젝트를 생성합니다.",
+      "projectName": "프로젝트 이름: {{name}}",
+      "creating": "생성 중...",
+      "create": "생성"
+    }
   },
   "empty": {
     "noChanges": "표시할 변경사항이 없습니다"

@@ -6,7 +6,7 @@ use thiserror::Error;
 use utils::path::expand_tilde;
 use uuid::Uuid;
 
-use super::git::{GitService, GitServiceError};
+use super::git::{GitCli, GitCliError, GitService, GitServiceError};
 
 #[derive(Debug, Error)]
 pub enum RepoError {
@@ -26,8 +26,12 @@ pub enum RepoError {
     DirectoryAlreadyExists(PathBuf),
     #[error("Git error: {0}")]
     Git(#[from] GitServiceError),
+    #[error("Git CLI error: {0}")]
+    GitCli(#[from] GitCliError),
     #[error("Invalid folder name: {0}")]
     InvalidFolderName(String),
+    #[error("Invalid git URL: {0}")]
+    InvalidGitUrl(String),
 }
 
 pub type Result<T> = std::result::Result<T, RepoError>;
@@ -124,5 +128,76 @@ impl RepoService {
 
         let repo = RepoModel::find_or_create(pool, &repo_path, folder_name).await?;
         Ok(repo)
+    }
+
+    /// Clone a git repository from a URL to the default repos directory.
+    /// Returns the registered repository.
+    pub async fn clone_repo(
+        &self,
+        pool: &SqlitePool,
+        url: &str,
+        display_name: Option<&str>,
+    ) -> Result<RepoModel> {
+        // Extract repo name from URL
+        let repo_name = Self::extract_repo_name_from_url(url)
+            .ok_or_else(|| RepoError::InvalidGitUrl(url.to_string()))?;
+
+        // Get the repos directory (create if it doesn't exist)
+        let repos_dir = Self::get_repos_dir();
+        if !repos_dir.exists() {
+            std::fs::create_dir_all(&repos_dir)?;
+        }
+
+        let target_path = repos_dir.join(&repo_name);
+        if target_path.exists() {
+            return Err(RepoError::DirectoryAlreadyExists(target_path));
+        }
+
+        // Clone the repository using git CLI
+        let git_cli = GitCli::new();
+        git_cli.clone(url, &target_path)?;
+
+        // Verify it's a valid git repo
+        self.validate_git_repo_path(&target_path)?;
+
+        // Register the repo in the database
+        let display = display_name.unwrap_or(&repo_name);
+        let repo = RepoModel::find_or_create(pool, &target_path, display).await?;
+
+        Ok(repo)
+    }
+
+    /// Get the default directory for cloned repositories
+    pub fn get_repos_dir() -> PathBuf {
+        utils::path::get_vibe_kanban_temp_dir().join("repos")
+    }
+
+    /// Extract repository name from a git URL.
+    /// Handles both HTTPS and SSH URLs:
+    /// - https://github.com/user/repo.git -> repo
+    /// - git@github.com:user/repo.git -> repo
+    /// - https://github.com/user/repo -> repo
+    fn extract_repo_name_from_url(url: &str) -> Option<String> {
+        let url = url.trim();
+        if url.is_empty() {
+            return None;
+        }
+
+        // Handle SSH format: git@github.com:user/repo.git
+        let path = if url.contains(':') && !url.starts_with("http") {
+            url.split(':').next_back()?
+        } else {
+            // Handle HTTPS format: https://github.com/user/repo.git
+            url.split('/').next_back()?
+        };
+
+        // Remove .git suffix if present
+        let name = path.strip_suffix(".git").unwrap_or(path);
+
+        if name.is_empty() || name == "." || name == ".." {
+            return None;
+        }
+
+        Some(name.to_string())
     }
 }

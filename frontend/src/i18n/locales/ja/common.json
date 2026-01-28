@@ -231,7 +231,23 @@
   },
   "dialogs": {
     "selectGitRepository": "Gitリポジトリを選択",
-    "chooseExistingRepo": "ファイルシステムから既存のリポジトリを選択してください"
+    "chooseExistingRepo": "ファイルシステムから既存のリポジトリを選択してください",
+    "cloneRepo": {
+      "title": "リポジトリをクローン",
+      "description": "クローンするGitリポジトリのURLを入力してください。",
+      "gitUrlLabel": "GitリポジトリURL",
+      "gitUrlPlaceholder": "https://github.com/user/repo.git または git@github.com:user/repo.git",
+      "repoName": "リポジトリ名: {{name}}",
+      "cloning": "クローン中...",
+      "clone": "クローン"
+    },
+    "createProject": {
+      "title": "プロジェクトを作成",
+      "description": "Gitリポジトリをクローンして新しいプロジェクトを作成します。",
+      "projectName": "プロジェクト名: {{name}}",
+      "creating": "作成中...",
+      "create": "作成"
+    }
   },
   "empty": {
     "noChanges": "表示する変更がありません"

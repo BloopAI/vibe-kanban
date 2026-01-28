@@ -24,7 +24,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
-import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
+import { CloneRepoDialog } from '@/components/dialogs/shared/CloneRepoDialog';
 import { projectsApi } from '@/lib/api';
 import { repoBranchKeys } from '@/hooks/useRepoBranches';
 import type { Project, Repo, UpdateProject } from 'shared/types';
@@ -202,9 +202,9 @@ export function ProjectSettings() {
   const handleAddRepository = async () => {
     if (!selectedProjectId) return;
 
-    const repo = await RepoPickerDialog.show({
-      title: 'Select Git Repository',
-      description: 'Choose a git repository to add to this project',
+    const repo = await CloneRepoDialog.show({
+      title: 'Clone Git Repository',
+      description: 'Enter a git URL to clone and add to this project',
     });
 
     if (!repo) return;
