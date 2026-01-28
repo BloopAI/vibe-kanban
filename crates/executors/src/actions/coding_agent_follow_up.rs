@@ -18,7 +18,7 @@ use crate::{
 pub struct CodingAgentFollowUpRequest {
     pub prompt: String,
     pub session_id: String,
-    #[serde(default, alias = "message_uuid")]
+    #[serde(default)]
     pub reset_to_message_uuid: Option<String>,
     /// Executor profile specification
     #[serde(alias = "profile_variant_label")]
