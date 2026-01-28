@@ -4,9 +4,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use git::{GitCli, GitCliError, GitService};
 use git2::{PushOptions, Repository, build::CheckoutBuilder};
 use tempfile::TempDir;
-use git::{GitCli, GitCliError, GitService};
 // Avoid direct git CLI usage in tests; exercise GitService instead.
 
 fn write_file<P: AsRef<Path>>(base: P, rel: &str, content: &str) {

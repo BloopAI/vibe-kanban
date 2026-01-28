@@ -4,10 +4,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use git::{DiffTarget, GitCli, GitService};
 use git2::{Repository, build::CheckoutBuilder};
 use tempfile::TempDir;
 use utils::diff::DiffChangeKind;
-use git::{DiffTarget, GitCli, GitService};
 
 fn add_path(repo_path: &Path, path: &str) {
     let git = GitCli::new();
