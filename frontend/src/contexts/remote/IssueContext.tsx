@@ -5,7 +5,11 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import { useEntity } from '@/lib/electric/hooks';
+import {
+  useEntity,
+  type InsertResult,
+  type MutationResult,
+} from '@/lib/electric/hooks';
 import {
   ISSUE_COMMENT_ENTITY,
   ISSUE_COMMENT_REACTION_ENTITY,
@@ -50,18 +54,20 @@ export interface IssueContextValue {
   retry: () => void;
 
   // Comment mutations
-  insertComment: (data: CreateIssueCommentRequest) => IssueComment;
+  insertComment: (
+    data: CreateIssueCommentRequest
+  ) => InsertResult<IssueComment>;
   updateComment: (
     id: string,
     changes: Partial<UpdateIssueCommentRequest>
-  ) => void;
-  removeComment: (id: string) => void;
+  ) => MutationResult;
+  removeComment: (id: string) => MutationResult;
 
   // Reaction mutations
   insertReaction: (
     data: CreateIssueCommentReactionRequest
-  ) => IssueCommentReaction;
-  removeReaction: (id: string) => void;
+  ) => InsertResult<IssueCommentReaction>;
+  removeReaction: (id: string) => MutationResult;
 
   // Lookup helpers (within this issue's data)
   getComment: (commentId: string) => IssueComment | undefined;
