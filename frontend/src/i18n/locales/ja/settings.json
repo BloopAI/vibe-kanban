@@ -423,6 +423,11 @@
         "path": {
           "label": "リポジトリパス"
         },
+        "defaultWorkingDir": {
+          "label": "デフォルト作業ディレクトリ",
+          "placeholder": "例: packages/frontend",
+          "helper": "単一リポジトリワークスペースでコーディングエージェントが実行されるサブディレクトリ。ワークスペース作成時に設定されます。リポジトリのルートを使用する場合は空のままにしてください。"
+        },
         "defaultTargetBranch": {
           "label": "デフォルトターゲットブランチ",
           "placeholder": "ブランチを選択",

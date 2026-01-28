@@ -423,6 +423,11 @@
         "path": {
           "label": "저장소 경로"
         },
+        "defaultWorkingDir": {
+          "label": "기본 작업 디렉터리",
+          "placeholder": "예: packages/frontend",
+          "helper": "단일 저장소 워크스페이스에서 코딩 에이전트가 실행되는 하위 디렉터리입니다. 워크스페이스 생성 시 설정됩니다. 저장소 루트를 사용하려면 비워 두세요."
+        },
         "defaultTargetBranch": {
           "label": "기본 대상 브랜치",
           "placeholder": "브랜치 선택",

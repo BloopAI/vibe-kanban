@@ -190,13 +190,19 @@ pub async fn create_task_attempt(
         .ok_or(SqlxError::RowNotFound)?;
 
     // Compute agent_working_dir based on repo count:
-    // - Single repo: use repo name as working dir (agent runs in repo directory)
+    // - Single repo: join repo name with default_working_dir (if set), or just repo name
     // - Multiple repos: use None (agent runs in workspace root)
     let agent_working_dir = if payload.repos.len() == 1 {
         let repo = Repo::find_by_id(pool, payload.repos[0].repo_id)
             .await?
             .ok_or(RepoError::NotFound)?;
-        Some(repo.name)
+        match repo.default_working_dir {
+            Some(subdir) => {
+                let path = PathBuf::from(&repo.name).join(&subdir);
+                Some(path.to_string_lossy().to_string())
+            }
+            None => Some(repo.name),
+        }
     } else {
         None
     };
