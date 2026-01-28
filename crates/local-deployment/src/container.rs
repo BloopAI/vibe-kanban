@@ -49,6 +49,8 @@ use services::services::{
     image::ImageService,
     notification::NotificationService,
     queued_message::QueuedMessageService,
+    remote_client::RemoteClient,
+    remote_sync,
     workspace_manager::{RepoWorkspaceInput, WorkspaceManager},
 };
 use tokio::{sync::RwLock, task::JoinHandle};
@@ -79,6 +81,7 @@ pub struct LocalContainerService {
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
     notification_service: NotificationService,
+    remote_client: Option<RemoteClient>,
 }
 
 impl LocalContainerService {
@@ -92,6 +95,7 @@ impl LocalContainerService {
         analytics: Option<AnalyticsContext>,
         approvals: Approvals,
         queued_message_service: QueuedMessageService,
+        remote_client: Option<RemoteClient>,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
         let cancellation_tokens = Arc::new(RwLock::new(HashMap::new()));
@@ -113,6 +117,7 @@ impl LocalContainerService {
             approvals,
             queued_message_service,
             notification_service,
+            remote_client,
         };
 
         container.spawn_workspace_cleanup();
@@ -599,6 +604,32 @@ impl LocalContainerService {
                         "execution_success": matches!(ctx.execution_process.status, ExecutionProcessStatus::Completed),
                         "exit_code": ctx.execution_process.exit_code,
                     })));
+                }
+
+                // Sync workspace to remote after CodingAgent execution
+                if matches!(
+                    &ctx.execution_process.run_reason,
+                    ExecutionProcessRunReason::CodingAgent
+                ) && let Some(client) = &container.remote_client
+                {
+                    let stats = diff_stream::compute_diff_stats(
+                        &container.db.pool,
+                        &container.git,
+                        &ctx.workspace,
+                    )
+                    .await;
+                    let client = client.clone();
+                    let workspace_id = ctx.workspace.id;
+                    let archived = ctx.workspace.archived;
+                    tokio::spawn(async move {
+                        remote_sync::sync_workspace_to_remote(
+                            &client,
+                            workspace_id,
+                            Some(archived),
+                            stats.as_ref(),
+                        )
+                        .await;
+                    });
                 }
             }
 
