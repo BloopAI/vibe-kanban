@@ -25,7 +25,7 @@ import {
 import { EmojiPicker } from '@/components/ui-new/primitives/EmojiPicker';
 import WYSIWYGEditor, { type WYSIWYGEditorRef } from '@/components/ui/wysiwyg';
 import { formatRelativeTime } from '@/utils/date';
-import type { User } from 'shared/remote-types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 import type { PersistKey } from '@/stores/useUiPreferencesStore';
 
 export interface IssueCommentData {
@@ -34,7 +34,7 @@ export interface IssueCommentData {
   authorName: string;
   message: string;
   createdAt: string;
-  author?: User | null;
+  author?: OrganizationMemberWithProfile | null;
   canModify: boolean;
 }
 

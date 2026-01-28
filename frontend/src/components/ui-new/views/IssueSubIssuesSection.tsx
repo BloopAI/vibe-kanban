@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import type { IssuePriority, User } from 'shared/remote-types';
+import type { IssuePriority } from 'shared/remote-types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 import { CollapsibleSectionHeader } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
 import { SubIssueRow } from '@/components/ui-new/primitives/SubIssueRow';
 import { PERSIST_KEYS, type PersistKey } from '@/stores/useUiPreferencesStore';
@@ -10,7 +11,7 @@ export interface SubIssueData {
   title: string;
   priority: IssuePriority;
   statusColor: string;
-  assignees: User[];
+  assignees: OrganizationMemberWithProfile[];
   createdAt: string;
 }
 

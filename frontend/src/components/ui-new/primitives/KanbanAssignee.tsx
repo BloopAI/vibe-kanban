@@ -3,12 +3,12 @@
 import { cn } from '@/lib/utils';
 import { UsersIcon } from '@phosphor-icons/react';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
-import type { User } from 'shared/remote-types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 
 const MAX_VISIBLE_AVATARS = 2;
 
 export type KanbanAssigneeProps = {
-  assignees: User[];
+  assignees: OrganizationMemberWithProfile[];
   className?: string;
 };
 
@@ -36,7 +36,7 @@ export const KanbanAssignee = ({
       <div className="flex -space-x-1">
         {visibleAssignees.map((assignee) => (
           <UserAvatar
-            key={assignee.id}
+            key={assignee.user_id}
             user={assignee}
             className="h-4 w-4 text-[8px] ring-1 ring-background"
           />
