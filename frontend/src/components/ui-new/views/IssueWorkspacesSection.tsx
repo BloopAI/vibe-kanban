@@ -12,6 +12,7 @@ export interface IssueWorkspacesSectionProps {
   workspaces: WorkspaceWithStats[];
   isLoading?: boolean;
   actions?: SectionAction[];
+  onWorkspaceClick?: (localWorkspaceId: string | null) => void;
 }
 
 /**
@@ -22,6 +23,7 @@ export function IssueWorkspacesSection({
   workspaces,
   isLoading,
   actions = [],
+  onWorkspaceClick,
 }: IssueWorkspacesSectionProps) {
   return (
     <CollapsibleSectionHeader
@@ -37,7 +39,15 @@ export function IssueWorkspacesSection({
           <p className="text-low py-half">No workspaces</p>
         ) : (
           workspaces.map((workspace) => (
-            <IssueWorkspaceCard key={workspace.id} workspace={workspace} />
+            <IssueWorkspaceCard
+              key={workspace.id}
+              workspace={workspace}
+              onClick={
+                onWorkspaceClick && workspace.localWorkspaceId
+                  ? () => onWorkspaceClick(workspace.localWorkspaceId)
+                  : undefined
+              }
+            />
           ))
         )}
       </div>
