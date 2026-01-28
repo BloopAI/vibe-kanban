@@ -54,17 +54,22 @@ function IssueCommentsSectionContent() {
   const commentsData = useMemo<IssueCommentData[]>(() => {
     return issueContext.comments
       .map((comment) => {
-        const author = membersWithProfilesById.get(comment.author_id);
-        const isAuthor = comment.author_id === currentUserId;
+        const author = comment.author_id
+          ? membersWithProfilesById.get(comment.author_id)
+          : undefined;
+        const isAuthor =
+          comment.author_id !== null && comment.author_id === currentUserId;
         const canModify = isAuthor || isCurrentUserAdmin;
         return {
           id: comment.id,
           authorId: comment.author_id,
-          authorName: author
-            ? `${author.first_name ?? ''} ${author.last_name ?? ''}`.trim() ||
-              author.email ||
-              'Unknown User'
-            : 'Unknown User',
+          authorName: comment.author_id
+            ? author
+              ? `${author.first_name ?? ''} ${author.last_name ?? ''}`.trim() ||
+                author.email ||
+                'Unknown User'
+              : 'Unknown User'
+            : 'Deleted User',
           message: comment.message,
           createdAt: comment.created_at,
           author: author ?? null,

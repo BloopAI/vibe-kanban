@@ -59,7 +59,8 @@ export type ResolvedGroupItem =
   | { type: 'repo'; repo: RepoItem }
   | { type: 'status'; status: StatusItem }
   | { type: 'priority'; priority: PriorityItem }
-  | { type: 'issue'; issue: Issue };
+  | { type: 'issue'; issue: Issue }
+  | { type: 'createSubIssue' };
 
 export interface ResolvedGroup {
   label: string;

@@ -154,6 +154,7 @@ type State = {
   kanbanCreateDefaultStatusId: string | null;
   kanbanCreateDefaultPriority: IssuePriority | null;
   kanbanCreateDefaultAssigneeIds: string[] | null;
+  kanbanCreateDefaultParentIssueId: string | null;
   previewRefreshKey: number;
 
   // Workspace-specific panel state
@@ -189,10 +190,12 @@ type State = {
   setKanbanCreateDefaultStatusId: (statusId: string | null) => void;
   setKanbanCreateDefaultPriority: (priority: IssuePriority | null) => void;
   setKanbanCreateDefaultAssigneeIds: (assigneeIds: string[] | null) => void;
+  setKanbanCreateDefaultParentIssueId: (parentIssueId: string | null) => void;
   openKanbanIssuePanel: (
     issueId: string | null,
     createMode?: boolean,
-    defaultStatusId?: string | null
+    defaultStatusId?: string | null,
+    defaultParentIssueId?: string | null
   ) => void;
   closeKanbanIssuePanel: () => void;
   toggleRightMainPanelMode: (
@@ -248,6 +251,7 @@ export const useUiPreferencesStore = create<State>()(
       kanbanCreateDefaultStatusId: null,
       kanbanCreateDefaultPriority: null,
       kanbanCreateDefaultAssigneeIds: null,
+      kanbanCreateDefaultParentIssueId: null,
       previewRefreshKey: 0,
 
       // Workspace-specific panel state
@@ -341,10 +345,14 @@ export const useUiPreferencesStore = create<State>()(
       setKanbanCreateDefaultAssigneeIds: (assigneeIds) =>
         set({ kanbanCreateDefaultAssigneeIds: assigneeIds }),
 
+      setKanbanCreateDefaultParentIssueId: (parentIssueId) =>
+        set({ kanbanCreateDefaultParentIssueId: parentIssueId }),
+
       openKanbanIssuePanel: (
         issueId,
         createMode = false,
-        defaultStatusId = null
+        defaultStatusId = null,
+        defaultParentIssueId = null
       ) =>
         set({
           selectedKanbanIssueId: issueId,
@@ -352,6 +360,7 @@ export const useUiPreferencesStore = create<State>()(
           kanbanCreateDefaultStatusId: defaultStatusId,
           kanbanCreateDefaultPriority: null,
           kanbanCreateDefaultAssigneeIds: null,
+          kanbanCreateDefaultParentIssueId: defaultParentIssueId,
           isKanbanRightPanelVisible: true,
         }),
 
@@ -362,6 +371,7 @@ export const useUiPreferencesStore = create<State>()(
           kanbanCreateDefaultStatusId: null,
           kanbanCreateDefaultPriority: null,
           kanbanCreateDefaultAssigneeIds: null,
+          kanbanCreateDefaultParentIssueId: null,
           isKanbanRightPanelVisible: false,
         }),
 

@@ -28,6 +28,9 @@ export function KanbanIssuePanelContainer() {
   const kanbanCreateDefaultAssigneeIds = useUiPreferencesStore(
     (s) => s.kanbanCreateDefaultAssigneeIds
   );
+  const kanbanCreateDefaultParentIssueId = useUiPreferencesStore(
+    (s) => s.kanbanCreateDefaultParentIssueId
+  );
   const closeKanbanIssuePanel = useUiPreferencesStore(
     (s) => s.closeKanbanIssuePanel
   );
@@ -448,7 +451,7 @@ export function KanbanIssuePanelContainer() {
           start_date: null,
           target_date: null,
           completed_at: null,
-          parent_issue_id: null,
+          parent_issue_id: kanbanCreateDefaultParentIssueId,
           parent_issue_sort_order: null,
           extension_metadata: null,
         });
@@ -494,6 +497,7 @@ export function KanbanIssuePanelContainer() {
     insertIssueAssignee,
     insertIssueTag,
     closeKanbanIssuePanel,
+    kanbanCreateDefaultParentIssueId,
   ]);
 
   // Tag create callback - returns the new tag ID so it can be auto-selected

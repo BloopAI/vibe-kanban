@@ -89,6 +89,7 @@ interface CommandBarContentProps {
     priority: 'urgent' | 'high' | 'medium' | 'low'
   ) => void;
   onAddSubIssue?: (parentIssueId: string, childIssueId: string) => void;
+  onCreateSubIssue?: (parentIssueId: string) => void;
 }
 
 function CommandBarContent({
@@ -106,6 +107,7 @@ function CommandBarContent({
   onStatusUpdate,
   onPriorityUpdate,
   onAddSubIssue,
+  onCreateSubIssue,
 }: CommandBarContentProps) {
   const modal = useModal();
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -238,6 +240,9 @@ function CommandBarContent({
       } else if (effect.type === 'addSubIssue') {
         modal.hide();
         onAddSubIssue?.(effect.parentIssueId, effect.childIssueId);
+      } else if (effect.type === 'createSubIssue') {
+        modal.hide();
+        onCreateSubIssue?.(effect.parentIssueId);
       }
     },
     [
@@ -252,6 +257,7 @@ function CommandBarContent({
       onStatusUpdate,
       onPriorityUpdate,
       onAddSubIssue,
+      onCreateSubIssue,
     ]
   );
 
@@ -300,6 +306,7 @@ function CommandBarWithProjectContext({
   | 'onStatusUpdate'
   | 'onPriorityUpdate'
   | 'onAddSubIssue'
+  | 'onCreateSubIssue'
 > & {
   pendingStatusSelection?: PendingStatusSelection;
   pendingPrioritySelection?: PendingPrioritySelection;
@@ -341,14 +348,22 @@ function CommandBarWithStatuses(
     | 'onStatusUpdate'
     | 'onPriorityUpdate'
     | 'onAddSubIssue'
+    | 'onCreateSubIssue'
   >
 ) {
   const { statuses, issues, updateIssue } = useProjectContext();
+  const openKanbanIssuePanel = useUiPreferencesStore(
+    (s) => s.openKanbanIssuePanel
+  );
   const setKanbanCreateDefaultStatusId = useUiPreferencesStore(
     (s) => s.setKanbanCreateDefaultStatusId
   );
   const setKanbanCreateDefaultPriority = useUiPreferencesStore(
     (s) => s.setKanbanCreateDefaultPriority
+  );
+  const kanbanViewMode = useUiPreferencesStore((s) => s.kanbanViewMode);
+  const listViewStatusFilter = useUiPreferencesStore(
+    (s) => s.listViewStatusFilter
   );
 
   const sortedStatuses: StatusItem[] = useMemo(
@@ -356,6 +371,15 @@ function CommandBarWithStatuses(
       [...statuses]
         .sort((a, b) => a.sort_order - b.sort_order)
         .map((s) => ({ id: s.id, name: s.name, color: s.color })),
+    [statuses]
+  );
+
+  // Visible statuses (non-hidden) for default status selection
+  const visibleStatuses = useMemo(
+    () =>
+      [...statuses]
+        .filter((s) => !s.hidden)
+        .sort((a, b) => a.sort_order - b.sort_order),
     [statuses]
   );
 
@@ -487,6 +511,34 @@ function CommandBarWithStatuses(
     [updateIssue, props.pendingSubIssueSelection?.mode]
   );
 
+  const handleCreateSubIssue = useCallback(
+    (parentIssueId: string) => {
+      // Compute default status based on current view/tab (same logic as KanbanContainer)
+      let defaultStatusId: string | null = null;
+      if (kanbanViewMode === 'kanban') {
+        // Kanban view: first visible (non-hidden) status
+        defaultStatusId = visibleStatuses[0]?.id ?? null;
+      } else if (listViewStatusFilter) {
+        // List view with specific status tab selected
+        defaultStatusId = listViewStatusFilter;
+      } else {
+        // List view "All" tab: first status by sort order
+        defaultStatusId =
+          [...statuses].sort((a, b) => a.sort_order - b.sort_order)[0]?.id ??
+          null;
+      }
+      // Open issue creation panel with parent issue and default status pre-set
+      openKanbanIssuePanel(null, true, defaultStatusId, parentIssueId);
+    },
+    [
+      openKanbanIssuePanel,
+      kanbanViewMode,
+      listViewStatusFilter,
+      visibleStatuses,
+      statuses,
+    ]
+  );
+
   return (
     <CommandBarContent
       {...props}
@@ -495,6 +547,7 @@ function CommandBarWithStatuses(
       onStatusUpdate={handleStatusUpdate}
       onPriorityUpdate={handlePriorityUpdate}
       onAddSubIssue={handleAddSubIssue}
+      onCreateSubIssue={handleCreateSubIssue}
     />
   );
 }

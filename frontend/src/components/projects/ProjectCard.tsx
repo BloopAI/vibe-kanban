@@ -76,7 +76,7 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
   return (
     <Card
       className={`hover:shadow-md transition-shadow cursor-pointer focus:ring-2 focus:ring-primary outline-none border`}
-      onClick={() => navigate(`/projects/${project.id}/tasks`)}
+      onClick={() => navigate(`/local-projects/${project.id}/tasks`)}
       tabIndex={isFocused ? 0 : -1}
       ref={ref}
     >
@@ -94,7 +94,7 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/projects/${project.id}`);
+                    navigate(`/local-projects/${project.id}`);
                   }}
                 >
                   <ExternalLink className="mr-2 h-4 w-4" />
