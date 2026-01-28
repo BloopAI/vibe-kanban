@@ -5,7 +5,11 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import { useEntity } from '@/lib/electric/hooks';
+import {
+  useEntity,
+  type InsertResult,
+  type MutationResult,
+} from '@/lib/electric/hooks';
 import {
   ISSUE_ENTITY,
   PROJECT_STATUS_ENTITY,
@@ -72,40 +76,49 @@ export interface ProjectContextValue {
   retry: () => void;
 
   // Issue mutations
-  insertIssue: (data: CreateIssueRequest) => Issue;
-  updateIssue: (id: string, changes: Partial<UpdateIssueRequest>) => void;
-  removeIssue: (id: string) => void;
+  insertIssue: (data: CreateIssueRequest) => InsertResult<Issue>;
+  updateIssue: (
+    id: string,
+    changes: Partial<UpdateIssueRequest>
+  ) => MutationResult;
+  removeIssue: (id: string) => MutationResult;
 
   // Status mutations
-  insertStatus: (data: CreateProjectStatusRequest) => ProjectStatus;
+  insertStatus: (
+    data: CreateProjectStatusRequest
+  ) => InsertResult<ProjectStatus>;
   updateStatus: (
     id: string,
     changes: Partial<UpdateProjectStatusRequest>
-  ) => void;
-  removeStatus: (id: string) => void;
+  ) => MutationResult;
+  removeStatus: (id: string) => MutationResult;
 
   // Tag mutations
-  insertTag: (data: CreateTagRequest) => Tag;
-  updateTag: (id: string, changes: Partial<UpdateTagRequest>) => void;
-  removeTag: (id: string) => void;
+  insertTag: (data: CreateTagRequest) => InsertResult<Tag>;
+  updateTag: (id: string, changes: Partial<UpdateTagRequest>) => MutationResult;
+  removeTag: (id: string) => MutationResult;
 
   // IssueAssignee mutations
-  insertIssueAssignee: (data: CreateIssueAssigneeRequest) => IssueAssignee;
-  removeIssueAssignee: (id: string) => void;
+  insertIssueAssignee: (
+    data: CreateIssueAssigneeRequest
+  ) => InsertResult<IssueAssignee>;
+  removeIssueAssignee: (id: string) => MutationResult;
 
   // IssueFollower mutations
-  insertIssueFollower: (data: CreateIssueFollowerRequest) => IssueFollower;
-  removeIssueFollower: (id: string) => void;
+  insertIssueFollower: (
+    data: CreateIssueFollowerRequest
+  ) => InsertResult<IssueFollower>;
+  removeIssueFollower: (id: string) => MutationResult;
 
   // IssueTag mutations
-  insertIssueTag: (data: CreateIssueTagRequest) => IssueTag;
-  removeIssueTag: (id: string) => void;
+  insertIssueTag: (data: CreateIssueTagRequest) => InsertResult<IssueTag>;
+  removeIssueTag: (id: string) => MutationResult;
 
   // IssueRelationship mutations
   insertIssueRelationship: (
     data: CreateIssueRelationshipRequest
-  ) => IssueRelationship;
-  removeIssueRelationship: (id: string) => void;
+  ) => InsertResult<IssueRelationship>;
+  removeIssueRelationship: (id: string) => MutationResult;
 
   // Lookup helpers
   getIssue: (issueId: string) => Issue | undefined;
