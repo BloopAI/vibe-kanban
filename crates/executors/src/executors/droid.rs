@@ -152,16 +152,15 @@ impl StandardCodingAgentExecutor for Droid {
         spawn_droid(droid_command, &combined_prompt, current_dir, env, &self.cmd).await
     }
 
-    async fn spawn_follow_up(
+    async fn spawn_fork(
         &self,
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        _message_uuid: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let forked_session_id = fork_session(session_id).map_err(|e| {
-            ExecutorError::FollowUpNotSupported(format!(
+            ExecutorError::ForkNotSupported(format!(
                 "Failed to fork Droid session {session_id}: {e}"
             ))
         })?;

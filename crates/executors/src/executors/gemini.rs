@@ -85,12 +85,11 @@ impl StandardCodingAgentExecutor for Gemini {
             .await
     }
 
-    async fn spawn_follow_up(
+    async fn spawn_fork(
         &self,
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        _message_uuid: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let harness = AcpAgentHarness::new();

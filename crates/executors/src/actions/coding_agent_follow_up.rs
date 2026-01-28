@@ -65,13 +65,7 @@ impl Executable for CodingAgentFollowUpRequest {
             tracing::info!("QA mode: using mock executor for follow-up instead of real agent");
             let executor = crate::executors::qa_mock::QaMockExecutor;
             return executor
-                .spawn_follow_up(
-                    &effective_dir,
-                    &self.prompt,
-                    &self.session_id,
-                    self.message_uuid.as_deref(),
-                    env,
-                )
+                .spawn_fork(&effective_dir, &self.prompt, &self.session_id, env)
                 .await;
         }
 
@@ -86,15 +80,24 @@ impl Executable for CodingAgentFollowUpRequest {
 
             agent.use_approvals(approvals.clone());
 
-            agent
-                .spawn_follow_up(
-                    &effective_dir,
-                    &self.prompt,
-                    &self.session_id,
-                    self.message_uuid.as_deref(),
-                    env,
-                )
-                .await
+            match &self.message_uuid {
+                Some(uuid) => {
+                    agent
+                        .spawn_resume(
+                            &effective_dir,
+                            &self.prompt,
+                            &self.session_id,
+                            uuid,
+                            env,
+                        )
+                        .await
+                }
+                None => {
+                    agent
+                        .spawn_fork(&effective_dir, &self.prompt, &self.session_id, env)
+                        .await
+                }
+            }
         }
     }
 }

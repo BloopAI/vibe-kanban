@@ -200,27 +200,37 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             .await
     }
 
-    async fn spawn_follow_up(
+    async fn spawn_fork(
         &self,
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        message_uuid: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await?;
+        let args = vec!["--resume".to_string(), session_id.to_string()];
+        let command_parts = command_builder.build_follow_up(&args)?;
+        self.spawn_internal(current_dir, prompt, command_parts, env)
+            .await
+    }
 
-        // Build CLI args for session resumption
-        let mut args = vec!["--resume".to_string(), session_id.to_string()];
-
-        // Use --resume-session-at only for reset/branch operations where we need
-        // to truncate Claude's conversation history to a specific point.
-        // For normal follow-ups, plain --resume continues the conversation naturally.
-        if let Some(uuid) = message_uuid {
-            args.push("--resume-session-at".to_string());
-            args.push(uuid.to_string());
-        }
-
+    async fn spawn_resume(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        session_id: &str,
+        message_uuid: &str,
+        env: &ExecutionEnv,
+    ) -> Result<SpawnedChild, ExecutorError> {
+        let command_builder = self.build_command_builder().await?;
+        // --resume-session-at truncates Claude's conversation history to the specified
+        // message and continues from there.
+        let args = vec![
+            "--resume".to_string(),
+            session_id.to_string(),
+            "--resume-session-at".to_string(),
+            message_uuid.to_string(),
+        ];
         let command_parts = command_builder.build_follow_up(&args)?;
         self.spawn_internal(current_dir, prompt, command_parts, env)
             .await

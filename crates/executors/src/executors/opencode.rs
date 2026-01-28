@@ -336,12 +336,11 @@ impl StandardCodingAgentExecutor for Opencode {
         self.spawn_inner(current_dir, prompt, None, &env).await
     }
 
-    async fn spawn_follow_up(
+    async fn spawn_fork(
         &self,
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        _message_uuid: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let env = setup_permissions_env(self.auto_approve, env);

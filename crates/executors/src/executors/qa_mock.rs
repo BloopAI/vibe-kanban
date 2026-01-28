@@ -74,16 +74,15 @@ impl StandardCodingAgentExecutor for QaMockExecutor {
         Ok(SpawnedChild::from(child))
     }
 
-    async fn spawn_follow_up(
+    async fn spawn_fork(
         &self,
         current_dir: &Path,
         prompt: &str,
         _session_id: &str,
-        _message_uuid: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         // QA mode doesn't support real sessions, just spawn fresh
-        info!("QA Mock Executor: follow-up request treated as new spawn");
+        info!("QA Mock Executor: fork request treated as new spawn");
         self.spawn(current_dir, prompt, env).await
     }
 
