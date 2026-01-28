@@ -224,7 +224,7 @@ export function KanbanIssuePanel({
         )}
 
         {/* Workspaces Section (Edit mode only) */}
-        {!isCreateMode && workspaces.length > 0 && (
+        {!isCreateMode && (
           <div className="border-t">
             <CollapsibleSectionHeader
               title="Workspaces"
