@@ -7,7 +7,7 @@ export function Projects() {
   const navigate = useNavigate();
 
   const handleBack = () => {
-    navigate('/projects');
+    navigate('/local-projects');
   };
 
   if (projectId) {
