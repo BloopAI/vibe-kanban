@@ -1,0 +1,269 @@
+---
+title: "Agent Profiles & Configuration"
+description: "Create reusable agent configurations with custom settings for planning mode, model selection, and permission levels that you can quickly switch between when creating task attempts"
+---
+
+<Note>
+This is the new Settings UI currently in <Badge color="orange">Beta</Badge>. It uses a form-based interface for agent configuration. For JSON editing, use the [classic settings](/configuration-customisation/agent-configurations).
+</Note>
+
+<Info>
+Agent profiles are used throughout Vibe Kanban wherever agents run: onboarding, default settings, attempt creation, and follow-ups. The default configuration appears pre-selected in the agent dropdown in the chat input.
+</Info>
+
+## Common Use Cases
+
+| Use Case | Example Configuration |
+|----------|----------------------|
+| **Fast iteration** | Disable planning mode, use faster model |
+| **Complex tasks** | Enable planning mode, use advanced model |
+| **Autonomous work** | Skip permission prompts (use with caution) |
+| **Code review** | Enable approvals for all changes |
+| **Multi-instance** | Enable Claude Code Router for parallel work |
+
+## Key Concepts
+
+Understanding these concepts helps you configure agents effectively:
+
+<AccordionGroup>
+<Accordion title="Planning Mode">
+When enabled, the agent first creates a detailed plan before writing code. This adds an extra step where you review and approve the approach before implementation begins. Useful for complex tasks where you want to validate the strategy, but adds overhead for simple changes.
+</Accordion>
+
+<Accordion title="Permission Prompts">
+Agents request permission before performing potentially destructive actions like deleting files, running shell commands, or modifying system configurations. Skipping these prompts (`dangerously_skip_permissions`) allows fully autonomous operation but removes safety guardrails.
+</Accordion>
+
+<Accordion title="Claude Code Router">
+Distributes requests across multiple Claude Code instances running in parallel. Useful when working on several tasks simultaneously or when you want to reduce wait times by load-balancing across instances.
+</Accordion>
+
+<Accordion title="Sandbox Modes (Codex)">
+Controls what the agent can access:
+- **read-only** - Can read files but not modify anything
+- **workspace-write** - Can modify files within the project directory
+- **danger-full-access** - Unrestricted file system access
+</Accordion>
+
+<Accordion title="Approval Levels">
+Determines when the agent pauses for your confirmation:
+- **untrusted** - Asks before every action
+- **on-failure** - Only asks when something goes wrong
+- **on-request** - Only asks when explicitly requested
+- **never** - Fully autonomous (no confirmations)
+</Accordion>
+
+<Accordion title="Reasoning Effort">
+Controls how much computational effort the model spends "thinking" before responding. Higher reasoning produces more thorough analysis but takes longer and uses more tokens. Lower reasoning is faster but may miss nuances in complex problems.
+</Accordion>
+</AccordionGroup>
+
+## Configuration Access
+
+Access agent profiles via **Settings → Agents** in the Workspaces UI.
+
+<Frame>
+<img src="/images/settings-beta-agents.png" alt="Agent configuration form editor interface with finder-style layout" />
+</Frame>
+
+The interface uses a finder-style two-column layout:
+
+- **Left column** - Lists all available agents
+- **Right column** - Lists configurations for the selected agent
+
+## Managing Configurations
+
+### Creating a New Configuration
+
+1. Click the **+** button in the Configurations column
+
+<Frame>
+<img src="/images/settings-beta-agents-create-button.png" alt="Configuration column showing the + button with Create new tooltip" />
+</Frame>
+
+2. Enter a **Configuration Name** (e.g., PRODUCTION, DEVELOPMENT)
+3. Optionally select a configuration to **Clone from**, or start blank
+4. Click **Create Configuration**
+
+<Frame>
+<img src="/images/settings-beta-agents-create-dialog.png" alt="Create New Configuration dialog with name field and clone option" />
+</Frame>
+
+### Editing a Configuration
+
+1. Select an agent from the left column
+2. Select a configuration from the right column
+3. Edit the settings in the form below
+4. Click **Save** in the bottom bar
+
+### Deleting a Configuration
+
+1. Select the configuration to delete
+2. Click the delete button
+3. Confirm deletion
+
+<Warning>
+You cannot delete the only configuration for an agent. Each agent must have at least one configuration.
+</Warning>
+
+### Setting a Default Configuration
+
+Click the **Default** badge next to a configuration to make it the default for that agent. The default configuration:
+
+- Appears pre-selected in the agent dropdown when creating new attempts
+- Is used for follow-up messages in workspaces
+- Shows in the chat input toolbar as the current agent/variant
+
+## Agent Configuration Options
+
+<Tabs>
+<Tab title="CLAUDE_CODE">
+  <ParamField path="plan" type="boolean">
+  Enable planning mode for complex tasks
+  </ParamField>
+
+  <ParamField path="claude_code_router" type="boolean">
+  Route requests across multiple Claude Code instances
+  </ParamField>
+
+  <ParamField path="dangerously_skip_permissions" type="boolean">
+  Skip permission prompts (use with caution)
+  </ParamField>
+
+  [View full CLI reference →](https://docs.anthropic.com/en/docs/claude-code/cli-reference#cli-flags)
+</Tab>
+
+<Tab title="GEMINI">
+  <ParamField path="model" type="string">
+  Choose model variant: `"default"` or `"flash"`
+  </ParamField>
+
+  <ParamField path="yolo" type="boolean">
+  Run without confirmations
+  </ParamField>
+
+  [View full CLI reference →](https://google-gemini.github.io/gemini-cli/)
+</Tab>
+
+<Tab title="AMP">
+  <ParamField path="dangerously_allow_all" type="boolean">
+  Allow all actions without restrictions (unsafe)
+  </ParamField>
+
+  [View full documentation →](https://ampcode.com/manual#cli)
+</Tab>
+
+<Tab title="CODEX">
+  <ParamField path="sandbox" type="string">
+  Execution environment: `"read-only"`, `"workspace-write"`, or `"danger-full-access"`
+  </ParamField>
+
+  <ParamField path="approval" type="string">
+  Approval level: `"untrusted"`, `"on-failure"`, `"on-request"`, or `"never"`
+  </ParamField>
+
+  <ParamField path="model_reasoning_effort" type="string">
+  Reasoning depth: `"low"`, `"medium"`, or `"high"`
+  </ParamField>
+
+  <ParamField path="model_reasoning_summary" type="string">
+  Summary style: `"auto"`, `"concise"`, `"detailed"`, or `"none"`
+  </ParamField>
+
+  [View full documentation →](https://github.com/openai/codex)
+</Tab>
+
+<Tab title="CURSOR">
+  <ParamField path="force" type="boolean">
+  Force execution without confirmation
+  </ParamField>
+
+  <ParamField path="model" type="string">
+  Specify model to use
+  </ParamField>
+
+  [View full CLI reference →](https://docs.cursor.com/en/cli/reference/parameters)
+</Tab>
+
+<Tab title="OPENCODE">
+  <ParamField path="model" type="string">
+  Specify model to use
+  </ParamField>
+
+  <ParamField path="agent" type="string">
+  Choose agent type
+  </ParamField>
+
+  [View full documentation →](https://opencode.ai/docs/cli/#flags-1)
+</Tab>
+
+<Tab title="QWEN_CODE">
+  <ParamField path="yolo" type="boolean">
+  Run without confirmations
+  </ParamField>
+
+  [View full documentation →](https://qwenlm.github.io/qwen-code-docs/en/cli/index)
+</Tab>
+
+<Tab title="DROID">
+  <ParamField path="autonomy" type="string">
+  Permission level: `"normal"`, `"low"`, `"medium"`, `"high"`, or `"skip-permissions-unsafe"`
+  </ParamField>
+
+  <ParamField path="model" type="string">
+  Specify which model to use
+  </ParamField>
+
+  <ParamField path="reasoning_effort" type="string">
+  Reasoning depth: `"off"`, `"low"`, `"medium"`, or `"high"`
+  </ParamField>
+
+  [View full documentation →](https://docs.factory.ai/factory-cli/getting-started/overview)
+</Tab>
+</Tabs>
+
+### Universal Options
+
+These options work across multiple agent types:
+
+<ParamField path="append_prompt" type="string | null">
+Text appended to the system prompt
+</ParamField>
+
+<Warning>
+Options prefixed with "dangerously_" bypass safety confirmations and can perform destructive actions. Use with extreme caution.
+</Warning>
+
+## Using Agent Configurations
+
+Once configured, your agent variants appear in the chat input toolbar, allowing quick switching between configurations.
+
+<Frame>
+<img src="/images/workspaces-agent-selection.png" alt="Chat input showing agent variant dropdown with Default, Approvals, Opus, and Plan options" />
+</Frame>
+
+<CardGroup cols={2}>
+<Card title="Default Configuration" icon="gear">
+  Set your default agent and variant in **Settings → General → Default Coding Agent** for consistent behaviour across all attempts.
+</Card>
+
+<Card title="Per-Attempt Selection" icon="rocket">
+  Override defaults when creating attempts by selecting different agent/variant combinations in the attempt dialogue.
+</Card>
+</CardGroup>
+
+## Related Configuration
+
+<Note>
+MCP (Model Context Protocol) servers are configured separately under **Settings → MCP Servers** but work alongside agent profiles to extend functionality.
+</Note>
+
+<CardGroup cols={2}>
+<Card title="Connecting MCP Servers" icon="server" href="/settings-beta/mcp-servers">
+  Configure MCP servers within Vibe Kanban for your coding agents
+</Card>
+
+<Card title="Classic Agent Configuration" icon="code" href="/configuration-customisation/agent-configurations">
+  Use the classic settings for JSON-based agent configuration
+</Card>
+</CardGroup>

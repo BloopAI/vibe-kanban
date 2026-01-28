@@ -1,60 +1,108 @@
 ---
 title: "Keyboard Shortcuts"
-description: "Complete guide to keyboard shortcuts for efficient navigation and interaction in Vibe Kanban"
+description: "Keyboard shortcuts available in the Workspaces UI"
 ---
 
-Vibe Kanban provides comprehensive keyboard shortcuts to help you navigate and interact with the application efficiently. These shortcuts are organised by scope and context.
+The Workspaces UI provides comprehensive keyboard navigation through the **Keyboard Shortcuts** dialog.
 
-## Platform Keys
+## Accessing Keyboard Shortcuts
 
-- **⌘** = Mac Command key
-- **Ctrl** = Windows/Linux Control key
+| Shortcut | Action |
+|----------|--------|
+| `⌘/Ctrl + /` | Open Keyboard Shortcuts dialog |
 
-## Global Shortcuts
+<Info>
+Sequential shortcuts require pressing the first key, then the second within 500ms.
+</Info>
 
-These shortcuts work anywhere in the application (unless you're typing in an input field):
+## Quick Actions
 
-| Shortcut | Action | Description |
-|----------|--------|-------------|
-| `C` | Create Task | Opens the Task Form dialog to create a new task |
-| `⌘/Ctrl + S` | Focus Search | Puts keyboard focus into the global search input |
+| Shortcut | Action |
+|----------|--------|
+| `?` | Show keyboard shortcuts help |
+| `Esc` | Close/cancel |
+| `C` | Create new task |
+| `D` | Delete selected |
+| `/` | Focus search |
 
-## Board Navigation
+## Modifiers
 
-These shortcuts work when a task card is highlighted with the blue focus ring:
+| Shortcut | Action |
+|----------|--------|
+| `⌘/Ctrl + K` | Open command bar |
+| `⌘/Ctrl + Enter` | Send message |
 
-| Shortcut | Action | Description |
-|----------|--------|-------------|
-| `k` / `j` | Vertical Navigation | Move focus up/down within the current column |
-| `h` / `l` | Horizontal Navigation | Move focus to first task in previous/next non-empty column |
-| `Enter` | Open Task | Open the Task Details panel for the focused task |
-| `d` | Delete Task | Delete the currently focused task |
+## Navigation
 
-## Form Submission
+| Shortcut | Action |
+|----------|--------|
+| `J` | Move down |
+| `K` | Move up |
+| `H` | Move left |
+| `L` | Move right |
 
-These shortcuts work in various forms and dialogs:
+## Go To (G ...)
 
-| Shortcut | Action | Context |
-|----------|--------|---------|
-| `⌘/Ctrl + Enter` | Submit | Create & Start (Task Form), Save (Template Editor) |
-| `⌘/Ctrl + Enter` | Send Message | Send message to coding agent in task interface |
-| `⌘/Ctrl + Enter` | Save Comment | Add or save comment in Diff Review |
-| `Enter` | New Line | Create new line in message field |
-| `Shift + Tab` | Switch Agent Profile | Switch between agent profiles (e.g., PLAN to DEFAULT) |
-| `Escape` | Cancel/Clear | Clear draft in follow-up, cancel comment editing |
+| Shortcut | Action |
+|----------|--------|
+| `G S` | Go to Settings |
+| `G N` | Go to New Workspace |
 
-## Search
+## Workspace (W ...)
 
-| Shortcut | Action | Description |
-|----------|--------|-------------|
-| `⌘/Ctrl + S` | Focus Search | Move cursor to the search input field |
-| `Escape` | Clear Search | Clear search text and remove focus (when in search field) |
+| Shortcut | Action |
+|----------|--------|
+| `W D` | Duplicate workspace |
+| `W R` | Rename workspace |
+| `W P` | Pin/Unpin workspace |
+| `W A` | Archive workspace |
+| `W X` | Delete workspace |
 
-*Note: The search field displays a "⌘S" badge to help you discover this shortcut.*
+## View (V ...)
 
-## Tips
+| Shortcut | Action |
+|----------|--------|
+| `V C` | Toggle Changes panel |
+| `V L` | Toggle Logs panel |
+| `V P` | Toggle Preview panel |
+| `V S` | Toggle Left Sidebar |
+| `V H` | Toggle Chat panel |
 
-- **Focus Indicators**: Look for blue focus rings around task cards to know when board navigation shortcuts are active
-- **Input Fields**: Global shortcuts are disabled when typing in text fields to avoid conflicts
-- **Visual Cues**: Some shortcuts display badges or hints in the interface (like the "⌘S" next to search)
-- **Modifier Keys**: Global shortcuts are disabled when holding Ctrl/⌘/Alt unless the shortcut specifically uses those modifiers
+## Git (X ...)
+
+These shortcuts are available when inside a workspace.
+
+| Shortcut | Action |
+|----------|--------|
+| `X P` | Create Pull Request |
+| `X M` | Merge branch |
+| `X R` | Rebase branch |
+| `X U` | Push changes |
+
+## Yank (Y ...)
+
+These shortcuts are available when inside a workspace.
+
+| Shortcut | Action |
+|----------|--------|
+| `Y P` | Copy path |
+| `Y L` | Copy raw logs |
+
+## Toggle (T ...)
+
+These shortcuts are available when inside a workspace.
+
+| Shortcut | Action |
+|----------|--------|
+| `T D` | Toggle dev server |
+| `T W` | Toggle line wrapping |
+
+## Run (R ...)
+
+These shortcuts are available when inside a workspace.
+
+| Shortcut | Action |
+|----------|--------|
+| `R S` | Run setup script |
+| `R C` | Run cleanup script |
+

@@ -1,0 +1,127 @@
+---
+title: "Creating Tags"
+description: "Create reusable text snippets that can be quickly inserted into workspace prompts using @mentions. Tags are available globally across all projects."
+---
+
+<Note>
+This is the new Settings UI currently in <Badge color="orange">Beta</Badge>. It provides the same configuration options with a redesigned interface accessible from the Workspaces UI.
+</Note>
+
+## What are tags?
+
+Tags are reusable text snippets that you can quickly insert into workspace prompts by typing `@` followed by the tag name. When you select a tag, its content is automatically inserted at your cursor position.
+
+<Tip>
+Tags use snake_case naming (no spaces allowed). For example: `bug_report`, `feature_request`, or `code_review_checklist`.
+</Tip>
+
+## Managing tags
+
+Access tags from **Settings → General → Tags**. Tags are available globally across all projects in your workspace.
+
+<Frame>
+<img src="/images/settings-beta-tags.png" alt="Tags management interface showing the tag list with names and content" />
+</Frame>
+
+<Steps>
+<Step title="Create a new tag">
+  Click **Add Tag** to create a new tag.
+
+  <Frame>
+  <img src="/images/settings-beta-create-task-tag.png" alt="Create tag dialogue showing tag name and content fields" />
+  </Frame>
+
+  - **Tag name**: Use snake_case without spaces (e.g., `acceptance_criteria`)
+  - **Content**: The text that will be inserted when the tag is used
+</Step>
+
+<Step title="Edit existing tags">
+  Click the edit icon (✏️) next to any tag to modify its name or content.
+</Step>
+
+<Step title="Remove unwanted tags">
+  Click the delete icon (🗑️) to remove tags you no longer need.
+
+  <Warning>
+  Deleting a tag does not affect existing tasks that already have the tag's content inserted.
+  </Warning>
+</Step>
+</Steps>
+
+## Using tags
+
+Insert tags into workspace prompts and follow-up messages using @mention autocomplete.
+
+<Steps>
+<Step title="Trigger autocomplete">
+  When writing a prompt, type `@` to trigger the autocomplete dropdown.
+
+  <Frame>
+  <img src="/images/settings-beta-task-tag-autocomplete.png" alt="Autocomplete dropdown showing available tags after typing @ symbol" />
+  </Frame>
+</Step>
+
+<Step title="Search and select">
+  Continue typing to filter tags by name, then:
+  - Click on a tag to select it
+  - Use arrow keys to navigate and press Enter to select
+  - Press Escape to close the dropdown
+
+  <Check>
+  The tag's content is automatically inserted at your cursor position, replacing the @query.
+  </Check>
+</Step>
+</Steps>
+
+## Common use cases
+
+<AccordionGroup>
+<Accordion title="Bug report templates">
+Create a `bug_report` tag with standardised bug reporting fields:
+
+```
+**Description:**
+
+**Steps to reproduce:**
+1.
+2.
+3.
+
+**Expected behaviour:**
+
+**Actual behaviour:**
+
+**Environment:**
+```
+</Accordion>
+
+<Accordion title="Acceptance criteria checklists">
+Create an `acceptance_criteria` tag for feature requirements:
+
+```
+**Acceptance criteria:**
+- [ ] Functionality works as specified
+- [ ] Unit tests added
+- [ ] Documentation updated
+- [ ] Accessibility requirements met
+- [ ] Performance benchmarks passed
+```
+</Accordion>
+
+<Accordion title="Code review guidelines">
+Create a `code_review` tag with review checklist items:
+
+```
+**Code review checklist:**
+- [ ] Code follows project conventions
+- [ ] Tests cover edge cases
+- [ ] No security vulnerabilities introduced
+- [ ] Performance impact assessed
+- [ ] Documentation is clear
+```
+</Accordion>
+</AccordionGroup>
+
+<Tip>
+Tags work in all text fields that support the @mention feature, including workspace prompts and follow-up messages, making it easy to maintain consistency across your tasks.
+</Tip>
