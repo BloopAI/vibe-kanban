@@ -238,10 +238,6 @@ pub trait StandardCodingAgentExecutor {
     ) -> Result<SpawnedChild, ExecutorError>;
 
     /// Continue a session, optionally resetting to a specific message.
-    ///
-    /// - `reset_to_message_uuid`: If provided, truncates conversation history to that
-    ///   point before continuing. Only supported by some executors (e.g., Claude).
-    ///   Other executors ignore this parameter.
     async fn spawn_follow_up(
         &self,
         current_dir: &Path,

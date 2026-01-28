@@ -62,7 +62,6 @@ impl ProtocolPeer {
                 biased;
                 _ = cancel.cancelled(), if !interrupt_sent => {
                     interrupt_sent = true;
-                    // Cancellation requested - send interrupt to Claude
                     tracing::info!("Cancellation received in read_loop, sending interrupt to Claude");
                     if let Err(e) = self.interrupt().await {
                         tracing::warn!("Failed to send interrupt to Claude: {e}");

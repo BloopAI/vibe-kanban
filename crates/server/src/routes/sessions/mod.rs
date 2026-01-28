@@ -188,15 +188,11 @@ pub async fn follow_up(
         .filter(|dir| !dir.is_empty())
         .cloned();
 
-    // Only pass message_uuid for reset/branch operations (when retry_process_id is set).
-    // For normal follow-ups, we just resume the session without truncating history.
-    let is_reset = payload.retry_process_id.is_some();
-
     let action_type = if let Some(info) = latest_session_info {
+        let is_reset = payload.retry_process_id.is_some();
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt: prompt.clone(),
             session_id: info.session_id,
-            // Only reset history for retry/branch operations
             reset_to_message_uuid: if is_reset { info.message_uuid } else { None },
             executor_profile_id: executor_profile_id.clone(),
             working_dir: working_dir.clone(),

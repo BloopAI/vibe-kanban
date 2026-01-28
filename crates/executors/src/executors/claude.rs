@@ -480,7 +480,6 @@ impl ClaudeLogProcessor {
 
                     match serde_json::from_str::<ClaudeJson>(trimmed) {
                         Ok(claude_json) => {
-                            // Extract session ID if present (only once)
                             if !session_id_extracted
                                 && let Some(session_id) = Self::extract_session_id(&claude_json)
                             {
@@ -488,7 +487,6 @@ impl ClaudeLogProcessor {
                                 session_id_extracted = true;
                             }
 
-                            // Extract user message UUID (tracks latest for --resume-session-at)
                             if let Some(uuid) = Self::extract_resumable_message_uuid(&claude_json) {
                                 msg_store.push_message_uuid(uuid);
                             }

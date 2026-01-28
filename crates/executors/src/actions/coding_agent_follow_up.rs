@@ -18,8 +18,6 @@ use crate::{
 pub struct CodingAgentFollowUpRequest {
     pub prompt: String,
     pub session_id: String,
-    /// If set, truncates conversation history to this message before continuing.
-    /// Only supported by some executors (e.g., Claude with --resume-session-at).
     #[serde(default, alias = "message_uuid")]
     pub reset_to_message_uuid: Option<String>,
     /// Executor profile specification
