@@ -768,7 +768,11 @@ impl GitCli {
             cmd.env(k, v);
         }
 
-        tracing::info!("Cloning repository from {} to {}", url, target_path.display());
+        tracing::info!(
+            "Cloning repository from {} to {}",
+            url,
+            target_path.display()
+        );
 
         let out = cmd
             .output()
@@ -779,7 +783,10 @@ impl GitCli {
             return Err(self.classify_cli_error(stderr));
         }
 
-        tracing::info!("Successfully cloned repository to {}", target_path.display());
+        tracing::info!(
+            "Successfully cloned repository to {}",
+            target_path.display()
+        );
         Ok(())
     }
 }
