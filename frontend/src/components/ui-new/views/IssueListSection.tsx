@@ -1,7 +1,8 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import type { ProjectStatus, Issue, Tag, User } from 'shared/remote-types';
+import type { ProjectStatus, Issue, Tag } from 'shared/remote-types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 import { Droppable } from '@hello-pangea/dnd';
 import { CaretDownIcon } from '@phosphor-icons/react';
 import { StatusDot } from '@/components/ui-new/primitives/StatusDot';
@@ -16,7 +17,7 @@ export interface IssueListSectionProps {
   status: ProjectStatus;
   issueIds: string[];
   issueMap: Record<string, Issue>;
-  issueAssigneesMap: Record<string, User[]>;
+  issueAssigneesMap: Record<string, OrganizationMemberWithProfile[]>;
   getTagObjectsForIssue: (issueId: string) => Tag[];
   onIssueClick: (issueId: string) => void;
   selectedIssueId: string | null;

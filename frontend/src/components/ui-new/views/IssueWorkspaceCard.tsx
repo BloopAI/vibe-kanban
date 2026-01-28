@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { GitPullRequestIcon, FileIcon } from '@phosphor-icons/react';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
-import type { User } from 'shared/remote-types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 
 export interface WorkspaceWithStats {
   id: string;
@@ -14,7 +14,7 @@ export interface WorkspaceWithStats {
   prNumber?: number;
   prUrl?: string;
   prStatus?: 'open' | 'merged' | 'closed' | null;
-  assignees: User[];
+  assignees: OrganizationMemberWithProfile[];
   createdAt: string;
 }
 
@@ -122,7 +122,7 @@ export function IssueWorkspaceCard({
           <div className="flex items-center -space-x-1">
             {workspace.assignees.slice(0, 3).map((user) => (
               <UserAvatar
-                key={user.id}
+                key={user.user_id}
                 user={user}
                 className="h-5 w-5 text-[10px] border-2 border-panel"
               />
