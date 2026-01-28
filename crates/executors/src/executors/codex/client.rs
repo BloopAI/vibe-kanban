@@ -507,9 +507,7 @@ impl JsonRpcCallbacks for AppServerClient {
             && self.commit_reminder
             && !self.commit_reminder_sent.swap(true, Ordering::SeqCst)
         {
-            let status =
-                workspace_utils::git::check_uncommitted_changes(&self.repo_context.repo_paths())
-                    .await;
+            let status = self.repo_context.check_uncommitted_changes().await;
             if !status.is_empty()
                 && let Some(conversation_id) = *self.conversation_id.lock().await
             {

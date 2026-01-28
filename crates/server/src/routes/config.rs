@@ -128,7 +128,7 @@ async fn update_config(
     let config_path = config_path();
 
     // Validate git branch prefix
-    if !utils::git::is_valid_branch_prefix(&new_config.git_branch_prefix) {
+    if !git::is_valid_branch_prefix(&new_config.git_branch_prefix) {
         return ResponseJson(ApiResponse::error(
             "Invalid git branch prefix. Must be a valid git branch name component without slashes.",
         ));

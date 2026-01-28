@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 workspace_utils = { path = "../utils", package = "utils" }
+git = { path = "../git" }
 tokio = { workspace = true }
 tokio-util = { version = "0.7", features = ["io", "compat", "rt"] }
 bytes = "1.0"

@@ -4,8 +4,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use git::{GitCli, GitCliError, GitService};
 use git2::{PushOptions, Repository, build::CheckoutBuilder};
-use services::services::git::{GitCli, GitCliError, GitService};
 use tempfile::TempDir;
 // Avoid direct git CLI usage in tests; exercise GitService instead.
 
@@ -74,7 +74,7 @@ fn add_path(repo_path: &Path, path: &str) {
     git.git(repo_path, ["add", path]).unwrap();
 }
 
-use services::services::git::DiffTarget;
+use git::DiffTarget;
 
 // Non-conflicting setup used by several tests
 fn setup_repo_with_worktree(root: &TempDir) -> (PathBuf, PathBuf) {

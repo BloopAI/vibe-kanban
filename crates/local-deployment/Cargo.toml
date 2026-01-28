@@ -9,6 +9,7 @@ executors = { path="../executors" }
 deployment = { path = "../deployment" }
 services = { path = "../services" }
 utils = { path = "../utils" }
+git = { path = "../git" }
 tokio-util = { version = "0.7", features = ["io"] }
 bytes = "1.0"
 serde_json = { workspace = true }

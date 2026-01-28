@@ -23,9 +23,9 @@ use std::{
 };
 
 use thiserror::Error;
-use utils::shell::resolve_executable_path_blocking; // TODO: make GitCli async
+use utils::{path::ALWAYS_SKIP_DIRS, shell::resolve_executable_path_blocking};
 
-use crate::services::{filesystem_watcher::ALWAYS_SKIP_DIRS, git::Commit};
+use super::Commit;
 
 #[derive(Debug, Error)]
 pub enum GitCliError {

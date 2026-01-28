@@ -20,10 +20,10 @@ use executors::actions::{
     ExecutorAction, ExecutorActionType, coding_agent_follow_up::CodingAgentFollowUpRequest,
     coding_agent_initial::CodingAgentInitialRequest,
 };
+use git::{GitCliError, GitRemote, GitServiceError};
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
-    git::{GitCliError, GitRemote, GitServiceError},
     git_host::{
         self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
         github::GhCli,

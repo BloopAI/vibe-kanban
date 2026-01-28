@@ -6,6 +6,7 @@ members = [
     "crates/executors",
     "crates/services",
     "crates/utils",
+    "crates/git",
     "crates/local-deployment",
     "crates/deployment",
     "crates/remote",

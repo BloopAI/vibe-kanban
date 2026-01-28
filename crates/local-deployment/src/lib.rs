@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use db::DBService;
 use deployment::{Deployment, DeploymentError, RemoteClientNotConfigured};
 use executors::profile::ExecutorConfigs;
+use git::GitService;
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     approvals::Approvals,
@@ -13,7 +14,6 @@ use services::services::{
     events::EventService,
     file_search::FileSearchCache,
     filesystem::FilesystemService,
-    git::GitService,
     image::ImageService,
     oauth_credentials::OAuthCredentials,
     project::ProjectService,

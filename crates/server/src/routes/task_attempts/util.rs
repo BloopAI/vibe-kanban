@@ -5,7 +5,8 @@ use db::models::{
     workspace::Workspace, workspace_repo::WorkspaceRepo,
 };
 use deployment::Deployment;
-use services::services::{container::ContainerService, git::WorktreeResetOptions};
+use git::WorktreeResetOptions;
+use services::services::container::ContainerService;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 

@@ -42,13 +42,11 @@ use executors::{
     executors::{CodingAgent, ExecutorError},
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
+use git::{ConflictOp, GitCliError, GitServiceError};
 use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
-    container::ContainerService,
-    file_search::SearchQuery,
-    git::{ConflictOp, GitCliError, GitServiceError},
-    workspace_manager::WorkspaceManager,
+    container::ContainerService, file_search::SearchQuery, workspace_manager::WorkspaceManager,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -1148,7 +1146,6 @@ pub async fn rebase_task_attempt(
         &workspace.branch.clone(),
     );
     if let Err(e) = result {
-        use services::services::git::GitServiceError;
         return match e {
             GitServiceError::MergeConflicts {
                 message,

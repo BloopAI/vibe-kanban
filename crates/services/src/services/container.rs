@@ -40,6 +40,7 @@ use executors::{
     profile::ExecutorProfileId,
 };
 use futures::{StreamExt, future, stream::BoxStream};
+use git::{GitService, GitServiceError};
 use json_patch::Patch;
 use sqlx::Error as SqlxError;
 use thiserror::Error;
@@ -52,9 +53,7 @@ use utils::{
 use uuid::Uuid;
 
 use crate::services::{
-    git::{GitService, GitServiceError},
-    notification::NotificationService,
-    workspace_manager::WorkspaceError as WorkspaceManagerError,
+    notification::NotificationService, workspace_manager::WorkspaceError as WorkspaceManagerError,
     worktree_manager::WorktreeError,
 };
 pub type ContainerRef = String;

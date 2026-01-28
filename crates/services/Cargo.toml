@@ -10,6 +10,7 @@ qa-mode = ["executors/qa-mode"]
 
 [dependencies]
 utils = { path = "../utils" }
+git = { path = "../git" }
 executors = { path = "../executors" }
 db = { path = "../db" }
 remote = { path = "../remote" }

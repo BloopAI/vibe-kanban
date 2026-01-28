@@ -9,7 +9,6 @@ pub mod file_ranker;
 pub mod file_search;
 pub mod filesystem;
 pub mod filesystem_watcher;
-pub mod git;
 pub mod git_host;
 pub mod image;
 pub mod notification;

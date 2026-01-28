@@ -3,6 +3,10 @@ use std::path::{Path, PathBuf};
 /// Directory name for storing images in worktrees
 pub const VIBE_IMAGES_DIR: &str = ".vibe-images";
 
+/// Directories that should always be skipped regardless of gitignore.
+/// .git is not in .gitignore but should never be watched.
+pub const ALWAYS_SKIP_DIRS: &[&str] = &[".git", "node_modules"];
+
 /// Convert absolute paths to relative paths based on worktree path
 /// This is a robust implementation that handles symlinks and edge cases
 pub fn make_path_relative(path: &str, worktree_path: &str) -> String {

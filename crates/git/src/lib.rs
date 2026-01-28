@@ -11,11 +11,23 @@ use ts_rs::TS;
 use utils::diff::{Diff, DiffChangeKind, FileDiffDetails, compute_line_change_counts};
 
 mod cli;
+mod validation;
 
 use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
-pub use cli::{GitCli, GitCliError};
+pub use cli::{GitCli, GitCliError, StatusEntry, WorktreeStatus};
+pub use utils::path::ALWAYS_SKIP_DIRS;
+pub use validation::is_valid_branch_prefix;
 
-use super::file_ranker::FileStat;
+/// Statistics for a single file based on git history
+#[derive(Clone, Debug)]
+pub struct FileStat {
+    /// Index in the commit history (0 = HEAD, 1 = parent of HEAD, ...)
+    pub last_index: usize,
+    /// Number of times this file was changed in recent commits
+    pub commit_count: u32,
+    /// Timestamp of the most recent change
+    pub last_time: DateTime<Utc>,
+}
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
@@ -1116,15 +1128,22 @@ impl GitService {
         Ok((ahead, behind))
     }
 
+    /// Return the full worktree status including all entries
+    pub fn get_worktree_status(
+        &self,
+        worktree_path: &Path,
+    ) -> Result<WorktreeStatus, GitServiceError> {
+        let cli = GitCli::new();
+        cli.get_worktree_status(worktree_path)
+            .map_err(|e| GitServiceError::InvalidRepository(format!("git status failed: {e}")))
+    }
+
     /// Return (uncommitted_tracked_changes, untracked_files) counts in worktree
     pub fn get_worktree_change_counts(
         &self,
         worktree_path: &Path,
     ) -> Result<(usize, usize), GitServiceError> {
-        let cli = GitCli::new();
-        let st = cli
-            .get_worktree_status(worktree_path)
-            .map_err(|e| GitServiceError::InvalidRepository(format!("git status failed: {e}")))?;
+        let st = self.get_worktree_status(worktree_path)?;
         Ok((st.uncommitted_tracked, st.untracked))
     }
 
@@ -1632,7 +1651,7 @@ impl GitService {
     ) -> Result<String, GitServiceError> {
         let cli = GitCli::new();
         cli.get_remote_url(repo_path, remote_name)
-            .map_err(GitServiceError::GitCLI)
+            .map_err(GitServiceError::from)
     }
 
     pub fn get_default_remote(&self, repo_path: &Path) -> Result<GitRemote, GitServiceError> {
@@ -1659,7 +1678,7 @@ impl GitService {
         let git_cli = GitCli::new();
         git_cli
             .check_remote_branch_exists(repo_path, remote_url, branch_name)
-            .map_err(GitServiceError::GitCLI)
+            .map_err(GitServiceError::from)
     }
 
     pub fn fetch_branch(
@@ -1672,7 +1691,7 @@ impl GitService {
         let refspec = format!("+refs/heads/{branch_name}:refs/heads/{branch_name}");
         git_cli
             .fetch_with_refspec(repo_path, remote_url, &refspec)
-            .map_err(GitServiceError::GitCLI)
+            .map_err(GitServiceError::from)
     }
 
     pub fn resolve_remote_for_branch(

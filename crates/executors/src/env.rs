@@ -1,5 +1,6 @@
 use std::{collections::HashMap, path::PathBuf};
 
+use git::GitService;
 use tokio::process::Command;
 
 use crate::command::CmdOverrides;
@@ -25,6 +26,51 @@ impl RepoContext {
             .iter()
             .map(|name| self.workspace_root.join(name))
             .collect()
+    }
+
+    /// Check all repos for uncommitted changes.
+    /// Returns a formatted string describing any uncommitted changes found,
+    /// or an empty string if all repos are clean.
+    pub async fn check_uncommitted_changes(&self) -> String {
+        let repo_paths = self.repo_paths();
+        if repo_paths.is_empty() {
+            return String::new();
+        }
+
+        tokio::task::spawn_blocking(move || {
+            let git = GitService::new();
+            let mut all_status = String::new();
+
+            for repo_path in &repo_paths {
+                // Skip if not a git repository
+                if !repo_path.join(".git").exists() {
+                    continue;
+                }
+
+                match git.get_worktree_status(repo_path) {
+                    Ok(status) if !status.entries.is_empty() => {
+                        let mut status_output = String::new();
+                        for entry in &status.entries {
+                            status_output.push(entry.staged);
+                            status_output.push(entry.unstaged);
+                            status_output.push(' ');
+                            status_output.push_str(&String::from_utf8_lossy(&entry.path));
+                            status_output.push('\n');
+                        }
+                        all_status.push_str(&format!(
+                            "\n{}:\n{}",
+                            repo_path.display(),
+                            status_output
+                        ));
+                    }
+                    _ => {}
+                }
+            }
+
+            all_status
+        })
+        .await
+        .unwrap_or_default()
     }
 }
 

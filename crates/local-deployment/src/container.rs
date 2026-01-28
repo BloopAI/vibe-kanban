@@ -38,6 +38,7 @@ use executors::{
     logs::{NormalizedEntryType, utils::patch::extract_normalized_entry_from_patch},
 };
 use futures::{FutureExt, TryStreamExt, stream::select};
+use git::GitService;
 use serde_json::json;
 use services::services::{
     analytics::AnalyticsContext,
@@ -45,7 +46,6 @@ use services::services::{
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
-    git::{GitCli, GitService},
     image::ImageService,
     notification::NotificationService,
     queued_message::QueuedMessageService,
@@ -315,17 +315,18 @@ impl LocalContainerService {
         workspace_root: &Path,
         repos: &[Repo],
     ) -> Result<Vec<(Repo, PathBuf)>, ContainerError> {
-        let git = GitCli::new();
+        let git = GitService::new();
         let mut repos_with_changes = Vec::new();
 
         for repo in repos {
             let worktree_path = workspace_root.join(&repo.name);
 
-            match git.has_changes(&worktree_path) {
-                Ok(true) => {
+            match git.is_worktree_clean(&worktree_path) {
+                Ok(false) => {
+                    // false = dirty = has changes
                     repos_with_changes.push((repo.clone(), worktree_path));
                 }
-                Ok(false) => {
+                Ok(true) => {
                     tracing::debug!("No changes in repo '{}'", repo.name);
                 }
                 Err(e) => {

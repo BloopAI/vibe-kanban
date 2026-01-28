@@ -12,6 +12,7 @@ deployment = { path = "../deployment" }
 executors = { path = "../executors" }
 local-deployment = { path = "../local-deployment" }
 utils = { path = "../utils" }
+git = { path = "../git" }
 db = { path = "../db" }
 services = { path = "../services" }
 tokio = { workspace = true }

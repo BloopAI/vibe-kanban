@@ -19,7 +19,7 @@ use tokio::{
     sync::{Mutex as AsyncMutex, mpsc},
 };
 use tokio_util::sync::CancellationToken;
-use workspace_utils::{approvals::ApprovalStatus, git};
+use workspace_utils::approvals::ApprovalStatus;
 
 use super::{slash_commands, types::OpencodeExecutorEvent};
 use crate::{
@@ -337,8 +337,7 @@ async fn run_session_inner(
 
     // Handle commit reminder if enabled
     if config.commit_reminder && !cancel.is_cancelled() {
-        let uncommitted_changes =
-            git::check_uncommitted_changes(&config.repo_context.repo_paths()).await;
+        let uncommitted_changes = config.repo_context.check_uncommitted_changes().await;
         if !uncommitted_changes.is_empty() {
             let reminder_prompt = format!(
                 "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",

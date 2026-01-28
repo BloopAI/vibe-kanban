@@ -10,10 +10,10 @@ use db::models::{
     repo::{Repo, UpdateRepo},
 };
 use deployment::Deployment;
+use git::{GitBranch, GitRemote};
 use serde::{Deserialize, Serialize};
 use services::services::{
     file_search::SearchQuery,
-    git::{GitBranch, GitRemote},
     git_host::{GitHostError, GitHostProvider, GitHostService, OpenPrInfo, ProviderKind},
 };
 use ts_rs::TS;

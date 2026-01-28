@@ -172,9 +172,7 @@ impl ClaudeAgentClient {
             {
                 return Ok(serde_json::json!({"decision": "approve"}));
             }
-            let status =
-                workspace_utils::git::check_uncommitted_changes(&self.repo_context.repo_paths())
-                    .await;
+            let status = self.repo_context.check_uncommitted_changes().await;
             return Ok(if status.is_empty() {
                 serde_json::json!({"decision": "approve"})
             } else {
