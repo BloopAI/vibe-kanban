@@ -33,10 +33,7 @@ interface RebaseDialogContentProps {
   repoId: string;
 }
 
-function RebaseDialogContent({
-  attemptId,
-  repoId,
-}: RebaseDialogContentProps) {
+function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
   const modal = useModal();
   const { t } = useTranslation(['tasks', 'common']);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
@@ -59,7 +56,8 @@ function RebaseDialogContent({
   const repoStatus = branchStatus?.find((s) => s.repo_id === repoId);
   const initialTargetBranch = repo?.target_branch;
 
-  const isInitialLoading = branchesLoading || reposLoading || branchStatusLoading;
+  const isInitialLoading =
+    branchesLoading || reposLoading || branchStatusLoading;
 
   // Check for existing conflicts
   const hasConflicts =
@@ -79,7 +77,14 @@ function RebaseDialogContent({
         repoName: repoStatus.repo_name,
       });
     }
-  }, [isInitialLoading, hasConflicts, repoStatus, attemptId, workspace?.branch, modal]);
+  }, [
+    isInitialLoading,
+    hasConflicts,
+    repoStatus,
+    attemptId,
+    workspace?.branch,
+    modal,
+  ]);
 
   // Initialize branch selection once data is loaded
   useEffect(() => {
@@ -234,7 +239,11 @@ function RebaseDialogContent({
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleCancel} disabled={isRebasePending}>
+          <Button
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isRebasePending}
+          >
             {t('common:buttons.cancel')}
           </Button>
           <Button
