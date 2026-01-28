@@ -5,18 +5,16 @@ import { ProjectSelectorContainer } from './ProjectSelectorContainer';
 import { CreateProjectDialog } from '@/components/ui-new/dialogs/CreateProjectDialog';
 
 export function CreateModeProjectSectionContainer() {
-  const { selectedProjectId, setSelectedProjectId, clearRepos } =
-    useCreateMode();
+  const { selectedProjectId, setSelectedProjectId } = useCreateMode();
   const { projects } = useProjects();
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
   const handleCreateProject = useCallback(async () => {
     const result = await CreateProjectDialog.show({});
     if (result.status === 'saved') {
-      setSelectedProjectId(result.project.id);
-      clearRepos();
+      await setSelectedProjectId(result.project.id);
     }
-  }, [setSelectedProjectId, clearRepos]);
+  }, [setSelectedProjectId]);
 
   return (
     <div className="p-base">
