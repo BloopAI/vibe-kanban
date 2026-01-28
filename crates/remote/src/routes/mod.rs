@@ -39,6 +39,7 @@ mod issue_followers;
 mod issue_relationships;
 mod issue_tags;
 mod issues;
+mod migration;
 mod notifications;
 mod oauth;
 pub(crate) mod organization_members;
@@ -102,6 +103,7 @@ pub fn router(state: AppState) -> Router {
         .merge(notifications::router())
         .merge(workspaces::router())
         .merge(billing::protected_router())
+        .merge(migration::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,
