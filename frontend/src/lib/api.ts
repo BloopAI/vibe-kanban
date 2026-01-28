@@ -1167,6 +1167,28 @@ export const oauthApi = {
   },
 };
 
+const TOKEN_STALE_TIME = 4 * 60 * 1000; // 4 minutes
+
+/**
+ * Get access token with React Query caching.
+ * Can be called from anywhere (React components or plain functions).
+ * Uses fetchQuery which returns cached data if fresh, or fetches if stale.
+ */
+export async function getCachedToken(): Promise<string | null> {
+  // Dynamic import to avoid circular dependency with main.tsx
+  const { queryClient } = await import('../main');
+  try {
+    const data = await queryClient.fetchQuery({
+      queryKey: ['auth', 'token'],
+      queryFn: () => oauthApi.getToken(),
+      staleTime: TOKEN_STALE_TIME,
+    });
+    return data?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // Organizations API
 export const organizationsApi = {
   getMembers: async (
