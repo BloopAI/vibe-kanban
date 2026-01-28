@@ -28,7 +28,6 @@ import {
 } from '@/stores/useDiffViewStore';
 import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { inIframe, openFileInVSCode } from '@/vscode/bridge';
 import { getFileIcon } from '@/utils/fileTypeIcon';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
@@ -419,16 +418,6 @@ export function PierreDiffCard({
   const [forceExpanded, setForceExpanded] = useState(false);
   const totalLines = additions + deletions;
   const isLargeDiff = totalLines > LARGE_DIFF_THRESHOLD;
-  const isVSCode = inIframe();
-
-  const handleHeaderClick = useCallback(() => {
-    if (isVSCode) {
-      openFileInVSCode(filePath);
-    } else {
-      onToggle();
-    }
-  }, [isVSCode, filePath, onToggle]);
-
   const shouldShowPlaceholder = expanded && isLargeDiff && !forceExpanded;
 
   return (
@@ -439,7 +428,7 @@ export function PierreDiffCard({
           'cursor-pointer',
           expanded && 'rounded-t-sm'
         )}
-        onClick={handleHeaderClick}
+        onClick={onToggle}
       >
         <span className="relative shrink-0">
           <FileIcon className="size-icon-base" />
@@ -494,26 +483,22 @@ export function PierreDiffCard({
           </span>
         )}
         <div className="flex items-center gap-half shrink-0">
-          {!isVSCode && (
-            <span onClick={(e) => e.stopPropagation()}>
-              <OpenInIdeButton
-                onClick={handleOpenInIde}
-                className="size-icon-xs p-0"
-              />
-            </span>
-          )}
-          {!isVSCode && (
-            <CaretDownIcon
-              className={cn(
-                'size-icon-xs text-low transition-transform',
-                !expanded && '-rotate-90'
-              )}
+          <span onClick={(e) => e.stopPropagation()}>
+            <OpenInIdeButton
+              onClick={handleOpenInIde}
+              className="size-icon-xs p-0"
             />
-          )}
+          </span>
+          <CaretDownIcon
+            className={cn(
+              'size-icon-xs text-low transition-transform',
+              !expanded && '-rotate-90'
+            )}
+          />
         </div>
       </div>
 
-      {!isVSCode && expanded && (
+      {expanded && (
         <div className="bg-primary rounded-b-sm overflow-hidden">
           {shouldShowPlaceholder ? (
             <div className="p-base bg-warning/5 border-t border-warning/20">
