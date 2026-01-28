@@ -44,6 +44,7 @@ import {
   ArrowFatLineUpIcon,
   UsersIcon,
   TreeStructureIcon,
+  LinkIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import {
@@ -122,6 +123,7 @@ export interface ActionExecutorContext {
     issueId: string,
     mode?: 'addChild' | 'setParent'
   ) => Promise<void>;
+  openWorkspaceSelection: (projectId: string, issueId: string) => Promise<void>;
   // Kanban issue panel
   openKanbanIssuePanel: (
     issueId: string | null,
@@ -1276,6 +1278,21 @@ export const Actions = {
     execute: async (ctx, projectId, issueIds) => {
       if (issueIds.length === 1) {
         await ctx.openSubIssueSelection(projectId, issueIds[0], 'addChild');
+      }
+    },
+  } satisfies IssueActionDefinition,
+
+  LinkWorkspace: {
+    id: 'link-workspace',
+    label: 'Link Workspace',
+    icon: LinkIcon,
+    shortcut: 'I W',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openWorkspaceSelection(projectId, issueIds[0]);
       }
     },
   } satisfies IssueActionDefinition,
