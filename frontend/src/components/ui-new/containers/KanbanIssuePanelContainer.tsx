@@ -7,6 +7,7 @@ import {
   KanbanIssuePanel,
   type IssueFormData,
 } from '@/components/ui-new/views/KanbanIssuePanel';
+import type { WorkspaceWithStats } from '@/components/ui-new/views/IssueWorkspaceCard';
 import { useActions } from '@/contexts/ActionsContext';
 
 /**
@@ -40,6 +41,7 @@ export function KanbanIssuePanelContainer() {
     tags,
     issueAssignees,
     issueTags,
+    pullRequests,
     insertIssue,
     updateIssue,
     insertIssueAssignee,
@@ -47,10 +49,11 @@ export function KanbanIssuePanelContainer() {
     removeIssueTag,
     insertTag,
     getTagsForIssue,
+    getWorkspacesForIssue,
     isLoading: projectLoading,
   } = useProjectContext();
 
-  const { isLoading: orgLoading } = useOrgContext();
+  const { membersWithProfilesById, isLoading: orgLoading } = useOrgContext();
 
   // Get action methods from actions context
   const { openStatusSelection, openPrioritySelection, openAssigneeSelection } =
@@ -117,6 +120,44 @@ export function KanbanIssuePanelContainer() {
     const tagLinks = getTagsForIssue(selectedKanbanIssueId);
     return tagLinks.map((it) => it.tag_id);
   }, [getTagsForIssue, selectedKanbanIssueId]);
+
+  // Get workspaces for the selected issue, with PR info
+  const workspacesWithStats: WorkspaceWithStats[] = useMemo(() => {
+    if (!selectedKanbanIssueId) return [];
+
+    const rawWorkspaces = getWorkspacesForIssue(selectedKanbanIssueId);
+
+    return rawWorkspaces
+      .filter((w) => !w.archived)
+      .map((workspace) => {
+        // Find linked PR for this workspace
+        const linkedPr = pullRequests.find(
+          (pr) => pr.workspace_id === workspace.id
+        );
+
+        // Get owner
+        const owner =
+          membersWithProfilesById.get(workspace.owner_user_id) ?? null;
+
+        return {
+          id: workspace.id,
+          localWorkspaceId: workspace.local_workspace_id,
+          filesChanged: workspace.files_changed ?? 0,
+          linesAdded: workspace.lines_added ?? 0,
+          linesRemoved: workspace.lines_removed ?? 0,
+          prNumber: linkedPr?.number,
+          prUrl: linkedPr?.url,
+          prStatus: linkedPr?.status as 'open' | 'merged' | 'closed' | null,
+          owner,
+          createdAt: workspace.created_at,
+        };
+      });
+  }, [
+    selectedKanbanIssueId,
+    getWorkspacesForIssue,
+    pullRequests,
+    membersWithProfilesById,
+  ]);
 
   // Determine mode (only edit when an issue is selected)
   const mode = kanbanCreateMode || !selectedKanbanIssueId ? 'create' : 'edit';
@@ -521,7 +562,7 @@ export function KanbanIssuePanelContainer() {
       issueId={selectedKanbanIssueId}
       parentIssue={parentIssue}
       onParentIssueClick={handleParentIssueClick}
-      workspaces={[]}
+      workspaces={workspacesWithStats}
       linkedPrs={[]}
       onClose={closeKanbanIssuePanel}
       onSubmit={handleSubmit}

@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use chrono::Utc;
 use db::{
     DBService,
     models::{
@@ -13,10 +14,13 @@ use sqlx::error::Error as SqlxError;
 use thiserror::Error;
 use tokio::time::interval;
 use tracing::{debug, error, info};
+use utils::api::pull_requests::{PullRequestStatus, UpsertPullRequestRequest};
 
 use crate::services::{
     analytics::AnalyticsContext,
     git_host::{self, GitHostError, GitHostProvider},
+    remote_client::RemoteClient,
+    remote_sync,
 };
 
 #[derive(Debug, Error)]
@@ -34,17 +38,20 @@ pub struct PrMonitorService {
     db: DBService,
     poll_interval: Duration,
     analytics: Option<AnalyticsContext>,
+    remote_client: Option<RemoteClient>,
 }
 
 impl PrMonitorService {
     pub async fn spawn(
         db: DBService,
         analytics: Option<AnalyticsContext>,
+        remote_client: Option<RemoteClient>,
     ) -> tokio::task::JoinHandle<()> {
         let service = Self {
             db,
             poll_interval: Duration::from_secs(60), // Check every minute
             analytics,
+            remote_client,
         };
         tokio::spawn(async move {
             service.start().await;
@@ -106,9 +113,12 @@ impl PrMonitorService {
                 &self.db.pool,
                 pr_merge.id,
                 pr_status.status.clone(),
-                pr_status.merge_commit_sha,
+                pr_status.merge_commit_sha.clone(),
             )
             .await?;
+
+            self.sync_pr_to_remote(pr_merge, &pr_status.status, pr_status.merge_commit_sha)
+                .await;
 
             // If the PR was merged, update the task status to done
             if matches!(&pr_status.status, MergeStatus::Merged)
@@ -144,5 +154,44 @@ impl PrMonitorService {
         }
 
         Ok(())
+    }
+
+    /// Sync PR status to remote server
+    async fn sync_pr_to_remote(
+        &self,
+        pr_merge: &PrMerge,
+        status: &MergeStatus,
+        merge_commit_sha: Option<String>,
+    ) {
+        let Some(client) = &self.remote_client else {
+            return;
+        };
+
+        let pr_status = match status {
+            MergeStatus::Open => PullRequestStatus::Open,
+            MergeStatus::Merged => PullRequestStatus::Merged,
+            MergeStatus::Closed => PullRequestStatus::Closed,
+            MergeStatus::Unknown => return,
+        };
+
+        let merged_at = if matches!(status, MergeStatus::Merged) {
+            Some(Utc::now())
+        } else {
+            None
+        };
+
+        let client = client.clone();
+        let request = UpsertPullRequestRequest {
+            url: pr_merge.pr_info.url.clone(),
+            number: pr_merge.pr_info.number as i32,
+            status: pr_status,
+            merged_at,
+            merge_commit_sha,
+            target_branch_name: pr_merge.target_branch_name.clone(),
+            local_workspace_id: pr_merge.workspace_id,
+        };
+        tokio::spawn(async move {
+            remote_sync::sync_pr_to_remote(&client, request).await;
+        });
     }
 }
