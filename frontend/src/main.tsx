@@ -57,7 +57,7 @@ if (
   );
 }
 
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error, query) => {
       console.error('[React Query Error]', {
