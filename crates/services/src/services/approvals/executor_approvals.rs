@@ -55,7 +55,7 @@ impl ExecutorApprovalService for ExecutorApprovalBridge {
 
         let (request, waiter) = self
             .approvals
-            .create_with_waiter(request, cancel.clone())
+            .create_with_waiter(request)
             .await
             .map_err(ExecutorApprovalError::request_failed)?;
 
@@ -82,18 +82,10 @@ impl ExecutorApprovalService for ExecutorApprovalBridge {
             status = waiter.clone() => status,
         };
 
-        match &status {
-            ApprovalStatus::Pending => {
-                return Err(ExecutorApprovalError::request_failed(
-                    "approval finished in pending state",
-                ));
-            }
-            ApprovalStatus::Denied { reason } if reason.as_deref() == Some("cancelled") => {
-                // Clean up: remove from pending if still there
-                self.approvals.remove_pending(&request.id);
-                return Err(ExecutorApprovalError::Cancelled);
-            }
-            _ => {}
+        if matches!(status, ApprovalStatus::Pending) {
+            return Err(ExecutorApprovalError::request_failed(
+                "approval finished in pending state",
+            ));
         }
 
         Ok(status)
