@@ -1,7 +1,7 @@
 import { electricCollectionOptions } from '@tanstack/electric-db-collection';
 import { createCollection } from '@tanstack/react-db';
 
-import { oauthApi } from '../api';
+import { getCachedToken } from '../api';
 import { makeRequest, REMOTE_API_URL } from '@/lib/remoteApi';
 import type { EntityDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { CollectionConfig, SyncError } from './types';
@@ -142,8 +142,8 @@ function getAuthenticatedShapeOptions(
     params,
     headers: {
       Authorization: async () => {
-        const tokenResponse = await oauthApi.getToken();
-        return tokenResponse ? `Bearer ${tokenResponse.access_token}` : '';
+        const token = await getCachedToken();
+        return token ? `Bearer ${token}` : '';
       },
     },
     parser: {
