@@ -6,15 +6,14 @@ import type { OrganizationMemberWithProfile } from 'shared/types';
 
 export interface WorkspaceWithStats {
   id: string;
-  displayId: string;
-  branchName: string;
+  localWorkspaceId: string | null;
   filesChanged: number;
   linesAdded: number;
   linesRemoved: number;
   prNumber?: number;
   prUrl?: string;
   prStatus?: 'open' | 'merged' | 'closed' | null;
-  assignees: OrganizationMemberWithProfile[];
+  owner: OrganizationMemberWithProfile | null;
   createdAt: string;
 }
 
@@ -31,6 +30,7 @@ export function IssueWorkspaceCard({
 }: IssueWorkspaceCardProps) {
   const { t } = useTranslation('common');
   const timeAgo = getTimeAgo(workspace.createdAt);
+  const displayId = workspace.localWorkspaceId ?? workspace.id.slice(0, 8);
 
   return (
     <div
@@ -53,13 +53,10 @@ export function IssueWorkspaceCard({
           : undefined
       }
     >
-      {/* Row 1: Workspace ID + Branch Badge */}
+      {/* Row 1: Workspace ID */}
       <div className="flex items-center gap-half">
         <span className="font-ibm-plex-mono text-sm text-high font-medium">
-          {workspace.displayId}
-        </span>
-        <span className="inline-flex items-center px-base py-px bg-secondary rounded-sm text-sm text-low">
-          {workspace.branchName}
+          {displayId}
         </span>
       </div>
 
@@ -118,21 +115,13 @@ export function IssueWorkspaceCard({
             <span className="text-sm text-low">{t('kanban.noPrCreated')}</span>
           )}
 
-          {/* Assignee Avatars */}
-          <div className="flex items-center -space-x-1">
-            {workspace.assignees.slice(0, 3).map((user) => (
-              <UserAvatar
-                key={user.user_id}
-                user={user}
-                className="h-5 w-5 text-[10px] border-2 border-panel"
-              />
-            ))}
-            {workspace.assignees.length > 3 && (
-              <span className="h-5 w-5 rounded-full bg-secondary flex items-center justify-center text-[10px] text-low border-2 border-panel">
-                +{workspace.assignees.length - 3}
-              </span>
-            )}
-          </div>
+          {/* Owner Avatar */}
+          {workspace.owner && (
+            <UserAvatar
+              user={workspace.owner}
+              className="h-5 w-5 text-[10px] border-2 border-panel"
+            />
+          )}
         </div>
       </div>
     </div>
