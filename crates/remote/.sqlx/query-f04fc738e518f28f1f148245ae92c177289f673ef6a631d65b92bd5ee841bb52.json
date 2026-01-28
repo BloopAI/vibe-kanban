@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id          AS \"id!: Uuid\",\n                issue_id    AS \"issue_id!: Uuid\",\n                author_id   AS \"author_id!: Uuid\",\n                parent_id   AS \"parent_id: Uuid\",\n                message     AS \"message!\",\n                created_at  AS \"created_at!: DateTime<Utc>\",\n                updated_at  AS \"updated_at!: DateTime<Utc>\"\n            FROM issue_comments\n            WHERE issue_id = $1\n            ",
+  "query": "\n            SELECT\n                id          AS \"id!: Uuid\",\n                issue_id    AS \"issue_id!: Uuid\",\n                author_id   AS \"author_id: Uuid\",\n                parent_id   AS \"parent_id: Uuid\",\n                message     AS \"message!\",\n                created_at  AS \"created_at!: DateTime<Utc>\",\n                updated_at  AS \"updated_at!: DateTime<Utc>\"\n            FROM issue_comments\n            WHERE issue_id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -15,7 +15,7 @@
       },
       {
         "ordinal": 2,
-        "name": "author_id!: Uuid",
+        "name": "author_id: Uuid",
         "type_info": "Uuid"
       },
       {
@@ -47,12 +47,12 @@
     "nullable": [
       false,
       false,
-      false,
+      true,
       true,
       false,
       false,
       false
     ]
   },
-  "hash": "9b89f8710903b517584fe818d36b5afd15dadb548f8e001f4f7add0c1c1b9167"
+  "hash": "f04fc738e518f28f1f148245ae92c177289f673ef6a631d65b92bd5ee841bb52"
 }

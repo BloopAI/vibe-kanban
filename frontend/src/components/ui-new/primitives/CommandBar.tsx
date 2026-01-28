@@ -6,6 +6,7 @@ import {
   ArrowUpIcon,
   MinusIcon,
   ArrowDownIcon,
+  PlusIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -174,6 +175,20 @@ export function CommandBar({
                       weight="bold"
                     />
                     <span>{item.priority.name}</span>
+                  </CommandItem>
+                );
+              } else if (item.type === 'createSubIssue') {
+                return (
+                  <CommandItem
+                    key="create-sub-issue"
+                    value="create new issue"
+                    onSelect={() => onSelect(item)}
+                  >
+                    <PlusIcon
+                      className="h-4 w-4 shrink-0 text-brand"
+                      weight="bold"
+                    />
+                    <span>Create new issue</span>
                   </CommandItem>
                 );
               } else if (item.type === 'issue') {

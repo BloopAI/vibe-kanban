@@ -72,6 +72,11 @@ export type CommandBarEffect =
       projectId: string;
       parentIssueId: string;
       childIssueId: string;
+    }
+  | {
+      type: 'createSubIssue';
+      projectId: string;
+      parentIssueId: string;
     };
 
 const browsing = (page: PageId, stack: PageId[] = []): CommandBarState => ({
@@ -220,6 +225,20 @@ function reducer(
           projectId: state.pendingProjectId,
           parentIssueId: state.pendingParentIssueId,
           childIssueId: event.item.issue.id,
+        },
+      ];
+    }
+
+    if (
+      state.status === 'selectingSubIssue' &&
+      event.item.type === 'createSubIssue'
+    ) {
+      return [
+        browsing('root'),
+        {
+          type: 'createSubIssue',
+          projectId: state.pendingProjectId,
+          parentIssueId: state.pendingParentIssueId,
         },
       ];
     }

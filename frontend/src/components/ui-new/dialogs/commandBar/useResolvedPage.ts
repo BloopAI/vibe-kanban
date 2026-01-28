@@ -148,10 +148,15 @@ export function useResolvedPage(
         groups: [
           {
             label: 'Issues',
-            items: issues.map((issue) => ({
-              type: 'issue' as const,
-              issue,
-            })),
+            items: [
+              ...(subIssueMode === 'addChild'
+                ? [{ type: 'createSubIssue' as const }]
+                : []),
+              ...issues.map((issue) => ({
+                type: 'issue' as const,
+                issue,
+              })),
+            ],
           },
         ],
       };

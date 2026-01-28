@@ -30,7 +30,7 @@ import type { PersistKey } from '@/stores/useUiPreferencesStore';
 
 export interface IssueCommentData {
   id: string;
-  authorId: string;
+  authorId: string | null;
   authorName: string;
   message: string;
   createdAt: string;

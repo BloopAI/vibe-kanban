@@ -129,7 +129,10 @@ async fn update_issue_comment(
 
     let organization_id = ensure_issue_access(state.pool(), ctx.user.id, comment.issue_id).await?;
 
-    let is_author = comment.author_id == ctx.user.id;
+    let is_author = comment
+        .author_id
+        .map(|id| id == ctx.user.id)
+        .unwrap_or(false);
     let is_admin = check_user_role(state.pool(), organization_id, ctx.user.id)
         .await
         .map_err(|error| {
@@ -179,7 +182,10 @@ async fn delete_issue_comment(
 
     let organization_id = ensure_issue_access(state.pool(), ctx.user.id, comment.issue_id).await?;
 
-    let is_author = comment.author_id == ctx.user.id;
+    let is_author = comment
+        .author_id
+        .map(|id| id == ctx.user.id)
+        .unwrap_or(false);
     let is_admin = check_user_role(state.pool(), organization_id, ctx.user.id)
         .await
         .map_err(|error| {
