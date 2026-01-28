@@ -3,7 +3,7 @@ use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 pub use v8::{
-    EditorConfig, EditorType, GitHubConfig, NotificationConfig, ShowcaseState, SendMessageShortcut,
+    EditorConfig, EditorType, GitHubConfig, NotificationConfig, SendMessageShortcut, ShowcaseState,
     SoundFile, ThemeMode, UiLanguage,
 };
 

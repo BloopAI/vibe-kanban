@@ -104,8 +104,7 @@ Analyze the changes in this branch and write:
 
 Use the appropriate CLI tool to update the PR (gh pr edit for GitHub, az repos pr update for Azure DevOps)."#;
 
-pub const DEFAULT_COMMIT_REMINDER_PROMPT: &str =
-    "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{uncommitted_changes}";
+pub const DEFAULT_COMMIT_REMINDER_PROMPT: &str = "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{uncommitted_changes}";
 
 async fn trigger_pr_description_follow_up(
     deployment: &DeploymentImpl,

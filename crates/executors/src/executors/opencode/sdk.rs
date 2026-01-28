@@ -71,8 +71,7 @@ impl LogWriter {
     }
 }
 
-const DEFAULT_COMMIT_REMINDER_PROMPT: &str =
-    "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{uncommitted_changes}";
+const DEFAULT_COMMIT_REMINDER_PROMPT: &str = "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{uncommitted_changes}";
 
 #[derive(Clone)]
 pub struct RunConfig {
@@ -347,7 +346,8 @@ async fn run_session_inner(
                 .commit_reminder_prompt
                 .as_deref()
                 .unwrap_or(DEFAULT_COMMIT_REMINDER_PROMPT);
-            let reminder_prompt = prompt_template.replace("{uncommitted_changes}", &uncommitted_changes);
+            let reminder_prompt =
+                prompt_template.replace("{uncommitted_changes}", &uncommitted_changes);
 
             tracing::debug!("Sending commit reminder prompt to OpenCode session");
 

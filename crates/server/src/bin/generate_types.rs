@@ -1,7 +1,9 @@
 use std::{collections::HashMap, env, fs, path::Path};
 
 use schemars::{JsonSchema, Schema, SchemaGenerator, generate::SchemaSettings};
-use server::routes::task_attempts::pr::{DEFAULT_COMMIT_REMINDER_PROMPT, DEFAULT_PR_DESCRIPTION_PROMPT};
+use server::routes::task_attempts::pr::{
+    DEFAULT_COMMIT_REMINDER_PROMPT, DEFAULT_PR_DESCRIPTION_PROMPT,
+};
 use ts_rs::TS;
 
 fn generate_types_content() -> String {
@@ -240,8 +242,7 @@ fn generate_types_content() -> String {
         .replace('`', "\\`");
     let constants = format!(
         "export const DEFAULT_PR_DESCRIPTION_PROMPT = `{}`;\n\nexport const DEFAULT_COMMIT_REMINDER_PROMPT = `{}`;",
-        pr_prompt_escaped,
-        commit_prompt_escaped
+        pr_prompt_escaped, commit_prompt_escaped
     );
 
     format!("{HEADER}\n\n{body}\n\n{constants}")

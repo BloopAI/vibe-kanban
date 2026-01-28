@@ -620,7 +620,10 @@ export function GeneralSettings() {
                     }
                   }}
                 />
-                <Label htmlFor="use-custom-commit-prompt" className="cursor-pointer">
+                <Label
+                  htmlFor="use-custom-commit-prompt"
+                  className="cursor-pointer"
+                >
                   {t('settings.general.commits.customPrompt.useCustom')}
                 </Label>
               </div>

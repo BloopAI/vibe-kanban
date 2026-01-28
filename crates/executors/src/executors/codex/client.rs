@@ -36,8 +36,7 @@ use crate::{
     executors::{ExecutorError, codex::normalize_logs::Approval},
 };
 
-const DEFAULT_COMMIT_REMINDER_PROMPT: &str =
-    "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{uncommitted_changes}";
+const DEFAULT_COMMIT_REMINDER_PROMPT: &str = "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{uncommitted_changes}";
 
 pub struct AppServerClient {
     rpc: OnceLock<JsonRpcPeer>,

@@ -26,8 +26,7 @@ pub const STOP_GIT_CHECK_CALLBACK_ID: &str = "STOP_GIT_CHECK_CALLBACK_ID";
 // Prefix for denial messages from the user, mirrors claude code CLI behavior
 const TOOL_DENY_PREFIX: &str = "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To tell you how to proceed, the user said: ";
 
-pub const DEFAULT_COMMIT_REMINDER_PROMPT: &str =
-    "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{uncommitted_changes}";
+pub const DEFAULT_COMMIT_REMINDER_PROMPT: &str = "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{uncommitted_changes}";
 
 /// Claude Agent client with control protocol support
 pub struct ClaudeAgentClient {

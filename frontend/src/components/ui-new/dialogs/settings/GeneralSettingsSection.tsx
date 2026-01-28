@@ -623,7 +623,8 @@ export function GeneralSettingsSection() {
             >
               <SettingsTextarea
                 value={
-                  draft?.commit_reminder_prompt ?? DEFAULT_COMMIT_REMINDER_PROMPT
+                  draft?.commit_reminder_prompt ??
+                  DEFAULT_COMMIT_REMINDER_PROMPT
                 }
                 onChange={(value) =>
                   updateDraft({ commit_reminder_prompt: value })
