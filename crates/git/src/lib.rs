@@ -71,6 +71,13 @@ pub enum ConflictOp {
     Revert,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS, PartialEq, Eq)]
+pub enum MergeStrategy {
+    #[default]
+    Strict,
+    AllowDiverged,
+}
+
 #[derive(Debug, Serialize, TS)]
 pub struct GitBranch {
     pub name: String,
@@ -822,17 +829,20 @@ impl GitService {
         task_branch_name: &str,
         base_branch_name: &str,
         commit_message: &str,
+        strategy: MergeStrategy,
     ) -> Result<String, GitServiceError> {
         // Open the repositories
         let task_repo = self.open_repo(task_worktree_path)?;
         let base_repo = self.open_repo(base_worktree_path)?;
 
         // Check if base branch is ahead of task branch - this indicates the base has moved
-        // ahead since the task was created, which should block the merge
+        // ahead since the task was created
         let (_, task_behind) =
             self.get_branch_status(base_worktree_path, task_branch_name, base_branch_name)?;
 
-        if task_behind > 0 {
+        // With Strict strategy, fail early if branches diverged
+        // With AllowDiverged, proceed to merge - conflicts will be detected in perform_squash_merge()
+        if task_behind > 0 && strategy == MergeStrategy::Strict {
             return Err(GitServiceError::BranchesDiverged(format!(
                 "Cannot merge: base branch '{base_branch_name}' is {task_behind} commits ahead of task branch '{task_branch_name}'. The base branch has moved forward since the task was created.",
             )));

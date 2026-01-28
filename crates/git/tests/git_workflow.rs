@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use git::{DiffTarget, GitCli, GitService};
+use git::{DiffTarget, GitCli, GitService, MergeStrategy};
 use git2::{Repository, build::CheckoutBuilder};
 use tempfile::TempDir;
 use utils::diff::DiffChangeKind;
@@ -506,7 +506,7 @@ fn squash_merge_libgit2_sets_author_without_user() {
 
     // Merge feature -> main (libgit2 squash)
     let merge_sha = s
-        .merge_changes(&repo_path, &worktree_path, "feature", "main", "squash")
+        .merge_changes(&repo_path, &worktree_path, "feature", "main", "squash", MergeStrategy::Strict)
         .unwrap();
 
     // The squash commit author should not be the feature commit's author, and must be present.
