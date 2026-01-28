@@ -5,6 +5,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   useEntity,
   type InsertResult,
@@ -13,36 +14,31 @@ import {
 import {
   PROJECT_ENTITY,
   NOTIFICATION_ENTITY,
-  ORGANIZATION_MEMBER_ENTITY,
-  USER_ENTITY,
   type Project,
   type Notification,
-  type OrganizationMember,
-  type User,
   type CreateProjectRequest,
   type UpdateProjectRequest,
   type UpdateNotificationRequest,
 } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import type { SyncError } from '@/lib/electric/types';
+import { organizationsApi } from '@/lib/api';
+import { organizationKeys } from '@/hooks/organizationKeys';
 
 /**
  * OrgContext provides organization-scoped data and mutations.
  *
  * Entities synced at organization scope:
- * - Projects (data + mutations)
- * - Notifications (data + mutations)
- * - OrganizationMembers (data only)
- * - Users (data only)
+ * - Projects (data + mutations via Electric)
+ * - Notifications (data + mutations via Electric)
+ * - Members (data via API, as OrganizationMemberWithProfile)
  */
 export interface OrgContextValue {
   organizationId: string;
 
-  // Normalized data arrays
+  // Data
   projects: Project[];
   notifications: Notification[];
-  members: OrganizationMember[];
-  users: User[];
 
   // Loading/error state
   isLoading: boolean;
@@ -65,17 +61,11 @@ export interface OrgContextValue {
 
   // Lookup helpers
   getProject: (projectId: string) => Project | undefined;
-  getMember: (userId: string) => OrganizationMember | undefined;
-  getUser: (userId: string) => User | undefined;
   getUnseenNotifications: () => Notification[];
 
-  // Computed aggregations (Maps for O(1) lookup)
+  // Computed aggregations
   projectsById: Map<string, Project>;
-  membersById: Map<string, OrganizationMember>;
-  usersById: Map<string, User>;
-
-  // Derived data for UI compatibility
-  membersWithProfiles: OrganizationMemberWithProfile[];
+  membersWithProfilesById: Map<string, OrganizationMemberWithProfile>;
 }
 
 const OrgContext = createContext<OrgContextValue | null>(null);
@@ -91,37 +81,36 @@ export function OrgProvider({ organizationId, children }: OrgProviderProps) {
     [organizationId]
   );
 
-  // Entity subscriptions
+  // Entity subscriptions (Electric sync)
   const projectsResult = useEntity(PROJECT_ENTITY, params);
   const notificationsResult = useEntity(NOTIFICATION_ENTITY, {
     ...params,
     user_id: '', // Will be filled by Electric based on auth
   });
-  const membersResult = useEntity(ORGANIZATION_MEMBER_ENTITY, params);
-  const usersResult = useEntity(USER_ENTITY, params);
+
+  // Members data from API
+  const membersQuery = useQuery({
+    queryKey: organizationKeys.members(organizationId),
+    queryFn: () => organizationsApi.getMembers(organizationId),
+    enabled: Boolean(organizationId),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
   // Combined loading state
   const isLoading =
     projectsResult.isLoading ||
     notificationsResult.isLoading ||
-    membersResult.isLoading ||
-    usersResult.isLoading;
+    membersQuery.isLoading;
 
   // First error found
-  const error =
-    projectsResult.error ||
-    notificationsResult.error ||
-    membersResult.error ||
-    usersResult.error ||
-    null;
+  const error = projectsResult.error || notificationsResult.error || null;
 
   // Combined retry
   const retry = useCallback(() => {
     projectsResult.retry();
     notificationsResult.retry();
-    membersResult.retry();
-    usersResult.retry();
-  }, [projectsResult, notificationsResult, membersResult, usersResult]);
+    membersQuery.refetch();
+  }, [projectsResult, notificationsResult, membersQuery]);
 
   // Computed Maps for O(1) lookup
   const projectsById = useMemo(() => {
@@ -132,53 +121,18 @@ export function OrgProvider({ organizationId, children }: OrgProviderProps) {
     return map;
   }, [projectsResult.data]);
 
-  const membersById = useMemo(() => {
-    const map = new Map<string, OrganizationMember>();
-    for (const member of membersResult.data) {
+  const membersWithProfilesById = useMemo(() => {
+    const map = new Map<string, OrganizationMemberWithProfile>();
+    for (const member of membersQuery.data ?? []) {
       map.set(member.user_id, member);
     }
     return map;
-  }, [membersResult.data]);
-
-  const usersById = useMemo(() => {
-    const map = new Map<string, User>();
-    for (const user of usersResult.data) {
-      map.set(user.id, user);
-    }
-    return map;
-  }, [usersResult.data]);
-
-  // Derived: combine members and users for UI components that expect OrganizationMemberWithProfile
-  const membersWithProfiles = useMemo<OrganizationMemberWithProfile[]>(() => {
-    return membersResult.data.map((member) => {
-      const user = usersById.get(member.user_id);
-      return {
-        user_id: member.user_id,
-        role: member.role,
-        joined_at: member.joined_at,
-        first_name: user?.first_name ?? null,
-        last_name: user?.last_name ?? null,
-        username: user?.username ?? null,
-        email: user?.email ?? null,
-        avatar_url: null, // Not available from User entity
-      };
-    });
-  }, [membersResult.data, usersById]);
+  }, [membersQuery.data]);
 
   // Lookup helpers
   const getProject = useCallback(
     (projectId: string) => projectsById.get(projectId),
     [projectsById]
-  );
-
-  const getMember = useCallback(
-    (userId: string) => membersById.get(userId),
-    [membersById]
-  );
-
-  const getUser = useCallback(
-    (userId: string) => usersById.get(userId),
-    [usersById]
   );
 
   const getUnseenNotifications = useCallback(
@@ -193,8 +147,6 @@ export function OrgProvider({ organizationId, children }: OrgProviderProps) {
       // Data
       projects: projectsResult.data,
       notifications: notificationsResult.data,
-      members: membersResult.data,
-      users: usersResult.data,
 
       // Loading/error
       isLoading,
@@ -211,35 +163,23 @@ export function OrgProvider({ organizationId, children }: OrgProviderProps) {
 
       // Lookup helpers
       getProject,
-      getMember,
-      getUser,
       getUnseenNotifications,
 
       // Computed aggregations
       projectsById,
-      membersById,
-      usersById,
-
-      // Derived data
-      membersWithProfiles,
+      membersWithProfilesById,
     }),
     [
       organizationId,
       projectsResult,
       notificationsResult,
-      membersResult,
-      usersResult,
       isLoading,
       error,
       retry,
       getProject,
-      getMember,
-      getUser,
       getUnseenNotifications,
       projectsById,
-      membersById,
-      usersById,
-      membersWithProfiles,
+      membersWithProfilesById,
     ]
   );
 

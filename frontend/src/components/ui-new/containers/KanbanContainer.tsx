@@ -5,7 +5,7 @@ import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useKanbanFilters, PRIORITY_ORDER } from '@/hooks/useKanbanFilters';
 import { PlusIcon } from '@phosphor-icons/react';
-import type { User } from 'shared/remote-types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 import {
   KanbanProvider,
   KanbanBoard,
@@ -51,7 +51,11 @@ export function KanbanContainer() {
     isLoading: projectLoading,
   } = useProjectContext();
 
-  const { projects, users, usersById, isLoading: orgLoading } = useOrgContext();
+  const {
+    projects,
+    membersWithProfilesById,
+    isLoading: orgLoading,
+  } = useOrgContext();
 
   // Get project name by finding the project matching current projectId
   const projectName = projects.find((p) => p.id === projectId)?.name ?? '';
@@ -185,20 +189,20 @@ export function KanbanContainer() {
     return map;
   }, [issues]);
 
-  // Create a lookup map for issue assignees (issue_id -> User[])
+  // Create a lookup map for issue assignees (issue_id -> OrganizationMemberWithProfile[])
   const issueAssigneesMap = useMemo(() => {
-    const map: Record<string, User[]> = {};
+    const map: Record<string, OrganizationMemberWithProfile[]> = {};
     for (const assignee of issueAssignees) {
-      const user = usersById.get(assignee.user_id);
-      if (user) {
+      const member = membersWithProfilesById.get(assignee.user_id);
+      if (member) {
         if (!map[assignee.issue_id]) {
           map[assignee.issue_id] = [];
         }
-        map[assignee.issue_id].push(user);
+        map[assignee.issue_id].push(member);
       }
     }
     return map;
-  }, [issueAssignees, usersById]);
+  }, [issueAssignees, membersWithProfilesById]);
 
   // Simple onDragEnd handler - the library handles all visual movement
   const handleDragEnd = useCallback(
@@ -335,7 +339,7 @@ export function KanbanContainer() {
         </div>
         <KanbanFilterBar
           tags={tags}
-          users={users}
+          users={[...membersWithProfilesById.values()]}
           hasActiveFilters={hasActiveFilters}
           statuses={sortedStatuses}
           projectId={projectId}
