@@ -2003,6 +2003,7 @@ dependencies = [
  "db",
  "executors",
  "futures",
+ "git",
  "git2",
  "serde_json",
  "services",
@@ -2011,7 +2012,6 @@ dependencies = [
  "tokio",
  "tracing",
  "utils",
- "workspace-git",
 ]
 
 [[package]]
@@ -2543,6 +2543,7 @@ dependencies = [
  "fork_stream",
  "futures",
  "futures-io",
+ "git",
  "json-patch",
  "jsonc-parser",
  "lru 0.12.5",
@@ -2572,7 +2573,6 @@ dependencies = [
  "uuid",
  "walkdir",
  "winsplit",
- "workspace-git",
  "xdg",
 ]
 
@@ -2963,6 +2963,21 @@ name = "gimli"
 version = "0.32.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
+
+[[package]]
+name = "git"
+version = "0.0.162"
+dependencies = [
+ "chrono",
+ "dirs 5.0.1",
+ "git2",
+ "serde",
+ "tempfile",
+ "thiserror 2.0.17",
+ "tracing",
+ "ts-rs 11.0.1",
+ "utils",
+]
 
 [[package]]
 name = "git2"
@@ -4058,6 +4073,7 @@ dependencies = [
  "deployment",
  "executors",
  "futures",
+ "git",
  "globwalk",
  "json-patch",
  "nix 0.29.0",
@@ -4074,7 +4090,6 @@ dependencies = [
  "tracing",
  "utils",
  "uuid",
- "workspace-git",
 ]
 
 [[package]]
@@ -6670,6 +6685,7 @@ dependencies = [
  "dotenv",
  "executors",
  "futures-util",
+ "git",
  "git2",
  "ignore",
  "local-deployment",
@@ -6703,7 +6719,6 @@ dependencies = [
  "url",
  "utils",
  "uuid",
- "workspace-git",
 ]
 
 [[package]]
@@ -6725,6 +6740,7 @@ dependencies = [
  "fst",
  "futures",
  "futures-util",
+ "git",
  "git2",
  "ignore",
  "json-patch",
@@ -6756,7 +6772,6 @@ dependencies = [
  "url",
  "utils",
  "uuid",
- "workspace-git",
 ]
 
 [[package]]
@@ -9273,21 +9288,6 @@ name = "wit-bindgen"
 version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f17a85883d4e6d00e8a97c586de764dabcc06133f7f1d55dce5cdc070ad7fe59"
-
-[[package]]
-name = "workspace-git"
-version = "0.0.162"
-dependencies = [
- "chrono",
- "dirs 5.0.1",
- "git2",
- "serde",
- "tempfile",
- "thiserror 2.0.17",
- "tracing",
- "ts-rs 11.0.1",
- "utils",
-]
 
 [[package]]
 name = "writeable"
