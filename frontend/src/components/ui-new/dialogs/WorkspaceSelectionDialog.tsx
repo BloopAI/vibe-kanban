@@ -3,6 +3,7 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
 import { defineModal } from '@/lib/modals';
+import { attemptsApi } from '@/lib/api';
 import {
   Command,
   CommandDialog,
@@ -107,19 +108,7 @@ function WorkspaceSelectionContent({
 
       setIsLinking(true);
       try {
-        const response = await fetch(`/api/task-attempts/${workspaceId}/link`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ project_id: projectId, issue_id: issueId }),
-        });
-
-        if (!response.ok) {
-          const data = await response.json();
-          console.error('Failed to link workspace:', data.message);
-          // TODO: Show error toast
-          return;
-        }
-
+        await attemptsApi.linkToIssue(workspaceId, projectId, issueId);
         // Success - close dialog. UI will auto-update via Electric sync.
         modal.hide();
       } catch (err) {
