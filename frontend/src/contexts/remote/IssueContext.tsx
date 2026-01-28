@@ -93,10 +93,13 @@ interface IssueProviderProps {
 
 export function IssueProvider({ issueId, children }: IssueProviderProps) {
   const params = useMemo(() => ({ issue_id: issueId }), [issueId]);
+  const enabled = Boolean(issueId);
 
   // Entity subscriptions
-  const commentsResult = useEntity(ISSUE_COMMENT_ENTITY, params);
-  const reactionsResult = useEntity(ISSUE_COMMENT_REACTION_ENTITY, params);
+  const commentsResult = useEntity(ISSUE_COMMENT_ENTITY, params, { enabled });
+  const reactionsResult = useEntity(ISSUE_COMMENT_REACTION_ENTITY, params, {
+    enabled,
+  });
 
   // Combined loading state
   const isLoading = commentsResult.isLoading || reactionsResult.isLoading;

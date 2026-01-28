@@ -51,6 +51,19 @@ export interface UseEntityResult<TRow, TCreate = unknown, TUpdate = unknown> {
 }
 
 /**
+ * Options for the useEntity hook.
+ */
+export interface UseEntityOptions {
+  /**
+   * Whether to enable the Electric sync subscription.
+   * When false, returns empty data and no-op mutation functions.
+   * Similar to React Query's `enabled` option.
+   * @default true
+   */
+  enabled?: boolean;
+}
+
+/**
  * Unified hook for entity data sync + optimistic mutations.
  *
  * Combines Electric real-time sync with TanStack DB's built-in
@@ -62,6 +75,7 @@ export interface UseEntityResult<TRow, TCreate = unknown, TUpdate = unknown> {
  *
  * @param entity - The entity definition from shared/remote-types.ts
  * @param params - URL parameters matching the entity's shape requirements
+ * @param options - Optional configuration (enabled, etc.)
  *
  * @example
  * const { data, isLoading, insert, update, remove } = useEntity(
@@ -82,8 +96,11 @@ export function useEntity<
   E extends EntityDefinition<Record<string, unknown>, unknown, unknown>,
 >(
   entity: E,
-  params: Record<string, string>
+  params: Record<string, string>,
+  options: UseEntityOptions = {}
 ): UseEntityResult<EntityRowType<E>, EntityCreateType<E>, EntityUpdateType<E>> {
+  const { enabled = true } = options;
+
   const [error, setError] = useState<SyncError | null>(null);
   const [retryKey, setRetryKey] = useState(0);
 
@@ -129,23 +146,30 @@ export function useEntity<
   }, [error, streamId, entity.name, retry, registerErrorFn, clearErrorFn]);
 
   // Create collection with mutation handlers - retryKey forces recreation on retry
+  // When enabled changes from false to true, collection is recreated with fresh auth state
   const collection = useMemo(() => {
+    if (!enabled) return null;
     const config = { onError: handleError };
     void retryKey; // Reference to force recreation on retry
     return createEntityCollection(entity, stableParams, config);
-  }, [entity, handleError, retryKey, stableParams]);
+  }, [enabled, entity, handleError, retryKey, stableParams]);
 
-  const { data, isLoading } = useLiveQuery(
-    (query) => query.from({ item: collection }),
+  // Subscribe to Electric when enabled (collection exists)
+  // When disabled, return undefined to use useLiveQuery's built-in disabled state
+  const { data, isLoading: queryLoading } = useLiveQuery(
+    (query) => (collection ? query.from({ item: collection }) : undefined),
     [collection]
   );
 
   // useLiveQuery returns data as flat objects directly, not wrapped in { item: {...} }
-  // Return empty array while loading to avoid showing stale data during collection transitions
+  // Return empty array while loading or when disabled
   const items = useMemo(() => {
-    if (!data || isLoading) return [];
+    if (!enabled || !collection || !data || queryLoading) return [];
     return data as unknown as EntityRowType<E>[];
-  }, [data, isLoading]);
+  }, [enabled, collection, data, queryLoading]);
+
+  // When disabled, isLoading should be false (not waiting for data)
+  const isLoading = enabled ? queryLoading : false;
 
   // Expose collection mutation methods with stable callbacks
   // Type assertion needed because TanStack DB collection types are complex
@@ -159,7 +183,8 @@ export function useEntity<
     ) => TransactionResult;
     delete: (id: string) => TransactionResult;
   };
-  const typedCollection = collection as unknown as CollectionWithMutations;
+  const typedCollection =
+    collection as unknown as CollectionWithMutations | null;
 
   const insert = useCallback(
     (insertData: EntityCreateType<E>): InsertResult<EntityRowType<E>> => {
@@ -169,6 +194,13 @@ export function useEntity<
         id: crypto.randomUUID(),
         ...(insertData as Record<string, unknown>),
       };
+      if (!typedCollection) {
+        // When disabled, return no-op result
+        return {
+          data: dataWithId as EntityRowType<E>,
+          persisted: Promise.resolve(),
+        };
+      }
       const tx = typedCollection.insert(dataWithId);
       return {
         data: dataWithId as EntityRowType<E>,
@@ -180,6 +212,10 @@ export function useEntity<
 
   const update = useCallback(
     (id: string, changes: Partial<EntityUpdateType<E>>): MutationResult => {
+      if (!typedCollection) {
+        // When disabled, return no-op result
+        return { persisted: Promise.resolve() };
+      }
       const tx = typedCollection.update(id, (draft: Record<string, unknown>) =>
         Object.assign(draft, changes)
       );
@@ -190,6 +226,10 @@ export function useEntity<
 
   const remove = useCallback(
     (id: string): MutationResult => {
+      if (!typedCollection) {
+        // When disabled, return no-op result
+        return { persisted: Promise.resolve() };
+      }
       const tx = typedCollection.delete(id);
       return { persisted: tx.isPersisted.promise };
     },
