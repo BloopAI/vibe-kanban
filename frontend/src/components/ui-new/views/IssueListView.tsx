@@ -1,14 +1,15 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import type { ProjectStatus, Issue, Tag, User } from 'shared/remote-types';
+import type { ProjectStatus, Issue, Tag } from 'shared/remote-types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 import { IssueListSection } from '@/components/ui-new/views/IssueListSection';
 
 export interface IssueListViewProps {
   statuses: ProjectStatus[];
   items: Record<string, string[]>;
   issueMap: Record<string, Issue>;
-  issueAssigneesMap: Record<string, User[]>;
+  issueAssigneesMap: Record<string, OrganizationMemberWithProfile[]>;
   getTagObjectsForIssue: (issueId: string) => Tag[];
   onIssueClick: (issueId: string) => void;
   selectedIssueId: string | null;

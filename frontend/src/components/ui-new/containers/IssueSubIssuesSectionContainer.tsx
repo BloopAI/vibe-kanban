@@ -25,7 +25,7 @@ export function IssueSubIssuesSectionContainer({
     isLoading: projectLoading,
   } = useProjectContext();
 
-  const { users, isLoading: orgLoading } = useOrgContext();
+  const { membersWithProfilesById, isLoading: orgLoading } = useOrgContext();
 
   const openKanbanIssuePanel = useUiPreferencesStore(
     (s) => s.openKanbanIssuePanel
@@ -36,10 +36,6 @@ export function IssueSubIssuesSectionContainer({
     return new Map(statuses.map((s) => [s.id, s]));
   }, [statuses]);
 
-  const usersById = useMemo(() => {
-    return new Map(users.map((u) => [u.id, u]));
-  }, [users]);
-
   // Filter and transform sub-issues
   const subIssues: SubIssueData[] = useMemo(() => {
     return issues
@@ -48,7 +44,7 @@ export function IssueSubIssuesSectionContainer({
         const status = statusesById.get(issue.status_id);
         const assigneeRecords = getAssigneesForIssue(issue.id);
         const assignees = assigneeRecords
-          .map((a) => usersById.get(a.user_id))
+          .map((a) => membersWithProfilesById.get(a.user_id))
           .filter((u): u is NonNullable<typeof u> => u !== undefined);
 
         return {
@@ -61,7 +57,13 @@ export function IssueSubIssuesSectionContainer({
           createdAt: issue.created_at,
         };
       });
-  }, [issues, issueId, statusesById, usersById, getAssigneesForIssue]);
+  }, [
+    issues,
+    issueId,
+    statusesById,
+    membersWithProfilesById,
+    getAssigneesForIssue,
+  ]);
 
   // Handle clicking on a sub-issue to navigate to it
   const handleSubIssueClick = useCallback(

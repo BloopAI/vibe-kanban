@@ -1,7 +1,8 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import type { IssuePriority, User } from 'shared/remote-types';
+import type { IssuePriority } from 'shared/remote-types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
 import { KanbanBadge } from '@/components/ui-new/primitives/KanbanBadge';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
@@ -13,7 +14,7 @@ export type KanbanCardContentProps = {
   description?: string | null;
   priority: IssuePriority;
   tags: { id: string; name: string; color: string }[];
-  assignees: User[];
+  assignees: OrganizationMemberWithProfile[];
   isLoading?: boolean;
   className?: string;
 };

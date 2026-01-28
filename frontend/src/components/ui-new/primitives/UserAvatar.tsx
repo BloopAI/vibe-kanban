@@ -1,14 +1,28 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import type { User } from 'shared/remote-types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 
 export interface UserAvatarProps {
-  user: User;
+  user: OrganizationMemberWithProfile;
   className?: string;
 }
 
-const buildInitials = (user: User): string => {
+const buildOptimizedImageUrl = (rawUrl: string): string => {
+  try {
+    const url = new URL(rawUrl);
+    url.searchParams.set('width', '64');
+    url.searchParams.set('height', '64');
+    url.searchParams.set('fit', 'crop');
+    url.searchParams.set('quality', '80');
+    return url.toString();
+  } catch {
+    const separator = rawUrl.includes('?') ? '&' : '?';
+    return `${rawUrl}${separator}width=64&height=64&fit=crop&quality=80`;
+  }
+};
+
+const buildInitials = (user: OrganizationMemberWithProfile): string => {
   const first = user.first_name?.trim().charAt(0)?.toUpperCase() ?? '';
   const last = user.last_name?.trim().charAt(0)?.toUpperCase() ?? '';
 
@@ -20,25 +34,32 @@ const buildInitials = (user: User): string => {
   return handle ?? '?';
 };
 
-const buildLabel = (user: User): string => {
+const buildLabel = (user: OrganizationMemberWithProfile): string => {
   const name = [user.first_name, user.last_name]
     .filter((value): value is string => Boolean(value && value.trim()))
     .join(' ');
 
-  if (name) {
-    return name;
-  }
-
-  if (user.username && user.username.trim()) {
-    return user.username;
-  }
-
+  if (name) return name;
+  if (user.username?.trim()) return user.username;
   return 'User';
+};
+
+// Helper to handle image error by hiding img and showing fallback via DOM
+const handleImageError = (event: React.SyntheticEvent<HTMLImageElement>) => {
+  const img = event.currentTarget;
+  img.style.display = 'none';
+  const fallback = img.nextElementSibling;
+  if (fallback instanceof HTMLElement) {
+    fallback.style.display = 'flex';
+  }
 };
 
 export const UserAvatar = ({ user, className }: UserAvatarProps) => {
   const initials = buildInitials(user);
   const label = buildLabel(user);
+  const imageUrl = user.avatar_url
+    ? buildOptimizedImageUrl(user.avatar_url)
+    : null;
 
   return (
     <div
@@ -49,7 +70,16 @@ export const UserAvatar = ({ user, className }: UserAvatarProps) => {
       title={label}
       aria-label={label}
     >
-      {initials}
+      {imageUrl && (
+        <img
+          src={imageUrl}
+          alt={label}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          onError={handleImageError}
+        />
+      )}
+      <span style={imageUrl ? { display: 'none' } : undefined}>{initials}</span>
     </div>
   );
 };

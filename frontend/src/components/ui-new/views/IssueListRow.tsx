@@ -1,7 +1,8 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import type { Issue, Tag, User } from 'shared/remote-types';
+import type { Issue, Tag } from 'shared/remote-types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 import { Draggable } from '@hello-pangea/dnd';
 import { DotsSixVerticalIcon } from '@phosphor-icons/react';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
@@ -39,7 +40,7 @@ export interface IssueListRowProps {
   index: number;
   statusColor: string;
   tags: Tag[];
-  assignees: User[];
+  assignees: OrganizationMemberWithProfile[];
   onClick: () => void;
   isSelected: boolean;
   className?: string;
