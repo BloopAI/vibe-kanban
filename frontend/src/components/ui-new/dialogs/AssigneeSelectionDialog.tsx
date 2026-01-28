@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import type { Project } from 'shared/remote-types';
@@ -15,7 +16,6 @@ import {
   ProjectProvider,
   useProjectContext,
 } from '@/contexts/remote/ProjectContext';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
 
@@ -56,18 +56,30 @@ function AssigneeSelectionContent({
   const { issueAssignees, insertIssueAssignee, removeIssueAssignee } =
     useProjectContext();
 
-  // Get create mode defaults from store
-  const kanbanCreateDefaultAssigneeIds = useUiPreferencesStore(
-    (s) => s.kanbanCreateDefaultAssigneeIds
-  );
-  const setKanbanCreateDefaultAssigneeIds = useUiPreferencesStore(
-    (s) => s.setKanbanCreateDefaultAssigneeIds
+  // Get/set create mode defaults from URL (URL is single source of truth)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const kanbanCreateDefaultAssigneeIds = useMemo(() => {
+    const assigneesParam = searchParams.get('assignees');
+    return assigneesParam ? assigneesParam.split(',').filter(Boolean) : [];
+  }, [searchParams]);
+
+  const setKanbanCreateDefaultAssigneeIds = useCallback(
+    (assigneeIds: string[]) => {
+      const newParams = new URLSearchParams(searchParams);
+      if (assigneeIds.length > 0) {
+        newParams.set('assignees', assigneeIds.join(','));
+      } else {
+        newParams.delete('assignees');
+      }
+      setSearchParams(newParams, { replace: true });
+    },
+    [searchParams, setSearchParams]
   );
 
   // Compute initial assignee IDs based on mode
   const initialAssigneeIds = useMemo(() => {
     if (isCreateMode) {
-      return kanbanCreateDefaultAssigneeIds ?? [];
+      return kanbanCreateDefaultAssigneeIds;
     }
     // Edit mode: get current assignees for the issue(s)
     return issueAssignees

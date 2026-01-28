@@ -2,9 +2,11 @@ import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
+import { useActions } from '@/contexts/ActionsContext';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useKanbanFilters, PRIORITY_ORDER } from '@/hooks/useKanbanFilters';
 import { bulkUpdateIssues, type BulkUpdateIssueItem } from '@/lib/remoteApi';
+import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
 import { PlusIcon } from '@phosphor-icons/react';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import {
@@ -67,12 +69,16 @@ export function KanbanContainer() {
     issueTags,
   });
 
-  const openKanbanIssuePanel = useUiPreferencesStore(
-    (s) => s.openKanbanIssuePanel
-  );
-  const selectedKanbanIssueId = useUiPreferencesStore(
-    (s) => s.selectedKanbanIssueId
-  );
+  // Navigation hook for opening issues and create mode
+  const {
+    issueId: selectedKanbanIssueId,
+    openIssue,
+    startCreate,
+  } = useKanbanNavigation();
+
+  // Get setter from ActionsContext to update default status for command bar
+  const { setDefaultCreateStatusId } = useActions();
+
   const kanbanFilters = useUiPreferencesStore((s) => s.kanbanFilters);
   const kanbanViewMode = useUiPreferencesStore((s) => s.kanbanViewMode);
   const listViewStatusFilter = useUiPreferencesStore(
@@ -125,6 +131,28 @@ export function KanbanContainer() {
     () => sortedStatuses.filter((s) => s.hidden),
     [sortedStatuses]
   );
+
+  // Update default create status for command bar based on current tab
+  useEffect(() => {
+    let defaultStatusId: string | undefined;
+    if (kanbanViewMode === 'kanban') {
+      // "Active" tab: first non-hidden status by sort order
+      defaultStatusId = visibleStatuses[0]?.id;
+    } else if (listViewStatusFilter) {
+      // Hidden status tab: use that specific status
+      defaultStatusId = listViewStatusFilter;
+    } else {
+      // "All" tab: first status by sort order
+      defaultStatusId = sortedStatuses[0]?.id;
+    }
+    setDefaultCreateStatusId(defaultStatusId);
+  }, [
+    kanbanViewMode,
+    listViewStatusFilter,
+    visibleStatuses,
+    sortedStatuses,
+    setDefaultCreateStatusId,
+  ]);
 
   // Get statuses to display in list view (all or filtered to one)
   const listViewStatuses = useMemo(() => {
@@ -328,41 +356,41 @@ export function KanbanContainer() {
 
   const handleCardClick = useCallback(
     (issueId: string) => {
-      openKanbanIssuePanel(issueId, false);
+      openIssue(issueId);
     },
-    [openKanbanIssuePanel]
+    [openIssue]
   );
 
   const handleAddTask = useCallback(
     (statusId?: string) => {
-      openKanbanIssuePanel(null, true, statusId ?? null);
+      startCreate({ statusId });
     },
-    [openKanbanIssuePanel]
+    [startCreate]
   );
 
   // Handler for create issue button in ViewNavTabs
   // Determines default status based on current view/tab
   const handleCreateIssueFromNav = useCallback(() => {
-    let defaultStatusId: string | null = null;
+    let defaultStatusId: string | undefined;
 
     if (kanbanViewMode === 'kanban') {
       // "Active" tab: first non-hidden status by sort order
-      defaultStatusId = visibleStatuses[0]?.id ?? null;
+      defaultStatusId = visibleStatuses[0]?.id;
     } else if (listViewStatusFilter) {
       // Hidden status tab: use that specific status
       defaultStatusId = listViewStatusFilter;
     } else {
       // "All" tab: first status by sort order
-      defaultStatusId = sortedStatuses[0]?.id ?? null;
+      defaultStatusId = sortedStatuses[0]?.id;
     }
 
-    openKanbanIssuePanel(null, true, defaultStatusId);
+    startCreate({ statusId: defaultStatusId });
   }, [
     kanbanViewMode,
     listViewStatusFilter,
     visibleStatuses,
     sortedStatuses,
-    openKanbanIssuePanel,
+    startCreate,
   ]);
 
   const isLoading = projectLoading || orgLoading;

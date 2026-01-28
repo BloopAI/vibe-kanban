@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
+import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
 import {
   KanbanIssuePanel,
   type IssueFormData,
@@ -15,25 +15,17 @@ import { useActions } from '@/contexts/ActionsContext';
  * Must be rendered within both OrgProvider and ProjectProvider.
  */
 export function KanbanIssuePanelContainer() {
-  const selectedKanbanIssueId = useUiPreferencesStore(
-    (s) => s.selectedKanbanIssueId
-  );
-  const kanbanCreateMode = useUiPreferencesStore((s) => s.kanbanCreateMode);
-  const kanbanCreateDefaultStatusId = useUiPreferencesStore(
-    (s) => s.kanbanCreateDefaultStatusId
-  );
-  const kanbanCreateDefaultPriority = useUiPreferencesStore(
-    (s) => s.kanbanCreateDefaultPriority
-  );
-  const kanbanCreateDefaultAssigneeIds = useUiPreferencesStore(
-    (s) => s.kanbanCreateDefaultAssigneeIds
-  );
-  const kanbanCreateDefaultParentIssueId = useUiPreferencesStore(
-    (s) => s.kanbanCreateDefaultParentIssueId
-  );
-  const closeKanbanIssuePanel = useUiPreferencesStore(
-    (s) => s.closeKanbanIssuePanel
-  );
+  // Navigation hook - URL is single source of truth
+  const {
+    issueId: selectedKanbanIssueId,
+    isCreateMode: kanbanCreateMode,
+    createDefaultStatusId: kanbanCreateDefaultStatusId,
+    createDefaultPriority: kanbanCreateDefaultPriority,
+    createDefaultAssigneeIds: kanbanCreateDefaultAssigneeIds,
+    createDefaultParentIssueId: kanbanCreateDefaultParentIssueId,
+    openIssue,
+    closePanel,
+  } = useKanbanNavigation();
 
   // Get data from contexts
   const {
@@ -58,6 +50,9 @@ export function KanbanIssuePanelContainer() {
   // Get action methods from actions context
   const { openStatusSelection, openPrioritySelection, openAssigneeSelection } =
     useActions();
+
+  // Close panel by navigating to project URL (URL is single source of truth)
+  const closeKanbanIssuePanel = closePanel;
 
   // Close panel if selected issue doesn't exist in current project (e.g., stale persisted state)
   useEffect(() => {
@@ -95,16 +90,12 @@ export function KanbanIssuePanelContainer() {
     return { id: parent.id, simpleId: parent.simple_id };
   }, [issues, selectedIssue]);
 
-  const openKanbanIssuePanel = useUiPreferencesStore(
-    (s) => s.openKanbanIssuePanel
-  );
-
-  // Handler for clicking on parent issue
+  // Handler for clicking on parent issue - navigate to that issue
   const handleParentIssueClick = useCallback(() => {
     if (parentIssue) {
-      openKanbanIssuePanel(parentIssue.id);
+      openIssue(parentIssue.id);
     }
-  }, [parentIssue, openKanbanIssuePanel]);
+  }, [parentIssue, openIssue]);
 
   // Get all current assignees from issue_assignees
   const currentAssigneeIds = useMemo(() => {
@@ -513,6 +504,13 @@ export function KanbanIssuePanelContainer() {
     [insertTag, projectId]
   );
 
+  // Copy link callback - copies issue URL to clipboard
+  const handleCopyLink = useCallback(() => {
+    if (!selectedKanbanIssueId || !projectId) return;
+    const url = `${window.location.origin}/projects/${projectId}/issues/${selectedKanbanIssueId}`;
+    navigator.clipboard.writeText(url);
+  }, [projectId, selectedKanbanIssueId]);
+
   // Loading state
   const isLoading = projectLoading || orgLoading;
 
@@ -546,6 +544,7 @@ export function KanbanIssuePanelContainer() {
         mode === 'edit' ? descriptionSaveStatus : undefined
       }
       titleInputRef={titleInputRef}
+      onCopyLink={mode === 'edit' ? handleCopyLink : undefined}
     />
   );
 }

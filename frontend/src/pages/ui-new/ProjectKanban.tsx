@@ -1,19 +1,16 @@
 import { useEffect, useMemo } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { OrgProvider, useOrgContext } from '@/contexts/remote/OrgContext';
 import { ProjectProvider } from '@/contexts/remote/ProjectContext';
 import { KanbanContainer } from '@/components/ui-new/containers/KanbanContainer';
 import { KanbanIssuePanelContainer } from '@/components/ui-new/containers/KanbanIssuePanelContainer';
-import {
-  PERSIST_KEYS,
-  usePaneSize,
-  useUiPreferencesStore,
-} from '@/stores/useUiPreferencesStore';
+import { PERSIST_KEYS, usePaneSize } from '@/stores/useUiPreferencesStore';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
+import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
 
 /**
  * Inner component that renders the Kanban board once we have the org context
@@ -21,9 +18,9 @@ import { useOrganizationStore } from '@/stores/useOrganizationStore';
 function ProjectKanbanInner({ projectId }: { projectId: string }) {
   const { t } = useTranslation('common');
   const { projects, isLoading } = useOrgContext();
-  const isKanbanRightPanelVisible = useUiPreferencesStore(
-    (s) => s.isKanbanRightPanelVisible
-  );
+
+  // Panel visibility derived from URL
+  const { isPanelOpen } = useKanbanNavigation();
 
   const [kanbanLeftPanelSize, setKanbanLeftPanelSize] = usePaneSize(
     PERSIST_KEYS.kanbanLeftPanel,
@@ -39,7 +36,7 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
       : { 'kanban-left': 75, 'kanban-right': 25 };
 
   const onKanbanLayoutChange = (layout: Layout) => {
-    if (isKanbanRightPanelVisible) {
+    if (isPanelOpen) {
       setKanbanLeftPanelSize(layout['kanban-left']);
     }
   };
@@ -78,14 +75,14 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
           <KanbanContainer />
         </Panel>
 
-        {isKanbanRightPanelVisible && (
+        {isPanelOpen && (
           <Separator
             id="kanban-separator"
             className="w-1 bg-transparent hover:bg-brand/50 transition-colors cursor-col-resize"
           />
         )}
 
-        {isKanbanRightPanelVisible && (
+        {isPanelOpen && (
           <Panel
             id="kanban-right"
             minSize="20%"
@@ -127,13 +124,17 @@ function useFindProjectById(projectId: string | undefined) {
 
 /**
  * ProjectKanban page - displays the Kanban board for a specific project
- * URL: /projects/:projectId
+ *
+ * URL patterns:
+ * - /projects/:projectId - Kanban board with no issue selected
+ * - /projects/:projectId/issues/:issueId - Kanban with issue panel open
+ * - /projects/:projectId?mode=create - Kanban with create issue panel
  *
  * Note: This component is rendered inside SharedAppLayout which provides
  * NavbarContainer, AppBar, and SyncErrorProvider.
  */
 export function ProjectKanban() {
-  const { projectId } = useParams<{ projectId: string }>();
+  const { projectId, issueId } = useKanbanNavigation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { t } = useTranslation('common');
@@ -144,12 +145,18 @@ export function ProjectKanban() {
     const orgIdFromUrl = searchParams.get('orgId');
     if (orgIdFromUrl && projectId) {
       setSelectedOrgId(orgIdFromUrl);
-      navigate(`/projects/${projectId}`, { replace: true });
+      // Preserve issueId if present
+      const targetUrl = issueId
+        ? `/projects/${projectId}/issues/${issueId}`
+        : `/projects/${projectId}`;
+      navigate(targetUrl, { replace: true });
     }
-  }, [searchParams, projectId, setSelectedOrgId, navigate]);
+  }, [searchParams, projectId, issueId, setSelectedOrgId, navigate]);
 
   // Find the project and get its organization
-  const { organizationId, isLoading } = useFindProjectById(projectId);
+  const { organizationId, isLoading } = useFindProjectById(
+    projectId ?? undefined
+  );
 
   if (isLoading) {
     return (

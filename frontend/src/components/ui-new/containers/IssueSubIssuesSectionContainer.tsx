@@ -1,10 +1,9 @@
 import { useMemo, useCallback, useState } from 'react';
-import { useParams } from 'react-router-dom';
 import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
 import { PlusIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
+import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
 import { useActions } from '@/contexts/ActionsContext';
 import { bulkUpdateIssues } from '@/lib/remoteApi';
 import {
@@ -25,7 +24,7 @@ interface IssueSubIssuesSectionContainerProps {
 export function IssueSubIssuesSectionContainer({
   issueId,
 }: IssueSubIssuesSectionContainerProps) {
-  const { projectId } = useParams<{ projectId: string }>();
+  const { projectId, openIssue } = useKanbanNavigation();
   const { openSubIssueSelection } = useActions();
 
   const {
@@ -36,10 +35,6 @@ export function IssueSubIssuesSectionContainer({
   } = useProjectContext();
 
   const { membersWithProfilesById, isLoading: orgLoading } = useOrgContext();
-
-  const openKanbanIssuePanel = useUiPreferencesStore(
-    (s) => s.openKanbanIssuePanel
-  );
 
   // Create lookup maps for efficient access
   const statusesById = useMemo(() => {
@@ -92,9 +87,9 @@ export function IssueSubIssuesSectionContainer({
   // Handle clicking on a sub-issue to navigate to it
   const handleSubIssueClick = useCallback(
     (subIssueId: string) => {
-      openKanbanIssuePanel(subIssueId);
+      openIssue(subIssueId);
     },
-    [openKanbanIssuePanel]
+    [openIssue]
   );
 
   // Track reordering state for loading overlay
