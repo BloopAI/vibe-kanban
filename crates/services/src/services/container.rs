@@ -893,7 +893,7 @@ pub trait ContainerService {
                             if let Err(e) = CodingAgentTurn::update_agent_message_uuid(
                                 &db.pool,
                                 execution_id,
-                                &agent_message_uuid,
+                                agent_message_uuid,
                             )
                             .await
                             {

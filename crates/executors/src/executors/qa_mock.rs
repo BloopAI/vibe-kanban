@@ -210,6 +210,7 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 stop_reason: None,
             },
             session_id: Some(session_id.clone()),
+            uuid: Some("uuid-qa-1".to_string()),
         },
         // 3. Read tool use
         ClaudeJson::Assistant {
@@ -227,6 +228,7 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 stop_reason: None,
             },
             session_id: Some(session_id.clone()),
+            uuid: Some("uuid-qa-2".to_string()),
         },
         // 4. Read tool result
         ClaudeJson::User {
@@ -245,7 +247,9 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 stop_reason: None,
             },
             is_synthetic: false,
+            is_replay: false,
             session_id: Some(session_id.clone()),
+            uuid: Some("uuid-qa-3".to_string()),
         },
         // 5. Write tool use
         ClaudeJson::Assistant {
@@ -264,6 +268,7 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 stop_reason: None,
             },
             session_id: Some(session_id.clone()),
+            uuid: Some("uuid-qa-4".to_string()),
         },
         // 6. Write tool result
         ClaudeJson::User {
@@ -280,7 +285,9 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 stop_reason: None,
             },
             session_id: Some(session_id.clone()),
+            uuid: Some("uuid-qa-5".to_string()),
             is_synthetic: false,
+            is_replay: false,
         },
         // 7. Bash tool use
         ClaudeJson::Assistant {
@@ -299,6 +306,7 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 stop_reason: None,
             },
             session_id: Some(session_id.clone()),
+            uuid: Some("uuid-qa-6".to_string()),
         },
         // 8. Bash tool result
         ClaudeJson::User {
@@ -316,6 +324,8 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
             },
             is_synthetic: false,
             session_id: Some(session_id.clone()),
+            uuid: Some("uuid-qa-7".to_string()),
+            is_replay: false,
         },
         // 9. Assistant final message
         ClaudeJson::Assistant {
@@ -333,6 +343,7 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 stop_reason: Some("end_turn".to_string()),
             },
             session_id: Some(session_id.clone()),
+            uuid: Some("uuid-qa-8".to_string()),
         },
         // 10. Result success
         ClaudeJson::Result {
