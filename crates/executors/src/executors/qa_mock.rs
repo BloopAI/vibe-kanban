@@ -20,7 +20,9 @@ use crate::{
     env::ExecutionEnv,
     executors::{
         ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
-        claude::{ClaudeContentItem, ClaudeJson, ClaudeMessage, ClaudeToolData},
+        claude::{
+            ClaudeContentItem, ClaudeJson, ClaudeMessage, ClaudeMessageContent, ClaudeToolData,
+        },
     },
     logs::utils::EntryIndexProvider,
 };
@@ -190,6 +192,9 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
             tools: None,
             model: Some("qa-mock-executor".to_string()),
             api_key_source: Some("unknown".to_string()),
+            status: None,
+            slash_commands: vec![],
+            plugins: vec![],
         },
         // 2. Assistant thinking
         ClaudeJson::Assistant {
@@ -198,9 +203,9 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 message_type: Some("message".to_string()),
                 role: "assistant".to_string(),
                 model: Some("qa-mock".to_string()),
-                content: vec![ClaudeContentItem::Thinking {
+                content: ClaudeMessageContent::Array(vec![ClaudeContentItem::Thinking {
                     thinking: "Analyzing the QA task and preparing mock execution...".to_string(),
-                }],
+                }]),
                 stop_reason: None,
             },
             session_id: Some(session_id.clone()),
@@ -212,12 +217,12 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 message_type: Some("message".to_string()),
                 role: "assistant".to_string(),
                 model: Some("qa-mock".to_string()),
-                content: vec![ClaudeContentItem::ToolUse {
+                content: ClaudeMessageContent::Array(vec![ClaudeContentItem::ToolUse {
                     id: "qa-tool-1".to_string(),
                     tool_data: ClaudeToolData::Read {
                         file_path: "README.md".to_string(),
                     },
-                }],
+                }]),
                 stop_reason: None,
             },
             session_id: Some(session_id.clone()),
@@ -229,13 +234,13 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 message_type: Some("message".to_string()),
                 role: "user".to_string(),
                 model: None,
-                content: vec![ClaudeContentItem::ToolResult {
+                content: ClaudeMessageContent::Array(vec![ClaudeContentItem::ToolResult {
                     tool_use_id: "qa-tool-1".to_string(),
                     content: serde_json::json!(
                         "# Project README\\n\\nThis is a QA test repository."
                     ),
                     is_error: Some(false),
-                }],
+                }]),
                 stop_reason: None,
             },
             is_synthetic: false,
@@ -248,13 +253,13 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 message_type: Some("message".to_string()),
                 role: "assistant".to_string(),
                 model: Some("qa-mock".to_string()),
-                content: vec![ClaudeContentItem::ToolUse {
+                content: ClaudeMessageContent::Array(vec![ClaudeContentItem::ToolUse {
                     id: "qa-tool-2".to_string(),
                     tool_data: ClaudeToolData::Write {
                         file_path: "qa_output.txt".to_string(),
                         content: "QA generated content".to_string(),
                     },
-                }],
+                }]),
                 stop_reason: None,
             },
             session_id: Some(session_id.clone()),
@@ -266,11 +271,11 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 message_type: Some("message".to_string()),
                 role: "user".to_string(),
                 model: None,
-                content: vec![ClaudeContentItem::ToolResult {
+                content: ClaudeMessageContent::Array(vec![ClaudeContentItem::ToolResult {
                     tool_use_id: "qa-tool-2".to_string(),
                     content: serde_json::json!("File written successfully"),
                     is_error: Some(false),
-                }],
+                }]),
                 stop_reason: None,
             },
             session_id: Some(session_id.clone()),
@@ -283,13 +288,13 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 message_type: Some("message".to_string()),
                 role: "assistant".to_string(),
                 model: Some("qa-mock".to_string()),
-                content: vec![ClaudeContentItem::ToolUse {
+                content: ClaudeMessageContent::Array(vec![ClaudeContentItem::ToolUse {
                     id: "qa-tool-3".to_string(),
                     tool_data: ClaudeToolData::Bash {
                         command: "echo 'QA test complete'".to_string(),
                         description: Some("Run QA test command".to_string()),
                     },
-                }],
+                }]),
                 stop_reason: None,
             },
             session_id: Some(session_id.clone()),
@@ -301,11 +306,11 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 message_type: Some("message".to_string()),
                 role: "user".to_string(),
                 model: None,
-                content: vec![ClaudeContentItem::ToolResult {
+                content: ClaudeMessageContent::Array(vec![ClaudeContentItem::ToolResult {
                     tool_use_id: "qa-tool-3".to_string(),
                     content: serde_json::json!("QA test complete\\n"),
                     is_error: Some(false),
-                }],
+                }]),
                 stop_reason: None,
             },
             is_synthetic: false,
@@ -318,12 +323,12 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 message_type: Some("message".to_string()),
                 role: "assistant".to_string(),
                 model: Some("qa-mock".to_string()),
-                content: vec![ClaudeContentItem::Text {
+                content: ClaudeMessageContent::Array(vec![ClaudeContentItem::Text {
                     text: format!(
                         "QA mode execution completed successfully.\\n\\nI performed the following operations:\\n1. Read README.md\\n2. Created qa_output.txt\\n3. Ran a test command\\nOriginal prompt: {}",
                         prompt
                     ),
-                }],
+                }]),
                 stop_reason: Some("end_turn".to_string()),
             },
             session_id: Some(session_id.clone()),
@@ -395,10 +400,14 @@ mod tests {
         let parsed: ClaudeJson = serde_json::from_str(final_log).unwrap();
 
         if let ClaudeJson::Assistant { message, .. } = parsed {
-            if let Some(ClaudeContentItem::Text { text }) = message.content.first() {
-                assert!(text.contains("test with \"quotes\" and\nnewlines"));
+            if let ClaudeMessageContent::Array(items) = &message.content {
+                if let Some(ClaudeContentItem::Text { text }) = items.first() {
+                    assert!(text.contains("test with \"quotes\" and\nnewlines"));
+                } else {
+                    panic!("Expected Text content item");
+                }
             } else {
-                panic!("Expected Text content item");
+                panic!("Expected Array content");
             }
         } else {
             panic!("Expected Assistant variant");
