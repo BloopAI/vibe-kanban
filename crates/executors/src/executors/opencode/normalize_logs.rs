@@ -1044,6 +1044,8 @@ impl ToolCallState {
             },
             ToolData::Task { description } => ActionType::TaskCreate {
                 description: description.clone().unwrap_or_default(),
+                subagent_type: None,
+                result: None,
             },
             ToolData::Unknown => ActionType::Tool {
                 tool_name: self.tool_name.clone(),

@@ -5,6 +5,7 @@ import {
   ActionType,
   NormalizedEntry,
   ToolStatus,
+  ToolResult,
   TodoItem,
   type RepoWithTargetBranch,
 } from 'shared/types';
@@ -34,6 +35,7 @@ import { ChatSystemMessage } from '../primitives/conversation/ChatSystemMessage'
 import { ChatThinkingMessage } from '../primitives/conversation/ChatThinkingMessage';
 import { ChatErrorMessage } from '../primitives/conversation/ChatErrorMessage';
 import { ChatScriptEntry } from '../primitives/conversation/ChatScriptEntry';
+import { ChatSubagentEntry } from '../primitives/conversation/ChatSubagentEntry';
 import type { DiffInput } from '../primitives/conversation/PierreConversationDiff';
 
 type Props = {
@@ -169,6 +171,20 @@ function renderToolUseEntry(
       <TodoManagementEntry
         todos={action_type.todos}
         expansionKey={expansionKey}
+      />
+    );
+  }
+
+  // Task/Subagent - use ChatSubagentEntry
+  if (action_type.action === 'task_create') {
+    return (
+      <SubagentEntry
+        description={action_type.description}
+        subagentType={action_type.subagent_type}
+        result={action_type.result}
+        expansionKey={expansionKey}
+        status={status}
+        workspaceId={taskAttempt?.id}
       />
     );
   }
@@ -580,6 +596,44 @@ function TodoManagementEntry({
   );
 
   return <ChatTodoList todos={todos} expanded={expanded} onToggle={toggle} />;
+}
+
+/**
+ * Subagent/Task entry with expandable output
+ */
+function SubagentEntry({
+  description,
+  subagentType,
+  result,
+  expansionKey,
+  status,
+  workspaceId,
+}: {
+  description: string;
+  subagentType: string | null | undefined;
+  result: ToolResult | null | undefined;
+  expansionKey: string;
+  status: ToolStatus;
+  workspaceId: string | undefined;
+}) {
+  // Only auto-expand if there's a result to show
+  const hasResult = Boolean(result?.value);
+  const [expanded, toggle] = usePersistedExpanded(
+    `subagent:${expansionKey}`,
+    false
+  );
+
+  return (
+    <ChatSubagentEntry
+      description={description}
+      subagentType={subagentType}
+      result={result}
+      expanded={expanded}
+      onToggle={hasResult ? toggle : undefined}
+      status={status}
+      workspaceId={workspaceId}
+    />
+  );
 }
 
 /**
