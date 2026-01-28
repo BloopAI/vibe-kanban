@@ -189,7 +189,14 @@ function AppContent() {
         <SearchProvider>
           <SentryRoutes>
             {/* ========== LOGIN ROUTE ========== */}
-            <Route path="/login" element={<Login />} />
+            <Route
+              path="/login"
+              element={
+                <LegacyDesignScope>
+                  <Login />
+                </LegacyDesignScope>
+              }
+            />
 
             {/* ========== LEGACY DESIGN ROUTES (Protected) ========== */}
             {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
