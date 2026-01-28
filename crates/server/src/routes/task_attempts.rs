@@ -467,12 +467,18 @@ pub async fn merge_task_attempt(
         commit_message.push_str(description);
     }
 
+    let merge_strategy = {
+        let config = deployment.config().read().await;
+        config.merge_strategy.clone()
+    };
+
     let merge_commit_id = deployment.git().merge_changes(
         &repo.path,
         &worktree_path,
         &workspace.branch,
         &workspace_repo.target_branch,
         &commit_message,
+        merge_strategy,
     )?;
 
     Merge::create_direct(

@@ -152,6 +152,14 @@
           "browse": "Browse",
           "dialogTitle": "Select Workspace Directory",
           "dialogDescription": "Choose a directory. Workspaces will be created in a .vibe-kanban-workspaces subdirectory within it."
+        },
+        "mergeStrategy": {
+          "label": "Merge Strategy",
+          "helper": "Controls behavior when the base branch has new commits since task creation.",
+          "options": {
+            "strict": "Strict (require manual rebase first)",
+            "allowDiverged": "Allow diverged (merge if no conflicts)"
+          }
         }
       },
       "pullRequests": {
