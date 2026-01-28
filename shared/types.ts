@@ -512,11 +512,7 @@ executor_profile_id: ExecutorProfileId,
  */
 working_dir: string | null, };
 
-export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, 
-/**
- * Last user message UUID from Claude for --resume-session-at
- */
-message_uuid: string | null, 
+export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, reset_to_message_uuid: string | null, 
 /**
  * Executor profile specification
  */
