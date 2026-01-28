@@ -175,8 +175,7 @@ pub async fn follow_up(
         let _ = ExecutionProcess::drop_at_and_after(pool, process.session_id, proc_id).await?;
     }
 
-    let latest_session_info =
-        CodingAgentTurn::find_latest_session_info(pool, session.id).await?;
+    let latest_session_info = CodingAgentTurn::find_latest_session_info(pool, session.id).await?;
 
     let prompt = payload.prompt;
 

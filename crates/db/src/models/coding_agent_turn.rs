@@ -25,7 +25,7 @@ pub struct CreateCodingAgentTurn {
 
 /// Session info from a coding agent turn, used for follow-up requests
 #[derive(Debug)]
-pub struct CodingAgentTurnSessionInfo {
+pub struct CodingAgentResumeInfo {
     pub session_id: String,
     pub message_uuid: Option<String>,
 }
@@ -36,9 +36,9 @@ impl CodingAgentTurn {
     pub async fn find_latest_session_info(
         pool: &SqlitePool,
         session_id: Uuid,
-    ) -> Result<Option<CodingAgentTurnSessionInfo>, sqlx::Error> {
+    ) -> Result<Option<CodingAgentResumeInfo>, sqlx::Error> {
         sqlx::query_as!(
-            CodingAgentTurnSessionInfo,
+            CodingAgentResumeInfo,
             r#"SELECT
                 cat.agent_session_id as "session_id!",
                 cat.agent_message_uuid as "message_uuid"
