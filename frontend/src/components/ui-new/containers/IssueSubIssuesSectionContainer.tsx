@@ -1,7 +1,9 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
+import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
+import { bulkUpdateIssues } from '@/lib/remoteApi';
 import {
   IssueSubIssuesSection,
   type SubIssueData,
@@ -14,6 +16,7 @@ interface IssueSubIssuesSectionContainerProps {
 /**
  * Container component for the sub-issues section.
  * Fetches sub-issues from ProjectContext and transforms them for display.
+ * Supports drag-and-drop reordering of sub-issues.
  */
 export function IssueSubIssuesSectionContainer({
   issueId,
@@ -36,10 +39,23 @@ export function IssueSubIssuesSectionContainer({
     return new Map(statuses.map((s) => [s.id, s]));
   }, [statuses]);
 
-  // Filter and transform sub-issues
+  // Filter, sort, and transform sub-issues
   const subIssues: SubIssueData[] = useMemo(() => {
     return issues
       .filter((issue) => issue.parent_issue_id === issueId)
+      .sort((a, b) => {
+        // Sort by parent_issue_sort_order (nulls last), then by created_at
+        const aOrder = a.parent_issue_sort_order;
+        const bOrder = b.parent_issue_sort_order;
+        if (aOrder === null && bOrder === null) {
+          return (
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        }
+        if (aOrder === null) return 1;
+        if (bOrder === null) return -1;
+        return aOrder - bOrder;
+      })
       .map((issue) => {
         const status = statusesById.get(issue.status_id);
         const assigneeRecords = getAssigneesForIssue(issue.id);
@@ -55,6 +71,7 @@ export function IssueSubIssuesSectionContainer({
           statusColor: status?.color ?? '#888888',
           assignees,
           createdAt: issue.created_at,
+          parentIssueSortOrder: issue.parent_issue_sort_order ?? null,
         };
       });
   }, [
@@ -73,13 +90,51 @@ export function IssueSubIssuesSectionContainer({
     [openKanbanIssuePanel]
   );
 
+  // Track reordering state for loading overlay
+  const [isReordering, setIsReordering] = useState(false);
+
+  // Handle drag and drop reordering
+  const handleDragEnd = useCallback(
+    (result: DropResult) => {
+      if (!result.destination) return;
+      if (result.source.index === result.destination.index) return;
+
+      // Reorder locally
+      const reordered = [...subIssues];
+      const [moved] = reordered.splice(result.source.index, 1);
+      reordered.splice(result.destination.index, 0, moved);
+
+      // Build updates: all items get sequential integers 0, 1, 2, ...
+      const updates = reordered.map((item, index) => ({
+        id: item.id,
+        changes: { parent_issue_sort_order: index },
+      }));
+
+      // Show loading overlay while saving
+      setIsReordering(true);
+      bulkUpdateIssues(updates)
+        .catch((err) => {
+          console.error('Failed to update sort order:', err);
+        })
+        .finally(() => {
+          // Small delay before hiding loader to prevent flicker
+          setTimeout(() => setIsReordering(false), 500);
+        });
+    },
+    [subIssues]
+  );
+
   const isLoading = projectLoading || orgLoading;
 
   return (
-    <IssueSubIssuesSection
-      subIssues={subIssues}
-      onSubIssueClick={handleSubIssueClick}
-      isLoading={isLoading}
-    />
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <IssueSubIssuesSection
+        parentIssueId={issueId}
+        subIssues={subIssues}
+        onSubIssueClick={handleSubIssueClick}
+        isLoading={isLoading}
+        isReordering={isReordering}
+      />
+    </DragDropContext>
   );
 }
