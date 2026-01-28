@@ -1,11 +1,11 @@
 import type { UpdateIssueRequest } from 'shared/remote-types';
-import { oauthApi } from './api';
+import { getCachedToken } from './api';
 
 export const REMOTE_API_URL = import.meta.env.VITE_VK_SHARED_API_BASE || '';
 
 export const makeRequest = async (path: string, options: RequestInit = {}) => {
-  const tokenRes = await oauthApi.getToken();
-  if (!tokenRes?.access_token) {
+  const token = await getCachedToken();
+  if (!token) {
     throw new Error('Not authenticated');
   }
 
@@ -13,7 +13,7 @@ export const makeRequest = async (path: string, options: RequestInit = {}) => {
   if (!headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
-  headers.set('Authorization', `Bearer ${tokenRes.access_token}`);
+  headers.set('Authorization', `Bearer ${token}`);
 
   return fetch(`${REMOTE_API_URL}${path}`, {
     ...options,
