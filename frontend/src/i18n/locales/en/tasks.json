@@ -632,7 +632,9 @@
       "description": "You have unsaved changes. Are you sure you want to discard them?",
       "continueEditing": "Continue Editing",
       "discardChanges": "Discard Changes"
-    }
+    },
+    "markdown": "Markdown",
+    "preview": "Preview"
   },
   "terminal": {
     "selectWorkspace": "Select a workspace to open terminal"

@@ -38,7 +38,7 @@ export const CODE_BLOCK_TRANSFORMER: MultilineElementTransformer = {
     const codeNode = $createCodeNode(language);
 
     if (linesInBetween) {
-      const code = linesInBetween.join('\n');
+      const code = linesInBetween.join('\n').trim();
       if (code) {
         codeNode.append($createTextNode(code));
       }
