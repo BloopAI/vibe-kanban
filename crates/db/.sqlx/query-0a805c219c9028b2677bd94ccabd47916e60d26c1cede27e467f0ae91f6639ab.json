@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE migration_state\n            SET status = 'migrated',\n                remote_id = $3,\n                error_message = NULL,\n                updated_at = datetime('now', 'subsec')\n            WHERE entity_type = $1 AND local_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "0a805c219c9028b2677bd94ccabd47916e60d26c1cede27e467f0ae91f6639ab"
+}

@@ -19,6 +19,7 @@ use services::services::{
     container::ContainerError,
     git_host::GitHostError,
     image::ImageError,
+    migration::MigrationError,
     project::ProjectServiceError,
     remote_client::RemoteClientError,
     repo::RepoError as RepoServiceError,
@@ -80,6 +81,8 @@ pub enum ApiError {
     CommandBuilder(#[from] CommandBuildError),
     #[error(transparent)]
     Pty(#[from] PtyError),
+    #[error(transparent)]
+    Migration(#[from] MigrationError),
 }
 
 impl From<&'static str> for ApiError {
@@ -185,6 +188,7 @@ impl IntoResponse for ApiError {
                 PtyError::SessionClosed => (StatusCode::GONE, "PtyError"),
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "PtyError"),
             },
+            ApiError::Migration(_) => (StatusCode::INTERNAL_SERVER_ERROR, "MigrationError"),
         };
 
         let error_message = match &self {

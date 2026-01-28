@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO workspaces (project_id, owner_user_id, issue_id, local_workspace_id, archived, created_at)\n            SELECT project_id, owner_user_id, issue_id, local_workspace_id, archived, created_at\n            FROM UNNEST($1::uuid[], $2::uuid[], $3::uuid[], $4::uuid[], $5::boolean[], $6::timestamptz[])\n                AS t(project_id, owner_user_id, issue_id, local_workspace_id, archived, created_at)\n            RETURNING id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "UuidArray",
+        "UuidArray",
+        "UuidArray",
+        "BoolArray",
+        "TimestamptzArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6412e3c9c929c588d924c1f899891f5d47f92d48b19f93823fb5a795d44a736a"
+}

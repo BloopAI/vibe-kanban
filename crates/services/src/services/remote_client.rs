@@ -361,7 +361,11 @@ impl RemoteClient {
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
     }
 
-    async fn post_authed<T, B>(&self, path: &str, body: Option<&B>) -> Result<T, RemoteClientError>
+    pub async fn post_authed<T, B>(
+        &self,
+        path: &str,
+        body: Option<&B>,
+    ) -> Result<T, RemoteClientError>
     where
         T: for<'de> Deserialize<'de>,
         B: Serialize,

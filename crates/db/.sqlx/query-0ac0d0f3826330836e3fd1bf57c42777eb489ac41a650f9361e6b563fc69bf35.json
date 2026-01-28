@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE migration_state\n            SET status = 'pending',\n                error_message = NULL,\n                updated_at = datetime('now', 'subsec')\n            WHERE status = 'failed'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "0ac0d0f3826330836e3fd1bf57c42777eb489ac41a650f9361e6b563fc69bf35"
+}

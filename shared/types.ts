@@ -174,11 +174,19 @@ export type UpdateMemberRoleRequest = { role: MemberRole, };
 
 export type UpdateMemberRoleResponse = { user_id: string, role: MemberRole, };
 
-export type RemoteProject = { id: string, organization_id: string, name: string, color: string, created_at: string, updated_at: string, };
+export type MigrationRequest = { organization_id: string, 
+/**
+ * List of local project IDs to migrate.
+ */
+project_ids: Array<string>, };
 
-export type ListProjectsResponse = { projects: Array<RemoteProject>, };
+export type MigrationResponse = { report: MigrationReport, };
 
-export type RemoteProjectMembersResponse = { organization_id: string, members: Array<OrganizationMemberWithProfile>, };
+export type MigrationReport = { projects: EntityReport, tasks: EntityReport, pr_merges: EntityReport, workspaces: EntityReport, warnings: Array<string>, };
+
+export type EntityReport = { total: number, migrated: number, failed: number, skipped: number, errors: Array<EntityError>, };
+
+export type EntityError = { local_id: string, error: string, };
 
 export type RegisterRepoRequest = { path: string, display_name: string | null, };
 
