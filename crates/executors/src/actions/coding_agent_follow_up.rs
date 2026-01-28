@@ -83,13 +83,7 @@ impl Executable for CodingAgentFollowUpRequest {
             match &self.message_uuid {
                 Some(uuid) => {
                     agent
-                        .spawn_resume(
-                            &effective_dir,
-                            &self.prompt,
-                            &self.session_id,
-                            uuid,
-                            env,
-                        )
+                        .spawn_resume(&effective_dir, &self.prompt, &self.session_id, uuid, env)
                         .await
                 }
                 None => {
