@@ -896,17 +896,10 @@ export const Actions = {
         });
 
         if (confirmRebase === 'confirmed') {
-          // Trigger the rebase action
-          const repos = await attemptsApi.getRepos(workspaceId);
-          const repo = repos.find((r) => r.id === repoId);
-          if (!repo) throw new Error('Repository not found');
-
-          const branches = await repoApi.getBranches(repoId);
+          // Open rebase dialog - it loads branches/status internally
           await RebaseDialog.show({
             attemptId: workspaceId,
             repoId,
-            branches,
-            initialTargetBranch: repo.target_branch,
           });
         }
         return;
@@ -934,42 +927,11 @@ export const Actions = {
     shortcut: 'X R',
     requiresTarget: 'git',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    execute: async (ctx, workspaceId, repoId) => {
-      // Check for existing conflicts first
-      const branchStatus = await attemptsApi.getBranchStatus(workspaceId);
-      const repoStatus = branchStatus?.find((s) => s.repo_id === repoId);
-      const hasConflicts =
-        repoStatus?.is_rebase_in_progress ||
-        (repoStatus?.conflicted_files?.length ?? 0) > 0;
-
-      if (hasConflicts && repoStatus) {
-        // Show resolve conflicts dialog
-        const workspace = await getWorkspace(ctx.queryClient, workspaceId);
-        const result = await ResolveConflictsDialog.show({
-          workspaceId,
-          conflictOp: repoStatus.conflict_op ?? 'rebase',
-          sourceBranch: workspace.branch,
-          targetBranch: repoStatus.target_branch_name,
-          conflictedFiles: repoStatus.conflicted_files ?? [],
-          repoName: repoStatus.repo_name,
-        });
-
-        if (result.action === 'resolved') {
-          invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
-        }
-        return;
-      }
-
-      const repos = await attemptsApi.getRepos(workspaceId);
-      const repo = repos.find((r) => r.id === repoId);
-      if (!repo) throw new Error('Repository not found');
-
-      const branches = await repoApi.getBranches(repoId);
+    execute: async (_ctx, workspaceId, repoId) => {
+      // Open rebase dialog - it loads branches/status internally and handles conflicts
       await RebaseDialog.show({
         attemptId: workspaceId,
         repoId,
-        branches,
-        initialTargetBranch: repo.target_branch,
       });
     },
   },
@@ -981,11 +943,10 @@ export const Actions = {
     requiresTarget: 'git',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (_ctx, workspaceId, repoId) => {
-      const branches = await repoApi.getBranches(repoId);
+      // Open dialog - it loads branches internally
       await ChangeTargetDialog.show({
         attemptId: workspaceId,
         repoId,
-        branches,
       });
     },
   },
