@@ -70,6 +70,11 @@ pub struct AbortConflictsRequest {
     pub repo_id: Uuid,
 }
 
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct ContinueConflictsRequest {
+    pub repo_id: Uuid,
+}
+
 #[derive(Debug, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[ts(tag = "type", rename_all = "snake_case")]
@@ -1208,6 +1213,30 @@ pub async fn abort_conflicts_task_attempt(
 }
 
 #[axum::debug_handler]
+pub async fn continue_conflicts_task_attempt(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<ContinueConflictsRequest>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    let repo = Repo::find_by_id(pool, payload.repo_id)
+        .await?
+        .ok_or(RepoError::NotFound)?;
+
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&workspace)
+        .await?;
+    let workspace_path = Path::new(&container_ref);
+    let worktree_path = workspace_path.join(&repo.name);
+
+    deployment.git().continue_conflicts(&worktree_path)?;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
+#[axum::debug_handler]
 pub async fn start_dev_server(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -1770,6 +1799,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/push/force", post(force_push_task_attempt_branch))
         .route("/rebase", post(rebase_task_attempt))
         .route("/conflicts/abort", post(abort_conflicts_task_attempt))
+        .route("/conflicts/continue", post(continue_conflicts_task_attempt))
         .route("/pr", post(pr::create_pr))
         .route("/pr/attach", post(pr::attach_existing_pr))
         .route("/pr/comments", get(pr::get_pr_comments))

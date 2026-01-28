@@ -600,6 +600,15 @@ impl GitCli {
         self.git(worktree_path, ["rebase", "--quit"]).map(|_| ())
     }
 
+    /// Continue an in-progress rebase. Requires that all conflicts have been resolved.
+    /// If no rebase is in progress, it's a no-op.
+    pub fn continue_rebase(&self, worktree_path: &Path) -> Result<(), GitCliError> {
+        if !self.is_rebase_in_progress(worktree_path)? {
+            return Ok(());
+        }
+        self.git(worktree_path, ["rebase", "--continue"]).map(|_| ())
+    }
+
     /// Return true if there are staged changes (index differs from HEAD)
     pub fn has_staged_changes(&self, repo_path: &Path) -> Result<bool, GitCliError> {
         // `git diff --cached --quiet` returns exit code 1 if there are differences
@@ -671,6 +680,34 @@ impl GitCli {
             return Ok(());
         }
         self.git(worktree_path, ["revert", "--abort"]).map(|_| ())
+    }
+
+    /// Continue an in-progress merge. Requires that all conflicts have been resolved.
+    /// If no merge is in progress, it's a no-op.
+    pub fn continue_merge(&self, worktree_path: &Path) -> Result<(), GitCliError> {
+        if !self.is_merge_in_progress(worktree_path)? {
+            return Ok(());
+        }
+        self.git(worktree_path, ["merge", "--continue"]).map(|_| ())
+    }
+
+    /// Continue an in-progress cherry-pick. Requires that all conflicts have been resolved.
+    /// If no cherry-pick is in progress, it's a no-op.
+    pub fn continue_cherry_pick(&self, worktree_path: &Path) -> Result<(), GitCliError> {
+        if !self.is_cherry_pick_in_progress(worktree_path)? {
+            return Ok(());
+        }
+        self.git(worktree_path, ["cherry-pick", "--continue"])
+            .map(|_| ())
+    }
+
+    /// Continue an in-progress revert. Requires that all conflicts have been resolved.
+    /// If no revert is in progress, it's a no-op.
+    pub fn continue_revert(&self, worktree_path: &Path) -> Result<(), GitCliError> {
+        if !self.is_revert_in_progress(worktree_path)? {
+            return Ok(());
+        }
+        self.git(worktree_path, ["revert", "--continue"]).map(|_| ())
     }
 
     /// List files currently in a conflicted (unmerged) state in the worktree.

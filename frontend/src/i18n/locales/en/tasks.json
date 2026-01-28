@@ -532,7 +532,15 @@
       "resolving": "Starting...",
       "filesWithConflicts_one": "{{count}} file has conflicts",
       "filesWithConflicts_other": "{{count}} files have conflicts",
-      "andMore": "...and {{count}} more"
+      "andMore": "...and {{count}} more",
+      "inProgressTitle": "{{op}} in Progress",
+      "inProgressDescription": "A {{op}} operation is in progress. You can continue or abort.",
+      "continue": "Continue {{op}}",
+      "continuing": "Continuing...",
+      "abort": "Abort {{op}}",
+      "aborting": "Aborting...",
+      "continueError": "Failed to continue. Please try again.",
+      "abortError": "Failed to abort. Please try again."
     }
   },
   "createPrDialog": {

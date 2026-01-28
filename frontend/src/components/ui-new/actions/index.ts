@@ -876,9 +876,10 @@ export const Actions = {
           targetBranch: repoStatus.target_branch_name,
           conflictedFiles: repoStatus.conflicted_files ?? [],
           repoName: repoStatus.repo_name,
+          repoId,
         });
 
-        if (result.action === 'resolved') {
+        if (result.action === 'resolved' || result.action === 'continued' || result.action === 'aborted') {
           invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
         }
         return;
@@ -927,8 +928,38 @@ export const Actions = {
     shortcut: 'X R',
     requiresTarget: 'git',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    execute: async (_ctx, workspaceId, repoId) => {
-      // Open rebase dialog - it loads branches/status internally and handles conflicts
+    execute: async (ctx, workspaceId, repoId) => {
+      // Check for existing conflicts first
+      const branchStatus = await attemptsApi.getBranchStatus(workspaceId);
+      const repoStatus = branchStatus?.find((s) => s.repo_id === repoId);
+      const hasConflicts =
+        repoStatus?.is_rebase_in_progress ||
+        (repoStatus?.conflicted_files?.length ?? 0) > 0;
+
+      if (hasConflicts && repoStatus) {
+        // Show resolve conflicts dialog
+        const workspace = await getWorkspace(ctx.queryClient, workspaceId);
+        const result = await ResolveConflictsDialog.show({
+          workspaceId,
+          conflictOp: repoStatus.conflict_op ?? 'rebase',
+          sourceBranch: workspace.branch,
+          targetBranch: repoStatus.target_branch_name,
+          conflictedFiles: repoStatus.conflicted_files ?? [],
+          repoName: repoStatus.repo_name,
+          repoId,
+        });
+
+        if (
+          result.action === 'resolved' ||
+          result.action === 'continued' ||
+          result.action === 'aborted'
+        ) {
+          invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+        }
+        return;
+      }
+
+      // Open rebase dialog - it loads branches/status internally
       await RebaseDialog.show({
         attemptId: workspaceId,
         repoId,

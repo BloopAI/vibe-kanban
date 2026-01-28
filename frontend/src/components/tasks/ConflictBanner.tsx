@@ -11,8 +11,10 @@ export type Props = Readonly<{
   onAbort: () => void;
   op?: ConflictOp | null;
   onResolve?: () => void;
+  onContinue?: () => void;
   enableResolve: boolean;
   enableAbort: boolean;
+  enableContinue?: boolean;
 }>;
 
 const MAX_VISIBLE_FILES = 8;
@@ -45,8 +47,10 @@ export function ConflictBanner({
   onAbort,
   op,
   onResolve,
+  onContinue,
   enableResolve,
   enableAbort,
+  enableContinue,
 }: Props) {
   const { full: opTitle, lower: opTitleLower } = getOperationTitle(op);
   const {
@@ -55,9 +59,11 @@ export function ConflictBanner({
     hasMore,
   } = getVisibleFiles(conflictedFiles);
 
+  const hasConflicts = conflictedFiles.length > 0;
+
   const heading = attemptBranch
     ? `${opTitle} in progress: '${attemptBranch}' → '${baseBranch}'.`
-    : 'A Git operation with merge conflicts is in progress.';
+    : `A Git ${opTitleLower} operation is in progress.`;
 
   return (
     <div
@@ -73,8 +79,9 @@ export function ConflictBanner({
         <div className="text-sm leading-relaxed">
           <span>{heading}</span>{' '}
           <span>
-            Follow-ups are allowed; some actions may be temporarily unavailable
-            until you resolve the conflicts or abort the {opTitleLower}.
+            {hasConflicts
+              ? `Follow-ups are allowed; some actions may be temporarily unavailable until you resolve the conflicts or abort the ${opTitleLower}.`
+              : `You can continue or abort the ${opTitleLower}.`}
           </span>
           {visibleFiles.length > 0 && (
             <div className="mt-1 text-xs text-warning-foreground/90 dark:text-warning/80">
@@ -95,7 +102,7 @@ export function ConflictBanner({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {onResolve && (
+        {hasConflicts && onResolve && (
           <Button
             size="sm"
             onClick={onResolve}
@@ -103,6 +110,16 @@ export function ConflictBanner({
             className="bg-warning text-warning-foreground hover:bg-warning/90"
           >
             Resolve conflicts
+          </Button>
+        )}
+        {!hasConflicts && onContinue && (
+          <Button
+            size="sm"
+            onClick={onContinue}
+            disabled={!enableContinue}
+            className="bg-warning text-warning-foreground hover:bg-warning/90"
+          >
+            Continue {opTitle}
           </Button>
         )}
         <Button

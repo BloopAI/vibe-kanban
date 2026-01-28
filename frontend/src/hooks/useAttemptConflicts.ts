@@ -13,5 +13,13 @@ export function useAttemptConflicts(attemptId?: string, repoId?: string) {
     });
   }, [attemptId, repoId, queryClient]);
 
-  return { abortConflicts } as const;
+  const continueConflicts = useCallback(async () => {
+    if (!attemptId || !repoId) return;
+    await attemptsApi.continueConflicts(attemptId, { repo_id: repoId });
+    await queryClient.invalidateQueries({
+      queryKey: ['branchStatus', attemptId],
+    });
+  }, [attemptId, repoId, queryClient]);
+
+  return { abortConflicts, continueConflicts } as const;
 }

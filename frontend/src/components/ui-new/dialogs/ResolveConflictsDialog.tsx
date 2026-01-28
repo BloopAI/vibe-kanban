@@ -15,11 +15,14 @@ import { AgentSelector } from '@/components/tasks/AgentSelector';
 import { ConfigSelector } from '@/components/tasks/ConfigSelector';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { sessionsApi } from '@/lib/api';
+import { attemptsApi, sessionsApi } from '@/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
-import { buildResolveConflictsInstructions } from '@/lib/conflicts';
+import {
+  buildResolveConflictsInstructions,
+  displayConflictOpLabel,
+} from '@/lib/conflicts';
 import type {
   BaseCodingAgent,
   ExecutorProfileId,
@@ -33,10 +36,13 @@ export interface ResolveConflictsDialogProps {
   targetBranch: string;
   conflictedFiles: string[];
   repoName?: string;
+  repoId?: string;
 }
 
 export type ResolveConflictsDialogResult =
   | { action: 'resolved'; sessionId?: string }
+  | { action: 'continued' }
+  | { action: 'aborted' }
   | { action: 'cancelled' };
 
 const ResolveConflictsDialogImpl =
@@ -48,6 +54,7 @@ const ResolveConflictsDialogImpl =
       targetBranch,
       conflictedFiles,
       repoName,
+      repoId,
     }) => {
       const modal = useModal();
       const queryClient = useQueryClient();
@@ -55,6 +62,9 @@ const ResolveConflictsDialogImpl =
       const { sessions, selectedSession, selectedSessionId, selectSession } =
         useWorkspaceContext();
       const { t } = useTranslation(['tasks', 'common']);
+
+      const hasConflicts = conflictedFiles.length > 0;
+      const opLabel = displayConflictOpLabel(conflictOp);
 
       const resolvedSession = useMemo(() => {
         if (!selectedSessionId) return selectedSession ?? null;
@@ -182,6 +192,72 @@ const ResolveConflictsDialogImpl =
         modal.hide();
       }, [modal]);
 
+      const handleContinue = useCallback(async () => {
+        if (!repoId) return;
+
+        setIsSubmitting(true);
+        setError(null);
+
+        try {
+          await attemptsApi.continueConflicts(workspaceId, { repo_id: repoId });
+
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: ['branchStatus', workspaceId],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ['attemptRepo', workspaceId],
+            }),
+          ]);
+
+          modal.resolve({ action: 'continued' } as ResolveConflictsDialogResult);
+          modal.hide();
+        } catch (err) {
+          console.error('Failed to continue operation:', err);
+          setError(
+            t(
+              'resolveConflicts.dialog.continueError',
+              'Failed to continue. Please try again.'
+            )
+          );
+        } finally {
+          setIsSubmitting(false);
+        }
+      }, [repoId, workspaceId, queryClient, modal, t]);
+
+      const handleAbort = useCallback(async () => {
+        if (!repoId) return;
+
+        setIsSubmitting(true);
+        setError(null);
+
+        try {
+          await attemptsApi.abortConflicts(workspaceId, { repo_id: repoId });
+
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: ['branchStatus', workspaceId],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ['attemptRepo', workspaceId],
+            }),
+          ]);
+
+          modal.resolve({ action: 'aborted' } as ResolveConflictsDialogResult);
+          modal.hide();
+        } catch (err) {
+          console.error('Failed to abort operation:', err);
+          setError(
+            t(
+              'resolveConflicts.dialog.abortError',
+              'Failed to abort. Please try again.'
+            )
+          );
+        } finally {
+          setIsSubmitting(false);
+        }
+      }, [repoId, workspaceId, queryClient, modal, t]);
+
       const handleOpenChange = (open: boolean) => {
         if (!open) handleCancel();
       };
@@ -195,6 +271,62 @@ const ResolveConflictsDialogImpl =
       };
 
       const hasExistingSession = Boolean(selectedSessionId);
+
+      // Show simpler dialog when no conflicts (just continue or abort)
+      if (!hasConflicts) {
+        return (
+          <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
+            <DialogContent className="sm:max-w-[400px]">
+              <DialogHeader>
+                <DialogTitle>
+                  {t('resolveConflicts.dialog.inProgressTitle', {
+                    defaultValue: '{{op}} in Progress',
+                    op: opLabel,
+                  })}
+                </DialogTitle>
+                <DialogDescription>
+                  {t('resolveConflicts.dialog.inProgressDescription', {
+                    defaultValue:
+                      'A {{op}} operation is in progress. You can continue or abort.',
+                    op: opLabel.toLowerCase(),
+                  })}
+                </DialogDescription>
+              </DialogHeader>
+
+              {error && (
+                <div className="text-sm text-destructive">{error}</div>
+              )}
+
+              <DialogFooter className="sm:!justify-between">
+                <Button
+                  variant="outline"
+                  onClick={handleAbort}
+                  disabled={isSubmitting || !repoId}
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                >
+                  {isSubmitting
+                    ? t('resolveConflicts.dialog.aborting', 'Aborting...')
+                    : t('resolveConflicts.dialog.abort', {
+                        defaultValue: 'Abort {{op}}',
+                        op: opLabel,
+                      })}
+                </Button>
+                <Button
+                  onClick={handleContinue}
+                  disabled={isSubmitting || !repoId}
+                >
+                  {isSubmitting
+                    ? t('resolveConflicts.dialog.continuing', 'Continuing...')
+                    : t('resolveConflicts.dialog.continue', {
+                        defaultValue: 'Continue {{op}}',
+                        op: opLabel,
+                      })}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      }
 
       return (
         <Dialog open={modal.visible} onOpenChange={handleOpenChange}>

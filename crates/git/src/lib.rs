@@ -1606,6 +1606,48 @@ impl GitService {
         Ok(())
     }
 
+    /// Continue an in-progress conflict operation (rebase, merge, cherry-pick, revert).
+    /// Requires that all conflicts have been resolved (no conflicted files).
+    pub fn continue_conflicts(&self, worktree_path: &Path) -> Result<(), GitServiceError> {
+        let git = GitCli::new();
+
+        // Check if there are still conflicted files
+        let conflicts = self.get_conflicted_files(worktree_path).unwrap_or_default();
+        if !conflicts.is_empty() {
+            return Err(GitServiceError::MergeConflicts {
+                message: "Cannot continue: there are still unresolved conflicts.".to_string(),
+                conflicted_files: conflicts,
+            });
+        }
+
+        if git.is_rebase_in_progress(worktree_path).unwrap_or(false) {
+            return git.continue_rebase(worktree_path).map_err(|e| {
+                GitServiceError::InvalidRepository(format!("git rebase --continue failed: {e}"))
+            });
+        }
+        if git.is_merge_in_progress(worktree_path).unwrap_or(false) {
+            return git.continue_merge(worktree_path).map_err(|e| {
+                GitServiceError::InvalidRepository(format!("git merge --continue failed: {e}"))
+            });
+        }
+        if git
+            .is_cherry_pick_in_progress(worktree_path)
+            .unwrap_or(false)
+        {
+            return git.continue_cherry_pick(worktree_path).map_err(|e| {
+                GitServiceError::InvalidRepository(format!(
+                    "git cherry-pick --continue failed: {e}"
+                ))
+            });
+        }
+        if git.is_revert_in_progress(worktree_path).unwrap_or(false) {
+            return git.continue_revert(worktree_path).map_err(|e| {
+                GitServiceError::InvalidRepository(format!("git revert --continue failed: {e}"))
+            });
+        }
+        Ok(())
+    }
+
     pub fn find_branch<'a>(
         repo: &'a Repository,
         branch_name: &str,

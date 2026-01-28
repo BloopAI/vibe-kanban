@@ -30,16 +30,26 @@ export function FollowUpConflictSection({
   const op = repoWithConflicts?.conflict_op ?? null;
   const openInEditor = useOpenInEditor(workspaceId);
   const repoId = repoWithConflicts?.repo_id;
-  const { abortConflicts } = useAttemptConflicts(workspaceId, repoId);
+  const { abortConflicts, continueConflicts } = useAttemptConflicts(
+    workspaceId,
+    repoId
+  );
 
-  // write using setAborting and read through abortingRef in async handlers
+  // write using setAborting/setContinuing and read through refs in async handlers
   const [aborting, setAborting] = useState(false);
   const abortingRef = useRef(false);
+  const [continuing, setContinuing] = useState(false);
+  const continuingRef = useRef(false);
   useEffect(() => {
     abortingRef.current = aborting;
   }, [aborting]);
+  useEffect(() => {
+    continuingRef.current = continuing;
+  }, [continuing]);
 
   if (!repoWithConflicts) return null;
+
+  const hasConflicts = (repoWithConflicts.conflicted_files?.length ?? 0) > 0;
 
   return (
     <>
@@ -49,7 +59,24 @@ export function FollowUpConflictSection({
         conflictedFiles={repoWithConflicts.conflicted_files || []}
         op={op}
         onResolve={onResolve}
-        enableResolve={enableResolve && !aborting}
+        enableResolve={enableResolve && !aborting && !continuing}
+        onContinue={
+          !hasConflicts
+            ? async () => {
+                if (!workspaceId) return;
+                if (continuingRef.current) return;
+                try {
+                  setContinuing(true);
+                  await continueConflicts();
+                } catch (e) {
+                  console.error('Failed to continue operation', e);
+                } finally {
+                  setContinuing(false);
+                }
+              }
+            : undefined
+        }
+        enableContinue={!continuing && !aborting}
         onOpenEditor={() => {
           if (!workspaceId) return;
           const first = repoWithConflicts.conflicted_files?.[0];
@@ -67,10 +94,10 @@ export function FollowUpConflictSection({
             setAborting(false);
           }
         }}
-        enableAbort={enableAbort && !aborting}
+        enableAbort={enableAbort && !aborting && !continuing}
       />
       {/* Conflict instructions preview (non-editable) */}
-      {conflictResolutionInstructions && enableResolve && (
+      {conflictResolutionInstructions && enableResolve && hasConflicts && (
         <div className="text-sm mb-4">
           <div className="text-xs font-medium text-warning-foreground dark:text-warning mb-1">
             Conflict resolution instructions
