@@ -1,19 +1,16 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+  DragDropContext,
+  Droppable,
+  Draggable,
+  type DropResult,
+  type DraggableProvided,
+  type DraggableStateSnapshot,
+  type DroppableProvided,
+  type DraggableRubric,
+} from '@hello-pangea/dnd';
 import {
   XIcon,
   PlusIcon,
@@ -30,6 +27,7 @@ import {
 } from '@/components/ui-new/primitives/Popover';
 import { Switch } from '@/components/ui/switch';
 import { InlineColorPicker } from '@/components/ui-new/primitives/ColorPicker';
+import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import type { ProjectStatus } from 'shared/remote-types';
 
 // =============================================================================
@@ -70,11 +68,59 @@ interface KanbanDisplaySettingsProps {
 }
 
 // =============================================================================
+// Status Row Clone (for drag preview via portal)
+// =============================================================================
+
+interface StatusRowCloneProps {
+  status: StatusItem;
+  provided: DraggableProvided;
+}
+
+function StatusRowClone({ status, provided }: StatusRowCloneProps) {
+  const container = usePortalContainer();
+
+  if (!container) return null;
+
+  return createPortal(
+    <div
+      ref={provided.innerRef}
+      {...provided.draggableProps}
+      {...provided.dragHandleProps}
+      className={cn(
+        'flex items-center gap-base px-base py-half rounded-sm shadow-lg',
+        status.isNew ? 'bg-panel' : 'bg-secondary',
+        status.hidden && 'opacity-50'
+      )}
+      style={{
+        ...provided.draggableProps.style,
+        zIndex: 10001,
+      }}
+    >
+      {/* Drag handle */}
+      <div className="flex items-center justify-center size-4 cursor-grabbing">
+        <DotsSixVerticalIcon className="size-icon-xs text-low" weight="bold" />
+      </div>
+
+      {/* Color dot */}
+      <div
+        className="w-2 h-2 rounded-full shrink-0"
+        style={{ backgroundColor: `hsl(${status.color})` }}
+      />
+
+      {/* Name */}
+      <span className="text-sm text-high">{status.name}</span>
+    </div>,
+    container
+  );
+}
+
+// =============================================================================
 // Status Row Component (Sortable)
 // =============================================================================
 
 interface StatusRowProps {
   status: StatusItem;
+  index: number;
   issueCount: number;
   visibleCount: number;
   editingId: string | null;
@@ -90,6 +136,7 @@ interface StatusRowProps {
 
 function StatusRow({
   status,
+  index,
   issueCount,
   visibleCount,
   editingId,
@@ -108,23 +155,6 @@ function StatusRow({
   const isEditingColor = editingColorId === status.id;
   const isLastVisible = !status.hidden && visibleCount === 1;
   const canDelete = issueCount === 0;
-
-  // @dnd-kit sortable hook
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: status.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 10 : undefined,
-    opacity: isDragging ? 0.8 : undefined,
-  };
 
   // Sync local name when status changes
   useEffect(() => {
@@ -156,134 +186,144 @@ function StatusRow({
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      className={cn(
-        'flex items-center justify-between px-base py-half rounded-sm',
-        status.isNew ? 'bg-panel' : 'bg-secondary',
-        status.hidden && 'opacity-50'
-      )}
-    >
-      {/* Left side: drag handle, color dot, name */}
-      <div className="flex items-center gap-base">
-        {/* Drag handle */}
+    <Draggable draggableId={status.id} index={index}>
+      {(provided: DraggableProvided, snapshot: DraggableStateSnapshot) => (
         <div
-          {...listeners}
-          className="flex items-center justify-center size-4 cursor-grab"
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          className={cn(
+            'flex items-center justify-between px-base py-half rounded-sm',
+            status.isNew ? 'bg-panel' : 'bg-secondary',
+            status.hidden && 'opacity-50',
+            snapshot.isDragging && 'shadow-lg opacity-80'
+          )}
+          style={{
+            ...provided.draggableProps.style,
+            zIndex: snapshot.isDragging ? 10 : undefined,
+          }}
         >
-          <DotsSixVerticalIcon
-            className="size-icon-xs text-low"
-            weight="bold"
-          />
-        </div>
+          {/* Left side: drag handle, color dot, name */}
+          <div className="flex items-center gap-base">
+            {/* Drag handle */}
+            <div
+              {...provided.dragHandleProps}
+              className="flex items-center justify-center size-4 cursor-grab"
+            >
+              <DotsSixVerticalIcon
+                className="size-icon-xs text-low"
+                weight="bold"
+              />
+            </div>
 
-        {/* Color dot (clickable for color picker) */}
-        <Popover
-          open={isEditingColor}
-          onOpenChange={(open) => onStartEditingColor(open ? status.id : null)}
-        >
-          <PopoverTrigger asChild>
+            {/* Color dot (clickable for color picker) */}
+            <Popover
+              open={isEditingColor}
+              onOpenChange={(open) =>
+                onStartEditingColor(open ? status.id : null)
+              }
+            >
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center justify-center size-4"
+                  title={t('kanban.changeColor', 'Change color')}
+                >
+                  <div
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: `hsl(${status.color})` }}
+                  />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                className="w-auto p-base"
+                onInteractOutside={(e) => {
+                  e.preventDefault();
+                  onStartEditingColor(null);
+                }}
+              >
+                <InlineColorPicker
+                  value={status.color}
+                  onChange={(color) => onColorChange(status.id, color)}
+                  colors={PRESET_COLORS}
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* Name (editable) */}
+            {isEditing ? (
+              <input
+                type="text"
+                value={localName}
+                onChange={(e) => setLocalName(e.target.value)}
+                onKeyDown={handleNameKeyDown}
+                onBlur={handleNameBlur}
+                autoFocus
+                className="bg-transparent text-sm text-high outline-none border-b border-brand w-24"
+              />
+            ) : (
+              <span
+                className="text-sm text-high cursor-pointer"
+                onClick={() => onStartEditing(status.id)}
+              >
+                {status.name}
+              </span>
+            )}
+          </div>
+
+          {/* Right side: edit/delete icons, toggle */}
+          <div className="flex items-center gap-base">
             <button
               type="button"
-              className="flex items-center justify-center size-4"
-              title={t('kanban.changeColor', 'Change color')}
+              onClick={() => onStartEditing(status.id)}
+              className="flex items-center justify-center size-4 text-low hover:text-normal"
+              title={t('kanban.editName', 'Edit name')}
             >
-              <div
-                className="w-2 h-2 rounded-full shrink-0"
-                style={{ backgroundColor: `hsl(${status.color})` }}
-              />
+              <PencilSimpleLineIcon className="size-icon-xs" weight="bold" />
             </button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="start"
-            className="w-auto p-base"
-            onInteractOutside={(e) => {
-              e.preventDefault();
-              onStartEditingColor(null);
-            }}
-          >
-            <InlineColorPicker
-              value={status.color}
-              onChange={(color) => onColorChange(status.id, color)}
-              colors={PRESET_COLORS}
+            <button
+              type="button"
+              onClick={() => canDelete && onDelete(status.id)}
+              className={cn(
+                'flex items-center justify-center size-4',
+                canDelete
+                  ? 'text-low hover:text-normal'
+                  : 'text-low opacity-50 cursor-not-allowed'
+              )}
+              title={
+                canDelete
+                  ? t('kanban.deleteStatus', 'Delete status')
+                  : t('kanban.cannotDeleteWithIssues', 'Move issues first')
+              }
+              disabled={!canDelete}
+            >
+              <XIcon className="size-icon-xs" weight="bold" />
+            </button>
+
+            {/* Visibility toggle */}
+            <Switch
+              checked={!status.hidden}
+              onCheckedChange={(checked) => onToggleHidden(status.id, !checked)}
+              disabled={isLastVisible && !status.hidden}
+              className={cn(
+                'h-[15px] w-[27px] data-[state=checked]:bg-brand data-[state=unchecked]:bg-panel',
+                '[&>span]:size-[12px] [&>span]:data-[state=checked]:translate-x-[12px] [&>span]:data-[state=unchecked]:translate-x-0'
+              )}
+              title={
+                isLastVisible
+                  ? t(
+                      'kanban.lastVisibleStatus',
+                      'At least one status must be visible'
+                    )
+                  : status.hidden
+                    ? t('kanban.showStatus', 'Show status')
+                    : t('kanban.hideStatus', 'Hide status')
+              }
             />
-          </PopoverContent>
-        </Popover>
-
-        {/* Name (editable) */}
-        {isEditing ? (
-          <input
-            type="text"
-            value={localName}
-            onChange={(e) => setLocalName(e.target.value)}
-            onKeyDown={handleNameKeyDown}
-            onBlur={handleNameBlur}
-            autoFocus
-            className="bg-transparent text-sm text-high outline-none border-b border-brand w-24"
-          />
-        ) : (
-          <span
-            className="text-sm text-high cursor-pointer"
-            onClick={() => onStartEditing(status.id)}
-          >
-            {status.name}
-          </span>
-        )}
-      </div>
-
-      {/* Right side: edit/delete icons, toggle */}
-      <div className="flex items-center gap-base">
-        <button
-          type="button"
-          onClick={() => onStartEditing(status.id)}
-          className="flex items-center justify-center size-4 text-low hover:text-normal"
-          title={t('kanban.editName', 'Edit name')}
-        >
-          <PencilSimpleLineIcon className="size-icon-xs" weight="bold" />
-        </button>
-        <button
-          type="button"
-          onClick={() => canDelete && onDelete(status.id)}
-          className={cn(
-            'flex items-center justify-center size-4',
-            canDelete
-              ? 'text-low hover:text-normal'
-              : 'text-low opacity-50 cursor-not-allowed'
-          )}
-          title={
-            canDelete
-              ? t('kanban.deleteStatus', 'Delete status')
-              : t('kanban.cannotDeleteWithIssues', 'Move issues first')
-          }
-          disabled={!canDelete}
-        >
-          <XIcon className="size-icon-xs" weight="bold" />
-        </button>
-
-        {/* Visibility toggle */}
-        <Switch
-          checked={!status.hidden}
-          onCheckedChange={(checked) => onToggleHidden(status.id, !checked)}
-          disabled={isLastVisible && !status.hidden}
-          className={cn(
-            'h-[15px] w-[27px] data-[state=checked]:bg-brand data-[state=unchecked]:bg-panel',
-            '[&>span]:size-[12px] [&>span]:data-[state=checked]:translate-x-[12px] [&>span]:data-[state=unchecked]:translate-x-0'
-          )}
-          title={
-            isLastVisible
-              ? t(
-                  'kanban.lastVisibleStatus',
-                  'At least one status must be visible'
-                )
-              : status.hidden
-                ? t('kanban.showStatus', 'Show status')
-                : t('kanban.hideStatus', 'Hide status')
-          }
-        />
-      </div>
-    </div>
+          </div>
+        </div>
+      )}
+    </Draggable>
   );
 }
 
@@ -308,13 +348,6 @@ export function KanbanDisplaySettingsContainer({
   const [editingColorId, setEditingColorId] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
-  // @dnd-kit sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 },
-    })
-  );
 
   // Initialize local statuses when popover opens
   // Only sync from props when the popover opens, not when statuses change
@@ -387,14 +420,13 @@ export function KanbanDisplaySettingsContainer({
     setHasChanges(true);
   }, [localStatuses, t]);
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
+  const handleDragEnd = useCallback((result: DropResult) => {
+    const { source, destination } = result;
+    if (!destination || source.index === destination.index) return;
 
     setLocalStatuses((prev) => {
-      const oldIndex = prev.findIndex((s) => s.id === active.id);
-      const newIndex = prev.findIndex((s) => s.id === over.id);
-      if (oldIndex === -1 || newIndex === -1) return prev;
+      const oldIndex = source.index;
+      const newIndex = destination.index;
 
       const newStatuses = [...prev];
       const [moved] = newStatuses.splice(oldIndex, 1);
@@ -542,50 +574,63 @@ export function KanbanDisplaySettingsContainer({
           </div>
 
           {/* Status list */}
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={localStatuses.map((s) => s.id)}
-              strategy={verticalListSortingStrategy}
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable
+              droppableId="status-list"
+              renderClone={(
+                provided: DraggableProvided,
+                _snapshot: DraggableStateSnapshot,
+                rubric: DraggableRubric
+              ) => (
+                <StatusRowClone
+                  provided={provided}
+                  status={localStatuses[rubric.source.index]}
+                />
+              )}
             >
-              <div className="flex flex-col gap-[2px]">
-                {localStatuses.map((status) => (
-                  <StatusRow
-                    key={status.id}
-                    status={status}
-                    issueCount={issueCountByStatus[status.id] ?? 0}
-                    visibleCount={visibleCount}
-                    editingId={editingId}
-                    editingColorId={editingColorId}
-                    onToggleHidden={handleToggleHidden}
-                    onNameChange={handleNameChange}
-                    onColorChange={handleColorChange}
-                    onDelete={handleDelete}
-                    onStartEditing={setEditingId}
-                    onStartEditingColor={setEditingColorId}
-                    onStopEditing={() => setEditingId(null)}
-                  />
-                ))}
-
-                {/* Add column button */}
-                <button
-                  type="button"
-                  onClick={handleAddColumn}
-                  className="flex items-center gap-half px-base py-half text-high hover:bg-secondary rounded-sm transition-colors"
+              {(provided: DroppableProvided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className="flex flex-col gap-[2px]"
                 >
-                  <div className="flex items-center justify-center size-4">
-                    <PlusIcon className="size-icon-xs" weight="bold" />
-                  </div>
-                  <span className="text-xs font-light">
-                    {t('kanban.addColumn', 'Add column')}
-                  </span>
-                </button>
-              </div>
-            </SortableContext>
-          </DndContext>
+                  {localStatuses.map((status, index) => (
+                    <StatusRow
+                      key={status.id}
+                      status={status}
+                      index={index}
+                      issueCount={issueCountByStatus[status.id] ?? 0}
+                      visibleCount={visibleCount}
+                      editingId={editingId}
+                      editingColorId={editingColorId}
+                      onToggleHidden={handleToggleHidden}
+                      onNameChange={handleNameChange}
+                      onColorChange={handleColorChange}
+                      onDelete={handleDelete}
+                      onStartEditing={setEditingId}
+                      onStartEditingColor={setEditingColorId}
+                      onStopEditing={() => setEditingId(null)}
+                    />
+                  ))}
+                  {provided.placeholder}
+
+                  {/* Add column button */}
+                  <button
+                    type="button"
+                    onClick={handleAddColumn}
+                    className="flex items-center gap-half px-base py-half text-high hover:bg-secondary rounded-sm transition-colors"
+                  >
+                    <div className="flex items-center justify-center size-4">
+                      <PlusIcon className="size-icon-xs" weight="bold" />
+                    </div>
+                    <span className="text-xs font-light">
+                      {t('kanban.addColumn', 'Add column')}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
 
           {/* Footer */}
           <div className="flex justify-end pt-half">
