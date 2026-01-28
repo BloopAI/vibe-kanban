@@ -19,7 +19,10 @@
     "rolePlaceholder": "選擇角色",
     "roleHelper": "管理員可以管理成員與組織設定。",
     "sending": "發送中...",
-    "sendButton": "發送邀請"
+    "sendButton": "發送邀請",
+    "subscriptionRequired": "新增更多成員需要訂閱",
+    "upgradePrompt": "升級您的組織方案以邀請更多成員。",
+    "upgradeButton": "升級方案"
   },
   "roles": {
     "member": "成員",
@@ -63,5 +66,27 @@
     "description": "您需要登入才能管理組織設定。",
     "action": "登入"
   },
-  "confirmRemoveMember": "您確定要從組織中移除此成員嗎？"
+  "confirmRemoveMember": "您確定要從組織中移除此成員嗎？",
+  "sharedProjects": {
+    "title": "共享專案",
+    "description": "{{orgName}}中的遠端專案及其與本地專案的連結",
+    "loading": "正在載入專案...",
+    "noProjects": "此組織中未找到共享專案",
+    "notLinked": "未連結",
+    "linkedTo": "已連結至：{{projectName}}",
+    "linked": "已連結",
+    "linkProject": "連結專案...",
+    "noAvailableProjects": "沒有可用專案"
+  },
+  "billing": {
+    "title": "帳單與訂閱",
+    "description": "管理您組織的訂閱與帳單設定",
+    "manageButton": "管理帳單",
+    "openInBrowser": "在新瀏覽器分頁中開啟"
+  },
+  "personalOrg": {
+    "cannotInvite": "個人組織不能新增其他成員。",
+    "createOrgPrompt": "建立組織以與他人協作。",
+    "createOrgButton": "建立組織"
+  }
 }

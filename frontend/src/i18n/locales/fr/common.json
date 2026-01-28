@@ -14,7 +14,8 @@
     "close": "Fermer",
     "replay": "Rejouer",
     "discard": "Abandonner",
-    "addItem": "Ajouter un élément"
+    "addItem": "Ajouter un élément",
+    "reply": "Répondre"
   },
   "form": {
     "notSpecified": "Non spécifié",
@@ -91,11 +92,15 @@
     "menuItem": "Organisation",
     "loadingPlaceholder": "Chargement des organisations...",
     "selectPlaceholder": "Sélectionner une organisation",
-    "currentBadge": " (actuelle)"
+    "currentBadge": " (actuelle)",
+    "organizations": "Organisations",
+    "createOrganization": "Créer une organisation",
+    "orgSettings": "Paramètres de l'organisation"
   },
   "navbar": {
     "tryNewUI": "essayer la nouvelle interface"
   },
+  "signIn": "Se connecter",
   "signOut": "Se déconnecter",
   "devMode": {
     "banner": "Mode développement - Ceci est une version de développement"
@@ -324,5 +329,36 @@
     "commands": "Commandes",
     "noTagsOrFiles": "Aucun tag ou fichier trouvé",
     "noCommands": "Aucune commande disponible pour cet agent."
+  },
+  "kanban": {
+    "noStatusesFound": "Aucun statut trouvé pour ce projet",
+    "noVisibleStatuses": "Tous les statuts sont masqués. Utilisez les paramètres d'affichage ou changez d'onglet pour voir les problèmes.",
+    "noProjectFound": "Aucun projet trouvé",
+    "noOrganizationFound": "Aucune organisation trouvée",
+    "unassigned": "Non assigné",
+    "noTagsAvailable": "Aucun tag disponible",
+    "createNewTag": "Créer un nouveau tag",
+    "searchTags": "Rechercher des tags...",
+    "selectColorFor": "Sélectionner la couleur pour",
+    "createTag": "Créer",
+    "filesCount": "{{count}} Fichiers",
+    "noPrCreated": "Aucune PR créée",
+    "noCommentsYet": "Aucun commentaire",
+    "comments": "Commentaires",
+    "enterCommentPlaceholder": "Entrez votre commentaire ici...",
+    "subIssues": "Sous-tâches",
+    "noSubIssues": "Aucune sous-tâche",
+    "parentIssue": "Parent",
+    "viewTabs": {
+      "active": "Actif",
+      "all": "Tout"
+    }
+  },
+  "syncError": {
+    "networkErrors": "Erreurs réseau",
+    "streamsAffected": "{{count}} flux affecté",
+    "streamsAffected_other": "{{count}} flux affectés",
+    "status": "(statut {{status}})",
+    "refreshPage": "Actualiser la page"
   }
 }

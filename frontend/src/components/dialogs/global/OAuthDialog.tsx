@@ -11,9 +11,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LogIn, Github, Loader2, Chrome } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useState, useRef, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthMutations } from '@/hooks/auth/useAuthMutations';
 import { useAuthStatus } from '@/hooks/auth/useAuthStatus';
 import { useUserSystem } from '@/components/ConfigProvider';
+import { organizationKeys } from '@/hooks/organizationKeys';
 import type { ProfileResponse } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 import { defineModal, type NoProps } from '@/lib/modals';
@@ -29,6 +31,7 @@ type OAuthState =
 const OAuthDialogImpl = NiceModal.create<NoProps>(() => {
   const modal = useModal();
   const { t } = useTranslation('common');
+  const queryClient = useQueryClient();
   const { reloadSystem } = useUserSystem();
   const [state, setState] = useState<OAuthState>({ type: 'select' });
   const popupRef = useRef<Window | null>(null);
@@ -104,13 +107,16 @@ const OAuthDialogImpl = NiceModal.create<NoProps>(() => {
       // Reload user system to refresh login status
       reloadSystem();
 
+      // Invalidate organization caches to force fresh fetch after login
+      queryClient.invalidateQueries({ queryKey: organizationKeys.all });
+
       setState({ type: 'success', profile: statusData.profile });
       setTimeout(() => {
         modal.resolve(statusData.profile);
         modal.remove();
       }, 1500);
     }
-  }, [statusData, isPolling, modal, reloadSystem]);
+  }, [statusData, isPolling, modal, reloadSystem, queryClient]);
 
   const handleProviderSelect = (provider: OAuthProvider) => {
     setState({ type: 'waiting', provider });

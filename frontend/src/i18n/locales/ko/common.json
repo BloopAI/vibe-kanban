@@ -36,7 +36,8 @@
     "reset": "초기화",
     "save": "저장",
     "send": "보내기",
-    "addItem": "항목 추가"
+    "addItem": "항목 추가",
+    "reply": "답장"
   },
   "form": {
     "notSpecified": "지정되지 않음",
@@ -91,11 +92,15 @@
     "menuItem": "조직",
     "loadingPlaceholder": "조직 로딩 중...",
     "selectPlaceholder": "조직 선택",
-    "currentBadge": " (현재)"
+    "currentBadge": " (현재)",
+    "organizations": "조직",
+    "createOrganization": "조직 만들기",
+    "orgSettings": "조직 설정"
   },
   "navbar": {
     "tryNewUI": "새로운 UI 사용해보기"
   },
+  "signIn": "로그인",
   "signOut": "로그아웃",
   "devMode": {
     "banner": "개발 모드 - 개발 빌드입니다"
@@ -324,5 +329,36 @@
     "commands": "명령어",
     "noTagsOrFiles": "태그 또는 파일을 찾을 수 없습니다",
     "noCommands": "이 에이전트에 사용 가능한 명령어가 없습니다."
+  },
+  "kanban": {
+    "noStatusesFound": "이 프로젝트의 상태를 찾을 수 없습니다",
+    "noVisibleStatuses": "모든 상태가 숨겨져 있습니다. 표시 설정을 사용하거나 다른 탭으로 전환하여 이슈를 확인하세요.",
+    "noProjectFound": "프로젝트를 찾을 수 없습니다",
+    "noOrganizationFound": "조직을 찾을 수 없습니다",
+    "unassigned": "미할당",
+    "noTagsAvailable": "사용 가능한 태그 없음",
+    "createNewTag": "새 태그 만들기",
+    "searchTags": "태그 검색...",
+    "selectColorFor": "색상 선택:",
+    "createTag": "만들기",
+    "filesCount": "{{count}}개 파일",
+    "noPrCreated": "PR이 생성되지 않음",
+    "noCommentsYet": "아직 댓글이 없습니다",
+    "comments": "댓글",
+    "enterCommentPlaceholder": "댓글을 입력하세요...",
+    "subIssues": "하위 이슈",
+    "noSubIssues": "하위 이슈 없음",
+    "parentIssue": "상위",
+    "viewTabs": {
+      "active": "활성",
+      "all": "전체"
+    }
+  },
+  "syncError": {
+    "networkErrors": "네트워크 오류",
+    "streamsAffected": "{{count}}개 스트림이 영향을 받음",
+    "streamsAffected_other": "{{count}}개 스트림이 영향을 받음",
+    "status": "(상태 {{status}})",
+    "refreshPage": "페이지 새로고침"
   }
 }

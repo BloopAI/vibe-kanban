@@ -80,7 +80,10 @@ export default function AccountCompletePage() {
   }
 
   return (
-    <StatusCard title="Completing login..." body="Processing OAuth callback..." />
+    <StatusCard
+      title="Completing login..."
+      body="Processing OAuth callback..."
+    />
   );
 }
 

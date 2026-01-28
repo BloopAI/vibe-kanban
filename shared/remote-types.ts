@@ -28,7 +28,7 @@ export type IssueRelationship = { id: string, issue_id: string, related_issue_id
 
 export type IssueRelationshipType = "blocking" | "related" | "has_duplicate";
 
-export type IssueComment = { id: string, issue_id: string, author_id: string, parent_id: string | null, message: string, created_at: string, updated_at: string, };
+export type IssueComment = { id: string, issue_id: string, author_id: string | null, parent_id: string | null, message: string, created_at: string, updated_at: string, };
 
 export type IssueCommentReaction = { id: string, comment_id: string, user_id: string, emoji: string, created_at: string, };
 

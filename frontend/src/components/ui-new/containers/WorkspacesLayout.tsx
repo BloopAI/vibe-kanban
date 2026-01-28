@@ -4,8 +4,8 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
-import { ChangesViewProvider } from '@/contexts/ChangesViewContext';
 import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
+import { ChangesViewProvider } from '@/contexts/ChangesViewContext';
 import { WorkspacesSidebarContainer } from '@/components/ui-new/containers/WorkspacesSidebarContainer';
 import { LogsContentContainer } from '@/components/ui-new/containers/LogsContentContainer';
 import {
@@ -15,7 +15,6 @@ import {
 import { RightSidebar } from '@/components/ui-new/containers/RightSidebar';
 import { ChangesPanelContainer } from '@/components/ui-new/containers/ChangesPanelContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
-import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer';
 import { PreviewBrowserContainer } from '@/components/ui-new/containers/PreviewBrowserContainer';
 import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -26,9 +25,6 @@ import {
   useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
-
-import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
-import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 
@@ -68,8 +64,6 @@ export function WorkspacesLayout() {
     updateAndSaveConfig,
     loading: configLoading,
   } = useUserSystem();
-
-  useCommandBarShortcut(() => CommandBarDialog.show());
 
   // Auto-show Workspaces Guide on first visit
   useEffect(() => {
@@ -127,7 +121,7 @@ export function WorkspacesLayout() {
               {isLeftMainPanelVisible && (
                 <Panel
                   id="left-main"
-                  minSize={20}
+                  minSize="20%"
                   className="min-w-0 h-full overflow-hidden"
                 >
                   {isCreateMode ? (
@@ -157,7 +151,7 @@ export function WorkspacesLayout() {
               {rightMainPanelMode !== null && (
                 <Panel
                   id="right-main"
-                  minSize={20}
+                  minSize="20%"
                   className="min-w-0 h-full overflow-hidden"
                 >
                   {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES &&
@@ -198,30 +192,25 @@ export function WorkspacesLayout() {
   );
 
   return (
-    <div className="flex flex-col h-screen">
-      <NavbarContainer />
-      <div className="flex flex-1 min-h-0">
-        {isLeftSidebarVisible && (
-          <div className="w-[300px] shrink-0 h-full overflow-hidden">
-            <WorkspacesSidebarContainer
-              onScrollToBottom={handleScrollToBottom}
-            />
-          </div>
-        )}
-
-        <div className="flex-1 min-w-0 h-full">
-          {isCreateMode ? (
-            <CreateModeProvider>{mainContent}</CreateModeProvider>
-          ) : (
-            <ExecutionProcessesProvider
-              key={`${selectedWorkspace?.id}-${selectedSessionId}`}
-              attemptId={selectedWorkspace?.id}
-              sessionId={selectedSessionId}
-            >
-              {mainContent}
-            </ExecutionProcessesProvider>
-          )}
+    <div className="flex flex-1 min-h-0 h-full">
+      {isLeftSidebarVisible && (
+        <div className="w-[300px] shrink-0 h-full overflow-hidden">
+          <WorkspacesSidebarContainer onScrollToBottom={handleScrollToBottom} />
         </div>
+      )}
+
+      <div className="flex-1 min-w-0 h-full">
+        {isCreateMode ? (
+          <CreateModeProvider>{mainContent}</CreateModeProvider>
+        ) : (
+          <ExecutionProcessesProvider
+            key={`${selectedWorkspace?.id}-${selectedSessionId}`}
+            attemptId={selectedWorkspace?.id}
+            sessionId={selectedSessionId}
+          >
+            {mainContent}
+          </ExecutionProcessesProvider>
+        )}
       </div>
     </div>
   );

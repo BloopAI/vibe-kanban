@@ -4,6 +4,7 @@ import {
   SlidersIcon,
   SquaresFourIcon,
   GitBranchIcon,
+  KanbanIcon,
 } from '@phosphor-icons/react';
 import type { Workspace } from 'shared/types';
 import {
@@ -14,7 +15,10 @@ import {
   type ResolvedGroup,
   type ResolvedGroupItem,
   type RepoItem,
+  type StatusItem,
+  type PriorityItem,
 } from '@/components/ui-new/actions/pages';
+import type { Issue } from 'shared/remote-types';
 import type { ActionVisibilityContext } from '@/components/ui-new/actions';
 import {
   isActionVisible,
@@ -34,6 +38,7 @@ const PAGE_ICONS = {
   diffOptions: SlidersIcon,
   viewOptions: SquaresFourIcon,
   repoActions: GitBranchIcon,
+  issueActions: KanbanIcon,
 } as const satisfies Record<StaticPageId, typeof StackIcon>;
 
 function expandGroupItems(
@@ -70,12 +75,23 @@ function buildPageGroups(
     .filter((g): g is ResolvedGroup => g !== null);
 }
 
+// Static priority items
+const PRIORITY_ITEMS: PriorityItem[] = [
+  { id: 'urgent', name: 'Urgent' },
+  { id: 'high', name: 'High' },
+  { id: 'medium', name: 'Medium' },
+  { id: 'low', name: 'Low' },
+];
+
 export function useResolvedPage(
   pageId: PageId,
   search: string,
   ctx: ActionVisibilityContext,
   workspace: Workspace | undefined,
-  repos: RepoItem[]
+  repos: RepoItem[],
+  statuses: StatusItem[],
+  issues: Issue[] = [],
+  subIssueMode?: 'addChild' | 'setParent'
 ): ResolvedCommandBarPage {
   return useMemo(() => {
     if (pageId === 'selectRepo') {
@@ -91,6 +107,61 @@ export function useResolvedPage(
       };
     }
 
+    if (pageId === 'selectStatus') {
+      return {
+        id: 'selectStatus',
+        title: 'Select Status',
+        groups: [
+          {
+            label: 'Statuses',
+            items: statuses.map((s) => ({
+              type: 'status' as const,
+              status: s,
+            })),
+          },
+        ],
+      };
+    }
+
+    if (pageId === 'selectPriority') {
+      return {
+        id: 'selectPriority',
+        title: 'Select Priority',
+        groups: [
+          {
+            label: 'Priority',
+            items: PRIORITY_ITEMS.map((p) => ({
+              type: 'priority' as const,
+              priority: p,
+            })),
+          },
+        ],
+      };
+    }
+
+    if (pageId === 'selectSubIssue') {
+      const title =
+        subIssueMode === 'setParent' ? 'Make Sub-issue of' : 'Add Sub-issue';
+      return {
+        id: 'selectSubIssue',
+        title,
+        groups: [
+          {
+            label: 'Issues',
+            items: [
+              ...(subIssueMode === 'addChild'
+                ? [{ type: 'createSubIssue' as const }]
+                : []),
+              ...issues.map((issue) => ({
+                type: 'issue' as const,
+                issue,
+              })),
+            ],
+          },
+        ],
+      };
+    }
+
     const groups = buildPageGroups(pageId as StaticPageId, ctx);
     if (pageId === 'root' && search.trim()) {
       groups.push(...injectSearchMatches(search, ctx, workspace));
@@ -101,5 +172,5 @@ export function useResolvedPage(
       title: Pages[pageId as StaticPageId].title,
       groups,
     };
-  }, [pageId, search, ctx, workspace, repos]);
+  }, [pageId, search, ctx, workspace, repos, statuses, issues, subIssueMode]);
 }

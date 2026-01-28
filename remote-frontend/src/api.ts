@@ -8,6 +8,16 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status?: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 // Types for account management
 export type MemberRole = "ADMIN" | "MEMBER";
 
@@ -337,7 +347,9 @@ export async function createOrganization(
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `Failed to create organization (${res.status})`);
+    throw new Error(
+      error.message || `Failed to create organization (${res.status})`,
+    );
   }
   const result = await res.json();
   return result.organization;
@@ -357,25 +369,35 @@ export async function updateOrganization(
   orgId: string,
   name: string,
 ): Promise<Organization> {
-  const res = await authenticatedFetch(`${API_BASE}/v1/organizations/${orgId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
-  });
+  const res = await authenticatedFetch(
+    `${API_BASE}/v1/organizations/${orgId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    },
+  );
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `Failed to update organization (${res.status})`);
+    throw new Error(
+      error.message || `Failed to update organization (${res.status})`,
+    );
   }
   return res.json();
 }
 
 export async function deleteOrganization(orgId: string): Promise<void> {
-  const res = await authenticatedFetch(`${API_BASE}/v1/organizations/${orgId}`, {
-    method: "DELETE",
-  });
+  const res = await authenticatedFetch(
+    `${API_BASE}/v1/organizations/${orgId}`,
+    {
+      method: "DELETE",
+    },
+  );
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `Failed to delete organization (${res.status})`);
+    throw new Error(
+      error.message || `Failed to delete organization (${res.status})`,
+    );
   }
 }
 
@@ -422,7 +444,9 @@ export async function updateMemberRole(
   );
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `Failed to update member role (${res.status})`);
+    throw new Error(
+      error.message || `Failed to update member role (${res.status})`,
+    );
   }
 }
 
@@ -455,7 +479,10 @@ export async function createInvitation(
   );
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `Failed to create invitation (${res.status})`);
+    throw new ApiError(
+      error.message || `Failed to create invitation (${res.status})`,
+      res.status,
+    );
   }
   const data = await res.json();
   return data.invitation;
@@ -475,7 +502,9 @@ export async function revokeInvitation(
   );
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `Failed to revoke invitation (${res.status})`);
+    throw new Error(
+      error.message || `Failed to revoke invitation (${res.status})`,
+    );
   }
 }
 
@@ -521,13 +550,17 @@ export async function getGitHubAppInstallUrl(
   return res.json();
 }
 
-export async function getGitHubAppStatus(orgId: string): Promise<GitHubAppStatus> {
+export async function getGitHubAppStatus(
+  orgId: string,
+): Promise<GitHubAppStatus> {
   const res = await authenticatedFetch(
     `${API_BASE}/v1/organizations/${orgId}/github-app/status`,
   );
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.error || `Failed to get GitHub App status (${res.status})`);
+    throw new Error(
+      error.error || `Failed to get GitHub App status (${res.status})`,
+    );
   }
   return res.json();
 }
@@ -539,7 +572,9 @@ export async function disconnectGitHubApp(orgId: string): Promise<void> {
   );
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.error || `Failed to disconnect GitHub App (${res.status})`);
+    throw new Error(
+      error.error || `Failed to disconnect GitHub App (${res.status})`,
+    );
   }
 }
 
@@ -558,7 +593,9 @@ export async function updateRepositoryReviewEnabled(
   );
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.error || `Failed to update repository (${res.status})`);
+    throw new Error(
+      error.error || `Failed to update repository (${res.status})`,
+    );
   }
   return res.json();
 }
@@ -571,7 +608,9 @@ export async function fetchGitHubAppRepositories(
   );
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.error || `Failed to fetch repositories (${res.status})`);
+    throw new Error(
+      error.error || `Failed to fetch repositories (${res.status})`,
+    );
   }
   return res.json();
 }
@@ -590,7 +629,95 @@ export async function bulkUpdateRepositoryReviewEnabled(
   );
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.error || `Failed to update repositories (${res.status})`);
+    throw new Error(
+      error.error || `Failed to update repositories (${res.status})`,
+    );
+  }
+  return res.json();
+}
+
+export type BillingStatus =
+  | "free"
+  | "active"
+  | "past_due"
+  | "cancelled"
+  | "requires_subscription";
+
+export type SubscriptionInfo = {
+  status: string;
+  current_period_end: string;
+  cancel_at_period_end: boolean;
+  quantity: number;
+  unit_amount: number;
+};
+
+export type SeatInfo = {
+  current_members: number;
+  free_seats: number;
+  requires_subscription: boolean;
+  subscription: SubscriptionInfo | null;
+};
+
+export type BillingStatusResponse = {
+  status: BillingStatus;
+  billing_enabled: boolean;
+  seat_info: SeatInfo | null;
+};
+
+export async function getBillingStatus(
+  orgId: string,
+): Promise<BillingStatusResponse> {
+  const res = await authenticatedFetch(
+    `${API_BASE}/v1/organizations/${orgId}/billing`,
+  );
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(
+      error.error || `Failed to fetch billing status (${res.status})`,
+    );
+  }
+  return res.json();
+}
+
+export async function createBillingPortalSession(
+  orgId: string,
+  returnUrl: string,
+): Promise<{ url: string }> {
+  const res = await authenticatedFetch(
+    `${API_BASE}/v1/organizations/${orgId}/billing/portal`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ return_url: returnUrl }),
+    },
+  );
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(
+      error.error || `Failed to create portal session (${res.status})`,
+    );
+  }
+  return res.json();
+}
+
+export async function createCheckoutSession(
+  orgId: string,
+  successUrl: string,
+  cancelUrl: string,
+): Promise<{ url: string }> {
+  const res = await authenticatedFetch(
+    `${API_BASE}/v1/organizations/${orgId}/billing/checkout`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ success_url: successUrl, cancel_url: cancelUrl }),
+    },
+  );
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(
+      error.error || `Failed to create checkout session (${res.status})`,
+    );
   }
   return res.json();
 }

@@ -6,6 +6,7 @@ import type { EditorType, ExecutionProcess, Workspace } from 'shared/types';
 import type { DiffViewMode } from '@/stores/useDiffViewStore';
 import type { LogsPanelContent } from '../containers/LogsContentContainer';
 import type { LogEntry } from '../containers/VirtualizedProcessLogs';
+import type { LayoutMode } from '@/stores/useUiPreferencesStore';
 import {
   CopyIcon,
   PushPinIcon,
@@ -39,6 +40,11 @@ import {
   ListIcon,
   MegaphoneIcon,
   QuestionIcon,
+  ArrowsLeftRightIcon,
+  ArrowFatLineUpIcon,
+  UsersIcon,
+  TreeStructureIcon,
+  LinkIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import {
@@ -101,11 +107,33 @@ export interface ActionExecutorContext {
   // Logs panel state
   currentLogs: LogEntry[] | null;
   logsPanelContent: LogsPanelContent | null;
+  // Command bar navigation
+  openStatusSelection: (projectId: string, issueIds: string[]) => Promise<void>;
+  openPrioritySelection: (
+    projectId: string,
+    issueIds: string[]
+  ) => Promise<void>;
+  openAssigneeSelection: (
+    projectId: string,
+    issueIds: string[],
+    isCreateMode?: boolean
+  ) => Promise<void>;
+  openSubIssueSelection: (
+    projectId: string,
+    issueId: string,
+    mode?: 'addChild' | 'setParent'
+  ) => Promise<void>;
+  openWorkspaceSelection: (projectId: string, issueId: string) => Promise<void>;
+  // Kanban navigation (URL-based)
+  navigateToCreateIssue: (options?: { statusId?: string }) => void;
+  // Default status for issue creation based on current kanban tab
+  defaultCreateStatusId?: string;
 }
 
 // Context for evaluating action visibility and state conditions
 export interface ActionVisibilityContext {
   // Layout state
+  layoutMode: LayoutMode;
   rightMainPanelMode:
     | (typeof RIGHT_MAIN_PANEL_MODES)[keyof typeof RIGHT_MAIN_PANEL_MODES]
     | null;
@@ -139,6 +167,10 @@ export interface ActionVisibilityContext {
 
   // Logs panel state
   logsPanelContent: LogsPanelContent | null;
+
+  // Kanban state
+  hasSelectedKanbanIssue: boolean;
+  isCreatingIssue: boolean;
 }
 
 // Base properties shared by all actions
@@ -162,15 +194,23 @@ interface ActionBase {
   getLabel?: (ctx: ActionVisibilityContext) => string;
 }
 
+// Enum discriminant for action target types
+export enum ActionTargetType {
+  NONE = 'none',
+  WORKSPACE = 'workspace',
+  GIT = 'git',
+  ISSUE = 'issue',
+}
+
 // Global action (no target needed)
 export interface GlobalActionDefinition extends ActionBase {
-  requiresTarget: false;
+  requiresTarget: ActionTargetType.NONE;
   execute: (ctx: ActionExecutorContext) => Promise<void> | void;
 }
 
 // Workspace action (target required - validated by ActionsContext)
 export interface WorkspaceActionDefinition extends ActionBase {
-  requiresTarget: true;
+  requiresTarget: ActionTargetType.WORKSPACE;
   execute: (
     ctx: ActionExecutorContext,
     workspaceId: string
@@ -179,7 +219,7 @@ export interface WorkspaceActionDefinition extends ActionBase {
 
 // Git action (requires workspace + repoId)
 export interface GitActionDefinition extends ActionBase {
-  requiresTarget: 'git';
+  requiresTarget: ActionTargetType.GIT;
   execute: (
     ctx: ActionExecutorContext,
     workspaceId: string,
@@ -187,11 +227,22 @@ export interface GitActionDefinition extends ActionBase {
   ) => Promise<void> | void;
 }
 
+// Issue action (requires projectId + issueIds)
+export interface IssueActionDefinition extends ActionBase {
+  requiresTarget: ActionTargetType.ISSUE;
+  execute: (
+    ctx: ActionExecutorContext,
+    projectId: string,
+    issueIds: string[]
+  ) => Promise<void> | void;
+}
+
 // Discriminated union
 export type ActionDefinition =
   | GlobalActionDefinition
   | WorkspaceActionDefinition
-  | GitActionDefinition;
+  | GitActionDefinition
+  | IssueActionDefinition;
 
 // Helper to get workspace from query cache or fetch from API
 async function getWorkspace(
@@ -241,7 +292,7 @@ export const Actions = {
     label: 'Duplicate',
     icon: CopyIcon,
     shortcut: 'W D',
-    requiresTarget: true,
+    requiresTarget: ActionTargetType.WORKSPACE,
     execute: async (ctx, workspaceId) => {
       try {
         const [workspace, firstMessage, repos] = await Promise.all([
@@ -272,7 +323,7 @@ export const Actions = {
     label: 'Rename',
     icon: PencilSimpleIcon,
     shortcut: 'W R',
-    requiresTarget: true,
+    requiresTarget: ActionTargetType.WORKSPACE,
     execute: async (ctx, workspaceId) => {
       const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       await RenameWorkspaceDialog.show({
@@ -287,7 +338,7 @@ export const Actions = {
     label: (workspace?: Workspace) => (workspace?.pinned ? 'Unpin' : 'Pin'),
     icon: PushPinIcon,
     shortcut: 'W P',
-    requiresTarget: true,
+    requiresTarget: ActionTargetType.WORKSPACE,
     execute: async (ctx, workspaceId) => {
       const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       await attemptsApi.update(workspaceId, {
@@ -303,8 +354,8 @@ export const Actions = {
       workspace?.archived ? 'Unarchive' : 'Archive',
     icon: ArchiveIcon,
     shortcut: 'W A',
-    requiresTarget: true,
-    isVisible: (ctx) => ctx.hasWorkspace,
+    requiresTarget: ActionTargetType.WORKSPACE,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.layoutMode === 'workspaces',
     isActive: (ctx) => ctx.workspaceArchived,
     execute: async (ctx, workspaceId) => {
       const workspace = await getWorkspace(ctx.queryClient, workspaceId);
@@ -332,7 +383,7 @@ export const Actions = {
     icon: TrashIcon,
     shortcut: 'W X',
     variant: 'destructive',
-    requiresTarget: true,
+    requiresTarget: ActionTargetType.WORKSPACE,
     execute: async (ctx, workspaceId) => {
       const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       const result = await ConfirmDialog.show({
@@ -372,7 +423,7 @@ export const Actions = {
     id: 'start-review',
     label: 'Start Review',
     icon: HighlighterIcon,
-    requiresTarget: true,
+    requiresTarget: ActionTargetType.WORKSPACE,
     isVisible: (ctx) => ctx.hasWorkspace,
     getTooltip: () => 'Review changes with agent',
     execute: async (_ctx, workspaceId) => {
@@ -386,7 +437,7 @@ export const Actions = {
     id: 'spin-off-workspace',
     label: 'Spin off workspace',
     icon: GitForkIcon,
-    requiresTarget: true,
+    requiresTarget: ActionTargetType.WORKSPACE,
     isVisible: (ctx) => ctx.hasWorkspace,
     execute: async (ctx, workspaceId) => {
       try {
@@ -416,7 +467,7 @@ export const Actions = {
     label: 'New Workspace',
     icon: PlusIcon,
     shortcut: 'G N',
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
     execute: (ctx) => {
       ctx.navigate('/workspaces/create');
     },
@@ -426,7 +477,7 @@ export const Actions = {
     id: 'create-workspace-from-pr',
     label: 'Create Workspace from PR',
     icon: GitPullRequestIcon,
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
     execute: async () => {
       await CreateWorkspaceFromPrDialog.show({});
     },
@@ -437,7 +488,7 @@ export const Actions = {
     label: 'Settings',
     icon: GearIcon,
     shortcut: 'G S',
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
     execute: async () => {
       await SettingsDialog.show();
     },
@@ -447,7 +498,7 @@ export const Actions = {
     id: 'feedback',
     label: 'Give Feedback',
     icon: MegaphoneIcon,
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
     execute: () => {
       posthog.displaySurvey('019bb6e8-3d36-0000-1806-7330cd3c727e');
     },
@@ -457,7 +508,7 @@ export const Actions = {
     id: 'workspaces-guide',
     label: 'Workspaces Guide',
     icon: QuestionIcon,
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
     execute: async () => {
       await WorkspacesGuideDialog.show();
     },
@@ -468,7 +519,7 @@ export const Actions = {
     label: 'Open Command Bar',
     icon: ListIcon,
     shortcut: '{mod} K',
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
     execute: async () => {
       // Dynamic import to avoid circular dependency (pages.ts imports Actions)
       const { CommandBarDialog } = await import(
@@ -486,9 +537,10 @@ export const Actions = {
         ? 'Switch to Side-by-Side View'
         : 'Switch to Inline View',
     icon: ColumnsIcon,
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) =>
-      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES &&
+      ctx.layoutMode === 'workspaces',
     isActive: (ctx) => ctx.diffViewMode === 'split',
     getIcon: (ctx) => (ctx.diffViewMode === 'split' ? ColumnsIcon : RowsIcon),
     getTooltip: (ctx) =>
@@ -505,9 +557,10 @@ export const Actions = {
         ? 'Show Whitespace Changes'
         : 'Ignore Whitespace Changes',
     icon: EyeSlashIcon,
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) =>
-      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES &&
+      ctx.layoutMode === 'workspaces',
     execute: () => {
       const store = useDiffViewStore.getState();
       store.setIgnoreWhitespace(!store.ignoreWhitespace);
@@ -522,9 +575,10 @@ export const Actions = {
         : 'Enable Line Wrapping',
     icon: TextAlignLeftIcon,
     shortcut: 'T W',
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) =>
-      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES &&
+      ctx.layoutMode === 'workspaces',
     execute: () => {
       const store = useDiffViewStore.getState();
       store.setWrapText(!store.wrapText);
@@ -540,7 +594,8 @@ export const Actions = {
         : 'Show Left Sidebar',
     icon: SidebarSimpleIcon,
     shortcut: 'V S',
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
     isActive: (ctx) => ctx.isLeftSidebarVisible,
     execute: () => {
       useUiPreferencesStore.getState().toggleLeftSidebar();
@@ -552,7 +607,8 @@ export const Actions = {
     label: 'Toggle Chat Panel',
     icon: ChatsTeardropIcon,
     shortcut: 'V H',
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
     isActive: (ctx) => ctx.isLeftMainPanelVisible,
     isEnabled: (ctx) =>
       !(ctx.isLeftMainPanelVisible && ctx.rightMainPanelMode === null),
@@ -572,7 +628,8 @@ export const Actions = {
         ? 'Hide Right Sidebar'
         : 'Show Right Sidebar',
     icon: RightSidebarIcon,
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
     isActive: (ctx) => ctx.isRightSidebarVisible,
     execute: () => {
       useUiPreferencesStore.getState().toggleRightSidebar();
@@ -584,8 +641,8 @@ export const Actions = {
     label: 'Toggle Changes Panel',
     icon: GitDiffIcon,
     shortcut: 'V C',
-    requiresTarget: false,
-    isVisible: (ctx) => !ctx.isCreateMode,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => !ctx.isCreateMode && ctx.layoutMode === 'workspaces',
     isActive: (ctx) =>
       ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
     isEnabled: (ctx) => !ctx.isCreateMode,
@@ -608,8 +665,8 @@ export const Actions = {
     label: 'Toggle Logs Panel',
     icon: TerminalIcon,
     shortcut: 'V L',
-    requiresTarget: false,
-    isVisible: (ctx) => !ctx.isCreateMode,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => !ctx.isCreateMode && ctx.layoutMode === 'workspaces',
     isActive: (ctx) => ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS,
     isEnabled: (ctx) => !ctx.isCreateMode,
     getLabel: (ctx) =>
@@ -631,8 +688,8 @@ export const Actions = {
     label: 'Toggle Preview Panel',
     icon: DesktopIcon,
     shortcut: 'V P',
-    requiresTarget: false,
-    isVisible: (ctx) => !ctx.isCreateMode,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => !ctx.isCreateMode && ctx.layoutMode === 'workspaces',
     isActive: (ctx) =>
       ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW,
     isEnabled: (ctx) => !ctx.isCreateMode,
@@ -655,7 +712,8 @@ export const Actions = {
     id: 'open-in-old-ui',
     label: 'Open in Old UI',
     icon: SignOutIcon,
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
     execute: async (ctx) => {
       // If no workspace is selected, navigate to root
       if (!ctx.currentWorkspaceId) {
@@ -694,9 +752,10 @@ export const Actions = {
       return isAllExpanded ? 'Collapse All Diffs' : 'Expand All Diffs';
     },
     icon: CaretDoubleUpIcon,
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) =>
-      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES &&
+      ctx.layoutMode === 'workspaces',
     getIcon: (ctx) =>
       ctx.isAllDiffsExpanded ? CaretDoubleUpIcon : CaretDoubleDownIcon,
     getTooltip: (ctx) =>
@@ -716,7 +775,7 @@ export const Actions = {
     id: 'open-in-ide',
     label: 'Open in IDE',
     icon: 'ide-icon' as const,
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => ctx.hasWorkspace,
     getTooltip: (ctx) => `Open in ${getIdeName(ctx.editorType)}`,
     execute: async (ctx) => {
@@ -743,7 +802,7 @@ export const Actions = {
     label: 'Copy Workspace Path',
     icon: 'copy-icon' as const,
     shortcut: 'Y P',
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => ctx.hasWorkspace,
     execute: async (ctx) => {
       if (!ctx.containerRef) return;
@@ -756,7 +815,7 @@ export const Actions = {
     label: 'Copy Raw Logs',
     icon: CopyIcon,
     shortcut: 'Y L',
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) =>
       ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS &&
       ctx.logsPanelContent?.type !== 'terminal',
@@ -772,7 +831,7 @@ export const Actions = {
     label: 'Dev Server',
     icon: PlayIcon,
     shortcut: 'T D',
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => ctx.hasWorkspace,
     isEnabled: (ctx) =>
       ctx.devServerState !== 'starting' && ctx.devServerState !== 'stopping',
@@ -824,7 +883,7 @@ export const Actions = {
     label: 'Create Pull Request',
     icon: GitPullRequestIcon,
     shortcut: 'X P',
-    requiresTarget: 'git',
+    requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (ctx, workspaceId, repoId) => {
       const workspace = await getWorkspace(ctx.queryClient, workspaceId);
@@ -856,7 +915,7 @@ export const Actions = {
     label: 'Merge',
     icon: GitMergeIcon,
     shortcut: 'X M',
-    requiresTarget: 'git',
+    requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (ctx, workspaceId, repoId) => {
       // Check for existing conflicts first
@@ -925,7 +984,7 @@ export const Actions = {
     label: 'Rebase',
     icon: ArrowsClockwiseIcon,
     shortcut: 'X R',
-    requiresTarget: 'git',
+    requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (_ctx, workspaceId, repoId) => {
       // Open rebase dialog - it loads branches/status internally and handles conflicts
@@ -940,7 +999,7 @@ export const Actions = {
     id: 'git-change-target',
     label: 'Change Target Branch',
     icon: CrosshairIcon,
-    requiresTarget: 'git',
+    requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (_ctx, workspaceId, repoId) => {
       // Open dialog - it loads branches internally
@@ -956,7 +1015,7 @@ export const Actions = {
     label: 'Push',
     icon: ArrowUpIcon,
     shortcut: 'X U',
-    requiresTarget: 'git',
+    requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) =>
       ctx.hasWorkspace &&
       ctx.hasGitRepos &&
@@ -981,7 +1040,7 @@ export const Actions = {
     id: 'repo-copy-path',
     label: 'Copy Repo Path',
     icon: CopyIcon,
-    requiresTarget: 'git',
+    requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (_ctx, _workspaceId, repoId) => {
       try {
@@ -1000,7 +1059,7 @@ export const Actions = {
     id: 'repo-open-in-ide',
     label: 'Open Repo in IDE',
     icon: DesktopIcon,
-    requiresTarget: 'git',
+    requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (_ctx, _workspaceId, repoId) => {
       try {
@@ -1022,7 +1081,7 @@ export const Actions = {
     id: 'repo-settings',
     label: 'Repository Settings',
     icon: GearIcon,
-    requiresTarget: 'git',
+    requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: (ctx, _workspaceId, repoId) => {
       ctx.navigate(`/settings/repos?repoId=${repoId}`);
@@ -1035,7 +1094,7 @@ export const Actions = {
     label: 'Run Setup Script',
     icon: TerminalIcon,
     shortcut: 'R S',
-    requiresTarget: true,
+    requiresTarget: ActionTargetType.WORKSPACE,
     isVisible: (ctx) => ctx.hasWorkspace,
     isEnabled: (ctx) => !ctx.isAttemptRunning,
     execute: async (_ctx, workspaceId) => {
@@ -1057,7 +1116,7 @@ export const Actions = {
     label: 'Run Cleanup Script',
     icon: TerminalIcon,
     shortcut: 'R C',
-    requiresTarget: true,
+    requiresTarget: ActionTargetType.WORKSPACE,
     isVisible: (ctx) => ctx.hasWorkspace,
     isEnabled: (ctx) => !ctx.isAttemptRunning,
     execute: async (_ctx, workspaceId) => {
@@ -1073,6 +1132,165 @@ export const Actions = {
       }
     },
   },
+
+  // === Issue Actions ===
+  CreateIssue: {
+    id: 'create-issue',
+    label: 'Create Issue',
+    icon: PlusIcon,
+    shortcut: 'I C',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban' && !ctx.isCreatingIssue,
+    execute: (ctx) => {
+      ctx.navigateToCreateIssue({ statusId: ctx.defaultCreateStatusId });
+    },
+  } satisfies GlobalActionDefinition,
+
+  ChangeIssueStatus: {
+    id: 'change-issue-status',
+    label: 'Change Status',
+    icon: ArrowsLeftRightIcon,
+    shortcut: 'I S',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      await ctx.openStatusSelection(projectId, issueIds);
+    },
+  } satisfies IssueActionDefinition,
+
+  ChangeNewIssueStatus: {
+    id: 'change-new-issue-status',
+    label: 'Change Status',
+    icon: ArrowsLeftRightIcon,
+    shortcut: 'I S',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban' && ctx.isCreatingIssue,
+    execute: async () => {
+      // Opens status selection for the issue being created
+      // The CommandBarDialog will handle this specially for create mode
+      // ProjectId will be resolved from route params inside the dialog
+      const { CommandBarDialog } = await import(
+        '@/components/ui-new/dialogs/CommandBarDialog'
+      );
+      await CommandBarDialog.show({
+        pendingStatusSelection: {
+          projectId: '',
+          issueIds: [],
+          isCreateMode: true,
+        },
+      });
+    },
+  } satisfies GlobalActionDefinition,
+
+  ChangePriority: {
+    id: 'change-issue-priority',
+    label: 'Change Priority',
+    icon: ArrowFatLineUpIcon,
+    shortcut: 'I P',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      await ctx.openPrioritySelection(projectId, issueIds);
+    },
+  } satisfies IssueActionDefinition,
+
+  ChangeNewIssuePriority: {
+    id: 'change-new-issue-priority',
+    label: 'Change Priority',
+    icon: ArrowFatLineUpIcon,
+    shortcut: 'I P',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban' && ctx.isCreatingIssue,
+    execute: async () => {
+      // Opens priority selection for the issue being created
+      // The CommandBarDialog will handle this specially for create mode
+      // ProjectId will be resolved from route params inside the dialog
+      const { CommandBarDialog } = await import(
+        '@/components/ui-new/dialogs/CommandBarDialog'
+      );
+      await CommandBarDialog.show({
+        pendingPrioritySelection: {
+          projectId: '',
+          issueIds: [],
+          isCreateMode: true,
+        },
+      });
+    },
+  } satisfies GlobalActionDefinition,
+
+  ChangeAssignees: {
+    id: 'change-assignees',
+    label: 'Change Assignees',
+    icon: UsersIcon,
+    shortcut: 'I A',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      await ctx.openAssigneeSelection(projectId, issueIds, false);
+    },
+  } satisfies IssueActionDefinition,
+
+  ChangeNewIssueAssignees: {
+    id: 'change-new-issue-assignees',
+    label: 'Change Assignees',
+    icon: UsersIcon,
+    shortcut: 'I A',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban' && ctx.isCreatingIssue,
+    execute: async (ctx) => {
+      // Opens assignee selection for the issue being created
+      // ProjectId will be resolved from route params inside the dialog
+      await ctx.openAssigneeSelection('', [], true);
+    },
+  } satisfies GlobalActionDefinition,
+
+  MakeSubIssueOf: {
+    id: 'make-sub-issue-of',
+    label: 'Make Sub-issue of',
+    icon: TreeStructureIcon,
+    shortcut: 'I M',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openSubIssueSelection(projectId, issueIds[0], 'setParent');
+      }
+    },
+  } satisfies IssueActionDefinition,
+
+  AddSubIssue: {
+    id: 'add-sub-issue',
+    label: 'Add Sub-issue',
+    icon: PlusIcon,
+    shortcut: 'I B',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openSubIssueSelection(projectId, issueIds[0], 'addChild');
+      }
+    },
+  } satisfies IssueActionDefinition,
+
+  LinkWorkspace: {
+    id: 'link-workspace',
+    label: 'Link Workspace',
+    icon: LinkIcon,
+    shortcut: 'I W',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openWorkspaceSelection(projectId, issueIds[0]);
+      }
+    },
+  } satisfies IssueActionDefinition,
 } as const satisfies Record<string, ActionDefinition>;
 
 // Helper to resolve dynamic label
@@ -1091,7 +1309,7 @@ export type NavbarItem = ActionDefinition | typeof NavbarDivider;
 
 // Navbar action groups define which actions appear in each section
 export const NavbarActionGroups = {
-  left: [Actions.ArchiveWorkspace, Actions.OpenInOldUI] as ActionDefinition[],
+  left: [Actions.ArchiveWorkspace, Actions.OpenInOldUI] as NavbarItem[],
   right: [
     Actions.ToggleDiffViewMode,
     Actions.ToggleAllDiffs,

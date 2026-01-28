@@ -342,6 +342,7 @@ const CreateWorkspaceFromPrDialogImpl =
                     )}
                     emptyMessage={t('createWorkspaceFromPr.noMatchingPrs')}
                     getItemBadge={null}
+                    getItemIcon={null}
                   />
                   {selectedPr && (
                     <a

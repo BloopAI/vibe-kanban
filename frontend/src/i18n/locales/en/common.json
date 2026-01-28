@@ -14,7 +14,8 @@
     "close": "Close",
     "replay": "Replay",
     "discard": "Discard",
-    "addItem": "Add Item"
+    "addItem": "Add Item",
+    "reply": "Reply"
   },
   "form": {
     "notSpecified": "Not specified",
@@ -91,11 +92,15 @@
     "menuItem": "Organization",
     "loadingPlaceholder": "Loading organizations...",
     "selectPlaceholder": "Select an organization",
-    "currentBadge": " (current)"
+    "currentBadge": " (current)",
+    "organizations": "Organizations",
+    "createOrganization": "Create organization",
+    "orgSettings": "Organization settings"
   },
   "navbar": {
     "tryNewUI": "try the new UI"
   },
+  "signIn": "Sign in",
   "signOut": "Sign out",
   "devMode": {
     "banner": "Development Mode - This is a development build"
@@ -324,5 +329,36 @@
     "commands": "Commands",
     "noTagsOrFiles": "No tags or files found",
     "noCommands": "No commands available for this agent."
+  },
+  "kanban": {
+    "noStatusesFound": "No statuses found for this project",
+    "noVisibleStatuses": "All statuses are hidden. Use display settings or switch to another tab to view issues.",
+    "noProjectFound": "No project found",
+    "noOrganizationFound": "No organization found",
+    "unassigned": "Unassigned",
+    "noTagsAvailable": "No tags available",
+    "createNewTag": "Create new tag",
+    "searchTags": "Search tags...",
+    "selectColorFor": "Select color for",
+    "createTag": "Create",
+    "filesCount": "{{count}} Files",
+    "noPrCreated": "No PR created",
+    "noCommentsYet": "No comments yet",
+    "comments": "Comments",
+    "enterCommentPlaceholder": "Enter your comment here...",
+    "subIssues": "Sub-issues",
+    "noSubIssues": "No sub-issues",
+    "parentIssue": "Parent",
+    "viewTabs": {
+      "active": "Active",
+      "all": "All"
+    }
+  },
+  "syncError": {
+    "networkErrors": "Network Errors",
+    "streamsAffected": "{{count}} stream affected",
+    "streamsAffected_other": "{{count}} streams affected",
+    "status": "(status {{status}})",
+    "refreshPage": "Refresh Page"
   }
 }

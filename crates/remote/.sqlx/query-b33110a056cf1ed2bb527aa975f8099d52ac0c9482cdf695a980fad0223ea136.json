@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE issue_comments\n            SET\n                message = COALESCE($1, message),\n                updated_at = $2\n            WHERE id = $3\n            RETURNING\n                id          AS \"id!: Uuid\",\n                issue_id    AS \"issue_id!: Uuid\",\n                author_id   AS \"author_id!: Uuid\",\n                parent_id   AS \"parent_id: Uuid\",\n                message     AS \"message!\",\n                created_at  AS \"created_at!: DateTime<Utc>\",\n                updated_at  AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "query": "\n            INSERT INTO issue_comments (id, issue_id, author_id, parent_id, message, created_at, updated_at)\n            VALUES ($1, $2, $3, $4, $5, $6, $7)\n            RETURNING\n                id          AS \"id!: Uuid\",\n                issue_id    AS \"issue_id!: Uuid\",\n                author_id   AS \"author_id: Uuid\",\n                parent_id   AS \"parent_id: Uuid\",\n                message     AS \"message!\",\n                created_at  AS \"created_at!: DateTime<Utc>\",\n                updated_at  AS \"updated_at!: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -15,7 +15,7 @@
       },
       {
         "ordinal": 2,
-        "name": "author_id!: Uuid",
+        "name": "author_id: Uuid",
         "type_info": "Uuid"
       },
       {
@@ -41,20 +41,24 @@
     ],
     "parameters": {
       "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
         "Text",
         "Timestamptz",
-        "Uuid"
+        "Timestamptz"
       ]
     },
     "nullable": [
       false,
       false,
-      false,
+      true,
       true,
       false,
       false,
       false
     ]
   },
-  "hash": "aab05857585cf539f235455ac3f4cf2f0a24a99088ddca028b10a4e43689d689"
+  "hash": "b33110a056cf1ed2bb527aa975f8099d52ac0c9482cdf695a980fad0223ea136"
 }

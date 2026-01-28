@@ -3,9 +3,10 @@ import {
   useContext,
   useCallback,
   useMemo,
+  useState,
   type ReactNode,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
@@ -13,6 +14,7 @@ import {
   type ActionDefinition,
   type ActionExecutorContext,
   type ActionVisibilityContext,
+  ActionTargetType,
   resolveLabel,
 } from '@/components/ui-new/actions';
 import { getActionLabel } from '@/components/ui-new/actions/useActionVisibility';
@@ -22,11 +24,14 @@ import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { useLogStream } from '@/hooks/useLogStream';
 
 interface ActionsContextValue {
-  // Execute an action with optional workspaceId and repoId (for git actions)
+  // Execute an action with optional workspaceId and repoId/projectId
+  // For git actions: repoIdOrProjectId is repoId
+  // For issue actions: repoIdOrProjectId is projectId, issueIds are required
   executeAction: (
     action: ActionDefinition,
     workspaceId?: string,
-    repoId?: string
+    repoIdOrProjectId?: string,
+    issueIds?: string[]
   ) => Promise<void>;
 
   // Get resolved label for an action (supports dynamic labels via visibility context)
@@ -35,6 +40,35 @@ interface ActionsContextValue {
     workspace?: Workspace,
     ctx?: ActionVisibilityContext
   ) => string;
+
+  // Open command bar in status selection mode
+  openStatusSelection: (projectId: string, issueIds: string[]) => Promise<void>;
+
+  // Open command bar in priority selection mode
+  openPrioritySelection: (
+    projectId: string,
+    issueIds: string[]
+  ) => Promise<void>;
+
+  // Open assignee selection dialog
+  openAssigneeSelection: (
+    projectId: string,
+    issueIds: string[],
+    isCreateMode?: boolean
+  ) => Promise<void>;
+
+  // Open sub-issue selection in command bar
+  openSubIssueSelection: (
+    projectId: string,
+    parentIssueId: string,
+    mode?: 'addChild' | 'setParent'
+  ) => Promise<void>;
+
+  // Open workspace selection dialog to link a workspace to an issue
+  openWorkspaceSelection: (projectId: string, issueId: string) => Promise<void>;
+
+  // Set default status for issue creation based on current kanban tab
+  setDefaultCreateStatusId: (statusId: string | undefined) => void;
 
   // The executor context (for components that need direct access)
   executorContext: ActionExecutorContext;
@@ -48,6 +82,7 @@ interface ActionsProviderProps {
 
 export function ActionsProvider({ children }: ActionsProviderProps) {
   const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId?: string }>();
   const queryClient = useQueryClient();
   // Get workspace context (ActionsProvider is nested inside WorkspaceProvider)
   const { selectWorkspace, activeWorkspaces, workspaceId, workspace } =
@@ -55,6 +90,22 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
 
   // Get dev server state
   const { start, stop, runningDevServers } = useDevServer(workspaceId);
+
+  // Default status for issue creation based on current kanban tab
+  const [defaultCreateStatusId, setDefaultCreateStatusId] = useState<
+    string | undefined
+  >();
+
+  // Navigate to create issue mode (URL-based navigation)
+  const navigateToCreateIssue = useCallback(
+    (options?: { statusId?: string }) => {
+      if (!projectId) return;
+      const params = new URLSearchParams({ mode: 'create' });
+      if (options?.statusId) params.set('statusId', options.statusId);
+      navigate(`/projects/${projectId}?${params.toString()}`);
+    },
+    [navigate, projectId]
+  );
 
   // Get logs panel state
   const { logsPanelContent } = useLogsPanel();
@@ -75,6 +126,71 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     return null;
   }, [logsPanelContent, processLogs]);
 
+  // Open status selection in command bar (uses dynamic import to avoid circular deps)
+  const openStatusSelection = useCallback(
+    async (projectId: string, issueIds: string[]) => {
+      const { CommandBarDialog } = await import(
+        '@/components/ui-new/dialogs/CommandBarDialog'
+      );
+      await CommandBarDialog.show({
+        pendingStatusSelection: { projectId, issueIds },
+      });
+    },
+    []
+  );
+
+  // Open priority selection in command bar (uses dynamic import to avoid circular deps)
+  const openPrioritySelection = useCallback(
+    async (projectId: string, issueIds: string[]) => {
+      const { CommandBarDialog } = await import(
+        '@/components/ui-new/dialogs/CommandBarDialog'
+      );
+      await CommandBarDialog.show({
+        pendingPrioritySelection: { projectId, issueIds },
+      });
+    },
+    []
+  );
+
+  // Open assignee selection dialog (uses dynamic import to avoid circular deps)
+  const openAssigneeSelection = useCallback(
+    async (projectId: string, issueIds: string[], isCreateMode = false) => {
+      const { AssigneeSelectionDialog } = await import(
+        '@/components/ui-new/dialogs/AssigneeSelectionDialog'
+      );
+      await AssigneeSelectionDialog.show({ projectId, issueIds, isCreateMode });
+    },
+    []
+  );
+
+  // Open sub-issue selection in command bar (uses dynamic import to avoid circular deps)
+  const openSubIssueSelection = useCallback(
+    async (
+      projectId: string,
+      parentIssueId: string,
+      mode: 'addChild' | 'setParent' = 'addChild'
+    ) => {
+      const { CommandBarDialog } = await import(
+        '@/components/ui-new/dialogs/CommandBarDialog'
+      );
+      await CommandBarDialog.show({
+        pendingSubIssueSelection: { projectId, parentIssueId, mode },
+      });
+    },
+    []
+  );
+
+  // Open workspace selection dialog (uses dynamic import to avoid circular deps)
+  const openWorkspaceSelection = useCallback(
+    async (projectId: string, issueId: string) => {
+      const { WorkspaceSelectionDialog } = await import(
+        '@/components/ui-new/dialogs/WorkspaceSelectionDialog'
+      );
+      await WorkspaceSelectionDialog.show({ projectId, issueId });
+    },
+    []
+  );
+
   // Build executor context from hooks
   const executorContext = useMemo<ActionExecutorContext>(
     () => ({
@@ -89,6 +205,13 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       stopDevServer: stop,
       currentLogs,
       logsPanelContent,
+      openStatusSelection,
+      openPrioritySelection,
+      openAssigneeSelection,
+      openSubIssueSelection,
+      openWorkspaceSelection,
+      navigateToCreateIssue,
+      defaultCreateStatusId,
     }),
     [
       navigate,
@@ -102,6 +225,13 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       stop,
       currentLogs,
       logsPanelContent,
+      openStatusSelection,
+      openPrioritySelection,
+      openAssigneeSelection,
+      openSubIssueSelection,
+      openWorkspaceSelection,
+      navigateToCreateIssue,
+      defaultCreateStatusId,
     ]
   );
 
@@ -110,25 +240,45 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     async (
       action: ActionDefinition,
       workspaceId?: string,
-      repoId?: string
+      repoIdOrProjectId?: string,
+      issueIds?: string[]
     ): Promise<void> => {
       try {
-        if (action.requiresTarget === 'git') {
-          if (!workspaceId || !repoId) {
-            throw new Error(
-              `Action "${action.id}" requires both workspace and repository`
+        switch (action.requiresTarget) {
+          case ActionTargetType.NONE:
+            await action.execute(executorContext);
+            break;
+
+          case ActionTargetType.WORKSPACE:
+            if (!workspaceId) {
+              throw new Error(
+                `Action "${action.id}" requires a workspace target`
+              );
+            }
+            await action.execute(executorContext, workspaceId);
+            break;
+
+          case ActionTargetType.GIT:
+            if (!workspaceId || !repoIdOrProjectId) {
+              throw new Error(
+                `Action "${action.id}" requires both workspace and repository`
+              );
+            }
+            await action.execute(
+              executorContext,
+              workspaceId,
+              repoIdOrProjectId
             );
-          }
-          await action.execute(executorContext, workspaceId, repoId);
-        } else if (action.requiresTarget === true) {
-          if (!workspaceId) {
-            throw new Error(
-              `Action "${action.id}" requires a workspace target`
-            );
-          }
-          await action.execute(executorContext, workspaceId);
-        } else {
-          await action.execute(executorContext);
+            break;
+
+          case ActionTargetType.ISSUE:
+            if (!repoIdOrProjectId || !issueIds || issueIds.length === 0) {
+              throw new Error(
+                `Action "${action.id}" requires project and issue selection`
+              );
+            }
+            await action.execute(executorContext, repoIdOrProjectId, issueIds);
+            break;
         }
       } catch (error) {
         // Show error to user via alert dialog
@@ -163,9 +313,24 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     () => ({
       executeAction,
       getLabel,
+      openStatusSelection,
+      openPrioritySelection,
+      openAssigneeSelection,
+      openSubIssueSelection,
+      openWorkspaceSelection,
+      setDefaultCreateStatusId,
       executorContext,
     }),
-    [executeAction, getLabel, executorContext]
+    [
+      executeAction,
+      getLabel,
+      openStatusSelection,
+      openPrioritySelection,
+      openAssigneeSelection,
+      openSubIssueSelection,
+      openWorkspaceSelection,
+      executorContext,
+    ]
   );
 
   return (

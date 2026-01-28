@@ -34,11 +34,7 @@ CREATE TABLE project_statuses (
     color VARCHAR(20) NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
     hidden BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    -- Prevents duplicate sort orders within the same project
-    CONSTRAINT project_statuses_project_sort_order_uniq
-        UNIQUE (project_id, sort_order)
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 
@@ -176,7 +172,7 @@ CREATE TABLE issue_tags (
 CREATE TABLE issue_comments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
-    author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    author_id UUID REFERENCES users(id) ON DELETE SET NULL,
     parent_id UUID REFERENCES issue_comments(id) ON DELETE SET NULL,
 
     message TEXT NOT NULL,

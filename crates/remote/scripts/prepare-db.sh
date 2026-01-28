@@ -1,10 +1,42 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CHECK_MODE="${1:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REMOTE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Parse arguments
+BILLING_MANIFEST_PATH=""
+CHECK_MODE=""
+
+for arg in "$@"; do
+  case "$arg" in
+    --check) CHECK_MODE="--check" ;;
+    *) BILLING_MANIFEST_PATH="$arg" ;;
+  esac
+done
+
+if [ -z "$BILLING_MANIFEST_PATH" ]; then
+  echo "Usage: $0 <billing-manifest-path> [--check]" >&2
+  exit 1
+fi
+
+# Convert relative paths to absolute (relative to repo root, since pnpm runs from there)
+if [[ "$BILLING_MANIFEST_PATH" != /* ]]; then
+  REPO_ROOT="$(cd "$REMOTE_DIR/../.." && pwd)"
+  BILLING_MANIFEST_PATH="$REPO_ROOT/$BILLING_MANIFEST_PATH"
+fi
+
+if [ ! -f "$BILLING_MANIFEST_PATH" ]; then
+  echo "Error: Billing manifest not found: $BILLING_MANIFEST_PATH" >&2
+  exit 1
+fi
+
+BILLING_DIR="$(cd "$(dirname "$BILLING_MANIFEST_PATH")" && pwd)"
 
 # For --check mode, run offline without database (just verify .sqlx cache)
 if [ "$CHECK_MODE" = "--check" ]; then
+  echo "➤ Checking SQLx data for billing (offline mode)..."
+  (cd "$BILLING_DIR" && SQLX_OFFLINE=true cargo sqlx prepare --check)
   echo "➤ Checking SQLx data (offline mode)..."
   SQLX_OFFLINE=true cargo sqlx prepare --check
   echo "✅ sqlx check complete"
@@ -34,6 +66,9 @@ export DATABASE_URL="postgres://localhost:$PORT/remote"
 
 echo "➤ Running migrations..."
 sqlx migrate run
+
+echo "➤ Preparing SQLx data for billing..."
+(cd "$BILLING_DIR" && cargo sqlx prepare)
 
 echo "➤ Preparing SQLx data..."
 cargo sqlx prepare

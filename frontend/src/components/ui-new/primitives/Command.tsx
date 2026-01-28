@@ -21,11 +21,13 @@ Command.displayName = CommandPrimitive.displayName;
 
 interface CommandDialogProps extends React.ComponentProps<typeof Dialog> {
   onCloseAutoFocus?: (event: Event) => void;
+  onOpenAutoFocus?: (event: Event) => void;
 }
 
 function CommandDialog({
   children,
   onCloseAutoFocus,
+  onOpenAutoFocus,
   ...props
 }: CommandDialogProps) {
   return (
@@ -34,6 +36,7 @@ function CommandDialog({
         className="overflow-hidden p-0"
         hideCloseButton
         onCloseAutoFocus={onCloseAutoFocus}
+        onOpenAutoFocus={onOpenAutoFocus}
       >
         {children}
       </DialogContent>

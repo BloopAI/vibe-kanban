@@ -1,10 +1,83 @@
 import { electricCollectionOptions } from '@tanstack/electric-db-collection';
 import { createCollection } from '@tanstack/react-db';
 
-import { oauthApi } from '../api';
+import { getCachedToken } from '../api';
 import { makeRequest, REMOTE_API_URL } from '@/lib/remoteApi';
 import type { EntityDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { CollectionConfig, SyncError } from './types';
+
+/**
+ * Error handler with exponential backoff for debouncing repeated errors.
+ * Prevents infinite error spam when server is unreachable.
+ */
+class ErrorHandler {
+  private lastErrorTime = 0;
+  private lastErrorMessage = '';
+  private consecutiveErrors = 0;
+  private readonly baseDebounceMs = 1000;
+  private readonly maxDebounceMs = 30000; // Max 30 seconds between error reports
+
+  /**
+   * Check if this error should be reported (not debounced).
+   * Uses exponential backoff for repeated errors.
+   */
+  shouldReport(message: string): boolean {
+    const now = Date.now();
+    const debounceMs = Math.min(
+      this.baseDebounceMs * Math.pow(2, this.consecutiveErrors),
+      this.maxDebounceMs
+    );
+
+    if (
+      message === this.lastErrorMessage &&
+      now - this.lastErrorTime < debounceMs
+    ) {
+      return false;
+    }
+
+    this.lastErrorTime = now;
+    if (message === this.lastErrorMessage) {
+      this.consecutiveErrors++;
+    } else {
+      this.consecutiveErrors = 0;
+      this.lastErrorMessage = message;
+    }
+
+    return true;
+  }
+
+  /** Reset error state (call when connection succeeds) */
+  reset() {
+    this.consecutiveErrors = 0;
+    this.lastErrorMessage = '';
+  }
+}
+
+/**
+ * Create a fetch wrapper that catches network errors and reports them.
+ * Note: Debouncing is handled by the onError callback, not here.
+ */
+function createErrorHandlingFetch(
+  errorHandler: ErrorHandler,
+  onError?: (error: SyncError) => void
+) {
+  return async (
+    input: RequestInfo | URL,
+    init?: RequestInit
+  ): Promise<Response> => {
+    try {
+      const response = await fetch(input, init);
+      // Reset error state on successful response
+      errorHandler.reset();
+      return response;
+    } catch (error) {
+      // Always pass network errors to onError (debouncing happens there)
+      const message = error instanceof Error ? error.message : 'Network error';
+      onError?.({ message });
+      throw error;
+    }
+  };
+}
 
 /**
  * Substitute URL parameters in a path template.
@@ -40,6 +113,7 @@ function getRowKey(item: Record<string, unknown>): string {
 
 /**
  * Get authenticated shape options for an Electric shape.
+ * Includes error handling with exponential backoff and custom fetch wrapper.
  */
 function getAuthenticatedShapeOptions(
   shape: ShapeDefinition<unknown>,
@@ -48,23 +122,40 @@ function getAuthenticatedShapeOptions(
 ) {
   const url = buildUrl(shape.url, params);
 
+  // Create error handler for this shape's lifecycle
+  const errorHandler = new ErrorHandler();
+
+  // Single debounced error reporter for both network and Electric errors
+  const reportError = (error: SyncError) => {
+    if (errorHandler.shouldReport(error.message)) {
+      // Only log to console when tab is visible - transient errors during
+      // tab switches are expected and will auto-clear on visibility change
+      if (document.visibilityState === 'visible') {
+        console.error('Electric sync error:', error);
+      }
+      config?.onError?.(error);
+    }
+  };
+
   return {
     url: `${REMOTE_API_URL}${url}`,
     params,
     headers: {
       Authorization: async () => {
-        const tokenResponse = await oauthApi.getToken();
-        return tokenResponse ? `Bearer ${tokenResponse.access_token}` : '';
+        const token = await getCachedToken();
+        return token ? `Bearer ${token}` : '';
       },
     },
     parser: {
       timestamptz: (value: string) => value,
     },
+    // Custom fetch wrapper to catch network-level errors
+    fetchClient: createErrorHandlingFetch(errorHandler, reportError),
+    // Electric's onError callback (for non-network errors like 4xx/5xx responses)
     onError: (error: { status?: number; message?: string }) => {
-      console.error('Electric sync error:', error);
       const status = error.status;
       const message = error.message || String(error);
-      config?.onError?.({ status, message } as SyncError);
+      reportError({ status, message });
     },
   };
 }

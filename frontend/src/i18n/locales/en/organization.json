@@ -19,7 +19,10 @@
     "rolePlaceholder": "Select a role",
     "roleHelper": "Admins can manage members and organization settings.",
     "sending": "Sending...",
-    "sendButton": "Send Invitation"
+    "sendButton": "Send Invitation",
+    "subscriptionRequired": "Subscription required to add more members",
+    "upgradePrompt": "Upgrade your organization's plan to invite additional members.",
+    "upgradeButton": "Upgrade Plan"
   },
   "roles": {
     "member": "Member",
@@ -63,5 +66,27 @@
     "description": "You need to be logged in to manage organization settings.",
     "action": "Login"
   },
-  "confirmRemoveMember": "Are you sure you want to remove this member from the organization?"
+  "confirmRemoveMember": "Are you sure you want to remove this member from the organization?",
+  "sharedProjects": {
+    "title": "Shared Projects",
+    "description": "Remote projects in {{orgName}} and their links to local projects",
+    "loading": "Loading projects...",
+    "noProjects": "No shared projects found in this organization",
+    "notLinked": "Not linked",
+    "linkedTo": "Linked to: {{projectName}}",
+    "linked": "Linked",
+    "linkProject": "Link project...",
+    "noAvailableProjects": "No available projects"
+  },
+  "billing": {
+    "title": "Billing & Subscription",
+    "description": "Manage your organization's subscription and billing settings",
+    "manageButton": "Manage Billing",
+    "openInBrowser": "Opens in a new browser tab"
+  },
+  "personalOrg": {
+    "cannotInvite": "Personal organizations cannot have additional members.",
+    "createOrgPrompt": "Create an organization to collaborate with others.",
+    "createOrgButton": "Create Organization"
+  }
 }

@@ -14,4 +14,21 @@ pub enum IdentityError {
     OrganizationConflict(String),
     #[error(transparent)]
     Database(#[from] sqlx::Error),
+    #[cfg(feature = "vk-billing")]
+    #[error("billing error: {0}")]
+    Billing(crate::billing::BillingCheckError),
+}
+
+#[cfg(feature = "vk-billing")]
+impl From<crate::billing::BillingCheckError> for IdentityError {
+    fn from(err: crate::billing::BillingCheckError) -> Self {
+        Self::Billing(err)
+    }
+}
+
+#[cfg(not(feature = "vk-billing"))]
+impl From<crate::billing::BillingCheckError> for IdentityError {
+    fn from(err: crate::billing::BillingCheckError) -> Self {
+        match err {}
+    }
 }

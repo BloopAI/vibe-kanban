@@ -46,7 +46,8 @@ use git::{ConflictOp, GitCliError, GitServiceError};
 use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
-    container::ContainerService, file_search::SearchQuery, workspace_manager::WorkspaceManager,
+    container::ContainerService, diff_stream, file_search::SearchQuery, remote_sync,
+    workspace_manager::WorkspaceManager,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -107,6 +108,18 @@ pub struct UpdateWorkspace {
     pub name: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct DeleteWorkspaceQuery {
+    #[serde(default)]
+    pub delete_remote: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LinkWorkspaceRequest {
+    pub project_id: Uuid,
+    pub issue_id: Uuid,
+}
+
 pub async fn get_task_attempts(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskAttemptQuery>,
@@ -147,6 +160,20 @@ pub async fn update_workspace(
     let updated = Workspace::find_by_id(pool, workspace.id)
         .await?
         .ok_or(WorkspaceError::TaskNotFound)?;
+
+    // Sync to remote if archived status changed
+    if request.archived.is_some()
+        && let Ok(client) = deployment.remote_client()
+    {
+        let ws = updated.clone();
+        let stats =
+            diff_stream::compute_diff_stats(&deployment.db().pool, deployment.git(), &ws).await;
+        tokio::spawn(async move {
+            remote_sync::sync_workspace_to_remote(&client, ws.id, request.archived, stats.as_ref())
+                .await;
+        });
+    }
+
     Ok(ResponseJson(ApiResponse::success(updated)))
 }
 
@@ -1637,6 +1664,7 @@ pub async fn get_first_user_message(
 pub async fn delete_workspace(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
+    Query(query): Query<DeleteWorkspaceQuery>,
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
     let pool = &deployment.db().pool;
 
@@ -1706,6 +1734,29 @@ pub async fn delete_workspace(
         )
         .await;
 
+    // Attempt remote workspace deletion if requested
+    if query.delete_remote {
+        if let Ok(client) = deployment.remote_client() {
+            match client.delete_workspace(workspace.id).await {
+                Ok(()) => {
+                    tracing::info!("Deleted remote workspace for {}", workspace.id);
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to delete remote workspace for {}: {}",
+                        workspace.id,
+                        e
+                    );
+                }
+            }
+        } else {
+            tracing::debug!(
+                "Remote client not available, skipping remote deletion for {}",
+                workspace.id
+            );
+        }
+    }
+
     // Spawn background cleanup task for filesystem resources
     if let Some(workspace_dir) = workspace_dir {
         let workspace_id = workspace.id;
@@ -1750,6 +1801,33 @@ pub async fn mark_seen(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+/// Links a local workspace to the remote server, associating it with a remote issue.
+pub async fn link_workspace(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<LinkWorkspaceRequest>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let client = deployment.remote_client()?;
+
+    client
+        .create_workspace(payload.project_id, workspace.id, payload.issue_id)
+        .await?;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
+/// Unlinks a local workspace from the remote server by deleting the remote workspace.
+pub async fn unlink_workspace(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let client = deployment.remote_client()?;
+
+    client.delete_workspace(workspace.id).await?;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
         .route(
@@ -1782,6 +1860,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/search", get(search_workspace_files))
         .route("/first-message", get(get_first_user_message))
         .route("/mark-seen", put(mark_seen))
+        .route("/link", post(link_workspace))
+        .route("/unlink", post(unlink_workspace))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_workspace_middleware,

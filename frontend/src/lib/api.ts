@@ -493,6 +493,21 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
+  linkToIssue: async (
+    workspaceId: string,
+    projectId: string,
+    issueId: string
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${workspaceId}/link`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ project_id: projectId, issue_id: issueId }),
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
   searchFiles: async (
     workspaceId: string,
     query: string,
@@ -1166,6 +1181,28 @@ export const oauthApi = {
     return handleApiResponse<CurrentUserResponse>(response);
   },
 };
+
+const TOKEN_STALE_TIME = 4 * 60 * 1000; // 4 minutes
+
+/**
+ * Get access token with React Query caching.
+ * Can be called from anywhere (React components or plain functions).
+ * Uses fetchQuery which returns cached data if fresh, or fetches if stale.
+ */
+export async function getCachedToken(): Promise<string | null> {
+  // Dynamic import to avoid circular dependency with main.tsx
+  const { queryClient } = await import('../main');
+  try {
+    const data = await queryClient.fetchQuery({
+      queryKey: ['auth', 'token'],
+      queryFn: () => oauthApi.getToken(),
+      staleTime: TOKEN_STALE_TIME,
+    });
+    return data?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
 
 // Organizations API
 export const organizationsApi = {

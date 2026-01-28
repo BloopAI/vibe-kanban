@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { cn } from '@/lib/utils';
 import {
@@ -54,6 +54,9 @@ interface SearchableDropdownProps<T> {
 
   /** Optional badge text for each item */
   getItemBadge?: (item: T) => string | undefined;
+
+  /** Optional icon/avatar to render before each item's label */
+  getItemIcon?: (item: T) => ReactNode;
 }
 
 export function SearchableDropdown<T>({
@@ -75,6 +78,7 @@ export function SearchableDropdown<T>({
   placeholder = 'Search',
   emptyMessage = 'No items found',
   getItemBadge,
+  getItemIcon,
 }: SearchableDropdownProps<T>) {
   return (
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
@@ -115,6 +119,7 @@ export function SearchableDropdown<T>({
                     isHighlighted && 'bg-secondary'
                   )}
                 >
+                  {getItemIcon?.(item)}
                   {getItemLabel(item)}
                 </DropdownMenuItem>
               );

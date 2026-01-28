@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { organizationsApi } from '@/lib/api';
 import { InvitationStatus, type Invitation } from 'shared/types';
+import { organizationKeys } from './organizationKeys';
 
 interface UseOrganizationInvitationsOptions {
   organizationId: string | null;
@@ -14,7 +15,7 @@ export function useOrganizationInvitations(
   const { organizationId, isAdmin, isPersonal } = options;
 
   return useQuery<Invitation[]>({
-    queryKey: ['organization', 'invitations', organizationId],
+    queryKey: organizationKeys.invitations(organizationId ?? ''),
     queryFn: async () => {
       if (!organizationId) {
         throw new Error('No organization ID provided');

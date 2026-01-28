@@ -1,6 +1,9 @@
 import { useMemo, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useActions } from '@/contexts/ActionsContext';
+import { useUserOrganizations } from '@/hooks/useUserOrganizations';
+import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { Navbar } from '../views/Navbar';
 import {
   NavbarActionGroups,
@@ -59,6 +62,13 @@ function filterNavbarItems(
 export function NavbarContainer() {
   const { executeAction } = useActions();
   const { workspace: selectedWorkspace, isCreateMode } = useWorkspaceContext();
+  const location = useLocation();
+  const isOnProjectPage = location.pathname.startsWith('/projects/');
+
+  const { data: orgsData } = useUserOrganizations();
+  const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
+  const orgName =
+    orgsData?.organizations.find((o) => o.id === selectedOrgId)?.name ?? '';
 
   // Get action visibility context (includes all state for visibility/active/enabled)
   const actionCtx = useActionVisibilityContext();
@@ -88,7 +98,9 @@ export function NavbarContainer() {
 
   const navbarTitle = isCreateMode
     ? 'Create Workspace'
-    : selectedWorkspace?.branch;
+    : isOnProjectPage
+      ? orgName
+      : selectedWorkspace?.branch;
 
   return (
     <Navbar

@@ -7,6 +7,7 @@ import {
   type ActionDefinition,
   type ActionVisibilityContext,
   type ContextBarItem,
+  ActionTargetType,
 } from '../actions';
 import {
   useActionVisibilityContext,
@@ -72,7 +73,7 @@ export function ContextBarContainer({
   // Action handler - use executor context directly from provider
   const handleExecuteAction = useCallback(
     async (action: ActionDefinition) => {
-      if (action.requiresTarget === false) {
+      if (action.requiresTarget === ActionTargetType.NONE) {
         await action.execute(executorContext);
       }
     },

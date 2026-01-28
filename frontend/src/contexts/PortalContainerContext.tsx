@@ -1,9 +1,8 @@
-import { createContext, useContext, RefObject } from 'react';
+import { createContext, useContext } from 'react';
 
-export const PortalContainerContext =
-  createContext<RefObject<HTMLElement> | null>(null);
+export const PortalContainerContext = createContext<HTMLElement | null>(null);
 
 export function usePortalContainer() {
-  const ref = useContext(PortalContainerContext);
-  return ref?.current ?? undefined;
+  const container = useContext(PortalContainerContext);
+  return container ?? undefined;
 }

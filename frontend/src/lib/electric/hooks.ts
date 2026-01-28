@@ -1,6 +1,7 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLiveQuery } from '@tanstack/react-db';
 import { createEntityCollection } from './collections';
+import { useSyncErrorContext } from '@/contexts/SyncErrorContext';
 import type { EntityDefinition } from 'shared/remote-types';
 import type { SyncError } from './types';
 
@@ -11,6 +12,23 @@ type EntityCreateType<E> =
   E extends EntityDefinition<unknown, infer C, unknown> ? C : never;
 type EntityUpdateType<E> =
   E extends EntityDefinition<unknown, unknown, infer U> ? U : never;
+
+/**
+ * Result of an optimistic mutation operation.
+ * Contains a promise that resolves when the backend confirms the change.
+ */
+export interface MutationResult {
+  /** Promise that resolves when the mutation is confirmed by the backend */
+  persisted: Promise<void>;
+}
+
+/**
+ * Result of an insert operation, including the created entity data.
+ */
+export interface InsertResult<TRow> extends MutationResult {
+  /** The optimistically created entity with generated ID */
+  data: TRow;
+}
 
 /**
  * Result type returned by useEntity hook.
@@ -24,12 +42,25 @@ export interface UseEntityResult<TRow, TCreate = unknown, TUpdate = unknown> {
   error: SyncError | null;
   /** Function to retry after an error */
   retry: () => void;
-  /** Insert a new entity (optimistic) */
-  insert: (data: TCreate) => void;
-  /** Update an entity by ID (optimistic) */
-  update: (id: string, changes: Partial<TUpdate>) => void;
-  /** Delete an entity by ID (optimistic) */
-  remove: (id: string) => void;
+  /** Insert a new entity (optimistic), returns entity and persistence promise */
+  insert: (data: TCreate) => InsertResult<TRow>;
+  /** Update an entity by ID (optimistic), returns persistence promise */
+  update: (id: string, changes: Partial<TUpdate>) => MutationResult;
+  /** Delete an entity by ID (optimistic), returns persistence promise */
+  remove: (id: string) => MutationResult;
+}
+
+/**
+ * Options for the useEntity hook.
+ */
+export interface UseEntityOptions {
+  /**
+   * Whether to enable the Electric sync subscription.
+   * When false, returns empty data and no-op mutation functions.
+   * Similar to React Query's `enabled` option.
+   * @default true
+   */
+  enabled?: boolean;
 }
 
 /**
@@ -44,6 +75,7 @@ export interface UseEntityResult<TRow, TCreate = unknown, TUpdate = unknown> {
  *
  * @param entity - The entity definition from shared/remote-types.ts
  * @param params - URL parameters matching the entity's shape requirements
+ * @param options - Optional configuration (enabled, etc.)
  *
  * @example
  * const { data, isLoading, insert, update, remove } = useEntity(
@@ -64,10 +96,20 @@ export function useEntity<
   E extends EntityDefinition<Record<string, unknown>, unknown, unknown>,
 >(
   entity: E,
-  params: Record<string, string>
+  params: Record<string, string>,
+  options: UseEntityOptions = {}
 ): UseEntityResult<EntityRowType<E>, EntityCreateType<E>, EntityUpdateType<E>> {
+  const { enabled = true } = options;
+
   const [error, setError] = useState<SyncError | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+
+  // Access sync error context for global error aggregation (optional - works without provider)
+  // Extract stable function references to avoid infinite loops
+  // (the context value changes when errors change, but the functions are stable via useCallback)
+  const syncErrorContext = useSyncErrorContext();
+  const registerErrorFn = syncErrorContext?.registerError;
+  const clearErrorFn = syncErrorContext?.clearError;
 
   const handleError = useCallback((err: SyncError) => setError(err), []);
 
@@ -83,62 +125,113 @@ export function useEntity<
     [paramsKey]
   );
 
+  // Generate stable stream ID for error registration
+  const streamId = useMemo(
+    () => `${entity.name}:${paramsKey}`,
+    [entity.name, paramsKey]
+  );
+
+  // Register/clear errors with global context
+  useEffect(() => {
+    if (error && registerErrorFn) {
+      registerErrorFn(streamId, entity.name, error, retry);
+    } else if (!error && clearErrorFn) {
+      clearErrorFn(streamId);
+    }
+
+    // Cleanup: clear error when component unmounts
+    return () => {
+      clearErrorFn?.(streamId);
+    };
+  }, [error, streamId, entity.name, retry, registerErrorFn, clearErrorFn]);
+
   // Create collection with mutation handlers - retryKey forces recreation on retry
+  // When enabled changes from false to true, collection is recreated with fresh auth state
   const collection = useMemo(() => {
+    if (!enabled) return null;
     const config = { onError: handleError };
     void retryKey; // Reference to force recreation on retry
     return createEntityCollection(entity, stableParams, config);
-  }, [entity, handleError, retryKey, stableParams]);
+  }, [enabled, entity, handleError, retryKey, stableParams]);
 
-  const { data, isLoading } = useLiveQuery(
-    (query) => query.from({ item: collection }),
+  // Subscribe to Electric when enabled (collection exists)
+  // When disabled, return undefined to use useLiveQuery's built-in disabled state
+  const { data, isLoading: queryLoading } = useLiveQuery(
+    (query) => (collection ? query.from({ item: collection }) : undefined),
     [collection]
   );
 
   // useLiveQuery returns data as flat objects directly, not wrapped in { item: {...} }
-  // Return empty array while loading to avoid showing stale data during collection transitions
+  // Return empty array while loading or when disabled
   const items = useMemo(() => {
-    if (!data || isLoading) return [];
+    if (!enabled || !collection || !data || queryLoading) return [];
     return data as unknown as EntityRowType<E>[];
-  }, [data, isLoading]);
+  }, [enabled, collection, data, queryLoading]);
+
+  // When disabled, isLoading should be false (not waiting for data)
+  const isLoading = enabled ? queryLoading : false;
 
   // Expose collection mutation methods with stable callbacks
   // Type assertion needed because TanStack DB collection types are complex
+  // TanStack DB mutations return a Transaction with isPersisted.promise
+  type TransactionResult = { isPersisted: { promise: Promise<void> } };
   type CollectionWithMutations = {
-    insert: (data: unknown) => void;
+    insert: (data: unknown) => TransactionResult;
     update: (
       id: string,
       updater: (draft: Record<string, unknown>) => void
-    ) => void;
-    delete: (id: string) => void;
+    ) => TransactionResult;
+    delete: (id: string) => TransactionResult;
   };
-  const typedCollection = collection as unknown as CollectionWithMutations;
+  const typedCollection =
+    collection as unknown as CollectionWithMutations | null;
 
   const insert = useCallback(
-    (insertData: EntityCreateType<E>) => {
+    (insertData: EntityCreateType<E>): InsertResult<EntityRowType<E>> => {
       // Auto-generate ID for optimistic inserts
       // TanStack DB requires client-generated IDs for stable optimistic rendering
       const dataWithId = {
         id: crypto.randomUUID(),
         ...(insertData as Record<string, unknown>),
       };
-      typedCollection.insert(dataWithId);
+      if (!typedCollection) {
+        // When disabled, return no-op result
+        return {
+          data: dataWithId as EntityRowType<E>,
+          persisted: Promise.resolve(),
+        };
+      }
+      const tx = typedCollection.insert(dataWithId);
+      return {
+        data: dataWithId as EntityRowType<E>,
+        persisted: tx.isPersisted.promise,
+      };
     },
     [typedCollection]
   );
 
   const update = useCallback(
-    (id: string, changes: Partial<EntityUpdateType<E>>) => {
-      typedCollection.update(id, (draft: Record<string, unknown>) =>
+    (id: string, changes: Partial<EntityUpdateType<E>>): MutationResult => {
+      if (!typedCollection) {
+        // When disabled, return no-op result
+        return { persisted: Promise.resolve() };
+      }
+      const tx = typedCollection.update(id, (draft: Record<string, unknown>) =>
         Object.assign(draft, changes)
       );
+      return { persisted: tx.isPersisted.promise };
     },
     [typedCollection]
   );
 
   const remove = useCallback(
-    (id: string) => {
-      typedCollection.delete(id);
+    (id: string): MutationResult => {
+      if (!typedCollection) {
+        // When disabled, return no-op result
+        return { persisted: Promise.resolve() };
+      }
+      const tx = typedCollection.delete(id);
+      return { persisted: tx.isPersisted.promise };
     },
     [typedCollection]
   );

@@ -797,7 +797,7 @@ function CommentsList({ issueId }: { issueId: string }) {
           {
             key: 'author_id',
             label: 'Author',
-            render: (c) => truncateId(c.author_id),
+            render: (c) => (c.author_id ? truncateId(c.author_id) : '-'),
           },
           { key: 'id', label: 'ID', render: (c) => truncateId(c.id) },
           {
