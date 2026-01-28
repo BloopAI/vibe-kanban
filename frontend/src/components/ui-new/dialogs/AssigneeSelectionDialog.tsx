@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
-import type { User, Project } from 'shared/remote-types';
+import type { Project } from 'shared/remote-types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 import { defineModal } from '@/lib/modals';
 import { CommandDialog } from '@/components/ui-new/primitives/Command';
 import {
@@ -24,7 +25,7 @@ export interface AssigneeSelectionDialogProps {
   isCreateMode?: boolean;
 }
 
-const getUserDisplayName = (user: User): string => {
+const getUserDisplayName = (user: OrganizationMemberWithProfile): string => {
   return (
     [user.first_name, user.last_name].filter(Boolean).join(' ') ||
     user.username ||
@@ -44,8 +45,12 @@ function AssigneeSelectionContent({
   const modal = useModal();
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
-  // Get users from OrgContext
-  const { users } = useOrgContext();
+  // Get users from OrgContext - use membersWithProfilesById for OrganizationMemberWithProfile
+  const { membersWithProfilesById } = useOrgContext();
+  const users = useMemo(
+    () => [...membersWithProfilesById.values()],
+    [membersWithProfilesById]
+  );
 
   // Get issue assignees and mutation functions from ProjectContext
   const { issueAssignees, insertIssueAssignee, removeIssueAssignee } =
@@ -85,9 +90,9 @@ function AssigneeSelectionContent({
   const options: MultiSelectOption<string>[] = useMemo(
     () =>
       users.map((user) => ({
-        value: user.id,
+        value: user.user_id,
         label: getUserDisplayName(user),
-        searchValue: `${user.id} ${getUserDisplayName(user)} ${user.email ?? ''}`,
+        searchValue: `${user.user_id} ${getUserDisplayName(user)} ${user.email ?? ''}`,
         renderOption: () => (
           <div className="flex items-center gap-base">
             <UserAvatar user={user} className="h-5 w-5 text-[10px]" />

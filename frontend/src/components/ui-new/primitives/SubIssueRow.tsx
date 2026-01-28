@@ -1,7 +1,8 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import type { IssuePriority, User } from 'shared/remote-types';
+import type { IssuePriority } from 'shared/remote-types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
 import { StatusDot } from '@/components/ui-new/primitives/StatusDot';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
@@ -34,7 +35,7 @@ export interface SubIssueRowProps {
   title: string;
   priority: IssuePriority;
   statusColor: string;
-  assignees: User[];
+  assignees: OrganizationMemberWithProfile[];
   createdAt: string;
   onClick?: () => void;
   className?: string;

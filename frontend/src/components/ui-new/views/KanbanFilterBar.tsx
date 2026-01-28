@@ -12,7 +12,8 @@ import {
   useUiPreferencesStore,
   type KanbanSortField,
 } from '@/stores/useUiPreferencesStore';
-import type { Tag, User, ProjectStatus } from 'shared/remote-types';
+import type { Tag, ProjectStatus } from 'shared/remote-types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 import { InputField } from '@/components/ui-new/primitives/InputField';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
@@ -33,7 +34,7 @@ import { KanbanDisplaySettingsContainer } from '@/components/ui-new/containers/K
 
 interface KanbanFilterBarProps {
   tags: Tag[];
-  users: User[];
+  users: OrganizationMemberWithProfile[];
   hasActiveFilters: boolean;
   statuses: ProjectStatus[];
   projectId: string;
@@ -74,7 +75,7 @@ const SORT_OPTIONS: PropertyDropdownOption<KanbanSortField>[] = [
 // Helper to get user display name
 // =============================================================================
 
-const getUserDisplayName = (user: User): string => {
+const getUserDisplayName = (user: OrganizationMemberWithProfile): string => {
   return (
     [user.first_name, user.last_name].filter(Boolean).join(' ') ||
     user.username ||
@@ -125,7 +126,7 @@ export function KanbanFilterBar({
         ),
       },
       ...users.map((user) => ({
-        value: user.id,
+        value: user.user_id,
         label: getUserDisplayName(user),
         renderOption: () => (
           <div className="flex items-center gap-base">

@@ -29,14 +29,14 @@ export function IssueCommentsSectionContainer({
 }
 
 function IssueCommentsSectionContent() {
-  const { usersById, membersById } = useOrgContext();
+  const { membersWithProfilesById } = useOrgContext();
   const issueContext = useIssueContext();
   const { data: currentUser } = useCurrentUser();
   const currentUserId = currentUser?.user_id ?? '';
 
   // Check if current user is admin
   const currentUserMember = currentUserId
-    ? membersById.get(currentUserId)
+    ? membersWithProfilesById.get(currentUserId)
     : undefined;
   const isCurrentUserAdmin = currentUserMember?.role === MemberRole.ADMIN;
 
@@ -54,7 +54,7 @@ function IssueCommentsSectionContent() {
   const commentsData = useMemo<IssueCommentData[]>(() => {
     return issueContext.comments
       .map((comment) => {
-        const author = usersById.get(comment.author_id);
+        const author = membersWithProfilesById.get(comment.author_id);
         const isAuthor = comment.author_id === currentUserId;
         const canModify = isAuthor || isCurrentUserAdmin;
         return {
@@ -62,7 +62,8 @@ function IssueCommentsSectionContent() {
           authorId: comment.author_id,
           authorName: author
             ? `${author.first_name ?? ''} ${author.last_name ?? ''}`.trim() ||
-              author.email
+              author.email ||
+              'Unknown User'
             : 'Unknown User',
           message: comment.message,
           createdAt: comment.created_at,
@@ -74,7 +75,12 @@ function IssueCommentsSectionContent() {
         (a, b) =>
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
-  }, [issueContext.comments, usersById, currentUserId, isCurrentUserAdmin]);
+  }, [
+    issueContext.comments,
+    membersWithProfilesById,
+    currentUserId,
+    isCurrentUserAdmin,
+  ]);
 
   // Group reactions by comment, then by emoji
   const reactionsByCommentId = useMemo(() => {
@@ -120,10 +126,11 @@ function IssueCommentsSectionContent() {
           hasReacted: data.hasReacted,
           reactionId: data.reactionId,
           userNames: data.userIds.map((userId) => {
-            const user = usersById.get(userId);
-            return user
-              ? `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() ||
-                  user.email
+            const member = membersWithProfilesById.get(userId);
+            return member
+              ? `${member.first_name ?? ''} ${member.last_name ?? ''}`.trim() ||
+                  member.email ||
+                  'Unknown User'
               : 'Unknown User';
           }),
         })
@@ -133,7 +140,7 @@ function IssueCommentsSectionContent() {
     }
 
     return result;
-  }, [commentsData, issueContext, currentUserId, usersById]);
+  }, [commentsData, issueContext, currentUserId, membersWithProfilesById]);
 
   const handleSubmitComment = useCallback(() => {
     if (!commentInput.trim()) return;
