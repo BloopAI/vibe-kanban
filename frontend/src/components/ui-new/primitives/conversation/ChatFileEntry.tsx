@@ -48,7 +48,7 @@ export function ChatFileEntry({
 
   const handleClick = () => {
     if (isVSCode) {
-      openFileInVSCode(filename);
+      openFileInVSCode(filename, { openAsDiff: false });
     } else {
       onToggle?.();
     }
