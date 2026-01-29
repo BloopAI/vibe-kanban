@@ -608,7 +608,8 @@ impl GitCli {
                 "No rebase in progress".to_string(),
             ));
         }
-        self.git(worktree_path, ["rebase", "--continue"]).map(|_| ())
+        self.git(worktree_path, ["rebase", "--continue"])
+            .map(|_| ())
     }
 
     /// Return true if there are staged changes (index differs from HEAD)
