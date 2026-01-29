@@ -423,6 +423,11 @@
         "path": {
           "label": "Ruta del Repositorio"
         },
+        "defaultWorkingDir": {
+          "label": "Directorio de Trabajo Predeterminado",
+          "placeholder": "ej., packages/frontend",
+          "helper": "Subdirectorio relativo a la raíz del repositorio donde se ejecuta el agente de codificación para espacios de trabajo de un solo repositorio. Se establece al crear el espacio de trabajo. Déjelo vacío para usar la raíz del repositorio."
+        },
         "defaultTargetBranch": {
           "label": "Rama Objetivo Predeterminada",
           "placeholder": "Seleccionar una rama",

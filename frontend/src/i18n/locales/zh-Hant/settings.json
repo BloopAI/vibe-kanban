@@ -423,6 +423,11 @@
         "path": {
           "label": "儲存庫路徑"
         },
+        "defaultWorkingDir": {
+          "label": "預設工作目錄",
+          "placeholder": "例如：packages/frontend",
+          "helper": "單儲存庫工作區中程式碼代理執行的子目錄。在建立工作區時設定。留空則使用儲存庫根目錄。"
+        },
         "defaultTargetBranch": {
           "label": "預設目標分支",
           "placeholder": "選擇分支",

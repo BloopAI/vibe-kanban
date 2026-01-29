@@ -423,6 +423,11 @@
         "path": {
           "label": "仓库路径"
         },
+        "defaultWorkingDir": {
+          "label": "默认工作目录",
+          "placeholder": "例如：packages/frontend",
+          "helper": "单仓库工作区中编码代理运行的子目录。在创建工作区时设置。留空则使用仓库根目录。"
+        },
         "defaultTargetBranch": {
           "label": "默认目标分支",
           "placeholder": "选择分支",

@@ -26,6 +26,7 @@ import {
 
 interface RepoScriptsFormState {
   display_name: string;
+  default_working_dir: string;
   default_target_branch: string;
   setup_script: string;
   parallel_setup_script: boolean;
@@ -37,6 +38,7 @@ interface RepoScriptsFormState {
 function repoToFormState(repo: Repo): RepoScriptsFormState {
   return {
     display_name: repo.display_name,
+    default_working_dir: repo.default_working_dir ?? '',
     default_target_branch: repo.default_target_branch ?? '',
     setup_script: repo.setup_script ?? '',
     parallel_setup_script: repo.parallel_setup_script,
@@ -150,6 +152,7 @@ export function ReposSettingsSection() {
     try {
       const updateData: UpdateRepo = {
         display_name: draft.display_name.trim() || null,
+        default_working_dir: draft.default_working_dir.trim() || null,
         default_target_branch: draft.default_target_branch.trim() || null,
         setup_script: draft.setup_script.trim() || null,
         cleanup_script: draft.cleanup_script.trim() || null,
@@ -295,6 +298,21 @@ export function ReposSettingsSection() {
               <div className="text-sm text-low font-mono bg-secondary px-base py-half rounded-sm">
                 {selectedRepo.path}
               </div>
+            </SettingsField>
+
+            <SettingsField
+              label={t('settings.repos.general.defaultWorkingDir.label')}
+              description={t('settings.repos.general.defaultWorkingDir.helper')}
+            >
+              <SettingsInput
+                value={draft.default_working_dir}
+                onChange={(value) =>
+                  updateDraft({ default_working_dir: value })
+                }
+                placeholder={t(
+                  'settings.repos.general.defaultWorkingDir.placeholder'
+                )}
+              />
             </SettingsField>
 
             <SettingsField
