@@ -45,10 +45,21 @@ export function UserProvider({ children }: UserProviderProps) {
   // Entity subscriptions
   const workspacesResult = useEntity(WORKSPACE_ENTITY, params, { enabled });
 
+  // Debug logging
+  console.log('[UserContext] isSignedIn:', isSignedIn);
+  console.log('[UserContext] enabled:', enabled);
+  console.log('[UserContext] workspacesResult.isLoading:', workspacesResult.isLoading);
+  console.log('[UserContext] workspacesResult.error:', workspacesResult.error);
+  console.log('[UserContext] workspacesResult.data:', workspacesResult.data);
+  console.log('[UserContext] workspacesResult.data.length:', workspacesResult.data.length);
+
   // Lookup helpers
   const getWorkspacesForIssue = useCallback(
-    (issueId: string) =>
-      workspacesResult.data.filter((w) => w.issue_id === issueId),
+    (issueId: string) => {
+      const filtered = workspacesResult.data.filter((w) => w.issue_id === issueId);
+      console.log('[UserContext] getWorkspacesForIssue:', issueId, 'found:', filtered.length, 'workspaces');
+      return filtered;
+    },
     [workspacesResult.data]
   );
 
