@@ -70,7 +70,7 @@ export const ChatToolSummary = forwardRef<
   return (
     <div
       className={cn(
-        'flex items-start gap-base text-sm text-low',
+        'flex items-center gap-base text-sm text-low',
         isClickable && 'cursor-pointer',
         className
       )}

@@ -44,7 +44,7 @@ export function ChatAggregatedToolEntries({
     return (
       <div
         className={cn(
-          'flex items-start gap-base text-sm text-low',
+          'flex items-center gap-base text-sm text-low',
           onViewContent && 'cursor-pointer',
           className
         )}
@@ -93,7 +93,7 @@ export function ChatAggregatedToolEntries({
     <div className={cn('flex flex-col', className)}>
       {/* Header row - clickable to expand/collapse */}
       <div
-        className="flex items-start gap-base text-sm text-low cursor-pointer group"
+        className="flex items-center gap-base text-sm text-low cursor-pointer group"
         onClick={onToggle}
         onMouseEnter={() => onHoverChange(true)}
         onMouseLeave={() => onHoverChange(false)}
@@ -130,7 +130,7 @@ export function ChatAggregatedToolEntries({
             <div
               key={entry.expansionKey}
               className={cn(
-                'flex items-start gap-base text-sm text-low pl-base',
+                'flex items-center gap-base text-sm text-low pl-base',
                 onViewContent && 'cursor-pointer hover:text-normal'
               )}
               onClick={onViewContent ? () => onViewContent(index) : undefined}
