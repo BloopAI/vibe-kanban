@@ -12,6 +12,7 @@ import { useDevServer } from '@/hooks/useDevServer';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
+import { useAuth } from '@/hooks/auth/useAuth';
 import type { Workspace, Merge } from 'shared/types';
 import type {
   ActionVisibilityContext,
@@ -53,6 +54,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
   const { data: branchStatus } = useBranchStatus(workspaceId);
   const { isAttemptRunningVisible } = useExecutionProcessesContext();
   const { logsPanelContent } = useLogsPanel();
+  const { isSignedIn } = useAuth();
 
   return useMemo(() => {
     // Compute isAllDiffsExpanded
@@ -104,6 +106,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       logsPanelContent,
       hasSelectedKanbanIssue: !!selectedKanbanIssueId,
       isCreatingIssue: kanbanCreateMode,
+      isSignedIn,
     };
   }, [
     layoutMode,
@@ -126,6 +129,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     logsPanelContent,
     selectedKanbanIssueId,
     kanbanCreateMode,
+    isSignedIn,
   ]);
 }
 
