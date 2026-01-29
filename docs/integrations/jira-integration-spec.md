@@ -55,46 +55,57 @@ A JIRA integration would:
 
 ### 2. Automatic Status Synchronization
 
-**User Story**: As a project manager, I want JIRA issue statuses to automatically update when work progresses in Vibe Kanban so that I don't need to manually track AI agent work.
+**User Story**: As a project manager, I want JIRA issue statuses to update when work starts and completes in Vibe Kanban so that I have visibility into development progress without manual updates.
 
 **Flow**:
 1. Developer starts a workspace for a JIRA-linked task
-2. Vibe Kanban transitions JIRA issue to "In Progress"
-3. Developer creates a PR from the workspace
-4. Vibe Kanban transitions JIRA issue to "In Review"
-5. PR is merged
-6. Vibe Kanban transitions JIRA issue to "Done"
+2. Vibe Kanban transitions JIRA issue to "In Progress" (one-time on first workspace start)
+3. Developer completes work and marks task as Done in Vibe Kanban
+4. Vibe Kanban transitions JIRA issue to "Done"
+
+**Important Notes**:
+- Status transitions happen only at **significant milestones**, not for ephemeral AI agent interactions
+- "In Progress" is set once when work begins, not on every AI query
+- Intermediate statuses (like "In Review") are **not automatically synced** to avoid noise
+- Users can manually trigger status sync from the task detail view if needed
 
 **Mapping Strategy**:
 ```
-Vibe Kanban Status    →  JIRA Status Transition
-─────────────────────────────────────────────────
-Todo                  →  To Do / Backlog
-InProgress            →  In Progress / In Development
-(First workspace)     →  (Automatic transition)
-InReview              →  In Review / Code Review
-(PR created)          →  (Automatic transition)
-Done                  →  Done / Resolved / Closed
-(PR merged)           →  (Automatic transition)
-Cancelled             →  Cancelled / Won't Do
+Vibe Kanban Action       →  JIRA Status Transition
+───────────────────────────────────────────────────────
+Start first workspace    →  In Progress / In Development
+(one-time transition)    →  (if currently in Backlog/Todo)
+
+Mark task as Done        →  Done / Resolved / Closed
+(user explicit action)   →  (automatic transition)
+
+Mark as Cancelled        →  Cancelled / Won't Do
+(user explicit action)   →  (automatic transition)
 ```
 
 **Configuration**:
 - Per-project mapping of Vibe Kanban statuses to JIRA workflow transitions
 - Option to disable automatic updates (manual sync only)
+- Manual "Sync to JIRA" button in task detail view for on-demand updates
 - Conflict resolution when statuses diverge
 
-### 3. Work Logging and Time Tracking
+### 3. Work Logging and Time Tracking (Optional)
 
-**User Story**: As a developer subject to time tracking requirements, I want my AI agent work sessions to automatically log time to JIRA so I can meet organizational reporting requirements.
+**User Story**: As a developer subject to time tracking requirements, I want to optionally log work time to JIRA from Vibe Kanban so I can meet organizational reporting requirements.
 
 **Flow**:
-1. Developer starts working on a JIRA-linked task
-2. Vibe Kanban tracks session duration
-3. When workspace is closed or PR created, Vibe Kanban:
-   - Creates a JIRA worklog entry
-   - Logs time spent by coding agents and developer
-   - Includes summary of work completed (commits, PR link)
+1. Developer works on a JIRA-linked task (Vibe Kanban tracks session duration)
+2. When completing work, developer can optionally:
+   - Click "Log Time to JIRA" button
+   - Review/edit the time amount and description
+   - Submit worklog entry to JIRA
+3. Alternatively, enable "Auto-log time on task completion" in settings (opt-in)
+
+**Important Notes**:
+- **User control**: Time logging is opt-in, not automatic by default
+- **Review before submit**: User can see and edit time/description before posting
+- **Configurable**: Can be enabled per-project or globally in settings
+- **Accurate tracking**: Vibe Kanban tracks actual active work time, excluding idle periods
 
 **Worklog Format**:
 ```
@@ -104,6 +115,11 @@ Description: Implemented authentication feature using Claude Code
 - 247 lines added, 83 removed
 - PR: https://github.com/org/repo/pull/123
 ```
+
+**Configuration Options**:
+- "Enable automatic time logging on task completion" (default: off)
+- "Prompt to log time when marking task as Done" (default: on)
+- "Include detailed work summary in worklog" (default: on)
 
 ### 4. Pull Request Linking
 
@@ -121,27 +137,44 @@ Description: Implemented authentication feature using Claude Code
 - Falls back to manual PR linking via REST API
 - Supports Bitbucket and other JIRA-integrated source control
 
-### 5. Comment Synchronization
+### 5. Comment Synchronization (User-Initiated)
 
-**User Story**: As a team member, I want comments and updates from Vibe Kanban to appear in JIRA so stakeholders can follow progress without accessing Vibe Kanban.
+**User Story**: As a team member, I want to share progress updates from Vibe Kanban to JIRA when appropriate, so stakeholders can follow along without being overwhelmed by automated noise.
 
 **Flow**:
-1. Coding agent completes work on a task
-2. Vibe Kanban posts comment to JIRA issue:
-   - Summary of changes made
-   - Link to workspace/session
-   - Files modified
-3. Developer adds notes in Vibe Kanban
-4. Notes sync as JIRA comments with attribution
+1. Developer works on a JIRA-linked task using AI agents
+2. When ready to share progress, developer explicitly chooses one of:
+   - "Update JIRA Status" button → Syncs status only
+   - "Post Summary to JIRA" button → Creates a comment summarizing work done
+3. Vibe Kanban generates a summary comment and posts to JIRA issue:
+   - High-level summary of changes made
+   - Link to workspace (if using remote/cloud Vibe Kanban)
+   - Key files modified
+   - PR link (if created)
+
+**Important Design Principles**:
+- **User-initiated only**: No automatic comment posting to avoid spamming JIRA
+- **Summaries, not logs**: Comments are high-level summaries, not detailed AI conversation logs
+- **Explicit actions**: Clear UI buttons for "Share to JIRA" or "Post Update"
+- **One-way for comments**: Vibe Kanban can read JIRA comments, but only posts when user requests
 
 **Comment Examples**:
 ```
-[Vibe Kanban] Task completed by Claude Code
-✓ Implemented user authentication
+[Posted by John Doe via Vibe Kanban]
+
+Completed user authentication implementation:
+✓ Implemented JWT-based auth flow
 ✓ Added unit tests (15 passing)
-✓ Updated documentation
-View workspace: http://localhost:3000/workspace/abc123
+✓ Updated API documentation
+
+Files changed: 8 files, +247 lines, -83 lines
+PR: https://github.com/org/repo/pull/123
 ```
+
+**Configuration Options**:
+- "Prompt to post summary when marking task as Done" (optional reminder)
+- "Include file change statistics in summaries" (on/off)
+- "Include PR links in summaries" (on/off)
 
 ### 6. Epic and Sprint Integration
 
@@ -540,20 +573,24 @@ fn validate_jira_webhook(
 │                                                         │
 │ Status Mapping (VIBE project)                           │
 │ ┌─────────────────────────────────────────────────┐   │
-│ │ Vibe Kanban      →  JIRA Transition             │   │
+│ │ Vibe Kanban Event  →  JIRA Transition           │   │
 │ ├─────────────────────────────────────────────────┤   │
-│ │ Todo             →  To Do                       │   │
-│ │ InProgress       →  In Progress                 │   │
-│ │ InReview         →  In Review                   │   │
-│ │ Done             →  Done                        │   │
-│ │ Cancelled        →  Cancelled                   │   │
+│ │ Start workspace    →  In Progress               │   │
+│ │ (first time only)                               │   │
+│ │ Mark as Done       →  Done                      │   │
+│ │ Mark as Cancelled  →  Cancelled                 │   │
 │ └─────────────────────────────────────────────────┘   │
 │                                                         │
-│ Advanced Options                                        │
-│ ☑ Sync comments to JIRA                                │
-│ ☑ Create worklog entries for coding sessions           │
-│ ☐ Link PRs in JIRA Development panel                   │
+│ Sync Preferences                                        │
+│ ☑ Auto-sync status on workspace start (→ In Progress)  │
+│ ☑ Auto-sync status when marking Done/Cancelled         │
+│ ☐ Prompt to post summary when marking task as Done     │
+│ ☐ Auto-log work time on task completion                │
+│                                                         │
+│ Display Options                                         │
 │ ☑ Show JIRA labels in Vibe Kanban                      │
+│ ☑ Show JIRA comments in task detail                    │
+│ ☑ Link PRs in JIRA Development panel                   │
 │                                                         │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -615,6 +652,10 @@ fn validate_jira_webhook(
 │ Status: In Progress • Agent: Claude Code               │
 │ [Continue Work] [Create PR]                            │
 │                                                         │
+│ JIRA Actions                                            │
+│ [Update JIRA Status ▼] [Post Summary to JIRA]         │
+│ [Log Work Time...]                                      │
+│                                                         │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -650,16 +691,18 @@ fn validate_jira_webhook(
 
 ### Phase 3: Rich Metadata Sync
 **Timeline**: 3-4 weeks
-- Sync comments bidirectionally
-- Worklog creation from workspace sessions
+- User-initiated comment posting (summary generation)
+- Optional worklog creation with review/edit
 - PR linking in JIRA Development panel
 - Custom field mapping UI
 - Epic and sprint integration
 
 **Success Criteria**:
-- Comments sync within 30 seconds
-- Worklogs accurately reflect coding time
+- Summary generation is accurate and concise
+- Users can review/edit summaries before posting
+- Worklogs accurately reflect coding time when user opts to log
 - PRs visible in JIRA Development panel
+- Read JIRA comments and display in task detail view
 
 ### Phase 4: Advanced Features
 **Timeline**: 4-6 weeks
