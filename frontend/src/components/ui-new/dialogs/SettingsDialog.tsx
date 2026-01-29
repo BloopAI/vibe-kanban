@@ -6,6 +6,7 @@ import {
   FolderIcon,
   GitBranchIcon,
   BuildingsIcon,
+  CloudIcon,
   CpuIcon,
   PlugIcon,
   CaretLeftIcon,
@@ -17,7 +18,10 @@ import { defineModal } from '@/lib/modals';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { cn } from '@/lib/utils';
 import { SettingsSection } from './settings/SettingsSection';
-import type { SettingsSectionType } from './settings/SettingsSection';
+import type {
+  SettingsSectionType,
+  SettingsSectionInitialState,
+} from './settings/SettingsSection';
 import {
   SettingsDirtyProvider,
   useSettingsDirty,
@@ -32,21 +36,25 @@ const SETTINGS_SECTIONS: {
   { id: 'projects', icon: FolderIcon },
   { id: 'repos', icon: GitBranchIcon },
   { id: 'organizations', icon: BuildingsIcon },
+  { id: 'remote-projects', icon: CloudIcon },
   { id: 'agents', icon: CpuIcon },
   { id: 'mcp', icon: PlugIcon },
 ];
 
 export interface SettingsDialogProps {
   initialSection?: SettingsSectionType;
+  initialState?: SettingsSectionInitialState[SettingsSectionType];
 }
 
 interface SettingsDialogContentProps {
   initialSection?: SettingsSectionType;
+  initialState?: SettingsSectionInitialState[SettingsSectionType];
   onClose: () => void;
 }
 
 function SettingsDialogContent({
   initialSection,
+  initialState,
   onClose,
 }: SettingsDialogContentProps) {
   const { t } = useTranslation('settings');
@@ -215,6 +223,7 @@ function SettingsDialogContent({
               <SettingsSection
                 type={activeSection}
                 onClose={handleCloseWithConfirmation}
+                initialState={initialState}
               />
             </div>
           </div>
@@ -225,7 +234,7 @@ function SettingsDialogContent({
 }
 
 const SettingsDialogImpl = NiceModal.create<SettingsDialogProps>(
-  ({ initialSection }) => {
+  ({ initialSection, initialState }) => {
     const modal = useModal();
     const container = usePortalContainer();
 
@@ -241,6 +250,7 @@ const SettingsDialogImpl = NiceModal.create<SettingsDialogProps>(
       <SettingsDirtyProvider>
         <SettingsDialogContent
           initialSection={initialSection}
+          initialState={initialState}
           onClose={handleClose}
         />
       </SettingsDirtyProvider>,

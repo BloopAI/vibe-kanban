@@ -21,7 +21,14 @@ import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteC
 import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
 import { cn } from '@/lib/utils';
 import { toPrettyCase } from '@/utils/string';
-import { SettingsSaveBar } from './SettingsComponents';
+import {
+  SettingsSaveBar,
+  TwoColumnPicker,
+  TwoColumnPickerColumn,
+  TwoColumnPickerItem,
+  TwoColumnPickerBadge,
+  TwoColumnPickerEmpty,
+} from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 import { AgentIcon } from '@/components/agents/AgentIcon';
 
@@ -368,181 +375,113 @@ export function AgentsSettingsSection() {
         /* Two-column layout: agents and variants on top, config form below */
         <div className="space-y-4">
           {/* Two-column selector - Finder-like style, stacked on mobile */}
-          <div className="flex flex-col md:flex-row border border-border rounded-sm overflow-hidden">
+          <TwoColumnPicker>
             {/* Agents column */}
-            <div className="flex-1 border-b md:border-b-0 md:border-r border-border">
-              <div className="h-9 px-2 border-b border-border bg-secondary/50 flex items-center">
-                <span className="text-sm font-medium text-low tracking-wide">
-                  {t('settings.agents.editor.agentLabel')}
-                </span>
-              </div>
-              <div className="max-h-32 md:h-32 overflow-y-auto bg-panel">
-                {Object.keys(localParsedProfiles.executors).map((executor) => {
-                  const isSelected = selectedExecutorType === executor;
-                  const isDefault =
-                    config?.executor_profile?.executor === executor;
-                  return (
-                    <div
-                      key={executor}
-                      className={cn(
-                        'flex items-center gap-1.5 px-2 py-1 cursor-pointer transition-colors',
-                        'hover:bg-secondary',
-                        isSelected && 'bg-brand/10 text-brand'
-                      )}
-                      onClick={() => {
-                        setSelectedExecutorType(executor as BaseCodingAgent);
-                        // Select first config for this executor
-                        const configs = Object.keys(
-                          localParsedProfiles.executors[
-                            executor as BaseCodingAgent
-                          ] || {}
-                        );
-                        if (configs.length > 0) {
-                          setSelectedConfiguration(configs[0]);
-                        }
-                      }}
-                    >
+            <TwoColumnPickerColumn
+              label={t('settings.agents.editor.agentLabel')}
+              isFirst
+            >
+              {Object.keys(localParsedProfiles.executors).map((executor) => {
+                const isDefault =
+                  config?.executor_profile?.executor === executor;
+                return (
+                  <TwoColumnPickerItem
+                    key={executor}
+                    selected={selectedExecutorType === executor}
+                    onClick={() => {
+                      setSelectedExecutorType(executor as BaseCodingAgent);
+                      // Select first config for this executor
+                      const configs = Object.keys(
+                        localParsedProfiles.executors[
+                          executor as BaseCodingAgent
+                        ] || {}
+                      );
+                      if (configs.length > 0) {
+                        setSelectedConfiguration(configs[0]);
+                      }
+                    }}
+                    leading={
                       <AgentIcon
                         agent={executor as BaseCodingAgent}
                         className="size-icon-sm shrink-0"
                       />
-                      <span
-                        className={cn(
-                          'text-sm truncate flex-1',
-                          isSelected ? 'text-brand font-medium' : 'text-normal'
-                        )}
-                      >
-                        {toPrettyCase(executor)}
-                      </span>
-                      {isDefault && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand/15 text-brand font-medium shrink-0 ml-auto">
+                    }
+                    trailing={
+                      isDefault && (
+                        <TwoColumnPickerBadge variant="brand">
                           {t('settings.agents.editor.isDefault')}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+                        </TwoColumnPickerBadge>
+                      )
+                    }
+                  >
+                    {toPrettyCase(executor)}
+                  </TwoColumnPickerItem>
+                );
+              })}
+            </TwoColumnPickerColumn>
 
             {/* Variants column */}
-            <div className="flex-1">
-              <div className="h-9 px-2 border-b border-border bg-secondary/50 flex items-center justify-between">
-                <span className="text-sm font-medium text-low tracking-wide">
-                  {t('settings.agents.editor.configLabel')}
-                </span>
-                {selectedExecutorType && (
+            <TwoColumnPickerColumn
+              label={t('settings.agents.editor.configLabel')}
+              headerAction={
+                selectedExecutorType && (
                   <button
-                    className="p-0.5 rounded-sm hover:bg-secondary text-low hover:text-normal"
+                    className="p-half rounded-sm hover:bg-secondary text-low hover:text-normal"
                     onClick={() => handleCreateConfig(selectedExecutorType)}
                     disabled={profilesSaving}
                     title={t('settings.agents.editor.createNew')}
                   >
                     <PlusIcon className="size-icon-2xs" weight="bold" />
                   </button>
-                )}
-              </div>
-              <div className="max-h-32 md:h-32 overflow-y-auto bg-panel">
-                {selectedExecutorType &&
-                localParsedProfiles.executors[selectedExecutorType] ? (
-                  Object.keys(
-                    localParsedProfiles.executors[selectedExecutorType]
-                  ).map((configName) => {
-                    const isSelected = selectedConfiguration === configName;
-                    const isDefault =
-                      config?.executor_profile?.executor ===
-                        selectedExecutorType &&
-                      config?.executor_profile?.variant === configName;
-                    const configCount = Object.keys(
-                      localParsedProfiles.executors[selectedExecutorType] || {}
-                    ).length;
-                    return (
-                      <div
-                        key={configName}
-                        className={cn(
-                          'group flex items-center gap-1.5 px-2 py-1 cursor-pointer transition-colors',
-                          'hover:bg-secondary',
-                          isSelected && 'bg-brand/10 text-brand'
-                        )}
-                        onClick={() => setSelectedConfiguration(configName)}
-                      >
-                        <span
-                          className={cn(
-                            'text-sm truncate flex-1',
-                            isSelected
-                              ? 'text-brand font-medium'
-                              : 'text-normal'
+                )
+              }
+            >
+              {selectedExecutorType &&
+              localParsedProfiles.executors[selectedExecutorType] ? (
+                Object.keys(
+                  localParsedProfiles.executors[selectedExecutorType]
+                ).map((configName) => {
+                  const isDefault =
+                    config?.executor_profile?.executor ===
+                      selectedExecutorType &&
+                    config?.executor_profile?.variant === configName;
+                  const configCount = Object.keys(
+                    localParsedProfiles.executors[selectedExecutorType] || {}
+                  ).length;
+                  return (
+                    <TwoColumnPickerItem
+                      key={configName}
+                      selected={selectedConfiguration === configName}
+                      onClick={() => setSelectedConfiguration(configName)}
+                      trailing={
+                        <>
+                          {isDefault && (
+                            <TwoColumnPickerBadge variant="brand">
+                              {t('settings.agents.editor.isDefault')}
+                            </TwoColumnPickerBadge>
                           )}
-                        >
-                          {toPrettyCase(configName)}
-                        </span>
-                        {isDefault && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand/15 text-brand font-medium shrink-0 ml-auto">
-                            {t('settings.agents.editor.isDefault')}
-                          </span>
-                        )}
-                        {/* Actions dropdown */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              className={cn(
-                                'p-0.5 rounded-sm hover:bg-panel text-low hover:text-normal',
-                                'opacity-0 group-hover:opacity-100 transition-opacity',
-                                !isDefault && 'ml-auto'
-                              )}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <DotsThreeIcon
-                                className="size-icon-xs"
-                                weight="bold"
-                              />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleMakeDefault(
-                                  selectedExecutorType,
-                                  configName
-                                );
-                              }}
-                              disabled={isDefault}
-                            >
-                              <div className="flex items-center gap-1 w-full">
-                                <StarIcon className="size-icon-xs mr-2" />
-                                {t('settings.agents.editor.makeDefault')}
-                              </div>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteConfig(
-                                  selectedExecutorType,
-                                  configName
-                                );
-                              }}
-                              disabled={configCount <= 1}
-                              className="text-error focus:text-error"
-                            >
-                              <div className="flex items-center gap-1 w-full">
-                                <TrashIcon className="size-icon-xs mr-2" />
-                                {t('settings.agents.editor.deleteText')}
-                              </div>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="px-2 py-3 text-sm text-low text-center">
-                    {t('settings.agents.selectAgent')}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+                          <ConfigActionsDropdown
+                            executorType={selectedExecutorType}
+                            configName={configName}
+                            isDefault={isDefault}
+                            configCount={configCount}
+                            onMakeDefault={handleMakeDefault}
+                            onDelete={handleDeleteConfig}
+                          />
+                        </>
+                      }
+                    >
+                      {toPrettyCase(configName)}
+                    </TwoColumnPickerItem>
+                  );
+                })
+              ) : (
+                <TwoColumnPickerEmpty>
+                  {t('settings.agents.selectAgent')}
+                </TwoColumnPickerEmpty>
+              )}
+            </TwoColumnPickerColumn>
+          </TwoColumnPicker>
 
           {/* Config form */}
           {selectedExecutorType && selectedConfiguration && (
@@ -578,6 +517,68 @@ export function AgentsSettingsSection() {
         onDiscard={handleDiscard}
       />
     </>
+  );
+}
+
+// Helper component for config actions dropdown
+function ConfigActionsDropdown({
+  executorType,
+  configName,
+  isDefault,
+  configCount,
+  onMakeDefault,
+  onDelete,
+}: {
+  executorType: BaseCodingAgent;
+  configName: string;
+  isDefault: boolean;
+  configCount: number;
+  onMakeDefault: (executor: string, config: string) => void;
+  onDelete: (executor: string, config: string) => void;
+}) {
+  const { t } = useTranslation(['settings']);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className={cn(
+            'p-half rounded-sm hover:bg-panel text-low hover:text-normal',
+            'opacity-0 group-hover:opacity-100 transition-opacity'
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <DotsThreeIcon className="size-icon-xs" weight="bold" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            onMakeDefault(executorType, configName);
+          }}
+          disabled={isDefault}
+        >
+          <div className="flex items-center gap-half w-full">
+            <StarIcon className="size-icon-xs mr-base" />
+            {t('settings.agents.editor.makeDefault')}
+          </div>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(executorType, configName);
+          }}
+          disabled={configCount <= 1}
+          className="text-error focus:text-error"
+        >
+          <div className="flex items-center gap-half w-full">
+            <TrashIcon className="size-icon-xs mr-base" />
+            {t('settings.agents.editor.deleteText')}
+          </div>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

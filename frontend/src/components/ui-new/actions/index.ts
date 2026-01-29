@@ -129,6 +129,9 @@ export interface ActionExecutorContext {
   navigateToCreateIssue: (options?: { statusId?: string }) => void;
   // Default status for issue creation based on current kanban tab
   defaultCreateStatusId?: string;
+  // Current kanban context (for project settings action)
+  kanbanOrgId?: string;
+  kanbanProjectId?: string;
 }
 
 // Context for evaluating action visibility and state conditions
@@ -497,6 +500,23 @@ export const Actions = {
       await SettingsDialog.show();
     },
   },
+
+  ProjectSettings: {
+    id: 'project-settings',
+    label: 'Project Settings',
+    icon: GearIcon,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban',
+    execute: async (ctx) => {
+      await SettingsDialog.show({
+        initialSection: 'remote-projects',
+        initialState: {
+          organizationId: ctx.kanbanOrgId,
+          projectId: ctx.kanbanProjectId,
+        },
+      });
+    },
+  } satisfies GlobalActionDefinition,
 
   SignIn: {
     id: 'sign-in',
