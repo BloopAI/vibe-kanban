@@ -5,6 +5,7 @@ import { GeneralSettingsSectionContent } from './GeneralSettingsSection';
 import { ProjectsSettingsSectionContent } from './ProjectsSettingsSection';
 import { ReposSettingsSectionContent } from './ReposSettingsSection';
 import { OrganizationsSettingsSectionContent } from './OrganizationsSettingsSection';
+import { RemoteProjectsSettingsSectionContent } from './RemoteProjectsSettingsSection';
 import { AgentsSettingsSectionContent } from './AgentsSettingsSection';
 import { McpSettingsSectionContent } from './McpSettingsSection';
 
@@ -13,15 +14,34 @@ export type SettingsSectionType =
   | 'projects'
   | 'repos'
   | 'organizations'
+  | 'remote-projects'
   | 'agents'
   | 'mcp';
+
+// Section-specific initial state types
+export type SettingsSectionInitialState = {
+  general: undefined;
+  projects: undefined;
+  repos: undefined;
+  organizations: { organizationId?: string } | undefined;
+  'remote-projects':
+    | { organizationId?: string; projectId?: string }
+    | undefined;
+  agents: { executor?: string; variant?: string } | undefined;
+  mcp: undefined;
+};
 
 interface SettingsSectionProps {
   type: SettingsSectionType;
   onClose?: () => void;
+  initialState?: SettingsSectionInitialState[SettingsSectionType];
 }
 
-export function SettingsSection({ type, onClose }: SettingsSectionProps) {
+export function SettingsSection({
+  type,
+  onClose,
+  initialState,
+}: SettingsSectionProps) {
   const { t } = useTranslation('settings');
 
   const renderContent = () => {
@@ -34,6 +54,14 @@ export function SettingsSection({ type, onClose }: SettingsSectionProps) {
         return <ReposSettingsSectionContent />;
       case 'organizations':
         return <OrganizationsSettingsSectionContent />;
+      case 'remote-projects':
+        return (
+          <RemoteProjectsSettingsSectionContent
+            initialState={
+              initialState as SettingsSectionInitialState['remote-projects']
+            }
+          />
+        );
       case 'agents':
         return <AgentsSettingsSectionContent />;
       case 'mcp':
