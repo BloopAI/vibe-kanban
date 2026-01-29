@@ -16,6 +16,7 @@ pub mod execution_processes;
 pub mod frontend;
 pub mod health;
 pub mod images;
+pub mod migration;
 pub mod oauth;
 pub mod organizations;
 pub mod projects;
@@ -45,6 +46,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(events::router(&deployment))
         .merge(approvals::router())
         .merge(scratch::router(&deployment))
+        .merge(migration::router())
         .merge(sessions::router(&deployment))
         .merge(terminal::router())
         .nest("/images", images::routes())
