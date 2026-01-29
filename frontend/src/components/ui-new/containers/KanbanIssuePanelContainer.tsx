@@ -482,7 +482,8 @@ export function KanbanIssuePanelContainer() {
 
         // TODO: Create workspace if displayData.createDraftWorkspace is true
 
-        closeKanbanIssuePanel();
+        // Open the newly created issue
+        openIssue(newIssue.id);
       } else {
         // Update existing issue - would use update mutation
         // For now, just close the panel
@@ -501,7 +502,7 @@ export function KanbanIssuePanelContainer() {
     insertIssue,
     insertIssueAssignee,
     insertIssueTag,
-    closeKanbanIssuePanel,
+    openIssue,
     kanbanCreateDefaultParentIssueId,
   ]);
 
