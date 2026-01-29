@@ -85,7 +85,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           showDialog
         >
           <ClickToComponent />
-          <VibeKanbanWebCompanion />
           <App />
           {/*<TanStackDevtools plugins={[FormDevtoolsPlugin()]} />*/}
           {/* <ReactQueryDevtools initialIsOpen={false} /> */}

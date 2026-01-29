@@ -87,7 +87,6 @@
     "tailwind-merge": "^2.2.0",
     "tailwind-scrollbar": "^3.1.0",
     "tailwindcss-animate": "^1.0.7",
-    "vibe-kanban-web-companion": "^0.0.4",
     "wa-sqlite": "^1.0.0",
     "zustand": "^4.5.4"
   },

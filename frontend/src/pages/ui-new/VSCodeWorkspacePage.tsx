@@ -14,6 +14,7 @@ import { EntriesProvider } from '@/contexts/EntriesContext';
 import { MessageEditProvider } from '@/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
+import { createWorkspaceWithSession } from '@/types/attempt';
 
 export function VSCodeWorkspacePage() {
   const conversationListRef = useRef<ConversationListHandle>(null);
@@ -24,10 +25,13 @@ export function VSCodeWorkspacePage() {
     selectedSession,
     selectSession,
     isLoading,
+    diffStats,
+    isNewSessionMode,
+    startNewSession,
   } = useWorkspaceContext();
 
-  const workspaceWithSession = workspace && selectedSession
-    ? { ...workspace, session: selectedSession }
+  const workspaceWithSession = workspace
+    ? createWorkspaceWithSession(workspace, selectedSession)
     : undefined;
 
   const handleScrollToPreviousMessage = () => {
@@ -75,21 +79,28 @@ export function VSCodeWorkspacePage() {
                 )}
                 <div className="flex justify-center @container pl-px">
                   <SessionChatBoxContainer
-                    {...(selectedSession
+                    {...(isNewSessionMode && workspaceWithSession
                       ? {
-                          mode: 'existing-session',
-                          session: selectedSession,
+                          mode: 'new-session',
+                          workspaceId: workspaceWithSession.id,
                           onSelectSession: selectSession,
-                          onStartNewSession: undefined,
                         }
-                      : {
-                          mode: 'placeholder',
-                        })}
+                      : selectedSession
+                        ? {
+                            mode: 'existing-session',
+                            session: selectedSession,
+                            onSelectSession: selectSession,
+                            onStartNewSession: startNewSession,
+                          }
+                        : {
+                            mode: 'placeholder',
+                          })}
                     sessions={sessions}
                     projectId={undefined}
-                    filesChanged={0}
-                    linesAdded={0}
-                    linesRemoved={0}
+                    filesChanged={diffStats.files_changed}
+                    linesAdded={diffStats.lines_added}
+                    linesRemoved={diffStats.lines_removed}
+                    disableViewCode
                     onScrollToPreviousMessage={handleScrollToPreviousMessage}
                     onScrollToBottom={handleScrollToBottom}
                   />
