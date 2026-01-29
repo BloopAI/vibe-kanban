@@ -207,8 +207,8 @@ export const ISSUES_SHAPE = defineShape<Issue>(
 
 export const WORKSPACES_SHAPE = defineShape<Workspace>(
   'workspaces',
-  ['project_id'] as const,
-  '/v1/shape/project/{project_id}/workspaces'
+  [] as const, // No params - backend gets user from auth context
+  '/v1/shape/user/workspaces'
 );
 
 export const ISSUE_ASSIGNEES_SHAPE = defineShape<IssueAssignee>(

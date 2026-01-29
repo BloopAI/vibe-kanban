@@ -1,0 +1,109 @@
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useCallback,
+  type ReactNode,
+} from 'react';
+import { useEntity } from '@/lib/electric/hooks';
+import { WORKSPACE_ENTITY, type Workspace } from 'shared/remote-types';
+import type { SyncError } from '@/lib/electric/types';
+import { useAuth } from '@/hooks/auth/useAuth';
+
+/**
+ * UserContext provides user-scoped data.
+ *
+ * Entities synced at user scope:
+ * - Workspaces (data only, scoped by owner_user_id)
+ */
+export interface UserContextValue {
+  // Data
+  workspaces: Workspace[];
+
+  // Loading/error state
+  isLoading: boolean;
+  error: SyncError | null;
+  retry: () => void;
+
+  // Lookup helpers
+  getWorkspacesForIssue: (issueId: string) => Workspace[];
+}
+
+const UserContext = createContext<UserContextValue | null>(null);
+
+interface UserProviderProps {
+  children: ReactNode;
+}
+
+export function UserProvider({ children }: UserProviderProps) {
+  const { isSignedIn } = useAuth();
+
+  // No params needed - backend gets user from auth context
+  const params = useMemo(() => ({}), []);
+  const enabled = isSignedIn;
+
+  // Entity subscriptions
+  const workspacesResult = useEntity(WORKSPACE_ENTITY, params, { enabled });
+
+  // Debug logging
+  console.log('[UserContext] isSignedIn:', isSignedIn);
+  console.log('[UserContext] enabled:', enabled);
+  console.log(
+    '[UserContext] workspacesResult.isLoading:',
+    workspacesResult.isLoading
+  );
+  console.log('[UserContext] workspacesResult.error:', workspacesResult.error);
+  console.log('[UserContext] workspacesResult.data:', workspacesResult.data);
+  console.log(
+    '[UserContext] workspacesResult.data.length:',
+    workspacesResult.data.length
+  );
+
+  // Lookup helpers
+  const getWorkspacesForIssue = useCallback(
+    (issueId: string) => {
+      const filtered = workspacesResult.data.filter(
+        (w) => w.issue_id === issueId
+      );
+      console.log(
+        '[UserContext] getWorkspacesForIssue:',
+        issueId,
+        'found:',
+        filtered.length,
+        'workspaces'
+      );
+      return filtered;
+    },
+    [workspacesResult.data]
+  );
+
+  const value = useMemo<UserContextValue>(
+    () => ({
+      // Data
+      workspaces: workspacesResult.data,
+
+      // Loading/error
+      isLoading: workspacesResult.isLoading,
+      error: workspacesResult.error,
+      retry: workspacesResult.retry,
+
+      // Lookup helpers
+      getWorkspacesForIssue,
+    }),
+    [workspacesResult, getWorkspacesForIssue]
+  );
+
+  return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
+}
+
+/**
+ * Hook to access user context.
+ * Must be used within a UserProvider.
+ */
+export function useUserContext(): UserContextValue {
+  const context = useContext(UserContext);
+  if (!context) {
+    throw new Error('useUserContext must be used within a UserProvider');
+  }
+  return context;
+}
