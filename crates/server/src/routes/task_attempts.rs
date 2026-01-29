@@ -64,7 +64,11 @@ use crate::{
 pub fn spawn_archive_script_if_configured(deployment: DeploymentImpl, workspace: Workspace) {
     let workspace_id = workspace.id;
     tokio::spawn(async move {
-        if let Err(e) = deployment.container().try_run_archive_script(workspace_id).await {
+        if let Err(e) = deployment
+            .container()
+            .try_run_archive_script(workspace_id)
+            .await
+        {
             tracing::error!(
                 "Failed to run archive script for workspace {}: {}",
                 workspace_id,
