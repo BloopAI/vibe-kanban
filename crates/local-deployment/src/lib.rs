@@ -16,7 +16,7 @@ use services::services::{
     filesystem::FilesystemService,
     image::ImageService,
     oauth_credentials::OAuthCredentials,
-    pr_monitor::PrMonitorService,
+    pr_monitor::OnArchiveCallback,
     project::ProjectService,
     queued_message::QueuedMessageService,
     remote_client::{RemoteClient, RemoteClientError},
@@ -274,17 +274,89 @@ impl Deployment for LocalDeployment {
         &self.auth_context
     }
 
-    async fn spawn_pr_monitor_service(&self) -> JoinHandle<()> {
-        let db = self.db().clone();
-        let analytics = self
-            .analytics()
-            .as_ref()
-            .map(|analytics_service| AnalyticsContext {
-                user_id: self.user_id().to_string(),
-                analytics_service: analytics_service.clone(),
-            });
-        let remote_client = self.remote_client().ok();
-        PrMonitorService::spawn(db, analytics, remote_client).await
+    fn on_archive_callback(&self) -> Option<OnArchiveCallback> {
+        let deployment = self.clone();
+        Some(Arc::new(move |workspace| {
+            let deployment = deployment.clone();
+            Box::pin(async move {
+                run_archive_script_if_configured(&deployment, workspace).await;
+            })
+        }))
+    }
+}
+
+/// Runs the archive script for a workspace if configured.
+/// This is a helper function used by the on_archive callback.
+async fn run_archive_script_if_configured(deployment: &LocalDeployment, workspace: db::models::workspace::Workspace) {
+    use db::models::{
+        execution_process::{ExecutionProcess, ExecutionProcessRunReason},
+        session::{CreateSession, Session},
+        workspace_repo::WorkspaceRepo,
+    };
+
+    let pool = &deployment.db.pool;
+
+    // Skip if any non-dev-server process is already running
+    if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
+        .await
+        .unwrap_or(true)
+    {
+        return;
+    }
+
+    // Skip if no container exists
+    if deployment
+        .container
+        .ensure_container_exists(&workspace)
+        .await
+        .is_err()
+    {
+        return;
+    }
+
+    // Skip if no archive scripts configured
+    let repos = match WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await {
+        Ok(r) => r,
+        Err(_) => return,
+    };
+    let Some(action) = deployment.container.archive_actions_for_repos(&repos) else {
+        return;
+    };
+
+    // Get or create a session for the archive script
+    let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await {
+        Ok(Some(s)) => s,
+        _ => {
+            match Session::create(
+                pool,
+                &CreateSession { executor: None },
+                Uuid::new_v4(),
+                workspace.id,
+            )
+            .await
+            {
+                Ok(s) => s,
+                Err(_) => return,
+            }
+        }
+    };
+
+    // Execute the archive script (creates ExecutionProcess which blocks cleanup)
+    if let Err(e) = deployment
+        .container
+        .start_execution(
+            &workspace,
+            &session,
+            &action,
+            &ExecutionProcessRunReason::ArchiveScript,
+        )
+        .await
+    {
+        tracing::error!(
+            "Failed to start archive script for workspace {}: {}",
+            workspace.id,
+            e
+        );
     }
 }
 

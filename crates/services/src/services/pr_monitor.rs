@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{future::Future, pin::Pin, sync::Arc, time::Duration};
 
 use chrono::Utc;
 use db::{
@@ -23,6 +23,11 @@ use crate::services::{
     remote_sync,
 };
 
+/// Callback type for triggering archive script when a workspace is archived.
+/// This allows the PR monitor to trigger archive scripts without depending on the full deployment.
+pub type OnArchiveCallback =
+    Arc<dyn Fn(Workspace) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
+
 #[derive(Debug, Error)]
 enum PrMonitorError {
     #[error(transparent)]
@@ -38,6 +43,7 @@ pub struct PrMonitorService {
     db: DBService,
     poll_interval: Duration,
     analytics: Option<AnalyticsContext>,
+    on_archive: Option<OnArchiveCallback>,
     remote_client: Option<RemoteClient>,
 }
 
@@ -45,12 +51,14 @@ impl PrMonitorService {
     pub async fn spawn(
         db: DBService,
         analytics: Option<AnalyticsContext>,
+        on_archive: Option<OnArchiveCallback>,
         remote_client: Option<RemoteClient>,
     ) -> tokio::task::JoinHandle<()> {
         let service = Self {
             db,
             poll_interval: Duration::from_secs(60), // Check every minute
             analytics,
+            on_archive,
             remote_client,
         };
         tokio::spawn(async move {
@@ -134,6 +142,11 @@ impl PrMonitorService {
                 // Archive workspace unless pinned
                 if !workspace.pinned {
                     Workspace::set_archived(&self.db.pool, workspace.id, true).await?;
+
+                    // Trigger archive script callback if configured
+                    if let Some(on_archive) = &self.on_archive {
+                        on_archive(workspace.clone()).await;
+                    }
                 }
 
                 // Track analytics event

@@ -58,6 +58,78 @@ use crate::{
     routes::task_attempts::gh_cli_setup::GhCliSetupError,
 };
 
+/// Spawns a background task to run the archive script if one is configured.
+/// This is called when a workspace is being archived to run any configured archive scripts.
+/// The ExecutionProcess created by start_execution() blocks workspace cleanup until complete.
+pub fn spawn_archive_script_if_configured(deployment: DeploymentImpl, workspace: Workspace) {
+    tokio::spawn(async move {
+        let pool = &deployment.db().pool;
+
+        // Skip if any non-dev-server process is already running
+        if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
+            .await
+            .unwrap_or(true)
+        {
+            return;
+        }
+
+        // Skip if no container exists
+        if deployment
+            .container()
+            .ensure_container_exists(&workspace)
+            .await
+            .is_err()
+        {
+            return;
+        }
+
+        // Skip if no archive scripts configured
+        let repos = match WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await {
+            Ok(r) => r,
+            Err(_) => return,
+        };
+        let Some(action) = deployment.container().archive_actions_for_repos(&repos) else {
+            return;
+        };
+
+        // Get or create a session for the archive script
+        let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await {
+            Ok(Some(s)) => s,
+            _ => {
+                match Session::create(
+                    pool,
+                    &CreateSession { executor: None },
+                    Uuid::new_v4(),
+                    workspace.id,
+                )
+                .await
+                {
+                    Ok(s) => s,
+                    Err(_) => return,
+                }
+            }
+        };
+
+        // Execute the archive script (creates ExecutionProcess which blocks cleanup)
+        if let Err(e) = deployment
+            .container()
+            .start_execution(
+                &workspace,
+                &session,
+                &action,
+                &ExecutionProcessRunReason::ArchiveScript,
+            )
+            .await
+        {
+            tracing::error!(
+                "Failed to start archive script for workspace {}: {}",
+                workspace.id,
+                e
+            );
+        }
+    });
+}
+
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct RebaseTaskAttemptRequest {
     pub repo_id: Uuid,
@@ -148,6 +220,10 @@ pub async fn update_workspace(
     Json(request): Json<UpdateWorkspace>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
     let pool = &deployment.db().pool;
+
+    // Check if we're archiving the workspace (transitioning from not archived to archived)
+    let is_archiving = request.archived == Some(true) && !workspace.archived;
+
     Workspace::update(
         pool,
         workspace.id,
@@ -179,6 +255,11 @@ pub async fn update_workspace(
             )
             .await;
         });
+    }
+
+    // Spawn archive script if we just archived the workspace
+    if is_archiving {
+        spawn_archive_script_if_configured(deployment, updated.clone());
     }
 
     Ok(ResponseJson(ApiResponse::success(updated)))
@@ -537,6 +618,8 @@ pub async fn merge_task_attempt(
     Task::update_status(pool, task.id, TaskStatus::Done).await?;
     if !workspace.pinned {
         Workspace::set_archived(pool, workspace.id, true).await?;
+        // Spawn archive script after archiving
+        spawn_archive_script_if_configured(deployment.clone(), workspace.clone());
     }
 
     // Stop any running dev servers for this workspace

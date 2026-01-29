@@ -38,7 +38,7 @@ use utils::{
 };
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError};
+use crate::{DeploymentImpl, error::ApiError, routes::task_attempts::spawn_archive_script_if_configured};
 
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct CreatePrApiRequest {
@@ -520,6 +520,8 @@ pub async fn attach_existing_pr(
             Task::update_status(pool, task.id, TaskStatus::Done).await?;
             if !workspace.pinned {
                 Workspace::set_archived(pool, workspace.id, true).await?;
+                // Spawn archive script after archiving
+                spawn_archive_script_if_configured(deployment.clone(), workspace.clone());
             }
         }
 
