@@ -1,9 +1,13 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { OrgProvider, useOrgContext } from '@/contexts/remote/OrgContext';
-import { ProjectProvider } from '@/contexts/remote/ProjectContext';
+import {
+  ProjectProvider,
+  useProjectContext,
+} from '@/contexts/remote/ProjectContext';
+import { useActions } from '@/contexts/ActionsContext';
 import { KanbanContainer } from '@/components/ui-new/containers/KanbanContainer';
 import { KanbanIssuePanelContainer } from '@/components/ui-new/containers/KanbanIssuePanelContainer';
 import { PERSIST_KEYS, usePaneSize } from '@/stores/useUiPreferencesStore';
@@ -11,6 +15,64 @@ import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
+
+/**
+ * Component that registers project mutations with ActionsContext.
+ * Must be rendered inside both ActionsProvider and ProjectProvider.
+ */
+function ProjectMutationsRegistration({ children }: { children: ReactNode }) {
+  const { registerProjectMutations } = useActions();
+  const { removeIssue, insertIssue, getIssue, issues } = useProjectContext();
+
+  // Use ref to always access latest issues (avoid stale closure)
+  const issuesRef = useRef(issues);
+  useEffect(() => {
+    issuesRef.current = issues;
+  }, [issues]);
+
+  useEffect(() => {
+    registerProjectMutations({
+      removeIssue: (id) => {
+        removeIssue(id);
+      },
+      duplicateIssue: (issueId) => {
+        const issue = getIssue(issueId);
+        if (!issue) return;
+
+        // Use ref to get current issues (not stale closure)
+        const currentIssues = issuesRef.current;
+        const statusIssues = currentIssues.filter(
+          (i) => i.status_id === issue.status_id
+        );
+        const minSortOrder =
+          statusIssues.length > 0
+            ? Math.min(...statusIssues.map((i) => i.sort_order))
+            : 0;
+
+        insertIssue({
+          project_id: issue.project_id,
+          status_id: issue.status_id,
+          title: `${issue.title} (Copy)`,
+          description: issue.description,
+          priority: issue.priority,
+          sort_order: minSortOrder - 1,
+          start_date: issue.start_date,
+          target_date: issue.target_date,
+          completed_at: null,
+          parent_issue_id: issue.parent_issue_id,
+          parent_issue_sort_order: issue.parent_issue_sort_order,
+          extension_metadata: issue.extension_metadata,
+        });
+      },
+    });
+
+    return () => {
+      registerProjectMutations(null);
+    };
+  }, [registerProjectMutations, removeIssue, insertIssue, getIssue]);
+
+  return <>{children}</>;
+}
 
 /**
  * Inner component that renders the Kanban board once we have the org context
@@ -61,37 +123,39 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
 
   return (
     <ProjectProvider projectId={projectId}>
-      <Group
-        orientation="horizontal"
-        className="flex-1 min-w-0 h-full"
-        defaultLayout={kanbanDefaultLayout}
-        onLayoutChange={onKanbanLayoutChange}
-      >
-        <Panel
-          id="kanban-left"
-          minSize="20%"
-          className="min-w-0 h-full overflow-hidden bg-secondary"
+      <ProjectMutationsRegistration>
+        <Group
+          orientation="horizontal"
+          className="flex-1 min-w-0 h-full"
+          defaultLayout={kanbanDefaultLayout}
+          onLayoutChange={onKanbanLayoutChange}
         >
-          <KanbanContainer />
-        </Panel>
-
-        {isPanelOpen && (
-          <Separator
-            id="kanban-separator"
-            className="w-1 bg-transparent hover:bg-brand/50 transition-colors cursor-col-resize"
-          />
-        )}
-
-        {isPanelOpen && (
           <Panel
-            id="kanban-right"
+            id="kanban-left"
             minSize="20%"
             className="min-w-0 h-full overflow-hidden bg-secondary"
           >
-            <KanbanIssuePanelContainer />
+            <KanbanContainer />
           </Panel>
-        )}
-      </Group>
+
+          {isPanelOpen && (
+            <Separator
+              id="kanban-separator"
+              className="w-1 bg-transparent hover:bg-brand/50 transition-colors cursor-col-resize"
+            />
+          )}
+
+          {isPanelOpen && (
+            <Panel
+              id="kanban-right"
+              minSize="20%"
+              className="min-w-0 h-full overflow-hidden bg-secondary"
+            >
+              <KanbanIssuePanelContainer />
+            </Panel>
+          )}
+        </Group>
+      </ProjectMutationsRegistration>
     </ProjectProvider>
   );
 }

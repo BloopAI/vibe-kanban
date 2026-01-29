@@ -8,6 +8,7 @@ import {
   type IssueFormData,
 } from '@/components/ui-new/views/KanbanIssuePanel';
 import { useActions } from '@/contexts/ActionsContext';
+import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 
 /**
  * KanbanIssuePanelContainer manages the issue detail/create panel.
@@ -512,6 +513,16 @@ export function KanbanIssuePanelContainer() {
     navigator.clipboard.writeText(url);
   }, [projectId, selectedKanbanIssueId]);
 
+  // More actions callback - opens command bar with issue actions
+  const handleMoreActions = useCallback(async () => {
+    if (!selectedKanbanIssueId || !projectId) return;
+    await CommandBarDialog.show({
+      page: 'issueActions',
+      projectId,
+      issueIds: [selectedKanbanIssueId],
+    });
+  }, [selectedKanbanIssueId, projectId]);
+
   // Loading state
   const isLoading = projectLoading || orgLoading;
 
@@ -546,6 +557,7 @@ export function KanbanIssuePanelContainer() {
       }
       titleInputRef={titleInputRef}
       onCopyLink={mode === 'edit' ? handleCopyLink : undefined}
+      onMoreActions={mode === 'edit' ? handleMoreActions : undefined}
     />
   );
 }
