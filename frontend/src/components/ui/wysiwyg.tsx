@@ -71,9 +71,9 @@ type WysiwygProps = {
   disabled?: boolean;
   onPasteFiles?: (files: File[]) => void;
   className?: string;
-  /** Workspace ID for workspace-scoped file search (preferred over projectId) */
-  workspaceId?: string;
-  /** Project ID for file search in typeahead (fallback if workspaceId not provided) */
+  /** Repo IDs for file search in typeahead (preferred over projectId) */
+  repoIds?: string[];
+  /** Project ID for file search in typeahead (fallback if repoIds not provided) */
   projectId?: string;
   /** Enables `/` command autocomplete (agent-specific). */
   executor?: BaseCodingAgent | null;
@@ -134,7 +134,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       disabled = false,
       onPasteFiles,
       className,
-      workspaceId,
+      repoIds,
       projectId,
       executor = null,
       onCmdEnter,
@@ -281,7 +281,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
 
     const editorContent = (
       <div className="wysiwyg text-base">
-        <TaskAttemptContext.Provider value={taskAttemptId || workspaceId}>
+        <TaskAttemptContext.Provider value={taskAttemptId}>
           <TaskContext.Provider value={taskId}>
             <LocalImagesContext.Provider value={localImages ?? []}>
               <LexicalComposer initialConfig={initialConfig}>
@@ -327,7 +327,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                     />
                     <TypeaheadOpenProvider>
                       <FileTagTypeaheadPlugin
-                        workspaceId={workspaceId}
+                        repoIds={repoIds}
                         projectId={projectId}
                       />
                       {executor && (

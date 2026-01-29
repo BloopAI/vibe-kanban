@@ -72,10 +72,10 @@ function getMatchingDiffFiles(
 }
 
 export function FileTagTypeaheadPlugin({
-  workspaceId,
+  repoIds,
   projectId,
 }: {
-  workspaceId?: string;
+  repoIds?: string[];
   projectId?: string;
 }) {
   const [editor] = useLexicalComposerContext();
@@ -103,7 +103,7 @@ export function FileTagTypeaheadPlugin({
       const localFilePaths = new Set(localFiles.map((f) => f.path));
 
       // Here query is a string, including possible empty string ''
-      searchTagsAndFiles(query, { workspaceId, projectId })
+      searchTagsAndFiles(query, { repoIds, projectId })
         .then((serverResults) => {
           // Separate tags and files from server results
           const tagResults = serverResults.filter((r) => r.type === 'tag');
@@ -132,7 +132,7 @@ export function FileTagTypeaheadPlugin({
           console.error('Failed to search tags/files', err);
         });
     },
-    [workspaceId, projectId, diffPaths]
+    [repoIds, projectId, diffPaths]
   );
 
   return (

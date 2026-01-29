@@ -1,4 +1,4 @@
-import { attemptsApi, projectsApi, tagsApi } from '@/lib/api';
+import { projectsApi, searchApi, tagsApi } from '@/lib/api';
 import type { SearchResult, Tag } from 'shared/types';
 
 interface FileSearchResult extends SearchResult {
@@ -12,7 +12,7 @@ export interface SearchResultItem {
 }
 
 export interface SearchOptions {
-  workspaceId?: string;
+  repoIds?: string[];
   projectId?: string;
 }
 
@@ -29,11 +29,11 @@ export async function searchTagsAndFiles(
   );
   results.push(...filteredTags.map((tag) => ({ type: 'tag' as const, tag })));
 
-  // Fetch files - prefer workspace-scoped if available
+  // Fetch files - prefer repo-scoped if available
   if (query.length > 0) {
     let fileResults: SearchResult[] = [];
-    if (options?.workspaceId) {
-      fileResults = await attemptsApi.searchFiles(options.workspaceId, query);
+    if (options?.repoIds && options.repoIds.length > 0) {
+      fileResults = await searchApi.searchFiles(options.repoIds, query);
     } else if (options?.projectId) {
       fileResults = await projectsApi.searchFiles(options.projectId, query);
     }
