@@ -39,10 +39,7 @@ import { ChatSubagentEntry } from '../primitives/conversation/ChatSubagentEntry'
 import { ChatAggregatedToolEntries } from '../primitives/conversation/ChatAggregatedToolEntries';
 import type { DiffInput } from '../primitives/conversation/PierreConversationDiff';
 import type { AggregatedPatchGroup } from '@/hooks/useConversationHistory/types';
-import {
-  FileTextIcon,
-  ListMagnifyingGlassIcon,
-} from '@phosphor-icons/react';
+import { FileTextIcon, ListMagnifyingGlassIcon } from '@phosphor-icons/react';
 
 type Props = {
   expansionKey: string;
