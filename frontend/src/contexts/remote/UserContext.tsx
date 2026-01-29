@@ -38,8 +38,8 @@ interface UserProviderProps {
 export function UserProvider({ children }: UserProviderProps) {
   const { isSignedIn } = useAuth();
 
-  // Empty string for owner_user_id - Electric backend fills this from auth context
-  const params = useMemo(() => ({ owner_user_id: '' }), []);
+  // No params needed - backend gets user from auth context
+  const params = useMemo(() => ({}), []);
   const enabled = isSignedIn;
 
   // Entity subscriptions
