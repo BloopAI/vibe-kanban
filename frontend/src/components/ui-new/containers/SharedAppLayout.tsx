@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { SyncErrorProvider } from '@/contexts/SyncErrorContext';
+import { UserProvider } from '@/contexts/remote/UserContext';
 import { NavbarContainer } from './NavbarContainer';
 import { AppBar } from '../primitives/AppBar';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
@@ -123,28 +124,30 @@ export function SharedAppLayout() {
 
   return (
     <SyncErrorProvider>
-      <div className="flex h-screen bg-primary">
-        <AppBar
-          projects={orgProjects}
-          organizations={organizations}
-          selectedOrgId={selectedOrgId ?? ''}
-          onOrgSelect={setSelectedOrgId}
-          onCreateOrg={handleCreateOrg}
-          onCreateProject={handleCreateProject}
-          onWorkspacesClick={handleWorkspacesClick}
-          onProjectClick={handleProjectClick}
-          isWorkspacesActive={isWorkspacesActive}
-          activeProjectId={activeProjectId}
-          isSignedIn={isSignedIn}
-          isLoadingProjects={isLoading}
-        />
-        <div className="flex flex-col flex-1 min-w-0">
-          <NavbarContainer />
-          <div className="flex-1 min-h-0">
-            <Outlet />
+      <UserProvider>
+        <div className="flex h-screen bg-primary">
+          <AppBar
+            projects={orgProjects}
+            organizations={organizations}
+            selectedOrgId={selectedOrgId ?? ''}
+            onOrgSelect={setSelectedOrgId}
+            onCreateOrg={handleCreateOrg}
+            onCreateProject={handleCreateProject}
+            onWorkspacesClick={handleWorkspacesClick}
+            onProjectClick={handleProjectClick}
+            isWorkspacesActive={isWorkspacesActive}
+            activeProjectId={activeProjectId}
+            isSignedIn={isSignedIn}
+            isLoadingProjects={isLoading}
+          />
+          <div className="flex flex-col flex-1 min-w-0">
+            <NavbarContainer />
+            <div className="flex-1 min-h-0">
+              <Outlet />
+            </div>
           </div>
         </div>
-      </div>
+      </UserProvider>
     </SyncErrorProvider>
   );
 }
