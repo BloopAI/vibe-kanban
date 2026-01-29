@@ -11,7 +11,6 @@ interface ExecutorProfileId {
 interface UseExecutorSelectionOptions {
   profiles: Record<string, ExecutorConfig> | null;
   latestProfileId: ExecutorProfileId | null;
-  isNewSessionMode: boolean;
   scratchVariant: string | null | undefined;
   /** User's saved executor preference from config */
   configExecutorProfile?: ExecutorProfileId | null;
@@ -40,7 +39,6 @@ interface UseExecutorSelectionResult {
 export function useExecutorSelection({
   profiles,
   latestProfileId,
-  isNewSessionMode,
   scratchVariant,
   configExecutorProfile,
 }: UseExecutorSelectionOptions): UseExecutorSelectionResult {
@@ -68,12 +66,8 @@ export function useExecutorSelection({
   );
 
   const variantOptions = useMemo(
-    () =>
-      getVariantOptions(
-        isNewSessionMode ? effectiveExecutor : latestProfileId?.executor,
-        profiles
-      ),
-    [isNewSessionMode, effectiveExecutor, latestProfileId?.executor, profiles]
+    () => getVariantOptions(effectiveExecutor, profiles),
+    [effectiveExecutor, profiles]
   );
 
   const { selectedVariant, setSelectedVariant } = useVariant({
