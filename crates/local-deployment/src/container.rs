@@ -321,12 +321,11 @@ impl LocalContainerService {
         for repo in repos {
             let worktree_path = workspace_root.join(&repo.name);
 
-            match git.is_worktree_clean(&worktree_path) {
-                Ok(false) => {
-                    // false = dirty = has changes
+            match git.get_worktree_status(&worktree_path) {
+                Ok(ws) if !ws.entries.is_empty() => {
                     repos_with_changes.push((repo.clone(), worktree_path));
                 }
-                Ok(true) => {
+                Ok(_) => {
                     tracing::debug!("No changes in repo '{}'", repo.name);
                 }
                 Err(e) => {
