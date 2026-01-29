@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { Icon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '../primitives/Tooltip';
@@ -72,6 +73,8 @@ export interface NavbarProps {
   leftItems?: NavbarItem[];
   // Items for right side of navbar (with dividers inline)
   rightItems?: NavbarItem[];
+  // Optional additional content for left side (after leftItems)
+  leftSlot?: ReactNode;
   // Context for deriving action state
   actionContext: ActionVisibilityContext;
   // Handler to execute an action
@@ -83,6 +86,7 @@ export function Navbar({
   workspaceTitle = 'Workspace Title',
   leftItems = [],
   rightItems = [],
+  leftSlot,
   actionContext,
   onExecuteAction,
   className,
@@ -128,7 +132,7 @@ export function Navbar({
         className
       )}
     >
-      {/* Left - Archive & Old UI Link */}
+      {/* Left - Archive & Old UI Link + optional slot */}
       <div className="flex-1 flex items-center gap-base">
         {leftItems.map((item, index) =>
           renderItem(
@@ -136,6 +140,7 @@ export function Navbar({
             `left-${isDivider(item) ? 'divider' : item.id}-${index}`
           )
         )}
+        {leftSlot}
       </div>
 
       {/* Center - Workspace Title */}
