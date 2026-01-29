@@ -510,18 +510,6 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
-  searchFiles: async (
-    workspaceId: string,
-    query: string,
-    mode?: string
-  ): Promise<SearchResult[]> => {
-    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
-    const response = await makeRequest(
-      `/api/task-attempts/${workspaceId}/search?q=${encodeURIComponent(query)}${modeParam}`
-    );
-    return handleApiResponse<SearchResult[]>(response);
-  },
-
   runAgentSetup: async (
     attemptId: string,
     data: RunAgentSetupRequest
@@ -1405,5 +1393,23 @@ export const migrationApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<MigrationResponse>(response);
+  },
+};
+
+// Search API (multi-repo file search)
+export const searchApi = {
+  searchFiles: async (
+    repoIds: string[],
+    query: string,
+    mode?: SearchMode,
+    options?: RequestInit
+  ): Promise<SearchResult[]> => {
+    const repoIdsParam = repoIds.join(',');
+    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
+    const response = await makeRequest(
+      `/api/search?q=${encodeURIComponent(query)}&repo_ids=${encodeURIComponent(repoIdsParam)}${modeParam}`,
+      options
+    );
+    return handleApiResponse<SearchResult[]>(response);
   },
 };
