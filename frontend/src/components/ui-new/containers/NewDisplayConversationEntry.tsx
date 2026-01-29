@@ -39,7 +39,11 @@ import { ChatSubagentEntry } from '../primitives/conversation/ChatSubagentEntry'
 import { ChatAggregatedToolEntries } from '../primitives/conversation/ChatAggregatedToolEntries';
 import type { DiffInput } from '../primitives/conversation/PierreConversationDiff';
 import type { AggregatedPatchGroup } from '@/hooks/useConversationHistory/types';
-import { FileTextIcon, ListMagnifyingGlassIcon } from '@phosphor-icons/react';
+import {
+  FileTextIcon,
+  ListMagnifyingGlassIcon,
+  GlobeIcon,
+} from '@phosphor-icons/react';
 
 type Props = {
   expansionKey: string;
@@ -243,6 +247,7 @@ function renderToolUseEntry(
       content={getToolOutput(entryType, entry.content)}
       toolName={entryType.tool_name}
       command={getToolCommand(entryType)}
+      actionType={action_type.action}
     />
   );
 }
@@ -259,7 +264,7 @@ function NewDisplayConversationEntry(props: Props) {
 
   // Handle aggregated groups (consecutive file_read or search entries)
   if (aggregatedGroup) {
-    return <AggregatedGroupEntry group={aggregatedGroup} t={t} />;
+    return <AggregatedGroupEntry group={aggregatedGroup} />;
   }
 
   // If no entry, return null (shouldn't happen in normal usage)
@@ -558,6 +563,7 @@ function ToolSummaryEntry({
   content,
   toolName,
   command,
+  actionType,
 }: {
   summary: string;
   expansionKey: string;
@@ -565,6 +571,7 @@ function ToolSummaryEntry({
   content: string;
   toolName: string;
   command: string | undefined;
+  actionType: string;
 }) {
   const [expanded, toggle] = usePersistedExpanded(
     `tool:${expansionKey}`,
@@ -598,6 +605,7 @@ function ToolSummaryEntry({
       onViewContent={hasOutput ? handleViewContent : undefined}
       toolName={toolName}
       isTruncated={isTruncated}
+      actionType={actionType}
     />
   );
 }
@@ -769,14 +777,12 @@ function ErrorMessageEntry({
 }
 
 /**
- * Aggregated group entry for consecutive file_read or search entries
+ * Aggregated group entry for consecutive file_read, search, or web_fetch entries
  */
 function AggregatedGroupEntry({
   group,
-  t,
 }: {
   group: AggregatedPatchGroup;
-  t: TFunction<'common'>;
 }) {
   const { viewToolContentInPanel } = useLogsPanel();
   const [expanded, setExpanded] = useState(false);
@@ -811,9 +817,9 @@ function AggregatedGroupEntry({
       if (action_type.action === 'file_read') {
         summary = action_type.path;
       } else if (action_type.action === 'search') {
-        summary = t('conversation.toolSummary.searched', {
-          query: action_type.query,
-        });
+        summary = action_type.query;
+      } else if (action_type.action === 'web_fetch') {
+        summary = action_type.url;
       }
 
       return {
@@ -824,7 +830,7 @@ function AggregatedGroupEntry({
         toolName: tool_name,
       };
     });
-  }, [group.entries, t]);
+  }, [group.entries]);
 
   const handleViewContent = useCallback(
     (index: number) => {
@@ -845,9 +851,17 @@ function AggregatedGroupEntry({
   }, []);
 
   // Get the label and icon based on aggregation type
-  const isFileRead = group.aggregationType === 'file_read';
-  const label = isFileRead ? 'Read' : 'Search';
-  const icon = isFileRead ? FileTextIcon : ListMagnifyingGlassIcon;
+  const getLabelAndIcon = () => {
+    switch (group.aggregationType) {
+      case 'file_read':
+        return { label: 'Read', icon: FileTextIcon };
+      case 'search':
+        return { label: 'Search', icon: ListMagnifyingGlassIcon };
+      case 'web_fetch':
+        return { label: 'Fetched', icon: GlobeIcon };
+    }
+  };
+  const { label, icon } = getLabelAndIcon();
 
   return (
     <ChatAggregatedToolEntries

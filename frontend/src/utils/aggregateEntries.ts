@@ -4,11 +4,11 @@ import type {
   AggregatedPatchGroup,
 } from '@/hooks/useConversationHistory/types';
 
-type AggregationType = 'file_read' | 'search';
+type AggregationType = 'file_read' | 'search' | 'web_fetch';
 
 /**
  * Determines if a patch entry can be aggregated and returns its aggregation type.
- * Only file_read and search tool_use entries can be aggregated.
+ * Only file_read, search, and web_fetch tool_use entries can be aggregated.
  */
 function getAggregationType(entry: PatchTypeWithKey): AggregationType | null {
   if (entry.type !== 'NORMALIZED_ENTRY') return null;
@@ -19,12 +19,13 @@ function getAggregationType(entry: PatchTypeWithKey): AggregationType | null {
   const { action_type } = entryType;
   if (action_type.action === 'file_read') return 'file_read';
   if (action_type.action === 'search') return 'search';
+  if (action_type.action === 'web_fetch') return 'web_fetch';
 
   return null;
 }
 
 /**
- * Aggregates consecutive entries of the same aggregatable type (file_read, search)
+ * Aggregates consecutive entries of the same aggregatable type (file_read, search, web_fetch)
  * into grouped entries for accordion-style display.
  *
  * Rules:

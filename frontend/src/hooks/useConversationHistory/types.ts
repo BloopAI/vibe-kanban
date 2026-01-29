@@ -6,13 +6,13 @@ export type PatchTypeWithKey = PatchType & {
 };
 
 /**
- * A group of consecutive entries of the same aggregatable type (e.g., file_read, search).
- * Used to display multiple read/search operations in a collapsed accordion style.
+ * A group of consecutive entries of the same aggregatable type (e.g., file_read, search, web_fetch).
+ * Used to display multiple read/search/fetch operations in a collapsed accordion style.
  */
 export type AggregatedPatchGroup = {
   type: 'AGGREGATED_GROUP';
-  /** The aggregation category (e.g., 'file_read', 'search') */
-  aggregationType: 'file_read' | 'search';
+  /** The aggregation category (e.g., 'file_read', 'search', 'web_fetch') */
+  aggregationType: 'file_read' | 'search' | 'web_fetch';
   /** The individual entries in this group */
   entries: PatchTypeWithKey[];
   /** Unique key for the group */
