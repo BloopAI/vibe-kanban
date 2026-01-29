@@ -779,11 +779,7 @@ function ErrorMessageEntry({
 /**
  * Aggregated group entry for consecutive file_read, search, or web_fetch entries
  */
-function AggregatedGroupEntry({
-  group,
-}: {
-  group: AggregatedPatchGroup;
-}) {
+function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
   const { viewToolContentInPanel } = useLogsPanel();
   const [expanded, setExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
