@@ -15,6 +15,7 @@ import {
   type ActionDefinition,
   type ActionExecutorContext,
   type ActionVisibilityContext,
+  type ProjectMutations,
   ActionTargetType,
   resolveLabel,
 } from '@/components/ui-new/actions';
@@ -71,6 +72,9 @@ interface ActionsContextValue {
   // Set default status for issue creation based on current kanban tab
   setDefaultCreateStatusId: (statusId: string | undefined) => void;
 
+  // Register project mutations (called by components inside ProjectProvider)
+  registerProjectMutations: (mutations: ProjectMutations | null) => void;
+
   // The executor context (for components that need direct access)
   executorContext: ActionExecutorContext;
 }
@@ -98,6 +102,17 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   const [defaultCreateStatusId, setDefaultCreateStatusId] = useState<
     string | undefined
   >();
+
+  // Project mutations state (registered by components inside ProjectProvider)
+  const [projectMutations, setProjectMutations] =
+    useState<ProjectMutations | null>(null);
+
+  const registerProjectMutations = useCallback(
+    (mutations: ProjectMutations | null) => {
+      setProjectMutations(mutations);
+    },
+    []
+  );
 
   // Navigate to create issue mode (URL-based navigation)
   const navigateToCreateIssue = useCallback(
@@ -195,8 +210,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   );
 
   // Build executor context from hooks
-  const executorContext = useMemo<ActionExecutorContext>(
-    () => ({
+  const executorContext = useMemo<ActionExecutorContext>(() => {
+    return {
       navigate,
       queryClient,
       selectWorkspace,
@@ -217,30 +232,31 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       defaultCreateStatusId,
       kanbanOrgId: selectedOrgId ?? undefined,
       kanbanProjectId: projectId,
-    }),
-    [
-      navigate,
-      queryClient,
-      selectWorkspace,
-      activeWorkspaces,
-      workspaceId,
-      workspace?.container_ref,
-      runningDevServers,
-      start,
-      stop,
-      currentLogs,
-      logsPanelContent,
-      openStatusSelection,
-      openPrioritySelection,
-      openAssigneeSelection,
-      openSubIssueSelection,
-      openWorkspaceSelection,
-      navigateToCreateIssue,
-      defaultCreateStatusId,
-      selectedOrgId,
-      projectId,
-    ]
-  );
+      projectMutations: projectMutations ?? undefined,
+    };
+  }, [
+    navigate,
+    queryClient,
+    selectWorkspace,
+    activeWorkspaces,
+    workspaceId,
+    workspace?.container_ref,
+    runningDevServers,
+    start,
+    stop,
+    currentLogs,
+    logsPanelContent,
+    openStatusSelection,
+    openPrioritySelection,
+    openAssigneeSelection,
+    openSubIssueSelection,
+    openWorkspaceSelection,
+    navigateToCreateIssue,
+    defaultCreateStatusId,
+    selectedOrgId,
+    projectId,
+    projectMutations,
+  ]);
 
   // Main action executor with centralized target validation and error handling
   const executeAction = useCallback(
@@ -326,6 +342,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openSubIssueSelection,
       openWorkspaceSelection,
       setDefaultCreateStatusId,
+      registerProjectMutations,
       executorContext,
     }),
     [
@@ -336,6 +353,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openAssigneeSelection,
       openSubIssueSelection,
       openWorkspaceSelection,
+      registerProjectMutations,
       executorContext,
     ]
   );

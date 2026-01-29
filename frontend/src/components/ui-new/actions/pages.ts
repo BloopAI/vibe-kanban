@@ -245,6 +245,8 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
           { type: 'action', action: Actions.MakeSubIssueOf },
           { type: 'action', action: Actions.AddSubIssue },
           { type: 'action', action: Actions.LinkWorkspace },
+          { type: 'action', action: Actions.DuplicateIssue },
+          { type: 'action', action: Actions.DeleteIssue },
         ],
       },
     ],

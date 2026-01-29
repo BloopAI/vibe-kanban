@@ -94,6 +94,12 @@ interface SidebarWorkspace {
 // Dev server state type for visibility context
 export type DevServerState = 'stopped' | 'starting' | 'running' | 'stopping';
 
+// Project mutations interface (registered by ProjectProvider consumers)
+export interface ProjectMutations {
+  removeIssue: (id: string) => void;
+  duplicateIssue: (issueId: string) => void;
+}
+
 // Context provided to action executors (from React hooks)
 export interface ActionExecutorContext {
   navigate: NavigateFunction;
@@ -132,6 +138,8 @@ export interface ActionExecutorContext {
   // Current kanban context (for project settings action)
   kanbanOrgId?: string;
   kanbanProjectId?: string;
+  // Project mutations (registered when inside ProjectProvider)
+  projectMutations?: ProjectMutations;
 }
 
 // Context for evaluating action visibility and state conditions
@@ -1349,6 +1357,51 @@ export const Actions = {
       if (issueIds.length === 1) {
         await ctx.openWorkspaceSelection(projectId, issueIds[0]);
       }
+    },
+  } satisfies IssueActionDefinition,
+
+  DeleteIssue: {
+    id: 'delete-issue',
+    label: 'Delete Issue',
+    icon: TrashIcon,
+    shortcut: 'I X',
+    variant: 'destructive',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, _projectId, issueIds) => {
+      const count = issueIds.length;
+      const result = await ConfirmDialog.show({
+        title: count === 1 ? 'Delete Issue' : `Delete ${count} Issues`,
+        message:
+          count === 1
+            ? 'Are you sure you want to delete this issue? This action cannot be undone.'
+            : `Are you sure you want to delete these ${count} issues? This action cannot be undone.`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        variant: 'destructive',
+      });
+      if (result === 'confirmed' && ctx.projectMutations?.removeIssue) {
+        for (const issueId of issueIds) {
+          ctx.projectMutations.removeIssue(issueId);
+        }
+      }
+    },
+  } satisfies IssueActionDefinition,
+
+  DuplicateIssue: {
+    id: 'duplicate-issue',
+    label: 'Duplicate Issue',
+    icon: CopyIcon,
+    shortcut: 'I D',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, _projectId, issueIds) => {
+      if (issueIds.length !== 1) {
+        throw new Error('Can only duplicate one issue at a time');
+      }
+      ctx.projectMutations?.duplicateIssue(issueIds[0]);
     },
   } satisfies IssueActionDefinition,
 } as const satisfies Record<string, ActionDefinition>;
