@@ -595,10 +595,14 @@ export function SessionChatBox({
                           linesRemoved !== undefined) && (
                           <span className="space-x-half">
                             {linesAdded !== undefined && (
-                              <span className="text-success">+{linesAdded}</span>
+                              <span className="text-success">
+                                +{linesAdded}
+                              </span>
                             )}
                             {linesRemoved !== undefined && (
-                              <span className="text-error">-{linesRemoved}</span>
+                              <span className="text-error">
+                                -{linesRemoved}
+                              </span>
                             )}
                           </span>
                         )}
