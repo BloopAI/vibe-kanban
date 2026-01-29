@@ -55,7 +55,7 @@ export function KanbanIssuePanelContainer() {
   // Close panel by navigating to project URL (URL is single source of truth)
   const closeKanbanIssuePanel = closePanel;
 
-  // Close panel if selected issue doesn't exist in current project (e.g., stale persisted state)
+  // Close panel if selected issue doesn't exist in current project
   useEffect(() => {
     // Wait for data to load
     if (projectLoading || orgLoading) return;
