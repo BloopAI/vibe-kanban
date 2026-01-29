@@ -18,7 +18,6 @@ import {
   ISSUE_FOLLOWER_ENTITY,
   ISSUE_TAG_ENTITY,
   ISSUE_RELATIONSHIP_ENTITY,
-  WORKSPACE_ENTITY,
   PULL_REQUEST_ENTITY,
   type Issue,
   type ProjectStatus,
@@ -27,7 +26,6 @@ import {
   type IssueFollower,
   type IssueTag,
   type IssueRelationship,
-  type Workspace,
   type PullRequest,
   type CreateIssueRequest,
   type UpdateIssueRequest,
@@ -53,8 +51,9 @@ import type { SyncError } from '@/lib/electric/types';
  * - IssueFollowers (data + mutations)
  * - IssueTags (data + mutations)
  * - IssueRelationships (data + mutations)
- * - Workspaces (data only)
  * - PullRequests (data only)
+ *
+ * Note: Workspaces are user-scoped and provided by UserContext.
  */
 export interface ProjectContextValue {
   projectId: string;
@@ -67,7 +66,6 @@ export interface ProjectContextValue {
   issueFollowers: IssueFollower[];
   issueTags: IssueTag[];
   issueRelationships: IssueRelationship[];
-  workspaces: Workspace[];
   pullRequests: PullRequest[];
 
   // Loading/error state
@@ -130,7 +128,6 @@ export interface ProjectContextValue {
   getRelationshipsForIssue: (issueId: string) => IssueRelationship[];
   getStatus: (statusId: string) => ProjectStatus | undefined;
   getTag: (tagId: string) => Tag | undefined;
-  getWorkspacesForIssue: (issueId: string) => Workspace[];
   getPullRequestsForIssue: (issueId: string) => PullRequest[];
 
   // Computed aggregations (Maps for O(1) lookup)
@@ -166,7 +163,6 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     params,
     { enabled }
   );
-  const workspacesResult = useEntity(WORKSPACE_ENTITY, params, { enabled });
   const pullRequestsResult = useEntity(PULL_REQUEST_ENTITY, params, {
     enabled,
   });
@@ -180,7 +176,6 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueFollowersResult.isLoading ||
     issueTagsResult.isLoading ||
     issueRelationshipsResult.isLoading ||
-    workspacesResult.isLoading ||
     pullRequestsResult.isLoading;
 
   // First error found
@@ -192,7 +187,6 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueFollowersResult.error ||
     issueTagsResult.error ||
     issueRelationshipsResult.error ||
-    workspacesResult.error ||
     pullRequestsResult.error ||
     null;
 
@@ -205,7 +199,6 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueFollowersResult.retry();
     issueTagsResult.retry();
     issueRelationshipsResult.retry();
-    workspacesResult.retry();
     pullRequestsResult.retry();
   }, [
     issuesResult,
@@ -215,7 +208,6 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueFollowersResult,
     issueTagsResult,
     issueRelationshipsResult,
-    workspacesResult,
     pullRequestsResult,
   ]);
 
@@ -302,12 +294,6 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     [tagsById]
   );
 
-  const getWorkspacesForIssue = useCallback(
-    (issueId: string) =>
-      workspacesResult.data.filter((w) => w.issue_id === issueId),
-    [workspacesResult.data]
-  );
-
   const getPullRequestsForIssue = useCallback(
     (issueId: string) =>
       pullRequestsResult.data.filter((pr) => pr.issue_id === issueId),
@@ -326,7 +312,6 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       issueFollowers: issueFollowersResult.data,
       issueTags: issueTagsResult.data,
       issueRelationships: issueRelationshipsResult.data,
-      workspaces: workspacesResult.data,
       pullRequests: pullRequestsResult.data,
 
       // Loading/error
@@ -375,7 +360,6 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       getRelationshipsForIssue,
       getStatus,
       getTag,
-      getWorkspacesForIssue,
       getPullRequestsForIssue,
 
       // Computed aggregations
@@ -392,7 +376,6 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       issueFollowersResult,
       issueTagsResult,
       issueRelationshipsResult,
-      workspacesResult,
       pullRequestsResult,
       isLoading,
       error,
@@ -406,7 +389,6 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       getRelationshipsForIssue,
       getStatus,
       getTag,
-      getWorkspacesForIssue,
       getPullRequestsForIssue,
       issuesById,
       statusesById,

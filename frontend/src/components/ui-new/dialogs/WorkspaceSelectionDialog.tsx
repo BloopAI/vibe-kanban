@@ -15,10 +15,8 @@ import {
   CommandItem,
 } from '@/components/ui-new/primitives/Command';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import {
-  ProjectProvider,
-  useProjectContext,
-} from '@/contexts/remote/ProjectContext';
+import { ProjectProvider, useProjectContext } from '@/contexts/remote/ProjectContext';
+import { UserProvider, useUserContext } from '@/contexts/remote/UserContext';
 
 export interface WorkspaceSelectionDialogProps {
   projectId: string;
@@ -43,8 +41,11 @@ function WorkspaceSelectionContent({
   // Get local workspaces from WorkspaceContext (both active and archived)
   const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
 
-  // Get already-linked workspaces from ProjectContext
-  const { getWorkspacesForIssue, getIssue, workspaces } = useProjectContext();
+  // Get already-linked workspaces from UserContext (workspaces are user-scoped)
+  const { getWorkspacesForIssue, workspaces } = useUserContext();
+
+  // Get issue data from ProjectContext (issues are project-scoped)
+  const { getIssue } = useProjectContext();
 
   const [search, setSearch] = useState('');
   const [isLinking, setIsLinking] = useState(false);
@@ -284,7 +285,7 @@ function WorkspaceSelectionContent({
   );
 }
 
-/** Wrapper that provides ProjectContext */
+/** Wrapper that provides UserContext and ProjectContext */
 function WorkspaceSelectionWithContext({
   projectId,
   issueId,
@@ -294,9 +295,11 @@ function WorkspaceSelectionWithContext({
   }
 
   return (
-    <ProjectProvider projectId={projectId}>
-      <WorkspaceSelectionContent projectId={projectId} issueId={issueId} />
-    </ProjectProvider>
+    <UserProvider>
+      <ProjectProvider projectId={projectId}>
+        <WorkspaceSelectionContent projectId={projectId} issueId={issueId} />
+      </ProjectProvider>
+    </UserProvider>
   );
 }
 
