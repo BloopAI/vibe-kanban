@@ -17,6 +17,7 @@ export type KanbanCardContentProps = {
   tags: { id: string; name: string; color: string }[];
   assignees: OrganizationMemberWithProfile[];
   pullRequests?: PullRequest[];
+  isSubIssue?: boolean;
   isLoading?: boolean;
   className?: string;
 };
@@ -29,13 +30,15 @@ export const KanbanCardContent = ({
   tags,
   assignees,
   pullRequests = [],
+  isSubIssue,
   isLoading = false,
   className,
 }: KanbanCardContentProps) => {
   return (
     <div className={cn('flex flex-col gap-half min-w-0', className)}>
-      {/* Row 1: Task ID + loading dots */}
+      {/* Row 1: Task ID + sub-issue indicator + loading dots */}
       <div className="flex items-center gap-half">
+        {isSubIssue && <span className="text-sm text-low">↳</span>}
         <span className="font-ibm-plex-mono text-sm text-low truncate">
           {displayId}
         </span>

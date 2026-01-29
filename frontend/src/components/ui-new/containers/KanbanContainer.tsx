@@ -497,6 +497,7 @@ export function KanbanContainer() {
                               tags={getTagObjectsForIssue(issue.id)}
                               assignees={issueAssigneesMap[issue.id] ?? []}
                               pullRequests={getPullRequestsForIssue(issue.id)}
+                              isSubIssue={!!issue.parent_issue_id}
                             />
                           </KanbanCard>
                         );
