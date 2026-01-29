@@ -24,6 +24,7 @@ use executors::actions::{
 use git::{GitCliError, GitRemote, GitServiceError};
 use serde::{Deserialize, Serialize};
 use services::services::{
+    config::DEFAULT_PR_DESCRIPTION_PROMPT,
     container::ContainerService,
     git_host::{
         self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
@@ -90,11 +91,6 @@ pub enum GetPrCommentsError {
 pub struct GetPrCommentsQuery {
     pub repo_id: Uuid,
 }
-
-// Re-export constants for type generation
-pub use services::services::config::{
-    DEFAULT_COMMIT_REMINDER_PROMPT, DEFAULT_PR_DESCRIPTION_PROMPT,
-};
 
 async fn trigger_pr_description_follow_up(
     deployment: &DeploymentImpl,
