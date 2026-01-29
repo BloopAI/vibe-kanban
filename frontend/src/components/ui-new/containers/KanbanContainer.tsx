@@ -89,8 +89,9 @@ export function KanbanContainer() {
   const setListViewStatusFilter = useUiPreferencesStore(
     (s) => s.setListViewStatusFilter
   );
+  const clearKanbanFilters = useUiPreferencesStore((s) => s.clearKanbanFilters);
 
-  // Reset tab selection when navigating between projects
+  // Reset view mode and filters when navigating between projects
   const prevProjectIdRef = useRef<string | null>(null);
 
   // Track when drag-drop sync is in progress to prevent flicker
@@ -103,9 +104,15 @@ export function KanbanContainer() {
     ) {
       setKanbanViewMode('kanban');
       setListViewStatusFilter(null);
+      clearKanbanFilters();
     }
     prevProjectIdRef.current = projectId;
-  }, [projectId, setKanbanViewMode, setListViewStatusFilter]);
+  }, [
+    projectId,
+    setKanbanViewMode,
+    setListViewStatusFilter,
+    clearKanbanFilters,
+  ]);
 
   // Sort all statuses for display settings
   const sortedStatuses = useMemo(
