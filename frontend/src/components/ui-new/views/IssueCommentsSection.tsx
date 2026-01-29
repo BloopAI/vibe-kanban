@@ -81,6 +81,7 @@ export function IssueCommentsSection({
   reactionsByCommentId,
   onToggleReaction,
   onReply,
+  isLoading,
   commentEditorRef,
 }: IssueCommentsSectionProps) {
   const { t } = useTranslation('common');
@@ -94,7 +95,12 @@ export function IssueCommentsSection({
     >
       <div className="px-base pb-base flex flex-col gap-double">
         {/* Comments list */}
-        {comments.length === 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col gap-double animate-pulse">
+            <div className="h-4 bg-secondary rounded w-3/4" />
+            <div className="h-4 bg-secondary rounded w-1/2" />
+          </div>
+        ) : comments.length === 0 ? (
           <p className="text-low">{t('kanban.noCommentsYet')}</p>
         ) : (
           comments.map((comment) => (
