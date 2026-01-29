@@ -41,8 +41,8 @@ pub struct Opencode {
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub variant: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none", alias = "agent")]
-    pub mode: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "mode")]
+    pub agent: Option<String>,
     /// Auto-approve agent actions
     #[serde(default = "default_to_true")]
     pub auto_approve: bool,
@@ -168,7 +168,7 @@ impl Opencode {
         };
         let model = self.model.clone();
         let model_variant = self.variant.clone();
-        let agent = self.mode.clone();
+        let agent = self.agent.clone();
         let auto_approve = self.auto_approve;
         let resume_session_id = resume_session.map(|s| s.to_string());
         let models_cache_key = self.compute_models_cache_key();
