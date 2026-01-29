@@ -15,6 +15,8 @@ interface ChatAggregatedToolEntriesProps {
   isHovered: boolean;
   onToggle: () => void;
   onHoverChange: (hovered: boolean) => void;
+  /** Label to show before the count (e.g., "Read", "Search") */
+  label: string;
   icon?: React.ElementType;
   className?: string;
   onViewContent?: (index: number) => void;
@@ -26,6 +28,7 @@ export function ChatAggregatedToolEntries({
   isHovered,
   onToggle,
   onHoverChange,
+  label,
   icon: Icon = ListMagnifyingGlassIcon,
   className,
   onViewContent,
@@ -113,7 +116,7 @@ export function ChatAggregatedToolEntries({
           )}
         </span>
         <span className="truncate">
-          {entries.length} {entries.length === 1 ? 'file' : 'files'}
+          {label} · {entries.length} {entries.length === 1 ? 'file' : 'files'}
         </span>
       </div>
 

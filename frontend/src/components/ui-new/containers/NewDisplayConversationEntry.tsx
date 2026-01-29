@@ -843,6 +843,9 @@ function AggregatedGroupEntry({
     setIsHovered(hovered);
   }, []);
 
+  // Get the label based on aggregation type
+  const label = group.aggregationType === 'file_read' ? 'Read' : 'Search';
+
   return (
     <ChatAggregatedToolEntries
       entries={aggregatedEntries}
@@ -851,6 +854,7 @@ function AggregatedGroupEntry({
       onToggle={handleToggle}
       onHoverChange={handleHoverChange}
       onViewContent={handleViewContent}
+      label={label}
     />
   );
 }
