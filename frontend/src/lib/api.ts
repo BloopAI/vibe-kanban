@@ -1172,7 +1172,7 @@ export const oauthApi = {
   },
 };
 
-const TOKEN_STALE_TIME = 4 * 60 * 1000; // 4 minutes
+const TOKEN_STALE_TIME = 90 * 1000; // 90 seconds (must be < 120s backend token TTL)
 
 /**
  * Get access token with React Query caching.
