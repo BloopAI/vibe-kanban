@@ -1,9 +1,10 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
 import { defineModal } from '@/lib/modals';
-import { attemptsApi } from '@/lib/api';
+import { attemptsApi, tasksApi } from '@/lib/api';
 import {
   Command,
   CommandDialog,
@@ -36,13 +37,14 @@ function WorkspaceSelectionContent({
 }) {
   const { t } = useTranslation('common');
   const modal = useModal();
+  const navigate = useNavigate();
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
   // Get local workspaces from WorkspaceContext (both active and archived)
   const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
 
   // Get already-linked workspaces from ProjectContext
-  const { getWorkspacesForIssue } = useProjectContext();
+  const { getWorkspacesForIssue, getIssue, workspaces } = useProjectContext();
 
   const [search, setSearch] = useState('');
   const [isLinking, setIsLinking] = useState(false);
@@ -121,11 +123,69 @@ function WorkspaceSelectionContent({
     [projectId, issueId, isLinking, modal]
   );
 
-  const handleCreateNewWorkspace = useCallback(() => {
-    // Stubbed for now - will be implemented later
-    console.log('Create new workspace - not yet implemented');
-    modal.hide();
-  }, [modal]);
+  const handleCreateNewWorkspace = useCallback(async () => {
+    if (isLinking) return;
+    setIsLinking(true);
+
+    try {
+      // Get issue details for initial prompt
+      const issue = getIssue(issueId);
+      const initialPrompt = issue
+        ? issue.description
+          ? `${issue.title}\n\n${issue.description}`
+          : issue.title
+        : null;
+
+      // Find most recent workspace in this project connected to an issue
+      const connectedWorkspaces = workspaces
+        .filter((w) => w.issue_id !== null && w.local_workspace_id !== null)
+        .sort(
+          (a, b) =>
+            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        );
+      const mostRecentWorkspace = connectedWorkspaces[0];
+
+      // Build navigation state
+      const navigationState: {
+        initialPrompt?: string | null;
+        preferredRepos?: Array<{
+          repo_id: string;
+          target_branch: string | null;
+        }>;
+        project_id?: string | null;
+      } = {
+        initialPrompt,
+        // project_id will be set from the most recent workspace's task
+      };
+
+      // If we have a recent workspace, fetch its repos AND local project
+      if (mostRecentWorkspace?.local_workspace_id) {
+        try {
+          const [repos, localWorkspace] = await Promise.all([
+            attemptsApi.getRepos(mostRecentWorkspace.local_workspace_id),
+            attemptsApi.get(mostRecentWorkspace.local_workspace_id),
+          ]);
+
+          navigationState.preferredRepos = repos.map((r) => ({
+            repo_id: r.id,
+            target_branch: r.target_branch,
+          }));
+
+          // Get local project ID from the workspace's task
+          const task = await tasksApi.getById(localWorkspace.task_id);
+          navigationState.project_id = task.project_id;
+        } catch (err) {
+          console.warn('Failed to fetch workspace data:', err);
+        }
+      }
+
+      // Navigate and close dialog
+      modal.hide();
+      navigate('/workspaces/create', { state: navigationState });
+    } finally {
+      setIsLinking(false);
+    }
+  }, [modal, navigate, getIssue, issueId, workspaces, isLinking]);
 
   // Restore focus when dialog closes
   const handleCloseAutoFocus = useCallback((event: Event) => {
