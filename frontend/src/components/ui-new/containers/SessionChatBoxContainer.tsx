@@ -8,6 +8,7 @@ import {
   type BaseCodingAgent,
 } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
+import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
@@ -191,6 +192,10 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   // Execution state
   const { isAttemptRunning, stopExecution, isStopping, processes } =
     useAttemptExecution(workspaceId);
+
+  // Get repos for file search
+  const { repos } = useAttemptRepo(workspaceId);
+  const repoIds = repos.map((r) => r.id);
 
   // Approval feedback context
   const feedbackContext = useApprovalFeedbackOptional();
@@ -677,7 +682,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     return (
       <SessionChatBox
         status="idle"
-        workspaceId={workspaceId}
+        repoIds={repoIds}
         projectId={projectId}
         tokenUsageInfo={tokenUsageInfo}
         editor={{
@@ -713,7 +718,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       status={status}
       onViewCode={handleViewCode}
       onScrollToPreviousMessage={onScrollToPreviousMessage}
-      workspaceId={workspaceId}
+      repoIds={repoIds}
       projectId={projectId}
       tokenUsageInfo={tokenUsageInfo}
       editor={{

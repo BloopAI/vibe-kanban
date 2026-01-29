@@ -45,7 +45,7 @@ interface ChatBoxBaseProps {
   placeholder: string;
   onCmdEnter: () => void;
   disabled?: boolean;
-  workspaceId?: string;
+  repoIds?: string[];
   projectId?: string;
   repoId?: string;
   executor?: BaseCodingAgent | null;
@@ -100,7 +100,7 @@ export function ChatBoxBase({
   placeholder,
   onCmdEnter,
   disabled,
-  workspaceId,
+  repoIds,
   projectId,
   repoId,
   executor,
@@ -190,7 +190,7 @@ export function ChatBoxBase({
           // preventing the absolutely-positioned placeholder from overlapping
           // with the footer when the editor is empty
           className="min-h-double max-h-[50vh] overflow-y-auto"
-          workspaceId={workspaceId}
+          repoIds={repoIds}
           projectId={projectId}
           repoId={repoId}
           executor={executor ?? null}

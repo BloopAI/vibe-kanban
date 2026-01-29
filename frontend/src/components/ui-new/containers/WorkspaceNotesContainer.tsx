@@ -33,7 +33,6 @@ export function WorkspaceNotesContainer() {
         placeholder={t('notes.placeholder')}
         value={content}
         onChange={setContent}
-        workspaceId={workspaceId}
         autoFocus={false}
         className="min-h-[300px]"
       />
