@@ -10,9 +10,7 @@ type AggregationType = 'file_read' | 'search';
  * Determines if a patch entry can be aggregated and returns its aggregation type.
  * Only file_read and search tool_use entries can be aggregated.
  */
-function getAggregationType(
-  entry: PatchTypeWithKey
-): AggregationType | null {
+function getAggregationType(entry: PatchTypeWithKey): AggregationType | null {
   if (entry.type !== 'NORMALIZED_ENTRY') return null;
 
   const entryType = entry.content.entry_type;

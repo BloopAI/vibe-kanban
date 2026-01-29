@@ -248,16 +248,17 @@ function renderToolUseEntry(
 
 function NewDisplayConversationEntry(props: Props) {
   const { t } = useTranslation('common');
-  const { entry, aggregatedGroup, expansionKey, executionProcessId, taskAttempt } = props;
+  const {
+    entry,
+    aggregatedGroup,
+    expansionKey,
+    executionProcessId,
+    taskAttempt,
+  } = props;
 
   // Handle aggregated groups (consecutive file_read or search entries)
   if (aggregatedGroup) {
-    return (
-      <AggregatedGroupEntry
-        group={aggregatedGroup}
-        t={t}
-      />
-    );
+    return <AggregatedGroupEntry group={aggregatedGroup} t={t} />;
   }
 
   // If no entry, return null (shouldn't happen in normal usage)
