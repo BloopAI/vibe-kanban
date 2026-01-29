@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO pull_requests (id, url, number, status, merged_at, merge_commit_sha, target_branch_name, issue_id)\n            SELECT gen_random_uuid(), url, number, status, merged_at, merge_commit_sha, target_branch_name, issue_id\n            FROM UNNEST($1::text[], $2::int[], $3::pull_request_status[], $4::timestamptz[], $5::text[], $6::text[], $7::uuid[])\n                AS t(url, number, status, merged_at, merge_commit_sha, target_branch_name, issue_id)\n            RETURNING id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Int4Array",
+        {
+          "Custom": {
+            "name": "pull_request_status[]",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "pull_request_status",
+                  "kind": {
+                    "Enum": [
+                      "open",
+                      "merged",
+                      "closed"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "TimestamptzArray",
+        "TextArray",
+        "TextArray",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "bee3a7f9d08e5634eb32e750701822a8f4efa01d301c8227e67783b435ee90cc"
+}

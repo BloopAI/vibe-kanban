@@ -5,6 +5,7 @@ import i18n from '@/i18n';
 import { Projects } from '@/pages/Projects';
 import { ProjectTasks } from '@/pages/ProjectTasks';
 import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
+import { Migration } from '@/pages/Migration';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { SharedAppLayout } from '@/components/ui-new/containers/SharedAppLayout';
 import { usePostHog } from 'posthog-js/react';
@@ -152,6 +153,7 @@ function AppContent() {
               <Route path="/" element={<Projects />} />
               <Route path="/local-projects" element={<Projects />} />
               <Route path="/local-projects/:projectId" element={<Projects />} />
+              <Route path="/migration" element={<Migration />} />
               <Route
                 path="/local-projects/:projectId/tasks"
                 element={<ProjectTasks />}
