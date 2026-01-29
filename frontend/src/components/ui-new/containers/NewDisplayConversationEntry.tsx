@@ -36,13 +36,16 @@ import { ChatThinkingMessage } from '../primitives/conversation/ChatThinkingMess
 import { ChatErrorMessage } from '../primitives/conversation/ChatErrorMessage';
 import { ChatScriptEntry } from '../primitives/conversation/ChatScriptEntry';
 import { ChatSubagentEntry } from '../primitives/conversation/ChatSubagentEntry';
+import { ChatAggregatedToolEntries } from '../primitives/conversation/ChatAggregatedToolEntries';
 import type { DiffInput } from '../primitives/conversation/PierreConversationDiff';
+import type { AggregatedPatchGroup } from '@/hooks/useConversationHistory/types';
 
 type Props = {
-  entry: NormalizedEntry;
   expansionKey: string;
   executionProcessId: string;
   taskAttempt: WorkspaceWithSession;
+  entry: NormalizedEntry | null;
+  aggregatedGroup: AggregatedPatchGroup | null;
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
@@ -129,6 +132,7 @@ function getToolCommand(
  */
 function renderToolUseEntry(
   entryType: Extract<NormalizedEntry['entry_type'], { type: 'tool_use' }>,
+  entry: NormalizedEntry,
   props: Props,
   t: TFunction<'common'>
 ): React.ReactNode {
@@ -221,7 +225,7 @@ function renderToolUseEntry(
     return (
       <GenericToolApprovalEntry
         toolName={entryType.tool_name}
-        content={props.entry.content}
+        content={entry.content}
         expansionKey={expansionKey}
         workspaceId={taskAttempt?.id}
         status={status}
@@ -235,7 +239,7 @@ function renderToolUseEntry(
       summary={getToolSummary(entryType, t)}
       expansionKey={expansionKey}
       status={status}
-      content={getToolOutput(entryType, props.entry.content)}
+      content={getToolOutput(entryType, entry.content)}
       toolName={entryType.tool_name}
       command={getToolCommand(entryType)}
     />
@@ -244,12 +248,28 @@ function renderToolUseEntry(
 
 function NewDisplayConversationEntry(props: Props) {
   const { t } = useTranslation('common');
-  const { entry, expansionKey, executionProcessId, taskAttempt } = props;
+  const { entry, aggregatedGroup, expansionKey, executionProcessId, taskAttempt } = props;
+
+  // Handle aggregated groups (consecutive file_read or search entries)
+  if (aggregatedGroup) {
+    return (
+      <AggregatedGroupEntry
+        group={aggregatedGroup}
+        t={t}
+      />
+    );
+  }
+
+  // If no entry, return null (shouldn't happen in normal usage)
+  if (!entry) {
+    return null;
+  }
+
   const entryType = entry.entry_type;
 
   switch (entryType.type) {
     case 'tool_use':
-      return renderToolUseEntry(entryType, props, t);
+      return renderToolUseEntry(entryType, entry, props, t);
 
     case 'user_message':
       return (
@@ -743,6 +763,94 @@ function ErrorMessageEntry({
 
   return (
     <ChatErrorMessage content={content} expanded={expanded} onToggle={toggle} />
+  );
+}
+
+/**
+ * Aggregated group entry for consecutive file_read or search entries
+ */
+function AggregatedGroupEntry({
+  group,
+  t,
+}: {
+  group: AggregatedPatchGroup;
+  t: TFunction<'common'>;
+}) {
+  const { viewToolContentInPanel } = useLogsPanel();
+  const [expanded, setExpanded] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Extract summary and status from each entry in the group
+  const aggregatedEntries = useMemo(() => {
+    return group.entries.map((patchEntry) => {
+      if (patchEntry.type !== 'NORMALIZED_ENTRY') {
+        return {
+          summary: '',
+          status: undefined,
+          expansionKey: patchEntry.patchKey,
+          content: '',
+          toolName: '',
+        };
+      }
+
+      const entryType = patchEntry.content.entry_type;
+      if (entryType.type !== 'tool_use') {
+        return {
+          summary: '',
+          status: undefined,
+          expansionKey: patchEntry.patchKey,
+          content: '',
+          toolName: '',
+        };
+      }
+
+      const { action_type, status, tool_name } = entryType;
+      let summary = '';
+      if (action_type.action === 'file_read') {
+        summary = action_type.path;
+      } else if (action_type.action === 'search') {
+        summary = t('conversation.toolSummary.searched', {
+          query: action_type.query,
+        });
+      }
+
+      return {
+        summary,
+        status,
+        expansionKey: patchEntry.patchKey,
+        content: patchEntry.content.content,
+        toolName: tool_name,
+      };
+    });
+  }, [group.entries, t]);
+
+  const handleViewContent = useCallback(
+    (index: number) => {
+      const entry = aggregatedEntries[index];
+      if (entry && entry.content) {
+        viewToolContentInPanel(entry.toolName, entry.content);
+      }
+    },
+    [aggregatedEntries, viewToolContentInPanel]
+  );
+
+  const handleToggle = useCallback(() => {
+    setExpanded((prev) => !prev);
+  }, []);
+
+  const handleHoverChange = useCallback((hovered: boolean) => {
+    setIsHovered(hovered);
+  }, []);
+
+  return (
+    <ChatAggregatedToolEntries
+      entries={aggregatedEntries}
+      expanded={expanded}
+      isHovered={isHovered}
+      onToggle={handleToggle}
+      onHoverChange={handleHoverChange}
+      onViewContent={handleViewContent}
+    />
   );
 }
 

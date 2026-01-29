@@ -30,7 +30,11 @@ export type {
   AddEntryType,
   OnEntriesUpdated,
   PatchTypeWithKey,
+  DisplayEntry,
+  AggregatedPatchGroup,
 } from '@/hooks/useConversationHistory/types';
+
+export { isAggregatedGroup } from '@/hooks/useConversationHistory/types';
 
 export const useConversationHistory = ({
   attempt,

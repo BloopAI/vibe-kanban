@@ -5,6 +5,29 @@ export type PatchTypeWithKey = PatchType & {
   executionProcessId: string;
 };
 
+/**
+ * A group of consecutive entries of the same aggregatable type (e.g., file_read, search).
+ * Used to display multiple read/search operations in a collapsed accordion style.
+ */
+export type AggregatedPatchGroup = {
+  type: 'AGGREGATED_GROUP';
+  /** The aggregation category (e.g., 'file_read', 'search') */
+  aggregationType: 'file_read' | 'search';
+  /** The individual entries in this group */
+  entries: PatchTypeWithKey[];
+  /** Unique key for the group */
+  patchKey: string;
+  executionProcessId: string;
+};
+
+export type DisplayEntry = PatchTypeWithKey | AggregatedPatchGroup;
+
+export function isAggregatedGroup(
+  entry: DisplayEntry
+): entry is AggregatedPatchGroup {
+  return entry.type === 'AGGREGATED_GROUP';
+}
+
 export type AddEntryType = 'initial' | 'running' | 'historic' | 'plan';
 
 export type OnEntriesUpdated = (
