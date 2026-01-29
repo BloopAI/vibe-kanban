@@ -6,10 +6,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useEntity } from '@/lib/electric/hooks';
-import {
-  WORKSPACE_ENTITY,
-  type Workspace,
-} from 'shared/remote-types';
+import { WORKSPACE_ENTITY, type Workspace } from 'shared/remote-types';
 import type { SyncError } from '@/lib/electric/types';
 import { useAuth } from '@/hooks/auth/useAuth';
 
