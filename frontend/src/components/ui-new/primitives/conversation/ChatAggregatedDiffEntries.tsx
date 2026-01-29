@@ -35,41 +35,29 @@ interface ChatAggregatedDiffEntriesProps {
   expanded: boolean;
   /** Currently hovered state */
   isHovered: boolean;
-  /** Set of currently expanded individual diff keys */
-  expandedDiffKeys: Set<string>;
   /** Callback when toggling expansion */
   onToggle: () => void;
   /** Callback when hover state changes */
   onHoverChange: (hovered: boolean) => void;
-  /** Callback when toggling an individual diff key */
-  onToggleDiffKey: (key: string) => void;
   /** Callback to open file in changes panel */
   onOpenInChanges: (() => void) | null;
   className?: string;
 }
 
 /**
- * Renders a single diff entry within the aggregated view
+ * Renders a single diff entry within the aggregated view (always expanded)
  */
 function DiffEntry({
   filePath,
   change,
   status,
-  expansionKey,
-  expandedKeys,
-  onToggleKey,
 }: {
   filePath: string;
   change: FileChange;
   status: ToolStatus | null;
-  expansionKey: string;
-  expandedKeys: Set<string>;
-  onToggleKey: (key: string) => void;
 }) {
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
-
-  const isExpanded = expandedKeys.has(expansionKey);
 
   // Calculate diff stats
   const { additions, deletions } = useMemo(() => {
@@ -83,7 +71,7 @@ function DiffEntry({
   const writeAdditions =
     change.action === 'write' ? change.content.split('\n').length : undefined;
 
-  // Build diff content for rendering when expanded
+  // Build diff content for rendering
   const diffContent: DiffInput | undefined = useMemo(() => {
     if (change.action === 'edit' && change.unified_diff) {
       return {
@@ -132,13 +120,8 @@ function DiffEntry({
 
   return (
     <div className="border-t border-muted/50 first:border-t-0">
-      <div
-        className={cn(
-          'flex items-center p-base cursor-pointer hover:bg-muted/30',
-          isExpanded && 'bg-muted/20'
-        )}
-        onClick={() => onToggleKey(expansionKey)}
-      >
+      {/* Header showing action type and stats */}
+      <div className="flex items-center p-base bg-muted/10">
         <div className="flex-1 flex items-center gap-base min-w-0">
           <span className="relative shrink-0">
             {status && <ToolStatusDot status={status} className="size-2" />}
@@ -162,18 +145,10 @@ function DiffEntry({
             </span>
           )}
         </div>
-        {hasDiffContent && (
-          <CaretDownIcon
-            className={cn(
-              'size-icon-xs shrink-0 text-low transition-transform',
-              !isExpanded && '-rotate-90'
-            )}
-          />
-        )}
       </div>
 
-      {/* Diff body - shown when expanded */}
-      {isExpanded && hasDiffContent && (
+      {/* Diff body - always shown */}
+      {hasDiffContent && (
         <DiffViewBody
           fileDiffMetadata={diffData.fileDiffMetadata}
           unifiedDiff={diffData.unifiedDiff}
@@ -191,10 +166,8 @@ export function ChatAggregatedDiffEntries({
   entries,
   expanded,
   isHovered,
-  expandedDiffKeys,
   onToggle,
   onHoverChange,
-  onToggleDiffKey,
   onOpenInChanges,
   className,
 }: ChatAggregatedDiffEntriesProps) {
@@ -324,7 +297,7 @@ export function ChatAggregatedDiffEntries({
         />
       </div>
 
-      {/* Expanded content - list of individual diffs */}
+      {/* Expanded content - list of individual diffs (always expanded) */}
       {expanded && (
         <div className="border-t">
           {entries.map((entry) => (
@@ -333,9 +306,6 @@ export function ChatAggregatedDiffEntries({
               filePath={filePath}
               change={entry.change}
               status={entry.status}
-              expansionKey={entry.expansionKey}
-              expandedKeys={expandedDiffKeys}
-              onToggleKey={onToggleDiffKey}
             />
           ))}
         </div>

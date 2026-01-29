@@ -892,9 +892,6 @@ function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
   const { viewFileInChanges, diffPaths } = useChangesView();
   const [expanded, setExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [expandedDiffKeys, setExpandedDiffKeys] = useState<Set<string>>(
-    new Set()
-  );
 
   // Extract change data and status from each entry
   const aggregatedDiffEntries = useMemo(() => {
@@ -930,18 +927,6 @@ function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
     setIsHovered(hovered);
   }, []);
 
-  const handleToggleDiffKey = useCallback((key: string) => {
-    setExpandedDiffKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
-  }, []);
-
   const handleOpenInChanges = useCallback(() => {
     viewFileInChanges(group.filePath);
   }, [viewFileInChanges, group.filePath]);
@@ -954,10 +939,8 @@ function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
       entries={aggregatedDiffEntries}
       expanded={expanded}
       isHovered={isHovered}
-      expandedDiffKeys={expandedDiffKeys}
       onToggle={handleToggle}
       onHoverChange={handleHoverChange}
-      onToggleDiffKey={handleToggleDiffKey}
       onOpenInChanges={canOpenInChanges ? handleOpenInChanges : null}
     />
   );
