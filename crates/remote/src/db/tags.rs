@@ -18,7 +18,7 @@ pub struct Tag {
 
 #[derive(Debug, Error)]
 pub enum TagError {
-    #[error(transparent)]
+    #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
 }
 

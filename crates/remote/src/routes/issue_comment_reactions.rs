@@ -6,7 +6,10 @@ use axum::{
 use tracing::instrument;
 use uuid::Uuid;
 
-use super::{error::ErrorResponse, organization_members::ensure_issue_access};
+use super::{
+    error::{ErrorResponse, db_error},
+    organization_members::ensure_issue_access,
+};
 use crate::{
     AppState,
     auth::RequestContext,
@@ -123,7 +126,7 @@ async fn create_issue_comment_reaction(
     .await
     .map_err(|error| {
         tracing::error!(?error, "failed to create reaction");
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        db_error(error, "failed to create reaction")
     })?;
 
     Ok(Json(response))

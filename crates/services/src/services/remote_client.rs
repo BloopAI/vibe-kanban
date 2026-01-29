@@ -308,9 +308,9 @@ impl RemoteClient {
         })
         .retry(
             &ExponentialBuilder::default()
-                .with_min_delay(Duration::from_secs(1))
-                .with_max_delay(Duration::from_secs(30))
-                .with_max_times(3)
+                .with_min_delay(Duration::from_millis(500))
+                .with_max_delay(Duration::from_secs(2))
+                .with_max_times(2)
                 .with_jitter(),
         )
         .when(|e: &RemoteClientError| e.should_retry())

@@ -33,7 +33,7 @@ pub struct ProjectStatus {
 
 #[derive(Debug, Error)]
 pub enum ProjectStatusError {
-    #[error(transparent)]
+    #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
 }
 

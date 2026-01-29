@@ -9,7 +9,10 @@ use serde::Deserialize;
 use tracing::instrument;
 use uuid::Uuid;
 
-use super::{error::ErrorResponse, organization_members::ensure_issue_access};
+use super::{
+    error::{ErrorResponse, db_error},
+    organization_members::ensure_issue_access,
+};
 use crate::{
     AppState,
     auth::RequestContext,
@@ -108,7 +111,7 @@ async fn create_pull_request(
     .await
     .map_err(|error| {
         tracing::error!(?error, "failed to create pull request");
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        db_error(error, "failed to create pull request")
     })?;
 
     IssueRepository::sync_status_from_pull_request(state.pool(), pr.issue_id, pr.status)
@@ -241,7 +244,7 @@ async fn upsert_pull_request(
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to create pull request");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+            db_error(error, "failed to create pull request")
         })?
     };
 
