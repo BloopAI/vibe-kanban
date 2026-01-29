@@ -1,5 +1,4 @@
 import { useMemo, useCallback, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useDropzone } from 'react-dropzone';
 import { useCreateMode } from '@/contexts/CreateModeContext';
@@ -10,10 +9,10 @@ import { getVariantOptions, areProfilesEqual } from '@/utils/executor';
 import { splitMessageToTitleDescription } from '@/utils/string';
 import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
 import { CreateChatBox } from '../primitives/CreateChatBox';
+import { SettingsDialog } from '../dialogs/SettingsDialog';
 
 export function CreateChatBoxContainer() {
   const { t } = useTranslation('common');
-  const navigate = useNavigate();
   const { profiles, config, updateAndSaveConfig } = useUserSystem();
   const {
     repos,
@@ -125,10 +124,10 @@ export function CreateChatBoxContainer() {
     [effectiveProfile, setSelectedProfile]
   );
 
-  // Navigate to agent settings to customise variants
+  // Open settings modal to agent settings section
   const handleCustomise = useCallback(() => {
-    navigate('/settings/agents');
-  }, [navigate]);
+    SettingsDialog.show({ initialSection: 'agents' });
+  }, []);
 
   // Handle executor change - use saved variant if switching to default executor
   const handleExecutorChange = useCallback(
