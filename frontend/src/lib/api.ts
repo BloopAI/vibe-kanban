@@ -92,6 +92,8 @@ import {
   CreateWorkspaceFromPrBody,
   CreateWorkspaceFromPrResponse,
   CreateFromPrError,
+  MigrationRequest,
+  MigrationResponse,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -1392,5 +1394,16 @@ export const queueApi = {
   getStatus: async (sessionId: string): Promise<QueueStatus> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`);
     return handleApiResponse<QueueStatus>(response);
+  },
+};
+
+// Migration API
+export const migrationApi = {
+  start: async (data: MigrationRequest): Promise<MigrationResponse> => {
+    const response = await makeRequest('/api/migration/start', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<MigrationResponse>(response);
   },
 };
