@@ -2,6 +2,7 @@
 import '@/vscode/bridge';
 
 import { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AppWithStyleOverride } from '@/utils/StyleOverride';
 import { WebviewContextMenu } from '@/vscode/ContextMenu';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
@@ -17,6 +18,7 @@ import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
 import { createWorkspaceWithSession } from '@/types/attempt';
 
 export function VSCodeWorkspacePage() {
+  const { t } = useTranslation('common');
   const conversationListRef = useRef<ConversationListHandle>(null);
 
   const {
@@ -59,11 +61,11 @@ export function VSCodeWorkspacePage() {
               <MessageEditProvider>
                 {isLoading ? (
                   <div className="flex-1 flex items-center justify-center">
-                    <p className="text-low">Loading workspace...</p>
+                    <p className="text-low">{t('workspaces.loading')}</p>
                   </div>
                 ) : !workspaceWithSession ? (
                   <div className="flex-1 flex items-center justify-center">
-                    <p className="text-low">Workspace not found</p>
+                    <p className="text-low">{t('workspaces.notFound')}</p>
                   </div>
                 ) : (
                   <div className="flex-1 min-h-0 overflow-hidden flex justify-center">

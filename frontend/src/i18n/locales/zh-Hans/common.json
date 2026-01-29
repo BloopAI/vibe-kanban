@@ -145,6 +145,7 @@
     "active": "活跃",
     "archived": "已归档",
     "loading": "加载中...",
+    "notFound": "未找到工作区",
     "selectToStart": "选择一个工作区开始",
     "draft": "草稿",
     "viewArchive": "查看归档",

@@ -145,6 +145,7 @@
     "active": "Actif",
     "archived": "Archivé",
     "loading": "Chargement...",
+    "notFound": "Espace de travail introuvable",
     "selectToStart": "Sélectionnez un espace de travail pour commencer",
     "draft": "Brouillon",
     "viewArchive": "Voir les archives",

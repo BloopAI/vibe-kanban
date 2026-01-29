@@ -145,6 +145,7 @@
     "active": "활성",
     "archived": "보관됨",
     "loading": "로딩 중...",
+    "notFound": "워크스페이스를 찾을 수 없음",
     "selectToStart": "워크스페이스를 선택하여 시작",
     "draft": "초안",
     "viewArchive": "보관함 보기",

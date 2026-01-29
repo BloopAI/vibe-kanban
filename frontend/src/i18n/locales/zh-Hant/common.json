@@ -145,6 +145,7 @@
     "active": "活躍",
     "archived": "已封存",
     "loading": "載入中...",
+    "notFound": "找不到工作區",
     "selectToStart": "選擇一個工作區開始",
     "draft": "草稿",
     "viewArchive": "檢視封存",

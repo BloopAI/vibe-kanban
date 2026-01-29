@@ -145,6 +145,7 @@
     "active": "アクティブ",
     "archived": "アーカイブ済み",
     "loading": "読み込み中...",
+    "notFound": "ワークスペースが見つかりません",
     "selectToStart": "ワークスペースを選択して開始",
     "draft": "下書き",
     "viewArchive": "アーカイブを表示",

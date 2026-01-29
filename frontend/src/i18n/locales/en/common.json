@@ -145,6 +145,7 @@
     "active": "Active",
     "archived": "Archived",
     "loading": "Loading...",
+    "notFound": "Workspace not found",
     "selectToStart": "Select a workspace to get started",
     "draft": "Draft",
     "viewArchive": "View Archive",
