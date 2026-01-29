@@ -104,6 +104,19 @@
       "andMore": "...y {{count}} más"
     }
   },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "Rebase en Progreso",
+      "description": "Un rebase hacia {{targetBranch}} está en progreso sin conflictos. Elige cómo proceder.",
+      "hint": "Puedes continuar el rebase para completarlo, o cancelar para volver al estado anterior.",
+      "continue": "Continuar Rebase",
+      "continuing": "Continuando...",
+      "abort": "Cancelar Rebase",
+      "aborting": "Cancelando...",
+      "continueError": "Error al continuar el rebase. Puede haber conflictos sin resolver.",
+      "abortError": "Error al cancelar el rebase. Por favor, inténtalo de nuevo."
+    }
+  },
   "createPrDialog": {
     "title": "Crear Pull Request",
     "description": "Crea un pull request para este intento de tarea.",

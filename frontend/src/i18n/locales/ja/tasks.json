@@ -104,6 +104,19 @@
       "andMore": "...他{{count}}件"
     }
   },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "リベース進行中",
+      "description": "{{targetBranch}}へのリベースが競合なしで進行中です。続行方法を選択してください。",
+      "hint": "リベースを続行して完了するか、中止して以前の状態に戻すことができます。",
+      "continue": "リベースを続行",
+      "continuing": "続行中...",
+      "abort": "リベースを中止",
+      "aborting": "中止中...",
+      "continueError": "リベースの続行に失敗しました。未解決の競合がある可能性があります。",
+      "abortError": "リベースの中止に失敗しました。もう一度お試しください。"
+    }
+  },
   "createPrDialog": {
     "title": "プルリクエストを作成",
     "description": "このタスク試行のプルリクエストを作成します。",

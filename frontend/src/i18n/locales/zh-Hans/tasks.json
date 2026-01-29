@@ -467,6 +467,19 @@
       "andMore": "...还有 {{count}} 个"
     }
   },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "变基进行中",
+      "description": "正在无冲突地变基到 {{targetBranch}}。请选择如何继续。",
+      "hint": "您可以继续变基以完成操作，或中止以返回之前的状态。",
+      "continue": "继续变基",
+      "continuing": "继续中...",
+      "abort": "中止变基",
+      "aborting": "中止中...",
+      "continueError": "继续变基失败。可能存在未解决的冲突。",
+      "abortError": "中止变基失败。请重试。"
+    }
+  },
   "createPrDialog": {
     "title": "创建拉取请求",
     "description": "为此任务尝试创建拉取请求。",

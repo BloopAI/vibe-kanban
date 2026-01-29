@@ -535,6 +535,19 @@
       "andMore": "...et {{count}} autres"
     }
   },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "Rebase en cours",
+      "description": "Un rebase vers {{targetBranch}} est en cours sans conflits. Choisissez comment procéder.",
+      "hint": "Vous pouvez continuer le rebase pour le terminer, ou abandonner pour revenir à l'état précédent.",
+      "continue": "Continuer le rebase",
+      "continuing": "Continuation...",
+      "abort": "Abandonner le rebase",
+      "aborting": "Abandon...",
+      "continueError": "Échec de la continuation du rebase. Il peut y avoir des conflits non résolus.",
+      "abortError": "Échec de l'abandon du rebase. Veuillez réessayer."
+    }
+  },
   "createPrDialog": {
     "title": "Créer une Pull Request",
     "description": "Créer une pull request pour cette tentative de tâche.",

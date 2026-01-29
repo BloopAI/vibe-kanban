@@ -467,6 +467,19 @@
       "andMore": "...還有 {{count}} 個"
     }
   },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "變基進行中",
+      "description": "正在無衝突地變基到 {{targetBranch}}。請選擇如何繼續。",
+      "hint": "您可以繼續變基以完成操作，或中止以返回之前的狀態。",
+      "continue": "繼續變基",
+      "continuing": "繼續中...",
+      "abort": "中止變基",
+      "aborting": "中止中...",
+      "continueError": "繼續變基失敗。可能存在未解決的衝突。",
+      "abortError": "中止變基失敗。請重試。"
+    }
+  },
   "createPrDialog": {
     "title": "建立 PR",
     "description": "為此任務嘗試建立 PR。",
