@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { XIcon, LinkIcon } from '@phosphor-icons/react';
+import { XIcon, LinkIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type { IssuePriority, ProjectStatus, Tag } from 'shared/remote-types';
 import { IssuePropertyRow } from '@/components/ui-new/views/IssuePropertyRow';
@@ -70,6 +70,9 @@ export interface KanbanIssuePanelProps {
 
   // Copy link callback (edit mode only)
   onCopyLink?: () => void;
+
+  // More actions callback (edit mode only) - opens command bar with issue actions
+  onMoreActions?: () => void;
 }
 
 export function KanbanIssuePanel({
@@ -91,6 +94,7 @@ export function KanbanIssuePanel({
   descriptionSaveStatus,
   titleInputRef,
   onCopyLink,
+  onMoreActions,
 }: KanbanIssuePanelProps) {
   const isCreateMode = mode === 'create';
 
@@ -122,14 +126,26 @@ export function KanbanIssuePanel({
             <CopyButton onCopy={onCopyLink} disabled={false} icon={LinkIcon} />
           )}
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-half rounded-sm text-low hover:text-normal hover:bg-panel transition-colors"
-          aria-label="Close panel"
-        >
-          <XIcon className="size-icon-sm" weight="bold" />
-        </button>
+        <div className="flex items-center gap-half">
+          {!isCreateMode && onMoreActions && (
+            <button
+              type="button"
+              onClick={onMoreActions}
+              className="p-half rounded-sm text-low hover:text-normal hover:bg-panel transition-colors"
+              aria-label="More actions"
+            >
+              <DotsThreeIcon className="size-icon-sm" weight="bold" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-half rounded-sm text-low hover:text-normal hover:bg-panel transition-colors"
+            aria-label="Close panel"
+          >
+            <XIcon className="size-icon-sm" weight="bold" />
+          </button>
+        </div>
       </div>
 
       {/* Scrollable Content */}
