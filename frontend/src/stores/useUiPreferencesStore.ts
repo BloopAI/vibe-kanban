@@ -454,11 +454,7 @@ export const useUiPreferencesStore = create<State>()(
         // Note: Kanban panel state is derived from URL via useKanbanNavigation
         // Workspace-specific panel state (persisted)
         workspacePanelStates: state.workspacePanelStates,
-        // Kanban filters (persisted)
-        kanbanFilters: state.kanbanFilters,
-        // Kanban view mode (persisted)
-        kanbanViewMode: state.kanbanViewMode,
-        listViewStatusFilter: state.listViewStatusFilter,
+        // Note: Kanban filters and view mode are NOT persisted - they reset on page reload
       }),
     }
   )
