@@ -424,13 +424,14 @@ export function KanbanIssuePanelContainer() {
     setIsSubmitting(true);
     try {
       if (mode === 'create') {
-        // Create new issue
-        const maxSortOrder = Math.max(
-          ...issues
-            .filter((i) => i.status_id === displayData.statusId)
-            .map((i) => i.sort_order),
-          0
+        // Create new issue at the top of the column
+        const statusIssues = issues.filter(
+          (i) => i.status_id === displayData.statusId
         );
+        const minSortOrder =
+          statusIssues.length > 0
+            ? Math.min(...statusIssues.map((i) => i.sort_order))
+            : 0;
 
         const { data: newIssue, persisted } = insertIssue({
           project_id: projectId,
@@ -438,7 +439,7 @@ export function KanbanIssuePanelContainer() {
           title: displayData.title,
           description: displayData.description,
           priority: displayData.priority,
-          sort_order: maxSortOrder + 1,
+          sort_order: minSortOrder - 1,
           start_date: null,
           target_date: null,
           completed_at: null,
