@@ -174,19 +174,17 @@ export function KanbanIssuePanel({
           />
         </div>
 
-        {/* Tags Row (Edit mode only) */}
-        {!isCreateMode && (
-          <div className="px-base py-base border-b">
-            <IssueTagsRow
-              selectedTagIds={formData.tagIds}
-              availableTags={tags}
-              linkedPrs={linkedPrs}
-              onTagsChange={(tagIds) => onFormChange('tagIds', tagIds)}
-              onCreateTag={onCreateTag}
-              disabled={isSubmitting}
-            />
-          </div>
-        )}
+        {/* Tags Row */}
+        <div className="px-base py-base border-b">
+          <IssueTagsRow
+            selectedTagIds={formData.tagIds}
+            availableTags={tags}
+            linkedPrs={isCreateMode ? [] : linkedPrs}
+            onTagsChange={(tagIds) => onFormChange('tagIds', tagIds)}
+            onCreateTag={onCreateTag}
+            disabled={isSubmitting}
+          />
+        </div>
 
         {/* Title and Description */}
         <div className="px-base py-base">
