@@ -9,6 +9,7 @@ import {
 } from 'lexical';
 import { $convertToMarkdownString, type Transformer } from '@lexical/markdown';
 import type { SendMessageShortcut } from 'shared/types';
+import { useTypeaheadOpen } from '@/components/ui/wysiwyg/context/typeahead-open-context';
 
 type Props = {
   onCmdEnter?: () => void;
@@ -26,6 +27,7 @@ export function KeyboardCommandsPlugin({
   sendShortcut = 'ModifierEnter',
 }: Props) {
   const [editor] = useLexicalComposerContext();
+  const { isOpen: isTypeaheadOpen } = useTypeaheadOpen();
 
   useEffect(() => {
     if (!onCmdEnter && !onShiftCmdEnter) return;
@@ -72,6 +74,11 @@ export function KeyboardCommandsPlugin({
       (event: KeyboardEvent | null) => {
         if (!event) return false;
 
+        // If typeahead is open, let it handle Enter
+        if (isTypeaheadOpen) {
+          return false;
+        }
+
         if (sendShortcut === 'Enter') {
           if (event.shiftKey || event.metaKey || event.ctrlKey) {
             return false;
@@ -101,6 +108,7 @@ export function KeyboardCommandsPlugin({
     onChange,
     transformers,
     sendShortcut,
+    isTypeaheadOpen,
   ]);
 
   return null;
