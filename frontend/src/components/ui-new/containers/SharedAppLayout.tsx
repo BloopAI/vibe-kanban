@@ -136,6 +136,7 @@ export function SharedAppLayout() {
           isWorkspacesActive={isWorkspacesActive}
           activeProjectId={activeProjectId}
           isSignedIn={isSignedIn}
+          isLoadingProjects={isLoading}
         />
         <div className="flex flex-col flex-1 min-w-0">
           <NavbarContainer />

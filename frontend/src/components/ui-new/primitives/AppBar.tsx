@@ -1,4 +1,4 @@
-import { LayoutIcon, PlusIcon } from '@phosphor-icons/react';
+import { LayoutIcon, PlusIcon, SpinnerIcon } from '@phosphor-icons/react';
 import { siDiscord } from 'simple-icons';
 import { cn } from '@/lib/utils';
 import type { OrganizationWithRole, RemoteProject } from 'shared/types';
@@ -30,6 +30,7 @@ interface AppBarProps {
   isWorkspacesActive: boolean;
   activeProjectId: string | null;
   isSignedIn?: boolean;
+  isLoadingProjects?: boolean;
 }
 
 export function AppBar({
@@ -44,6 +45,7 @@ export function AppBar({
   isWorkspacesActive,
   activeProjectId,
   isSignedIn,
+  isLoadingProjects,
 }: AppBarProps) {
   const { data: onlineCount } = useDiscordOnlineCount();
 
@@ -63,6 +65,13 @@ export function AppBar({
           onClick={onWorkspacesClick}
         />
       </div>
+
+      {/* Loading spinner for projects */}
+      {isLoadingProjects && (
+        <div className="flex items-center justify-center w-10 h-10">
+          <SpinnerIcon className="size-5 animate-spin text-muted" />
+        </div>
+      )}
 
       {/* Middle section: Project buttons */}
       {projects.map((project) => (
