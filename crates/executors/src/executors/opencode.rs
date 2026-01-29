@@ -415,7 +415,7 @@ impl StandardCodingAgentExecutor for Opencode {
         #[cfg(windows)]
         let installation_indicator_found = std::env::var("XDG_CONFIG_HOME")
             .ok()
-            .map(PathBuf::from)
+            .map(std::path::PathBuf::from)
             .and_then(|p| p.join("opencode").exists().then_some(()))
             .or_else(|| {
                 dirs::home_dir()
