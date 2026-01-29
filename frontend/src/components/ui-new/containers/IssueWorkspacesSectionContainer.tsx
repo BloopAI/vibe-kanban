@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { PlusIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
+import { useUserContext } from '@/contexts/remote/UserContext';
 import { useActions } from '@/contexts/ActionsContext';
 import type { WorkspaceWithStats } from '@/components/ui-new/views/IssueWorkspaceCard';
 import { IssueWorkspacesSection } from '@/components/ui-new/views/IssueWorkspacesSection';
@@ -14,7 +15,7 @@ interface IssueWorkspacesSectionContainerProps {
 
 /**
  * Container component for the workspaces section.
- * Fetches workspace data from ProjectContext and transforms it for display.
+ * Fetches workspace data from UserContext and transforms it for display.
  */
 export function IssueWorkspacesSectionContainer({
   issueId,
@@ -23,13 +24,9 @@ export function IssueWorkspacesSectionContainer({
   const navigate = useNavigate();
   const { openWorkspaceSelection } = useActions();
 
-  const {
-    getWorkspacesForIssue,
-    pullRequests,
-    isLoading: projectLoading,
-  } = useProjectContext();
-
+  const { pullRequests, isLoading: projectLoading } = useProjectContext();
   const { membersWithProfilesById, isLoading: orgLoading } = useOrgContext();
+  const { getWorkspacesForIssue, isLoading: userLoading } = useUserContext();
 
   // Get workspaces for the issue, with PR info
   const workspacesWithStats: WorkspaceWithStats[] = useMemo(() => {
@@ -63,7 +60,7 @@ export function IssueWorkspacesSectionContainer({
     });
   }, [issueId, getWorkspacesForIssue, pullRequests, membersWithProfilesById]);
 
-  const isLoading = projectLoading || orgLoading;
+  const isLoading = projectLoading || orgLoading || userLoading;
 
   // Handle clicking '+' to link a workspace
   const handleAddWorkspace = useCallback(() => {
