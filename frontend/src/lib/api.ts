@@ -81,6 +81,7 @@ import {
   PushTaskAttemptRequest,
   RepoBranchStatus,
   AbortConflictsRequest,
+  ContinueRebaseRequest,
   Session,
   Workspace,
   StartReviewRequest,
@@ -645,6 +646,20 @@ export const attemptsApi = {
   ): Promise<void> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/conflicts/abort`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
+  continueRebase: async (
+    attemptId: string,
+    data: ContinueRebaseRequest
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/rebase/continue`,
       {
         method: 'POST',
         body: JSON.stringify(data),

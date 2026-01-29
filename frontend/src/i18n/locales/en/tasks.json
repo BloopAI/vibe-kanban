@@ -535,6 +535,19 @@
       "andMore": "...and {{count}} more"
     }
   },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "Rebase In Progress",
+      "description": "A rebase onto {{targetBranch}} is in progress with no conflicts. Choose how to proceed.",
+      "hint": "You can continue the rebase to complete it, or abort to return to your previous state.",
+      "continue": "Continue Rebase",
+      "continuing": "Continuing...",
+      "abort": "Abort Rebase",
+      "aborting": "Aborting...",
+      "continueError": "Failed to continue rebase. There may be unresolved conflicts.",
+      "abortError": "Failed to abort rebase. Please try again."
+    }
+  },
   "createPrDialog": {
     "title": "Create Pull Request",
     "description": "Create a pull request for this task attempt.",

@@ -262,6 +262,8 @@ export type GhCliSetupError = "BREW_MISSING" | "SETUP_HELPER_NOT_SUPPORTED" | { 
 
 export type RebaseTaskAttemptRequest = { repo_id: string, old_base_branch: string | null, new_base_branch: string | null, };
 
+export type ContinueRebaseRequest = { repo_id: string, };
+
 export type AbortConflictsRequest = { repo_id: string, };
 
 export type GitOperationError = { "type": "merge_conflicts", message: string, op: ConflictOp, conflicted_files: Array<string>, target_branch: string, } | { "type": "rebase_in_progress" };
