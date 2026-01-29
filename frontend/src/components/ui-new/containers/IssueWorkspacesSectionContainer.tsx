@@ -1,10 +1,13 @@
 import { useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { PlusIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useActions } from '@/contexts/ActionsContext';
+import { attemptsApi } from '@/lib/api';
+import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import type { WorkspaceWithStats } from '@/components/ui-new/views/IssueWorkspaceCard';
 import { IssueWorkspacesSection } from '@/components/ui-new/views/IssueWorkspacesSection';
 import type { SectionAction } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
@@ -20,6 +23,7 @@ interface IssueWorkspacesSectionContainerProps {
 export function IssueWorkspacesSectionContainer({
   issueId,
 }: IssueWorkspacesSectionContainerProps) {
+  const { t } = useTranslation('common');
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { openWorkspaceSelection } = useActions();
@@ -79,6 +83,67 @@ export function IssueWorkspacesSectionContainer({
     [navigate]
   );
 
+  // Handle unlinking a workspace from the issue
+  const handleUnlinkWorkspace = useCallback(
+    async (localWorkspaceId: string) => {
+      const result = await ConfirmDialog.show({
+        title: t('workspaces.unlinkFromIssue'),
+        message: t('workspaces.unlinkConfirmMessage'),
+        confirmText: t('workspaces.unlink'),
+        variant: 'destructive',
+      });
+
+      if (result === 'confirmed') {
+        try {
+          await attemptsApi.unlinkFromIssue(localWorkspaceId);
+        } catch (error) {
+          ConfirmDialog.show({
+            title: t('common:error'),
+            message:
+              error instanceof Error
+                ? error.message
+                : t('workspaces.unlinkError'),
+            confirmText: t('common:ok'),
+            showCancelButton: false,
+          });
+        }
+      }
+    },
+    [t]
+  );
+
+  // Handle deleting a workspace (unlinks first, then deletes local)
+  const handleDeleteWorkspace = useCallback(
+    async (localWorkspaceId: string) => {
+      const result = await ConfirmDialog.show({
+        title: t('workspaces.deleteWorkspace'),
+        message: t('workspaces.deleteConfirmMessage'),
+        confirmText: t('workspaces.delete'),
+        variant: 'destructive',
+      });
+
+      if (result === 'confirmed') {
+        try {
+          // First unlink from remote
+          await attemptsApi.unlinkFromIssue(localWorkspaceId);
+          // Then delete local workspace
+          await attemptsApi.delete(localWorkspaceId);
+        } catch (error) {
+          ConfirmDialog.show({
+            title: t('common:error'),
+            message:
+              error instanceof Error
+                ? error.message
+                : t('workspaces.deleteError'),
+            confirmText: t('common:ok'),
+            showCancelButton: false,
+          });
+        }
+      }
+    },
+    [t]
+  );
+
   // Actions for the section header
   const actions: SectionAction[] = useMemo(
     () => [
@@ -96,6 +161,8 @@ export function IssueWorkspacesSectionContainer({
       isLoading={isLoading}
       actions={actions}
       onWorkspaceClick={handleWorkspaceClick}
+      onUnlinkWorkspace={handleUnlinkWorkspace}
+      onDeleteWorkspace={handleDeleteWorkspace}
     />
   );
 }
