@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::PgPool;
+use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
@@ -52,7 +52,10 @@ pub enum IssueError {
 pub struct IssueRepository;
 
 impl IssueRepository {
-    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Issue>, IssueError> {
+    pub async fn find_by_id<'e, E>(executor: E, id: Uuid) -> Result<Option<Issue>, IssueError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let record = sqlx::query_as!(
             Issue,
             r#"
@@ -79,7 +82,7 @@ impl IssueRepository {
             "#,
             id
         )
-        .fetch_optional(pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(record)
@@ -220,8 +223,8 @@ impl IssueRepository {
     /// - Some(None): set the field to NULL
     /// - Some(Some(value)): set the field to the value
     #[allow(clippy::too_many_arguments)]
-    pub async fn update(
-        pool: &PgPool,
+    pub async fn update<'e, E>(
+        executor: E,
         id: Uuid,
         status_id: Option<Uuid>,
         title: Option<String>,
@@ -234,9 +237,10 @@ impl IssueRepository {
         parent_issue_id: Option<Option<Uuid>>,
         parent_issue_sort_order: Option<Option<f64>>,
         extension_metadata: Option<Value>,
-    ) -> Result<MutationResponse<Issue>, IssueError> {
-        let mut tx = pool.begin().await?;
-
+    ) -> Result<Issue, IssueError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         // For nullable fields, extract boolean flags and flattened values
         // This preserves the distinction between "don't update" and "set to NULL"
         let update_description = description.is_some();
@@ -308,13 +312,10 @@ impl IssueRepository {
             extension_metadata,
             id
         )
-        .fetch_one(&mut *tx)
+        .fetch_one(executor)
         .await?;
 
-        let txid = get_txid(&mut *tx).await?;
-        tx.commit().await?;
-
-        Ok(MutationResponse { data, txid })
+        Ok(data)
     }
 
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, IssueError> {
