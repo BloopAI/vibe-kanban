@@ -49,7 +49,7 @@ use services::services::{
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::response::ApiResponse;
+use utils::{api::workspaces::CreateWorkspaceRequest, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{
@@ -1776,8 +1776,19 @@ pub async fn link_workspace(
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let client = deployment.remote_client()?;
 
+    let stats =
+        diff_stream::compute_diff_stats(&deployment.db().pool, deployment.git(), &workspace).await;
+
     client
-        .create_workspace(payload.project_id, workspace.id, payload.issue_id)
+        .create_workspace(CreateWorkspaceRequest {
+            project_id: payload.project_id,
+            local_workspace_id: workspace.id,
+            issue_id: payload.issue_id,
+            archived: Some(workspace.archived),
+            files_changed: stats.as_ref().map(|s| s.files_changed as i32),
+            lines_added: stats.as_ref().map(|s| s.lines_added as i32),
+            lines_removed: stats.as_ref().map(|s| s.lines_removed as i32),
+        })
         .await?;
 
     Ok(ResponseJson(ApiResponse::success(())))

@@ -608,21 +608,10 @@ impl RemoteClient {
     /// Creates a workspace on the remote server, linking it to a local workspace and an issue.
     pub async fn create_workspace(
         &self,
-        project_id: Uuid,
-        local_workspace_id: Uuid,
-        issue_id: Uuid,
+        request: CreateWorkspaceRequest,
     ) -> Result<(), RemoteClientError> {
-        self.send(
-            reqwest::Method::POST,
-            "/v1/workspaces",
-            true,
-            Some(&CreateWorkspaceRequest {
-                project_id,
-                local_workspace_id,
-                issue_id,
-            }),
-        )
-        .await?;
+        self.send(reqwest::Method::POST, "/v1/workspaces", true, Some(&request))
+            .await?;
         Ok(())
     }
 
