@@ -80,14 +80,14 @@ pub struct ExecutionEnv {
     pub vars: HashMap<String, String>,
     pub repo_context: RepoContext,
     pub commit_reminder: bool,
-    pub commit_reminder_prompt: Option<String>,
+    pub commit_reminder_prompt: String,
 }
 
 impl ExecutionEnv {
     pub fn new(
         repo_context: RepoContext,
         commit_reminder: bool,
-        commit_reminder_prompt: Option<String>,
+        commit_reminder_prompt: String,
     ) -> Self {
         Self {
             vars: HashMap::new(),
@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     fn profile_overrides_runtime_env() {
-        let mut base = ExecutionEnv::new(RepoContext::default(), false, None);
+        let mut base = ExecutionEnv::new(RepoContext::default(), false, String::new());
         base.insert("VK_PROJECT_NAME", "runtime");
         base.insert("FOO", "runtime");
 

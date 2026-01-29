@@ -71,8 +71,6 @@ impl LogWriter {
     }
 }
 
-const DEFAULT_COMMIT_REMINDER_PROMPT: &str = "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{uncommitted_changes}";
-
 #[derive(Clone)]
 pub struct RunConfig {
     pub base_url: String,
@@ -89,7 +87,7 @@ pub struct RunConfig {
     /// that affects available models (e.g., env vars, base command).
     pub models_cache_key: String,
     pub commit_reminder: bool,
-    pub commit_reminder_prompt: Option<String>,
+    pub commit_reminder_prompt: String,
     pub repo_context: RepoContext,
 }
 
@@ -342,12 +340,9 @@ async fn run_session_inner(
     if config.commit_reminder && !cancel.is_cancelled() {
         let uncommitted_changes = config.repo_context.check_uncommitted_changes().await;
         if !uncommitted_changes.is_empty() {
-            let prompt_template = config
+            let reminder_prompt = config
                 .commit_reminder_prompt
-                .as_deref()
-                .unwrap_or(DEFAULT_COMMIT_REMINDER_PROMPT);
-            let reminder_prompt =
-                prompt_template.replace("{uncommitted_changes}", &uncommitted_changes);
+                .replace("{uncommitted_changes}", &uncommitted_changes);
 
             tracing::debug!("Sending commit reminder prompt to OpenCode session");
 

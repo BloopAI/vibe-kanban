@@ -43,7 +43,7 @@ use serde_json::json;
 use services::services::{
     analytics::AnalyticsContext,
     approvals::{Approvals, executor_approvals::ExecutorApprovalBridge},
-    config::Config,
+    config::{Config, DEFAULT_COMMIT_REMINDER_PROMPT},
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
     image::ImageService,
@@ -1140,7 +1140,10 @@ impl ContainerService for LocalContainerService {
 
         let config = self.config.read().await;
         let commit_reminder = config.commit_reminder;
-        let commit_reminder_prompt = config.commit_reminder_prompt.clone();
+        let commit_reminder_prompt = config
+            .commit_reminder_prompt
+            .clone()
+            .unwrap_or_else(|| DEFAULT_COMMIT_REMINDER_PROMPT.to_string());
         drop(config);
         let mut env = ExecutionEnv::new(repo_context, commit_reminder, commit_reminder_prompt);
 
