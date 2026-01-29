@@ -1,7 +1,18 @@
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
-import { GitPullRequestIcon } from '@phosphor-icons/react';
+import {
+  GitPullRequestIcon,
+  DotsThreeIcon,
+  LinkBreakIcon,
+  TrashIcon,
+} from '@phosphor-icons/react';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 
 export interface WorkspacePr {
@@ -25,12 +36,16 @@ export interface WorkspaceWithStats {
 export interface IssueWorkspaceCardProps {
   workspace: WorkspaceWithStats;
   onClick?: () => void;
+  onUnlink?: () => void;
+  onDelete?: () => void;
   className?: string;
 }
 
 export function IssueWorkspaceCard({
   workspace,
   onClick,
+  onUnlink,
+  onDelete,
   className,
 }: IssueWorkspaceCardProps) {
   const { t } = useTranslation('common');
@@ -57,7 +72,7 @@ export function IssueWorkspaceCard({
           : undefined
       }
     >
-      {/* Row 1: Status badge (left), Owner avatar (right) */}
+      {/* Row 1: Status badge (left), Owner avatar + menu (right) */}
       <div className="flex items-center justify-between">
         <span
           className={cn(
@@ -72,12 +87,55 @@ export function IssueWorkspaceCard({
             : t('workspaces.active')}
         </span>
 
-        {workspace.owner && (
-          <UserAvatar
-            user={workspace.owner}
-            className="h-5 w-5 text-[10px] border-2 border-panel"
-          />
-        )}
+        <div className="flex items-center gap-half">
+          {workspace.owner && (
+            <UserAvatar
+              user={workspace.owner}
+              className="h-5 w-5 text-[10px] border-2 border-panel"
+            />
+          )}
+          {(onUnlink || onDelete) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  className="p-0.5 rounded hover:bg-secondary transition-colors"
+                  aria-label={t('workspaces.more')}
+                >
+                  <DotsThreeIcon
+                    className="size-icon-xs text-low"
+                    weight="bold"
+                  />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {onUnlink && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUnlink();
+                    }}
+                  >
+                    <LinkBreakIcon className="size-icon-xs" />
+                    {t('workspaces.unlinkFromIssue')}
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete();
+                    }}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <TrashIcon className="size-icon-xs" />
+                    {t('workspaces.deleteWorkspace')}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
 
       {/* Row 2: Stats (left), PR buttons (right) */}

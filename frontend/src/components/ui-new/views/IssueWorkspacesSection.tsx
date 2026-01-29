@@ -13,6 +13,8 @@ export interface IssueWorkspacesSectionProps {
   isLoading?: boolean;
   actions?: SectionAction[];
   onWorkspaceClick?: (localWorkspaceId: string | null) => void;
+  onUnlinkWorkspace?: (localWorkspaceId: string) => void;
+  onDeleteWorkspace?: (localWorkspaceId: string) => void;
 }
 
 /**
@@ -24,6 +26,8 @@ export function IssueWorkspacesSection({
   isLoading,
   actions = [],
   onWorkspaceClick,
+  onUnlinkWorkspace,
+  onDeleteWorkspace,
 }: IssueWorkspacesSectionProps) {
   return (
     <CollapsibleSectionHeader
@@ -38,17 +42,30 @@ export function IssueWorkspacesSection({
         ) : workspaces.length === 0 ? (
           <p className="text-low py-half">No workspaces</p>
         ) : (
-          workspaces.map((workspace) => (
-            <IssueWorkspaceCard
-              key={workspace.id}
-              workspace={workspace}
-              onClick={
-                onWorkspaceClick && workspace.localWorkspaceId
-                  ? () => onWorkspaceClick(workspace.localWorkspaceId)
-                  : undefined
-              }
-            />
-          ))
+          workspaces.map((workspace) => {
+            const { localWorkspaceId } = workspace;
+            return (
+              <IssueWorkspaceCard
+                key={workspace.id}
+                workspace={workspace}
+                onClick={
+                  onWorkspaceClick && localWorkspaceId
+                    ? () => onWorkspaceClick(localWorkspaceId)
+                    : undefined
+                }
+                onUnlink={
+                  onUnlinkWorkspace && localWorkspaceId
+                    ? () => onUnlinkWorkspace(localWorkspaceId)
+                    : undefined
+                }
+                onDelete={
+                  onDeleteWorkspace && localWorkspaceId
+                    ? () => onDeleteWorkspace(localWorkspaceId)
+                    : undefined
+                }
+              />
+            );
+          })
         )}
       </div>
     </CollapsibleSectionHeader>
