@@ -22,8 +22,12 @@ import { useEntries } from '@/contexts/EntriesContext';
 import {
   AddEntryType,
   PatchTypeWithKey,
+  DisplayEntry,
+  isAggregatedGroup,
+  isAggregatedDiffGroup,
   useConversationHistory,
 } from '@/components/ui-new/hooks/useConversationHistory';
+import { aggregateConsecutiveEntries } from '@/utils/aggregateEntries';
 import type { WorkspaceWithSession } from '@/types/attempt';
 
 interface ConversationListProps {
@@ -61,10 +65,38 @@ const ScrollToTopOfLastItem: ScrollModifier = {
 };
 
 const ItemContent: VirtuosoMessageListProps<
-  PatchTypeWithKey,
+  DisplayEntry,
   MessageListContext
 >['ItemContent'] = ({ data, context }) => {
   const attempt = context?.attempt;
+
+  // Handle aggregated tool groups (file_read, search, web_fetch)
+  if (isAggregatedGroup(data)) {
+    return (
+      <NewDisplayConversationEntry
+        expansionKey={data.patchKey}
+        aggregatedGroup={data}
+        aggregatedDiffGroup={null}
+        entry={null}
+        executionProcessId={data.executionProcessId}
+        taskAttempt={attempt}
+      />
+    );
+  }
+
+  // Handle aggregated diff groups (file_edit by same path)
+  if (isAggregatedDiffGroup(data)) {
+    return (
+      <NewDisplayConversationEntry
+        expansionKey={data.patchKey}
+        aggregatedGroup={null}
+        aggregatedDiffGroup={data}
+        entry={null}
+        executionProcessId={data.executionProcessId}
+        taskAttempt={attempt}
+      />
+    );
+  }
 
   if (data.type === 'STDOUT') {
     return <p>{data.content}</p>;
@@ -77,6 +109,8 @@ const ItemContent: VirtuosoMessageListProps<
       <NewDisplayConversationEntry
         expansionKey={data.patchKey}
         entry={data.content}
+        aggregatedGroup={null}
+        aggregatedDiffGroup={null}
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
       />
@@ -87,7 +121,7 @@ const ItemContent: VirtuosoMessageListProps<
 };
 
 const computeItemKey: VirtuosoMessageListProps<
-  PatchTypeWithKey,
+  DisplayEntry,
   MessageListContext
 >['computeItemKey'] = ({ data }) => `conv-${data.patchKey}`;
 
@@ -96,7 +130,7 @@ export const ConversationList = forwardRef<
   ConversationListProps
 >(function ConversationList({ attempt }, ref) {
   const [channelData, setChannelData] =
-    useState<DataWithScrollModifier<PatchTypeWithKey> | null>(null);
+    useState<DataWithScrollModifier<DisplayEntry> | null>(null);
   const [loading, setLoading] = useState(true);
   const { setEntries, reset } = useEntries();
   const pendingUpdateRef = useRef<{
@@ -147,7 +181,10 @@ export const ConversationList = forwardRef<
         scrollModifier = AutoScrollToBottom;
       }
 
-      setChannelData({ data: pending.entries, scrollModifier });
+      // Aggregate consecutive read/search entries into groups
+      const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
+
+      setChannelData({ data: aggregatedEntries, scrollModifier });
       setEntries(pending.entries);
 
       if (loading) {
@@ -229,7 +266,7 @@ export const ConversationList = forwardRef<
         <VirtuosoMessageListLicense
           licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
         >
-          <VirtuosoMessageList<PatchTypeWithKey, MessageListContext>
+          <VirtuosoMessageList<DisplayEntry, MessageListContext>
             ref={messageListRef}
             className="h-full scrollbar-none"
             data={channelData}

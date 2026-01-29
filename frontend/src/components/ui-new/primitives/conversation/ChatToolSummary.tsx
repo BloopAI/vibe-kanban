@@ -2,6 +2,8 @@ import { forwardRef } from 'react';
 import {
   ListMagnifyingGlassIcon,
   TerminalWindowIcon,
+  FileTextIcon,
+  GlobeIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { ToolStatus } from 'shared/types';
@@ -16,6 +18,8 @@ interface ChatToolSummaryProps {
   onViewContent?: () => void;
   toolName?: string;
   isTruncated?: boolean;
+  /** The action type for determining the icon */
+  actionType?: string;
 }
 
 export const ChatToolSummary = forwardRef<
@@ -31,6 +35,7 @@ export const ChatToolSummary = forwardRef<
     onViewContent,
     toolName,
     isTruncated,
+    actionType,
   },
   ref
 ) {
@@ -46,13 +51,26 @@ export const ChatToolSummary = forwardRef<
     }
   };
 
-  const Icon =
-    toolName === 'Bash' ? TerminalWindowIcon : ListMagnifyingGlassIcon;
+  // Determine icon based on action type or tool name
+  const getIcon = () => {
+    if (toolName === 'Bash') return TerminalWindowIcon;
+    switch (actionType) {
+      case 'file_read':
+        return FileTextIcon;
+      case 'search':
+        return ListMagnifyingGlassIcon;
+      case 'web_fetch':
+        return GlobeIcon;
+      default:
+        return ListMagnifyingGlassIcon;
+    }
+  };
+  const Icon = getIcon();
 
   return (
     <div
       className={cn(
-        'flex items-start gap-base text-sm text-low',
+        'flex items-center gap-base text-sm text-low',
         isClickable && 'cursor-pointer',
         className
       )}
