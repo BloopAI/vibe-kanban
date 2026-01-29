@@ -38,7 +38,9 @@ use utils::{
 };
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError, routes::task_attempts::spawn_archive_script_if_configured};
+use crate::{
+    DeploymentImpl, error::ApiError, routes::task_attempts::spawn_archive_script_if_configured,
+};
 
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct CreatePrApiRequest {

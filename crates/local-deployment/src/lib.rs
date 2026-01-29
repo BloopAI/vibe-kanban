@@ -287,7 +287,10 @@ impl Deployment for LocalDeployment {
 
 /// Runs the archive script for a workspace if configured.
 /// This is a helper function used by the on_archive callback.
-async fn run_archive_script_if_configured(deployment: &LocalDeployment, workspace: db::models::workspace::Workspace) {
+async fn run_archive_script_if_configured(
+    deployment: &LocalDeployment,
+    workspace: db::models::workspace::Workspace,
+) {
     use db::models::{
         execution_process::{ExecutionProcess, ExecutionProcessRunReason},
         session::{CreateSession, Session},
