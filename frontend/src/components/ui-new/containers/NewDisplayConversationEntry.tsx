@@ -846,18 +846,18 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
     setIsHovered(hovered);
   }, []);
 
-  // Get the label and icon based on aggregation type
-  const getLabelAndIcon = () => {
+  // Get the label, icon, and unit based on aggregation type
+  const getDisplayProps = () => {
     switch (group.aggregationType) {
       case 'file_read':
-        return { label: 'Read', icon: FileTextIcon };
+        return { label: 'Read', icon: FileTextIcon, unit: 'file' };
       case 'search':
-        return { label: 'Search', icon: ListMagnifyingGlassIcon };
+        return { label: 'Search', icon: ListMagnifyingGlassIcon, unit: 'file' };
       case 'web_fetch':
-        return { label: 'Fetched', icon: GlobeIcon };
+        return { label: 'Fetched', icon: GlobeIcon, unit: 'URL' };
     }
   };
-  const { label, icon } = getLabelAndIcon();
+  const { label, icon, unit } = getDisplayProps();
 
   return (
     <ChatAggregatedToolEntries
@@ -869,6 +869,7 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
       onViewContent={handleViewContent}
       label={label}
       icon={icon}
+      unit={unit}
     />
   );
 }
