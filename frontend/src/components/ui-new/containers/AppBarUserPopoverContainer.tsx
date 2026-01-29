@@ -1,15 +1,12 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useLocation, useNavigate } from 'react-router-dom';
 import type { OrganizationWithRole } from 'shared/types';
 import { AppBarUserPopover } from '../primitives/AppBarUserPopover';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
-import { oauthApi } from '@/lib/api';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
-import { organizationKeys } from '@/hooks/organizationKeys';
+import { useActions } from '@/contexts/ActionsContext';
+import { Actions } from '@/components/ui-new/actions';
 
 interface AppBarUserPopoverContainerProps {
   organizations: OrganizationWithRole[];
@@ -24,12 +21,9 @@ export function AppBarUserPopoverContainer({
   onOrgSelect,
   onCreateOrg,
 }: AppBarUserPopoverContainerProps) {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { executeAction } = useActions();
   const { isSignedIn } = useAuth();
-  const { loginStatus, reloadSystem } = useUserSystem();
-  const clearSelectedOrgId = useOrganizationStore((s) => s.clearSelectedOrgId);
+  const { loginStatus } = useUserSystem();
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
   const [open, setOpen] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
@@ -41,29 +35,11 @@ export function AppBarUserPopoverContainer({
       : null;
 
   const handleSignIn = async () => {
-    // OAuthDialog handles reloadSystem() and cache invalidation on success
-    await OAuthDialog.show();
+    await executeAction(Actions.SignIn);
   };
 
   const handleLogout = async () => {
-    try {
-      await oauthApi.logout();
-
-      // Clear organization selection
-      clearSelectedOrgId();
-
-      // Clear organization query caches so stale data doesn't persist
-      queryClient.removeQueries({ queryKey: organizationKeys.all });
-
-      await reloadSystem();
-
-      // Navigate away from project routes after logout
-      if (location.pathname.startsWith('/projects/')) {
-        navigate('/workspaces');
-      }
-    } catch (err) {
-      console.error('Error logging out:', err);
-    }
+    await executeAction(Actions.SignOut);
   };
 
   const handleOrgSettings = async (orgId: string) => {
