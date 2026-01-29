@@ -68,6 +68,7 @@
         "pages": [
           "workspaces/index",
           "workspaces/creating-workspaces",
+          "workspaces/managing-workspaces",
           "workspaces/repositories",
           "workspaces/sessions",
           "workspaces/chat-interface",
