@@ -70,6 +70,6 @@ pub async fn search_files(
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
-        .route("/api/search", get(search_files))
+        .route("/search", get(search_files))
         .with_state(deployment.clone())
 }
