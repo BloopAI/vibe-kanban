@@ -332,7 +332,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   } = useExecutorSelection({
     profiles,
     latestProfileId,
-    isNewSessionMode,
     scratchVariant: scratchData?.executor_profile_id?.variant,
     configExecutorProfile: config?.executor_profile,
   });
