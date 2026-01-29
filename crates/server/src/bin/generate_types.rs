@@ -232,15 +232,10 @@ fn generate_types_content() -> String {
         .join("\n\n");
 
     // Append exported constants
-    let pr_prompt_escaped = DEFAULT_PR_DESCRIPTION_PROMPT
-        .replace('\\', "\\\\")
-        .replace('`', "\\`");
-    let commit_prompt_escaped = DEFAULT_COMMIT_REMINDER_PROMPT
-        .replace('\\', "\\\\")
-        .replace('`', "\\`");
     let constants = format!(
-        "export const DEFAULT_PR_DESCRIPTION_PROMPT = `{}`;\n\nexport const DEFAULT_COMMIT_REMINDER_PROMPT = `{}`;",
-        pr_prompt_escaped, commit_prompt_escaped
+        "export const DEFAULT_PR_DESCRIPTION_PROMPT = {};\n\nexport const DEFAULT_COMMIT_REMINDER_PROMPT = {};",
+        serde_json::to_string(DEFAULT_PR_DESCRIPTION_PROMPT).unwrap(),
+        serde_json::to_string(DEFAULT_COMMIT_REMINDER_PROMPT).unwrap()
     );
 
     format!("{HEADER}\n\n{body}\n\n{constants}")
