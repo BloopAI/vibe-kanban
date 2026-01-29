@@ -141,12 +141,7 @@ function DiffEntry({
       >
         <div className="flex-1 flex items-center gap-base min-w-0">
           <span className="relative shrink-0">
-            {status && (
-              <ToolStatusDot
-                status={status}
-                className="size-2"
-              />
-            )}
+            {status && <ToolStatusDot status={status} className="size-2" />}
           </span>
           <span className="text-sm text-low">{actionLabel}</span>
           {hasStats && (
