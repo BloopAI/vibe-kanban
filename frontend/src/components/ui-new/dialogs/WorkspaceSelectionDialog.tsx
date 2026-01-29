@@ -15,7 +15,10 @@ import {
   CommandItem,
 } from '@/components/ui-new/primitives/Command';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { ProjectProvider, useProjectContext } from '@/contexts/remote/ProjectContext';
+import {
+  ProjectProvider,
+  useProjectContext,
+} from '@/contexts/remote/ProjectContext';
 import { UserProvider, useUserContext } from '@/contexts/remote/UserContext';
 
 export interface WorkspaceSelectionDialogProps {
