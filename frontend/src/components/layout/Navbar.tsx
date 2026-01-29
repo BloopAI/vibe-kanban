@@ -19,6 +19,7 @@ import {
   Plus,
   LogOut,
   LogIn,
+  LayoutDashboard,
 } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { SearchBar } from '@/components/SearchBar';
@@ -240,6 +241,18 @@ export function Navbar() {
               </Link>
             </Button>
             <NavDivider /> */}
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              asChild
+              aria-label="All Boards"
+            >
+              <Link to="/all-boards">
+                <LayoutDashboard className="h-4 w-4" />
+              </Link>
+            </Button>
 
             <div className="flex items-center gap-1">
               <Button
