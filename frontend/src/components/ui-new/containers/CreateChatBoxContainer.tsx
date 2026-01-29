@@ -273,6 +273,7 @@ export function CreateChatBoxContainer() {
             visible: hasChangedFromDefault,
           }}
           error={displayError}
+          repoIds={repos.map((r) => r.id)}
           projectId={projectId}
           agent={effectiveProfile?.executor ?? null}
           repoId={repoId}

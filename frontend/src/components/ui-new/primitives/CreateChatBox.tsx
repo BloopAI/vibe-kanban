@@ -37,6 +37,7 @@ interface CreateChatBoxProps {
   variant?: VariantProps;
   saveAsDefault?: SaveAsDefaultProps;
   error?: string | null;
+  repoIds?: string[];
   projectId?: string;
   repoId?: string;
   agent?: BaseCodingAgent | null;
@@ -57,6 +58,7 @@ export function CreateChatBox({
   variant,
   saveAsDefault,
   error,
+  repoIds,
   projectId,
   repoId,
   agent,
@@ -98,6 +100,7 @@ export function CreateChatBox({
       placeholder="Describe the task..."
       onCmdEnter={handleCmdEnter}
       disabled={isSending}
+      repoIds={repoIds}
       projectId={projectId}
       repoId={repoId}
       executor={executor.selected}
