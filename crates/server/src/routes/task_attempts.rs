@@ -62,68 +62,12 @@ use crate::{
 /// This is called when a workspace is being archived to run any configured archive scripts.
 /// The ExecutionProcess created by start_execution() blocks workspace cleanup until complete.
 pub fn spawn_archive_script_if_configured(deployment: DeploymentImpl, workspace: Workspace) {
+    let workspace_id = workspace.id;
     tokio::spawn(async move {
-        let pool = &deployment.db().pool;
-
-        // Skip if any non-dev-server process is already running
-        if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
-            .await
-            .unwrap_or(true)
-        {
-            return;
-        }
-
-        // Skip if no container exists
-        if deployment
-            .container()
-            .ensure_container_exists(&workspace)
-            .await
-            .is_err()
-        {
-            return;
-        }
-
-        // Skip if no archive scripts configured
-        let repos = match WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await {
-            Ok(r) => r,
-            Err(_) => return,
-        };
-        let Some(action) = deployment.container().archive_actions_for_repos(&repos) else {
-            return;
-        };
-
-        // Get or create a session for the archive script
-        let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await {
-            Ok(Some(s)) => s,
-            _ => {
-                match Session::create(
-                    pool,
-                    &CreateSession { executor: None },
-                    Uuid::new_v4(),
-                    workspace.id,
-                )
-                .await
-                {
-                    Ok(s) => s,
-                    Err(_) => return,
-                }
-            }
-        };
-
-        // Execute the archive script (creates ExecutionProcess which blocks cleanup)
-        if let Err(e) = deployment
-            .container()
-            .start_execution(
-                &workspace,
-                &session,
-                &action,
-                &ExecutionProcessRunReason::ArchiveScript,
-            )
-            .await
-        {
+        if let Err(e) = deployment.container().try_run_archive_script(workspace_id).await {
             tracing::error!(
-                "Failed to start archive script for workspace {}: {}",
-                workspace.id,
+                "Failed to run archive script for workspace {}: {}",
+                workspace_id,
                 e
             );
         }

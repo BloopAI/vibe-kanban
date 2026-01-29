@@ -27,7 +27,7 @@ use services::services::{
     filesystem::{FilesystemError, FilesystemService},
     filesystem_watcher::FilesystemWatcherError,
     image::{ImageError, ImageService},
-    pr_monitor::{OnArchiveCallback, PrMonitorService},
+    pr_monitor::PrMonitorService,
     project::ProjectService,
     queued_message::QueuedMessageService,
     remote_client::RemoteClient,
@@ -79,6 +79,8 @@ pub enum DeploymentError {
 
 #[async_trait]
 pub trait Deployment: Clone + Send + Sync + 'static {
+    type Container: ContainerService + Clone + Send + Sync + 'static;
+
     async fn new() -> Result<Self, DeploymentError>;
 
     fn user_id(&self) -> &str;
@@ -89,7 +91,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn analytics(&self) -> &Option<AnalyticsService>;
 
-    fn container(&self) -> &impl ContainerService;
+    fn container(&self) -> &Self::Container;
 
     fn git(&self) -> &GitService;
 
@@ -125,10 +127,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
         Ok(())
     }
 
-    /// Returns a callback for triggering archive scripts when workspaces are archived.
-    /// This is used by the PR monitor service to run archive scripts when PRs are merged.
-    fn on_archive_callback(&self) -> Option<OnArchiveCallback>;
-
     async fn spawn_pr_monitor_service(&self) -> tokio::task::JoinHandle<()> {
         let db = self.db().clone();
         let analytics = self
@@ -138,9 +136,9 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 user_id: self.user_id().to_string(),
                 analytics_service: analytics_service.clone(),
             });
-        let on_archive = self.on_archive_callback();
+        let container = self.container().clone();
         let remote_client = self.remote_client().ok();
-        PrMonitorService::spawn(db, analytics, on_archive, remote_client).await
+        PrMonitorService::spawn(db, analytics, container, remote_client).await
     }
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {

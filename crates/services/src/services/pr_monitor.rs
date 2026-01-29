@@ -1,4 +1,4 @@
-use std::{future::Future, pin::Pin, sync::Arc, time::Duration};
+use std::time::Duration;
 
 use chrono::Utc;
 use db::{
@@ -18,15 +18,11 @@ use utils::api::pull_requests::{PullRequestStatus, UpsertPullRequestRequest};
 
 use crate::services::{
     analytics::AnalyticsContext,
+    container::ContainerService,
     git_host::{self, GitHostError, GitHostProvider},
     remote_client::RemoteClient,
     remote_sync,
 };
-
-/// Callback type for triggering archive script when a workspace is archived.
-/// This allows the PR monitor to trigger archive scripts without depending on the full deployment.
-pub type OnArchiveCallback =
-    Arc<dyn Fn(Workspace) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
 
 #[derive(Debug, Error)]
 enum PrMonitorError {
@@ -39,26 +35,26 @@ enum PrMonitorError {
 }
 
 /// Service to monitor PRs and update task status when they are merged
-pub struct PrMonitorService {
+pub struct PrMonitorService<C: ContainerService> {
     db: DBService,
     poll_interval: Duration,
     analytics: Option<AnalyticsContext>,
-    on_archive: Option<OnArchiveCallback>,
+    container: C,
     remote_client: Option<RemoteClient>,
 }
 
-impl PrMonitorService {
+impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
     pub async fn spawn(
         db: DBService,
         analytics: Option<AnalyticsContext>,
-        on_archive: Option<OnArchiveCallback>,
+        container: C,
         remote_client: Option<RemoteClient>,
     ) -> tokio::task::JoinHandle<()> {
         let service = Self {
             db,
             poll_interval: Duration::from_secs(60), // Check every minute
             analytics,
-            on_archive,
+            container,
             remote_client,
         };
         tokio::spawn(async move {
@@ -143,9 +139,12 @@ impl PrMonitorService {
                 if !workspace.pinned {
                     Workspace::set_archived(&self.db.pool, workspace.id, true).await?;
 
-                    // Trigger archive script callback if configured
-                    if let Some(on_archive) = &self.on_archive {
-                        on_archive(workspace.clone()).await;
+                    // Run archive script if configured
+                    if let Err(e) = self.container.try_run_archive_script(workspace.id).await {
+                        error!(
+                            "Failed to run archive script for workspace {}: {}",
+                            workspace.id, e
+                        );
                     }
                 }
 

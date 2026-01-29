@@ -10,13 +10,11 @@ use services::services::{
     approvals::Approvals,
     auth::AuthContext,
     config::{Config, load_config_from_file, save_config_to_file},
-    container::ContainerService,
     events::EventService,
     file_search::FileSearchCache,
     filesystem::FilesystemService,
     image::ImageService,
     oauth_credentials::OAuthCredentials,
-    pr_monitor::OnArchiveCallback,
     project::ProjectService,
     queued_message::QueuedMessageService,
     remote_client::{RemoteClient, RemoteClientError},
@@ -67,6 +65,8 @@ struct PendingHandoff {
 
 #[async_trait]
 impl Deployment for LocalDeployment {
+    type Container = LocalContainerService;
+
     async fn new() -> Result<Self, DeploymentError> {
         let mut raw_config = load_config_from_file(&config_path()).await;
 
@@ -230,7 +230,7 @@ impl Deployment for LocalDeployment {
         &self.analytics
     }
 
-    fn container(&self) -> &impl ContainerService {
+    fn container(&self) -> &Self::Container {
         &self.container
     }
 
@@ -272,94 +272,6 @@ impl Deployment for LocalDeployment {
 
     fn auth_context(&self) -> &AuthContext {
         &self.auth_context
-    }
-
-    fn on_archive_callback(&self) -> Option<OnArchiveCallback> {
-        let deployment = self.clone();
-        Some(Arc::new(move |workspace| {
-            let deployment = deployment.clone();
-            Box::pin(async move {
-                run_archive_script_if_configured(&deployment, workspace).await;
-            })
-        }))
-    }
-}
-
-/// Runs the archive script for a workspace if configured.
-/// This is a helper function used by the on_archive callback.
-async fn run_archive_script_if_configured(
-    deployment: &LocalDeployment,
-    workspace: db::models::workspace::Workspace,
-) {
-    use db::models::{
-        execution_process::{ExecutionProcess, ExecutionProcessRunReason},
-        session::{CreateSession, Session},
-        workspace_repo::WorkspaceRepo,
-    };
-
-    let pool = &deployment.db.pool;
-
-    // Skip if any non-dev-server process is already running
-    if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
-        .await
-        .unwrap_or(true)
-    {
-        return;
-    }
-
-    // Skip if no container exists
-    if deployment
-        .container
-        .ensure_container_exists(&workspace)
-        .await
-        .is_err()
-    {
-        return;
-    }
-
-    // Skip if no archive scripts configured
-    let repos = match WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await {
-        Ok(r) => r,
-        Err(_) => return,
-    };
-    let Some(action) = deployment.container.archive_actions_for_repos(&repos) else {
-        return;
-    };
-
-    // Get or create a session for the archive script
-    let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await {
-        Ok(Some(s)) => s,
-        _ => {
-            match Session::create(
-                pool,
-                &CreateSession { executor: None },
-                Uuid::new_v4(),
-                workspace.id,
-            )
-            .await
-            {
-                Ok(s) => s,
-                Err(_) => return,
-            }
-        }
-    };
-
-    // Execute the archive script (creates ExecutionProcess which blocks cleanup)
-    if let Err(e) = deployment
-        .container
-        .start_execution(
-            &workspace,
-            &session,
-            &action,
-            &ExecutionProcessRunReason::ArchiveScript,
-        )
-        .await
-    {
-        tracing::error!(
-            "Failed to start archive script for workspace {}: {}",
-            workspace.id,
-            e
-        );
     }
 }
 
