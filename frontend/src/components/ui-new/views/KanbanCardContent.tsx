@@ -30,19 +30,21 @@ export const KanbanCardContent = ({
   className,
 }: KanbanCardContentProps) => {
   return (
-    <div className={cn('flex flex-col gap-half', className)}>
+    <div className={cn('flex flex-col gap-half min-w-0', className)}>
       {/* Row 1: Task ID + loading dots */}
       <div className="flex items-center gap-half">
-        <span className="font-ibm-plex-mono text-sm text-low">{displayId}</span>
+        <span className="font-ibm-plex-mono text-sm text-low truncate">
+          {displayId}
+        </span>
         {isLoading && <RunningDots />}
       </div>
 
       {/* Row 2: Title */}
-      <span className="text-base text-high">{title}</span>
+      <span className="text-base text-high truncate">{title}</span>
 
       {/* Row 3: Description (optional, truncated) */}
       {description && (
-        <p className="text-sm text-low m-0 leading-relaxed line-clamp-base">
+        <p className="text-sm text-low m-0 leading-relaxed line-clamp-4">
           {description}
         </p>
       )}
