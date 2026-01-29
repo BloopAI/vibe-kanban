@@ -1,7 +1,12 @@
 import { cn } from '@/lib/utils';
 import { XIcon, LinkIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import type { IssuePriority, ProjectStatus, Tag } from 'shared/remote-types';
+import type {
+  IssuePriority,
+  ProjectStatus,
+  Tag,
+  PullRequestStatus,
+} from 'shared/remote-types';
 import { IssuePropertyRow } from '@/components/ui-new/views/IssuePropertyRow';
 import { IssueTagsRow } from '@/components/ui-new/views/IssueTagsRow';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
@@ -27,6 +32,7 @@ export interface LinkedPullRequest {
   id: string;
   number: number;
   url: string;
+  status: PullRequestStatus;
 }
 
 export interface KanbanIssuePanelProps {

@@ -43,6 +43,7 @@ export function KanbanIssuePanelContainer() {
     removeIssueTag,
     insertTag,
     getTagsForIssue,
+    getPullRequestsForIssue,
     isLoading: projectLoading,
   } = useProjectContext();
 
@@ -112,6 +113,17 @@ export function KanbanIssuePanelContainer() {
     const tagLinks = getTagsForIssue(selectedKanbanIssueId);
     return tagLinks.map((it) => it.tag_id);
   }, [getTagsForIssue, selectedKanbanIssueId]);
+
+  // Get linked PRs for the issue
+  const linkedPrs = useMemo(() => {
+    if (!selectedKanbanIssueId) return [];
+    return getPullRequestsForIssue(selectedKanbanIssueId).map((pr) => ({
+      id: pr.id,
+      number: pr.number,
+      url: pr.url,
+      status: pr.status,
+    }));
+  }, [getPullRequestsForIssue, selectedKanbanIssueId]);
 
   // Determine mode (only edit when an issue is selected)
   const mode = kanbanCreateMode || !selectedKanbanIssueId ? 'create' : 'edit';
@@ -545,7 +557,7 @@ export function KanbanIssuePanelContainer() {
       issueId={selectedKanbanIssueId}
       parentIssue={parentIssue}
       onParentIssueClick={handleParentIssueClick}
-      linkedPrs={[]}
+      linkedPrs={linkedPrs}
       onClose={closeKanbanIssuePanel}
       onSubmit={handleSubmit}
       onCmdEnterSubmit={handleSubmit}

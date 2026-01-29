@@ -1,7 +1,8 @@
 import { cn } from '@/lib/utils';
-import { PlusIcon, GitPullRequestIcon, HashIcon } from '@phosphor-icons/react';
-import type { Tag } from 'shared/remote-types';
+import { PlusIcon, HashIcon } from '@phosphor-icons/react';
+import type { Tag, PullRequestStatus } from 'shared/remote-types';
 import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';
+import { PrBadge } from '@/components/ui-new/primitives/PrBadge';
 
 // Re-export PRESET_COLORS (and TAG_COLORS for backwards compatibility)
 export { PRESET_COLORS } from '@/lib/colors';
@@ -11,6 +12,7 @@ export interface LinkedPullRequest {
   id: string;
   number: number;
   url: string;
+  status: PullRequestStatus;
 }
 
 export interface LinkedIssue {
@@ -87,16 +89,12 @@ export function IssueTagsRow({
 
       {/* Linked PRs */}
       {linkedPrs.map((pr) => (
-        <a
+        <PrBadge
           key={pr.id}
-          href={pr.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-half h-5 px-base bg-panel rounded-sm text-sm text-low hover:text-normal transition-colors"
-        >
-          <GitPullRequestIcon className="size-icon-xs" weight="bold" />
-          <span>PR-{pr.number.toString().padStart(3, '0')}</span>
-        </a>
+          number={pr.number}
+          url={pr.url}
+          status={pr.status}
+        />
       ))}
 
       {/* Linked Issues */}
