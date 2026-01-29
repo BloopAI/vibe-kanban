@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM migration_state",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "a4a50fcfb903e6d0a315676f4f760e5bb7718e10ea550aedf990c9da84834416"
+}
