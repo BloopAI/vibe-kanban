@@ -5,7 +5,7 @@ import {
   SquaresFourIcon,
   GitBranchIcon,
 } from '@phosphor-icons/react';
-import type { Workspace } from 'shared/types';
+import type { Merge, RepoBranchStatus, Workspace } from 'shared/types';
 import {
   Pages,
   type PageId,
@@ -15,7 +15,10 @@ import {
   type ResolvedGroupItem,
   type RepoItem,
 } from '@/components/ui-new/actions/pages';
-import type { ActionVisibilityContext } from '@/components/ui-new/actions';
+import type {
+  ActionVisibilityContext,
+  GitActionDefinition,
+} from '@/components/ui-new/actions';
 import {
   isActionVisible,
   isPageVisible,
@@ -75,17 +78,31 @@ export function useResolvedPage(
   search: string,
   ctx: ActionVisibilityContext,
   workspace: Workspace | undefined,
-  repos: RepoItem[]
+  repos: RepoItem[],
+  branchStatus?: RepoBranchStatus[],
+  pendingAction?: GitActionDefinition
 ): ResolvedCommandBarPage {
   return useMemo(() => {
     if (pageId === 'selectRepo') {
+      // Filter repos based on the pending action
+      let filteredRepos = repos;
+      if (pendingAction?.id === 'git-merge' && branchStatus) {
+        filteredRepos = repos.filter((r) => {
+          const repoStatus = branchStatus.find((s) => s.repo_id === r.id);
+          const hasOpenPR = repoStatus?.merges?.some(
+            (m: Merge) => m.type === 'pr' && m.pr_info.status === 'open'
+          );
+          return !hasOpenPR;
+        });
+      }
+
       return {
         id: 'selectRepo',
         title: 'Select Repository',
         groups: [
           {
             label: 'Repositories',
-            items: repos.map((r) => ({ type: 'repo' as const, repo: r })),
+            items: filteredRepos.map((r) => ({ type: 'repo' as const, repo: r })),
           },
         ],
       };
@@ -101,5 +118,5 @@ export function useResolvedPage(
       title: Pages[pageId as StaticPageId].title,
       groups,
     };
-  }, [pageId, search, ctx, workspace, repos]);
+  }, [pageId, search, ctx, workspace, repos, branchStatus, pendingAction]);
 }

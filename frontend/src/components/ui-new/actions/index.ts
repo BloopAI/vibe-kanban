@@ -2,7 +2,7 @@ import { forwardRef, createElement } from 'react';
 import type { Icon, IconProps } from '@phosphor-icons/react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { QueryClient } from '@tanstack/react-query';
-import type { EditorType, ExecutionProcess, Workspace } from 'shared/types';
+import type { EditorType, ExecutionProcess, Merge, Workspace } from 'shared/types';
 import type { DiffViewMode } from '@/stores/useDiffViewStore';
 import type { LogsPanelContent } from '../containers/LogsContentContainer';
 import type { LogEntry } from '../containers/VirtualizedProcessLogs';
@@ -862,6 +862,22 @@ export const Actions = {
       // Check for existing conflicts first
       const branchStatus = await attemptsApi.getBranchStatus(workspaceId);
       const repoStatus = branchStatus?.find((s) => s.repo_id === repoId);
+
+      // Check if repo has an open PR - cannot merge directly
+      const hasOpenPR = repoStatus?.merges?.some(
+        (m: Merge) => m.type === 'pr' && m.pr_info.status === 'open'
+      );
+      if (hasOpenPR) {
+        await ConfirmDialog.show({
+          title: 'Cannot Merge',
+          message:
+            'This repository has an open pull request. Please close or merge the PR before merging directly.',
+          confirmText: 'OK',
+          showCancelButton: false,
+        });
+        return;
+      }
+
       const hasConflicts =
         repoStatus?.is_rebase_in_progress ||
         (repoStatus?.conflicted_files?.length ?? 0) > 0;

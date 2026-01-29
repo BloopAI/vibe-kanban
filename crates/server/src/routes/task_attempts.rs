@@ -438,6 +438,18 @@ pub async fn merge_task_attempt(
         .await?
         .ok_or(RepoError::NotFound)?;
 
+    // Prevent direct merge when there's an open PR for this repo
+    let merges =
+        Merge::find_by_workspace_and_repo_id(pool, workspace.id, request.repo_id).await?;
+    let has_open_pr = merges.iter().any(|m| {
+        matches!(m, Merge::Pr(pr) if matches!(pr.pr_info.status, MergeStatus::Open))
+    });
+    if has_open_pr {
+        return Err(ApiError::BadRequest(
+            "Cannot merge directly when a pull request is open for this repository.".to_string(),
+        ));
+    }
+
     // Prevent direct merge into remote branches - users must create a PR instead
     let target_branch_type = deployment
         .git()
