@@ -32,9 +32,13 @@ export type {
   PatchTypeWithKey,
   DisplayEntry,
   AggregatedPatchGroup,
+  AggregatedDiffGroup,
 } from '@/hooks/useConversationHistory/types';
 
-export { isAggregatedGroup } from '@/hooks/useConversationHistory/types';
+export {
+  isAggregatedGroup,
+  isAggregatedDiffGroup,
+} from '@/hooks/useConversationHistory/types';
 
 export const useConversationHistory = ({
   attempt,

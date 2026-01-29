@@ -24,6 +24,7 @@ import {
   PatchTypeWithKey,
   DisplayEntry,
   isAggregatedGroup,
+  isAggregatedDiffGroup,
   useConversationHistory,
 } from '@/components/ui-new/hooks/useConversationHistory';
 import { aggregateConsecutiveEntries } from '@/utils/aggregateEntries';
@@ -69,12 +70,27 @@ const ItemContent: VirtuosoMessageListProps<
 >['ItemContent'] = ({ data, context }) => {
   const attempt = context?.attempt;
 
-  // Handle aggregated groups
+  // Handle aggregated tool groups (file_read, search, web_fetch)
   if (isAggregatedGroup(data)) {
     return (
       <NewDisplayConversationEntry
         expansionKey={data.patchKey}
         aggregatedGroup={data}
+        aggregatedDiffGroup={null}
+        entry={null}
+        executionProcessId={data.executionProcessId}
+        taskAttempt={attempt}
+      />
+    );
+  }
+
+  // Handle aggregated diff groups (file_edit by same path)
+  if (isAggregatedDiffGroup(data)) {
+    return (
+      <NewDisplayConversationEntry
+        expansionKey={data.patchKey}
+        aggregatedGroup={null}
+        aggregatedDiffGroup={data}
         entry={null}
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
@@ -94,6 +110,7 @@ const ItemContent: VirtuosoMessageListProps<
         expansionKey={data.patchKey}
         entry={data.content}
         aggregatedGroup={null}
+        aggregatedDiffGroup={null}
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
       />

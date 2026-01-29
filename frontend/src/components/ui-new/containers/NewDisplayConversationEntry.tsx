@@ -37,8 +37,12 @@ import { ChatErrorMessage } from '../primitives/conversation/ChatErrorMessage';
 import { ChatScriptEntry } from '../primitives/conversation/ChatScriptEntry';
 import { ChatSubagentEntry } from '../primitives/conversation/ChatSubagentEntry';
 import { ChatAggregatedToolEntries } from '../primitives/conversation/ChatAggregatedToolEntries';
+import { ChatAggregatedDiffEntries } from '../primitives/conversation/ChatAggregatedDiffEntries';
 import type { DiffInput } from '../primitives/conversation/PierreConversationDiff';
-import type { AggregatedPatchGroup } from '@/hooks/useConversationHistory/types';
+import type {
+  AggregatedPatchGroup,
+  AggregatedDiffGroup,
+} from '@/hooks/useConversationHistory/types';
 import {
   FileTextIcon,
   ListMagnifyingGlassIcon,
@@ -51,6 +55,7 @@ type Props = {
   taskAttempt: WorkspaceWithSession;
   entry: NormalizedEntry | null;
   aggregatedGroup: AggregatedPatchGroup | null;
+  aggregatedDiffGroup: AggregatedDiffGroup | null;
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
@@ -257,6 +262,7 @@ function NewDisplayConversationEntry(props: Props) {
   const {
     entry,
     aggregatedGroup,
+    aggregatedDiffGroup,
     expansionKey,
     executionProcessId,
     taskAttempt,
@@ -265,6 +271,11 @@ function NewDisplayConversationEntry(props: Props) {
   // Handle aggregated groups (consecutive file_read or search entries)
   if (aggregatedGroup) {
     return <AggregatedGroupEntry group={aggregatedGroup} />;
+  }
+
+  // Handle aggregated diff groups (consecutive file_edit entries for same file)
+  if (aggregatedDiffGroup) {
+    return <AggregatedDiffGroupEntry group={aggregatedDiffGroup} />;
   }
 
   // If no entry, return null (shouldn't happen in normal usage)
@@ -870,6 +881,84 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
       label={label}
       icon={icon}
       unit={unit}
+    />
+  );
+}
+
+/**
+ * Aggregated diff group entry for consecutive file_edit entries on the same file
+ */
+function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
+  const { viewFileInChanges, diffPaths } = useChangesView();
+  const [expanded, setExpanded] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [expandedDiffKeys, setExpandedDiffKeys] = useState<Set<string>>(
+    new Set()
+  );
+
+  // Extract change data and status from each entry
+  const aggregatedDiffEntries = useMemo(() => {
+    return group.entries.flatMap((patchEntry, entryIdx) => {
+      if (patchEntry.type !== 'NORMALIZED_ENTRY') {
+        return [];
+      }
+
+      const entryType = patchEntry.content.entry_type;
+      if (entryType.type !== 'tool_use') {
+        return [];
+      }
+
+      const { action_type, status } = entryType;
+      if (action_type.action !== 'file_edit') {
+        return [];
+      }
+
+      // Each file_edit entry can have multiple changes
+      return action_type.changes.map((change, changeIdx) => ({
+        change,
+        status,
+        expansionKey: `${patchEntry.patchKey}:${entryIdx}:${changeIdx}`,
+      }));
+    });
+  }, [group.entries]);
+
+  const handleToggle = useCallback(() => {
+    setExpanded((prev) => !prev);
+  }, []);
+
+  const handleHoverChange = useCallback((hovered: boolean) => {
+    setIsHovered(hovered);
+  }, []);
+
+  const handleToggleDiffKey = useCallback((key: string) => {
+    setExpandedDiffKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleOpenInChanges = useCallback(() => {
+    viewFileInChanges(group.filePath);
+  }, [viewFileInChanges, group.filePath]);
+
+  const canOpenInChanges = diffPaths.has(group.filePath);
+
+  return (
+    <ChatAggregatedDiffEntries
+      filePath={group.filePath}
+      entries={aggregatedDiffEntries}
+      expanded={expanded}
+      isHovered={isHovered}
+      expandedDiffKeys={expandedDiffKeys}
+      onToggle={handleToggle}
+      onHoverChange={handleHoverChange}
+      onToggleDiffKey={handleToggleDiffKey}
+      onOpenInChanges={canOpenInChanges ? handleOpenInChanges : null}
     />
   );
 }

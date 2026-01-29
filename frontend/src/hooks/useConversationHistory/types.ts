@@ -20,12 +20,36 @@ export type AggregatedPatchGroup = {
   executionProcessId: string;
 };
 
-export type DisplayEntry = PatchTypeWithKey | AggregatedPatchGroup;
+/**
+ * A group of consecutive file_edit entries for the same file path.
+ * Used to display multiple edits to the same file in a collapsed accordion style.
+ */
+export type AggregatedDiffGroup = {
+  type: 'AGGREGATED_DIFF_GROUP';
+  /** The file path being edited */
+  filePath: string;
+  /** The individual file_edit entries in this group */
+  entries: PatchTypeWithKey[];
+  /** Unique key for the group */
+  patchKey: string;
+  executionProcessId: string;
+};
+
+export type DisplayEntry =
+  | PatchTypeWithKey
+  | AggregatedPatchGroup
+  | AggregatedDiffGroup;
 
 export function isAggregatedGroup(
   entry: DisplayEntry
 ): entry is AggregatedPatchGroup {
   return entry.type === 'AGGREGATED_GROUP';
+}
+
+export function isAggregatedDiffGroup(
+  entry: DisplayEntry
+): entry is AggregatedDiffGroup {
+  return entry.type === 'AGGREGATED_DIFF_GROUP';
 }
 
 export type AddEntryType = 'initial' | 'running' | 'historic' | 'plan';
