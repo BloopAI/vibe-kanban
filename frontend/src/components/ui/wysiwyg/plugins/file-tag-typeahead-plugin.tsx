@@ -15,6 +15,7 @@ import { Tag as TagIcon, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { WorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useTypeaheadOpen } from '@/components/ui/wysiwyg/context/typeahead-open-context';
 import {
   searchTagsAndFiles,
   type SearchResultItem,
@@ -81,6 +82,7 @@ export function FileTagTypeaheadPlugin({
   const [options, setOptions] = useState<FileTagOption[]>([]);
   const portalContainer = usePortalContainer();
   const { t } = useTranslation('common');
+  const { setIsOpen } = useTypeaheadOpen();
   // Use context directly to gracefully handle missing WorkspaceProvider (old UI)
   const workspaceContext = useContext(WorkspaceContext);
   const diffPaths = useMemo(
@@ -148,6 +150,8 @@ export function FileTagTypeaheadPlugin({
       }}
       options={options}
       onQueryChange={onQueryChange}
+      onOpen={() => setIsOpen(true)}
+      onClose={() => setIsOpen(false)}
       onSelectOption={(option, nodeToReplace, closeMenu) => {
         editor.update(() => {
           if (!nodeToReplace) return;

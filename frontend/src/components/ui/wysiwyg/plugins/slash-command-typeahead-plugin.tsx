@@ -12,6 +12,7 @@ import type { BaseCodingAgent, SlashCommandDescription } from 'shared/types';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { useSlashCommands } from '@/hooks/useSlashCommands';
 import { useTaskAttemptId } from '@/components/ui/wysiwyg/context/task-attempt-context';
+import { useTypeaheadOpen } from '@/components/ui/wysiwyg/context/typeahead-open-context';
 import { TypeaheadMenu } from './typeahead-menu-components';
 
 class SlashCommandOption extends MenuOption {
@@ -48,6 +49,7 @@ export function SlashCommandTypeaheadPlugin({
   const portalContainer = usePortalContainer();
   const taskAttemptId = useTaskAttemptId();
   const { t } = useTranslation('common');
+  const { setIsOpen } = useTypeaheadOpen();
   const [options, setOptions] = useState<SlashCommandOption[]>([]);
   const [activeQuery, setActiveQuery] = useState<string | null>(null);
 
@@ -105,6 +107,8 @@ export function SlashCommandTypeaheadPlugin({
       }}
       options={options}
       onQueryChange={updateOptions}
+      onOpen={() => setIsOpen(true)}
+      onClose={() => setIsOpen(false)}
       onSelectOption={(option, nodeToReplace, closeMenu) => {
         editor.update(() => {
           if (!nodeToReplace) return;
