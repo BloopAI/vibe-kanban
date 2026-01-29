@@ -8,7 +8,6 @@ import { CommandBar } from '@/components/ui-new/primitives/CommandBar';
 import { useActions } from '@/contexts/ActionsContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { attemptKeys } from '@/hooks/useAttempt';
-import { useBranchStatus } from '@/hooks/useBranchStatus';
 import type {
   PageId,
   ResolvedGroupItem,
@@ -42,9 +41,6 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
         )
       : undefined;
 
-    // Get branch status for filtering repos by action
-    const { data: branchStatus } = useBranchStatus(effectiveWorkspaceId);
-
     // State machine
     const { state, currentPage, canGoBack, dispatch } = useCommandBarState(
       page,
@@ -60,19 +56,13 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
       }
     }, [modal.visible, page, dispatch]);
 
-    // Get the pending action when in repo selection mode
-    const pendingAction =
-      state.status === 'selectingRepo' ? state.pendingAction : undefined;
-
     // Resolve current page to renderable data
     const resolvedPage = useResolvedPage(
       currentPage,
       state.search,
       visibilityContext,
       workspace,
-      repos,
-      branchStatus,
-      pendingAction
+      repos
     );
 
     // Handle item selection with side effects
