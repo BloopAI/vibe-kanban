@@ -67,7 +67,10 @@
       "createdTask": "Creó tarea: {{description}}",
       "todoOperation": "{{operation}} tareas pendientes"
     },
-    "fixScript": "Corregir Script"
+    "fixScript": "Corregir Script",
+    "subagent": {
+      "defaultType": "Subagente"
+    }
   },
   "language": {
     "browserDefault": "Predeterminado del navegador"

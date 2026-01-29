@@ -67,7 +67,10 @@
       "createdTask": "작업 생성: {{description}}",
       "todoOperation": "{{operation}} 할 일"
     },
-    "fixScript": "스크립트 수정"
+    "fixScript": "스크립트 수정",
+    "subagent": {
+      "defaultType": "서브에이전트"
+    }
   },
   "language": {
     "browserDefault": "브라우저 기본값"

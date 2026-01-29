@@ -92,6 +92,7 @@ export type PersistKey =
   | `plan:${string}`
   | `tool:${string}`
   | `todo:${string}`
+  | `subagent:${string}`
   | `user:${string}`
   | `system:${string}`
   | `error:${string}`

@@ -56,7 +56,10 @@
       "createdTask": "建立任務：{{description}}",
       "todoOperation": "{{operation}} 待辦事項"
     },
-    "fixScript": "修復腳本"
+    "fixScript": "修復腳本",
+    "subagent": {
+      "defaultType": "子代理"
+    }
   },
   "folderPicker": {
     "legend": "點擊資料夾名稱進行導覽 • 使用操作按鈕進行選擇",

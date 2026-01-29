@@ -766,7 +766,7 @@ impl ClaudeLogProcessor {
             ClaudeToolData::Task {
                 description,
                 prompt,
-                ..
+                subagent_type,
             } => {
                 let task_description = if let Some(desc) = description {
                     desc.clone()
@@ -775,6 +775,8 @@ impl ClaudeLogProcessor {
                 };
                 ActionType::TaskCreate {
                     description: task_description,
+                    subagent_type: subagent_type.clone(),
+                    result: None,
                 }
             }
             ClaudeToolData::ExitPlanMode { plan } => {
@@ -1143,6 +1145,44 @@ impl ClaudeLogProcessor {
                                 metadata: None,
                             };
                             patches.push(ConversationPatch::replace(info.entry_index, entry));
+                        } else if matches!(info.tool_data, ClaudeToolData::Task { .. }) {
+                            // Handle Task tool results - capture subagent output
+                            let (res_type, res_value) =
+                                Self::normalize_claude_tool_result_value(content);
+
+                            let status = if is_error.unwrap_or(false) {
+                                ToolStatus::Failed
+                            } else {
+                                ToolStatus::Success
+                            };
+
+                            // Extract subagent_type from the original tool_data
+                            let subagent_type =
+                                if let ClaudeToolData::Task { subagent_type, .. } = &info.tool_data
+                                {
+                                    subagent_type.clone()
+                                } else {
+                                    None
+                                };
+
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::ToolUse {
+                                    tool_name: info.tool_name.clone(),
+                                    action_type: ActionType::TaskCreate {
+                                        description: info.content.clone(),
+                                        subagent_type,
+                                        result: Some(crate::logs::ToolResult {
+                                            r#type: res_type,
+                                            value: res_value,
+                                        }),
+                                    },
+                                    status,
+                                },
+                                content: info.content.clone(),
+                                metadata: None,
+                            };
+                            patches.push(ConversationPatch::replace(info.entry_index, entry));
                         } else if matches!(
                             info.tool_data,
                             ClaudeToolData::Unknown { .. }
@@ -1420,7 +1460,7 @@ impl ClaudeLogProcessor {
             ActionType::CommandRun { command, .. } => command.to_string(),
             ActionType::Search { query } => query.to_string(),
             ActionType::WebFetch { url } => url.to_string(),
-            ActionType::TaskCreate { description } => {
+            ActionType::TaskCreate { description, .. } => {
                 if description.is_empty() {
                     "Task".to_string()
                 } else {

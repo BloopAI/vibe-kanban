@@ -67,7 +67,10 @@
       "createdTask": "タスクを作成: {{description}}",
       "todoOperation": "{{operation}} Todo"
     },
-    "fixScript": "スクリプトを修正"
+    "fixScript": "スクリプトを修正",
+    "subagent": {
+      "defaultType": "サブエージェント"
+    }
   },
   "language": {
     "browserDefault": "ブラウザ設定"
