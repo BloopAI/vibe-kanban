@@ -610,8 +610,13 @@ impl RemoteClient {
         &self,
         request: CreateWorkspaceRequest,
     ) -> Result<(), RemoteClientError> {
-        self.send(reqwest::Method::POST, "/v1/workspaces", true, Some(&request))
-            .await?;
+        self.send(
+            reqwest::Method::POST,
+            "/v1/workspaces",
+            true,
+            Some(&request),
+        )
+        .await?;
         Ok(())
     }
 
