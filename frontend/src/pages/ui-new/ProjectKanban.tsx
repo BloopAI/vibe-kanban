@@ -7,6 +7,7 @@ import {
   ProjectProvider,
   useProjectContext,
 } from '@/contexts/remote/ProjectContext';
+import { UserProvider } from '@/contexts/remote/UserContext';
 import { useActions } from '@/contexts/ActionsContext';
 import { KanbanContainer } from '@/components/ui-new/containers/KanbanContainer';
 import { KanbanIssuePanelContainer } from '@/components/ui-new/containers/KanbanIssuePanelContainer';
@@ -239,8 +240,10 @@ export function ProjectKanban() {
   }
 
   return (
-    <OrgProvider organizationId={organizationId}>
-      <ProjectKanbanInner projectId={projectId} />
-    </OrgProvider>
+    <UserProvider>
+      <OrgProvider organizationId={organizationId}>
+        <ProjectKanbanInner projectId={projectId} />
+      </OrgProvider>
+    </UserProvider>
   );
 }

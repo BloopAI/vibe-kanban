@@ -138,18 +138,13 @@ async fn proxy_users(
 async fn proxy_workspaces(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Path(project_id): Path<Uuid>,
     Query(query): Query<ShapeQuery>,
 ) -> Result<Response, ProxyError> {
-    organization_members::assert_project_access(state.pool(), project_id, ctx.user.id)
-        .await
-        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
-
     proxy_table(
         &state,
         &shapes::WORKSPACES,
         &query.params,
-        &[project_id.to_string()],
+        &[ctx.user.id.to_string()],
     )
     .await
 }
