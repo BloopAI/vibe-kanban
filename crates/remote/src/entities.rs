@@ -123,14 +123,14 @@ crate::define_entity!(
     ],
 );
 
-// Workspace: shape-only (no mutations) with custom URL
+// Workspace: shape-only (no mutations), scoped by owner user
 crate::define_entity!(
     Workspace,
     table: "workspaces",
     shape: {
-        where_clause: r#""project_id" = $1"#,
-        params: ["project_id"],
-        url: "/shape/project/{project_id}/workspaces",
+        where_clause: r#""owner_user_id" = $1"#,
+        params: ["owner_user_id"],
+        url: "/shape/user/workspaces",
     },
 );
 
