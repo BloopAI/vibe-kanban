@@ -10,11 +10,13 @@ use services::services::{
     approvals::Approvals,
     auth::AuthContext,
     config::{Config, load_config_from_file, save_config_to_file},
+    container::ContainerService,
     events::EventService,
     file_search::FileSearchCache,
     filesystem::FilesystemService,
     image::ImageService,
     oauth_credentials::OAuthCredentials,
+    pr_monitor::PrMonitorService,
     project::ProjectService,
     queued_message::QueuedMessageService,
     remote_client::{RemoteClient, RemoteClientError},
@@ -65,8 +67,6 @@ struct PendingHandoff {
 
 #[async_trait]
 impl Deployment for LocalDeployment {
-    type Container = LocalContainerService;
-
     async fn new() -> Result<Self, DeploymentError> {
         let mut raw_config = load_config_from_file(&config_path()).await;
 
@@ -190,6 +190,17 @@ impl Deployment for LocalDeployment {
 
         let pty = PtyService::new();
 
+        // Spawn PR monitor service
+        {
+            let db = db.clone();
+            let analytics = analytics.as_ref().map(|s| AnalyticsContext {
+                user_id: user_id.clone(),
+                analytics_service: s.clone(),
+            });
+            let container = container.clone();
+            PrMonitorService::spawn(db, analytics, container).await;
+        }
+
         let deployment = Self {
             config,
             user_id,
@@ -230,7 +241,7 @@ impl Deployment for LocalDeployment {
         &self.analytics
     }
 
-    fn container(&self) -> &Self::Container {
+    fn container(&self) -> &impl ContainerService {
         &self.container
     }
 
