@@ -2,7 +2,12 @@ import { forwardRef, createElement } from 'react';
 import type { Icon, IconProps } from '@phosphor-icons/react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { QueryClient } from '@tanstack/react-query';
-import type { EditorType, ExecutionProcess, Merge, Workspace } from 'shared/types';
+import type {
+  EditorType,
+  ExecutionProcess,
+  Merge,
+  Workspace,
+} from 'shared/types';
 import type { DiffViewMode } from '@/stores/useDiffViewStore';
 import type { LogsPanelContent } from '../containers/LogsContentContainer';
 import type { LogEntry } from '../containers/VirtualizedProcessLogs';

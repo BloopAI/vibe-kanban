@@ -102,7 +102,10 @@ export function useResolvedPage(
         groups: [
           {
             label: 'Repositories',
-            items: filteredRepos.map((r) => ({ type: 'repo' as const, repo: r })),
+            items: filteredRepos.map((r) => ({
+              type: 'repo' as const,
+              repo: r,
+            })),
           },
         ],
       };
