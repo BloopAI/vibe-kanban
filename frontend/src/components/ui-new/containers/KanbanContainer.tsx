@@ -7,7 +7,8 @@ import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useKanbanFilters, PRIORITY_ORDER } from '@/hooks/useKanbanFilters';
 import { bulkUpdateIssues, type BulkUpdateIssueItem } from '@/lib/remoteApi';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
-import { PlusIcon } from '@phosphor-icons/react';
+import { PlusIcon, GearIcon } from '@phosphor-icons/react';
+import { Actions } from '@/components/ui-new/actions';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import {
   KanbanProvider,
@@ -76,8 +77,8 @@ export function KanbanContainer() {
     startCreate,
   } = useKanbanNavigation();
 
-  // Get setter from ActionsContext to update default status for command bar
-  const { setDefaultCreateStatusId } = useActions();
+  // Get setter and executor from ActionsContext
+  const { setDefaultCreateStatusId, executeAction } = useActions();
 
   const kanbanFilters = useUiPreferencesStore((s) => s.kanbanFilters);
   const kanbanViewMode = useUiPreferencesStore((s) => s.kanbanViewMode);
@@ -404,6 +405,14 @@ export function KanbanContainer() {
       <div className="px-double pt-double space-y-base">
         <div className="flex items-center gap-double">
           <h2 className="text-2xl font-medium">{projectName}</h2>
+          <button
+            type="button"
+            onClick={() => executeAction(Actions.ProjectSettings)}
+            className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors"
+            aria-label="Project settings"
+          >
+            <GearIcon className="size-icon-xs" weight="bold" />
+          </button>
           <ViewNavTabs
             activeView={kanbanViewMode}
             onViewChange={setKanbanViewMode}

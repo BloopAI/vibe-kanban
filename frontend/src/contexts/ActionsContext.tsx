@@ -9,6 +9,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
+import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import {
   type ActionDefinition,
@@ -84,6 +85,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId?: string }>();
   const queryClient = useQueryClient();
+  // Get selected organization ID from store (for kanban context)
+  const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
   // Get workspace context (ActionsProvider is nested inside WorkspaceProvider)
   const { selectWorkspace, activeWorkspaces, workspaceId, workspace } =
     useWorkspaceContext();
@@ -212,6 +215,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openWorkspaceSelection,
       navigateToCreateIssue,
       defaultCreateStatusId,
+      kanbanOrgId: selectedOrgId ?? undefined,
+      kanbanProjectId: projectId,
     }),
     [
       navigate,
@@ -232,6 +237,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openWorkspaceSelection,
       navigateToCreateIssue,
       defaultCreateStatusId,
+      selectedOrgId,
+      projectId,
     ]
   );
 
