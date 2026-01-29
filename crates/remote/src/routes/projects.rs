@@ -101,6 +101,17 @@ async fn create_project(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
+    if let Some(analytics) = state.analytics() {
+        analytics.track(
+            ctx.user.id,
+            "project_created",
+            serde_json::json!({
+                "project_id": response.data.id,
+                "organization_id": response.data.organization_id,
+            }),
+        );
+    }
+
     Ok(Json(response))
 }
 

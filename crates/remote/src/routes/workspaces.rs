@@ -92,14 +92,27 @@ async fn create_workspace(
         )
     })?;
 
-    if let Some(issue_id) = payload.issue_id
-        && let Err(error) =
+    if let Some(issue_id) = payload.issue_id {
+        if let Err(error) =
             IssueRepository::sync_status_from_workspace_created(state.pool(), issue_id).await
-    {
-        tracing::warn!(
-            ?error,
-            "failed to sync issue status from workspace creation"
-        );
+        {
+            tracing::warn!(
+                ?error,
+                "failed to sync issue status from workspace creation"
+            );
+        }
+
+        if let Some(analytics) = state.analytics() {
+            analytics.track(
+                ctx.user.id,
+                "workspace_created_from_issue",
+                serde_json::json!({
+                    "workspace_id": workspace.id,
+                    "project_id": workspace.project_id,
+                    "issue_id": issue_id,
+                }),
+            );
+        }
     }
 
     Ok(Json(workspace))
