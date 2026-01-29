@@ -22,7 +22,8 @@ const toggleGroupItemVariants = cva(
 );
 
 interface ToggleGroupItemProps
-  extends React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Item>,
+  extends
+    React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Item>,
     VariantProps<typeof toggleGroupItemVariants> {}
 
 const ToggleGroupItem = React.forwardRef<
