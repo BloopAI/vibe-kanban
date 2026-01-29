@@ -1,12 +1,13 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import type { IssuePriority } from 'shared/remote-types';
+import type { IssuePriority, PullRequest } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
 import { KanbanBadge } from '@/components/ui-new/primitives/KanbanBadge';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
 import { RunningDots } from '@/components/ui-new/primitives/RunningDots';
+import { PrBadge } from '@/components/ui-new/primitives/PrBadge';
 
 export type KanbanCardContentProps = {
   displayId: string;
@@ -15,6 +16,7 @@ export type KanbanCardContentProps = {
   priority: IssuePriority;
   tags: { id: string; name: string; color: string }[];
   assignees: OrganizationMemberWithProfile[];
+  pullRequests?: PullRequest[];
   isLoading?: boolean;
   className?: string;
 };
@@ -26,6 +28,7 @@ export const KanbanCardContent = ({
   priority,
   tags,
   assignees,
+  pullRequests = [],
   isLoading = false,
   className,
 }: KanbanCardContentProps) => {
@@ -58,6 +61,17 @@ export const KanbanCardContent = ({
           ))}
           {tags.length > 2 && (
             <span className="text-sm text-low">+{tags.length - 2}</span>
+          )}
+          {pullRequests.slice(0, 2).map((pr) => (
+            <PrBadge
+              key={pr.id}
+              number={pr.number}
+              url={pr.url}
+              status={pr.status}
+            />
+          ))}
+          {pullRequests.length > 2 && (
+            <span className="text-sm text-low">+{pullRequests.length - 2}</span>
           )}
         </div>
         <KanbanAssignee assignees={assignees} />
