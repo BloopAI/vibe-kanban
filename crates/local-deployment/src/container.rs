@@ -322,7 +322,7 @@ impl LocalContainerService {
             let worktree_path = workspace_root.join(&repo.name);
 
             match git.get_worktree_status(&worktree_path) {
-                Ok(ws) if ws.entries.len() > 0 => {
+                Ok(ws) if !ws.entries.is_empty() => {
                     repos_with_changes.push((repo.clone(), worktree_path));
                 }
                 Ok(_) => {
