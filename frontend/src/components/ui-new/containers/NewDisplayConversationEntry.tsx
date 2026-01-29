@@ -39,6 +39,10 @@ import { ChatSubagentEntry } from '../primitives/conversation/ChatSubagentEntry'
 import { ChatAggregatedToolEntries } from '../primitives/conversation/ChatAggregatedToolEntries';
 import type { DiffInput } from '../primitives/conversation/PierreConversationDiff';
 import type { AggregatedPatchGroup } from '@/hooks/useConversationHistory/types';
+import {
+  FileTextIcon,
+  ListMagnifyingGlassIcon,
+} from '@phosphor-icons/react';
 
 type Props = {
   expansionKey: string;
@@ -843,8 +847,10 @@ function AggregatedGroupEntry({
     setIsHovered(hovered);
   }, []);
 
-  // Get the label based on aggregation type
-  const label = group.aggregationType === 'file_read' ? 'Read' : 'Search';
+  // Get the label and icon based on aggregation type
+  const isFileRead = group.aggregationType === 'file_read';
+  const label = isFileRead ? 'Read' : 'Search';
+  const icon = isFileRead ? FileTextIcon : ListMagnifyingGlassIcon;
 
   return (
     <ChatAggregatedToolEntries
@@ -855,6 +861,7 @@ function AggregatedGroupEntry({
       onHoverChange={handleHoverChange}
       onViewContent={handleViewContent}
       label={label}
+      icon={icon}
     />
   );
 }
