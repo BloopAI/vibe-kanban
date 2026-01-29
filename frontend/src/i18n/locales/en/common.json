@@ -29,6 +29,8 @@
     "success": "Success",
     "reconnecting": "Reconnecting"
   },
+  "ok": "OK",
+  "error": "Error",
   "language": {
     "browserDefault": "Browser Default"
   },
@@ -163,7 +165,15 @@
       "placeholder": "Enter workspace name",
       "action": "Rename",
       "renaming": "Renaming..."
-    }
+    },
+    "unlinkFromIssue": "Unlink from issue",
+    "deleteWorkspace": "Delete workspace",
+    "unlink": "Unlink",
+    "delete": "Delete",
+    "unlinkConfirmMessage": "Are you sure you want to unlink this workspace from the issue? The workspace will still exist but will no longer be associated with this issue.",
+    "deleteConfirmMessage": "Are you sure you want to delete this workspace? This will unlink it from the issue and delete the local workspace. This action cannot be undone.",
+    "unlinkError": "Failed to unlink workspace",
+    "deleteError": "Failed to delete workspace"
   },
   "fileTree": {
     "searchPlaceholder": "Search files...",
