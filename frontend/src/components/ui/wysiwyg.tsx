@@ -28,6 +28,7 @@ import {
   LocalImagesContext,
   type LocalImageMetadata,
 } from './wysiwyg/context/task-attempt-context';
+import { TypeaheadOpenProvider } from './wysiwyg/context/typeahead-open-context';
 import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
 import { SlashCommandTypeaheadPlugin } from './wysiwyg/plugins/slash-command-typeahead-plugin';
 import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plugin';
@@ -325,23 +326,25 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                       transformers={extendedTransformers}
                     />
                     <PasteMarkdownPlugin transformers={extendedTransformers} />
-                    <FileTagTypeaheadPlugin
-                      workspaceId={workspaceId}
-                      projectId={projectId}
-                    />
-                    {executor && (
-                      <SlashCommandTypeaheadPlugin
-                        agent={executor}
-                        repoId={repoId}
+                    <TypeaheadOpenProvider>
+                      <FileTagTypeaheadPlugin
+                        workspaceId={workspaceId}
+                        projectId={projectId}
                       />
-                    )}
-                    <KeyboardCommandsPlugin
-                      onCmdEnter={onCmdEnter}
-                      onShiftCmdEnter={onShiftCmdEnter}
-                      onChange={onChange}
-                      transformers={extendedTransformers}
-                      sendShortcut={sendShortcut}
-                    />
+                      {executor && (
+                        <SlashCommandTypeaheadPlugin
+                          agent={executor}
+                          repoId={repoId}
+                        />
+                      )}
+                      <KeyboardCommandsPlugin
+                        onCmdEnter={onCmdEnter}
+                        onShiftCmdEnter={onShiftCmdEnter}
+                        onChange={onChange}
+                        transformers={extendedTransformers}
+                        sendShortcut={sendShortcut}
+                      />
+                    </TypeaheadOpenProvider>
                     <ImageKeyboardPlugin />
                     <CodeBlockShortcutPlugin />
                   </>
