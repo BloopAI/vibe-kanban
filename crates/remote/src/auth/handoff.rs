@@ -94,6 +94,8 @@ pub enum CallbackResult {
 pub struct RedeemResponse {
     pub access_token: String,
     pub refresh_token: String,
+    pub user_id: Uuid,
+    pub email: String,
 }
 
 pub struct OAuthHandoffService {
@@ -386,6 +388,8 @@ impl OAuthHandoffService {
         Ok(RedeemResponse {
             access_token: tokens.access_token,
             refresh_token: tokens.refresh_token,
+            user_id: user.id,
+            email: user.email,
         })
     }
 

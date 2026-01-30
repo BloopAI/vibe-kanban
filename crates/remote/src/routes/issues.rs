@@ -89,7 +89,13 @@ async fn create_issue(
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateIssueRequest>,
 ) -> Result<Json<MutationResponse<Issue>>, ErrorResponse> {
-    ensure_project_access(state.pool(), ctx.user.id, payload.project_id).await?;
+    let organization_id =
+        ensure_project_access(state.pool(), ctx.user.id, payload.project_id).await?;
+
+    let has_parent = payload.parent_issue_id.is_some();
+    let has_description = payload.description.is_some();
+    let priority = payload.priority;
+    let parent_issue_id = payload.parent_issue_id;
 
     let response = IssueRepository::create(
         state.pool(),
@@ -112,6 +118,34 @@ async fn create_issue(
         tracing::error!(?error, "failed to create issue");
         db_error(error, "failed to create issue")
     })?;
+
+    if let Some(analytics) = state.analytics() {
+        analytics.track(
+            ctx.user.id,
+            "issue_created",
+            serde_json::json!({
+                "issue_id": response.data.id,
+                "project_id": response.data.project_id,
+                "organization_id": organization_id,
+                "has_description": has_description,
+                "has_parent": has_parent,
+                "priority": format!("{:?}", priority),
+            }),
+        );
+
+        if let Some(parent_id) = parent_issue_id {
+            analytics.track(
+                ctx.user.id,
+                "subtask_created",
+                serde_json::json!({
+                    "issue_id": response.data.id,
+                    "parent_issue_id": parent_id,
+                    "project_id": response.data.project_id,
+                    "organization_id": organization_id,
+                }),
+            );
+        }
+    }
 
     Ok(Json(response))
 }

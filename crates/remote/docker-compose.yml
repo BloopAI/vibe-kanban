@@ -50,7 +50,7 @@ services:
       remote-db:
         condition: service_healthy
     environment:
-      RUST_LOG: info,remote=debug 
+      RUST_LOG: info,remote=info
 
       SERVER_DATABASE_URL: postgres://remote:remote@remote-db:5432/remote
       SERVER_LISTEN_ADDR: 0.0.0.0:8081
@@ -79,6 +79,9 @@ services:
       STRIPE_TEAM_SEAT_PRICE_ID: ${STRIPE_TEAM_SEAT_PRICE_ID:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       STRIPE_FREE_SEAT_LIMIT: ${STRIPE_FREE_SEAT_LIMIT:-1}
+
+      POSTHOG_API_KEY: ${POSTHOG_API_KEY:-}
+      POSTHOG_API_ENDPOINT: ${POSTHOG_API_ENDPOINT:-}
     ports:
       - "127.0.0.1:3000:8081"
     restart: unless-stopped
