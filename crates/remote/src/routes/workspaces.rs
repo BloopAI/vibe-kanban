@@ -23,6 +23,7 @@ pub struct CreateWorkspaceRequest {
     pub project_id: Uuid,
     pub local_workspace_id: Option<Uuid>,
     pub issue_id: Option<Uuid>,
+    pub name: Option<String>,
     pub archived: Option<bool>,
     pub files_changed: Option<i32>,
     pub lines_added: Option<i32>,
@@ -32,6 +33,7 @@ pub struct CreateWorkspaceRequest {
 #[derive(Debug, Deserialize)]
 pub struct UpdateWorkspaceRequest {
     pub local_workspace_id: Uuid,
+    pub name: Option<Option<String>>,
     pub archived: Option<bool>,
     pub files_changed: Option<Option<i32>>,
     pub lines_added: Option<Option<i32>>,
@@ -77,6 +79,7 @@ async fn create_workspace(
             owner_user_id: ctx.user.id,
             local_workspace_id: payload.local_workspace_id,
             issue_id: payload.issue_id,
+            name: payload.name,
             archived: payload.archived,
             files_changed: payload.files_changed,
             lines_added: payload.lines_added,
@@ -128,6 +131,7 @@ async fn update_workspace(
     let updated = WorkspaceRepository::update(
         state.pool(),
         workspace.id,
+        payload.name,
         payload.archived,
         payload.files_changed,
         payload.lines_added,

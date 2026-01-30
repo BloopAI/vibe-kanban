@@ -65,7 +65,7 @@ export type CommandBarEffect =
       type: 'updatePriority';
       projectId: string;
       issueIds: string[];
-      priority: 'urgent' | 'high' | 'medium' | 'low';
+      priority: 'urgent' | 'high' | 'medium' | 'low' | null;
     }
   | {
       type: 'addSubIssue';

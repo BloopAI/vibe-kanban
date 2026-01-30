@@ -48,7 +48,7 @@ export interface StatusItem {
 
 // Priority item for dynamic priority selection page
 export interface PriorityItem {
-  id: IssuePriority;
+  id: IssuePriority | null;
   name: string;
 }
 

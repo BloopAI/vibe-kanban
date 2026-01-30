@@ -207,7 +207,8 @@ export function KanbanContainer() {
         switch (sortField) {
           case 'priority':
             comparison =
-              PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+              (a.priority ? PRIORITY_ORDER[a.priority] : Infinity) -
+              (b.priority ? PRIORITY_ORDER[b.priority] : Infinity);
             break;
           case 'created_at':
             comparison =

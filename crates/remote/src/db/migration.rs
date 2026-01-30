@@ -88,7 +88,7 @@ impl MigrationRepository {
                 (SELECT id FROM project_statuses ps WHERE ps.project_id = t.project_id AND LOWER(ps.name) = LOWER(t.status_name)),
                 t.title,
                 t.description,
-                'medium'::issue_priority,
+                NULL,
                 0.0,
                 '{}'::jsonb,
                 t.created_at

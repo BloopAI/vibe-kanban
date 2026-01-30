@@ -86,7 +86,7 @@ interface CommandBarContentProps {
   onStatusUpdate?: (issueIds: string[], statusId: string) => void;
   onPriorityUpdate?: (
     issueIds: string[],
-    priority: 'urgent' | 'high' | 'medium' | 'low'
+    priority: 'urgent' | 'high' | 'medium' | 'low' | null
   ) => void;
   onAddSubIssue?: (parentIssueId: string, childIssueId: string) => void;
   onCreateSubIssue?: (parentIssueId: string) => void;
@@ -357,13 +357,17 @@ function CommandBarWithStatuses(
 
   // Update URL params for create mode defaults
   const updateCreateDefaults = useCallback(
-    (updates: { statusId?: string; priority?: string }) => {
+    (updates: { statusId?: string; priority?: string | null }) => {
       const newParams = new URLSearchParams(searchParams);
       if (updates.statusId !== undefined) {
         newParams.set('statusId', updates.statusId);
       }
       if (updates.priority !== undefined) {
-        newParams.set('priority', updates.priority);
+        if (updates.priority === null) {
+          newParams.delete('priority');
+        } else {
+          newParams.set('priority', updates.priority);
+        }
       }
       setSearchParams(newParams, { replace: true });
     },
@@ -485,7 +489,10 @@ function CommandBarWithStatuses(
   );
 
   const handlePriorityUpdate = useCallback(
-    (issueIds: string[], priority: 'urgent' | 'high' | 'medium' | 'low') => {
+    (
+      issueIds: string[],
+      priority: 'urgent' | 'high' | 'medium' | 'low' | null
+    ) => {
       // Check if this is for create mode (empty issueIds array with isCreateMode flag)
       if (props.pendingPrioritySelection?.isCreateMode) {
         // Update the URL params for the issue being created

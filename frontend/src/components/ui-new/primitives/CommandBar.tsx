@@ -162,18 +162,22 @@ export function CommandBar({
                   medium: { icon: MinusIcon, colorClass: 'text-low' },
                   low: { icon: ArrowDownIcon, colorClass: 'text-success' },
                 } as const;
-                const config = priorityConfig[item.priority.id];
-                const IconComponent = config.icon;
+                const config = item.priority.id
+                  ? priorityConfig[item.priority.id]
+                  : null;
+                const IconComponent = config?.icon;
                 return (
                   <CommandItem
-                    key={item.priority.id}
-                    value={`${item.priority.id} ${item.priority.name}`}
+                    key={item.priority.id ?? 'no-priority'}
+                    value={`${item.priority.id ?? 'none'} ${item.priority.name}`}
                     onSelect={() => onSelect(item)}
                   >
-                    <IconComponent
-                      className={`h-4 w-4 ${config.colorClass}`}
-                      weight="bold"
-                    />
+                    {IconComponent && (
+                      <IconComponent
+                        className={`h-4 w-4 ${config?.colorClass}`}
+                        weight="bold"
+                      />
+                    )}
                     <span>{item.priority.name}</span>
                   </CommandItem>
                 );
@@ -201,8 +205,10 @@ export function CommandBar({
                   medium: { icon: MinusIcon, colorClass: 'text-low' },
                   low: { icon: ArrowDownIcon, colorClass: 'text-success' },
                 } as const;
-                const config = priorityConfig[item.issue.priority];
-                const PriorityIcon = config.icon;
+                const config = item.issue.priority
+                  ? priorityConfig[item.issue.priority]
+                  : null;
+                const PriorityIconComponent = config?.icon;
                 const statusColor =
                   statuses.find((s) => s.id === item.issue.status_id)?.color ??
                   '0 0% 50%';
@@ -212,10 +218,12 @@ export function CommandBar({
                     value={`${item.issue.id} ${item.issue.simple_id} ${item.issue.title}`}
                     onSelect={() => onSelect(item)}
                   >
-                    <PriorityIcon
-                      className={`h-4 w-4 shrink-0 ${config.colorClass}`}
-                      weight="bold"
-                    />
+                    {PriorityIconComponent && (
+                      <PriorityIconComponent
+                        className={`h-4 w-4 shrink-0 ${config?.colorClass}`}
+                        weight="bold"
+                      />
+                    )}
                     <span className="font-mono text-low shrink-0">
                       {item.issue.simple_id}
                     </span>
