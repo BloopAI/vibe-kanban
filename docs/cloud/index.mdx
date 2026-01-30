@@ -1,6 +1,6 @@
 ---
 title: "Vibe Kanban Cloud"
-description: "Run Vibe Kanban as a self-hosted cloud service for team collaboration"
+description: "Collaborate with your team in real-time with Cloud features"
 sidebarTitle: "Overview"
 ---
 
@@ -10,190 +10,156 @@ Vibe Kanban Cloud is currently in <Badge color="orange">Beta</Badge>. Features m
 
 ## What is Vibe Kanban Cloud?
 
-**Vibe Kanban Cloud** is a self-hosted version of Vibe Kanban designed for team collaboration. Instead of running Vibe Kanban as a local desktop application, you run it as a server that multiple team members can access.
+**Vibe Kanban Cloud** adds team collaboration to Vibe Kanban. Your projects, issues, and progress sync to the cloud so your entire team stays in sync.
 
-
-### Key Differences from Local Vibe Kanban
-
-| Feature | Local (Desktop) | Cloud |
-|---------|-----------------|-------|
-| **Users** | Single user | Multiple team members |
-| **Data storage** | SQLite on your machine | PostgreSQL database |
-| **Access** | Only on your computer | Anyone with the URL |
-| **Authentication** | None needed | Sign in with GitHub/Google |
-| **Collaboration** | Not supported | Real-time sync across users |
-| **Setup** | `npx vibe-kanban` | Docker Compose stack |
-
-### When to Use Cloud vs Local
+### Key Benefits
 
 <CardGroup cols={2}>
-<Card title="Use Local When" icon="user">
-  - You're working solo
-  - You want the simplest setup
-  - You don't need to share with others
-  - You want everything on your machine
+<Card title="Team Collaboration" icon="users">
+  Invite team members and work together on the same projects. Everyone sees updates in real-time.
 </Card>
 
-<Card title="Use Cloud When" icon="users">
-  - You have a team working together
-  - Multiple people need to see task progress
-  - You want centralised project management
-  - You need persistent data across machines
+<Card title="Work From Anywhere" icon="globe">
+  Your data syncs to the cloud. Access your projects from any computer by signing in.
+</Card>
+
+<Card title="Real-Time Sync" icon="bolt">
+  Changes appear instantly for all team members. No need to refresh or manually sync.
+</Card>
+
+<Card title="Same Interface" icon="desktop">
+  Cloud uses the same Vibe Kanban interface you already know. No new tools to learn.
 </Card>
 </CardGroup>
 
-## How It Works
+### Cloud vs Local
 
-Vibe Kanban Cloud runs as a set of services on your machine (or a server) using Docker. When you start Vibe Kanban Cloud, four services work together to provide the full experience:
-
-### The Four Services
-
-<AccordionGroup>
-<Accordion title="Frontend (What You See)" icon="browser">
-The **frontend** is the web interface you interact with in your browser. It's built with React and provides all the visual elements - the kanban board, task panels, chat interface, and settings pages.
-
-When you open `http://localhost:3000` in your browser, you're loading this frontend application. It communicates with the backend to fetch and update data.
-
-**Port:** 3000
-</Accordion>
-
-<Accordion title="Backend API (The Brain)" icon="server">
-The **backend** is a Rust server that handles all the logic and data operations. When you create a task, invite a team member, or sign in, the frontend sends a request to the backend, which processes it and updates the database.
-
-The backend also handles:
-- Authentication (verifying who you are)
-- Authorisation (checking what you're allowed to do)
-- Business logic (enforcing rules like "only admins can invite members")
-- Communication with external services (GitHub, Google OAuth)
-
-**Port:** 8081
-</Accordion>
-
-<Accordion title="PostgreSQL (Data Storage)" icon="database">
-**PostgreSQL** is an industry-standard database that stores all your data - organisations, projects, tasks, users, and everything else. Unlike the local version of Vibe Kanban (which uses SQLite), PostgreSQL is designed for multi-user access and can handle many simultaneous connections.
-
-Your data persists in a Docker volume, so it survives container restarts. However, you should set up regular backups for production use.
-
-**Port:** 5432
-</Accordion>
-
-<Accordion title="Electric (Real-Time Sync)" icon="bolt">
-**Electric** is the magic that makes real-time collaboration work. It watches the PostgreSQL database for changes and instantly pushes updates to all connected browsers.
-
-When your teammate creates a task, Electric detects the database change and notifies your browser within milliseconds. This means you never need to refresh the page to see updates - they just appear.
-
-Electric uses a technology called "logical replication" to efficiently stream only the changes, not the entire dataset.
-
-**Port:** 3000 (shared with frontend proxy)
-</Accordion>
-</AccordionGroup>
-
-### How They Work Together
-
-<Steps>
-<Step title="You open the app in your browser">
-Your browser loads the frontend from `http://localhost:3000`. The frontend is a single-page application that runs entirely in your browser.
-</Step>
-
-<Step title="You sign in">
-When you click "Sign in with GitHub", the frontend redirects you to GitHub. After you authorise, GitHub redirects back to the backend (`localhost:8081`), which creates your session and sends you back to the frontend with an authentication token.
-</Step>
-
-<Step title="The frontend connects to Electric">
-Once signed in, the frontend establishes a persistent connection to Electric. This connection stays open, waiting for real-time updates.
-</Step>
-
-<Step title="You or a teammate makes a change">
-When anyone creates a task, edits a project, or makes any change, the frontend sends the request to the backend API.
-</Step>
-
-<Step title="The backend updates the database">
-The backend validates the request, applies business logic, and writes the change to PostgreSQL.
-</Step>
-
-<Step title="Electric broadcasts the change">
-Electric detects the database change and immediately pushes it to all connected frontends - yours and your teammates'.
-</Step>
-
-<Step title="Everyone sees the update instantly">
-All browsers receive the update and refresh their display. No one needs to manually refresh.
-</Step>
-</Steps>
+| Feature | Local | Cloud |
+|---------|-------|-------|
+| **Data storage** | On your computer | Synced to cloud |
+| **Team access** | Only you | Invite team members |
+| **Sign-in required** | No | Yes (GitHub or Google) |
+| **Real-time collaboration** | No | Yes |
+| **Works offline** | Yes | Requires internet |
 
 <Info>
-**What is Docker?**
-
-Docker is a tool that packages applications into "containers" - self-contained environments with everything needed to run. Think of it like a shipping container: no matter what's inside, it works the same way everywhere.
-
-You don't need to understand Docker deeply - just install it and run the commands we provide. Docker Compose (which we use) makes it easy to run multiple containers together with a single command.
+You can use both Local and Cloud projects in the same Vibe Kanban installation. They appear in separate sections of the sidebar.
 </Info>
+
+## How It Works
+
+1. **Run Vibe Kanban** as usual with `npx vibe-kanban`
+2. **Sign in** with your GitHub or Google account
+3. **Create an organisation** to group your team
+4. **Invite team members** via email
+5. **Collaborate** on projects with real-time sync
+
+Your local projects remain untouched. Cloud projects are stored separately and sync automatically.
+
+## Key Concepts
+
+### Organisations
+
+An **organisation** is your team's shared space. It contains:
+- Team members with different roles (Admin, Member)
+- Projects that everyone can access
+- Shared settings
+
+Think of it as your company or team in Vibe Kanban.
+
+### Projects
+
+A **project** is a kanban board for a specific initiative. Each project has:
+- Customisable status columns
+- Issues to track work
+- Tags for categorisation
+
+### Issues
+
+An **issue** is a single piece of work. Unlike local tasks, Cloud issues have:
+- Simple IDs (like `TASK-123`) for easy reference
+- Multiple assignees
+- Priority levels
+- Comments for discussion
+- Sub-issues for breaking down work
 
 ## Features
 
 ### Team Collaboration
+- Invite members via email
+- Role-based permissions (Admin and Member)
+- See who's assigned to what
 
-- **Organisations** - Group your team and projects together
-- **Team members** - Invite colleagues via email
-- **Role-based access** - Admins can manage settings; members can work on tasks
-- **Real-time sync** - Changes appear instantly for all users
+### Real-Time Sync
+- Changes appear instantly for everyone
+- No conflicts or manual merging
+- Always up to date
 
-### Authentication
+### Advanced Kanban
+- Drag-and-drop issues between columns
+- Custom status columns with colours
+- Filter by priority, assignee, or tags
+- Multiple sort options
 
-- **Sign in with GitHub** - Use your existing GitHub account
-- **Sign in with Google** - Use your Google account
-- **Secure sessions** - JWT-based authentication with refresh tokens
+### GitHub Integration
+- Link pull requests to issues
+- Review code directly in Vibe Kanban
+- Track PR status
 
-### Everything from Local, Plus More
+## Getting Started
 
-Cloud includes all local features:
-- AI coding agent orchestration
-- Isolated git worktrees per task
-- Code review with inline comments
-- Pull request creation
-- Multiple agent support
+<Steps>
+<Step title="Run Vibe Kanban">
+  ```bash
+  npx vibe-kanban
+  ```
+</Step>
+
+<Step title="Sign in">
+  Click **Login** and sign in with GitHub or Google.
+</Step>
+
+<Step title="Create organisation">
+  Enter your team or company name.
+</Step>
+
+<Step title="Create a project">
+  Click **+ New Project** and start adding issues.
+</Step>
+
+<Step title="Invite team (optional)">
+  Go to organisation settings and invite members by email.
+</Step>
+</Steps>
+
+<Card title="Full Getting Started Guide" icon="rocket" href="/cloud/getting-started">
+  Step-by-step instructions for setting up Cloud
+</Card>
 
 ## Current Limitations (Beta)
 
-During beta, be aware of these limitations:
-
 <Warning>
-**Beta Limitations:**
-- No automatic backups (set up your own PostgreSQL backups)
-- Limited to self-hosted deployment (no managed cloud option yet)
-- Some UI elements may change between versions
-- Migration paths between versions may require manual steps
+During beta, be aware of these limitations:
+- Some features may change between updates
+- Advanced features like notifications are still in development
 </Warning>
 
-## Prerequisites
-
-Before setting up Vibe Kanban Cloud, you'll need:
-
-| Requirement | Description |
-|-------------|-------------|
-| **Docker Desktop** | Required to run the services |
-| **GitHub or Google OAuth App** | For user authentication |
-| **Basic terminal knowledge** | To run commands |
-
-<Tip>
-New to Docker? Don't worry - we'll walk you through installation step by step in the [Getting Started](/cloud/getting-started) guide.
-</Tip>
-
-## Next Steps
+## Learn More
 
 <CardGroup cols={2}>
-<Card title="Getting Started" icon="rocket" href="/cloud/getting-started">
-  Install Docker, configure OAuth, and run your first Vibe Kanban Cloud instance
+<Card title="Issues" icon="circle-dot" href="/cloud/issues">
+  Create and manage issues to track your work
 </Card>
 
-<Card title="Authentication" icon="key" href="/cloud/authentication">
-  Learn how sign-in works and manage your sessions
-</Card>
-
-<Card title="Organisations" icon="building" href="/cloud/organizations">
-  Create and manage organisations for your team
+<Card title="Kanban Board" icon="columns" href="/cloud/kanban-board">
+  Use the board to visualise and manage progress
 </Card>
 
 <Card title="Team Members" icon="user-plus" href="/cloud/team-members">
-  Invite colleagues and manage access permissions
+  Invite colleagues and manage permissions
+</Card>
+
+<Card title="Customisation" icon="palette" href="/cloud/customisation">
+  Configure columns, colours, and tags
 </Card>
 </CardGroup>

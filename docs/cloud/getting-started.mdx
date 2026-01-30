@@ -1,601 +1,191 @@
 ---
 title: "Getting Started with Cloud"
-description: "Install and run Vibe Kanban Cloud on your machine with Docker"
+description: "Sign in and start collaborating with your team"
 sidebarTitle: "Getting Started"
 ---
 
-This guide walks you through setting up Vibe Kanban Cloud from scratch. By the end, you'll have a running instance that you and your team can access.
+Vibe Kanban Cloud lets you collaborate with your team in real-time. Your data syncs to the cloud, so everyone sees the same projects, issues, and updates.
 
 <Info>
-**Estimated time:** 15-20 minutes for first-time setup.
+**Already using Vibe Kanban locally?** Cloud uses the same interface you're familiar with. The difference is your data syncs to the cloud and you can invite team members.
 </Info>
 
-## What You'll Need
+## Step 1: Launch Vibe Kanban
 
-| Requirement | Why It's Needed | How to Get It |
-|-------------|-----------------|---------------|
-| **Docker Desktop** | Runs all the Vibe Kanban services | [Install Docker](#step-1-install-docker) |
-| **GitHub or Google account** | To create an OAuth app for authentication | You likely already have one |
-| **Terminal access** | To run Docker commands | Built into your operating system |
+If you haven't already, start Vibe Kanban:
 
-## Step 1: Install Docker
+```bash
+npx vibe-kanban
+```
 
-Docker runs the Vibe Kanban services in isolated containers. If you already have Docker installed, skip to [Step 2](#step-2-create-an-oauth-application).
+The application opens in your browser at `http://localhost:...`.
 
-<Tabs>
-<Tab title="macOS">
-### Install Docker Desktop for Mac
+## Step 2: Sign In
+
+To access Cloud features, you need to sign in.
 
 <Steps>
-<Step title="Download Docker Desktop">
-  Go to [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/) and click **Download for Mac**.
-
-  Choose the correct version:
-  - **Apple Silicon** - For M1, M2, M3, or M4 Macs
-  - **Intel** - For older Intel-based Macs
-
-  <Tip>
-  Not sure which Mac you have? Click the Apple menu () → **About This Mac**. Look for "Chip" (Apple Silicon) or "Processor" (Intel).
-  </Tip>
+<Step title="Click Login">
+  Click the **Login** button in the sidebar or when prompted.
 </Step>
 
-<Step title="Install the application">
-  1. Open the downloaded `.dmg` file
-  2. Drag the Docker icon to your Applications folder
-  3. Open Docker from your Applications folder
-  4. Click **Open** if macOS asks to confirm
+<Step title="Choose a sign-in method">
+  Select how you want to sign in:
+  - **Sign in with GitHub** - Use your GitHub account
+  - **Sign in with Google** - Use your Google account
 </Step>
 
-<Step title="Wait for Docker to start">
-  Docker will take a minute to start. You'll see a whale icon in your menu bar.
-
-
-  - **Whale animating** = Docker is still starting
-  - **Whale static** = Docker is ready
-</Step>
-
-<Step title="Verify installation">
-  Open Terminal and run:
-
-  ```bash
-  docker --version
-  ```
-
-  You should see something like:
-  ```
-  Docker version 24.0.7, build afdd53b
-  ```
-
-  <Check>
-  If you see a version number, Docker is installed correctly.
-  </Check>
-</Step>
-</Steps>
-</Tab>
-
-<Tab title="Windows">
-### Install Docker Desktop for Windows
-
-<Steps>
-<Step title="Check system requirements">
-  Docker Desktop requires:
-  - Windows 10 64-bit (Build 19041 or higher) or Windows 11
-  - WSL 2 (Windows Subsystem for Linux)
-
-  <Warning>
-  **Windows Home users:** You must enable WSL 2. Docker will prompt you during installation.
-  </Warning>
-</Step>
-
-<Step title="Download Docker Desktop">
-  Go to [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/) and click **Download for Windows**.
-</Step>
-
-<Step title="Run the installer">
-  1. Double-click `Docker Desktop Installer.exe`
-  2. Follow the installation wizard
-  3. When prompted, ensure **Use WSL 2** is selected
-  4. Click **OK** to finish
-</Step>
-
-<Step title="Restart your computer">
-  Docker may ask you to restart. Do so to complete installation.
-</Step>
-
-<Step title="Start Docker Desktop">
-  After restarting:
-  1. Open Docker Desktop from the Start menu
-  2. Wait for Docker to finish starting (the whale icon stops animating)
-
-</Step>
-
-<Step title="Verify installation">
-  Open PowerShell or Command Prompt and run:
-
-  ```powershell
-  docker --version
-  ```
-
-  You should see a version number like `Docker version 24.0.7`.
-
-  <Check>
-  If you see a version number, Docker is installed correctly.
-  </Check>
-</Step>
-</Steps>
-</Tab>
-
-<Tab title="Linux">
-### Install Docker Engine on Linux
-
-<Steps>
-<Step title="Update package index">
-  ```bash
-  sudo apt-get update
-  ```
-</Step>
-
-<Step title="Install prerequisites">
-  ```bash
-  sudo apt-get install ca-certificates curl gnupg
-  ```
-</Step>
-
-<Step title="Add Docker's GPG key">
-  ```bash
-  sudo install -m 0755 -d /etc/apt/keyrings
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-  sudo chmod a+r /etc/apt/keyrings/docker.gpg
-  ```
-</Step>
-
-<Step title="Add the Docker repository">
-  ```bash
-  echo \
-    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-  ```
-</Step>
-
-<Step title="Install Docker Engine">
-  ```bash
-  sudo apt-get update
-  sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-  ```
-</Step>
-
-<Step title="Add your user to the docker group">
-  This lets you run Docker without `sudo`:
-
-  ```bash
-  sudo usermod -aG docker $USER
-  ```
-
-  <Warning>
-  **Log out and back in** for this to take effect.
-  </Warning>
-</Step>
-
-<Step title="Verify installation">
-  ```bash
-  docker --version
-  ```
-
-  <Check>
-  If you see a version number, Docker is installed correctly.
-  </Check>
-</Step>
-</Steps>
-
-<Info>
-These instructions are for Ubuntu/Debian. For other distributions, see [Docker's official docs](https://docs.docker.com/engine/install/).
-</Info>
-</Tab>
-</Tabs>
-
-## Step 2: Create an OAuth Application
-
-Vibe Kanban Cloud uses OAuth for authentication - users sign in with their existing GitHub or Google accounts. You need to create an OAuth application to enable this.
-
-<Info>
-**What is OAuth?**
-
-OAuth lets users sign in to your application using accounts they already have (like GitHub or Google) instead of creating new usernames and passwords. It's more secure and convenient.
-</Info>
-
-You need **at least one** OAuth provider. We recommend GitHub if your team already uses it.
-
-<Tabs>
-<Tab title="GitHub OAuth (Recommended)">
-### Create a GitHub OAuth App
-
-<Steps>
-<Step title="Go to GitHub Developer Settings">
-  1. Go to [github.com/settings/developers](https://github.com/settings/developers)
-  2. Click **OAuth Apps** in the left sidebar
-  3. Click **New OAuth App**
-
-</Step>
-
-<Step title="Fill in application details">
-  Enter the following:
-
-  | Field | Value |
-  |-------|-------|
-  | **Application name** | `Vibe Kanban Cloud` (or any name you prefer) |
-  | **Homepage URL** | `http://localhost:3000` |
-  | **Authorization callback URL** | `http://localhost:8081/v1/oauth/github/callback` |
-
-
-  <Warning>
-  The callback URL must be **exactly** `http://localhost:8081/v1/oauth/github/callback`. If it's different, authentication will fail.
-  </Warning>
-</Step>
-
-<Step title="Register the application">
-  Click **Register application**.
-</Step>
-
-<Step title="Copy your credentials">
-  After registering, you'll see your app's settings page:
-
-  1. Copy the **Client ID** - you'll need this later
-  2. Click **Generate a new client secret**
-  3. Copy the **Client Secret** immediately (it won't be shown again)
-
-
-  <Warning>
-  **Save these credentials securely.** The client secret is only shown once. If you lose it, you'll need to generate a new one.
-  </Warning>
-</Step>
-</Steps>
-</Tab>
-
-<Tab title="Google OAuth">
-### Create a Google OAuth App
-
-<Steps>
-<Step title="Go to Google Cloud Console">
-  1. Go to [console.cloud.google.com](https://console.cloud.google.com/)
-  2. Create a new project or select an existing one
-  3. Go to **APIs & Services** → **Credentials**
-
-</Step>
-
-<Step title="Configure OAuth consent screen">
-  Before creating credentials, you need to configure the consent screen:
-
-  1. Click **OAuth consent screen** in the left sidebar
-  2. Select **External** (unless you have Google Workspace)
-  3. Click **Create**
-  4. Fill in:
-     - **App name**: `Vibe Kanban Cloud`
-     - **User support email**: Your email
-     - **Developer contact email**: Your email
-  5. Click **Save and Continue** through the remaining steps
-</Step>
-
-<Step title="Create OAuth credentials">
-  1. Go back to **Credentials**
-  2. Click **Create Credentials** → **OAuth client ID**
-  3. Select **Web application**
-  4. Enter:
-
-  | Field | Value |
-  |-------|-------|
-  | **Name** | `Vibe Kanban Cloud` |
-  | **Authorized redirect URIs** | `http://localhost:8081/v1/oauth/google/callback` |
-
-</Step>
-
-<Step title="Copy your credentials">
-  After creating, a dialog shows your credentials:
-
-  1. Copy the **Client ID**
-  2. Copy the **Client Secret**
-
-</Step>
-</Steps>
-</Tab>
-</Tabs>
-
-## Step 3: Download Vibe Kanban Cloud
-
-<Steps>
-<Step title="Clone the repository">
-  Open your terminal and run:
-
-  ```bash
-  git clone https://github.com/BloopAI/vibe-kanban.git
-  cd vibe-kanban
-  ```
-</Step>
-
-<Step title="Navigate to the remote directory">
-  ```bash
-  cd crates/remote
-  ```
-
-  This directory contains the Docker configuration for Vibe Kanban Cloud.
-</Step>
-</Steps>
-
-## Step 4: Create the Environment File
-
-Vibe Kanban Cloud needs configuration to run. You'll create a file called `.env.remote` with your settings.
-
-<Steps>
-<Step title="Generate a JWT secret">
-  The JWT secret is used to securely sign authentication tokens. Generate one with:
-
-  ```bash
-  openssl rand -base64 48
-  ```
-
-  Copy the output - it will look something like:
-  ```
-  K7xQp2mN9vR4tY6wA3sD8fG1hJ5kL0zX2cV7bN4mQ9wE6rT3yU8iO1pA4sD7fG2h
-  ```
-</Step>
-
-<Step title="Create the environment file">
-  Create a file called `.env.remote` in the repository root (not in `crates/remote`):
-
-  ```bash
-  cd ../..  # Go back to repository root
-  touch .env.remote
-  ```
-</Step>
-
-<Step title="Add your configuration">
-  Open `.env.remote` in a text editor and add the following:
-
-  ```bash
-  # Required: JWT Secret (paste the value you generated)
-  VIBEKANBAN_REMOTE_JWT_SECRET=your_generated_secret_here
-
-  # Required: Public URL where the app will be accessed
-  SERVER_PUBLIC_BASE_URL=http://localhost:3000
-
-  # GitHub OAuth (if using GitHub)
-  GITHUB_OAUTH_CLIENT_ID=your_github_client_id
-  GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
-
-  # Google OAuth (if using Google)
-  GOOGLE_OAUTH_CLIENT_ID=your_google_client_id
-  GOOGLE_OAUTH_CLIENT_SECRET=your_google_client_secret
-  ```
-
-  Replace the placeholder values with your actual credentials.
-
-  <Warning>
-  **Never commit `.env.remote` to git.** It contains secrets. The file is already in `.gitignore`.
-  </Warning>
-</Step>
-</Steps>
-
-### Environment Variables Reference
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `VIBEKANBAN_REMOTE_JWT_SECRET` | Yes | Secret key for signing authentication tokens. Generate with `openssl rand -base64 48` |
-| `SERVER_PUBLIC_BASE_URL` | Yes | The URL where users access the app. Use `http://localhost:3000` for local setup |
-| `GITHUB_OAUTH_CLIENT_ID` | If using GitHub | Client ID from your GitHub OAuth app |
-| `GITHUB_OAUTH_CLIENT_SECRET` | If using GitHub | Client Secret from your GitHub OAuth app |
-| `GOOGLE_OAUTH_CLIENT_ID` | If using Google | Client ID from your Google OAuth app |
-| `GOOGLE_OAUTH_CLIENT_SECRET` | If using Google | Client Secret from your Google OAuth app |
-
-<Info>
-You need **at least one** OAuth provider configured. You can configure both if you want users to choose.
-</Info>
-
-## Step 5: Start Vibe Kanban Cloud
-
-Now you're ready to start the services.
-
-<Steps>
-<Step title="Start Docker Desktop">
-  Make sure Docker Desktop is running (you should see the whale icon in your menu bar or taskbar).
-</Step>
-
-<Step title="Run the Docker Compose command">
-  From the repository root, run:
-
-  ```bash
-  docker compose --env-file .env.remote -f crates/remote/docker-compose.yml up --build
-  ```
+<Step title="Authorise the application">
+  You'll be redirected to GitHub or Google. Sign in if needed, then click **Authorize** or **Allow** to grant Vibe Kanban access.
 
   <Info>
-  **What does this command do?**
-  - `docker compose` - Runs multiple Docker containers together
-  - `--env-file .env.remote` - Uses your configuration file
-  - `-f crates/remote/docker-compose.yml` - Specifies which services to run
-  - `up --build` - Starts the services, building images if needed
+  Vibe Kanban only requests access to your basic profile (name, email, avatar). It cannot access your private repositories or post on your behalf.
   </Info>
 </Step>
 
-<Step title="Wait for services to start">
-  The first run takes several minutes as Docker downloads and builds everything. You'll see lots of output in your terminal.
-
-  Look for these messages indicating services are ready:
-
-  ```
-  remote-1    | Starting server on 0.0.0.0:8081
-  electric-1  | Electric is ready
-  postgres-1  | database system is ready to accept connections
-  ```
-
-  <Warning>
-  **First build can take 5-10 minutes** depending on your internet speed and computer. Subsequent starts are much faster.
-  </Warning>
-</Step>
-
-<Step title="Verify it's running">
-  Open a new terminal tab and run:
-
-  ```bash
-  docker ps
-  ```
-
-  You should see containers for `remote`, `electric`, and `postgres`:
-
-  ```
-  CONTAINER ID   IMAGE                    STATUS          PORTS
-  abc123         vibe-kanban-remote       Up 2 minutes    0.0.0.0:3000->3000/tcp, 0.0.0.0:8081->8081/tcp
-  def456         electricsql/electric     Up 2 minutes    0.0.0.0:3000->3000/tcp
-  ghi789         postgres:16              Up 2 minutes    0.0.0.0:5432->5432/tcp
-  ```
-
-  <Check>
-  If you see all three containers with "Up" status, Vibe Kanban Cloud is running.
-  </Check>
+<Step title="Return to Vibe Kanban">
+  After authorising, you're automatically redirected back and signed in.
 </Step>
 </Steps>
 
-## Step 6: Access Vibe Kanban Cloud
+## Step 3: Create Your Organisation
+
+The first time you sign in, you'll be prompted to create an organisation.
 
 <Steps>
-<Step title="Open in your browser">
-  Go to [http://localhost:3000](http://localhost:3000)
+<Step title="Enter organisation name">
+  Choose a name that represents your team or company. This is what your team members will see.
 
-  You should see the Vibe Kanban login page.
-
+  **Examples:**
+  - `Acme Engineering`
+  - `Frontend Team`
+  - `My Startup`
 </Step>
 
-<Step title="Sign in">
-  Click **Sign in with GitHub** or **Sign in with Google** (depending on which you configured).
-
-  You'll be redirected to the OAuth provider to authorise the application.
-</Step>
-
-<Step title="Create your organisation">
-  After signing in for the first time, you'll be prompted to create an organisation.
-
-
-  Enter a name for your organisation (e.g., your team or company name).
-</Step>
-
-<Step title="Start using Vibe Kanban">
-  You're now ready to:
-  - Create projects
-  - Add tasks
-  - Invite team members
-
-  <Check>
-  **Congratulations!** Vibe Kanban Cloud is running.
-  </Check>
+<Step title="Click Create">
+  Click **Create Organisation** to finish setup.
 </Step>
 </Steps>
 
-## Stopping and Restarting
+<Tip>
+If you've been invited to an existing organisation, you'll join that organisation instead of creating a new one.
+</Tip>
 
-### Stop the services
+## Step 4: Create Your First Project
 
-Press `Ctrl + C` in the terminal where Docker Compose is running, or run:
+Now create a project to organise your work.
 
-```bash
-docker compose --env-file .env.remote -f crates/remote/docker-compose.yml down
-```
+<Steps>
+<Step title="Click New Project">
+  Click the **+ New Project** button in the sidebar.
+</Step>
 
-### Restart the services
+<Step title="Enter project details">
+  - **Name** - What you're working on (e.g., "Mobile App", "Website Redesign")
+  - **Colour** - Pick a colour to identify the project
+</Step>
 
-```bash
-docker compose --env-file .env.remote -f crates/remote/docker-compose.yml up
-```
+<Step title="Click Create">
+  Your project is created with a kanban board ready to use.
+</Step>
+</Steps>
 
-<Info>
-You don't need `--build` after the first run unless you've made code changes.
-</Info>
+## Step 5: Invite Your Team (Optional)
 
-### Stop and remove all data
+Collaborate by inviting team members to your organisation.
 
-<Warning>
-This deletes all your data including users, organisations, and projects.
-</Warning>
+<Steps>
+<Step title="Open Organisation Settings">
+  Click the gear icon next to your organisation name in the sidebar.
+</Step>
 
-```bash
-docker compose --env-file .env.remote -f crates/remote/docker-compose.yml down -v
-```
+<Step title="Go to Members">
+  Select the **Members** section.
+</Step>
 
-The `-v` flag removes the database volume, erasing all data.
+<Step title="Click Invite Member">
+  Enter your teammate's email address and select their role:
+  - **Member** - Can work on projects
+  - **Admin** - Can also manage settings and invite others
+</Step>
+
+<Step title="Send the invitation">
+  Click **Send Invitation**. They'll receive an email with a link to join.
+</Step>
+</Steps>
+
+## You're Ready!
+
+You now have:
+- ✅ A Cloud account
+- ✅ An organisation for your team
+- ✅ A project with a kanban board
+
+**Next steps:**
+- [Create issues](/cloud/issues) to track your work
+- [Learn the kanban board](/cloud/kanban-board) to manage tasks
+- [Customise your board](/cloud/customisation) with columns and tags
+- [Invite more team members](/cloud/team-members) to collaborate
+
+## Signing Out
+
+To sign out:
+1. Click your profile avatar in the top corner
+2. Click **Sign Out**
+
+Your data remains safe in the cloud. Sign in again anytime to continue where you left off.
+
+## Switching Between Local and Cloud
+
+You can use both local projects and Cloud projects:
+
+| Local Projects | Cloud Projects |
+|----------------|----------------|
+| Data stored on your machine | Data synced to cloud |
+| Only you can access | Team members can collaborate |
+| No sign-in required | Requires sign-in |
+| Works offline | Requires internet connection |
+
+Both appear in the same Vibe Kanban interface. Local projects show in one section, Cloud projects in another.
 
 ## Troubleshooting
 
 <AccordionGroup>
-<Accordion title="Docker command not found">
-**Problem:** Terminal says `docker: command not found`
+<Accordion title="I can't sign in">
+**Possible causes:**
+- Pop-up blocker preventing the OAuth window
+- Network connectivity issues
 
-**Solution:**
-1. Make sure Docker Desktop is installed
-2. Make sure Docker Desktop is running (check for whale icon)
-3. On Linux, make sure you added your user to the docker group and logged out/in
+**Solutions:**
+1. Disable pop-up blocker for localhost
+2. Check your internet connection
+3. Try a different browser
 </Accordion>
 
-<Accordion title="Port already in use">
-**Problem:** Error message about port 3000, 5432, or 8081 being in use
+<Accordion title="I don't see Cloud features">
+**Possible causes:**
+- You're not signed in
+- You haven't created an organisation yet
 
-**Solution:**
-1. Find what's using the port:
-   ```bash
-   lsof -i :3000  # Replace 3000 with the conflicting port
-   ```
-2. Stop the conflicting process, or
-3. Change the port in `docker-compose.yml`
+**Solutions:**
+1. Click **Login** in the sidebar
+2. Complete the sign-in and organisation setup
 </Accordion>
 
-<Accordion title="OAuth redirect error">
-**Problem:** After clicking sign in, you get an error about invalid redirect URI
+<Accordion title="My teammate can't see our projects">
+**Possible causes:**
+- They haven't accepted the invitation
+- They signed in with a different email
 
-**Solution:**
-1. Check your OAuth app callback URL matches exactly:
-   - GitHub: `http://localhost:8081/v1/oauth/github/callback`
-   - Google: `http://localhost:8081/v1/oauth/google/callback`
-2. Make sure there are no trailing slashes
-3. Make sure you're accessing the app at `http://localhost:3000` (not a different port)
-</Accordion>
-
-<Accordion title="Services won't start">
-**Problem:** Docker containers keep restarting or fail to start
-
-**Solution:**
-1. Check the logs:
-   ```bash
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml logs
-   ```
-2. Common issues:
-   - Missing environment variables in `.env.remote`
-   - Invalid JWT secret (must be base64 encoded)
-   - OAuth credentials are incorrect
-</Accordion>
-
-<Accordion title="Cannot connect after starting">
-**Problem:** Browser shows "cannot connect" or "connection refused"
-
-**Solution:**
-1. Wait longer - services may still be starting
-2. Check if containers are running: `docker ps`
-3. Check container logs for errors
-4. Make sure you're using `http://` not `https://`
+**Solutions:**
+1. Check if the invitation is still pending in your Members settings
+2. Resend the invitation
+3. Verify they're using the email address you invited
 </Accordion>
 </AccordionGroup>
 
-## Next Steps
+## Related Documentation
 
-<CardGroup cols={2}>
-<Card title="Authentication" icon="key" href="/cloud/authentication">
-  Learn more about the sign-in process and session management
-</Card>
-
-<Card title="Organisations" icon="building" href="/cloud/organizations">
-  Create and configure your organisation
-</Card>
-
-<Card title="Team Members" icon="user-plus" href="/cloud/team-members">
-  Invite your team and manage permissions
-</Card>
-
-<Card title="Troubleshooting" icon="wrench" href="/cloud/troubleshooting">
-  Solutions for common issues
-</Card>
-</CardGroup>
+- [Authentication](/cloud/authentication) - More about signing in and sessions
+- [Organisations](/cloud/organizations) - Managing your organisation
+- [Team Members](/cloud/team-members) - Inviting and managing collaborators

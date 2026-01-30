@@ -5,423 +5,287 @@ description: "Solutions for common issues with Vibe Kanban Cloud"
 
 This page covers common issues you might encounter with Vibe Kanban Cloud and how to resolve them.
 
-## Docker Issues
+## Sign-In Issues
 
 <AccordionGroup>
-<Accordion title="Docker command not found">
-**Symptom:** Terminal shows `docker: command not found` or `docker is not recognized`
-
-**Cause:** Docker is not installed or not in your system PATH.
-
-**Solutions:**
-
-<Tabs>
-<Tab title="macOS">
-1. Download and install [Docker Desktop for Mac](https://www.docker.com/products/docker-desktop/)
-2. Open Docker Desktop from Applications
-3. Wait for it to start (whale icon stops animating)
-4. Try the command again
-</Tab>
-
-<Tab title="Windows">
-1. Download and install [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/)
-2. Restart your computer after installation
-3. Open Docker Desktop from the Start menu
-4. Wait for it to start
-5. Open a new terminal and try again
-</Tab>
-
-<Tab title="Linux">
-1. Install Docker Engine:
-   ```bash
-   sudo apt-get update
-   sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
-   ```
-2. Add your user to the docker group:
-   ```bash
-   sudo usermod -aG docker $USER
-   ```
-3. **Log out and back in** for the group change to take effect
-</Tab>
-</Tabs>
-</Accordion>
-
-<Accordion title="Docker daemon not running">
-**Symptom:** Error message like `Cannot connect to the Docker daemon` or `Is the docker daemon running?`
-
-**Cause:** Docker Desktop is installed but not running.
-
-**Solutions:**
-
-<Tabs>
-<Tab title="macOS">
-1. Open Docker Desktop from Applications
-2. Wait for the whale icon to appear in the menu bar
-3. Wait until the whale stops animating (indicating Docker is ready)
-</Tab>
-
-<Tab title="Windows">
-1. Open Docker Desktop from the Start menu
-2. Wait for it to fully start (status shows "Running")
-3. If it fails to start, try restarting your computer
-</Tab>
-
-<Tab title="Linux">
-1. Start the Docker service:
-   ```bash
-   sudo systemctl start docker
-   ```
-2. To start Docker automatically on boot:
-   ```bash
-   sudo systemctl enable docker
-   ```
-</Tab>
-</Tabs>
-</Accordion>
-
-<Accordion title="Permission denied when running Docker">
-**Symptom:** Error like `permission denied while trying to connect to the Docker daemon socket`
-
-**Cause:** Your user doesn't have permission to access Docker (Linux only).
-
-**Solution:**
-```bash
-# Add your user to the docker group
-sudo usermod -aG docker $USER
-
-# Log out and back in, then verify
-groups  # Should show 'docker' in the list
-```
-
-<Warning>
-You must **log out and log back in** for the group change to take effect. Just closing the terminal isn't enough.
-</Warning>
-</Accordion>
-
-<Accordion title="Port already in use">
-**Symptom:** Error like `port is already allocated` or `address already in use`
-
-**Cause:** Another application is using port 3000, 5432, or 8081.
-
-**Solutions:**
-
-1. **Find what's using the port:**
-   ```bash
-   # Replace 3000 with the port number from the error
-   lsof -i :3000        # macOS/Linux
-   netstat -ano | findstr :3000  # Windows
-   ```
-
-2. **Stop the conflicting process**, or
-
-3. **Change the port** in `docker-compose.yml`:
-   ```yaml
-   ports:
-     - "3001:3000"  # Change 3000 to an available port
-   ```
-</Accordion>
-
-<Accordion title="Docker build fails">
-**Symptom:** Build errors during `docker compose up --build`
-
+<Accordion title="I can't sign in">
 **Possible causes:**
-- Network issues downloading dependencies
-- Insufficient disk space
-- Corrupted Docker cache
+- Pop-up blocker preventing the OAuth window
+- Network connectivity issues
+- Browser extensions interfering
 
 **Solutions:**
-
-1. **Retry the build** (network issues are often transient):
-   ```bash
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml up --build
-   ```
-
-2. **Clear Docker cache** and rebuild:
-   ```bash
-   docker system prune -a
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml up --build
-   ```
-
-3. **Check disk space:**
-   ```bash
-   df -h  # Should have at least 10GB free
-   ```
-
-<Warning>
-`docker system prune -a` removes all unused images and containers. Only run this if you don't have other important Docker images.
-</Warning>
+1. Disable pop-up blocker for localhost
+2. Check your internet connection
+3. Try disabling browser extensions temporarily
+4. Try a different browser
+5. Clear your browser cache and cookies
 </Accordion>
 
-<Accordion title="Containers keep restarting">
-**Symptom:** `docker ps` shows containers with status `Restarting` or they keep cycling.
+<Accordion title="OAuth window doesn't open">
+**Possible causes:**
+- Pop-up blocker is active
+- Browser security settings
 
-**Cause:** A service is crashing, often due to missing configuration.
-
-**Solution:**
-1. Check the logs to find the error:
-   ```bash
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml logs
-   ```
-
-2. Common causes:
-   - Missing or invalid `VIBEKANBAN_REMOTE_JWT_SECRET`
-   - Database connection issues
-   - Invalid OAuth credentials
-</Accordion>
-</AccordionGroup>
-
-## Authentication Issues
-
-<AccordionGroup>
-<Accordion title="Invalid redirect URI">
-**Symptom:** OAuth provider shows "Invalid redirect URI" or "Redirect URI mismatch"
-
-**Cause:** The callback URL in your OAuth app doesn't match what Vibe Kanban sends.
-
-**Solution:**
-1. Go to your OAuth app settings:
-   - **GitHub:** [github.com/settings/developers](https://github.com/settings/developers) → OAuth Apps
-   - **Google:** [console.cloud.google.com](https://console.cloud.google.com) → Credentials
-
-2. Verify the callback URL is **exactly**:
-   - GitHub: `http://localhost:8081/v1/oauth/github/callback`
-   - Google: `http://localhost:8081/v1/oauth/google/callback`
-
-3. Check for:
-   - No trailing slash
-   - Correct port (8081)
-   - `http://` not `https://` for localhost
-   - Exact path spelling
+**Solutions:**
+1. Look for a blocked pop-up notification in your browser's address bar
+2. Allow pop-ups for `localhost`
+3. Try right-clicking the sign-in button and selecting "Open in new tab"
 </Accordion>
 
-<Accordion title="Access denied during sign-in">
-**Symptom:** GitHub or Google shows "access denied" error
-
+<Accordion title="'Access denied' error from GitHub/Google">
 **Possible causes:**
 - You clicked "Deny" instead of "Authorize"
-- Your GitHub organisation has OAuth app restrictions
-- The OAuth app has been suspended
+- Your organisation has app restrictions (GitHub)
 
 **Solutions:**
-1. Try again and click "Authorize" or "Allow"
-2. If you're part of a GitHub organisation with restrictions, ask your admin to approve the app
-3. Check the OAuth app status in your provider's settings
+1. Try again and click **Authorize** or **Allow**
+2. If using a GitHub organisation account, ask your admin to approve the app
 </Accordion>
 
-<Accordion title="Signed in with wrong account">
-**Symptom:** You're signed in as a different user than expected
+<Accordion title="Signed in as the wrong account">
+**Possible causes:**
+- Your browser is logged into a different GitHub/Google account
 
-**Cause:** Your browser is logged into a different GitHub/Google account.
-
-**Solution:**
+**Solutions:**
 1. Sign out of Vibe Kanban
-2. Go to [github.com](https://github.com) or [google.com](https://google.com)
-3. Sign out there
-4. Sign back in with the correct account
-5. Return to Vibe Kanban and sign in
+2. Go to [github.com](https://github.com) or [google.com](https://google.com) and sign out
+3. Sign in with the correct account
+4. Return to Vibe Kanban and sign in again
 </Accordion>
 
 <Accordion title="Session keeps expiring">
-**Symptom:** You're frequently being signed out
-
 **Possible causes:**
-- The server was restarted (invalidates all sessions)
-- JWT secret was changed
-- Token refresh is failing
+- Network issues preventing token refresh
+- Browser blocking cookies
 
 **Solutions:**
-1. Simply sign in again
-2. If persistent:
-   - Check if the server is stable (not restarting)
-   - Verify `VIBEKANBAN_REMOTE_JWT_SECRET` hasn't changed
-   - Check server logs for authentication errors
+1. Check your internet connection
+2. Ensure cookies are enabled for localhost
+3. Try signing out and back in
 </Accordion>
 </AccordionGroup>
 
-## Connection Issues
+## Organisation Issues
 
 <AccordionGroup>
-<Accordion title="Cannot connect to localhost:3000">
-**Symptom:** Browser shows "This site can't be reached" or "Connection refused"
-
+<Accordion title="I can't create an organisation">
 **Possible causes:**
-- Docker containers aren't running
-- Services are still starting
-- Wrong URL
+- Network connectivity issues
+- You're not signed in
 
 **Solutions:**
-
-1. **Verify containers are running:**
-   ```bash
-   docker ps
-   ```
-   You should see containers for `remote`, `electric`, and `postgres`.
-
-2. **Wait for services to start** - first run can take several minutes.
-
-3. **Check you're using the right URL:**
-   - Use `http://localhost:3000` (not https)
-   - Don't use `127.0.0.1` unless you've configured it
-
-4. **Check container logs for errors:**
-   ```bash
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml logs remote
-   ```
+1. Ensure you're signed in (check for your avatar in the corner)
+2. Check your internet connection
+3. Try refreshing the page
 </Accordion>
 
-<Accordion title="Page loads but nothing appears">
-**Symptom:** The page loads but is blank or shows a loading spinner indefinitely
-
+<Accordion title="I can't see an organisation I was invited to">
 **Possible causes:**
-- Electric sync service isn't ready
-- JavaScript error in the browser
-- API connection failing
+- You haven't accepted the invitation yet
+- You signed in with a different email
+- The invitation expired
 
 **Solutions:**
-
-1. **Wait a bit longer** - Electric needs to sync initial data
-
-2. **Check browser console:**
-   - Open Developer Tools (F12 or Cmd+Option+I)
-   - Look at the Console tab for errors
-
-3. **Check Electric service:**
-   ```bash
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml logs electric
-   ```
-   Look for "Electric is ready" message.
-
-4. **Try a hard refresh:** Cmd+Shift+R (Mac) or Ctrl+Shift+R (Windows/Linux)
+1. Check your email for an invitation link and click it
+2. Verify you're signed in with the email that was invited
+3. Ask the organisation admin to resend the invitation
 </Accordion>
 
-<Accordion title="Changes not syncing between users">
-**Symptom:** Changes made by one user don't appear for others
-
+<Accordion title="I can't leave an organisation">
 **Possible causes:**
-- Electric sync service issues
-- WebSocket connection problems
-- Browser extension blocking connections
+- You're the only admin
 
 **Solutions:**
-
-1. **Refresh the page** - often resolves temporary sync issues
-
-2. **Check Electric logs:**
-   ```bash
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml logs electric
-   ```
-
-3. **Disable browser extensions** temporarily (especially ad blockers)
-
-4. **Restart services:**
-   ```bash
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml restart
-   ```
+1. Promote another member to admin first
+2. Then you can leave
+3. Or delete the organisation if no one else needs it
 </Accordion>
 </AccordionGroup>
 
-## Database Issues
+## Team Member Issues
 
 <AccordionGroup>
-<Accordion title="Database connection failed">
-**Symptom:** Error logs mention "connection refused" or "database does not exist"
-
-**Cause:** PostgreSQL container isn't running or isn't ready.
+<Accordion title="Invitation email not received">
+**Possible causes:**
+- Email went to spam/junk folder
+- Wrong email address entered
+- Email delivery delay
 
 **Solutions:**
-
-1. **Check if PostgreSQL is running:**
-   ```bash
-   docker ps | grep postgres
-   ```
-
-2. **Check PostgreSQL logs:**
-   ```bash
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml logs postgres
-   ```
-
-3. **Wait for PostgreSQL** to be ready - look for "database system is ready to accept connections"
-
-4. **Restart all services:**
-   ```bash
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml down
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml up
-   ```
+1. Check spam/junk folder
+2. Verify the email address is correct in the pending invitations list
+3. Resend the invitation
+4. Try a different email address
 </Accordion>
 
-<Accordion title="Migration errors">
-**Symptom:** Errors about migrations or schema during startup
-
-**Cause:** Database schema is out of sync, often after updates.
+<Accordion title="Invitation link doesn't work">
+**Possible causes:**
+- Invitation expired (after 7 days)
+- Invitation was cancelled
+- Link was copied incorrectly
 
 **Solutions:**
+1. Ask for a new invitation to be sent
+2. Make sure you're clicking the full link from the email
+</Accordion>
 
-1. **For a fresh start** (destroys all data):
-   ```bash
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml down -v
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml up --build
-   ```
+<Accordion title="New member can't see projects">
+**Possible causes:**
+- They signed in with a different email
+- Browser cache issue
 
-2. **If you need to preserve data:**
-   - Back up your database first
-   - Check the release notes for migration instructions
-   - Consider reaching out for support
+**Solutions:**
+1. Verify they're signed in with the invited email (check their profile)
+2. Have them refresh the page
+3. Have them sign out and back in
 </Accordion>
 </AccordionGroup>
 
-## Configuration Issues
+## Project and Board Issues
 
 <AccordionGroup>
-<Accordion title="Environment variables not loading">
-**Symptom:** Errors about missing configuration or variables being undefined
-
-**Cause:** `.env.remote` file isn't being read or has issues.
+<Accordion title="Projects not loading">
+**Possible causes:**
+- Network connectivity issues
+- Sync delay
 
 **Solutions:**
-
-1. **Verify file location:**
-   `.env.remote` should be in the repository root, not in `crates/remote/`
-
-2. **Check file contents:**
-   ```bash
-   cat .env.remote
-   ```
-   Ensure variables are set correctly without quotes around values.
-
-3. **Verify you're using the right command:**
-   ```bash
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml up
-   ```
-   Note: `--env-file .env.remote` is required.
-
-4. **Check for typos** in variable names (they're case-sensitive).
+1. Check your internet connection
+2. Refresh the page
+3. Sign out and back in
 </Accordion>
 
-<Accordion title="Invalid JWT secret">
-**Symptom:** Authentication errors or server won't start, mentioning JWT
+<Accordion title="Changes not syncing">
+**Possible causes:**
+- Internet connection lost
+- Temporary sync issue
 
-**Cause:** `VIBEKANBAN_REMOTE_JWT_SECRET` is missing, empty, or not valid base64.
+**Solutions:**
+1. Check your internet connection
+2. Refresh the page - your changes should still be there
+3. If changes were lost, you may need to re-enter them
+</Accordion>
 
-**Solution:**
-1. Generate a new secret:
-   ```bash
-   openssl rand -base64 48
-   ```
+<Accordion title="I can't delete a status column">
+**Possible causes:**
+- The column has issues in it
 
-2. Add to `.env.remote`:
-   ```bash
-   VIBEKANBAN_REMOTE_JWT_SECRET=your_generated_secret_here
-   ```
+**Solutions:**
+1. Move all issues to another column first
+2. Check for issues in hidden views (use "All" status tab)
+3. Then delete the empty column
+</Accordion>
 
-3. Restart services:
-   ```bash
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml down
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml up
-   ```
+<Accordion title="Drag and drop not working">
+**Possible causes:**
+- Sort mode is not set to "Manual"
+- Browser issue
 
-<Warning>
-Changing the JWT secret invalidates all existing sessions. Users will need to sign in again.
-</Warning>
+**Solutions:**
+1. Check the sort dropdown - select "Manual" to enable drag and drop
+2. Try refreshing the page
+3. Try a different browser
+</Accordion>
+</AccordionGroup>
+
+## Issue Problems
+
+<AccordionGroup>
+<Accordion title="Can't find an issue">
+**Possible causes:**
+- Active filters hiding the issue
+- Issue is in a hidden column
+
+**Solutions:**
+1. Click **Clear All** in the filter bar to reset filters
+2. Use the "All" status tab to see issues in hidden columns
+3. Try searching for the issue ID or title
+</Accordion>
+
+<Accordion title="Changes to an issue aren't saving">
+**Possible causes:**
+- Network issue
+- You closed the panel too quickly
+
+**Solutions:**
+1. Wait a moment after editing before closing the panel (auto-save has a short delay)
+2. Check your internet connection
+3. Refresh and check if the change was saved
+</Accordion>
+
+<Accordion title="Can't assign someone to an issue">
+**Possible causes:**
+- They're not a member of the organisation
+
+**Solutions:**
+1. Invite them to the organisation first
+2. Once they accept, they'll appear in the assignee list
+</Accordion>
+</AccordionGroup>
+
+## GitHub Integration Issues
+
+<AccordionGroup>
+<Accordion title="GitHub integration not working">
+**Possible causes:**
+- GitHub App not installed
+- Repository not connected
+
+**Solutions:**
+1. Go to Organisation Settings → GitHub Integration
+2. Install the GitHub App if not already installed
+3. Ensure the repository has access granted
+</Accordion>
+
+<Accordion title="Pull requests not linking to issues">
+**Possible causes:**
+- Branch name doesn't include issue ID
+- PR was created before integration was set up
+
+**Solutions:**
+1. Include the issue ID in your branch name (e.g., `TASK-123-feature`)
+2. Or include the issue ID in the PR title
+3. New PRs should link automatically
+</Accordion>
+
+<Accordion title="Code review not available">
+**Possible causes:**
+- Code review not enabled for the repository
+
+**Solutions:**
+1. Go to Organisation Settings → GitHub Integration
+2. Enable "Code Review" for the repository
+</Accordion>
+</AccordionGroup>
+
+## General Issues
+
+<AccordionGroup>
+<Accordion title="Page won't load">
+**Solutions:**
+1. Refresh the page
+2. Clear browser cache
+3. Try a different browser
+4. Restart Vibe Kanban (`npx vibe-kanban`)
+</Accordion>
+
+<Accordion title="Everything is slow">
+**Possible causes:**
+- Network connectivity issues
+- Many browser tabs open
+
+**Solutions:**
+1. Check your internet connection
+2. Close unnecessary browser tabs
+3. Refresh the page
+</Accordion>
+
+<Accordion title="Data seems out of date">
+**Solutions:**
+1. Refresh the page to force a sync
+2. Check your internet connection
+3. Sign out and back in
 </Accordion>
 </AccordionGroup>
 
@@ -429,20 +293,12 @@ Changing the JWT secret invalidates all existing sessions. Users will need to si
 
 If you can't resolve an issue:
 
-1. **Check the logs:**
-   ```bash
-   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml logs
-   ```
+1. **Check existing issues:** [github.com/BloopAI/vibe-kanban/issues](https://github.com/BloopAI/vibe-kanban/issues)
 
-2. **Search existing issues:**
-   Check [github.com/BloopAI/vibe-kanban/issues](https://github.com/BloopAI/vibe-kanban/issues)
-
-3. **Report a bug:**
-   Create a new issue with:
+2. **Report a bug:** Create a new issue with:
    - What you were trying to do
-   - The exact error message
-   - Relevant log output
-   - Your operating system and Docker version
+   - What happened instead
+   - Your browser and operating system
 
 <Card title="Report an Issue" icon="github" href="https://github.com/BloopAI/vibe-kanban/issues/new">
   Open a new issue on GitHub for bugs or feature requests
