@@ -1157,7 +1157,10 @@ pub trait ContainerService {
         )
         .await?;
 
-        Workspace::set_archived(&self.db().pool, workspace.id, false).await?;
+        // Don't un-archive if we're running an archive script
+        if *run_reason != ExecutionProcessRunReason::ArchiveScript {
+            Workspace::set_archived(&self.db().pool, workspace.id, false).await?;
+        }
 
         if let Some(prompt) = match executor_action.typ() {
             ExecutorActionType::CodingAgentInitialRequest(coding_agent_request) => {

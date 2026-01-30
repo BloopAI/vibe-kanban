@@ -58,26 +58,6 @@ use crate::{
     routes::task_attempts::gh_cli_setup::GhCliSetupError,
 };
 
-/// Spawns a background task to run the archive script if one is configured.
-/// This is called when a workspace is being archived to run any configured archive scripts.
-/// The ExecutionProcess created by start_execution() blocks workspace cleanup until complete.
-pub fn spawn_archive_script_if_configured(deployment: DeploymentImpl, workspace: Workspace) {
-    let workspace_id = workspace.id;
-    tokio::spawn(async move {
-        if let Err(e) = deployment
-            .container()
-            .try_run_archive_script(workspace_id)
-            .await
-        {
-            tracing::error!(
-                "Failed to run archive script for workspace {}: {}",
-                workspace_id,
-                e
-            );
-        }
-    });
-}
-
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct RebaseTaskAttemptRequest {
     pub repo_id: Uuid,
@@ -205,9 +185,19 @@ pub async fn update_workspace(
         });
     }
 
-    // Spawn archive script if we just archived the workspace
+    // Run archive script if we just archived the workspace
     if is_archiving {
-        spawn_archive_script_if_configured(deployment, updated.clone());
+        if let Err(e) = deployment
+            .container()
+            .try_run_archive_script(workspace.id)
+            .await
+        {
+            tracing::error!(
+                "Failed to run archive script for workspace {}: {}",
+                workspace.id,
+                e
+            );
+        }
     }
 
     Ok(ResponseJson(ApiResponse::success(updated)))
@@ -566,8 +556,18 @@ pub async fn merge_task_attempt(
     Task::update_status(pool, task.id, TaskStatus::Done).await?;
     if !workspace.pinned {
         Workspace::set_archived(pool, workspace.id, true).await?;
-        // Spawn archive script after archiving
-        spawn_archive_script_if_configured(deployment.clone(), workspace.clone());
+        // Run archive script after archiving
+        if let Err(e) = deployment
+            .container()
+            .try_run_archive_script(workspace.id)
+            .await
+        {
+            tracing::error!(
+                "Failed to run archive script for workspace {}: {}",
+                workspace.id,
+                e
+            );
+        }
     }
 
     // Stop any running dev servers for this workspace
