@@ -1,0 +1,250 @@
+---
+title: "Issues"
+description: "Create, edit, and manage issues to track your work"
+---
+
+Issues are the individual work items in your project - bugs to fix, features to build, tasks to complete. Each issue lives on your kanban board and can be assigned to team members, tagged, prioritised, and tracked through your workflow.
+
+## What is an Issue?
+
+An **issue** represents a single piece of work. It has:
+
+- **Title** - A short description of what needs to be done
+- **Description** - Detailed information, requirements, or context
+- **Status** - Which column it's in (To Do, In Progress, Done, etc.)
+- **Priority** - How urgent it is (Urgent, High, Medium, Low)
+- **Assignees** - Who's responsible for the work
+- **Tags** - Labels for categorisation and filtering
+- **Simple ID** - A unique identifier like `TASK-123` for easy reference
+
+
+## Creating Issues
+
+### Quick Create
+
+The fastest way to create an issue:
+
+1. Click the **+** button at the top of any status column
+2. Type the issue title
+3. Press **Enter** to create
+
+
+The issue is created in that column with default settings. You can click it to add more details.
+
+### Create with Details
+
+To create an issue with full details:
+
+<Steps>
+<Step title="Open the create panel">
+  Click the **+ New Issue** button in the header, or use the keyboard shortcut.
+
+</Step>
+
+<Step title="Enter the title">
+  Type a clear, descriptive title. The title field is focused automatically.
+</Step>
+
+<Step title="Set the status">
+  Choose which column the issue should start in.
+</Step>
+
+<Step title="Set priority (optional)">
+  Select a priority level:
+
+  | Priority | When to Use |
+  |----------|-------------|
+  | **Urgent** | Needs immediate attention, blocking other work |
+  | **High** | Important, should be done soon |
+  | **Medium** | Normal priority (default) |
+  | **Low** | Nice to have, can wait |
+</Step>
+
+<Step title="Assign team members (optional)">
+  Click the assignee field and select one or more team members. You can assign multiple people to the same issue.
+</Step>
+
+<Step title="Add tags (optional)">
+  Select tags to categorise the issue. Tags help with filtering and organisation.
+</Step>
+
+<Step title="Add description (optional)">
+  Write a detailed description using the rich text editor. You can format text, add lists, code blocks, and links.
+</Step>
+
+<Step title="Create the issue">
+  Click **Create** to save the issue, or **Create & Open** to create it and immediately open the full panel.
+</Step>
+</Steps>
+
+### Create with Workspace
+
+If you want to immediately start working on an issue with AI assistance:
+
+1. When creating an issue, enable **Create draft workspace**
+2. The issue is created with a linked workspace
+3. You can start working with coding agents right away
+
+## Editing Issues
+
+### Opening an Issue
+
+Click any issue card on the board to open the issue panel. The panel slides in from the right side.
+
+
+### Auto-Save
+
+Changes to the title and description **save automatically** as you type. You don't need to click a save button - just edit and your changes are saved.
+
+<Info>
+Auto-save has a small delay (about half a second) to avoid saving every keystroke. If you close the panel immediately after typing, wait a moment for the save to complete.
+</Info>
+
+### Editing Properties
+
+Properties like status, priority, assignees, and tags save **immediately** when you change them:
+
+| Property | How to Edit |
+|----------|-------------|
+| **Status** | Click the status dropdown and select a new status, or drag the card to another column |
+| **Priority** | Click the priority dropdown and select a level |
+| **Assignees** | Click the assignees field, select/deselect team members |
+| **Tags** | Click the tags field, select/deselect tags |
+
+### Editing the Description
+
+The description uses a rich text editor with formatting options:
+
+- **Bold**, *italic*, ~~strikethrough~~
+- Bullet lists and numbered lists
+- Code blocks for technical content
+- Links to external resources
+
+
+## Issue Sections
+
+The issue panel has collapsible sections for additional information:
+
+### Workspaces Section
+
+Shows development workspaces linked to this issue. Workspaces are where coding agents do their work.
+
+
+- **Create Workspace** - Start a new workspace for this issue
+- **Open Workspace** - Continue working in an existing workspace
+- **View Status** - See if the workspace is active, idle, or completed
+
+### Sub-Issues Section
+
+Issues can have child issues (subtasks) for breaking down work:
+
+
+- **Add Sub-Issue** - Create a new child issue
+- **Link Existing Issue** - Make an existing issue a subtask
+- **View Parent** - If this is a sub-issue, see its parent
+
+### Comments Section
+
+Discussion thread for the issue:
+
+
+- **Add Comment** - Share updates, ask questions, or provide feedback
+- **React** - Add emoji reactions to comments
+- **Edit/Delete** - Modify or remove your own comments
+
+## Sub-Issues (Subtasks)
+
+Break large issues into smaller, manageable pieces using sub-issues.
+
+### Creating a Sub-Issue
+
+<Steps>
+<Step title="Open the parent issue">
+  Click the issue that will be the parent.
+</Step>
+
+<Step title="Expand the Sub-Issues section">
+  Click the **Sub-Issues** section header to expand it.
+</Step>
+
+<Step title="Click Add Sub-Issue">
+  Click the **+ Add Sub-Issue** button.
+</Step>
+
+<Step title="Enter sub-issue details">
+  Fill in the title and any other details. The sub-issue is automatically linked to the parent.
+</Step>
+</Steps>
+
+### Viewing the Parent Issue
+
+When viewing a sub-issue, you'll see a **Parent** link at the top of the panel. Click it to navigate to the parent issue.
+
+### Sub-Issue Behaviour
+
+- Sub-issues appear on the board just like regular issues
+- They can have their own status, priority, and assignees
+- Completing all sub-issues doesn't automatically complete the parent
+- Sub-issues can't have their own sub-issues (only one level deep)
+
+## Copying Issue Links
+
+To share an issue with someone:
+
+1. Open the issue panel
+2. Click the **Copy Link** button (<Icon icon="link" />) in the panel header
+3. The issue URL is copied to your clipboard
+
+Share this link with team members - they can click it to go directly to that issue.
+
+## Deleting Issues
+
+To delete an issue:
+
+1. Open the issue panel
+2. Click the **More** menu (<Icon icon="ellipsis" />)
+3. Select **Delete Issue**
+4. Confirm the deletion
+
+<Warning>
+Deleting an issue is permanent. The issue, its comments, and its history are removed. Sub-issues are not deleted - they become standalone issues.
+</Warning>
+
+## Issue Simple IDs
+
+Every issue has a **Simple ID** - a short, unique identifier like `TASK-123`. This makes it easy to reference issues in conversations, commits, and documentation.
+
+The Simple ID is shown:
+- On issue cards on the board
+- In the issue panel header
+- In the URL when viewing an issue
+
+<Tip>
+Use Simple IDs in commit messages (e.g., "Fix login bug TASK-123") to create a clear connection between code and issues.
+</Tip>
+
+## Best Practices
+
+<CardGroup cols={2}>
+<Card title="Write clear titles" icon="heading">
+  Issue titles should describe what needs to be done, not the problem. "Add password reset flow" is better than "Users can't reset password".
+</Card>
+
+<Card title="Use priority wisely" icon="flag">
+  Reserve "Urgent" for genuine emergencies. If everything is urgent, nothing is.
+</Card>
+
+<Card title="Assign deliberately" icon="user">
+  Assign issues to people who will actually work on them. Unassigned issues are fine for backlog items.
+</Card>
+
+<Card title="Keep descriptions updated" icon="file-lines">
+  As requirements change or you learn more, update the description. It's the source of truth for what needs to be done.
+</Card>
+</CardGroup>
+
+## Related Documentation
+
+- [Kanban Board](/cloud/kanban-board) - Moving and organising issues on the board
+- [Filtering & Sorting](/cloud/filtering) - Finding issues quickly
+- [Customising Your Board](/cloud/customisation) - Configuring statuses and tags

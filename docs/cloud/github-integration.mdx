@@ -1,0 +1,236 @@
+---
+title: "GitHub Integration"
+description: "Connect GitHub for automatic PR tracking and code review"
+---
+
+Connect your GitHub repositories to Vibe Kanban Cloud for automatic pull request tracking, code review integration, and seamless workflow between issues and code.
+
+## What GitHub Integration Provides
+
+With GitHub connected, you get:
+
+- **Automatic PR tracking** - Pull requests appear linked to issues
+- **PR status updates** - See if PRs are open, merged, or closed
+- **Code review** - Review diffs and leave comments from Vibe Kanban
+- **Repository sync** - Your GitHub repos are available for workspaces
+
+
+## Setting Up GitHub Integration
+
+GitHub integration is configured at the organisation level. All projects in the organisation share the connection.
+
+### Installing the GitHub App
+
+<Steps>
+<Step title="Open Organisation Settings">
+  Click the gear icon (<Icon icon="gear" />) next to your organisation name, or go to **Settings** → **Organisation**.
+</Step>
+
+<Step title="Find GitHub Integration">
+  Scroll to the **GitHub Integration** section.
+
+</Step>
+
+<Step title="Click Install GitHub App">
+  Click **Install GitHub App**. You'll be redirected to GitHub.
+</Step>
+
+<Step title="Select repositories">
+  On GitHub, choose which repositories to grant access to:
+
+  - **All repositories** - Grant access to all current and future repos
+  - **Only select repositories** - Choose specific repos
+
+
+  <Tip>
+  You can change repository access later in your GitHub settings.
+  </Tip>
+</Step>
+
+<Step title="Click Install">
+  Click **Install** (or **Install & Authorize**). You'll be redirected back to Vibe Kanban.
+</Step>
+
+<Step title="Verify connection">
+  Back in Vibe Kanban, the GitHub Integration section should show your connected account.
+
+</Step>
+</Steps>
+
+### Enabling Code Review
+
+After installing the GitHub App, enable code review for your repositories:
+
+<Steps>
+<Step title="Find the repository list">
+  In the GitHub Integration section, you'll see a list of connected repositories.
+</Step>
+
+<Step title="Enable code review">
+  Toggle **Enable Code Review** for each repository you want to use.
+
+</Step>
+
+<Step title="Bulk enable (optional)">
+  Click **Enable All** to turn on code review for all repositories at once.
+</Step>
+</Steps>
+
+<Info>
+Code review allows Vibe Kanban to fetch pull request diffs and display them in the interface. Without it enabled, you'll only see basic PR metadata.
+</Info>
+
+## Using GitHub Integration
+
+### Viewing Linked Pull Requests
+
+When a pull request is linked to an issue, it appears in the issue panel:
+
+
+The PR card shows:
+- **PR title** - The pull request title
+- **Status** - Open, merged, or closed
+- **Branch** - Source and target branches
+- **Review status** - Approved, changes requested, or pending
+
+### Opening PRs in GitHub
+
+Click the PR card or the **View on GitHub** link to open the pull request on GitHub in a new tab.
+
+### Reviewing Code
+
+If code review is enabled, you can review diffs directly in Vibe Kanban:
+
+<Steps>
+<Step title="Open the issue">
+  Click an issue that has a linked pull request.
+</Step>
+
+<Step title="Click Review">
+  Click the **Review** button on the PR card.
+
+</Step>
+
+<Step title="Review the diff">
+  Browse changed files and review the code. You can:
+  - Navigate between files
+  - See additions (green) and deletions (red)
+  - Leave inline comments
+</Step>
+</Steps>
+
+## How PRs Get Linked
+
+Pull requests are automatically linked to issues when:
+
+1. **Branch naming** - The branch name contains the issue Simple ID (e.g., `feature/TASK-123-add-login`)
+2. **PR title** - The PR title contains the issue Simple ID
+3. **Workspace** - A PR is created from a workspace linked to the issue
+
+<Tip>
+For automatic linking, include the issue ID in your branch name. For example, if you're working on TASK-42, name your branch `TASK-42-description` or `feature/TASK-42`.
+</Tip>
+
+## Managing GitHub Integration
+
+### Changing Repository Access
+
+To add or remove repositories from the GitHub App:
+
+1. Go to [github.com/settings/installations](https://github.com/settings/installations)
+2. Find "Vibe Kanban" in the list
+3. Click **Configure**
+4. Modify repository access
+5. Click **Save**
+
+Changes take effect immediately in Vibe Kanban.
+
+### Disconnecting GitHub
+
+To remove the GitHub integration entirely:
+
+1. Go to [github.com/settings/installations](https://github.com/settings/installations)
+2. Find "Vibe Kanban"
+3. Click **Configure**
+4. Scroll down and click **Uninstall**
+
+<Warning>
+Disconnecting GitHub removes all PR links and disables code review for the organisation. You can reinstall later, but you'll need to set up repository access again.
+</Warning>
+
+## Permissions Required
+
+The Vibe Kanban GitHub App requests these permissions:
+
+| Permission | Purpose |
+|------------|---------|
+| **Repository contents** (read) | Read code for diff display |
+| **Pull requests** (read/write) | Track PRs and their status |
+| **Metadata** (read) | Basic repository information |
+
+<Info>
+Vibe Kanban cannot push code, create branches, or modify your repository contents. It only reads data for display and tracking.
+</Info>
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="GitHub App installation failed">
+**Possible causes:**
+- You don't have admin access to the GitHub organisation
+- Third-party app restrictions are enabled
+
+**Solutions:**
+1. Ask an organisation admin to install the app
+2. Check if your organisation has app installation restrictions
+</Accordion>
+
+<Accordion title="Repositories not showing up">
+**Possible causes:**
+- Repository access wasn't granted during installation
+- The repository was added after installation
+
+**Solutions:**
+1. Go to GitHub Settings → Applications → Vibe Kanban → Configure
+2. Add the missing repositories
+</Accordion>
+
+<Accordion title="PRs not linking automatically">
+**Possible causes:**
+- Branch name doesn't include the issue ID
+- Issue ID format doesn't match (check for typos)
+- GitHub integration isn't connected
+
+**Solutions:**
+1. Ensure your branch name contains the exact issue ID (e.g., `TASK-123`)
+2. Check that GitHub integration shows as connected
+3. Try adding the issue ID to the PR title
+</Accordion>
+
+<Accordion title="Code review not available">
+**Possible causes:**
+- Code review isn't enabled for the repository
+- The repository doesn't have read access
+
+**Solutions:**
+1. Go to Organisation Settings → GitHub Integration
+2. Enable "Code Review" for the repository
+3. If it's not in the list, add repository access in GitHub
+</Accordion>
+
+<Accordion title="'Not authorized' error">
+**Possible causes:**
+- Your GitHub session expired
+- You don't have access to the repository on GitHub
+
+**Solutions:**
+1. Sign out and sign back in
+2. Verify you have access to the repository on GitHub
+</Accordion>
+</AccordionGroup>
+
+## Related Documentation
+
+- [Organisations](/cloud/organizations) - Managing organisation settings
+- [Issues](/cloud/issues) - Linking issues to pull requests
+- [Team Members](/cloud/team-members) - Managing who can access integrations

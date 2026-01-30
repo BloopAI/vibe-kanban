@@ -1,0 +1,449 @@
+---
+title: "Troubleshooting"
+description: "Solutions for common issues with Vibe Kanban Cloud"
+---
+
+This page covers common issues you might encounter with Vibe Kanban Cloud and how to resolve them.
+
+## Docker Issues
+
+<AccordionGroup>
+<Accordion title="Docker command not found">
+**Symptom:** Terminal shows `docker: command not found` or `docker is not recognized`
+
+**Cause:** Docker is not installed or not in your system PATH.
+
+**Solutions:**
+
+<Tabs>
+<Tab title="macOS">
+1. Download and install [Docker Desktop for Mac](https://www.docker.com/products/docker-desktop/)
+2. Open Docker Desktop from Applications
+3. Wait for it to start (whale icon stops animating)
+4. Try the command again
+</Tab>
+
+<Tab title="Windows">
+1. Download and install [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/)
+2. Restart your computer after installation
+3. Open Docker Desktop from the Start menu
+4. Wait for it to start
+5. Open a new terminal and try again
+</Tab>
+
+<Tab title="Linux">
+1. Install Docker Engine:
+   ```bash
+   sudo apt-get update
+   sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+   ```
+2. Add your user to the docker group:
+   ```bash
+   sudo usermod -aG docker $USER
+   ```
+3. **Log out and back in** for the group change to take effect
+</Tab>
+</Tabs>
+</Accordion>
+
+<Accordion title="Docker daemon not running">
+**Symptom:** Error message like `Cannot connect to the Docker daemon` or `Is the docker daemon running?`
+
+**Cause:** Docker Desktop is installed but not running.
+
+**Solutions:**
+
+<Tabs>
+<Tab title="macOS">
+1. Open Docker Desktop from Applications
+2. Wait for the whale icon to appear in the menu bar
+3. Wait until the whale stops animating (indicating Docker is ready)
+</Tab>
+
+<Tab title="Windows">
+1. Open Docker Desktop from the Start menu
+2. Wait for it to fully start (status shows "Running")
+3. If it fails to start, try restarting your computer
+</Tab>
+
+<Tab title="Linux">
+1. Start the Docker service:
+   ```bash
+   sudo systemctl start docker
+   ```
+2. To start Docker automatically on boot:
+   ```bash
+   sudo systemctl enable docker
+   ```
+</Tab>
+</Tabs>
+</Accordion>
+
+<Accordion title="Permission denied when running Docker">
+**Symptom:** Error like `permission denied while trying to connect to the Docker daemon socket`
+
+**Cause:** Your user doesn't have permission to access Docker (Linux only).
+
+**Solution:**
+```bash
+# Add your user to the docker group
+sudo usermod -aG docker $USER
+
+# Log out and back in, then verify
+groups  # Should show 'docker' in the list
+```
+
+<Warning>
+You must **log out and log back in** for the group change to take effect. Just closing the terminal isn't enough.
+</Warning>
+</Accordion>
+
+<Accordion title="Port already in use">
+**Symptom:** Error like `port is already allocated` or `address already in use`
+
+**Cause:** Another application is using port 3000, 5432, or 8081.
+
+**Solutions:**
+
+1. **Find what's using the port:**
+   ```bash
+   # Replace 3000 with the port number from the error
+   lsof -i :3000        # macOS/Linux
+   netstat -ano | findstr :3000  # Windows
+   ```
+
+2. **Stop the conflicting process**, or
+
+3. **Change the port** in `docker-compose.yml`:
+   ```yaml
+   ports:
+     - "3001:3000"  # Change 3000 to an available port
+   ```
+</Accordion>
+
+<Accordion title="Docker build fails">
+**Symptom:** Build errors during `docker compose up --build`
+
+**Possible causes:**
+- Network issues downloading dependencies
+- Insufficient disk space
+- Corrupted Docker cache
+
+**Solutions:**
+
+1. **Retry the build** (network issues are often transient):
+   ```bash
+   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml up --build
+   ```
+
+2. **Clear Docker cache** and rebuild:
+   ```bash
+   docker system prune -a
+   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml up --build
+   ```
+
+3. **Check disk space:**
+   ```bash
+   df -h  # Should have at least 10GB free
+   ```
+
+<Warning>
+`docker system prune -a` removes all unused images and containers. Only run this if you don't have other important Docker images.
+</Warning>
+</Accordion>
+
+<Accordion title="Containers keep restarting">
+**Symptom:** `docker ps` shows containers with status `Restarting` or they keep cycling.
+
+**Cause:** A service is crashing, often due to missing configuration.
+
+**Solution:**
+1. Check the logs to find the error:
+   ```bash
+   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml logs
+   ```
+
+2. Common causes:
+   - Missing or invalid `VIBEKANBAN_REMOTE_JWT_SECRET`
+   - Database connection issues
+   - Invalid OAuth credentials
+</Accordion>
+</AccordionGroup>
+
+## Authentication Issues
+
+<AccordionGroup>
+<Accordion title="Invalid redirect URI">
+**Symptom:** OAuth provider shows "Invalid redirect URI" or "Redirect URI mismatch"
+
+**Cause:** The callback URL in your OAuth app doesn't match what Vibe Kanban sends.
+
+**Solution:**
+1. Go to your OAuth app settings:
+   - **GitHub:** [github.com/settings/developers](https://github.com/settings/developers) → OAuth Apps
+   - **Google:** [console.cloud.google.com](https://console.cloud.google.com) → Credentials
+
+2. Verify the callback URL is **exactly**:
+   - GitHub: `http://localhost:8081/v1/oauth/github/callback`
+   - Google: `http://localhost:8081/v1/oauth/google/callback`
+
+3. Check for:
+   - No trailing slash
+   - Correct port (8081)
+   - `http://` not `https://` for localhost
+   - Exact path spelling
+</Accordion>
+
+<Accordion title="Access denied during sign-in">
+**Symptom:** GitHub or Google shows "access denied" error
+
+**Possible causes:**
+- You clicked "Deny" instead of "Authorize"
+- Your GitHub organisation has OAuth app restrictions
+- The OAuth app has been suspended
+
+**Solutions:**
+1. Try again and click "Authorize" or "Allow"
+2. If you're part of a GitHub organisation with restrictions, ask your admin to approve the app
+3. Check the OAuth app status in your provider's settings
+</Accordion>
+
+<Accordion title="Signed in with wrong account">
+**Symptom:** You're signed in as a different user than expected
+
+**Cause:** Your browser is logged into a different GitHub/Google account.
+
+**Solution:**
+1. Sign out of Vibe Kanban
+2. Go to [github.com](https://github.com) or [google.com](https://google.com)
+3. Sign out there
+4. Sign back in with the correct account
+5. Return to Vibe Kanban and sign in
+</Accordion>
+
+<Accordion title="Session keeps expiring">
+**Symptom:** You're frequently being signed out
+
+**Possible causes:**
+- The server was restarted (invalidates all sessions)
+- JWT secret was changed
+- Token refresh is failing
+
+**Solutions:**
+1. Simply sign in again
+2. If persistent:
+   - Check if the server is stable (not restarting)
+   - Verify `VIBEKANBAN_REMOTE_JWT_SECRET` hasn't changed
+   - Check server logs for authentication errors
+</Accordion>
+</AccordionGroup>
+
+## Connection Issues
+
+<AccordionGroup>
+<Accordion title="Cannot connect to localhost:3000">
+**Symptom:** Browser shows "This site can't be reached" or "Connection refused"
+
+**Possible causes:**
+- Docker containers aren't running
+- Services are still starting
+- Wrong URL
+
+**Solutions:**
+
+1. **Verify containers are running:**
+   ```bash
+   docker ps
+   ```
+   You should see containers for `remote`, `electric`, and `postgres`.
+
+2. **Wait for services to start** - first run can take several minutes.
+
+3. **Check you're using the right URL:**
+   - Use `http://localhost:3000` (not https)
+   - Don't use `127.0.0.1` unless you've configured it
+
+4. **Check container logs for errors:**
+   ```bash
+   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml logs remote
+   ```
+</Accordion>
+
+<Accordion title="Page loads but nothing appears">
+**Symptom:** The page loads but is blank or shows a loading spinner indefinitely
+
+**Possible causes:**
+- Electric sync service isn't ready
+- JavaScript error in the browser
+- API connection failing
+
+**Solutions:**
+
+1. **Wait a bit longer** - Electric needs to sync initial data
+
+2. **Check browser console:**
+   - Open Developer Tools (F12 or Cmd+Option+I)
+   - Look at the Console tab for errors
+
+3. **Check Electric service:**
+   ```bash
+   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml logs electric
+   ```
+   Look for "Electric is ready" message.
+
+4. **Try a hard refresh:** Cmd+Shift+R (Mac) or Ctrl+Shift+R (Windows/Linux)
+</Accordion>
+
+<Accordion title="Changes not syncing between users">
+**Symptom:** Changes made by one user don't appear for others
+
+**Possible causes:**
+- Electric sync service issues
+- WebSocket connection problems
+- Browser extension blocking connections
+
+**Solutions:**
+
+1. **Refresh the page** - often resolves temporary sync issues
+
+2. **Check Electric logs:**
+   ```bash
+   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml logs electric
+   ```
+
+3. **Disable browser extensions** temporarily (especially ad blockers)
+
+4. **Restart services:**
+   ```bash
+   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml restart
+   ```
+</Accordion>
+</AccordionGroup>
+
+## Database Issues
+
+<AccordionGroup>
+<Accordion title="Database connection failed">
+**Symptom:** Error logs mention "connection refused" or "database does not exist"
+
+**Cause:** PostgreSQL container isn't running or isn't ready.
+
+**Solutions:**
+
+1. **Check if PostgreSQL is running:**
+   ```bash
+   docker ps | grep postgres
+   ```
+
+2. **Check PostgreSQL logs:**
+   ```bash
+   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml logs postgres
+   ```
+
+3. **Wait for PostgreSQL** to be ready - look for "database system is ready to accept connections"
+
+4. **Restart all services:**
+   ```bash
+   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml down
+   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml up
+   ```
+</Accordion>
+
+<Accordion title="Migration errors">
+**Symptom:** Errors about migrations or schema during startup
+
+**Cause:** Database schema is out of sync, often after updates.
+
+**Solutions:**
+
+1. **For a fresh start** (destroys all data):
+   ```bash
+   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml down -v
+   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml up --build
+   ```
+
+2. **If you need to preserve data:**
+   - Back up your database first
+   - Check the release notes for migration instructions
+   - Consider reaching out for support
+</Accordion>
+</AccordionGroup>
+
+## Configuration Issues
+
+<AccordionGroup>
+<Accordion title="Environment variables not loading">
+**Symptom:** Errors about missing configuration or variables being undefined
+
+**Cause:** `.env.remote` file isn't being read or has issues.
+
+**Solutions:**
+
+1. **Verify file location:**
+   `.env.remote` should be in the repository root, not in `crates/remote/`
+
+2. **Check file contents:**
+   ```bash
+   cat .env.remote
+   ```
+   Ensure variables are set correctly without quotes around values.
+
+3. **Verify you're using the right command:**
+   ```bash
+   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml up
+   ```
+   Note: `--env-file .env.remote` is required.
+
+4. **Check for typos** in variable names (they're case-sensitive).
+</Accordion>
+
+<Accordion title="Invalid JWT secret">
+**Symptom:** Authentication errors or server won't start, mentioning JWT
+
+**Cause:** `VIBEKANBAN_REMOTE_JWT_SECRET` is missing, empty, or not valid base64.
+
+**Solution:**
+1. Generate a new secret:
+   ```bash
+   openssl rand -base64 48
+   ```
+
+2. Add to `.env.remote`:
+   ```bash
+   VIBEKANBAN_REMOTE_JWT_SECRET=your_generated_secret_here
+   ```
+
+3. Restart services:
+   ```bash
+   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml down
+   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml up
+   ```
+
+<Warning>
+Changing the JWT secret invalidates all existing sessions. Users will need to sign in again.
+</Warning>
+</Accordion>
+</AccordionGroup>
+
+## Getting Help
+
+If you can't resolve an issue:
+
+1. **Check the logs:**
+   ```bash
+   docker compose --env-file .env.remote -f crates/remote/docker-compose.yml logs
+   ```
+
+2. **Search existing issues:**
+   Check [github.com/BloopAI/vibe-kanban/issues](https://github.com/BloopAI/vibe-kanban/issues)
+
+3. **Report a bug:**
+   Create a new issue with:
+   - What you were trying to do
+   - The exact error message
+   - Relevant log output
+   - Your operating system and Docker version
+
+<Card title="Report an Issue" icon="github" href="https://github.com/BloopAI/vibe-kanban/issues/new">
+  Open a new issue on GitHub for bugs or feature requests
+</Card>
