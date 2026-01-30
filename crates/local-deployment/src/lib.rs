@@ -189,8 +189,6 @@ impl Deployment for LocalDeployment {
         let file_search_cache = Arc::new(FileSearchCache::new());
 
         let pty = PtyService::new();
-
-        // Spawn PR monitor service
         {
             let db = db.clone();
             let analytics = analytics.as_ref().map(|s| AnalyticsContext {

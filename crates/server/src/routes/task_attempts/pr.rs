@@ -520,7 +520,6 @@ pub async fn attach_existing_pr(
             Task::update_status(pool, task.id, TaskStatus::Done).await?;
             if !workspace.pinned {
                 Workspace::set_archived(pool, workspace.id, true).await?;
-                // Run archive script after archiving
                 if let Err(e) = deployment
                     .container()
                     .try_run_archive_script(workspace.id)

@@ -482,34 +482,24 @@ pub trait ContainerService {
 
     /// Attempts to run the archive script for a workspace if configured.
     /// Silently returns Ok if no archive script is configured or if conditions aren't met.
-    /// The ExecutionProcess created blocks workspace cleanup until the script completes.
     async fn try_run_archive_script(&self, workspace_id: Uuid) -> Result<(), ContainerError> {
         let pool = &self.db().pool;
-
         let workspace = Workspace::find_by_id(pool, workspace_id)
             .await?
             .ok_or(ContainerError::Other(anyhow!("Workspace not found")))?;
-
-        // Skip if any non-dev-server process is already running
         if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
             .await
             .unwrap_or(true)
         {
             return Ok(());
         }
-
-        // Skip if no container exists
         if self.ensure_container_exists(&workspace).await.is_err() {
             return Ok(());
         }
-
-        // Skip if no archive scripts configured
         let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
         let Some(action) = self.archive_actions_for_repos(&repos) else {
             return Ok(());
         };
-
-        // Get or create a session for the archive script
         let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
             Some(s) => s,
             None => {
@@ -522,8 +512,6 @@ pub trait ContainerService {
                 .await?
             }
         };
-
-        // Execute the archive script
         self.start_execution(
             &workspace,
             &session,
@@ -1156,8 +1144,6 @@ pub trait ContainerService {
             &repo_states,
         )
         .await?;
-
-        // Don't un-archive if we're running an archive script
         if *run_reason != ExecutionProcessRunReason::ArchiveScript {
             Workspace::set_archived(&self.db().pool, workspace.id, false).await?;
         }

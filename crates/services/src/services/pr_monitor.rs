@@ -134,12 +134,8 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
                     pr_merge.pr_info.number, workspace.task_id
                 );
                 Task::update_status(&self.db.pool, workspace.task_id, TaskStatus::Done).await?;
-
-                // Archive workspace unless pinned
                 if !workspace.pinned {
                     Workspace::set_archived(&self.db.pool, workspace.id, true).await?;
-
-                    // Run archive script if configured
                     if let Err(e) = self.container.try_run_archive_script(workspace.id).await {
                         error!(
                             "Failed to run archive script for workspace {}: {}",
