@@ -50,7 +50,7 @@ services:
       remote-db:
         condition: service_healthy
     environment:
-      RUST_LOG: info,remote=debug 
+      RUST_LOG: info,remote=info
 
       SERVER_DATABASE_URL: postgres://remote:remote@remote-db:5432/remote
       SERVER_LISTEN_ADDR: 0.0.0.0:8081

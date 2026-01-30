@@ -41,27 +41,34 @@ impl AnalyticsService {
             self.config.posthog_api_endpoint.trim_end_matches('/')
         );
 
-        let mut event_properties = properties;
-        if let Some(props) = event_properties.as_object_mut() {
-            props.insert(
-                "timestamp".to_string(),
-                json!(chrono::Utc::now().to_rfc3339()),
-            );
-            props.insert("version".to_string(), json!(env!("CARGO_PKG_VERSION")));
-            props.insert("source".to_string(), json!("remote-backend"));
-        }
-
-        let payload = json!({
-            "api_key": self.config.posthog_api_key,
-            "event": event_name,
-            "distinct_id": user_id.to_string(),
-            "properties": event_properties,
-        });
+        let payload = if event_name == "$identify" {
+            json!({
+                "api_key": self.config.posthog_api_key,
+                "event": event_name,
+                "distinct_id": user_id.to_string(),
+                "$set": properties,
+            })
+        } else {
+            let mut event_properties = properties;
+            if let Some(props) = event_properties.as_object_mut() {
+                props.insert(
+                    "timestamp".to_string(),
+                    json!(chrono::Utc::now().to_rfc3339()),
+                );
+                props.insert("version".to_string(), json!(env!("CARGO_PKG_VERSION")));
+                props.insert("source".to_string(), json!("remote"));
+            }
+            json!({
+                "api_key": self.config.posthog_api_key,
+                "event": event_name,
+                "distinct_id": user_id.to_string(),
+                "properties": event_properties,
+            })
+        };
 
         let client = self.client.clone();
         let event_name = event_name.to_string();
 
-        // Fire-and-forget: spawns a background task
         tokio::spawn(async move {
             match client
                 .post(&endpoint)

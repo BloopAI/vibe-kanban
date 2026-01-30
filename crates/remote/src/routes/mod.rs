@@ -8,9 +8,9 @@ use tower_http::{
     cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer},
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, RequestId, SetRequestIdLayer},
     services::{ServeDir, ServeFile},
-    trace::{DefaultOnFailure, DefaultOnResponse, TraceLayer},
+    trace::{DefaultOnFailure, TraceLayer},
 };
-use tracing::{Level, field};
+use tracing::{Level, Span, field};
 
 use crate::{AppState, auth::require_session};
 
@@ -59,18 +59,43 @@ pub fn router(state: AppState) -> Router {
                 .extensions()
                 .get::<RequestId>()
                 .and_then(|id| id.header_value().to_str().ok());
-            let span = tracing::info_span!(
-                "http_request",
-                method = %request.method(),
-                uri = %request.uri(),
-                request_id = field::Empty
-            );
+            let is_health = request.uri().path() == "/health";
+            let span = if is_health {
+                tracing::trace_span!(
+                    "http_request",
+                    method = %request.method(),
+                    uri = %request.uri(),
+                    request_id = field::Empty
+                )
+            } else {
+                tracing::debug_span!(
+                    "http_request",
+                    method = %request.method(),
+                    uri = %request.uri(),
+                    request_id = field::Empty
+                )
+            };
             if let Some(request_id) = request_id {
                 span.record("request_id", field::display(request_id));
             }
             span
         })
-        .on_response(DefaultOnResponse::new().level(Level::INFO))
+        .on_response(
+            |response: &axum::http::Response<_>, latency: std::time::Duration, span: &Span| {
+                if span.is_disabled() {
+                    return;
+                }
+                let status = response.status().as_u16();
+                let latency_ms = latency.as_millis();
+                if status >= 500 {
+                    tracing::error!(status, latency_ms, "server error");
+                } else if status >= 400 {
+                    tracing::warn!(status, latency_ms, "client error");
+                } else {
+                    tracing::debug!(status, latency_ms, "request completed");
+                }
+            },
+        )
         .on_failure(DefaultOnFailure::new().level(Level::ERROR));
 
     let v1_public = Router::<AppState>::new()
