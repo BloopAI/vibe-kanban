@@ -216,24 +216,32 @@ async fn get_sound(
 
         if let Some(path) = path {
             if !path.is_empty() {
+                // Security: Reject paths with .. to prevent traversal
+                if path.contains("..") {
+                    return Err(ApiError::BadRequest("Invalid path".to_string()));
+                }
+
                 let path_path = std::path::Path::new(&path);
+
+                // Security: Only allow specific audio extensions
+                let extension = path_path
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .map(|s| s.to_lowercase());
+
+                let mime_type = match extension.as_deref() {
+                    Some("mp3") => "audio/mpeg",
+                    Some("ogg") => "audio/ogg",
+                    Some("wav") => "audio/wav",
+                    Some("m4a") | Some("aac") => "audio/mp4",
+                    Some("aiff") | Some("aif") => "audio/aiff",
+                    _ => return Err(ApiError::BadRequest("Unsupported file type".to_string())),
+                };
+
                 if path_path.exists() && path_path.is_file() {
                     let data = tokio::fs::read(path_path)
                         .await
                         .map_err(DeploymentError::Io)?;
-                    let mime_type = match path_path
-                        .extension()
-                        .and_then(|ext| ext.to_str())
-                        .map(|s| s.to_lowercase())
-                        .as_deref()
-                    {
-                        Some("mp3") => "audio/mpeg",
-                        Some("ogg") => "audio/ogg",
-                        Some("wav") => "audio/wav",
-                        Some("m4a") | Some("aac") => "audio/mp4",
-                        Some("aiff") | Some("aif") => "audio/aiff",
-                        _ => "audio/wav", // Fallback
-                    };
 
                     let response = Response::builder()
                         .status(http::StatusCode::OK)
