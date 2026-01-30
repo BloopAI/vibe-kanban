@@ -93,7 +93,7 @@ export function IssueCommentsSection({
       defaultExpanded={true}
       actions={[]}
     >
-      <div className="px-base pb-base flex flex-col gap-double">
+      <div className="p-base flex flex-col gap-base border-t">
         {/* Comments list */}
         {isLoading ? (
           <div className="flex flex-col gap-double animate-pulse">
@@ -122,7 +122,7 @@ export function IssueCommentsSection({
         )}
 
         {/* Comment Input with WYSIWYG */}
-        <div className="flex flex-col gap-double bg-primary border border-border rounded-sm p-double">
+        <div className="flex flex-col gap-double bg-secondary border border-border rounded-sm p-double">
           <WYSIWYGEditor
             ref={commentEditorRef}
             value={commentInput}

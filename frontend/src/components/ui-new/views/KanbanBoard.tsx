@@ -100,7 +100,7 @@ export const KanbanCard = ({
         return (
           <Card
             className={cn(
-              'p-base outline-none flex-col border -mt-[1px] -mx-[1px] bg-secondary',
+              'p-base outline-none flex-col border -mt-[1px] -mx-[1px] bg-primary',
               snapshot.isDragging && 'cursor-grabbing shadow-lg',
               isOpen && 'ring-2 ring-secondary-foreground ring-inset',
               className
@@ -224,7 +224,7 @@ export const KanbanProvider = ({
     <DragDropContext onDragEnd={onDragEnd}>
       <div
         className={cn(
-          'inline-grid grid-flow-col auto-cols-[minmax(200px,400px)] divide-x border-t border-x items-stretch min-h-full',
+          'inline-grid grid-flow-col auto-cols-[minmax(200px,400px)] divide-x border-x items-stretch min-h-full',
           className
         )}
       >

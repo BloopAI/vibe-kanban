@@ -7,6 +7,7 @@ import { Tooltip } from '../primitives/Tooltip';
 interface CopyButtonProps {
   onCopy: () => void;
   disabled: boolean;
+  iconSize: string;
   /** Icon to show before copying */
   icon: Icon;
 }
@@ -18,6 +19,7 @@ interface CopyButtonProps {
 export function CopyButton({
   onCopy,
   disabled,
+  iconSize,
   icon: DefaultIcon,
 }: CopyButtonProps) {
   const { t } = useTranslation('common');
@@ -51,10 +53,7 @@ export function CopyButton({
       onClick={handleClick}
       disabled={disabled}
     >
-      <IconComponent
-        className={cn('size-icon-base', iconClassName)}
-        weight="bold"
-      />
+      <IconComponent className={cn(iconSize, iconClassName)} weight="bold" />
     </button>
   );
 

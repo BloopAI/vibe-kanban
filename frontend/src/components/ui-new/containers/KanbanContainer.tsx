@@ -458,7 +458,7 @@ export function KanbanContainer() {
                 return (
                   <KanbanBoard key={status.id}>
                     <KanbanHeader>
-                      <div className="sticky border-b top-0 z-20 flex shrink-0 items-center justify-between gap-2 p-base bg-background">
+                      <div className="border-t sticky border-b top-0 z-20 flex shrink-0 items-center justify-between gap-2 p-base bg-secondary">
                         <div className="flex items-center gap-2">
                           <div
                             className="h-2 w-2 rounded-full shrink-0"

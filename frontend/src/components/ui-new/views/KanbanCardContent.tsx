@@ -46,7 +46,7 @@ export const KanbanCardContent = ({
       </div>
 
       {/* Row 2: Title */}
-      <span className="text-base text-high truncate">{title}</span>
+      <span className="text-base text-normal truncate">{title}</span>
 
       {/* Row 3: Description (optional, truncated) */}
       {description && (

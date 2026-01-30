@@ -22,9 +22,9 @@ import {
   Code,
   ListBullets,
   ListNumbers,
-  Check,
   ArrowCounterClockwise,
   type Icon,
+  CheckIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
@@ -138,7 +138,7 @@ export function StaticToolbarPlugin({ saveStatus }: StaticToolbarPluginProps) {
   }, [editor, updateToolbarState]);
 
   return (
-    <div className="flex items-center gap-half mt-base pt-base border-t border-border/50">
+    <div className="flex items-center gap-half mt-base p-base border-t border-border/50">
       {/* Undo button */}
       <ToolbarButton
         onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)}
@@ -216,11 +216,11 @@ export function StaticToolbarPlugin({ saveStatus }: StaticToolbarPluginProps) {
       {saveStatus && (
         <div
           className={cn(
-            'ml-auto flex items-center transition-opacity duration-300',
+            'ml-auto mr-base flex items-center transition-opacity duration-300',
             saveStatus === 'idle' ? 'opacity-0' : 'opacity-100'
           )}
         >
-          <Check className="size-icon-sm text-success" weight="bold" />
+          <CheckIcon className="size-icon-sm text-success" weight="bold" />
         </div>
       )}
     </div>

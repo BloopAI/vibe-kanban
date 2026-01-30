@@ -159,15 +159,27 @@ export function KanbanIssuePanelContainer() {
   // Track previous issue ID to detect actual issue switches (not just data updates)
   const prevIssueIdRef = useRef<string | null>(null);
 
-  // Ref for title input auto-focus
-  const titleInputRef = useRef<HTMLInputElement>(null);
+  // Track previous issue ID for title content sync
+  const lastTitleIssueIdRef = useRef<string | null | undefined>(null);
 
-  // Auto-focus title input in create mode
-  useEffect(() => {
-    if (mode === 'create' && titleInputRef.current) {
-      titleInputRef.current.focus();
-    }
-  }, [mode]);
+  // Callback ref that handles title content sync and auto-focus
+  const titleRefCallback = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (node) {
+        // Set title content when issue changes
+        if (selectedKanbanIssueId !== lastTitleIssueIdRef.current) {
+          const title = selectedIssue?.title ?? '';
+          node.textContent = title;
+          lastTitleIssueIdRef.current = selectedKanbanIssueId;
+        }
+        // Auto-focus in create mode
+        if (mode === 'create') {
+          node.focus();
+        }
+      }
+    },
+    [selectedKanbanIssueId, selectedIssue?.title, mode]
+  );
 
   // Display ID: use real simple_id in edit mode, placeholder for create mode
   const displayId = useMemo(() => {
@@ -611,7 +623,7 @@ export function KanbanIssuePanelContainer() {
       descriptionSaveStatus={
         mode === 'edit' ? descriptionSaveStatus : undefined
       }
-      titleInputRef={titleInputRef}
+      titleRef={titleRefCallback}
       onCopyLink={mode === 'edit' ? handleCopyLink : undefined}
       onMoreActions={mode === 'edit' ? handleMoreActions : undefined}
     />
