@@ -1,6 +1,6 @@
 {
   "dropzone": {
-    "dropImagesHere": "Görüntüleri buraya bırakın",
+    "dropImagesHere": "Görselleri buraya bırakın",
     "supportedFormats": "PNG, JPG, GIF, WebP, SVG desteklenir"
   },
   "gitPanel": {
@@ -344,7 +344,10 @@
     "preview": "Önizleme",
     "diffs": "Farklar",
     "gitActions": "Git İşlemleri",
-    "tryNewUI": "yeni arayüzü dene"
+    "tryAgain": "Tekrar Dene",
+    "runSetup": "Kurulumu Çalıştır",
+    "setupHelpText": "{{agent}} doğru şekilde kurulmamış. Kurmak ve giriş yapmak için 'Kurulumu Çalıştır'a tıklayın.",
+    "devScriptMissingTooltip": "Geliştirme sunucusunu başlatmak için bu projeye bir geliştirme betiği ekleyin"
   },
   "git": {
     "labels": {
@@ -477,7 +480,7 @@
     "preview": "Önizleme",
     "diffs": "Farklar",
     "relatedTasks": "İlgili görevler",
-    "tryNewUI": "yeni arayüzü dene"
+    "tryNewUI": "Yeni Arayüzü Dene"
   },
   "actionsMenu": {
     "attempt": "Deneme",
@@ -611,8 +614,8 @@
       "cancelled": "İptal Edildi"
     },
     "startLabel": "Başlat",
-    "attachImage": "Görüntü ekle",
-    "dropImagesHere": "Görüntüleri buraya bırakın",
+    "attachImage": "Görsel ekle",
+    "dropImagesHere": "Görselleri buraya bırakın",
     "updating": "Güncelleniyor...",
     "updateTask": "Görevi Güncelle",
     "starting": "Başlatılıyor...",
