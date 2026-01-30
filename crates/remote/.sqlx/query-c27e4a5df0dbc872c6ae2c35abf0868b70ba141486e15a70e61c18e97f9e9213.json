@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO issues (id, project_id, status_id, title, description, priority, sort_order, extension_metadata, created_at)\n            SELECT\n                gen_random_uuid(),\n                t.project_id,\n                (SELECT id FROM project_statuses ps WHERE ps.project_id = t.project_id AND LOWER(ps.name) = LOWER(t.status_name)),\n                t.title,\n                t.description,\n                NULL,\n                0.0,\n                '{}'::jsonb,\n                t.created_at\n            FROM UNNEST($1::uuid[], $2::text[], $3::text[], $4::text[], $5::timestamptz[])\n                AS t(project_id, status_name, title, description, created_at)\n            RETURNING id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "TimestamptzArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c27e4a5df0dbc872c6ae2c35abf0868b70ba141486e15a70e61c18e97f9e9213"
+}

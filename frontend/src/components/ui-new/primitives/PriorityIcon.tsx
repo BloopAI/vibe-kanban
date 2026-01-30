@@ -8,7 +8,7 @@ import {
 import type { IssuePriority } from 'shared/remote-types';
 
 export interface PriorityIconProps {
-  priority: IssuePriority;
+  priority: IssuePriority | null;
   className?: string;
 }
 
@@ -23,6 +23,7 @@ const priorityConfig: Record<
 };
 
 export const PriorityIcon = ({ priority, className }: PriorityIconProps) => {
+  if (!priority) return null;
   const { icon: IconComponent, colorClass } = priorityConfig[priority];
   return (
     <IconComponent

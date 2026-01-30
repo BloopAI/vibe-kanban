@@ -76,7 +76,7 @@ export function useKanbanNavigation() {
   const updateCreateDefaults = useCallback(
     (options: {
       statusId?: string;
-      priority?: IssuePriority;
+      priority?: IssuePriority | null;
       assigneeIds?: string[];
     }) => {
       if (!projectId || !isCreateMode) return;
@@ -86,7 +86,11 @@ export function useKanbanNavigation() {
         params.set('statusId', options.statusId);
       }
       if (options.priority !== undefined) {
-        params.set('priority', options.priority);
+        if (options.priority === null) {
+          params.delete('priority');
+        } else {
+          params.set('priority', options.priority);
+        }
       }
       if (options.assigneeIds !== undefined) {
         params.set('assignees', options.assigneeIds.join(','));

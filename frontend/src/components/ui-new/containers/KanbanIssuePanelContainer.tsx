@@ -181,7 +181,7 @@ export function KanbanIssuePanelContainer() {
         title: '',
         description: null,
         statusId: defaultStatusId,
-        priority: 'medium',
+        priority: null,
         assigneeIds: [],
         tagIds: [],
         createDraftWorkspace: false,
@@ -207,7 +207,7 @@ export function KanbanIssuePanelContainer() {
           ? localTextEdits.description
           : (selectedIssue?.description ?? null),
       statusId: selectedIssue?.status_id ?? '', // Always from server
-      priority: selectedIssue?.priority ?? 'medium', // Always from server
+      priority: selectedIssue?.priority ?? null, // Always from server
       assigneeIds: currentAssigneeIds, // Always from server
       tagIds: currentTagIds, // Always from server
       createDraftWorkspace: false,
@@ -284,7 +284,7 @@ export function KanbanIssuePanelContainer() {
         title: '',
         description: null,
         statusId: defaultStatusId,
-        priority: 'medium',
+        priority: null,
         assigneeIds: [],
         tagIds: [],
         createDraftWorkspace: false,
@@ -351,7 +351,7 @@ export function KanbanIssuePanelContainer() {
             title: '',
             description: null,
             statusId: defaultStatusId,
-            priority: 'medium' as const,
+            priority: null,
             assigneeIds: [],
             tagIds: [],
             createDraftWorkspace: false,

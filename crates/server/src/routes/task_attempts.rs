@@ -159,16 +159,24 @@ pub async fn update_workspace(
         .await?
         .ok_or(WorkspaceError::TaskNotFound)?;
 
-    // Sync to remote if archived status changed
-    if request.archived.is_some()
+    // Sync to remote if archived or name changed
+    if (request.archived.is_some() || request.name.is_some())
         && let Ok(client) = deployment.remote_client()
     {
         let ws = updated.clone();
+        let name = request.name.clone();
+        let archived = request.archived;
         let stats =
             diff_stream::compute_diff_stats(&deployment.db().pool, deployment.git(), &ws).await;
         tokio::spawn(async move {
-            remote_sync::sync_workspace_to_remote(&client, ws.id, request.archived, stats.as_ref())
-                .await;
+            remote_sync::sync_workspace_to_remote(
+                &client,
+                ws.id,
+                name.map(Some),
+                archived,
+                stats.as_ref(),
+            )
+            .await;
         });
     }
 
@@ -1784,6 +1792,7 @@ pub async fn link_workspace(
             project_id: payload.project_id,
             local_workspace_id: workspace.id,
             issue_id: payload.issue_id,
+            name: workspace.name.clone(),
             archived: Some(workspace.archived),
             files_changed: stats.as_ref().map(|s| s.files_changed as i32),
             lines_added: stats.as_ref().map(|s| s.lines_added as i32),

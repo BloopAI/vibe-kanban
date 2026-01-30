@@ -77,6 +77,7 @@ function buildPageGroups(
 
 // Static priority items
 const PRIORITY_ITEMS: PriorityItem[] = [
+  { id: null, name: 'No priority' },
   { id: 'urgent', name: 'Urgent' },
   { id: 'high', name: 'High' },
   { id: 'medium', name: 'Medium' },

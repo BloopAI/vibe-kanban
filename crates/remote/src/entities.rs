@@ -112,7 +112,7 @@ crate::define_entity!(
         status_id: uuid::Uuid,
         title: String,
         description: Option<String>,
-        priority: IssuePriority,
+        priority: Option<IssuePriority>,
         start_date: Option<DateTime<Utc>>,
         target_date: Option<DateTime<Utc>>,
         completed_at: Option<DateTime<Utc>>,
