@@ -261,6 +261,9 @@ export const useConversationHistoryOld = ({
               case 'CleanupScript':
                 toolName = 'Cleanup Script';
                 break;
+              case 'ArchiveScript':
+                toolName = 'Archive Script';
+                break;
               case 'ToolInstallScript':
                 toolName = 'Tool Install Script';
                 break;
