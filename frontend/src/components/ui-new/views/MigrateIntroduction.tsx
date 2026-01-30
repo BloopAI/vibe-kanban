@@ -78,10 +78,16 @@ export function MigrateIntroduction({ onContinue }: MigrateIntroductionProps) {
           {features.map((feature) => {
             const Icon = feature.icon;
             return (
-              <div key={feature.title} className="p-base bg-secondary rounded border">
+              <div
+                key={feature.title}
+                className="p-base bg-secondary rounded border"
+              >
                 <div className="flex items-start gap-base">
                   <div className="p-half bg-panel rounded">
-                    <Icon className="size-icon-sm text-brand" weight="duotone" />
+                    <Icon
+                      className="size-icon-sm text-brand"
+                      weight="duotone"
+                    />
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-high mb-half">

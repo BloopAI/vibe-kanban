@@ -939,7 +939,11 @@ export function ProjectTasks() {
               </p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => navigate('/migrate')}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/migrate')}
+          >
             Learn more
           </Button>
         </div>
