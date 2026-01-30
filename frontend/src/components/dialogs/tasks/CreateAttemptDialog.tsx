@@ -27,6 +27,10 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
 import { useKeySubmitTask, Scope } from '@/keyboard';
+import {
+  isDirectoryOnly as checkDirectoryOnly,
+  canCreateAttempt,
+} from '@/utils/directoryProject';
 
 export interface CreateAttemptDialogProps {
   taskId: string;
@@ -70,9 +74,7 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
     const { data: projectRepos = [], isLoading: isLoadingRepos } =
       useProjectRepos(projectId, { enabled: modal.visible });
 
-    const isDirectoryOnly = Boolean(
-      project?.working_directory && projectRepos.length === 0
-    );
+    const isDirectoryOnly = checkDirectoryOnly(project, projectRepos.length);
 
     const {
       configs: repoBranchConfigs,
@@ -135,12 +137,14 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
       (c) => c.targetBranch !== null
     );
 
-    const canCreate = Boolean(
-      effectiveProfile &&
-        (isDirectoryOnly || (allBranchesSelected && projectRepos.length > 0)) &&
-        !isCreating &&
-        !isLoadingInitial
-    );
+    const canCreate = canCreateAttempt({
+      isDirectoryOnly,
+      hasProfile: Boolean(effectiveProfile),
+      allBranchesSelected,
+      reposCount: projectRepos.length,
+      isCreating,
+      isLoading: isLoadingInitial,
+    });
 
     const handleCreate = async () => {
       if (!effectiveProfile) return;

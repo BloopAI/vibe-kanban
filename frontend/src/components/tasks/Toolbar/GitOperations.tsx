@@ -30,6 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useGitOperations } from '@/hooks/useGitOperations';
 import { useRepoBranches } from '@/hooks';
+import { shouldShowGitOperations } from '@/utils/directoryProject';
 
 interface GitOperationsProps {
   selectedAttempt: Workspace;
@@ -261,7 +262,7 @@ function GitOperations({
   };
 
   // Don't render git operations for directory-only projects (no repos)
-  if (repos.length === 0) {
+  if (!shouldShowGitOperations(repos.length)) {
     return null;
   }
 

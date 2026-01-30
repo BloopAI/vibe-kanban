@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 // vite.config.ts
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { defineConfig, Plugin } from "vite";
@@ -97,4 +98,9 @@ export default defineConfig({
     exclude: ["wa-sqlite"],
   },
   build: { sourcemap: true },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: "./src/test/setup.ts",
+  },
 });
