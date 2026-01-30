@@ -390,7 +390,10 @@
       "forcePush": "Force Push",
       "forcePushing": "Force Pushing...",
       "creating": "Creating...",
-      "createPr": "Create PR"
+      "createPr": "Create PR",
+      "markDone": "Mark as Done",
+      "completing": "Completing...",
+      "completed": "Done!"
     },
     "errors": {
       "changeTargetBranch": "Failed to change target branch",

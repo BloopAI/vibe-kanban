@@ -566,6 +566,16 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
+  complete: async (attemptId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/complete`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
   push: async (
     attemptId: string,
     data: PushTaskAttemptRequest

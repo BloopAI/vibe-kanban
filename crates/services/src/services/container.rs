@@ -84,6 +84,56 @@ pub enum ContainerError {
     Other(#[from] AnyhowError), // Catches any unclassified errors
 }
 
+/// Determine the target task status after finalization.
+/// Directory-only projects with successful execution go directly to Done.
+/// Git projects or failed executions go to InReview.
+fn determine_finalize_status(
+    is_git_workspace: bool,
+    execution_status: &ExecutionProcessStatus,
+) -> TaskStatus {
+    if !is_git_workspace && matches!(execution_status, ExecutionProcessStatus::Completed) {
+        TaskStatus::Done
+    } else {
+        TaskStatus::InReview
+    }
+}
+
+/// Build the notification title and message for task finalization.
+/// Returns `None` for Running processes (caller should log a warning).
+fn build_finalize_notification(
+    task_title: &str,
+    is_git_workspace: bool,
+    workspace_branch: &str,
+    session_executor: &Option<String>,
+    execution_status: &ExecutionProcessStatus,
+) -> Option<(String, String)> {
+    let title = format!("Task Complete: {}", task_title);
+    match execution_status {
+        ExecutionProcessStatus::Completed => {
+            let message = if is_git_workspace {
+                format!(
+                    "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {:?}",
+                    task_title, workspace_branch, session_executor
+                )
+            } else {
+                format!(
+                    "✅ '{}' completed successfully\nExecutor: {:?}",
+                    task_title, session_executor
+                )
+            };
+            Some((title, message))
+        }
+        ExecutionProcessStatus::Failed => {
+            let message = format!(
+                "❌ '{}' execution failed\nExecutor: {:?}",
+                task_title, session_executor
+            );
+            Some((title, message))
+        }
+        _ => None,
+    }
+}
+
 #[async_trait]
 pub trait ContainerService {
     fn msg_stores(&self) -> &Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>;
@@ -219,12 +269,19 @@ pub trait ContainerService {
         action.next_action.is_none()
     }
 
-    /// Finalize task execution by updating status to InReview and sending notifications
+    /// Finalize task execution by updating status and sending notifications.
+    /// For directory-only projects with successful execution, sets status directly to Done.
+    /// For git projects or failed executions, sets status to InReview.
     async fn finalize_task(&self, ctx: &ExecutionContext) {
+        let target_status = determine_finalize_status(
+            ctx.workspace.is_git_workspace(),
+            &ctx.execution_process.status,
+        );
+
         if let Err(e) =
-            Task::update_status(&self.db().pool, ctx.task.id, TaskStatus::InReview).await
+            Task::update_status(&self.db().pool, ctx.task.id, target_status).await
         {
-            tracing::error!("Failed to update task status to InReview: {e}");
+            tracing::error!("Failed to update task status: {e}");
         }
 
         // Skip notification if process was intentionally killed by user
@@ -232,17 +289,15 @@ pub trait ContainerService {
             return;
         }
 
-        let title = format!("Task Complete: {}", ctx.task.title);
-        let message = match ctx.execution_process.status {
-            ExecutionProcessStatus::Completed => format!(
-                "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {:?}",
-                ctx.task.title, ctx.workspace.branch, ctx.session.executor
-            ),
-            ExecutionProcessStatus::Failed => format!(
-                "❌ '{}' execution failed\nBranch: {:?}\nExecutor: {:?}",
-                ctx.task.title, ctx.workspace.branch, ctx.session.executor
-            ),
-            _ => {
+        let (title, message) = match build_finalize_notification(
+            &ctx.task.title,
+            ctx.workspace.is_git_workspace(),
+            &ctx.workspace.branch,
+            &ctx.session.executor,
+            &ctx.execution_process.status,
+        ) {
+            Some(notif) => notif,
+            None => {
                 tracing::warn!(
                     "Tried to notify workspace completion for {} but process is still running!",
                     ctx.workspace.id
@@ -1249,5 +1304,128 @@ pub trait ContainerService {
 
         tracing::debug!("Started next action: {:?}", next_action);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod determine_finalize_status_tests {
+        use super::*;
+
+        #[test]
+        fn directory_only_completed_goes_to_done() {
+            let status =
+                determine_finalize_status(false, &ExecutionProcessStatus::Completed);
+            assert_eq!(status, TaskStatus::Done);
+        }
+
+        #[test]
+        fn git_workspace_completed_goes_to_in_review() {
+            let status =
+                determine_finalize_status(true, &ExecutionProcessStatus::Completed);
+            assert_eq!(status, TaskStatus::InReview);
+        }
+
+        #[test]
+        fn directory_only_failed_goes_to_in_review() {
+            let status =
+                determine_finalize_status(false, &ExecutionProcessStatus::Failed);
+            assert_eq!(status, TaskStatus::InReview);
+        }
+
+        #[test]
+        fn git_workspace_failed_goes_to_in_review() {
+            let status =
+                determine_finalize_status(true, &ExecutionProcessStatus::Failed);
+            assert_eq!(status, TaskStatus::InReview);
+        }
+
+        #[test]
+        fn directory_only_killed_goes_to_in_review() {
+            let status =
+                determine_finalize_status(false, &ExecutionProcessStatus::Killed);
+            assert_eq!(status, TaskStatus::InReview);
+        }
+
+        #[test]
+        fn git_workspace_killed_goes_to_in_review() {
+            let status =
+                determine_finalize_status(true, &ExecutionProcessStatus::Killed);
+            assert_eq!(status, TaskStatus::InReview);
+        }
+    }
+
+    mod build_finalize_notification_tests {
+        use super::*;
+
+        #[test]
+        fn completed_directory_only_omits_branch() {
+            let result = build_finalize_notification(
+                "My Task",
+                false,
+                "",
+                &Some("claude".to_string()),
+                &ExecutionProcessStatus::Completed,
+            );
+            let (title, message) = result.expect("should produce notification");
+            assert_eq!(title, "Task Complete: My Task");
+            assert!(message.contains("completed successfully"));
+            assert!(!message.contains("Branch:"));
+        }
+
+        #[test]
+        fn completed_git_workspace_includes_branch() {
+            let result = build_finalize_notification(
+                "My Task",
+                true,
+                "vk/task-123/main",
+                &Some("claude".to_string()),
+                &ExecutionProcessStatus::Completed,
+            );
+            let (title, message) = result.expect("should produce notification");
+            assert_eq!(title, "Task Complete: My Task");
+            assert!(message.contains("completed successfully"));
+            assert!(message.contains("Branch:"));
+        }
+
+        #[test]
+        fn failed_process_shows_failure() {
+            let result = build_finalize_notification(
+                "My Task",
+                true,
+                "vk/task-123/main",
+                &Some("claude".to_string()),
+                &ExecutionProcessStatus::Failed,
+            );
+            let (title, message) = result.expect("should produce notification");
+            assert_eq!(title, "Task Complete: My Task");
+            assert!(message.contains("execution failed"));
+        }
+
+        #[test]
+        fn killed_process_produces_no_notification() {
+            let result = build_finalize_notification(
+                "My Task",
+                false,
+                "",
+                &Some("claude".to_string()),
+                &ExecutionProcessStatus::Killed,
+            );
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn running_process_produces_no_notification() {
+            let result = build_finalize_notification(
+                "My Task",
+                true,
+                "vk/task-123/main",
+                &Some("claude".to_string()),
+                &ExecutionProcessStatus::Running,
+            );
+            assert!(result.is_none());
+        }
     }
 }

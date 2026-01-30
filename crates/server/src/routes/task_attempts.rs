@@ -559,6 +559,70 @@ pub async fn merge_task_attempt(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+#[axum::debug_handler]
+pub async fn complete_task_attempt(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    if workspace.is_git_workspace() {
+        return Err(ApiError::BadRequest(
+            "Complete is only available for directory-only projects. Use merge for git projects."
+                .to_string(),
+        ));
+    }
+
+    let pool = &deployment.db().pool;
+
+    let task = workspace
+        .parent_task(pool)
+        .await?
+        .ok_or(ApiError::Workspace(WorkspaceError::TaskNotFound))?;
+
+    Task::update_status(pool, task.id, TaskStatus::Done).await?;
+
+    if !workspace.pinned {
+        Workspace::set_archived(pool, workspace.id, true).await?;
+    }
+
+    // Stop any running dev servers for this workspace
+    let dev_servers =
+        ExecutionProcess::find_running_dev_servers_by_workspace(pool, workspace.id).await?;
+
+    for dev_server in dev_servers {
+        tracing::info!(
+            "Stopping dev server {} for completed task attempt {}",
+            dev_server.id,
+            workspace.id
+        );
+
+        if let Err(e) = deployment
+            .container()
+            .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
+            .await
+        {
+            tracing::error!(
+                "Failed to stop dev server {} for task attempt {}: {}",
+                dev_server.id,
+                workspace.id,
+                e
+            );
+        }
+    }
+
+    deployment
+        .track_if_analytics_allowed(
+            "task_attempt_completed",
+            serde_json::json!({
+                "task_id": task.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
+                "type": "directory_only",
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub async fn push_task_attempt_branch(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -1839,6 +1903,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/branch-status", get(get_task_attempt_branch_status))
         .route("/diff/ws", get(stream_task_attempt_diff_ws))
         .route("/merge", post(merge_task_attempt))
+        .route("/complete", post(complete_task_attempt))
         .route("/push", post(push_task_attempt_branch))
         .route("/push/force", post(force_push_task_attempt_branch))
         .route("/rebase", post(rebase_task_attempt))
