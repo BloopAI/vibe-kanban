@@ -281,7 +281,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
           {placeholder}
         </div>
       ),
-      [placeholder]
+      [placeholder, className]
     );
 
     const editorContent = (

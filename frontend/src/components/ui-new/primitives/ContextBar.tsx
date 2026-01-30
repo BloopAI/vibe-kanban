@@ -191,6 +191,7 @@ export function ContextBar({
             key={key}
             onCopy={() => onExecuteAction(action)}
             disabled={!enabled}
+            iconSize="size-icon-base"
             icon={CopyIcon}
           />
         );

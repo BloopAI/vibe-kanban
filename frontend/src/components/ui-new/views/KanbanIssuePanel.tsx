@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import type { RefCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { XIcon, LinkIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
@@ -72,8 +72,8 @@ export interface KanbanIssuePanelProps {
   // Save status for description field
   descriptionSaveStatus?: 'idle' | 'saved';
 
-  // Ref for title input (for auto-focus from container)
-  titleInputRef?: React.RefObject<HTMLDivElement>;
+  // Callback ref for title input (created in container)
+  titleRef: RefCallback<HTMLDivElement>;
 
   // Copy link callback (edit mode only)
   onCopyLink?: () => void;
@@ -99,29 +99,11 @@ export function KanbanIssuePanel({
   onCreateTag,
   isSubmitting,
   descriptionSaveStatus,
-  titleInputRef,
+  titleRef,
   onCopyLink,
   onMoreActions,
 }: KanbanIssuePanelProps) {
   const isCreateMode = mode === 'create';
-  const internalTitleRef = useRef<HTMLDivElement>(null);
-  const lastIssueIdRef = useRef<string | null | undefined>(null);
-
-  // Set title content when issue changes
-  useEffect(() => {
-    if (internalTitleRef.current && issueId !== lastIssueIdRef.current) {
-      internalTitleRef.current.textContent = formData.title;
-      lastIssueIdRef.current = issueId;
-    }
-  }, [issueId, formData.title]);
-
-  // Sync external titleInputRef with internal ref for focus control
-  useEffect(() => {
-    if (titleInputRef && internalTitleRef.current) {
-      (titleInputRef as React.MutableRefObject<HTMLDivElement | null>).current =
-        internalTitleRef.current;
-    }
-  }, [titleInputRef]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -215,7 +197,7 @@ export function KanbanIssuePanel({
           {/* Title Input */}
           <div className="relative w-full mt-base">
             <div
-              ref={internalTitleRef}
+              ref={titleRef}
               role="textbox"
               contentEditable={!isSubmitting}
               suppressContentEditableWarning
