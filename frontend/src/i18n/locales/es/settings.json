@@ -152,6 +152,14 @@
           "browse": "Explorar",
           "dialogTitle": "Seleccionar Directorio de Espacios de Trabajo",
           "dialogDescription": "Elija un directorio. Los espacios de trabajo se crearán en un subdirectorio .vibe-kanban-workspaces dentro de él."
+        },
+        "mergeStrategy": {
+          "label": "Estrategia de Fusión",
+          "helper": "Controla el comportamiento cuando la rama base tiene nuevos commits desde la creación de la tarea.",
+          "options": {
+            "strict": "Estricto (requiere rebase manual primero)",
+            "allowDiverged": "Permitir divergencia (fusionar si no hay conflictos)"
+          }
         }
       },
       "pullRequests": {
