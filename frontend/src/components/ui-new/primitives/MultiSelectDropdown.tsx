@@ -52,7 +52,7 @@ export function MultiSelectDropdown<T extends string = string>({
           {values.length > 0 && (
             <Badge
               variant="secondary"
-              className="px-1.5 py-0 text-xs h-5 min-w-5 justify-center bg-brand text-on-brand border-none"
+              className="px-1.5 py-0 text-xs h-5 min-w-5 justify-center bg-brand border-none"
             >
               {values.length}
             </Badge>
