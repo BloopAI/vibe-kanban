@@ -6,7 +6,10 @@ use axum::{
 use tracing::instrument;
 use uuid::Uuid;
 
-use super::{error::ErrorResponse, organization_members::ensure_project_access};
+use super::{
+    error::{ErrorResponse, db_error},
+    organization_members::ensure_project_access,
+};
 use crate::{
     AppState,
     auth::RequestContext,
@@ -96,7 +99,7 @@ async fn create_tag(
     .await
     .map_err(|error| {
         tracing::error!(?error, "failed to create tag");
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        db_error(error, "failed to create tag")
     })?;
 
     Ok(Json(response))
