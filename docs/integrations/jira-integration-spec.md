@@ -441,134 +441,6 @@ With REST API: Trivial
 - Zero LLM cost
 ```
 
-### Data Model Extensions
-
-#### Local Database Schema Changes
-
-```sql
--- Add JIRA metadata to tasks table
-ALTER TABLE tasks ADD COLUMN jira_issue_key VARCHAR(50);
-ALTER TABLE tasks ADD COLUMN jira_issue_id VARCHAR(50);
-ALTER TABLE tasks ADD COLUMN jira_project_key VARCHAR(50);
-ALTER TABLE tasks ADD COLUMN jira_metadata JSONB;
-ALTER TABLE tasks ADD COLUMN last_jira_sync_at TIMESTAMP;
-
--- Index for JIRA lookups
-CREATE INDEX idx_tasks_jira_issue_key ON tasks(jira_issue_key);
-CREATE INDEX idx_tasks_last_jira_sync_at ON tasks(last_jira_sync_at);
-
--- JIRA connection configuration (per project)
-CREATE TABLE jira_connections (
-    id UUID PRIMARY KEY,
-    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-    jira_instance_url TEXT NOT NULL,
-    jira_project_key VARCHAR(50) NOT NULL,
-    auth_type VARCHAR(20) NOT NULL, -- 'oauth', 'api_token', 'cli'
-    credentials_encrypted TEXT,
-    webhook_secret TEXT,
-    status_mapping JSONB NOT NULL DEFAULT '{}',
-    sync_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    sync_interval_seconds INTEGER DEFAULT 60,
-    auto_status_sync BOOLEAN NOT NULL DEFAULT TRUE,
-    auto_worklog_sync BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
--- Sync history for debugging and audit
-CREATE TABLE jira_sync_history (
-    id UUID PRIMARY KEY,
-    task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
-    jira_connection_id UUID REFERENCES jira_connections(id) ON DELETE CASCADE,
-    sync_direction VARCHAR(20) NOT NULL, -- 'jira_to_vk', 'vk_to_jira', 'bidirectional'
-    sync_type VARCHAR(50) NOT NULL, -- 'status', 'description', 'comment', 'worklog'
-    success BOOLEAN NOT NULL,
-    error_message TEXT,
-    synced_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-```
-
-#### Remote Database Schema (For Cloud Sync)
-
-```sql
--- Extension metadata for JIRA integration (in remote issues table)
--- Already exists as extension_metadata JSONB field
--- Structure:
-{
-  "jira": {
-    "instance_url": "https://company.atlassian.net",
-    "issue_key": "PROJ-123",
-    "issue_id": "10045",
-    "project_key": "PROJ",
-    "last_synced": "2025-01-29T12:00:00Z",
-    "custom_fields": {
-      "customfield_10001": "value"
-    }
-  }
-}
-```
-
-### Sync Engine Architecture
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                    Vibe Kanban                           │
-│                                                          │
-│  ┌────────────────────────────────────────────────┐    │
-│  │          Sync Orchestrator                      │    │
-│  │  - Polling scheduler                            │    │
-│  │  - Webhook receiver                             │    │
-│  │  - Conflict resolver                            │    │
-│  └────────┬───────────────────────────────────────┘    │
-│           │                                              │
-│  ┌────────▼────────┐  ┌─────────────┐  ┌────────────┐  │
-│  │ JIRA API Client │  │ Local Cache │  │ Event Queue│  │
-│  │ - REST calls    │  │ - Issues    │  │ - Pending  │  │
-│  │ - Webhooks      │  │ - Metadata  │  │   updates  │  │
-│  │ - Rate limiting │  │             │  │            │  │
-│  └────────┬────────┘  └─────────────┘  └────────────┘  │
-│           │                                              │
-└───────────┼──────────────────────────────────────────────┘
-            │
-            │ HTTPS / OAuth 2.0
-            ▼
-┌──────────────────────────────────────────────────────────┐
-│                  JIRA Cloud/Server                       │
-│  - REST API v2/v3                                        │
-│  - Webhooks                                              │
-│  - Smart Commits                                         │
-└──────────────────────────────────────────────────────────┘
-```
-
-### Authentication Flows
-
-#### JIRA Cloud (OAuth 2.0)
-
-```
-1. User initiates connection in Vibe Kanban settings
-2. Vibe Kanban redirects to JIRA authorization URL
-3. User approves access (scopes: read:jira-work, write:jira-work)
-4. JIRA redirects back with authorization code
-5. Vibe Kanban exchanges code for access/refresh tokens
-6. Tokens stored encrypted in local database
-7. Refresh token used to maintain access
-```
-
-**Required Scopes**:
-- `read:jira-work` - Read issues, projects, boards
-- `write:jira-work` - Update issues, add comments, log work
-- `read:jira-user` - Get user info for attribution
-
-#### JIRA Server/Data Center (API Token or Basic Auth)
-
-```
-1. User generates API token in JIRA
-2. User enters JIRA URL, email, and API token in Vibe Kanban
-3. Vibe Kanban validates credentials with test API call
-4. Credentials stored encrypted in local database
-5. Basic Auth header used for all API requests
-```
-
 ---
 
 ## Implementation Challenges
@@ -588,21 +460,6 @@ CREATE TABLE jira_sync_history (
 - **Graceful Degradation**: Fall back to comments if transition fails
 - **User Control**: Allow manual override of automatic sync behavior
 
-**Example**:
-```javascript
-// Fetch available transitions for current issue status
-GET /rest/api/3/issue/{issueKey}/transitions
-
-// Attempt transition with required fields
-POST /rest/api/3/issue/{issueKey}/transitions
-{
-  "transition": { "id": "31" }, // Transition to "In Progress"
-  "fields": {
-    "assignee": { "id": "user123" } // Required field
-  }
-}
-```
-
 ### 2. Bi-Directional Sync Conflicts
 
 **Challenge**: When both JIRA and Vibe Kanban are updated simultaneously:
@@ -611,22 +468,11 @@ POST /rest/api/3/issue/{issueKey}/transitions
 - Comments added in both systems
 
 **Solutions**:
-- **Last-Write-Wins with Timestamp**: Use `updated_at` to determine source of truth
+- **Last-Write-Wins with Timestamp**: Use timestamps to determine source of truth
 - **Conflict Detection UI**: Notify user of conflicts, show diff, allow resolution
 - **JIRA as Source of Truth**: For critical fields (status, assignee), prefer JIRA state
 - **Append-Only for Comments**: Sync all comments from both systems (no deletion)
-- **Version Vectors**: Track sync version per field to detect conflicts
-
-**Conflict Resolution Flow**:
-```
-1. Detect conflict (local updated_at > last_jira_sync_at)
-2. Show notification: "JIRA issue PROJ-123 updated externally"
-3. Present options:
-   - Keep Vibe Kanban changes (overwrite JIRA)
-   - Use JIRA changes (overwrite local)
-   - Manual merge (show diff editor)
-4. Log resolution in sync_history table
-```
+- **User-Driven Resolution**: Always give users control to choose which version to keep
 
 ### 3. API Rate Limiting
 
@@ -643,33 +489,6 @@ POST /rest/api/3/issue/{issueKey}/transitions
 - **Webhook Priority**: Use webhooks to reduce polling frequency
 - **User Awareness**: Show rate limit status, pause sync if limit reached
 
-**Rate Limiter Implementation**:
-```rust
-struct JiraRateLimiter {
-    requests_per_second: u32,
-    token_bucket: TokenBucket,
-    backoff_strategy: ExponentialBackoff,
-}
-
-impl JiraRateLimiter {
-    async fn execute_request<T>(&self, request: Request) -> Result<T> {
-        self.token_bucket.acquire().await?;
-        match self.client.send(request).await {
-            Ok(response) => Ok(response.json().await?),
-            Err(e) if e.status() == 429 => {
-                let retry_after = e.headers()
-                    .get("Retry-After")
-                    .and_then(|v| v.parse().ok())
-                    .unwrap_or(60);
-                sleep(retry_after).await;
-                self.execute_request(request).await
-            }
-            Err(e) => Err(e)
-        }
-    }
-}
-```
-
 ### 4. Custom Field Mapping
 
 **Challenge**: JIRA instances have custom fields with varied types:
@@ -680,24 +499,10 @@ impl JiraRateLimiter {
 
 **Solutions**:
 - **Field Discovery**: Use JIRA API to enumerate custom fields per project
-- **Flexible Schema**: Store custom field values in JSONB `jira_metadata` column
+- **Flexible Storage**: Store custom field values with task metadata
 - **Mapping UI**: Let users configure which custom fields to sync
 - **Type Coercion**: Convert JIRA field types to Vibe Kanban equivalents
 - **Validation**: Check required fields before creating/updating issues
-
-**Custom Field Handling**:
-```typescript
-interface JiraCustomFieldMapping {
-  jiraFieldId: string;         // "customfield_10001"
-  jiraFieldName: string;       // "Story Points"
-  jiraFieldType: string;       // "number", "option", "text"
-  vibeKanbanField?: string;    // Optional: map to native field
-  defaultValue?: any;          // Default if not provided
-  required: boolean;
-}
-
-// Store in jira_connections.custom_field_mappings JSONB
-```
 
 ### 5. Performance at Scale
 
@@ -707,20 +512,11 @@ interface JiraCustomFieldMapping {
 - High-frequency updates
 
 **Solutions**:
-- **Incremental Sync**: Only fetch issues updated since last sync (JQL filter)
-- **Pagination**: Fetch issues in batches of 50-100
-- **Background Workers**: Run sync in separate thread/process
+- **Incremental Sync**: Only fetch issues updated since last sync using JQL filters
+- **Pagination**: Fetch issues in batches to avoid memory issues
+- **Background Workers**: Run sync in separate process to avoid blocking UI
 - **Selective Sync**: Only sync issues assigned to user or in active sprint
-- **Compression**: Use gzip for large API responses
-- **Database Indexing**: Index on `jira_issue_key`, `last_jira_sync_at`
-
-**JQL for Incremental Sync**:
-```
-project = PROJ
-AND updated >= -5m
-AND (assignee = currentUser() OR sprint in openSprints())
-ORDER BY updated DESC
-```
+- **Efficient Queries**: Use appropriate database indexes and caching
 
 ### 6. Multi-Instance Support
 
@@ -730,9 +526,9 @@ ORDER BY updated DESC
 - Different projects per instance
 
 **Solutions**:
-- **Multiple Connections**: Support many `jira_connections` per Vibe Kanban project
+- **Multiple Connections**: Support multiple JIRA connections per Vibe Kanban project
 - **Instance Selection UI**: Dropdown to choose JIRA instance when importing
-- **Per-Task Instance Tracking**: Store `jira_instance_url` with each task
+- **Per-Task Instance Tracking**: Track which JIRA instance each task belongs to
 - **Connection Management**: Settings page to add/remove/edit JIRA connections
 
 ### 7. Webhook Security
@@ -748,18 +544,6 @@ ORDER BY updated DESC
 - **IP Allowlist**: Only accept webhooks from JIRA IP ranges
 - **Timestamp Validation**: Reject webhooks older than 5 minutes
 - **Idempotency**: Handle duplicate webhook deliveries gracefully
-
-**Webhook Validation**:
-```rust
-fn validate_jira_webhook(
-    payload: &[u8],
-    signature: &str,
-    secret: &str
-) -> bool {
-    let expected = hmac_sha256(secret.as_bytes(), payload);
-    constant_time_compare(&expected, signature.as_bytes())
-}
-```
 
 ---
 
@@ -1015,60 +799,6 @@ A JIRA integration would significantly lower the barrier to adoption for enterpr
 The phased rollout approach allows us to validate core value (read-only sync) before investing in complex bidirectional features. Success metrics focused on adoption, quality, and business impact will guide iterative improvements.
 
 By positioning Vibe Kanban as a complementary tool that enhances (rather than replaces) JIRA, we can appeal to a broader market while maintaining our focus on AI-assisted development workflows.
-
----
-
-## Appendix: API Reference
-
-### JIRA REST API Endpoints
-
-**Authentication**:
-```
-POST /rest/auth/1/session (Server/DC Basic Auth)
-OAuth 2.0 (Cloud)
-```
-
-**Issue Operations**:
-```
-GET  /rest/api/3/issue/{issueKey}
-POST /rest/api/3/issue
-PUT  /rest/api/3/issue/{issueKey}
-POST /rest/api/3/issue/{issueKey}/transitions
-GET  /rest/api/3/issue/{issueKey}/comment
-POST /rest/api/3/issue/{issueKey}/comment
-POST /rest/api/3/issue/{issueKey}/worklog
-```
-
-**Project/Metadata**:
-```
-GET /rest/api/3/project/{projectKey}
-GET /rest/api/3/project/{projectKey}/statuses
-GET /rest/api/3/field
-GET /rest/api/3/priority
-```
-
-**Search**:
-```
-POST /rest/api/3/search
-Body: { "jql": "project = VIBE AND status = 'In Progress'" }
-```
-
-**Webhooks**:
-```
-POST /rest/webhooks/1.0/webhook
-DELETE /rest/webhooks/1.0/webhook/{webhookId}
-```
-
-### Rate Limits
-
-**JIRA Cloud**:
-- 10 requests per second per IP
-- 100 concurrent requests per app
-- Exponential backoff on 429 responses
-
-**JIRA Server/Data Center**:
-- Configurable by admin (typically 50-100 req/sec)
-- May vary by instance
 
 ---
 
