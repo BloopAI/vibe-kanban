@@ -180,7 +180,11 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
           <DialogHeader>
             <DialogTitle>{t('createAttemptDialog.title')}</DialogTitle>
             <DialogDescription>
-              {t('createAttemptDialog.description')}
+              {t(
+                isDirectoryOnly
+                  ? 'createAttemptDialog.descriptionDirectoryOnly'
+                  : 'createAttemptDialog.description'
+              )}
             </DialogDescription>
           </DialogHeader>
 

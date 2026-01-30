@@ -448,6 +448,7 @@
   "createAttemptDialog": {
     "title": "Create Attempt",
     "description": "Start a new attempt with a coding agent. A git worktree and task branch will be created.",
+    "descriptionDirectoryOnly": "Start a new attempt with a coding agent. No git operations will be performed as this project has no associated git repository.",
     "baseBranch": "Base branch",
     "loadingBranches": "Loading branches...",
     "selectBranch": "Select branch",
