@@ -83,6 +83,23 @@ type TaskFormValues = {
   autoStart: boolean;
 };
 
+export function validateTaskForm(
+  value: TaskFormValues,
+  options: { forceCreateOnly: boolean; projectReposCount: number }
+): string | undefined {
+  if (!value.title.trim().length) return 'need title';
+  if (value.autoStart && !options.forceCreateOnly) {
+    if (!value.executorProfileId) return 'need executor profile';
+    if (
+      options.projectReposCount > 0 &&
+      (value.repoBranches.length === 0 ||
+        value.repoBranches.some((rb) => !rb.branch))
+    ) {
+      return 'need branch for all repos';
+    }
+  }
+}
+
 const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { mode, projectId } = props;
   const editMode = mode === 'edit';
@@ -211,18 +228,11 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     }
   };
 
-  const validator = (value: TaskFormValues): string | undefined => {
-    if (!value.title.trim().length) return 'need title';
-    if (value.autoStart && !forceCreateOnlyRef.current) {
-      if (!value.executorProfileId) return 'need executor profile';
-      if (
-        value.repoBranches.length === 0 ||
-        value.repoBranches.some((rb) => !rb.branch)
-      ) {
-        return 'need branch for all repos';
-      }
-    }
-  };
+  const validator = (value: TaskFormValues): string | undefined =>
+    validateTaskForm(value, {
+      forceCreateOnly: forceCreateOnlyRef.current,
+      projectReposCount: projectRepos.length,
+    });
 
   // Initialize TanStack Form
   const form = useForm({
