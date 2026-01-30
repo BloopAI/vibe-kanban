@@ -13,7 +13,7 @@ export interface SubIssueData {
   id: string;
   simpleId: string;
   title: string;
-  priority: IssuePriority;
+  priority: IssuePriority | null;
   statusColor: string;
   assignees: OrganizationMemberWithProfile[];
   createdAt: string;

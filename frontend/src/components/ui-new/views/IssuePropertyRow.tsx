@@ -16,7 +16,7 @@ const priorityLabels: Record<IssuePriority, string> = {
 
 export interface IssuePropertyRowProps {
   statusId: string;
-  priority: IssuePriority;
+  priority: IssuePriority | null;
   assigneeIds: string[];
   statuses: ProjectStatus[];
   parentIssue?: { id: string; simpleId: string } | null;
@@ -64,7 +64,7 @@ export function IssuePropertyRow({
         disabled={disabled}
       >
         <PriorityIcon priority={priority} />
-        {priorityLabels[priority]}
+        {priority ? priorityLabels[priority] : 'No priority'}
       </PrimaryButton>
 
       <PrimaryButton
