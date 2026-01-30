@@ -162,18 +162,22 @@ export function CommandBar({
                   medium: { icon: MinusIcon, colorClass: 'text-low' },
                   low: { icon: ArrowDownIcon, colorClass: 'text-success' },
                 } as const;
-                const config = priorityConfig[item.priority.id];
-                const IconComponent = config.icon;
+                const config = item.priority.id
+                  ? priorityConfig[item.priority.id]
+                  : null;
+                const IconComponent = config?.icon;
                 return (
                   <CommandItem
-                    key={item.priority.id}
-                    value={`${item.priority.id} ${item.priority.name}`}
+                    key={item.priority.id ?? 'no-priority'}
+                    value={`${item.priority.id ?? 'none'} ${item.priority.name}`}
                     onSelect={() => onSelect(item)}
                   >
-                    <IconComponent
-                      className={`h-4 w-4 ${config.colorClass}`}
-                      weight="bold"
-                    />
+                    {IconComponent && (
+                      <IconComponent
+                        className={`h-4 w-4 ${config?.colorClass}`}
+                        weight="bold"
+                      />
+                    )}
                     <span>{item.priority.name}</span>
                   </CommandItem>
                 );
