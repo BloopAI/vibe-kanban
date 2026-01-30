@@ -34,7 +34,7 @@ pub enum ProjectError {
     DefaultTagsFailed(String),
     #[error("failed to create default statuses: {0}")]
     DefaultStatusesFailed(String),
-    #[error(transparent)]
+    #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
 }
 

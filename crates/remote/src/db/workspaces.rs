@@ -25,7 +25,7 @@ pub struct Workspace {
 
 #[derive(Debug, Error)]
 pub enum WorkspaceError {
-    #[error(transparent)]
+    #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
 }
 

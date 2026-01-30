@@ -20,7 +20,7 @@ pub struct IssueRelationship {
 
 #[derive(Debug, Error)]
 pub enum IssueRelationshipError {
-    #[error(transparent)]
+    #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
 }
 

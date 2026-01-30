@@ -103,174 +103,292 @@ impl From<RemoteClientNotConfigured> for ApiError {
     }
 }
 
+struct ErrorInfo {
+    status: StatusCode,
+    error_type: &'static str,
+    message: Option<String>,
+}
+
+impl ErrorInfo {
+    fn internal(error_type: &'static str) -> Self {
+        Self {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            error_type,
+            message: Some("An internal error occurred. Please try again.".into()),
+        }
+    }
+
+    fn not_found(error_type: &'static str, msg: impl Into<String>) -> Self {
+        Self {
+            status: StatusCode::NOT_FOUND,
+            error_type,
+            message: Some(msg.into()),
+        }
+    }
+
+    fn bad_request(error_type: &'static str, msg: impl Into<String>) -> Self {
+        Self {
+            status: StatusCode::BAD_REQUEST,
+            error_type,
+            message: Some(msg.into()),
+        }
+    }
+
+    fn conflict(error_type: &'static str, msg: impl Into<String>) -> Self {
+        Self {
+            status: StatusCode::CONFLICT,
+            error_type,
+            message: Some(msg.into()),
+        }
+    }
+
+    fn with_status(status: StatusCode, error_type: &'static str, msg: impl Into<String>) -> Self {
+        Self {
+            status,
+            error_type,
+            message: Some(msg.into()),
+        }
+    }
+}
+
+fn remote_client_error(err: &RemoteClientError) -> ErrorInfo {
+    use services::services::remote_client::HandoffErrorCode;
+    match err {
+        RemoteClientError::Auth => ErrorInfo::with_status(
+            StatusCode::UNAUTHORIZED,
+            "RemoteClientError",
+            "Unauthorized. Please sign in again.",
+        ),
+        RemoteClientError::Timeout => ErrorInfo::with_status(
+            StatusCode::GATEWAY_TIMEOUT,
+            "RemoteClientError",
+            "Remote service timeout. Please try again.",
+        ),
+        RemoteClientError::Transport(_) => ErrorInfo::with_status(
+            StatusCode::BAD_GATEWAY,
+            "RemoteClientError",
+            "Remote service unavailable. Please try again.",
+        ),
+        RemoteClientError::Http { status, body } => {
+            let msg = if body.is_empty() {
+                "Remote service error. Please try again.".into()
+            } else {
+                serde_json::from_str::<serde_json::Value>(body)
+                    .ok()
+                    .and_then(|v| v.get("error")?.as_str().map(String::from))
+                    .unwrap_or_else(|| body.clone())
+            };
+            ErrorInfo::with_status(
+                StatusCode::from_u16(*status).unwrap_or(StatusCode::BAD_GATEWAY),
+                "RemoteClientError",
+                msg,
+            )
+        }
+        RemoteClientError::Token(_) => ErrorInfo::with_status(
+            StatusCode::BAD_GATEWAY,
+            "RemoteClientError",
+            "Remote service returned an invalid access token. Please sign in again.",
+        ),
+        RemoteClientError::Storage(_) => ErrorInfo {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            error_type: "RemoteClientError",
+            message: Some("Failed to persist credentials locally. Please retry.".into()),
+        },
+        RemoteClientError::Api(code) => {
+            let (status, msg) = match code {
+                HandoffErrorCode::NotFound => (
+                    StatusCode::NOT_FOUND,
+                    "The requested resource was not found.",
+                ),
+                HandoffErrorCode::Expired => {
+                    (StatusCode::UNAUTHORIZED, "The link or token has expired.")
+                }
+                HandoffErrorCode::AccessDenied => (StatusCode::FORBIDDEN, "Access denied."),
+                HandoffErrorCode::UnsupportedProvider => (
+                    StatusCode::BAD_REQUEST,
+                    "Unsupported authentication provider.",
+                ),
+                HandoffErrorCode::InvalidReturnUrl => {
+                    (StatusCode::BAD_REQUEST, "Invalid return URL.")
+                }
+                HandoffErrorCode::InvalidChallenge => {
+                    (StatusCode::BAD_REQUEST, "Invalid authentication challenge.")
+                }
+                HandoffErrorCode::ProviderError => (
+                    StatusCode::BAD_GATEWAY,
+                    "Authentication provider error. Please try again.",
+                ),
+                HandoffErrorCode::InternalError => (
+                    StatusCode::BAD_GATEWAY,
+                    "Internal remote service error. Please try again.",
+                ),
+                HandoffErrorCode::Other(m) => {
+                    return ErrorInfo::bad_request(
+                        "RemoteClientError",
+                        format!("Authentication error: {}", m),
+                    );
+                }
+            };
+            ErrorInfo::with_status(status, "RemoteClientError", msg)
+        }
+        RemoteClientError::Serde(_) => ErrorInfo::bad_request(
+            "RemoteClientError",
+            "Unexpected response from remote service.",
+        ),
+        RemoteClientError::Url(_) => {
+            ErrorInfo::bad_request("RemoteClientError", "Remote service URL is invalid.")
+        }
+    }
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        let (status_code, error_type) = match &self {
-            ApiError::Project(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ProjectError"),
-            ApiError::Repo(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ProjectRepoError"),
-            ApiError::Workspace(_) => (StatusCode::INTERNAL_SERVER_ERROR, "WorkspaceError"),
-            ApiError::Session(_) => (StatusCode::INTERNAL_SERVER_ERROR, "SessionError"),
-            ApiError::ScratchError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ScratchError"),
-            ApiError::ExecutionProcess(err) => match err {
-                ExecutionProcessError::ExecutionProcessNotFound => {
-                    (StatusCode::NOT_FOUND, "ExecutionProcessError")
-                }
-                _ => (StatusCode::INTERNAL_SERVER_ERROR, "ExecutionProcessError"),
-            },
-            // Promote certain GitService errors to conflict status with concise messages
-            ApiError::GitService(git_err) => match git_err {
-                git::GitServiceError::MergeConflicts { .. } => {
-                    (StatusCode::CONFLICT, "GitServiceError")
-                }
-                git::GitServiceError::RebaseInProgress => (StatusCode::CONFLICT, "GitServiceError"),
-                _ => (StatusCode::INTERNAL_SERVER_ERROR, "GitServiceError"),
-            },
-            ApiError::GitHost(_) => (StatusCode::INTERNAL_SERVER_ERROR, "GitHostError"),
-            ApiError::Deployment(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DeploymentError"),
-            ApiError::Container(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ContainerError"),
-            ApiError::Executor(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ExecutorError"),
-            ApiError::CommandBuilder(_) => (StatusCode::INTERNAL_SERVER_ERROR, "CommandBuildError"),
-            ApiError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DatabaseError"),
-            ApiError::Worktree(_) => (StatusCode::INTERNAL_SERVER_ERROR, "WorktreeError"),
-            ApiError::Config(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ConfigError"),
-            ApiError::Image(img_err) => match img_err {
-                ImageError::InvalidFormat => (StatusCode::BAD_REQUEST, "InvalidImageFormat"),
-                ImageError::TooLarge(_, _) => (StatusCode::PAYLOAD_TOO_LARGE, "ImageTooLarge"),
-                ImageError::NotFound => (StatusCode::NOT_FOUND, "ImageNotFound"),
-                _ => (StatusCode::INTERNAL_SERVER_ERROR, "ImageError"),
-            },
-            ApiError::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, "IoError"),
-            ApiError::EditorOpen(err) => match err {
-                EditorOpenError::LaunchFailed { .. } => {
-                    (StatusCode::INTERNAL_SERVER_ERROR, "EditorLaunchError")
-                }
-                _ => (StatusCode::BAD_REQUEST, "EditorOpenError"),
-            },
-            ApiError::Multipart(_) => (StatusCode::BAD_REQUEST, "MultipartError"),
-            ApiError::RemoteClient(err) => match err {
-                RemoteClientError::Auth => (StatusCode::UNAUTHORIZED, "RemoteClientError"),
-                RemoteClientError::Timeout => (StatusCode::GATEWAY_TIMEOUT, "RemoteClientError"),
-                RemoteClientError::Transport(_) => (StatusCode::BAD_GATEWAY, "RemoteClientError"),
-                RemoteClientError::Http { status, .. } => (
-                    StatusCode::from_u16(*status).unwrap_or(StatusCode::BAD_GATEWAY),
-                    "RemoteClientError",
-                ),
-                RemoteClientError::Token(_) => (StatusCode::BAD_GATEWAY, "RemoteClientError"),
-                RemoteClientError::Api(code) => match code {
-                    services::services::remote_client::HandoffErrorCode::NotFound => {
-                        (StatusCode::NOT_FOUND, "RemoteClientError")
-                    }
-                    services::services::remote_client::HandoffErrorCode::Expired => {
-                        (StatusCode::UNAUTHORIZED, "RemoteClientError")
-                    }
-                    services::services::remote_client::HandoffErrorCode::AccessDenied => {
-                        (StatusCode::FORBIDDEN, "RemoteClientError")
-                    }
-                    services::services::remote_client::HandoffErrorCode::ProviderError
-                    | services::services::remote_client::HandoffErrorCode::InternalError => {
-                        (StatusCode::BAD_GATEWAY, "RemoteClientError")
-                    }
-                    _ => (StatusCode::BAD_REQUEST, "RemoteClientError"),
-                },
-                RemoteClientError::Storage(_) => {
-                    (StatusCode::INTERNAL_SERVER_ERROR, "RemoteClientError")
-                }
-                RemoteClientError::Serde(_) | RemoteClientError::Url(_) => {
-                    (StatusCode::BAD_REQUEST, "RemoteClientError")
-                }
-            },
-            ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
-            ApiError::BadRequest(_) => (StatusCode::BAD_REQUEST, "BadRequest"),
-            ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
-            ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "ForbiddenError"),
-            ApiError::Pty(err) => match err {
-                PtyError::SessionNotFound(_) => (StatusCode::NOT_FOUND, "PtyError"),
-                PtyError::SessionClosed => (StatusCode::GONE, "PtyError"),
-                _ => (StatusCode::INTERNAL_SERVER_ERROR, "PtyError"),
-            },
-            ApiError::Migration(_) => (StatusCode::INTERNAL_SERVER_ERROR, "MigrationError"),
-        };
+        let info = match &self {
+            ApiError::Project(ProjectError::Database(_)) => ErrorInfo::internal("ProjectError"),
+            ApiError::Project(ProjectError::ProjectNotFound) => {
+                ErrorInfo::not_found("ProjectError", "Project not found.")
+            }
+            ApiError::Project(ProjectError::CreateFailed(_)) => ErrorInfo::internal("ProjectError"),
 
-        let error_message = match &self {
-            ApiError::Image(img_err) => match img_err {
-                ImageError::InvalidFormat => "This file type is not supported. Please upload an image file (PNG, JPG, GIF, WebP, or BMP).".to_string(),
-                ImageError::TooLarge(size, max) => format!(
+            ApiError::Repo(RepoError::Database(_)) => ErrorInfo::internal("RepoError"),
+            ApiError::Repo(RepoError::NotFound) => {
+                ErrorInfo::not_found("RepoError", "Repository not found.")
+            }
+
+            ApiError::Workspace(WorkspaceError::Database(_)) => {
+                ErrorInfo::internal("WorkspaceError")
+            }
+            ApiError::Workspace(WorkspaceError::TaskNotFound) => {
+                ErrorInfo::not_found("WorkspaceError", "Task not found.")
+            }
+            ApiError::Workspace(WorkspaceError::ProjectNotFound) => {
+                ErrorInfo::not_found("WorkspaceError", "Project not found.")
+            }
+            ApiError::Workspace(WorkspaceError::ValidationError(msg)) => {
+                ErrorInfo::bad_request("WorkspaceError", msg.clone())
+            }
+            ApiError::Workspace(WorkspaceError::BranchNotFound(branch)) => {
+                ErrorInfo::not_found("WorkspaceError", format!("Branch '{}' not found.", branch))
+            }
+
+            ApiError::Session(SessionError::Database(_)) => ErrorInfo::internal("SessionError"),
+            ApiError::Session(SessionError::NotFound) => {
+                ErrorInfo::not_found("SessionError", "Session not found.")
+            }
+            ApiError::Session(SessionError::WorkspaceNotFound) => {
+                ErrorInfo::not_found("SessionError", "Workspace not found.")
+            }
+            ApiError::Session(SessionError::ExecutorMismatch { expected, actual }) => {
+                ErrorInfo::conflict(
+                    "SessionError",
+                    format!(
+                        "Executor mismatch: session uses {} but request specified {}.",
+                        expected, actual
+                    ),
+                )
+            }
+
+            ApiError::ScratchError(ScratchError::Database(_)) => {
+                ErrorInfo::internal("ScratchError")
+            }
+            ApiError::ScratchError(ScratchError::Serde(_)) => {
+                ErrorInfo::bad_request("ScratchError", "Invalid scratch data format.")
+            }
+            ApiError::ScratchError(ScratchError::TypeMismatch { expected, actual }) => {
+                ErrorInfo::bad_request(
+                    "ScratchError",
+                    format!(
+                        "Scratch type mismatch: expected '{}' but got '{}'.",
+                        expected, actual
+                    ),
+                )
+            }
+
+            ApiError::ExecutionProcess(ExecutionProcessError::ExecutionProcessNotFound) => {
+                ErrorInfo::not_found("ExecutionProcessError", "Execution process not found.")
+            }
+            ApiError::ExecutionProcess(_) => ErrorInfo::internal("ExecutionProcessError"),
+
+            ApiError::GitService(git::GitServiceError::MergeConflicts { message, .. }) => {
+                ErrorInfo::conflict("GitServiceError", message.clone())
+            }
+            ApiError::GitService(git::GitServiceError::RebaseInProgress) => ErrorInfo::conflict(
+                "GitServiceError",
+                "A rebase is already in progress. Resolve conflicts or abort the rebase, then retry.",
+            ),
+            ApiError::GitService(_) => ErrorInfo::internal("GitServiceError"),
+            ApiError::GitHost(_) => ErrorInfo::internal("GitHostError"),
+
+            ApiError::Image(ImageError::InvalidFormat) => ErrorInfo::bad_request(
+                "InvalidImageFormat",
+                "This file type is not supported. Please upload an image file (PNG, JPG, GIF, WebP, or BMP).",
+            ),
+            ApiError::Image(ImageError::TooLarge(size, max)) => ErrorInfo::with_status(
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "ImageTooLarge",
+                format!(
                     "This image is too large ({:.1} MB). Maximum file size is {:.1} MB.",
                     *size as f64 / 1_048_576.0,
                     *max as f64 / 1_048_576.0
                 ),
-                ImageError::NotFound => "Image not found.".to_string(),
-                _ => {
-                    "Failed to process image. Please try again.".to_string()
-                }
+            ),
+            ApiError::Image(ImageError::NotFound) => {
+                ErrorInfo::not_found("ImageNotFound", "Image not found.")
+            }
+            ApiError::Image(_) => ErrorInfo {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                error_type: "ImageError",
+                message: Some("Failed to process image. Please try again.".into()),
             },
-            ApiError::GitService(git_err) => match git_err {
-                git::GitServiceError::MergeConflicts { message, .. } => {
-                    message.clone()
-                }
-                git::GitServiceError::RebaseInProgress => {
-                    "A rebase is already in progress. Resolve conflicts or abort the rebase, then retry.".to_string()
-                }
-                _ => format!("{}: {}", error_type, self),
-            },
-            ApiError::Multipart(_) => "Failed to upload file. Please ensure the file is valid and try again.".to_string(),
-            ApiError::RemoteClient(err) => match err {
-                RemoteClientError::Auth => "Unauthorized. Please sign in again.".to_string(),
-                RemoteClientError::Timeout => "Remote service timeout. Please try again.".to_string(),
-                RemoteClientError::Transport(_) => "Remote service unavailable. Please try again.".to_string(),
-                RemoteClientError::Http { body, .. } => {
-                    if body.is_empty() {
-                        "Remote service error. Please try again.".to_string()
-                    } else {
-                        body.clone()
-                    }
-                }
-                RemoteClientError::Token(_) => {
-                    "Remote service returned an invalid access token. Please sign in again.".to_string()
-                }
-                RemoteClientError::Storage(_) => {
-                    "Failed to persist credentials locally. Please retry.".to_string()
-                }
-                RemoteClientError::Api(code) => match code {
-                    services::services::remote_client::HandoffErrorCode::NotFound => {
-                        "The requested resource was not found.".to_string()
-                    }
-                    services::services::remote_client::HandoffErrorCode::Expired => {
-                        "The link or token has expired.".to_string()
-                    }
-                    services::services::remote_client::HandoffErrorCode::AccessDenied => {
-                        "Access denied.".to_string()
-                    }
-                    services::services::remote_client::HandoffErrorCode::UnsupportedProvider => {
-                        "Unsupported authentication provider.".to_string()
-                    }
-                    services::services::remote_client::HandoffErrorCode::InvalidReturnUrl => {
-                        "Invalid return URL.".to_string()
-                    }
-                    services::services::remote_client::HandoffErrorCode::InvalidChallenge => {
-                        "Invalid authentication challenge.".to_string()
-                    }
-                    services::services::remote_client::HandoffErrorCode::ProviderError => {
-                        "Authentication provider error. Please try again.".to_string()
-                    }
-                    services::services::remote_client::HandoffErrorCode::InternalError => {
-                        "Internal remote service error. Please try again.".to_string()
-                    }
-                    services::services::remote_client::HandoffErrorCode::Other(msg) => {
-                        format!("Authentication error: {}", msg)
-                    }
-                },
-                RemoteClientError::Serde(_) => "Unexpected response from remote service.".to_string(),
-                RemoteClientError::Url(_) => "Remote service URL is invalid.".to_string(),
-            },
-            ApiError::Unauthorized => "Unauthorized. Please sign in again.".to_string(),
-            ApiError::BadRequest(msg) => msg.clone(),
-            ApiError::Conflict(msg) => msg.clone(),
-            ApiError::Forbidden(msg) => msg.clone(),
-            _ => format!("{}: {}", error_type, self),
+
+            ApiError::EditorOpen(EditorOpenError::LaunchFailed { .. }) => {
+                ErrorInfo::internal("EditorLaunchError")
+            }
+            ApiError::EditorOpen(_) => {
+                ErrorInfo::bad_request("EditorOpenError", format!("{}", self))
+            }
+
+            ApiError::RemoteClient(err) => remote_client_error(err),
+
+            ApiError::Pty(PtyError::SessionNotFound(_)) => {
+                ErrorInfo::not_found("PtyError", "PTY session not found.")
+            }
+            ApiError::Pty(PtyError::SessionClosed) => {
+                ErrorInfo::with_status(StatusCode::GONE, "PtyError", "PTY session closed.")
+            }
+            ApiError::Pty(_) => ErrorInfo::internal("PtyError"),
+
+            ApiError::Unauthorized => ErrorInfo::with_status(
+                StatusCode::UNAUTHORIZED,
+                "Unauthorized",
+                "Unauthorized. Please sign in again.",
+            ),
+            ApiError::BadRequest(msg) => ErrorInfo::bad_request("BadRequest", msg.clone()),
+            ApiError::Conflict(msg) => ErrorInfo::conflict("ConflictError", msg.clone()),
+            ApiError::Forbidden(msg) => {
+                ErrorInfo::with_status(StatusCode::FORBIDDEN, "ForbiddenError", msg.clone())
+            }
+            ApiError::Multipart(_) => ErrorInfo::bad_request(
+                "MultipartError",
+                "Failed to upload file. Please ensure the file is valid and try again.",
+            ),
+
+            ApiError::Deployment(_) => ErrorInfo::internal("DeploymentError"),
+            ApiError::Container(_) => ErrorInfo::internal("ContainerError"),
+            ApiError::Executor(_) => ErrorInfo::internal("ExecutorError"),
+            ApiError::CommandBuilder(_) => ErrorInfo::internal("CommandBuildError"),
+            ApiError::Database(_) => ErrorInfo::internal("DatabaseError"),
+            ApiError::Worktree(_) => ErrorInfo::internal("WorktreeError"),
+            ApiError::Config(_) => ErrorInfo::internal("ConfigError"),
+            ApiError::Io(_) => ErrorInfo::internal("IoError"),
+            ApiError::Migration(_) => ErrorInfo::internal("MigrationError"),
         };
-        let response = ApiResponse::<()>::error(&error_message);
-        (status_code, Json(response)).into_response()
+
+        let message = info
+            .message
+            .unwrap_or_else(|| format!("{}: {}", info.error_type, self));
+        let response = ApiResponse::<()>::error(&message);
+        (info.status, Json(response)).into_response()
     }
 }
 

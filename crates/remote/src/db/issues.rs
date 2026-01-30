@@ -39,7 +39,7 @@ pub struct Issue {
 
 #[derive(Debug, Error)]
 pub enum IssueError {
-    #[error(transparent)]
+    #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("pull request error: {0}")]
     PullRequest(#[from] super::pull_requests::PullRequestError),

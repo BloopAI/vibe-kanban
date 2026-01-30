@@ -17,7 +17,7 @@ pub struct IssueTag {
 
 #[derive(Debug, Error)]
 pub enum IssueTagError {
-    #[error(transparent)]
+    #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
 }
 

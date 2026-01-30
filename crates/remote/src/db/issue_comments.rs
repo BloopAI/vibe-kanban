@@ -22,7 +22,7 @@ pub struct IssueComment {
 
 #[derive(Debug, Error)]
 pub enum IssueCommentError {
-    #[error(transparent)]
+    #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
 }
 

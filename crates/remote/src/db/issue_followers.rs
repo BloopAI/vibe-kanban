@@ -17,7 +17,7 @@ pub struct IssueFollower {
 
 #[derive(Debug, Error)]
 pub enum IssueFollowerError {
-    #[error(transparent)]
+    #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
 }
 
