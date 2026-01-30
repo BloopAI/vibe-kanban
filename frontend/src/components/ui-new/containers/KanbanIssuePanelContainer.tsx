@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
@@ -8,7 +9,10 @@ import {
   type IssueFormData,
 } from '@/components/ui-new/views/KanbanIssuePanel';
 import { useActions } from '@/contexts/ActionsContext';
+import { useUserContext } from '@/contexts/remote/UserContext';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
+import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
 
 /**
  * KanbanIssuePanelContainer manages the issue detail/create panel.
@@ -27,6 +31,20 @@ export function KanbanIssuePanelContainer() {
     openIssue,
     closePanel,
   } = useKanbanNavigation();
+
+  const navigate = useNavigate();
+  const { workspaces } = useUserContext();
+  const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
+
+  // Build set of local workspace IDs that exist on this machine
+  const localWorkspaceIds = useMemo(
+    () =>
+      new Set([
+        ...activeWorkspaces.map((w) => w.id),
+        ...archivedWorkspaces.map((w) => w.id),
+      ]),
+    [activeWorkspaces, archivedWorkspaces]
+  );
 
   // Get data from contexts
   const {
@@ -480,7 +498,28 @@ export function KanbanIssuePanelContainer() {
           });
         }
 
-        // TODO: Create workspace if displayData.createDraftWorkspace is true
+        // Navigate to workspace creation if requested
+        if (displayData.createDraftWorkspace) {
+          // Build initial prompt from issue title and description
+          const initialPrompt = displayData.description
+            ? `${displayData.title}\n\n${displayData.description}`
+            : displayData.title;
+
+          // Get defaults from most recent workspace
+          const defaults = await getWorkspaceDefaults(
+            workspaces,
+            localWorkspaceIds
+          );
+
+          navigate('/workspaces/create', {
+            state: {
+              initialPrompt,
+              preferredRepos: defaults?.preferredRepos ?? null,
+              project_id: defaults?.project_id ?? null,
+            },
+          });
+          return; // Don't open issue panel since we're navigating away
+        }
 
         // Open the newly created issue
         openIssue(newIssue.id);
@@ -504,6 +543,10 @@ export function KanbanIssuePanelContainer() {
     insertIssueTag,
     openIssue,
     kanbanCreateDefaultParentIssueId,
+    navigate,
+    workspaces,
+    localWorkspaceIds,
+    closeKanbanIssuePanel,
   ]);
 
   // Tag create callback - returns the new tag ID so it can be auto-selected
