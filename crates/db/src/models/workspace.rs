@@ -104,6 +104,12 @@ pub struct CreateWorkspace {
 }
 
 impl Workspace {
+    /// Returns true if this workspace is associated with git repositories.
+    /// Non-git (directory-only) workspaces have an empty branch string.
+    pub fn is_git_workspace(&self) -> bool {
+        !self.branch.is_empty()
+    }
+
     pub async fn parent_task(&self, pool: &SqlitePool) -> Result<Option<Task>, sqlx::Error> {
         Task::find_by_id(pool, self.task_id).await
     }

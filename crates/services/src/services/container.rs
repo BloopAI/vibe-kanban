@@ -948,17 +948,40 @@ pub trait ContainerService {
 
         let prompt = task.to_prompt();
 
-        let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
-
-        let all_parallel = repos_with_setup.iter().all(|r| r.parallel_setup_script);
-
-        let cleanup_action = self.cleanup_actions_for_repos(&repos);
-
         let working_dir = workspace
             .agent_working_dir
             .as_ref()
             .filter(|dir| !dir.is_empty())
             .cloned();
+
+        // For directory-only projects (no repos), skip setup/cleanup chaining
+        if repos.is_empty() {
+            let coding_action = ExecutorAction::new(
+                ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+                    prompt,
+                    executor_profile_id: executor_profile_id.clone(),
+                    working_dir,
+                }),
+                None,
+            );
+
+            let execution_process = self
+                .start_execution(
+                    &workspace,
+                    &session,
+                    &coding_action,
+                    &ExecutionProcessRunReason::CodingAgent,
+                )
+                .await?;
+
+            return Ok(execution_process);
+        }
+
+        let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
+
+        let all_parallel = repos_with_setup.iter().all(|r| r.parallel_setup_script);
+
+        let cleanup_action = self.cleanup_actions_for_repos(&repos);
 
         let coding_action = ExecutorAction::new(
             ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
@@ -1028,11 +1051,6 @@ pub trait ContainerService {
         // Capture current HEAD per repository as the "before" commit for this execution
         let repositories =
             WorkspaceRepo::find_repos_for_workspace(&self.db().pool, workspace.id).await?;
-        if repositories.is_empty() {
-            return Err(ContainerError::Other(anyhow!(
-                "Workspace has no repositories configured"
-            )));
-        }
 
         let workspace_root = workspace
             .container_ref

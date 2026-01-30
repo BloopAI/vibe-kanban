@@ -198,6 +198,12 @@ pub async fn create_pr(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreatePrApiRequest>,
 ) -> Result<ResponseJson<ApiResponse<String, PrError>>, ApiError> {
+    if !workspace.is_git_workspace() {
+        return Err(ApiError::BadRequest(
+            "PR operations are not available for directory-only projects".to_string(),
+        ));
+    }
+
     let pool = &deployment.db().pool;
 
     let workspace_repo =
@@ -385,6 +391,12 @@ pub async fn attach_existing_pr(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<AttachExistingPrRequest>,
 ) -> Result<ResponseJson<ApiResponse<AttachPrResponse, PrError>>, ApiError> {
+    if !workspace.is_git_workspace() {
+        return Err(ApiError::BadRequest(
+            "PR operations are not available for directory-only projects".to_string(),
+        ));
+    }
+
     let pool = &deployment.db().pool;
 
     let task = workspace

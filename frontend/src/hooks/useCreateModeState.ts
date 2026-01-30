@@ -286,7 +286,7 @@ export function useCreateModeState({
     } else {
       // Priority 3: Create default project
       projectsApi
-        .create({ name: 'My first project', repositories: [] })
+        .create({ name: 'My first project', repositories: [], working_directory: null })
         .then((newProject) => {
           dispatch({ type: 'SET_PROJECT', projectId: newProject.id });
         })

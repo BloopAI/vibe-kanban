@@ -36,7 +36,7 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
   ({ taskId }) => {
     const modal = useModal();
     const navigate = useNavigateWithSearch();
-    const { projectId } = useProject();
+    const { projectId, project } = useProject();
     const { t } = useTranslation('tasks');
     const { profiles, config } = useUserSystem();
     const { createAttempt, isCreating, error } = useAttemptCreation({
@@ -69,6 +69,10 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
 
     const { data: projectRepos = [], isLoading: isLoadingRepos } =
       useProjectRepos(projectId, { enabled: modal.visible });
+
+    const isDirectoryOnly = Boolean(
+      project?.working_directory && projectRepos.length === 0
+    );
 
     const {
       configs: repoBranchConfigs,
@@ -133,21 +137,17 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
 
     const canCreate = Boolean(
       effectiveProfile &&
-        allBranchesSelected &&
-        projectRepos.length > 0 &&
+        (isDirectoryOnly || (allBranchesSelected && projectRepos.length > 0)) &&
         !isCreating &&
         !isLoadingInitial
     );
 
     const handleCreate = async () => {
-      if (
-        !effectiveProfile ||
-        !allBranchesSelected ||
-        projectRepos.length === 0
-      )
+      if (!effectiveProfile) return;
+      if (!isDirectoryOnly && (!allBranchesSelected || projectRepos.length === 0))
         return;
       try {
-        const repos = getWorkspaceRepoInputs();
+        const repos = isDirectoryOnly ? [] : getWorkspaceRepoInputs();
 
         await createAttempt({
           profile: effectiveProfile,
@@ -192,12 +192,14 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
               </div>
             )}
 
-            <RepoBranchSelector
-              configs={repoBranchConfigs}
-              onBranchChange={setRepoBranch}
-              isLoading={isLoadingBranches}
-              className="space-y-2"
-            />
+            {!isDirectoryOnly && (
+              <RepoBranchSelector
+                configs={repoBranchConfigs}
+                onBranchChange={setRepoBranch}
+                isLoading={isLoadingBranches}
+                className="space-y-2"
+              />
+            )}
 
             {error && (
               <div className="text-sm text-destructive">

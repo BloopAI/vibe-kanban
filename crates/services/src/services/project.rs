@@ -41,6 +41,8 @@ pub enum ProjectServiceError {
     GitError(String),
     #[error("Remote client error: {0}")]
     RemoteClient(String),
+    #[error("Validation error: {0}")]
+    ValidationError(String),
 }
 
 pub type Result<T> = std::result::Result<T, ProjectServiceError>;
@@ -72,7 +74,31 @@ impl ProjectService {
         repo_service: &RepoService,
         payload: CreateProject,
     ) -> Result<Project> {
-        // Validate all repository paths and check for duplicates within the payload
+        // Directory-only project: working_directory set, no repositories
+        if payload.working_directory.is_some() && !payload.repositories.is_empty() {
+            return Err(ProjectServiceError::ValidationError(
+                "Cannot specify both working_directory and repositories".to_string(),
+            ));
+        }
+
+        if let Some(ref working_dir) = payload.working_directory {
+            let path = repo_service.normalize_path(working_dir)?;
+            repo_service.validate_directory_path(&path)?;
+
+            let mut normalized_payload = payload.clone();
+            normalized_payload.working_directory = Some(path.to_string_lossy().to_string());
+
+            let id = Uuid::new_v4();
+            let project = Project::create(pool, &normalized_payload, id)
+                .await
+                .map_err(|e| {
+                    ProjectServiceError::Project(ProjectError::CreateFailed(e.to_string()))
+                })?;
+
+            return Ok(project);
+        }
+
+        // Git-repo project: existing behavior
         let mut seen_names = HashSet::new();
         let mut seen_paths = HashSet::new();
         let mut normalized_repos = Vec::new();

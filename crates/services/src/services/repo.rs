@@ -40,16 +40,23 @@ impl RepoService {
     }
 
     pub fn validate_git_repo_path(&self, path: &Path) -> Result<()> {
+        self.validate_directory_path(path)?;
+
+        if !path.join(".git").exists() {
+            return Err(RepoError::NotGitRepository(path.to_path_buf()));
+        }
+
+        Ok(())
+    }
+
+    /// Validates that a path exists and is a directory (no git check).
+    pub fn validate_directory_path(&self, path: &Path) -> Result<()> {
         if !path.exists() {
             return Err(RepoError::PathNotFound(path.to_path_buf()));
         }
 
         if !path.is_dir() {
             return Err(RepoError::PathNotDirectory(path.to_path_buf()));
-        }
-
-        if !path.join(".git").exists() {
-            return Err(RepoError::NotGitRepository(path.to_path_buf()));
         }
 
         Ok(())

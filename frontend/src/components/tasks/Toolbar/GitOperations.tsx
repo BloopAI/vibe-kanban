@@ -260,6 +260,11 @@ function GitOperations({
     });
   };
 
+  // Don't render git operations for directory-only projects (no repos)
+  if (repos.length === 0) {
+    return null;
+  }
+
   const isVertical = layout === 'vertical';
 
   const containerClasses = isVertical
