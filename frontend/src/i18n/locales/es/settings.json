@@ -457,6 +457,10 @@
           "label": "Script de Limpieza",
           "helper": "Este script se ejecuta desde dentro del worktree después de la ejecución del agente de codificación, solo si se realizaron cambios. Úsalo para tareas de garantía de calidad como ejecutar linters, formateadores, pruebas u otros pasos de validación."
         },
+        "archive": {
+          "label": "Script de Archivo",
+          "helper": "Este script se ejecuta desde dentro del worktree cuando se archiva el espacio de trabajo. Úsalo para tareas de limpieza como detener servicios, liberar recursos o guardar estado."
+        },
         "copyFiles": {
           "label": "Copiar Archivos",
           "helper": "Lista separada por comas de archivos para copiar del directorio del repositorio original al worktree. Útil para archivos de entorno como .env. ¡Asegúrate de que estén en gitignore!",

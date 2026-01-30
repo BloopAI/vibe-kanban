@@ -225,8 +225,10 @@
     "queuedMessage": "메시지가 대기열에 추가됨 - 현재 실행이 완료되면 실행됩니다",
     "runSetupScript": "설정 스크립트 실행",
     "runCleanupScript": "정리 스크립트 실행",
+    "runArchiveScript": "아카이브 스크립트 실행",
     "noSetupScript": "이 프로젝트에 설정 스크립트가 구성되어 있지 않습니다",
     "noCleanupScript": "이 프로젝트에 정리 스크립트가 구성되어 있지 않습니다",
+    "noArchiveScript": "이 프로젝트에 아카이브 스크립트가 구성되어 있지 않습니다",
     "scriptsDisabledWhileRunning": "프로세스가 실행 중일 때는 스크립트를 실행할 수 없습니다"
   },
   "git": {
@@ -684,6 +686,7 @@
     "title": "스크립트 수정",
     "setupScriptTitle": "설정 스크립트 수정",
     "cleanupScriptTitle": "정리 스크립트 수정",
+    "archiveScriptTitle": "아카이브 스크립트 수정",
     "devServerTitle": "개발 서버 스크립트 수정",
     "scriptLabel": "스크립트 (편집)",
     "logsLabel": "마지막 실행 로그",

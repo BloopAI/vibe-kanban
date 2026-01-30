@@ -225,8 +225,10 @@
     "queuedMessage": "Mensaje en cola - se ejecutará cuando finalice la ejecución actual",
     "runSetupScript": "Ejecutar script de configuración",
     "runCleanupScript": "Ejecutar script de limpieza",
+    "runArchiveScript": "Ejecutar script de archivo",
     "noSetupScript": "No hay script de configuración configurado para este proyecto",
     "noCleanupScript": "No hay script de limpieza configurado para este proyecto",
+    "noArchiveScript": "No hay script de archivo configurado para este proyecto",
     "scriptsDisabledWhileRunning": "No se pueden ejecutar scripts mientras un proceso está en ejecución"
   },
   "git": {
@@ -684,6 +686,7 @@
     "title": "Corregir Script",
     "setupScriptTitle": "Corregir Script de Configuración",
     "cleanupScriptTitle": "Corregir Script de Limpieza",
+    "archiveScriptTitle": "Corregir Script de Archivo",
     "devServerTitle": "Corregir Script del Servidor de Desarrollo",
     "scriptLabel": "Script (editar)",
     "logsLabel": "Últimos Registros de Ejecución",

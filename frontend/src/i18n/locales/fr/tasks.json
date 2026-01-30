@@ -223,8 +223,10 @@
     "queuedMessage": "Message en file d'attente - s'exécutera lorsque l'exécution actuelle sera terminée",
     "runSetupScript": "Exécuter le script de configuration",
     "runCleanupScript": "Exécuter le script de nettoyage",
+    "runArchiveScript": "Exécuter le script d'archivage",
     "noSetupScript": "Aucun script de configuration configuré pour ce projet",
     "noCleanupScript": "Aucun script de nettoyage configuré pour ce projet",
+    "noArchiveScript": "Aucun script d'archivage configuré pour ce projet",
     "scriptsDisabledWhileRunning": "Impossible d'exécuter les scripts pendant qu'un processus est en cours"
   },
   "todos": {
@@ -684,6 +686,7 @@
     "title": "Corriger le script",
     "setupScriptTitle": "Corriger le script de configuration",
     "cleanupScriptTitle": "Corriger le script de nettoyage",
+    "archiveScriptTitle": "Corriger le script d'archivage",
     "devServerTitle": "Corriger le script du serveur de développement",
     "scriptLabel": "Script (modifier)",
     "logsLabel": "Logs de la dernière exécution",
