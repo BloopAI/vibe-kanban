@@ -137,8 +137,13 @@ async fn update_issue(
 
     ensure_project_access(state.pool(), ctx.user.id, issue.project_id).await?;
 
-    let response = IssueRepository::update(
-        state.pool(),
+    let mut tx = state.pool().begin().await.map_err(|error| {
+        tracing::error!(?error, "failed to begin transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    let data = IssueRepository::update(
+        &mut *tx,
         issue_id,
         payload.status_id,
         payload.title,
@@ -158,7 +163,17 @@ async fn update_issue(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(response))
+    let txid = get_txid(&mut *tx).await.map_err(|error| {
+        tracing::error!(?error, "failed to get txid");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    tx.commit().await.map_err(|error| {
+        tracing::error!(?error, "failed to commit transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    Ok(Json(MutationResponse { data, txid }))
 }
 
 #[instrument(
@@ -251,7 +266,7 @@ async fn bulk_update_issues(
 
     for item in payload.updates {
         // Verify issue belongs to the same project
-        let issue = IssueRepository::find_by_id(state.pool(), item.id)
+        let issue = IssueRepository::find_by_id(&mut *tx, item.id)
             .await
             .map_err(|error| {
                 tracing::error!(?error, issue_id = %item.id, "failed to find issue");
@@ -268,7 +283,7 @@ async fn bulk_update_issues(
 
         // Update the issue
         let updated = IssueRepository::update(
-            state.pool(),
+            &mut *tx,
             item.id,
             item.changes.status_id,
             item.changes.title,
@@ -288,7 +303,7 @@ async fn bulk_update_issues(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to update issue")
         })?;
 
-        results.push(updated.data);
+        results.push(updated);
     }
 
     let txid = get_txid(&mut *tx).await.map_err(|error| {
