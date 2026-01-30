@@ -28,7 +28,7 @@ import { useLogStream } from '@/hooks/useLogStream';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import type { RepoWithTargetBranch, PatchType, UpdateRepo } from 'shared/types';
 
-export type ScriptType = 'setup' | 'cleanup' | 'dev_server';
+export type ScriptType = 'setup' | 'cleanup' | 'dev_server' | 'archive';
 
 export interface ScriptFixerDialogProps {
   scriptType: ScriptType;
@@ -75,7 +75,9 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
           ? 'setupscript'
           : scriptType === 'cleanup'
             ? 'cleanupscript'
-            : 'devserver';
+            : scriptType === 'archive'
+              ? 'archivescript'
+              : 'devserver';
       const filtered = executionProcesses.filter(
         (p) => p.run_reason === runReason && !p.dropped
       );
@@ -131,7 +133,9 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
               ? (repo.setup_script ?? '')
               : scriptType === 'cleanup'
                 ? (repo.cleanup_script ?? '')
-                : (repo.dev_server_script ?? '');
+                : scriptType === 'archive'
+                  ? (repo.archive_script ?? '')
+                  : (repo.dev_server_script ?? '');
 
           setScript(scriptContent);
           setOriginalScript(scriptContent);
@@ -177,7 +181,9 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
             ? { setup_script: scriptValue }
             : scriptType === 'cleanup'
               ? { cleanup_script: scriptValue }
-              : { dev_server_script: scriptValue };
+              : scriptType === 'archive'
+                ? { archive_script: scriptValue }
+                : { dev_server_script: scriptValue };
 
         await repoApi.update(selectedRepoId, updateData as UpdateRepo);
 
@@ -210,7 +216,9 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
             ? { setup_script: scriptValue }
             : scriptType === 'cleanup'
               ? { cleanup_script: scriptValue }
-              : { dev_server_script: scriptValue };
+              : scriptType === 'archive'
+                ? { archive_script: scriptValue }
+                : { dev_server_script: scriptValue };
 
         await repoApi.update(selectedRepoId, updateData as UpdateRepo);
 
@@ -227,6 +235,11 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
           }
         } else if (scriptType === 'cleanup') {
           const result = await attemptsApi.runCleanupScript(workspaceId);
+          if (result.success) {
+            setActiveSessionId(result.data.session_id);
+          }
+        } else if (scriptType === 'archive') {
+          const result = await attemptsApi.runArchiveScript(workspaceId);
           if (result.success) {
             setActiveSessionId(result.data.session_id);
           }
@@ -254,7 +267,9 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
         ? t('scriptFixer.setupScriptTitle')
         : scriptType === 'cleanup'
           ? t('scriptFixer.cleanupScriptTitle')
-          : t('scriptFixer.devServerTitle');
+          : scriptType === 'archive'
+            ? t('scriptFixer.archiveScriptTitle')
+            : t('scriptFixer.devServerTitle');
 
     return (
       <Dialog

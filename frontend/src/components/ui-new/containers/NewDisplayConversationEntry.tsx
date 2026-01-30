@@ -203,10 +203,11 @@ function renderToolUseEntry(
     );
   }
 
-  // Script entries (Setup Script, Cleanup Script, Tool Install Script)
+  // Script entries (Setup Script, Cleanup Script, Archive Script, Tool Install Script)
   const scriptToolNames = [
     'Setup Script',
     'Cleanup Script',
+    'Archive Script',
     'Tool Install Script',
   ];
   if (
@@ -742,7 +743,9 @@ function ScriptEntryWithFix({
         ? 'setup'
         : title === 'Cleanup Script'
           ? 'cleanup'
-          : 'dev_server';
+          : title === 'Archive Script'
+            ? 'archive'
+            : 'dev_server';
 
     ScriptFixerDialog.show({
       scriptType,

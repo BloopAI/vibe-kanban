@@ -594,12 +594,14 @@ const ToolCallCard: React.FC<{
 const SCRIPT_TOOL_NAMES = [
   'Setup Script',
   'Cleanup Script',
+  'Archive Script',
   'Tool Install Script',
 ];
 
 const getScriptType = (toolName: string): ScriptType => {
   if (toolName === 'Setup Script') return 'setup';
   if (toolName === 'Cleanup Script') return 'cleanup';
+  if (toolName === 'Archive Script') return 'archive';
   return 'dev_server'; // Tool Install Script
 };
 
