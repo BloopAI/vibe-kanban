@@ -148,13 +148,20 @@ pub async fn create_task_and_start(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateAndStartTaskRequest>,
 ) -> Result<ResponseJson<ApiResponse<TaskWithAttemptStatus>>, ApiError> {
-    if payload.repos.is_empty() {
-        return Err(ApiError::BadRequest(
-            "At least one repository is required".to_string(),
-        ));
-    }
-
     let pool = &deployment.db().pool;
+    let is_directory_only = payload.repos.is_empty();
+
+    // Validate: if no repos, project must have a working_directory
+    if is_directory_only {
+        let project = db::models::project::Project::find_by_id(pool, payload.task.project_id)
+            .await?
+            .ok_or(SqlxError::RowNotFound)?;
+        if should_reject_empty_repos(project.working_directory.is_some()) {
+            return Err(ApiError::BadRequest(
+                "At least one repository is required".to_string(),
+            ));
+        }
+    }
 
     let task_id = Uuid::new_v4();
     let task = Task::create(pool, &payload.task, task_id).await?;
@@ -176,15 +183,25 @@ pub async fn create_task_and_start(
         .await;
 
     let attempt_id = Uuid::new_v4();
-    let git_branch_name = deployment
-        .container()
-        .git_branch_from_workspace(&attempt_id, &task.title)
-        .await;
+
+    // Directory-only projects don't get a git branch
+    let generated_branch = if is_directory_only {
+        String::new()
+    } else {
+        deployment
+            .container()
+            .git_branch_from_workspace(&attempt_id, &task.title)
+            .await
+    };
+    let git_branch_name = workspace_branch_name(is_directory_only, generated_branch);
 
     // Compute agent_working_dir based on repo count:
+    // - Directory-only: None (agent runs in working_directory directly)
     // - Single repo: join repo name with default_working_dir (if set), or just repo name
     // - Multiple repos: use None (agent runs in workspace root)
-    let agent_working_dir = if payload.repos.len() == 1 {
+    let agent_working_dir = if is_directory_only {
+        None
+    } else if payload.repos.len() == 1 {
         let repo = Repo::find_by_id(pool, payload.repos[0].repo_id)
             .await?
             .ok_or(RepoError::NotFound)?;
@@ -210,15 +227,17 @@ pub async fn create_task_and_start(
     )
     .await?;
 
-    let workspace_repos: Vec<CreateWorkspaceRepo> = payload
-        .repos
-        .iter()
-        .map(|r| CreateWorkspaceRepo {
-            repo_id: r.repo_id,
-            target_branch: r.target_branch.clone(),
-        })
-        .collect();
-    WorkspaceRepo::create_many(&deployment.db().pool, workspace.id, &workspace_repos).await?;
+    if !is_directory_only {
+        let workspace_repos: Vec<CreateWorkspaceRepo> = payload
+            .repos
+            .iter()
+            .map(|r| CreateWorkspaceRepo {
+                repo_id: r.repo_id,
+                target_branch: r.target_branch.clone(),
+            })
+            .collect();
+        WorkspaceRepo::create_many(pool, workspace.id, &workspace_repos).await?;
+    }
 
     let is_attempt_running = deployment
         .container()
@@ -395,6 +414,22 @@ pub async fn delete_task(
     Ok((StatusCode::ACCEPTED, ResponseJson(ApiResponse::success(()))))
 }
 
+/// Check whether a create-and-start request with no repos is valid.
+/// Returns true if the request should be rejected (project is not directory-only).
+fn should_reject_empty_repos(has_working_directory: bool) -> bool {
+    !has_working_directory
+}
+
+/// Compute the git branch name for a new workspace.
+/// Directory-only projects get an empty branch string.
+fn workspace_branch_name(is_directory_only: bool, generated_branch: String) -> String {
+    if is_directory_only {
+        String::new()
+    } else {
+        generated_branch
+    }
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_actions_router = Router::new()
         .route("/", put(update_task))
@@ -413,4 +448,41 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     // mount under /projects/:project_id/tasks
     Router::new().nest("/tasks", inner)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod should_reject_empty_repos_tests {
+        use super::*;
+
+        #[test]
+        fn rejects_when_project_has_no_working_directory() {
+            assert!(should_reject_empty_repos(false));
+        }
+
+        #[test]
+        fn allows_when_project_has_working_directory() {
+            assert!(!should_reject_empty_repos(true));
+        }
+    }
+
+    mod workspace_branch_name_tests {
+        use super::*;
+
+        #[test]
+        fn directory_only_gets_empty_branch() {
+            let branch =
+                workspace_branch_name(true, "vk/task-123/main".to_string());
+            assert_eq!(branch, "");
+        }
+
+        #[test]
+        fn git_project_keeps_generated_branch() {
+            let branch =
+                workspace_branch_name(false, "vk/task-123/main".to_string());
+            assert_eq!(branch, "vk/task-123/main");
+        }
+    }
 }
