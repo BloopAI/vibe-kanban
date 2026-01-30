@@ -192,7 +192,7 @@ PR: https://github.com/org/repo/pull/123
 
 ### Integration Patterns
 
-#### Option A: REST API Integration (Recommended)
+#### Option A: REST API Integration (Recommended for Production)
 - Uses JIRA Cloud REST API v3 or JIRA Server REST API v2
 - Polling-based sync (configurable interval: 30s - 5m)
 - Webhook support for real-time updates (JIRA → Vibe Kanban)
@@ -201,15 +201,43 @@ PR: https://github.com/org/repo/pull/123
 **Pros**:
 - Works with both JIRA Cloud and Server/Data Center
 - No third-party dependencies
-- Full control over sync logic
+- Full control over sync logic and scheduling
 - Can support custom fields and workflows
+- Deterministic, testable, reliable
+- No AI token costs for sync operations
+- Efficient: direct database updates without LLM overhead
 
 **Cons**:
 - API rate limits (Cloud: 10 req/sec, Server: varies)
 - Latency for status updates (polling delay)
 - Complex OAuth setup for Cloud
+- Need to implement retry logic, error handling
 
-#### Option B: Jira CLI Integration
+**Best For**: Core sync functionality (status updates, issue import, worklog posting)
+
+#### Option B: JIRA MCP (Model Context Protocol)
+- AI agent uses MCP server to interact with JIRA
+- Tools available to LLM for reading/writing JIRA data
+- Agent decides when and how to use JIRA tools
+
+**Pros**:
+- Flexible: AI can decide when JIRA operations are needed
+- Natural language interface to JIRA
+- Can handle complex, multi-step workflows
+- Useful for ad-hoc queries ("what JIRA issues are assigned to me?")
+
+**Cons**:
+- **Unpredictable**: AI might sync when not intended, or miss syncs
+- **Expensive**: Every JIRA operation costs AI tokens
+- **Unreliable for automation**: Can't guarantee status syncs happen
+- **Context window overhead**: JIRA tool descriptions consume tokens
+- **Latency**: Each operation requires LLM call + JIRA API call
+- **Poor fit for background sync**: Can't run scheduled jobs
+- **User confusion**: When did AI sync? Did it work? No transparency
+
+**Best For**: Ad-hoc user queries within AI conversations ("show me high priority JIRA issues")
+
+#### Option C: Jira CLI Integration
 - Similar to GitHub CLI pattern (`gh`)
 - Uses Jira CLI tool for authentication
 - Command-line operations for sync
@@ -224,10 +252,194 @@ PR: https://github.com/org/repo/pull/123
 - Less functionality than REST API
 - Additional dependency to install
 
-#### Option C: Hybrid Approach (Recommended Implementation)
-- Default: REST API with OAuth/API tokens
-- Fallback: Jira CLI if available
-- Supports both patterns based on user preference
+**Best For**: Optional fallback authentication method
+
+#### Recommendation: REST API + Optional MCP for AI Features
+
+**Primary Integration (REST API)**:
+- All automatic sync operations (status updates, issue import)
+- Scheduled background tasks (polling for updates)
+- Webhook handling (real-time JIRA → Vibe Kanban)
+- User-initiated actions (post summary, log time)
+- Reliable, deterministic operations
+
+**Supplementary MCP (Optional)**:
+- AI agent can answer JIRA queries during conversation
+- "Show me JIRA issues related to this error"
+- "What's the status of JIRA-123?"
+- "Find JIRA issues with label 'auth'"
+- User explicitly asks AI to interact with JIRA
+
+**Why This Split?**
+1. **Reliability**: Critical sync operations shouldn't depend on AI decision-making
+2. **Performance**: Background sync can't wait for LLM inference
+3. **Cost**: Syncing hundreds of issues via MCP would be prohibitively expensive
+4. **Transparency**: Users know when REST API syncs happen (on workspace start, on mark done)
+5. **Best of both worlds**: Structured sync + flexible AI queries when needed
+
+**Implementation Strategy**:
+```rust
+// Core sync engine (REST API)
+struct JiraSyncEngine {
+    client: JiraRestClient,
+    scheduler: SyncScheduler,
+    webhook_handler: WebhookHandler,
+}
+
+impl JiraSyncEngine {
+    // Automatic, scheduled operations
+    async fn sync_issue_status(&self, task_id: Uuid) -> Result<()>
+    async fn import_issues(&self, jql: String) -> Result<Vec<Issue>>
+    async fn post_comment(&self, issue_key: &str, comment: &str) -> Result<()>
+}
+
+// Optional MCP for AI queries (if user has MCP configured)
+struct JiraMcpTools {
+    // Available to AI agent during conversations
+    // Used only when user asks AI to query JIRA
+    async fn search_issues(&self, natural_language_query: &str) -> Result<Vec<Issue>>
+    async fn get_issue_details(&self, issue_key: &str) -> Result<Issue>
+}
+```
+
+### REST API vs MCP: Practical Decision Guide
+
+This table shows which approach to use for common JIRA integration scenarios:
+
+| Scenario | Use REST API | Use MCP | Rationale |
+|----------|--------------|---------|-----------|
+| **Import JIRA issue when user clicks "Import"** | ✅ Yes | ❌ No | User action triggers deterministic sync |
+| **Sync status to "In Progress" when workspace starts** | ✅ Yes | ❌ No | Must happen reliably, no AI decision needed |
+| **Sync status to "Done" when user marks task complete** | ✅ Yes | ❌ No | Critical state change, can't be missed |
+| **Background polling for JIRA updates** | ✅ Yes | ❌ No | Scheduled task, no user/AI involved |
+| **Receive JIRA webhook (issue updated externally)** | ✅ Yes | ❌ No | Server-to-server, no AI context |
+| **User clicks "Post Summary to JIRA"** | ✅ Yes | 🤔 Maybe | REST API for reliability; MCP could generate summary text |
+| **AI answers "What JIRA issues am I assigned to?"** | ❌ No | ✅ Yes | Ad-hoc query during conversation |
+| **AI answers "Show me issues with label 'bug'"** | ❌ No | ✅ Yes | Natural language query, AI can translate to JQL |
+| **AI proactively suggests "This looks related to JIRA-123"** | ❌ No | ✅ Yes | AI pattern matching during conversation |
+| **User asks "Link this workspace to JIRA issue"** | ✅ Yes | 🤔 Maybe | REST API for linking; MCP could help find issue |
+| **Auto-log work time (if enabled)** | ✅ Yes | ❌ No | Scheduled/automatic, must be reliable |
+| **User asks "What's blocking JIRA-456?"** | ❌ No | ✅ Yes | Conversational query, AI can fetch relationships |
+
+**Key Principles**:
+
+1. **Deterministic Operations → REST API**
+   - User clicks button → action happens
+   - Event triggers → action happens
+   - No ambiguity, no AI interpretation
+
+2. **Conversational Queries → MCP**
+   - "Show me..." "What is..." "Find..."
+   - AI translates natural language to JIRA operations
+   - Results displayed in conversation, not persisted
+
+3. **Background/Scheduled → REST API**
+   - Polling for updates every 60 seconds
+   - Webhook handlers
+   - No user/AI in the loop
+
+4. **Hybrid Example: "Post Summary"**
+   - AI generates summary text (MCP or built-in LLM call)
+   - User reviews/edits summary in UI
+   - REST API posts comment to JIRA (deterministic)
+
+### Example User Flows
+
+#### Flow 1: User Starts Work (REST API Only)
+```
+1. User clicks "Start Work" on JIRA-linked task
+2. Vibe Kanban creates workspace (no AI involved)
+3. REST API client calls JIRA API:
+   POST /rest/api/3/issue/PROJ-123/transitions
+   { "transition": { "id": "31" } } // To "In Progress"
+4. Success → local task status updated
+5. Sync history logged
+```
+
+#### Flow 2: User Asks About JIRA (MCP Only)
+```
+1. User types in AI chat: "What high priority bugs are assigned to me?"
+2. AI agent has access to JIRA MCP tools
+3. AI translates to JQL: 'assignee = currentUser() AND priority = High AND type = Bug'
+4. MCP tool queries JIRA REST API
+5. AI formats results in natural language:
+   "You have 3 high priority bugs:
+    - PROJ-45: Login timeout
+    - PROJ-67: Memory leak in parser
+    - PROJ-89: Race condition in cache"
+6. No database updates, purely conversational
+```
+
+#### Flow 3: User Posts Summary (Hybrid)
+```
+1. User clicks "Post Summary to JIRA" button
+2. Vibe Kanban calls local LLM or uses MCP to generate summary:
+   - Input: workspace changes, commits, files modified
+   - Output: "Implemented JWT auth flow, added tests, updated docs"
+3. UI shows summary in modal for user review/edit
+4. User clicks "Post"
+5. REST API client posts comment to JIRA:
+   POST /rest/api/3/issue/PROJ-123/comment
+   { "body": "[Posted by User via Vibe Kanban]\n\n{summary}" }
+6. Success → close modal, show toast
+```
+
+### Why NOT to Use MCP for Core Sync
+
+**Problem 1: Unreliability**
+```typescript
+// With MCP (BAD for critical operations)
+async function onWorkspaceStart(task: Task) {
+  // Send message to AI: "Update JIRA issue to In Progress"
+  await ai.sendMessage(`Please update ${task.jiraKey} to In Progress`);
+  // ❌ Did it work? Did AI understand? Did it use the tool?
+  // ❌ User has no idea if sync happened
+}
+
+// With REST API (GOOD)
+async function onWorkspaceStart(task: Task) {
+  try {
+    await jiraClient.transitionIssue(task.jiraKey, 'In Progress');
+    await db.updateTaskSyncStatus(task.id, 'synced', new Date());
+    showToast('JIRA issue updated to In Progress');
+  } catch (error) {
+    showToast('Failed to update JIRA: ' + error.message);
+    // User knows immediately if something went wrong
+  }
+}
+```
+
+**Problem 2: Token Cost**
+```
+Scenario: User imports 50 JIRA issues
+
+With MCP:
+- 50 LLM calls to import issues
+- Each call: ~500 tokens input + ~200 tokens output
+- Total: 35,000 tokens = ~$0.50 (Claude Opus pricing)
+- Time: 50 sequential LLM calls = ~50 seconds
+
+With REST API:
+- 1 JIRA API call (batch fetch)
+- 50 database inserts
+- Total cost: $0.00
+- Time: ~2 seconds
+```
+
+**Problem 3: Background Operations**
+```
+Scenario: Poll JIRA every 60 seconds for updates
+
+With MCP: Impossible
+- Can't run scheduled LLM calls in background
+- Would cost $100s/month in tokens for always-on polling
+- No way to trigger MCP tools without user interaction
+
+With REST API: Trivial
+- Background thread polls JIRA every 60s
+- Updates local cache
+- Zero LLM cost
+```
 
 ### Data Model Extensions
 
