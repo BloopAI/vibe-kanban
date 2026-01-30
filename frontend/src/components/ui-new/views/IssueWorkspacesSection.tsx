@@ -36,7 +36,7 @@ export function IssueWorkspacesSection({
       defaultExpanded={true}
       actions={actions}
     >
-      <div className="px-base pb-base flex flex-col gap-base">
+      <div className="px-base p-base flex flex-col gap-base border-t">
         {isLoading ? (
           <p className="text-low py-half">Loading...</p>
         ) : workspaces.length === 0 ? (

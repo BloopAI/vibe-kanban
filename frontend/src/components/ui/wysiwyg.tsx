@@ -272,7 +272,12 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
     // Memoized placeholder element
     const placeholderElement = useMemo(
       () => (
-        <div className="absolute top-0 left-0 text-base text-secondary-foreground text-low pointer-events-none truncate">
+        <div
+          className={cn(
+            'absolute top-0 left-0 text-base text-secondary-foreground text-low pointer-events-none truncate',
+            className
+          )}
+        >
           {placeholder}
         </div>
       ),

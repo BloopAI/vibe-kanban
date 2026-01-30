@@ -532,11 +532,11 @@ export function KanbanDisplaySettingsContainer({
           type="button"
           className={cn(
             'flex items-center justify-center p-half rounded-sm',
-            'text-normal bg-panel hover:bg-secondary transition-colors'
+            'text-normal hover:bg-secondary transition-colors'
           )}
           title={t('kanban.displaySettings', 'Display settings')}
         >
-          <SlidersHorizontalIcon className="size-icon-xs" weight="bold" />
+          <SlidersHorizontalIcon className="size-icon-base" />
         </button>
       </PopoverTrigger>
       <PopoverContent

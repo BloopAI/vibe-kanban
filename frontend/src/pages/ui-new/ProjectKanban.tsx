@@ -133,7 +133,7 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
           <Panel
             id="kanban-left"
             minSize="20%"
-            className="min-w-0 h-full overflow-hidden bg-secondary"
+            className="min-w-0 h-full overflow-hidden bg-primary"
           >
             <KanbanContainer />
           </Panel>
@@ -141,14 +141,14 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
           {isPanelOpen && (
             <Separator
               id="kanban-separator"
-              className="w-1 bg-transparent hover:bg-brand/50 transition-colors cursor-col-resize"
+              className="w-1 bg-panel outline-none hover:bg-brand/50 transition-colors cursor-col-resize"
             />
           )}
 
           {isPanelOpen && (
             <Panel
               id="kanban-right"
-              minSize="20%"
+              minSize="400px"
               className="min-w-0 h-full overflow-hidden bg-secondary"
             >
               <KanbanIssuePanelContainer />

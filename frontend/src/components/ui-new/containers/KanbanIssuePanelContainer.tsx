@@ -160,7 +160,7 @@ export function KanbanIssuePanelContainer() {
   const prevIssueIdRef = useRef<string | null>(null);
 
   // Ref for title input auto-focus
-  const titleInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLDivElement>(null);
 
   // Auto-focus title input in create mode
   useEffect(() => {
