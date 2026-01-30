@@ -929,7 +929,7 @@ export function ProjectTasks() {
       )}
 
       {config?.beta_workspaces && (
-        <div className="mx-4 mt-4 p-3 border border-orange-500/30 bg-orange-500/5 rounded flex items-center justify-between">
+        <div className="mx-4 my-4 p-3 border border-orange-500/30 bg-orange-500/5 rounded flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Sparkles className="h-5 w-5 text-orange-500" />
             <div>
