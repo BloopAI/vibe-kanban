@@ -196,7 +196,62 @@ async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &C
     }
 }
 
-async fn get_sound(Path(sound): Path<SoundFile>) -> Result<Response, ApiError> {
+#[derive(Deserialize)]
+struct SoundQuery {
+    path: Option<String>,
+}
+
+async fn get_sound(
+    State(deployment): State<DeploymentImpl>,
+    Path(sound): Path<SoundFile>,
+    Query(query): Query<SoundQuery>,
+) -> Result<Response, ApiError> {
+    if let SoundFile::Custom = sound {
+        let path = if let Some(path) = query.path {
+            if !path.is_empty() { Some(path) } else { None }
+        } else {
+            let config = deployment.config().read().await;
+            config.notifications.custom_sound_path.clone()
+        };
+
+        if let Some(path) = path {
+            if !path.is_empty() {
+                let path_path = std::path::Path::new(&path);
+                if path_path.exists() && path_path.is_file() {
+                    let data = tokio::fs::read(path_path)
+                        .await
+                        .map_err(DeploymentError::Io)?;
+                    let mime_type = match path_path
+                        .extension()
+                        .and_then(|ext| ext.to_str())
+                        .map(|s| s.to_lowercase())
+                        .as_deref()
+                    {
+                        Some("mp3") => "audio/mpeg",
+                        Some("ogg") => "audio/ogg",
+                        Some("wav") => "audio/wav",
+                        Some("m4a") | Some("aac") => "audio/mp4",
+                        Some("aiff") | Some("aif") => "audio/aiff",
+                        _ => "audio/wav", // Fallback
+                    };
+
+                    let response = Response::builder()
+                        .status(http::StatusCode::OK)
+                        .header(
+                            http::header::CONTENT_TYPE,
+                            http::HeaderValue::from_str(mime_type).unwrap(),
+                        )
+                        .body(Body::from(data))
+                        .unwrap();
+                    return Ok(response);
+                }
+            }
+        }
+        return Err(ApiError::BadRequest(
+            "Custom sound not configured or file not found".to_string(),
+        ));
+    }
+
     let sound = sound.serve().await.map_err(DeploymentError::Other)?;
     let response = Response::builder()
         .status(http::StatusCode::OK)

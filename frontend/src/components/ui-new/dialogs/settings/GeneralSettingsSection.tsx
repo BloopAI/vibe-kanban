@@ -636,6 +636,30 @@ export function GeneralSettingsSection() {
                 title="Preview sound"
               />
             </div>
+            {draft.notifications.sound_file === SoundFile.CUSTOM && (
+              <div className="space-y-1 mt-2">
+                <label className="text-xs font-medium text-low">
+                  {t('settings.general.notifications.sound.customPathLabel')}
+                </label>
+                <SettingsInput
+                  value={draft.notifications.custom_sound_path ?? ''}
+                  onChange={(value) =>
+                    updateDraft({
+                      notifications: {
+                        ...draft.notifications,
+                        custom_sound_path: value,
+                      },
+                    })
+                  }
+                  placeholder={t(
+                    'settings.general.notifications.sound.customPathPlaceholder'
+                  )}
+                />
+                <p className="text-xs text-low">
+                  {t('settings.general.notifications.sound.customPathHelper')}
+                </p>
+              </div>
+            )}
             <p className="text-sm text-low">
               {t('settings.general.notifications.sound.fileHelper')}
             </p>

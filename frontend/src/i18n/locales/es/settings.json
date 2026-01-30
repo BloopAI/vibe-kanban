@@ -174,7 +174,11 @@
           "helper": "Reproduce un sonido cuando una tarea termina de ejecutarse.",
           "fileLabel": "Sonido",
           "filePlaceholder": "Seleccionar sonido",
-          "fileHelper": "Elige el sonido que se reproducirá al completar las tareas. Haz clic en el botón de volumen para escucharlo."
+          "fileHelper": "Elige el sonido que se reproducirá al completar las tareas. Haz clic en el botón de volumen para escucharlo.",
+          "customPathLabel": "Ruta de sonido personalizada",
+          "customPathPlaceholder": "ej., /ruta/al/sonido.wav",
+          "customPathHelper": "Ruta completa a un archivo de audio local (.wav, .mp3, .ogg, .m4a).",
+          "customPathError": "Se requiere una ruta de archivo"
         },
         "push": {
           "label": "Notificaciones Push",

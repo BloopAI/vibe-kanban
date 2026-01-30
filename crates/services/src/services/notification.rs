@@ -28,7 +28,7 @@ impl NotificationService {
     /// Internal method to send notifications with a given config
     async fn send_notification(config: &NotificationConfig, title: &str, message: &str) {
         if config.sound_enabled {
-            Self::play_sound_notification(&config.sound_file).await;
+            Self::play_sound_notification(config).await;
         }
 
         if config.push_enabled {
@@ -37,12 +37,29 @@ impl NotificationService {
     }
 
     /// Play a system sound notification across platforms
-    async fn play_sound_notification(sound_file: &SoundFile) {
-        let file_path = match sound_file.get_path().await {
-            Ok(path) => path,
-            Err(e) => {
-                tracing::error!("Failed to create cached sound file: {}", e);
-                return;
+    async fn play_sound_notification(config: &NotificationConfig) {
+        let sound_file = &config.sound_file;
+        let file_path = if let SoundFile::Custom = sound_file {
+            match &config.custom_sound_path {
+                Some(path) if !path.is_empty() => std::path::PathBuf::from(path),
+                _ => {
+                    tracing::warn!("Custom sound selected but no path provided, falling back to default");
+                    match SoundFile::AbstractSound1.get_path().await {
+                        Ok(path) => path,
+                        Err(e) => {
+                            tracing::error!("Failed to create cached default sound file: {}", e);
+                            return;
+                        }
+                    }
+                }
+            }
+        } else {
+            match sound_file.get_path().await {
+                Ok(path) => path,
+                Err(e) => {
+                    tracing::error!("Failed to create cached sound file: {}", e);
+                    return;
+                }
             }
         };
 

@@ -174,7 +174,11 @@
           "helper": "タスク試行の実行が完了したときに音を再生します。",
           "fileLabel": "音声",
           "filePlaceholder": "音声を選択",
-          "fileHelper": "タスク完了時に再生する音声を選択してください。音量ボタンをクリックしてプレビューできます。"
+          "fileHelper": "タスク完了時に再生する音声を選択してください。音量ボタンをクリックしてプレビューできます。",
+          "customPathLabel": "カスタム音声パス",
+          "customPathPlaceholder": "例: /path/to/sound.wav",
+          "customPathHelper": "ローカルの音声ファイルへのフルパス (.wav, .mp3, .ogg, .m4a)。",
+          "customPathError": "ファイルパスが必要です"
         },
         "push": {
           "label": "プッシュ通知",
