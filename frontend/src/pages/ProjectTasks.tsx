@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, Plus } from 'lucide-react';
+import { AlertTriangle, Plus, Sparkles } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi } from '@/lib/api';
 import type { RepoBranchStatus, Workspace } from 'shared/types';
@@ -926,6 +926,23 @@ export function ProjectTasks() {
           </AlertTitle>
           <AlertDescription>{streamError}</AlertDescription>
         </Alert>
+      )}
+
+      {config?.beta_workspaces && (
+        <div className="mx-4 mt-4 p-3 border border-orange-500/30 bg-orange-500/5 rounded flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-5 w-5 text-orange-500" />
+            <div>
+              <p className="text-sm font-medium">Upgrade to Cloud Projects</p>
+              <p className="text-xs text-muted-foreground">
+                Get collaboration, tags, priorities, sub-issues and more
+              </p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => navigate('/migrate')}>
+            Learn more
+          </Button>
+        </div>
       )}
 
       <div className="flex-1 min-h-0">{attemptArea}</div>
