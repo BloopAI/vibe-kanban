@@ -227,7 +227,7 @@ export function KanbanFilterBar({
         }}
         className={cn(
           'flex items-center justify-center p-half rounded-sm',
-          'text-normal bg-panel hover:bg-secondary transition-colors'
+          'text-normal hover:bg-secondary transition-colors'
         )}
         title={
           kanbanFilters.sortDirection === 'asc'
@@ -236,9 +236,9 @@ export function KanbanFilterBar({
         }
       >
         {kanbanFilters.sortDirection === 'asc' ? (
-          <SortAscendingIcon className="size-icon-xs" weight="bold" />
+          <SortAscendingIcon className="size-icon-base" />
         ) : (
-          <SortDescendingIcon className="size-icon-xs" weight="bold" />
+          <SortDescendingIcon className="size-icon-base" />
         )}
       </button>
 
