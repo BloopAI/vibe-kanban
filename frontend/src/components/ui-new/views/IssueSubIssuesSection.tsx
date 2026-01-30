@@ -51,7 +51,7 @@ export function IssueSubIssuesSection({
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className="px-base pb-base flex flex-col relative"
+            className="p-base flex flex-col relative border-t"
           >
             {isReordering && (
               <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">

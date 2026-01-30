@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { XIcon, LinkIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
@@ -72,7 +73,7 @@ export interface KanbanIssuePanelProps {
   descriptionSaveStatus?: 'idle' | 'saved';
 
   // Ref for title input (for auto-focus from container)
-  titleInputRef?: React.RefObject<HTMLInputElement>;
+  titleInputRef?: React.RefObject<HTMLDivElement>;
 
   // Copy link callback (edit mode only)
   onCopyLink?: () => void;
@@ -103,6 +104,24 @@ export function KanbanIssuePanel({
   onMoreActions,
 }: KanbanIssuePanelProps) {
   const isCreateMode = mode === 'create';
+  const internalTitleRef = useRef<HTMLDivElement>(null);
+  const lastIssueIdRef = useRef<string | null | undefined>(null);
+
+  // Set title content when issue changes
+  useEffect(() => {
+    if (internalTitleRef.current && issueId !== lastIssueIdRef.current) {
+      internalTitleRef.current.textContent = formData.title;
+      lastIssueIdRef.current = issueId;
+    }
+  }, [issueId, formData.title]);
+
+  // Sync external titleInputRef with internal ref for focus control
+  useEffect(() => {
+    if (titleInputRef && internalTitleRef.current) {
+      (titleInputRef as React.MutableRefObject<HTMLDivElement | null>).current =
+        internalTitleRef.current;
+    }
+  }, [titleInputRef]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -110,7 +129,7 @@ export function KanbanIssuePanel({
     }
   };
 
-  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
       onCmdEnterSubmit?.();
@@ -119,7 +138,7 @@ export function KanbanIssuePanel({
 
   return (
     <div
-      className="flex flex-col h-full bg-panel overflow-hidden"
+      className="flex flex-col h-full overflow-hidden"
       onKeyDown={handleKeyDown}
     >
       {/* Header */}
@@ -129,7 +148,12 @@ export function KanbanIssuePanel({
             {displayId}
           </span>
           {!isCreateMode && onCopyLink && (
-            <CopyButton onCopy={onCopyLink} disabled={false} icon={LinkIcon} />
+            <CopyButton
+              iconSize="size-icon-sm"
+              onCopy={onCopyLink}
+              disabled={false}
+              icon={LinkIcon}
+            />
           )}
         </div>
         <div className="flex items-center gap-half">
@@ -187,45 +211,58 @@ export function KanbanIssuePanel({
         </div>
 
         {/* Title and Description */}
-        <div className="px-base py-base">
-          <div className="bg-primary rounded-sm p-base">
-            {/* Title Input */}
-            <input
-              ref={titleInputRef}
-              type="text"
-              value={formData.title}
-              onChange={(e) => onFormChange('title', e.target.value)}
+        <div className="rounded-sm">
+          {/* Title Input */}
+          <div className="relative w-full mt-base">
+            <div
+              ref={internalTitleRef}
+              role="textbox"
+              contentEditable={!isSubmitting}
+              suppressContentEditableWarning
+              data-empty={!formData.title ? 'true' : 'false'}
+              onInput={(e) => {
+                const v = e.currentTarget.textContent ?? '';
+                onFormChange('title', v);
+              }}
               onKeyDown={handleTitleKeyDown}
-              placeholder="Enter a title here..."
-              disabled={isSubmitting}
               className={cn(
-                'w-full bg-transparent text-high font-medium text-lg',
-                'placeholder:text-low placeholder:font-medium',
+                'w-full bg-transparent text-high font-medium text-lg px-base',
                 'focus:outline-none',
-                'disabled:opacity-50'
+                isSubmitting && 'opacity-50 pointer-events-none'
               )}
             />
 
-            {/* Description WYSIWYG Editor */}
-            <div className="mt-base">
-              <WYSIWYGEditor
-                placeholder="Enter task description here..."
-                value={formData.description ?? ''}
-                onChange={(value) => onFormChange('description', value || null)}
-                onCmdEnter={onCmdEnterSubmit}
-                disabled={isSubmitting}
-                autoFocus={false}
-                className="min-h-[100px]"
-                showStaticToolbar
-                saveStatus={descriptionSaveStatus}
-              />
+            <div
+              className={cn(
+                'pointer-events-none absolute inset-0 px-base',
+                'text-high/50 font-medium text-lg',
+                'hidden',
+                "[[data-empty='true']_+_&]:block" // show placeholder when previous sibling data-empty=true
+              )}
+            >
+              Issue Title...
             </div>
+          </div>
+
+          {/* Description WYSIWYG Editor */}
+          <div className="mt-base">
+            <WYSIWYGEditor
+              placeholder="Enter task description here..."
+              value={formData.description ?? ''}
+              onChange={(value) => onFormChange('description', value || null)}
+              onCmdEnter={onCmdEnterSubmit}
+              disabled={isSubmitting}
+              autoFocus={false}
+              className="min-h-[100px] px-base"
+              showStaticToolbar
+              saveStatus={descriptionSaveStatus}
+            />
           </div>
         </div>
 
         {/* Create Draft Workspace Toggle (Create mode only) */}
         {isCreateMode && (
-          <div className="px-base pb-base">
+          <div className="p-base border-t">
             <Toggle
               checked={formData.createDraftWorkspace}
               onCheckedChange={(checked) =>

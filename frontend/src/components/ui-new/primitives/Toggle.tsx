@@ -24,7 +24,7 @@ export function Toggle({
         checked={checked}
         onCheckedChange={onCheckedChange}
         disabled={disabled}
-        className="mt-px shrink-0"
+        className={cn('mt-px shrink-0', !checked && 'bg-panel')}
       />
       <div className="flex flex-col gap-half min-w-0">
         <span className="text-base text-normal">{label}</span>
