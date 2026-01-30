@@ -72,14 +72,24 @@ pub async fn web_redeem(
         .redeem(payload.handoff_id, &payload.app_code, &payload.app_verifier)
         .await
     {
-        Ok(result) => (
-            StatusCode::OK,
-            Json(HandoffRedeemResponse {
-                access_token: result.access_token,
-                refresh_token: result.refresh_token,
-            }),
-        )
-            .into_response(),
+        Ok(result) => {
+            if let Some(analytics) = state.analytics() {
+                analytics.track(
+                    result.user_id,
+                    "$identify",
+                    serde_json::json!({ "email": result.email }),
+                );
+            }
+
+            (
+                StatusCode::OK,
+                Json(HandoffRedeemResponse {
+                    access_token: result.access_token,
+                    refresh_token: result.refresh_token,
+                }),
+            )
+                .into_response()
+        }
         Err(error) => redeem_error_response(error),
     }
 }

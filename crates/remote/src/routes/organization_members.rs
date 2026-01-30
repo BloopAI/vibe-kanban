@@ -149,6 +149,18 @@ pub async fn create_invitation(
         )
         .await;
 
+    if let Some(analytics) = state.analytics() {
+        analytics.track(
+            user.id,
+            "invitation_created",
+            serde_json::json!({
+                "invitation_id": invitation.id,
+                "organization_id": org_id,
+                "role": format!("{:?}", payload.role),
+            }),
+        );
+    }
+
     Ok((
         StatusCode::CREATED,
         Json(CreateInvitationResponse { invitation }),
@@ -259,6 +271,17 @@ pub async fn accept_invitation(
             }
             _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
         })?;
+
+    if let Some(analytics) = state.analytics() {
+        analytics.track(
+            user.id,
+            "invitation_accepted",
+            serde_json::json!({
+                "organization_id": org.id,
+                "role": format!("{:?}", role),
+            }),
+        );
+    }
 
     Ok(Json(AcceptInvitationResponse {
         organization_id: org.id.to_string(),
