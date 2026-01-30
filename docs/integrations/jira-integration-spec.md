@@ -373,24 +373,6 @@ PR: https://github.com/org/repo/pull/123
 
 ---
 
-## Competitive Analysis
-
-### How Other Tools Handle JIRA Integration
-
-**Linear**: Offers JIRA import and limited ongoing sync via third-party tools (Zapier). Linear becomes the primary system, with JIRA as a secondary viewer. This forces teams to choose one system or the other.
-
-**Shortcut**: Provides one-time JIRA import for migration purposes only. No ongoing synchronization. Teams must fully migrate off JIRA to use Shortcut.
-
-**GitHub Issues/GitLab**: No JIRA integration. Developers manually reference JIRA keys in commits and PRs. Organizations must use expensive third-party sync tools (Unito, Exalate) to connect the systems.
-
-### Vibe Kanban's Unique Position
-
-Vibe Kanban can offer something none of these tools do: **AI-assisted development while keeping JIRA as the source of truth**. Instead of forcing teams to choose between JIRA and AI coding agents, Vibe Kanban works alongside JIRA, automatically keeping both systems in sync.
-
-This positions Vibe Kanban as a **complementary tool** rather than a replacement, lowering the barrier to adoption for JIRA-heavy organizations.
-
----
-
 ## Open Questions
 
 1. **Should we support JIRA Service Management (JSM)?**
@@ -430,5 +412,5 @@ This integration positions Vibe Kanban uniquely in the market: the only tool tha
 
 **Document Version**: 1.0
 **Last Updated**: 2026-01-29
-**Author**: Claude (Vibe Kanban)
+**Authors**: David Van Couvering (david.vancouvering@gmail.com), Claude (Vibe Kanban)
 **Status**: Draft for Review
