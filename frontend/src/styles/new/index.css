@@ -63,7 +63,10 @@
     --_bg-secondary-default: 0 0% 95%;
     --_bg-panel-default: 0 0% 89%;
     --bg-primary: var(--vscode-editor-background, var(--_bg-primary-default));
-    --bg-secondary: var(--vscode-editorWidget-background, var(--_bg-secondary-default));
+    --bg-secondary: var(
+      --vscode-editorWidget-background,
+      var(--_bg-secondary-default)
+    );
     --bg-panel: var(--vscode-input-background, var(--_bg-panel-default));
 
     /* Accent (light) */
@@ -119,7 +122,10 @@
     --_bg-secondary-default: 0 0% 11%;
     --_bg-panel-default: 0 0% 16%;
     --bg-primary: var(--vscode-editor-background, var(--_bg-primary-default));
-    --bg-secondary: var(--vscode-editorWidget-background, var(--_bg-secondary-default));
+    --bg-secondary: var(
+      --vscode-editorWidget-background,
+      var(--_bg-secondary-default)
+    );
     --bg-panel: var(--vscode-input-background, var(--_bg-panel-default));
 
     /* Accent (dark) */
