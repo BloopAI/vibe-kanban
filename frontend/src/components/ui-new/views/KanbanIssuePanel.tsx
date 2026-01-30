@@ -22,7 +22,7 @@ export interface IssueFormData {
   title: string;
   description: string | null;
   statusId: string;
-  priority: IssuePriority;
+  priority: IssuePriority | null;
   assigneeIds: string[];
   tagIds: string[];
   createDraftWorkspace: boolean;

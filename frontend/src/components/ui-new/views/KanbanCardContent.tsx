@@ -13,7 +13,7 @@ export type KanbanCardContentProps = {
   displayId: string;
   title: string;
   description?: string | null;
-  priority: IssuePriority;
+  priority: IssuePriority | null;
   tags: { id: string; name: string; color: string }[];
   assignees: OrganizationMemberWithProfile[];
   pullRequests?: PullRequest[];

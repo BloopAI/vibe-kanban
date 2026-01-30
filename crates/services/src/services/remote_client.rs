@@ -584,6 +584,7 @@ impl RemoteClient {
     pub async fn update_workspace(
         &self,
         local_workspace_id: Uuid,
+        name: Option<Option<String>>,
         archived: Option<bool>,
         files_changed: Option<i32>,
         lines_added: Option<i32>,
@@ -595,6 +596,7 @@ impl RemoteClient {
             true,
             Some(&UpdateWorkspaceRequest {
                 local_workspace_id,
+                name,
                 archived,
                 files_changed: files_changed.map(Some),
                 lines_added: lines_added.map(Some),

@@ -626,6 +626,7 @@ impl LocalContainerService {
                         remote_sync::sync_workspace_to_remote(
                             &client,
                             workspace_id,
+                            None,
                             Some(archived),
                             stats.as_ref(),
                         )

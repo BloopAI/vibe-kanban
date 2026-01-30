@@ -1,7 +1,8 @@
 import { LayoutIcon, PlusIcon, SpinnerIcon } from '@phosphor-icons/react';
 import { siDiscord } from 'simple-icons';
 import { cn } from '@/lib/utils';
-import type { OrganizationWithRole, RemoteProject } from 'shared/types';
+import type { OrganizationWithRole } from 'shared/types';
+import type { Project as RemoteProject } from 'shared/remote-types';
 import { AppBarButton } from './AppBarButton';
 import { AppBarUserPopoverContainer } from '../containers/AppBarUserPopoverContainer';
 import { Tooltip } from './Tooltip';
