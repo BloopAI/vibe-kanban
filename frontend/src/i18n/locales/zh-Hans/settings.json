@@ -152,6 +152,14 @@
           "browse": "浏览",
           "dialogTitle": "选择工作区目录",
           "dialogDescription": "选择一个目录。工作区将在其中的 .vibe-kanban-workspaces 子目录中创建。"
+        },
+        "mergeStrategy": {
+          "label": "合并策略",
+          "helper": "控制当基础分支在任务创建后有新提交时的行为。",
+          "options": {
+            "strict": "严格（需要先手动变基）",
+            "allowDiverged": "允许分叉（无冲突则合并）"
+          }
         }
       },
       "pullRequests": {

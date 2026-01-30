@@ -152,6 +152,14 @@
           "browse": "参照",
           "dialogTitle": "ワークスペースディレクトリを選択",
           "dialogDescription": "ディレクトリを選択してください。ワークスペースはその中の .vibe-kanban-workspaces サブディレクトリに作成されます。"
+        },
+        "mergeStrategy": {
+          "label": "マージ戦略",
+          "helper": "タスク作成後にベースブランチに新しいコミットがある場合の動作を制御します。",
+          "options": {
+            "strict": "厳格（先に手動リベースが必要）",
+            "allowDiverged": "分岐を許可（競合がなければマージ）"
+          }
         }
       },
       "pullRequests": {

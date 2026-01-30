@@ -24,6 +24,7 @@ import { FolderOpen, Loader2, Volume2 } from 'lucide-react';
 import {
   DEFAULT_PR_DESCRIPTION_PROMPT,
   EditorType,
+  MergeStrategy,
   SoundFile,
   ThemeMode,
   UiLanguage,
@@ -504,6 +505,33 @@ export function GeneralSettings() {
             </div>
             <p className="text-sm text-muted-foreground">
               {t('settings.general.git.workspaceDir.helper')}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="merge-strategy">
+              {t('settings.general.git.mergeStrategy.label')}
+            </Label>
+            <Select
+              value={draft?.merge_strategy ?? 'Strict'}
+              onValueChange={(value: MergeStrategy) =>
+                updateDraft({ merge_strategy: value })
+              }
+            >
+              <SelectTrigger id="merge-strategy">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Strict">
+                  {t('settings.general.git.mergeStrategy.options.strict')}
+                </SelectItem>
+                <SelectItem value="AllowDiverged">
+                  {t('settings.general.git.mergeStrategy.options.allowDiverged')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              {t('settings.general.git.mergeStrategy.helper')}
             </p>
           </div>
         </CardContent>

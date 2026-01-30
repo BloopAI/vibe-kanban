@@ -152,6 +152,14 @@
           "browse": "찾아보기",
           "dialogTitle": "워크스페이스 디렉토리 선택",
           "dialogDescription": "디렉토리를 선택하세요. 워크스페이스는 해당 디렉토리 내의 .vibe-kanban-workspaces 하위 디렉토리에 생성됩니다."
+        },
+        "mergeStrategy": {
+          "label": "병합 전략",
+          "helper": "태스크 생성 이후 기본 브랜치에 새 커밋이 있을 때의 동작을 제어합니다.",
+          "options": {
+            "strict": "엄격 (먼저 수동 리베이스 필요)",
+            "allowDiverged": "분기 허용 (충돌이 없으면 병합)"
+          }
         }
       },
       "pullRequests": {
