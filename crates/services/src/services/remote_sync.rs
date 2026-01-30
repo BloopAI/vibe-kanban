@@ -9,6 +9,7 @@ use super::{diff_stream::DiffStats, remote_client::RemoteClient};
 pub async fn sync_workspace_to_remote(
     client: &RemoteClient,
     workspace_id: Uuid,
+    name: Option<Option<String>>,
     archived: Option<bool>,
     stats: Option<&DiffStats>,
 ) {
@@ -35,6 +36,7 @@ pub async fn sync_workspace_to_remote(
     match client
         .update_workspace(
             workspace_id,
+            name,
             archived,
             stats.map(|s| s.files_changed as i32),
             stats.map(|s| s.lines_added as i32),
