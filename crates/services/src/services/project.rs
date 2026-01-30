@@ -303,3 +303,71 @@ impl ProjectService {
         Ok(all_results)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    /// Creates a throwaway in-memory SQLite pool.
+    /// The tests below are designed to fail during validation
+    /// (before any SQL query is executed), so the pool is never actually used.
+    async fn dummy_pool() -> SqlitePool {
+        SqlitePool::connect("sqlite::memory:").await.unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_create_project_rejects_both_working_dir_and_repos() {
+        let pool = dummy_pool().await;
+        let svc = ProjectService::new();
+        let repo_svc = RepoService::new();
+
+        let payload = CreateProject {
+            name: "test".to_string(),
+            repositories: vec![CreateProjectRepo {
+                display_name: "repo".to_string(),
+                git_repo_path: "/some/path".to_string(),
+            }],
+            working_directory: Some("/some/dir".to_string()),
+        };
+
+        let result = svc.create_project(&pool, &repo_svc, payload).await;
+        assert!(matches!(result, Err(ProjectServiceError::ValidationError(_))));
+    }
+
+    #[tokio::test]
+    async fn test_create_project_directory_only_validates_path_exists() {
+        let pool = dummy_pool().await;
+        let svc = ProjectService::new();
+        let repo_svc = RepoService::new();
+
+        let payload = CreateProject {
+            name: "test".to_string(),
+            repositories: vec![],
+            working_directory: Some("/nonexistent/path/abc123".to_string()),
+        };
+
+        let result = svc.create_project(&pool, &repo_svc, payload).await;
+        assert!(matches!(result, Err(ProjectServiceError::PathNotFound(_))));
+    }
+
+    #[tokio::test]
+    async fn test_create_project_directory_only_validates_path_is_dir() {
+        let dir = TempDir::new().unwrap();
+        let file_path = dir.path().join("not_a_dir.txt");
+        std::fs::write(&file_path, "content").unwrap();
+
+        let pool = dummy_pool().await;
+        let svc = ProjectService::new();
+        let repo_svc = RepoService::new();
+
+        let payload = CreateProject {
+            name: "test".to_string(),
+            repositories: vec![],
+            working_directory: Some(file_path.to_string_lossy().to_string()),
+        };
+
+        let result = svc.create_project(&pool, &repo_svc, payload).await;
+        assert!(matches!(result, Err(ProjectServiceError::PathNotDirectory(_))));
+    }
+}

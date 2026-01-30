@@ -723,3 +723,37 @@ impl Workspace {
         Ok(Some(ws))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+
+    fn make_workspace(branch: &str) -> Workspace {
+        Workspace {
+            id: Uuid::new_v4(),
+            task_id: Uuid::new_v4(),
+            container_ref: None,
+            branch: branch.to_string(),
+            agent_working_dir: None,
+            setup_completed_at: None,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            archived: false,
+            pinned: false,
+            name: None,
+        }
+    }
+
+    #[test]
+    fn test_is_git_workspace_with_branch() {
+        let ws = make_workspace("vk/task-123/main");
+        assert!(ws.is_git_workspace());
+    }
+
+    #[test]
+    fn test_is_git_workspace_without_branch() {
+        let ws = make_workspace("");
+        assert!(!ws.is_git_workspace());
+    }
+}

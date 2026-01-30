@@ -277,3 +277,33 @@ impl Project {
         Ok(result.rows_affected())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+
+    fn make_project(working_directory: Option<String>) -> Project {
+        Project {
+            id: Uuid::new_v4(),
+            name: "test".to_string(),
+            default_agent_working_dir: None,
+            remote_project_id: None,
+            working_directory,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn test_is_directory_only_with_working_directory() {
+        let project = make_project(Some("/tmp/my-dir".to_string()));
+        assert!(project.is_directory_only());
+    }
+
+    #[test]
+    fn test_is_directory_only_without_working_directory() {
+        let project = make_project(None);
+        assert!(!project.is_directory_only());
+    }
+}
