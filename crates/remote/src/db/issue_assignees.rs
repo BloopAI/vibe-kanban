@@ -19,7 +19,7 @@ pub struct IssueAssignee {
 
 #[derive(Debug, Error)]
 pub enum IssueAssigneeError {
-    #[error(transparent)]
+    #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
 }
 

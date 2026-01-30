@@ -8,7 +8,10 @@ use serde::Deserialize;
 use tracing::instrument;
 use uuid::Uuid;
 
-use super::{error::ErrorResponse, organization_members::ensure_project_access};
+use super::{
+    error::{ErrorResponse, db_error},
+    organization_members::ensure_project_access,
+};
 use crate::{
     AppState,
     auth::RequestContext,
@@ -89,10 +92,7 @@ async fn create_workspace(
     .await
     .map_err(|error| {
         tracing::error!(?error, "failed to create workspace");
-        ErrorResponse::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "failed to create workspace",
-        )
+        db_error(error, "failed to create workspace")
     })?;
 
     if let Some(issue_id) = payload.issue_id
