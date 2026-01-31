@@ -1,6 +1,9 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { Repo, ExecutorProfileId } from 'shared/types';
-import { useCreateModeState, type LinkedIssue } from '@/hooks/useCreateModeState';
+import {
+  useCreateModeState,
+  type LinkedIssue,
+} from '@/hooks/useCreateModeState';
 import { useWorkspaces } from '@/components/ui-new/hooks/useWorkspaces';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';

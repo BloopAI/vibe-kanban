@@ -240,7 +240,11 @@ export function useCreateModeState({
     const navState = navStateRef.current;
 
     // Clear navigation state immediately to prevent re-initialization
-    if (navState?.preferredRepos || navState?.initialPrompt || navState?.linkedIssue) {
+    if (
+      navState?.preferredRepos ||
+      navState?.initialPrompt ||
+      navState?.linkedIssue
+    ) {
       navigate(location.pathname, { replace: true, state: {} });
     }
 
