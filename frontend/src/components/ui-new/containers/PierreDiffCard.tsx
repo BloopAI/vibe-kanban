@@ -35,7 +35,42 @@ import { ReviewCommentRenderer } from './ReviewCommentRenderer';
 import { GitHubCommentRenderer } from './GitHubCommentRenderer';
 import { CommentWidgetLine } from './CommentWidgetLine';
 import { DisplayTruncatedPath } from '@/utils/TruncatePath';
+import { stripLineEnding, splitLines } from '@/utils/string';
 import type { Diff } from 'shared/types';
+
+/**
+ * Extracts a specific line from file content.
+ * @param content - The full file content as a string
+ * @param lineNumber - The 1-indexed line number to extract
+ * @returns The line content, or undefined if the line doesn't exist
+ */
+function getLineContent(
+  content: string | null,
+  lineNumber: number
+): string | undefined {
+  if (!content) return undefined;
+  const lines = splitLines(content);
+  const index = lineNumber - 1; // Convert 1-indexed to 0-indexed
+  if (index < 0 || index >= lines.length) return undefined;
+  return stripLineEnding(lines[index]);
+}
+
+/**
+ * Gets the appropriate line content based on whether the comment is on
+ * the old (deletions) or new (additions) side of the diff.
+ * @param diff - The Diff object containing oldContent and newContent
+ * @param lineNumber - The 1-indexed line number
+ * @param side - The side of the diff (Old for deletions, New for additions)
+ * @returns The line content, or undefined if not available
+ */
+function getCodeLineForComment(
+  diff: Diff,
+  lineNumber: number,
+  side: DiffSide
+): string | undefined {
+  const content = side === DiffSide.Old ? diff.oldContent : diff.newContent;
+  return getLineContent(content, lineNumber);
+}
 
 /**
  * CSS overrides for @pierre/diffs to match our app's theme.
@@ -316,11 +351,17 @@ export function PierreDiffCard({
       if (metadata.type === 'github') {
         const githubComment = metadata.comment;
         const handleCopyToUserComment = () => {
+          const codeLine = getCodeLineForComment(
+            diff,
+            githubComment.lineNumber,
+            githubComment.side
+          );
           addComment({
             filePath,
             lineNumber: githubComment.lineNumber,
             side: githubComment.side,
             text: githubComment.body,
+            ...(codeLine !== undefined ? { codeLine } : {}),
           });
         };
         return (
@@ -338,7 +379,7 @@ export function PierreDiffCard({
         />
       );
     },
-    [projectId, filePath, addComment]
+    [projectId, filePath, addComment, diff]
   );
 
   // Handle line click to add comment
@@ -351,14 +392,17 @@ export function PierreDiffCard({
       // Don't create a new draft if one already exists
       if (drafts[widgetKey]) return;
 
+      const codeLine = getCodeLineForComment(diff, lineNumber, splitSide);
+
       setDraft(widgetKey, {
         filePath,
         side: splitSide,
         lineNumber,
         text: '',
+        ...(codeLine !== undefined ? { codeLine } : {}),
       });
     },
-    [filePath, drafts, setDraft]
+    [filePath, drafts, setDraft, diff]
   );
 
   const renderHoverUtility = useCallback(
@@ -380,11 +424,14 @@ export function PierreDiffCard({
 
             if (drafts[widgetKey]) return;
 
+            const codeLine = getCodeLineForComment(diff, lineNumber, splitSide);
+
             setDraft(widgetKey, {
               filePath,
               side: splitSide,
               lineNumber,
               text: '',
+              ...(codeLine !== undefined ? { codeLine } : {}),
             });
           }}
           title={t('comments.addReviewComment')}
@@ -393,7 +440,7 @@ export function PierreDiffCard({
         </button>
       );
     },
-    [filePath, drafts, setDraft, t]
+    [filePath, drafts, setDraft, t, diff]
   );
 
   const fileDiffOptions = useMemo(
