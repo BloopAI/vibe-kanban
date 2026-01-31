@@ -1,7 +1,7 @@
 import { oauthApi } from '../api';
 
 const TOKEN_QUERY_KEY = ['auth', 'token'] as const;
-const TOKEN_STALE_TIME = 90 * 1000; // 90 seconds (must be < 120s backend token TTL)
+const TOKEN_STALE_TIME = 125 * 1000; // 125 seconds (slightly longer than the BE stale time)
 
 type RefreshStateCallback = (isRefreshing: boolean) => void;
 type PauseableShape = { pause: () => void; resume: () => void };
