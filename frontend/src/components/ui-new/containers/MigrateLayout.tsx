@@ -4,7 +4,7 @@ import {
   type MigrationStep,
 } from '@/components/ui-new/views/MigrateSidebar';
 import { MigrateIntroduction } from '@/components/ui-new/views/MigrateIntroduction';
-import { MigrateChooseProjects } from '@/components/ui-new/views/MigrateChooseProjects';
+import { MigrateChooseProjectsContainer } from '@/components/ui-new/containers/MigrateChooseProjectsContainer';
 
 interface MigrationData {
   orgId: string;
@@ -35,7 +35,9 @@ export function MigrateLayout() {
         );
       case 'choose-projects':
         return (
-          <MigrateChooseProjects onContinue={handleChooseProjectsContinue} />
+          <MigrateChooseProjectsContainer
+            onContinue={handleChooseProjectsContinue}
+          />
         );
       case 'migrate':
         return (

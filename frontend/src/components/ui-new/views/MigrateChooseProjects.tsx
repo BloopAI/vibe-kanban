@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   BuildingsIcon,
   CaretDownIcon,
@@ -13,59 +12,32 @@ import {
   DropdownMenuItem,
 } from '@/components/ui-new/primitives/Dropdown';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useProjects } from '@/hooks/useProjects';
-import { useUserOrganizations } from '@/hooks/useUserOrganizations';
+import type { Project } from 'shared/types';
+import type { OrganizationWithRole } from 'shared/types';
 
 interface MigrateChooseProjectsProps {
-  onContinue: (orgId: string, projectIds: string[]) => void;
+  projects: Project[];
+  organizations: OrganizationWithRole[];
+  selectedOrgId: string | null;
+  selectedProjectIds: Set<string>;
+  isLoading: boolean;
+  onOrgChange: (orgId: string) => void;
+  onToggleProject: (projectId: string) => void;
+  onSelectAll: () => void;
+  onContinue: () => void;
 }
 
 export function MigrateChooseProjects({
+  projects,
+  organizations,
+  selectedOrgId,
+  selectedProjectIds,
+  isLoading,
+  onOrgChange,
+  onToggleProject,
+  onSelectAll,
   onContinue,
 }: MigrateChooseProjectsProps) {
-  const { projects, isLoading: projectsLoading } = useProjects();
-  const { data: orgsData, isLoading: orgsLoading } = useUserOrganizations();
-  const organizations = orgsData?.organizations ?? [];
-
-  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
-  const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(
-    new Set()
-  );
-
-  // Pre-select first organization when data loads
-  useEffect(() => {
-    if (organizations.length > 0 && !selectedOrgId) {
-      setSelectedOrgId(organizations[0].id);
-    }
-  }, [organizations, selectedOrgId]);
-
-  const handleToggleProject = (projectId: string) => {
-    setSelectedProjectIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(projectId)) {
-        next.delete(projectId);
-      } else {
-        next.add(projectId);
-      }
-      return next;
-    });
-  };
-
-  const handleSelectAll = () => {
-    if (selectedProjectIds.size === projects.length) {
-      setSelectedProjectIds(new Set());
-    } else {
-      setSelectedProjectIds(new Set(projects.map((p) => p.id)));
-    }
-  };
-
-  const handleContinue = () => {
-    if (selectedOrgId && selectedProjectIds.size > 0) {
-      onContinue(selectedOrgId, Array.from(selectedProjectIds));
-    }
-  };
-
-  const isLoading = projectsLoading || orgsLoading;
   const selectedOrg = organizations.find((org) => org.id === selectedOrgId);
 
   const buttonText =
@@ -124,7 +96,7 @@ export function MigrateChooseProjects({
               {organizations.map((org) => (
                 <DropdownMenuItem
                   key={org.id}
-                  onClick={() => setSelectedOrgId(org.id)}
+                  onClick={() => onOrgChange(org.id)}
                 >
                   {org.name}
                 </DropdownMenuItem>
@@ -148,7 +120,7 @@ export function MigrateChooseProjects({
               <Checkbox
                 id="select-all"
                 checked={selectedProjectIds.size === projects.length}
-                onCheckedChange={handleSelectAll}
+                onCheckedChange={onSelectAll}
               />
               <label
                 htmlFor="select-all"
@@ -169,7 +141,7 @@ export function MigrateChooseProjects({
                   <Checkbox
                     id={`project-${project.id}`}
                     checked={selectedProjectIds.has(project.id)}
-                    onCheckedChange={() => handleToggleProject(project.id)}
+                    onCheckedChange={() => onToggleProject(project.id)}
                   />
                   <label
                     htmlFor={`project-${project.id}`}
@@ -201,7 +173,7 @@ export function MigrateChooseProjects({
       {/* CTA */}
       <div className="pt-base border-t flex justify-end">
         <PrimaryButton
-          onClick={handleContinue}
+          onClick={onContinue}
           disabled={selectedProjectIds.size === 0 || !selectedOrgId}
           actionIcon={CloudArrowUpIcon}
         >
