@@ -156,10 +156,7 @@ export function MigrateIntroduction({ onContinue }: MigrateIntroductionProps) {
             return (
               <div key={benefit.title} className="flex items-start gap-base">
                 <div className="p-half bg-panel rounded shrink-0">
-                  <Icon
-                    className="size-icon-sm text-brand"
-                    weight="duotone"
-                  />
+                  <Icon className="size-icon-sm text-brand" weight="duotone" />
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-high mb-half">
