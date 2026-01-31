@@ -28,6 +28,7 @@ import { ReadOnlyLinkPlugin } from './wysiwyg/plugins/read-only-link-plugin';
 import { ClickableCodePlugin } from './wysiwyg/plugins/clickable-code-plugin';
 import { ToolbarPlugin } from './wysiwyg/plugins/toolbar-plugin';
 import { CodeBlockShortcutPlugin } from './wysiwyg/plugins/code-block-shortcut-plugin';
+import { PasteMarkdownPlugin } from './wysiwyg/plugins/paste-markdown-plugin';
 import { MarkdownSyncPlugin } from './wysiwyg/plugins/markdown-sync-plugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
@@ -266,6 +267,7 @@ function WYSIWYGEditor({
                   {autoFocus && <AutoFocusPlugin />}
                   <HistoryPlugin />
                   <MarkdownShortcutPlugin transformers={extendedTransformers} />
+                  <PasteMarkdownPlugin transformers={extendedTransformers} />
                   <TypeaheadOpenProvider>
                     <FileTagTypeaheadPlugin
                       workspaceId={workspaceId}
