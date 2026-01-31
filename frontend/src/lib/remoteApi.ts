@@ -2,12 +2,16 @@ import type {
   UpdateIssueRequest,
   UpdateProjectStatusRequest,
 } from 'shared/remote-types';
-import { getCachedToken } from './api';
+import { tokenManager } from './auth/tokenManager';
 
 export const REMOTE_API_URL = import.meta.env.VITE_VK_SHARED_API_BASE || '';
 
-export const makeRequest = async (path: string, options: RequestInit = {}) => {
-  const token = await getCachedToken();
+export const makeRequest = async (
+  path: string,
+  options: RequestInit = {},
+  retryOn401 = true
+): Promise<Response> => {
+  const token = await tokenManager.getToken();
   if (!token) {
     throw new Error('Not authenticated');
   }
@@ -18,11 +22,29 @@ export const makeRequest = async (path: string, options: RequestInit = {}) => {
   }
   headers.set('Authorization', `Bearer ${token}`);
 
-  return fetch(`${REMOTE_API_URL}${path}`, {
+  const response = await fetch(`${REMOTE_API_URL}${path}`, {
     ...options,
     headers,
     credentials: 'include',
   });
+
+  // Handle 401 - token may have expired
+  if (response.status === 401 && retryOn401) {
+    const newToken = await tokenManager.triggerRefresh();
+    if (newToken) {
+      // Retry the request with the new token
+      headers.set('Authorization', `Bearer ${newToken}`);
+      return fetch(`${REMOTE_API_URL}${path}`, {
+        ...options,
+        headers,
+        credentials: 'include',
+      });
+    }
+    // Refresh failed, throw an auth error
+    throw new Error('Session expired. Please log in again.');
+  }
+
+  return response;
 };
 
 export interface BulkUpdateIssueItem {
