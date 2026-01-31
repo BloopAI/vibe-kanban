@@ -476,7 +476,7 @@ export function KanbanIssuePanelContainer() {
             ? Math.min(...statusIssues.map((i) => i.sort_order))
             : 0;
 
-        const { data: newIssue, persisted } = insertIssue({
+        const { persisted } = insertIssue({
           project_id: projectId,
           status_id: displayData.statusId,
           title: displayData.title,
@@ -491,13 +491,13 @@ export function KanbanIssuePanelContainer() {
           extension_metadata: null,
         });
 
-        // Wait for the issue to be confirmed by the backend before creating related records
-        await persisted;
+        // Wait for the issue to be confirmed by the backend and get the synced entity
+        const syncedIssue = await persisted;
 
         // Create assignee records for all selected assignees
         displayData.assigneeIds.forEach((userId) => {
           insertIssueAssignee({
-            issue_id: newIssue.id,
+            issue_id: syncedIssue.id,
             user_id: userId,
           });
         });
@@ -505,7 +505,7 @@ export function KanbanIssuePanelContainer() {
         // Create tag records if tags were selected
         for (const tagId of displayData.tagIds) {
           insertIssueTag({
-            issue_id: newIssue.id,
+            issue_id: syncedIssue.id,
             tag_id: tagId,
           });
         }
@@ -529,8 +529,8 @@ export function KanbanIssuePanelContainer() {
               preferredRepos: defaults?.preferredRepos ?? null,
               project_id: defaults?.project_id ?? null,
               linkedIssue: {
-                issueId: newIssue.id,
-                simpleId: newIssue.simple_id ?? `#${newIssue.id.slice(0, 8)}`,
+                issueId: syncedIssue.id,
+                simpleId: syncedIssue.simple_id,
                 title: displayData.title,
                 remoteProjectId: projectId,
               },
@@ -540,7 +540,7 @@ export function KanbanIssuePanelContainer() {
         }
 
         // Open the newly created issue
-        openIssue(newIssue.id);
+        openIssue(syncedIssue.id);
       } else {
         // Update existing issue - would use update mutation
         // For now, just close the panel
