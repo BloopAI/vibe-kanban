@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { migrationApi } from '@/lib/api';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { MigrateMigrate } from '@/components/ui-new/views/MigrateMigrate';
@@ -24,6 +24,7 @@ export function MigrateMigrateContainer({
   const [isMigrating, setIsMigrating] = useState(true);
   const [report, setReport] = useState<MigrationReport | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const hasStartedRef = useRef(false);
 
   const orgName =
     organizations.find((org) => org.id === orgId)?.name ?? 'Unknown';
@@ -46,8 +47,12 @@ export function MigrateMigrateContainer({
     }
   }, [orgId, projectIds]);
 
-  // Start migration on mount
+  // Start migration on mount (only once)
   useEffect(() => {
+    if (hasStartedRef.current) {
+      return;
+    }
+    hasStartedRef.current = true;
     void startMigration();
   }, [startMigration]);
 
