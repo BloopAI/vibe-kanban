@@ -133,7 +133,7 @@ function WorkspaceSelectionContent({
     setIsLinking(true);
 
     try {
-      // Get issue details for initial prompt
+      // Get issue details for initial prompt and linking
       const issue = getIssue(issueId);
       const initialPrompt = issue
         ? issue.description
@@ -159,7 +159,15 @@ function WorkspaceSelectionContent({
         state: {
           initialPrompt,
           preferredRepos: defaults?.preferredRepos,
-          project_id: defaults?.project_id,
+          // Pass linkedIssue so the workspace gets linked after creation
+          linkedIssue: issue
+            ? {
+                issue_id: issueId,
+                simple_id: issue.simple_id,
+                title: issue.title,
+                project_id: projectId, // Remote project ID from dialog props
+              }
+            : null,
         },
       });
     } finally {
@@ -170,6 +178,7 @@ function WorkspaceSelectionContent({
     navigate,
     getIssue,
     issueId,
+    projectId,
     workspaces,
     isLinking,
     activeWorkspaces,
