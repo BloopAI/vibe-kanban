@@ -1,7 +1,7 @@
 import { electricCollectionOptions } from '@tanstack/electric-db-collection';
 import { createCollection } from '@tanstack/react-db';
 
-import { getCachedToken } from '../api';
+import { tokenManager } from '../auth/tokenManager';
 import { makeRequest, REMOTE_API_URL } from '@/lib/remoteApi';
 import type { EntityDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { CollectionConfig, SyncError } from './types';
@@ -114,6 +114,7 @@ function getRowKey(item: Record<string, unknown>): string {
 /**
  * Get authenticated shape options for an Electric shape.
  * Includes error handling with exponential backoff and custom fetch wrapper.
+ * Registers with tokenManager for pause/resume during token refresh.
  */
 function getAuthenticatedShapeOptions(
   shape: ShapeDefinition<unknown>,
@@ -124,6 +125,22 @@ function getAuthenticatedShapeOptions(
 
   // Create error handler for this shape's lifecycle
   const errorHandler = new ErrorHandler();
+
+  // Track pause state during token refresh
+  let isPaused = false;
+
+  // Register with tokenManager for pause/resume during token refresh.
+  // This prevents 401 spam when multiple shapes hit auth errors simultaneously.
+  tokenManager.registerShape({
+    pause: () => {
+      isPaused = true;
+    },
+    resume: () => {
+      isPaused = false;
+      // Clear error state to allow clean retry after refresh
+      errorHandler.reset();
+    },
+  });
 
   // Single debounced error reporter for both network and Electric errors
   const reportError = (error: SyncError) => {
@@ -142,7 +159,7 @@ function getAuthenticatedShapeOptions(
     params,
     headers: {
       Authorization: async () => {
-        const token = await getCachedToken();
+        const token = await tokenManager.getToken();
         return token ? `Bearer ${token}` : '';
       },
     },
@@ -153,8 +170,21 @@ function getAuthenticatedShapeOptions(
     fetchClient: createErrorHandlingFetch(errorHandler, reportError),
     // Electric's onError callback (for non-network errors like 4xx/5xx responses)
     onError: (error: { status?: number; message?: string }) => {
+      // Ignore errors while paused (expected during token refresh)
+      if (isPaused) return;
+
       const status = error.status;
       const message = error.message || String(error);
+
+      // Handle 401 by triggering token refresh
+      if (status === 401) {
+        tokenManager.triggerRefresh().catch(() => {
+          // Refresh failed - report the original 401 error
+          reportError({ status, message });
+        });
+        return;
+      }
+
       reportError({ status, message });
     },
   };
