@@ -52,7 +52,8 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
           // Get anchor node's top-level element for targeted conversion
           const anchorNode = selection?.getNodes()?.[0];
           const topLevel = anchorNode?.getTopLevelElement?.();
-          const targetElement = topLevel && $isElementNode(topLevel) ? topLevel : $getRoot();
+          const targetElement =
+            topLevel && $isElementNode(topLevel) ? topLevel : $getRoot();
 
           // Convert markdown and insert at target element
           // Using the optional 3rd parameter to target specific element
