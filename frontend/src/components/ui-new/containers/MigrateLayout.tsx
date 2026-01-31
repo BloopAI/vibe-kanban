@@ -4,9 +4,23 @@ import {
   type MigrationStep,
 } from '@/components/ui-new/views/MigrateSidebar';
 import { MigrateIntroduction } from '@/components/ui-new/views/MigrateIntroduction';
+import { MigrateChooseProjects } from '@/components/ui-new/views/MigrateChooseProjects';
+
+interface MigrationData {
+  orgId: string;
+  projectIds: string[];
+}
 
 export function MigrateLayout() {
   const [currentStep, setCurrentStep] = useState<MigrationStep>('introduction');
+  const [migrationData, setMigrationData] = useState<MigrationData | null>(
+    null
+  );
+
+  const handleChooseProjectsContinue = (orgId: string, projectIds: string[]) => {
+    setMigrationData({ orgId, projectIds });
+    setCurrentStep('migrate');
+  };
 
   const renderContent = () => {
     switch (currentStep) {
@@ -18,8 +32,18 @@ export function MigrateLayout() {
         );
       case 'choose-projects':
         return (
+          <MigrateChooseProjects onContinue={handleChooseProjectsContinue} />
+        );
+      case 'migrate':
+        return (
           <div className="p-base text-normal">
-            Choose projects step - Coming soon
+            Migrate step - Coming soon
+            {migrationData && (
+              <div className="mt-base text-sm text-low">
+                Migrating {migrationData.projectIds.length} project(s) to org{' '}
+                {migrationData.orgId}
+              </div>
+            )}
           </div>
         );
       case 'finish':

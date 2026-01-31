@@ -1,0 +1,213 @@
+import { useState, useEffect } from 'react';
+import {
+  BuildingsIcon,
+  CaretDownIcon,
+  CloudArrowUpIcon,
+  InfoIcon,
+} from '@phosphor-icons/react';
+import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui-new/primitives/Dropdown';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useProjects } from '@/hooks/useProjects';
+import { useUserOrganizations } from '@/hooks/useUserOrganizations';
+
+interface MigrateChooseProjectsProps {
+  onContinue: (orgId: string, projectIds: string[]) => void;
+}
+
+export function MigrateChooseProjects({
+  onContinue,
+}: MigrateChooseProjectsProps) {
+  const { projects, isLoading: projectsLoading } = useProjects();
+  const { data: orgsData, isLoading: orgsLoading } = useUserOrganizations();
+  const organizations = orgsData?.organizations ?? [];
+
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(
+    new Set()
+  );
+
+  // Pre-select first organization when data loads
+  useEffect(() => {
+    if (organizations.length > 0 && !selectedOrgId) {
+      setSelectedOrgId(organizations[0].id);
+    }
+  }, [organizations, selectedOrgId]);
+
+  const handleToggleProject = (projectId: string) => {
+    setSelectedProjectIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(projectId)) {
+        next.delete(projectId);
+      } else {
+        next.add(projectId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedProjectIds.size === projects.length) {
+      setSelectedProjectIds(new Set());
+    } else {
+      setSelectedProjectIds(new Set(projects.map((p) => p.id)));
+    }
+  };
+
+  const handleContinue = () => {
+    if (selectedOrgId && selectedProjectIds.size > 0) {
+      onContinue(selectedOrgId, Array.from(selectedProjectIds));
+    }
+  };
+
+  const isLoading = projectsLoading || orgsLoading;
+  const selectedOrg = organizations.find((org) => org.id === selectedOrgId);
+
+  const buttonText =
+    selectedProjectIds.size === 0
+      ? 'Select projects to migrate'
+      : `Migrate ${selectedProjectIds.size} project${selectedProjectIds.size === 1 ? '' : 's'}`;
+
+  if (isLoading) {
+    return (
+      <div className="max-w-2xl mx-auto py-double px-base">
+        <p className="text-normal">Loading...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto py-double px-base">
+      {/* Header section */}
+      <div className="mb-double">
+        <h1 className="text-xl font-semibold text-high mb-base">
+          Choose Projects to Migrate
+        </h1>
+        <p className="text-base text-normal">
+          Select which local projects to move to the cloud. A new cloud project
+          will be created in your chosen organization for each one.
+        </p>
+      </div>
+
+      {/* Organization selector */}
+      <div className="mb-double">
+        <label className="block text-sm font-medium text-high mb-half">
+          Destination Organization
+        </label>
+        {organizations.length === 0 ? (
+          <p className="text-sm text-low">
+            No organizations available. Please create an organization first.
+          </p>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-base bg-secondary border rounded px-base py-half w-full max-w-xs text-left">
+                <BuildingsIcon
+                  className="size-icon-sm text-normal"
+                  weight="duotone"
+                />
+                <span className="flex-1 text-sm text-high truncate">
+                  {selectedOrg?.name ?? 'Select organization'}
+                </span>
+                <CaretDownIcon
+                  className="size-icon-xs text-normal"
+                  weight="bold"
+                />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64">
+              {organizations.map((org) => (
+                <DropdownMenuItem
+                  key={org.id}
+                  onClick={() => setSelectedOrgId(org.id)}
+                >
+                  {org.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+
+      {/* Project list */}
+      <div className="mb-double">
+        <label className="block text-sm font-medium text-high mb-half">
+          Local Projects
+        </label>
+        {projects.length === 0 ? (
+          <p className="text-sm text-low">No local projects found.</p>
+        ) : (
+          <div className="bg-secondary border rounded">
+            {/* Select all */}
+            <div className="flex items-center gap-base px-base py-half border-b">
+              <Checkbox
+                id="select-all"
+                checked={selectedProjectIds.size === projects.length}
+                onCheckedChange={handleSelectAll}
+              />
+              <label
+                htmlFor="select-all"
+                className="text-sm text-normal cursor-pointer"
+              >
+                Select all ({projects.length} project
+                {projects.length === 1 ? '' : 's'})
+              </label>
+            </div>
+
+            {/* Project list */}
+            <div className="max-h-64 overflow-y-auto divide-y divide-border">
+              {projects.map((project) => (
+                <div
+                  key={project.id}
+                  className="flex items-center gap-base px-base py-half hover:bg-panel/50"
+                >
+                  <Checkbox
+                    id={`project-${project.id}`}
+                    checked={selectedProjectIds.has(project.id)}
+                    onCheckedChange={() => handleToggleProject(project.id)}
+                  />
+                  <label
+                    htmlFor={`project-${project.id}`}
+                    className="flex-1 text-sm text-high cursor-pointer truncate"
+                  >
+                    {project.name}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Info box */}
+      <div className="mb-double p-base bg-secondary border rounded flex gap-base">
+        <InfoIcon className="size-icon-sm text-brand shrink-0" weight="fill" />
+        <div className="text-sm text-normal">
+          <p className="mb-half">
+            Your local projects will be copied to the cloud as new projects in
+            the selected organization. All tasks and data will be migrated.
+          </p>
+          <p className="text-low">
+            You can return here later to migrate additional projects.
+          </p>
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div className="pt-base border-t flex justify-end">
+        <PrimaryButton
+          onClick={handleContinue}
+          disabled={selectedProjectIds.size === 0 || !selectedOrgId}
+          actionIcon={CloudArrowUpIcon}
+        >
+          {buttonText}
+        </PrimaryButton>
+      </div>
+    </div>
+  );
+}
