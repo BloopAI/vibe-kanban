@@ -5,6 +5,8 @@ import {
 } from '@/components/ui-new/views/MigrateSidebar';
 import { MigrateIntroduction } from '@/components/ui-new/views/MigrateIntroduction';
 import { MigrateChooseProjectsContainer } from '@/components/ui-new/containers/MigrateChooseProjectsContainer';
+import { MigrateMigrateContainer } from '@/components/ui-new/containers/MigrateMigrateContainer';
+import { MigrateFinishContainer } from '@/components/ui-new/containers/MigrateFinishContainer';
 
 interface MigrationData {
   orgId: string;
@@ -40,20 +42,25 @@ export function MigrateLayout() {
           />
         );
       case 'migrate':
+        if (!migrationData) {
+          return null;
+        }
         return (
-          <div className="p-base text-normal">
-            Migrate step - Coming soon
-            {migrationData && (
-              <div className="mt-base text-sm text-low">
-                Migrating {migrationData.projectIds.length} project(s) to org{' '}
-                {migrationData.orgId}
-              </div>
-            )}
-          </div>
+          <MigrateMigrateContainer
+            orgId={migrationData.orgId}
+            projectIds={migrationData.projectIds}
+            onContinue={() => setCurrentStep('finish')}
+          />
         );
       case 'finish':
+        if (!migrationData) {
+          return null;
+        }
         return (
-          <div className="p-base text-normal">Finish step - Coming soon</div>
+          <MigrateFinishContainer
+            projectIds={migrationData.projectIds}
+            onMigrateMore={() => setCurrentStep('choose-projects')}
+          />
         );
       default:
         return null;
