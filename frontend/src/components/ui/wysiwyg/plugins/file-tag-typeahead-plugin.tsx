@@ -206,6 +206,12 @@ export function FileTagTypeaheadPlugin({
               const pathNode = $createTextNode(fullPath);
               pathNode.toggleFormat('code');
               pathParagraph.append(pathNode);
+
+              // Add trailing space with cleared formatting to allow escaping inline code
+              const trailingSpace = $createTextNode(' ');
+              trailingSpace.setFormat(0);
+              pathParagraph.append(trailingSpace);
+
               root.append(pathParagraph);
             }
           }
