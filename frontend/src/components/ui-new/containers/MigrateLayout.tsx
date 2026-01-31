@@ -17,7 +17,9 @@ export function MigrateLayout() {
         );
       case 'login':
         return (
-          <MigrateLoginStep onContinue={() => setCurrentStep('choose-projects')} />
+          <MigrateLoginStep
+            onContinue={() => setCurrentStep('choose-projects')}
+          />
         );
       case 'choose-projects':
         return (

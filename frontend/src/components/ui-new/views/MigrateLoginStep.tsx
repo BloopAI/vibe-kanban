@@ -74,7 +74,10 @@ export function MigrateLoginStep({ onContinue }: MigrateLoginStepProps) {
 
       {/* CTA */}
       <div className="flex justify-end">
-        <PrimaryButton onClick={() => void handleSignIn()} actionIcon={SignInIcon}>
+        <PrimaryButton
+          onClick={() => void handleSignIn()}
+          actionIcon={SignInIcon}
+        >
           Sign In
         </PrimaryButton>
       </div>
