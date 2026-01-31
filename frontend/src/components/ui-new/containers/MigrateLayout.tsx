@@ -3,7 +3,7 @@ import {
   MigrateSidebar,
   type MigrationStep,
 } from '@/components/ui-new/views/MigrateSidebar';
-import { MigrateIntroduction } from '@/components/ui-new/views/MigrateIntroduction';
+import { MigrateIntroductionContainer } from '@/components/ui-new/containers/MigrateIntroductionContainer';
 import { MigrateChooseProjectsContainer } from '@/components/ui-new/containers/MigrateChooseProjectsContainer';
 import { MigrateMigrateContainer } from '@/components/ui-new/containers/MigrateMigrateContainer';
 import { MigrateFinishContainer } from '@/components/ui-new/containers/MigrateFinishContainer';
@@ -31,7 +31,7 @@ export function MigrateLayout() {
     switch (currentStep) {
       case 'introduction':
         return (
-          <MigrateIntroduction
+          <MigrateIntroductionContainer
             onContinue={() => setCurrentStep('choose-projects')}
           />
         );

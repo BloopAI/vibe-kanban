@@ -8,10 +8,9 @@ import {
   SignInIcon,
 } from '@phosphor-icons/react';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
-import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 
 interface MigrateIntroductionProps {
-  onContinue: () => void;
+  onSignIn: () => void;
 }
 
 const features = [
@@ -60,14 +59,7 @@ const features = [
   },
 ];
 
-export function MigrateIntroduction({ onContinue }: MigrateIntroductionProps) {
-  const handleSignIn = async () => {
-    const profile = await OAuthDialog.show();
-    if (profile) {
-      onContinue();
-    }
-  };
-
+export function MigrateIntroduction({ onSignIn }: MigrateIntroductionProps) {
   return (
     <div className="max-w-2xl mx-auto py-double px-base">
       {/* Header section */}
@@ -119,10 +111,7 @@ export function MigrateIntroduction({ onContinue }: MigrateIntroductionProps) {
         <p className="text-sm text-normal mb-base">
           Sign in to migrate your local projects.
         </p>
-        <PrimaryButton
-          onClick={() => void handleSignIn()}
-          actionIcon={SignInIcon}
-        >
+        <PrimaryButton onClick={onSignIn} actionIcon={SignInIcon}>
           Sign In
         </PrimaryButton>
       </div>
