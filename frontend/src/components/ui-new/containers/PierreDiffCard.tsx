@@ -170,6 +170,34 @@ function mapAnnotationSideToSplitSide(side: AnnotationSide): DiffSide {
   return side === 'deletions' ? DiffSide.Old : DiffSide.New;
 }
 
+/**
+ * Extracts a specific line from file content.
+ * Line numbers are 1-indexed.
+ */
+function getLineContent(
+  content: string | null,
+  lineNumber: number
+): string | undefined {
+  if (!content) return undefined;
+  const lines = content.split('\n');
+  // Line numbers are 1-indexed
+  const index = lineNumber - 1;
+  if (index < 0 || index >= lines.length) return undefined;
+  return lines[index];
+}
+
+/**
+ * Gets the code line content for a review comment based on side and line number.
+ */
+function getCodeLineForComment(
+  diff: Diff,
+  lineNumber: number,
+  side: DiffSide
+): string | undefined {
+  const content = side === DiffSide.Old ? diff.oldContent : diff.newContent;
+  return getLineContent(content, lineNumber);
+}
+
 export function PierreDiffCard({
   diff,
   expanded,
@@ -316,11 +344,17 @@ export function PierreDiffCard({
       if (metadata.type === 'github') {
         const githubComment = metadata.comment;
         const handleCopyToUserComment = () => {
+          const codeLine = getCodeLineForComment(
+            diff,
+            githubComment.lineNumber,
+            githubComment.side
+          );
           addComment({
             filePath,
             lineNumber: githubComment.lineNumber,
             side: githubComment.side,
             text: githubComment.body,
+            ...(codeLine !== undefined ? { codeLine } : {}),
           });
         };
         return (
@@ -338,7 +372,7 @@ export function PierreDiffCard({
         />
       );
     },
-    [projectId, filePath, addComment]
+    [projectId, filePath, addComment, diff]
   );
 
   // Handle line click to add comment
@@ -351,14 +385,16 @@ export function PierreDiffCard({
       // Don't create a new draft if one already exists
       if (drafts[widgetKey]) return;
 
+      const codeLine = getCodeLineForComment(diff, lineNumber, splitSide);
       setDraft(widgetKey, {
         filePath,
         side: splitSide,
         lineNumber,
         text: '',
+        ...(codeLine !== undefined ? { codeLine } : {}),
       });
     },
-    [filePath, drafts, setDraft]
+    [filePath, drafts, setDraft, diff]
   );
 
   const renderHoverUtility = useCallback(
@@ -380,11 +416,13 @@ export function PierreDiffCard({
 
             if (drafts[widgetKey]) return;
 
+            const codeLine = getCodeLineForComment(diff, lineNumber, splitSide);
             setDraft(widgetKey, {
               filePath,
               side: splitSide,
               lineNumber,
               text: '',
+              ...(codeLine !== undefined ? { codeLine } : {}),
             });
           }}
           title={t('comments.addReviewComment')}
@@ -393,7 +431,7 @@ export function PierreDiffCard({
         </button>
       );
     },
-    [filePath, drafts, setDraft, t]
+    [filePath, drafts, setDraft, t, diff]
   );
 
   const fileDiffOptions = useMemo(
