@@ -15,7 +15,20 @@ const benefits = [
   {
     icon: CloudIcon,
     title: 'Secure Cloud Storage',
-    description: 'Your tasks now live on our secure cloud infrastructure.',
+    description: (
+      <>
+        Your tasks now live on our secure cloud infrastructure. You can also{' '}
+        <a
+          href="https://github.com/BloopAI/vibe-kanban"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-brand hover:underline"
+        >
+          self-host your own task server
+        </a>
+        .
+      </>
+    ),
   },
   {
     icon: UsersIcon,
