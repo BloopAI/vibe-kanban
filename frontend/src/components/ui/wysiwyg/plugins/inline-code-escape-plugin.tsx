@@ -96,7 +96,9 @@ export function InlineCodeEscapePlugin() {
           }
         }
 
-        console.log('[ICEP] No case matched, returning false (default behavior)');
+        console.log(
+          '[ICEP] No case matched, returning false (default behavior)'
+        );
         return false;
       },
       COMMAND_PRIORITY_HIGH
