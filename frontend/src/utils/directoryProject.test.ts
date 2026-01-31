@@ -15,6 +15,7 @@ const makeProject = (
   default_agent_working_dir: null,
   remote_project_id: null,
   working_directory: null,
+  auto_run_enabled: false,
   created_at: new Date(),
   updated_at: new Date(),
   ...overrides,

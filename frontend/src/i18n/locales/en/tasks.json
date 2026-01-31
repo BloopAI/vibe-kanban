@@ -23,6 +23,10 @@
   "actions": {
     "addTask": "Add task"
   },
+  "kanban": {
+    "autoRun": "Auto Run",
+    "autoRunTooltip": "Automatically execute tasks moved to In Progress"
+  },
   "filters": {
     "sharedToggleAria": "Toggle shared tasks",
     "sharedToggleTooltip": "Show/hide shared content"

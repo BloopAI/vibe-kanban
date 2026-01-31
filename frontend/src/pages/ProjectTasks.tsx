@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
-import { tasksApi } from '@/lib/api';
+import { tasksApi, projectsApi, attemptsApi } from '@/lib/api';
 import type { RepoBranchStatus, Workspace } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
@@ -14,6 +14,8 @@ import { showcases } from '@/config/showcases';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useWorkspaceCount } from '@/hooks/useWorkspaceCount';
 import { usePostHog } from 'posthog-js/react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useProjectRepos } from '@/hooks/useProjectRepos';
 
 import { useSearch } from '@/contexts/SearchContext';
 import { useProject } from '@/contexts/ProjectContext';
@@ -143,9 +145,24 @@ export function ProjectTasks() {
 
   const {
     projectId,
+    project,
     isLoading: projectLoading,
     error: projectError,
   } = useProject();
+
+  const queryClient = useQueryClient();
+  const { data: projectRepos = [] } = useProjectRepos(projectId);
+  const isDirectoryOnly =
+    project?.working_directory != null && projectRepos.length === 0;
+
+  const handleAutoRunToggle = useCallback(
+    async (enabled: boolean) => {
+      if (!projectId) return;
+      await projectsApi.update(projectId, { auto_run_enabled: enabled });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+    [projectId, queryClient]
+  );
 
   useEffect(() => {
     enableScope(Scope.KANBAN);
@@ -709,11 +726,37 @@ export function ProjectTasks() {
           parent_workspace_id: task.parent_workspace_id,
           image_ids: null,
         });
+
+        // Auto-run: if moving to inprogress from todo and auto_run is enabled
+        if (
+          newStatus === 'inprogress' &&
+          task.status === 'todo' &&
+          project?.auto_run_enabled &&
+          config?.executor_profile
+        ) {
+          const repos = isDirectoryOnly
+            ? []
+            : projectRepos
+                .filter((r) => r.default_target_branch)
+                .map((r) => ({
+                  repo_id: r.id,
+                  target_branch: r.default_target_branch!,
+                }));
+
+          // Only auto-run if all repos have default branches (or directory-only)
+          if (isDirectoryOnly || repos.length === projectRepos.length) {
+            await attemptsApi.create({
+              task_id: draggedTaskId,
+              executor_profile_id: config.executor_profile,
+              repos,
+            });
+          }
+        }
       } catch (err) {
         console.error('Failed to update task status:', err);
       }
     },
-    [tasksById]
+    [tasksById, project, config, projectRepos, isDirectoryOnly]
   );
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;
@@ -782,6 +825,8 @@ export function ProjectTasks() {
           selectedTaskId={selectedTask?.id}
           onCreateTask={handleCreateNewTask}
           projectId={projectId!}
+          autoRunEnabled={project?.auto_run_enabled ?? false}
+          onAutoRunToggle={handleAutoRunToggle}
         />
       </div>
     );

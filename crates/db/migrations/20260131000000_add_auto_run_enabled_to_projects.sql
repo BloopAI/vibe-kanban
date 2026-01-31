@@ -1,0 +1,1 @@
+ALTER TABLE projects ADD COLUMN auto_run_enabled BOOLEAN NOT NULL DEFAULT 0;
