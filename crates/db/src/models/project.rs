@@ -40,8 +40,10 @@ pub struct CreateProject {
 
 #[derive(Debug, Deserialize, TS)]
 pub struct UpdateProject {
+    #[serde(default)]
     #[ts(optional)]
     pub name: Option<String>,
+    #[serde(default)]
     #[ts(optional)]
     pub auto_run_enabled: Option<bool>,
 }

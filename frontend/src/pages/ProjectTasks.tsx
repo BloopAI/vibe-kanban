@@ -14,7 +14,6 @@ import { showcases } from '@/config/showcases';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useWorkspaceCount } from '@/hooks/useWorkspaceCount';
 import { usePostHog } from 'posthog-js/react';
-import { useQueryClient } from '@tanstack/react-query';
 import { useProjectRepos } from '@/hooks/useProjectRepos';
 
 import { useSearch } from '@/contexts/SearchContext';
@@ -150,7 +149,6 @@ export function ProjectTasks() {
     error: projectError,
   } = useProject();
 
-  const queryClient = useQueryClient();
   const { data: projectRepos = [] } = useProjectRepos(projectId);
   const isDirectoryOnly =
     project?.working_directory != null && projectRepos.length === 0;
@@ -159,9 +157,8 @@ export function ProjectTasks() {
     async (enabled: boolean) => {
       if (!projectId) return;
       await projectsApi.update(projectId, { auto_run_enabled: enabled });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
     },
-    [projectId, queryClient]
+    [projectId]
   );
 
   useEffect(() => {
