@@ -1,7 +1,7 @@
 import { electricCollectionOptions } from '@tanstack/electric-db-collection';
 import { createCollection } from '@tanstack/react-db';
 
-import { getCachedToken } from '../api';
+import { tokenManager } from '../auth/tokenManager';
 import { makeRequest, REMOTE_API_URL } from '@/lib/remoteApi';
 import type { EntityDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { CollectionConfig, SyncError } from './types';
@@ -142,7 +142,7 @@ function getAuthenticatedShapeOptions(
     params,
     headers: {
       Authorization: async () => {
-        const token = await getCachedToken();
+        const token = await tokenManager.getToken();
         return token ? `Bearer ${token}` : '';
       },
     },
@@ -155,6 +155,16 @@ function getAuthenticatedShapeOptions(
     onError: (error: { status?: number; message?: string }) => {
       const status = error.status;
       const message = error.message || String(error);
+
+      // Handle 401 by triggering token refresh
+      if (status === 401) {
+        tokenManager.triggerRefresh().catch(() => {
+          // Refresh failed - report the original 401 error
+          reportError({ status, message });
+        });
+        return;
+      }
+
       reportError({ status, message });
     },
   };
