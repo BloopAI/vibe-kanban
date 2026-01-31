@@ -88,7 +88,10 @@ export function MigrateMigrate({
         </div>
 
         <div className="pt-base border-t flex justify-end">
-          <PrimaryButton onClick={onRetry} actionIcon={ArrowCounterClockwiseIcon}>
+          <PrimaryButton
+            onClick={onRetry}
+            actionIcon={ArrowCounterClockwiseIcon}
+          >
             Retry Migration
           </PrimaryButton>
         </div>
