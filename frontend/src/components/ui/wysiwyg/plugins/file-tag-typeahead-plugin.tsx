@@ -175,6 +175,7 @@ export function FileTagTypeaheadPlugin({
 
             // Add a space after the inline code for better UX
             const spaceNode = $createTextNode(' ');
+            spaceNode.setFormat(0); // Clear formatting to allow escaping inline code
             fileNameNode.insertAfter(spaceNode);
             spaceNode.select(1, 1); // Position cursor after the space
 
