@@ -25,6 +25,8 @@ export function CreateChatBoxContainer() {
     selectedProjectId,
     clearDraft,
     hasInitialValue,
+    linkedIssue,
+    clearLinkedIssue,
   } = useCreateMode();
 
   const { createWorkspace } = useCreateWorkspace();
@@ -178,19 +180,27 @@ export function CreateChatBoxContainer() {
     const { title, description } = splitMessageToTitleDescription(message);
 
     await createWorkspace.mutateAsync({
-      task: {
-        project_id: projectId,
-        title,
-        description,
-        status: null,
-        parent_workspace_id: null,
-        image_ids: getImageIds(),
+      data: {
+        task: {
+          project_id: projectId,
+          title,
+          description,
+          status: null,
+          parent_workspace_id: null,
+          image_ids: getImageIds(),
+        },
+        executor_profile_id: effectiveProfile,
+        repos: repos.map((r) => ({
+          repo_id: r.id,
+          target_branch: targetBranches[r.id] ?? 'main',
+        })),
       },
-      executor_profile_id: effectiveProfile,
-      repos: repos.map((r) => ({
-        repo_id: r.id,
-        target_branch: targetBranches[r.id] ?? 'main',
-      })),
+      linkToIssue: linkedIssue
+        ? {
+            remoteProjectId: linkedIssue.remoteProjectId,
+            issueId: linkedIssue.issueId,
+          }
+        : undefined,
     });
 
     // Clear attachments and draft after successful creation
@@ -210,6 +220,7 @@ export function CreateChatBoxContainer() {
     saveAsDefault,
     hasChangedFromDefault,
     updateAndSaveConfig,
+    linkedIssue,
   ]);
 
   // Determine error to display
@@ -281,6 +292,15 @@ export function CreateChatBoxContainer() {
           onPasteFiles={uploadFiles}
           localImages={localImages}
           dropzone={{ getRootProps, getInputProps, isDragActive }}
+          linkedIssue={
+            linkedIssue
+              ? {
+                  simpleId: linkedIssue.simpleId,
+                  title: linkedIssue.title,
+                  onRemove: clearLinkedIssue,
+                }
+              : null
+          }
         />
       </div>
     </div>

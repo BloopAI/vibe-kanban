@@ -160,6 +160,14 @@ function WorkspaceSelectionContent({
           initialPrompt,
           preferredRepos: defaults?.preferredRepos,
           project_id: defaults?.project_id,
+          linkedIssue: issue
+            ? {
+                issueId: issue.id,
+                simpleId: issue.simple_id,
+                title: issue.title,
+                remoteProjectId: projectId,
+              }
+            : null,
         },
       });
     } finally {

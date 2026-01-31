@@ -5,6 +5,13 @@ import { useWorkspaces } from '@/components/ui-new/hooks/useWorkspaces';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 
+interface LinkedIssue {
+  issueId: string;
+  simpleId: string;
+  title: string;
+  remoteProjectId: string;
+}
+
 interface CreateModeContextValue {
   selectedProjectId: string | null;
   setSelectedProjectId: (id: string | null) => void;
@@ -21,6 +28,10 @@ interface CreateModeContextValue {
   clearDraft: () => Promise<void>;
   /** Whether the initial value has been applied from scratch */
   hasInitialValue: boolean;
+  /** Issue to link the workspace to when created */
+  linkedIssue: LinkedIssue | null;
+  /** Clear the linked issue */
+  clearLinkedIssue: () => void;
 }
 
 const CreateModeContext = createContext<CreateModeContextValue | null>(null);
@@ -67,6 +78,8 @@ export function CreateModeProvider({ children }: CreateModeProviderProps) {
       setMessage: state.setMessage,
       clearDraft: state.clearDraft,
       hasInitialValue: state.hasInitialValue,
+      linkedIssue: state.linkedIssue,
+      clearLinkedIssue: state.clearLinkedIssue,
     }),
     [
       state.selectedProjectId,
@@ -83,6 +96,8 @@ export function CreateModeProvider({ children }: CreateModeProviderProps) {
       state.setMessage,
       state.clearDraft,
       state.hasInitialValue,
+      state.linkedIssue,
+      state.clearLinkedIssue,
     ]
   );
 
