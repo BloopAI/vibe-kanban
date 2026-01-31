@@ -175,8 +175,10 @@ export function FileTagTypeaheadPlugin({
 
             // Add a space after the inline code for better UX
             const spaceNode = $createTextNode(' ');
-            spaceNode.setFormat(0); // Clear formatting to allow escaping inline code
             fileNameNode.insertAfter(spaceNode);
+            // setFormat must be called AFTER insertion to prevent Lexical from
+            // re-applying adjacent node formatting during reconciliation
+            spaceNode.setFormat(0);
             spaceNode.select(1, 1); // Position cursor after the space
 
             // Step 2: Check if full path already exists at the bottom
@@ -210,8 +212,10 @@ export function FileTagTypeaheadPlugin({
 
               // Add trailing space with cleared formatting to allow escaping inline code
               const trailingSpace = $createTextNode(' ');
-              trailingSpace.setFormat(0);
               pathParagraph.append(trailingSpace);
+              // setFormat must be called AFTER append to prevent Lexical from
+              // re-applying adjacent node formatting during reconciliation
+              trailingSpace.setFormat(0);
 
               root.append(pathParagraph);
             }

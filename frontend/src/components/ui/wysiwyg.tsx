@@ -28,7 +28,6 @@ import { ReadOnlyLinkPlugin } from './wysiwyg/plugins/read-only-link-plugin';
 import { ClickableCodePlugin } from './wysiwyg/plugins/clickable-code-plugin';
 import { ToolbarPlugin } from './wysiwyg/plugins/toolbar-plugin';
 import { CodeBlockShortcutPlugin } from './wysiwyg/plugins/code-block-shortcut-plugin';
-import { InlineCodeEscapePlugin } from './wysiwyg/plugins/inline-code-escape-plugin';
 import { PasteMarkdownPlugin } from './wysiwyg/plugins/paste-markdown-plugin';
 import { MarkdownSyncPlugin } from './wysiwyg/plugins/markdown-sync-plugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
@@ -290,7 +289,6 @@ function WYSIWYGEditor({
                   </TypeaheadOpenProvider>
                   <ImageKeyboardPlugin />
                   <CodeBlockShortcutPlugin />
-                  <InlineCodeEscapePlugin />
                 </>
               )}
               {/* Link sanitization for read-only mode */}
