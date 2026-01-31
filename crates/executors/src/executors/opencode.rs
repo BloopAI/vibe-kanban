@@ -113,6 +113,7 @@ impl Opencode {
             .env("NPM_CONFIG_LOGLEVEL", "error")
             .env("NODE_NO_WARNINGS", "1")
             .env("NO_COLOR", "1")
+            .env("OPENCODE_SERVER_USERNAME", "opencode")
             .env("OPENCODE_SERVER_PASSWORD", &server_password)
             .args(&args);
 
