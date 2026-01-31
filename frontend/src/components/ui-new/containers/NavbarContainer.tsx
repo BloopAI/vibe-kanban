@@ -97,22 +97,30 @@ export function NavbarContainer() {
     [executeAction, selectedWorkspace?.id]
   );
 
-  // Filter visible actions for each section
+  const isMigratePage = actionCtx.layoutMode === 'migrate';
+
+  // Filter visible actions for each section (empty on migrate page)
   const leftItems = useMemo(
-    () => filterNavbarItems(NavbarActionGroups.left, actionCtx),
-    [actionCtx]
+    () =>
+      isMigratePage ? [] : filterNavbarItems(NavbarActionGroups.left, actionCtx),
+    [actionCtx, isMigratePage]
   );
 
   const rightItems = useMemo(
-    () => filterNavbarItems(NavbarActionGroups.right, actionCtx),
-    [actionCtx]
+    () =>
+      isMigratePage
+        ? []
+        : filterNavbarItems(NavbarActionGroups.right, actionCtx),
+    [actionCtx, isMigratePage]
   );
 
   const navbarTitle = isCreateMode
     ? 'Create Workspace'
-    : isOnProjectPage
-      ? orgName
-      : selectedWorkspace?.branch;
+    : isMigratePage
+      ? 'Migrate'
+      : isOnProjectPage
+        ? orgName
+        : selectedWorkspace?.branch;
 
   return (
     <Navbar
