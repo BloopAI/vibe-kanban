@@ -17,7 +17,10 @@ export function MigrateLayout() {
     null
   );
 
-  const handleChooseProjectsContinue = (orgId: string, projectIds: string[]) => {
+  const handleChooseProjectsContinue = (
+    orgId: string,
+    projectIds: string[]
+  ) => {
     setMigrationData({ orgId, projectIds });
     setCurrentStep('migrate');
   };
