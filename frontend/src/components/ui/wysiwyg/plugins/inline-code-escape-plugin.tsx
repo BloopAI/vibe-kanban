@@ -9,16 +9,6 @@ import {
   COMMAND_PRIORITY_HIGH,
 } from 'lexical';
 
-/**
- * Plugin that helps users escape from inline code formatting.
- * When pressing space at the end of a code-formatted text node,
- * inserts a space with cleared formatting.
- *
- * This works around known Lexical issues where format state is not
- * properly cleared at text node boundaries:
- * - https://github.com/facebook/lexical/issues/5518
- * - https://github.com/facebook/lexical/issues/6781
- */
 export function InlineCodeEscapePlugin() {
   const [editor] = useLexicalComposerContext();
 
@@ -27,20 +17,62 @@ export function InlineCodeEscapePlugin() {
       KEY_SPACE_COMMAND,
       () => {
         const selection = $getSelection();
+        console.log('[ICEP] Space pressed');
+
         if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
+          console.log(
+            '[ICEP] Not range selection or not collapsed, returning false'
+          );
           return false;
         }
 
         const node = selection.anchor.getNode();
-        if (!$isTextNode(node)) return false;
+        if (!$isTextNode(node)) {
+          console.log('[ICEP] Not text node, returning false');
+          return false;
+        }
 
         const offset = selection.anchor.offset;
         const nodeLength = node.getTextContent().length;
         const isAtEnd = offset === nodeLength;
         const hasCodeFormat = node.hasFormat('code');
+        const nodeText = node.getTextContent();
+        const nodeFormat = node.getFormat();
+
+        const prevSibling = node.getPreviousSibling();
+        const nextSibling = node.getNextSibling();
+
+        console.log('[ICEP] Node state:', {
+          nodeText: JSON.stringify(nodeText),
+          nodeFormat,
+          hasCodeFormat,
+          offset,
+          nodeLength,
+          isAtEnd,
+          prevSiblingType: prevSibling ? prevSibling.getType() : null,
+          prevSiblingText:
+            prevSibling && $isTextNode(prevSibling)
+              ? JSON.stringify(prevSibling.getTextContent())
+              : null,
+          prevSiblingHasCode:
+            prevSibling && $isTextNode(prevSibling)
+              ? prevSibling.hasFormat('code')
+              : null,
+          nextSiblingType: nextSibling ? nextSibling.getType() : null,
+          nextSiblingText:
+            nextSibling && $isTextNode(nextSibling)
+              ? JSON.stringify(nextSibling.getTextContent())
+              : null,
+          nextSiblingHasCode:
+            nextSibling && $isTextNode(nextSibling)
+              ? nextSibling.hasFormat('code')
+              : null,
+        });
 
         if (hasCodeFormat && isAtEnd) {
-          // First escape: create a new unformatted space node
+          console.log(
+            '[ICEP] CASE 1: At end of code node, creating escape space'
+          );
           const spaceNode = $createTextNode(' ');
           spaceNode.setFormat(0);
           node.insertAfter(spaceNode);
@@ -48,16 +80,15 @@ export function InlineCodeEscapePlugin() {
           return true;
         }
 
-        // Check if we're in an unformatted node right after a code node
-        // and at the end - append to this node instead of creating a new one
         if (!hasCodeFormat && isAtEnd) {
-          const prevSibling = node.getPreviousSibling();
           if (
             prevSibling &&
             $isTextNode(prevSibling) &&
             prevSibling.hasFormat('code')
           ) {
-            // We're in the escape node, append the space here
+            console.log(
+              '[ICEP] CASE 2: At end of unformatted node after code, appending space'
+            );
             const currentText = node.getTextContent();
             node.setTextContent(currentText + ' ');
             node.select(currentText.length + 1, currentText.length + 1);
@@ -65,6 +96,7 @@ export function InlineCodeEscapePlugin() {
           }
         }
 
+        console.log('[ICEP] No case matched, returning false (default behavior)');
         return false;
       },
       COMMAND_PRIORITY_HIGH
