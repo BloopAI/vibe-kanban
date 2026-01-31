@@ -4,6 +4,7 @@ import {
   type MigrationStep,
 } from '@/components/ui-new/views/MigrateSidebar';
 import { MigrateIntroduction } from '@/components/ui-new/views/MigrateIntroduction';
+import { MigrateLoginStep } from '@/components/ui-new/views/MigrateLoginStep';
 
 export function MigrateLayout() {
   const [currentStep, setCurrentStep] = useState<MigrationStep>('introduction');
@@ -16,7 +17,7 @@ export function MigrateLayout() {
         );
       case 'login':
         return (
-          <div className="p-base text-normal">Login step - Coming soon</div>
+          <MigrateLoginStep onContinue={() => setCurrentStep('choose-projects')} />
         );
       case 'choose-projects':
         return (

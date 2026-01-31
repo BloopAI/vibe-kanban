@@ -105,7 +105,7 @@ export function MigrateIntroduction({ onContinue }: MigrateIntroductionProps) {
       {/* CTA */}
       <div className="flex justify-end">
         <PrimaryButton onClick={onContinue} actionIcon={ArrowRightIcon}>
-          Continue to Login
+          Continue
         </PrimaryButton>
       </div>
     </div>
