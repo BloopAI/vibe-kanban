@@ -195,6 +195,8 @@ export function CreateChatBoxContainer() {
         repo_id: r.id,
         target_branch: targetBranches[r.id] ?? 'main',
       })),
+      // Remote project ID for linking workspace to issue (from linkedIssue)
+      remoteProjectId: linkedIssue?.project_id ?? null,
     });
 
     // Clear attachments and draft after successful creation

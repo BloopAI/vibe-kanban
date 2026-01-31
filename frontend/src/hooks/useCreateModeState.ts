@@ -22,6 +22,7 @@ export interface LinkedIssue {
   issue_id: string;
   simple_id: string;
   title: string;
+  project_id: string; // Remote project ID for linking
 }
 
 interface LocationState {

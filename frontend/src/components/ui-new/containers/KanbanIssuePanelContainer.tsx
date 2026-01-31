@@ -528,11 +528,11 @@ export function KanbanIssuePanelContainer() {
             state: {
               initialPrompt,
               preferredRepos: defaults?.preferredRepos ?? null,
-              project_id: projectId,
               linkedIssue: {
                 issue_id: syncedIssue.id,
                 simple_id: syncedIssue.simple_id,
                 title: syncedIssue.title,
+                project_id: projectId, // Remote project ID for linking
               },
             },
           });

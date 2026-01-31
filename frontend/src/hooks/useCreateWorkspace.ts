@@ -6,22 +6,28 @@ import { taskRelationshipsKeys } from './useTaskRelationships';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import type { CreateAndStartTaskRequest } from 'shared/types';
 
+/** Extended request with optional remote project ID for issue linking */
+interface CreateWorkspaceRequest extends CreateAndStartTaskRequest {
+  /** Remote project ID for linking workspace to remote issue (different from local task.project_id) */
+  remoteProjectId?: string | null;
+}
+
 export function useCreateWorkspace() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const createWorkspace = useMutation({
-    mutationFn: async (data: CreateAndStartTaskRequest) => {
+    mutationFn: async (data: CreateWorkspaceRequest) => {
       const task = await tasksApi.createAndStart(data);
       const workspaces = await attemptsApi.getAll(task.id);
       const workspaceId = workspaces[0]?.id;
 
-      // Link workspace to issue if issue_id was provided
-      if (workspaceId && data.task.issue_id) {
+      // Link workspace to issue if issue_id and remote project ID were provided
+      if (workspaceId && data.task.issue_id && data.remoteProjectId) {
         try {
           await attemptsApi.linkToIssue(
             workspaceId,
-            data.task.project_id,
+            data.remoteProjectId,
             data.task.issue_id
           );
         } catch (err) {
