@@ -117,7 +117,7 @@ export default function UpgradePage() {
         import.meta.env.VITE_APP_BASE_URL || window.location.origin;
       const { url } = await createCheckoutSession(
         selectedOrgId,
-        `${appBase}/upgrade/success?org_id=${selectedOrgId}`,
+        `${appBase}/upgrade/success`,
         `${appBase}/upgrade?org_id=${selectedOrgId}`,
       );
       window.location.href = url;
