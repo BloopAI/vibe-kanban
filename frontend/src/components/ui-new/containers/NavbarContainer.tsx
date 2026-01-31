@@ -102,7 +102,9 @@ export function NavbarContainer() {
   // Filter visible actions for each section (empty on migrate page)
   const leftItems = useMemo(
     () =>
-      isMigratePage ? [] : filterNavbarItems(NavbarActionGroups.left, actionCtx),
+      isMigratePage
+        ? []
+        : filterNavbarItems(NavbarActionGroups.left, actionCtx),
     [actionCtx, isMigratePage]
   );
 
