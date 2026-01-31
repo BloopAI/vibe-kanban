@@ -1,16 +1,11 @@
 import {
   BookOpenIcon,
-  SignInIcon,
   FolderIcon,
   CheckCircleIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
-export type MigrationStep =
-  | 'introduction'
-  | 'login'
-  | 'choose-projects'
-  | 'finish';
+export type MigrationStep = 'introduction' | 'choose-projects' | 'finish';
 
 interface MigrateSidebarProps {
   currentStep: MigrationStep;
@@ -23,7 +18,6 @@ const steps: Array<{
   icon: typeof BookOpenIcon;
 }> = [
   { id: 'introduction', label: 'Introduction', icon: BookOpenIcon },
-  { id: 'login', label: 'Login', icon: SignInIcon },
   { id: 'choose-projects', label: 'Choose projects', icon: FolderIcon },
   { id: 'finish', label: 'Finish', icon: CheckCircleIcon },
 ];

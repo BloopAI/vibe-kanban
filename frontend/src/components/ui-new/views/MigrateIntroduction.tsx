@@ -5,9 +5,12 @@ import {
   TreeStructureIcon,
   GitPullRequestIcon,
   SlidersHorizontalIcon,
-  ArrowRightIcon,
+  CloudIcon,
+  UserIcon,
+  SignInIcon,
 } from '@phosphor-icons/react';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 
 interface MigrateIntroductionProps {
   onContinue: () => void;
@@ -51,7 +54,47 @@ const features = [
   },
 ];
 
+const loginBenefits = [
+  {
+    icon: CloudIcon,
+    title: 'Secure Cloud Storage',
+    description: (
+      <>
+        Your tasks now live on our secure cloud infrastructure. You can also{' '}
+        <a
+          href="https://github.com/BloopAI/vibe-kanban"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-brand hover:underline"
+        >
+          self-host your own task server
+        </a>
+        .
+      </>
+    ),
+  },
+  {
+    icon: UsersIcon,
+    title: 'Collaborative Features',
+    description:
+      'This enables team collaboration, shared projects, and real-time updates.',
+  },
+  {
+    icon: UserIcon,
+    title: 'Personal Organisation',
+    description:
+      'A personal organisation will be created automatically for you when you first sign in.',
+  },
+];
+
 export function MigrateIntroduction({ onContinue }: MigrateIntroductionProps) {
+  const handleSignIn = async () => {
+    const profile = await OAuthDialog.show();
+    if (profile) {
+      onContinue();
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto py-double px-base">
       {/* Header section */}
@@ -102,10 +145,41 @@ export function MigrateIntroduction({ onContinue }: MigrateIntroductionProps) {
         </div>
       </div>
 
+      {/* Sign in section */}
+      <div className="mb-double">
+        <h2 className="text-lg font-medium text-high mb-base">
+          Sign in to get started
+        </h2>
+        <div className="space-y-base">
+          {loginBenefits.map((benefit) => {
+            const Icon = benefit.icon;
+            return (
+              <div key={benefit.title} className="flex items-start gap-base">
+                <div className="p-half bg-panel rounded shrink-0">
+                  <Icon
+                    className="size-icon-sm text-brand"
+                    weight="duotone"
+                  />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-high mb-half">
+                    {benefit.title}
+                  </h3>
+                  <p className="text-sm text-low">{benefit.description}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* CTA */}
       <div className="flex justify-end">
-        <PrimaryButton onClick={onContinue} actionIcon={ArrowRightIcon}>
-          Continue
+        <PrimaryButton
+          onClick={() => void handleSignIn()}
+          actionIcon={SignInIcon}
+        >
+          Sign In
         </PrimaryButton>
       </div>
     </div>
