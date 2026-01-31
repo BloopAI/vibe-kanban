@@ -103,9 +103,10 @@ export function MigrateIntroduction({ onContinue }: MigrateIntroductionProps) {
           Upgrade to Cloud Projects
         </h1>
         <p className="text-base text-normal mb-half">
-          You have been selected as an early user to try our new cloud-based
-          project management. We would love your feedback as we prepare for a
-          wider rollout.
+          Migrate your existing local projects to the cloud. You have been
+          selected as an early user to try our new cloud-based project
+          management. We would love your feedback as we prepare for a wider
+          rollout.
         </p>
         <p className="text-sm text-low">
           Upgrading is currently voluntary but will become mandatory shortly.
@@ -148,7 +149,7 @@ export function MigrateIntroduction({ onContinue }: MigrateIntroductionProps) {
       {/* Sign in section */}
       <div className="mb-double">
         <h2 className="text-lg font-medium text-high mb-base">
-          Sign in to get started
+          Sign in to migrate your projects
         </h2>
         <div className="space-y-base">
           {loginBenefits.map((benefit) => {
