@@ -117,13 +117,13 @@ export function MigrateIntroduction({ onContinue }: MigrateIntroductionProps) {
       {/* CTA */}
       <div className="pt-base border-t">
         <p className="text-sm text-normal mb-base">
-          Sign in with GitHub to migrate your local projects.
+          Sign in to migrate your local projects.
         </p>
         <PrimaryButton
           onClick={() => void handleSignIn()}
           actionIcon={SignInIcon}
         >
-          Sign In with GitHub
+          Sign In
         </PrimaryButton>
       </div>
     </div>
