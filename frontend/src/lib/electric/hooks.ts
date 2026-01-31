@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useLiveQuery } from '@tanstack/react-db';
 import { createEntityCollection } from './collections';
 import { useSyncErrorContext } from '@/contexts/SyncErrorContext';
@@ -25,9 +25,11 @@ export interface MutationResult {
 /**
  * Result of an insert operation, including the created entity data.
  */
-export interface InsertResult<TRow> extends MutationResult {
+export interface InsertResult<TRow> {
   /** The optimistically created entity with generated ID */
   data: TRow;
+  /** Promise that resolves with the synced entity (including server-generated fields) when confirmed by backend */
+  persisted: Promise<TRow>;
 }
 
 /**
@@ -171,6 +173,13 @@ export function useEntity<
   // When disabled, isLoading should be false (not waiting for data)
   const isLoading = enabled ? queryLoading : false;
 
+  // Keep a ref to the latest items for lookup after persistence
+  // This allows insert() to return the synced entity with server-generated fields
+  const itemsRef = useRef<EntityRowType<E>[]>([]);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
   // Expose collection mutation methods with stable callbacks
   // Type assertion needed because TanStack DB collection types are complex
   // TanStack DB mutations return a Transaction with isPersisted.promise
@@ -198,13 +207,19 @@ export function useEntity<
         // When disabled, return no-op result
         return {
           data: dataWithId as EntityRowType<E>,
-          persisted: Promise.resolve(),
+          persisted: Promise.resolve(dataWithId as EntityRowType<E>),
         };
       }
       const tx = typedCollection.insert(dataWithId);
       return {
         data: dataWithId as EntityRowType<E>,
-        persisted: tx.isPersisted.promise,
+        persisted: tx.isPersisted.promise.then(() => {
+          // After persistence confirmed, look up the synced entity with server-generated fields
+          const synced = itemsRef.current.find(
+            (item) => (item as { id: string }).id === dataWithId.id
+          );
+          return (synced ?? dataWithId) as EntityRowType<E>;
+        }),
       };
     },
     [typedCollection]
