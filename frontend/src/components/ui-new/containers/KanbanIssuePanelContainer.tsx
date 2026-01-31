@@ -528,7 +528,7 @@ export function KanbanIssuePanelContainer() {
             state: {
               initialPrompt,
               preferredRepos: defaults?.preferredRepos ?? null,
-              project_id: defaults?.project_id ?? null,
+              project_id: projectId,
               linkedIssue: {
                 issue_id: syncedIssue.id,
                 simple_id: syncedIssue.simple_id,
