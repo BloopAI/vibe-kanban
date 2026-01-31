@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { Repo, ExecutorProfileId } from 'shared/types';
-import { useCreateModeState } from '@/hooks/useCreateModeState';
+import { useCreateModeState, type LinkedIssue } from '@/hooks/useCreateModeState';
 import { useWorkspaces } from '@/components/ui-new/hooks/useWorkspaces';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
@@ -21,6 +21,9 @@ interface CreateModeContextValue {
   clearDraft: () => Promise<void>;
   /** Whether the initial value has been applied from scratch */
   hasInitialValue: boolean;
+  /** Linked issue from kanban board */
+  linkedIssue: LinkedIssue | null;
+  clearLinkedIssue: () => void;
 }
 
 const CreateModeContext = createContext<CreateModeContextValue | null>(null);
@@ -67,6 +70,8 @@ export function CreateModeProvider({ children }: CreateModeProviderProps) {
       setMessage: state.setMessage,
       clearDraft: state.clearDraft,
       hasInitialValue: state.hasInitialValue,
+      linkedIssue: state.linkedIssue,
+      clearLinkedIssue: state.clearLinkedIssue,
     }),
     [
       state.selectedProjectId,
@@ -83,6 +88,8 @@ export function CreateModeProvider({ children }: CreateModeProviderProps) {
       state.setMessage,
       state.clearDraft,
       state.hasInitialValue,
+      state.linkedIssue,
+      state.clearLinkedIssue,
     ]
   );
 

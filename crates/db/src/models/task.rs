@@ -72,6 +72,8 @@ pub struct CreateTask {
     pub status: Option<TaskStatus>,
     pub parent_workspace_id: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
+    /// Remote issue ID to link the workspace to
+    pub issue_id: Option<Uuid>,
 }
 
 impl CreateTask {
@@ -87,6 +89,7 @@ impl CreateTask {
             status: Some(TaskStatus::Todo),
             parent_workspace_id: None,
             image_ids: None,
+            issue_id: None,
         }
     }
 }

@@ -14,7 +14,23 @@ export function useCreateWorkspace() {
     mutationFn: async (data: CreateAndStartTaskRequest) => {
       const task = await tasksApi.createAndStart(data);
       const workspaces = await attemptsApi.getAll(task.id);
-      return { task, workspaceId: workspaces[0]?.id };
+      const workspaceId = workspaces[0]?.id;
+
+      // Link workspace to issue if issue_id was provided
+      if (workspaceId && data.task.issue_id) {
+        try {
+          await attemptsApi.linkToIssue(
+            workspaceId,
+            data.task.project_id,
+            data.task.issue_id
+          );
+        } catch (err) {
+          console.error('Failed to link workspace to issue:', err);
+          // Continue anyway - workspace was created successfully
+        }
+      }
+
+      return { task, workspaceId };
     },
     onSuccess: ({ task, workspaceId }) => {
       // Invalidate task queries

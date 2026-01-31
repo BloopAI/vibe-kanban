@@ -528,6 +528,11 @@ export function KanbanIssuePanelContainer() {
               initialPrompt,
               preferredRepos: defaults?.preferredRepos ?? null,
               project_id: defaults?.project_id ?? null,
+              linkedIssue: {
+                issue_id: newIssue.id,
+                simple_id: newIssue.simple_id,
+                title: newIssue.title,
+              },
             },
           });
           return; // Don't open issue panel since we're navigating away

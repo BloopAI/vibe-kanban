@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { CheckIcon, PaperclipIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { toPrettyCase } from '@/utils/string';
@@ -44,6 +44,7 @@ interface CreateChatBoxProps {
   onPasteFiles?: (files: File[]) => void;
   localImages?: LocalImageMetadata[];
   dropzone?: DropzoneProps;
+  headerRight?: ReactNode;
 }
 
 /**
@@ -65,6 +66,7 @@ export function CreateChatBox({
   onPasteFiles,
   localImages,
   dropzone,
+  headerRight,
 }: CreateChatBoxProps) {
   const { t } = useTranslation('tasks');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -111,6 +113,7 @@ export function CreateChatBox({
       onPasteFiles={onPasteFiles}
       localImages={localImages}
       dropzone={dropzone}
+      headerRight={headerRight}
       headerLeft={
         <>
           <AgentIcon agent={agent} className="size-icon-xl" />

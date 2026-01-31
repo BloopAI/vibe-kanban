@@ -10,6 +10,7 @@ import { getVariantOptions, areProfilesEqual } from '@/utils/executor';
 import { splitMessageToTitleDescription } from '@/utils/string';
 import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
 import { CreateChatBox } from '../primitives/CreateChatBox';
+import { IssueLinkBadge } from '../primitives/IssueLinkBadge';
 
 export function CreateChatBoxContainer() {
   const { t } = useTranslation('common');
@@ -25,6 +26,8 @@ export function CreateChatBoxContainer() {
     selectedProjectId,
     clearDraft,
     hasInitialValue,
+    linkedIssue,
+    clearLinkedIssue,
   } = useCreateMode();
 
   const { createWorkspace } = useCreateWorkspace();
@@ -185,6 +188,7 @@ export function CreateChatBoxContainer() {
         status: null,
         parent_workspace_id: null,
         image_ids: getImageIds(),
+        issue_id: linkedIssue?.issue_id ?? null,
       },
       executor_profile_id: effectiveProfile,
       repos: repos.map((r) => ({
@@ -210,6 +214,7 @@ export function CreateChatBoxContainer() {
     saveAsDefault,
     hasChangedFromDefault,
     updateAndSaveConfig,
+    linkedIssue,
   ]);
 
   // Determine error to display
@@ -281,6 +286,16 @@ export function CreateChatBoxContainer() {
           onPasteFiles={uploadFiles}
           localImages={localImages}
           dropzone={{ getRootProps, getInputProps, isDragActive }}
+          headerRight={
+            linkedIssue && projectId ? (
+              <IssueLinkBadge
+                projectId={projectId}
+                issueId={linkedIssue.issue_id}
+                simpleId={linkedIssue.simple_id}
+                onRemove={clearLinkedIssue}
+              />
+            ) : undefined
+          }
         />
       </div>
     </div>
