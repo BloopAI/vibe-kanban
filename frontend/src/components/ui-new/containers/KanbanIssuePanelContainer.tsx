@@ -491,8 +491,9 @@ export function KanbanIssuePanelContainer() {
           extension_metadata: null,
         });
 
-        // Wait for the issue to be confirmed by the backend before creating related records
-        await persisted;
+        // Wait for the issue to be confirmed by the backend
+        // syncedIssue includes server-generated fields like simple_id
+        const syncedIssue = await persisted;
 
         // Create assignee records for all selected assignees
         displayData.assigneeIds.forEach((userId) => {
@@ -529,9 +530,9 @@ export function KanbanIssuePanelContainer() {
               preferredRepos: defaults?.preferredRepos ?? null,
               project_id: defaults?.project_id ?? null,
               linkedIssue: {
-                issue_id: newIssue.id,
-                simple_id: newIssue.simple_id,
-                title: newIssue.title,
+                issue_id: syncedIssue.id,
+                simple_id: syncedIssue.simple_id,
+                title: syncedIssue.title,
               },
             },
           });

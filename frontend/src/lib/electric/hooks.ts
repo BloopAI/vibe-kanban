@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useLiveQuery } from '@tanstack/react-db';
 import { createEntityCollection } from './collections';
 import { useSyncErrorContext } from '@/contexts/SyncErrorContext';
@@ -25,9 +25,11 @@ export interface MutationResult {
 /**
  * Result of an insert operation, including the created entity data.
  */
-export interface InsertResult<TRow> extends MutationResult {
+export interface InsertResult<TRow> {
   /** The optimistically created entity with generated ID */
   data: TRow;
+  /** Promise that resolves with the synced entity (including server-generated fields) when persisted */
+  persisted: Promise<TRow>;
 }
 
 /**
@@ -168,6 +170,13 @@ export function useEntity<
     return data as unknown as EntityRowType<E>[];
   }, [enabled, collection, data, queryLoading]);
 
+  // Ref to access latest items without adding to callback dependencies
+  // Used by insert() to look up synced entity after persistence
+  const itemsRef = useRef<EntityRowType<E>[]>(items);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
   // When disabled, isLoading should be false (not waiting for data)
   const isLoading = enabled ? queryLoading : false;
 
@@ -198,13 +207,22 @@ export function useEntity<
         // When disabled, return no-op result
         return {
           data: dataWithId as EntityRowType<E>,
-          persisted: Promise.resolve(),
+          persisted: Promise.resolve(dataWithId as EntityRowType<E>),
         };
       }
       const tx = typedCollection.insert(dataWithId);
+
+      // After persistence, look up the synced entity with server-generated fields
+      const persistedWithData = tx.isPersisted.promise.then(() => {
+        const synced = itemsRef.current.find(
+          (item) => (item as { id: string }).id === dataWithId.id
+        );
+        return (synced ?? dataWithId) as EntityRowType<E>;
+      });
+
       return {
         data: dataWithId as EntityRowType<E>,
-        persisted: tx.isPersisted.promise,
+        persisted: persistedWithData,
       };
     },
     [typedCollection]
