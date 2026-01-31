@@ -122,24 +122,6 @@ export function CreateChatBox({
       headerLeft={
         <>
           <AgentIcon agent={agent} className="size-icon-xl" />
-          {linkedIssue && (
-            <div
-              className="inline-flex items-center gap-1 h-6 px-2 bg-panel rounded-sm border text-sm text-normal font-medium whitespace-nowrap"
-              title={linkedIssue.title}
-            >
-              <span className="text-low">#</span>
-              <span className="font-mono text-xs">{linkedIssue.simpleId}</span>
-              <button
-                type="button"
-                onClick={linkedIssue.onRemove}
-                disabled={isSending}
-                className="ml-1 text-low hover:text-error transition-colors disabled:opacity-50"
-                aria-label={`Remove link to ${linkedIssue.simpleId}`}
-              >
-                <XIcon className="size-3" weight="bold" />
-              </button>
-            </div>
-          )}
           <ToolbarDropdown label={executorLabel}>
             <DropdownMenuLabel>{t('conversation.executors')}</DropdownMenuLabel>
             {executor.options.map((exec) => (
@@ -163,6 +145,26 @@ export function CreateChatBox({
             </label>
           )}
         </>
+      }
+      headerRight={
+        linkedIssue && (
+          <div
+            className="inline-flex items-center gap-1 h-6 px-2 bg-panel rounded-sm border text-sm text-normal font-medium whitespace-nowrap"
+            title={linkedIssue.title}
+          >
+            <span className="text-low">#</span>
+            <span className="font-mono text-xs">{linkedIssue.simpleId}</span>
+            <button
+              type="button"
+              onClick={linkedIssue.onRemove}
+              disabled={isSending}
+              className="ml-1 text-low hover:text-error transition-colors disabled:opacity-50"
+              aria-label={`Remove link to ${linkedIssue.simpleId}`}
+            >
+              <XIcon className="size-3" weight="bold" />
+            </button>
+          </div>
+        )
       }
       footerLeft={
         <>
