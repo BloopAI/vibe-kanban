@@ -6,15 +6,34 @@ import { taskRelationshipsKeys } from './useTaskRelationships';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import type { CreateAndStartTaskRequest } from 'shared/types';
 
+interface CreateWorkspaceParams {
+  data: CreateAndStartTaskRequest;
+  linkToIssue?: {
+    remoteProjectId: string;
+    issueId: string;
+  };
+}
+
 export function useCreateWorkspace() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const createWorkspace = useMutation({
-    mutationFn: async (data: CreateAndStartTaskRequest) => {
+    mutationFn: async ({ data, linkToIssue }: CreateWorkspaceParams) => {
       const task = await tasksApi.createAndStart(data);
       const workspaces = await attemptsApi.getAll(task.id);
-      return { task, workspaceId: workspaces[0]?.id };
+      const workspaceId = workspaces[0]?.id;
+
+      // Link to issue if requested
+      if (linkToIssue && workspaceId) {
+        await attemptsApi.linkToIssue(
+          workspaceId,
+          linkToIssue.remoteProjectId,
+          linkToIssue.issueId
+        );
+      }
+
+      return { task, workspaceId };
     },
     onSuccess: ({ task, workspaceId }) => {
       // Invalidate task queries
