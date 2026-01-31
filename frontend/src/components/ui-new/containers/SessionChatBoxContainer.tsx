@@ -604,7 +604,13 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     } catch {
       // Error is handled by mutation
     }
-  }, [pendingApproval, feedbackContext, approveAsync, queryClient, onScrollToBottom]);
+  }, [
+    pendingApproval,
+    feedbackContext,
+    approveAsync,
+    queryClient,
+    onScrollToBottom,
+  ]);
 
   // Handle request changes (deny with feedback)
   const handleRequestChanges = useCallback(async () => {
