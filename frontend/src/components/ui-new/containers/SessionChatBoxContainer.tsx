@@ -600,10 +600,11 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
       // Invalidate workspace summary cache to update sidebar
       queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+      onScrollToBottom();
     } catch {
       // Error is handled by mutation
     }
-  }, [pendingApproval, feedbackContext, approveAsync, queryClient]);
+  }, [pendingApproval, feedbackContext, approveAsync, queryClient, onScrollToBottom]);
 
   // Handle request changes (deny with feedback)
   const handleRequestChanges = useCallback(async () => {
@@ -621,6 +622,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
       // Invalidate workspace summary cache to update sidebar
       queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+      onScrollToBottom();
     } catch {
       // Error is handled by mutation
     }
@@ -632,6 +634,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     setLocalMessage,
     clearDraft,
     queryClient,
+    onScrollToBottom,
   ]);
 
   // Check if approval is timed out
