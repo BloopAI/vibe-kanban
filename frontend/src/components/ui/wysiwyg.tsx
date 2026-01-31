@@ -12,7 +12,6 @@ import {
   PR_COMMENT_TRANSFORMER,
   PR_COMMENT_EXPORT_TRANSFORMER,
 } from './wysiwyg/nodes/pr-comment-node';
-import { CODE_BLOCK_TRANSFORMER } from './wysiwyg/transformers/code-block-transformer';
 import { TABLE_TRANSFORMER } from './wysiwyg/transformers/table-transformer';
 import {
   TaskAttemptContext,
@@ -187,14 +186,13 @@ function WYSIWYGEditor({
     []
   );
 
-  // Extended transformers with image, PR comment, and code block support (memoized to prevent unnecessary re-renders)
+  // Extended transformers with image, PR comment, and table support (memoized to prevent unnecessary re-renders)
   const extendedTransformers: Transformer[] = useMemo(
     () => [
       TABLE_TRANSFORMER,
       IMAGE_TRANSFORMER,
       PR_COMMENT_EXPORT_TRANSFORMER, // Export transformer for DecoratorNode (must be before import transformer)
       PR_COMMENT_TRANSFORMER, // Import transformer for fenced code block
-      CODE_BLOCK_TRANSFORMER,
       ...TRANSFORMERS,
     ],
     []
