@@ -4,11 +4,13 @@ const TOKEN_QUERY_KEY = ['auth', 'token'] as const;
 const TOKEN_STALE_TIME = 90 * 1000; // 90 seconds (must be < 120s backend token TTL)
 
 type RefreshStateCallback = (isRefreshing: boolean) => void;
+type PauseableShape = { pause: () => void; resume: () => void };
 
 class TokenManager {
   private isRefreshing = false;
   private refreshPromise: Promise<string | null> | null = null;
   private subscribers = new Set<RefreshStateCallback>();
+  private pauseableShapes = new Set<PauseableShape>();
 
   /**
    * Get the current access token.
@@ -42,23 +44,33 @@ class TokenManager {
    *
    * Returns the new token (or null if refresh failed).
    */
-  async triggerRefresh(): Promise<string | null> {
-    // If already refreshing, return the existing promise
+  triggerRefresh(): Promise<string | null> {
+    // If already refreshing, return the existing promise (deduplication)
     if (this.refreshPromise) {
       return this.refreshPromise;
     }
 
-    // Set refreshing state and notify subscribers
-    this.setRefreshing(true);
+    // CRITICAL: Assign promise SYNCHRONOUSLY before any async work.
+    // This prevents race conditions when multiple 401 handlers call
+    // triggerRefresh() nearly simultaneously - they all get the same promise.
+    this.refreshPromise = this.doRefresh();
+    return this.refreshPromise;
+  }
 
-    this.refreshPromise = this.performRefresh();
-
-    try {
-      return await this.refreshPromise;
-    } finally {
-      this.refreshPromise = null;
-      this.setRefreshing(false);
+  /**
+   * Register an Electric shape for pause/resume during token refresh.
+   * When refresh starts, all shapes are paused to prevent 401 spam.
+   * When refresh completes, shapes are resumed.
+   *
+   * Returns an unsubscribe function.
+   */
+  registerShape(shape: PauseableShape): () => void {
+    this.pauseableShapes.add(shape);
+    // If currently refreshing, pause immediately
+    if (this.isRefreshing) {
+      shape.pause();
     }
+    return () => this.pauseableShapes.delete(shape);
   }
 
   /**
@@ -77,27 +89,50 @@ class TokenManager {
     return () => this.subscribers.delete(callback);
   }
 
-  private setRefreshing(value: boolean): void {
-    this.isRefreshing = value;
-    this.subscribers.forEach((cb) => cb(value));
-  }
+  private async doRefresh(): Promise<string | null> {
+    this.setRefreshing(true);
+    this.pauseShapes();
 
-  private async performRefresh(): Promise<string | null> {
-    const { queryClient } = await import('../../main');
-
-    // Invalidate the cache to force a fresh fetch
-    await queryClient.invalidateQueries({ queryKey: TOKEN_QUERY_KEY });
-
-    // Fetch fresh token
     try {
+      const { queryClient } = await import('../../main');
+
+      // Invalidate the cache to force a fresh fetch
+      await queryClient.invalidateQueries({ queryKey: TOKEN_QUERY_KEY });
+
+      // Fetch fresh token
       const data = await queryClient.fetchQuery({
         queryKey: TOKEN_QUERY_KEY,
         queryFn: () => oauthApi.getToken(),
         staleTime: TOKEN_STALE_TIME,
       });
-      return data?.access_token ?? null;
+
+      const token = data?.access_token ?? null;
+      if (token) {
+        this.resumeShapes();
+      }
+      return token;
     } catch {
       return null;
+    } finally {
+      this.refreshPromise = null;
+      this.setRefreshing(false);
+    }
+  }
+
+  private setRefreshing(value: boolean): void {
+    this.isRefreshing = value;
+    this.subscribers.forEach((cb) => cb(value));
+  }
+
+  private pauseShapes(): void {
+    for (const shape of this.pauseableShapes) {
+      shape.pause();
+    }
+  }
+
+  private resumeShapes(): void {
+    for (const shape of this.pauseableShapes) {
+      shape.resume();
     }
   }
 }
