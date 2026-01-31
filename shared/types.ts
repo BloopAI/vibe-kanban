@@ -575,6 +575,54 @@ export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry
 
 export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;
 
+export type Swarm = { id: string, name: string, description: string | null, status: SwarmStatus, project_id: string | null, created_at: Date, updated_at: Date, };
+
+export type SwarmStatus = "active" | "paused" | "stopped";
+
+export type CreateSwarm = { name: string, description: string | null, project_id: string | null, };
+
+export type UpdateSwarm = { name: string | null, description: string | null, status: SwarmStatus | null, };
+
+export type SwarmConfig = { id: string, daytona_api_url: string | null, daytona_api_key: string | null, pool_max_sandboxes: number, pool_idle_timeout_minutes: number, pool_default_snapshot: string, anthropic_api_key: string | null, skills_path: string, git_auto_commit: boolean, git_auto_push: boolean, git_token: string | null, trigger_enabled: boolean, trigger_poll_interval_seconds: number, trigger_execution_timeout_minutes: number, trigger_max_retries: number, updated_at: Date, };
+
+export type SwarmConfigWithMaskedSecrets = { has_daytona_api_key: boolean, has_anthropic_api_key: boolean, has_git_token: boolean, id: string, daytona_api_url: string | null, daytona_api_key: string | null, pool_max_sandboxes: number, pool_idle_timeout_minutes: number, pool_default_snapshot: string, anthropic_api_key: string | null, skills_path: string, git_auto_commit: boolean, git_auto_push: boolean, git_token: string | null, trigger_enabled: boolean, trigger_poll_interval_seconds: number, trigger_execution_timeout_minutes: number, trigger_max_retries: number, updated_at: Date, };
+
+export type UpdateSwarmConfig = { daytona_api_url: string | null, daytona_api_key: string | null, pool_max_sandboxes: number | null, pool_idle_timeout_minutes: number | null, pool_default_snapshot: string | null, anthropic_api_key: string | null, skills_path: string | null, git_auto_commit: boolean | null, git_auto_push: boolean | null, git_token: string | null, trigger_enabled: boolean | null, trigger_poll_interval_seconds: number | null, trigger_execution_timeout_minutes: number | null, trigger_max_retries: number | null, };
+
+export type SwarmChat = { id: string, swarm_id: string, sender_type: SenderType, sender_id: string | null, message: string, metadata: string | null, created_at: Date, };
+
+export type SenderType = "system" | "user" | "sandbox";
+
+export type CreateSwarmChat = { swarm_id: string, sender_type: SenderType, sender_id: string | null, message: string, metadata: string | null, };
+
+export type Sandbox = { id: string, daytona_id: string, swarm_id: string | null, status: SandboxStatus, current_task_id: string | null, created_at: Date, last_used_at: Date | null, };
+
+export type SandboxStatus = "idle" | "busy" | "destroyed";
+
+export type CreateSandbox = { daytona_id: string, swarm_id: string | null, };
+
+export type SwarmTask = { id: string, swarm_id: string, title: string, description: string | null, status: SwarmTaskStatus, priority: TaskPriority, sandbox_id: string | null, depends_on: Array<string> | null, triggers_after: Array<string> | null, result: string | null, error: string | null, tags: Array<string>, started_at: Date | null, completed_at: Date | null, created_at: Date, updated_at: Date, };
+
+export type SwarmTaskStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
+
+export type TaskPriority = "low" | "medium" | "high" | "urgent";
+
+export type CreateSwarmTask = { title: string, description: string | null, priority: TaskPriority | null, depends_on: Array<string> | null, tags: Array<string> | null, };
+
+export type UpdateSwarmTask = { title: string | null, description: string | null, status: SwarmTaskStatus | null, priority: TaskPriority | null, sandbox_id: string | null, depends_on: Array<string> | null, triggers_after: Array<string> | null, result: string | null, error: string | null, tags: Array<string> | null, };
+
+export type TaskStatusCounts = { pending: number, running: number, completed: number, failed: number, cancelled: number, };
+
+export type PoolStatus = { config: PoolConfig, sandboxes: Array<SandboxInfo>, stats: PoolStats, };
+
+export type PoolConfig = { max_sandboxes: number, idle_timeout_minutes: number, default_snapshot: string, };
+
+export type PoolStats = { total: number, busy: number, idle: number, destroyed: number, };
+
+export type SandboxInfo = { id: string, daytona_id: string, status: SandboxStatus, swarm_id: string | null, task_id: string | null, idle_time_seconds: bigint, created_at: string, };
+
+export type MessageMetadata = { task_id: string | null, sandbox_id: string | null, error: string | null, typing: boolean | null, role: string | null, agent_response: boolean | null, credential_required: string | null, };
+
 export const DEFAULT_PR_DESCRIPTION_PROMPT = `Update the PR that was just created with a better title and description.
 The PR number is #{pr_number} and the URL is {pr_url}.
 

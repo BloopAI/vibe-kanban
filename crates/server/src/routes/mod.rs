@@ -2,9 +2,10 @@ use axum::{
     Router,
     routing::{IntoMakeService, get},
 };
+use deployment::Deployment;
 use tower_http::validate_request::ValidateRequestHeaderLayer;
 
-use crate::{DeploymentImpl, middleware};
+use crate::{AppState, DeploymentImpl, middleware};
 
 pub mod approvals;
 pub mod config;
@@ -22,12 +23,16 @@ pub mod projects;
 pub mod repo;
 pub mod scratch;
 pub mod sessions;
+pub mod swarm;
 pub mod tags;
 pub mod task_attempts;
 pub mod tasks;
 pub mod terminal;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
+    // Create AppState for swarm routes
+    let app_state = AppState::new(deployment.db().pool.clone());
+
     // Create routers with different middleware layers
     let base_routes = Router::new()
         .route("/health", get(health::health_check))
@@ -53,9 +58,17 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         ))
         .with_state(deployment);
 
+    // Swarm routes with AppState - apply same origin validation as base routes
+    let swarm_routes = swarm::router(&app_state)
+        .layer(ValidateRequestHeaderLayer::custom(
+            middleware::validate_origin,
+        ))
+        .with_state(app_state);
+
     Router::new()
         .route("/", get(frontend::serve_frontend_root))
         .route("/{*path}", get(frontend::serve_frontend))
         .nest("/api", base_routes)
+        .nest("/api", swarm_routes)
         .into_make_service()
 }

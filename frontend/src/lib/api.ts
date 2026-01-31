@@ -92,6 +92,19 @@ import {
   CreateWorkspaceFromPrBody,
   CreateWorkspaceFromPrResponse,
   CreateFromPrError,
+  // Swarm types
+  Swarm,
+  CreateSwarm,
+  UpdateSwarm,
+  SwarmConfigWithMaskedSecrets,
+  UpdateSwarmConfig,
+  SwarmChat,
+  SenderType,
+  Sandbox,
+  PoolStatus,
+  SwarmTask,
+  CreateSwarmTask,
+  UpdateSwarmTask,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -1355,5 +1368,193 @@ export const queueApi = {
   getStatus: async (sessionId: string): Promise<QueueStatus> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`);
     return handleApiResponse<QueueStatus>(response);
+  },
+};
+
+// Swarm API
+export const swarmApi = {
+  // Swarm CRUD
+  list: async (): Promise<Swarm[]> => {
+    const response = await makeRequest('/api/swarms');
+    return handleApiResponse<Swarm[]>(response);
+  },
+
+  get: async (id: string): Promise<Swarm> => {
+    const response = await makeRequest(`/api/swarms/${id}`);
+    return handleApiResponse<Swarm>(response);
+  },
+
+  create: async (data: CreateSwarm): Promise<Swarm> => {
+    const response = await makeRequest('/api/swarms', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Swarm>(response);
+  },
+
+  update: async (id: string, data: UpdateSwarm): Promise<Swarm> => {
+    const response = await makeRequest(`/api/swarms/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Swarm>(response);
+  },
+
+  delete: async (id: string): Promise<void> => {
+    const response = await makeRequest(`/api/swarms/${id}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  // Swarm lifecycle
+  pause: async (id: string): Promise<Swarm> => {
+    const response = await makeRequest(`/api/swarms/${id}/pause`, {
+      method: 'POST',
+    });
+    return handleApiResponse<Swarm>(response);
+  },
+
+  resume: async (id: string): Promise<Swarm> => {
+    const response = await makeRequest(`/api/swarms/${id}/resume`, {
+      method: 'POST',
+    });
+    return handleApiResponse<Swarm>(response);
+  },
+
+  // Chat
+  getMessages: async (swarmId: string, limit?: number): Promise<SwarmChat[]> => {
+    const params = limit ? `?limit=${limit}` : '';
+    const response = await makeRequest(`/api/swarms/${swarmId}/chat${params}`);
+    return handleApiResponse<SwarmChat[]>(response);
+  },
+
+  postMessage: async (
+    swarmId: string,
+    data: { sender_type: SenderType; sender_id?: string; message: string; metadata?: string }
+  ): Promise<SwarmChat> => {
+    const response = await makeRequest(`/api/swarms/${swarmId}/chat`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<SwarmChat>(response);
+  },
+
+  // Tasks
+  getTasks: async (swarmId: string): Promise<SwarmTask[]> => {
+    const response = await makeRequest(`/api/swarms/${swarmId}/tasks`);
+    return handleApiResponse<SwarmTask[]>(response);
+  },
+
+  createTask: async (swarmId: string, data: CreateSwarmTask): Promise<SwarmTask> => {
+    const response = await makeRequest(`/api/swarms/${swarmId}/tasks`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<SwarmTask>(response);
+  },
+
+  getTask: async (swarmId: string, taskId: string): Promise<SwarmTask> => {
+    const response = await makeRequest(`/api/swarms/${swarmId}/tasks/${taskId}`);
+    return handleApiResponse<SwarmTask>(response);
+  },
+
+  updateTask: async (swarmId: string, taskId: string, data: UpdateSwarmTask): Promise<SwarmTask> => {
+    const response = await makeRequest(`/api/swarms/${swarmId}/tasks/${taskId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<SwarmTask>(response);
+  },
+
+  deleteTask: async (swarmId: string, taskId: string): Promise<void> => {
+    const response = await makeRequest(`/api/swarms/${swarmId}/tasks/${taskId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  retryTask: async (swarmId: string, taskId: string): Promise<SwarmTask> => {
+    const response = await makeRequest(`/api/swarms/${swarmId}/tasks/${taskId}/retry`, {
+      method: 'POST',
+    });
+    return handleApiResponse<SwarmTask>(response);
+  },
+
+  // WebSocket URLs
+  getChatStreamUrl: (swarmId: string): string => `/api/ws/swarms/${swarmId}/chat`,
+
+  getTaskLogsStreamUrl: (swarmId: string, taskId: string): string =>
+    `/api/ws/swarms/${swarmId}/tasks/${taskId}/logs`,
+
+  getPoolStreamUrl: (): string => `/api/ws/pool`,
+};
+
+// Pool API (Sandbox management)
+export const poolApi = {
+  getStatus: async (): Promise<PoolStatus> => {
+    const response = await makeRequest('/api/pool');
+    return handleApiResponse<PoolStatus>(response);
+  },
+
+  getSandbox: async (sandboxId: string): Promise<Sandbox> => {
+    const response = await makeRequest(`/api/pool/${sandboxId}`);
+    return handleApiResponse<Sandbox>(response);
+  },
+
+  destroySandbox: async (sandboxId: string): Promise<void> => {
+    const response = await makeRequest(`/api/pool/${sandboxId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  cleanup: async (): Promise<{ success: boolean; cleaned: number; remaining: number }> => {
+    const response = await makeRequest('/api/pool/cleanup', {
+      method: 'POST',
+    });
+    return handleApiResponse<{ success: boolean; cleaned: number; remaining: number }>(response);
+  },
+};
+
+// Skills API
+export const skillsApi = {
+  list: async (query?: string): Promise<{ skills: Array<{ name: string; type: string; path: string; has_skill_file: boolean; description: string }>; total: number }> => {
+    const params = query ? `?q=${encodeURIComponent(query)}` : '';
+    const response = await makeRequest(`/api/skills${params}`);
+    return handleApiResponse<{ skills: Array<{ name: string; type: string; path: string; has_skill_file: boolean; description: string }>; total: number }>(response);
+  },
+
+  get: async (name: string): Promise<{ name: string; path: string; content: string; files: string[] }> => {
+    const response = await makeRequest(`/api/skills/${encodeURIComponent(name)}`);
+    return handleApiResponse<{ name: string; path: string; content: string; files: string[] }>(response);
+  },
+};
+
+// Swarm Config API
+export const swarmConfigApi = {
+  get: async (): Promise<SwarmConfigWithMaskedSecrets> => {
+    const response = await makeRequest('/api/config/swarm');
+    return handleApiResponse<SwarmConfigWithMaskedSecrets>(response);
+  },
+
+  update: async (data: UpdateSwarmConfig): Promise<SwarmConfigWithMaskedSecrets> => {
+    const response = await makeRequest('/api/config/swarm', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<SwarmConfigWithMaskedSecrets>(response);
+  },
+
+  testConnection: async (): Promise<{ success: boolean; message: string; daytona_version?: string }> => {
+    const response = await makeRequest('/api/config/swarm/test', {
+      method: 'POST',
+    });
+    return handleApiResponse<{ success: boolean; message: string; daytona_version?: string }>(response);
+  },
+
+  getStatus: async (): Promise<{ daytona_connected: boolean; pool_active_count: number; trigger_enabled: boolean; skills_count: number }> => {
+    const response = await makeRequest('/api/config/swarm/status');
+    return handleApiResponse<{ daytona_connected: boolean; pool_active_count: number; trigger_enabled: boolean; skills_count: number }>(response);
   },
 };

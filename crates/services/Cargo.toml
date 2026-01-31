@@ -19,6 +19,7 @@ axum = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 url = "2.5"
+urlencoding = "2.1"
 anyhow = { workspace = true }
 tracing = { workspace = true }
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "sqlite", "sqlite-preupdate-hook", "chrono", "uuid"] }
@@ -54,6 +55,7 @@ sha2 = "0.10"
 fst = "0.4"
 secrecy = "0.10.3"
 moka = { version = "0.12", features = ["future"] }
+shlex = "1.3.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 security-framework = "2"
