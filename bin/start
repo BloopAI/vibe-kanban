@@ -6,4 +6,4 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_ROOT"
 
-exec docker compose up "$@"
+exec docker compose -f docker-compose.dev.yml up "$@"
