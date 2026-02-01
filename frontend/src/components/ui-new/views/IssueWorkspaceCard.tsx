@@ -146,7 +146,9 @@ export function IssueWorkspaceCard({
             <>
               <span className="text-low/50">·</span>
               <span>
-                {t('workspaces.filesChanged', { count: workspace.filesChanged })}
+                {t('workspaces.filesChanged', {
+                  count: workspace.filesChanged,
+                })}
               </span>
             </>
           )}
