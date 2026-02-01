@@ -3,6 +3,7 @@ FROM rust:1.89-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config libssl-dev ca-certificates \
+    libclang-dev cmake build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Install cargo-watch for hot reloading

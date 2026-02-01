@@ -23,40 +23,32 @@ services:
     environment:
       RUST_LOG: debug
       HOST: 0.0.0.0
-      PORT: 3000
+      PORT: 3001
       DISABLE_WORKTREE_CLEANUP: "1"
       # Allow CORS from frontend dev server
       VK_ALLOWED_ORIGINS: http://localhost:5173
     ports:
-      - "3000:3000"
+      - "3001:3001"
     command: cargo watch -w crates -x 'run --bin server'
 
   frontend:
-    image: node:24-alpine
-    working_dir: /app
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend.dev
     volumes:
-      # Mount source code for hot reloading
-      - ./frontend:/app/frontend
+      # Mount source code for hot reloading (only src and public, config is baked in)
+      - ./frontend/src:/app/frontend/src
+      - ./frontend/public:/app/frontend/public
       - ./shared:/app/shared
-      - ./package.json:/app/package.json
-      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
-      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
-      # Cache volumes for faster installs
-      - node-modules:/app/node_modules
-      - frontend-node-modules:/app/frontend/node_modules
-      - pnpm-store:/root/.local/share/pnpm/store
     ports:
       - "5173:5173"
     environment:
-      # Point frontend to backend container
-      VITE_VK_BACKEND_URL: http://localhost:3000
-    command: >
-      sh -c "
-        npm install -g pnpm &&
-        pnpm install &&
-        cd frontend &&
-        pnpm run dev -- --port 5173 --host 0.0.0.0
-      "
+      # Configure Vite ports and backend URL for Docker networking
+      FRONTEND_PORT: "5173"
+      # Bind to all interfaces so Docker can forward the port
+      VITE_HOST: "0.0.0.0"
+      # Use Docker service name for inter-container communication
+      VITE_BACKEND_URL: http://backend:3001
     depends_on:
       - backend
 
@@ -64,6 +56,3 @@ volumes:
   cargo-registry:
   cargo-git:
   target-cache:
-  node-modules:
-  frontend-node-modules:
-  pnpm-store:
