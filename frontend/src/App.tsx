@@ -46,6 +46,7 @@ import { Workspaces } from '@/pages/ui-new/Workspaces';
 import { WorkspacesLanding } from '@/pages/ui-new/WorkspacesLanding';
 import { ElectricTestPage } from '@/pages/ui-new/ElectricTestPage';
 import { ProjectKanban } from '@/pages/ui-new/ProjectKanban';
+import { MigratePage } from '@/pages/ui-new/MigratePage';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
@@ -210,6 +211,9 @@ function AppContent() {
                 path="/projects/:projectId/issues/:issueId"
                 element={<ProjectKanban />}
               />
+
+              {/* Migration route */}
+              <Route path="/migrate" element={<MigratePage />} />
             </Route>
           </SentryRoutes>
         </SearchProvider>

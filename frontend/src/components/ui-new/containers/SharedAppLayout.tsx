@@ -56,6 +56,12 @@ export function SharedAppLayout() {
 
   // Navigate to latest project when org changes
   useEffect(() => {
+    // Skip auto-navigation when on migration flow
+    if (location.pathname.startsWith('/migrate')) {
+      prevOrgIdRef.current = selectedOrgId;
+      return;
+    }
+
     if (
       prevOrgIdRef.current !== null &&
       prevOrgIdRef.current !== selectedOrgId &&
@@ -75,7 +81,7 @@ export function SharedAppLayout() {
     } else if (prevOrgIdRef.current === null && selectedOrgId) {
       prevOrgIdRef.current = selectedOrgId;
     }
-  }, [selectedOrgId, orgProjects, isLoading, navigate]);
+  }, [selectedOrgId, orgProjects, isLoading, navigate, location.pathname]);
 
   // Navigation state for AppBar active indicators
   const isWorkspacesActive = location.pathname.startsWith('/workspaces');
