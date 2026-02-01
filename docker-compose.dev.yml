@@ -1,0 +1,58 @@
+# Development docker-compose with hot reloading
+# Usage: docker compose -f docker-compose.dev.yml up
+#
+# This configuration mounts source code as volumes and runs dev servers
+# with file watching for automatic rebuilds on code changes.
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      # Mount source code for hot reloading
+      - ./crates:/app/crates
+      - ./Cargo.toml:/app/Cargo.toml
+      - ./Cargo.lock:/app/Cargo.lock
+      - ./shared:/app/shared
+      - ./assets:/app/assets
+      # Cache volumes for faster rebuilds
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+      - target-cache:/app/target
+    environment:
+      RUST_LOG: debug
+      HOST: 0.0.0.0
+      PORT: 3001
+      DISABLE_WORKTREE_CLEANUP: "1"
+      # Allow CORS from frontend dev server
+      VK_ALLOWED_ORIGINS: http://localhost:5173
+    ports:
+      - "3001:3001"
+    command: cargo watch -w crates -x 'run --bin server'
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend.dev
+    volumes:
+      # Mount source code for hot reloading (only src and public, config is baked in)
+      - ./frontend/src:/app/frontend/src
+      - ./frontend/public:/app/frontend/public
+      - ./shared:/app/shared
+    ports:
+      - "5173:5173"
+    environment:
+      # Configure Vite ports and backend URL for Docker networking
+      FRONTEND_PORT: "5173"
+      # Bind to all interfaces so Docker can forward the port
+      VITE_HOST: "0.0.0.0"
+      # Use Docker service name for inter-container communication
+      VITE_BACKEND_URL: http://backend:3001
+    depends_on:
+      - backend
+
+volumes:
+  cargo-registry:
+  cargo-git:
+  target-cache:

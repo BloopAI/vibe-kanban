@@ -1,0 +1,24 @@
+services:
+  vibe-kanban:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
+      - RUST_LOG=${RUST_LOG:-info}
+      - VK_ALLOWED_ORIGINS=${VK_ALLOWED_ORIGINS:-}
+    volumes:
+      - repos:/repos
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+
+volumes:
+  repos:

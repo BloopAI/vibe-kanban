@@ -1,0 +1,25 @@
+# Frontend development Dockerfile with hot reloading support
+FROM node:24-alpine
+
+RUN npm install -g pnpm
+
+WORKDIR /app
+
+# Copy package files for dependency installation
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY frontend/package.json ./frontend/
+COPY npx-cli/package.json ./npx-cli/
+
+# Install dependencies with frozen lockfile (no modifications)
+RUN pnpm install --frozen-lockfile
+
+# Copy shared types (needed for frontend build)
+COPY shared ./shared
+
+# Copy frontend config files and source
+COPY frontend ./frontend
+
+WORKDIR /app/frontend
+
+# Default command - run vite dev server
+CMD ["pnpm", "run", "dev", "--", "--port", "5173", "--host", "0.0.0.0"]
