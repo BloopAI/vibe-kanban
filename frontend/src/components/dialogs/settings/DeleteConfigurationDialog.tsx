@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -23,6 +24,7 @@ export type DeleteConfigurationResult = 'deleted' | 'canceled';
 const DeleteConfigurationDialogImpl =
   NiceModal.create<DeleteConfigurationDialogProps>(
     ({ configName, executorType }) => {
+      const { t } = useTranslation(['settings', 'common']);
       const modal = useModal();
       const [isDeleting, setIsDeleting] = useState(false);
       const [error, setError] = useState<string | null>(null);
@@ -57,10 +59,14 @@ const DeleteConfigurationDialogImpl =
         <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Delete Configuration?</DialogTitle>
+              <DialogTitle>
+                {t('settings:settings.agents.deleteConfigDialog.title')}
+              </DialogTitle>
               <DialogDescription>
-                This will permanently remove "{configName}" from the{' '}
-                {executorType} executor. You can't undo this action.
+                {t('settings:settings.agents.deleteConfigDialog.description', {
+                  configName,
+                  executorType,
+                })}
               </DialogDescription>
             </DialogHeader>
 
@@ -76,7 +82,7 @@ const DeleteConfigurationDialogImpl =
                 onClick={handleCancel}
                 disabled={isDeleting}
               >
-                Cancel
+                {t('common:buttons.cancel')}
               </Button>
               <Button
                 variant="destructive"
@@ -86,7 +92,7 @@ const DeleteConfigurationDialogImpl =
                 {isDeleting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Delete
+                {t('common:buttons.delete')}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -324,6 +324,10 @@
         "noResults": "没有匹配的配置",
         "noConfigs": "没有可用的配置",
         "selectConfig": "从侧边栏选择一个配置来查看和编辑其设置。"
+      },
+      "deleteConfigDialog": {
+        "title": "删除配置？",
+        "description": "这将从 {{executorType}} 执行器中永久删除\"{{configName}}\"。此操作无法撤销。"
       }
     },
     "mcp": {

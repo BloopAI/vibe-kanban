@@ -322,7 +322,7 @@ export function Navbar() {
                   ) : (
                     <DropdownMenuItem onSelect={handleOpenOAuth}>
                       <LogIn className="mr-2 h-4 w-4" />
-                      Sign in
+                      {t('common:signIn')}
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>

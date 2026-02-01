@@ -324,6 +324,10 @@
         "noResults": "沒有符合的設定",
         "noConfigs": "沒有可用的設定",
         "selectConfig": "從側邊欄選擇一個設定來查看和編輯其設定。"
+      },
+      "deleteConfigDialog": {
+        "title": "刪除設定？",
+        "description": "這將從 {{executorType}} 執行器中永久刪除「{{configName}}」。此操作無法復原。"
       }
     },
     "mcp": {

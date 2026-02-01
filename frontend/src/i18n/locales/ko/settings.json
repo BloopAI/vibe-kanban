@@ -324,6 +324,10 @@
         "noResults": "일치하는 구성 없음",
         "noConfigs": "사용 가능한 구성 없음",
         "selectConfig": "사이드바에서 구성을 선택하여 설정을 보고 편집하세요."
+      },
+      "deleteConfigDialog": {
+        "title": "구성을 삭제하시겠습니까?",
+        "description": "{{executorType}} 실행자에서 \"{{configName}}\"을(를) 영구적으로 삭제합니다. 이 작업은 되돌릴 수 없습니다."
       }
     },
     "mcp": {

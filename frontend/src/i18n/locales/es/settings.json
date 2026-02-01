@@ -324,6 +324,10 @@
         "noResults": "No se encontraron configuraciones",
         "noConfigs": "No hay configuraciones disponibles",
         "selectConfig": "Selecciona una configuración de la barra lateral para ver y editar sus ajustes."
+      },
+      "deleteConfigDialog": {
+        "title": "¿Eliminar configuración?",
+        "description": "Esto eliminará permanentemente \"{{configName}}\" del ejecutor {{executorType}}. Esta acción no se puede deshacer."
       }
     },
     "mcp": {

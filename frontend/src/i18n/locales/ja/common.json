@@ -173,7 +173,8 @@
     "unlinkConfirmMessage": "このワークスペースを課題からリンク解除してもよろしいですか？ワークスペースは引き続き存在しますが、この課題との関連付けは解除されます。",
     "deleteConfirmMessage": "このワークスペースを削除してもよろしいですか？これにより課題からのリンクが解除され、ローカルワークスペースが削除されます。この操作は元に戻せません。",
     "unlinkError": "ワークスペースのリンク解除に失敗しました",
-    "deleteError": "ワークスペースの削除に失敗しました"
+    "deleteError": "ワークスペースの削除に失敗しました",
+    "filesChanged": "{{count}}ファイル"
   },
   "fileTree": {
     "searchPlaceholder": "ファイルを検索...",
@@ -350,6 +351,7 @@
     "noOrganizationFound": "組織が見つかりません",
     "unassigned": "未割り当て",
     "noTagsAvailable": "利用可能なタグがありません",
+    "createNewIssue": "新しい課題を作成",
     "createNewTag": "新しいタグを作成",
     "searchTags": "タグを検索...",
     "selectColorFor": "色を選択:",
@@ -362,6 +364,7 @@
     "subIssues": "サブ課題",
     "noSubIssues": "サブ課題なし",
     "parentIssue": "親",
+    "subIssueIndicator": "↳",
     "viewTabs": {
       "active": "アクティブ",
       "all": "すべて"

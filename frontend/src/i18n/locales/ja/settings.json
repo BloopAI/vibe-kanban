@@ -324,6 +324,10 @@
         "noResults": "一致する設定がありません",
         "noConfigs": "利用可能な設定がありません",
         "selectConfig": "サイドバーから設定を選択して、その設定を表示・編集できます。"
+      },
+      "deleteConfigDialog": {
+        "title": "設定を削除しますか？",
+        "description": "「{{configName}}」を{{executorType}}エグゼキューターから完全に削除します。この操作は元に戻せません。"
       }
     },
     "mcp": {

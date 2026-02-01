@@ -173,7 +173,8 @@
     "unlinkConfirmMessage": "이 워크스페이스를 이슈에서 연결 해제하시겠습니까? 워크스페이스는 그대로 유지되지만 이 이슈와의 연결이 끊어집니다.",
     "deleteConfirmMessage": "이 워크스페이스를 삭제하시겠습니까? 이슈에서 연결이 해제되고 로컬 워크스페이스가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
     "unlinkError": "워크스페이스 연결 해제 실패",
-    "deleteError": "워크스페이스 삭제 실패"
+    "deleteError": "워크스페이스 삭제 실패",
+    "filesChanged": "{{count}}개 파일"
   },
   "fileTree": {
     "searchPlaceholder": "파일 검색...",
@@ -350,6 +351,7 @@
     "noOrganizationFound": "조직을 찾을 수 없습니다",
     "unassigned": "미할당",
     "noTagsAvailable": "사용 가능한 태그 없음",
+    "createNewIssue": "새 이슈 만들기",
     "createNewTag": "새 태그 만들기",
     "searchTags": "태그 검색...",
     "selectColorFor": "색상 선택:",
@@ -362,6 +364,7 @@
     "subIssues": "하위 이슈",
     "noSubIssues": "하위 이슈 없음",
     "parentIssue": "상위",
+    "subIssueIndicator": "↳",
     "viewTabs": {
       "active": "활성",
       "all": "전체"

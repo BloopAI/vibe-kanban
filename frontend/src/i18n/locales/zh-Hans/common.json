@@ -173,7 +173,8 @@
     "unlinkConfirmMessage": "确定要将此工作区与问题取消关联吗？工作区仍将存在，但不再与此问题关联。",
     "deleteConfirmMessage": "确定要删除此工作区吗？这将取消与问题的关联并删除本地工作区。此操作无法撤销。",
     "unlinkError": "取消关联工作区失败",
-    "deleteError": "删除工作区失败"
+    "deleteError": "删除工作区失败",
+    "filesChanged": "{{count}} 个文件"
   },
   "fileTree": {
     "searchPlaceholder": "搜索文件...",
@@ -350,6 +351,7 @@
     "noOrganizationFound": "未找到组织",
     "unassigned": "未分配",
     "noTagsAvailable": "无可用标签",
+    "createNewIssue": "创建新问题",
     "createNewTag": "创建新标签",
     "searchTags": "搜索标签...",
     "selectColorFor": "选择颜色：",
@@ -362,6 +364,7 @@
     "subIssues": "子任务",
     "noSubIssues": "无子任务",
     "parentIssue": "父级",
+    "subIssueIndicator": "↳",
     "viewTabs": {
       "active": "活动",
       "all": "全部"

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import type { IssuePriority, PullRequest } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
@@ -34,11 +35,15 @@ export const KanbanCardContent = ({
   isLoading = false,
   className,
 }: KanbanCardContentProps) => {
+  const { t } = useTranslation('common');
+
   return (
     <div className={cn('flex flex-col gap-half min-w-0', className)}>
       {/* Row 1: Task ID + sub-issue indicator + loading dots */}
       <div className="flex items-center gap-half">
-        {isSubIssue && <span className="text-sm text-low">↳</span>}
+        {isSubIssue && (
+          <span className="text-sm text-low">{t('kanban.subIssueIndicator')}</span>
+        )}
         <span className="font-ibm-plex-mono text-sm text-low truncate">
           {displayId}
         </span>
