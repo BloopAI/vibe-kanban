@@ -3,7 +3,13 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, Cloud, ExternalLink, Plus, Sparkles } from 'lucide-react';
+import {
+  AlertTriangle,
+  Cloud,
+  ExternalLink,
+  Plus,
+  Sparkles,
+} from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi } from '@/lib/api';
 import type { RepoBranchStatus, Workspace } from 'shared/types';
