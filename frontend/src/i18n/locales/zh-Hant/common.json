@@ -100,6 +100,8 @@
     "createOrganization": "建立組織",
     "orgSettings": "組織設定"
   },
+  "ok": "確定",
+  "error": "錯誤",
   "signIn": "登入",
   "signOut": "登出",
   "devMode": {
@@ -163,7 +165,15 @@
       "placeholder": "輸入工作區名稱",
       "action": "重新命名",
       "renaming": "正在重新命名..."
-    }
+    },
+    "unlinkFromIssue": "從問題取消關聯",
+    "deleteWorkspace": "刪除工作區",
+    "unlink": "取消關聯",
+    "delete": "刪除",
+    "unlinkConfirmMessage": "確定要將此工作區與問題取消關聯嗎？工作區仍將存在，但不再與此問題關聯。",
+    "deleteConfirmMessage": "確定要刪除此工作區嗎？這將取消與問題的關聯並刪除本地工作區。此操作無法復原。",
+    "unlinkError": "取消關聯工作區失敗",
+    "deleteError": "刪除工作區失敗"
   },
   "fileTree": {
     "searchPlaceholder": "搜尋檔案...",
@@ -355,6 +365,11 @@
     "viewTabs": {
       "active": "活動",
       "all": "全部"
+    },
+    "loginRequired": {
+      "title": "需要登入",
+      "description": "請登入以查看此專案。",
+      "action": "登入"
     }
   },
   "syncError": {

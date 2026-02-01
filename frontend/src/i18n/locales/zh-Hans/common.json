@@ -103,6 +103,8 @@
   "navbar": {
     "tryNewUI": "试用新界面"
   },
+  "ok": "确定",
+  "error": "错误",
   "signIn": "登录",
   "signOut": "退出登录",
   "devMode": {
@@ -163,7 +165,15 @@
       "placeholder": "输入工作区名称",
       "action": "重命名",
       "renaming": "正在重命名..."
-    }
+    },
+    "unlinkFromIssue": "从问题取消关联",
+    "deleteWorkspace": "删除工作区",
+    "unlink": "取消关联",
+    "delete": "删除",
+    "unlinkConfirmMessage": "确定要将此工作区与问题取消关联吗？工作区仍将存在，但不再与此问题关联。",
+    "deleteConfirmMessage": "确定要删除此工作区吗？这将取消与问题的关联并删除本地工作区。此操作无法撤销。",
+    "unlinkError": "取消关联工作区失败",
+    "deleteError": "删除工作区失败"
   },
   "fileTree": {
     "searchPlaceholder": "搜索文件...",
@@ -355,6 +365,11 @@
     "viewTabs": {
       "active": "活动",
       "all": "全部"
+    },
+    "loginRequired": {
+      "title": "需要登录",
+      "description": "请登录以查看此项目。",
+      "action": "登录"
     }
   },
   "syncError": {

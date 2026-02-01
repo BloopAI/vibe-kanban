@@ -103,6 +103,8 @@
   "navbar": {
     "tryNewUI": "새로운 UI 사용해보기"
   },
+  "ok": "확인",
+  "error": "오류",
   "signIn": "로그인",
   "signOut": "로그아웃",
   "devMode": {
@@ -163,7 +165,15 @@
       "placeholder": "워크스페이스 이름 입력",
       "action": "이름 변경",
       "renaming": "이름 변경 중..."
-    }
+    },
+    "unlinkFromIssue": "이슈에서 연결 해제",
+    "deleteWorkspace": "워크스페이스 삭제",
+    "unlink": "연결 해제",
+    "delete": "삭제",
+    "unlinkConfirmMessage": "이 워크스페이스를 이슈에서 연결 해제하시겠습니까? 워크스페이스는 그대로 유지되지만 이 이슈와의 연결이 끊어집니다.",
+    "deleteConfirmMessage": "이 워크스페이스를 삭제하시겠습니까? 이슈에서 연결이 해제되고 로컬 워크스페이스가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
+    "unlinkError": "워크스페이스 연결 해제 실패",
+    "deleteError": "워크스페이스 삭제 실패"
   },
   "fileTree": {
     "searchPlaceholder": "파일 검색...",
@@ -355,6 +365,11 @@
     "viewTabs": {
       "active": "활성",
       "all": "전체"
+    },
+    "loginRequired": {
+      "title": "로그인 필요",
+      "description": "이 프로젝트를 보려면 로그인하세요.",
+      "action": "로그인"
     }
   },
   "syncError": {

@@ -103,6 +103,8 @@
   "navbar": {
     "tryNewUI": "essayer la nouvelle interface"
   },
+  "ok": "OK",
+  "error": "Erreur",
   "signIn": "Se connecter",
   "signOut": "Se déconnecter",
   "devMode": {
@@ -163,7 +165,15 @@
       "placeholder": "Saisir le nom de l'espace de travail",
       "action": "Renommer",
       "renaming": "Renommage..."
-    }
+    },
+    "unlinkFromIssue": "Dissocier du problème",
+    "deleteWorkspace": "Supprimer l'espace de travail",
+    "unlink": "Dissocier",
+    "delete": "Supprimer",
+    "unlinkConfirmMessage": "Êtes-vous sûr de vouloir dissocier cet espace de travail du problème ? L'espace de travail existera toujours mais ne sera plus associé à ce problème.",
+    "deleteConfirmMessage": "Êtes-vous sûr de vouloir supprimer cet espace de travail ? Cela le dissociera du problème et supprimera l'espace de travail local. Cette action est irréversible.",
+    "unlinkError": "Échec de la dissociation de l'espace de travail",
+    "deleteError": "Échec de la suppression de l'espace de travail"
   },
   "fileTree": {
     "searchPlaceholder": "Rechercher des fichiers...",
@@ -355,6 +365,11 @@
     "viewTabs": {
       "active": "Actif",
       "all": "Tout"
+    },
+    "loginRequired": {
+      "title": "Connexion requise",
+      "description": "Veuillez vous connecter pour voir ce projet.",
+      "action": "Se connecter"
     }
   },
   "syncError": {

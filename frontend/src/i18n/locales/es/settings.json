@@ -23,7 +23,9 @@
         "mcp": "Servidores MCP",
         "mcpDesc": "Servidores de Protocolo de Contexto de Modelo (MCP)",
         "organizations": "Organization Settings",
-        "organizationsDesc": "Manage organization members and permissions"
+        "organizationsDesc": "Manage organization members and permissions",
+        "remote-projects": "Proyectos Remotos",
+        "remote-projectsDesc": "Gestionar proyectos sincronizados en la nube"
       }
     },
     "general": {
