@@ -1,4 +1,5 @@
 import {
+  ArrowRightIcon,
   UsersIcon,
   TagIcon,
   ChatCircleIcon,
@@ -10,7 +11,8 @@ import {
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 
 interface MigrateIntroductionProps {
-  onSignIn: () => void;
+  isSignedIn: boolean;
+  onAction: () => void;
 }
 
 const features = [
@@ -59,7 +61,10 @@ const features = [
   },
 ];
 
-export function MigrateIntroduction({ onSignIn }: MigrateIntroductionProps) {
+export function MigrateIntroduction({
+  isSignedIn,
+  onAction,
+}: MigrateIntroductionProps) {
   return (
     <div className="max-w-2xl mx-auto py-double px-base">
       {/* Header section */}
@@ -109,10 +114,15 @@ export function MigrateIntroduction({ onSignIn }: MigrateIntroductionProps) {
       {/* CTA */}
       <div className="pt-base border-t">
         <p className="text-sm text-normal mb-base">
-          Sign in to migrate your local projects.
+          {isSignedIn
+            ? 'Continue to select projects to migrate.'
+            : 'Sign in to migrate your local projects.'}
         </p>
-        <PrimaryButton onClick={onSignIn} actionIcon={SignInIcon}>
-          Sign In
+        <PrimaryButton
+          onClick={onAction}
+          actionIcon={isSignedIn ? ArrowRightIcon : SignInIcon}
+        >
+          {isSignedIn ? 'Continue' : 'Sign In'}
         </PrimaryButton>
       </div>
     </div>
