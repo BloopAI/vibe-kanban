@@ -49,36 +49,64 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
     const unregisterPaste = editor.registerCommand(
       PASTE_COMMAND,
       (event) => {
-        if (!(event instanceof ClipboardEvent)) return false;
+        console.log('[PasteMarkdownPlugin] PASTE_COMMAND received');
+
+        if (!(event instanceof ClipboardEvent)) {
+          console.log('[PasteMarkdownPlugin] Not a ClipboardEvent, deferring');
+          return false;
+        }
 
         const clipboardData = event.clipboardData;
-        if (!clipboardData) return false;
+        if (!clipboardData) {
+          console.log('[PasteMarkdownPlugin] No clipboardData, deferring');
+          return false;
+        }
+
+        const hasHtml = !!clipboardData.getData('text/html');
+        const plainText = clipboardData.getData('text/plain');
+        console.log('[PasteMarkdownPlugin] hasHtml:', hasHtml, 'plainText length:', plainText?.length);
 
         // If HTML exists, let default Lexical handling work
-        if (clipboardData.getData('text/html')) return false;
+        if (hasHtml) {
+          console.log('[PasteMarkdownPlugin] HTML detected, deferring to Lexical default');
+          return false;
+        }
 
-        const plainText = clipboardData.getData('text/plain');
-        if (!plainText) return false;
+        if (!plainText) {
+          console.log('[PasteMarkdownPlugin] No plainText, deferring');
+          return false;
+        }
 
         event.preventDefault();
+        console.log('[PasteMarkdownPlugin] Handling paste, shiftHeld:', shiftHeldRef.current);
 
         editor.update(() => {
           const selection = $getSelection();
-          if (!$isRangeSelection(selection)) return;
+          if (!$isRangeSelection(selection)) {
+            console.log('[PasteMarkdownPlugin] Not a RangeSelection, aborting');
+            return;
+          }
+
+          console.log('[PasteMarkdownPlugin] Selection isCollapsed:', selection.isCollapsed());
 
           // CMD+SHIFT+V: Raw paste - insert plain text as-is
           if (shiftHeldRef.current) {
+            console.log('[PasteMarkdownPlugin] Raw paste (shift held)');
             selection.insertRawText(plainText);
             return;
           }
 
           // CMD+V: Convert markdown and insert at cursor
           try {
+            console.log('[PasteMarkdownPlugin] Converting markdown...');
             const tempContainer = $createParagraphNode();
             $convertFromMarkdownString(plainText, transformers, tempContainer);
 
             const nodes = tempContainer.getChildren();
+            console.log('[PasteMarkdownPlugin] Converted nodes count:', nodes.length);
+
             if (nodes.length === 0) {
+              console.log('[PasteMarkdownPlugin] No nodes, inserting raw text');
               selection.insertRawText(plainText);
               return;
             }
@@ -86,11 +114,15 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
             // Detach nodes from temporary container before insertion.
             // $convertFromMarkdownString attaches nodes to tempContainer, but
             // insertNodes() works best with orphan nodes to avoid parent conflicts.
+            console.log('[PasteMarkdownPlugin] Detaching nodes from temp container...');
             nodes.forEach((node) => node.remove());
 
+            console.log('[PasteMarkdownPlugin] Inserting nodes...');
             selection.insertNodes(nodes);
-          } catch {
+            console.log('[PasteMarkdownPlugin] Paste complete');
+          } catch (err) {
             // Fallback to raw text on error
+            console.error('[PasteMarkdownPlugin] Error during paste:', err);
             selection.insertRawText(plainText);
           }
         });
