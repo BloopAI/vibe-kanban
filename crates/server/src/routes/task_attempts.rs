@@ -25,6 +25,7 @@ use axum::{
 use db::models::{
     coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
+    execution_process_logs::ExecutionProcessLogs,
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     project::SearchResult,
     repo::{Repo, RepoError},
@@ -40,6 +41,7 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{CodingAgent, ExecutorError},
+    logs::{NormalizedEntryType, utils::patch::extract_normalized_entry_from_patch},
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
 use git::{ConflictOp, GitCliError, GitServiceError};
@@ -50,7 +52,7 @@ use services::services::{
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::response::ApiResponse;
+use utils::{log_msg::LogMsg, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{
@@ -105,6 +107,37 @@ pub struct UpdateWorkspace {
     pub archived: Option<bool>,
     pub pinned: Option<bool>,
     pub name: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TranscriptQuery {
+    pub session_id: Option<Uuid>,
+    #[serde(default = "default_transcript_limit")]
+    pub limit: i32,
+}
+
+fn default_transcript_limit() -> i32 {
+    100
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct TranscriptResponse {
+    pub workspace_id: Uuid,
+    pub task_id: Uuid,
+    pub task_title: String,
+    pub session_id: Option<Uuid>,
+    pub entries: Vec<TranscriptEntry>,
+    pub total_entries: usize,
+    pub prompt: Option<String>,
+    pub summary: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct TranscriptEntry {
+    pub timestamp: Option<String>,
+    pub entry_type: String,
+    pub content: String,
+    pub tool_name: Option<String>,
 }
 
 pub async fn get_task_attempts(
@@ -1756,6 +1789,132 @@ pub async fn mark_seen(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+/// Get the conversation transcript for a workspace session
+#[axum::debug_handler]
+pub async fn get_transcript(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<TranscriptQuery>,
+) -> Result<ResponseJson<ApiResponse<TranscriptResponse>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    let task = workspace
+        .parent_task(pool)
+        .await?
+        .ok_or(ApiError::Workspace(WorkspaceError::TaskNotFound))?;
+
+    // Get session (specific or latest)
+    let session = match query.session_id {
+        Some(sid) => Session::find_by_id(pool, sid).await?,
+        None => Session::find_latest_by_workspace_id(pool, workspace.id).await?,
+    };
+
+    let Some(session) = session else {
+        return Ok(ResponseJson(ApiResponse::success(TranscriptResponse {
+            workspace_id: workspace.id,
+            task_id: task.id,
+            task_title: task.title,
+            session_id: None,
+            entries: vec![],
+            total_entries: 0,
+            prompt: None,
+            summary: None,
+        })));
+    };
+
+    // Get latest coding agent execution process for this session
+    let execution_process = ExecutionProcess::find_latest_by_session_and_run_reason(
+        pool,
+        session.id,
+        &ExecutionProcessRunReason::CodingAgent,
+    )
+    .await?;
+
+    let Some(execution_process) = execution_process else {
+        return Ok(ResponseJson(ApiResponse::success(TranscriptResponse {
+            workspace_id: workspace.id,
+            task_id: task.id,
+            task_title: task.title,
+            session_id: Some(session.id),
+            entries: vec![],
+            total_entries: 0,
+            prompt: None,
+            summary: None,
+        })));
+    };
+
+    // Get coding agent turn for prompt/summary
+    let coding_agent_turn =
+        CodingAgentTurn::find_by_execution_process_id(pool, execution_process.id).await?;
+
+    // Fetch and parse logs
+    let log_records = ExecutionProcessLogs::find_by_execution_id(pool, execution_process.id).await?;
+    let log_messages = ExecutionProcessLogs::parse_logs(&log_records).unwrap_or_default();
+
+    // Extract NormalizedEntry from JsonPatch messages and collect with index
+    let mut indexed_entries: Vec<(usize, TranscriptEntry)> = vec![];
+
+    for msg in &log_messages {
+        if let LogMsg::JsonPatch(patch) = msg {
+            if let Some((index, normalized_entry)) = extract_normalized_entry_from_patch(patch) {
+                let (entry_type, tool_name) = match &normalized_entry.entry_type {
+                    NormalizedEntryType::UserMessage => ("user_message".to_string(), None),
+                    NormalizedEntryType::UserFeedback { .. } => ("user_feedback".to_string(), None),
+                    NormalizedEntryType::AssistantMessage => ("assistant_message".to_string(), None),
+                    NormalizedEntryType::ToolUse { tool_name, .. } => {
+                        ("tool_use".to_string(), Some(tool_name.clone()))
+                    }
+                    NormalizedEntryType::SystemMessage => ("system_message".to_string(), None),
+                    NormalizedEntryType::ErrorMessage { .. } => ("error_message".to_string(), None),
+                    NormalizedEntryType::Thinking => ("thinking".to_string(), None),
+                    NormalizedEntryType::Loading => ("loading".to_string(), None),
+                    NormalizedEntryType::NextAction { .. } => ("next_action".to_string(), None),
+                };
+
+                indexed_entries.push((
+                    index,
+                    TranscriptEntry {
+                        timestamp: normalized_entry.timestamp,
+                        entry_type,
+                        content: normalized_entry.content,
+                        tool_name,
+                    },
+                ));
+            }
+        }
+    }
+
+    // Sort by index to maintain conversation order
+    indexed_entries.sort_by_key(|(idx, _)| *idx);
+
+    // Deduplicate by index (keep last occurrence for each index, as later entries are updates)
+    let mut seen_indices = std::collections::HashSet::new();
+    let mut deduped_entries: Vec<TranscriptEntry> = vec![];
+    for (idx, entry) in indexed_entries.into_iter().rev() {
+        if seen_indices.insert(idx) {
+            deduped_entries.push(entry);
+        }
+    }
+    deduped_entries.reverse();
+
+    let total_entries = deduped_entries.len();
+
+    // Apply limit
+    let limit = query.limit.max(0) as usize;
+    let entries: Vec<TranscriptEntry> = deduped_entries.into_iter().take(limit).collect();
+
+    Ok(ResponseJson(ApiResponse::success(TranscriptResponse {
+        workspace_id: workspace.id,
+        task_id: task.id,
+        task_title: task.title,
+        session_id: Some(session.id),
+        entries,
+        total_entries,
+        prompt: coding_agent_turn.as_ref().and_then(|t| t.prompt.clone()),
+        summary: coding_agent_turn.as_ref().and_then(|t| t.summary.clone()),
+    })))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
         .route(
@@ -1788,6 +1947,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/search", get(search_workspace_files))
         .route("/first-message", get(get_first_user_message))
         .route("/mark-seen", put(mark_seen))
+        .route("/transcript", get(get_transcript))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_workspace_middleware,
