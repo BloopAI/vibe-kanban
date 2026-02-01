@@ -31,5 +31,7 @@ export function MigrateIntroductionContainer({
     );
   }
 
-  return <MigrateIntroduction isSignedIn={isSignedIn} onAction={handleAction} />;
+  return (
+    <MigrateIntroduction isSignedIn={isSignedIn} onAction={handleAction} />
+  );
 }
