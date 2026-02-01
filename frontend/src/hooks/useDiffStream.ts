@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import type { Diff, PatchType } from 'shared/types';
+import {API_PREFIX} from '@/lib/api'
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 
 interface DiffEntries {
@@ -27,7 +28,7 @@ export const useDiffStream = (
 ): UseDiffStreamResult => {
   const endpoint = (() => {
     if (!attemptId) return undefined;
-    const query = `/api/task-attempts/${attemptId}/diff/ws`;
+    const query = `${API_PREFIX}/task-attempts/${attemptId}/diff/ws`;
     if (typeof options?.statsOnly === 'boolean') {
       const params = new URLSearchParams();
       params.set('stats_only', String(options.statsOnly));

@@ -9,6 +9,7 @@ import {
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { streamJsonPatchEntries } from '@/utils/streamJsonPatchEntries';
+import {API_PREFIX} from '@/lib/api'
 import type {
   AddEntryType,
   ExecutionProcessStateStore,
@@ -61,9 +62,9 @@ export const useConversationHistoryOld = ({
   ) => {
     let url = '';
     if (executionProcess.executor_action.typ.type === 'ScriptRequest') {
-      url = `/api/execution-processes/${executionProcess.id}/raw-logs/ws`;
+      url = `${API_PREFIX}/execution-processes/${executionProcess.id}/raw-logs/ws`;
     } else {
-      url = `/api/execution-processes/${executionProcess.id}/normalized-logs/ws`;
+      url = `${API_PREFIX}/execution-processes/${executionProcess.id}/normalized-logs/ws`;
     }
 
     return new Promise<PatchType[]>((resolve) => {
@@ -383,9 +384,9 @@ export const useConversationHistoryOld = ({
       return new Promise((resolve, reject) => {
         let url = '';
         if (executionProcess.executor_action.typ.type === 'ScriptRequest') {
-          url = `/api/execution-processes/${executionProcess.id}/raw-logs/ws`;
+          url = `${API_PREFIX}/execution-processes/${executionProcess.id}/raw-logs/ws`;
         } else {
-          url = `/api/execution-processes/${executionProcess.id}/normalized-logs/ws`;
+          url = `${API_PREFIX}/execution-processes/${executionProcess.id}/normalized-logs/ws`;
         }
         const controller = streamJsonPatchEntries<PatchType>(url, {
           onEntries(entries) {

@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
+import {API_PREFIX} from '@/lib/api';
 import type { ExecutionProcess } from 'shared/types';
 
 type ExecutionProcessState = {
@@ -32,7 +33,7 @@ export const useExecutionProcesses = (
     if (typeof showSoftDeleted === 'boolean') {
       params.set('show_soft_deleted', String(showSoftDeleted));
     }
-    endpoint = `/api/execution-processes/stream/session/ws?${params.toString()}`;
+    endpoint = `${API_PREFIX}/execution-processes/stream/session/ws?${params.toString()}`;
   }
 
   const initialData = useCallback(

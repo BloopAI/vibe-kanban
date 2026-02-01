@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
+import { API_PREFIX } from '@/lib/api';
 import type { Project } from 'shared/types';
 
 type ProjectsState = {
@@ -15,7 +16,7 @@ export interface UseProjectsResult {
 }
 
 export function useProjects(): UseProjectsResult {
-  const endpoint = '/api/projects/stream/ws';
+  const endpoint = `${API_PREFIX}/projects/stream/ws`;
 
   const initialData = useCallback((): ProjectsState => ({ projects: {} }), []);
 

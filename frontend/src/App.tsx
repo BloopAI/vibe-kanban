@@ -47,6 +47,7 @@ import { ElectricTestPage } from '@/pages/ui-new/ElectricTestPage';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
+const BASENAME = import.meta.env.VITE_BASE?.replace(/\/$/, '') || '';
 function AppContent() {
   const { config, analyticsUserId, updateAndSaveConfig } = useUserSystem();
   const posthog = usePostHog();
@@ -206,7 +207,7 @@ function AppContent() {
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={BASENAME}>
       <UserSystemProvider>
         <ClickedElementsProvider>
           <ProjectProvider>

@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
+import { API_PREFIX } from '@/lib/api';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 
 type TasksState = {
@@ -21,7 +22,7 @@ export interface UseProjectTasksResult {
  * Live updates arrive at /tasks/<id> via add/replace/remove operations.
  */
 export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
-  const endpoint = `/api/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}`;
+  const endpoint = `${API_PREFIX}/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}`;
 
   const initialData = useCallback((): TasksState => ({ tasks: {} }), []);
 

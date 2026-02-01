@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import {API_PREFIX} from '@/lib/api'
 import type { PatchType } from 'shared/types';
 
 type LogEntry = Extract<PatchType, { type: 'STDOUT' } | { type: 'STDERR' }>;
@@ -36,7 +37,7 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = window.location.host;
       const ws = new WebSocket(
-        `${protocol}//${host}/api/execution-processes/${processId}/raw-logs/ws`
+        `${protocol}//${host}/${API_PREFIX}/execution-processes/${processId}/raw-logs/ws`
       );
       wsRef.current = ws;
       isIntentionallyClosed.current = false;
