@@ -172,22 +172,10 @@ export function Navbar() {
               </span>
             </a>
             {project && (
-              <span className="hidden sm:block ml-3 text-base font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap min-w-0">
-                {project.name}
+              <span className="hidden sm:block ml-3 text-lg font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap min-w-0">
+                {'>'} {project.name}
               </span>
             )}
-          </div>
-
-          <div className="hidden sm:flex items-center gap-2">
-            <SearchBar
-              ref={setSearchBarRef}
-              className="shrink-0"
-              value={query}
-              onChange={setQuery}
-              disabled={!active}
-              onClear={clear}
-              project={project || null}
-            />
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-1">
@@ -224,6 +212,17 @@ export function Navbar() {
                       className="h-9 w-9"
                     />
                   )}
+                  <div className="hidden sm:flex">
+                    <SearchBar
+                      ref={setSearchBarRef}
+                      className="shrink-0"
+                      value={query}
+                      onChange={setQuery}
+                      disabled={!active}
+                      onClear={clear}
+                      project={project || null}
+                    />
+                  </div>
                   <Button
                     variant="ghost"
                     size="icon"
