@@ -22,6 +22,7 @@ export function MigrateFinishContainer({
       .map((p) => ({
         localId: p.id,
         localName: p.name,
+        remoteId: p.remote_project_id,
       }));
   }, [projectIds, projects]);
 

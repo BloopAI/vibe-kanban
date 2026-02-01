@@ -10,6 +10,7 @@ import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 interface MigratedProject {
   localId: string;
   localName: string;
+  remoteId: string | null;
 }
 
 interface MigrateFinishProps {
@@ -52,7 +53,11 @@ export function MigrateFinish({
                 {project.localName}
               </span>
               <Link
-                to={`/local-projects/${project.localId}/tasks`}
+                to={
+                  project.remoteId
+                    ? `/projects/${project.remoteId}`
+                    : `/local-projects/${project.localId}/tasks`
+                }
                 className="flex items-center gap-half text-sm text-brand hover:underline"
               >
                 View
