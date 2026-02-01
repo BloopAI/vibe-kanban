@@ -14,7 +14,7 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
-import { TRANSFORMERS, type Transformer } from '@lexical/markdown';
+import { TRANSFORMERS, CODE, type Transformer } from '@lexical/markdown';
 import { ImageNode, IMAGE_TRANSFORMER } from './wysiwyg/nodes/image-node';
 import {
   PrCommentNode,
@@ -244,7 +244,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         IMAGE_TRANSFORMER,
         PR_COMMENT_EXPORT_TRANSFORMER, // Export transformer for DecoratorNode (must be before import transformer)
         PR_COMMENT_TRANSFORMER, // Import transformer for fenced code block
-        CODE_BLOCK_TRANSFORMER,
+        CODE,
         ...TRANSFORMERS,
       ],
       []
