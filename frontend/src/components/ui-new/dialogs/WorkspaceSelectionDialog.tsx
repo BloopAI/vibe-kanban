@@ -178,6 +178,7 @@ function WorkspaceSelectionContent({
     navigate,
     getIssue,
     issueId,
+    projectId,
     workspaces,
     isLinking,
     activeWorkspaces,
