@@ -1,12 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
   PASTE_COMMAND,
   COMMAND_PRIORITY_LOW,
   $getSelection,
   $isRangeSelection,
-  $getRoot,
-  $isElementNode,
+  $createParagraphNode,
 } from 'lexical';
 import {
   $convertFromMarkdownString,
@@ -18,14 +17,36 @@ type Props = {
 };
 
 /**
- * Plugin that converts pasted plain text as markdown.
- * Handles PASTE_COMMAND events and converts markdown syntax to Lexical nodes.
+ * Plugin that handles paste with markdown conversion.
+ *
+ * Behavior:
+ * - CMD+V with HTML: Let default Lexical handling work
+ * - CMD+V with plain text: Convert markdown to formatted nodes, insert at cursor
+ * - CMD+SHIFT+V: Insert plain text as-is (raw paste)
  */
 export function PasteMarkdownPlugin({ transformers }: Props) {
   const [editor] = useLexicalComposerContext();
+  const shiftHeldRef = useRef(false);
 
   useEffect(() => {
-    return editor.registerCommand(
+    const rootElement = editor.getRootElement();
+    if (!rootElement) return;
+
+    // Track Shift key state during paste shortcut
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {
+        shiftHeldRef.current = e.shiftKey;
+      }
+    };
+
+    const handleKeyUp = () => {
+      shiftHeldRef.current = false;
+    };
+
+    rootElement.addEventListener('keydown', handleKeyDown);
+    rootElement.addEventListener('keyup', handleKeyUp);
+
+    const unregisterPaste = editor.registerCommand(
       PASTE_COMMAND,
       (event) => {
         if (!(event instanceof ClipboardEvent)) return false;
@@ -33,7 +54,7 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
         const clipboardData = event.clipboardData;
         if (!clipboardData) return false;
 
-        // If rich HTML exists, let default handling work
+        // If HTML exists, let default Lexical handling work
         if (clipboardData.getData('text/html')) return false;
 
         const plainText = clipboardData.getData('text/plain');
@@ -43,27 +64,44 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
 
         editor.update(() => {
           const selection = $getSelection();
+          if (!$isRangeSelection(selection)) return;
 
-          // Delete selected content first
-          if ($isRangeSelection(selection) && !selection.isCollapsed()) {
-            selection.removeText();
+          // CMD+SHIFT+V: Raw paste - insert plain text as-is
+          if (shiftHeldRef.current) {
+            selection.insertRawText(plainText);
+            return;
           }
 
-          // Get anchor node's top-level element for targeted conversion
-          const anchorNode = selection?.getNodes()?.[0];
-          const topLevel = anchorNode?.getTopLevelElement?.();
-          const targetElement =
-            topLevel && $isElementNode(topLevel) ? topLevel : $getRoot();
+          // CMD+V: Convert markdown and insert at cursor
+          try {
+            const tempContainer = $createParagraphNode();
+            $convertFromMarkdownString(plainText, transformers, tempContainer);
 
-          // Convert markdown and insert at target element
-          // Using the optional 3rd parameter to target specific element
-          $convertFromMarkdownString(plainText, transformers, targetElement);
+            const nodes = tempContainer.getChildren();
+            if (nodes.length === 0) {
+              selection.insertRawText(plainText);
+              return;
+            }
+
+            // Use selection.insertNodes() instead of $insertNodes()
+            // This properly handles node parent references
+            selection.insertNodes(nodes);
+          } catch {
+            // Fallback to raw text on error
+            selection.insertRawText(plainText);
+          }
         });
 
         return true;
       },
       COMMAND_PRIORITY_LOW
     );
+
+    return () => {
+      rootElement.removeEventListener('keydown', handleKeyDown);
+      rootElement.removeEventListener('keyup', handleKeyUp);
+      unregisterPaste();
+    };
   }, [editor, transformers]);
 
   return null;
