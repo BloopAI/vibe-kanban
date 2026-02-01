@@ -103,6 +103,8 @@
   "navbar": {
     "tryNewUI": "prueba la nueva interfaz"
   },
+  "ok": "OK",
+  "error": "Error",
   "signIn": "Iniciar sesión",
   "signOut": "Cerrar sesión",
   "devMode": {
@@ -163,7 +165,15 @@
       "placeholder": "Ingresa el nombre del espacio de trabajo",
       "action": "Renombrar",
       "renaming": "Renombrando..."
-    }
+    },
+    "unlinkFromIssue": "Desvincular del problema",
+    "deleteWorkspace": "Eliminar espacio de trabajo",
+    "unlink": "Desvincular",
+    "delete": "Eliminar",
+    "unlinkConfirmMessage": "¿Estás seguro de que deseas desvincular este espacio de trabajo del problema? El espacio de trabajo seguirá existiendo pero ya no estará asociado con este problema.",
+    "deleteConfirmMessage": "¿Estás seguro de que deseas eliminar este espacio de trabajo? Esto lo desvinculará del problema y eliminará el espacio de trabajo local. Esta acción no se puede deshacer.",
+    "unlinkError": "Error al desvincular el espacio de trabajo",
+    "deleteError": "Error al eliminar el espacio de trabajo"
   },
   "fileTree": {
     "searchPlaceholder": "Buscar archivos...",
@@ -355,6 +365,11 @@
     "viewTabs": {
       "active": "Activo",
       "all": "Todo"
+    },
+    "loginRequired": {
+      "title": "Se requiere iniciar sesión",
+      "description": "Por favor inicia sesión para ver este proyecto.",
+      "action": "Iniciar sesión"
     }
   },
   "syncError": {

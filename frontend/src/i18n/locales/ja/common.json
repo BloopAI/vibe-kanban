@@ -103,6 +103,8 @@
   "navbar": {
     "tryNewUI": "新しいUIを試す"
   },
+  "ok": "OK",
+  "error": "エラー",
   "signIn": "サインイン",
   "signOut": "サインアウト",
   "devMode": {
@@ -163,7 +165,15 @@
       "placeholder": "ワークスペース名を入力",
       "action": "名前を変更",
       "renaming": "名前を変更中..."
-    }
+    },
+    "unlinkFromIssue": "課題からリンク解除",
+    "deleteWorkspace": "ワークスペースを削除",
+    "unlink": "リンク解除",
+    "delete": "削除",
+    "unlinkConfirmMessage": "このワークスペースを課題からリンク解除してもよろしいですか？ワークスペースは引き続き存在しますが、この課題との関連付けは解除されます。",
+    "deleteConfirmMessage": "このワークスペースを削除してもよろしいですか？これにより課題からのリンクが解除され、ローカルワークスペースが削除されます。この操作は元に戻せません。",
+    "unlinkError": "ワークスペースのリンク解除に失敗しました",
+    "deleteError": "ワークスペースの削除に失敗しました"
   },
   "fileTree": {
     "searchPlaceholder": "ファイルを検索...",
@@ -355,6 +365,11 @@
     "viewTabs": {
       "active": "アクティブ",
       "all": "すべて"
+    },
+    "loginRequired": {
+      "title": "サインインが必要です",
+      "description": "このプロジェクトを表示するにはサインインしてください。",
+      "action": "サインイン"
     }
   },
   "syncError": {
