@@ -1,0 +1,14 @@
+# Development Dockerfile with hot reloading support
+FROM rust:1.89-bookworm
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config libssl-dev ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install cargo-watch for hot reloading
+RUN cargo install cargo-watch
+
+WORKDIR /app
+
+# Default command - can be overridden in docker-compose
+CMD ["cargo", "watch", "-w", "crates", "-x", "run --bin server"]
