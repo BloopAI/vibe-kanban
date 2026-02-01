@@ -64,11 +64,18 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
 
         const hasHtml = !!clipboardData.getData('text/html');
         const plainText = clipboardData.getData('text/plain');
-        console.log('[PasteMarkdownPlugin] hasHtml:', hasHtml, 'plainText length:', plainText?.length);
+        console.log(
+          '[PasteMarkdownPlugin] hasHtml:',
+          hasHtml,
+          'plainText length:',
+          plainText?.length
+        );
 
         // If HTML exists, let default Lexical handling work
         if (hasHtml) {
-          console.log('[PasteMarkdownPlugin] HTML detected, deferring to Lexical default');
+          console.log(
+            '[PasteMarkdownPlugin] HTML detected, deferring to Lexical default'
+          );
           return false;
         }
 
@@ -78,7 +85,10 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
         }
 
         event.preventDefault();
-        console.log('[PasteMarkdownPlugin] Handling paste, shiftHeld:', shiftHeldRef.current);
+        console.log(
+          '[PasteMarkdownPlugin] Handling paste, shiftHeld:',
+          shiftHeldRef.current
+        );
 
         editor.update(() => {
           const selection = $getSelection();
@@ -87,7 +97,10 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
             return;
           }
 
-          console.log('[PasteMarkdownPlugin] Selection isCollapsed:', selection.isCollapsed());
+          console.log(
+            '[PasteMarkdownPlugin] Selection isCollapsed:',
+            selection.isCollapsed()
+          );
 
           // CMD+SHIFT+V: Raw paste - insert plain text as-is
           if (shiftHeldRef.current) {
@@ -103,7 +116,10 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
             $convertFromMarkdownString(plainText, transformers, tempContainer);
 
             const nodes = tempContainer.getChildren();
-            console.log('[PasteMarkdownPlugin] Converted nodes count:', nodes.length);
+            console.log(
+              '[PasteMarkdownPlugin] Converted nodes count:',
+              nodes.length
+            );
 
             if (nodes.length === 0) {
               console.log('[PasteMarkdownPlugin] No nodes, inserting raw text');
@@ -114,7 +130,9 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
             // Detach nodes from temporary container before insertion.
             // $convertFromMarkdownString attaches nodes to tempContainer, but
             // insertNodes() works best with orphan nodes to avoid parent conflicts.
-            console.log('[PasteMarkdownPlugin] Detaching nodes from temp container...');
+            console.log(
+              '[PasteMarkdownPlugin] Detaching nodes from temp container...'
+            );
             nodes.forEach((node) => node.remove());
 
             console.log('[PasteMarkdownPlugin] Inserting nodes...');
