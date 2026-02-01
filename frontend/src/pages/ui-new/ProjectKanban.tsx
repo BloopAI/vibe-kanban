@@ -241,6 +241,7 @@ export function ProjectKanban() {
     return (
       <div className="flex items-center justify-center h-full w-full p-base">
         <LoginRequiredPrompt
+          className="max-w-md"
           title={t('kanban.loginRequired.title')}
           description={t('kanban.loginRequired.description')}
           actionLabel={t('kanban.loginRequired.action')}
