@@ -1,0 +1,87 @@
+import { useState, useEffect, useMemo } from 'react';
+import { useProjects } from '@/hooks/useProjects';
+import { useUserOrganizations } from '@/hooks/useUserOrganizations';
+import { MigrateChooseProjects } from '@/components/ui-new/views/MigrateChooseProjects';
+
+interface MigrateChooseProjectsContainerProps {
+  onContinue: (orgId: string, projectIds: string[]) => void;
+}
+
+export function MigrateChooseProjectsContainer({
+  onContinue,
+}: MigrateChooseProjectsContainerProps) {
+  const { projects, isLoading: projectsLoading } = useProjects();
+  const { data: orgsData, isLoading: orgsLoading } = useUserOrganizations();
+  const organizations = useMemo(
+    () => orgsData?.organizations ?? [],
+    [orgsData?.organizations]
+  );
+
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(
+    new Set()
+  );
+
+  // Filter out already-migrated projects for selection purposes
+  const migrateableProjects = useMemo(
+    () => projects.filter((p) => !p.remote_project_id),
+    [projects]
+  );
+
+  // Pre-select first organization when data loads
+  useEffect(() => {
+    if (organizations.length > 0 && !selectedOrgId) {
+      setSelectedOrgId(organizations[0].id);
+    }
+  }, [organizations, selectedOrgId]);
+
+  const handleOrgChange = (orgId: string) => {
+    setSelectedOrgId(orgId);
+  };
+
+  const handleToggleProject = (projectId: string) => {
+    // Only allow toggling non-migrated projects
+    const project = projects.find((p) => p.id === projectId);
+    if (project?.remote_project_id) return;
+
+    setSelectedProjectIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(projectId)) {
+        next.delete(projectId);
+      } else {
+        next.add(projectId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedProjectIds.size === migrateableProjects.length) {
+      setSelectedProjectIds(new Set());
+    } else {
+      setSelectedProjectIds(new Set(migrateableProjects.map((p) => p.id)));
+    }
+  };
+
+  const handleContinue = () => {
+    if (selectedOrgId && selectedProjectIds.size > 0) {
+      onContinue(selectedOrgId, Array.from(selectedProjectIds));
+    }
+  };
+
+  const isLoading = projectsLoading || orgsLoading;
+
+  return (
+    <MigrateChooseProjects
+      projects={projects}
+      organizations={organizations}
+      selectedOrgId={selectedOrgId}
+      selectedProjectIds={selectedProjectIds}
+      isLoading={isLoading}
+      onOrgChange={handleOrgChange}
+      onToggleProject={handleToggleProject}
+      onSelectAll={handleSelectAll}
+      onContinue={handleContinue}
+    />
+  );
+}

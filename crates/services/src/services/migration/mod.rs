@@ -192,6 +192,9 @@ impl MigrationService {
                 *remote_id,
             )
             .await?;
+
+            Project::set_remote_project_id(&self.sqlite_pool, project.id, Some(*remote_id)).await?;
+
             report.projects.migrated += 1;
         }
 
