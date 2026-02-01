@@ -141,8 +141,8 @@ export function Navbar() {
     <div className="border-b bg-background">
       <div className="w-full px-3">
         <div className="flex items-center h-12 py-2">
-          <div className="flex-1 flex items-center">
-            <Link to="/projects">
+          <div className="flex-1 flex items-center min-w-0">
+            <Link to="/projects" className="shrink-0">
               <Logo />
             </Link>
             <a
@@ -150,7 +150,7 @@ export function Navbar() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Join our Discord"
-              className="hidden sm:inline-flex items-center ml-3 text-xs font-medium overflow-hidden border h-6"
+              className="hidden sm:inline-flex shrink-0 items-center ml-3 text-xs font-medium overflow-hidden border h-6"
             >
               <span className="bg-muted text-foreground flex items-center p-2 border-r">
                 <svg
@@ -171,6 +171,11 @@ export function Navbar() {
                   : 'online'}
               </span>
             </a>
+            {project && (
+              <span className="hidden sm:block ml-3 text-sm font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap min-w-0">
+                {project.name}
+              </span>
+            )}
           </div>
 
           <div className="hidden sm:flex items-center gap-2">
