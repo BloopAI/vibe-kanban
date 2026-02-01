@@ -60,9 +60,20 @@ pub struct Opencode {
 /// Represents a spawned OpenCode server with its base URL
 struct OpencodeServer {
     #[allow(unused)]
-    child: AsyncGroupChild,
+    child: Option<AsyncGroupChild>,
     base_url: String,
     server_password: ServerPassword,
+}
+
+impl Drop for OpencodeServer {
+    fn drop(&mut self) {
+        // kill the process properly using the kill helper as the native kill_on_drop doesn't work reliably causing orphaned processes and memory leaks
+        if let Some(mut child) = self.child.take() {
+            tokio::spawn(async move {
+                let _ = workspace_utils::process::kill_process_group(&mut child).await;
+            });
+        }
+    }
 }
 
 type ServerPassword = String;
@@ -128,7 +139,7 @@ impl Opencode {
         let base_url = wait_for_server_url(server_stdout, None).await?;
 
         Ok(OpencodeServer {
-            child,
+            child: Some(child),
             base_url,
             server_password,
         })
