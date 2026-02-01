@@ -396,20 +396,18 @@ impl IntoResponse for ApiError {
                 "MigrationError",
                 "Not authenticated - please log in first.",
             ),
-            ApiError::Migration(MigrationError::OrganizationNotFound) => ErrorInfo::not_found(
-                "MigrationError",
-                "Organization not found for user.",
-            ),
+            ApiError::Migration(MigrationError::OrganizationNotFound) => {
+                ErrorInfo::not_found("MigrationError", "Organization not found for user.")
+            }
             ApiError::Migration(MigrationError::EntityNotFound { entity_type, id }) => {
                 ErrorInfo::not_found(
                     "MigrationError",
                     format!("Entity not found: {} with id {}", entity_type, id),
                 )
             }
-            ApiError::Migration(MigrationError::MigrationInProgress) => ErrorInfo::conflict(
-                "MigrationError",
-                "Migration already in progress.",
-            ),
+            ApiError::Migration(MigrationError::MigrationInProgress) => {
+                ErrorInfo::conflict("MigrationError", "Migration already in progress.")
+            }
             ApiError::Migration(MigrationError::StatusMappingFailed(status)) => {
                 ErrorInfo::bad_request(
                     "MigrationError",
@@ -417,10 +415,7 @@ impl IntoResponse for ApiError {
                 )
             }
             ApiError::Migration(MigrationError::BrokenReferenceChain(msg)) => {
-                ErrorInfo::bad_request(
-                    "MigrationError",
-                    format!("Broken reference chain: {}", msg),
-                )
+                ErrorInfo::bad_request("MigrationError", format!("Broken reference chain: {}", msg))
             }
             ApiError::Migration(MigrationError::RemoteError(msg)) => ErrorInfo::with_status(
                 StatusCode::BAD_GATEWAY,
