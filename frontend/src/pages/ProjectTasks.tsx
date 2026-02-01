@@ -6,6 +6,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi, projectsApi, attemptsApi } from '@/lib/api';
+import {
+  isDirectoryOnly as checkDirectoryOnly,
+} from '@/utils/directoryProject';
 import type { RepoBranchStatus, Workspace } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
@@ -21,7 +24,7 @@ import { useProject } from '@/contexts/ProjectContext';
 import { useTaskAttempts } from '@/hooks/useTaskAttempts';
 import { useTaskAttemptWithSession } from '@/hooks/useTaskAttempt';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { useBranchStatus, useAttemptExecution } from '@/hooks';
+import { useBranchStatus, useAttemptExecution, useRepoBranchSelection } from '@/hooks';
 import { paths } from '@/lib/paths';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
@@ -150,8 +153,13 @@ export function ProjectTasks() {
   } = useProject();
 
   const { data: projectRepos = [] } = useProjectRepos(projectId);
-  const isDirectoryOnly =
-    project?.working_directory != null && projectRepos.length === 0;
+  const isDirectoryOnly = checkDirectoryOnly(project, projectRepos.length);
+
+  const { getWorkspaceRepoInputs } =
+    useRepoBranchSelection({
+      repos: projectRepos,
+      enabled: !!project?.auto_run_enabled && projectRepos.length > 0,
+    });
 
   const handleAutoRunToggle = useCallback(
     async (enabled: boolean) => {
@@ -723,37 +731,32 @@ export function ProjectTasks() {
           parent_workspace_id: task.parent_workspace_id,
           image_ids: null,
         });
-
-        // Auto-run: if moving to inprogress from todo and auto_run is enabled
-        if (
-          newStatus === 'inprogress' &&
-          task.status === 'todo' &&
-          project?.auto_run_enabled &&
-          config?.executor_profile
-        ) {
-          const repos = isDirectoryOnly
-            ? []
-            : projectRepos
-                .filter((r) => r.default_target_branch)
-                .map((r) => ({
-                  repo_id: r.id,
-                  target_branch: r.default_target_branch!,
-                }));
-
-          // Only auto-run if all repos have default branches (or directory-only)
-          if (isDirectoryOnly || repos.length === projectRepos.length) {
-            await attemptsApi.create({
-              task_id: draggedTaskId,
-              executor_profile_id: config.executor_profile,
-              repos,
-            });
-          }
-        }
       } catch (err) {
         console.error('Failed to update task status:', err);
+        return;
+      }
+
+      // Auto-run: if moving to inprogress from todo and auto_run is enabled
+      if (
+        newStatus === 'inprogress' &&
+        task.status === 'todo' &&
+        project?.auto_run_enabled &&
+        config?.executor_profile
+      ) {
+        const repos = isDirectoryOnly ? [] : getWorkspaceRepoInputs();
+
+        try {
+          await attemptsApi.create({
+            task_id: draggedTaskId,
+            executor_profile_id: config.executor_profile,
+            repos,
+          });
+        } catch (err) {
+          console.error('Auto-run: failed to create attempt:', err);
+        }
       }
     },
-    [tasksById, project, config, projectRepos, isDirectoryOnly]
+    [tasksById, project, config, isDirectoryOnly, getWorkspaceRepoInputs]
   );
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;
