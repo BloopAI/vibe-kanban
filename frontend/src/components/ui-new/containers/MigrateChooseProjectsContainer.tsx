@@ -22,6 +22,12 @@ export function MigrateChooseProjectsContainer({
     new Set()
   );
 
+  // Filter out already-migrated projects for selection purposes
+  const migrateableProjects = useMemo(
+    () => projects.filter((p) => !p.remote_project_id),
+    [projects]
+  );
+
   // Pre-select first organization when data loads
   useEffect(() => {
     if (organizations.length > 0 && !selectedOrgId) {
@@ -34,6 +40,10 @@ export function MigrateChooseProjectsContainer({
   };
 
   const handleToggleProject = (projectId: string) => {
+    // Only allow toggling non-migrated projects
+    const project = projects.find((p) => p.id === projectId);
+    if (project?.remote_project_id) return;
+
     setSelectedProjectIds((prev) => {
       const next = new Set(prev);
       if (next.has(projectId)) {
@@ -46,10 +56,10 @@ export function MigrateChooseProjectsContainer({
   };
 
   const handleSelectAll = () => {
-    if (selectedProjectIds.size === projects.length) {
+    if (selectedProjectIds.size === migrateableProjects.length) {
       setSelectedProjectIds(new Set());
     } else {
-      setSelectedProjectIds(new Set(projects.map((p) => p.id)));
+      setSelectedProjectIds(new Set(migrateableProjects.map((p) => p.id)));
     }
   };
 

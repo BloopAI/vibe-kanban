@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom';
 import {
+  ArrowSquareOutIcon,
   BuildingsIcon,
   CaretDownIcon,
   CloudArrowUpIcon,
@@ -39,6 +41,9 @@ export function MigrateChooseProjects({
   onContinue,
 }: MigrateChooseProjectsProps) {
   const selectedOrg = organizations.find((org) => org.id === selectedOrgId);
+
+  const migrateableProjects = projects.filter((p) => !p.remote_project_id);
+  const migratedProjects = projects.filter((p) => p.remote_project_id);
 
   const buttonText =
     selectedProjectIds.size === 0
@@ -115,25 +120,31 @@ export function MigrateChooseProjects({
           <p className="text-sm text-low">No local projects found.</p>
         ) : (
           <div className="bg-secondary border rounded">
-            {/* Select all */}
-            <div className="flex items-center gap-base px-base py-half border-b">
-              <Checkbox
-                id="select-all"
-                checked={selectedProjectIds.size === projects.length}
-                onCheckedChange={onSelectAll}
-              />
-              <label
-                htmlFor="select-all"
-                className="text-sm text-normal cursor-pointer"
-              >
-                Select all ({projects.length} project
-                {projects.length === 1 ? '' : 's'})
-              </label>
-            </div>
+            {/* Select all - only for migrateable projects */}
+            {migrateableProjects.length > 0 && (
+              <div className="flex items-center gap-base px-base py-half border-b">
+                <Checkbox
+                  id="select-all"
+                  checked={
+                    selectedProjectIds.size === migrateableProjects.length &&
+                    migrateableProjects.length > 0
+                  }
+                  onCheckedChange={onSelectAll}
+                />
+                <label
+                  htmlFor="select-all"
+                  className="text-sm text-normal cursor-pointer"
+                >
+                  Select all ({migrateableProjects.length} project
+                  {migrateableProjects.length === 1 ? '' : 's'})
+                </label>
+              </div>
+            )}
 
             {/* Project list */}
             <div className="max-h-64 overflow-y-auto divide-y divide-border">
-              {projects.map((project) => (
+              {/* Migrateable projects first */}
+              {migrateableProjects.map((project) => (
                 <div
                   key={project.id}
                   className="flex items-center gap-base px-base py-half hover:bg-panel/50"
@@ -149,6 +160,31 @@ export function MigrateChooseProjects({
                   >
                     {project.name}
                   </label>
+                </div>
+              ))}
+
+              {/* Already migrated projects */}
+              {migratedProjects.map((project) => (
+                <div
+                  key={project.id}
+                  className="flex items-center gap-base px-base py-half bg-panel/30"
+                >
+                  <span className="text-xs text-low whitespace-nowrap">
+                    Already migrated
+                  </span>
+                  <span className="flex-1 text-sm text-low truncate">
+                    {project.name}
+                  </span>
+                  <Link
+                    to={`/projects/${project.remote_project_id}?orgId=${selectedOrgId}`}
+                    className="flex items-center gap-half text-sm text-brand hover:underline whitespace-nowrap"
+                  >
+                    View
+                    <ArrowSquareOutIcon
+                      className="size-icon-xs"
+                      weight="bold"
+                    />
+                  </Link>
                 </div>
               ))}
             </div>
