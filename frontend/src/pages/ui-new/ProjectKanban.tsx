@@ -10,11 +10,13 @@ import {
 import { useActions } from '@/contexts/ActionsContext';
 import { KanbanContainer } from '@/components/ui-new/containers/KanbanContainer';
 import { KanbanIssuePanelContainer } from '@/components/ui-new/containers/KanbanIssuePanelContainer';
+import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 import { PERSIST_KEYS, usePaneSize } from '@/stores/useUiPreferencesStore';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
+import { useAuth } from '@/hooks/auth/useAuth';
 
 /**
  * Component that registers project mutations with ActionsContext.
@@ -164,6 +166,7 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
  * Hook to find a project by ID, using orgId from Zustand store
  */
 function useFindProjectById(projectId: string | undefined) {
+  const { isLoaded: authLoaded } = useAuth();
   const { data: orgsData, isLoading: orgsLoading } = useUserOrganizations();
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
   const organizations = orgsData?.organizations ?? [];
@@ -182,7 +185,8 @@ function useFindProjectById(projectId: string | undefined) {
   return {
     project,
     organizationId: project?.organization_id ?? selectedOrgId,
-    isLoading: orgsLoading || projectsLoading,
+    // Include auth loading state - we can't determine project access until auth loads
+    isLoading: !authLoaded || orgsLoading || projectsLoading,
   };
 }
 
@@ -203,6 +207,7 @@ export function ProjectKanban() {
   const navigate = useNavigate();
   const { t } = useTranslation('common');
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
+  const { isSignedIn, isLoaded: authLoaded } = useAuth();
 
   // One-time migration: if orgId is in URL, save to store and clean URL
   useEffect(() => {
@@ -222,10 +227,24 @@ export function ProjectKanban() {
     projectId ?? undefined
   );
 
-  if (isLoading) {
+  // Show loading while auth state is being determined
+  if (!authLoaded || isLoading) {
     return (
       <div className="flex items-center justify-center h-full w-full">
         <p className="text-low">{t('loading')}</p>
+      </div>
+    );
+  }
+
+  // If not signed in, prompt user to log in
+  if (!isSignedIn) {
+    return (
+      <div className="flex items-center justify-center h-full w-full p-base">
+        <LoginRequiredPrompt
+          title={t('kanban.loginRequired.title')}
+          description={t('kanban.loginRequired.description')}
+          actionLabel={t('kanban.loginRequired.action')}
+        />
       </div>
     );
   }
