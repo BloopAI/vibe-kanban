@@ -172,7 +172,7 @@ export function Navbar() {
               </span>
             </a>
             {project && (
-              <span className="hidden sm:block ml-3 text-sm font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap min-w-0">
+              <span className="hidden sm:block ml-3 text-base font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap min-w-0">
                 {project.name}
               </span>
             )}
