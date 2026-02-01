@@ -6,6 +6,7 @@ import {
   $getSelection,
   $isRangeSelection,
   $createParagraphNode,
+  $setSelection,
 } from 'lexical';
 import {
   $convertFromMarkdownString,
@@ -49,98 +50,51 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
     const unregisterPaste = editor.registerCommand(
       PASTE_COMMAND,
       (event) => {
-        console.log('[PasteMarkdownPlugin] PASTE_COMMAND received');
-
-        if (!(event instanceof ClipboardEvent)) {
-          console.log('[PasteMarkdownPlugin] Not a ClipboardEvent, deferring');
-          return false;
-        }
+        if (!(event instanceof ClipboardEvent)) return false;
 
         const clipboardData = event.clipboardData;
-        if (!clipboardData) {
-          console.log('[PasteMarkdownPlugin] No clipboardData, deferring');
-          return false;
-        }
-
-        const hasHtml = !!clipboardData.getData('text/html');
-        const plainText = clipboardData.getData('text/plain');
-        console.log(
-          '[PasteMarkdownPlugin] hasHtml:',
-          hasHtml,
-          'plainText length:',
-          plainText?.length
-        );
+        if (!clipboardData) return false;
 
         // If HTML exists, let default Lexical handling work
-        if (hasHtml) {
-          console.log(
-            '[PasteMarkdownPlugin] HTML detected, deferring to Lexical default'
-          );
-          return false;
-        }
+        if (clipboardData.getData('text/html')) return false;
 
-        if (!plainText) {
-          console.log('[PasteMarkdownPlugin] No plainText, deferring');
-          return false;
-        }
+        const plainText = clipboardData.getData('text/plain');
+        if (!plainText) return false;
 
         event.preventDefault();
-        console.log(
-          '[PasteMarkdownPlugin] Handling paste, shiftHeld:',
-          shiftHeldRef.current
-        );
 
         editor.update(() => {
           const selection = $getSelection();
-          if (!$isRangeSelection(selection)) {
-            console.log('[PasteMarkdownPlugin] Not a RangeSelection, aborting');
-            return;
-          }
-
-          console.log(
-            '[PasteMarkdownPlugin] Selection isCollapsed:',
-            selection.isCollapsed()
-          );
+          if (!$isRangeSelection(selection)) return;
 
           // CMD+SHIFT+V: Raw paste - insert plain text as-is
           if (shiftHeldRef.current) {
-            console.log('[PasteMarkdownPlugin] Raw paste (shift held)');
             selection.insertRawText(plainText);
             return;
           }
 
           // CMD+V: Convert markdown and insert at cursor
           try {
-            console.log('[PasteMarkdownPlugin] Converting markdown...');
+            // Save selection before markdown conversion corrupts it.
+            // $convertFromMarkdownString calls tempContainer.selectStart() internally,
+            // which corrupts the selection since tempContainer is not in the DOM.
+            const savedSelection = selection.clone();
+
             const tempContainer = $createParagraphNode();
             $convertFromMarkdownString(plainText, transformers, tempContainer);
 
-            const nodes = tempContainer.getChildren();
-            console.log(
-              '[PasteMarkdownPlugin] Converted nodes count:',
-              nodes.length
-            );
+            // Restore selection that was corrupted by $convertFromMarkdownString
+            $setSelection(savedSelection);
 
+            const nodes = tempContainer.getChildren();
             if (nodes.length === 0) {
-              console.log('[PasteMarkdownPlugin] No nodes, inserting raw text');
-              selection.insertRawText(plainText);
+              savedSelection.insertRawText(plainText);
               return;
             }
 
-            // Detach nodes from temporary container before insertion.
-            // $convertFromMarkdownString attaches nodes to tempContainer, but
-            // insertNodes() works best with orphan nodes to avoid parent conflicts.
-            console.log(
-              '[PasteMarkdownPlugin] Detaching nodes from temp container...'
-            );
-            nodes.forEach((node) => node.remove());
-
-            console.log('[PasteMarkdownPlugin] Inserting nodes...');
-            selection.insertNodes(nodes);
-            console.log('[PasteMarkdownPlugin] Paste complete');
-          } catch (err) {
+            savedSelection.insertNodes(nodes);
+          } catch {
             // Fallback to raw text on error
-            console.error('[PasteMarkdownPlugin] Error during paste:', err);
             selection.insertRawText(plainText);
           }
         });
