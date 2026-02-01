@@ -1,18 +1,18 @@
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useProjects } from '@/hooks/useProjects';
 import { MigrateFinish } from '@/components/ui-new/views/MigrateFinish';
 
 interface MigrateFinishContainerProps {
+  orgId: string;
   projectIds: string[];
   onMigrateMore: () => void;
 }
 
 export function MigrateFinishContainer({
+  orgId,
   projectIds,
   onMigrateMore,
 }: MigrateFinishContainerProps) {
-  const navigate = useNavigate();
   const { projects } = useProjects();
 
   const migratedProjects = useMemo(() => {
@@ -26,16 +26,11 @@ export function MigrateFinishContainer({
       }));
   }, [projectIds, projects]);
 
-  const handleClose = () => {
-    // Navigate to the projects list
-    navigate('/local-projects');
-  };
-
   return (
     <MigrateFinish
+      orgId={orgId}
       migratedProjects={migratedProjects}
       onMigrateMore={onMigrateMore}
-      onClose={handleClose}
     />
   );
 }

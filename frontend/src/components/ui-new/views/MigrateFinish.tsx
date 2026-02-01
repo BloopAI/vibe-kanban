@@ -3,7 +3,6 @@ import {
   FolderIcon,
   ArrowSquareOutIcon,
   ArrowCounterClockwiseIcon,
-  CheckIcon,
 } from '@phosphor-icons/react';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 
@@ -14,15 +13,15 @@ interface MigratedProject {
 }
 
 interface MigrateFinishProps {
+  orgId: string;
   migratedProjects: MigratedProject[];
   onMigrateMore: () => void;
-  onClose: () => void;
 }
 
 export function MigrateFinish({
+  orgId,
   migratedProjects,
   onMigrateMore,
-  onClose,
 }: MigrateFinishProps) {
   return (
     <div className="max-w-2xl mx-auto py-double px-base">
@@ -55,10 +54,10 @@ export function MigrateFinish({
               <Link
                 to={
                   project.remoteId
-                    ? `/projects/${project.remoteId}`
+                    ? `/projects/${project.remoteId}?orgId=${orgId}`
                     : `/local-projects/${project.localId}/tasks`
                 }
-                className="flex items-center gap-half text-sm text-brand hover:underline"
+                className="rounded-sm px-base py-half text-cta h-cta flex gap-half items-center bg-brand hover:bg-brand-hover text-on-brand"
               >
                 View
                 <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
@@ -69,16 +68,13 @@ export function MigrateFinish({
       </div>
 
       {/* Actions */}
-      <div className="pt-base border-t flex justify-between">
+      <div className="pt-base border-t">
         <PrimaryButton
           variant="tertiary"
           onClick={onMigrateMore}
           actionIcon={ArrowCounterClockwiseIcon}
         >
           Migrate More Projects
-        </PrimaryButton>
-        <PrimaryButton onClick={onClose} actionIcon={CheckIcon}>
-          Done
         </PrimaryButton>
       </div>
     </div>

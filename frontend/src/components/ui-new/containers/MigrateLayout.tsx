@@ -58,6 +58,7 @@ export function MigrateLayout() {
         }
         return (
           <MigrateFinishContainer
+            orgId={migrationData.orgId}
             projectIds={migrationData.projectIds}
             onMigrateMore={() => setCurrentStep('choose-projects')}
           />
