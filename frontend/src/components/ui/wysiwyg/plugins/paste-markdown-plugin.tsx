@@ -83,8 +83,11 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
               return;
             }
 
-            // Use selection.insertNodes() instead of $insertNodes()
-            // This properly handles node parent references
+            // Detach nodes from temporary container before insertion.
+            // $convertFromMarkdownString attaches nodes to tempContainer, but
+            // insertNodes() works best with orphan nodes to avoid parent conflicts.
+            nodes.forEach((node) => node.remove());
+
             selection.insertNodes(nodes);
           } catch {
             // Fallback to raw text on error
