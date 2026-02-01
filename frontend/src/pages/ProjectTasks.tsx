@@ -950,7 +950,7 @@ export function ProjectTasks() {
                 {project?.remote_project_id ? (
                   <>
                     <p className="text-sm font-medium">
-                      Project synced to Cloud
+                      Project migrated to Cloud
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Access collaboration, tags, priorities, and more
@@ -959,7 +959,7 @@ export function ProjectTasks() {
                 ) : (
                   <>
                     <p className="text-sm font-medium">
-                      Upgrade to Cloud Projects
+                      Migrate this project to the cloud
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Get collaboration, tags, priorities, sub-issues and more
