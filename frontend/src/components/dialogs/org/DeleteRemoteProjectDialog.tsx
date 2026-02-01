@@ -42,6 +42,7 @@ const DeleteRemoteProjectDialogImpl =
             'Failed to delete project. Please try again.'
           )
         );
+      } finally {
         setIsDeleting(false);
       }
     };
