@@ -324,6 +324,10 @@
         "noResults": "No matching configurations",
         "noConfigs": "No configurations available",
         "selectConfig": "Select a configuration from the sidebar to view and edit its settings."
+      },
+      "deleteConfigDialog": {
+        "title": "Delete Configuration?",
+        "description": "This will permanently remove \"{{configName}}\" from the {{executorType}} executor. You can't undo this action."
       }
     },
     "mcp": {

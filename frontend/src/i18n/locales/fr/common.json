@@ -173,7 +173,8 @@
     "unlinkConfirmMessage": "Êtes-vous sûr de vouloir dissocier cet espace de travail du problème ? L'espace de travail existera toujours mais ne sera plus associé à ce problème.",
     "deleteConfirmMessage": "Êtes-vous sûr de vouloir supprimer cet espace de travail ? Cela le dissociera du problème et supprimera l'espace de travail local. Cette action est irréversible.",
     "unlinkError": "Échec de la dissociation de l'espace de travail",
-    "deleteError": "Échec de la suppression de l'espace de travail"
+    "deleteError": "Échec de la suppression de l'espace de travail",
+    "filesChanged": "{{count}} fichiers"
   },
   "fileTree": {
     "searchPlaceholder": "Rechercher des fichiers...",
@@ -350,6 +351,7 @@
     "noOrganizationFound": "Aucune organisation trouvée",
     "unassigned": "Non assigné",
     "noTagsAvailable": "Aucun tag disponible",
+    "createNewIssue": "Créer un nouveau ticket",
     "createNewTag": "Créer un nouveau tag",
     "searchTags": "Rechercher des tags...",
     "selectColorFor": "Sélectionner la couleur pour",
@@ -362,6 +364,7 @@
     "subIssues": "Sous-tâches",
     "noSubIssues": "Aucune sous-tâche",
     "parentIssue": "Parent",
+    "subIssueIndicator": "↳",
     "viewTabs": {
       "active": "Actif",
       "all": "Tout"

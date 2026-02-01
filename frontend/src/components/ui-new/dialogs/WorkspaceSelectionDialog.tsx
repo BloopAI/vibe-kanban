@@ -257,7 +257,9 @@ function WorkspaceSelectionContent({
                     {workspace.name}
                   </span>
                   {workspace.isArchived && (
-                    <span className="text-xs text-low">(archived)</span>
+                    <span className="text-xs text-low">
+                      ({t('workspaces.archived').toLowerCase()})
+                    </span>
                   )}
                   <span className="ml-auto text-xs text-low truncate max-w-[120px]">
                     {workspace.branch}

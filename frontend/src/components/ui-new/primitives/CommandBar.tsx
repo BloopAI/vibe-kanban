@@ -192,7 +192,7 @@ export function CommandBar({
                       className="h-4 w-4 shrink-0 text-brand"
                       weight="bold"
                     />
-                    <span>Create new issue</span>
+                    <span>{t('kanban.createNewIssue')}</span>
                   </CommandItem>
                 );
               } else if (item.type === 'issue') {

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import {
   IssueWorkspaceCard,
   type WorkspaceWithStats,
@@ -29,18 +30,20 @@ export function IssueWorkspacesSection({
   onUnlinkWorkspace,
   onDeleteWorkspace,
 }: IssueWorkspacesSectionProps) {
+  const { t } = useTranslation('common');
+
   return (
     <CollapsibleSectionHeader
-      title="Workspaces"
+      title={t('workspaces.title')}
       persistKey={'kanban-issue-workspaces' as PersistKey}
       defaultExpanded={true}
       actions={actions}
     >
       <div className="px-base p-base flex flex-col gap-base border-t">
         {isLoading ? (
-          <p className="text-low py-half">Loading...</p>
+          <p className="text-low py-half">{t('workspaces.loading')}</p>
         ) : workspaces.length === 0 ? (
-          <p className="text-low py-half">No workspaces</p>
+          <p className="text-low py-half">{t('workspaces.noWorkspaces')}</p>
         ) : (
           workspaces.map((workspace) => {
             const { localWorkspaceId } = workspace;

@@ -164,6 +164,9 @@ module.exports = {
         '**/*.test.{ts,tsx}',
         '**/*.stories.{ts,tsx}',
         'src/pages/ui-new/ElectricTestPage.tsx',
+        'src/pages/Migration.tsx',
+        'src/components/ui-new/views/Migrate*.tsx',
+        'src/components/ui-new/containers/Migrate*.tsx',
       ],
       rules: {
         'i18next/no-literal-string': 'off',

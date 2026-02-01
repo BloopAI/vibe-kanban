@@ -173,7 +173,8 @@
     "unlinkConfirmMessage": "¿Estás seguro de que deseas desvincular este espacio de trabajo del problema? El espacio de trabajo seguirá existiendo pero ya no estará asociado con este problema.",
     "deleteConfirmMessage": "¿Estás seguro de que deseas eliminar este espacio de trabajo? Esto lo desvinculará del problema y eliminará el espacio de trabajo local. Esta acción no se puede deshacer.",
     "unlinkError": "Error al desvincular el espacio de trabajo",
-    "deleteError": "Error al eliminar el espacio de trabajo"
+    "deleteError": "Error al eliminar el espacio de trabajo",
+    "filesChanged": "{{count}} archivos"
   },
   "fileTree": {
     "searchPlaceholder": "Buscar archivos...",
@@ -350,6 +351,7 @@
     "noOrganizationFound": "No se encontró la organización",
     "unassigned": "Sin asignar",
     "noTagsAvailable": "No hay etiquetas disponibles",
+    "createNewIssue": "Crear nuevo issue",
     "createNewTag": "Crear nueva etiqueta",
     "searchTags": "Buscar etiquetas...",
     "selectColorFor": "Seleccionar color para",
@@ -362,6 +364,7 @@
     "subIssues": "Subtareas",
     "noSubIssues": "Sin subtareas",
     "parentIssue": "Padre",
+    "subIssueIndicator": "↳",
     "viewTabs": {
       "active": "Activo",
       "all": "Todo"

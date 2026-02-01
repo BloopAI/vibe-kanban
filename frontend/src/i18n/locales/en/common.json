@@ -173,7 +173,8 @@
     "unlinkConfirmMessage": "Are you sure you want to unlink this workspace from the issue? The workspace will still exist but will no longer be associated with this issue.",
     "deleteConfirmMessage": "Are you sure you want to delete this workspace? This will unlink it from the issue and delete the local workspace. This action cannot be undone.",
     "unlinkError": "Failed to unlink workspace",
-    "deleteError": "Failed to delete workspace"
+    "deleteError": "Failed to delete workspace",
+    "filesChanged": "{{count}} files"
   },
   "fileTree": {
     "searchPlaceholder": "Search files...",
@@ -350,6 +351,7 @@
     "noOrganizationFound": "No organization found",
     "unassigned": "Unassigned",
     "noTagsAvailable": "No tags available",
+    "createNewIssue": "Create new issue",
     "createNewTag": "Create new tag",
     "searchTags": "Search tags...",
     "selectColorFor": "Select color for",
@@ -362,6 +364,7 @@
     "subIssues": "Sub-issues",
     "noSubIssues": "No sub-issues",
     "parentIssue": "Parent",
+    "subIssueIndicator": "↳",
     "viewTabs": {
       "active": "Active",
       "all": "All"
