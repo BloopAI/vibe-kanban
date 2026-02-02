@@ -32,7 +32,7 @@ use workspace_utils::approvals::ApprovalStatus;
 use super::jsonrpc::{JsonRpcCallbacks, JsonRpcPeer};
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
-    env::RepoContext,
+    env::{RepoContext, format_commit_reminder},
     executors::{ExecutorError, codex::normalize_logs::Approval},
 };
 
@@ -510,15 +510,13 @@ impl JsonRpcCallbacks for AppServerClient {
             && self.commit_reminder
             && !self.commit_reminder_sent.swap(true, Ordering::SeqCst)
         {
-            let status = self.repo_context.check_uncommitted_changes().await;
-            if !status.is_empty()
-                && let Some(conversation_id) = *self.conversation_id.lock().await
+            if let Some(prompt) =
+                format_commit_reminder(&self.commit_reminder_prompt, &self.repo_context).await
             {
-                let prompt = self
-                    .commit_reminder_prompt
-                    .replace("{uncommitted_changes}", &status);
-                self.spawn_user_message(conversation_id, prompt);
-                return Ok(false);
+                if let Some(conversation_id) = *self.conversation_id.lock().await {
+                    self.spawn_user_message(conversation_id, prompt);
+                    return Ok(false);
+                }
             }
         }
 

@@ -596,11 +596,11 @@ export function GeneralSettingsSection() {
           id="commit-reminder"
           label={t('settings.general.commits.reminder.label')}
           description={t('settings.general.commits.reminder.helper')}
-          checked={draft?.commit_reminder ?? true}
-          onChange={(checked) => updateDraft({ commit_reminder: checked })}
+          checked={draft?.commit_reminder_enabled ?? true}
+          onChange={(checked) => updateDraft({ commit_reminder_enabled: checked })}
         />
 
-        {draft?.commit_reminder && (
+        {draft?.commit_reminder_enabled && (
           <>
             <SettingsCheckbox
               id="use-custom-commit-prompt"
