@@ -560,7 +560,7 @@ checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 [[package]]
 name = "billing"
 version = "0.1.0"
-source = "git+ssh://git@github.com/BloopAI/vibe-kanban-private?branch=main#575eca14e0f3fb8f3e061ac0a158bbf0483278e1"
+source = "git+ssh://git@github.com/BloopAI/vibe-kanban-private?branch=main#020091913ce5608d6c8bdb667d124fd22ab10561"
 dependencies = [
  "async-trait",
  "chrono",
