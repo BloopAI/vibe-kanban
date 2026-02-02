@@ -115,19 +115,33 @@ export function MiniDevTools({
   const [activeTab, setActiveTab] = useState<TabType>('console');
   const [expandedErrorId, setExpandedErrorId] = useState<string | null>(null);
 
-  const handleTabClick = (tab: TabType) => {
-    setActiveTab(tab);
-    if (isCollapsed) {
-      onToggleCollapse();
-    }
-  };
-
   const handleClearClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (activeTab === 'console') onClearConsole();
     else if (activeTab === 'network') onClearNetwork();
     else if (activeTab === 'errors') onClearErrors();
   };
+
+  if (isCollapsed) {
+    return (
+      <button
+        onClick={onToggleCollapse}
+        className={cn(
+          'backdrop-blur-sm bg-primary/80 border border-brand/20 rounded-md shadow-md',
+          'flex items-center justify-center gap-base px-base py-half',
+          'text-xs text-low hover:text-normal transition-colors',
+          className
+        )}
+        aria-label="Expand DevTools"
+      >
+        <CaretUpIcon size={14} weight="fill" />
+        <span>DevTools</span>
+        <span className="text-low">
+          Console ({consoleLogs.length}) · Network ({networkRequests.length}) · Errors ({errors.length})
+        </span>
+      </button>
+    );
+  }
 
   return (
     <div
@@ -136,106 +150,65 @@ export function MiniDevTools({
         className
       )}
     >
-      {/* Header */}
       <div className="flex items-center justify-between p-base gap-base shrink-0">
         <div className="flex items-center gap-base flex-1 min-w-0">
           <button
             onClick={onToggleCollapse}
             className="flex items-center justify-center text-low hover:text-normal transition-colors"
-            aria-label={isCollapsed ? 'Expand DevTools' : 'Collapse DevTools'}
+            aria-label="Collapse DevTools"
           >
-            {isCollapsed ? (
-              <CaretDownIcon size={16} weight="fill" />
-            ) : (
-              <CaretUpIcon size={16} weight="fill" />
-            )}
+            <CaretDownIcon size={16} weight="fill" />
           </button>
-
-          {isCollapsed ? (
-            <div className="flex items-center gap-base min-w-0">
-              <span className="text-sm text-high font-medium whitespace-nowrap">
-                DevTools
-              </span>
-              <div className="flex items-center gap-half min-w-0">
-                <button
-                  onClick={() => handleTabClick('console')}
-                  className="text-xs text-low hover:text-normal transition-colors whitespace-nowrap"
-                >
-                  Console ({consoleLogs.length})
-                </button>
-                <button
-                  onClick={() => handleTabClick('network')}
-                  className="text-xs text-low hover:text-normal transition-colors whitespace-nowrap"
-                >
-                  Network ({networkRequests.length})
-                </button>
-                <button
-                  onClick={() => handleTabClick('errors')}
-                  className="text-xs text-low hover:text-normal transition-colors whitespace-nowrap"
-                >
-                  Errors ({errors.length})
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <span className="text-sm text-high font-medium">DevTools</span>
-              <div className="flex items-center gap-base">
-                <button
-                  onClick={() => setActiveTab('console')}
-                  className={cn(
-                    'text-xs px-base py-half rounded border transition-colors',
-                    activeTab === 'console'
-                      ? 'bg-secondary border-brand/40 text-high'
-                      : 'border-transparent text-low hover:text-normal'
-                  )}
-                >
-                  Console ({consoleLogs.length})
-                </button>
-                <button
-                  onClick={() => setActiveTab('network')}
-                  className={cn(
-                    'text-xs px-base py-half rounded border transition-colors',
-                    activeTab === 'network'
-                      ? 'bg-secondary border-brand/40 text-high'
-                      : 'border-transparent text-low hover:text-normal'
-                  )}
-                >
-                  Network ({networkRequests.length})
-                </button>
-                <button
-                  onClick={() => setActiveTab('errors')}
-                  className={cn(
-                    'text-xs px-base py-half rounded border transition-colors',
-                    activeTab === 'errors'
-                      ? 'bg-secondary border-brand/40 text-high'
-                      : 'border-transparent text-low hover:text-normal'
-                  )}
-                >
-                  Errors ({errors.length})
-                </button>
-              </div>
-            </>
-          )}
+          <span className="text-sm text-high font-medium">DevTools</span>
+          <div className="flex items-center gap-base">
+            <button
+              onClick={() => setActiveTab('console')}
+              className={cn(
+                'text-xs px-base py-half rounded border transition-colors',
+                activeTab === 'console'
+                  ? 'bg-secondary border-brand/40 text-high'
+                  : 'border-transparent text-low hover:text-normal'
+              )}
+            >
+              Console ({consoleLogs.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('network')}
+              className={cn(
+                'text-xs px-base py-half rounded border transition-colors',
+                activeTab === 'network'
+                  ? 'bg-secondary border-brand/40 text-high'
+                  : 'border-transparent text-low hover:text-normal'
+              )}
+            >
+              Network ({networkRequests.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('errors')}
+              className={cn(
+                'text-xs px-base py-half rounded border transition-colors',
+                activeTab === 'errors'
+                  ? 'bg-secondary border-brand/40 text-high'
+                  : 'border-transparent text-low hover:text-normal'
+              )}
+            >
+              Errors ({errors.length})
+            </button>
+          </div>
         </div>
 
-        {!isCollapsed && (
-          <button
-            onClick={handleClearClick}
-            className="flex items-center justify-center gap-half px-base py-half rounded border border-transparent text-low hover:text-normal transition-colors text-xs whitespace-nowrap"
-            aria-label="Clear current tab"
-          >
-            <TrashIcon size={14} />
-            Clear
-          </button>
-        )}
+        <button
+          onClick={handleClearClick}
+          className="flex items-center justify-center gap-half px-base py-half rounded border border-transparent text-low hover:text-normal transition-colors text-xs whitespace-nowrap"
+          aria-label="Clear current tab"
+        >
+          <TrashIcon size={14} />
+          Clear
+        </button>
       </div>
 
-      {/* Content */}
-      {!isCollapsed && (
-        <>
-          <div className="border-t border-brand/20" />
-          <div className="flex-1 min-h-0 overflow-auto max-h-64 font-mono text-xs">
+      <div className="border-t border-brand/20" />
+      <div className="flex-1 min-h-0 overflow-auto max-h-64 font-mono text-xs">
             {activeTab === 'console' && (
               <div className="divide-y divide-brand/10">
                 {consoleLogs.length === 0 ? (
@@ -356,8 +329,6 @@ export function MiniDevTools({
               </div>
             )}
           </div>
-        </>
-      )}
     </div>
   );
 }
