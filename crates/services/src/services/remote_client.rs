@@ -283,7 +283,11 @@ impl RemoteClient {
             .map_err(|e| RemoteClientError::Url(e.to_string()))?;
 
         (|| async {
-            let mut req = self.http.request(method.clone(), url.clone());
+            let mut req = self
+                .http
+                .request(method.clone(), url.clone())
+                .header("X-Client-Version", env!("CARGO_PKG_VERSION"))
+                .header("X-Client-Type", "local-backend");
 
             if requires_auth {
                 let token = self.require_token().await?;

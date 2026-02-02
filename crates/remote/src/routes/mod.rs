@@ -1,9 +1,10 @@
 use axum::{
-    Router,
+    Json, Router,
     http::{Request, header::HeaderName},
     middleware,
     routing::get,
 };
+use serde::Serialize;
 use tower_http::{
     cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer},
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, RequestId, SetRequestIdLayer},
@@ -142,6 +143,9 @@ pub fn router(state: AppState) -> Router {
         .nest("/v1", v1_public)
         .nest("/v1", v1_protected)
         .fallback_service(spa)
+        .layer(middleware::from_fn(
+            crate::middleware::version::add_version_headers,
+        ))
         .layer(
             CorsLayer::new()
                 .allow_origin(AllowOrigin::mirror_request())
@@ -160,6 +164,15 @@ pub fn router(state: AppState) -> Router {
         .with_state(state)
 }
 
-async fn health() -> &'static str {
-    "ok"
+#[derive(Serialize)]
+struct HealthResponse {
+    status: &'static str,
+    version: &'static str,
+}
+
+async fn health() -> Json<HealthResponse> {
+    Json(HealthResponse {
+        status: "ok",
+        version: env!("CARGO_PKG_VERSION"),
+    })
 }
