@@ -1,6 +1,6 @@
 {
   "name": "vibe-kanban",
-  "version": "0.0.167",
+  "version": "0.1.0",
   "private": true,
   "bin": {
     "vibe-kanban": "npx-cli/bin/cli.js"
@@ -25,8 +25,8 @@
     "dev:qa": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export VK_ALLOWED_ORIGINS=\"http://localhost:${FRONTEND_PORT}\" && export VITE_VK_SHARED_API_BASE=${VK_SHARED_API_BASE:-} && concurrently \"pnpm run backend:dev:watch:qa\" \"pnpm run frontend:dev\"",
     "generate-types": "cargo run --bin generate_types",
     "generate-types:check": "cargo run --bin generate_types -- --check",
-    "remote:generate-types": "cargo run -p remote --bin remote-generate-types",
-    "remote:generate-types:check": "cargo run -p remote --bin remote-generate-types -- --check",
+    "remote:generate-types": "cargo run --manifest-path crates/remote/Cargo.toml --bin remote-generate-types",
+    "remote:generate-types:check": "cargo run --manifest-path crates/remote/Cargo.toml --bin remote-generate-types -- --check",
     "prepare-db": "node scripts/prepare-db.js",
     "prepare-db:check": "node scripts/prepare-db.js --check",
     "build:npx": "bash ./local-build.sh",
