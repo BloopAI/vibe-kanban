@@ -2,7 +2,10 @@ use tracing::{debug, error};
 use utils::api::pull_requests::UpsertPullRequestRequest;
 use uuid::Uuid;
 
-use super::{diff_stream::DiffStats, remote_client::RemoteClient};
+use super::{
+    diff_stream::DiffStats,
+    remote_client::{RemoteClient, RemoteClientError},
+};
 
 /// Syncs workspace data to the remote server.
 /// First checks if the workspace exists on remote, then updates if it does.
@@ -20,6 +23,10 @@ pub async fn sync_workspace_to_remote(
                 "Workspace {} not found on remote, skipping sync",
                 workspace_id
             );
+            return;
+        }
+        Err(RemoteClientError::Auth) => {
+            debug!("Workspace {} sync skipped: not authenticated", workspace_id);
             return;
         }
         Err(e) => {
@@ -63,6 +70,10 @@ pub async fn sync_pr_to_remote(client: &RemoteClient, request: UpsertPullRequest
                 "PR #{} workspace {} not found on remote, skipping sync",
                 request.number, request.local_workspace_id
             );
+            return;
+        }
+        Err(RemoteClientError::Auth) => {
+            debug!("PR #{} sync skipped: not authenticated", request.number);
             return;
         }
         Err(e) => {
