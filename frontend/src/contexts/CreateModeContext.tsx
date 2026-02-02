@@ -7,7 +7,7 @@ import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 
 interface CreateModeContextValue {
   selectedProjectId: string | null;
-  setSelectedProjectId: (id: string | null) => void;
+  setSelectedProjectId: (id: string | null) => Promise<void>;
   repos: Repo[];
   addRepo: (repo: Repo) => void;
   removeRepo: (repoId: string) => void;

@@ -50,6 +50,7 @@ type DraftAction =
     }
   | { type: 'INIT_ERROR'; error: string }
   | { type: 'SET_PROJECT'; projectId: string | null }
+  | { type: 'SET_PROJECT_WITH_REPOS'; projectId: string | null; repos: Repo[] }
   | { type: 'ADD_REPO'; repo: Repo; targetBranch: string | null }
   | { type: 'REMOVE_REPO'; repoId: string }
   | { type: 'SET_TARGET_BRANCH'; repoId: string; branch: string }
@@ -90,6 +91,13 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
 
     case 'SET_PROJECT':
       return { ...state, projectId: action.projectId };
+
+    case 'SET_PROJECT_WITH_REPOS':
+      return {
+        ...state,
+        projectId: action.projectId,
+        repos: action.repos.map((repo) => ({ repo, targetBranch: null })),
+      };
 
     case 'ADD_REPO': {
       // Don't add duplicate repos
@@ -164,7 +172,7 @@ interface UseCreateModeStateResult {
   hasInitialValue: boolean;
 
   // Actions
-  setSelectedProjectId: (id: string | null) => void;
+  setSelectedProjectId: (id: string | null) => Promise<void>;
   setMessage: (message: string) => void;
   setSelectedProfile: (profile: ExecutorProfileId | null) => void;
   addRepo: (repo: Repo) => void;
@@ -364,8 +372,18 @@ export function useCreateModeState({
   // ============================================================================
   // Actions
   // ============================================================================
-  const setSelectedProjectId = useCallback((id: string | null) => {
-    dispatch({ type: 'SET_PROJECT', projectId: id });
+  const setSelectedProjectId = useCallback(async (id: string | null) => {
+    if (!id) {
+      dispatch({ type: 'SET_PROJECT', projectId: null });
+      return;
+    }
+    try {
+      const repos = await projectsApi.getRepositories(id);
+      dispatch({ type: 'SET_PROJECT_WITH_REPOS', projectId: id, repos });
+    } catch (e) {
+      console.error('[useCreateModeState] Failed to load project repos:', e);
+      dispatch({ type: 'SET_PROJECT', projectId: id });
+    }
   }, []);
 
   const setMessage = useCallback((message: string) => {
