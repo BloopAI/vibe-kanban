@@ -4,11 +4,13 @@ use tokio::sync::RwLock;
 use utils;
 
 use crate::services::config::{Config, NotificationConfig, SoundFile};
+use crate::services::webhook_notification::WebhookNotificationService;
 
 /// Service for handling cross-platform notifications including sound alerts and push notifications
 #[derive(Debug, Clone)]
 pub struct NotificationService {
     config: Arc<RwLock<Config>>,
+    webhook_service: WebhookNotificationService,
 }
 
 /// Cache for WSL root path from PowerShell
@@ -16,13 +18,50 @@ static WSL_ROOT_PATH_CACHE: OnceLock<Option<String>> = OnceLock::new();
 
 impl NotificationService {
     pub fn new(config: Arc<RwLock<Config>>) -> Self {
-        Self { config }
+        let webhook_service = WebhookNotificationService::new(config.clone());
+        Self {
+            config,
+            webhook_service,
+        }
     }
 
     /// Send both sound and push notifications if enabled
     pub async fn notify(&self, title: &str, message: &str) {
         let config = self.config.read().await.notifications.clone();
         Self::send_notification(&config, title, message).await;
+        self.webhook_service.send_notification(title, message).await;
+    }
+
+    /// Notify when execution starts (webhook only, no sound)
+    pub async fn notify_execution_started(&self, task_title: &str) {
+        let title = "Task Execution Started";
+        let message = format!("Started working on: {}", task_title);
+        self.webhook_service.send_notification(title, &message).await;
+    }
+
+    /// Notify when execution is halted (completed, failed, or cancelled)
+    pub async fn notify_execution_halted(&self, task_title: &str, status: &str, success: bool) {
+        let (title, message) = match status {
+            "Completed" if success => (
+                "Task Execution Completed",
+                format!("Successfully completed: {}", task_title),
+            ),
+            "Failed" => (
+                "Task Execution Failed",
+                format!("Execution failed for: {}", task_title),
+            ),
+            "Killed" => (
+                "Task Execution Cancelled",
+                format!("Execution was cancelled for: {}", task_title),
+            ),
+            _ => (
+                "Task Execution Halted",
+                format!("Execution halted for: {}", task_title),
+            ),
+        };
+
+        // Send sound + push + webhook for halted executions
+        self.notify(title, &message).await;
     }
 
     /// Internal method to send notifications with a given config

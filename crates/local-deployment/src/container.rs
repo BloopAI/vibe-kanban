@@ -1188,6 +1188,11 @@ impl ContainerService for LocalContainerService {
         let hn = self.spawn_exit_monitor(&execution_process.id, spawned.exit_signal);
         self.add_exit_monitor_handle(execution_process.id, hn).await;
 
+        // Notify execution started (webhook only, no sound)
+        self.notification_service
+            .notify_execution_started(&task.title)
+            .await;
+
         Ok(())
     }
 

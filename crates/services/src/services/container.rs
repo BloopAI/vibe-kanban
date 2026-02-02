@@ -227,30 +227,31 @@ pub trait ContainerService {
             tracing::error!("Failed to update task status to InReview: {e}");
         }
 
-        // Skip notification if process was intentionally killed by user
-        if matches!(ctx.execution_process.status, ExecutionProcessStatus::Killed) {
-            return;
-        }
-
-        let title = format!("Task Complete: {}", ctx.task.title);
-        let message = match ctx.execution_process.status {
-            ExecutionProcessStatus::Completed => format!(
-                "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {:?}",
-                ctx.task.title, ctx.workspace.branch, ctx.session.executor
-            ),
-            ExecutionProcessStatus::Failed => format!(
-                "❌ '{}' execution failed\nBranch: {:?}\nExecutor: {:?}",
-                ctx.task.title, ctx.workspace.branch, ctx.session.executor
-            ),
+        // Handle different execution statuses
+        match ctx.execution_process.status {
+            ExecutionProcessStatus::Completed => {
+                let success = ctx.execution_process.exit_code == Some(0);
+                self.notification_service()
+                    .notify_execution_halted(&ctx.task.title, "Completed", success)
+                    .await;
+            }
+            ExecutionProcessStatus::Failed => {
+                self.notification_service()
+                    .notify_execution_halted(&ctx.task.title, "Failed", false)
+                    .await;
+            }
+            ExecutionProcessStatus::Killed => {
+                self.notification_service()
+                    .notify_execution_halted(&ctx.task.title, "Killed", false)
+                    .await;
+            }
             _ => {
                 tracing::warn!(
                     "Tried to notify workspace completion for {} but process is still running!",
                     ctx.workspace.id
                 );
-                return;
             }
-        };
-        self.notification_service().notify(&title, &message).await;
+        }
     }
 
     /// Cleanup executions marked as running in the db, call at startup

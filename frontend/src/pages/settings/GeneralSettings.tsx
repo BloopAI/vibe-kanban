@@ -37,6 +37,7 @@ import { useTheme } from '@/components/ThemeProvider';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
+import { WebhookConfigurationSection } from '@/components/settings/WebhookConfigurationSection';
 
 export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
@@ -676,6 +677,28 @@ export function GeneralSettings() {
               </p>
             </div>
           </div>
+          <WebhookConfigurationSection
+            webhookNotificationsEnabled={
+              draft?.notifications.webhook_notifications_enabled ?? false
+            }
+            webhooks={draft?.notifications.webhooks ?? []}
+            onWebhookNotificationsEnabledChange={(enabled) =>
+              updateDraft({
+                notifications: {
+                  ...draft!.notifications,
+                  webhook_notifications_enabled: enabled,
+                },
+              })
+            }
+            onWebhooksChange={(webhooks) =>
+              updateDraft({
+                notifications: {
+                  ...draft!.notifications,
+                  webhooks,
+                },
+              })
+            }
+          />
         </CardContent>
       </Card>
 
