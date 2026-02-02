@@ -115,6 +115,29 @@ async fn proxy_impl(target_port: u16, path_str: String, request: Request) -> Res
     http_proxy_handler(target_port, path_str, request).await
 }
 
+fn rewrite_absolute_urls(html: &str, prefix: &str) -> String {
+    let patterns = [
+        ("href=\"/_", format!("href=\"{}/_", prefix)),
+        ("src=\"/_", format!("src=\"{}/_", prefix)),
+        ("href='/_", format!("href='{}/_", prefix)),
+        ("src='/_", format!("src='{}/_", prefix)),
+        ("href=\"/static", format!("href=\"{}/static", prefix)),
+        ("src=\"/static", format!("src=\"{}/static", prefix)),
+        ("href='/static", format!("href='{}/static", prefix)),
+        ("src='/static", format!("src='{}/static", prefix)),
+        ("\"/_next/", format!("\"{}/_next/", prefix)),
+        ("'/_next/", format!("'{}/_next/", prefix)),
+        ("\"/static/", format!("\"{}/static/", prefix)),
+        ("'/static/", format!("'{}/static/", prefix)),
+    ];
+
+    let mut result = html.to_string();
+    for (from, to) in &patterns {
+        result = result.replace(from, to);
+    }
+    result
+}
+
 async fn http_proxy_handler(target_port: u16, path_str: String, request: Request) -> Response {
     let (parts, body) = request.into_parts();
     let method = parts.method;
@@ -227,6 +250,9 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
         match response.bytes().await {
             Ok(body_bytes) => {
                 let mut html = String::from_utf8_lossy(&body_bytes).to_string();
+
+                let prefix = format!("/p/{}", target_port);
+                html = rewrite_absolute_urls(&html, &prefix);
 
                 if let Some(pos) = html.to_lowercase().rfind("</body>") {
                     html.insert_str(pos, DEVTOOLS_PLACEHOLDER_SCRIPT);
