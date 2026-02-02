@@ -509,15 +509,12 @@ impl JsonRpcCallbacks for AppServerClient {
         if has_finished
             && self.commit_reminder
             && !self.commit_reminder_sent.swap(true, Ordering::SeqCst)
-        {
-            if let Some(prompt) =
+            && let Some(prompt) =
                 format_commit_reminder(&self.commit_reminder_prompt, &self.repo_context).await
-            {
-                if let Some(conversation_id) = *self.conversation_id.lock().await {
-                    self.spawn_user_message(conversation_id, prompt);
-                    return Ok(false);
-                }
-            }
+            && let Some(conversation_id) = *self.conversation_id.lock().await
+        {
+            self.spawn_user_message(conversation_id, prompt);
+            return Ok(false);
         }
 
         Ok(has_finished)

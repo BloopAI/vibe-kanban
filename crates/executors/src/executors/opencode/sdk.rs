@@ -337,36 +337,36 @@ async fn run_session_inner(
     }
 
     // Handle commit reminder if enabled
-    if config.commit_reminder && !cancel.is_cancelled() {
-        if let Some(reminder_prompt) =
+    if config.commit_reminder
+        && !cancel.is_cancelled()
+        && let Some(reminder_prompt) =
             format_commit_reminder(&config.commit_reminder_prompt, &config.repo_context).await
-        {
-            tracing::debug!("Sending commit reminder prompt to OpenCode session");
+    {
+        tracing::debug!("Sending commit reminder prompt to OpenCode session");
 
-            // Log as system message so it's visible in the UI (user_message gets filtered out)
-            let _ = log_writer
-                .log_event(&OpencodeExecutorEvent::SystemMessage {
-                    content: reminder_prompt.clone(),
-                })
-                .await;
+        // Log as system message so it's visible in the UI (user_message gets filtered out)
+        let _ = log_writer
+            .log_event(&OpencodeExecutorEvent::SystemMessage {
+                content: reminder_prompt.clone(),
+            })
+            .await;
 
-            let reminder_fut = Box::pin(prompt(
-                &client,
-                &config.base_url,
-                &config.directory,
-                &session_id,
-                &reminder_prompt,
-                model,
-                config.model_variant.clone(),
-                config.agent.clone(),
-            ));
-            let reminder_result =
-                run_request_with_control(reminder_fut, &mut control_rx, cancel.clone()).await;
+        let reminder_fut = Box::pin(prompt(
+            &client,
+            &config.base_url,
+            &config.directory,
+            &session_id,
+            &reminder_prompt,
+            model,
+            config.model_variant.clone(),
+            config.agent.clone(),
+        ));
+        let reminder_result =
+            run_request_with_control(reminder_fut, &mut control_rx, cancel.clone()).await;
 
-            if let Err(e) = reminder_result {
-                // Log but don't fail the session on commit reminder errors
-                tracing::warn!("Commit reminder prompt failed: {e}");
-            }
+        if let Err(e) = reminder_result {
+            // Log but don't fail the session on commit reminder errors
+            tracing::warn!("Commit reminder prompt failed: {e}");
         }
     }
 
