@@ -20,11 +20,14 @@ import {
   IconButtonGroup,
   IconButtonGroupItem,
 } from '../primitives/IconButtonGroup';
+import { PreviewNavigation } from './PreviewNavigation';
+import { MiniDevTools } from './MiniDevTools';
 import type { Repo } from 'shared/types';
 import type {
   ScreenSize,
   ResponsiveDimensions,
 } from '@/hooks/usePreviewSettings';
+import type { UsePreviewDevToolsReturn } from '@/hooks/usePreviewDevTools';
 
 export const MOBILE_WIDTH = 390;
 export const MOBILE_HEIGHT = 844;
@@ -64,6 +67,12 @@ interface PreviewBrowserProps {
   hasFailedDevServer?: boolean;
   mobileScale: number;
   className?: string;
+  iframeRef: RefObject<HTMLIFrameElement>;
+  devTools: UsePreviewDevToolsReturn;
+  onNavigateBack: () => void;
+  onNavigateForward: () => void;
+  devToolsCollapsed: boolean;
+  onToggleDevToolsCollapsed: () => void;
 }
 
 export function PreviewBrowser({
@@ -97,6 +106,12 @@ export function PreviewBrowser({
   hasFailedDevServer,
   mobileScale,
   className,
+  iframeRef,
+  devTools,
+  onNavigateBack,
+  onNavigateForward,
+  devToolsCollapsed,
+  onToggleDevToolsCollapsed,
 }: PreviewBrowserProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const isLoading = isStarting || (isServerRunning && !url);
@@ -140,6 +155,14 @@ export function PreviewBrowser({
       {/* Floating Toolbar */}
       <div className="p-double">
         <div className="backdrop-blur-sm bg-primary/80 border border-brand/20 flex items-center gap-base p-base rounded-md shadow-md shrink-0">
+          {/* Navigation (Back/Forward) */}
+          <PreviewNavigation
+            navigation={devTools.navigation}
+            onBack={onNavigateBack}
+            onForward={onNavigateForward}
+            disabled={!isServerRunning}
+          />
+
           {/* URL Input */}
           <div
             className={cn(
@@ -326,6 +349,7 @@ export function PreviewBrowser({
                 style={getIframeContainerStyle()}
               >
                 <iframe
+                  ref={iframeRef}
                   src={url}
                   title={t('preview.browser.title')}
                   className={cn(
@@ -427,6 +451,21 @@ export function PreviewBrowser({
           </div>
         )}
       </div>
+
+      {showIframeContent && (
+        <div className="px-double pb-double">
+          <MiniDevTools
+            consoleLogs={devTools.consoleLogs}
+            networkRequests={devTools.networkRequests}
+            errors={devTools.errors}
+            onClearConsole={devTools.clearConsole}
+            onClearNetwork={devTools.clearNetwork}
+            onClearErrors={devTools.clearErrors}
+            isCollapsed={devToolsCollapsed}
+            onToggleCollapse={onToggleDevToolsCollapsed}
+          />
+        </div>
+      )}
     </div>
   );
 }

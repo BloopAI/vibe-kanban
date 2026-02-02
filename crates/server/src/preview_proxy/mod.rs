@@ -70,9 +70,9 @@ const STRIP_RESPONSE_HEADERS: &[&str] = &[
     "content-encoding",
 ];
 
-/// Placeholder script injected before </body> in HTML responses.
-const DEVTOOLS_PLACEHOLDER_SCRIPT: &str =
-    "<script>/* vibe-kanban-devtools-placeholder */</script>";
+/// DevTools script injected before </body> in HTML responses.
+/// Captures console, network, errors and sends via postMessage.
+const DEVTOOLS_SCRIPT: &str = include_str!("devtools_script.js");
 
 /// Cookie name for storing target port (used for WebSocket routing).
 const PROXY_TARGET_COOKIE: &str = "_vk_proxy_target";
@@ -287,7 +287,8 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
                 let mut html = String::from_utf8_lossy(&body_bytes).to_string();
 
                 if let Some(pos) = html.to_lowercase().rfind("</body>") {
-                    html.insert_str(pos, DEVTOOLS_PLACEHOLDER_SCRIPT);
+                    let script_tag = format!("<script>{}</script>", DEVTOOLS_SCRIPT);
+                    html.insert_str(pos, &script_tag);
                 }
 
                 let mut builder = Response::builder().status(status);

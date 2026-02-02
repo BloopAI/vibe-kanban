@@ -24,6 +24,8 @@ import { useLogStream } from '@/hooks/useLogStream';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialog';
+import { usePreviewDevTools } from '@/hooks/usePreviewDevTools';
+import { PreviewDevToolsBridge } from '@/utils/previewDevToolsBridge';
 
 const MIN_RESPONSIVE_WIDTH = 320;
 const MIN_RESPONSIVE_HEIGHT = 480;
@@ -96,12 +98,30 @@ export function PreviewBrowserContainer({
   const [allowManualUrl, setAllowManualUrl] = useState(false);
   const [immediateLoad, setImmediateLoad] = useState(false);
 
+  // DevTools state
+  const [devToolsCollapsed, setDevToolsCollapsed] = useState(true);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const devTools = usePreviewDevTools();
+  const bridgeRef = useRef<PreviewDevToolsBridge | null>(null);
+
   // Sync from prop only when input is not focused
   useEffect(() => {
     if (document.activeElement !== urlInputRef.current) {
       setUrlInputValue(effectiveUrl ?? '');
     }
   }, [effectiveUrl]);
+
+  useEffect(() => {
+    bridgeRef.current = new PreviewDevToolsBridge(
+      devTools.handleMessage,
+      iframeRef
+    );
+    bridgeRef.current.start();
+
+    return () => {
+      bridgeRef.current?.stop();
+    };
+  }, [devTools.handleMessage]);
 
   // 10-second timeout to enable manual URL entry when no URL detected
   useEffect(() => {
@@ -339,6 +359,18 @@ export function PreviewBrowserContainer({
     setUrlInputValue('');
   }, [clearOverride]);
 
+  const handleNavigateBack = useCallback(() => {
+    bridgeRef.current?.navigateBack();
+  }, []);
+
+  const handleNavigateForward = useCallback(() => {
+    bridgeRef.current?.navigateForward();
+  }, []);
+
+  const handleToggleDevToolsCollapsed = useCallback(() => {
+    setDevToolsCollapsed((prev) => !prev);
+  }, []);
+
   const handleCopyUrl = useCallback(async () => {
     if (effectiveUrl) {
       await navigator.clipboard.writeText(effectiveUrl);
@@ -463,6 +495,12 @@ export function PreviewBrowserContainer({
       hasFailedDevServer={hasFailedDevServer}
       mobileScale={mobileScale}
       className={className}
+      iframeRef={iframeRef}
+      devTools={devTools}
+      onNavigateBack={handleNavigateBack}
+      onNavigateForward={handleNavigateForward}
+      devToolsCollapsed={devToolsCollapsed}
+      onToggleDevToolsCollapsed={handleToggleDevToolsCollapsed}
     />
   );
 }
