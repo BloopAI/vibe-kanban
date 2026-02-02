@@ -17,6 +17,7 @@ use axum::{
     routing::{any, get},
 };
 use futures_util::{SinkExt, StreamExt};
+use regex::Regex;
 use reqwest::Client;
 use serde::Deserialize;
 use tokio_tungstenite::tungstenite;
@@ -92,6 +93,31 @@ async fn proxy_target_path(Path(params): Path<TargetPortAndPath>, request: Reque
     proxy_impl(params.target, params.path, request).await
 }
 
+/// Extract target port from Referer header.
+/// Looks for pattern `/p/{port}/` in the Referer URL.
+fn extract_target_from_referer(headers: &HeaderMap) -> Option<u16> {
+    let referer = headers.get(header::REFERER)?.to_str().ok()?;
+    let re = Regex::new(r"/p/(\d+)/").ok()?;
+    let caps = re.captures(referer)?;
+    caps.get(1)?.as_str().parse().ok()
+}
+
+/// Catch-all handler for requests without explicit `/p/{port}/` prefix.
+/// Uses Referer header to determine target port.
+async fn catchall_proxy(request: Request) -> Response {
+    let target_port = match extract_target_from_referer(request.headers()) {
+        Some(port) => port,
+        None => {
+            return (StatusCode::NOT_FOUND, "No target port in Referer").into_response();
+        }
+    };
+    
+    // Get the path from the request URI (strip leading /)
+    let path = request.uri().path().trim_start_matches('/').to_string();
+    
+    proxy_impl(target_port, path, request).await
+}
+
 async fn proxy_impl(target_port: u16, path_str: String, request: Request) -> Response {
     let (mut parts, body) = request.into_parts();
 
@@ -113,29 +139,6 @@ async fn proxy_impl(target_port: u16, path_str: String, request: Request) -> Res
 
     let request = Request::from_parts(parts, body);
     http_proxy_handler(target_port, path_str, request).await
-}
-
-fn rewrite_absolute_urls(html: &str, prefix: &str) -> String {
-    let patterns = [
-        ("href=\"/_", format!("href=\"{}/_", prefix)),
-        ("src=\"/_", format!("src=\"{}/_", prefix)),
-        ("href='/_", format!("href='{}/_", prefix)),
-        ("src='/_", format!("src='{}/_", prefix)),
-        ("href=\"/static", format!("href=\"{}/static", prefix)),
-        ("src=\"/static", format!("src=\"{}/static", prefix)),
-        ("href='/static", format!("href='{}/static", prefix)),
-        ("src='/static", format!("src='{}/static", prefix)),
-        ("\"/_next/", format!("\"{}/_next/", prefix)),
-        ("'/_next/", format!("'{}/_next/", prefix)),
-        ("\"/static/", format!("\"{}/static/", prefix)),
-        ("'/static/", format!("'{}/static/", prefix)),
-    ];
-
-    let mut result = html.to_string();
-    for (from, to) in &patterns {
-        result = result.replace(from, to);
-    }
-    result
 }
 
 async fn http_proxy_handler(target_port: u16, path_str: String, request: Request) -> Response {
@@ -250,9 +253,6 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
         match response.bytes().await {
             Ok(body_bytes) => {
                 let mut html = String::from_utf8_lossy(&body_bytes).to_string();
-
-                let prefix = format!("/p/{}", target_port);
-                html = rewrite_absolute_urls(&html, &prefix);
 
                 if let Some(pos) = html.to_lowercase().rfind("</body>") {
                     html.insert_str(pos, DEVTOOLS_PLACEHOLDER_SCRIPT);
@@ -406,4 +406,5 @@ where
         .route("/proxy", get(proxy_page_handler))
         .route("/p/{target}/", any(proxy_target_root))
         .route("/p/{target}/{*path}", any(proxy_target_path))
+        .fallback(catchall_proxy)
 }
