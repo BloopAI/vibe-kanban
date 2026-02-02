@@ -11,8 +11,8 @@ pub struct AnalyticsConfig {
 
 impl AnalyticsConfig {
     pub fn from_env() -> Option<Self> {
-        let api_key = std::env::var("POSTHOG_API_KEY").ok()?;
-        let api_endpoint = std::env::var("POSTHOG_API_ENDPOINT").ok()?;
+        let api_key = option_env!("POSTHOG_API_KEY")?.to_string();
+        let api_endpoint = option_env!("POSTHOG_API_ENDPOINT")?.to_string();
         Some(Self {
             posthog_api_key: api_key,
             posthog_api_endpoint: api_endpoint,

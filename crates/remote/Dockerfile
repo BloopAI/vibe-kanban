@@ -22,8 +22,12 @@ RUN pnpm -C remote-frontend build
 FROM rust:1.89-slim-bookworm AS builder
 ARG APP_NAME
 ARG FEATURES
+ARG POSTHOG_API_KEY=""
+ARG POSTHOG_API_ENDPOINT=""
 
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+ENV POSTHOG_API_KEY=${POSTHOG_API_KEY}
+ENV POSTHOG_API_ENDPOINT=${POSTHOG_API_ENDPOINT}
 
 # Install build dependencies, plus git and openssh-client for private repo access
 RUN apt-get update \

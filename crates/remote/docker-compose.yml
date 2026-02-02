@@ -44,6 +44,8 @@ services:
       dockerfile: crates/remote/Dockerfile
       args:
         FEATURES: ${FEATURES:-}
+        POSTHOG_API_KEY: ${POSTHOG_API_KEY:-}
+        POSTHOG_API_ENDPOINT: ${POSTHOG_API_ENDPOINT:-}
       ssh:
         - default
     depends_on:
@@ -80,8 +82,6 @@ services:
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       STRIPE_FREE_SEAT_LIMIT: ${STRIPE_FREE_SEAT_LIMIT:-1}
 
-      POSTHOG_API_KEY: ${POSTHOG_API_KEY:-}
-      POSTHOG_API_ENDPOINT: ${POSTHOG_API_ENDPOINT:-}
     ports:
       - "127.0.0.1:3000:8081"
     restart: unless-stopped
