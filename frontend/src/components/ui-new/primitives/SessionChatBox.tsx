@@ -658,9 +658,15 @@ export function SessionChatBox({
                     }
                     onClick={() => onSelectSession(s.id)}
                   >
-                    {index === 0
-                      ? t('conversation.sessions.latest')
-                      : formatDateShortWithTime(s.created_at)}
+                    <span className="flex items-center gap-1.5">
+                      <AgentIcon
+                        agent={s.executor as BaseCodingAgent}
+                        className="size-icon shrink-0"
+                      />
+                      {index === 0
+                        ? t('conversation.sessions.latest')
+                        : formatDateShortWithTime(s.created_at)}
+                    </span>
                   </DropdownMenuItem>
                 ))}
               </>

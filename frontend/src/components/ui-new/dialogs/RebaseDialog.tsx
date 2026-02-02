@@ -86,6 +86,11 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
     modal,
   ]);
 
+  // Reset initialization flag when attemptId or repoId changes
+  useEffect(() => {
+    setHasInitializedBranches(false);
+  }, [attemptId, repoId]);
+
   // Initialize branch selection once data is loaded
   useEffect(() => {
     if (!hasInitializedBranches && initialTargetBranch && !isInitialLoading) {

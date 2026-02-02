@@ -4,7 +4,7 @@ description: "Work with multiple repositories and agent sessions in a single wor
 ---
 
 <Frame>
-<img src="/images/workspaces-multi-repo.png" alt="Workspace with multiple repositories showing the repository panel with two repos" />
+<img style={{maxHeight: "350px"}} src="/images/workspaces-multi-repo.png" alt="Workspace with multiple repositories showing the repository panel with two repos" />
 </Frame>
 
 Workspaces support working across multiple repositories and running multiple agent sessions simultaneously.
@@ -16,7 +16,7 @@ Add multiple repositories to a single workspace to work on cross-repo tasks.
 ### Adding Repositories
 
 <Frame>
-<img src="/images/workspaces-add-repo.png" alt="Repository selection showing selected repo with branch dropdown and list of available repositories to add" />
+<img style={{maxHeight: "350px"}} src="/images/workspaces-add-repo.png" alt="Repository selection showing selected repo with branch dropdown and list of available repositories to add" />
 </Frame>
 
 When creating a new workspace, add multiple repositories from the create view:
@@ -64,7 +64,7 @@ Use the command bar's Repo Actions page to quickly switch between repositories w
 ## Multiple Sessions
 
 <Frame>
-<img src="/images/workspaces-sessions.png" alt="Session dropdown in chat box toolbar showing multiple sessions" />
+<img style={{maxHeight: "300px"}} src="/images/workspaces-sessions.png" alt="Session dropdown in chat box toolbar showing multiple sessions" />
 </Frame>
 
 Create multiple agent conversation sessions within a single workspace.
@@ -113,6 +113,48 @@ Different sessions can use different coding agents:
 Each session operates independently. Changes made by one agent are visible to other sessions through the shared workspace files.
 </Info>
 
+## Example: Full-Stack Feature
+
+Here's a practical workflow for implementing a feature across frontend and backend repositories:
+
+<Steps>
+<Step title="Create workspace with both repos">
+Create a new workspace, select your project, and add both `frontend` and `backend` repositories. Set target branches to `main` for both.
+</Step>
+
+<Step title="Describe the full task">
+In your initial message, describe the complete feature:
+
+```
+Add a user profile page:
+- Backend: Create GET /api/users/:id endpoint returning user data
+- Frontend: Add /profile/:id route with a UserProfile component
+- The frontend should fetch from the backend endpoint
+```
+</Step>
+
+<Step title="Agent works across repos">
+The agent reads code from both repositories and makes coordinated changes. It understands the relationship between frontend and backend.
+</Step>
+
+<Step title="Test integration">
+Start the dev server (if configured for one repo, you may need to start the other manually via terminal). Test that the frontend correctly calls the backend.
+</Step>
+
+<Step title="Create separate PRs">
+Create a PR for each repository:
+1. Open command bar (`Cmd/Ctrl + K`)
+2. Go to **Repo Actions**
+3. Select **Create PR** for the backend repo
+4. Repeat for the frontend repo
+5. In PR descriptions, reference the related PR
+</Step>
+
+<Step title="Merge in order">
+Merge backend first (since frontend depends on it), then merge frontend.
+</Step>
+</Steps>
+
 ## Best Practices
 
 ### Multi-Repo Workflows
@@ -120,17 +162,17 @@ Each session operates independently. Changes made by one agent are visible to ot
 - **Start with a plan**: Describe the cross-repo changes needed upfront
 - **Coordinate commits**: Ensure related changes are committed together
 - **Test integration**: Use the preview to verify repos work together
-- **Create linked PRs**: Reference related PRs across repositories
+- **Create linked PRs**: Reference related PRs across repositories (e.g., "Related to frontend#123")
 
 ### Session Management
 
-- **Name sessions descriptively**: Use the rename feature to identify session purposes
-- **Archive completed sessions**: Keep the session list manageable
-- **Use review sessions**: Dedicate sessions for code review feedback
+- **One focus per session**: Keep each session focused on a specific goal
+- **Document in notes**: Use workspace notes to track which session does what
 - **Limit concurrent sessions**: Too many active sessions can be confusing
+- **Review before switching**: Check the changes panel when switching sessions
 
 <Warning>
-Be mindful of file conflicts when multiple sessions modify the same files. Review changes carefully before committing.
+**File conflicts:** When multiple sessions modify the same files, the last write wins. Review the Changes panel carefully to ensure nothing was overwritten unexpectedly.
 </Warning>
 
 ## Related Documentation

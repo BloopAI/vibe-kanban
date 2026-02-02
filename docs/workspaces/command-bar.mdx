@@ -4,7 +4,7 @@ description: "Navigate and control your workspace with keyboard shortcuts"
 ---
 
 <Frame>
-<img src="/images/workspaces-command-bar.png" alt="Command bar showing search field and list of available commands" />
+<img style={{maxHeight: "400px"}} src="/images/workspaces-command-bar.png" alt="Command bar showing search field and list of available commands" />
 </Frame>
 
 The command bar is the central hub for navigating and controlling your workspace. Access every action quickly without leaving the keyboard.
@@ -57,8 +57,8 @@ Perform git operations:
 | Command | Description |
 |---------|-------------|
 | Create Pull Request | Open PR creation dialog |
-| Merge | Merge changes into target branch |
-| Rebase | Rebase onto target branch |
+| Merge | Pull target branch changes into your working branch |
+| Rebase | Rebase your working branch onto target branch |
 | Change Target Branch | Switch the merge target |
 | Push | Push commits to remote (when applicable) |
 
@@ -130,6 +130,49 @@ Use the search field to filter commands across all pages, or navigate to specifi
 <Info>
 Start typing to search for any command. The command bar uses fuzzy matching, so you don't need to type the exact command name.
 </Info>
+
+## Power User Tips
+
+<AccordionGroup>
+<Accordion title="Most useful commands to memorize">
+These commands will speed up your workflow significantly:
+
+| Shortcut | What It Does |
+|----------|--------------|
+| `Cmd/Ctrl + K` → `n` → Enter | New workspace |
+| `Cmd/Ctrl + K` → `pr` → Enter | Create pull request |
+| `Cmd/Ctrl + K` → `changes` → Enter | Toggle changes panel |
+| `Cmd/Ctrl + K` → `preview` → Enter | Toggle preview panel |
+| `Cmd/Ctrl + K` → `ide` → Enter | Open in your IDE |
+</Accordion>
+
+<Accordion title="Fuzzy search tricks">
+The command bar uses fuzzy matching - you can type partial words or abbreviations:
+
+- `nw` matches "**N**ew **W**orkspace"
+- `cpr` matches "**C**reate **P**ull **R**equest"
+- `tog prev` matches "**Tog**gle **Prev**iew Panel"
+- `reb` matches "**Reb**ase"
+</Accordion>
+
+<Accordion title="Quick panel toggling">
+Use the command bar to quickly show/hide panels without moving your mouse:
+
+1. Press `Cmd/Ctrl + K`
+2. Type `toggle`
+3. See all toggle options
+4. Select the panel you want to show/hide
+</Accordion>
+
+<Accordion title="Context-aware commands">
+Some commands only appear when relevant:
+
+- **Push** only shows when you have unpushed commits
+- **Rebase** only shows when you're behind target
+- **Repo Actions** only shows in multi-repo workspaces
+- **Diff Options** only shows when Changes panel is visible
+</Accordion>
+</AccordionGroup>
 
 ## Related Documentation
 

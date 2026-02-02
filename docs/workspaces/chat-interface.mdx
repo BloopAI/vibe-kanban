@@ -4,7 +4,7 @@ description: "Interact with coding agents through the conversation panel"
 ---
 
 <Frame>
-<img src="/images/workspaces-conversation.png" alt="Chat interface showing conversation with coding agent" />
+<img style={{maxHeight: "400px"}} src="/images/workspaces-conversation.png" alt="Chat interface showing conversation with coding agent" />
 </Frame>
 
 The chat interface is your primary way of communicating with coding agents. It supports rich message formatting, file attachments, approval workflows, and multiple conversation sessions.
@@ -37,7 +37,7 @@ Error messages appear in red with a warning icon. Click to expand and see full e
 ### Writing Messages
 
 <Frame>
-<img src="/images/workspaces-writing-messages.png" alt="Chat input formatting toolbar showing bold, italic, underline, strikethrough, and code buttons" />
+<img style={{maxHeight: "250px"}} src="/images/workspaces-writing-messages.png" alt="Chat input formatting toolbar showing bold, italic, underline, strikethrough, and code buttons" />
 </Frame>
 
 The chat input supports rich text editing:
@@ -51,7 +51,7 @@ The chat input supports rich text editing:
 ### Attaching Images
 
 <Frame>
-<img src="/images/workspaces-attach-images.png" alt="File picker dialog for attaching images to chat messages" />
+<img style={{maxHeight: "300px"}} src="/images/workspaces-attach-images.png" alt="File picker dialog for attaching images to chat messages" />
 </Frame>
 
 You can attach images to your messages:
@@ -67,7 +67,7 @@ Attach screenshots to show the agent exactly what you're working on or what issu
 ### File Mentions
 
 <Frame>
-<img src="/images/workspaces-file-mentions.png" alt="File mentions typeahead showing matching files when typing @" />
+<img style={{maxHeight: "300px"}} src="/images/workspaces-file-mentions.png" alt="File mentions typeahead showing matching files when typing @" />
 </Frame>
 
 Type `@` to mention files from your repository. The chat provides typeahead suggestions showing:
@@ -91,7 +91,7 @@ Select a file to include it as context for the agent.
 ### Execution States
 
 <Frame>
-<img src="/images/workspaces-running-state.png" alt="Chat interface in running state showing Queue and Stop buttons" />
+<img style={{maxHeight: "300px"}} src="/images/workspaces-running-state.png" alt="Chat interface in running state showing Queue and Stop buttons" />
 </Frame>
 
 The chat interface shows different states:
@@ -116,7 +116,7 @@ Select which coding agent to use from the **Agent** dropdown in the chat toolbar
 ### Variants
 
 <Frame>
-<img src="/images/workspaces-agent-selection.png" alt="Variants dropdown showing Default, Approvals, Opus, and Plan options with Customise button" />
+<img style={{maxHeight: "300px"}} src="/images/workspaces-agent-selection.png" alt="Variants dropdown showing Default, Approvals, Opus, and Plan options with Customise button" />
 </Frame>
 
 Some agents support different variants or profiles. Use the variant selector to choose:
@@ -129,32 +129,53 @@ Click **Customise** to configure agent settings.
 
 ## Approval Workflow
 
-When an agent needs approval before proceeding, you'll see an approval card:
+Some agents (especially with planning mode enabled) ask for your approval before making changes. This gives you control over what gets implemented.
+
+### Why Approvals Exist
+
+- **Prevent unwanted changes** - Review the plan before code is written
+- **Catch misunderstandings early** - Ensure the agent understood your request
+- **Guide the approach** - Steer the agent toward your preferred solution
 
 ### Reviewing Plans
 
-1. The agent presents a plan with proposed changes
-2. Review the plan details (expand to see full content)
-3. Choose to **Approve** or **Request Changes**
+When the agent needs approval, you'll see an approval card in the chat:
+
+1. **Read the plan summary** - What the agent intends to do
+2. **Expand for details** - Click to see the full plan with specific files and changes
+3. **Choose an action:**
+   - **Approve** - Agent proceeds with the plan
+   - **Request Changes** - Provide feedback for revision
 
 ### Requesting Changes
 
-If you want modifications:
+If the plan isn't quite right:
 
-1. Type your feedback in the chat input
+1. Type your feedback in the chat input explaining what should be different
 2. Click **Request Changes**
-3. The agent will revise based on your feedback
+3. The agent revises the plan based on your feedback
+4. Review the new plan and approve or request more changes
 
-<Note>
-Approval requests have a timeout. If you don't respond, you may need to restart the task.
-</Note>
+<Tip>
+**Be specific in your feedback.** Instead of "that's not right", say "don't modify the database schema - just add the validation to the existing User model."
+</Tip>
+
+<Warning>
+**Approval timeouts:** If you don't respond to an approval request, it may timeout. You'll need to send a new message to restart the task.
+</Warning>
+
+### Disabling Approvals
+
+If you want the agent to work autonomously without asking for approval:
+1. Use an agent variant without planning mode
+2. Or configure `dangerously_skip_permissions` in agent settings (use with caution)
 
 ## Editing Messages
 
 You can edit and resend previous messages:
 
 <Frame>
-<img src="/images/workspaces-edit-message-1.png" alt="User message showing edit pencil icon in the top right corner" />
+<img style={{maxHeight: "250px"}} src="/images/workspaces-edit-message-1.png" alt="User message showing edit pencil icon in the top right corner" />
 </Frame>
 
 <Steps>
@@ -166,7 +187,7 @@ You can edit and resend previous messages:
   The message content appears in an editable text area. Make your changes.
 
   <Frame>
-  <img src="/images/workspaces-edit-message-2.png" alt="Edit mode showing message in editable text area with Cancel and Retry buttons" />
+  <img style={{maxHeight: "250px"}} src="/images/workspaces-edit-message-2.png" alt="Edit mode showing message in editable text area with Cancel and Retry buttons" />
   </Frame>
 </Step>
 
@@ -184,26 +205,44 @@ Editing a message creates a new branch in the conversation. Subsequent messages 
 ### Token Usage
 
 <Frame>
-<img src="/images/workspaces-token-usage.png" alt="Context gauge showing 13% usage with 27K of 200K tokens used" />
+<img style={{maxHeight: "200px"}} src="/images/workspaces-token-usage.png" alt="Context gauge showing 13% usage with 27K of 200K tokens used" />
 </Frame>
 
-The context gauge shows how much of the agent's context window is used:
+The context gauge shows how much of the agent's context window is used. Understanding this helps you get better results.
 
-| Colour | Usage Level |
-|--------|-------------|
-| Grey | Low usage |
-| Default | Normal usage |
-| Orange | High usage - consider starting a new session |
-| Red | Critical - near context limit |
+#### What are Tokens?
+
+**Tokens** are how AI models measure text. Roughly:
+- 1 token ≈ 4 characters or ¾ of a word
+- A 200K context window can hold about 150,000 words
+
+The context window includes everything the agent "remembers": your messages, its responses, code it has read, and file contents.
+
+#### Why Token Usage Matters
+
+When usage is high:
+- Agent may "forget" earlier parts of the conversation
+- Responses may become less accurate
+- Agent might re-read files it already read
+- Complex reasoning may suffer
+
+#### Usage Levels
+
+| Colour | Usage | What to Do |
+|--------|-------|------------|
+| Grey | 0-30% | All good, continue working |
+| Default | 30-60% | Normal usage, keep going |
+| Orange | 60-80% | Consider starting a new session soon |
+| Red | 80%+ | Start a new session - agent is near its limit |
 
 <Tip>
-When context usage is high, start a new session to give the agent fresh context.
+**Pro tip:** When starting a new session due to high token usage, briefly summarise what was accomplished. The new agent won't know what happened before.
 </Tip>
 
 ### Tasks Progress
 
 <Frame>
-<img src="/images/workspaces-tasks-panel.png" alt="Tasks panel showing 5/5 completed with progress bar and list of individual tasks" />
+<img style={{maxHeight: "300px"}} src="/images/workspaces-tasks-panel.png" alt="Tasks panel showing 5/5 completed with progress bar and list of individual tasks" />
 </Frame>
 
 When the agent breaks down work into tasks, a progress indicator appears in the chat toolbar:

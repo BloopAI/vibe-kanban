@@ -4,10 +4,23 @@ description: "Review code modifications and provide feedback to agents"
 ---
 
 <Frame>
-<img src="/images/workspaces-changes-panel.png" alt="Changes panel showing file tree and side-by-side diff view with code changes" />
+<img style={{maxHeight: "400px"}} src="/images/workspaces-changes-panel.png" alt="Changes panel showing file tree and side-by-side diff view with code changes" />
 </Frame>
 
 The changes panel lets you review all code modifications in your workspace and provide feedback to agents.
+
+## Why Review Changes?
+
+Before committing or creating a PR, you should always review what the agent changed:
+
+- **Verify correctness** - Does the code do what you asked?
+- **Check for issues** - Are there bugs, security problems, or style violations?
+- **Understand the approach** - Learn what the agent did so you can explain it to reviewers
+- **Provide feedback** - Ask the agent to fix problems before committing
+
+<Warning>
+**Never blindly trust agent output.** Always review changes before merging. Agents can make mistakes, introduce bugs, or misunderstand requirements.
+</Warning>
 
 ## Opening Changes
 
@@ -62,7 +75,7 @@ Access these via the command bar's Diff Options page.
 ## Giving Feedback with Comments
 
 <Frame>
-<img src="/images/workspaces-inline-comments.png" alt="Changes panel showing inline comments on code with Add Review Comment button" />
+<img style={{maxHeight: "350px"}} src="/images/workspaces-inline-comments.png" alt="Changes panel showing inline comments on code with Add Review Comment button" />
 </Frame>
 
 Add comments directly on code changes to provide feedback to agents.
@@ -84,7 +97,7 @@ Add comments directly on code changes to provide feedback to agents.
 ### Agent Response to Comments
 
 <Frame>
-<img src="/images/workspaces-review-comments-response.png" alt="Chat showing agent responding to review comments by restoring a file" />
+<img style={{maxHeight: "300px"}} src="/images/workspaces-review-comments-response.png" alt="Chat showing agent responding to review comments by restoring a file" />
 </Frame>
 
 When you send a message with review comments, the agent sees your feedback and acts on it. In this example, the agent restores a file after the user requested the change be reverted.
@@ -100,7 +113,7 @@ When your workspace is linked to a pull request:
 ### Viewing GitHub Comments
 
 <Frame>
-<img src="/images/workspaces-show-github-comments.png" alt="Changes panel showing GitHub icon button with Show GitHub comments tooltip" />
+<img style={{maxHeight: "200px"}} src="/images/workspaces-show-github-comments.png" alt="Changes panel showing GitHub icon button with Show GitHub comments tooltip" />
 </Frame>
 
 - Click the **GitHub icon** in the changes panel toolbar to toggle GitHub comments
@@ -108,7 +121,7 @@ When your workspace is linked to a pull request:
 - Badge shows comment count per file
 
 <Frame>
-<img src="/images/workspaces-github-comments-inline.png" alt="GitHub review comment displayed inline in the diff view" />
+<img style={{maxHeight: "300px"}} src="/images/workspaces-github-comments-inline.png" alt="GitHub review comment displayed inline in the diff view" />
 </Frame>
 
 <Note>
@@ -126,13 +139,51 @@ Workspaces automatically link when:
 Review GitHub comments alongside your changes to address PR feedback efficiently.
 </Tip>
 
-## Best Practices
+## Review Workflow
 
-1. Open the changes panel after the agent completes work
-2. Review diffs file by file
-3. Add comments for any needed changes
-4. Let the agent address feedback
-5. Re-review and approve
+Follow this workflow to effectively review and refine agent changes:
+
+<Steps>
+<Step title="Wait for agent to finish">
+Let the agent complete its work. The status in the sidebar will change from "Running" to "Idle".
+</Step>
+
+<Step title="Open the Changes panel">
+Click the Changes icon in the navbar or use `Cmd/Ctrl + K` → "Toggle Changes Panel".
+</Step>
+
+<Step title="Review each file">
+Click through each modified file in the file tree. Look for:
+- **Logic errors** - Does the code do what you intended?
+- **Missing pieces** - Are there unhandled edge cases?
+- **Code quality** - Is the code readable and maintainable?
+- **Security issues** - Any obvious vulnerabilities?
+</Step>
+
+<Step title="Add comments on issues">
+For any problems you find, hover over the line and click the comment icon. Write specific feedback:
+
+**Good comment:** "This API endpoint should validate the user ID before querying the database to prevent unauthorized access."
+
+**Bad comment:** "This is wrong, fix it."
+</Step>
+
+<Step title="Send feedback to agent">
+Type a message in the chat (e.g., "Please address the review comments") and send it. The agent will see your inline comments and make corrections.
+</Step>
+
+<Step title="Re-review and repeat">
+After the agent addresses feedback, review the new changes. Repeat until you're satisfied.
+</Step>
+
+<Step title="Create PR when ready">
+Once changes look good, create a pull request using the Git panel or command bar.
+</Step>
+</Steps>
+
+<Tip>
+**Be specific in comments.** Instead of "this is wrong", explain what's wrong and ideally suggest a fix. The more context you give, the better the agent can correct the issue.
+</Tip>
 
 ## Related Documentation
 
