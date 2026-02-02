@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Preview Proxy</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    iframe { width: 100%; height: 100%; border: none; }
+  </style>
+</head>
+<body>
+  <iframe id="preview-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+  <script>
+    (function() {
+      // Parse query parameters
+      const params = new URLSearchParams(window.location.search);
+      const target = params.get('target') || '3000';
+      const path = params.get('path') || '/';
+      
+      // Ensure path starts with /
+      const normalizedPath = path.startsWith('/') ? path : '/' + path;
+      
+      // Set iframe source to dev-server-entry
+      const iframe = document.getElementById('preview-frame');
+      iframe.src = '/dev-server-entry' + normalizedPath + '?target=' + encodeURIComponent(target);
+      
+      // Bidirectional postMessage relay
+      window.addEventListener('message', function(event) {
+        // Validate message has click-to-component source
+        if (!event.data || event.data.source !== 'click-to-component') {
+          return;
+        }
+        
+        // Determine message direction and relay
+        if (event.source === window.parent) {
+          // Message from parent (Vibe Kanban) -> forward to inner iframe
+          if (iframe.contentWindow) {
+            iframe.contentWindow.postMessage(event.data, '*');
+          }
+        } else if (event.source === iframe.contentWindow) {
+          // Message from inner iframe -> forward to parent (Vibe Kanban)
+          window.parent.postMessage(event.data, '*');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
