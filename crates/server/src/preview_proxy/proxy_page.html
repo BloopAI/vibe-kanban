@@ -14,33 +14,25 @@
   <iframe id="preview-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
   <script>
     (function() {
-      // Parse query parameters
-      const params = new URLSearchParams(window.location.search);
-      const target = params.get('target') || '3000';
-      const path = params.get('path') || '/';
+      var params = new URLSearchParams(window.location.search);
+      var target = params.get('target') || '3000';
+      var path = params.get('path') || '/';
       
-      // Ensure path starts with /
-      const normalizedPath = path.startsWith('/') ? path : '/' + path;
+      var normalizedPath = path.startsWith('/') ? path : '/' + path;
       
-      // Set iframe source to dev-server-entry
-      const iframe = document.getElementById('preview-frame');
-      iframe.src = '/dev-server-entry' + normalizedPath + '?target=' + encodeURIComponent(target);
+      var iframe = document.getElementById('preview-frame');
+      iframe.src = '/p/' + encodeURIComponent(target) + normalizedPath;
       
-      // Bidirectional postMessage relay
       window.addEventListener('message', function(event) {
-        // Validate message has click-to-component source
         if (!event.data || event.data.source !== 'click-to-component') {
           return;
         }
         
-        // Determine message direction and relay
         if (event.source === window.parent) {
-          // Message from parent (Vibe Kanban) -> forward to inner iframe
           if (iframe.contentWindow) {
             iframe.contentWindow.postMessage(event.data, '*');
           }
         } else if (event.source === iframe.contentWindow) {
-          // Message from inner iframe -> forward to parent (Vibe Kanban)
           window.parent.postMessage(event.data, '*');
         }
       });

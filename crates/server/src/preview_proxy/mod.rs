@@ -11,7 +11,7 @@ use std::sync::OnceLock;
 use axum::{
     Router,
     body::Body,
-    extract::{FromRequestParts, Path, Query, Request, ws::WebSocketUpgrade},
+    extract::{FromRequestParts, Path, Request, ws::WebSocketUpgrade},
     http::{HeaderMap, HeaderName, HeaderValue, StatusCode, header},
     response::{Html, IntoResponse, Response},
     routing::{any, get},
@@ -38,16 +38,8 @@ pub fn set_proxy_port(port: u16) -> Option<u16> {
 
 const PROXY_PAGE_HTML: &str = include_str!("proxy_page.html");
 
-/// Query params (target, path) are parsed client-side in the HTML.
 async fn proxy_page_handler() -> Html<&'static str> {
     Html(PROXY_PAGE_HTML)
-}
-
-/// Query parameters for dev server entry proxy
-#[derive(Debug, Deserialize)]
-pub struct DevServerProxyQuery {
-    /// Target port where the dev server is running
-    pub target: u16,
 }
 
 /// Headers that should not be forwarded from the client request.
@@ -63,6 +55,7 @@ const SKIP_REQUEST_HEADERS: &[&str] = &[
     "sec-websocket-key",
     "sec-websocket-version",
     "sec-websocket-extensions",
+    "accept-encoding",
 ];
 
 /// Headers that should be stripped from the proxied response.
@@ -73,28 +66,33 @@ const STRIP_RESPONSE_HEADERS: &[&str] = &[
     "x-content-type-options",
     "transfer-encoding",
     "connection",
+    "content-encoding",
 ];
 
 /// Placeholder script injected before </body> in HTML responses.
 const DEVTOOLS_PLACEHOLDER_SCRIPT: &str =
     "<script>/* vibe-kanban-devtools-placeholder */</script>";
 
-async fn dev_server_entry_root(
-    Query(query): Query<DevServerProxyQuery>,
-    request: Request,
-) -> Response {
-    dev_server_entry_impl(String::new(), query.target, request).await
+#[derive(Debug, Deserialize)]
+pub struct TargetPortPath {
+    pub target: u16,
 }
 
-async fn dev_server_entry_path(
-    Path(path): Path<String>,
-    Query(query): Query<DevServerProxyQuery>,
-    request: Request,
-) -> Response {
-    dev_server_entry_impl(path, query.target, request).await
+#[derive(Debug, Deserialize)]
+pub struct TargetPortAndPath {
+    pub target: u16,
+    pub path: String,
 }
 
-async fn dev_server_entry_impl(path_str: String, target_port: u16, request: Request) -> Response {
+async fn proxy_target_root(Path(params): Path<TargetPortPath>, request: Request) -> Response {
+    proxy_impl(params.target, String::new(), request).await
+}
+
+async fn proxy_target_path(Path(params): Path<TargetPortAndPath>, request: Request) -> Response {
+    proxy_impl(params.target, params.path, request).await
+}
+
+async fn proxy_impl(target_port: u16, path_str: String, request: Request) -> Response {
     let (mut parts, body) = request.into_parts();
 
     if let Ok(ws) = WebSocketUpgrade::from_request_parts(&mut parts, &()).await {
@@ -123,15 +121,7 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
     let headers = parts.headers;
     let original_uri = parts.uri;
 
-    let query_string = original_uri
-        .query()
-        .map(|q| {
-            q.split('&')
-                .filter(|pair| !pair.starts_with("target="))
-                .collect::<Vec<_>>()
-                .join("&")
-        })
-        .unwrap_or_default();
+    let query_string = original_uri.query().unwrap_or_default();
 
     let target_url = if query_string.is_empty() {
         format!("http://localhost:{}/{}", target_port, path_str)
@@ -177,6 +167,7 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
         }
     }
     req_builder = req_builder.header("X-Forwarded-Proto", "http");
+    req_builder = req_builder.header("Accept-Encoding", "identity");
 
     let forwarded_for = headers
         .get("x-forwarded-for")
@@ -196,7 +187,6 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
         req_builder = req_builder.body(body_bytes.to_vec());
     }
 
-    // Send the request
     let response = match req_builder.send().await {
         Ok(r) => r,
         Err(e) => {
@@ -209,19 +199,17 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
         }
     };
 
-    // Build response headers (stripping security headers)
     let mut response_headers = HeaderMap::new();
-    let is_html = response
+    let content_type = response
         .headers()
         .get(reqwest::header::CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())
-        .map(|ct| ct.contains("text/html"))
-        .unwrap_or(false);
+        .unwrap_or_default();
+    let is_html = content_type.contains("text/html");
 
     for (name, value) in response.headers().iter() {
         let name_lower = name.as_str().to_lowercase();
         if !STRIP_RESPONSE_HEADERS.contains(&name_lower.as_str()) {
-            // Skip content-length for HTML since we may modify the body
             if is_html && name_lower == "content-length" {
                 continue;
             }
@@ -235,14 +223,11 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
 
     let status = StatusCode::from_u16(response.status().as_u16()).unwrap_or(StatusCode::OK);
 
-    // Handle response body
     if is_html {
-        // Buffer HTML response for script injection
         match response.bytes().await {
             Ok(body_bytes) => {
                 let mut html = String::from_utf8_lossy(&body_bytes).to_string();
 
-                // Inject script before </body>
                 if let Some(pos) = html.to_lowercase().rfind("</body>") {
                     html.insert_str(pos, DEVTOOLS_PLACEHOLDER_SCRIPT);
                 }
@@ -266,7 +251,6 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
             }
         }
     } else {
-        // Stream non-HTML responses directly
         let stream = response.bytes_stream();
         let body = Body::from_stream(stream);
 
@@ -279,30 +263,6 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
             (StatusCode::INTERNAL_SERVER_ERROR, "Failed to build response").into_response()
         })
     }
-}
-
-/// WebSocket proxy handler for dev server HMR connections.
-/// Detects WebSocket upgrade requests and proxies them to the target dev server.
-#[allow(dead_code)]
-async fn ws_proxy_handler(
-    ws: WebSocketUpgrade,
-    Path(path): Path<String>,
-    Query(query): Query<DevServerProxyQuery>,
-) -> impl IntoResponse {
-    let target_port = query.target;
-    let target_path = path.clone();
-
-    tracing::debug!(
-        "WebSocket upgrade request for path: {} -> localhost:{}",
-        target_path,
-        target_port
-    );
-
-    ws.on_upgrade(move |client_socket| async move {
-        if let Err(e) = handle_ws_proxy(client_socket, target_port, target_path).await {
-            tracing::warn!("WebSocket proxy closed: {}", e);
-        }
-    })
 }
 
 async fn handle_ws_proxy(
@@ -418,6 +378,6 @@ where
 {
     Router::new()
         .route("/proxy", get(proxy_page_handler))
-        .route("/dev-server-entry/", any(dev_server_entry_root))
-        .route("/dev-server-entry/{*path}", any(dev_server_entry_path))
+        .route("/p/{target}/", any(proxy_target_root))
+        .route("/p/{target}/{*path}", any(proxy_target_path))
 }
