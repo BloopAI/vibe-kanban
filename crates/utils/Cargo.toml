@@ -34,12 +34,12 @@ git2 = { workspace = true }
 dirs = "5.0"
 thiserror = { workspace = true }
 command-group = { version = "5.0", features = ["with-tokio"] }
-
-[target.'cfg(unix)'.dependencies]
-nix = { version = "0.29", features = ["signal", "process"] }
 url = "2.5"
 reqwest = { workspace = true }
 sqlx = { version = "0.8.6", default-features = false, features = ["postgres", "uuid", "chrono", "derive"] }
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.29", features = ["signal", "process"] }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"
