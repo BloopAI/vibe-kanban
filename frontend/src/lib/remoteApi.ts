@@ -21,6 +21,8 @@ export const makeRequest = async (
     headers.set('Content-Type', 'application/json');
   }
   headers.set('Authorization', `Bearer ${token}`);
+  headers.set('X-Client-Version', __APP_VERSION__);
+  headers.set('X-Client-Type', 'frontend');
 
   const response = await fetch(`${REMOTE_API_URL}${path}`, {
     ...options,
