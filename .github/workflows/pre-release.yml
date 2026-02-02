@@ -119,6 +119,9 @@ jobs:
 
           cargo set-version --workspace "$new_version"
 
+          # Update remote crate's lock file (separate workspace that depends on utils via path)
+          cargo generate-lockfile --manifest-path crates/remote/Cargo.toml
+
           echo "New version: $new_version"
           echo "new_version=$new_version" >> $GITHUB_OUTPUT
           echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
@@ -128,7 +131,7 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add package.json pnpm-lock.yaml npx-cli/package.json frontend/package.json Cargo.lock
-          git add $(find . -name Cargo.toml)
+          git add $(find . -name Cargo.toml) crates/remote/Cargo.lock
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
           git tag -a ${{ steps.version.outputs.new_tag }} -m "Release ${{ steps.version.outputs.new_tag }}"
           git push
