@@ -24,7 +24,8 @@
       iframe.src = '/p/' + encodeURIComponent(target) + normalizedPath;
       
       window.addEventListener('message', function(event) {
-        if (!event.data || event.data.source !== 'click-to-component') {
+        var allowedSources = ['click-to-component', 'vibe-devtools'];
+        if (!event.data || allowedSources.indexOf(event.data.source) === -1) {
           return;
         }
         
