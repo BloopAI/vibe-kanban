@@ -849,7 +849,7 @@ impl LocalContainerService {
             }
 
             if import_lines.is_empty() {
-                tracing::debug!(
+                tracing::trace!(
                     "No repos have {}, skipping workspace config creation",
                     config_file
                 );
