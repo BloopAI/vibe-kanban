@@ -49,6 +49,7 @@ use services::services::{
     image::ImageService,
     notification::NotificationService,
     queued_message::QueuedMessageService,
+    webhook_notification::WebhookMetadata,
     workspace_manager::{RepoWorkspaceInput, WorkspaceManager},
 };
 use tokio::{sync::RwLock, task::JoinHandle};
@@ -1189,8 +1190,13 @@ impl ContainerService for LocalContainerService {
         self.add_exit_monitor_handle(execution_process.id, hn).await;
 
         // Notify execution started (webhook only, no sound)
+        let metadata = WebhookMetadata::new()
+            .with_task(task.id, &task.title)
+            .with_project(project.id, &project.name)
+            .with_workspace(workspace.id)
+            .with_execution(execution_process.id);
         self.notification_service
-            .notify_execution_started(&task.title)
+            .notify_execution_started(metadata)
             .await;
 
         Ok(())

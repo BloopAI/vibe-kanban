@@ -5,7 +5,7 @@ use utils;
 
 use crate::services::{
     config::{Config, NotificationConfig, SoundFile},
-    webhook_notification::WebhookNotificationService,
+    webhook_notification::{WebhookMetadata, WebhookNotificationService},
 };
 
 /// Service for handling cross-platform notifications including sound alerts and push notifications
@@ -28,23 +28,33 @@ impl NotificationService {
     }
 
     /// Send both sound and push notifications if enabled
-    pub async fn notify(&self, title: &str, message: &str) {
+    pub async fn notify(&self, title: &str, message: &str, metadata: &WebhookMetadata) {
         let config = self.config.read().await.notifications.clone();
         Self::send_notification(&config, title, message).await;
-        self.webhook_service.send_notification(title, message).await;
+        self.webhook_service
+            .send_notification(title, message, metadata)
+            .await;
     }
 
     /// Notify when execution starts (webhook only, no sound)
-    pub async fn notify_execution_started(&self, task_title: &str) {
+    pub async fn notify_execution_started(&self, metadata: WebhookMetadata) {
         let title = "Task Execution Started";
+        let task_title = metadata.task_title.as_deref().unwrap_or("Unknown Task");
         let message = format!("Started working on: {}", task_title);
         self.webhook_service
-            .send_notification(title, &message)
+            .send_notification(title, &message, &metadata)
             .await;
     }
 
     /// Notify when execution is halted (completed, failed, or cancelled)
-    pub async fn notify_execution_halted(&self, task_title: &str, status: &str, success: bool) {
+    pub async fn notify_execution_halted(
+        &self,
+        status: &str,
+        success: bool,
+        metadata: WebhookMetadata,
+    ) {
+        let task_title = metadata.task_title.as_deref().unwrap_or("Unknown Task");
+
         let (title, message) = match status {
             "Completed" if success => (
                 "Task Execution Completed",
@@ -65,7 +75,7 @@ impl NotificationService {
         };
 
         // Send sound + push + webhook for halted executions
-        self.notify(title, &message).await;
+        self.notify(title, &message, &metadata).await;
     }
 
     /// Internal method to send notifications with a given config

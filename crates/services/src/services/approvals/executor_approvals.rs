@@ -8,7 +8,9 @@ use tokio_util::sync::CancellationToken;
 use utils::approvals::{ApprovalRequest, ApprovalStatus, CreateApprovalRequest};
 use uuid::Uuid;
 
-use crate::services::{approvals::Approvals, notification::NotificationService};
+use crate::services::{
+    approvals::Approvals, notification::NotificationService, webhook_notification::WebhookMetadata,
+};
 
 pub struct ExecutorApprovalBridge {
     approvals: Approvals,
@@ -61,15 +63,24 @@ impl ExecutorApprovalService for ExecutorApprovalBridge {
 
         let approval_id = request.id.clone();
 
-        let task_name = ExecutionProcess::load_context(&self.db.pool, self.execution_process_id)
-            .await
-            .map(|ctx| ctx.task.title)
-            .unwrap_or_else(|_| "Unknown task".to_string());
+        let (task_name, metadata) =
+            match ExecutionProcess::load_context(&self.db.pool, self.execution_process_id).await {
+                Ok(ctx) => {
+                    let metadata = WebhookMetadata::new()
+                        .with_task(ctx.task.id, &ctx.task.title)
+                        .with_project(ctx.project.id, &ctx.project.name)
+                        .with_workspace(ctx.workspace.id)
+                        .with_execution(ctx.execution_process.id);
+                    (ctx.task.title, metadata)
+                }
+                Err(_) => ("Unknown task".to_string(), WebhookMetadata::new()),
+            };
 
         self.notification_service
             .notify(
                 &format!("Approval Needed: {}", task_name),
                 &format!("Tool '{}' requires approval", tool_name),
+                &metadata,
             )
             .await;
 
