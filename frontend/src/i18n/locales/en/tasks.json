@@ -283,7 +283,9 @@
       "approve": "Approve",
       "clearReviewComments": "Clear review comments",
       "edit": "Edit message",
-      "scrollToPreviousMessage": "Go to previous message"
+      "scrollToPreviousMessage": "Go to previous message",
+      "reset": "Reset",
+      "resetTooltip": "Reset to this point"
     },
     "approval": {
       "conflictWarning": "Conflicted files need manual resolution",
@@ -661,9 +663,12 @@
   },
   "restoreLogsDialog": {
     "title": "Confirm Retry",
+    "titleReset": "Confirm Reset",
     "historyChange": {
       "title": "History change",
       "willDelete": "Will delete this process",
+      "willDeleteProcesses_one": "Will delete {{count}} process",
+      "willDeleteProcesses_other": "Will delete {{count}} processes",
       "andLaterProcesses_one": "and {{count}} later process",
       "andLaterProcesses_other": "and {{count}} later processes",
       "fromHistory": "from history.",
@@ -699,7 +704,8 @@
       "uncommittedPresentHint": "Uncommitted changes present. Turn on Force reset or commit/stash to proceed."
     },
     "buttons": {
-      "retry": "Retry"
+      "retry": "Retry",
+      "reset": "Reset"
     }
   },
   "scriptFixer": {

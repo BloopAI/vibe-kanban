@@ -586,9 +586,12 @@
   },
   "restoreLogsDialog": {
     "title": "Confirmar Reintento",
+    "titleReset": "Confirmar Restablecimiento",
     "historyChange": {
       "title": "Cambio de historial",
       "willDelete": "Eliminará este proceso",
+      "willDeleteProcesses_one": "Eliminará {{count}} proceso",
+      "willDeleteProcesses_other": "Eliminará {{count}} procesos",
       "andLaterProcesses_one": "y {{count}} proceso posterior",
       "andLaterProcesses_other": "y {{count}} procesos posteriores",
       "fromHistory": "del historial.",
@@ -624,7 +627,8 @@
       "uncommittedPresentHint": "Hay cambios sin confirmar. Activa Forzar restablecimiento o confirma/guarda para continuar."
     },
     "buttons": {
-      "retry": "Reintentar"
+      "retry": "Reintentar",
+      "reset": "Restablecer"
     }
   },
   "conversation": {
@@ -655,7 +659,9 @@
       "approve": "Aprobar",
       "clearReviewComments": "Limpiar comentarios de revisión",
       "edit": "Editar mensaje",
-      "scrollToPreviousMessage": "Go to previous message"
+      "scrollToPreviousMessage": "Go to previous message",
+      "reset": "Restablecer",
+      "resetTooltip": "Restablecer a este punto"
     },
     "approval": {
       "conflictWarning": "Los archivos en conflicto necesitan resolución manual",

@@ -3,7 +3,6 @@ pub mod cursor_setup;
 pub mod gh_cli_setup;
 pub mod images;
 pub mod pr;
-pub mod util;
 pub mod workspace_summary;
 
 use std::{

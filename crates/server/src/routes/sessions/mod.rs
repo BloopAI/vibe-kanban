@@ -29,10 +29,7 @@ use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{
-    DeploymentImpl, error::ApiError, middleware::load_session_middleware,
-    routes::task_attempts::util::restore_worktrees_to_process,
-};
+use crate::{DeploymentImpl, error::ApiError, middleware::load_session_middleware};
 
 #[derive(Debug, Deserialize)]
 pub struct SessionQuery {
@@ -95,6 +92,13 @@ pub struct CreateFollowUpAttempt {
     pub perform_git_reset: Option<bool>,
 }
 
+#[derive(Debug, Deserialize, TS)]
+pub struct ResetProcessRequest {
+    pub process_id: Uuid,
+    pub force_when_dirty: Option<bool>,
+    pub perform_git_reset: Option<bool>,
+}
+
 pub async fn follow_up(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,
@@ -140,39 +144,13 @@ pub async fn follow_up(
             .await?;
     }
 
-    // If retry settings provided, perform replace-logic before proceeding
     if let Some(proc_id) = payload.retry_process_id {
-        // Validate process belongs to this session
-        let process =
-            ExecutionProcess::find_by_id(pool, proc_id)
-                .await?
-                .ok_or(ApiError::Workspace(WorkspaceError::ValidationError(
-                    "Process not found".to_string(),
-                )))?;
-        if process.session_id != session.id {
-            return Err(ApiError::Workspace(WorkspaceError::ValidationError(
-                "Process does not belong to this session".to_string(),
-            )));
-        }
-
-        // Reset all repository worktrees to the state before the target process
         let force_when_dirty = payload.force_when_dirty.unwrap_or(false);
         let perform_git_reset = payload.perform_git_reset.unwrap_or(true);
-        restore_worktrees_to_process(
-            &deployment,
-            pool,
-            &workspace,
-            proc_id,
-            perform_git_reset,
-            force_when_dirty,
-        )
-        .await?;
-
-        // Stop any running processes for this workspace (except dev server)
-        deployment.container().try_stop(&workspace, false).await;
-
-        // Soft-drop the target process and all later processes in that session
-        let _ = ExecutionProcess::drop_at_and_after(pool, process.session_id, proc_id).await?;
+        deployment
+            .container()
+            .reset_session_to_process(session.id, proc_id, perform_git_reset, force_when_dirty)
+            .await?;
     }
 
     let latest_session_info = CodingAgentTurn::find_latest_session_info(pool, session.id).await?;
@@ -233,10 +211,32 @@ pub async fn follow_up(
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
+pub async fn reset_process(
+    Extension(session): Extension<Session>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<ResetProcessRequest>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let force_when_dirty = payload.force_when_dirty.unwrap_or(false);
+    let perform_git_reset = payload.perform_git_reset.unwrap_or(true);
+
+    deployment
+        .container()
+        .reset_session_to_process(
+            session.id,
+            payload.process_id,
+            perform_git_reset,
+            force_when_dirty,
+        )
+        .await?;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let session_id_router = Router::new()
         .route("/", get(get_session))
         .route("/follow-up", post(follow_up))
+        .route("/reset", post(reset_process))
         .route("/review", post(review::start_review))
         .layer(from_fn_with_state(
             deployment.clone(),

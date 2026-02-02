@@ -592,6 +592,81 @@ pub trait ContainerService {
         chained
     }
 
+    /// Reset a session to a specific process: restore worktrees, stop processes, drop later processes.
+    async fn reset_session_to_process(
+        &self,
+        session_id: Uuid,
+        target_process_id: Uuid,
+        perform_git_reset: bool,
+        force_when_dirty: bool,
+    ) -> Result<(), ContainerError> {
+        let pool = &self.db().pool;
+
+        let process = ExecutionProcess::find_by_id(pool, target_process_id)
+            .await?
+            .ok_or_else(|| ContainerError::Other(anyhow!("Process not found")))?;
+        if process.session_id != session_id {
+            return Err(ContainerError::Other(anyhow!(
+                "Process does not belong to this session"
+            )));
+        }
+
+        let session = Session::find_by_id(pool, session_id)
+            .await?
+            .ok_or_else(|| ContainerError::Other(anyhow!("Session not found")))?;
+        let workspace = Workspace::find_by_id(pool, session.workspace_id)
+            .await?
+            .ok_or_else(|| ContainerError::Other(anyhow!("Workspace not found")))?;
+
+        let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+        let repo_states =
+            ExecutionProcessRepoState::find_by_execution_process_id(pool, target_process_id)
+                .await?;
+
+        let container_ref = self.ensure_container_exists(&workspace).await?;
+        let workspace_dir = std::path::PathBuf::from(container_ref);
+        let is_dirty = self
+            .is_container_clean(&workspace)
+            .await
+            .map(|is_clean| !is_clean)
+            .unwrap_or(false);
+
+        for repo in &repos {
+            let repo_state = repo_states.iter().find(|s| s.repo_id == repo.id);
+            let target_oid = match repo_state.and_then(|s| s.before_head_commit.clone()) {
+                Some(oid) => Some(oid),
+                None => {
+                    ExecutionProcess::find_prev_after_head_commit(
+                        pool,
+                        session_id,
+                        target_process_id,
+                        repo.id,
+                    )
+                    .await?
+                }
+            };
+
+            let worktree_path = workspace_dir.join(&repo.name);
+            if let Some(oid) = target_oid {
+                self.git().reconcile_worktree_to_commit(
+                    &worktree_path,
+                    &oid,
+                    git::WorktreeResetOptions::new(
+                        perform_git_reset,
+                        force_when_dirty,
+                        is_dirty,
+                        perform_git_reset,
+                    ),
+                );
+            }
+        }
+
+        self.try_stop(&workspace, false).await;
+        ExecutionProcess::drop_at_and_after(pool, session_id, target_process_id).await?;
+
+        Ok(())
+    }
+
     async fn try_stop(&self, workspace: &Workspace, include_dev_server: bool) {
         // stop execution processes for this workspace's sessions
         let sessions = match Session::find_by_workspace_id(&self.db().pool, workspace.id).await {

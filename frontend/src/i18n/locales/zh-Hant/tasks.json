@@ -586,9 +586,12 @@
   },
   "restoreLogsDialog": {
     "title": "確認重試",
+    "titleReset": "確認重設",
     "historyChange": {
       "title": "歷史紀錄變更",
       "willDelete": "將刪除此程序",
+      "willDeleteProcesses_one": "將刪除 {{count}} 個程序",
+      "willDeleteProcesses_other": "將刪除 {{count}} 個程序",
       "andLaterProcesses_one": "及後續 {{count}} 個程序",
       "andLaterProcesses_other": "及後續 {{count}} 個程序",
       "fromHistory": "從歷史紀錄中刪除。",
@@ -624,7 +627,8 @@
       "uncommittedPresentHint": "存在未提交的變更。請啟用強制重設或先提交/暫存後再繼續。"
     },
     "buttons": {
-      "retry": "重試"
+      "retry": "重試",
+      "reset": "重設"
     }
   },
   "conversation": {
@@ -655,7 +659,9 @@
       "approve": "核准",
       "clearReviewComments": "清除審查評論",
       "edit": "編輯訊息",
-      "scrollToPreviousMessage": "Go to previous message"
+      "scrollToPreviousMessage": "Go to previous message",
+      "reset": "重設",
+      "resetTooltip": "重設到此時點"
     },
     "approval": {
       "conflictWarning": "衝突檔案需要手動解決",

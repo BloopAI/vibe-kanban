@@ -586,9 +586,12 @@
   },
   "restoreLogsDialog": {
     "title": "确认重试",
+    "titleReset": "确认重置",
     "historyChange": {
       "title": "历史记录变更",
       "willDelete": "将删除此进程",
+      "willDeleteProcesses_one": "将删除 {{count}} 个进程",
+      "willDeleteProcesses_other": "将删除 {{count}} 个进程",
       "andLaterProcesses_one": "及后续 {{count}} 个进程",
       "andLaterProcesses_other": "及后续 {{count}} 个进程",
       "fromHistory": "从历史记录中删除。",
@@ -624,7 +627,8 @@
       "uncommittedPresentHint": "存在未提交的更改。请打开强制重置或提交/暂存后继续。"
     },
     "buttons": {
-      "retry": "重试"
+      "retry": "重试",
+      "reset": "重置"
     }
   },
   "conversation": {
@@ -655,7 +659,9 @@
       "approve": "批准",
       "clearReviewComments": "清除审查评论",
       "edit": "编辑消息",
-      "scrollToPreviousMessage": "Go to previous message"
+      "scrollToPreviousMessage": "Go to previous message",
+      "reset": "重置",
+      "resetTooltip": "重置到此时点"
     },
     "approval": {
       "conflictWarning": "冲突文件需要手动解决",

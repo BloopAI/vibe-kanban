@@ -53,8 +53,11 @@ export const useConversationHistory = ({
   attempt,
   onEntriesUpdated,
 }: UseConversationHistoryParams): UseConversationHistoryResult => {
-  const { executionProcessesVisible: executionProcessesRaw } =
-    useExecutionProcessesContext();
+  const {
+    executionProcessesVisible: executionProcessesRaw,
+    isLoading,
+    isConnected,
+  } = useExecutionProcessesContext();
   const { setTokenUsageInfo } = useEntries();
   const executionProcesses = useRef<ExecutionProcess[]>(executionProcessesRaw);
   const displayedExecutionProcesses = useRef<ExecutionProcessStateStore>({});
@@ -597,6 +600,25 @@ export const useConversationHistory = ({
     () => executionProcessesRaw?.map((p) => `${p.id}:${p.status}`).join(','),
     [executionProcessesRaw]
   );
+
+  // Clean up entries for processes that have been removed (e.g., after reset)
+  useEffect(() => {
+    if (isLoading || !isConnected) return;
+    const visibleProcessIds = new Set(executionProcessesRaw.map((p) => p.id));
+    const displayedIds = Object.keys(displayedExecutionProcesses.current);
+    let changed = false;
+
+    for (const id of displayedIds) {
+      if (!visibleProcessIds.has(id)) {
+        delete displayedExecutionProcesses.current[id];
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      emitEntries(displayedExecutionProcesses.current, 'historic', false);
+    }
+  }, [idListKey, executionProcessesRaw, emitEntries, isLoading, isConnected]);
 
   // Initial load when attempt changes
   useEffect(() => {

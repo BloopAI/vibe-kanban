@@ -17,6 +17,7 @@ import {
 } from '@/stores/useUiPreferencesStore';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
+import type { UseResetProcessResult } from '@/components/ui-new/hooks/useResetProcess';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
@@ -53,6 +54,7 @@ type Props = {
   expansionKey: string;
   executionProcessId: string;
   taskAttempt: WorkspaceWithSession;
+  resetAction: UseResetProcessResult;
   entry: NormalizedEntry | null;
   aggregatedGroup: AggregatedPatchGroup | null;
   aggregatedDiffGroup: AggregatedDiffGroup | null;
@@ -267,6 +269,7 @@ function NewDisplayConversationEntry(props: Props) {
     expansionKey,
     executionProcessId,
     taskAttempt,
+    resetAction,
   } = props;
 
   // Handle aggregated groups (consecutive file_read or search entries)
@@ -297,6 +300,7 @@ function NewDisplayConversationEntry(props: Props) {
           expansionKey={expansionKey}
           workspaceId={taskAttempt?.id}
           executionProcessId={executionProcessId}
+          resetAction={resetAction}
         />
       );
 
@@ -520,25 +524,36 @@ function UserMessageEntry({
   expansionKey,
   workspaceId,
   executionProcessId,
+  resetAction,
 }: {
   content: string;
   expansionKey: string;
   workspaceId: string | undefined;
   executionProcessId: string | undefined;
+  resetAction: UseResetProcessResult;
 }) {
   const [expanded, toggle] = usePersistedExpanded(`user:${expansionKey}`, true);
   const { startEdit, isEntryGreyed, isInEditMode } = useMessageEditContext();
+  const { resetProcess, canResetProcess, isResetPending } = resetAction;
 
   const isGreyed = isEntryGreyed(expansionKey);
 
-  const handleEdit = useCallback(() => {
+  const handleEdit = () => {
     if (executionProcessId) {
       startEdit(expansionKey, executionProcessId, content);
     }
-  }, [startEdit, expansionKey, executionProcessId, content]);
+  };
+
+  const handleReset = () => {
+    if (executionProcessId) {
+      resetProcess(executionProcessId);
+    }
+  };
 
   // Only show edit button if we have a process ID and not already in edit mode
-  const canEdit = !!executionProcessId && !isInEditMode;
+  const canEdit = !!executionProcessId && !isInEditMode && !isResetPending;
+  // Only show reset if we have a process ID, not in edit mode, not pending, and not first process
+  const canReset = canEdit && canResetProcess(executionProcessId);
 
   return (
     <ChatUserMessage
@@ -547,6 +562,7 @@ function UserMessageEntry({
       onToggle={toggle}
       workspaceId={workspaceId}
       onEdit={canEdit ? handleEdit : undefined}
+      onReset={canReset ? handleReset : undefined}
       isGreyed={isGreyed}
     />
   );

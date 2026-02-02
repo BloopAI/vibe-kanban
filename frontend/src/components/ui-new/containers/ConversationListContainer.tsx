@@ -21,6 +21,10 @@ import NewDisplayConversationEntry from './NewDisplayConversationEntry';
 import { ApprovalFormProvider } from '@/contexts/ApprovalFormContext';
 import { useEntries } from '@/contexts/EntriesContext';
 import {
+  useResetProcess,
+  type UseResetProcessResult,
+} from '@/components/ui-new/hooks/useResetProcess';
+import {
   AddEntryType,
   PatchTypeWithKey,
   DisplayEntry,
@@ -50,6 +54,7 @@ interface MessageListContext {
   onConfigureCleanup: (() => void) | undefined;
   showSetupPlaceholder: boolean;
   showCleanupPlaceholder: boolean;
+  resetAction: UseResetProcessResult;
 }
 
 const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
@@ -78,6 +83,7 @@ const ItemContent: VirtuosoMessageListProps<
   MessageListContext
 >['ItemContent'] = ({ data, context }) => {
   const attempt = context?.attempt;
+  const resetAction = context?.resetAction;
 
   // Handle aggregated tool groups (file_read, search, web_fetch)
   if (isAggregatedGroup(data)) {
@@ -89,6 +95,7 @@ const ItemContent: VirtuosoMessageListProps<
         entry={null}
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
+        resetAction={resetAction}
       />
     );
   }
@@ -103,6 +110,7 @@ const ItemContent: VirtuosoMessageListProps<
         entry={null}
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
+        resetAction={resetAction}
       />
     );
   }
@@ -122,6 +130,7 @@ const ItemContent: VirtuosoMessageListProps<
         aggregatedDiffGroup={null}
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
+        resetAction={resetAction}
       />
     );
   }
@@ -138,6 +147,7 @@ export const ConversationList = forwardRef<
   ConversationListHandle,
   ConversationListProps
 >(function ConversationList({ attempt }, ref) {
+  const resetAction = useResetProcess();
   const [channelData, setChannelData] =
     useState<DataWithScrollModifier<DisplayEntry> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -270,6 +280,7 @@ export const ConversationList = forwardRef<
       onConfigureCleanup: canConfigure ? handleConfigureCleanup : undefined,
       showSetupPlaceholder,
       showCleanupPlaceholder,
+      resetAction,
     }),
     [
       attempt,
@@ -278,6 +289,7 @@ export const ConversationList = forwardRef<
       handleConfigureCleanup,
       showSetupPlaceholder,
       showCleanupPlaceholder,
+      resetAction,
     ]
   );
 

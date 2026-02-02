@@ -5,6 +5,7 @@ import {
   ApiResponse,
   Config,
   CreateFollowUpAttempt,
+  ResetProcessRequest,
   EditorType,
   CreatePrApiRequest,
   CreateTask,
@@ -410,6 +411,17 @@ export const sessionsApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<ExecutionProcess, ReviewError>(response);
+  },
+
+  reset: async (
+    sessionId: string,
+    data: ResetProcessRequest
+  ): Promise<void> => {
+    const response = await makeRequest(`/api/sessions/${sessionId}/reset`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<void>(response);
   },
 };
 
