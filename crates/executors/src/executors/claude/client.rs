@@ -119,7 +119,7 @@ impl ClaudeAgentClient {
             }),
             ApprovalStatus::TimedOut => Ok(PermissionResult::Deny {
                 message: "Approval request timed out".to_string(),
-                interrupt: Some(false),
+                interrupt: Some(true),
             }),
             ApprovalStatus::Pending => Ok(PermissionResult::Deny {
                 message: "Approval still pending (unexpected)".to_string(),
