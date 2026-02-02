@@ -2469,7 +2469,7 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
 name = "remote"
-version = "0.0.167"
+version = "0.1.0"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -3813,7 +3813,7 @@ checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
 
 [[package]]
 name = "utils"
-version = "0.0.167"
+version = "0.1.0"
 dependencies = [
  "axum",
  "bytes",
