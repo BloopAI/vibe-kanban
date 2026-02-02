@@ -74,6 +74,9 @@ const STRIP_RESPONSE_HEADERS: &[&str] = &[
 const DEVTOOLS_PLACEHOLDER_SCRIPT: &str =
     "<script>/* vibe-kanban-devtools-placeholder */</script>";
 
+/// Cookie name for storing target port (used for WebSocket routing).
+const PROXY_TARGET_COOKIE: &str = "_vk_proxy_target";
+
 #[derive(Debug, Deserialize)]
 pub struct TargetPortPath {
     pub target: u16,
@@ -86,11 +89,13 @@ pub struct TargetPortAndPath {
 }
 
 async fn proxy_target_root(Path(params): Path<TargetPortPath>, request: Request) -> Response {
-    proxy_impl(params.target, String::new(), request).await
+    let response = proxy_impl(params.target, String::new(), request).await;
+    add_target_cookie(response, params.target)
 }
 
 async fn proxy_target_path(Path(params): Path<TargetPortAndPath>, request: Request) -> Response {
-    proxy_impl(params.target, params.path, request).await
+    let response = proxy_impl(params.target, params.path, request).await;
+    add_target_cookie(response, params.target)
 }
 
 /// Extract target port from Referer header.
@@ -102,13 +107,40 @@ fn extract_target_from_referer(headers: &HeaderMap) -> Option<u16> {
     caps.get(1)?.as_str().parse().ok()
 }
 
+/// Extract target port from cookie.
+/// Used as fallback when Referer doesn't contain port info (e.g., WebSocket).
+fn extract_target_from_cookie(headers: &HeaderMap) -> Option<u16> {
+    let cookie_header = headers.get(header::COOKIE)?.to_str().ok()?;
+    for cookie in cookie_header.split(';') {
+        let cookie = cookie.trim();
+        if let Some(value) = cookie.strip_prefix("_vk_proxy_target=") {
+            return value.parse().ok();
+        }
+    }
+    None
+}
+
+/// Add Set-Cookie header to response to remember target port.
+fn add_target_cookie(response: Response, target_port: u16) -> Response {
+    let (mut parts, body) = response.into_parts();
+    let cookie_value = format!("{}={}; Path=/; SameSite=Strict", PROXY_TARGET_COOKIE, target_port);
+    if let Ok(header_value) = HeaderValue::from_str(&cookie_value) {
+        parts.headers.insert(header::SET_COOKIE, header_value);
+    }
+    Response::from_parts(parts, body)
+}
+
 /// Catch-all handler for requests without explicit `/p/{port}/` prefix.
-/// Uses Referer header to determine target port.
+/// Uses Referer header to determine target port, falls back to cookie.
 async fn catchall_proxy(request: Request) -> Response {
-    let target_port = match extract_target_from_referer(request.headers()) {
+    let headers = request.headers();
+    let target_port = extract_target_from_referer(headers)
+        .or_else(|| extract_target_from_cookie(headers));
+    
+    let target_port = match target_port {
         Some(port) => port,
         None => {
-            return (StatusCode::NOT_FOUND, "No target port in Referer").into_response();
+            return (StatusCode::NOT_FOUND, "No target port in Referer or Cookie").into_response();
         }
     };
     
