@@ -73,9 +73,25 @@ jobs:
           latest_npm_version=$(npm view vibe-kanban version 2>/dev/null || echo "0.0.0")
           echo "Latest npm version: $latest_npm_version"
 
+          # Get current repo version
+          current_repo_version=$(node -p "require('./package.json').version")
+          echo "Current repo version: $current_repo_version"
+
+          # Use the higher of the two versions as the base (prevents downgrade errors with cargo set-version)
+          base_version=$(node -e "
+            const npm = '$latest_npm_version'.split('.').map(Number);
+            const repo = '$current_repo_version'.split('.').map(Number);
+            for (let i = 0; i < 3; i++) {
+              if ((npm[i] || 0) > (repo[i] || 0)) { console.log('$latest_npm_version'); process.exit(); }
+              if ((npm[i] || 0) < (repo[i] || 0)) { console.log('$current_repo_version'); process.exit(); }
+            }
+            console.log('$current_repo_version');
+          ")
+          echo "Base version for bump: $base_version"
+
           timestamp=$(date +%Y%m%d%H%M%S)
 
-          # Update root package.json based on npm version, not current package.json
+          # Update root package.json based on base version
           if [[ "${{ github.event.inputs.version_type }}" == "prerelease" ]]; then
             # For prerelease, use current package.json version and add branch suffix
             npm version prerelease --preid="${{ steps.branch.outputs.suffix }}" --no-git-tag-version
@@ -83,8 +99,8 @@ jobs:
             new_version=$(node -p "require('./package.json').version")
             new_tag="v${new_version}.${timestamp}"
           else
-            # For regular releases, use npm version and bump it
-            npm version $latest_npm_version --no-git-tag-version --allow-same-version
+            # For regular releases, use base version and bump it
+            npm version $base_version --no-git-tag-version --allow-same-version
             npm version ${{ github.event.inputs.version_type }} --no-git-tag-version
 
             new_version=$(node -p "require('./package.json').version")
