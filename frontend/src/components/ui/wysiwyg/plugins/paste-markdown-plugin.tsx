@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
-  PASTE_COMMAND,
-  COMMAND_PRIORITY_LOW,
   $getSelection,
   $isRangeSelection,
   $createParagraphNode,
+  $getRoot,
+  type LexicalNode,
 } from 'lexical';
 import {
   $convertFromMarkdownString,
@@ -20,9 +20,9 @@ type Props = {
  * Plugin that handles paste with markdown conversion.
  *
  * Behavior:
- * - CMD+V with HTML: Let default Lexical handling work
- * - CMD+V with plain text: Convert markdown to formatted nodes, insert at cursor
- * - CMD+SHIFT+V: Insert plain text as-is (raw paste)
+ * - CMD+V / CTRL+V with HTML: Let default Lexical HTML handler work
+ * - CMD+V / CTRL+V with plain text: Convert markdown to formatted nodes, insert at cursor
+ * - CMD+SHIFT+V / CTRL+SHIFT+V: Insert plain text as-is (raw paste)
  */
 export function PasteMarkdownPlugin({ transformers }: Props) {
   const [editor] = useLexicalComposerContext();
@@ -43,25 +43,23 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
       shiftHeldRef.current = false;
     };
 
-    rootElement.addEventListener('keydown', handleKeyDown);
-    rootElement.addEventListener('keyup', handleKeyUp);
+    // Handle paste at DOM level (capture phase) to avoid Lexical command sync issues
+    const handlePaste = (event: ClipboardEvent) => {
+      const clipboardData = event.clipboardData;
+      if (!clipboardData) return;
 
-    const unregisterPaste = editor.registerCommand(
-      PASTE_COMMAND,
-      (event) => {
-        if (!(event instanceof ClipboardEvent)) return false;
+      // If HTML exists, let default Lexical HTML handler work
+      if (clipboardData.getData('text/html')) return;
 
-        const clipboardData = event.clipboardData;
-        if (!clipboardData) return false;
+      const plainText = clipboardData.getData('text/plain');
+      if (!plainText) return;
 
-        // If HTML exists, let default Lexical handling work
-        if (clipboardData.getData('text/html')) return false;
+      // Prevent default and stop propagation to Lexical
+      event.preventDefault();
+      event.stopPropagation();
 
-        const plainText = clipboardData.getData('text/plain');
-        if (!plainText) return false;
-
-        event.preventDefault();
-
+      // Use setTimeout to escape Lexical's event handling entirely
+      setTimeout(() => {
         editor.update(() => {
           const selection = $getSelection();
           if (!$isRangeSelection(selection)) return;
@@ -83,24 +81,49 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
               return;
             }
 
-            // Use selection.insertNodes() instead of $insertNodes()
-            // This properly handles node parent references
-            selection.insertNodes(nodes);
+            // Get anchor point for insertion
+            const anchorNode = selection.anchor.getNode();
+            const anchorParent = anchorNode.getTopLevelElement();
+            const root = $getRoot();
+
+            // Detach nodes from temp container
+            nodes.forEach((node) => node.remove());
+
+            // Insert nodes directly into the tree (bypass selection.insertNodes)
+            if (anchorParent) {
+              // Insert after current paragraph
+              let insertAfter: LexicalNode = anchorParent;
+              for (const node of nodes) {
+                insertAfter.insertAfter(node);
+                insertAfter = node;
+              }
+            } else {
+              // Fallback: append to root
+              nodes.forEach((node) => root.append(node));
+            }
+
+            // Set selection at end
+            root.selectEnd();
           } catch {
             // Fallback to raw text on error
-            selection.insertRawText(plainText);
+            const currentSelection = $getSelection();
+            if ($isRangeSelection(currentSelection)) {
+              currentSelection.insertRawText(plainText);
+            }
           }
         });
+      }, 0);
+    };
 
-        return true;
-      },
-      COMMAND_PRIORITY_LOW
-    );
+    rootElement.addEventListener('keydown', handleKeyDown);
+    rootElement.addEventListener('keyup', handleKeyUp);
+    // Use capture phase to intercept before Lexical's handlers
+    rootElement.addEventListener('paste', handlePaste, { capture: true });
 
     return () => {
       rootElement.removeEventListener('keydown', handleKeyDown);
       rootElement.removeEventListener('keyup', handleKeyUp);
-      unregisterPaste();
+      rootElement.removeEventListener('paste', handlePaste, { capture: true });
     };
   }, [editor, transformers]);
 
