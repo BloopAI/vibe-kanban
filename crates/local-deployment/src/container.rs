@@ -1145,7 +1145,11 @@ impl ContainerService for LocalContainerService {
             .clone()
             .unwrap_or_else(|| DEFAULT_COMMIT_REMINDER_PROMPT.to_string());
         drop(config);
-        let mut env = ExecutionEnv::new(repo_context, commit_reminder_enabled, commit_reminder_prompt);
+        let mut env = ExecutionEnv::new(
+            repo_context,
+            commit_reminder_enabled,
+            commit_reminder_prompt,
+        );
 
         // Load task and project context for environment variables
         let task = workspace
