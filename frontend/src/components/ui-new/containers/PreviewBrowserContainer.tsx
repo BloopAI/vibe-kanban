@@ -4,7 +4,10 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useMemo,
 } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { configApi } from '@/lib/api';
 import {
   PreviewBrowser,
   MOBILE_WIDTH,
@@ -39,6 +42,14 @@ export function PreviewBrowserContainer({
     (s) => s.triggerPreviewRefresh
   );
   const { repos, workspaceId } = useWorkspaceContext();
+
+  // Get preview proxy port for security isolation
+  const { data: systemInfo } = useQuery({
+    queryKey: ['user-system'],
+    queryFn: configApi.getConfig,
+    staleTime: 5 * 60 * 1000,
+  });
+  const previewProxyPort = systemInfo?.preview_proxy_port;
 
   const {
     start,
@@ -347,10 +358,28 @@ export function PreviewBrowserContainer({
     [setScreenSize]
   );
 
-  // Use previewRefreshKey from store to force iframe reload
-  const iframeUrl = effectiveUrl
-    ? `${effectiveUrl}${effectiveUrl.includes('?') ? '&' : '?'}_refresh=${previewRefreshKey}`
-    : undefined;
+  // Construct proxy URL for iframe to enable security isolation via separate origin
+  const iframeUrl = useMemo(() => {
+    if (!effectiveUrl || !previewProxyPort) return undefined;
+
+    try {
+      const parsed = new URL(effectiveUrl);
+      const devServerPort =
+        parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
+      const path = parsed.pathname + parsed.search;
+
+      const proxyUrl = new URL(
+        `http://${window.location.hostname}:${previewProxyPort}/proxy`
+      );
+      proxyUrl.searchParams.set('target', devServerPort);
+      proxyUrl.searchParams.set('path', path);
+      proxyUrl.searchParams.set('_refresh', String(previewRefreshKey));
+
+      return proxyUrl.toString();
+    } catch {
+      return undefined;
+    }
+  }, [effectiveUrl, previewProxyPort, previewRefreshKey]);
 
   const handleEditDevScript = useCallback(() => {
     if (!attemptId || repos.length === 0) return;
