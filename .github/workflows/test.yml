@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - main
-      - louis/fe-revision
+      - louis/remote-kanban
   workflow_dispatch:
 
 concurrency:
