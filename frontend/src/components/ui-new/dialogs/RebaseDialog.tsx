@@ -66,7 +66,11 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
 
   // If rebase is in progress, redirect to the appropriate dialog
   useEffect(() => {
-    if (!isInitialLoading && isRebaseInProgress && repoStatus) {
+    if (
+      !isInitialLoading &&
+      (isRebaseInProgress || hasConflictedFiles) &&
+      repoStatus
+    ) {
       modal.hide();
 
       if (hasConflictedFiles) {
