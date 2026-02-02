@@ -23,6 +23,7 @@ pub struct Project {
     pub name: String,
     pub default_agent_working_dir: Option<String>,
     pub remote_project_id: Option<Uuid>,
+    pub working_directory: Option<String>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -33,6 +34,7 @@ pub struct Project {
 pub struct CreateProject {
     pub name: String,
     pub repositories: Vec<CreateProjectRepo>,
+    pub working_directory: Option<String>,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -58,6 +60,11 @@ pub enum SearchMatchType {
 }
 
 impl Project {
+    /// Returns true if this project is a directory-only project (no git repos).
+    pub fn is_directory_only(&self) -> bool {
+        self.working_directory.is_some()
+    }
+
     pub async fn count(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
         sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM projects"#)
             .fetch_one(pool)
@@ -71,6 +78,7 @@ impl Project {
                       name,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      working_directory,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -88,6 +96,7 @@ impl Project {
             SELECT p.id as "id!: Uuid", p.name,
                    p.default_agent_working_dir,
                    p.remote_project_id as "remote_project_id: Uuid",
+                   p.working_directory,
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -111,6 +120,7 @@ impl Project {
                       name,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      working_directory,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -128,6 +138,7 @@ impl Project {
                       name,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      working_directory,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -148,6 +159,7 @@ impl Project {
                       name,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      working_directory,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -168,18 +180,21 @@ impl Project {
             Project,
             r#"INSERT INTO projects (
                     id,
-                    name
+                    name,
+                    working_directory
                 ) VALUES (
-                    $1, $2
+                    $1, $2, $3
                 )
                 RETURNING id as "id!: Uuid",
                           name,
                           default_agent_working_dir,
                           remote_project_id as "remote_project_id: Uuid",
+                          working_directory,
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
             data.name,
+            data.working_directory,
         )
         .fetch_one(executor)
         .await
@@ -205,6 +220,7 @@ impl Project {
                          name,
                          default_agent_working_dir,
                          remote_project_id as "remote_project_id: Uuid",
+                         working_directory,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -259,5 +275,35 @@ impl Project {
             .execute(pool)
             .await?;
         Ok(result.rows_affected())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+
+    fn make_project(working_directory: Option<String>) -> Project {
+        Project {
+            id: Uuid::new_v4(),
+            name: "test".to_string(),
+            default_agent_working_dir: None,
+            remote_project_id: None,
+            working_directory,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn test_is_directory_only_with_working_directory() {
+        let project = make_project(Some("/tmp/my-dir".to_string()));
+        assert!(project.is_directory_only());
+    }
+
+    #[test]
+    fn test_is_directory_only_without_working_directory() {
+        let project = make_project(None);
+        assert!(!project.is_directory_only());
     }
 }

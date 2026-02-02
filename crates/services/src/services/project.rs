@@ -41,6 +41,8 @@ pub enum ProjectServiceError {
     GitError(String),
     #[error("Remote client error: {0}")]
     RemoteClient(String),
+    #[error("Validation error: {0}")]
+    ValidationError(String),
 }
 
 pub type Result<T> = std::result::Result<T, ProjectServiceError>;
@@ -72,7 +74,31 @@ impl ProjectService {
         repo_service: &RepoService,
         payload: CreateProject,
     ) -> Result<Project> {
-        // Validate all repository paths and check for duplicates within the payload
+        // Directory-only project: working_directory set, no repositories
+        if payload.working_directory.is_some() && !payload.repositories.is_empty() {
+            return Err(ProjectServiceError::ValidationError(
+                "Cannot specify both working_directory and repositories".to_string(),
+            ));
+        }
+
+        if let Some(ref working_dir) = payload.working_directory {
+            let path = repo_service.normalize_path(working_dir)?;
+            repo_service.validate_directory_path(&path)?;
+
+            let mut normalized_payload = payload.clone();
+            normalized_payload.working_directory = Some(path.to_string_lossy().to_string());
+
+            let id = Uuid::new_v4();
+            let project = Project::create(pool, &normalized_payload, id)
+                .await
+                .map_err(|e| {
+                    ProjectServiceError::Project(ProjectError::CreateFailed(e.to_string()))
+                })?;
+
+            return Ok(project);
+        }
+
+        // Git-repo project: existing behavior
         let mut seen_names = HashSet::new();
         let mut seen_paths = HashSet::new();
         let mut normalized_repos = Vec::new();
@@ -275,5 +301,73 @@ impl ProjectService {
 
         all_results.truncate(10);
         Ok(all_results)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    /// Creates a throwaway in-memory SQLite pool.
+    /// The tests below are designed to fail during validation
+    /// (before any SQL query is executed), so the pool is never actually used.
+    async fn dummy_pool() -> SqlitePool {
+        SqlitePool::connect("sqlite::memory:").await.unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_create_project_rejects_both_working_dir_and_repos() {
+        let pool = dummy_pool().await;
+        let svc = ProjectService::new();
+        let repo_svc = RepoService::new();
+
+        let payload = CreateProject {
+            name: "test".to_string(),
+            repositories: vec![CreateProjectRepo {
+                display_name: "repo".to_string(),
+                git_repo_path: "/some/path".to_string(),
+            }],
+            working_directory: Some("/some/dir".to_string()),
+        };
+
+        let result = svc.create_project(&pool, &repo_svc, payload).await;
+        assert!(matches!(result, Err(ProjectServiceError::ValidationError(_))));
+    }
+
+    #[tokio::test]
+    async fn test_create_project_directory_only_validates_path_exists() {
+        let pool = dummy_pool().await;
+        let svc = ProjectService::new();
+        let repo_svc = RepoService::new();
+
+        let payload = CreateProject {
+            name: "test".to_string(),
+            repositories: vec![],
+            working_directory: Some("/nonexistent/path/abc123".to_string()),
+        };
+
+        let result = svc.create_project(&pool, &repo_svc, payload).await;
+        assert!(matches!(result, Err(ProjectServiceError::PathNotFound(_))));
+    }
+
+    #[tokio::test]
+    async fn test_create_project_directory_only_validates_path_is_dir() {
+        let dir = TempDir::new().unwrap();
+        let file_path = dir.path().join("not_a_dir.txt");
+        std::fs::write(&file_path, "content").unwrap();
+
+        let pool = dummy_pool().await;
+        let svc = ProjectService::new();
+        let repo_svc = RepoService::new();
+
+        let payload = CreateProject {
+            name: "test".to_string(),
+            repositories: vec![],
+            working_directory: Some(file_path.to_string_lossy().to_string()),
+        };
+
+        let result = svc.create_project(&pool, &repo_svc, payload).await;
+        assert!(matches!(result, Err(ProjectServiceError::PathNotDirectory(_))));
     }
 }

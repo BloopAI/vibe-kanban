@@ -122,6 +122,9 @@ pub async fn create_project(
         Err(ProjectServiceError::NotGitRepository(_)) => Ok(ResponseJson(ApiResponse::error(
             "The specified directory is not a git repository",
         ))),
+        Err(ProjectServiceError::ValidationError(msg)) => {
+            Ok(ResponseJson(ApiResponse::error(&msg)))
+        }
         Err(e) => Err(ProjectError::CreateFailed(e.to_string()).into()),
     }
 }
@@ -202,10 +205,15 @@ pub async fn open_project_in_editor(
             .get_repositories(&deployment.db().pool, project.id)
             .await?;
 
-        repositories
-            .first()
-            .map(|r| r.path.clone())
-            .ok_or_else(|| ApiError::BadRequest("Project has no repositories".to_string()))?
+        if let Some(repo) = repositories.first() {
+            repo.path.clone()
+        } else if let Some(ref working_dir) = project.working_directory {
+            PathBuf::from(working_dir)
+        } else {
+            return Err(ApiError::BadRequest(
+                "Project has no repositories or working directory".to_string(),
+            ));
+        }
     };
 
     let editor_config = {

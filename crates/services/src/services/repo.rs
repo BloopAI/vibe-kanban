@@ -40,16 +40,23 @@ impl RepoService {
     }
 
     pub fn validate_git_repo_path(&self, path: &Path) -> Result<()> {
+        self.validate_directory_path(path)?;
+
+        if !path.join(".git").exists() {
+            return Err(RepoError::NotGitRepository(path.to_path_buf()));
+        }
+
+        Ok(())
+    }
+
+    /// Validates that a path exists and is a directory (no git check).
+    pub fn validate_directory_path(&self, path: &Path) -> Result<()> {
         if !path.exists() {
             return Err(RepoError::PathNotFound(path.to_path_buf()));
         }
 
         if !path.is_dir() {
             return Err(RepoError::PathNotDirectory(path.to_path_buf()));
-        }
-
-        if !path.join(".git").exists() {
-            return Err(RepoError::NotGitRepository(path.to_path_buf()));
         }
 
         Ok(())
@@ -123,5 +130,53 @@ impl RepoService {
 
         let repo = RepoModel::find_or_create(pool, &repo_path, folder_name).await?;
         Ok(repo)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_validate_directory_path_valid() {
+        let dir = TempDir::new().unwrap();
+        let svc = RepoService::new();
+        assert!(svc.validate_directory_path(dir.path()).is_ok());
+    }
+
+    #[test]
+    fn test_validate_directory_path_not_found() {
+        let svc = RepoService::new();
+        let result = svc.validate_directory_path(Path::new("/nonexistent/path/abc123"));
+        assert!(matches!(result, Err(RepoError::PathNotFound(_))));
+    }
+
+    #[test]
+    fn test_validate_directory_path_not_directory() {
+        let dir = TempDir::new().unwrap();
+        let file_path = dir.path().join("a_file.txt");
+        std::fs::write(&file_path, "content").unwrap();
+
+        let svc = RepoService::new();
+        let result = svc.validate_directory_path(&file_path);
+        assert!(matches!(result, Err(RepoError::PathNotDirectory(_))));
+    }
+
+    #[test]
+    fn test_validate_git_repo_path_rejects_non_git_dir() {
+        let dir = TempDir::new().unwrap();
+        let svc = RepoService::new();
+        let result = svc.validate_git_repo_path(dir.path());
+        assert!(matches!(result, Err(RepoError::NotGitRepository(_))));
+    }
+
+    #[test]
+    fn test_validate_git_repo_path_accepts_git_dir() {
+        let dir = TempDir::new().unwrap();
+        std::fs::create_dir(dir.path().join(".git")).unwrap();
+
+        let svc = RepoService::new();
+        assert!(svc.validate_git_repo_path(dir.path()).is_ok());
     }
 }

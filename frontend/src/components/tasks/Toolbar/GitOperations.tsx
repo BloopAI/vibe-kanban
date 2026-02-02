@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip.tsx';
 import { useCallback, useMemo, useState } from 'react';
+import { useCompleteTask } from '@/hooks/useCompleteTask';
 import type {
   RepoBranchStatus,
   Merge,
@@ -30,6 +31,7 @@ import { useTranslation } from 'react-i18next';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useGitOperations } from '@/hooks/useGitOperations';
 import { useRepoBranches } from '@/hooks';
+import { shouldShowGitOperations } from '@/utils/directoryProject';
 
 interface GitOperationsProps {
   selectedAttempt: Workspace;
@@ -259,6 +261,20 @@ function GitOperations({
       targetBranch: getSelectedRepoStatus()?.target_branch_name,
     });
   };
+
+  // For directory-only projects, show "Mark as Done" button when task is in review
+  if (!shouldShowGitOperations(repos.length)) {
+    if (task.status !== 'inreview') {
+      return null;
+    }
+
+    return (
+      <DirectoryOnlyToolbar
+        selectedAttempt={selectedAttempt}
+        isAttemptRunning={isAttemptRunning}
+      />
+    );
+  }
 
   const isVertical = layout === 'vertical';
 
@@ -537,4 +553,63 @@ function GitOperations({
   );
 }
 
+function DirectoryOnlyToolbar({
+  selectedAttempt,
+  isAttemptRunning,
+}: {
+  selectedAttempt: Workspace;
+  isAttemptRunning: boolean;
+}) {
+  const { t } = useTranslation('tasks');
+  const [completing, setCompleting] = useState(false);
+  const [completeSuccess, setCompleteSuccess] = useState(false);
+
+  const completeTask = useCompleteTask(
+    selectedAttempt.id,
+    () => {
+      setCompleteSuccess(true);
+      setTimeout(() => setCompleteSuccess(false), 2000);
+    },
+    (err) => {
+      console.error('Failed to complete task:', err);
+    }
+  );
+
+  const handleCompleteClick = async () => {
+    try {
+      setCompleting(true);
+      await completeTask.mutateAsync();
+    } finally {
+      setCompleting(false);
+    }
+  };
+
+  const buttonLabel = completeSuccess
+    ? t('git.states.completed')
+    : completing
+      ? t('git.states.completing')
+      : t('git.states.markDone');
+
+  return (
+    <div className="w-full border-b py-2">
+      <div className="flex items-center gap-2 overflow-hidden">
+        <div className="shrink-0 flex flex-wrap items-center gap-2 overflow-y-hidden overflow-x-visible max-h-8">
+          <Button
+            onClick={handleCompleteClick}
+            disabled={completing || isAttemptRunning}
+            variant="outline"
+            size="xs"
+            className="border-success text-success hover:bg-success gap-1 shrink-0"
+            aria-label={buttonLabel}
+          >
+            <CheckCircle className="h-3.5 w-3.5" />
+            <span className="truncate max-w-[12ch]">{buttonLabel}</span>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export { DirectoryOnlyToolbar };
 export default GitOperations;

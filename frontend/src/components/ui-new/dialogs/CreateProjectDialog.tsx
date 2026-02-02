@@ -54,6 +54,7 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
       const createData: CreateProject = {
         name: name.trim(),
         repositories: [],
+        working_directory: null,
       };
 
       createProject.mutate(createData);

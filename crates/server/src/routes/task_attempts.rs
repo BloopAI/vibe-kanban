@@ -178,21 +178,33 @@ pub async fn create_task_attempt(
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
     let executor_profile_id = payload.executor_profile_id.clone();
 
-    if payload.repos.is_empty() {
-        return Err(ApiError::BadRequest(
-            "At least one repository is required".to_string(),
-        ));
-    }
-
     let pool = &deployment.db().pool;
     let task = Task::find_by_id(&deployment.db().pool, payload.task_id)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
 
+    let is_directory_only = payload.repos.is_empty();
+
+    // Validate: if no repos, project must have a working_directory
+    if is_directory_only {
+        let project = task
+            .parent_project(pool)
+            .await?
+            .ok_or(SqlxError::RowNotFound)?;
+        if project.working_directory.is_none() {
+            return Err(ApiError::BadRequest(
+                "At least one repository is required".to_string(),
+            ));
+        }
+    }
+
     // Compute agent_working_dir based on repo count:
+    // - Directory-only: None (agent runs in working_directory directly)
     // - Single repo: join repo name with default_working_dir (if set), or just repo name
     // - Multiple repos: use None (agent runs in workspace root)
-    let agent_working_dir = if payload.repos.len() == 1 {
+    let agent_working_dir = if is_directory_only {
+        None
+    } else if payload.repos.len() == 1 {
         let repo = Repo::find_by_id(pool, payload.repos[0].repo_id)
             .await?
             .ok_or(RepoError::NotFound)?;
@@ -208,10 +220,16 @@ pub async fn create_task_attempt(
     };
 
     let attempt_id = Uuid::new_v4();
-    let git_branch_name = deployment
-        .container()
-        .git_branch_from_workspace(&attempt_id, &task.title)
-        .await;
+
+    // Directory-only projects don't get a git branch
+    let git_branch_name = if is_directory_only {
+        String::new()
+    } else {
+        deployment
+            .container()
+            .git_branch_from_workspace(&attempt_id, &task.title)
+            .await
+    };
 
     let workspace = Workspace::create(
         pool,
@@ -224,16 +242,19 @@ pub async fn create_task_attempt(
     )
     .await?;
 
-    let workspace_repos: Vec<CreateWorkspaceRepo> = payload
-        .repos
-        .iter()
-        .map(|r| CreateWorkspaceRepo {
-            repo_id: r.repo_id,
-            target_branch: r.target_branch.clone(),
-        })
-        .collect();
+    if !is_directory_only {
+        let workspace_repos: Vec<CreateWorkspaceRepo> = payload
+            .repos
+            .iter()
+            .map(|r| CreateWorkspaceRepo {
+                repo_id: r.repo_id,
+                target_branch: r.target_branch.clone(),
+            })
+            .collect();
 
-    WorkspaceRepo::create_many(pool, workspace.id, &workspace_repos).await?;
+        WorkspaceRepo::create_many(pool, workspace.id, &workspace_repos).await?;
+    }
+
     if let Err(err) = deployment
         .container()
         .start_workspace(&workspace, executor_profile_id.clone())
@@ -427,6 +448,12 @@ pub async fn merge_task_attempt(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<MergeTaskAttemptRequest>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    if !workspace.is_git_workspace() {
+        return Err(ApiError::BadRequest(
+            "Merge is not available for directory-only projects".to_string(),
+        ));
+    }
+
     let pool = &deployment.db().pool;
 
     let workspace_repo =
@@ -532,11 +559,81 @@ pub async fn merge_task_attempt(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+#[axum::debug_handler]
+pub async fn complete_task_attempt(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    if workspace.is_git_workspace() {
+        return Err(ApiError::BadRequest(
+            "Complete is only available for directory-only projects. Use merge for git projects."
+                .to_string(),
+        ));
+    }
+
+    let pool = &deployment.db().pool;
+
+    let task = workspace
+        .parent_task(pool)
+        .await?
+        .ok_or(ApiError::Workspace(WorkspaceError::TaskNotFound))?;
+
+    Task::update_status(pool, task.id, TaskStatus::Done).await?;
+
+    if !workspace.pinned {
+        Workspace::set_archived(pool, workspace.id, true).await?;
+    }
+
+    // Stop any running dev servers for this workspace
+    let dev_servers =
+        ExecutionProcess::find_running_dev_servers_by_workspace(pool, workspace.id).await?;
+
+    for dev_server in dev_servers {
+        tracing::info!(
+            "Stopping dev server {} for completed task attempt {}",
+            dev_server.id,
+            workspace.id
+        );
+
+        if let Err(e) = deployment
+            .container()
+            .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
+            .await
+        {
+            tracing::error!(
+                "Failed to stop dev server {} for task attempt {}: {}",
+                dev_server.id,
+                workspace.id,
+                e
+            );
+        }
+    }
+
+    deployment
+        .track_if_analytics_allowed(
+            "task_attempt_completed",
+            serde_json::json!({
+                "task_id": task.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
+                "type": "directory_only",
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub async fn push_task_attempt_branch(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<PushTaskAttemptRequest>,
 ) -> Result<ResponseJson<ApiResponse<(), PushError>>, ApiError> {
+    if !workspace.is_git_workspace() {
+        return Err(ApiError::BadRequest(
+            "Push is not available for directory-only projects".to_string(),
+        ));
+    }
+
     let pool = &deployment.db().pool;
 
     let workspace_repo =
@@ -572,6 +669,12 @@ pub async fn force_push_task_attempt_branch(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<PushTaskAttemptRequest>,
 ) -> Result<ResponseJson<ApiResponse<(), PushError>>, ApiError> {
+    if !workspace.is_git_workspace() {
+        return Err(ApiError::BadRequest(
+            "Push is not available for directory-only projects".to_string(),
+        ));
+    }
+
     let pool = &deployment.db().pool;
 
     let workspace_repo =
@@ -719,6 +822,10 @@ pub async fn get_task_attempt_branch_status(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<RepoBranchStatus>>>, ApiError> {
+    if !workspace.is_git_workspace() {
+        return Ok(ResponseJson(ApiResponse::success(vec![])));
+    }
+
     let pool = &deployment.db().pool;
 
     let repositories = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
@@ -902,6 +1009,12 @@ pub async fn change_target_branch(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<ChangeTargetBranchRequest>,
 ) -> Result<ResponseJson<ApiResponse<ChangeTargetBranchResponse>>, ApiError> {
+    if !workspace.is_git_workspace() {
+        return Err(ApiError::BadRequest(
+            "Branch operations are not available for directory-only projects".to_string(),
+        ));
+    }
+
     let repo_id = payload.repo_id;
     let new_target_branch = payload.new_target_branch;
     let pool = &deployment.db().pool;
@@ -955,6 +1068,12 @@ pub async fn rename_branch(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<RenameBranchRequest>,
 ) -> Result<ResponseJson<ApiResponse<RenameBranchResponse, RenameBranchError>>, ApiError> {
+    if !workspace.is_git_workspace() {
+        return Err(ApiError::BadRequest(
+            "Branch operations are not available for directory-only projects".to_string(),
+        ));
+    }
+
     let new_branch_name = payload.new_branch_name.trim();
 
     if new_branch_name.is_empty() {
@@ -1095,6 +1214,12 @@ pub async fn rebase_task_attempt(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<RebaseTaskAttemptRequest>,
 ) -> Result<ResponseJson<ApiResponse<(), GitOperationError>>, ApiError> {
+    if !workspace.is_git_workspace() {
+        return Err(ApiError::BadRequest(
+            "Rebase is not available for directory-only projects".to_string(),
+        ));
+    }
+
     let pool = &deployment.db().pool;
 
     let workspace_repo =
@@ -1195,6 +1320,12 @@ pub async fn abort_conflicts_task_attempt(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<AbortConflictsRequest>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    if !workspace.is_git_workspace() {
+        return Err(ApiError::BadRequest(
+            "Conflict operations are not available for directory-only projects".to_string(),
+        ));
+    }
+
     let pool = &deployment.db().pool;
 
     let repo = Repo::find_by_id(pool, payload.repo_id)
@@ -1772,6 +1903,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/branch-status", get(get_task_attempt_branch_status))
         .route("/diff/ws", get(stream_task_attempt_diff_ws))
         .route("/merge", post(merge_task_attempt))
+        .route("/complete", post(complete_task_attempt))
         .route("/push", post(push_task_attempt_branch))
         .route("/push/force", post(force_push_task_attempt_branch))
         .route("/rebase", post(rebase_task_attempt))

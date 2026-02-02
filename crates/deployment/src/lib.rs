@@ -168,6 +168,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                             display_name: repo.name,
                             git_repo_path: repo_path.clone(),
                         }],
+                        working_directory: None,
                     };
 
                     match self

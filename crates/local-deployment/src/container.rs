@@ -971,17 +971,30 @@ impl ContainerService for LocalContainerService {
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
+        let workspace_repos =
+            WorkspaceRepo::find_by_workspace_id(&self.db.pool, workspace.id).await?;
+
+        // Directory-only project: no repos, use working_directory directly
+        if workspace_repos.is_empty() {
+            let project = task
+                .parent_project(&self.db.pool)
+                .await?
+                .ok_or(sqlx::Error::RowNotFound)?;
+
+            let working_dir = project.working_directory.ok_or_else(|| {
+                ContainerError::Other(anyhow!(
+                    "Workspace has no repositories and project has no working_directory"
+                ))
+            })?;
+
+            Workspace::update_container_ref(&self.db.pool, workspace.id, &working_dir).await?;
+
+            return Ok(working_dir);
+        }
+
         let workspace_dir_name =
             LocalContainerService::dir_name_from_workspace(&workspace.id, &task.title);
         let workspace_dir = WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name);
-
-        let workspace_repos =
-            WorkspaceRepo::find_by_workspace_id(&self.db.pool, workspace.id).await?;
-        if workspace_repos.is_empty() {
-            return Err(ContainerError::Other(anyhow!(
-                "Workspace has no repositories configured"
-            )));
-        }
 
         let repositories =
             WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
@@ -1040,10 +1053,16 @@ impl ContainerService for LocalContainerService {
         let repositories =
             WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
 
+        // Directory-only project: just verify the directory exists
         if repositories.is_empty() {
-            return Err(ContainerError::Other(anyhow!(
-                "Workspace has no repositories configured"
-            )));
+            if let Some(container_ref) = &workspace.container_ref {
+                let dir = PathBuf::from(container_ref);
+                if dir.exists() {
+                    return Ok(container_ref.clone());
+                }
+            }
+            // Try to re-create from project working_directory
+            return self.create(workspace).await;
         }
 
         let workspace_dir = if let Some(container_ref) = &workspace.container_ref {
@@ -1285,6 +1304,12 @@ impl ContainerService for LocalContainerService {
     {
         let workspace_repos =
             WorkspaceRepo::find_by_workspace_id(&self.db.pool, workspace.id).await?;
+
+        // Directory-only project: no diffs to stream
+        if workspace_repos.is_empty() {
+            return Ok(Box::pin(futures::stream::empty()));
+        }
+
         let target_branches: HashMap<_, _> = workspace_repos
             .iter()
             .map(|wr| (wr.repo_id, wr.target_branch.clone()))
@@ -1353,6 +1378,11 @@ impl ContainerService for LocalContainerService {
     }
 
     async fn try_commit_changes(&self, ctx: &ExecutionContext) -> Result<bool, ContainerError> {
+        // No repos = no git commits possible (directory-only project)
+        if ctx.repos.is_empty() {
+            return Ok(false);
+        }
+
         if !matches!(
             ctx.execution_process.run_reason,
             ExecutionProcessRunReason::CodingAgent | ExecutionProcessRunReason::CleanupScript,

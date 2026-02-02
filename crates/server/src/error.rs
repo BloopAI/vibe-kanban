@@ -300,6 +300,7 @@ impl From<ProjectServiceError> for ApiError {
             ProjectServiceError::RemoteClient(msg) => {
                 ApiError::BadRequest(format!("Remote client error: {}", msg))
             }
+            ProjectServiceError::ValidationError(msg) => ApiError::BadRequest(msg),
         }
     }
 }

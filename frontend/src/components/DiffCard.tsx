@@ -36,6 +36,7 @@ import {
   useWrapTextDiff,
 } from '@/stores/useDiffViewStore';
 import { useProject } from '@/contexts/ProjectContext';
+import { shouldShowDiff } from '@/utils/directoryProject';
 
 type Props = {
   diff: Diff;
@@ -266,6 +267,11 @@ export default function DiffCard({
   };
 
   const expandable = true;
+
+  // Don't render diff view for directory-only workspaces (no git)
+  if (selectedAttempt && !shouldShowDiff(selectedAttempt.branch)) {
+    return null;
+  }
 
   return (
     <div className="my-4 border">
