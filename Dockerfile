@@ -1,5 +1,5 @@
 # Build stage
-FROM node:24-alpine AS builder
+FROM node:24-alpine AS builde
 
 # Install build dependencies
 RUN apk add --no-cache \
