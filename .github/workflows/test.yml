@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - main
-      - louis/fe-revision
+      - louis/remote-kanban
   workflow_dispatch:
 
 concurrency:
@@ -59,6 +59,13 @@ jobs:
           shared-key: "shared"
           cache-all-crates: true
 
+      - name: Setup SSH Agent for private dependencies
+        id: ssh-setup
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VK_PRIVATE_DEPLOY_KEY }}
+
       - name: Install sqlx-cli
         uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
         with:
@@ -75,8 +82,12 @@ jobs:
         run: |
           cargo fmt --all -- --check
           npm run generate-types:check
-          npm run remote:generate-types:check
           npm run prepare-db:check
-          npm run remote:prepare-db:check
           cargo test --workspace
-          cargo clippy --all --all-targets -- -D warnings  
+          cargo clippy --all --all-targets -- -D warnings
+
+      - name: Remote crate checks
+        if: ${{ steps.ssh-setup.outcome == 'success' }}
+        run: |
+          npm run remote:generate-types:check
+          npm run remote:prepare-db:check  

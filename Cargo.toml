@@ -1,5 +1,5 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members = [
     "crates/server",
     "crates/db",
@@ -9,9 +9,9 @@ members = [
     "crates/git",
     "crates/local-deployment",
     "crates/deployment",
-    "crates/remote",
     "crates/review",
 ]
+exclude = ["crates/remote"]
 
 [workspace.dependencies]
 tokio = { version = "1.0", features = ["full"] }

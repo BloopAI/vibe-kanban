@@ -1,6 +1,6 @@
 [package]
 name = "git"
-version = "0.0.168"
+version = "0.1.0"
 edition = "2024"
 
 [features]
