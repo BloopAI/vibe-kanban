@@ -366,6 +366,25 @@ export function PreviewBrowserContainer({
       const parsed = new URL(effectiveUrl);
       const devServerPort =
         parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
+
+      // Don't proxy to Vibe Kanban's own ports (would create infinite loop)
+      const vibeKanbanPort = window.location.port || '80';
+      if (devServerPort === vibeKanbanPort) {
+        console.warn(
+          `[Preview] Ignoring dev server URL with same port as Vibe Kanban (${devServerPort}). ` +
+            'This usually means the dev server failed to start or reported the wrong port.'
+        );
+        return undefined;
+      }
+
+      // Also check if it's the preview proxy port itself
+      if (devServerPort === String(previewProxyPort)) {
+        console.warn(
+          `[Preview] Ignoring dev server URL with same port as preview proxy (${devServerPort}).`
+        );
+        return undefined;
+      }
+
       const path = parsed.pathname + parsed.search;
 
       const proxyUrl = new URL(

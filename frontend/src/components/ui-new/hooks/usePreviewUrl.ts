@@ -22,17 +22,23 @@ const getBrowserHostname = (): string => {
   return 'localhost';
 };
 
+const getVibeKanbanPort = (): string | null => {
+  if (typeof window !== 'undefined' && window.location.port) {
+    return window.location.port;
+  }
+  return null;
+};
+
 export const detectPreviewUrl = (line: string): PreviewUrlInfo | null => {
   const cleaned = stripAnsi(line);
   const browserHostname = getBrowserHostname();
+  const vibeKanbanPort = getVibeKanbanPort();
 
-  // Try to match a full URL first
   const fullUrlMatch = urlPatterns[0].exec(cleaned);
   if (fullUrlMatch) {
     try {
       const parsed = new URL(fullUrlMatch[1]);
 
-      // Reject localhost/loopback URLs without a port - they're not valid dev server URLs
       const isLocalhost = [
         'localhost',
         '127.0.0.1',
@@ -44,7 +50,6 @@ export const detectPreviewUrl = (line: string): PreviewUrlInfo | null => {
       if (isLocalhost && !parsed.port) {
         // Fall through to host:port pattern detection
       } else {
-        // Replace 0.0.0.0 or :: with browser hostname
         if (
           parsed.hostname === '0.0.0.0' ||
           parsed.hostname === '::' ||
@@ -52,6 +57,11 @@ export const detectPreviewUrl = (line: string): PreviewUrlInfo | null => {
         ) {
           parsed.hostname = browserHostname;
         }
+
+        if (vibeKanbanPort && parsed.port === vibeKanbanPort) {
+          return null;
+        }
+
         return {
           url: parsed.toString(),
           port: parsed.port ? Number(parsed.port) : undefined,
@@ -63,10 +73,14 @@ export const detectPreviewUrl = (line: string): PreviewUrlInfo | null => {
     }
   }
 
-  // Try to match host:port pattern
   const hostPortMatch = urlPatterns[1].exec(cleaned);
   if (hostPortMatch) {
     const port = Number(hostPortMatch[1]);
+
+    if (vibeKanbanPort && String(port) === vibeKanbanPort) {
+      return null;
+    }
+
     const scheme = /https/i.test(cleaned) ? 'https' : 'http';
     return {
       url: `${scheme}://${browserHostname}:${port}`,
