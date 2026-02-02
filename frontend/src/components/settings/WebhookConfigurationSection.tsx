@@ -11,8 +11,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, Trash2 } from 'lucide-react';
-import { WebhookProvider, WebhookConfig } from 'shared/types';
+import type { WebhookProvider, WebhookConfig } from 'shared/types';
 import { toPrettyCase } from '@/utils/string';
+
+const WEBHOOK_PROVIDERS: WebhookProvider[] = [
+  'SLACK',
+  'DISCORD',
+  'PUSHOVER',
+  'TELEGRAM',
+  'GENERIC',
+];
 
 interface WebhookConfigurationSectionProps {
   webhookNotificationsEnabled: boolean;
@@ -32,7 +40,7 @@ export function WebhookConfigurationSection({
   const addWebhook = () => {
     const newWebhook: WebhookConfig = {
       enabled: true,
-      provider: WebhookProvider.GENERIC,
+      provider: 'GENERIC',
       webhook_url: '',
       pushover_user_key: null,
       telegram_chat_id: null,
@@ -130,7 +138,7 @@ export function WebhookConfigurationSection({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.values(WebhookProvider).map((provider) => (
+                    {WEBHOOK_PROVIDERS.map((provider) => (
                       <SelectItem key={provider} value={provider}>
                         {toPrettyCase(provider)}
                       </SelectItem>
@@ -156,7 +164,7 @@ export function WebhookConfigurationSection({
                 />
               </div>
 
-              {webhook.provider === WebhookProvider.PUSHOVER && (
+              {webhook.provider === 'PUSHOVER' && (
                 <div className="space-y-2">
                   <Label htmlFor={`webhook-${index}-pushover-key`}>
                     {t(
@@ -180,7 +188,7 @@ export function WebhookConfigurationSection({
                 </div>
               )}
 
-              {webhook.provider === WebhookProvider.TELEGRAM && (
+              {webhook.provider === 'TELEGRAM' && (
                 <div className="space-y-2">
                   <Label htmlFor={`webhook-${index}-telegram-chat`}>
                     {t('settings.general.notifications.webhook.telegramChatId', {
