@@ -3,8 +3,10 @@ use std::sync::{Arc, OnceLock};
 use tokio::sync::RwLock;
 use utils;
 
-use crate::services::config::{Config, NotificationConfig, SoundFile};
-use crate::services::webhook_notification::WebhookNotificationService;
+use crate::services::{
+    config::{Config, NotificationConfig, SoundFile},
+    webhook_notification::WebhookNotificationService,
+};
 
 /// Service for handling cross-platform notifications including sound alerts and push notifications
 #[derive(Debug, Clone)]
@@ -36,7 +38,9 @@ impl NotificationService {
     pub async fn notify_execution_started(&self, task_title: &str) {
         let title = "Task Execution Started";
         let message = format!("Started working on: {}", task_title);
-        self.webhook_service.send_notification(title, &message).await;
+        self.webhook_service
+            .send_notification(title, &message)
+            .await;
     }
 
     /// Notify when execution is halted (completed, failed, or cancelled)

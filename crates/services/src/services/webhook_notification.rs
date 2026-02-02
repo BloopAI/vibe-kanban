@@ -35,11 +35,25 @@ impl WebhookNotificationService {
             }
 
             let result = match webhook.provider {
-                WebhookProvider::Slack => self.send_slack_notification(webhook, title, message).await,
-                WebhookProvider::Discord => self.send_discord_notification(webhook, title, message).await,
-                WebhookProvider::Pushover => self.send_pushover_notification(webhook, title, message).await,
-                WebhookProvider::Telegram => self.send_telegram_notification(webhook, title, message).await,
-                WebhookProvider::Generic => self.send_generic_notification(webhook, title, message).await,
+                WebhookProvider::Slack => {
+                    self.send_slack_notification(webhook, title, message).await
+                }
+                WebhookProvider::Discord => {
+                    self.send_discord_notification(webhook, title, message)
+                        .await
+                }
+                WebhookProvider::Pushover => {
+                    self.send_pushover_notification(webhook, title, message)
+                        .await
+                }
+                WebhookProvider::Telegram => {
+                    self.send_telegram_notification(webhook, title, message)
+                        .await
+                }
+                WebhookProvider::Generic => {
+                    self.send_generic_notification(webhook, title, message)
+                        .await
+                }
             };
 
             if let Err(e) = result {
