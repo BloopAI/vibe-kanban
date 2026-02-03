@@ -284,20 +284,20 @@ export const PROJECT_ENTITY: EntityDefinition<Project, CreateProjectRequest, Upd
   mutations: { url: '/v1/projects' } as EntityDefinition<Project, CreateProjectRequest, UpdateProjectRequest>['mutations'],
 };
 
-export const NOTIFICATION_ENTITY: EntityDefinition<Notification> = {
+export const NOTIFICATION_ENTITY: EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest> = {
   name: 'Notification',
   table: 'notifications',
-  mutationScope: null,
-  shapeScope: null,
+  mutationScope: 'Organization',
+  shapeScope: 'Organization',
   shape: NOTIFICATIONS_SHAPE,
-  mutations: null,
+  mutations: { url: '/v1/notifications' } as EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest>['mutations'],
 };
 
 export const ORGANIZATION_MEMBER_ENTITY: EntityDefinition<OrganizationMember> = {
   name: 'OrganizationMember',
   table: 'organization_member_metadata',
   mutationScope: null,
-  shapeScope: 'Organization',
+  shapeScope: null,
   shape: ORGANIZATION_MEMBER_METADATA_SHAPE,
   mutations: null,
 };
@@ -306,7 +306,7 @@ export const USER_ENTITY: EntityDefinition<User> = {
   name: 'User',
   table: 'users',
   mutationScope: null,
-  shapeScope: 'Organization',
+  shapeScope: null,
   shape: USERS_SHAPE,
   mutations: null,
 };
@@ -387,7 +387,7 @@ export const PULL_REQUEST_ENTITY: EntityDefinition<PullRequest> = {
   name: 'PullRequest',
   table: 'pull_requests',
   mutationScope: null,
-  shapeScope: 'Project',
+  shapeScope: null,
   shape: PULL_REQUESTS_SHAPE,
   mutations: null,
 };
@@ -405,7 +405,7 @@ export const ISSUE_COMMENT_REACTION_ENTITY: EntityDefinition<IssueCommentReactio
   name: 'IssueCommentReaction',
   table: 'issue_comment_reactions',
   mutationScope: 'Comment',
-  shapeScope: 'Issue',
+  shapeScope: 'Comment',
   shape: ISSUE_COMMENT_REACTIONS_SHAPE,
   mutations: { url: '/v1/issue_comment_reactions' } as EntityDefinition<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>['mutations'],
 };

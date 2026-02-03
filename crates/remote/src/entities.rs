@@ -119,6 +119,8 @@ pub struct ListIssueCommentReactionsResponse {
 crate::define_entity!(
     Project,
     table: "projects",
+    mutation_scope: Organization,
+    shape_scope: Organization,
     requests: [CreateProjectRequest, UpdateProjectRequest, ListProjectsQuery],
     shape: {
         where_clause: r#""organization_id" = $1"#,
@@ -127,10 +129,12 @@ crate::define_entity!(
     },
 );
 
-// Notification: custom shape with multiple params (organization_id AND user_id)
+// Notification: organization-scoped mutations, custom shape with multiple params
 crate::define_entity!(
     Notification,
     table: "notifications",
+    mutation_scope: Organization,
+    shape_scope: Organization,
     requests: [CreateNotificationRequest, UpdateNotificationRequest, ListNotificationsQuery],
     shape: {
         where_clause: r#""organization_id" = $1 AND "user_id" = $2"#,
@@ -143,6 +147,7 @@ crate::define_entity!(
 crate::define_entity!(
     OrganizationMember,
     table: "organization_member_metadata",
+    shape_scope: None,
     shape: {
         where_clause: r#""organization_id" = $1"#,
         params: ["organization_id"],
@@ -154,6 +159,7 @@ crate::define_entity!(
 crate::define_entity!(
     User,
     table: "users",
+    shape_scope: None,
     shape: {
         where_clause: r#""id" IN (SELECT user_id FROM organization_member_metadata WHERE "organization_id" = $1)"#,
         params: ["organization_id"],
@@ -169,6 +175,8 @@ crate::define_entity!(
 crate::define_entity!(
     Tag,
     table: "tags",
+    mutation_scope: Project,
+    shape_scope: Project,
     requests: [CreateTagRequest, UpdateTagRequest, ListTagsQuery],
     shape: {
         where_clause: r#""project_id" = $1"#,
@@ -181,6 +189,8 @@ crate::define_entity!(
 crate::define_entity!(
     ProjectStatus,
     table: "project_statuses",
+    mutation_scope: Project,
+    shape_scope: Project,
     requests: [CreateProjectStatusRequest, UpdateProjectStatusRequest, ListProjectStatusesQuery],
     shape: {
         where_clause: r#""project_id" = $1"#,
@@ -193,6 +203,8 @@ crate::define_entity!(
 crate::define_entity!(
     Issue,
     table: "issues",
+    mutation_scope: Project,
+    shape_scope: Project,
     requests: [CreateIssueRequest, UpdateIssueRequest, ListIssuesQuery],
     shape: {
         where_clause: r#""project_id" = $1"#,
@@ -205,6 +217,7 @@ crate::define_entity!(
 crate::define_entity!(
     Workspace,
     table: "workspaces",
+    shape_scope: None,
     shape: {
         where_clause: r#""owner_user_id" = $1"#,
         params: ["owner_user_id"],
@@ -221,6 +234,7 @@ crate::define_entity!(
     IssueAssignee,
     table: "issue_assignees",
     mutation_scope: Issue,
+    shape_scope: Project,
     requests: [CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest, ListIssueAssigneesQuery],
     shape: {
         where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
@@ -234,6 +248,7 @@ crate::define_entity!(
     IssueFollower,
     table: "issue_followers",
     mutation_scope: Issue,
+    shape_scope: Project,
     requests: [CreateIssueFollowerRequest, UpdateIssueFollowerRequest, ListIssueFollowersQuery],
     shape: {
         where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
@@ -247,6 +262,7 @@ crate::define_entity!(
     IssueTag,
     table: "issue_tags",
     mutation_scope: Issue,
+    shape_scope: Project,
     requests: [CreateIssueTagRequest, UpdateIssueTagRequest, ListIssueTagsQuery],
     shape: {
         where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
@@ -260,6 +276,7 @@ crate::define_entity!(
     IssueRelationship,
     table: "issue_relationships",
     mutation_scope: Issue,
+    shape_scope: Project,
     requests: [CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest, ListIssueRelationshipsQuery],
     shape: {
         where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
@@ -272,6 +289,7 @@ crate::define_entity!(
 crate::define_entity!(
     PullRequest,
     table: "pull_requests",
+    shape_scope: None,
     shape: {
         where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
         params: ["project_id"],
@@ -287,6 +305,8 @@ crate::define_entity!(
 crate::define_entity!(
     IssueComment,
     table: "issue_comments",
+    mutation_scope: Issue,
+    shape_scope: Issue,
     requests: [CreateIssueCommentRequest, UpdateIssueCommentRequest, ListIssueCommentsQuery],
     shape: {
         where_clause: r#""issue_id" = $1"#,
@@ -299,11 +319,12 @@ crate::define_entity!(
 // Comment-scoped entities
 // =============================================================================
 
-// IssueCommentReaction: comment-scoped mutations, issue-level streaming
+// IssueCommentReaction: comment-scoped mutations and streaming
 crate::define_entity!(
     IssueCommentReaction,
     table: "issue_comment_reactions",
     mutation_scope: Comment,
+    shape_scope: Comment,
     requests: [CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest, ListIssueCommentReactionsQuery],
     shape: {
         where_clause: r#""comment_id" IN (SELECT id FROM issue_comments WHERE "issue_id" = $1)"#,

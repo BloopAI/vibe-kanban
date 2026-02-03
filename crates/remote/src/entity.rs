@@ -7,10 +7,12 @@
 //! # Example
 //!
 //! ```ignore
-//! // With mutations - references external request types
+//! // With mutations - explicit scopes and request types
 //! define_entity!(
 //!     Tag,
 //!     table: "tags",
+//!     mutation_scope: Project,
+//!     shape_scope: Project,
 //!     requests: [CreateTagRequest, UpdateTagRequest, ListTagsQuery],
 //!     shape: {
 //!         where_clause: r#""project_id" = $1"#,
@@ -23,6 +25,7 @@
 //! define_entity!(
 //!     Workspace,
 //!     table: "workspaces",
+//!     shape_scope: None,
 //!     shape: {
 //!         where_clause: r#""owner_user_id" = $1"#,
 //!         params: ["owner_user_id"],
@@ -140,11 +143,13 @@ impl<T: TS + Sync> EntityExport for EntityDefinition<T> {
 ///
 /// # Variants
 ///
-/// ## With mutations - references external request types
+/// ## With mutations - explicit scopes and request types
 /// ```ignore
 /// define_entity!(
 ///     Tag,
 ///     table: "tags",
+///     mutation_scope: Project,
+///     shape_scope: Project,
 ///     requests: [CreateTagRequest, UpdateTagRequest, ListTagsQuery],
 ///     shape: {
 ///         where_clause: r#""project_id" = $1"#,
@@ -159,6 +164,7 @@ impl<T: TS + Sync> EntityExport for EntityDefinition<T> {
 /// define_entity!(
 ///     Workspace,
 ///     table: "workspaces",
+///     shape_scope: None,
 ///     shape: {
 ///         where_clause: r#""owner_user_id" = $1"#,
 ///         params: ["owner_user_id"],
@@ -168,11 +174,12 @@ impl<T: TS + Sync> EntityExport for EntityDefinition<T> {
 /// ```
 #[macro_export]
 macro_rules! define_entity {
-    // With mutations and explicit mutation_scope (for when mutation and shape scopes differ)
+    // With mutations - explicit scopes and request types
     (
         $entity:ident,
         table: $table:literal,
         mutation_scope: $mutation_scope:ident,
+        shape_scope: $shape_scope:ident,
         requests: [$create:ty, $update:ty, $list_query:ty],
         shape: {
             where_clause: $where_clause:literal,
@@ -196,7 +203,7 @@ macro_rules! define_entity {
                     name: stringify!($entity),
                     table: $table,
                     mutation_scope: Some($crate::entity::Scope::$mutation_scope),
-                    shape_scope: $crate::define_entity!(@scope_from_params [$($param),*]),
+                    shape_scope: Some($crate::entity::Scope::$shape_scope),
                     shape: Some($crate::entity::ShapeConfig {
                         where_clause: $where_clause,
                         params: &[$($param),*],
@@ -208,11 +215,12 @@ macro_rules! define_entity {
         }
     };
 
-    // With mutations - infer mutation_scope from shape params (when they're the same)
+    // Shape-only with no scope (e.g., user-scoped entities)
+    // NOTE: This must come BEFORE the explicit scope variant because `None` matches `:ident`
     (
         $entity:ident,
         table: $table:literal,
-        requests: [$create:ty, $update:ty, $list_query:ty],
+        shape_scope: None,
         shape: {
             where_clause: $where_clause:literal,
             params: [$($param:literal),* $(,)?],
@@ -229,53 +237,13 @@ macro_rules! define_entity {
             );
         }
 
-        paste::paste! {
-            pub const [<$entity:snake:upper _ENTITY>]: $crate::entity::EntityDefinition<$entity> =
-                $crate::entity::EntityDefinition {
-                    name: stringify!($entity),
-                    table: $table,
-                    mutation_scope: $crate::define_entity!(@scope_from_params [$($param),*]),
-                    shape_scope: $crate::define_entity!(@scope_from_params [$($param),*]),
-                    shape: Some($crate::entity::ShapeConfig {
-                        where_clause: $where_clause,
-                        params: &[$($param),*],
-                        url: $url,
-                    }),
-                    fields: &[],
-                    _phantom: std::marker::PhantomData,
-                };
-        }
-    };
-
-    // Shape-only (no mutations)
-    (
-        $entity:ident,
-        table: $table:literal,
-        shape: {
-            where_clause: $where_clause:literal,
-            params: [$($param:literal),* $(,)?],
-            url: $url:literal $(,)?
-        } $(,)?
-    ) => {
-        // Generate shape constant (includes compile-time SQL validation via define_shape!)
-        paste::paste! {
-            $crate::define_shape!(
-                [<$entity:snake:upper _SHAPE>], $entity,
-                table: $table,
-                where_clause: $where_clause,
-                url: $url,
-                params: [$($param),*]
-            );
-        }
-
-        // Generate entity metadata without mutations
         paste::paste! {
             pub const [<$entity:snake:upper _ENTITY>]: $crate::entity::EntityDefinition<$entity> =
                 $crate::entity::EntityDefinition {
                     name: stringify!($entity),
                     table: $table,
                     mutation_scope: None,
-                    shape_scope: $crate::define_entity!(@scope_from_params [$($param),*]),
+                    shape_scope: None,
                     shape: Some($crate::entity::ShapeConfig {
                         where_clause: $where_clause,
                         params: &[$($param),*],
@@ -287,15 +255,42 @@ macro_rules! define_entity {
         }
     };
 
-    // Internal: Infer scope from params
-    (@scope_from_params ["organization_id"]) => { Some($crate::entity::Scope::Organization) };
-    (@scope_from_params ["project_id"]) => { Some($crate::entity::Scope::Project) };
-    (@scope_from_params ["issue_id"]) => { Some($crate::entity::Scope::Issue) };
-    (@scope_from_params ["comment_id"]) => { Some($crate::entity::Scope::Comment) };
-    (@scope_from_params ["owner_user_id"]) => { None }; // Special case for user-scoped entities
-    (@scope_from_params [$first:literal, $($rest:literal),+]) => {
-        // For multi-param shapes, infer from first param
-        $crate::define_entity!(@scope_from_params [$first])
+    // Shape-only with explicit scope
+    (
+        $entity:ident,
+        table: $table:literal,
+        shape_scope: $shape_scope:ident,
+        shape: {
+            where_clause: $where_clause:literal,
+            params: [$($param:literal),* $(,)?],
+            url: $url:literal $(,)?
+        } $(,)?
+    ) => {
+        paste::paste! {
+            $crate::define_shape!(
+                [<$entity:snake:upper _SHAPE>], $entity,
+                table: $table,
+                where_clause: $where_clause,
+                url: $url,
+                params: [$($param),*]
+            );
+        }
+
+        paste::paste! {
+            pub const [<$entity:snake:upper _ENTITY>]: $crate::entity::EntityDefinition<$entity> =
+                $crate::entity::EntityDefinition {
+                    name: stringify!($entity),
+                    table: $table,
+                    mutation_scope: None,
+                    shape_scope: Some($crate::entity::Scope::$shape_scope),
+                    shape: Some($crate::entity::ShapeConfig {
+                        where_clause: $where_clause,
+                        params: &[$($param),*],
+                        url: $url,
+                    }),
+                    fields: &[],
+                    _phantom: std::marker::PhantomData,
+                };
+        }
     };
-    (@scope_from_params [$($param:literal),*]) => { None }; // Fallback
 }
