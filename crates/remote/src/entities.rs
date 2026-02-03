@@ -134,6 +134,14 @@ crate::define_entity!(
     },
 );
 
+crate::define_shape!(
+    PROJECT_WORKSPACE_SHAPE, Workspace,
+    table: "workspaces",
+    where_clause: r#""project_id" = $1"#,
+    url: "/shape/project/{project_id}/workspaces",
+    params: ["project_id"]
+);
+
 // =============================================================================
 // Issue-scoped mutations that stream at Project level
 // =============================================================================
@@ -264,6 +272,7 @@ pub fn all_shapes() -> Vec<&'static dyn crate::shapes::ShapeExport> {
         &PROJECT_STATUS_SHAPE,
         &ISSUE_SHAPE,
         &WORKSPACE_SHAPE,
+        &PROJECT_WORKSPACE_SHAPE,
         &ISSUE_ASSIGNEE_SHAPE,
         &ISSUE_FOLLOWER_SHAPE,
         &ISSUE_TAG_SHAPE,
