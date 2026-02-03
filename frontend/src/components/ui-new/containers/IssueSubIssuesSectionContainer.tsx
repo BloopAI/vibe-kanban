@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useState } from 'react';
 import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
-import { PlusIcon } from '@phosphor-icons/react';
+import { PlusIcon, LinkIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
@@ -24,8 +24,8 @@ interface IssueSubIssuesSectionContainerProps {
 export function IssueSubIssuesSectionContainer({
   issueId,
 }: IssueSubIssuesSectionContainerProps) {
-  const { projectId, openIssue } = useKanbanNavigation();
-  const { openSubIssueSelection } = useActions();
+  const { projectId, openIssue, startCreate } = useKanbanNavigation();
+  const { openSubIssueSelection, executorContext } = useActions();
 
   const {
     issues,
@@ -128,8 +128,16 @@ export function IssueSubIssuesSectionContainer({
 
   const isLoading = projectLoading || orgLoading;
 
-  // Handle clicking '+' to add a sub-issue
-  const handleAddSubIssue = useCallback(() => {
+  // Handle clicking '+' to create new sub-issue immediately
+  const handleCreateNewSubIssue = useCallback(() => {
+    startCreate({
+      statusId: executorContext.defaultCreateStatusId,
+      parentIssueId: issueId,
+    });
+  }, [startCreate, issueId, executorContext.defaultCreateStatusId]);
+
+  // Handle clicking link icon to select an existing issue as sub-issue
+  const handleLinkSubIssue = useCallback(() => {
     if (projectId) {
       openSubIssueSelection(projectId, issueId);
     }
@@ -140,10 +148,14 @@ export function IssueSubIssuesSectionContainer({
     () => [
       {
         icon: PlusIcon,
-        onClick: handleAddSubIssue,
+        onClick: handleCreateNewSubIssue,
+      },
+      {
+        icon: LinkIcon,
+        onClick: handleLinkSubIssue,
       },
     ],
-    [handleAddSubIssue]
+    [handleCreateNewSubIssue, handleLinkSubIssue]
   );
 
   return (
