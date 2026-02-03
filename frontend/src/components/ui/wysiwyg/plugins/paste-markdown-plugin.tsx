@@ -6,6 +6,7 @@ import {
   $getSelection,
   $isRangeSelection,
   $createParagraphNode,
+  $setSelection,
 } from 'lexical';
 import {
   $convertFromMarkdownString,
@@ -73,22 +74,30 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
           }
 
           // CMD+V: Convert markdown and insert at cursor
+          // Save selection before any operations that might corrupt it
+          const savedSelection = selection.clone();
+
           try {
             const tempContainer = $createParagraphNode();
+            // Note: $convertFromMarkdownString internally calls selectStart() on the container,
+            // which corrupts the current selection - that's why we clone it above
             $convertFromMarkdownString(plainText, transformers, tempContainer);
+
+            // Restore selection that was corrupted by $convertFromMarkdownString
+            $setSelection(savedSelection);
 
             const nodes = tempContainer.getChildren();
             if (nodes.length === 0) {
-              selection.insertRawText(plainText);
+              savedSelection.insertRawText(plainText);
               return;
             }
 
-            // Use selection.insertNodes() instead of $insertNodes()
-            // This properly handles node parent references
-            selection.insertNodes(nodes);
+            savedSelection.insertNodes(nodes);
           } catch {
-            // Fallback to raw text on error
-            selection.insertRawText(plainText);
+            // Fallback to raw text on error - restore selection first to ensure
+            // we have a valid selection context for the fallback
+            $setSelection(savedSelection);
+            savedSelection.insertRawText(plainText);
           }
         });
 
