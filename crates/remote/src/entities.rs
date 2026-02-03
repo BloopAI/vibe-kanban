@@ -1,13 +1,9 @@
 //! Unified entity definitions for realtime streaming and mutations.
 //!
 //! This module defines all entities using the `define_entity!` macro, which generates
-//! both shape definitions (for realtime streaming) and mutation types (for CRUD operations).
+//! shape definitions (for realtime streaming) and entity metadata.
 //!
-//! Route files import the generated types and use `define_mutation_router!` for routing.
-
-use chrono::{DateTime, Utc};
-use serde_json::Value;
-use uuid::Uuid;
+//! Request/response types are defined in `utils::api::entities` and re-exported here.
 
 use crate::{
     db::{
@@ -24,44 +20,126 @@ use crate::{
         projects::Project,
         pull_requests::PullRequest,
         tags::Tag,
-        types::{IssuePriority, IssueRelationshipType},
         users::User,
         workspaces::Workspace,
     },
     entity::EntityExport,
 };
 
+// Re-export request types from utils for convenience
+pub use utils::api::entities::{
+    // Issue
+    CreateIssueRequest, ListIssuesQuery, UpdateIssueRequest,
+    // IssueAssignee
+    CreateIssueAssigneeRequest, ListIssueAssigneesQuery, UpdateIssueAssigneeRequest,
+    // IssueComment
+    CreateIssueCommentRequest, ListIssueCommentsQuery, UpdateIssueCommentRequest,
+    // IssueCommentReaction
+    CreateIssueCommentReactionRequest, ListIssueCommentReactionsQuery,
+    UpdateIssueCommentReactionRequest,
+    // IssueFollower
+    CreateIssueFollowerRequest, ListIssueFollowersQuery, UpdateIssueFollowerRequest,
+    // IssueRelationship
+    CreateIssueRelationshipRequest, ListIssueRelationshipsQuery, UpdateIssueRelationshipRequest,
+    // IssueTag
+    CreateIssueTagRequest, ListIssueTagsQuery, UpdateIssueTagRequest,
+    // Notification
+    CreateNotificationRequest, ListNotificationsQuery, UpdateNotificationRequest,
+    // Project
+    CreateProjectRequest, ListProjectsQuery, UpdateProjectRequest,
+    // ProjectStatus
+    CreateProjectStatusRequest, ListProjectStatusesQuery, UpdateProjectStatusRequest,
+    // Tag
+    CreateTagRequest, ListTagsQuery, UpdateTagRequest,
+};
+
+// List response types (defined locally as they wrap entity types from this crate)
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
+pub struct ListProjectsResponse {
+    pub projects: Vec<Project>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ListNotificationsResponse {
+    pub notifications: Vec<Notification>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ListTagsResponse {
+    pub tags: Vec<Tag>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ListProjectStatusesResponse {
+    pub project_statuses: Vec<ProjectStatus>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ListIssuesResponse {
+    pub issues: Vec<Issue>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ListIssueAssigneesResponse {
+    pub issue_assignees: Vec<IssueAssignee>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ListIssueFollowersResponse {
+    pub issue_followers: Vec<IssueFollower>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ListIssueTagsResponse {
+    pub issue_tags: Vec<IssueTag>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ListIssueRelationshipsResponse {
+    pub issue_relationships: Vec<IssueRelationship>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ListIssueCommentsResponse {
+    pub issue_comments: Vec<IssueComment>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ListIssueCommentReactionsResponse {
+    pub issue_comment_reactions: Vec<IssueCommentReaction>,
+}
+
 // =============================================================================
 // Organization-scoped entities
 // =============================================================================
 
-// Project: simple case - same scope for mutations and streaming
+// Project: organization-scoped mutations and streaming
 crate::define_entity!(
     Project,
     table: "projects",
-    mutation_scope: Organization,
+    requests: [CreateProjectRequest, UpdateProjectRequest, ListProjectsQuery],
     shape: {
         where_clause: r#""organization_id" = $1"#,
         params: ["organization_id"],
         url: "/shape/projects",
     },
-    fields: [name: String, color: String],
 );
 
 // Notification: custom shape with multiple params (organization_id AND user_id)
 crate::define_entity!(
     Notification,
     table: "notifications",
-    mutation_scope: Organization,
+    requests: [CreateNotificationRequest, UpdateNotificationRequest, ListNotificationsQuery],
     shape: {
         where_clause: r#""organization_id" = $1 AND "user_id" = $2"#,
         params: ["organization_id", "user_id"],
         url: "/shape/notifications",
     },
-    fields: [seen: bool],
 );
 
-// OrganizationMember: shape-only (no mutations)
+// OrganizationMember: shape-only (no mutations via this API)
 crate::define_entity!(
     OrganizationMember,
     table: "organization_member_metadata",
@@ -87,43 +165,43 @@ crate::define_entity!(
 // Project-scoped entities
 // =============================================================================
 
-// Tag: simple project scope
+// Tag: project-scoped mutations and streaming
 crate::define_entity!(
     Tag,
     table: "tags",
-    scope: Project,
-    fields: [name: String, color: String],
+    requests: [CreateTagRequest, UpdateTagRequest, ListTagsQuery],
+    shape: {
+        where_clause: r#""project_id" = $1"#,
+        params: ["project_id"],
+        url: "/shape/project/{project_id}/tags",
+    },
 );
 
-// ProjectStatus: simple project scope
+// ProjectStatus: project-scoped mutations and streaming
 crate::define_entity!(
     ProjectStatus,
     table: "project_statuses",
-    scope: Project,
-    fields: [name: String, color: String, sort_order: i32, hidden: bool],
+    requests: [CreateProjectStatusRequest, UpdateProjectStatusRequest, ListProjectStatusesQuery],
+    shape: {
+        where_clause: r#""project_id" = $1"#,
+        params: ["project_id"],
+        url: "/shape/project/{project_id}/project_statuses",
+    },
 );
 
-// Issue: simple project scope with many fields
+// Issue: project-scoped mutations and streaming
 crate::define_entity!(
     Issue,
     table: "issues",
-    scope: Project,
-    fields: [
-        status_id: uuid::Uuid,
-        title: String,
-        description: Option<String>,
-        priority: Option<IssuePriority>,
-        start_date: Option<DateTime<Utc>>,
-        target_date: Option<DateTime<Utc>>,
-        completed_at: Option<DateTime<Utc>>,
-        sort_order: f64,
-        parent_issue_id: Option<uuid::Uuid>,
-        parent_issue_sort_order: Option<f64>,
-        extension_metadata: Value,
-    ],
+    requests: [CreateIssueRequest, UpdateIssueRequest, ListIssuesQuery],
+    shape: {
+        where_clause: r#""project_id" = $1"#,
+        params: ["project_id"],
+        url: "/shape/project/{project_id}/issues",
+    },
 );
 
-// Workspace: shape-only (no mutations), scoped by owner user
+// Workspace: shape-only (no mutations via entity API), scoped by owner user
 crate::define_entity!(
     Workspace,
     table: "workspaces",
@@ -138,47 +216,55 @@ crate::define_entity!(
 // Issue-scoped mutations that stream at Project level
 // =============================================================================
 
-// IssueAssignee: mutations use issue_id, but streaming aggregates at project level
+// IssueAssignee: issue-scoped mutations, project-level streaming
 crate::define_entity!(
     IssueAssignee,
     table: "issue_assignees",
-    mutation_scope: Issue,
-    shape_scope: Project,
-    shape_where: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
-    fields: [user_id: uuid::Uuid],
+    requests: [CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest, ListIssueAssigneesQuery],
+    shape: {
+        where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+        params: ["project_id"],
+        url: "/shape/project/{project_id}/issue_assignees",
+    },
 );
 
-// IssueFollower: mutations use issue_id, streaming at project level
+// IssueFollower: issue-scoped mutations, project-level streaming
 crate::define_entity!(
     IssueFollower,
     table: "issue_followers",
-    mutation_scope: Issue,
-    shape_scope: Project,
-    shape_where: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
-    fields: [user_id: uuid::Uuid],
+    requests: [CreateIssueFollowerRequest, UpdateIssueFollowerRequest, ListIssueFollowersQuery],
+    shape: {
+        where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+        params: ["project_id"],
+        url: "/shape/project/{project_id}/issue_followers",
+    },
 );
 
-// IssueTag: mutations use issue_id, streaming at project level
+// IssueTag: issue-scoped mutations, project-level streaming
 crate::define_entity!(
     IssueTag,
     table: "issue_tags",
-    mutation_scope: Issue,
-    shape_scope: Project,
-    shape_where: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
-    fields: [tag_id: uuid::Uuid],
+    requests: [CreateIssueTagRequest, UpdateIssueTagRequest, ListIssueTagsQuery],
+    shape: {
+        where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+        params: ["project_id"],
+        url: "/shape/project/{project_id}/issue_tags",
+    },
 );
 
-// IssueRelationship: mutations use issue_id, streaming at project level
+// IssueRelationship: issue-scoped mutations, project-level streaming
 crate::define_entity!(
     IssueRelationship,
     table: "issue_relationships",
-    mutation_scope: Issue,
-    shape_scope: Project,
-    shape_where: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
-    fields: [related_issue_id: uuid::Uuid, relationship_type: IssueRelationshipType],
+    requests: [CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest, ListIssueRelationshipsQuery],
+    shape: {
+        where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+        params: ["project_id"],
+        url: "/shape/project/{project_id}/issue_relationships",
+    },
 );
 
-// PullRequest: streaming at project level, no mutations
+// PullRequest: project-level streaming only (no mutations via this API)
 crate::define_entity!(
     PullRequest,
     table: "pull_requests",
@@ -193,34 +279,32 @@ crate::define_entity!(
 // Issue-scoped entities (both mutations and streaming at issue level)
 // =============================================================================
 
-// IssueComment: simple issue scope with custom URL for streaming
+// IssueComment: issue-scoped mutations and streaming
 crate::define_entity!(
     IssueComment,
     table: "issue_comments",
-    mutation_scope: Issue,
+    requests: [CreateIssueCommentRequest, UpdateIssueCommentRequest, ListIssueCommentsQuery],
     shape: {
         where_clause: r#""issue_id" = $1"#,
         params: ["issue_id"],
         url: "/shape/issue/{issue_id}/comments",
     },
-    fields: [message: String, parent_id: Option<Uuid>],
 );
 
 // =============================================================================
 // Comment-scoped entities
 // =============================================================================
 
-// IssueCommentReaction: mutations use comment_id, streaming at issue level
+// IssueCommentReaction: comment-scoped mutations, issue-level streaming
 crate::define_entity!(
     IssueCommentReaction,
     table: "issue_comment_reactions",
-    mutation_scope: Comment,
+    requests: [CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest, ListIssueCommentReactionsQuery],
     shape: {
         where_clause: r#""comment_id" IN (SELECT id FROM issue_comments WHERE "issue_id" = $1)"#,
         params: ["issue_id"],
         url: "/shape/issue/{issue_id}/reactions",
     },
-    fields: [emoji: String],
 );
 
 // =============================================================================

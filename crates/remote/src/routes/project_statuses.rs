@@ -22,7 +22,7 @@ use crate::{
         types::is_valid_hsl_color,
     },
     entities::{
-        CreateProjectStatusRequest, ListProjectStatussQuery, ListProjectStatussResponse,
+        CreateProjectStatusRequest, ListProjectStatusesQuery, ListProjectStatusesResponse,
         UpdateProjectStatusRequest,
     },
     mutation_types::{DeleteResponse, MutationResponse},
@@ -52,8 +52,8 @@ pub fn router() -> axum::Router<AppState> {
 async fn list_project_statuss(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Query(query): Query<ListProjectStatussQuery>,
-) -> Result<Json<ListProjectStatussResponse>, ErrorResponse> {
+    Query(query): Query<ListProjectStatusesQuery>,
+) -> Result<Json<ListProjectStatusesResponse>, ErrorResponse> {
     ensure_project_access(state.pool(), ctx.user.id, query.project_id).await?;
 
     let project_statuss = ProjectStatusRepository::list_by_project(state.pool(), query.project_id)
@@ -66,7 +66,7 @@ async fn list_project_statuss(
             )
         })?;
 
-    Ok(Json(ListProjectStatussResponse { project_statuss }))
+    Ok(Json(ListProjectStatusesResponse { project_statuses: project_statuss }))
 }
 
 #[instrument(

@@ -1,35 +1,33 @@
-//! Unified entity definition system for realtime streaming and mutations.
+//! Unified entity definition system for realtime streaming.
 //!
-//! This module provides a single `define_entity!` macro that combines shape (streaming)
-//! and mutation (CRUD) definitions into one declaration, enabling auto-generation
-//! of a TypeScript SDK with both capabilities.
+//! This module provides the `define_entity!` macro that generates shape (streaming)
+//! definitions and entity metadata. Request/response types are defined externally
+//! in `utils::api::entities`.
 //!
 //! # Example
 //!
 //! ```ignore
-//! // Simple case - same scope for mutations and streaming
+//! // With mutations - references external request types
 //! define_entity!(
 //!     Tag,
 //!     table: "tags",
-//!     scope: Project,
-//!     fields: [name: String, color: String],
-//! );
-//!
-//! // Complex case - different scopes (join tables)
-//! define_entity!(
-//!     IssueAssignee,
-//!     table: "issue_assignees",
-//!     mutation_scope: Issue,
-//!     shape_scope: Project,
-//!     shape_where: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
-//!     fields: [user_id: uuid::Uuid],
+//!     requests: [CreateTagRequest, UpdateTagRequest, ListTagsQuery],
+//!     shape: {
+//!         where_clause: r#""project_id" = $1"#,
+//!         params: ["project_id"],
+//!         url: "/shape/project/{project_id}/tags",
+//!     },
 //! );
 //!
 //! // Shape-only (no mutations)
 //! define_entity!(
 //!     Workspace,
 //!     table: "workspaces",
-//!     scope: Project,
+//!     shape: {
+//!         where_clause: r#""owner_user_id" = $1"#,
+//!         params: ["owner_user_id"],
+//!         url: "/shape/user/workspaces",
+//!     },
 //! );
 //! ```
 
@@ -76,7 +74,7 @@ pub struct ShapeConfig {
     pub url: &'static str,
 }
 
-/// Field definition for mutation types
+/// Field definition for mutation types (kept for SDK generation compatibility)
 #[derive(Debug, Clone)]
 pub struct FieldDef {
     pub name: &'static str,
@@ -84,7 +82,7 @@ pub struct FieldDef {
     pub is_optional: bool,
 }
 
-/// Unified entity definition containing both shape and mutation metadata
+/// Unified entity definition containing shape and mutation metadata
 #[derive(Debug)]
 pub struct EntityDefinition<T: TS> {
     pub name: &'static str,
@@ -131,34 +129,28 @@ impl<T: TS + Sync> EntityExport for EntityDefinition<T> {
     }
 }
 
-/// Macro to define a unified entity with both shape and mutation support.
+/// Macro to define an entity with shape and mutation support.
 ///
 /// This macro generates:
 /// - Shape definition (`{ENTITY}_SHAPE`) for realtime streaming
-/// - Mutation types (`Create{Entity}Request`, `Update{Entity}Request`, etc.)
-/// - Unified metadata (`{ENTITY}_ENTITY`) for SDK generation
+/// - Entity metadata (`{ENTITY}_ENTITY`) for SDK generation
+/// - Compile-time SQL validation
+///
+/// Request/response types are defined externally in `utils::api::entities`.
 ///
 /// # Variants
 ///
-/// ## Simple case - same scope for mutations and streaming
+/// ## With mutations - references external request types
 /// ```ignore
 /// define_entity!(
 ///     Tag,
 ///     table: "tags",
-///     scope: Project,
-///     fields: [name: String, color: String],
-/// );
-/// ```
-///
-/// ## Complex case - different mutation and shape scopes
-/// ```ignore
-/// define_entity!(
-///     IssueAssignee,
-///     table: "issue_assignees",
-///     mutation_scope: Issue,
-///     shape_scope: Project,
-///     shape_where: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
-///     fields: [user_id: uuid::Uuid],
+///     requests: [CreateTagRequest, UpdateTagRequest, ListTagsQuery],
+///     shape: {
+///         where_clause: r#""project_id" = $1"#,
+///         params: ["project_id"],
+///         url: "/shape/project/{project_id}/tags",
+///     },
 /// );
 /// ```
 ///
@@ -167,121 +159,27 @@ impl<T: TS + Sync> EntityExport for EntityDefinition<T> {
 /// define_entity!(
 ///     Workspace,
 ///     table: "workspaces",
-///     scope: Project,
+///     shape: {
+///         where_clause: r#""owner_user_id" = $1"#,
+///         params: ["owner_user_id"],
+///         url: "/shape/user/workspaces",
+///     },
 /// );
 /// ```
 #[macro_export]
 macro_rules! define_entity {
-    // Simple case: same scope for mutations and shape, with fields
+    // With mutations - references external request types
     (
         $entity:ident,
         table: $table:literal,
-        scope: $scope:ident,
-        fields: [$($field:ident : $ty:ty),* $(,)?] $(,)?
-    ) => {
-        // Generate mutation types using existing macro
-        $crate::define_mutation_types!(
-            $entity,
-            table: $table,
-            scope: $scope,
-            fields: [$($field : $ty),*]
-        );
-
-        // Generate shape using existing macro with auto-derived where clause
-        $crate::define_entity!(@shape
-            $entity,
-            table: $table,
-            scope: $scope,
-        );
-
-        // Generate unified EntityDefinition
-        $crate::define_entity!(@entity_def
-            $entity,
-            table: $table,
-            mutation_scope: $scope,
-            shape_scope: $scope,
-            fields: [$($field : $ty),*]
-        );
-    };
-
-    // Shape-only case: no mutations (no fields)
-    (
-        $entity:ident,
-        table: $table:literal,
-        scope: $scope:ident $(,)?
-    ) => {
-        // Generate shape only
-        $crate::define_entity!(@shape
-            $entity,
-            table: $table,
-            scope: $scope,
-        );
-
-        // Generate unified EntityDefinition without mutations
-        $crate::define_entity!(@entity_def_shape_only
-            $entity,
-            table: $table,
-            shape_scope: $scope,
-        );
-    };
-
-    // Complex case: different mutation and shape scopes with custom where clause
-    (
-        $entity:ident,
-        table: $table:literal,
-        mutation_scope: $mut_scope:ident,
-        shape_scope: $shape_scope:ident,
-        shape_where: $where_clause:literal,
-        fields: [$($field:ident : $ty:ty),* $(,)?] $(,)?
-    ) => {
-        // Generate mutation types
-        $crate::define_mutation_types!(
-            $entity,
-            table: $table,
-            scope: $mut_scope,
-            fields: [$($field : $ty),*]
-        );
-
-        // Generate shape with custom where clause
-        $crate::define_entity!(@shape_custom
-            $entity,
-            table: $table,
-            scope: $shape_scope,
-            where_clause: $where_clause,
-        );
-
-        // Generate unified EntityDefinition with both scopes
-        $crate::define_entity!(@entity_def_dual_scope
-            $entity,
-            table: $table,
-            mutation_scope: $mut_scope,
-            shape_scope: $shape_scope,
-            where_clause: $where_clause,
-            fields: [$($field : $ty),*]
-        );
-    };
-
-    // Fully custom case: specify everything explicitly (for special cases like Notifications)
-    (
-        $entity:ident,
-        table: $table:literal,
-        mutation_scope: $mut_scope:ident,
+        requests: [$create:ty, $update:ty, $list_query:ty],
         shape: {
             where_clause: $where_clause:literal,
             params: [$($param:literal),* $(,)?],
             url: $url:literal $(,)?
-        },
-        fields: [$($field:ident : $ty:ty),* $(,)?] $(,)?
+        } $(,)?
     ) => {
-        // Generate mutation types
-        $crate::define_mutation_types!(
-            $entity,
-            table: $table,
-            scope: $mut_scope,
-            fields: [$($field : $ty),*]
-        );
-
-        // Generate shape with fully custom config
+        // Generate shape constant (includes compile-time SQL validation via define_shape!)
         paste::paste! {
             $crate::define_shape!(
                 [<$entity:snake:upper _SHAPE>], $entity,
@@ -292,34 +190,26 @@ macro_rules! define_entity {
             );
         }
 
-        // Generate unified EntityDefinition
+        // Generate entity metadata
         paste::paste! {
             pub const [<$entity:snake:upper _ENTITY>]: $crate::entity::EntityDefinition<$entity> =
                 $crate::entity::EntityDefinition {
                     name: stringify!($entity),
                     table: $table,
-                    mutation_scope: Some($crate::entity::Scope::$mut_scope),
-                    shape_scope: Some($crate::entity::Scope::$mut_scope),
+                    mutation_scope: $crate::define_entity!(@scope_from_params [$($param),*]),
+                    shape_scope: $crate::define_entity!(@scope_from_params [$($param),*]),
                     shape: Some($crate::entity::ShapeConfig {
                         where_clause: $where_clause,
                         params: &[$($param),*],
                         url: $url,
                     }),
-                    fields: &[
-                        $(
-                            $crate::entity::FieldDef {
-                                name: stringify!($field),
-                                type_name: stringify!($ty),
-                                is_optional: false,
-                            }
-                        ),*
-                    ],
+                    fields: &[],
                     _phantom: std::marker::PhantomData,
                 };
         }
     };
 
-    // Shape-only with fully custom shape config
+    // Shape-only (no mutations)
     (
         $entity:ident,
         table: $table:literal,
@@ -329,7 +219,7 @@ macro_rules! define_entity {
             url: $url:literal $(,)?
         } $(,)?
     ) => {
-        // Generate shape with fully custom config
+        // Generate shape constant (includes compile-time SQL validation via define_shape!)
         paste::paste! {
             $crate::define_shape!(
                 [<$entity:snake:upper _SHAPE>], $entity,
@@ -340,14 +230,14 @@ macro_rules! define_entity {
             );
         }
 
-        // Generate unified EntityDefinition without mutations
+        // Generate entity metadata without mutations
         paste::paste! {
             pub const [<$entity:snake:upper _ENTITY>]: $crate::entity::EntityDefinition<$entity> =
                 $crate::entity::EntityDefinition {
                     name: stringify!($entity),
                     table: $table,
                     mutation_scope: None,
-                    shape_scope: None,
+                    shape_scope: $crate::define_entity!(@scope_from_params [$($param),*]),
                     shape: Some($crate::entity::ShapeConfig {
                         where_clause: $where_clause,
                         params: &[$($param),*],
@@ -359,242 +249,15 @@ macro_rules! define_entity {
         }
     };
 
-    // Internal: Generate shape with auto-derived where clause
-    (@shape
-        $entity:ident,
-        table: $table:literal,
-        scope: Organization,
-    ) => {
-        paste::paste! {
-            $crate::define_shape!(
-                [<$entity:snake:upper _SHAPE>], $entity,
-                table: $table,
-                where_clause: r#""organization_id" = $1"#,
-                url: concat!("/shape/", $table),
-                params: ["organization_id"]
-            );
-        }
+    // Internal: Infer scope from params
+    (@scope_from_params ["organization_id"]) => { Some($crate::entity::Scope::Organization) };
+    (@scope_from_params ["project_id"]) => { Some($crate::entity::Scope::Project) };
+    (@scope_from_params ["issue_id"]) => { Some($crate::entity::Scope::Issue) };
+    (@scope_from_params ["comment_id"]) => { Some($crate::entity::Scope::Comment) };
+    (@scope_from_params ["owner_user_id"]) => { None }; // Special case for user-scoped entities
+    (@scope_from_params [$first:literal, $($rest:literal),+]) => {
+        // For multi-param shapes, infer from first param
+        $crate::define_entity!(@scope_from_params [$first])
     };
-    (@shape
-        $entity:ident,
-        table: $table:literal,
-        scope: Project,
-    ) => {
-        paste::paste! {
-            $crate::define_shape!(
-                [<$entity:snake:upper _SHAPE>], $entity,
-                table: $table,
-                where_clause: r#""project_id" = $1"#,
-                url: concat!("/shape/project/{project_id}/", $table),
-                params: ["project_id"]
-            );
-        }
-    };
-    (@shape
-        $entity:ident,
-        table: $table:literal,
-        scope: Issue,
-    ) => {
-        paste::paste! {
-            $crate::define_shape!(
-                [<$entity:snake:upper _SHAPE>], $entity,
-                table: $table,
-                where_clause: r#""issue_id" = $1"#,
-                url: concat!("/shape/issue/{issue_id}/", $table),
-                params: ["issue_id"]
-            );
-        }
-    };
-    (@shape
-        $entity:ident,
-        table: $table:literal,
-        scope: Comment,
-    ) => {
-        paste::paste! {
-            $crate::define_shape!(
-                [<$entity:snake:upper _SHAPE>], $entity,
-                table: $table,
-                where_clause: r#""comment_id" = $1"#,
-                url: concat!("/shape/comment/{comment_id}/", $table),
-                params: ["comment_id"]
-            );
-        }
-    };
-
-    // Internal: Generate shape with custom where clause
-    (@shape_custom
-        $entity:ident,
-        table: $table:literal,
-        scope: Organization,
-        where_clause: $where:literal,
-    ) => {
-        paste::paste! {
-            $crate::define_shape!(
-                [<$entity:snake:upper _SHAPE>], $entity,
-                table: $table,
-                where_clause: $where,
-                url: concat!("/shape/", $table),
-                params: ["organization_id"]
-            );
-        }
-    };
-    (@shape_custom
-        $entity:ident,
-        table: $table:literal,
-        scope: Project,
-        where_clause: $where:literal,
-    ) => {
-        paste::paste! {
-            $crate::define_shape!(
-                [<$entity:snake:upper _SHAPE>], $entity,
-                table: $table,
-                where_clause: $where,
-                url: concat!("/shape/project/{project_id}/", $table),
-                params: ["project_id"]
-            );
-        }
-    };
-    (@shape_custom
-        $entity:ident,
-        table: $table:literal,
-        scope: Issue,
-        where_clause: $where:literal,
-    ) => {
-        paste::paste! {
-            $crate::define_shape!(
-                [<$entity:snake:upper _SHAPE>], $entity,
-                table: $table,
-                where_clause: $where,
-                url: concat!("/shape/issue/{issue_id}/", $table),
-                params: ["issue_id"]
-            );
-        }
-    };
-    (@shape_custom
-        $entity:ident,
-        table: $table:literal,
-        scope: Comment,
-        where_clause: $where:literal,
-    ) => {
-        paste::paste! {
-            $crate::define_shape!(
-                [<$entity:snake:upper _SHAPE>], $entity,
-                table: $table,
-                where_clause: $where,
-                url: concat!("/shape/comment/{comment_id}/", $table),
-                params: ["comment_id"]
-            );
-        }
-    };
-
-    // Internal: Generate EntityDefinition with same mutation and shape scope
-    (@entity_def
-        $entity:ident,
-        table: $table:literal,
-        mutation_scope: $scope:ident,
-        shape_scope: $scope2:ident,
-        fields: [$($field:ident : $ty:ty),*]
-    ) => {
-        paste::paste! {
-            pub const [<$entity:snake:upper _ENTITY>]: $crate::entity::EntityDefinition<$entity> =
-                $crate::entity::EntityDefinition {
-                    name: stringify!($entity),
-                    table: $table,
-                    mutation_scope: Some($crate::entity::Scope::$scope),
-                    shape_scope: Some($crate::entity::Scope::$scope2),
-                    shape: Some($crate::entity::ShapeConfig {
-                        where_clause: $crate::define_entity!(@default_where $scope),
-                        params: &[$crate::define_entity!(@default_param $scope)],
-                        url: $crate::define_entity!(@default_url $scope, $table),
-                    }),
-                    fields: &[
-                        $(
-                            $crate::entity::FieldDef {
-                                name: stringify!($field),
-                                type_name: stringify!($ty),
-                                is_optional: false,
-                            }
-                        ),*
-                    ],
-                    _phantom: std::marker::PhantomData,
-                };
-        }
-    };
-
-    // Internal: Generate EntityDefinition for shape-only entities
-    (@entity_def_shape_only
-        $entity:ident,
-        table: $table:literal,
-        shape_scope: $scope:ident,
-    ) => {
-        paste::paste! {
-            pub const [<$entity:snake:upper _ENTITY>]: $crate::entity::EntityDefinition<$entity> =
-                $crate::entity::EntityDefinition {
-                    name: stringify!($entity),
-                    table: $table,
-                    mutation_scope: None,
-                    shape_scope: Some($crate::entity::Scope::$scope),
-                    shape: Some($crate::entity::ShapeConfig {
-                        where_clause: $crate::define_entity!(@default_where $scope),
-                        params: &[$crate::define_entity!(@default_param $scope)],
-                        url: $crate::define_entity!(@default_url $scope, $table),
-                    }),
-                    fields: &[],
-                    _phantom: std::marker::PhantomData,
-                };
-        }
-    };
-
-    // Internal: Generate EntityDefinition with dual scopes and custom where
-    (@entity_def_dual_scope
-        $entity:ident,
-        table: $table:literal,
-        mutation_scope: $mut_scope:ident,
-        shape_scope: $shape_scope:ident,
-        where_clause: $where:literal,
-        fields: [$($field:ident : $ty:ty),*]
-    ) => {
-        paste::paste! {
-            pub const [<$entity:snake:upper _ENTITY>]: $crate::entity::EntityDefinition<$entity> =
-                $crate::entity::EntityDefinition {
-                    name: stringify!($entity),
-                    table: $table,
-                    mutation_scope: Some($crate::entity::Scope::$mut_scope),
-                    shape_scope: Some($crate::entity::Scope::$shape_scope),
-                    shape: Some($crate::entity::ShapeConfig {
-                        where_clause: $where,
-                        params: &[$crate::define_entity!(@default_param $shape_scope)],
-                        url: $crate::define_entity!(@default_url $shape_scope, $table),
-                    }),
-                    fields: &[
-                        $(
-                            $crate::entity::FieldDef {
-                                name: stringify!($field),
-                                type_name: stringify!($ty),
-                                is_optional: false,
-                            }
-                        ),*
-                    ],
-                    _phantom: std::marker::PhantomData,
-                };
-        }
-    };
-
-    // Internal: Default where clause for scope
-    (@default_where Organization) => { r#""organization_id" = $1"# };
-    (@default_where Project) => { r#""project_id" = $1"# };
-    (@default_where Issue) => { r#""issue_id" = $1"# };
-    (@default_where Comment) => { r#""comment_id" = $1"# };
-
-    // Internal: Default param for scope
-    (@default_param Organization) => { "organization_id" };
-    (@default_param Project) => { "project_id" };
-    (@default_param Issue) => { "issue_id" };
-    (@default_param Comment) => { "comment_id" };
-
-    // Internal: Default URL for scope
-    (@default_url Organization, $table:literal) => { concat!("/shape/", $table) };
-    (@default_url Project, $table:literal) => { concat!("/shape/project/{project_id}/", $table) };
-    (@default_url Issue, $table:literal) => { concat!("/shape/issue/{issue_id}/", $table) };
-    (@default_url Comment, $table:literal) => { concat!("/shape/comment/{comment_id}/", $table) };
+    (@scope_from_params [$($param:literal),*]) => { None }; // Fallback
 }
