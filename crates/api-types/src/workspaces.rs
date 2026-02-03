@@ -1,7 +1,7 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct DeleteWorkspaceRequest {
     pub local_workspace_id: Uuid,
 }
@@ -23,7 +23,7 @@ pub struct CreateWorkspaceRequest {
     pub lines_removed: Option<i32>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct UpdateWorkspaceRequest {
     pub local_workspace_id: Uuid,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -13,17 +13,26 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{
-        tags::{Tag, TagRepository},
-        types::is_valid_hsl_color,
-    },
-    define_mutation_router,
-    entities::{CreateTagRequest, ListTagsQuery, ListTagsResponse, UpdateTagRequest},
+    db::{tags::TagRepository, types::is_valid_hsl_color},
+    entities::TAG_SHAPE,
+    entity_def::EntityDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
+use api_types::{CreateTagRequest, ListTagsQuery, ListTagsResponse, Tag, UpdateTagRequest};
 
-// Generate router that references handlers below
-define_mutation_router!(Tag, table: "tags");
+/// Entity definition for Tags - provides both router and TypeScript metadata.
+pub fn entity() -> EntityDef<Tag, CreateTagRequest, UpdateTagRequest> {
+    EntityDef::new(&TAG_SHAPE)
+        .list(list_tags)
+        .get(get_tag)
+        .create(create_tag)
+        .update(update_tag)
+        .delete(delete_tag)
+}
+
+pub fn router() -> axum::Router<AppState> {
+    entity().router()
+}
 
 #[instrument(
     name = "tags.list_tags",

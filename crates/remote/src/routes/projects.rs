@@ -13,19 +13,28 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{
-        projects::{Project, ProjectRepository},
-        types::is_valid_hsl_color,
-    },
-    define_mutation_router,
-    entities::{
-        CreateProjectRequest, ListProjectsQuery, ListProjectsResponse, UpdateProjectRequest,
-    },
+    db::{projects::ProjectRepository, types::is_valid_hsl_color},
+    entities::PROJECT_SHAPE,
+    entity_def::EntityDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
+use api_types::{
+    CreateProjectRequest, ListProjectsQuery, ListProjectsResponse, Project, UpdateProjectRequest,
+};
 
-// Generate router that references handlers below
-define_mutation_router!(Project, table: "projects");
+/// Entity definition for Projects - provides both router and TypeScript metadata.
+pub fn entity() -> EntityDef<Project, CreateProjectRequest, UpdateProjectRequest> {
+    EntityDef::new(&PROJECT_SHAPE)
+        .list(list_projects)
+        .get(get_project)
+        .create(create_project)
+        .update(update_project)
+        .delete(delete_project)
+}
+
+pub fn router() -> axum::Router<AppState> {
+    entity().router()
+}
 
 #[instrument(
     name = "projects.list_projects",

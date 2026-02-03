@@ -9,8 +9,8 @@ use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::warn;
-use utils::api::organizations::{
-    ListMembersResponse, OrganizationMemberWithProfile, RevokeInvitationRequest,
+use api_types::{
+    ListMembersResponse, MemberRole, OrganizationMemberWithProfile, RevokeInvitationRequest,
     UpdateMemberRoleRequest, UpdateMemberRoleResponse,
 };
 use uuid::Uuid;
@@ -23,7 +23,7 @@ use crate::{
         identity_errors::IdentityError,
         invitations::{Invitation, InvitationRepository},
         issues::IssueRepository,
-        organization_members::{self, MemberRole},
+        organization_members,
         organizations::OrganizationRepository,
         projects::ProjectRepository,
     },

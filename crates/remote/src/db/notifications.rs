@@ -1,35 +1,9 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::{Executor, Postgres, Type};
+use sqlx::{Executor, Postgres};
 use thiserror::Error;
-use ts_rs::TS;
+use api_types::{Notification, NotificationType};
 use uuid::Uuid;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
-#[sqlx(type_name = "notification_type", rename_all = "snake_case")]
-#[ts(export)]
-pub enum NotificationType {
-    IssueCommentAdded,
-    IssueStatusChanged,
-    IssueAssigneeChanged,
-    IssueDeleted,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct Notification {
-    pub id: Uuid,
-    pub organization_id: Uuid,
-    pub user_id: Uuid,
-    pub notification_type: NotificationType,
-    pub payload: Value,
-    pub issue_id: Option<Uuid>,
-    pub comment_id: Option<Uuid>,
-    pub seen: bool,
-    pub dismissed_at: Option<DateTime<Utc>>,
-    pub created_at: DateTime<Utc>,
-}
 
 #[derive(Debug, Error)]
 pub enum NotificationError {

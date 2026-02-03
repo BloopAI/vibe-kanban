@@ -1,5 +1,5 @@
+use api_types::UpsertPullRequestRequest;
 use tracing::{debug, error};
-use utils::api::pull_requests::UpsertPullRequestRequest;
 use uuid::Uuid;
 
 use super::{

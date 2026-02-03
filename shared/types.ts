@@ -234,7 +234,7 @@ export type AcceptInvitationResponse = { organization_id: string, organization_s
 
 export type RevokeInvitationRequest = { invitation_id: string, };
 
-export type OrganizationMember = { user_id: string, role: MemberRole, joined_at: string, };
+export type OrganizationMemberInfo = { user_id: string, role: MemberRole, joined_at: string, };
 
 export type OrganizationMemberWithProfile = { user_id: string, role: MemberRole, joined_at: string, first_name: string | null, last_name: string | null, username: string | null, email: string | null, avatar_url: string | null, };
 

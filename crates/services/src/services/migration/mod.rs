@@ -3,6 +3,10 @@ mod types;
 
 use std::collections::HashSet;
 
+use api_types::{
+    BulkMigrateRequest, BulkMigrateResponse, MigrateIssueRequest, MigrateProjectRequest,
+    MigratePullRequestRequest, MigrateWorkspaceRequest,
+};
 use db::models::{
     merge::{Merge, MergeStatus, PrMerge},
     migration_state::{CreateMigrationState, EntityType, MigrationState, MigrationStatus},
@@ -14,10 +18,6 @@ pub use error::MigrationError;
 use sqlx::SqlitePool;
 use tracing::info;
 pub use types::*;
-use utils::api::migration::{
-    BulkMigrateRequest, BulkMigrateResponse, MigrateIssueRequest, MigrateProjectRequest,
-    MigratePullRequestRequest, MigrateWorkspaceRequest,
-};
 use uuid::Uuid;
 
 use crate::services::remote_client::RemoteClient;

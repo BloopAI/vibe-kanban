@@ -4,6 +4,7 @@ version = "0.1.7"
 edition = "2024"
 
 [dependencies]
+api-types = { path = "../api-types" }
 tokio-util = { version = "0.7", features = ["io", "codec"] }
 bytes = "1.0"
 shlex = "1.3.0"

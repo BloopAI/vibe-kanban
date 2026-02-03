@@ -33,23 +33,23 @@ mod electric_proxy;
 pub(crate) mod error;
 mod github_app;
 mod identity;
-mod issue_assignees;
-mod issue_comment_reactions;
-mod issue_comments;
-mod issue_followers;
-mod issue_relationships;
-mod issue_tags;
-mod issues;
+pub mod issue_assignees;
+pub mod issue_comment_reactions;
+pub mod issue_comments;
+pub mod issue_followers;
+pub mod issue_relationships;
+pub mod issue_tags;
+pub mod issues;
 mod migration;
-mod notifications;
+pub mod notifications;
 mod oauth;
 pub(crate) mod organization_members;
 mod organizations;
-mod project_statuses;
-mod projects;
+pub mod project_statuses;
+pub mod projects;
 mod pull_requests;
 mod review;
-mod tags;
+pub mod tags;
 mod tokens;
 mod workspaces;
 
@@ -175,4 +175,21 @@ async fn health() -> Json<HealthResponse> {
         status: "ok",
         version: env!("CARGO_PKG_VERSION"),
     })
+}
+
+/// Collect metadata from all entity definitions for TypeScript generation.
+pub fn all_entity_metadata() -> Vec<crate::entity_def::EntityMeta> {
+    vec![
+        projects::entity().metadata(),
+        notifications::entity().metadata(),
+        tags::entity().metadata(),
+        project_statuses::entity().metadata(),
+        issues::entity().metadata(),
+        issue_assignees::entity().metadata(),
+        issue_followers::entity().metadata(),
+        issue_tags::entity().metadata(),
+        issue_relationships::entity().metadata(),
+        issue_comments::entity().metadata(),
+        issue_comment_reactions::entity().metadata(),
+    ]
 }

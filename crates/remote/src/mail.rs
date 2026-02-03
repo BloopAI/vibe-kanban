@@ -3,7 +3,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use serde_json::json;
 
-use crate::db::organization_members::MemberRole;
+use api_types::MemberRole;
 
 const LOOPS_INVITE_TEMPLATE_ID: &str = "cmhvy2wgs3s13z70i1pxakij9";
 const LOOPS_REVIEW_READY_TEMPLATE_ID: &str = "cmj47k5ge16990iylued9by17";

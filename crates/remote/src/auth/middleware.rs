@@ -10,12 +10,13 @@ use chrono::{DateTime, Utc};
 use tracing::warn;
 use uuid::Uuid;
 
+use api_types::User;
 use crate::{
     AppState, configure_user_scope,
     db::{
         auth::{AuthSessionError, AuthSessionRepository, MAX_SESSION_INACTIVITY_DURATION},
         identity_errors::IdentityError,
-        users::{User, UserRepository},
+        users::UserRepository,
     },
 };
 

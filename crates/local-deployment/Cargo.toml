@@ -4,6 +4,7 @@ version = "0.1.7"
 edition = "2024"
 
 [dependencies]
+api-types = { path = "../api-types" }
 db = { path = "../db" }
 executors = { path="../executors" }
 deployment = { path = "../deployment" }

@@ -1,3 +1,4 @@
+use api_types::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse};
 use axum::{
     Router,
     extract::{Json, Query, State},
@@ -12,12 +13,7 @@ use serde::{Deserialize, Serialize};
 use services::services::{config::save_config_to_file, oauth_credentials::Credentials};
 use sha2::{Digest, Sha256};
 use ts_rs::TS;
-use utils::{
-    api::oauth::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse},
-    assets::config_path,
-    jwt::extract_expiration,
-    response::ApiResponse,
-};
+use utils::{assets::config_path, jwt::extract_expiration, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
@@ -232,7 +228,7 @@ async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, 
 async fn status(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<StatusResponse>>, ApiError> {
-    use utils::api::oauth::LoginStatus;
+    use api_types::LoginStatus;
 
     match deployment.get_login_status().await {
         LoginStatus::LoggedOut => Ok(ResponseJson(ApiResponse::success(StatusResponse {

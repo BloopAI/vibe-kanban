@@ -9,6 +9,7 @@ cloud = []
 qa-mode = ["executors/qa-mode"]
 
 [dependencies]
+api-types = { path = "../api-types" }
 utils = { path = "../utils" }
 git = { path = "../git" }
 executors = { path = "../executors" }

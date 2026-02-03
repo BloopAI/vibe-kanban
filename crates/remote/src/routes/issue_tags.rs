@@ -13,16 +13,28 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::issue_tags::{IssueTag, IssueTagRepository},
-    define_mutation_router,
-    entities::{
-        CreateIssueTagRequest, ListIssueTagsQuery, ListIssueTagsResponse, UpdateIssueTagRequest,
-    },
+    db::issue_tags::IssueTagRepository,
+    entities::ISSUE_TAG_SHAPE,
+    entity_def::EntityDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
+use api_types::{
+    CreateIssueTagRequest, IssueTag, ListIssueTagsQuery, ListIssueTagsResponse, UpdateIssueTagRequest,
+};
 
-// Generate router that references handlers below
-define_mutation_router!(IssueTag, table: "issue_tags");
+/// Entity definition for IssueTag - provides both router and TypeScript metadata.
+pub fn entity() -> EntityDef<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest> {
+    EntityDef::new(&ISSUE_TAG_SHAPE)
+        .list(list_issue_tags)
+        .get(get_issue_tag)
+        .create(create_issue_tag)
+        .update(update_issue_tag)
+        .delete(delete_issue_tag)
+}
+
+pub fn router() -> axum::Router<AppState> {
+    entity().router()
+}
 
 #[instrument(
     name = "issue_tags.list_issue_tags",

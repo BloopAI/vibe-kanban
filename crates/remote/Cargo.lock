@@ -83,6 +83,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f0e0fee31ef5ed1ba1316088939cea399010ed7731dba877ed44aeb407a75ea"
 
 [[package]]
+name = "api-types"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "ts-rs",
+ "uuid",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2231,12 +2243,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "paste"
-version = "1.0.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
-
-[[package]]
 name = "pathdiff"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2515,6 +2521,7 @@ version = "0.1.1"
 dependencies = [
  "aes-gcm",
  "anyhow",
+ "api-types",
  "async-trait",
  "aws-credential-types",
  "aws-sdk-s3",
@@ -2529,7 +2536,6 @@ dependencies = [
  "hmac",
  "ipnetwork",
  "jsonwebtoken",
- "paste",
  "rand 0.9.2",
  "reqwest",
  "rustls",
@@ -3855,6 +3861,7 @@ checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
 name = "utils"
 version = "0.1.7"
 dependencies = [
+ "api-types",
  "axum",
  "bytes",
  "chrono",

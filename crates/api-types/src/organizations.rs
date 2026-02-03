@@ -4,16 +4,7 @@ use sqlx::Type;
 use ts_rs::TS;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[sqlx(type_name = "member_role", rename_all = "lowercase")]
-#[ts(export)]
-#[ts(use_ts_enum)]
-#[ts(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum MemberRole {
-    Admin,
-    Member,
-}
+use crate::MemberRole;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -143,9 +134,11 @@ pub struct RevokeInvitationRequest {
 
 // Member types
 
+/// Organization member info for API responses (without organization_id).
+/// See also `OrganizationMember` in organization_member.rs for the full DB row type.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct OrganizationMember {
+pub struct OrganizationMemberInfo {
     pub user_id: Uuid,
     pub role: MemberRole,
     pub joined_at: DateTime<Utc>,

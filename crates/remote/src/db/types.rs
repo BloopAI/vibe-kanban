@@ -1,37 +1,3 @@
-use serde::{Deserialize, Serialize};
-use ts_rs::TS;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, TS)]
-#[sqlx(type_name = "issue_priority", rename_all = "snake_case")]
-#[serde(rename_all = "snake_case")]
-#[ts(export)]
-pub enum IssuePriority {
-    Urgent,
-    High,
-    Medium,
-    Low,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, TS)]
-#[sqlx(type_name = "issue_relationship_type", rename_all = "snake_case")]
-#[serde(rename_all = "snake_case")]
-#[ts(export)]
-pub enum IssueRelationshipType {
-    Blocking,
-    Related,
-    HasDuplicate,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, TS)]
-#[sqlx(type_name = "pull_request_status", rename_all = "lowercase")]
-#[serde(rename_all = "lowercase")]
-#[ts(export)]
-pub enum PullRequestStatus {
-    Open,
-    Merged,
-    Closed,
-}
-
 /// Validates that a string is in HSL format: "H S% L%"
 /// where H is 0-360, S is 0-100%, L is 0-100%
 pub fn is_valid_hsl_color(color: &str) -> bool {

@@ -13,17 +13,29 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::issue_assignees::{IssueAssignee, IssueAssigneeRepository},
-    define_mutation_router,
-    entities::{
-        CreateIssueAssigneeRequest, ListIssueAssigneesQuery, ListIssueAssigneesResponse,
-        UpdateIssueAssigneeRequest,
-    },
+    db::issue_assignees::IssueAssigneeRepository,
+    entities::ISSUE_ASSIGNEE_SHAPE,
+    entity_def::EntityDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
+use api_types::{
+    CreateIssueAssigneeRequest, IssueAssignee, ListIssueAssigneesQuery, ListIssueAssigneesResponse,
+    UpdateIssueAssigneeRequest,
+};
 
-// Generate router that references handlers below
-define_mutation_router!(IssueAssignee, table: "issue_assignees");
+/// Entity definition for IssueAssignee - provides both router and TypeScript metadata.
+pub fn entity() -> EntityDef<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest> {
+    EntityDef::new(&ISSUE_ASSIGNEE_SHAPE)
+        .list(list_issue_assignees)
+        .get(get_issue_assignee)
+        .create(create_issue_assignee)
+        .update(update_issue_assignee)
+        .delete(delete_issue_assignee)
+}
+
+pub fn router() -> axum::Router<AppState> {
+    entity().router()
+}
 
 #[instrument(
     name = "issue_assignees.list_issue_assignees",
