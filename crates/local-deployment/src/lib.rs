@@ -23,7 +23,7 @@ use services::services::{
     repo::RepoService,
     worktree_manager::WorktreeManager,
 };
-use tokio::{sync::RwLock, task::JoinHandle};
+use tokio::sync::RwLock;
 use utils::{
     api::oauth::LoginStatus,
     assets::{config_path, credentials_path},
@@ -196,7 +196,8 @@ impl Deployment for LocalDeployment {
                 analytics_service: s.clone(),
             });
             let container = container.clone();
-            PrMonitorService::spawn(db, analytics, container).await;
+            let rc = remote_client.clone().ok();
+            PrMonitorService::spawn(db, analytics, container, rc).await;
         }
 
         let deployment = Self {
