@@ -172,9 +172,11 @@ export function KanbanIssuePanelContainer() {
           node.textContent = title;
           lastTitleIssueIdRef.current = selectedKanbanIssueId;
         }
-        // Auto-focus in create mode
+        // Auto-focus in create mode after any dialog close focus handling runs.
         if (mode === 'create') {
-          node.focus();
+          requestAnimationFrame(() => {
+            node.focus();
+          });
         }
       }
     },
