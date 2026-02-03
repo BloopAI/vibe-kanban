@@ -197,6 +197,28 @@ function getAuthenticatedShapeOptions(
 // Row type with index signature required by Electric
 type ElectricRow = Record<string, unknown> & { [key: string]: unknown };
 
+// Module-level cache for collections to avoid recreating on every mount.
+// Key: collectionId (e.g. "issues-proj123"), Value: the collection instance
+const collectionCache = new Map<string, ReturnType<typeof createCollection>>();
+
+// Default gcTime: 5 minutes (in ms). Keeps collection data alive after unmount.
+const DEFAULT_GC_TIME_MS = 5 * 60 * 1000;
+
+/**
+ * Build a stable collection ID from entity table and params.
+ * Sorts param keys for consistency regardless of insertion order.
+ */
+function buildCollectionId(
+  table: string,
+  params: Record<string, string>
+): string {
+  const sortedParams = Object.keys(params)
+    .sort()
+    .map((k) => params[k])
+    .join('-');
+  return sortedParams ? `${table}-${sortedParams}` : table;
+}
+
 /**
  * Create an Electric collection for an entity with mutation support.
  *
@@ -230,7 +252,18 @@ export function createEntityCollection<
     throw new Error(`Entity ${entity.name} does not have a shape defined`);
   }
 
-  const collectionId = `${entity.table}-${Object.values(params).join('-')}`;
+  const collectionId = buildCollectionId(entity.table, params);
+
+  // Return cached collection if it exists (avoids reload on remount)
+  const cached = collectionCache.get(collectionId);
+  if (cached) {
+    return cached as typeof cached & {
+      __rowType?: TRow;
+      __createType?: TCreate;
+      __updateType?: TUpdate;
+    };
+  }
+
   const shapeOptions = getAuthenticatedShapeOptions(
     entity.shape,
     params,
@@ -336,14 +369,20 @@ export function createEntityCollection<
     id: collectionId,
     shapeOptions: shapeOptions as unknown as ElectricConfig['shapeOptions'],
     getKey: (item: ElectricRow) => getRowKey(item),
+    gcTime: DEFAULT_GC_TIME_MS,
     ...mutationHandlers,
   } as unknown as ElectricConfig);
 
-  return createCollection(options) as unknown as ReturnType<
+  const collection = createCollection(options) as unknown as ReturnType<
     typeof createCollection
   > & {
     __rowType?: TRow;
     __createType?: TCreate;
     __updateType?: TUpdate;
   };
+
+  // Cache the collection for future mounts
+  collectionCache.set(collectionId, collection);
+
+  return collection;
 }
