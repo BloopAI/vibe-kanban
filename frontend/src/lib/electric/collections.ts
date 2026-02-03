@@ -169,9 +169,13 @@ function getAuthenticatedShapeOptions(
     // Custom fetch wrapper to catch network-level errors
     fetchClient: createErrorHandlingFetch(errorHandler, reportError),
     // Electric's onError callback (for non-network errors like 4xx/5xx responses)
-    onError: (error: { status?: number; message?: string }) => {
+    onError: (error: { status?: number; message?: string; name?: string }) => {
       // Ignore errors while paused (expected during token refresh)
       if (isPaused) return;
+
+      // Ignore abort errors - these are expected during navigation/unmounting
+      // DOMException with name 'AbortError' is thrown when fetch() is aborted
+      if (error.name === 'AbortError') return;
 
       const status = error.status;
       const message = error.message || String(error);
