@@ -68,6 +68,7 @@ export function KanbanLayoutContainer({
           <Panel
             id="kanban-right"
             minSize="20%"
+            maxSize="600px"
             className="min-w-0 h-full overflow-hidden bg-secondary"
           >
             <KanbanIssuePanelContainer />
