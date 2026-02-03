@@ -3,7 +3,7 @@ name: Remote Deploy Dev
 on:
   push:
     branches:
-      - louis/remote-kanban 
+      - main 
     paths:
       - crates/remote/**
       - remote-frontend/**
