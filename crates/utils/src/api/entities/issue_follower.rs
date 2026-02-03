@@ -1,10 +1,26 @@
-//! IssueFollower entity request types.
+//! IssueFollower entity types.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
 use super::some_if_present;
+
+// =============================================================================
+// Row type
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct IssueFollower {
+    pub id: Uuid,
+    pub issue_id: Uuid,
+    pub user_id: Uuid,
+}
+
+// =============================================================================
+// Request types
+// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateIssueFollowerRequest {
@@ -25,4 +41,13 @@ pub struct UpdateIssueFollowerRequest {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListIssueFollowersQuery {
     pub issue_id: Uuid,
+}
+
+// =============================================================================
+// Response types
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct ListIssueFollowersResponse {
+    pub issue_followers: Vec<IssueFollower>,
 }

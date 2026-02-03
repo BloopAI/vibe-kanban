@@ -14,15 +14,15 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{
-        issue_comment_reactions::{IssueCommentReaction, IssueCommentReactionRepository},
+        issue_comment_reactions::IssueCommentReactionRepository,
         issue_comments::IssueCommentRepository,
     },
     define_mutation_router,
-    entities::{
-        CreateIssueCommentReactionRequest, ListIssueCommentReactionsQuery,
-        ListIssueCommentReactionsResponse, UpdateIssueCommentReactionRequest,
-    },
     mutation_types::{DeleteResponse, MutationResponse},
+};
+use utils::api::entities::{
+    CreateIssueCommentReactionRequest, IssueCommentReaction, ListIssueCommentReactionsQuery,
+    ListIssueCommentReactionsResponse, UpdateIssueCommentReactionRequest,
 };
 
 // Generate router that references handlers below

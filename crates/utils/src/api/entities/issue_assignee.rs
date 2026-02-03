@@ -1,10 +1,28 @@
-//! IssueAssignee entity request types.
+//! IssueAssignee entity types.
 
-use serde::Deserialize;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
 use super::some_if_present;
+
+// =============================================================================
+// Row type
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct IssueAssignee {
+    pub id: Uuid,
+    pub issue_id: Uuid,
+    pub user_id: Uuid,
+    pub assigned_at: DateTime<Utc>,
+}
+
+// =============================================================================
+// Request types
+// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateIssueAssigneeRequest {
@@ -25,4 +43,13 @@ pub struct UpdateIssueAssigneeRequest {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListIssueAssigneesQuery {
     pub issue_id: Uuid,
+}
+
+// =============================================================================
+// Response types
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct ListIssueAssigneesResponse {
+    pub issue_assignees: Vec<IssueAssignee>,
 }

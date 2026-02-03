@@ -1,10 +1,26 @@
-//! IssueTag entity request types.
+//! IssueTag entity types.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
 use super::some_if_present;
+
+// =============================================================================
+// Row type
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct IssueTag {
+    pub id: Uuid,
+    pub issue_id: Uuid,
+    pub tag_id: Uuid,
+}
+
+// =============================================================================
+// Request types
+// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateIssueTagRequest {
@@ -25,4 +41,13 @@ pub struct UpdateIssueTagRequest {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListIssueTagsQuery {
     pub issue_id: Uuid,
+}
+
+// =============================================================================
+// Response types
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct ListIssueTagsResponse {
+    pub issue_tags: Vec<IssueTag>,
 }

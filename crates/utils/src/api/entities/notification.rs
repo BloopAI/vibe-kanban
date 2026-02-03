@@ -1,10 +1,50 @@
-//! Notification entity request types.
+//! Notification entity types.
 
-use serde::Deserialize;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use sqlx::Type;
 use ts_rs::TS;
 use uuid::Uuid;
 
 use super::some_if_present;
+
+// =============================================================================
+// Types
+// =============================================================================
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
+#[sqlx(type_name = "notification_type", rename_all = "snake_case")]
+#[ts(export)]
+pub enum NotificationType {
+    IssueCommentAdded,
+    IssueStatusChanged,
+    IssueAssigneeChanged,
+    IssueDeleted,
+}
+
+// =============================================================================
+// Row type
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct Notification {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub user_id: Uuid,
+    pub notification_type: NotificationType,
+    pub payload: Value,
+    pub issue_id: Option<Uuid>,
+    pub comment_id: Option<Uuid>,
+    pub seen: bool,
+    pub dismissed_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+}
+
+// =============================================================================
+// Request types
+// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateNotificationRequest {
@@ -25,4 +65,13 @@ pub struct UpdateNotificationRequest {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListNotificationsQuery {
     pub organization_id: Uuid,
+}
+
+// =============================================================================
+// Response types
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct ListNotificationsResponse {
+    pub notifications: Vec<Notification>,
 }

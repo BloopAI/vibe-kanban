@@ -1,4 +1,9 @@
-//! Entity request/response types shared between local and remote backends.
+//! Entity types shared between local and remote backends.
+//!
+//! This module contains:
+//! - Row types (e.g., `Issue`, `Project`) - the API representation of database entities
+//! - Request types (e.g., `CreateIssueRequest`, `UpdateIssueRequest`) - API input types
+//! - Response types (e.g., `ListIssuesResponse`) - API output types
 
 use serde::{Deserialize, Deserializer};
 

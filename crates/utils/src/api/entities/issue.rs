@@ -1,13 +1,43 @@
-//! Issue entity request types.
+//! Issue entity types.
 
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ts_rs::TS;
 use uuid::Uuid;
 
 use super::some_if_present;
 use crate::api::types::IssuePriority;
+
+// =============================================================================
+// Row type
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct Issue {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub issue_number: i32,
+    pub simple_id: String,
+    pub status_id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    pub priority: Option<IssuePriority>,
+    pub start_date: Option<DateTime<Utc>>,
+    pub target_date: Option<DateTime<Utc>>,
+    pub completed_at: Option<DateTime<Utc>>,
+    pub sort_order: f64,
+    pub parent_issue_id: Option<Uuid>,
+    pub parent_issue_sort_order: Option<f64>,
+    pub extension_metadata: Value,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+// =============================================================================
+// Request types
+// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateIssueRequest {
@@ -58,4 +88,13 @@ pub struct UpdateIssueRequest {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListIssuesQuery {
     pub project_id: Uuid,
+}
+
+// =============================================================================
+// Response types
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct ListIssuesResponse {
+    pub issues: Vec<Issue>,
 }

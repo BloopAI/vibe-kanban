@@ -1,10 +1,27 @@
-//! Tag entity request types.
+//! Tag entity types.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
 use super::some_if_present;
+
+// =============================================================================
+// Row type
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct Tag {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub name: String,
+    pub color: String,
+}
+
+// =============================================================================
+// Request types
+// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateTagRequest {
@@ -28,4 +45,13 @@ pub struct UpdateTagRequest {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListTagsQuery {
     pub project_id: Uuid,
+}
+
+// =============================================================================
+// Response types
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct ListTagsResponse {
+    pub tags: Vec<Tag>,
 }

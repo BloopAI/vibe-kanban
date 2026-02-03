@@ -13,14 +13,11 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{
-        tags::{Tag, TagRepository},
-        types::is_valid_hsl_color,
-    },
+    db::{tags::TagRepository, types::is_valid_hsl_color},
     define_mutation_router,
-    entities::{CreateTagRequest, ListTagsQuery, ListTagsResponse, UpdateTagRequest},
     mutation_types::{DeleteResponse, MutationResponse},
 };
+use utils::api::entities::{CreateTagRequest, ListTagsQuery, ListTagsResponse, Tag, UpdateTagRequest};
 
 // Generate router that references handlers below
 define_mutation_router!(Tag, table: "tags");

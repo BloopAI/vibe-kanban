@@ -16,16 +16,12 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{
-        get_txid,
-        project_statuses::{ProjectStatus, ProjectStatusRepository},
-        types::is_valid_hsl_color,
-    },
-    entities::{
-        CreateProjectStatusRequest, ListProjectStatusesQuery, ListProjectStatusesResponse,
-        UpdateProjectStatusRequest,
-    },
+    db::{get_txid, project_statuses::ProjectStatusRepository, types::is_valid_hsl_color},
     mutation_types::{DeleteResponse, MutationResponse},
+};
+use utils::api::entities::{
+    CreateProjectStatusRequest, ListProjectStatusesQuery, ListProjectStatusesResponse,
+    ProjectStatus, UpdateProjectStatusRequest,
 };
 
 /// Router for project status endpoints including bulk update

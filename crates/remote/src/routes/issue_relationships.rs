@@ -13,13 +13,13 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::issue_relationships::{IssueRelationship, IssueRelationshipRepository},
+    db::issue_relationships::IssueRelationshipRepository,
     define_mutation_router,
-    entities::{
-        CreateIssueRelationshipRequest, ListIssueRelationshipsQuery,
-        ListIssueRelationshipsResponse, UpdateIssueRelationshipRequest,
-    },
     mutation_types::{DeleteResponse, MutationResponse},
+};
+use utils::api::entities::{
+    CreateIssueRelationshipRequest, IssueRelationship, ListIssueRelationshipsQuery,
+    ListIssueRelationshipsResponse, UpdateIssueRelationshipRequest,
 };
 
 // Generate router that references handlers below

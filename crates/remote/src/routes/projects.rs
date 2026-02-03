@@ -13,15 +13,12 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{
-        projects::{Project, ProjectRepository},
-        types::is_valid_hsl_color,
-    },
+    db::{projects::ProjectRepository, types::is_valid_hsl_color},
     define_mutation_router,
-    entities::{
-        CreateProjectRequest, ListProjectsQuery, ListProjectsResponse, UpdateProjectRequest,
-    },
     mutation_types::{DeleteResponse, MutationResponse},
+};
+use utils::api::entities::{
+    CreateProjectRequest, ListProjectsQuery, ListProjectsResponse, Project, UpdateProjectRequest,
 };
 
 // Generate router that references handlers below

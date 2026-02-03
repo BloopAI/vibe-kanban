@@ -15,12 +15,11 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{
-        get_txid,
-        issues::{Issue, IssueRepository},
-    },
-    entities::{CreateIssueRequest, ListIssuesQuery, ListIssuesResponse, UpdateIssueRequest},
+    db::{get_txid, issues::IssueRepository},
     mutation_types::{DeleteResponse, MutationResponse},
+};
+use utils::api::entities::{
+    CreateIssueRequest, Issue, ListIssuesQuery, ListIssuesResponse, UpdateIssueRequest,
 };
 
 /// Router for issue endpoints including bulk update

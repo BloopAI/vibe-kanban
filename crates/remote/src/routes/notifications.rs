@@ -9,12 +9,8 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use super::error::ErrorResponse;
-use crate::{
-    AppState,
-    auth::RequestContext,
-    db::notifications::{Notification, NotificationRepository},
-    entities::UpdateNotificationRequest,
-};
+use crate::{AppState, auth::RequestContext, db::notifications::NotificationRepository};
+use utils::api::entities::{Notification, UpdateNotificationRequest};
 
 #[derive(Debug, Serialize)]
 pub struct ListNotificationsResponse {

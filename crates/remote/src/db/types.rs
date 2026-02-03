@@ -1,9 +1,6 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-// Re-export shared types from utils - these are the canonical definitions
-pub use utils::api::types::{IssuePriority, IssueRelationshipType};
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, TS)]
 #[sqlx(type_name = "pull_request_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]

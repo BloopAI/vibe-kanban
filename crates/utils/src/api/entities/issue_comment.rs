@@ -1,10 +1,31 @@
-//! IssueComment entity request types.
+//! IssueComment entity types.
 
-use serde::Deserialize;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
 use super::some_if_present;
+
+// =============================================================================
+// Row type
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct IssueComment {
+    pub id: Uuid,
+    pub issue_id: Uuid,
+    pub author_id: Option<Uuid>,
+    pub parent_id: Option<Uuid>,
+    pub message: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+// =============================================================================
+// Request types
+// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateIssueCommentRequest {
@@ -28,4 +49,13 @@ pub struct UpdateIssueCommentRequest {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListIssueCommentsQuery {
     pub issue_id: Uuid,
+}
+
+// =============================================================================
+// Response types
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct ListIssueCommentsResponse {
+    pub issue_comments: Vec<IssueComment>,
 }

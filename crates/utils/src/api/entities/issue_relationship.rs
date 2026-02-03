@@ -1,11 +1,30 @@
-//! IssueRelationship entity request types.
+//! IssueRelationship entity types.
 
-use serde::Deserialize;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
 use super::some_if_present;
 use crate::api::types::IssueRelationshipType;
+
+// =============================================================================
+// Row type
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct IssueRelationship {
+    pub id: Uuid,
+    pub issue_id: Uuid,
+    pub related_issue_id: Uuid,
+    pub relationship_type: IssueRelationshipType,
+    pub created_at: DateTime<Utc>,
+}
+
+// =============================================================================
+// Request types
+// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateIssueRelationshipRequest {
@@ -29,4 +48,13 @@ pub struct UpdateIssueRelationshipRequest {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListIssueRelationshipsQuery {
     pub issue_id: Uuid,
+}
+
+// =============================================================================
+// Response types
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct ListIssueRelationshipsResponse {
+    pub issue_relationships: Vec<IssueRelationship>,
 }

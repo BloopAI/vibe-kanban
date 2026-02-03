@@ -1,10 +1,31 @@
-//! ProjectStatus entity request types.
+//! ProjectStatus entity types.
 
-use serde::Deserialize;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
 use super::some_if_present;
+
+// =============================================================================
+// Row type
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ProjectStatus {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub name: String,
+    pub color: String,
+    pub sort_order: i32,
+    pub hidden: bool,
+    pub created_at: DateTime<Utc>,
+}
+
+// =============================================================================
+// Request types
+// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateProjectStatusRequest {
@@ -34,4 +55,13 @@ pub struct UpdateProjectStatusRequest {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListProjectStatusesQuery {
     pub project_id: Uuid,
+}
+
+// =============================================================================
+// Response types
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct ListProjectStatusesResponse {
+    pub project_statuses: Vec<ProjectStatus>,
 }
