@@ -1,4 +1,4 @@
-import { ReactNode, useRef } from 'react';
+import { ReactNode, useState } from 'react';
 import { PortalContainerContext } from '@/contexts/PortalContainerContext';
 import {
   WorkspaceProvider,
@@ -43,21 +43,23 @@ function ExecutionProcessesProviderWrapper({
  * This prevents keyboard shortcuts from interfering with VS Code's own shortcuts.
  */
 export function VSCodeScope({ children }: VSCodeScopeProps) {
-  const ref = useRef<HTMLDivElement>(null);
+  const [container, setContainer] = useState<HTMLElement | null>(null);
 
   return (
-    <div ref={ref} className="new-design h-full">
-      <PortalContainerContext.Provider value={ref}>
-        <WorkspaceProvider>
-          <ExecutionProcessesProviderWrapper>
-            <LogsPanelProvider>
-              <ActionsProvider>
-                <NiceModal.Provider>{children}</NiceModal.Provider>
-              </ActionsProvider>
-            </LogsPanelProvider>
-          </ExecutionProcessesProviderWrapper>
-        </WorkspaceProvider>
-      </PortalContainerContext.Provider>
+    <div ref={setContainer} className="new-design h-full">
+      {container && (
+        <PortalContainerContext.Provider value={container}>
+          <WorkspaceProvider>
+            <ExecutionProcessesProviderWrapper>
+              <LogsPanelProvider>
+                <ActionsProvider>
+                  <NiceModal.Provider>{children}</NiceModal.Provider>
+                </ActionsProvider>
+              </LogsPanelProvider>
+            </ExecutionProcessesProviderWrapper>
+          </WorkspaceProvider>
+        </PortalContainerContext.Provider>
+      )}
     </div>
   );
 }
