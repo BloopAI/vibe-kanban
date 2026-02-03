@@ -365,6 +365,7 @@
     "noSubIssues": "サブ課題なし",
     "parentIssue": "親",
     "subIssueIndicator": "↳",
+    "showSubIssues": "サブ課題を表示",
     "viewTabs": {
       "active": "アクティブ",
       "all": "すべて"

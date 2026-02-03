@@ -21,6 +21,7 @@ import {
 import { cn } from '@/lib/utils';
 import { getRandomPresetColor, PRESET_COLORS } from '@/lib/colors';
 import { bulkUpdateProjectStatuses } from '@/lib/remoteApi';
+import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import {
   Popover,
   PopoverContent,
@@ -306,10 +307,6 @@ function StatusRow({
               checked={!status.hidden}
               onCheckedChange={(checked) => onToggleHidden(status.id, !checked)}
               disabled={isLastVisible && !status.hidden}
-              className={cn(
-                'h-[15px] w-[27px] data-[state=checked]:bg-brand data-[state=unchecked]:bg-panel',
-                '[&>span]:size-[12px] [&>span]:data-[state=checked]:translate-x-[12px] [&>span]:data-[state=unchecked]:translate-x-0'
-              )}
               title={
                 isLastVisible
                   ? t(
@@ -343,15 +340,22 @@ export function KanbanDisplaySettingsContainer({
   const { t } = useTranslation('common');
   const [open, setOpen] = useState(false);
 
+  // Per-project sub-issues visibility
+  const showSubIssuesByProject = useUiPreferencesStore(
+    (s) => s.showSubIssuesByProject
+  );
+  const setShowSubIssues = useUiPreferencesStore((s) => s.setShowSubIssues);
+
   // Local state for editing
   const [localStatuses, setLocalStatuses] = useState<StatusItem[]>([]);
+  const [localShowSubIssues, setLocalShowSubIssues] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingColorId, setEditingColorId] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Initialize local statuses when popover opens
-  // Only sync from props when the popover opens, not when statuses change
+  // Initialize local state when popover opens
+  // Only sync from props when the popover opens, not when values change
   // (to avoid overwriting local edits while user is editing)
   useEffect(() => {
     if (open && !hasChanges) {
@@ -366,8 +370,9 @@ export function KanbanDisplaySettingsContainer({
           isNew: false,
         }))
       );
+      setLocalShowSubIssues(showSubIssuesByProject[projectId] ?? false);
     }
-  }, [open, statuses, hasChanges]);
+  }, [open, statuses, hasChanges, showSubIssuesByProject, projectId]);
 
   // Count visible statuses
   const visibleCount = useMemo(
@@ -399,6 +404,11 @@ export function KanbanDisplaySettingsContainer({
 
   const handleDelete = useCallback((id: string) => {
     setLocalStatuses((prev) => prev.filter((s) => s.id !== id));
+    setHasChanges(true);
+  }, []);
+
+  const handleToggleShowSubIssues = useCallback((checked: boolean) => {
+    setLocalShowSubIssues(checked);
     setHasChanges(true);
   }, []);
 
@@ -440,6 +450,9 @@ export function KanbanDisplaySettingsContainer({
     setIsSaving(true);
 
     try {
+      // Save sub-issues visibility preference
+      setShowSubIssues(projectId, localShowSubIssues);
+
       // Find original statuses for comparison
       const originalMap = new Map(statuses.map((s) => [s.id, s]));
 
@@ -519,6 +532,8 @@ export function KanbanDisplaySettingsContainer({
     onInsertStatus,
     onUpdateStatus,
     onRemoveStatus,
+    localShowSubIssues,
+    setShowSubIssues,
   ]);
 
   const handleCancel = useCallback(() => {
@@ -562,6 +577,17 @@ export function KanbanDisplaySettingsContainer({
             >
               <XIcon className="size-icon-xs" weight="bold" />
             </button>
+          </div>
+
+          {/* Show Sub-Issues Toggle */}
+          <div className="flex items-center justify-between py-half">
+            <span className="text-sm text-normal">
+              {t('kanban.showSubIssues', 'Show sub-issues')}
+            </span>
+            <Switch
+              checked={localShowSubIssues}
+              onCheckedChange={handleToggleShowSubIssues}
+            />
           </div>
 
           {/* Subheader */}

@@ -365,6 +365,7 @@
     "noSubIssues": "Sin subtareas",
     "parentIssue": "Padre",
     "subIssueIndicator": "↳",
+    "showSubIssues": "Mostrar subtareas",
     "viewTabs": {
       "active": "Activo",
       "all": "Todo"

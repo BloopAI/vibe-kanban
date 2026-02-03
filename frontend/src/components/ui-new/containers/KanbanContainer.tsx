@@ -69,6 +69,7 @@ export function KanbanContainer() {
     issues,
     issueAssignees,
     issueTags,
+    projectId,
   });
 
   // Navigation hook for opening issues and create mode

@@ -365,6 +365,7 @@
     "noSubIssues": "No sub-issues",
     "parentIssue": "Parent",
     "subIssueIndicator": "↳",
+    "showSubIssues": "Show sub-issues",
     "viewTabs": {
       "active": "Active",
       "all": "All"

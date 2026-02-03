@@ -162,6 +162,9 @@ type State = {
   kanbanViewMode: KanbanViewMode;
   listViewStatusFilter: string | null;
 
+  // Per-project sub-issues visibility
+  showSubIssuesByProject: Record<string, boolean>;
+
   // UI preferences actions
   setRepoAction: (repoId: string, action: RepoAction) => void;
   setExpanded: (key: string, value: boolean) => void;
@@ -211,6 +214,9 @@ type State = {
   // Kanban view mode actions
   setKanbanViewMode: (mode: KanbanViewMode) => void;
   setListViewStatusFilter: (statusId: string | null) => void;
+
+  // Per-project sub-issues visibility action
+  setShowSubIssues: (projectId: string, show: boolean) => void;
 };
 
 export const useUiPreferencesStore = create<State>()(
@@ -239,6 +245,9 @@ export const useUiPreferencesStore = create<State>()(
       // Kanban view mode state
       kanbanViewMode: 'kanban' as KanbanViewMode,
       listViewStatusFilter: null,
+
+      // Per-project sub-issues visibility (default to hidden)
+      showSubIssuesByProject: {},
 
       // UI preferences actions
       setRepoAction: (repoId, action) =>
@@ -436,6 +445,15 @@ export const useUiPreferencesStore = create<State>()(
 
       setListViewStatusFilter: (statusId) =>
         set({ listViewStatusFilter: statusId }),
+
+      // Per-project sub-issues visibility action
+      setShowSubIssues: (projectId, show) =>
+        set((s) => ({
+          showSubIssuesByProject: {
+            ...s.showSubIssuesByProject,
+            [projectId]: show,
+          },
+        })),
     }),
     {
       name: 'ui-preferences',
@@ -454,6 +472,8 @@ export const useUiPreferencesStore = create<State>()(
         // Note: Kanban panel state is derived from URL via useKanbanNavigation
         // Workspace-specific panel state (persisted)
         workspacePanelStates: state.workspacePanelStates,
+        // Per-project sub-issues visibility (persisted)
+        showSubIssuesByProject: state.showSubIssuesByProject,
         // Note: Kanban filters and view mode are NOT persisted - they reset on page reload
       }),
     }

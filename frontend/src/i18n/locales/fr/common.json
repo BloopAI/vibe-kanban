@@ -365,6 +365,7 @@
     "noSubIssues": "Aucune sous-tâche",
     "parentIssue": "Parent",
     "subIssueIndicator": "↳",
+    "showSubIssues": "Afficher les sous-tâches",
     "viewTabs": {
       "active": "Actif",
       "all": "Tout"

@@ -365,6 +365,7 @@
     "noSubIssues": "無子任務",
     "parentIssue": "父級",
     "subIssueIndicator": "↳",
+    "showSubIssues": "顯示子任務",
     "viewTabs": {
       "active": "活動",
       "all": "全部"
