@@ -109,6 +109,7 @@ module.exports = {
         'brand-secondary': "hsl(var(--brand-secondary))",
         error: "hsl(var(--error))",
         success: "hsl(var(--success))",
+        merged: "hsl(var(--merged))",
         // Text on accent
         'on-brand': "hsl(var(--text-on-brand))",
         // shadcn-style colors (used by @apply in CSS base layer)
