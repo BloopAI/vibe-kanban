@@ -175,7 +175,7 @@
         },
         "customPrompt": {
           "useCustom": "Usar prompt personalizado",
-          "helper": "Prompt personalizado para el recordatorio de commit. Usa {uncommitted_changes} como marcador de posición para la salida del estado de git."
+          "helper": "Prompt personalizado para el recordatorio de commit. El estado de git se añadirá automáticamente."
         }
       },
       "notifications": {

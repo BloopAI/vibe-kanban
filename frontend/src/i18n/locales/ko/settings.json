@@ -175,7 +175,7 @@
         },
         "customPrompt": {
           "useCustom": "사용자 정의 프롬프트 사용",
-          "helper": "커밋 알림용 사용자 정의 프롬프트. {uncommitted_changes}를 git 상태 출력의 플레이스홀더로 사용하세요."
+          "helper": "커밋 알림용 사용자 정의 프롬프트. git 상태가 자동으로 추가됩니다."
         }
       },
       "notifications": {

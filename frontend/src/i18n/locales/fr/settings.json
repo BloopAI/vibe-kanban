@@ -175,7 +175,7 @@
         },
         "customPrompt": {
           "useCustom": "Utiliser un prompt personnalisé",
-          "helper": "Prompt personnalisé pour le rappel de commit. Utilisez {uncommitted_changes} comme variable pour la sortie du statut git."
+          "helper": "Prompt personnalisé pour le rappel de commit. Le statut git sera ajouté automatiquement."
         }
       },
       "notifications": {

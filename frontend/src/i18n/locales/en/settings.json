@@ -175,7 +175,7 @@
         },
         "customPrompt": {
           "useCustom": "Use custom prompt",
-          "helper": "Custom prompt for the commit reminder. Use {uncommitted_changes} as a placeholder for the git status output."
+          "helper": "Custom prompt for the commit reminder. The git status will be appended automatically."
         }
       },
       "notifications": {

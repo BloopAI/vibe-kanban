@@ -175,7 +175,7 @@
         },
         "customPrompt": {
           "useCustom": "カスタムプロンプトを使用",
-          "helper": "コミットリマインダー用のカスタムプロンプト。{uncommitted_changes}をgitステータス出力のプレースホルダーとして使用できます。"
+          "helper": "コミットリマインダー用のカスタムプロンプト。gitステータスは自動的に追加されます。"
         }
       },
       "notifications": {

@@ -175,7 +175,7 @@
         },
         "customPrompt": {
           "useCustom": "使用自訂提示",
-          "helper": "提交提醒的自訂提示。使用 {uncommitted_changes} 作為 git 狀態輸出的佔位符。"
+          "helper": "提交提醒的自訂提示。git 狀態將自動追加。"
         }
       },
       "notifications": {

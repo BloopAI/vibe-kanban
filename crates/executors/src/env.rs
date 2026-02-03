@@ -139,26 +139,14 @@ impl ExecutionEnv {
     }
 }
 
-const UNCOMMITTED_CHANGES_PLACEHOLDER: &str = "{uncommitted_changes}";
-
-/// Format a commit reminder prompt, optionally fetching git status if the placeholder is present.
+/// Format a commit reminder prompt with git status appended.
 /// Returns `None` if there are no uncommitted changes to report.
 pub async fn format_commit_reminder(prompt: &str, repo_context: &RepoContext) -> Option<String> {
-    if prompt.contains(UNCOMMITTED_CHANGES_PLACEHOLDER) {
-        let status = repo_context.check_uncommitted_changes().await;
-        if status.is_empty() {
-            None
-        } else {
-            Some(prompt.replace(UNCOMMITTED_CHANGES_PLACEHOLDER, &status))
-        }
+    let status = repo_context.check_uncommitted_changes().await;
+    if status.is_empty() {
+        None
     } else {
-        // No placeholder - still need to check if there are uncommitted changes
-        let status = repo_context.check_uncommitted_changes().await;
-        if status.is_empty() {
-            None
-        } else {
-            Some(prompt.to_string())
-        }
+        Some(format!("{prompt}\n{status}"))
     }
 }
 

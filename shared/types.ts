@@ -577,4 +577,4 @@ export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in
 
 export const DEFAULT_PR_DESCRIPTION_PROMPT = "Update the PR that was just created with a better title and description.\nThe PR number is #{pr_number} and the URL is {pr_url}.\n\nAnalyze the changes in this branch and write:\n1. A concise, descriptive title that summarizes the changes, postfixed with \"(Vibe Kanban)\"\n2. A detailed description that explains:\n   - What changes were made\n   - Why they were made (based on the task context)\n   - Any important implementation details\n   - At the end, include a note: \"This PR was written using [Vibe Kanban](https://vibekanban.com)\"\n\nUse the appropriate CLI tool to update the PR (gh pr edit for GitHub, az repos pr update for Azure DevOps).";
 
-export const DEFAULT_COMMIT_REMINDER_PROMPT = "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{uncommitted_changes}";
+export const DEFAULT_COMMIT_REMINDER_PROMPT = "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.";
