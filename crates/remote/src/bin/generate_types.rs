@@ -9,7 +9,9 @@ use remote::{
         workspaces::Workspace,
     },
     entities::all_shapes,
+    shapes::ShapeExport,
 };
+use ts_rs::TS;
 use utils::api::{
     entities::{
         CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
@@ -26,7 +28,88 @@ use utils::api::{
     organizations::MemberRole,
     types::{IssuePriority, IssueRelationshipType},
 };
-use ts_rs::TS;
+
+// =============================================================================
+// Entity definition with builder pattern for TypeScript generation
+// =============================================================================
+
+struct EntityDef {
+    shape: &'static dyn ShapeExport,
+    create: Option<String>,
+    update: Option<String>,
+}
+
+impl EntityDef {
+    fn new(shape: &'static dyn ShapeExport) -> Self {
+        Self {
+            shape,
+            create: None,
+            update: None,
+        }
+    }
+
+    fn create<T: TS>(mut self) -> Self {
+        self.create = Some(T::name());
+        self
+    }
+
+    fn update<T: TS>(mut self) -> Self {
+        self.update = Some(T::name());
+        self
+    }
+
+    fn has_mutations(&self) -> bool {
+        self.create.is_some() || self.update.is_some()
+    }
+}
+
+/// All entity definitions for TypeScript generation.
+/// Each entity pairs a shape with optional mutation types.
+fn all_entities() -> Vec<EntityDef> {
+    use remote::shapes::*;
+
+    vec![
+        // Entities with mutations
+        EntityDef::new(&PROJECTS)
+            .create::<CreateProjectRequest>()
+            .update::<UpdateProjectRequest>(),
+        EntityDef::new(&NOTIFICATIONS)
+            .create::<CreateNotificationRequest>()
+            .update::<UpdateNotificationRequest>(),
+        EntityDef::new(&TAGS)
+            .create::<CreateTagRequest>()
+            .update::<UpdateTagRequest>(),
+        EntityDef::new(&PROJECT_STATUSES)
+            .create::<CreateProjectStatusRequest>()
+            .update::<UpdateProjectStatusRequest>(),
+        EntityDef::new(&ISSUES)
+            .create::<CreateIssueRequest>()
+            .update::<UpdateIssueRequest>(),
+        EntityDef::new(&ISSUE_ASSIGNEES)
+            .create::<CreateIssueAssigneeRequest>()
+            .update::<UpdateIssueAssigneeRequest>(),
+        EntityDef::new(&ISSUE_FOLLOWERS)
+            .create::<CreateIssueFollowerRequest>()
+            .update::<UpdateIssueFollowerRequest>(),
+        EntityDef::new(&ISSUE_TAGS)
+            .create::<CreateIssueTagRequest>()
+            .update::<UpdateIssueTagRequest>(),
+        EntityDef::new(&ISSUE_RELATIONSHIPS)
+            .create::<CreateIssueRelationshipRequest>()
+            .update::<UpdateIssueRelationshipRequest>(),
+        EntityDef::new(&ISSUE_COMMENTS)
+            .create::<CreateIssueCommentRequest>()
+            .update::<UpdateIssueCommentRequest>(),
+        EntityDef::new(&ISSUE_COMMENT_REACTIONS)
+            .create::<CreateIssueCommentReactionRequest>()
+            .update::<UpdateIssueCommentReactionRequest>(),
+        // Shape-only entities (no mutations)
+        EntityDef::new(&ORGANIZATION_MEMBERS),
+        EntityDef::new(&USERS),
+        EntityDef::new(&WORKSPACES),
+        EntityDef::new(&PULL_REQUESTS),
+    ]
+}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -59,54 +142,6 @@ fn main() {
             output_path.display()
         );
     }
-}
-
-/// Entity definition - type names derived from actual types via TS trait
-struct EntityDef {
-    ts_type: String,
-    table: &'static str,
-    mutations: Option<(String, String)>, // (create_type, update_type)
-}
-
-/// Create an entity definition with mutations - types are verified at compile time
-fn entity<T: TS, C: TS, U: TS>(table: &'static str) -> EntityDef {
-    EntityDef {
-        ts_type: T::name(),
-        table,
-        mutations: Some((C::name(), U::name())),
-    }
-}
-
-/// Create a shape-only entity definition (no mutations)
-fn shape_only<T: TS>(table: &'static str) -> EntityDef {
-    EntityDef {
-        ts_type: T::name(),
-        table,
-        mutations: None,
-    }
-}
-
-/// Get all entity definitions - types are verified at compile time
-fn all_entity_defs() -> Vec<EntityDef> {
-    vec![
-        // Entities with mutations
-        entity::<Project, CreateProjectRequest, UpdateProjectRequest>("projects"),
-        entity::<Notification, CreateNotificationRequest, UpdateNotificationRequest>("notifications"),
-        entity::<Tag, CreateTagRequest, UpdateTagRequest>("tags"),
-        entity::<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest>("project_statuses"),
-        entity::<Issue, CreateIssueRequest, UpdateIssueRequest>("issues"),
-        entity::<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest>("issue_assignees"),
-        entity::<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest>("issue_followers"),
-        entity::<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest>("issue_tags"),
-        entity::<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest>("issue_relationships"),
-        entity::<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest>("issue_comments"),
-        entity::<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>("issue_comment_reactions"),
-        // Shape-only entities (no mutations)
-        shape_only::<OrganizationMember>("organization_member_metadata"),
-        shape_only::<User>("users"),
-        shape_only::<Workspace>("workspaces"),
-        shape_only::<PullRequest>("pull_requests"),
-    ]
 }
 
 /// Generate TypeScript shapes file with embedded types and shape definitions
@@ -246,31 +281,35 @@ fn export_shapes() -> String {
     output.push_str("}\n\n");
 
     // Generate individual entity definitions
-    let entities = all_entity_defs();
+    let entities = all_entities();
     output.push_str("// Entity definitions\n");
     for entity in &entities {
-        let const_name = to_screaming_snake_case(&entity.ts_type);
-        let shape_name = format!("{}_SHAPE", entity.table.to_uppercase());
+        let ts_type = entity.shape.ts_type_name();
+        let table = entity.shape.table();
+        let const_name = to_screaming_snake_case(&ts_type);
+        let shape_name = format!("{}_SHAPE", table.to_uppercase());
 
-        if let Some((ref create_type, ref update_type)) = entity.mutations {
+        if entity.has_mutations() {
+            let create_type = entity.create.as_deref().unwrap_or("unknown");
+            let update_type = entity.update.as_deref().unwrap_or("unknown");
             output.push_str(&format!(
                 "export const {}_ENTITY: EntityDefinition<{}, {}, {}> = {{\n",
-                const_name, entity.ts_type, create_type, update_type
+                const_name, ts_type, create_type, update_type
             ));
-            output.push_str(&format!("  name: '{}',\n", entity.ts_type));
-            output.push_str(&format!("  table: '{}',\n", entity.table));
+            output.push_str(&format!("  name: '{}',\n", ts_type));
+            output.push_str(&format!("  table: '{}',\n", table));
             output.push_str(&format!("  shape: {},\n", shape_name));
             output.push_str(&format!(
                 "  mutations: {{ url: '/v1/{}' }} as EntityDefinition<{}, {}, {}>['mutations'],\n",
-                entity.table, entity.ts_type, create_type, update_type
+                table, ts_type, create_type, update_type
             ));
         } else {
             output.push_str(&format!(
                 "export const {}_ENTITY: EntityDefinition<{}> = {{\n",
-                const_name, entity.ts_type
+                const_name, ts_type
             ));
-            output.push_str(&format!("  name: '{}',\n", entity.ts_type));
-            output.push_str(&format!("  table: '{}',\n", entity.table));
+            output.push_str(&format!("  name: '{}',\n", ts_type));
+            output.push_str(&format!("  table: '{}',\n", table));
             output.push_str(&format!("  shape: {},\n", shape_name));
             output.push_str("  mutations: null,\n");
         }
