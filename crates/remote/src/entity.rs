@@ -168,10 +168,11 @@ impl<T: TS + Sync> EntityExport for EntityDefinition<T> {
 /// ```
 #[macro_export]
 macro_rules! define_entity {
-    // With mutations - references external request types
+    // With mutations and explicit mutation_scope (for when mutation and shape scopes differ)
     (
         $entity:ident,
         table: $table:literal,
+        mutation_scope: $mutation_scope:ident,
         requests: [$create:ty, $update:ty, $list_query:ty],
         shape: {
             where_clause: $where_clause:literal,
@@ -179,7 +180,6 @@ macro_rules! define_entity {
             url: $url:literal $(,)?
         } $(,)?
     ) => {
-        // Generate shape constant (includes compile-time SQL validation via define_shape!)
         paste::paste! {
             $crate::define_shape!(
                 [<$entity:snake:upper _SHAPE>], $entity,
@@ -190,7 +190,45 @@ macro_rules! define_entity {
             );
         }
 
-        // Generate entity metadata
+        paste::paste! {
+            pub const [<$entity:snake:upper _ENTITY>]: $crate::entity::EntityDefinition<$entity> =
+                $crate::entity::EntityDefinition {
+                    name: stringify!($entity),
+                    table: $table,
+                    mutation_scope: Some($crate::entity::Scope::$mutation_scope),
+                    shape_scope: $crate::define_entity!(@scope_from_params [$($param),*]),
+                    shape: Some($crate::entity::ShapeConfig {
+                        where_clause: $where_clause,
+                        params: &[$($param),*],
+                        url: $url,
+                    }),
+                    fields: &[],
+                    _phantom: std::marker::PhantomData,
+                };
+        }
+    };
+
+    // With mutations - infer mutation_scope from shape params (when they're the same)
+    (
+        $entity:ident,
+        table: $table:literal,
+        requests: [$create:ty, $update:ty, $list_query:ty],
+        shape: {
+            where_clause: $where_clause:literal,
+            params: [$($param:literal),* $(,)?],
+            url: $url:literal $(,)?
+        } $(,)?
+    ) => {
+        paste::paste! {
+            $crate::define_shape!(
+                [<$entity:snake:upper _SHAPE>], $entity,
+                table: $table,
+                where_clause: $where_clause,
+                url: $url,
+                params: [$($param),*]
+            );
+        }
+
         paste::paste! {
             pub const [<$entity:snake:upper _ENTITY>]: $crate::entity::EntityDefinition<$entity> =
                 $crate::entity::EntityDefinition {

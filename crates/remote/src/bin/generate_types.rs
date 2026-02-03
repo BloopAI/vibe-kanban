@@ -224,7 +224,7 @@ fn export_shapes() -> String {
             .map(|s| format!("'{:?}'", s))
             .unwrap_or_else(|| "null".to_string());
 
-        let has_mutations = entity.mutation_scope().is_some() && !entity.fields().is_empty();
+        let has_mutations = entity.mutation_scope().is_some();
         let mutations_str = if has_mutations {
             format!(
                 "{{ url: '/v1/{table}' }} as EntityDefinition<{ts_type}, Create{name}Request, Update{name}Request>['mutations']",

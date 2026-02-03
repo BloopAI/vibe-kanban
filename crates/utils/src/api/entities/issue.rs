@@ -11,6 +11,8 @@ use crate::api::types::IssuePriority;
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateIssueRequest {
+    /// Optional client-generated ID. If not provided, server generates one.
+    /// Using client-generated IDs enables stable optimistic updates.
     #[ts(optional)]
     pub id: Option<Uuid>,
     pub project_id: Uuid,
