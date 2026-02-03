@@ -61,113 +61,51 @@ fn main() {
     }
 }
 
-/// Entity definition - optionally has CRUD mutations
+/// Entity definition - type names derived from actual types via TS trait
 struct EntityDef {
-    name: &'static str,
+    ts_type: String,
     table: &'static str,
-    ts_type: &'static str,
-    /// If Some, entity has mutations with the given (create_type, update_type)
-    mutations: Option<(&'static str, &'static str)>,
+    mutations: Option<(String, String)>, // (create_type, update_type)
 }
 
-/// Get all entity definitions
+/// Create an entity definition with mutations - types are verified at compile time
+fn entity<T: TS, C: TS, U: TS>(table: &'static str) -> EntityDef {
+    EntityDef {
+        ts_type: T::name(),
+        table,
+        mutations: Some((C::name(), U::name())),
+    }
+}
+
+/// Create a shape-only entity definition (no mutations)
+fn shape_only<T: TS>(table: &'static str) -> EntityDef {
+    EntityDef {
+        ts_type: T::name(),
+        table,
+        mutations: None,
+    }
+}
+
+/// Get all entity definitions - types are verified at compile time
 fn all_entity_defs() -> Vec<EntityDef> {
     vec![
         // Entities with mutations
-        EntityDef {
-            name: "Project",
-            table: "projects",
-            ts_type: "Project",
-            mutations: Some(("CreateProjectRequest", "UpdateProjectRequest")),
-        },
-        EntityDef {
-            name: "Notification",
-            table: "notifications",
-            ts_type: "Notification",
-            mutations: Some(("CreateNotificationRequest", "UpdateNotificationRequest")),
-        },
-        EntityDef {
-            name: "Tag",
-            table: "tags",
-            ts_type: "Tag",
-            mutations: Some(("CreateTagRequest", "UpdateTagRequest")),
-        },
-        EntityDef {
-            name: "ProjectStatus",
-            table: "project_statuses",
-            ts_type: "ProjectStatus",
-            mutations: Some(("CreateProjectStatusRequest", "UpdateProjectStatusRequest")),
-        },
-        EntityDef {
-            name: "Issue",
-            table: "issues",
-            ts_type: "Issue",
-            mutations: Some(("CreateIssueRequest", "UpdateIssueRequest")),
-        },
-        EntityDef {
-            name: "IssueAssignee",
-            table: "issue_assignees",
-            ts_type: "IssueAssignee",
-            mutations: Some(("CreateIssueAssigneeRequest", "UpdateIssueAssigneeRequest")),
-        },
-        EntityDef {
-            name: "IssueFollower",
-            table: "issue_followers",
-            ts_type: "IssueFollower",
-            mutations: Some(("CreateIssueFollowerRequest", "UpdateIssueFollowerRequest")),
-        },
-        EntityDef {
-            name: "IssueTag",
-            table: "issue_tags",
-            ts_type: "IssueTag",
-            mutations: Some(("CreateIssueTagRequest", "UpdateIssueTagRequest")),
-        },
-        EntityDef {
-            name: "IssueRelationship",
-            table: "issue_relationships",
-            ts_type: "IssueRelationship",
-            mutations: Some(("CreateIssueRelationshipRequest", "UpdateIssueRelationshipRequest")),
-        },
-        EntityDef {
-            name: "IssueComment",
-            table: "issue_comments",
-            ts_type: "IssueComment",
-            mutations: Some(("CreateIssueCommentRequest", "UpdateIssueCommentRequest")),
-        },
-        EntityDef {
-            name: "IssueCommentReaction",
-            table: "issue_comment_reactions",
-            ts_type: "IssueCommentReaction",
-            mutations: Some((
-                "CreateIssueCommentReactionRequest",
-                "UpdateIssueCommentReactionRequest",
-            )),
-        },
+        entity::<Project, CreateProjectRequest, UpdateProjectRequest>("projects"),
+        entity::<Notification, CreateNotificationRequest, UpdateNotificationRequest>("notifications"),
+        entity::<Tag, CreateTagRequest, UpdateTagRequest>("tags"),
+        entity::<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest>("project_statuses"),
+        entity::<Issue, CreateIssueRequest, UpdateIssueRequest>("issues"),
+        entity::<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest>("issue_assignees"),
+        entity::<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest>("issue_followers"),
+        entity::<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest>("issue_tags"),
+        entity::<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest>("issue_relationships"),
+        entity::<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest>("issue_comments"),
+        entity::<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>("issue_comment_reactions"),
         // Shape-only entities (no mutations)
-        EntityDef {
-            name: "OrganizationMember",
-            table: "organization_member_metadata",
-            ts_type: "OrganizationMember",
-            mutations: None,
-        },
-        EntityDef {
-            name: "User",
-            table: "users",
-            ts_type: "User",
-            mutations: None,
-        },
-        EntityDef {
-            name: "Workspace",
-            table: "workspaces",
-            ts_type: "Workspace",
-            mutations: None,
-        },
-        EntityDef {
-            name: "PullRequest",
-            table: "pull_requests",
-            ts_type: "PullRequest",
-            mutations: None,
-        },
+        shape_only::<OrganizationMember>("organization_member_metadata"),
+        shape_only::<User>("users"),
+        shape_only::<Workspace>("workspaces"),
+        shape_only::<PullRequest>("pull_requests"),
     ]
 }
 
@@ -311,15 +249,15 @@ fn export_shapes() -> String {
     let entities = all_entity_defs();
     output.push_str("// Entity definitions\n");
     for entity in &entities {
-        let const_name = to_screaming_snake_case(entity.name);
+        let const_name = to_screaming_snake_case(&entity.ts_type);
         let shape_name = format!("{}_SHAPE", entity.table.to_uppercase());
 
-        if let Some((create_type, update_type)) = entity.mutations {
+        if let Some((ref create_type, ref update_type)) = entity.mutations {
             output.push_str(&format!(
                 "export const {}_ENTITY: EntityDefinition<{}, {}, {}> = {{\n",
                 const_name, entity.ts_type, create_type, update_type
             ));
-            output.push_str(&format!("  name: '{}',\n", entity.name));
+            output.push_str(&format!("  name: '{}',\n", entity.ts_type));
             output.push_str(&format!("  table: '{}',\n", entity.table));
             output.push_str(&format!("  shape: {},\n", shape_name));
             output.push_str(&format!(
@@ -331,7 +269,7 @@ fn export_shapes() -> String {
                 "export const {}_ENTITY: EntityDefinition<{}> = {{\n",
                 const_name, entity.ts_type
             ));
-            output.push_str(&format!("  name: '{}',\n", entity.name));
+            output.push_str(&format!("  name: '{}',\n", entity.ts_type));
             output.push_str(&format!("  table: '{}',\n", entity.table));
             output.push_str(&format!("  shape: {},\n", shape_name));
             output.push_str("  mutations: null,\n");
