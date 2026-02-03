@@ -415,6 +415,13 @@ impl GitCli {
         }
     }
 
+    /// Delete a local branch from the repository (force delete).
+    pub fn delete_branch(&self, repo_path: &Path, branch_name: &str) -> Result<(), GitCliError> {
+        self.ensure_available()?;
+        self.git(repo_path, ["branch", "-D", branch_name])?;
+        Ok(())
+    }
+
     pub fn get_remote_url(
         &self,
         repo_path: &Path,

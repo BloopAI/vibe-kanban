@@ -40,7 +40,7 @@ use executors::{
     executors::{CodingAgent, ExecutorError},
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
-use git::{ConflictOp, GitCliError, GitServiceError};
+use git::{ConflictOp, GitCli, GitCliError, GitServiceError};
 use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
@@ -115,6 +115,8 @@ pub struct UpdateWorkspace {
 pub struct DeleteWorkspaceQuery {
     #[serde(default)]
     pub delete_remote: bool,
+    #[serde(default)]
+    pub delete_branches: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1874,6 +1876,10 @@ pub async fn delete_workspace(
     // Spawn background cleanup task for filesystem resources
     if let Some(workspace_dir) = workspace_dir {
         let workspace_id = workspace.id;
+        let delete_branches = query.delete_branches;
+        let branch_name = workspace.branch.clone();
+        let repo_paths: Vec<PathBuf> = repositories.iter().map(|r| r.path.clone()).collect();
+
         tokio::spawn(async move {
             tracing::info!(
                 "Starting background cleanup for workspace {} at {}",
@@ -1894,6 +1900,29 @@ pub async fn delete_workspace(
                     "Background cleanup completed for workspace {}",
                     workspace_id
                 );
+            }
+
+            if delete_branches {
+                let git_cli = GitCli::new();
+                for repo_path in repo_paths {
+                    match git_cli.delete_branch(&repo_path, &branch_name) {
+                        Ok(()) => {
+                            tracing::info!(
+                                "Deleted branch '{}' from repo {:?}",
+                                branch_name,
+                                repo_path
+                            );
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                "Failed to delete branch '{}' from repo {:?}: {}",
+                                branch_name,
+                                repo_path,
+                                e
+                            );
+                        }
+                    }
+                }
             }
         });
     }

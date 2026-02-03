@@ -491,8 +491,14 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
-  delete: async (attemptId: string): Promise<void> => {
-    const response = await makeRequest(`/api/task-attempts/${attemptId}`, {
+  delete: async (attemptId: string, deleteBranches?: boolean): Promise<void> => {
+    const params = new URLSearchParams();
+    if (deleteBranches) {
+      params.set('delete_branches', 'true');
+    }
+    const queryString = params.toString();
+    const url = `/api/task-attempts/${attemptId}${queryString ? `?${queryString}` : ''}`;
+    const response = await makeRequest(url, {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);

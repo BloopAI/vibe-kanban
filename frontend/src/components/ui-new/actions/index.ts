@@ -66,6 +66,7 @@ import { taskKeys } from '@/hooks/useTask';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { ChangeTargetDialog } from '@/components/ui-new/dialogs/ChangeTargetDialog';
+import { DeleteWorkspaceDialog } from '@/components/ui-new/dialogs/DeleteWorkspaceDialog';
 import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
 import { ResolveConflictsDialog } from '@/components/ui-new/dialogs/ResolveConflictsDialog';
 import { RenameWorkspaceDialog } from '@/components/ui-new/dialogs/RenameWorkspaceDialog';
@@ -414,22 +415,18 @@ export const Actions = {
     requiresTarget: ActionTargetType.WORKSPACE,
     execute: async (ctx, workspaceId) => {
       const workspace = await getWorkspace(ctx.queryClient, workspaceId);
-      const result = await ConfirmDialog.show({
-        title: 'Delete Workspace',
-        message:
-          'Are you sure you want to delete this workspace? This action cannot be undone.',
-        confirmText: 'Delete',
-        cancelText: 'Cancel',
-        variant: 'destructive',
+      const result = await DeleteWorkspaceDialog.show({
+        workspaceId,
+        branchName: workspace.branch,
       });
-      if (result === 'confirmed') {
+      if (result.action === 'confirmed') {
         // Calculate next workspace before deleting (only if deleting current)
         const isCurrentWorkspace = ctx.currentWorkspaceId === workspaceId;
         const nextWorkspaceId = isCurrentWorkspace
           ? getNextWorkspaceId(ctx.activeWorkspaces, workspaceId)
           : null;
 
-        await tasksApi.delete(workspace.task_id);
+        await attemptsApi.delete(workspaceId, result.deleteBranches);
         ctx.queryClient.invalidateQueries({ queryKey: taskKeys.all });
         ctx.queryClient.invalidateQueries({
           queryKey: workspaceSummaryKeys.all,
