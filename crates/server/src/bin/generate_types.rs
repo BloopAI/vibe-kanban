@@ -34,6 +34,7 @@ fn generate_types_content() -> String {
         db::models::task::UpdateTask::decl(),
         db::models::scratch::DraftFollowUpData::decl(),
         db::models::scratch::DraftWorkspaceData::decl(),
+        db::models::scratch::DraftWorkspaceLinkedIssue::decl(),
         db::models::scratch::DraftWorkspaceRepo::decl(),
         db::models::scratch::PreviewSettingsData::decl(),
         db::models::scratch::WorkspaceNotesData::decl(),

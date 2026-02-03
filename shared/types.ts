@@ -52,7 +52,9 @@ export type UpdateTask = { title: string | null, description: string | null, sta
 
 export type DraftFollowUpData = { message: string, executor_profile_id: ExecutorProfileId, };
 
-export type DraftWorkspaceData = { message: string, project_id: string | null, repos: Array<DraftWorkspaceRepo>, selected_profile: ExecutorProfileId | null, };
+export type DraftWorkspaceData = { message: string, project_id: string | null, repos: Array<DraftWorkspaceRepo>, selected_profile: ExecutorProfileId | null, linked_issue: DraftWorkspaceLinkedIssue | null, };
+
+export type DraftWorkspaceLinkedIssue = { issue_id: string, simple_id: string, title: string, remote_project_id: string, };
 
 export type DraftWorkspaceRepo = { repo_id: string, target_branch: string, };
 
