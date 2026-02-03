@@ -8,7 +8,6 @@ use super::some_if_present;
 
 /// Request to create a new tag.
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct CreateTagRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     #[ts(optional)]
@@ -23,7 +22,6 @@ pub struct CreateTagRequest {
 
 /// Request to update an existing tag (partial update).
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct UpdateTagRequest {
     #[serde(default, deserialize_with = "some_if_present")]
     pub name: Option<String>,

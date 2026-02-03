@@ -8,7 +8,6 @@ use super::some_if_present;
 
 /// Request to create a new issue tag association.
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct CreateIssueTagRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     #[ts(optional)]
@@ -21,7 +20,6 @@ pub struct CreateIssueTagRequest {
 
 /// Request to update an existing issue tag (partial update).
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct UpdateIssueTagRequest {
     #[serde(default, deserialize_with = "some_if_present")]
     pub tag_id: Option<Uuid>,

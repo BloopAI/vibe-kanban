@@ -8,7 +8,6 @@ use super::some_if_present;
 
 /// Request to create a new notification.
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct CreateNotificationRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     #[ts(optional)]
@@ -21,7 +20,6 @@ pub struct CreateNotificationRequest {
 
 /// Request to update an existing notification (partial update).
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct UpdateNotificationRequest {
     #[serde(default, deserialize_with = "some_if_present")]
     pub seen: Option<bool>,

@@ -8,7 +8,6 @@ use super::some_if_present;
 
 /// Request to create a new issue assignee.
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct CreateIssueAssigneeRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     #[ts(optional)]
@@ -21,7 +20,6 @@ pub struct CreateIssueAssigneeRequest {
 
 /// Request to update an existing issue assignee (partial update).
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct UpdateIssueAssigneeRequest {
     #[serde(default, deserialize_with = "some_if_present")]
     pub user_id: Option<Uuid>,

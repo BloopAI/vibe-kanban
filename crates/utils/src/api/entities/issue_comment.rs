@@ -8,7 +8,6 @@ use super::some_if_present;
 
 /// Request to create a new issue comment.
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct CreateIssueCommentRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     #[ts(optional)]
@@ -23,7 +22,6 @@ pub struct CreateIssueCommentRequest {
 
 /// Request to update an existing issue comment (partial update).
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct UpdateIssueCommentRequest {
     #[serde(default, deserialize_with = "some_if_present")]
     pub message: Option<String>,

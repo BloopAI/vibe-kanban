@@ -8,7 +8,6 @@ use super::some_if_present;
 
 /// Request to create a new project status.
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct CreateProjectStatusRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     #[ts(optional)]
@@ -27,7 +26,6 @@ pub struct CreateProjectStatusRequest {
 
 /// Request to update an existing project status (partial update).
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct UpdateProjectStatusRequest {
     #[serde(default, deserialize_with = "some_if_present")]
     pub name: Option<String>,

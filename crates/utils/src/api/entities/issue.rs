@@ -11,7 +11,6 @@ use crate::api::types::IssuePriority;
 
 /// Request to create a new issue.
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct CreateIssueRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     #[ts(optional)]
@@ -44,7 +43,6 @@ pub struct CreateIssueRequest {
 
 /// Request to update an existing issue (partial update).
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct UpdateIssueRequest {
     #[serde(default, deserialize_with = "some_if_present")]
     pub status_id: Option<Uuid>,

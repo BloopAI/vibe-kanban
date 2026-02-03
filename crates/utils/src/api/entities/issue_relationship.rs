@@ -9,7 +9,6 @@ use crate::api::types::IssueRelationshipType;
 
 /// Request to create a new issue relationship.
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct CreateIssueRelationshipRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     #[ts(optional)]
@@ -24,7 +23,6 @@ pub struct CreateIssueRelationshipRequest {
 
 /// Request to update an existing issue relationship (partial update).
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct UpdateIssueRelationshipRequest {
     #[serde(default, deserialize_with = "some_if_present")]
     pub related_issue_id: Option<Uuid>,

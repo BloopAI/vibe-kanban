@@ -8,7 +8,6 @@ use super::some_if_present;
 
 /// Request to create a new issue comment reaction.
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct CreateIssueCommentReactionRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     #[ts(optional)]
@@ -21,7 +20,6 @@ pub struct CreateIssueCommentReactionRequest {
 
 /// Request to update an existing issue comment reaction (partial update).
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct UpdateIssueCommentReactionRequest {
     #[serde(default, deserialize_with = "some_if_present")]
     pub emoji: Option<String>,

@@ -8,7 +8,6 @@ use super::some_if_present;
 
 /// Request to create a new issue follower.
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct CreateIssueFollowerRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     #[ts(optional)]
@@ -21,7 +20,6 @@ pub struct CreateIssueFollowerRequest {
 
 /// Request to update an existing issue follower (partial update).
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct UpdateIssueFollowerRequest {
     #[serde(default, deserialize_with = "some_if_present")]
     pub user_id: Option<Uuid>,
