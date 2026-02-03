@@ -139,17 +139,6 @@ impl ExecutionEnv {
     }
 }
 
-/// Format a commit reminder prompt with git status appended.
-/// Returns `None` if there are no uncommitted changes to report.
-pub async fn format_commit_reminder(prompt: &str, repo_context: &RepoContext) -> Option<String> {
-    let status = repo_context.check_uncommitted_changes().await;
-    if status.is_empty() {
-        None
-    } else {
-        Some(format!("{prompt}\n{status}"))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

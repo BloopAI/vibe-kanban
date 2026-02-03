@@ -6,7 +6,7 @@ use workspace_utils::approvals::ApprovalStatus;
 use super::types::PermissionMode;
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
-    env::{RepoContext, format_commit_reminder},
+    env::RepoContext,
     executors::{
         ExecutorError,
         claude::{
@@ -175,16 +175,15 @@ impl ClaudeAgentClient {
             {
                 return Ok(serde_json::json!({"decision": "approve"}));
             }
-            return Ok(
-                match format_commit_reminder(&self.commit_reminder_prompt, &self.repo_context).await
-                {
-                    Some(prompt) => serde_json::json!({
-                        "decision": "block",
-                        "reason": prompt
-                    }),
-                    None => serde_json::json!({"decision": "approve"}),
-                },
-            );
+            let status = self.repo_context.check_uncommitted_changes().await;
+            return Ok(if status.is_empty() {
+                serde_json::json!({"decision": "approve"})
+            } else {
+                serde_json::json!({
+                    "decision": "block",
+                    "reason": format!("{}\n{}", self.commit_reminder_prompt, status)
+                })
+            });
         }
 
         if self.auto_approve {

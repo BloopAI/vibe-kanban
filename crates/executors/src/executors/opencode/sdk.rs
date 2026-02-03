@@ -24,7 +24,7 @@ use workspace_utils::approvals::ApprovalStatus;
 use super::{slash_commands, types::OpencodeExecutorEvent};
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
-    env::{RepoContext, format_commit_reminder},
+    env::RepoContext,
     executors::{
         ExecutorError,
         opencode::{OpencodeServer, models::maybe_emit_token_usage},
@@ -339,9 +339,10 @@ async fn run_session_inner(
     // Handle commit reminder if enabled
     if config.commit_reminder
         && !cancel.is_cancelled()
-        && let Some(reminder_prompt) =
-            format_commit_reminder(&config.commit_reminder_prompt, &config.repo_context).await
+        && let status = config.repo_context.check_uncommitted_changes().await
+        && !status.is_empty()
     {
+        let reminder_prompt = format!("{}\n{}", config.commit_reminder_prompt, status);
         tracing::debug!("Sending commit reminder prompt to OpenCode session");
 
         // Log as system message so it's visible in the UI (user_message gets filtered out)
