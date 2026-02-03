@@ -98,7 +98,12 @@ async fn get_user_system_info(
     State(deployment): State<DeploymentImpl>,
 ) -> ResponseJson<ApiResponse<UserSystemInfo>> {
     let config = deployment.config().read().await;
-    let login_status = deployment.get_login_status().await;
+    let login_status = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        deployment.get_login_status(),
+    )
+    .await
+    .unwrap_or(LoginStatus::LoggedOut);
 
     let user_system_info = UserSystemInfo {
         config: config.clone(),
