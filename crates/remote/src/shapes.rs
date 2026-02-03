@@ -55,48 +55,50 @@ impl<T: TS + Sync> ShapeExport for ShapeDefinition<T> {
 /// - The columns in the WHERE clause exist
 /// - The SQL syntax is correct
 ///
-/// **Note**: Prefer using `define_entity!` from the `entity` module, which generates
-/// both shape and mutation types from a single declaration.
+/// The const name is auto-generated from the type name (e.g., `Tag` → `TAG_SHAPE`).
 ///
 /// Usage:
 /// ```ignore
 /// define_shape!(
-///     PROJECTS, Project,
+///     Project,
 ///     table: "projects",
 ///     where_clause: r#""organization_id" = $1"#,
 ///     url: "/shape/projects",
 ///     params: ["organization_id"]
 /// );
+/// // Generates: pub const PROJECT_SHAPE: ShapeDefinition<Project> = ...
 /// ```
 #[macro_export]
 macro_rules! define_shape {
     (
-        $name:ident, $type:ty,
+        $type:ident,
         table: $table:literal,
         where_clause: $where:literal,
         url: $url:expr,
-        params: [$($param:literal),* $(,)?]
+        params: [$($param:literal),* $(,)?] $(,)?
     ) => {
-        pub const $name: $crate::shapes::ShapeDefinition<$type> = {
-            // Compile-time SQL validation - this ensures table and columns exist
-            // We use dummy UUID values for parameter validation since all shape
-            // params are UUIDs
-            #[allow(dead_code)]
-            fn _validate() {
-                let _ = sqlx::query!(
-                    "SELECT 1 AS v FROM " + $table + " WHERE " + $where
-                    $(, { let _ = stringify!($param); uuid::Uuid::nil() })*
-                );
-            }
+        paste::paste! {
+            pub const [<$type:snake:upper _SHAPE>]: $crate::shapes::ShapeDefinition<$type> = {
+                // Compile-time SQL validation - this ensures table and columns exist
+                // We use dummy UUID values for parameter validation since all shape
+                // params are UUIDs
+                #[allow(dead_code)]
+                fn _validate() {
+                    let _ = sqlx::query!(
+                        "SELECT 1 AS v FROM " + $table + " WHERE " + $where
+                        $(, { let _ = stringify!($param); uuid::Uuid::nil() })*
+                    );
+                }
 
-            $crate::shapes::ShapeDefinition {
-                table: $table,
-                where_clause: $where,
-                params: &[$($param),*],
-                url: $url,
-                _phantom: std::marker::PhantomData,
-            }
-        };
+                $crate::shapes::ShapeDefinition {
+                    table: $table,
+                    where_clause: $where,
+                    params: &[$($param),*],
+                    url: $url,
+                    _phantom: std::marker::PhantomData,
+                }
+            };
+        }
     };
 }
 
