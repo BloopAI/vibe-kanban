@@ -175,7 +175,7 @@ export const NOTIFICATIONS_SHAPE = defineShape<Notification>(
   '/v1/shape/notifications'
 );
 
-export const ORGANIZATION_MEMBER_METADATA_SHAPE = defineShape<OrganizationMember>(
+export const ORGANIZATION_MEMBERS_SHAPE = defineShape<OrganizationMember>(
   'organization_member_metadata',
   ['organization_id'] as const,
   '/v1/shape/organization_members'
@@ -187,61 +187,61 @@ export const USERS_SHAPE = defineShape<User>(
   '/v1/shape/users'
 );
 
-export const TAGS_SHAPE = defineShape<Tag>(
+export const PROJECT_TAGS_SHAPE = defineShape<Tag>(
   'tags',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/tags'
 );
 
-export const PROJECT_STATUSES_SHAPE = defineShape<ProjectStatus>(
+export const PROJECT_PROJECT_STATUSES_SHAPE = defineShape<ProjectStatus>(
   'project_statuses',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/project_statuses'
 );
 
-export const ISSUES_SHAPE = defineShape<Issue>(
+export const PROJECT_ISSUES_SHAPE = defineShape<Issue>(
   'issues',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/issues'
 );
 
-export const WORKSPACES_SHAPE = defineShape<Workspace>(
+export const USER_WORKSPACES_SHAPE = defineShape<Workspace>(
   'workspaces',
   ['owner_user_id'] as const,
   '/v1/shape/user/workspaces'
 );
 
-export const WORKSPACES_SHAPE = defineShape<Workspace>(
+export const PROJECT_WORKSPACES_SHAPE = defineShape<Workspace>(
   'workspaces',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/workspaces'
 );
 
-export const ISSUE_ASSIGNEES_SHAPE = defineShape<IssueAssignee>(
+export const PROJECT_ISSUE_ASSIGNEES_SHAPE = defineShape<IssueAssignee>(
   'issue_assignees',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/issue_assignees'
 );
 
-export const ISSUE_FOLLOWERS_SHAPE = defineShape<IssueFollower>(
+export const PROJECT_ISSUE_FOLLOWERS_SHAPE = defineShape<IssueFollower>(
   'issue_followers',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/issue_followers'
 );
 
-export const ISSUE_TAGS_SHAPE = defineShape<IssueTag>(
+export const PROJECT_ISSUE_TAGS_SHAPE = defineShape<IssueTag>(
   'issue_tags',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/issue_tags'
 );
 
-export const ISSUE_RELATIONSHIPS_SHAPE = defineShape<IssueRelationship>(
+export const PROJECT_ISSUE_RELATIONSHIPS_SHAPE = defineShape<IssueRelationship>(
   'issue_relationships',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/issue_relationships'
 );
 
-export const PULL_REQUESTS_SHAPE = defineShape<PullRequest>(
+export const PROJECT_PULL_REQUESTS_SHAPE = defineShape<PullRequest>(
   'pull_requests',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/pull_requests'
@@ -253,7 +253,7 @@ export const ISSUE_COMMENTS_SHAPE = defineShape<IssueComment>(
   '/v1/shape/issue/{issue_id}/comments'
 );
 
-export const ISSUE_COMMENT_REACTIONS_SHAPE = defineShape<IssueCommentReaction>(
+export const ISSUE_REACTIONS_SHAPE = defineShape<IssueCommentReaction>(
   'issue_comment_reactions',
   ['issue_id'] as const,
   '/v1/shape/issue/{issue_id}/reactions'
@@ -304,7 +304,7 @@ export const ORGANIZATION_MEMBER_ENTITY: EntityDefinition<OrganizationMember> = 
   table: 'organization_member_metadata',
   mutationScope: null,
   shapeScope: null,
-  shape: ORGANIZATION_MEMBER_METADATA_SHAPE,
+  shape: ORGANIZATION_MEMBERS_SHAPE,
   mutations: null,
 };
 
@@ -322,7 +322,7 @@ export const TAG_ENTITY: EntityDefinition<Tag, CreateTagRequest, UpdateTagReques
   table: 'tags',
   mutationScope: 'Project',
   shapeScope: 'Project',
-  shape: TAGS_SHAPE,
+  shape: PROJECT_TAGS_SHAPE,
   mutations: { url: '/v1/tags' } as EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest>['mutations'],
 };
 
@@ -331,7 +331,7 @@ export const PROJECT_STATUS_ENTITY: EntityDefinition<ProjectStatus, CreateProjec
   table: 'project_statuses',
   mutationScope: 'Project',
   shapeScope: 'Project',
-  shape: PROJECT_STATUSES_SHAPE,
+  shape: PROJECT_PROJECT_STATUSES_SHAPE,
   mutations: { url: '/v1/project_statuses' } as EntityDefinition<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest>['mutations'],
 };
 
@@ -340,7 +340,7 @@ export const ISSUE_ENTITY: EntityDefinition<Issue, CreateIssueRequest, UpdateIss
   table: 'issues',
   mutationScope: 'Project',
   shapeScope: 'Project',
-  shape: ISSUES_SHAPE,
+  shape: PROJECT_ISSUES_SHAPE,
   mutations: { url: '/v1/issues' } as EntityDefinition<Issue, CreateIssueRequest, UpdateIssueRequest>['mutations'],
 };
 
@@ -349,7 +349,7 @@ export const WORKSPACE_ENTITY: EntityDefinition<Workspace> = {
   table: 'workspaces',
   mutationScope: null,
   shapeScope: null,
-  shape: WORKSPACES_SHAPE,
+  shape: USER_WORKSPACES_SHAPE,
   mutations: null,
 };
 
@@ -358,7 +358,7 @@ export const ISSUE_ASSIGNEE_ENTITY: EntityDefinition<IssueAssignee, CreateIssueA
   table: 'issue_assignees',
   mutationScope: 'Issue',
   shapeScope: 'Project',
-  shape: ISSUE_ASSIGNEES_SHAPE,
+  shape: PROJECT_ISSUE_ASSIGNEES_SHAPE,
   mutations: { url: '/v1/issue_assignees' } as EntityDefinition<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest>['mutations'],
 };
 
@@ -367,7 +367,7 @@ export const ISSUE_FOLLOWER_ENTITY: EntityDefinition<IssueFollower, CreateIssueF
   table: 'issue_followers',
   mutationScope: 'Issue',
   shapeScope: 'Project',
-  shape: ISSUE_FOLLOWERS_SHAPE,
+  shape: PROJECT_ISSUE_FOLLOWERS_SHAPE,
   mutations: { url: '/v1/issue_followers' } as EntityDefinition<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest>['mutations'],
 };
 
@@ -376,7 +376,7 @@ export const ISSUE_TAG_ENTITY: EntityDefinition<IssueTag, CreateIssueTagRequest,
   table: 'issue_tags',
   mutationScope: 'Issue',
   shapeScope: 'Project',
-  shape: ISSUE_TAGS_SHAPE,
+  shape: PROJECT_ISSUE_TAGS_SHAPE,
   mutations: { url: '/v1/issue_tags' } as EntityDefinition<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest>['mutations'],
 };
 
@@ -385,7 +385,7 @@ export const ISSUE_RELATIONSHIP_ENTITY: EntityDefinition<IssueRelationship, Crea
   table: 'issue_relationships',
   mutationScope: 'Issue',
   shapeScope: 'Project',
-  shape: ISSUE_RELATIONSHIPS_SHAPE,
+  shape: PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
   mutations: { url: '/v1/issue_relationships' } as EntityDefinition<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest>['mutations'],
 };
 
@@ -394,7 +394,7 @@ export const PULL_REQUEST_ENTITY: EntityDefinition<PullRequest> = {
   table: 'pull_requests',
   mutationScope: null,
   shapeScope: null,
-  shape: PULL_REQUESTS_SHAPE,
+  shape: PROJECT_PULL_REQUESTS_SHAPE,
   mutations: null,
 };
 
@@ -412,7 +412,7 @@ export const ISSUE_COMMENT_REACTION_ENTITY: EntityDefinition<IssueCommentReactio
   table: 'issue_comment_reactions',
   mutationScope: 'Comment',
   shapeScope: 'Comment',
-  shape: ISSUE_COMMENT_REACTIONS_SHAPE,
+  shape: ISSUE_REACTIONS_SHAPE,
   mutations: { url: '/v1/issue_comment_reactions' } as EntityDefinition<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>['mutations'],
 };
 

@@ -162,7 +162,7 @@ fn export_shapes() -> String {
     // Generate individual shape definitions
     output.push_str("// Individual shape definitions with embedded types\n");
     for shape in &shapes {
-        let const_name = shape.table().to_uppercase();
+        let const_name = url_to_const_name(shape.url());
         let params_str = shape
             .params()
             .iter()
@@ -213,7 +213,10 @@ fn export_shapes() -> String {
     output.push_str("// Individual entity definitions\n");
     for entity in &entities {
         let const_name = to_screaming_snake_case(entity.name());
-        let shape_name = format!("{}_SHAPE", entity.table().to_uppercase());
+        let shape_name = entity
+            .shape()
+            .map(|s| format!("{}_SHAPE", url_to_const_name(s.url)))
+            .unwrap_or_else(|| "null".to_string());
 
         let mutation_scope = entity
             .mutation_scope()
@@ -276,4 +279,16 @@ fn to_screaming_snake_case(s: &str) -> String {
         result.push(c.to_ascii_uppercase());
     }
     result
+}
+
+/// Convert URL path to const name
+/// "/shape/user/workspaces" -> "USER_WORKSPACES"
+/// "/shape/project/{project_id}/workspaces" -> "PROJECT_WORKSPACES"
+fn url_to_const_name(url: &str) -> String {
+    url.trim_start_matches("/shape/")
+        .split('/')
+        .filter(|s| !s.starts_with('{'))
+        .collect::<Vec<_>>()
+        .join("_")
+        .to_uppercase()
 }
