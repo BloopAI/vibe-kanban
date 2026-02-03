@@ -4,7 +4,6 @@ import { ProcessListContainer } from '@/components/ui-new/containers/ProcessList
 import { PreviewControlsContainer } from '@/components/ui-new/containers/PreviewControlsContainer';
 import { GitPanelContainer } from '@/components/ui-new/containers/GitPanelContainer';
 import { TerminalPanelContainer } from '@/components/ui-new/containers/TerminalPanelContainer';
-import { CreateModeProjectSectionContainer } from '@/components/ui-new/containers/CreateModeProjectSectionContainer';
 import { CreateModeReposSectionContainer } from '@/components/ui-new/containers/CreateModeReposSectionContainer';
 import { CreateModeAddReposSectionContainer } from '@/components/ui-new/containers/CreateModeAddReposSectionContainer';
 import { WorkspaceNotesContainer } from '@/components/ui-new/containers/WorkspaceNotesContainer';
@@ -100,14 +99,6 @@ export function RightSidebar({
 
   const sections: SectionDef[] = isCreateMode
     ? [
-        {
-          title: t('common:sections.project'),
-          persistKey: PERSIST_KEYS.gitPanelProject,
-          visible: true,
-          expanded: true,
-          content: <CreateModeProjectSectionContainer />,
-          actions: [],
-        },
         {
           title: t('common:sections.repositories'),
           persistKey: PERSIST_KEYS.gitPanelRepositories,

@@ -24,8 +24,8 @@
         "mcpDesc": "模型上下文協議伺服器",
         "organizations": "組織設定",
         "organizationsDesc": "管理組織成員與權限",
-        "remote-projects": "遠端專案",
-        "remote-projectsDesc": "管理雲端同步專案"
+        "remote-projects": "專案",
+        "remote-projectsDesc": "管理專案"
       }
     },
     "general": {

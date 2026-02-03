@@ -24,8 +24,8 @@
         "mcpDesc": "Model Context Protocol servers",
         "organizations": "Organization Settings",
         "organizationsDesc": "Manage organization members and permissions",
-        "remote-projects": "Remote Projects",
-        "remote-projectsDesc": "Manage cloud-synced projects"
+        "remote-projects": "Projects",
+        "remote-projectsDesc": "Manage projects"
       }
     },
     "general": {

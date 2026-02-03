@@ -24,8 +24,8 @@
         "mcpDesc": "Model Context Protocol 서버",
         "organizations": "Organization Settings",
         "organizationsDesc": "Manage organization members and permissions",
-        "remote-projects": "원격 프로젝트",
-        "remote-projectsDesc": "클라우드 동기화 프로젝트 관리"
+        "remote-projects": "프로젝트",
+        "remote-projectsDesc": "프로젝트 관리"
       }
     },
     "general": {

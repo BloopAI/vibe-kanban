@@ -24,8 +24,8 @@
         "mcpDesc": "模型上下文协议服务器",
         "organizations": "组织设置",
         "organizationsDesc": "管理组织成员和权限",
-        "remote-projects": "远程项目",
-        "remote-projectsDesc": "管理云同步项目"
+        "remote-projects": "项目",
+        "remote-projectsDesc": "管理项目"
       }
     },
     "general": {

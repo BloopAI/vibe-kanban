@@ -24,8 +24,8 @@
         "mcpDesc": "モデルコンテキストプロトコルサーバー",
         "organizations": "Organization Settings",
         "organizationsDesc": "Manage organization members and permissions",
-        "remote-projects": "リモートプロジェクト",
-        "remote-projectsDesc": "クラウド同期プロジェクトを管理"
+        "remote-projects": "プロジェクト",
+        "remote-projectsDesc": "プロジェクトを管理"
       }
     },
     "general": {
