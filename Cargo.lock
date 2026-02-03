@@ -6266,7 +6266,6 @@ dependencies = [
  "reqwest",
  "rust-embed",
  "secrecy",
- "security-framework 2.11.1",
  "serde",
  "serde_json",
  "sha2",
