@@ -134,6 +134,10 @@ jobs:
         if: ${{ steps.ssh-setup.outcome == 'success' }}
         run: cargo generate-lockfile --manifest-path crates/remote/Cargo.toml
 
+      - name: Stop SSH agent
+        if: ${{ steps.ssh-setup.outcome == 'success' }}
+        run: ssh-agent -k
+
       - name: Commit changes and create tag
         run: |
           git config --local user.email "action@github.com"
