@@ -154,9 +154,8 @@ impl EditorConfig {
 
         let mut json: serde_json::Value = if extensions_file.exists() {
             match std::fs::read_to_string(&extensions_file) {
-                Ok(content) => serde_json::from_str(&content).unwrap_or_else(|_| {
-                    serde_json::json!({"recommendations": []})
-                }),
+                Ok(content) => serde_json::from_str(&content)
+                    .unwrap_or_else(|_| serde_json::json!({"recommendations": []})),
                 Err(_) => serde_json::json!({"recommendations": []}),
             }
         } else {
@@ -168,7 +167,10 @@ impl EditorConfig {
         }
 
         let recommendations = json["recommendations"].as_array().unwrap();
-        if recommendations.iter().any(|v| v.as_str() == Some(EXTENSION_ID)) {
+        if recommendations
+            .iter()
+            .any(|v| v.as_str() == Some(EXTENSION_ID))
+        {
             return;
         }
 
