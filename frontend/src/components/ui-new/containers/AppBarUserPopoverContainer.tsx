@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { OrganizationWithRole } from 'shared/types';
 import { AppBarUserPopover } from '../primitives/AppBarUserPopover';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
@@ -25,6 +26,7 @@ export function AppBarUserPopoverContainer({
   const { isSignedIn } = useAuth();
   const { loginStatus } = useUserSystem();
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
 
@@ -47,6 +49,11 @@ export function AppBarUserPopoverContainer({
     await SettingsDialog.show({ initialSection: 'organizations' });
   };
 
+  const handleMigrate = () => {
+    setOpen(false);
+    navigate('/migrate');
+  };
+
   return (
     <AppBarUserPopover
       isSignedIn={isSignedIn}
@@ -62,6 +69,7 @@ export function AppBarUserPopoverContainer({
       onSignIn={handleSignIn}
       onLogout={handleLogout}
       onAvatarError={() => setAvatarError(true)}
+      onMigrate={handleMigrate}
     />
   );
 }
