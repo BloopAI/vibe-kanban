@@ -56,6 +56,13 @@ jobs:
       - name: setup node
         uses: ./.github/actions/setup-node
 
+      - name: Setup SSH Agent for private dependencies
+        id: ssh-setup
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VK_PRIVATE_DEPLOY_KEY }}
+
       - name: Generate branch suffix
         id: branch
         run: |
@@ -119,19 +126,21 @@ jobs:
 
           cargo set-version --workspace "$new_version"
 
-          # Update remote crate's lock file (separate workspace that depends on utils via path)
-          cargo generate-lockfile --manifest-path crates/remote/Cargo.toml
-
           echo "New version: $new_version"
           echo "new_version=$new_version" >> $GITHUB_OUTPUT
           echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
+
+      - name: Update remote crate lockfile
+        if: ${{ steps.ssh-setup.outcome == 'success' }}
+        run: cargo generate-lockfile --manifest-path crates/remote/Cargo.toml
 
       - name: Commit changes and create tag
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add package.json pnpm-lock.yaml npx-cli/package.json frontend/package.json Cargo.lock
-          git add $(find . -name Cargo.toml) crates/remote/Cargo.lock
+          git add $(find . -name Cargo.toml)
+          [ -f crates/remote/Cargo.lock ] && git add crates/remote/Cargo.lock || true
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
           git tag -a ${{ steps.version.outputs.new_tag }} -m "Release ${{ steps.version.outputs.new_tag }}"
           git push
