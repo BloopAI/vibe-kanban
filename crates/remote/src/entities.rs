@@ -3,13 +3,14 @@
 //! This module defines all entity shapes using the `define_entity!` macro, which generates
 //! shape definitions for Electric realtime streaming with compile-time SQL validation.
 
-use crate::db::{
-    organization_members::OrganizationMember, pull_requests::PullRequest, users::User,
-    workspaces::Workspace,
-};
 use utils::api::entities::{
     Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssueRelationship,
     IssueTag, Notification, Project, ProjectStatus, Tag,
+};
+
+use crate::db::{
+    organization_members::OrganizationMember, pull_requests::PullRequest, users::User,
+    workspaces::Workspace,
 };
 
 // =============================================================================
