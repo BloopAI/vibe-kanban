@@ -46,247 +46,47 @@ export enum MemberRole { ADMIN = "ADMIN", MEMBER = "MEMBER" }
 
 export type OrganizationMember = { organization_id: string, user_id: string, role: MemberRole, joined_at: string, last_seen_at: string | null, };
 
-export type CreateProjectRequest = { 
-/**
- * Optional client-generated ID. If not provided, server generates one.
- */
-id?: string, 
-/**
- * The organization this project belongs to.
- */
-organization_id: string, 
-/**
- * Project name.
- */
-name: string, 
-/**
- * HSL color format: "H S% L%".
- */
-color: string, };
+export type CreateProjectRequest = { id?: string, organization_id: string, name: string, color: string, };
 
 export type UpdateProjectRequest = { name: string | null, color: string | null, };
 
-export type CreateNotificationRequest = { 
-/**
- * Optional client-generated ID. If not provided, server generates one.
- */
-id?: string, 
-/**
- * The organization this notification belongs to.
- */
-organization_id: string, 
-/**
- * Whether the notification has been seen.
- */
-seen: boolean, };
+export type CreateNotificationRequest = { id?: string, organization_id: string, seen: boolean, };
 
 export type UpdateNotificationRequest = { seen: boolean | null, };
 
-export type CreateTagRequest = { 
-/**
- * Optional client-generated ID. If not provided, server generates one.
- */
-id?: string, 
-/**
- * The project this tag belongs to.
- */
-project_id: string, 
-/**
- * Tag name.
- */
-name: string, 
-/**
- * HSL color format: "H S% L%".
- */
-color: string, };
+export type CreateTagRequest = { id?: string, project_id: string, name: string, color: string, };
 
 export type UpdateTagRequest = { name: string | null, color: string | null, };
 
-export type CreateProjectStatusRequest = { 
-/**
- * Optional client-generated ID. If not provided, server generates one.
- */
-id?: string, 
-/**
- * The project this status belongs to.
- */
-project_id: string, 
-/**
- * Status name (e.g., "To do", "In progress").
- */
-name: string, 
-/**
- * HSL color format: "H S% L%".
- */
-color: string, 
-/**
- * Sort order for display.
- */
-sort_order: number, 
-/**
- * Whether this status is hidden in the default view.
- */
-hidden: boolean, };
+export type CreateProjectStatusRequest = { id?: string, project_id: string, name: string, color: string, sort_order: number, hidden: boolean, };
 
 export type UpdateProjectStatusRequest = { name: string | null, color: string | null, sort_order: number | null, hidden: boolean | null, };
 
-export type CreateIssueRequest = { 
-/**
- * Optional client-generated ID. If not provided, server generates one.
- */
-id?: string, 
-/**
- * The project this issue belongs to.
- */
-project_id: string, 
-/**
- * The status ID for this issue.
- */
-status_id: string, 
-/**
- * Issue title.
- */
-title: string, 
-/**
- * Issue description (markdown).
- */
-description: string | null, 
-/**
- * Issue priority level.
- */
-priority: IssuePriority | null, 
-/**
- * When work should start.
- */
-start_date: string | null, 
-/**
- * Target completion date.
- */
-target_date: string | null, 
-/**
- * When the issue was completed.
- */
-completed_at: string | null, 
-/**
- * Sort order within the status column.
- */
-sort_order: number, 
-/**
- * Parent issue ID for sub-issues.
- */
-parent_issue_id: string | null, 
-/**
- * Sort order within the parent issue's children.
- */
-parent_issue_sort_order: number | null, 
-/**
- * Extension metadata for custom fields.
- */
-extension_metadata: JsonValue, };
+export type CreateIssueRequest = { id?: string, project_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority | null, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, parent_issue_sort_order: number | null, extension_metadata: JsonValue, };
 
 export type UpdateIssueRequest = { status_id: string | null, title: string | null, description: string | null | null, priority: IssuePriority | null | null, start_date: string | null | null, target_date: string | null | null, completed_at: string | null | null, sort_order: number | null, parent_issue_id: string | null | null, parent_issue_sort_order: number | null | null, extension_metadata: JsonValue | null, };
 
-export type CreateIssueAssigneeRequest = { 
-/**
- * Optional client-generated ID. If not provided, server generates one.
- */
-id?: string, 
-/**
- * The issue this assignee belongs to.
- */
-issue_id: string, 
-/**
- * The user being assigned.
- */
-user_id: string, };
+export type CreateIssueAssigneeRequest = { id?: string, issue_id: string, user_id: string, };
 
 export type UpdateIssueAssigneeRequest = { user_id: string | null, };
 
-export type CreateIssueFollowerRequest = { 
-/**
- * Optional client-generated ID. If not provided, server generates one.
- */
-id?: string, 
-/**
- * The issue being followed.
- */
-issue_id: string, 
-/**
- * The user following the issue.
- */
-user_id: string, };
+export type CreateIssueFollowerRequest = { id?: string, issue_id: string, user_id: string, };
 
 export type UpdateIssueFollowerRequest = { user_id: string | null, };
 
-export type CreateIssueTagRequest = { 
-/**
- * Optional client-generated ID. If not provided, server generates one.
- */
-id?: string, 
-/**
- * The issue being tagged.
- */
-issue_id: string, 
-/**
- * The tag to apply.
- */
-tag_id: string, };
+export type CreateIssueTagRequest = { id?: string, issue_id: string, tag_id: string, };
 
 export type UpdateIssueTagRequest = { tag_id: string | null, };
 
-export type CreateIssueRelationshipRequest = { 
-/**
- * Optional client-generated ID. If not provided, server generates one.
- */
-id?: string, 
-/**
- * The source issue.
- */
-issue_id: string, 
-/**
- * The related issue.
- */
-related_issue_id: string, 
-/**
- * The type of relationship.
- */
-relationship_type: IssueRelationshipType, };
+export type CreateIssueRelationshipRequest = { id?: string, issue_id: string, related_issue_id: string, relationship_type: IssueRelationshipType, };
 
 export type UpdateIssueRelationshipRequest = { related_issue_id: string | null, relationship_type: IssueRelationshipType | null, };
 
-export type CreateIssueCommentRequest = { 
-/**
- * Optional client-generated ID. If not provided, server generates one.
- */
-id?: string, 
-/**
- * The issue this comment belongs to.
- */
-issue_id: string, 
-/**
- * The comment message (markdown).
- */
-message: string, 
-/**
- * Parent comment ID for replies.
- */
-parent_id: string | null, };
+export type CreateIssueCommentRequest = { id?: string, issue_id: string, message: string, parent_id: string | null, };
 
 export type UpdateIssueCommentRequest = { message: string | null, parent_id: string | null | null, };
 
-export type CreateIssueCommentReactionRequest = { 
-/**
- * Optional client-generated ID. If not provided, server generates one.
- */
-id?: string, 
-/**
- * The comment being reacted to.
- */
-comment_id: string, 
-/**
- * The emoji reaction.
- */
-emoji: string, };
+export type CreateIssueCommentReactionRequest = { id?: string, comment_id: string, emoji: string, };
 
 export type UpdateIssueCommentReactionRequest = { emoji: string | null, };
 
