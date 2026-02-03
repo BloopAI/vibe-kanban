@@ -146,7 +146,7 @@ export function AppBarUserPopover({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem icon={CloudArrowUpIcon} onClick={onMigrate}>
-              Migrate
+              {t('orgSwitcher.migrate')}
             </DropdownMenuItem>
           </>
         )}

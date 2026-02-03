@@ -98,7 +98,8 @@
     "currentBadge": " (現在)",
     "organizations": "組織",
     "createOrganization": "組織を作成",
-    "orgSettings": "組織の設定"
+    "orgSettings": "組織の設定",
+    "migrate": "移行"
   },
   "navbar": {
     "tryNewUI": "新しいUIを試す"

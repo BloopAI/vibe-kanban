@@ -98,7 +98,8 @@
     "currentBadge": " (actual)",
     "organizations": "Organizaciones",
     "createOrganization": "Crear organización",
-    "orgSettings": "Configuración de la organización"
+    "orgSettings": "Configuración de la organización",
+    "migrate": "Migrar"
   },
   "navbar": {
     "tryNewUI": "prueba la nueva interfaz"

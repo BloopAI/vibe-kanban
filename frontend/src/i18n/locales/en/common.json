@@ -100,7 +100,8 @@
     "currentBadge": " (current)",
     "organizations": "Organizations",
     "createOrganization": "Create organization",
-    "orgSettings": "Organization settings"
+    "orgSettings": "Organization settings",
+    "migrate": "Migrate"
   },
   "navbar": {
     "tryNewUI": "try the new UI"

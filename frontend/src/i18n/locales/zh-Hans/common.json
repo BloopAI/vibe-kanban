@@ -98,7 +98,8 @@
     "currentBadge": "（当前）",
     "organizations": "组织",
     "createOrganization": "创建组织",
-    "orgSettings": "组织设置"
+    "orgSettings": "组织设置",
+    "migrate": "迁移"
   },
   "navbar": {
     "tryNewUI": "试用新界面"
