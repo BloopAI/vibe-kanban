@@ -53,8 +53,8 @@ use utils::{
 use uuid::Uuid;
 
 use crate::services::{
-    notification::NotificationService, workspace_manager::WorkspaceError as WorkspaceManagerError,
-    worktree_manager::WorktreeError,
+    notification::NotificationService, webhook_notification::WebhookMetadata,
+    workspace_manager::WorkspaceError as WorkspaceManagerError, worktree_manager::WorktreeError,
 };
 pub type ContainerRef = String;
 
@@ -227,30 +227,42 @@ pub trait ContainerService {
             tracing::error!("Failed to update task status to InReview: {e}");
         }
 
-        // Skip notification if process was intentionally killed by user
-        if matches!(ctx.execution_process.status, ExecutionProcessStatus::Killed) {
-            return;
+        // Build metadata from execution context
+        let mut metadata = WebhookMetadata::new()
+            .with_task(ctx.task.id, &ctx.task.title)
+            .with_project(ctx.project.id, &ctx.project.name)
+            .with_workspace(ctx.workspace.id)
+            .with_execution(ctx.execution_process.id);
+
+        if let Some(exit_code) = ctx.execution_process.exit_code {
+            metadata = metadata.with_exit_code(exit_code);
         }
 
-        let title = format!("Task Complete: {}", ctx.task.title);
-        let message = match ctx.execution_process.status {
-            ExecutionProcessStatus::Completed => format!(
-                "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {:?}",
-                ctx.task.title, ctx.workspace.branch, ctx.session.executor
-            ),
-            ExecutionProcessStatus::Failed => format!(
-                "❌ '{}' execution failed\nBranch: {:?}\nExecutor: {:?}",
-                ctx.task.title, ctx.workspace.branch, ctx.session.executor
-            ),
+        // Handle different execution statuses
+        match ctx.execution_process.status {
+            ExecutionProcessStatus::Completed => {
+                let success = ctx.execution_process.exit_code == Some(0);
+                self.notification_service()
+                    .notify_execution_halted("Completed", success, metadata)
+                    .await;
+            }
+            ExecutionProcessStatus::Failed => {
+                self.notification_service()
+                    .notify_execution_halted("Failed", false, metadata)
+                    .await;
+            }
+            ExecutionProcessStatus::Killed => {
+                self.notification_service()
+                    .notify_execution_halted("Killed", false, metadata)
+                    .await;
+            }
             _ => {
                 tracing::warn!(
                     "Tried to notify workspace completion for {} but process is still running!",
                     ctx.workspace.id
                 );
-                return;
             }
-        };
-        self.notification_service().notify(&title, &message).await;
+        }
     }
 
     /// Cleanup executions marked as running in the db, call at startup

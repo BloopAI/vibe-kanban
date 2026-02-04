@@ -153,6 +153,8 @@ fn generate_types_content() -> String {
         services::services::file_search::SearchMode::decl(),
         services::services::config::Config::decl(),
         services::services::config::NotificationConfig::decl(),
+        services::services::config::WebhookConfig::decl(),
+        services::services::config::WebhookProvider::decl(),
         services::services::config::ThemeMode::decl(),
         services::services::config::EditorConfig::decl(),
         services::services::config::EditorType::decl(),
