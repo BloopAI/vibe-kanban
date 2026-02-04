@@ -192,7 +192,7 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
   const isRebasePending = git.states.rebasePending;
 
   // Don't render if we're redirecting to another dialog
-  if (!isInitialLoading && isRebaseInProgress) {
+  if (!isInitialLoading && (isRebaseInProgress || hasConflictedFiles)) {
     return null;
   }
 
