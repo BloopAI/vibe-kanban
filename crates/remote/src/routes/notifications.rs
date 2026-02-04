@@ -11,7 +11,8 @@ use uuid::Uuid;
 use super::error::ErrorResponse;
 use crate::{
     AppState, auth::RequestContext, db::notifications::NotificationRepository,
-    entities::NOTIFICATION_SHAPE, entity_def::EntityDef,
+    entities::NOTIFICATION_SHAPE,
+    entity_def::{EntityDef, NoCreate},
 };
 use utils::api::entities::{Notification, UpdateNotificationRequest};
 
@@ -36,7 +37,7 @@ pub struct ListNotificationsQuery {
     pub include_dismissed: bool,
 }
 
-pub fn entity() -> EntityDef<Notification, (), UpdateNotificationRequest> {
+pub fn entity() -> EntityDef<Notification, NoCreate, UpdateNotificationRequest> {
     EntityDef::new(&NOTIFICATION_SHAPE)
         .list(list_notifications)
         .get(get_notification)

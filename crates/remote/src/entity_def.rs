@@ -82,7 +82,7 @@ pub struct EntityDef<E, C = (), U = ()> {
     _phantom: PhantomData<fn() -> (E, C, U)>,
 }
 
-impl<E: TS + Send + Sync + 'static> EntityDef<E, (), ()> {
+impl<E: TS + Send + Sync + 'static> EntityDef<E, NoCreate, NoUpdate> {
     /// Create a new EntityDef from a shape definition.
     pub fn new(shape: &'static ShapeDefinition<E>) -> Self {
         Self {
@@ -141,7 +141,7 @@ impl<E: TS, C, U> EntityDef<E, C, U> {
     }
 }
 
-impl<E: TS, U> EntityDef<E, (), U> {
+impl<E: TS, U> EntityDef<E, NoCreate, U> {
     /// Add a create handler (POST /table).
     ///
     /// The create request type must implement `CreateRequestFor<Entity = E>`.
@@ -163,7 +163,7 @@ impl<E: TS, U> EntityDef<E, (), U> {
     }
 }
 
-impl<E: TS, C> EntityDef<E, C, ()> {
+impl<E: TS, C> EntityDef<E, C, NoUpdate> {
     /// Add an update handler (PATCH /table/{id}).
     ///
     /// The update request type must implement `UpdateRequestFor<Entity = E>`.
@@ -190,12 +190,24 @@ impl<E: TS, C> EntityDef<E, C, ()> {
 // =============================================================================
 
 /// Trait for types that may or may not have a TS type name.
-/// `()` returns `None`, actual TS types return `Some(name)`.
+/// Used to handle entities that don't have create or update endpoints.
 pub trait MaybeTypeName {
     fn maybe_name() -> Option<String>;
 }
 
-impl MaybeTypeName for () {
+/// Marker type for entities without a create endpoint.
+pub struct NoCreate;
+
+/// Marker type for entities without an update endpoint.
+pub struct NoUpdate;
+
+impl MaybeTypeName for NoCreate {
+    fn maybe_name() -> Option<String> {
+        None
+    }
+}
+
+impl MaybeTypeName for NoUpdate {
     fn maybe_name() -> Option<String> {
         None
     }

@@ -277,11 +277,11 @@ export const PROJECT_ENTITY: EntityDefinition<Project, CreateProjectRequest, Upd
   mutations: { url: '/v1/projects' } as EntityDefinition<Project, CreateProjectRequest, UpdateProjectRequest>['mutations'],
 };
 
-export const NOTIFICATION_ENTITY: EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest> = {
+export const NOTIFICATION_ENTITY: EntityDefinition<Notification, unknown, UpdateNotificationRequest> = {
   name: 'Notification',
   table: 'notifications',
   shape: NOTIFICATIONS_SHAPE,
-  mutations: { url: '/v1/notifications' } as EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest>['mutations'],
+  mutations: { url: '/v1/notifications' } as EntityDefinition<Notification, unknown, UpdateNotificationRequest>['mutations'],
 };
 
 export const TAG_ENTITY: EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest> = {
