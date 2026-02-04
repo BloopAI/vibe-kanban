@@ -77,14 +77,20 @@ Hover over any project icon to see the full project name in a tooltip.
 
 ## Default Statuses
 
-New projects come with four default status columns:
+New projects come with six default status columns:
 
-| Status | Purpose |
-|--------|---------|
-| **Backlog** | Issues waiting to be worked on |
-| **To Do** | Issues ready to start |
-| **In Progress** | Issues currently being worked on |
-| **Done** | Completed issues |
+| Status | Purpose | Visible by Default |
+|--------|---------|-------------------|
+| **Backlog** | Ideas and future work | Hidden |
+| **To do** | Issues ready to start | ✓ |
+| **In progress** | Issues currently being worked on | ✓ |
+| **In review** | Waiting for code review | ✓ |
+| **Done** | Completed issues | ✓ |
+| **Cancelled** | Issues that won't be done | Hidden |
+
+<Info>
+Hidden statuses don't appear as columns on the board, but you can still access issues in them via the status tabs (e.g., "Backlog" or "Cancelled" tabs).
+</Info>
 
 <Frame>
   <img src="/images/cloud/project-kanban-board.png" alt="Project kanban board showing columns and issues" />

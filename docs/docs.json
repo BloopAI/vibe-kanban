@@ -95,7 +95,6 @@
           "cloud/kanban-board",
           "cloud/filtering",
           "cloud/customisation",
-          "cloud/github-integration",
           "cloud/troubleshooting"
         ]
       },
