@@ -29,6 +29,7 @@
     "remote:generate-types:check": "cargo run --manifest-path crates/remote/Cargo.toml --bin remote-generate-types -- --check",
     "prepare-db": "node scripts/prepare-db.js",
     "prepare-db:check": "node scripts/prepare-db.js --check",
+    "build:bippy-bundle": "node scripts/build-bippy-bundle.mjs",
     "build:npx": "bash ./local-build.sh",
     "prepack": "pnpm run build:npx",
     "remote:dev": "cd crates/remote && docker compose --env-file .env.remote up --build ; docker compose down -v",
@@ -37,7 +38,9 @@
     "remote:prepare-db:check": "cd crates/remote && bash scripts/prepare-db.sh --check"
   },
   "devDependencies": {
+    "bippy": "0.5.28",
     "concurrently": "^8.2.2",
+    "esbuild": "^0.27.2",
     "jwt-decode": "^4.0.0",
     "vite": "^6.3.5"
   },

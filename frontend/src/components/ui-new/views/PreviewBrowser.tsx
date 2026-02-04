@@ -7,6 +7,7 @@ import {
   ArrowClockwiseIcon,
   CopyIcon,
   XIcon,
+  CrosshairIcon,
   MonitorIcon,
   DeviceMobileIcon,
   ArrowsOutCardinalIcon,
@@ -71,6 +72,8 @@ interface PreviewBrowserProps {
   devTools: UsePreviewDevToolsReturn;
   onNavigateBack: () => void;
   onNavigateForward: () => void;
+  isInspectMode: boolean;
+  onToggleInspectMode: () => void;
   devToolsCollapsed: boolean;
   onToggleDevToolsCollapsed: () => void;
 }
@@ -110,6 +113,8 @@ export function PreviewBrowser({
   devTools,
   onNavigateBack,
   onNavigateForward,
+  isInspectMode,
+  onToggleInspectMode,
   devToolsCollapsed,
   onToggleDevToolsCollapsed,
 }: PreviewBrowserProps) {
@@ -162,6 +167,18 @@ export function PreviewBrowser({
             onForward={onNavigateForward}
             disabled={!isServerRunning}
           />
+
+          {/* Inspect Mode */}
+          <IconButtonGroup>
+            <IconButtonGroupItem
+              icon={CrosshairIcon}
+              onClick={onToggleInspectMode}
+              active={isInspectMode}
+              disabled={!isServerRunning}
+              aria-label="Inspect component"
+              title="Inspect component"
+            />
+          </IconButtonGroup>
 
           {/* URL Input */}
           <div
@@ -331,6 +348,7 @@ export function PreviewBrowser({
                   style={{ width: MOBILE_WIDTH, height: MOBILE_HEIGHT }}
                 >
                   <iframe
+                    ref={iframeRef}
                     src={url}
                     title={t('preview.browser.title')}
                     className="w-full h-full border-0"

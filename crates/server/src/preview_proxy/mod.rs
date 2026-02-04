@@ -74,6 +74,14 @@ const STRIP_RESPONSE_HEADERS: &[&str] = &[
 /// Captures console, network, errors and sends via postMessage.
 const DEVTOOLS_SCRIPT: &str = include_str!("devtools_script.js");
 
+/// Bippy bundle script injected after <head> to install React DevTools hook
+/// before React initializes. Provides fiber inspection utilities.
+const BIPPY_BUNDLE: &str = include_str!("bippy_bundle.js");
+
+/// Click-to-component detection script injected before </body>.
+/// Enables inspect mode for detecting React component hierarchy.
+const CLICK_TO_COMPONENT_SCRIPT: &str = include_str!("click_to_component_script.js");
+
 /// Cookie name for storing target port (used for WebSocket routing).
 const PROXY_TARGET_COOKIE: &str = "_vk_proxy_target";
 
@@ -286,9 +294,20 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
             Ok(body_bytes) => {
                 let mut html = String::from_utf8_lossy(&body_bytes).to_string();
 
+                // Inject bippy bundle after <head> (must load before React)
+                if let Some(pos) = html.to_lowercase().find("<head>") {
+                    let head_end = pos + "<head>".len();
+                    let bippy_tag = format!("<script>{}</script>", BIPPY_BUNDLE);
+                    html.insert_str(head_end, &bippy_tag);
+                }
+
+                // Inject devtools and click-to-component scripts before </body>
                 if let Some(pos) = html.to_lowercase().rfind("</body>") {
-                    let script_tag = format!("<script>{}</script>", DEVTOOLS_SCRIPT);
-                    html.insert_str(pos, &script_tag);
+                    let scripts = format!(
+                        "<script>{}</script><script>{}</script>",
+                        DEVTOOLS_SCRIPT, CLICK_TO_COMPONENT_SCRIPT
+                    );
+                    html.insert_str(pos, &scripts);
                 }
 
                 let mut builder = Response::builder().status(status);

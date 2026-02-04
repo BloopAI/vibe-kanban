@@ -26,6 +26,7 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialog';
 import { usePreviewDevTools } from '@/hooks/usePreviewDevTools';
 import { PreviewDevToolsBridge } from '@/utils/previewDevToolsBridge';
+import { useInspectModeStore } from '@/stores/useInspectModeStore';
 
 const MIN_RESPONSIVE_WIDTH = 320;
 const MIN_RESPONSIVE_HEIGHT = 480;
@@ -98,6 +99,11 @@ export function PreviewBrowserContainer({
   const [allowManualUrl, setAllowManualUrl] = useState(false);
   const [immediateLoad, setImmediateLoad] = useState(false);
 
+  // Inspect mode state
+  const isInspectMode = useInspectModeStore((s) => s.isInspectMode);
+  const toggleInspectMode = useInspectModeStore((s) => s.toggleInspectMode);
+  const setPendingComponentMarkdown = useInspectModeStore((s) => s.setPendingComponentMarkdown);
+
   // DevTools state
   const [devToolsCollapsed, setDevToolsCollapsed] = useState(true);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -122,6 +128,31 @@ export function PreviewBrowserContainer({
       bridgeRef.current?.stop();
     };
   }, [devTools.handleMessage]);
+
+  // Send inspect mode toggle to iframe
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe?.contentWindow) return;
+
+    iframe.contentWindow.postMessage({
+      source: 'click-to-component',
+      type: 'toggle-inspect',
+      payload: { active: isInspectMode }
+    }, '*');
+  }, [isInspectMode]);
+
+  // Listen for component detection results from iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.data || event.data.source !== 'click-to-component') return;
+      if (event.data.type === 'component-detected' && event.data.payload?.markdown) {
+        setPendingComponentMarkdown(event.data.payload.markdown);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [setPendingComponentMarkdown]);
 
   // 10-second timeout to enable manual URL entry when no URL detected
   useEffect(() => {
@@ -499,6 +530,8 @@ export function PreviewBrowserContainer({
       devTools={devTools}
       onNavigateBack={handleNavigateBack}
       onNavigateForward={handleNavigateForward}
+      isInspectMode={isInspectMode}
+      onToggleInspectMode={toggleInspectMode}
       devToolsCollapsed={devToolsCollapsed}
       onToggleDevToolsCollapsed={handleToggleDevToolsCollapsed}
     />
