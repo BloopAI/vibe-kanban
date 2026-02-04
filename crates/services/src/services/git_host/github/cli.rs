@@ -15,6 +15,7 @@ use db::models::merge::{MergeStatus, PullRequestInfo};
 use serde::Deserialize;
 use tempfile::NamedTempFile;
 use thiserror::Error;
+use url::Url;
 use utils::shell::resolve_executable_path_blocking;
 
 use crate::services::git_host::types::{
@@ -25,7 +26,7 @@ use crate::services::git_host::types::{
 pub struct GitHubRepoInfo {
     pub owner: String,
     pub repo_name: String,
-    /// GitHub Enterprise hostname, if not github.com
+    /// GitHub hostname (e.g., "github.com" or enterprise hostname)
     pub hostname: Option<String>,
 }
 
@@ -33,6 +34,7 @@ pub struct GitHubRepoInfo {
 struct GhRepoViewResponse {
     owner: GhRepoOwner,
     name: String,
+    url: String,
 }
 
 #[derive(Deserialize)]
@@ -125,43 +127,11 @@ impl GhCli {
         Ok(())
     }
 
-    /// Extract hostname from a git remote URL.
-    ///
-    /// Supports:
-    /// - HTTPS: `https://host/owner/repo` or `https://host/owner/repo.git`
-    /// - SSH: `git@host:owner/repo.git`
-    /// - SSH protocol: `ssh://git@host/owner/repo.git`
-    ///
-    /// Returns `None` for `github.com` (the default host).
-    fn extract_hostname(remote_url: &str) -> Option<String> {
-        let host = if remote_url.starts_with("https://") || remote_url.starts_with("http://") {
-            // HTTPS: https://host/owner/repo
-            remote_url
-                .split("://")
-                .nth(1)?
-                .split('/')
-                .next()
-                .map(|h| h.split('@').last().unwrap_or(h)) // Handle https://user@host/...
-        } else if remote_url.starts_with("ssh://") {
-            // SSH protocol: ssh://git@host/owner/repo.git
-            remote_url
-                .split("://")
-                .nth(1)?
-                .split('/')
-                .next()
-                .and_then(|s| s.split('@').nth(1))
-        } else if remote_url.contains('@') && remote_url.contains(':') {
-            // SSH shorthand: git@host:owner/repo.git
-            remote_url
-                .split('@')
-                .nth(1)
-                .and_then(|s| s.split(':').next())
-        } else {
-            None
-        };
-
-        host.map(|h| h.to_string())
-            .filter(|h| !h.is_empty() && h != "github.com")
+    /// Extract hostname from an HTTPS URL returned by the GitHub CLI.
+    fn extract_hostname(url: &str) -> Option<String> {
+        Url::parse(url)
+            .ok()
+            .and_then(|u| u.host_str().map(String::from))
     }
 
     fn run<I, S>(&self, args: I, dir: Option<&Path>) -> Result<String, GhCliError>
@@ -212,20 +182,17 @@ impl GhCli {
         remote_url: &str,
         repo_path: &Path,
     ) -> Result<GitHubRepoInfo, GhCliError> {
-        // gh repo view accepts the remote URL directly and resolves the host
-        let args = vec!["repo", "view", remote_url, "--json", "owner,name"];
+        let args = vec!["repo", "view", remote_url, "--json", "owner,name,url"];
         let raw = self.run(args, Some(repo_path))?;
-        let hostname = Self::extract_hostname(remote_url);
-        Self::parse_repo_info_response(&raw, hostname)
+        Self::parse_repo_info_response(&raw)
     }
 
-    fn parse_repo_info_response(
-        raw: &str,
-        hostname: Option<String>,
-    ) -> Result<GitHubRepoInfo, GhCliError> {
+    fn parse_repo_info_response(raw: &str) -> Result<GitHubRepoInfo, GhCliError> {
         let resp: GhRepoViewResponse = serde_json::from_str(raw).map_err(|e| {
             GhCliError::UnexpectedOutput(format!("Failed to parse gh repo view response: {e}"))
         })?;
+
+        let hostname = Self::extract_hostname(&resp.url);
 
         Ok(GitHubRepoInfo {
             owner: resp.owner.login,
@@ -255,8 +222,10 @@ impl GhCli {
 
         // Use HOST/OWNER/REPO format for GitHub Enterprise
         let repo_spec = match &repo_info.hostname {
-            Some(host) => format!("{}/{}/{}", host, repo_info.owner, repo_info.repo_name),
-            None => format!("{}/{}", repo_info.owner, repo_info.repo_name),
+            Some(host) if host != "github.com" => {
+                format!("{}/{}/{}", host, repo_info.owner, repo_info.repo_name)
+            }
+            _ => format!("{}/{}", repo_info.owner, repo_info.repo_name),
         };
 
         let mut args: Vec<OsString> = Vec::with_capacity(14);
@@ -304,8 +273,10 @@ impl GhCli {
     ) -> Result<Vec<PullRequestInfo>, GhCliError> {
         // Use HOST/OWNER/REPO format for GitHub Enterprise
         let repo_spec = match &repo_info.hostname {
-            Some(host) => format!("{}/{}/{}", host, repo_info.owner, repo_info.repo_name),
-            None => format!("{}/{}", repo_info.owner, repo_info.repo_name),
+            Some(host) if host != "github.com" => {
+                format!("{}/{}/{}", host, repo_info.owner, repo_info.repo_name)
+            }
+            _ => format!("{}/{}", repo_info.owner, repo_info.repo_name),
         };
         let raw = self.run(
             [
@@ -333,8 +304,10 @@ impl GhCli {
     ) -> Result<Vec<PrComment>, GhCliError> {
         // Use HOST/OWNER/REPO format for GitHub Enterprise
         let repo_spec = match &repo_info.hostname {
-            Some(host) => format!("{}/{}/{}", host, repo_info.owner, repo_info.repo_name),
-            None => format!("{}/{}", repo_info.owner, repo_info.repo_name),
+            Some(host) if host != "github.com" => {
+                format!("{}/{}/{}", host, repo_info.owner, repo_info.repo_name)
+            }
+            _ => format!("{}/{}", repo_info.owner, repo_info.repo_name),
         };
         let raw = self.run(
             [
@@ -366,8 +339,10 @@ impl GhCli {
         ];
         // Add --hostname for GitHub Enterprise
         if let Some(ref host) = repo_info.hostname {
-            args.push("--hostname".to_string());
-            args.push(host.clone());
+            if host != "github.com" {
+                args.push("--hostname".to_string());
+                args.push(host.clone());
+            }
         }
         let raw = self.run(args, None)?;
         Self::parse_pr_review_comments(&raw)

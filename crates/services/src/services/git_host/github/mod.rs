@@ -58,14 +58,13 @@ impl GitHubProvider {
             let cli = cli.clone();
             let repo_info = repo_info.clone();
 
-            let comments =
-                task::spawn_blocking(move || cli.get_pr_comments(&repo_info, pr_number))
-                    .await
-                    .map_err(|err| {
-                        GitHostError::PullRequest(format!(
-                            "Failed to execute GitHub CLI for fetching PR comments: {err}"
-                        ))
-                    })?;
+            let comments = task::spawn_blocking(move || cli.get_pr_comments(&repo_info, pr_number))
+                .await
+                .map_err(|err| {
+                    GitHostError::PullRequest(format!(
+                        "Failed to execute GitHub CLI for fetching PR comments: {err}"
+                    ))
+                })?;
             comments.map_err(GitHostError::from)
         })
         .retry(
@@ -182,16 +181,15 @@ impl GitHostProvider for GitHubProvider {
             let target_repo = target_repo_info.clone();
             let repo_path = repo_path.to_path_buf();
 
-            let cli_result = task::spawn_blocking(move || {
-                cli.create_pr(&request, &target_repo, &repo_path)
-            })
-            .await
-            .map_err(|err| {
-                GitHostError::PullRequest(format!(
-                    "Failed to execute GitHub CLI for PR creation: {err}"
-                ))
-            })?
-            .map_err(GitHostError::from)?;
+            let cli_result =
+                task::spawn_blocking(move || cli.create_pr(&request, &target_repo, &repo_path))
+                    .await
+                    .map_err(|err| {
+                        GitHostError::PullRequest(format!(
+                            "Failed to execute GitHub CLI for PR creation: {err}"
+                        ))
+                    })?
+                    .map_err(GitHostError::from)?;
 
             info!(
                 "Created GitHub PR #{} for branch {}",
@@ -268,14 +266,13 @@ impl GitHostProvider for GitHubProvider {
             let repo_info = repo_info.clone();
             let branch = branch.clone();
 
-            let prs =
-                task::spawn_blocking(move || cli.list_prs_for_branch(&repo_info, &branch))
-                    .await
-                    .map_err(|err| {
-                        GitHostError::PullRequest(format!(
-                            "Failed to execute GitHub CLI for listing PRs: {err}"
-                        ))
-                    })?;
+            let prs = task::spawn_blocking(move || cli.list_prs_for_branch(&repo_info, &branch))
+                .await
+                .map_err(|err| {
+                    GitHostError::PullRequest(format!(
+                        "Failed to execute GitHub CLI for listing PRs: {err}"
+                    ))
+                })?;
             prs.map_err(GitHostError::from)
         })
         .retry(
