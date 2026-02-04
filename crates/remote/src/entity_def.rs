@@ -27,10 +27,7 @@
 
 use std::marker::PhantomData;
 
-use axum::{
-    handler::Handler,
-    routing::{MethodRouter, delete, get, patch, post},
-};
+use axum::{handler::Handler, routing::MethodRouter};
 use ts_rs::TS;
 
 use crate::{shapes::ShapeDefinition, AppState};
@@ -71,6 +68,32 @@ impl CreateRequestFor for CreateIssueRequest {
 
 impl UpdateRequestFor for UpdateIssueRequest {
     type Entity = Issue;
+}
+
+// =============================================================================
+// Helper trait for optional type names
+// =============================================================================
+
+/// Helper trait to get an optional type name.
+/// `()` returns `None`, any `T: TS` returns `Some(T::name())`.
+pub trait MaybeTypeName {
+    fn type_name() -> Option<String>;
+}
+
+impl MaybeTypeName for () {
+    fn type_name() -> Option<String> {
+        None
+    }
+}
+
+// Blanket impl for any T that implements TS
+// We need a wrapper to avoid conflict with the () impl
+pub struct HasType<T>(PhantomData<T>);
+
+impl<T: TS> MaybeTypeName for HasType<T> {
+    fn type_name() -> Option<String> {
+        Some(T::name())
+    }
 }
 
 // =============================================================================
@@ -155,6 +178,17 @@ impl<E: TS, C, U> EntityDef2<E, C, U> {
         self.id_route = self.id_route.delete(handler);
         self
     }
+
+    /// Build the axum router from the registered handlers.
+    pub fn router(self) -> axum::Router<AppState> {
+        let table = self.shape.table();
+        let base_path = format!("/{}", table);
+        let id_path = format!("/{}/{{{}_id}}", table, singular(table));
+
+        axum::Router::new()
+            .route(&base_path, self.base_route)
+            .route(&id_path, self.id_route)
+    }
 }
 
 impl<E: TS, U> EntityDef2<E, (), U> {
@@ -201,18 +235,8 @@ impl<E: TS, C> EntityDef2<E, C, ()> {
     }
 }
 
+// Metadata for entities with both create and update
 impl<E: TS, C: TS, U: TS> EntityDef2<E, C, U> {
-    /// Build the axum router from the registered handlers.
-    pub fn router(self) -> axum::Router<AppState> {
-        let table = self.shape.table();
-        let base_path = format!("/{}", table);
-        let id_path = format!("/{}/{{{}_id}}", table, singular(table));
-
-        axum::Router::new()
-            .route(&base_path, self.base_route)
-            .route(&id_path, self.id_route)
-    }
-
     /// Extract metadata for TypeScript generation.
     pub fn metadata(&self) -> EntityMeta {
         EntityMeta {
@@ -230,93 +254,6 @@ impl<E: TS, C: TS, U: TS> EntityDef2<E, C, U> {
             } else {
                 None
             },
-            has_delete: self.has_delete,
-        }
-    }
-}
-
-// Also implement for partial types (no create or no update)
-impl<E: TS, C: TS> EntityDef2<E, C, ()> {
-    /// Build the axum router from the registered handlers.
-    pub fn router(self) -> axum::Router<AppState> {
-        let table = self.shape.table();
-        let base_path = format!("/{}", table);
-        let id_path = format!("/{}/{{{}_id}}", table, singular(table));
-
-        axum::Router::new()
-            .route(&base_path, self.base_route)
-            .route(&id_path, self.id_route)
-    }
-
-    /// Extract metadata for TypeScript generation.
-    pub fn metadata(&self) -> EntityMeta {
-        EntityMeta {
-            table: self.shape.table(),
-            shape_url: self.shape.url(),
-            mutations_url: format!("/v1/{}", self.shape.table()),
-            row_type: E::name(),
-            create_type: if self.has_create {
-                Some(C::name())
-            } else {
-                None
-            },
-            update_type: None,
-            has_delete: self.has_delete,
-        }
-    }
-}
-
-impl<E: TS, U: TS> EntityDef2<E, (), U> {
-    /// Build the axum router from the registered handlers.
-    pub fn router(self) -> axum::Router<AppState> {
-        let table = self.shape.table();
-        let base_path = format!("/{}", table);
-        let id_path = format!("/{}/{{{}_id}}", table, singular(table));
-
-        axum::Router::new()
-            .route(&base_path, self.base_route)
-            .route(&id_path, self.id_route)
-    }
-
-    /// Extract metadata for TypeScript generation.
-    pub fn metadata(&self) -> EntityMeta {
-        EntityMeta {
-            table: self.shape.table(),
-            shape_url: self.shape.url(),
-            mutations_url: format!("/v1/{}", self.shape.table()),
-            row_type: E::name(),
-            create_type: None,
-            update_type: if self.has_update {
-                Some(U::name())
-            } else {
-                None
-            },
-            has_delete: self.has_delete,
-        }
-    }
-}
-
-impl<E: TS> EntityDef2<E, (), ()> {
-    /// Build the axum router from the registered handlers.
-    pub fn router(self) -> axum::Router<AppState> {
-        let table = self.shape.table();
-        let base_path = format!("/{}", table);
-        let id_path = format!("/{}/{{{}_id}}", table, singular(table));
-
-        axum::Router::new()
-            .route(&base_path, self.base_route)
-            .route(&id_path, self.id_route)
-    }
-
-    /// Extract metadata for TypeScript generation.
-    pub fn metadata(&self) -> EntityMeta {
-        EntityMeta {
-            table: self.shape.table(),
-            shape_url: self.shape.url(),
-            mutations_url: format!("/v1/{}", self.shape.table()),
-            row_type: E::name(),
-            create_type: None,
-            update_type: None,
             has_delete: self.has_delete,
         }
     }
