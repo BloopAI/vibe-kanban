@@ -141,9 +141,9 @@ export function PreviewBrowserContainer({
     }, '*');
   }, [isInspectMode]);
 
-  // Listen for component detection results from iframe
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
       if (!event.data || event.data.source !== 'click-to-component') return;
       if (event.data.type === 'component-detected' && event.data.payload?.markdown) {
         setPendingComponentMarkdown(event.data.payload.markdown);
@@ -422,6 +422,7 @@ export function PreviewBrowserContainer({
   );
 
   // Construct proxy URL for iframe to enable security isolation via separate origin
+  // Uses subdomain-based routing: http://{devPort}.localhost:{proxyPort}{path}
   const iframeUrl = useMemo(() => {
     if (!effectiveUrl || !previewProxyPort) return undefined;
 
@@ -448,13 +449,21 @@ export function PreviewBrowserContainer({
         return undefined;
       }
 
+      // Warn if not on localhost (subdomain routing requires localhost)
+      if (
+        !['localhost', '127.0.0.1'].includes(window.location.hostname)
+      ) {
+        console.warn(
+          '[Preview] Preview proxy subdomain routing may not work on non-localhost hostname'
+        );
+      }
+
       const path = parsed.pathname + parsed.search;
 
+      // Subdomain-based routing: the proxy extracts the port from the Host header
       const proxyUrl = new URL(
-        `http://${window.location.hostname}:${previewProxyPort}/proxy`
+        `http://${devServerPort}.localhost:${previewProxyPort}${path}`
       );
-      proxyUrl.searchParams.set('target', devServerPort);
-      proxyUrl.searchParams.set('path', path);
       proxyUrl.searchParams.set('_refresh', String(previewRefreshKey));
 
       return proxyUrl.toString();
