@@ -141,12 +141,32 @@ The issue panel has collapsible sections for additional information:
 
 ### Workspaces Section
 
-Shows development workspaces linked to this issue. Workspaces are where coding agents do their work.
+Shows development workspaces linked to this issue. [Workspaces](/workspaces/index) are where coding agents do their work.
 
+<Frame>
+  <img style={{maxHeight: "150px"}} src="/images/cloud/workspaces-section.png" alt="Workspaces section showing a linked active workspace" />
+</Frame>
 
-- **Create Workspace** - Start a new workspace for this issue
-- **Open Workspace** - Continue working in an existing workspace
-- **View Status** - See if the workspace is active, idle, or completed
+Each linked workspace shows:
+- **Status** - Active, idle, or completed
+- **Age** - How long ago it was created
+- **PR status** - Whether a pull request has been created
+
+**To link a workspace:**
+
+Click the **+** button in the Workspaces section header to create a new workspace or link an existing one.
+
+<Frame>
+  <img style={{maxHeight: "300px"}} src="/images/cloud/link-workspace-dropdown.png" alt="Link workspace dropdown showing Create new workspace and existing workspaces" />
+</Frame>
+
+**To unlink a workspace:**
+
+Click the **⋯** menu on the workspace and select **Unlink from issue**.
+
+<Frame>
+  <img style={{maxHeight: "200px"}} src="/images/cloud/workspace-menu-unlink.png" alt="Workspace menu showing Unlink from issue and Delete workspace options" />
+</Frame>
 
 ### Sub-Issues Section
 
@@ -213,6 +233,44 @@ When viewing a sub-issue, you'll see a **Parent** link below the issue propertie
 - Completing all sub-issues doesn't automatically complete the parent
 - Sub-issues can't have their own sub-issues (only one level deep)
 
+## Issue Actions
+
+Issue Actions provide quick access to common operations on an issue. You can access them in two ways:
+
+### From the Issue Panel
+
+Click the **More** button (three dots) in the top-right corner of the issue panel.
+
+<Frame>
+  <img style={{maxHeight: "150px"}} src="/images/cloud/issue-panel-more-button.png" alt="Issue panel header showing the three dots More button" />
+</Frame>
+
+### From the Command Bar
+
+Open the command bar with `Cmd/Ctrl + K`, then select **Issue Actions**.
+
+<Frame>
+  <img style={{maxHeight: "350px"}} src="/images/cloud/command-panel-issue-actions.png" alt="Command panel showing Issue Actions option" />
+</Frame>
+
+### Available Actions
+
+<Frame>
+  <img style={{maxHeight: "350px"}} src="/images/cloud/issue-actions-menu.png" alt="Issue Actions menu showing all available actions with keyboard shortcuts" />
+</Frame>
+
+| Action | Shortcut | Description |
+|--------|----------|-------------|
+| **Create Issue** | `I C` | Create a new issue |
+| **Change Status** | `I S` | Move issue to a different status |
+| **Change Priority** | `I P` | Set or change priority level |
+| **Change Assignees** | `I A` | Add or remove assignees |
+| **Make Sub-issue of** | `I M` | Make this issue a child of another |
+| **Add Sub-issue** | `I B` | Add a sub-issue to this issue |
+| **Link Workspace** | `I W` | Connect a workspace to this issue |
+| **Duplicate Issue** | `I D` | Create a copy of this issue |
+| **Delete Issue** | - | Permanently delete this issue |
+
 ## Copying Issue Links
 
 To share an issue with someone:
@@ -228,7 +286,7 @@ Share this link with team members - they can click it to go directly to that iss
 To delete an issue:
 
 1. Open the issue panel
-2. Click the **More** menu (<Icon icon="ellipsis" />)
+2. Click the **More** button (three dots) to open Issue Actions
 3. Select **Delete Issue**
 4. Confirm the deletion
 
