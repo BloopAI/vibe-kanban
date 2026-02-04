@@ -15,9 +15,13 @@ pub mod issue_follower;
 pub mod issue_relationship;
 pub mod issue_tag;
 pub mod notification;
+pub mod organization_member;
 pub mod project;
 pub mod project_status;
+pub mod pull_request;
 pub mod tag;
+pub mod user;
+pub mod workspace;
 
 pub use issue::*;
 pub use issue_assignee::*;
@@ -27,9 +31,13 @@ pub use issue_follower::*;
 pub use issue_relationship::*;
 pub use issue_tag::*;
 pub use notification::*;
+pub use organization_member::*;
 pub use project::*;
 pub use project_status::*;
+pub use pull_request::*;
 pub use tag::*;
+pub use user::*;
+pub use workspace::*;
 
 pub fn some_if_present<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where

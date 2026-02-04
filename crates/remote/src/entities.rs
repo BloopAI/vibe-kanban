@@ -5,12 +5,8 @@
 
 use utils::api::entities::{
     Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssueRelationship,
-    IssueTag, Notification, Project, ProjectStatus, Tag,
-};
-
-use crate::db::{
-    organization_members::OrganizationMember, pull_requests::PullRequest, users::User,
-    workspaces::Workspace,
+    IssueTag, Notification, OrganizationMember, Project, ProjectStatus, PullRequest, Tag, User,
+    Workspace,
 };
 
 // =============================================================================
