@@ -1,11 +1,10 @@
+// Re-export MemberRole from api-types
+pub use api_types::MemberRole;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::Type;
 use ts_rs::TS;
 use uuid::Uuid;
-
-// Re-export MemberRole from api-types
-pub use api_types::MemberRole;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

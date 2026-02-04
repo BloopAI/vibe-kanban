@@ -6,8 +6,7 @@ use serde_json::Value;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use crate::some_if_present;
-use crate::types::IssuePriority;
+use crate::{some_if_present, types::IssuePriority};
 
 // =============================================================================
 // Row type

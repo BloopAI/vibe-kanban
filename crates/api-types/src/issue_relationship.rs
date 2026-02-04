@@ -5,8 +5,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use crate::some_if_present;
-use crate::types::IssueRelationshipType;
+use crate::{some_if_present, types::IssueRelationshipType};
 
 // =============================================================================
 // Row type
