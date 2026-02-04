@@ -6,6 +6,9 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
+use utils::api::entities::{
+    CreateIssueRequest, Issue, ListIssuesQuery, ListIssuesResponse, UpdateIssueRequest,
+};
 use uuid::Uuid;
 
 use super::{
@@ -17,9 +20,6 @@ use crate::{
     auth::RequestContext,
     db::{get_txid, issues::IssueRepository},
     mutation_types::{DeleteResponse, MutationResponse},
-};
-use utils::api::entities::{
-    CreateIssueRequest, Issue, ListIssuesQuery, ListIssuesResponse, UpdateIssueRequest,
 };
 
 /// Router for issue endpoints including bulk update
