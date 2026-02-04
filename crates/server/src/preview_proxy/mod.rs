@@ -3,23 +3,21 @@
 //! Provides a separate HTTP server for serving preview iframe content.
 //! This isolates preview content from the main application for security.
 //!
-//! The proxy listens on a separate port (configurable via PREVIEW_PROXY_PORT env var)
-//! and serves workspace preview content through controlled routes.
+//! The proxy listens on a separate port and routes requests based on the
+//! Host header subdomain. A request to `{port}.localhost:{proxy_port}/path`
+//! is forwarded to `localhost:{port}/path`.
 
 use std::sync::OnceLock;
 
 use axum::{
     Router,
     body::Body,
-    extract::{FromRequestParts, Path, Request, ws::WebSocketUpgrade},
+    extract::{FromRequestParts, Request, ws::WebSocketUpgrade},
     http::{HeaderMap, HeaderName, HeaderValue, StatusCode, header},
-    response::{Html, IntoResponse, Response},
-    routing::{any, get},
+    response::{IntoResponse, Response},
 };
 use futures_util::{SinkExt, StreamExt};
-use regex::Regex;
 use reqwest::Client;
-use serde::Deserialize;
 use tokio_tungstenite::tungstenite;
 
 /// Global storage for the preview proxy port once assigned.
@@ -37,13 +35,6 @@ pub fn set_proxy_port(port: u16) -> Option<u16> {
     PROXY_PORT.set(port).ok().map(|()| port)
 }
 
-const PROXY_PAGE_HTML: &str = include_str!("proxy_page.html");
-
-async fn proxy_page_handler() -> Html<&'static str> {
-    Html(PROXY_PAGE_HTML)
-}
-
-/// Headers that should not be forwarded from the client request.
 const SKIP_REQUEST_HEADERS: &[&str] = &[
     "host",
     "connection",
@@ -57,6 +48,7 @@ const SKIP_REQUEST_HEADERS: &[&str] = &[
     "sec-websocket-version",
     "sec-websocket-extensions",
     "accept-encoding",
+    "origin",
 ];
 
 /// Headers that should be stripped from the proxied response.
@@ -82,79 +74,22 @@ const BIPPY_BUNDLE: &str = include_str!("bippy_bundle.js");
 /// Enables inspect mode for detecting React component hierarchy.
 const CLICK_TO_COMPONENT_SCRIPT: &str = include_str!("click_to_component_script.js");
 
-/// Cookie name for storing target port (used for WebSocket routing).
-const PROXY_TARGET_COOKIE: &str = "_vk_proxy_target";
-
-#[derive(Debug, Deserialize)]
-pub struct TargetPortPath {
-    pub target: u16,
+fn extract_target_from_host(headers: &HeaderMap) -> Option<u16> {
+    let host = headers.get(header::HOST)?.to_str().ok()?;
+    let subdomain = host.split('.').next()?;
+    subdomain.parse::<u16>().ok()
 }
 
-#[derive(Debug, Deserialize)]
-pub struct TargetPortAndPath {
-    pub target: u16,
-    pub path: String,
-}
-
-async fn proxy_target_root(Path(params): Path<TargetPortPath>, request: Request) -> Response {
-    let response = proxy_impl(params.target, String::new(), request).await;
-    add_target_cookie(response, params.target)
-}
-
-async fn proxy_target_path(Path(params): Path<TargetPortAndPath>, request: Request) -> Response {
-    let response = proxy_impl(params.target, params.path, request).await;
-    add_target_cookie(response, params.target)
-}
-
-/// Extract target port from Referer header.
-/// Looks for pattern `/p/{port}/` in the Referer URL.
-fn extract_target_from_referer(headers: &HeaderMap) -> Option<u16> {
-    let referer = headers.get(header::REFERER)?.to_str().ok()?;
-    let re = Regex::new(r"/p/(\d+)/").ok()?;
-    let caps = re.captures(referer)?;
-    caps.get(1)?.as_str().parse().ok()
-}
-
-/// Extract target port from cookie.
-/// Used as fallback when Referer doesn't contain port info (e.g., WebSocket).
-fn extract_target_from_cookie(headers: &HeaderMap) -> Option<u16> {
-    let cookie_header = headers.get(header::COOKIE)?.to_str().ok()?;
-    for cookie in cookie_header.split(';') {
-        let cookie = cookie.trim();
-        if let Some(value) = cookie.strip_prefix("_vk_proxy_target=") {
-            return value.parse().ok();
-        }
-    }
-    None
-}
-
-/// Add Set-Cookie header to response to remember target port.
-fn add_target_cookie(response: Response, target_port: u16) -> Response {
-    let (mut parts, body) = response.into_parts();
-    let cookie_value = format!("{}={}; Path=/; SameSite=Strict", PROXY_TARGET_COOKIE, target_port);
-    if let Ok(header_value) = HeaderValue::from_str(&cookie_value) {
-        parts.headers.insert(header::SET_COOKIE, header_value);
-    }
-    Response::from_parts(parts, body)
-}
-
-/// Catch-all handler for requests without explicit `/p/{port}/` prefix.
-/// Uses Referer header to determine target port, falls back to cookie.
-async fn catchall_proxy(request: Request) -> Response {
-    let headers = request.headers();
-    let target_port = extract_target_from_referer(headers)
-        .or_else(|| extract_target_from_cookie(headers));
-    
-    let target_port = match target_port {
+async fn subdomain_proxy(request: Request) -> Response {
+    let target_port = match extract_target_from_host(request.headers()) {
         Some(port) => port,
         None => {
-            return (StatusCode::NOT_FOUND, "No target port in Referer or Cookie").into_response();
+            return (StatusCode::BAD_REQUEST, "No valid port in Host subdomain").into_response();
         }
     };
-    
-    // Get the path from the request URI (strip leading /)
+
     let path = request.uri().path().trim_start_matches('/').to_string();
-    
+
     proxy_impl(target_port, path, request).await
 }
 
@@ -454,9 +389,5 @@ pub fn router<S>() -> Router<S>
 where
     S: Clone + Send + Sync + 'static,
 {
-    Router::new()
-        .route("/proxy", get(proxy_page_handler))
-        .route("/p/{target}/", any(proxy_target_root))
-        .route("/p/{target}/{*path}", any(proxy_target_path))
-        .fallback(catchall_proxy)
+    Router::new().fallback(subdomain_proxy)
 }
