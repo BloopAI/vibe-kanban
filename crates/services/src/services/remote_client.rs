@@ -634,6 +634,47 @@ impl RemoteClient {
         .await?;
         Ok(())
     }
+
+    /// Lists attachments for an issue on the remote server.
+    pub async fn list_issue_attachments(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<RemoteListAttachmentsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/issues/{issue_id}/attachments"))
+            .await
+    }
+
+    /// Used for fetching from presigned Azure SAS URLs.
+    pub async fn download_from_url(&self, url: &str) -> Result<Vec<u8>, RemoteClientError> {
+        let res = self.http.get(url).send().await.map_err(map_reqwest_error)?;
+        if !res.status().is_success() {
+            return Err(RemoteClientError::Http {
+                status: res.status().as_u16(),
+                body: res.text().await.unwrap_or_default(),
+            });
+        }
+        let bytes = res
+            .bytes()
+            .await
+            .map_err(|e| RemoteClientError::Transport(e.to_string()))?;
+        Ok(bytes.to_vec())
+    }
+}
+
+/// Minimal representation of a remote attachment (only fields needed for import).
+#[derive(Debug, Deserialize)]
+pub struct RemoteAttachment {
+    pub id: Uuid,
+    pub original_name: String,
+    pub mime_type: Option<String>,
+    pub size_bytes: i64,
+    pub file_url: Option<String>,
+}
+
+/// Response from listing issue attachments on the remote server.
+#[derive(Debug, Deserialize)]
+pub struct RemoteListAttachmentsResponse {
+    pub attachments: Vec<RemoteAttachment>,
 }
 
 fn map_reqwest_error(e: reqwest::Error) -> RemoteClientError {

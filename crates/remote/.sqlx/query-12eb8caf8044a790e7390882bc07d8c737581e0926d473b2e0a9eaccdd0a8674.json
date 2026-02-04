@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM attachments\n            WHERE id = $1\n            RETURNING\n                id          AS \"id!: Uuid\",\n                blob_id     AS \"blob_id!: Uuid\",\n                issue_id    AS \"issue_id?: Uuid\",\n                comment_id  AS \"comment_id?: Uuid\",\n                created_at  AS \"created_at!: DateTime<Utc>\",\n                expires_at  AS \"expires_at?: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "blob_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "issue_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "comment_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "expires_at?: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "12eb8caf8044a790e7390882bc07d8c737581e0926d473b2e0a9eaccdd0a8674"
+}

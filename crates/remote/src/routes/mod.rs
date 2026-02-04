@@ -31,6 +31,7 @@ mod billing {
 }
 mod electric_proxy;
 pub(crate) mod error;
+mod attachments;
 mod github_app;
 mod identity;
 pub mod issue_assignees;
@@ -122,6 +123,7 @@ pub fn router(state: AppState) -> Router {
         .merge(issue_comment_reactions::router())
         .merge(issues::router())
         .merge(issue_assignees::router())
+        .merge(attachments::router())
         .merge(issue_followers::router())
         .merge(issue_tags::router())
         .merge(issue_relationships::router())

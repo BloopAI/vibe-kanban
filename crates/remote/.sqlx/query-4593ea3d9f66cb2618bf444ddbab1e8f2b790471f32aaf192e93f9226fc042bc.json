@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT p.organization_id\n            FROM blobs b\n            INNER JOIN projects p ON p.id = b.project_id\n            WHERE b.id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "organization_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4593ea3d9f66cb2618bf444ddbab1e8f2b790471f32aaf192e93f9226fc042bc"
+}

@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO attachments (id, blob_id, issue_id, comment_id, expires_at)\n            VALUES ($1, $2, $3, $4, $5)\n            RETURNING\n                id          AS \"id!: Uuid\",\n                blob_id     AS \"blob_id!: Uuid\",\n                issue_id    AS \"issue_id?: Uuid\",\n                comment_id  AS \"comment_id?: Uuid\",\n                created_at  AS \"created_at!: DateTime<Utc>\",\n                expires_at  AS \"expires_at?: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "blob_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "issue_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "comment_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "expires_at?: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "aa31348f22b24c16e1d1365c2508ad7b6c155ef2a50cabd80b59e297001dd93a"
+}
