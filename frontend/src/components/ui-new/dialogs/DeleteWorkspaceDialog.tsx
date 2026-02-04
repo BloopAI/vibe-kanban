@@ -29,7 +29,7 @@ export type DeleteWorkspaceDialogResult = {
 const DeleteWorkspaceDialogImpl = NiceModal.create<DeleteWorkspaceDialogProps>(
   ({ workspaceId, branchName }) => {
     const modal = useModal();
-    const { t } = useTranslation(['workspaces', 'common']);
+    const { t } = useTranslation();
     const [deleteBranches, setDeleteBranches] = useState(false);
 
     // Check if branch deletion is safe by looking for open PRs
@@ -66,12 +66,12 @@ const DeleteWorkspaceDialogImpl = NiceModal.create<DeleteWorkspaceDialogProps>(
             <div className="flex items-center gap-3">
               <WarningIcon className="h-6 w-6 text-destructive" />
               <DialogTitle>
-                {t('workspaces:delete.title', 'Delete Workspace')}
+                {t('workspaces.deleteDialog.title', 'Delete Workspace')}
               </DialogTitle>
             </div>
             <DialogDescription className="text-left pt-2">
               {t(
-                'workspaces:delete.description',
+                'workspaces.deleteDialog.description',
                 'Are you sure you want to delete this workspace? This action cannot be undone.'
               )}
             </DialogDescription>
@@ -93,20 +93,27 @@ const DeleteWorkspaceDialogImpl = NiceModal.create<DeleteWorkspaceDialogProps>(
                       ? 'text-muted-foreground cursor-not-allowed'
                       : ''
                   }`}
-                  onClick={() => canDeleteBranches && setDeleteBranches(!deleteBranches)}
+                  onClick={() =>
+                    canDeleteBranches && setDeleteBranches(!deleteBranches)
+                  }
                 >
                   <span className="flex items-center gap-2">
                     <GitBranchIcon className="h-4 w-4" />
-                    {t('workspaces:delete.deleteBranch', {
-                      branchName,
-                      defaultValue: `Also delete branch '${branchName}'`,
-                    })}
+                    <>
+                      {t(
+                        'workspaces.deleteDialog.deleteBranchLabel',
+                        'Delete branch'
+                      )}{' '}
+                      <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">
+                        {branchName}
+                      </code>
+                    </>
                   </span>
                 </label>
                 {hasOpenPR && (
                   <p className="text-xs text-muted-foreground">
                     {t(
-                      'workspaces:delete.cannotDeleteOpenPr',
+                      'workspaces.deleteDialog.cannotDeleteOpenPr',
                       'Cannot delete branch while PR is open'
                     )}
                   </p>
@@ -117,10 +124,10 @@ const DeleteWorkspaceDialogImpl = NiceModal.create<DeleteWorkspaceDialogProps>(
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={handleCancel}>
-              {t('common:confirm.defaultCancel', 'Cancel')}
+              {t('confirm.defaultCancel', 'Cancel')}
             </Button>
             <Button variant="destructive" onClick={handleConfirm}>
-              {t('common:confirm.delete', 'Delete')}
+              {t('confirm.delete', 'Delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

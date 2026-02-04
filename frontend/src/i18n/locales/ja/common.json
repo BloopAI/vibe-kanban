@@ -177,7 +177,13 @@
     "deleteConfirmMessage": "このワークスペースを削除してもよろしいですか？これにより課題からのリンクが解除され、ローカルワークスペースが削除されます。この操作は元に戻せません。",
     "unlinkError": "ワークスペースのリンク解除に失敗しました",
     "deleteError": "ワークスペースの削除に失敗しました",
-    "filesChanged": "{{count}}ファイル"
+    "filesChanged": "{{count}}ファイル",
+    "deleteDialog": {
+      "title": "ワークスペースを削除",
+      "description": "このワークスペースを削除してもよろしいですか？この操作は元に戻せません。",
+      "deleteBranchLabel": "ブランチを削除",
+      "cannotDeleteOpenPr": "PRがオープン中はブランチを削除できません"
+    }
   },
   "fileTree": {
     "searchPlaceholder": "ファイルを検索...",

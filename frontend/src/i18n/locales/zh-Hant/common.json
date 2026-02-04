@@ -177,7 +177,13 @@
     "deleteConfirmMessage": "確定要刪除此工作區嗎？這將取消與問題的關聯並刪除本地工作區。此操作無法復原。",
     "unlinkError": "取消關聯工作區失敗",
     "deleteError": "刪除工作區失敗",
-    "filesChanged": "{{count}} 個檔案"
+    "filesChanged": "{{count}} 個檔案",
+    "deleteDialog": {
+      "title": "刪除工作區",
+      "description": "確定要刪除此工作區嗎？此操作無法復原。",
+      "deleteBranchLabel": "刪除分支",
+      "cannotDeleteOpenPr": "PR 開啟時無法刪除分支"
+    }
   },
   "fileTree": {
     "searchPlaceholder": "搜尋檔案...",

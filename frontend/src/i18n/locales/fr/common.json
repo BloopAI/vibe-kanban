@@ -177,7 +177,13 @@
     "deleteConfirmMessage": "Êtes-vous sûr de vouloir supprimer cet espace de travail ? Cela le dissociera du problème et supprimera l'espace de travail local. Cette action est irréversible.",
     "unlinkError": "Échec de la dissociation de l'espace de travail",
     "deleteError": "Échec de la suppression de l'espace de travail",
-    "filesChanged": "{{count}} fichiers"
+    "filesChanged": "{{count}} fichiers",
+    "deleteDialog": {
+      "title": "Supprimer l'espace de travail",
+      "description": "Êtes-vous sûr de vouloir supprimer cet espace de travail ? Cette action est irréversible.",
+      "deleteBranchLabel": "Supprimer la branche",
+      "cannotDeleteOpenPr": "Impossible de supprimer la branche tant que la PR est ouverte"
+    }
   },
   "fileTree": {
     "searchPlaceholder": "Rechercher des fichiers...",

@@ -177,7 +177,13 @@
     "deleteConfirmMessage": "¿Estás seguro de que deseas eliminar este espacio de trabajo? Esto lo desvinculará del problema y eliminará el espacio de trabajo local. Esta acción no se puede deshacer.",
     "unlinkError": "Error al desvincular el espacio de trabajo",
     "deleteError": "Error al eliminar el espacio de trabajo",
-    "filesChanged": "{{count}} archivos"
+    "filesChanged": "{{count}} archivos",
+    "deleteDialog": {
+      "title": "Eliminar espacio de trabajo",
+      "description": "¿Estás seguro de que deseas eliminar este espacio de trabajo? Esta acción no se puede deshacer.",
+      "deleteBranchLabel": "Eliminar rama",
+      "cannotDeleteOpenPr": "No se puede eliminar la rama mientras el PR está abierto"
+    }
   },
   "fileTree": {
     "searchPlaceholder": "Buscar archivos...",

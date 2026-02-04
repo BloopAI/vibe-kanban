@@ -177,7 +177,13 @@
     "deleteConfirmMessage": "이 워크스페이스를 삭제하시겠습니까? 이슈에서 연결이 해제되고 로컬 워크스페이스가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
     "unlinkError": "워크스페이스 연결 해제 실패",
     "deleteError": "워크스페이스 삭제 실패",
-    "filesChanged": "{{count}}개 파일"
+    "filesChanged": "{{count}}개 파일",
+    "deleteDialog": {
+      "title": "워크스페이스 삭제",
+      "description": "이 워크스페이스를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+      "deleteBranchLabel": "브랜치 삭제",
+      "cannotDeleteOpenPr": "PR이 열려 있는 동안에는 브랜치를 삭제할 수 없습니다"
+    }
   },
   "fileTree": {
     "searchPlaceholder": "파일 검색...",

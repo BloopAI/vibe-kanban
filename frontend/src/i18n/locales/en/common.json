@@ -177,7 +177,13 @@
     "deleteConfirmMessage": "Are you sure you want to delete this workspace? This will unlink it from the issue and delete the local workspace. This action cannot be undone.",
     "unlinkError": "Failed to unlink workspace",
     "deleteError": "Failed to delete workspace",
-    "filesChanged": "{{count}} files"
+    "filesChanged": "{{count}} files",
+    "deleteDialog": {
+      "title": "Delete Workspace",
+      "description": "Are you sure you want to delete this workspace? This action cannot be undone.",
+      "deleteBranchLabel": "Delete branch",
+      "cannotDeleteOpenPr": "Cannot delete branch while PR is open"
+    }
   },
   "fileTree": {
     "searchPlaceholder": "Search files...",
