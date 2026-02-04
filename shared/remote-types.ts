@@ -20,6 +20,12 @@ export type Issue = { id: string, project_id: string, issue_number: number, simp
 
 export type IssueAssignee = { id: string, issue_id: string, user_id: string, assigned_at: string, };
 
+export type Blob = { id: string, project_id: string, blob_path: string, thumbnail_blob_path: string | null, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, width: number | null, height: number | null, created_at: string, updated_at: string, };
+
+export type Attachment = { id: string, blob_id: string, issue_id: string | null, comment_id: string | null, created_at: string, expires_at: string | null, };
+
+export type AttachmentWithBlob = { id: string, blob_id: string, issue_id: string | null, comment_id: string | null, created_at: string, expires_at: string | null, blob_path: string, thumbnail_blob_path: string | null, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, width: number | null, height: number | null, };
+
 export type IssueFollower = { id: string, issue_id: string, user_id: string, };
 
 export type IssueTag = { id: string, issue_id: string, tag_id: string, };
@@ -217,6 +223,18 @@ export const ISSUE_ASSIGNEES_SHAPE = defineShape<IssueAssignee>(
   '/v1/shape/project/{project_id}/issue_assignees'
 );
 
+export const BLOBS_SHAPE = defineShape<Blob>(
+  'blobs',
+  ['project_id'] as const,
+  '/v1/shape/project/{project_id}/blobs'
+);
+
+export const ATTACHMENTS_SHAPE = defineShape<Attachment>(
+  'attachments',
+  ['project_id'] as const,
+  '/v1/shape/project/{project_id}/attachments'
+);
+
 export const ISSUE_FOLLOWERS_SHAPE = defineShape<IssueFollower>(
   'issue_followers',
   ['project_id'] as const,
@@ -354,6 +372,24 @@ export const ISSUE_ASSIGNEE_ENTITY: EntityDefinition<IssueAssignee, CreateIssueA
   shapeScope: 'Project',
   shape: ISSUE_ASSIGNEES_SHAPE,
   mutations: { url: '/v1/issue_assignees' } as EntityDefinition<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest>['mutations'],
+};
+
+export const BLOB_ENTITY: EntityDefinition<Blob> = {
+  name: 'Blob',
+  table: 'blobs',
+  mutationScope: null,
+  shapeScope: null,
+  shape: BLOBS_SHAPE,
+  mutations: null,
+};
+
+export const ATTACHMENT_ENTITY: EntityDefinition<Attachment> = {
+  name: 'Attachment',
+  table: 'attachments',
+  mutationScope: null,
+  shapeScope: null,
+  shape: ATTACHMENTS_SHAPE,
+  mutations: null,
 };
 
 export const ISSUE_FOLLOWER_ENTITY: EntityDefinition<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest> = {

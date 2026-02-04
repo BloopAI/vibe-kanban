@@ -11,6 +11,7 @@ use crate::{
         GitHubOAuthProvider, GoogleOAuthProvider, JwtService, OAuthHandoffService,
         OAuthTokenValidator, ProviderRegistry,
     },
+    azure_blob::AzureBlobService,
     billing::BillingService,
     config::RemoteServerConfig,
     db,
@@ -97,6 +98,15 @@ impl Server {
             );
         }
 
+        let azure_blob = config.azure_blob.as_ref().map(AzureBlobService::new);
+        if azure_blob.is_some() {
+            tracing::info!("Azure Blob storage service initialized");
+        } else {
+            tracing::info!(
+                "Azure Blob storage not configured. Set AZURE_STORAGE_ACCOUNT_NAME and AZURE_STORAGE_ACCOUNT_KEY to enable issue attachments."
+            );
+        }
+
         let http_client = reqwest::Client::builder()
             .user_agent("VibeKanbanRemote/1.0")
             .build()
@@ -155,6 +165,7 @@ impl Server {
             server_public_base_url,
             http_client,
             r2,
+            azure_blob,
             github_app,
             billing,
             analytics,

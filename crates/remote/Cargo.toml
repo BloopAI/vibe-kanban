@@ -51,6 +51,11 @@ url = "2.5"
 base64 = "0.22"
 aws-sdk-s3 = { version = "1.65", default-features = false, features = ["behavior-version-latest", "rt-tokio"] }
 aws-credential-types = "1.2"
+azure_core = "0.21"
+azure_storage = "0.21"
+azure_storage_blobs = "0.21"
+time = "0.3"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
 tempfile = "3"
 tar = "0.4"
 flate2 = "1.0"

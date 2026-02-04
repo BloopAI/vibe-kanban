@@ -11,6 +11,8 @@ use uuid::Uuid;
 
 use crate::{
     db::{
+        attachments::Attachment,
+        blobs::Blob,
         issue_assignees::IssueAssignee,
         issue_comment_reactions::IssueCommentReaction,
         issue_comments::IssueComment,
@@ -178,6 +180,28 @@ crate::define_entity!(
     fields: [related_issue_id: uuid::Uuid, relationship_type: IssueRelationshipType],
 );
 
+// Blob: streaming at project level, no mutations (custom routes handle CRUD)
+crate::define_entity!(
+    Blob,
+    table: "blobs",
+    shape: {
+        where_clause: r#""project_id" = $1"#,
+        params: ["project_id"],
+        url: "/shape/project/{project_id}/blobs",
+    },
+);
+
+// Attachment: streaming at project level, no mutations (custom routes handle CRUD)
+crate::define_entity!(
+    Attachment,
+    table: "attachments",
+    shape: {
+        where_clause: r#""blob_id" IN (SELECT id FROM blobs WHERE "project_id" = $1)"#,
+        params: ["project_id"],
+        url: "/shape/project/{project_id}/attachments",
+    },
+);
+
 // PullRequest: streaming at project level, no mutations
 crate::define_entity!(
     PullRequest,
@@ -242,6 +266,8 @@ pub fn all_entities() -> Vec<&'static dyn EntityExport> {
         &WORKSPACE_ENTITY,
         // Issue-scoped (project streaming)
         &ISSUE_ASSIGNEE_ENTITY,
+        &BLOB_ENTITY,
+        &ATTACHMENT_ENTITY,
         &ISSUE_FOLLOWER_ENTITY,
         &ISSUE_TAG_ENTITY,
         &ISSUE_RELATIONSHIP_ENTITY,
@@ -265,6 +291,8 @@ pub fn all_shapes() -> Vec<&'static dyn crate::shapes::ShapeExport> {
         &ISSUE_SHAPE,
         &WORKSPACE_SHAPE,
         &ISSUE_ASSIGNEE_SHAPE,
+        &BLOB_SHAPE,
+        &ATTACHMENT_SHAPE,
         &ISSUE_FOLLOWER_SHAPE,
         &ISSUE_TAG_SHAPE,
         &ISSUE_RELATIONSHIP_SHAPE,

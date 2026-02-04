@@ -2,6 +2,8 @@ use std::{env, fs, path::Path};
 
 use remote::{
     db::{
+        attachments::{Attachment, AttachmentWithBlob},
+        blobs::Blob,
         issue_assignees::IssueAssignee,
         issue_comment_reactions::IssueCommentReaction,
         issue_comments::IssueComment,
@@ -89,6 +91,9 @@ fn export_shapes() -> String {
         Tag::decl(),
         Issue::decl(),
         IssueAssignee::decl(),
+        Blob::decl(),
+        Attachment::decl(),
+        AttachmentWithBlob::decl(),
         IssueFollower::decl(),
         IssueTag::decl(),
         IssueRelationship::decl(),

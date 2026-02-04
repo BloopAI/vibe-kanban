@@ -1,6 +1,7 @@
 mod analytics;
 mod app;
 mod auth;
+pub mod azure_blob;
 mod billing;
 pub mod config;
 pub mod db;
@@ -14,6 +15,7 @@ pub mod r2;
 pub mod routes;
 pub mod shapes;
 mod state;
+pub mod thumbnail;
 
 use std::env;
 

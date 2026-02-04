@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                b.id                  AS \"id!: Uuid\",\n                b.project_id          AS \"project_id!: Uuid\",\n                b.blob_path           AS \"blob_path!\",\n                b.thumbnail_blob_path AS \"thumbnail_blob_path?\",\n                b.original_name       AS \"original_name!\",\n                b.mime_type           AS \"mime_type?\",\n                b.size_bytes          AS \"size_bytes!\",\n                b.hash                AS \"hash!\",\n                b.width               AS \"width?\",\n                b.height              AS \"height?\",\n                b.created_at          AS \"created_at!: DateTime<Utc>\",\n                b.updated_at          AS \"updated_at!: DateTime<Utc>\"\n            FROM attachments a\n            INNER JOIN blobs b ON b.id = a.blob_id\n            WHERE a.id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "blob_path!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "thumbnail_blob_path?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "original_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "mime_type?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "size_bytes!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "hash!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "width?",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "height?",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "dfbf03c5f333dfc7f531f415f4816603d080a544699705329dfe2e93e33c2886"
+}
