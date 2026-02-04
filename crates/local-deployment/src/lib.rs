@@ -24,8 +24,8 @@ use services::services::{
     worktree_manager::WorktreeManager,
 };
 use tokio::sync::RwLock;
+use api_types::LoginStatus;
 use utils::{
-    api::oauth::LoginStatus,
     assets::{config_path, credentials_path},
     msg_store::MsgStore,
 };

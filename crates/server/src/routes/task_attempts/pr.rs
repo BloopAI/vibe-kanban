@@ -33,10 +33,8 @@ use services::services::{
     remote_sync,
 };
 use ts_rs::TS;
-use utils::{
-    api::pull_requests::{PullRequestStatus, UpsertPullRequestRequest},
-    response::ApiResponse,
-};
+use api_types::{PullRequestStatus, UpsertPullRequestRequest};
+use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};

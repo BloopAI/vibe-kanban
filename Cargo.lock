@@ -3660,6 +3660,7 @@ name = "local-deployment"
 version = "0.1.3"
 dependencies = [
  "anyhow",
+ "api-types",
  "async-trait",
  "bytes",
  "command-group",
@@ -6251,6 +6252,7 @@ name = "services"
 version = "0.1.3"
 dependencies = [
  "anyhow",
+ "api-types",
  "async-trait",
  "axum",
  "backon",

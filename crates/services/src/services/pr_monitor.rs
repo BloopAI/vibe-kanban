@@ -14,7 +14,7 @@ use sqlx::error::Error as SqlxError;
 use thiserror::Error;
 use tokio::time::interval;
 use tracing::{debug, error, info};
-use utils::api::pull_requests::{PullRequestStatus, UpsertPullRequestRequest};
+use api_types::{PullRequestStatus, UpsertPullRequestRequest};
 
 use crate::services::{
     analytics::AnalyticsContext,

@@ -14,7 +14,7 @@ pub use error::MigrationError;
 use sqlx::SqlitePool;
 use tracing::info;
 pub use types::*;
-use utils::api::migration::{
+use api_types::{
     BulkMigrateRequest, BulkMigrateResponse, MigrateIssueRequest, MigrateProjectRequest,
     MigratePullRequestRequest, MigrateWorkspaceRequest,
 };

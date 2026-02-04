@@ -1,4 +1,4 @@
-use api_types::MemberRole;
+use crate::MemberRole;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::Type;
@@ -133,9 +133,11 @@ pub struct RevokeInvitationRequest {
 
 // Member types
 
+/// Organization member info for API responses (without organization_id).
+/// See also `OrganizationMember` in organization_member.rs for the full DB row type.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct OrganizationMember {
+pub struct OrganizationMemberInfo {
     pub user_id: Uuid,
     pub role: MemberRole,
     pub joined_at: DateTime<Utc>,

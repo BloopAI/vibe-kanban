@@ -9,14 +9,13 @@ use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::warn;
-use utils::api::organizations::{
-    ListMembersResponse, OrganizationMemberWithProfile, RevokeInvitationRequest,
+use api_types::{
+    ListMembersResponse, MemberRole, OrganizationMemberWithProfile, RevokeInvitationRequest,
     UpdateMemberRoleRequest, UpdateMemberRoleResponse,
 };
 use uuid::Uuid;
 
 use super::error::{ErrorResponse, membership_error};
-use api_types::MemberRole;
 use crate::{
     AppState,
     auth::RequestContext,

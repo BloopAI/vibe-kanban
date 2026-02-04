@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use thiserror::Error;
-use utils::api::migration::{
+use api_types::{
     MigrateIssueRequest, MigrateProjectRequest, MigratePullRequestRequest, MigrateWorkspaceRequest,
 };
 use uuid::Uuid;

@@ -50,7 +50,8 @@ use services::services::{
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::{api::workspaces::CreateWorkspaceRequest, response::ApiResponse};
+use api_types::CreateWorkspaceRequest;
+use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{
