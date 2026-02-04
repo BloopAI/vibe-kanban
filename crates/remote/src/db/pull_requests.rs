@@ -1,9 +1,8 @@
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use thiserror::Error;
+use utils::api::entities::{PullRequest, PullRequestStatus};
 use uuid::Uuid;
-
-pub use utils::api::entities::{PullRequest, PullRequestStatus};
 
 #[derive(Debug, Error)]
 pub enum PullRequestError {

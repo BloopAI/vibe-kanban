@@ -478,7 +478,7 @@ impl OAuthHandoffService {
     }
 }
 
-type IdentityUser = crate::db::users::User;
+type IdentityUser = utils::api::entities::User;
 
 fn is_expired(record: &OAuthHandoff) -> bool {
     record.expires_at <= Utc::now()

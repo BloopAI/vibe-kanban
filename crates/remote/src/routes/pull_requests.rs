@@ -16,13 +16,9 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{
-        issues::IssueRepository,
-        pull_requests::{PullRequest, PullRequestRepository},
-        types::PullRequestStatus,
-        workspaces::WorkspaceRepository,
-    },
+    db::{issues::IssueRepository, pull_requests::PullRequestRepository, workspaces::WorkspaceRepository},
 };
+use utils::api::entities::{PullRequest, PullRequestStatus};
 
 #[derive(Debug, Deserialize)]
 pub struct CreatePullRequestRequest {

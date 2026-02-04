@@ -6,9 +6,8 @@ use utils::api::migration::{
 };
 use uuid::Uuid;
 
-use super::{
-    project_statuses::ProjectStatusRepository, tags::TagRepository, types::PullRequestStatus,
-};
+use super::{project_statuses::ProjectStatusRepository, tags::TagRepository};
+use utils::api::entities::PullRequestStatus;
 
 #[derive(Debug, Error)]
 pub enum MigrationError {

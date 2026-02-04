@@ -1,8 +1,8 @@
 use sqlx::{PgPool, query_as};
+use utils::api::entities::{User, UserData};
 use uuid::Uuid;
 
 use super::{Tx, identity_errors::IdentityError};
-pub use utils::api::entities::{User, UserData};
 
 #[derive(Debug, Clone)]
 pub struct UpsertUser<'a> {

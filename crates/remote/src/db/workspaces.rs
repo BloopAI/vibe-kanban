@@ -1,9 +1,8 @@
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use thiserror::Error;
+use utils::api::entities::Workspace;
 use uuid::Uuid;
-
-pub use utils::api::entities::Workspace;
 
 #[derive(Debug, Error)]
 pub enum WorkspaceError {

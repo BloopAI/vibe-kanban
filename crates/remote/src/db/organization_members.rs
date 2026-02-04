@@ -1,6 +1,5 @@
 use sqlx::{Executor, PgPool, Postgres};
-pub use utils::api::entities::OrganizationMember;
-pub use utils::api::organizations::MemberRole;
+use utils::api::organizations::MemberRole;
 use uuid::Uuid;
 
 use super::identity_errors::IdentityError;

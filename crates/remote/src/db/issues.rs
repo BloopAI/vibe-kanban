@@ -6,12 +6,10 @@ use utils::api::{entities::Issue, types::IssuePriority};
 use uuid::Uuid;
 
 use super::{
-    get_txid,
-    project_statuses::ProjectStatusRepository,
-    pull_requests::PullRequestRepository,
-    types::PullRequestStatus,
+    get_txid, project_statuses::ProjectStatusRepository, pull_requests::PullRequestRepository,
     workspaces::WorkspaceRepository,
 };
+use utils::api::entities::PullRequestStatus;
 use crate::mutation_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]

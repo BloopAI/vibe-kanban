@@ -1,17 +1,6 @@
 use std::{env, fs, path::Path};
 
-use remote::{
-    db::{
-        organization_members::OrganizationMember,
-        pull_requests::PullRequest,
-        types::PullRequestStatus,
-        users::{User, UserData},
-        workspaces::Workspace,
-    },
-    entities::all_shapes,
-    routes::all_entity_metadata,
-    shapes::ShapeExport,
-};
+use remote::{entities::all_shapes, routes::all_entity_metadata, shapes::ShapeExport};
 use ts_rs::TS;
 use utils::api::{
     entities::{
@@ -20,11 +9,11 @@ use utils::api::{
         CreateIssueTagRequest, CreateNotificationRequest, CreateProjectRequest,
         CreateProjectStatusRequest, CreateTagRequest, Issue, IssueAssignee, IssueComment,
         IssueCommentReaction, IssueFollower, IssueRelationship, IssueTag, Notification,
-        NotificationType, Project, ProjectStatus, Tag, UpdateIssueAssigneeRequest,
-        UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueFollowerRequest,
-        UpdateIssueRelationshipRequest, UpdateIssueRequest, UpdateIssueTagRequest,
-        UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest,
-        UpdateTagRequest,
+        NotificationType, OrganizationMember, Project, ProjectStatus, PullRequest,
+        PullRequestStatus, Tag, UpdateIssueAssigneeRequest, UpdateIssueCommentReactionRequest,
+        UpdateIssueCommentRequest, UpdateIssueFollowerRequest, UpdateIssueRelationshipRequest,
+        UpdateIssueRequest, UpdateIssueTagRequest, UpdateNotificationRequest, UpdateProjectRequest,
+        UpdateProjectStatusRequest, UpdateTagRequest, User, UserData, Workspace,
     },
     organizations::MemberRole,
     types::{IssuePriority, IssueRelationshipType},

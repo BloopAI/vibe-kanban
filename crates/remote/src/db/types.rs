@@ -1,5 +1,3 @@
-pub use utils::api::entities::PullRequestStatus;
-
 /// Validates that a string is in HSL format: "H S% L%"
 /// where H is 0-360, S is 0-100%, L is 0-100%
 pub fn is_valid_hsl_color(color: &str) -> bool {
