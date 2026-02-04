@@ -93,6 +93,7 @@
           "cloud/projects",
           "cloud/issues",
           "cloud/kanban-board",
+          "cloud/list-view",
           "cloud/filtering",
           "cloud/customisation",
           "cloud/troubleshooting"
