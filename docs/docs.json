@@ -86,6 +86,7 @@
         "pages": [
           "cloud/index",
           "cloud/getting-started",
+          "cloud/migration",
           "cloud/authentication",
           "cloud/organizations",
           "cloud/team-members",
