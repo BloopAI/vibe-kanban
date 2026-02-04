@@ -6,3 +6,6 @@ onlyBuiltDependencies:
   - '@sentry/cli'
   - core-js
   - esbuild
+
+patchedDependencies:
+  '@virtuoso.dev/message-list': patches/@virtuoso.dev__message-list.patch
