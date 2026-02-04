@@ -24,6 +24,7 @@ export interface WorkspacePr {
 export interface WorkspaceWithStats {
   id: string;
   localWorkspaceId: string | null;
+  name: string | null;
   archived: boolean;
   filesChanged: number;
   linesAdded: number;
@@ -73,20 +74,25 @@ export function IssueWorkspaceCard({
           : undefined
       }
     >
-      {/* Row 1: Status badge (left), Owner avatar + menu (right) */}
+      {/* Row 1: Status badge + Name (left), Owner avatar + menu (right) */}
       <div className="flex items-center justify-between">
-        <span
-          className={cn(
-            'px-1.5 py-0.5 rounded text-xs font-medium',
-            workspace.archived
-              ? 'bg-secondary text-low'
-              : 'bg-success/10 text-success'
+        <div className="flex items-center gap-half min-w-0">
+          <span
+            className={cn(
+              'px-1.5 py-0.5 rounded text-xs font-medium shrink-0',
+              workspace.archived
+                ? 'bg-secondary text-low'
+                : 'bg-success/10 text-success'
+            )}
+          >
+            {workspace.archived
+              ? t('workspaces.archived')
+              : t('workspaces.active')}
+          </span>
+          {workspace.name && (
+            <span className="text-sm text-high truncate">{workspace.name}</span>
           )}
-        >
-          {workspace.archived
-            ? t('workspaces.archived')
-            : t('workspaces.active')}
-        </span>
+        </div>
 
         <div className="flex items-center gap-half">
           {workspace.owner && (

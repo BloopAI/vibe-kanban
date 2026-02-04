@@ -57,6 +57,7 @@ export function IssueWorkspacesSectionContainer({
       return {
         id: workspace.id,
         localWorkspaceId: workspace.local_workspace_id,
+        name: workspace.name,
         archived: workspace.archived,
         filesChanged: workspace.files_changed ?? 0,
         linesAdded: workspace.lines_added ?? 0,

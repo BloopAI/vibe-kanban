@@ -618,6 +618,12 @@ impl LocalContainerService {
                         &ctx.workspace,
                     )
                     .await;
+                    let workspace_name =
+                        Workspace::find_by_id_with_status(&container.db.pool, ctx.workspace.id)
+                            .await
+                            .ok()
+                            .flatten()
+                            .and_then(|ws| ws.workspace.name);
                     let client = client.clone();
                     let workspace_id = ctx.workspace.id;
                     let archived = ctx.workspace.archived;
@@ -625,7 +631,7 @@ impl LocalContainerService {
                         remote_sync::sync_workspace_to_remote(
                             &client,
                             workspace_id,
-                            None,
+                            workspace_name.map(Some),
                             Some(archived),
                             stats.as_ref(),
                         )
