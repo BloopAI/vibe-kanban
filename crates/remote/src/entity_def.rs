@@ -71,32 +71,6 @@ impl UpdateRequestFor for UpdateIssueRequest {
 }
 
 // =============================================================================
-// Helper trait for optional type names
-// =============================================================================
-
-/// Helper trait to get an optional type name.
-/// `()` returns `None`, any `T: TS` returns `Some(T::name())`.
-pub trait MaybeTypeName {
-    fn type_name() -> Option<String>;
-}
-
-impl MaybeTypeName for () {
-    fn type_name() -> Option<String> {
-        None
-    }
-}
-
-// Blanket impl for any T that implements TS
-// We need a wrapper to avoid conflict with the () impl
-pub struct HasType<T>(PhantomData<T>);
-
-impl<T: TS> MaybeTypeName for HasType<T> {
-    fn type_name() -> Option<String> {
-        Some(T::name())
-    }
-}
-
-// =============================================================================
 // EntityMeta - Metadata for TypeScript generation
 // =============================================================================
 
