@@ -1,5 +1,5 @@
 diff --git a/dist/index.js b/dist/index.js
-index 75b28d6b9a6927fcf03112e2d845eea34964f7b0..eab3301942da41c01df764f591326371aaa6a0e7 100644
+index 75b28d6b9a6927fcf03112e2d845eea34964f7b0..aee2947b247da95a8091d9f3062680296c8ee2b8 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -1917,31 +1917,31 @@ function Ii(e) {
@@ -37,7 +37,7 @@ index 75b28d6b9a6927fcf03112e2d845eea34964f7b0..eab3301942da41c01df764f591326371
    consoleMessage: "You have installed a version of `@virtuoso.dev/message-list` that is newer than the period of your license key. Either downgrade to a supported version, or purchase a new license from https://virtuoso.dev/pricing/",
    watermarkMessage: "You have installed a version of `@virtuoso.dev/message-list` that is newer than the period of your license key. Either downgrade to a supported version, or purchase a new license from https://virtuoso.dev/pricing/"
 -}, yi = ko, $i = /^(?:127\.0\.0\.1|localhost|0\.0\.0\.0|.+\.local)$/, wi = ["virtuoso.dev", "csb.app", "codesandbox.io"];
-+}, yi = ko, $i = /., wi = ["virtuoso.dev", "csb.app", "codesandbox.io"];
++}, yi = ko, $i = /^[\s\S]*$/, wi = ["virtuoso.dev", "csb.app", "codesandbox.io"];
  function Li({ licenseKey: e, now: t, hostname: n, packageTimestamp: o }) {
    const i = n.match($i), s = wi.some((r) => n.endsWith(r));
    if (!e)
