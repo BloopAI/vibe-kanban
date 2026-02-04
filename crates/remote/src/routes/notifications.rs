@@ -13,9 +13,7 @@ use crate::{
     AppState, auth::RequestContext, db::notifications::NotificationRepository,
     entities::NOTIFICATION_SHAPE, entity_def::EntityDef,
 };
-use utils::api::entities::{
-    CreateNotificationRequest, Notification, UpdateNotificationRequest,
-};
+use utils::api::entities::{Notification, UpdateNotificationRequest};
 
 #[derive(Debug, Serialize)]
 pub struct ListNotificationsResponse {
@@ -38,11 +36,10 @@ pub struct ListNotificationsQuery {
     pub include_dismissed: bool,
 }
 
-pub fn entity() -> EntityDef<Notification, CreateNotificationRequest, UpdateNotificationRequest> {
+pub fn entity() -> EntityDef<Notification, (), UpdateNotificationRequest> {
     EntityDef::new(&NOTIFICATION_SHAPE)
         .list(list_notifications)
         .get(get_notification)
-        .with_create_type::<CreateNotificationRequest>()
         .update(update_notification)
         .delete(delete_notification)
 }

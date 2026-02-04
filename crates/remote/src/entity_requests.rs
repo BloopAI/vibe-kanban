@@ -6,13 +6,12 @@
 use utils::api::entities::{
     CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
     CreateIssueFollowerRequest, CreateIssueRelationshipRequest, CreateIssueRequest,
-    CreateIssueTagRequest, CreateNotificationRequest, CreateProjectRequest,
-    CreateProjectStatusRequest, CreateTagRequest, Issue, IssueAssignee, IssueComment,
-    IssueCommentReaction, IssueFollower, IssueRelationship, IssueTag, Notification, Project,
-    ProjectStatus, Tag, UpdateIssueAssigneeRequest, UpdateIssueCommentReactionRequest,
-    UpdateIssueCommentRequest, UpdateIssueFollowerRequest, UpdateIssueRelationshipRequest,
-    UpdateIssueRequest, UpdateIssueTagRequest, UpdateNotificationRequest, UpdateProjectRequest,
-    UpdateProjectStatusRequest, UpdateTagRequest,
+    CreateIssueTagRequest, CreateProjectRequest, CreateProjectStatusRequest, CreateTagRequest,
+    Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssueRelationship,
+    IssueTag, Notification, Project, ProjectStatus, Tag, UpdateIssueAssigneeRequest,
+    UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueFollowerRequest,
+    UpdateIssueRelationshipRequest, UpdateIssueRequest, UpdateIssueTagRequest,
+    UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest, UpdateTagRequest,
 };
 
 use crate::entity_def::{CreateRequestFor, UpdateRequestFor};
@@ -30,12 +29,8 @@ impl UpdateRequestFor for UpdateProjectRequest {
 }
 
 // =============================================================================
-// Notification
+// Notification (update only - no public create endpoint)
 // =============================================================================
-
-impl CreateRequestFor for CreateNotificationRequest {
-    type Entity = Notification;
-}
 
 impl UpdateRequestFor for UpdateNotificationRequest {
     type Entity = Notification;
