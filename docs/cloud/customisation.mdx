@@ -9,9 +9,12 @@ Every team works differently. Customise your kanban board to match your workflow
 
 Access display settings to customise your board columns:
 
-1. Click the **Display Settings** button (<Icon icon="sliders" />) in the board header
+1. Click the **Display Settings** button (<Icon icon="sliders" />) in the filter bar
 2. The settings panel opens showing all your columns
 
+<Frame>
+  <img style={{maxHeight: "400px"}} src="/images/cloud/display-settings.png" alt="Display Settings panel showing visible columns with toggles" />
+</Frame>
 
 ## Managing Columns
 
@@ -19,11 +22,11 @@ Access display settings to customise your board columns:
 
 <Steps>
 <Step title="Open Display Settings">
-  Click the **Display Settings** button in the board header.
+  Click the **Display Settings** button (<Icon icon="sliders" />) in the filter bar.
 </Step>
 
-<Step title="Click Add Status">
-  Click the **+ Add Status** button at the bottom of the list.
+<Step title="Click Add column">
+  Click the **+ Add column** button at the bottom of the list.
 </Step>
 
 <Step title="Enter the status name">
@@ -41,7 +44,7 @@ New columns are assigned a random colour. You can change it after creation.
 
 <Steps>
 <Step title="Open Display Settings">
-  Click the **Display Settings** button.
+  Click the **Display Settings** button (<Icon icon="sliders" />) in the filter bar.
 </Step>
 
 <Step title="Click the column name">
@@ -67,7 +70,7 @@ Each column has a colour that appears in the column header and on issue cards.
 
 <Steps>
 <Step title="Open Display Settings">
-  Click the **Display Settings** button.
+  Click the **Display Settings** button (<Icon icon="sliders" />) in the filter bar.
 </Step>
 
 <Step title="Click the colour dot">
@@ -90,7 +93,7 @@ Change the order columns appear on your board:
 
 <Steps>
 <Step title="Open Display Settings">
-  Click the **Display Settings** button.
+  Click the **Display Settings** button (<Icon icon="sliders" />) in the filter bar.
 </Step>
 
 <Step title="Drag the column">
@@ -116,12 +119,11 @@ Hide columns you don't use regularly to keep your board clean:
 
 <Steps>
 <Step title="Open Display Settings">
-  Click the **Display Settings** button.
+  Click the **Display Settings** button (<Icon icon="sliders" />) in the filter bar.
 </Step>
 
 <Step title="Toggle visibility">
-  Click the visibility toggle (<Icon icon="eye" />) next to the column you want to hide.
-
+  Click the toggle switch next to the column you want to hide. When the toggle is off, the column is hidden.
 </Step>
 
 <Step title="Save changes">
@@ -145,15 +147,11 @@ Remove columns you no longer need:
 
 <Steps>
 <Step title="Open Display Settings">
-  Click the **Display Settings** button.
+  Click the **Display Settings** button (<Icon icon="sliders" />) in the filter bar.
 </Step>
 
 <Step title="Click the delete button">
-  Click the delete icon (<Icon icon="trash" />) next to the column.
-</Step>
-
-<Step title="Confirm deletion">
-  Confirm that you want to delete the column.
+  Click the **×** button next to the column you want to delete.
 </Step>
 
 <Step title="Save changes">
@@ -167,49 +165,28 @@ Remove columns you no longer need:
 
 ## Managing Tags
 
-Tags help categorise and filter issues. Manage them in project settings.
+Tags help categorise and filter issues. Tags are created inline when you add them to issues.
 
 ### Creating Tags
 
-<Steps>
-<Step title="Open Project Settings">
-  Click the gear icon (<Icon icon="gear" />) in the project header.
-</Step>
+To create a new tag:
 
-<Step title="Go to Tags section">
-  Find the **Tags** section in settings.
-</Step>
-
-<Step title="Click Add Tag">
-  Click **+ Add Tag**.
-</Step>
-
-<Step title="Enter tag details">
-  - **Name** - A short label (e.g., "Bug", "Feature", "Documentation")
-  - **Colour** - Choose a colour to identify the tag
-</Step>
-
-<Step title="Save">
-  Click **Save** to create the tag.
-</Step>
-</Steps>
-
-### Editing Tags
-
-1. Open Project Settings
-2. Find the tag you want to edit
-3. Click to edit the name or colour
-4. Save your changes
-
-### Deleting Tags
-
-1. Open Project Settings
-2. Click the delete button next to the tag
-3. Confirm deletion
+1. Open any issue
+2. Click the **Tags** field
+3. Type the name of your new tag
+4. If the tag doesn't exist, you'll see a **Create** option
+5. Select a colour for the tag
+6. Click to create and apply the tag
 
 <Info>
-Deleting a tag removes it from all issues that had it. The issues themselves are not affected.
+Tags are shared across all issues in the project. Once created, a tag can be added to any issue.
 </Info>
+
+### Using Tags
+
+- Click the **Tags** field on any issue to add or remove tags
+- Use the tag filter in the filter bar to find issues with specific tags
+- Tags appear as coloured labels on issue cards
 
 ## Common Workflows
 
@@ -268,8 +245,8 @@ Here are some example column setups for different workflows:
 <AccordionGroup>
 <Accordion title="Can't delete a column">
 The column probably has issues in it. You must move all issues to another column before deleting. Check:
-1. The issue count in the column header
-2. Hidden issues (use the "All" status tab to see them)
+1. Open Display Settings - it shows the issue count next to each status
+2. Use the "All" status tab to see all issues including hidden ones
 </Accordion>
 
 <Accordion title="Changes didn't save">

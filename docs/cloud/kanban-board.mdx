@@ -5,6 +5,9 @@ description: "Visualise and manage your work with the kanban board"
 
 The kanban board is your primary view for managing work. Issues are organised into columns representing different stages of your workflow, and you can drag and drop them as work progresses.
 
+<Frame>
+  <img src="/images/cloud/project-kanban-board.png" alt="Kanban board showing columns with issue cards" />
+</Frame>
 
 ## Board Layout
 
@@ -13,7 +16,7 @@ The kanban board consists of:
 - **Filter Bar** - Search, filter, and sort your issues (top)
 - **Status Columns** - Vertical columns representing workflow stages
 - **Issue Cards** - Individual work items within columns
-- **Column Headers** - Show status name and issue count
+- **Column Headers** - Show status name with colour indicator
 
 ### Status Columns
 
@@ -32,18 +35,21 @@ You can [customise these columns](/cloud/customisation) - add new ones, rename t
 
 Each card shows key information at a glance:
 
-- **Simple ID** - The issue identifier (e.g., TASK-123)
+- **Simple ID** - The issue identifier (e.g., ISS-1)
 - **Title** - What needs to be done
 - **Priority** - Colour-coded indicator (if set)
 - **Assignees** - Avatar(s) of assigned team members
 - **Tags** - Coloured labels (if any)
-
 
 Click any card to open the full [issue panel](/cloud/issues).
 
 ## Drag and Drop
 
 Move issues between columns and reorder them within columns using drag and drop.
+
+<Frame>
+  <img src="/images/cloud/drag-drop.png" alt="Dragging an issue card between columns" />
+</Frame>
 
 ### Moving Between Columns
 
@@ -92,24 +98,32 @@ The traditional kanban layout with columns. Best for:
 
 A tabular view showing issues in rows. Best for:
 - Reviewing many issues quickly
-- Bulk operations
+- Seeing all issues including hidden statuses
 - Detailed filtering and sorting
 
+<Frame>
+  <img src="/images/cloud/list-view.png" alt="List view showing issues grouped by status" />
+</Frame>
 
-To switch views, click the view toggle in the top-right corner of the board.
+To switch to list view, click the **All** tab in the header. To return to board view, click the **Active** tab.
 
 ### Status Tabs
 
-Above the board, tabs let you filter by status visibility:
+Above the board, tabs let you switch between views:
 
-| Tab | Shows |
-|-----|-------|
-| **Active** | Issues in visible (non-hidden) status columns |
-| **All** | All issues including those in hidden columns |
-| **[Hidden Status]** | Issues in a specific hidden column |
+<Frame>
+  <img src="/images/cloud/status-tabs.png" alt="Status tabs showing Active, All, Backlog, and Cancelled" />
+</Frame>
 
+| Tab | View | Shows |
+|-----|------|-------|
+| **Active** | Board | Kanban columns for visible statuses |
+| **All** | List | All issues including hidden statuses |
+| **Backlog**, **Cancelled**, etc. | List | Issues in that specific hidden status |
 
-This is useful when you've hidden completed statuses (like Done) but occasionally need to see them.
+<Info>
+Hidden status tabs (like Backlog or Cancelled) only appear if you've hidden those statuses in [Display Settings](/cloud/customisation). This is useful for keeping your board clean while still having quick access to archived or backlogged items.
+</Info>
 
 ## Working with the Board
 
@@ -121,15 +135,12 @@ Click any issue card to open the issue panel on the right side of the screen. Th
 
 Instead of opening an issue, you can change its status by dragging it to another column. This is the fastest way to update many issues.
 
-### Keyboard Navigation
-
-Use keyboard shortcuts for faster navigation:
+### Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
-| `↑` `↓` | Move between issues |
-| `Enter` | Open selected issue |
-| `Escape` | Close issue panel |
+| `Escape` | Close the issue panel |
+| `Cmd/Ctrl + K` | Open the command bar for quick actions |
 
 ## Real-Time Collaboration
 
@@ -152,16 +163,11 @@ Columns with no issues show an empty state. You can:
 
 - Drag issues into empty columns
 - Use the **+** button to create a new issue in that column
-- [Hide empty columns](/cloud/customisation) to reduce visual clutter
+- [Hide the status](/cloud/customisation) in Display Settings if you don't need it on the board
 
-## Column Count Badges
-
-Each column header shows a count of issues in that column. This helps you quickly see:
-
-- Where work is piling up
-- Which stages are empty
-- Overall distribution of work
-
+<Frame>
+  <img style={{maxHeight: "300px"}} src="/images/cloud/empty-column.png" alt="Empty column showing the + button to create a new issue" />
+</Frame>
 
 ## Best Practices
 
