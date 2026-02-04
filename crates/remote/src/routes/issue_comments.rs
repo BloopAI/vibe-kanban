@@ -17,7 +17,8 @@ use crate::{
         issue_comments::IssueCommentRepository,
         organization_members::{MemberRole, check_user_role},
     },
-    define_mutation_router,
+    entities::ISSUE_COMMENT_SHAPE,
+    entity_def::EntityDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
 use utils::api::entities::{
@@ -25,8 +26,19 @@ use utils::api::entities::{
     UpdateIssueCommentRequest,
 };
 
-// Generate router that references handlers below
-define_mutation_router!(IssueComment, table: "issue_comments");
+/// Entity definition for IssueComment - provides both router and TypeScript metadata.
+pub fn entity() -> EntityDef<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> {
+    EntityDef::new(&ISSUE_COMMENT_SHAPE)
+        .list(list_issue_comments)
+        .get(get_issue_comment)
+        .create(create_issue_comment)
+        .update(update_issue_comment)
+        .delete(delete_issue_comment)
+}
+
+pub fn router() -> axum::Router<AppState> {
+    entity().router()
+}
 
 #[instrument(
     name = "issue_comments.list_issue_comments",

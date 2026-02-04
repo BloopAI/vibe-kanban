@@ -2,7 +2,7 @@ use axum::{
     Json,
     extract::{Extension, Path, Query, State},
     http::StatusCode,
-    routing::{get, post},
+    routing::post,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -17,6 +17,8 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{get_txid, project_statuses::ProjectStatusRepository, types::is_valid_hsl_color},
+    entities::PROJECT_STATUS_SHAPE,
+    entity_def::EntityDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
 use utils::api::entities::{
@@ -24,35 +26,36 @@ use utils::api::entities::{
     ProjectStatus, UpdateProjectStatusRequest,
 };
 
+/// Entity definition for ProjectStatus - provides both router and TypeScript metadata.
+pub fn entity() -> EntityDef<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest> {
+    EntityDef::new(&PROJECT_STATUS_SHAPE)
+        .list(list_project_statuses)
+        .get(get_project_status)
+        .create(create_project_status)
+        .update(update_project_status)
+        .delete(delete_project_status)
+}
+
 /// Router for project status endpoints including bulk update
 pub fn router() -> axum::Router<AppState> {
-    axum::Router::new()
-        .route(
-            "/project_statuses",
-            get(list_project_statuss).post(create_project_status),
-        )
-        .route(
-            "/project_statuses/{project_status_id}",
-            get(get_project_status)
-                .patch(update_project_status)
-                .delete(delete_project_status),
-        )
+    entity()
+        .router()
         .route("/project_statuses/bulk", post(bulk_update_project_statuses))
 }
 
 #[instrument(
-    name = "project_statuses.list_project_statuss",
+    name = "project_statuses.list_project_statuses",
     skip(state, ctx),
     fields(project_id = %query.project_id, user_id = %ctx.user.id)
 )]
-async fn list_project_statuss(
+async fn list_project_statuses(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Query(query): Query<ListProjectStatusesQuery>,
 ) -> Result<Json<ListProjectStatusesResponse>, ErrorResponse> {
     ensure_project_access(state.pool(), ctx.user.id, query.project_id).await?;
 
-    let project_statuss = ProjectStatusRepository::list_by_project(state.pool(), query.project_id)
+    let project_statuses = ProjectStatusRepository::list_by_project(state.pool(), query.project_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, project_id = %query.project_id, "failed to list project statuses");
@@ -62,7 +65,7 @@ async fn list_project_statuss(
             )
         })?;
 
-    Ok(Json(ListProjectStatusesResponse { project_statuses: project_statuss }))
+    Ok(Json(ListProjectStatusesResponse { project_statuses }))
 }
 
 #[instrument(

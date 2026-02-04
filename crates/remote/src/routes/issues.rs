@@ -2,7 +2,7 @@ use axum::{
     Json,
     extract::{Extension, Path, Query, State},
     http::StatusCode,
-    routing::{get, post},
+    routing::post,
 };
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
@@ -19,17 +19,25 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{get_txid, issues::IssueRepository},
+    entities::ISSUE_SHAPE,
+    entity_def::EntityDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
 
+/// Entity definition for Issue - provides both router and TypeScript metadata.
+pub fn entity() -> EntityDef<Issue, CreateIssueRequest, UpdateIssueRequest> {
+    EntityDef::new(&ISSUE_SHAPE)
+        .list(list_issues)
+        .get(get_issue)
+        .create(create_issue)
+        .update(update_issue)
+        .delete(delete_issue)
+}
+
 /// Router for issue endpoints including bulk update
 pub fn router() -> axum::Router<AppState> {
-    axum::Router::new()
-        .route("/issues", get(list_issues).post(create_issue))
-        .route(
-            "/issues/{issue_id}",
-            get(get_issue).patch(update_issue).delete(delete_issue),
-        )
+    entity()
+        .router()
         .route("/issues/bulk", post(bulk_update_issues))
 }
 

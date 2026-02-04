@@ -14,23 +14,15 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{tags::TagRepository, types::is_valid_hsl_color},
-    define_mutation_router,
     entities::TAG_SHAPE,
-    entity_def::EntityDef2,
+    entity_def::EntityDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
 use utils::api::entities::{CreateTagRequest, ListTagsQuery, ListTagsResponse, Tag, UpdateTagRequest};
 
-// Generate router that references handlers below
-define_mutation_router!(Tag, table: "tags");
-
-// =============================================================================
-// EntityDef2 experiment - single source of truth for routes and metadata
-// =============================================================================
-
 /// Entity definition for Tags - provides both router and TypeScript metadata.
-pub fn entity2() -> EntityDef2<Tag, CreateTagRequest, UpdateTagRequest> {
-    EntityDef2::new(&TAG_SHAPE)
+pub fn entity() -> EntityDef<Tag, CreateTagRequest, UpdateTagRequest> {
+    EntityDef::new(&TAG_SHAPE)
         .list(list_tags)
         .get(get_tag)
         .create(create_tag)
@@ -38,10 +30,8 @@ pub fn entity2() -> EntityDef2<Tag, CreateTagRequest, UpdateTagRequest> {
         .delete(delete_tag)
 }
 
-/// Alternative router using EntityDef2.
-#[allow(dead_code)]
-pub fn router2() -> axum::Router<AppState> {
-    entity2().router()
+pub fn router() -> axum::Router<AppState> {
+    entity().router()
 }
 
 #[instrument(
