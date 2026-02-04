@@ -96,6 +96,7 @@ impl AppServerClient {
                     title: None,
                     version: env!("CARGO_PKG_VERSION").to_string(),
                 },
+                capabilities: None,
             },
         };
 
@@ -155,7 +156,10 @@ impl AppServerClient {
             request_id: self.next_request_id(),
             params: SendUserMessageParams {
                 conversation_id,
-                items: vec![InputItem::Text { text: message }],
+                items: vec![InputItem::Text {
+                    text: message,
+                    text_elements: vec![],
+                }],
             },
         };
         self.send_request(request, "sendUserMessage").await
@@ -279,7 +283,10 @@ impl AppServerClient {
                 Ok(())
             }
             ServerRequest::CommandExecutionRequestApproval { .. }
-            | ServerRequest::FileChangeRequestApproval { .. } => {
+            | ServerRequest::FileChangeRequestApproval { .. }
+            | ServerRequest::ToolRequestUserInput { .. }
+            | ServerRequest::DynamicToolCall { .. }
+            | ServerRequest::ChatgptAuthTokensRefresh { .. } => {
                 // These are unreachable until switching to v2 APIs for starting the session.
                 // https://github.com/openai/codex/blob/cbd7d0d54330443887852b21636c816f60f1bde8/codex-rs/app-server-protocol/src/protocol/common.rs#L445
                 tracing::error!("received unsupported server request: {:?}", request);
@@ -410,7 +417,10 @@ impl AppServerClient {
             request_id: peer.next_request_id(),
             params: SendUserMessageParams {
                 conversation_id,
-                items: vec![InputItem::Text { text: message }],
+                items: vec![InputItem::Text {
+                    text: message,
+                    text_elements: vec![],
+                }],
             },
         };
         tokio::spawn(async move {
