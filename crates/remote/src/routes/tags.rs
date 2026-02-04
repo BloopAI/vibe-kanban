@@ -18,7 +18,7 @@ use crate::{
     entity_def::EntityDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
-use utils::api::entities::{CreateTagRequest, ListTagsQuery, ListTagsResponse, Tag, UpdateTagRequest};
+use api_types::{CreateTagRequest, ListTagsQuery, ListTagsResponse, Tag, UpdateTagRequest};
 
 /// Entity definition for Tags - provides both router and TypeScript metadata.
 pub fn entity() -> EntityDef<Tag, CreateTagRequest, UpdateTagRequest> {

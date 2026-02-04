@@ -1,10 +1,12 @@
-//! Tag entity types.
+//! IssueRelationship entity types.
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::some_if_present;
+use crate::some_if_present;
+use crate::types::IssueRelationshipType;
 
 // =============================================================================
 // Row type
@@ -12,11 +14,12 @@ use super::some_if_present;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct Tag {
+pub struct IssueRelationship {
     pub id: Uuid,
-    pub project_id: Uuid,
-    pub name: String,
-    pub color: String,
+    pub issue_id: Uuid,
+    pub related_issue_id: Uuid,
+    pub relationship_type: IssueRelationshipType,
+    pub created_at: DateTime<Utc>,
 }
 
 // =============================================================================
@@ -24,27 +27,27 @@ pub struct Tag {
 // =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
-pub struct CreateTagRequest {
+pub struct CreateIssueRelationshipRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     /// Using client-generated IDs enables stable optimistic updates.
     #[ts(optional)]
     pub id: Option<Uuid>,
-    pub project_id: Uuid,
-    pub name: String,
-    pub color: String,
+    pub issue_id: Uuid,
+    pub related_issue_id: Uuid,
+    pub relationship_type: IssueRelationshipType,
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
-pub struct UpdateTagRequest {
+pub struct UpdateIssueRelationshipRequest {
     #[serde(default, deserialize_with = "some_if_present")]
-    pub name: Option<String>,
+    pub related_issue_id: Option<Uuid>,
     #[serde(default, deserialize_with = "some_if_present")]
-    pub color: Option<String>,
+    pub relationship_type: Option<IssueRelationshipType>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct ListTagsQuery {
-    pub project_id: Uuid,
+pub struct ListIssueRelationshipsQuery {
+    pub issue_id: Uuid,
 }
 
 // =============================================================================
@@ -52,6 +55,6 @@ pub struct ListTagsQuery {
 // =============================================================================
 
 #[derive(Debug, Clone, Serialize, TS)]
-pub struct ListTagsResponse {
-    pub tags: Vec<Tag>,
+pub struct ListIssueRelationshipsResponse {
+    pub issue_relationships: Vec<IssueRelationship>,
 }

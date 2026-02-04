@@ -18,7 +18,7 @@ use crate::{
     auth::RequestContext,
     db::{issues::IssueRepository, pull_requests::PullRequestRepository, workspaces::WorkspaceRepository},
 };
-use utils::api::entities::{PullRequest, PullRequestStatus};
+use api_types::{PullRequest, PullRequestStatus};
 
 #[derive(Debug, Deserialize)]
 pub struct CreatePullRequestRequest {

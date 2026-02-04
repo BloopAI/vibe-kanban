@@ -3,7 +3,7 @@
 //! These traits are used by `EntityDef` to enforce compile-time type safety
 //! between request types and their corresponding entity types.
 
-use utils::api::entities::{
+use api_types::{
     CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
     CreateIssueFollowerRequest, CreateIssueRelationshipRequest, CreateIssueRequest,
     CreateIssueTagRequest, CreateProjectRequest, CreateProjectStatusRequest, CreateTagRequest,

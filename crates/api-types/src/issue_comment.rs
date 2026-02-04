@@ -1,12 +1,11 @@
-//! IssueRelationship entity types.
+//! IssueComment entity types.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::some_if_present;
-use crate::api::types::IssueRelationshipType;
+use crate::some_if_present;
 
 // =============================================================================
 // Row type
@@ -14,12 +13,14 @@ use crate::api::types::IssueRelationshipType;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct IssueRelationship {
+pub struct IssueComment {
     pub id: Uuid,
     pub issue_id: Uuid,
-    pub related_issue_id: Uuid,
-    pub relationship_type: IssueRelationshipType,
+    pub author_id: Option<Uuid>,
+    pub parent_id: Option<Uuid>,
+    pub message: String,
     pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 // =============================================================================
@@ -27,26 +28,26 @@ pub struct IssueRelationship {
 // =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
-pub struct CreateIssueRelationshipRequest {
+pub struct CreateIssueCommentRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     /// Using client-generated IDs enables stable optimistic updates.
     #[ts(optional)]
     pub id: Option<Uuid>,
     pub issue_id: Uuid,
-    pub related_issue_id: Uuid,
-    pub relationship_type: IssueRelationshipType,
+    pub message: String,
+    pub parent_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
-pub struct UpdateIssueRelationshipRequest {
+pub struct UpdateIssueCommentRequest {
     #[serde(default, deserialize_with = "some_if_present")]
-    pub related_issue_id: Option<Uuid>,
+    pub message: Option<String>,
     #[serde(default, deserialize_with = "some_if_present")]
-    pub relationship_type: Option<IssueRelationshipType>,
+    pub parent_id: Option<Option<Uuid>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct ListIssueRelationshipsQuery {
+pub struct ListIssueCommentsQuery {
     pub issue_id: Uuid,
 }
 
@@ -55,6 +56,6 @@ pub struct ListIssueRelationshipsQuery {
 // =============================================================================
 
 #[derive(Debug, Clone, Serialize, TS)]
-pub struct ListIssueRelationshipsResponse {
-    pub issue_relationships: Vec<IssueRelationship>,
+pub struct ListIssueCommentsResponse {
+    pub issue_comments: Vec<IssueComment>,
 }

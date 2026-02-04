@@ -3,7 +3,7 @@
 //! This module defines all shapes using the `define_shape!` macro, which generates
 //! shape definitions for Electric realtime streaming with compile-time SQL validation.
 
-use utils::api::entities::{
+use api_types::{
     Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssueRelationship,
     IssueTag, Notification, OrganizationMember, Project, ProjectStatus, PullRequest, Tag, User,
     Workspace,

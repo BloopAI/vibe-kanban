@@ -1,6 +1,6 @@
 use sqlx::PgPool;
 use thiserror::Error;
-use utils::api::entities::IssueTag;
+use api_types::IssueTag;
 use uuid::Uuid;
 
 use super::get_txid;

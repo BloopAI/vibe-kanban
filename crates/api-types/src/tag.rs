@@ -1,10 +1,10 @@
-//! IssueTag entity types.
+//! Tag entity types.
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::some_if_present;
+use crate::some_if_present;
 
 // =============================================================================
 // Row type
@@ -12,10 +12,11 @@ use super::some_if_present;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct IssueTag {
+pub struct Tag {
     pub id: Uuid,
-    pub issue_id: Uuid,
-    pub tag_id: Uuid,
+    pub project_id: Uuid,
+    pub name: String,
+    pub color: String,
 }
 
 // =============================================================================
@@ -23,24 +24,27 @@ pub struct IssueTag {
 // =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
-pub struct CreateIssueTagRequest {
+pub struct CreateTagRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     /// Using client-generated IDs enables stable optimistic updates.
     #[ts(optional)]
     pub id: Option<Uuid>,
-    pub issue_id: Uuid,
-    pub tag_id: Uuid,
+    pub project_id: Uuid,
+    pub name: String,
+    pub color: String,
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
-pub struct UpdateIssueTagRequest {
+pub struct UpdateTagRequest {
     #[serde(default, deserialize_with = "some_if_present")]
-    pub tag_id: Option<Uuid>,
+    pub name: Option<String>,
+    #[serde(default, deserialize_with = "some_if_present")]
+    pub color: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct ListIssueTagsQuery {
-    pub issue_id: Uuid,
+pub struct ListTagsQuery {
+    pub project_id: Uuid,
 }
 
 // =============================================================================
@@ -48,6 +52,6 @@ pub struct ListIssueTagsQuery {
 // =============================================================================
 
 #[derive(Debug, Clone, Serialize, TS)]
-pub struct ListIssueTagsResponse {
-    pub issue_tags: Vec<IssueTag>,
+pub struct ListTagsResponse {
+    pub tags: Vec<Tag>,
 }

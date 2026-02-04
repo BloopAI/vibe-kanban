@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use crate::api::organizations::MemberRole;
+use crate::types::MemberRole;
 
 // =============================================================================
 // Row types

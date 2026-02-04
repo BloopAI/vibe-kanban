@@ -1,11 +1,11 @@
-//! IssueComment entity types.
+//! IssueAssignee entity types.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::some_if_present;
+use crate::some_if_present;
 
 // =============================================================================
 // Row type
@@ -13,14 +13,11 @@ use super::some_if_present;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct IssueComment {
+pub struct IssueAssignee {
     pub id: Uuid,
     pub issue_id: Uuid,
-    pub author_id: Option<Uuid>,
-    pub parent_id: Option<Uuid>,
-    pub message: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub user_id: Uuid,
+    pub assigned_at: DateTime<Utc>,
 }
 
 // =============================================================================
@@ -28,26 +25,23 @@ pub struct IssueComment {
 // =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
-pub struct CreateIssueCommentRequest {
+pub struct CreateIssueAssigneeRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     /// Using client-generated IDs enables stable optimistic updates.
     #[ts(optional)]
     pub id: Option<Uuid>,
     pub issue_id: Uuid,
-    pub message: String,
-    pub parent_id: Option<Uuid>,
+    pub user_id: Uuid,
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
-pub struct UpdateIssueCommentRequest {
+pub struct UpdateIssueAssigneeRequest {
     #[serde(default, deserialize_with = "some_if_present")]
-    pub message: Option<String>,
-    #[serde(default, deserialize_with = "some_if_present")]
-    pub parent_id: Option<Option<Uuid>>,
+    pub user_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct ListIssueCommentsQuery {
+pub struct ListIssueAssigneesQuery {
     pub issue_id: Uuid,
 }
 
@@ -56,6 +50,6 @@ pub struct ListIssueCommentsQuery {
 // =============================================================================
 
 #[derive(Debug, Clone, Serialize, TS)]
-pub struct ListIssueCommentsResponse {
-    pub issue_comments: Vec<IssueComment>,
+pub struct ListIssueAssigneesResponse {
+    pub issue_assignees: Vec<IssueAssignee>,
 }

@@ -18,7 +18,7 @@ use crate::{
     entity_def::EntityDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
-use utils::api::entities::{
+use api_types::{
     CreateIssueFollowerRequest, IssueFollower, ListIssueFollowersQuery, ListIssueFollowersResponse,
     UpdateIssueFollowerRequest,
 };

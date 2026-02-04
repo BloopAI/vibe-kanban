@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 use sqlx::{Executor, Postgres};
 use thiserror::Error;
-use utils::api::entities::{Notification, NotificationType};
+use api_types::{Notification, NotificationType};
 use uuid::Uuid;
 
 #[derive(Debug, Error)]

@@ -1,27 +1,11 @@
-//! Notification entity types.
+//! Project entity types.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use sqlx::Type;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::some_if_present;
-
-// =============================================================================
-// Types
-// =============================================================================
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
-#[sqlx(type_name = "notification_type", rename_all = "snake_case")]
-#[ts(export)]
-pub enum NotificationType {
-    IssueCommentAdded,
-    IssueStatusChanged,
-    IssueAssigneeChanged,
-    IssueDeleted,
-}
+use crate::some_if_present;
 
 // =============================================================================
 // Row type
@@ -29,17 +13,13 @@ pub enum NotificationType {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct Notification {
+pub struct Project {
     pub id: Uuid,
     pub organization_id: Uuid,
-    pub user_id: Uuid,
-    pub notification_type: NotificationType,
-    pub payload: Value,
-    pub issue_id: Option<Uuid>,
-    pub comment_id: Option<Uuid>,
-    pub seen: bool,
-    pub dismissed_at: Option<DateTime<Utc>>,
+    pub name: String,
+    pub color: String,
     pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 // =============================================================================
@@ -47,23 +27,26 @@ pub struct Notification {
 // =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
-pub struct CreateNotificationRequest {
+pub struct CreateProjectRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     /// Using client-generated IDs enables stable optimistic updates.
     #[ts(optional)]
     pub id: Option<Uuid>,
     pub organization_id: Uuid,
-    pub seen: bool,
+    pub name: String,
+    pub color: String,
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
-pub struct UpdateNotificationRequest {
+pub struct UpdateProjectRequest {
     #[serde(default, deserialize_with = "some_if_present")]
-    pub seen: Option<bool>,
+    pub name: Option<String>,
+    #[serde(default, deserialize_with = "some_if_present")]
+    pub color: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct ListNotificationsQuery {
+pub struct ListProjectsQuery {
     pub organization_id: Uuid,
 }
 
@@ -72,6 +55,6 @@ pub struct ListNotificationsQuery {
 // =============================================================================
 
 #[derive(Debug, Clone, Serialize, TS)]
-pub struct ListNotificationsResponse {
-    pub notifications: Vec<Notification>,
+pub struct ListProjectsResponse {
+    pub projects: Vec<Project>,
 }

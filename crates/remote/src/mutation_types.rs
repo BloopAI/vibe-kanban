@@ -1,6 +1,6 @@
 //! Mutation response types.
 //!
-//! Request/response types are defined in `utils::api::entities`.
+//! Request/response types are defined in `api_types`.
 //! This module provides the response wrapper types for mutations.
 
 use serde::Serialize;

@@ -14,7 +14,7 @@ use crate::{
     entities::NOTIFICATION_SHAPE,
     entity_def::{EntityDef, NoCreate},
 };
-use utils::api::entities::{Notification, UpdateNotificationRequest};
+use api_types::{Notification, UpdateNotificationRequest};
 
 #[derive(Debug, Serialize)]
 pub struct ListNotificationsResponse {

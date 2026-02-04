@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use thiserror::Error;
-use utils::api::{entities::IssueRelationship, types::IssueRelationshipType};
+use api_types::{IssueRelationship, IssueRelationshipType};
 use uuid::Uuid;
 
 use super::get_txid;

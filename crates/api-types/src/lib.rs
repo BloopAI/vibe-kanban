@@ -1,9 +1,9 @@
-//! Entity types shared between local and remote backends.
+//! API types shared between local and remote backends.
 //!
-//! This module contains:
+//! This crate contains:
 //! - Row types (e.g., `Issue`, `Project`) - the API representation of database entities
 //! - Request types (e.g., `CreateIssueRequest`, `UpdateIssueRequest`) - API input types
-//! - Response types (e.g., `ListIssuesResponse`) - API output types
+//! - Shared enums (e.g., `IssuePriority`, `PullRequestStatus`)
 
 use serde::{Deserialize, Deserializer};
 
@@ -20,6 +20,7 @@ pub mod project;
 pub mod project_status;
 pub mod pull_request;
 pub mod tag;
+pub mod types;
 pub mod user;
 pub mod workspace;
 
@@ -36,6 +37,7 @@ pub use project::*;
 pub use project_status::*;
 pub use pull_request::*;
 pub use tag::*;
+pub use types::*;
 pub use user::*;
 pub use workspace::*;
 

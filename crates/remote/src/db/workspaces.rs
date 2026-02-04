@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use thiserror::Error;
-use utils::api::entities::Workspace;
+pub use api_types::Workspace;
 use uuid::Uuid;
 
 #[derive(Debug, Error)]

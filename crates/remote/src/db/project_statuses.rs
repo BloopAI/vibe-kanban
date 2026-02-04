@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
-use utils::api::entities::ProjectStatus;
+use api_types::ProjectStatus;
 use uuid::Uuid;
 
 use super::get_txid;

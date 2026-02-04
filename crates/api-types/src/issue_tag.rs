@@ -1,11 +1,10 @@
-//! IssueAssignee entity types.
+//! IssueTag entity types.
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::some_if_present;
+use crate::some_if_present;
 
 // =============================================================================
 // Row type
@@ -13,11 +12,10 @@ use super::some_if_present;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct IssueAssignee {
+pub struct IssueTag {
     pub id: Uuid,
     pub issue_id: Uuid,
-    pub user_id: Uuid,
-    pub assigned_at: DateTime<Utc>,
+    pub tag_id: Uuid,
 }
 
 // =============================================================================
@@ -25,23 +23,23 @@ pub struct IssueAssignee {
 // =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
-pub struct CreateIssueAssigneeRequest {
+pub struct CreateIssueTagRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     /// Using client-generated IDs enables stable optimistic updates.
     #[ts(optional)]
     pub id: Option<Uuid>,
     pub issue_id: Uuid,
-    pub user_id: Uuid,
+    pub tag_id: Uuid,
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
-pub struct UpdateIssueAssigneeRequest {
+pub struct UpdateIssueTagRequest {
     #[serde(default, deserialize_with = "some_if_present")]
-    pub user_id: Option<Uuid>,
+    pub tag_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct ListIssueAssigneesQuery {
+pub struct ListIssueTagsQuery {
     pub issue_id: Uuid,
 }
 
@@ -50,6 +48,6 @@ pub struct ListIssueAssigneesQuery {
 // =============================================================================
 
 #[derive(Debug, Clone, Serialize, TS)]
-pub struct ListIssueAssigneesResponse {
-    pub issue_assignees: Vec<IssueAssignee>,
+pub struct ListIssueTagsResponse {
+    pub issue_tags: Vec<IssueTag>,
 }

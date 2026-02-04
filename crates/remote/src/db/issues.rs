@@ -2,14 +2,14 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
-use utils::api::{entities::Issue, types::IssuePriority};
+use api_types::{Issue, IssuePriority};
 use uuid::Uuid;
 
 use super::{
     get_txid, project_statuses::ProjectStatusRepository, pull_requests::PullRequestRepository,
     workspaces::WorkspaceRepository,
 };
-use utils::api::entities::PullRequestStatus;
+use api_types::PullRequestStatus;
 use crate::mutation_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]

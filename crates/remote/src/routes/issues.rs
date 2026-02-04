@@ -6,7 +6,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
-use utils::api::entities::{
+use api_types::{
     CreateIssueRequest, Issue, ListIssuesQuery, ListIssuesResponse, UpdateIssueRequest,
 };
 use uuid::Uuid;

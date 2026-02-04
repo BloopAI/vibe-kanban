@@ -21,7 +21,7 @@ use crate::{
     entity_def::EntityDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
-use utils::api::entities::{
+use api_types::{
     CreateProjectStatusRequest, ListProjectStatusesQuery, ListProjectStatusesResponse,
     ProjectStatus, UpdateProjectStatusRequest,
 };

@@ -2,21 +2,18 @@ use std::{env, fs, path::Path};
 
 use remote::{entities::all_shapes, routes::all_entity_metadata, shapes::ShapeExport};
 use ts_rs::TS;
-use utils::api::{
-    entities::{
-        CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
-        CreateIssueFollowerRequest, CreateIssueRelationshipRequest, CreateIssueRequest,
-        CreateIssueTagRequest, CreateNotificationRequest, CreateProjectRequest,
-        CreateProjectStatusRequest, CreateTagRequest, Issue, IssueAssignee, IssueComment,
-        IssueCommentReaction, IssueFollower, IssueRelationship, IssueTag, Notification,
-        NotificationType, OrganizationMember, Project, ProjectStatus, PullRequest,
-        PullRequestStatus, Tag, UpdateIssueAssigneeRequest, UpdateIssueCommentReactionRequest,
-        UpdateIssueCommentRequest, UpdateIssueFollowerRequest, UpdateIssueRelationshipRequest,
-        UpdateIssueRequest, UpdateIssueTagRequest, UpdateNotificationRequest, UpdateProjectRequest,
-        UpdateProjectStatusRequest, UpdateTagRequest, User, UserData, Workspace,
-    },
-    organizations::MemberRole,
-    types::{IssuePriority, IssueRelationshipType},
+use api_types::{
+    CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
+    CreateIssueFollowerRequest, CreateIssueRelationshipRequest, CreateIssueRequest,
+    CreateIssueTagRequest, CreateNotificationRequest, CreateProjectRequest,
+    CreateProjectStatusRequest, CreateTagRequest, Issue, IssueAssignee, IssueComment,
+    IssueCommentReaction, IssueFollower, IssueRelationship, IssueRelationshipType, IssueTag,
+    IssuePriority, MemberRole, Notification, NotificationType, OrganizationMember, Project,
+    ProjectStatus, PullRequest, PullRequestStatus, Tag, UpdateIssueAssigneeRequest,
+    UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueFollowerRequest,
+    UpdateIssueRelationshipRequest, UpdateIssueRequest, UpdateIssueTagRequest,
+    UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest, UpdateTagRequest,
+    User, UserData, Workspace,
 };
 
 /// Shape-only entities that don't have CRUD mutation routes.

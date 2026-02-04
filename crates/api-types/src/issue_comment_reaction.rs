@@ -1,10 +1,11 @@
-//! IssueFollower entity types.
+//! IssueCommentReaction entity types.
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::some_if_present;
+use crate::some_if_present;
 
 // =============================================================================
 // Row type
@@ -12,10 +13,12 @@ use super::some_if_present;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct IssueFollower {
+pub struct IssueCommentReaction {
     pub id: Uuid,
-    pub issue_id: Uuid,
+    pub comment_id: Uuid,
     pub user_id: Uuid,
+    pub emoji: String,
+    pub created_at: DateTime<Utc>,
 }
 
 // =============================================================================
@@ -23,24 +26,24 @@ pub struct IssueFollower {
 // =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
-pub struct CreateIssueFollowerRequest {
+pub struct CreateIssueCommentReactionRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     /// Using client-generated IDs enables stable optimistic updates.
     #[ts(optional)]
     pub id: Option<Uuid>,
-    pub issue_id: Uuid,
-    pub user_id: Uuid,
+    pub comment_id: Uuid,
+    pub emoji: String,
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
-pub struct UpdateIssueFollowerRequest {
+pub struct UpdateIssueCommentReactionRequest {
     #[serde(default, deserialize_with = "some_if_present")]
-    pub user_id: Option<Uuid>,
+    pub emoji: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct ListIssueFollowersQuery {
-    pub issue_id: Uuid,
+pub struct ListIssueCommentReactionsQuery {
+    pub comment_id: Uuid,
 }
 
 // =============================================================================
@@ -48,6 +51,6 @@ pub struct ListIssueFollowersQuery {
 // =============================================================================
 
 #[derive(Debug, Clone, Serialize, TS)]
-pub struct ListIssueFollowersResponse {
-    pub issue_followers: Vec<IssueFollower>,
+pub struct ListIssueCommentReactionsResponse {
+    pub issue_comment_reactions: Vec<IssueCommentReaction>,
 }
