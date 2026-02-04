@@ -120,6 +120,8 @@
             ]
           },
           "settings-beta/projects-repositories",
+          "settings-beta/organization-settings",
+          "settings-beta/remote-projects",
           "settings-beta/agent-configurations",
           "settings-beta/mcp-servers"
         ]

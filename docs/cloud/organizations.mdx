@@ -28,99 +28,80 @@ An organisation acts as a container that holds two main things:
 Think of an organisation like a company: the company has employees (members) and departments or initiatives (projects). Everyone in the company can see what each department is working on.
 </Tip>
 
-## Creating an Organisation
+## Personal Organisation
 
-### First-Time Setup
+When you sign in for the first time, a **personal organisation** is automatically created for you, along with an **Initial Project**. This is your private workspace.
 
-When you sign in for the first time, you'll automatically be prompted to create an organisation.
+Personal organisations:
+- Are created automatically on first sign-in
+- Come with an "Initial Project" ready to use
+- Cannot have additional members invited
+- Cannot be deleted
+- Are only accessible by you
 
+<Info>
+To collaborate with others, you need to create a new (non-personal) organisation.
+</Info>
 
-<Steps>
-<Step title="Enter organisation name">
-  Choose a name that represents your team or company. This will be visible to all members.
+## Creating a Team Organisation
 
-  **Good names:**
-  - `Acme Engineering`
-  - `Frontend Team`
-  - `My Company`
-
-  **Avoid:**
-  - Personal names (unless it's just for you)
-  - Generic names like "Organisation 1"
-</Step>
-
-<Step title="Click Create">
-  Click **Create Organisation** to finish. You'll be taken to your new organisation's dashboard.
-</Step>
-</Steps>
-
-### Creating Additional Organisations
-
-If you need to create another organisation (e.g., for a different team or client):
+To collaborate with team members, create a new organisation:
 
 <Steps>
-<Step title="Open the organisation switcher">
-  Click your organisation name in the top-left corner of the screen.
-
+<Step title="Open the user menu">
+  Click your **profile icon** in the bottom of the left sidebar.
 </Step>
 
-<Step title="Click Create New Organisation">
-  Select **Create New Organisation** from the dropdown.
+<Step title="Click Create organization">
+  Select **+ Create organization** from the menu.
 </Step>
 
 <Step title="Enter details and create">
-  Enter the organisation name and click **Create**.
+  Fill in the organisation details:
+
+  <Frame>
+    <img src="/images/cloud/create-organization-dialog.png" alt="Create New Organization dialog" />
+  </Frame>
+
+  - **Organization Name** - Your team or company name (e.g., "Acme Corporation")
+  - **Slug** - URL-friendly identifier, auto-generated from the name (lowercase, numbers, hyphens only)
+
+  Click **Create Organization** to finish. An **Initial Project** is automatically created in your new organisation.
 </Step>
 </Steps>
 
 <Info>
-You can be a member of multiple organisations. Use the organisation switcher to move between them.
+You can be a member of multiple organisations. Use the user menu to switch between them.
 </Info>
 
 ## Organisation Settings
 
-Access organisation settings by clicking the gear icon (<Icon icon="gear" />) next to your organisation name, or through the settings menu.
+Access organisation settings by clicking the **settings icon** (<Icon icon="gear" />) next to your organisation name in the user menu.
 
+<Frame>
+  <img src="/images/cloud/user-menu-settings.png" alt="User menu showing settings icon next to organisation" />
+</Frame>
 
-### General Settings
+For detailed information about all organisation settings, see the [Organisation Settings](/settings-beta/organization-settings) page.
 
-| Setting | Description |
-|---------|-------------|
-| **Organisation name** | Display name shown everywhere |
-| **Organisation slug** | URL-friendly identifier (auto-generated) |
-
-### Renaming an Organisation
-
-<Steps>
-<Step title="Go to Settings">
-  Click the gear icon next to your organisation name.
-</Step>
-
-<Step title="Edit the name">
-  Change the **Organisation name** field.
-</Step>
-
-<Step title="Save changes">
-  Click **Save** to apply the new name.
-</Step>
-</Steps>
-
-<Info>
-Renaming an organisation doesn't affect your projects, members, or data. It's purely cosmetic.
-</Info>
+From Organisation Settings you can:
+- **Select organisation** - Switch between organisations you belong to
+- **Create organisation** - Create a new organisation
+- **Manage members** - View, invite, and remove members (Admin only)
+- **Manage invitations** - View and revoke pending invitations (Admin only)
+- **Delete organisation** - Permanently delete the organisation (Admin only)
 
 ## Switching Organisations
 
 If you're a member of multiple organisations:
 
 <Steps>
-<Step title="Click the organisation name">
-  Click on your current organisation name in the top-left corner.
+<Step title="Open the user menu">
+  Click your **profile icon** in the bottom of the left sidebar.
 </Step>
 
 <Step title="Select the organisation">
-  Choose the organisation you want to switch to from the dropdown list.
-
+  Click on the organisation you want to switch to from the list.
 </Step>
 </Steps>
 
