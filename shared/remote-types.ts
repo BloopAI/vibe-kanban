@@ -277,6 +277,13 @@ export const PROJECT_ENTITY: EntityDefinition<Project, CreateProjectRequest, Upd
   mutations: { url: '/v1/projects' } as EntityDefinition<Project, CreateProjectRequest, UpdateProjectRequest>['mutations'],
 };
 
+export const NOTIFICATION_ENTITY: EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest> = {
+  name: 'Notification',
+  table: 'notifications',
+  shape: NOTIFICATIONS_SHAPE,
+  mutations: { url: '/v1/notifications' } as EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest>['mutations'],
+};
+
 export const TAG_ENTITY: EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest> = {
   name: 'Tag',
   table: 'tags',
@@ -341,13 +348,6 @@ export const ISSUE_COMMENT_REACTION_ENTITY: EntityDefinition<IssueCommentReactio
 };
 
 // Entity definitions without mutations (shape-only)
-export const NOTIFICATION_ENTITY: EntityDefinition<Notification> = {
-  name: 'Notification',
-  table: 'notifications',
-  shape: NOTIFICATIONS_SHAPE,
-  mutations: null,
-};
-
 export const ORGANIZATION_MEMBER_ENTITY: EntityDefinition<OrganizationMember> = {
   name: 'OrganizationMember',
   table: 'organization_member_metadata',

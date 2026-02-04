@@ -35,7 +35,6 @@ use utils::api::{
 fn shape_only_entities() -> Vec<&'static dyn ShapeExport> {
     use remote::shapes::*;
     vec![
-        &NOTIFICATIONS,
         &ORGANIZATION_MEMBERS,
         &USERS,
         &WORKSPACES,

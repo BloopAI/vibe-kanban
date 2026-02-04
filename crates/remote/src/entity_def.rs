@@ -161,6 +161,25 @@ impl<E: TS, U> EntityDef<E, (), U> {
             _phantom: PhantomData,
         }
     }
+
+    /// Set the create type for metadata generation without adding a route.
+    ///
+    /// Use this when the create type exists for SDK generation but there's
+    /// no public create endpoint (e.g., notifications created internally).
+    pub fn with_create_type<C>(self) -> EntityDef<E, C, U>
+    where
+        C: TS + CreateRequestFor<Entity = E>,
+    {
+        EntityDef {
+            shape: self.shape,
+            base_route: self.base_route,
+            id_route: self.id_route,
+            has_create: false,
+            has_update: self.has_update,
+            has_delete: self.has_delete,
+            _phantom: PhantomData,
+        }
+    }
 }
 
 impl<E: TS, C> EntityDef<E, C, ()> {
@@ -185,25 +204,21 @@ impl<E: TS, C> EntityDef<E, C, ()> {
     }
 }
 
-// Metadata for entities with both create and update
+// Metadata for entities with both create and update types
 impl<E: TS, C: TS, U: TS> EntityDef<E, C, U> {
     /// Extract metadata for TypeScript generation.
+    ///
+    /// Type names are always included when the type parameters are set,
+    /// regardless of whether there's an actual endpoint. This allows SDK
+    /// generation for types that exist but may not have public endpoints.
     pub fn metadata(&self) -> EntityMeta {
         EntityMeta {
             table: self.shape.table(),
             shape_url: self.shape.url(),
             mutations_url: format!("/v1/{}", self.shape.table()),
             row_type: E::name(),
-            create_type: if self.has_create {
-                Some(C::name())
-            } else {
-                None
-            },
-            update_type: if self.has_update {
-                Some(U::name())
-            } else {
-                None
-            },
+            create_type: Some(C::name()),
+            update_type: Some(U::name()),
             has_delete: self.has_delete,
         }
     }

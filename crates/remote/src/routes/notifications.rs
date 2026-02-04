@@ -9,8 +9,13 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use super::error::ErrorResponse;
-use crate::{AppState, auth::RequestContext, db::notifications::NotificationRepository};
-use utils::api::entities::{Notification, UpdateNotificationRequest};
+use crate::{
+    AppState, auth::RequestContext, db::notifications::NotificationRepository,
+    entities::NOTIFICATION_SHAPE, entity_def::EntityDef,
+};
+use utils::api::entities::{
+    CreateNotificationRequest, Notification, UpdateNotificationRequest,
+};
 
 #[derive(Debug, Serialize)]
 pub struct ListNotificationsResponse {
@@ -33,17 +38,20 @@ pub struct ListNotificationsQuery {
     pub include_dismissed: bool,
 }
 
+pub fn entity() -> EntityDef<Notification, CreateNotificationRequest, UpdateNotificationRequest> {
+    EntityDef::new(&NOTIFICATION_SHAPE)
+        .list(list_notifications)
+        .get(get_notification)
+        .with_create_type::<CreateNotificationRequest>()
+        .update(update_notification)
+        .delete(delete_notification)
+}
+
 pub fn router() -> Router<AppState> {
-    Router::new()
-        .route("/notifications", get(list_notifications))
+    entity()
+        .router()
         .route("/notifications/unread-count", get(unread_count))
         .route("/notifications/mark-all-seen", post(mark_all_seen))
-        .route(
-            "/notifications/{notification_id}",
-            get(get_notification)
-                .patch(update_notification)
-                .delete(delete_notification),
-        )
 }
 
 #[instrument(

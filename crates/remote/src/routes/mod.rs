@@ -41,7 +41,7 @@ pub mod issue_relationships;
 pub mod issue_tags;
 pub mod issues;
 mod migration;
-mod notifications;
+pub mod notifications;
 mod oauth;
 pub(crate) mod organization_members;
 mod organizations;
@@ -181,6 +181,7 @@ async fn health() -> Json<HealthResponse> {
 pub fn all_entity_metadata() -> Vec<crate::entity_def::EntityMeta> {
     vec![
         projects::entity().metadata(),
+        notifications::entity().metadata(),
         tags::entity().metadata(),
         project_statuses::entity().metadata(),
         issues::entity().metadata(),
