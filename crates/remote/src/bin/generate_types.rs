@@ -9,6 +9,7 @@ use remote::{
         workspaces::Workspace,
     },
     entities::all_shapes,
+    routes::all_entity_metadata,
     shapes::ShapeExport,
 };
 use ts_rs::TS;
@@ -29,85 +30,16 @@ use utils::api::{
     types::{IssuePriority, IssueRelationshipType},
 };
 
-// =============================================================================
-// Entity definition with builder pattern for TypeScript generation
-// =============================================================================
-
-struct EntityDef {
-    shape: &'static dyn ShapeExport,
-    create: Option<String>,
-    update: Option<String>,
-}
-
-impl EntityDef {
-    fn new(shape: &'static dyn ShapeExport) -> Self {
-        Self {
-            shape,
-            create: None,
-            update: None,
-        }
-    }
-
-    fn create<T: TS>(mut self) -> Self {
-        self.create = Some(T::name());
-        self
-    }
-
-    fn update<T: TS>(mut self) -> Self {
-        self.update = Some(T::name());
-        self
-    }
-
-    fn has_mutations(&self) -> bool {
-        self.create.is_some() || self.update.is_some()
-    }
-}
-
-/// All entity definitions for TypeScript generation.
-/// Each entity pairs a shape with optional mutation types.
-fn all_entities() -> Vec<EntityDef> {
+/// Shape-only entities that don't have CRUD mutation routes.
+/// These only have shapes for Electric realtime streaming.
+fn shape_only_entities() -> Vec<&'static dyn ShapeExport> {
     use remote::shapes::*;
-
     vec![
-        // Entities with mutations
-        EntityDef::new(&PROJECTS)
-            .create::<CreateProjectRequest>()
-            .update::<UpdateProjectRequest>(),
-        EntityDef::new(&NOTIFICATIONS)
-            .create::<CreateNotificationRequest>()
-            .update::<UpdateNotificationRequest>(),
-        EntityDef::new(&TAGS)
-            .create::<CreateTagRequest>()
-            .update::<UpdateTagRequest>(),
-        EntityDef::new(&PROJECT_STATUSES)
-            .create::<CreateProjectStatusRequest>()
-            .update::<UpdateProjectStatusRequest>(),
-        EntityDef::new(&ISSUES)
-            .create::<CreateIssueRequest>()
-            .update::<UpdateIssueRequest>(),
-        EntityDef::new(&ISSUE_ASSIGNEES)
-            .create::<CreateIssueAssigneeRequest>()
-            .update::<UpdateIssueAssigneeRequest>(),
-        EntityDef::new(&ISSUE_FOLLOWERS)
-            .create::<CreateIssueFollowerRequest>()
-            .update::<UpdateIssueFollowerRequest>(),
-        EntityDef::new(&ISSUE_TAGS)
-            .create::<CreateIssueTagRequest>()
-            .update::<UpdateIssueTagRequest>(),
-        EntityDef::new(&ISSUE_RELATIONSHIPS)
-            .create::<CreateIssueRelationshipRequest>()
-            .update::<UpdateIssueRelationshipRequest>(),
-        EntityDef::new(&ISSUE_COMMENTS)
-            .create::<CreateIssueCommentRequest>()
-            .update::<UpdateIssueCommentRequest>(),
-        EntityDef::new(&ISSUE_COMMENT_REACTIONS)
-            .create::<CreateIssueCommentReactionRequest>()
-            .update::<UpdateIssueCommentReactionRequest>(),
-        // Shape-only entities (no mutations)
-        EntityDef::new(&ORGANIZATION_MEMBERS),
-        EntityDef::new(&USERS),
-        EntityDef::new(&WORKSPACES),
-        EntityDef::new(&PULL_REQUESTS),
+        &NOTIFICATIONS,
+        &ORGANIZATION_MEMBERS,
+        &USERS,
+        &WORKSPACES,
+        &PULL_REQUESTS,
     ]
 }
 
@@ -280,39 +212,46 @@ fn export_shapes() -> String {
     output.push_str("  } | null;\n");
     output.push_str("}\n\n");
 
-    // Generate individual entity definitions
-    let entities = all_entities();
-    output.push_str("// Entity definitions\n");
-    for entity in &entities {
-        let ts_type = entity.shape.ts_type_name();
-        let table = entity.shape.table();
+    // Generate entity definitions from route modules
+    output.push_str("// Entity definitions with mutations\n");
+    for entity in all_entity_metadata() {
+        let ts_type = &entity.row_type;
+        let table = entity.table;
+        let const_name = to_screaming_snake_case(ts_type);
+        let shape_name = format!("{}_SHAPE", table.to_uppercase());
+
+        let create_type = entity.create_type.as_deref().unwrap_or("unknown");
+        let update_type = entity.update_type.as_deref().unwrap_or("unknown");
+        output.push_str(&format!(
+            "export const {}_ENTITY: EntityDefinition<{}, {}, {}> = {{\n",
+            const_name, ts_type, create_type, update_type
+        ));
+        output.push_str(&format!("  name: '{}',\n", ts_type));
+        output.push_str(&format!("  table: '{}',\n", table));
+        output.push_str(&format!("  shape: {},\n", shape_name));
+        output.push_str(&format!(
+            "  mutations: {{ url: '{}' }} as EntityDefinition<{}, {}, {}>['mutations'],\n",
+            entity.mutations_url, ts_type, create_type, update_type
+        ));
+        output.push_str("};\n\n");
+    }
+
+    // Generate entity definitions for shape-only entities (no mutations)
+    output.push_str("// Entity definitions without mutations (shape-only)\n");
+    for shape in shape_only_entities() {
+        let ts_type = shape.ts_type_name();
+        let table = shape.table();
         let const_name = to_screaming_snake_case(&ts_type);
         let shape_name = format!("{}_SHAPE", table.to_uppercase());
 
-        if entity.has_mutations() {
-            let create_type = entity.create.as_deref().unwrap_or("unknown");
-            let update_type = entity.update.as_deref().unwrap_or("unknown");
-            output.push_str(&format!(
-                "export const {}_ENTITY: EntityDefinition<{}, {}, {}> = {{\n",
-                const_name, ts_type, create_type, update_type
-            ));
-            output.push_str(&format!("  name: '{}',\n", ts_type));
-            output.push_str(&format!("  table: '{}',\n", table));
-            output.push_str(&format!("  shape: {},\n", shape_name));
-            output.push_str(&format!(
-                "  mutations: {{ url: '/v1/{}' }} as EntityDefinition<{}, {}, {}>['mutations'],\n",
-                table, ts_type, create_type, update_type
-            ));
-        } else {
-            output.push_str(&format!(
-                "export const {}_ENTITY: EntityDefinition<{}> = {{\n",
-                const_name, ts_type
-            ));
-            output.push_str(&format!("  name: '{}',\n", ts_type));
-            output.push_str(&format!("  table: '{}',\n", table));
-            output.push_str(&format!("  shape: {},\n", shape_name));
-            output.push_str("  mutations: null,\n");
-        }
+        output.push_str(&format!(
+            "export const {}_ENTITY: EntityDefinition<{}> = {{\n",
+            const_name, ts_type
+        ));
+        output.push_str(&format!("  name: '{}',\n", ts_type));
+        output.push_str(&format!("  table: '{}',\n", table));
+        output.push_str(&format!("  shape: {},\n", shape_name));
+        output.push_str("  mutations: null,\n");
         output.push_str("};\n\n");
     }
 

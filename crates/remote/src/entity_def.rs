@@ -1,6 +1,6 @@
 //! Entity definition builder for type-safe route and metadata generation.
 //!
-//! This module provides `EntityDef2`, a builder that:
+//! This module provides `EntityDef`, a builder that:
 //! - Generates axum routers with URLs derived from the shape's table name
 //! - Captures type information for TypeScript generation
 //! - Uses marker traits to enforce request/entity type relationships
@@ -8,11 +8,11 @@
 //! # Example
 //!
 //! ```ignore
-//! use crate::entity_def::EntityDef2;
+//! use crate::entity_def::EntityDef;
 //! use crate::entities::TAG_SHAPE;
 //!
-//! pub fn entity() -> EntityDef2<Tag, CreateTagRequest, UpdateTagRequest> {
-//!     EntityDef2::new(&TAG_SHAPE)
+//! pub fn entity() -> EntityDef<Tag, CreateTagRequest, UpdateTagRequest> {
+//!     EntityDef::new(&TAG_SHAPE)
 //!         .list(list_tags)
 //!         .get(get_tag)
 //!         .create(create_tag)
@@ -47,34 +47,10 @@ pub trait UpdateRequestFor {
 }
 
 // =============================================================================
-// Marker Trait Implementations
-// =============================================================================
-
-use utils::api::entities::{
-    CreateIssueRequest, CreateTagRequest, Issue, Tag, UpdateIssueRequest, UpdateTagRequest,
-};
-
-impl CreateRequestFor for CreateTagRequest {
-    type Entity = Tag;
-}
-
-impl UpdateRequestFor for UpdateTagRequest {
-    type Entity = Tag;
-}
-
-impl CreateRequestFor for CreateIssueRequest {
-    type Entity = Issue;
-}
-
-impl UpdateRequestFor for UpdateIssueRequest {
-    type Entity = Issue;
-}
-
-// =============================================================================
 // EntityMeta - Metadata for TypeScript generation
 // =============================================================================
 
-/// Metadata extracted from an EntityDef2 for TypeScript code generation.
+/// Metadata extracted from an EntityDef for TypeScript code generation.
 #[derive(Debug)]
 pub struct EntityMeta {
     pub table: &'static str,
@@ -87,7 +63,7 @@ pub struct EntityMeta {
 }
 
 // =============================================================================
-// EntityDef2 Builder
+// EntityDef Builder
 // =============================================================================
 
 /// Builder for entity routes and metadata.
@@ -96,7 +72,7 @@ pub struct EntityMeta {
 /// - `E`: The entity/row type (e.g., `Tag`)
 /// - `C`: The create request type, or `()` if no create
 /// - `U`: The update request type, or `()` if no update
-pub struct EntityDef2<E, C = (), U = ()> {
+pub struct EntityDef<E, C = (), U = ()> {
     shape: &'static dyn crate::shapes::ShapeExport,
     base_route: MethodRouter<AppState>,
     id_route: MethodRouter<AppState>,
@@ -106,8 +82,8 @@ pub struct EntityDef2<E, C = (), U = ()> {
     _phantom: PhantomData<fn() -> (E, C, U)>,
 }
 
-impl<E: TS + Send + Sync + 'static> EntityDef2<E, (), ()> {
-    /// Create a new EntityDef2 from a shape definition.
+impl<E: TS + Send + Sync + 'static> EntityDef<E, (), ()> {
+    /// Create a new EntityDef from a shape definition.
     pub fn new(shape: &'static ShapeDefinition<E>) -> Self {
         Self {
             shape,
@@ -121,7 +97,7 @@ impl<E: TS + Send + Sync + 'static> EntityDef2<E, (), ()> {
     }
 }
 
-impl<E: TS, C, U> EntityDef2<E, C, U> {
+impl<E: TS, C, U> EntityDef<E, C, U> {
     /// Add a list handler (GET /table).
     pub fn list<H, T>(mut self, handler: H) -> Self
     where
@@ -165,17 +141,17 @@ impl<E: TS, C, U> EntityDef2<E, C, U> {
     }
 }
 
-impl<E: TS, U> EntityDef2<E, (), U> {
+impl<E: TS, U> EntityDef<E, (), U> {
     /// Add a create handler (POST /table).
     ///
     /// The create request type must implement `CreateRequestFor<Entity = E>`.
-    pub fn create<C, H, T>(self, handler: H) -> EntityDef2<E, C, U>
+    pub fn create<C, H, T>(self, handler: H) -> EntityDef<E, C, U>
     where
         C: TS + CreateRequestFor<Entity = E>,
         H: Handler<T, AppState> + Clone + Send + 'static,
         T: 'static,
     {
-        EntityDef2 {
+        EntityDef {
             shape: self.shape,
             base_route: self.base_route.post(handler),
             id_route: self.id_route,
@@ -187,17 +163,17 @@ impl<E: TS, U> EntityDef2<E, (), U> {
     }
 }
 
-impl<E: TS, C> EntityDef2<E, C, ()> {
+impl<E: TS, C> EntityDef<E, C, ()> {
     /// Add an update handler (PATCH /table/{id}).
     ///
     /// The update request type must implement `UpdateRequestFor<Entity = E>`.
-    pub fn update<U, H, T>(self, handler: H) -> EntityDef2<E, C, U>
+    pub fn update<U, H, T>(self, handler: H) -> EntityDef<E, C, U>
     where
         U: TS + UpdateRequestFor<Entity = E>,
         H: Handler<T, AppState> + Clone + Send + 'static,
         T: 'static,
     {
-        EntityDef2 {
+        EntityDef {
             shape: self.shape,
             base_route: self.base_route,
             id_route: self.id_route.patch(handler),
@@ -210,7 +186,7 @@ impl<E: TS, C> EntityDef2<E, C, ()> {
 }
 
 // Metadata for entities with both create and update
-impl<E: TS, C: TS, U: TS> EntityDef2<E, C, U> {
+impl<E: TS, C: TS, U: TS> EntityDef<E, C, U> {
     /// Extract metadata for TypeScript generation.
     pub fn metadata(&self) -> EntityMeta {
         EntityMeta {
