@@ -362,6 +362,7 @@
     "filesCount": "{{count}} 个文件",
     "noPrCreated": "未创建 PR",
     "noCommentsYet": "暂无评论",
+    "createdBy": "创建者",
     "comments": "评论",
     "enterCommentPlaceholder": "在此输入评论...",
     "subIssues": "子任务",

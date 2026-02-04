@@ -362,6 +362,7 @@
     "filesCount": "{{count}} 個檔案",
     "noPrCreated": "未建立 PR",
     "noCommentsYet": "尚無評論",
+    "createdBy": "建立者",
     "comments": "評論",
     "enterCommentPlaceholder": "在此輸入評論...",
     "subIssues": "子任務",

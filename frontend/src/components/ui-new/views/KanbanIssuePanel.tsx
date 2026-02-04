@@ -1,5 +1,6 @@
 import type { RefCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import { XIcon, LinkIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type {
@@ -108,6 +109,7 @@ export function KanbanIssuePanel({
   onCopyLink,
   onMoreActions,
 }: KanbanIssuePanelProps) {
+  const { t } = useTranslation('common');
   const isCreateMode = mode === 'create';
   const creatorName =
     creatorUser?.first_name?.trim() || creatorUser?.username?.trim() || null;
@@ -281,7 +283,9 @@ export function KanbanIssuePanel({
         {/* Creator row (Edit mode only) */}
         {showCreator && creatorName && (
           <div className="border-t px-base py-base flex items-center justify-between">
-            <span className="text-xs font-medium text-low">Created by</span>
+            <span className="text-xs font-medium text-low">
+              {t('kanban.createdBy')}
+            </span>
             <div className="flex items-center gap-half">
               {creatorUser && (
                 <UserAvatar

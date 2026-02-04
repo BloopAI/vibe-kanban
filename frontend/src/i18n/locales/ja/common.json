@@ -362,6 +362,7 @@
     "filesCount": "{{count}}ファイル",
     "noPrCreated": "PRが作成されていません",
     "noCommentsYet": "コメントはまだありません",
+    "createdBy": "作成者",
     "comments": "コメント",
     "enterCommentPlaceholder": "コメントを入力してください...",
     "subIssues": "サブ課題",

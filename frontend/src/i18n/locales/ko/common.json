@@ -362,6 +362,7 @@
     "filesCount": "{{count}}개 파일",
     "noPrCreated": "PR이 생성되지 않음",
     "noCommentsYet": "아직 댓글이 없습니다",
+    "createdBy": "작성자",
     "comments": "댓글",
     "enterCommentPlaceholder": "댓글을 입력하세요...",
     "subIssues": "하위 이슈",

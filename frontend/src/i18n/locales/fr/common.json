@@ -362,6 +362,7 @@
     "filesCount": "{{count}} Fichiers",
     "noPrCreated": "Aucune PR créée",
     "noCommentsYet": "Aucun commentaire",
+    "createdBy": "Créé par",
     "comments": "Commentaires",
     "enterCommentPlaceholder": "Entrez votre commentaire ici...",
     "subIssues": "Sous-tâches",
