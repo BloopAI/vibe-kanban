@@ -68,12 +68,26 @@ The migration wizard guides you through four steps:
 
 The first screen explains what Cloud offers and what will happen during migration.
 
+<Frame>
+  <img src="/images/cloud/migration-introduction.png" alt="Migration introduction screen showing Cloud benefits" />
+</Frame>
+
 - If you're **not signed in**, click **Sign In** to authenticate with GitHub or Google
 - If you're **already signed in**, click **Continue** to proceed
+
+When you click Sign In, you'll see the authentication dialog:
+
+<Frame>
+  <img src="/images/cloud/sign-in-dialog.png" alt="Sign in dialog with GitHub and Google options" />
+</Frame>
 
 ### Step 2: Choose Projects
 
 Select which local projects you want to migrate:
+
+<Frame>
+  <img src="/images/cloud/migration-choose-projects.png" alt="Choose projects screen showing project list and organisation selector" />
+</Frame>
 
 <Steps>
 <Step title="Review your projects">
@@ -82,6 +96,12 @@ Select which local projects you want to migrate:
 
 <Step title="Select projects to migrate">
   Click the checkbox next to each project you want to migrate. Use **Select All** to choose everything at once.
+
+  <Frame>
+    <img src="/images/cloud/migration-project-selected.png" alt="Project selected for migration with Migrate button" />
+  </Frame>
+
+  Projects you've already migrated are shown separately with a **View** link to open them in Cloud.
 </Step>
 
 <Step title="Choose target organisation">
@@ -103,15 +123,11 @@ This step performs the actual migration:
 
 1. Click **Start Migration** to begin
 2. Wait while your data is transferred to Cloud
-3. You'll see a progress indicator during the process
+3. You'll see a summary report when complete
 
-<Warning>
-Don't close the browser or navigate away while migration is in progress. This could result in incomplete data transfer.
-</Warning>
-
-### Step 4: Finish
-
-Once migration completes, you'll see a summary report showing:
+<Frame>
+  <img src="/images/cloud/migration-complete.png" alt="Migration summary showing projects and tasks migrated" />
+</Frame>
 
 | Item | Description |
 |------|-------------|
@@ -120,7 +136,22 @@ Once migration completes, you'll see a summary report showing:
 | **PR Merges** | How many pull request links were migrated |
 | **Warnings** | Any issues encountered during migration |
 
-Click **Finish** to complete the wizard and start using your Cloud projects.
+<Warning>
+Don't close the browser or navigate away while migration is in progress. This could result in incomplete data transfer.
+</Warning>
+
+Click **Continue** to proceed to the finish screen.
+
+### Step 4: Finish
+
+The finish screen shows your migrated projects with quick access links:
+
+<Frame>
+  <img src="/images/cloud/migration-finish.png" alt="Finish screen showing migrated projects with View links" />
+</Frame>
+
+- Click **View** next to any project to open it in Cloud
+- Click **Migrate More Projects** to migrate additional projects
 
 ## What Gets Migrated
 
