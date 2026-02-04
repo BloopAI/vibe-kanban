@@ -1,5 +1,5 @@
+use api_types::{User, UserData};
 use sqlx::{PgPool, query_as};
-pub use api_types::{User, UserData};
 use uuid::Uuid;
 
 use super::{Tx, identity_errors::IdentityError};

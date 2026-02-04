@@ -1,5 +1,4 @@
-// Re-export MemberRole from api-types
-pub use api_types::MemberRole;
+use api_types::MemberRole;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::Type;

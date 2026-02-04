@@ -5,9 +5,10 @@ use axum::{
     response::IntoResponse,
     routing::{delete, get, patch, post},
 };
+use api_types::MemberRole;
 use utils::api::organizations::{
     CreateOrganizationRequest, CreateOrganizationResponse, GetOrganizationResponse,
-    ListOrganizationsResponse, MemberRole, UpdateOrganizationRequest,
+    ListOrganizationsResponse, UpdateOrganizationRequest,
 };
 use uuid::Uuid;
 

@@ -10,20 +10,17 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_issue_access,
 };
+use api_types::{
+    CreateIssueCommentRequest, IssueComment, ListIssueCommentsQuery, ListIssueCommentsResponse,
+    MemberRole, UpdateIssueCommentRequest,
+};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{
-        issue_comments::IssueCommentRepository,
-        organization_members::{MemberRole, check_user_role},
-    },
+    db::{issue_comments::IssueCommentRepository, organization_members::check_user_role},
     entities::ISSUE_COMMENT_SHAPE,
     entity_def::EntityDef,
     mutation_types::{DeleteResponse, MutationResponse},
-};
-use api_types::{
-    CreateIssueCommentRequest, IssueComment, ListIssueCommentsQuery, ListIssueCommentsResponse,
-    UpdateIssueCommentRequest,
 };
 
 /// Entity definition for IssueComment - provides both router and TypeScript metadata.

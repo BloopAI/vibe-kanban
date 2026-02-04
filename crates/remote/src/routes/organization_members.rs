@@ -16,6 +16,7 @@ use utils::api::organizations::{
 use uuid::Uuid;
 
 use super::error::{ErrorResponse, membership_error};
+use api_types::MemberRole;
 use crate::{
     AppState,
     auth::RequestContext,
@@ -23,7 +24,7 @@ use crate::{
         identity_errors::IdentityError,
         invitations::{Invitation, InvitationRepository},
         issues::IssueRepository,
-        organization_members::{self, MemberRole},
+        organization_members,
         organizations::OrganizationRepository,
         projects::ProjectRepository,
     },
