@@ -13,24 +13,35 @@ export function CreateModeReposSectionContainer() {
   const repoIds = useMemo(() => repos.map((r) => r.id), [repos]);
   const { branchesByRepo } = useMultiRepoBranches(repoIds);
 
-  // Auto-select branch for repos that don't have one set
-  // (e.g., repos added by user after initialization)
+  // Auto-select branch for repos based on priority:
+  // 1. default_target_branch (always wins if configured)
+  // 2. Existing selection from nav state (e.g., previous workspace)
+  // 3. Current checked-out branch
   useEffect(() => {
     repos.forEach((repo) => {
       const branches = branchesByRepo[repo.id];
-      // Only auto-select if branch is empty (not already set)
-      if (branches && !targetBranches[repo.id]) {
-        if (
-          repo.default_target_branch &&
-          branches.some((b) => b.name === repo.default_target_branch)
-        ) {
+      if (!branches) return;
+
+      // Priority 1: Always use default_target_branch if configured and exists
+      if (
+        repo.default_target_branch &&
+        branches.some((b) => b.name === repo.default_target_branch)
+      ) {
+        if (targetBranches[repo.id] !== repo.default_target_branch) {
           setTargetBranch(repo.id, repo.default_target_branch);
-        } else {
-          const currentBranch = branches.find((b) => b.is_current);
-          if (currentBranch) {
-            setTargetBranch(repo.id, currentBranch.name);
-          }
         }
+        return;
+      }
+
+      // Priority 2: Keep existing selection (from nav state)
+      if (targetBranches[repo.id]) {
+        return;
+      }
+
+      // Priority 3: Fall back to current branch
+      const currentBranch = branches.find((b) => b.is_current);
+      if (currentBranch) {
+        setTargetBranch(repo.id, currentBranch.name);
       }
     });
   }, [repos, branchesByRepo, targetBranches, setTargetBranch]);
