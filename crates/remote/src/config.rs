@@ -14,6 +14,7 @@ pub struct RemoteServerConfig {
     pub electric_secret: Option<SecretString>,
     pub electric_role_password: Option<SecretString>,
     pub r2: Option<R2Config>,
+    pub azure_blob: Option<AzureBlobConfig>,
     pub review_worker_base_url: Option<String>,
     pub review_disabled: bool,
     pub github_app: Option<GitHubAppConfig>,
@@ -61,6 +62,60 @@ impl R2Config {
             secret_access_key: SecretString::new(secret_access_key.into()),
             endpoint,
             bucket,
+            presign_expiry_secs,
+        }))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AzureBlobConfig {
+    pub account_name: String,
+    pub account_key: SecretString,
+    pub container_name: String,
+    pub endpoint_url: Option<String>,
+    pub public_endpoint_url: Option<String>,
+    pub presign_expiry_secs: u64,
+}
+
+impl AzureBlobConfig {
+    pub fn from_env() -> Result<Option<Self>, ConfigError> {
+        let account_name = match env::var("AZURE_STORAGE_ACCOUNT_NAME") {
+            Ok(v) => v,
+            Err(_) => {
+                tracing::info!("AZURE_STORAGE_ACCOUNT_NAME not set, Azure Blob storage disabled");
+                return Ok(None);
+            }
+        };
+
+        tracing::info!("AZURE_STORAGE_ACCOUNT_NAME is set, checking other Azure Blob env vars");
+
+        let account_key = env::var("AZURE_STORAGE_ACCOUNT_KEY")
+            .map_err(|_| ConfigError::MissingVar("AZURE_STORAGE_ACCOUNT_KEY"))?;
+
+        let container_name = env::var("AZURE_STORAGE_CONTAINER_NAME")
+            .unwrap_or_else(|_| "issue-attachments".to_string());
+
+        let endpoint_url = env::var("AZURE_STORAGE_ENDPOINT_URL").ok();
+        let public_endpoint_url = env::var("AZURE_STORAGE_PUBLIC_ENDPOINT_URL").ok();
+
+        let presign_expiry_secs = env::var("AZURE_BLOB_PRESIGN_EXPIRY_SECS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(3600);
+
+        tracing::info!(
+            account_name = %account_name,
+            container_name = %container_name,
+            endpoint_url = ?endpoint_url,
+            "Azure Blob config loaded successfully"
+        );
+
+        Ok(Some(Self {
+            account_name,
+            account_key: SecretString::new(account_key.into()),
+            container_name,
+            endpoint_url,
+            public_endpoint_url,
             presign_expiry_secs,
         }))
     }
@@ -150,6 +205,7 @@ impl RemoteServerConfig {
             .map(|s| SecretString::new(s.into()));
 
         let r2 = R2Config::from_env()?;
+        let azure_blob = AzureBlobConfig::from_env()?;
 
         let review_worker_base_url = env::var("REVIEW_WORKER_BASE_URL").ok();
 
@@ -168,6 +224,7 @@ impl RemoteServerConfig {
             electric_secret,
             electric_role_password,
             r2,
+            azure_blob,
             review_worker_base_url,
             review_disabled,
             github_app,

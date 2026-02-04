@@ -202,6 +202,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             task,
             executor_profile_id: value.executorProfileId!,
             repos,
+            linked_issue: null,
           },
           { onSuccess: () => modal.remove() }
         );
