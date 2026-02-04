@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { create } from 'zustand';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
 import type { IssuePriority } from 'shared/remote-types';
@@ -424,8 +424,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
       },
     })),
 
-  clearKanbanFilters: () =>
-    set({ kanbanFilters: DEFAULT_KANBAN_FILTER_STATE }),
+  clearKanbanFilters: () => set({ kanbanFilters: DEFAULT_KANBAN_FILTER_STATE }),
 
   // Kanban view mode actions
   setKanbanViewMode: (mode) => set({ kanbanViewMode: mode }),
