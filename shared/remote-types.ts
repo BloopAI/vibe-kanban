@@ -269,19 +269,12 @@ export interface EntityDefinition<TRow, TCreate = unknown, TUpdate = unknown> {
   } | null;
 }
 
-// Entity definitions
+// Entity definitions with mutations
 export const PROJECT_ENTITY: EntityDefinition<Project, CreateProjectRequest, UpdateProjectRequest> = {
   name: 'Project',
   table: 'projects',
   shape: PROJECTS_SHAPE,
   mutations: { url: '/v1/projects' } as EntityDefinition<Project, CreateProjectRequest, UpdateProjectRequest>['mutations'],
-};
-
-export const NOTIFICATION_ENTITY: EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest> = {
-  name: 'Notification',
-  table: 'notifications',
-  shape: NOTIFICATIONS_SHAPE,
-  mutations: { url: '/v1/notifications' } as EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest>['mutations'],
 };
 
 export const TAG_ENTITY: EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest> = {
@@ -345,6 +338,14 @@ export const ISSUE_COMMENT_REACTION_ENTITY: EntityDefinition<IssueCommentReactio
   table: 'issue_comment_reactions',
   shape: ISSUE_COMMENT_REACTIONS_SHAPE,
   mutations: { url: '/v1/issue_comment_reactions' } as EntityDefinition<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>['mutations'],
+};
+
+// Entity definitions without mutations (shape-only)
+export const NOTIFICATION_ENTITY: EntityDefinition<Notification> = {
+  name: 'Notification',
+  table: 'notifications',
+  shape: NOTIFICATIONS_SHAPE,
+  mutations: null,
 };
 
 export const ORGANIZATION_MEMBER_ENTITY: EntityDefinition<OrganizationMember> = {
