@@ -54,7 +54,7 @@ pub trait UpdateRequestFor {
 // =============================================================================
 
 use utils::api::entities::{
-    CreateTagRequest, Tag, UpdateTagRequest,
+    CreateIssueRequest, CreateTagRequest, Issue, Tag, UpdateIssueRequest, UpdateTagRequest,
 };
 
 impl CreateRequestFor for CreateTagRequest {
@@ -63,6 +63,14 @@ impl CreateRequestFor for CreateTagRequest {
 
 impl UpdateRequestFor for UpdateTagRequest {
     type Entity = Tag;
+}
+
+impl CreateRequestFor for CreateIssueRequest {
+    type Entity = Issue;
+}
+
+impl UpdateRequestFor for UpdateIssueRequest {
+    type Entity = Issue;
 }
 
 // =============================================================================
