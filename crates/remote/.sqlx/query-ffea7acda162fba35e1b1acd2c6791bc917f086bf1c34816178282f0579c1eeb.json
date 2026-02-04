@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO issues (\n                id, project_id, status_id, title, description, priority,\n                start_date, target_date, completed_at, sort_order,\n                parent_issue_id, parent_issue_sort_order, extension_metadata\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)\n            RETURNING\n                id                  AS \"id!: Uuid\",\n                project_id          AS \"project_id!: Uuid\",\n                issue_number        AS \"issue_number!\",\n                simple_id           AS \"simple_id!\",\n                status_id           AS \"status_id!: Uuid\",\n                title               AS \"title!\",\n                description         AS \"description?\",\n                priority            AS \"priority: IssuePriority\",\n                start_date          AS \"start_date?: DateTime<Utc>\",\n                target_date         AS \"target_date?: DateTime<Utc>\",\n                completed_at        AS \"completed_at?: DateTime<Utc>\",\n                sort_order          AS \"sort_order!\",\n                parent_issue_id     AS \"parent_issue_id?: Uuid\",\n                parent_issue_sort_order AS \"parent_issue_sort_order?\",\n                extension_metadata  AS \"extension_metadata!: Value\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "query": "\n            INSERT INTO issues (\n                id, project_id, status_id, title, description, priority,\n                start_date, target_date, completed_at, sort_order,\n                parent_issue_id, parent_issue_sort_order, extension_metadata,\n                creator_user_id\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)\n            RETURNING\n                id                  AS \"id!: Uuid\",\n                project_id          AS \"project_id!: Uuid\",\n                issue_number        AS \"issue_number!\",\n                simple_id           AS \"simple_id!\",\n                status_id           AS \"status_id!: Uuid\",\n                title               AS \"title!\",\n                description         AS \"description?\",\n                priority            AS \"priority: IssuePriority\",\n                start_date          AS \"start_date?: DateTime<Utc>\",\n                target_date         AS \"target_date?: DateTime<Utc>\",\n                completed_at        AS \"completed_at?: DateTime<Utc>\",\n                sort_order          AS \"sort_order!\",\n                parent_issue_id     AS \"parent_issue_id?: Uuid\",\n                parent_issue_sort_order AS \"parent_issue_sort_order?\",\n                extension_metadata  AS \"extension_metadata!: Value\",\n                creator_user_id     AS \"creator_user_id?: Uuid\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -92,11 +92,16 @@
       },
       {
         "ordinal": 15,
+        "name": "creator_user_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 16,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -127,7 +132,8 @@
         "Float8",
         "Uuid",
         "Float8",
-        "Jsonb"
+        "Jsonb",
+        "Uuid"
       ]
     },
     "nullable": [
@@ -146,9 +152,10 @@
       true,
       true,
       false,
+      true,
       false,
       false
     ]
   },
-  "hash": "e0bfccdb33cc3f8847b9e75a0c11aad4038685478941a95ef685386eaf9b51f7"
+  "hash": "ffea7acda162fba35e1b1acd2c6791bc917f086bf1c34816178282f0579c1eeb"
 }

@@ -8,6 +8,7 @@ import type {
   Tag,
   PullRequestStatus,
 } from 'shared/remote-types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 import { IssuePropertyRow } from '@/components/ui-new/views/IssuePropertyRow';
 import { IssueTagsRow } from '@/components/ui-new/views/IssueTagsRow';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
@@ -17,6 +18,7 @@ import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/Is
 import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/IssueSubIssuesSectionContainer';
 import { IssueRelationshipsSectionContainer } from '@/components/ui-new/containers/IssueRelationshipsSectionContainer';
 import { IssueWorkspacesSectionContainer } from '@/components/ui-new/containers/IssueWorkspacesSectionContainer';
+import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 
 export type IssuePanelMode = 'create' | 'edit';
 
@@ -54,6 +56,7 @@ export interface KanbanIssuePanelProps {
 
   // Edit mode data
   issueId?: string | null;
+  creatorUser?: OrganizationMemberWithProfile | null;
   parentIssue?: { id: string; simpleId: string } | null;
   onParentIssueClick?: () => void;
   linkedPrs?: LinkedPullRequest[];
@@ -91,6 +94,7 @@ export function KanbanIssuePanel({
   statuses,
   tags,
   issueId,
+  creatorUser,
   parentIssue,
   onParentIssueClick,
   linkedPrs = [],
@@ -105,6 +109,9 @@ export function KanbanIssuePanel({
   onMoreActions,
 }: KanbanIssuePanelProps) {
   const isCreateMode = mode === 'create';
+  const creatorName =
+    creatorUser?.first_name?.trim() || creatorUser?.username?.trim() || null;
+  const showCreator = !isCreateMode && Boolean(creatorName);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -271,9 +278,27 @@ export function KanbanIssuePanel({
           </div>
         )}
 
+        {/* Creator row (Edit mode only) */}
+        {showCreator && creatorName && (
+          <div className="border-t px-base py-base flex items-center justify-between">
+            <span className="text-xs font-medium text-low">Created by</span>
+            <div className="flex items-center gap-half">
+              {creatorUser && (
+                <UserAvatar
+                  user={creatorUser}
+                  className="h-5 w-5 text-[9px] border border-border"
+                />
+              )}
+              <span className="text-sm text-normal truncate max-w-[160px]">
+                {creatorName}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Workspaces Section (Edit mode only) */}
         {!isCreateMode && issueId && (
-          <div className="border-t">
+          <div className={cn(!showCreator && 'border-t')}>
             <IssueWorkspacesSectionContainer issueId={issueId} />
           </div>
         )}

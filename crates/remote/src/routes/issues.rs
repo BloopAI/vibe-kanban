@@ -112,6 +112,7 @@ async fn create_issue(
         payload.parent_issue_id,
         payload.parent_issue_sort_order,
         payload.extension_metadata,
+        ctx.user.id,
     )
     .await
     .map_err(|error| {

@@ -33,6 +33,7 @@ pub struct Issue {
     pub parent_issue_id: Option<Uuid>,
     pub parent_issue_sort_order: Option<f64>,
     pub extension_metadata: Value,
+    pub creator_user_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -75,6 +76,7 @@ impl IssueRepository {
                 parent_issue_id     AS "parent_issue_id?: Uuid",
                 parent_issue_sort_order AS "parent_issue_sort_order?",
                 extension_metadata  AS "extension_metadata!: Value",
+                creator_user_id     AS "creator_user_id?: Uuid",
                 created_at          AS "created_at!: DateTime<Utc>",
                 updated_at          AS "updated_at!: DateTime<Utc>"
             FROM issues
@@ -130,6 +132,7 @@ impl IssueRepository {
                 parent_issue_id     AS "parent_issue_id?: Uuid",
                 parent_issue_sort_order AS "parent_issue_sort_order?",
                 extension_metadata  AS "extension_metadata!: Value",
+                creator_user_id     AS "creator_user_id?: Uuid",
                 created_at          AS "created_at!: DateTime<Utc>",
                 updated_at          AS "updated_at!: DateTime<Utc>"
             FROM issues
@@ -159,6 +162,7 @@ impl IssueRepository {
         parent_issue_id: Option<Uuid>,
         parent_issue_sort_order: Option<f64>,
         extension_metadata: Value,
+        creator_user_id: Uuid,
     ) -> Result<MutationResponse<Issue>, IssueError> {
         let mut tx = pool.begin().await?;
 
@@ -170,9 +174,10 @@ impl IssueRepository {
             INSERT INTO issues (
                 id, project_id, status_id, title, description, priority,
                 start_date, target_date, completed_at, sort_order,
-                parent_issue_id, parent_issue_sort_order, extension_metadata
+                parent_issue_id, parent_issue_sort_order, extension_metadata,
+                creator_user_id
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
             RETURNING
                 id                  AS "id!: Uuid",
                 project_id          AS "project_id!: Uuid",
@@ -189,6 +194,7 @@ impl IssueRepository {
                 parent_issue_id     AS "parent_issue_id?: Uuid",
                 parent_issue_sort_order AS "parent_issue_sort_order?",
                 extension_metadata  AS "extension_metadata!: Value",
+                creator_user_id     AS "creator_user_id?: Uuid",
                 created_at          AS "created_at!: DateTime<Utc>",
                 updated_at          AS "updated_at!: DateTime<Utc>"
             "#,
@@ -204,7 +210,8 @@ impl IssueRepository {
             sort_order,
             parent_issue_id,
             parent_issue_sort_order,
-            extension_metadata
+            extension_metadata,
+            creator_user_id
         )
         .fetch_one(&mut *tx)
         .await?;
@@ -292,6 +299,7 @@ impl IssueRepository {
                 parent_issue_id     AS "parent_issue_id?: Uuid",
                 parent_issue_sort_order AS "parent_issue_sort_order?",
                 extension_metadata  AS "extension_metadata!: Value",
+                creator_user_id     AS "creator_user_id?: Uuid",
                 created_at          AS "created_at!: DateTime<Utc>",
                 updated_at          AS "updated_at!: DateTime<Utc>"
             "#,

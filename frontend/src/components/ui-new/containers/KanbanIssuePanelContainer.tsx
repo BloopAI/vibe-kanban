@@ -65,7 +65,7 @@ export function KanbanIssuePanelContainer() {
     isLoading: projectLoading,
   } = useProjectContext();
 
-  const { isLoading: orgLoading } = useOrgContext();
+  const { isLoading: orgLoading, membersWithProfilesById } = useOrgContext();
 
   // Get action methods from actions context
   const { openStatusSelection, openPrioritySelection, openAssigneeSelection } =
@@ -101,6 +101,12 @@ export function KanbanIssuePanelContainer() {
     if (kanbanCreateMode || !selectedKanbanIssueId) return null;
     return issues.find((i) => i.id === selectedKanbanIssueId) ?? null;
   }, [issues, selectedKanbanIssueId, kanbanCreateMode]);
+
+  const creatorUserId = selectedIssue?.creator_user_id ?? null;
+  const issueCreator = useMemo(() => {
+    if (!creatorUserId) return null;
+    return membersWithProfilesById.get(creatorUserId) ?? null;
+  }, [membersWithProfilesById, creatorUserId]);
 
   // Find parent issue if current issue has one
   const parentIssue = useMemo(() => {
@@ -619,6 +625,7 @@ export function KanbanIssuePanelContainer() {
       statuses={sortedStatuses}
       tags={tags}
       issueId={selectedKanbanIssueId}
+      creatorUser={issueCreator}
       parentIssue={parentIssue}
       onParentIssueClick={handleParentIssueClick}
       linkedPrs={linkedPrs}

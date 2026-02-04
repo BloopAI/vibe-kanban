@@ -16,7 +16,7 @@ export type ProjectStatus = { id: string, project_id: string, name: string, colo
 
 export type Tag = { id: string, project_id: string, name: string, color: string, };
 
-export type Issue = { id: string, project_id: string, issue_number: number, simple_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority | null, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, parent_issue_sort_order: number | null, extension_metadata: JsonValue, created_at: string, updated_at: string, };
+export type Issue = { id: string, project_id: string, issue_number: number, simple_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority | null, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, parent_issue_sort_order: number | null, extension_metadata: JsonValue, creator_user_id: string | null, created_at: string, updated_at: string, };
 
 export type IssueAssignee = { id: string, issue_id: string, user_id: string, assigned_at: string, };
 
