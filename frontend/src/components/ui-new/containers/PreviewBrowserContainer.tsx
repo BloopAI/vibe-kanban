@@ -31,6 +31,55 @@ import { useInspectModeStore } from '@/stores/useInspectModeStore';
 const MIN_RESPONSIVE_WIDTH = 320;
 const MIN_RESPONSIVE_HEIGHT = 480;
 
+/**
+ * Transform a proxy URL back to the dev server URL.
+ * Proxy format: http://{devPort}.localhost:{proxyPort}{path}?_refresh=...
+ * Dev format:   http://localhost:{devPort}{path}
+ */
+function transformProxyUrlToDevUrl(
+  proxyUrl: string,
+  _proxyPort: number
+): string | null {
+  try {
+    const url = new URL(proxyUrl);
+
+    const hostnameParts = url.hostname.split('.');
+    if (
+      hostnameParts.length < 2 ||
+      !hostnameParts.slice(1).join('.').startsWith('localhost')
+    ) {
+      return null;
+    }
+
+    const devPort = hostnameParts[0];
+    if (!/^\d+$/.test(devPort)) {
+      return null;
+    }
+
+    url.searchParams.delete('_refresh');
+
+    const devUrl = new URL(`http://localhost${url.pathname}`);
+
+    const search = url.searchParams.toString();
+    if (search) {
+      devUrl.search = search;
+    }
+
+    if (url.hash) {
+      devUrl.hash = url.hash;
+    }
+
+    const portNum = parseInt(devPort, 10);
+    if (portNum !== 80) {
+      devUrl.port = devPort;
+    }
+
+    return devUrl.toString();
+  } catch {
+    return null;
+  }
+}
+
 interface PreviewBrowserContainerProps {
   attemptId: string;
   className: string;
@@ -93,6 +142,7 @@ export function PreviewBrowserContainer({
   // Local state for URL input to prevent updates from disrupting typing
   const urlInputRef = useRef<HTMLInputElement>(null);
   const [urlInputValue, setUrlInputValue] = useState(effectiveUrl ?? '');
+  const prevEffectiveUrlRef = useRef(effectiveUrl);
 
   // Iframe display timing state
   const [showIframe, setShowIframe] = useState(false);
@@ -110,12 +160,27 @@ export function PreviewBrowserContainer({
   const devTools = usePreviewDevTools();
   const bridgeRef = useRef<PreviewDevToolsBridge | null>(null);
 
-  // Sync from prop only when input is not focused
+  // Sync URL bar from effectiveUrl changes OR iframe navigation
   useEffect(() => {
-    if (document.activeElement !== urlInputRef.current) {
+    if (document.activeElement === urlInputRef.current) return;
+
+    if (prevEffectiveUrlRef.current !== effectiveUrl) {
+      prevEffectiveUrlRef.current = effectiveUrl;
       setUrlInputValue(effectiveUrl ?? '');
+      return;
     }
-  }, [effectiveUrl]);
+
+    const navUrl = devTools.navigation?.url;
+    if (navUrl && previewProxyPort) {
+      const devUrl = transformProxyUrlToDevUrl(navUrl, previewProxyPort);
+      if (devUrl) {
+        setUrlInputValue(devUrl);
+        return;
+      }
+    }
+
+    setUrlInputValue(effectiveUrl ?? '');
+  }, [effectiveUrl, devTools.navigation?.url, previewProxyPort]);
 
   useEffect(() => {
     bridgeRef.current = new PreviewDevToolsBridge(
