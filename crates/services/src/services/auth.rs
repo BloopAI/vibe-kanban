@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use tokio::sync::{Mutex as TokioMutex, OwnedMutexGuard, RwLock};
 use api_types::ProfileResponse;
+use tokio::sync::{Mutex as TokioMutex, OwnedMutexGuard, RwLock};
 
 use super::oauth_credentials::{Credentials, OAuthCredentials};
 

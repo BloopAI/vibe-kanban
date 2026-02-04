@@ -2,13 +2,6 @@
 
 use std::time::Duration;
 
-use backon::{ExponentialBuilder, Retryable};
-use chrono::Duration as ChronoDuration;
-use reqwest::{Client, StatusCode};
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
-use tracing::warn;
-use url::Url;
 use api_types::{
     AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
     CreateOrganizationRequest, CreateOrganizationResponse, CreateWorkspaceRequest,
@@ -19,6 +12,13 @@ use api_types::{
     UpdateMemberRoleResponse, UpdateOrganizationRequest, UpdateWorkspaceRequest,
     UpsertPullRequestRequest,
 };
+use backon::{ExponentialBuilder, Retryable};
+use chrono::Duration as ChronoDuration;
+use reqwest::{Client, StatusCode};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use tracing::warn;
+use url::Url;
 use utils::jwt::extract_expiration;
 use uuid::Uuid;
 

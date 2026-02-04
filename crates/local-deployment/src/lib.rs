@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use api_types::LoginStatus;
 use async_trait::async_trait;
 use db::DBService;
 use deployment::{Deployment, DeploymentError, RemoteClientNotConfigured};
@@ -24,7 +25,6 @@ use services::services::{
     worktree_manager::WorktreeManager,
 };
 use tokio::sync::RwLock;
-use api_types::LoginStatus;
 use utils::{
     assets::{config_path, credentials_path},
     msg_store::MsgStore,

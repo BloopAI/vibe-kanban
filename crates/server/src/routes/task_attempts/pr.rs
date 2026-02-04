@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use api_types::{PullRequestStatus, UpsertPullRequestRequest};
 use axum::{
     Extension, Json,
     extract::{Query, State},
@@ -33,7 +34,6 @@ use services::services::{
     remote_sync,
 };
 use ts_rs::TS;
-use api_types::{PullRequestStatus, UpsertPullRequestRequest};
 use utils::response::ApiResponse;
 use uuid::Uuid;
 

@@ -1,9 +1,10 @@
-use crate::MemberRole;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::Type;
 use ts_rs::TS;
 use uuid::Uuid;
+
+use crate::MemberRole;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

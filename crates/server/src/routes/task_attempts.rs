@@ -11,6 +11,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use api_types::CreateWorkspaceRequest;
 use axum::{
     Extension, Json, Router,
     extract::{
@@ -50,7 +51,6 @@ use services::services::{
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use api_types::CreateWorkspaceRequest;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use api_types::LoginStatus;
 use axum::{
     Json, Router,
     body::Body,
@@ -31,7 +32,6 @@ use services::services::{
 };
 use tokio::fs;
 use ts_rs::TS;
-use api_types::LoginStatus;
 use utils::{assets::config_path, log_msg::LogMsg, response::ApiResponse};
 use uuid::Uuid;
 

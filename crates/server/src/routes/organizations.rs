@@ -1,3 +1,10 @@
+use api_types::{
+    AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
+    CreateOrganizationRequest, CreateOrganizationResponse, GetInvitationResponse,
+    GetOrganizationResponse, ListInvitationsResponse, ListMembersResponse,
+    ListOrganizationsResponse, Organization, RevokeInvitationRequest, UpdateMemberRoleRequest,
+    UpdateMemberRoleResponse, UpdateOrganizationRequest,
+};
 use axum::{
     Router,
     extract::{Json, Path, State},
@@ -6,13 +13,6 @@ use axum::{
     routing::{delete, get, patch, post},
 };
 use deployment::Deployment;
-use api_types::{
-    AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
-    CreateOrganizationRequest, CreateOrganizationResponse, GetInvitationResponse,
-    GetOrganizationResponse, ListInvitationsResponse, ListMembersResponse,
-    ListOrganizationsResponse, Organization, RevokeInvitationRequest, UpdateMemberRoleRequest,
-    UpdateMemberRoleResponse, UpdateOrganizationRequest,
-};
 use utils::response::ApiResponse;
 use uuid::Uuid;
 

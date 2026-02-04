@@ -1,3 +1,4 @@
+use api_types::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse};
 use axum::{
     Router,
     extract::{Json, Query, State},
@@ -12,7 +13,6 @@ use serde::{Deserialize, Serialize};
 use services::services::{config::save_config_to_file, oauth_credentials::Credentials};
 use sha2::{Digest, Sha256};
 use ts_rs::TS;
-use api_types::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse};
 use utils::{assets::config_path, jwt::extract_expiration, response::ApiResponse};
 use uuid::Uuid;
 
