@@ -64,7 +64,9 @@ export function RelationshipBadge({
       )}
     >
       <Icon className="size-icon-2xs" weight="bold" />
-      <span>{compact ? relatedIssueDisplayId : `${label} ${relatedIssueDisplayId}`}</span>
+      <span>
+        {compact ? relatedIssueDisplayId : `${label} ${relatedIssueDisplayId}`}
+      </span>
     </span>
   );
 }
