@@ -7,7 +7,7 @@ import {
   ToolStatus,
 } from 'shared/types';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { streamJsonPatchEntries } from '@/utils/streamJsonPatchEntries';
 import type {
   AddEntryType,
@@ -35,6 +35,11 @@ export const useConversationHistoryOld = ({
   const loadedInitialEntries = useRef(false);
   const streamingProcessIdsRef = useRef<Set<string>>(new Set());
   const onEntriesUpdatedRef = useRef<OnEntriesUpdated | null>(null);
+
+  // Track whether scripts have run in this conversation
+  const [hasSetupScriptRun, setHasSetupScriptRun] = useState(false);
+  const [hasCleanupScriptRun, setHasCleanupScriptRun] = useState(false);
+  const [hasRunningProcess, setHasRunningProcess] = useState(false);
 
   const mergeIntoDisplayed = (
     mutator: (state: ExecutionProcessStateStore) => void
@@ -254,7 +259,8 @@ export const useConversationHistoryOld = ({
           ) {
             // Add setup and cleanup script as a tool call
             let toolName = '';
-            switch (p.executionProcess.executor_action.typ.context) {
+            const scriptContext = p.executionProcess.executor_action.typ.context;
+            switch (scriptContext) {
               case 'SetupScript':
                 toolName = 'Setup Script';
                 break;
@@ -269,6 +275,13 @@ export const useConversationHistoryOld = ({
                 break;
               default:
                 return [];
+            }
+
+            // Track that setup/cleanup scripts have run
+            if (scriptContext === 'SetupScript') {
+              setHasSetupScriptRun(true);
+            } else if (scriptContext === 'CleanupScript') {
+              setHasCleanupScriptRun(true);
             }
 
             const executionProcess = getLiveExecutionProcess(
@@ -337,6 +350,9 @@ export const useConversationHistoryOld = ({
 
           return entries;
         });
+
+      // Update running process state
+      setHasRunningProcess(hasRunningProcess);
 
       // Emit the next action bar if no process running
       if (!hasRunningProcess && !hasPendingApproval) {
@@ -634,8 +650,16 @@ export const useConversationHistoryOld = ({
     displayedExecutionProcesses.current = {};
     loadedInitialEntries.current = false;
     streamingProcessIdsRef.current.clear();
+    // Reset script run status when attempt changes
+    setHasSetupScriptRun(false);
+    setHasCleanupScriptRun(false);
+    setHasRunningProcess(false);
     emitEntries(displayedExecutionProcesses.current, 'initial', true);
   }, [attempt.id, emitEntries]);
 
-  return {};
+  return {
+    hasSetupScriptRun,
+    hasCleanupScriptRun,
+    hasRunningProcess,
+  };
 };

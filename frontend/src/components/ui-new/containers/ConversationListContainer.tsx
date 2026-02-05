@@ -246,37 +246,18 @@ export const ConversationList = forwardRef<
     }, 100);
   };
 
-  useConversationHistory({ attempt, onEntriesUpdated });
+  const { hasSetupScriptRun, hasCleanupScriptRun, hasRunningProcess } =
+    useConversationHistory({ attempt, onEntriesUpdated });
 
-  // Determine if scripts have already run in this conversation
+  // Determine if there are entries to show placeholders
   const entries = channelData?.data ?? [];
-  const rawEntries = pendingUpdateRef.current?.entries ?? [];
-  const hasSetupScriptRun = rawEntries.some(
-    (entry) =>
-      entry.type === 'NORMALIZED_ENTRY' &&
-      entry.content.entry_type.type === 'tool_use' &&
-      entry.content.entry_type.tool_name === 'Setup Script'
-  );
-  const hasCleanupScriptRun = rawEntries.some(
-    (entry) =>
-      entry.type === 'NORMALIZED_ENTRY' &&
-      entry.content.entry_type.type === 'tool_use' &&
-      entry.content.entry_type.tool_name === 'Cleanup Script'
-  );
-  const hasRunningProcess = rawEntries.some(
-    (entry) =>
-      entry.type === 'NORMALIZED_ENTRY' &&
-      entry.content.entry_type.type === 'loading'
-  );
+  const hasEntries = entries.length > 0;
 
   // Show placeholders only if script not configured AND not already run
   const showSetupPlaceholder =
-    !hasSetupScript && !hasSetupScriptRun && entries.length > 0;
+    !hasSetupScript && !hasSetupScriptRun && hasEntries;
   const showCleanupPlaceholder =
-    !hasCleanupScript &&
-    !hasCleanupScriptRun &&
-    !hasRunningProcess &&
-    entries.length > 0;
+    !hasCleanupScript && !hasCleanupScriptRun && !hasRunningProcess && hasEntries;
 
   const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
   const messageListContext = useMemo(
