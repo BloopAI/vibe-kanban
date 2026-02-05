@@ -126,11 +126,7 @@ export const KanbanCardContent = ({
           ) : (
             <>
               {tags.slice(0, 2).map((tag) => (
-                <KanbanBadge
-                  key={tag.id}
-                  name={tag.name}
-                  color={tag.color}
-                />
+                <KanbanBadge key={tag.id} name={tag.name} color={tag.color} />
               ))}
               {tags.length > 2 && (
                 <span className="text-sm text-low">+{tags.length - 2}</span>
