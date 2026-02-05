@@ -12,13 +12,12 @@ use async_trait::async_trait;
 use codex_app_server_protocol::{
     ApplyPatchApprovalResponse, ClientInfo, ClientNotification, ClientRequest,
     CommandExecutionApprovalDecision, CommandExecutionRequestApprovalResponse,
-    ExecCommandApprovalResponse, FileChangeApprovalDecision,
-    FileChangeRequestApprovalResponse, GetAuthStatusParams, GetAuthStatusResponse,
-    InitializeParams, InitializeResponse, JSONRPCError, JSONRPCNotification, JSONRPCRequest,
-    JSONRPCResponse, ListMcpServerStatusParams, ListMcpServerStatusResponse, RequestId,
-    ReviewStartParams, ReviewStartResponse, ReviewTarget, ServerNotification, ServerRequest,
-    ThreadForkParams, ThreadForkResponse, ThreadStartParams, ThreadStartResponse, TurnStartParams,
-    TurnStartResponse, UserInput,
+    ExecCommandApprovalResponse, FileChangeApprovalDecision, FileChangeRequestApprovalResponse,
+    GetAuthStatusParams, GetAuthStatusResponse, InitializeParams, InitializeResponse, JSONRPCError,
+    JSONRPCNotification, JSONRPCRequest, JSONRPCResponse, ListMcpServerStatusParams,
+    ListMcpServerStatusResponse, RequestId, ReviewStartParams, ReviewStartResponse, ReviewTarget,
+    ServerNotification, ServerRequest, ThreadForkParams, ThreadForkResponse, ThreadStartParams,
+    ThreadStartResponse, TurnStartParams, TurnStartResponse, UserInput,
 };
 use codex_protocol::{ThreadId, protocol::ReviewDecision};
 use serde::{Serialize, de::DeserializeOwned};
@@ -211,8 +210,7 @@ impl AppServerClient {
                         .raw(),
                     )
                     .await?;
-                let (decision, feedback) =
-                    self.command_execution_decision(&status).await?;
+                let (decision, feedback) = self.command_execution_decision(&status).await?;
                 let response = CommandExecutionRequestApprovalResponse { decision };
                 send_server_response(peer, request_id, response).await?;
                 if let Some(message) = feedback {
