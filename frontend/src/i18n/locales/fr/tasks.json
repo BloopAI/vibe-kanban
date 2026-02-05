@@ -223,8 +223,10 @@
     "queuedMessage": "Message en file d'attente - s'exécutera lorsque l'exécution actuelle sera terminée",
     "runSetupScript": "Exécuter le script de configuration",
     "runCleanupScript": "Exécuter le script de nettoyage",
+    "runArchiveScript": "Exécuter le script d'archivage",
     "noSetupScript": "Aucun script de configuration configuré pour ce projet",
     "noCleanupScript": "Aucun script de nettoyage configuré pour ce projet",
+    "noArchiveScript": "Aucun script d'archivage configuré pour ce projet",
     "scriptsDisabledWhileRunning": "Impossible d'exécuter les scripts pendant qu'un processus est en cours"
   },
   "todos": {
@@ -314,6 +316,13 @@
       "exitCode": "Code de sortie : {{code}}",
       "completedSuccessfully": "Terminé avec succès",
       "clickToViewLogs": "Cliquer pour voir les logs"
+    },
+    "scriptPlaceholder": {
+      "setupTitle": "Script de configuration",
+      "setupDescription": "Aucun script de configuration. Les scripts de configuration s'exécutent avant le démarrage de l'agent de codage.",
+      "cleanupTitle": "Script de nettoyage",
+      "cleanupDescription": "Aucun script de nettoyage. Les scripts de nettoyage s'exécutent après la fin de l'agent de codage.",
+      "configure": "Configurer"
     },
     "updatedTodos": "À faire mis à jour",
     "viewInChangesPanel": "Voir dans le panneau des modifications",
@@ -535,6 +544,19 @@
       "andMore": "...et {{count}} autres"
     }
   },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "Rebase en cours",
+      "description": "Un rebase vers {{targetBranch}} est en cours sans conflits. Choisissez comment procéder.",
+      "hint": "Vous pouvez continuer le rebase pour le terminer, ou abandonner pour revenir à l'état précédent.",
+      "continue": "Continuer le rebase",
+      "continuing": "Continuation...",
+      "abort": "Abandonner le rebase",
+      "aborting": "Abandon...",
+      "continueError": "Échec de la continuation du rebase. Il peut y avoir des conflits non résolus.",
+      "abortError": "Échec de l'abandon du rebase. Veuillez réessayer."
+    }
+  },
   "createPrDialog": {
     "title": "Créer une Pull Request",
     "description": "Créer une pull request pour cette tentative de tâche.",
@@ -684,6 +706,7 @@
     "title": "Corriger le script",
     "setupScriptTitle": "Corriger le script de configuration",
     "cleanupScriptTitle": "Corriger le script de nettoyage",
+    "archiveScriptTitle": "Corriger le script d'archivage",
     "devServerTitle": "Corriger le script du serveur de développement",
     "scriptLabel": "Script (modifier)",
     "logsLabel": "Logs de la dernière exécution",

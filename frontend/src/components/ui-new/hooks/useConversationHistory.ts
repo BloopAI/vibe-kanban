@@ -9,7 +9,7 @@ import {
 } from 'shared/types';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import { useEntries } from '@/contexts/EntriesContext';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { streamJsonPatchEntries } from '@/utils/streamJsonPatchEntries';
 import type {
   AddEntryType,
@@ -17,8 +17,17 @@ import type {
   OnEntriesUpdated,
   PatchTypeWithKey,
   UseConversationHistoryParams,
-  UseConversationHistoryResult,
 } from '@/hooks/useConversationHistory/types';
+
+// Result type for the new UI's conversation history hook
+export interface UseConversationHistoryResult {
+  /** Whether a setup script has already run in this conversation */
+  hasSetupScriptRun: boolean;
+  /** Whether a cleanup script has already run in this conversation */
+  hasCleanupScriptRun: boolean;
+  /** Whether there is currently a running process */
+  hasRunningProcess: boolean;
+}
 import {
   makeLoadingPatch,
   MIN_INITIAL_ENTRIES,
@@ -56,6 +65,11 @@ export const useConversationHistory = ({
     new Map()
   );
 
+  // Track whether scripts have run in this conversation
+  const [hasSetupScriptRun, setHasSetupScriptRun] = useState(false);
+  const [hasCleanupScriptRun, setHasCleanupScriptRun] = useState(false);
+  const [hasRunningProcess, setHasRunningProcess] = useState(false);
+
   const mergeIntoDisplayed = (
     mutator: (state: ExecutionProcessStateStore) => void
   ) => {
@@ -72,6 +86,7 @@ export const useConversationHistory = ({
       (ep) =>
         ep.run_reason === 'setupscript' ||
         ep.run_reason === 'cleanupscript' ||
+        ep.run_reason === 'archivescript' ||
         ep.run_reason === 'codingagent'
     );
   }, [executionProcessesRaw]);
@@ -287,18 +302,30 @@ export const useConversationHistory = ({
           ) {
             // Add setup and cleanup script as a tool call
             let toolName = '';
-            switch (p.executionProcess.executor_action.typ.context) {
+            const scriptContext =
+              p.executionProcess.executor_action.typ.context;
+            switch (scriptContext) {
               case 'SetupScript':
                 toolName = 'Setup Script';
                 break;
               case 'CleanupScript':
                 toolName = 'Cleanup Script';
                 break;
+              case 'ArchiveScript':
+                toolName = 'Archive Script';
+                break;
               case 'ToolInstallScript':
                 toolName = 'Tool Install Script';
                 break;
               default:
                 return [];
+            }
+
+            // Track that setup/cleanup scripts have run
+            if (scriptContext === 'SetupScript') {
+              setHasSetupScriptRun(true);
+            } else if (scriptContext === 'CleanupScript') {
+              setHasCleanupScriptRun(true);
             }
 
             const executionProcess = getLiveExecutionProcess(
@@ -367,6 +394,9 @@ export const useConversationHistory = ({
 
           return entries;
         });
+
+      // Update running process state
+      setHasRunningProcess(hasRunningProcess);
 
       // Emit the next action bar if no process running
       if (!hasRunningProcess && !hasPendingApproval) {
@@ -715,8 +745,16 @@ export const useConversationHistory = ({
     loadedInitialEntries.current = false;
     streamingProcessIdsRef.current.clear();
     previousStatusMapRef.current.clear();
+    // Reset script run status when attempt changes
+    setHasSetupScriptRun(false);
+    setHasCleanupScriptRun(false);
+    setHasRunningProcess(false);
     emitEntries(displayedExecutionProcesses.current, 'initial', true);
   }, [attempt.id, emitEntries]);
 
-  return {};
+  return {
+    hasSetupScriptRun,
+    hasCleanupScriptRun,
+    hasRunningProcess,
+  };
 };

@@ -1,0 +1,232 @@
+---
+title: "Filtering & Sorting"
+description: "Find issues quickly with search, filters, and sorting"
+---
+
+As your project grows, you'll need ways to find specific issues quickly. The filter bar provides powerful search, filtering, and sorting capabilities to help you focus on what matters.
+
+
+## The Filter Bar
+
+The filter bar sits above your kanban board and contains:
+
+- **Search field** - Find issues by text
+- **Filter dropdowns** - Filter by priority, assignee, tags
+- **Sort dropdown** - Change how issues are ordered
+- **Clear All button** - Reset all filters
+
+## Searching
+
+Type in the search field to find issues by title.
+
+
+### How Search Works
+
+- Search matches against issue **titles only**
+- Search is **case-insensitive** ("Login" matches "login")
+- Search finds **partial matches** ("log" matches "Login flow")
+- Results update as you type
+
+### Tips for Effective Search
+
+- Search for keywords in titles
+- Use the Simple ID to find a specific issue (e.g., "TASK-123")
+- Combine search with filters for precise results
+
+<Tip>
+If you can't find an issue, check that your filters aren't hiding it. Click **Clear All** to reset filters and search again.
+</Tip>
+
+## Filtering
+
+Filters let you show only issues that match certain criteria.
+
+### Priority Filter
+
+Filter issues by priority level:
+
+<Frame>
+  <img style={{maxHeight: "350px"}} src="/images/cloud/filter-priority.png" alt="Priority filter dropdown showing Urgent, High, Medium, and Low options" />
+</Frame>
+
+| Priority | Colour | Description |
+|----------|--------|-------------|
+| **Urgent** | Red | Needs immediate attention |
+| **High** | Orange | Important, do soon |
+| **Medium** | Yellow | Normal priority |
+| **Low** | Grey | Can wait |
+
+**To filter by priority:**
+1. Click the **Priority** dropdown
+2. Select one or more priority levels
+3. Only matching issues are shown
+
+### Assignee Filter
+
+Filter issues by who's assigned:
+
+<Frame>
+  <img style={{maxHeight: "350px"}} src="/images/cloud/filter-assignee.png" alt="Assignee filter dropdown showing team members" />
+</Frame>
+
+**Options:**
+- **Specific team members** - Show issues assigned to selected people
+- **Unassigned** - Show issues with no assignee
+
+**To filter by assignee:**
+1. Click the **Assignee** dropdown
+2. Select one or more team members, or "Unassigned"
+3. Only matching issues are shown
+
+<Info>
+If you select multiple assignees, issues assigned to **any** of them will show (OR logic). An issue assigned to both Alice and Bob shows when filtering for either.
+</Info>
+
+### Tags Filter
+
+Filter issues by tags:
+
+<Frame>
+  <img style={{maxHeight: "350px"}} src="/images/cloud/filter-tags.png" alt="Tags filter dropdown showing available tags" />
+</Frame>
+
+**To filter by tags:**
+1. Click the **Tags** dropdown
+2. Select one or more tags
+3. Only issues with at least one selected tag are shown
+
+### Combining Filters
+
+You can use multiple filters at once. When you do:
+
+- Filters within the same category use **OR** logic
+  - Priority: Urgent OR High → shows both
+- Filters across categories use **AND** logic
+  - Priority: Urgent AND Assignee: Alice → shows urgent issues assigned to Alice
+
+**Example:** To find high-priority bugs assigned to you:
+1. Set Priority to "High" and "Urgent"
+2. Set Assignee to yourself
+3. Set Tags to "Bug"
+
+## Sorting
+
+Control the order of issues within each column.
+
+<Frame>
+  <img style={{maxHeight: "350px"}} src="/images/cloud/sort-dropdown.png" alt="Sort dropdown showing Manual, Priority, Created, Updated, and Title options" />
+</Frame>
+
+### Sort Options
+
+| Sort By | Description |
+|---------|-------------|
+| **Manual** | Your custom order (drag to reorder) |
+| **Priority** | Urgent first, then High, Medium, Low |
+| **Created** | Newest or oldest first |
+| **Updated** | Recently changed first |
+| **Title** | Alphabetical order |
+
+### Sort Direction
+
+Click the sort direction button to toggle between:
+- **Ascending** (↑) - A→Z, oldest first, low→urgent
+- **Descending** (↓) - Z→A, newest first, urgent→low
+
+### Manual Sort Mode
+
+When sort is set to **Manual**:
+- You can drag issues to reorder them within columns
+- Your custom order is saved and shared with the team
+- This is the default mode for most workflows
+
+<Warning>
+If you switch away from Manual sort, you **cannot** drag to reorder issues. The order is determined by the selected sort field.
+</Warning>
+
+## Clearing Filters
+
+### Clear All
+
+Click the **Clear All** button to reset all filters and search at once. This shows all issues in the project.
+
+
+### Clear Individual Filters
+
+To clear a single filter:
+1. Click the filter dropdown
+2. Deselect all options
+
+To clear the search field, click the **×** button inside the search box.
+
+## Filter Persistence
+
+Your filter and sort settings are saved for your session:
+- Filters persist when you navigate away and return
+- Filters reset when you switch projects
+- Filters reset when you sign out
+
+<Info>
+Filters are personal - they don't affect what other team members see. Everyone can have their own filter settings.
+</Info>
+
+## Common Filter Scenarios
+
+<AccordionGroup>
+<Accordion title="Show only my assigned issues">
+1. Click the **Assignee** dropdown
+2. Select your name
+3. Only your issues are shown across all columns
+</Accordion>
+
+<Accordion title="Find urgent issues that need attention">
+1. Click the **Priority** dropdown
+2. Select "Urgent"
+3. Optionally, also select "High" to include high-priority items
+</Accordion>
+
+<Accordion title="Review all bugs">
+1. Click the **Tags** dropdown
+2. Select the "Bug" tag (or your equivalent)
+3. All bug issues are shown
+</Accordion>
+
+<Accordion title="Find unassigned work to pick up">
+1. Click the **Assignee** dropdown
+2. Select "Unassigned"
+3. Browse available issues and assign yourself to one
+</Accordion>
+
+<Accordion title="See recently updated issues">
+1. Click the **Sort** dropdown
+2. Select "Updated"
+3. Set direction to descending (newest first)
+4. Recently changed issues appear at the top of each column
+</Accordion>
+</AccordionGroup>
+
+## Tips for Efficient Filtering
+
+<CardGroup cols={2}>
+<Card title="Use search for known issues" icon="magnifying-glass">
+  If you know the issue ID or a word in the title, search is the fastest way to find it.
+</Card>
+
+<Card title="Filter by assignee in standups" icon="users">
+  During team standups, each person can filter to their assignments to give quick updates.
+</Card>
+
+<Card title="Combine filters for precision" icon="filter">
+  Use multiple filters together to narrow down exactly what you're looking for.
+</Card>
+
+<Card title="Reset filters when stuck" icon="rotate-left">
+  If you can't find something, click Clear All. You might have forgotten about an active filter.
+</Card>
+</CardGroup>
+
+## Related Documentation
+
+- [Kanban Board](/cloud/kanban-board) - Using the board interface
+- [Issues](/cloud/issues) - Understanding issue properties
+- [Customising Your Board](/cloud/customisation) - Setting up tags and statuses

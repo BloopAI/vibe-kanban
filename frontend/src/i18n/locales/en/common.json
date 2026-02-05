@@ -100,7 +100,8 @@
     "currentBadge": " (current)",
     "organizations": "Organizations",
     "createOrganization": "Create organization",
-    "orgSettings": "Organization settings"
+    "orgSettings": "Organization settings",
+    "migrate": "Migrate"
   },
   "navbar": {
     "tryNewUI": "try the new UI"
@@ -145,6 +146,7 @@
     "active": "Active",
     "archived": "Archived",
     "loading": "Loading...",
+    "notFound": "Workspace not found",
     "selectToStart": "Select a workspace to get started",
     "draft": "Draft",
     "viewArchive": "View Archive",
@@ -365,6 +367,7 @@
     "noSubIssues": "No sub-issues",
     "parentIssue": "Parent",
     "subIssueIndicator": "↳",
+    "showSubIssues": "Show sub-issues",
     "viewTabs": {
       "active": "Active",
       "all": "All"

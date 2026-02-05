@@ -24,8 +24,8 @@
         "mcpDesc": "モデルコンテキストプロトコルサーバー",
         "organizations": "Organization Settings",
         "organizationsDesc": "Manage organization members and permissions",
-        "remote-projects": "リモートプロジェクト",
-        "remote-projectsDesc": "クラウド同期プロジェクトを管理"
+        "remote-projects": "プロジェクト",
+        "remote-projectsDesc": "プロジェクトを管理"
       }
     },
     "general": {
@@ -168,6 +168,18 @@
           "helper": "PR説明生成時のAIエージェント用カスタムプロンプト。{pr_number}と{pr_url}をプレースホルダーとして使用できます。"
         }
       },
+      "commits": {
+        "title": "コミット",
+        "description": "タスク試行のコミット動作を設定",
+        "reminder": {
+          "label": "コミットリマインダー",
+          "helper": "対応エージェントに停止前の変更コミットを促します。"
+        },
+        "customPrompt": {
+          "useCustom": "カスタムプロンプトを使用",
+          "helper": "コミットリマインダー用のカスタムプロンプト。gitステータスは自動的に追加されます。"
+        }
+      },
       "notifications": {
         "title": "通知",
         "description": "通知を受け取るタイミングと方法を制御します。",
@@ -267,10 +279,6 @@
         "workspaces": {
           "label": "ワークスペースベータを有効化",
           "helper": "タスク試行を表示する際に新しいワークスペースインターフェースを使用します。タスクは最初にタスクビューで開き、試行は新しいワークスペースビューで開きます。"
-        },
-        "commitReminder": {
-          "label": "コミットリマインダー",
-          "helper": "対応エージェントに停止前の変更コミットを促します。"
         }
       }
     },
@@ -456,6 +464,10 @@
         "cleanup": {
           "label": "クリーンアップスクリプト",
           "helper": "このスクリプトはワークツリー内から、コーディングエージェントの実行後に実行されます（変更が行われた場合のみ）。リンター、フォーマッター、テスト、またはその他の検証ステップの実行など、品質保証タスクに使用してください。"
+        },
+        "archive": {
+          "label": "アーカイブスクリプト",
+          "helper": "このスクリプトはワークスペースがアーカイブされるときにワークツリー内から実行されます。サービスの停止、リソースの解放、状態の保存などのクリーンアップタスクに使用してください。"
         },
         "copyFiles": {
           "label": "ファイルをコピー",

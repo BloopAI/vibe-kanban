@@ -151,6 +151,7 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
             <Panel
               id="kanban-right"
               minSize="400px"
+              maxSize="800px"
               className="min-w-0 h-full overflow-hidden bg-secondary"
             >
               <KanbanIssuePanelContainer />

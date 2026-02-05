@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
   GearIcon,
-  FolderIcon,
   GitBranchIcon,
   BuildingsIcon,
   CloudIcon,
@@ -33,7 +32,6 @@ const SETTINGS_SECTIONS: {
   icon: Icon;
 }[] = [
   { id: 'general', icon: GearIcon },
-  { id: 'projects', icon: FolderIcon },
   { id: 'repos', icon: GitBranchIcon },
   { id: 'organizations', icon: BuildingsIcon },
   { id: 'remote-projects', icon: CloudIcon },

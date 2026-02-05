@@ -248,6 +248,14 @@ export const sequentialBindings: SequentialBinding[] = [
     group: 'Run',
     actionId: 'run-cleanup-script',
   },
+  {
+    id: 'seq-run-archive',
+    keys: ['r', 'a'],
+    scopes: [Scope.WORKSPACE],
+    description: 'Run archive script',
+    group: 'Run',
+    actionId: 'run-archive-script',
+  },
 ];
 
 export const keyBindings: KeyBinding[] = [

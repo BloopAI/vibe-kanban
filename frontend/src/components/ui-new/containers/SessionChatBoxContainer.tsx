@@ -78,6 +78,8 @@ interface SharedProps {
   onScrollToPreviousMessage: () => void;
   /** Callback to scroll to bottom of conversation */
   onScrollToBottom: () => void;
+  /** Disable the "view code" click handler (for VS Code extension) */
+  disableViewCode: boolean;
 }
 
 /** Props for existing session mode */
@@ -120,6 +122,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     linesRemoved,
     onScrollToPreviousMessage,
     onScrollToBottom,
+    disableViewCode = false,
   } = props;
 
   // Extract mode-specific values
@@ -708,7 +711,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
           linesAdded: 0,
           linesRemoved: 0,
         }}
-        onViewCode={handleViewCode}
+        onViewCode={disableViewCode ? undefined : handleViewCode}
       />
     );
   }
@@ -716,7 +719,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   return (
     <SessionChatBox
       status={status}
-      onViewCode={handleViewCode}
+      onViewCode={disableViewCode ? undefined : handleViewCode}
       onScrollToPreviousMessage={onScrollToPreviousMessage}
       repoIds={repoIds}
       projectId={projectId}

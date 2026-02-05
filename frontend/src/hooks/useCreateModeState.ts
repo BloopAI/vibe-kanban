@@ -354,6 +354,14 @@ export function useCreateModeState({
         target_branch: r.targetBranch ?? '',
       })),
       selected_profile: state.profile,
+      linked_issue: state.linkedIssue
+        ? {
+            issue_id: state.linkedIssue.issueId,
+            simple_id: state.linkedIssue.simpleId,
+            title: state.linkedIssue.title,
+            remote_project_id: state.linkedIssue.remoteProjectId,
+          }
+        : null,
     });
   }, [
     state.phase,
@@ -361,6 +369,7 @@ export function useCreateModeState({
     state.projectId,
     state.repos,
     state.profile,
+    state.linkedIssue,
     debouncedSave,
   ]);
 
@@ -593,6 +602,16 @@ async function initializeState({
         if (restoredRepos.length > 0) {
           restoredData.repos = restoredRepos;
         }
+      }
+
+      // Restore linked issue
+      if (scratchData.linked_issue) {
+        restoredData.linkedIssue = {
+          issueId: scratchData.linked_issue.issue_id,
+          simpleId: scratchData.linked_issue.simple_id,
+          title: scratchData.linked_issue.title,
+          remoteProjectId: scratchData.linked_issue.remote_project_id,
+        };
       }
 
       dispatch({ type: 'INIT_COMPLETE', data: restoredData });

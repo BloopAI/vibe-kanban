@@ -12,6 +12,7 @@ import {
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
 import {
   type BaseCodingAgent,
+  DEFAULT_COMMIT_REMINDER_PROMPT,
   DEFAULT_PR_DESCRIPTION_PROMPT,
   EditorType,
   type ExecutorProfileId,
@@ -685,6 +686,57 @@ export function GeneralSettingsSection() {
         </SettingsField>
       </SettingsCard>
 
+      {/* Commits */}
+      <SettingsCard
+        title={t('settings.general.commits.title')}
+        description={t('settings.general.commits.description')}
+      >
+        <SettingsCheckbox
+          id="commit-reminder"
+          label={t('settings.general.commits.reminder.label')}
+          description={t('settings.general.commits.reminder.helper')}
+          checked={draft?.commit_reminder_enabled ?? true}
+          onChange={(checked) =>
+            updateDraft({ commit_reminder_enabled: checked })
+          }
+        />
+
+        {draft?.commit_reminder_enabled && (
+          <>
+            <SettingsCheckbox
+              id="use-custom-commit-prompt"
+              label={t('settings.general.commits.customPrompt.useCustom')}
+              checked={draft?.commit_reminder_prompt != null}
+              onChange={(checked) => {
+                if (checked) {
+                  updateDraft({
+                    commit_reminder_prompt: DEFAULT_COMMIT_REMINDER_PROMPT,
+                  });
+                } else {
+                  updateDraft({ commit_reminder_prompt: null });
+                }
+              }}
+            />
+
+            <SettingsField
+              label=""
+              description={t('settings.general.commits.customPrompt.helper')}
+            >
+              <SettingsTextarea
+                value={
+                  draft?.commit_reminder_prompt ??
+                  DEFAULT_COMMIT_REMINDER_PROMPT
+                }
+                onChange={(value) =>
+                  updateDraft({ commit_reminder_prompt: value })
+                }
+                disabled={draft?.commit_reminder_prompt == null}
+              />
+            </SettingsField>
+          </>
+        )}
+      </SettingsCard>
+
       {/* Notifications */}
       <SettingsCard
         title={t('settings.general.notifications.title')}
@@ -926,13 +978,6 @@ export function GeneralSettingsSection() {
           description={t('settings.general.beta.workspaces.helper')}
           checked={draft?.beta_workspaces ?? false}
           onChange={(checked) => updateDraft({ beta_workspaces: checked })}
-        />
-        <SettingsCheckbox
-          id="commit-reminder"
-          label={t('settings.general.beta.commitReminder.label')}
-          description={t('settings.general.beta.commitReminder.helper')}
-          checked={draft?.commit_reminder ?? false}
-          onChange={(checked) => updateDraft({ commit_reminder: checked })}
         />
       </SettingsCard>
 

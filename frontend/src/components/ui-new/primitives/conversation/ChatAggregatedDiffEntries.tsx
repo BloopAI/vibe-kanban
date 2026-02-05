@@ -7,6 +7,7 @@ import { useTheme } from '@/components/ThemeProvider';
 import { getActualTheme } from '@/utils/theme';
 import { ToolStatus, ActionType } from 'shared/types';
 import { parseDiffStats } from '@/utils/diffStatsParser';
+import { inIframe, openFileInVSCode } from '@/vscode/bridge';
 import { ToolStatusDot } from './ToolStatusDot';
 import {
   DiffViewBody,
@@ -175,6 +176,15 @@ export function ChatAggregatedDiffEntries({
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
   const FileIcon = getFileIcon(filePath, actualTheme);
+  const isVSCode = inIframe();
+
+  const handleClick = () => {
+    if (isVSCode) {
+      openFileInVSCode(filePath, { openAsDiff: false });
+    } else {
+      onToggle();
+    }
+  };
 
   // Calculate total additions/deletions across all changes
   const totalStats = useMemo(() => {
@@ -235,7 +245,7 @@ export function ChatAggregatedDiffEntries({
           isDenied ? 'bg-error/20' : 'bg-panel',
           'cursor-pointer'
         )}
-        onClick={onToggle}
+        onClick={handleClick}
         onMouseEnter={() => onHoverChange(true)}
         onMouseLeave={() => onHoverChange(false)}
         role="button"
@@ -243,7 +253,7 @@ export function ChatAggregatedDiffEntries({
       >
         <div className="flex-1 flex items-center gap-base min-w-0">
           <span className="relative shrink-0">
-            {isHovered ? (
+            {!isVSCode && isHovered ? (
               <CaretDownIcon
                 className={cn(
                   'size-icon-base transition-transform duration-150',
@@ -264,7 +274,7 @@ export function ChatAggregatedDiffEntries({
           <span className="text-xs text-low shrink-0">
             · {entries.length} {entries.length === 1 ? 'edit' : 'edits'}
           </span>
-          {onOpenInChanges && (
+          {!isVSCode && onOpenInChanges && (
             <button
               type="button"
               onClick={(e) => {
@@ -289,16 +299,18 @@ export function ChatAggregatedDiffEntries({
             </span>
           )}
         </div>
-        <CaretDownIcon
-          className={cn(
-            'size-icon-xs shrink-0 text-low transition-transform',
-            !expanded && '-rotate-90'
-          )}
-        />
+        {!isVSCode && (
+          <CaretDownIcon
+            className={cn(
+              'size-icon-xs shrink-0 text-low transition-transform',
+              !expanded && '-rotate-90'
+            )}
+          />
+        )}
       </div>
 
-      {/* Expanded content - list of individual diffs (always expanded) */}
-      {expanded && (
+      {/* Expanded content - list of individual diffs (hidden in VS Code mode) */}
+      {!isVSCode && expanded && (
         <div className="border-t">
           {entries.map((entry) => (
             <DiffEntry

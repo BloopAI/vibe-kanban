@@ -1,6 +1,5 @@
-import { useMemo, useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
 import type { IssuePriority } from 'shared/remote-types';
 
@@ -162,6 +161,9 @@ type State = {
   kanbanViewMode: KanbanViewMode;
   listViewStatusFilter: string | null;
 
+  // Per-project sub-issues visibility
+  showSubIssuesByProject: Record<string, boolean>;
+
   // UI preferences actions
   setRepoAction: (repoId: string, action: RepoAction) => void;
   setExpanded: (key: string, value: boolean) => void;
@@ -211,254 +213,234 @@ type State = {
   // Kanban view mode actions
   setKanbanViewMode: (mode: KanbanViewMode) => void;
   setListViewStatusFilter: (statusId: string | null) => void;
+
+  // Per-project sub-issues visibility action
+  setShowSubIssues: (projectId: string, show: boolean) => void;
 };
 
-export const useUiPreferencesStore = create<State>()(
-  persist(
-    (set, get) => ({
-      // UI preferences state
-      repoActions: {},
-      expanded: {},
-      contextBarPosition: 'middle-right',
-      paneSizes: {},
-      collapsedPaths: {},
+export const useUiPreferencesStore = create<State>()((set, get) => ({
+  // UI preferences state
+  repoActions: {},
+  expanded: {},
+  contextBarPosition: 'middle-right',
+  paneSizes: {},
+  collapsedPaths: {},
 
-      // Global layout state
-      layoutMode: 'workspaces' as LayoutMode,
-      isLeftSidebarVisible: true,
-      isRightSidebarVisible: true,
-      isTerminalVisible: true,
-      previewRefreshKey: 0,
+  // Global layout state
+  layoutMode: 'workspaces' as LayoutMode,
+  isLeftSidebarVisible: true,
+  isRightSidebarVisible: true,
+  isTerminalVisible: true,
+  previewRefreshKey: 0,
 
-      // Workspace-specific panel state
-      workspacePanelStates: {},
+  // Workspace-specific panel state
+  workspacePanelStates: {},
 
-      // Kanban filter state
-      kanbanFilters: DEFAULT_KANBAN_FILTER_STATE,
+  // Kanban filter state
+  kanbanFilters: DEFAULT_KANBAN_FILTER_STATE,
 
-      // Kanban view mode state
-      kanbanViewMode: 'kanban' as KanbanViewMode,
-      listViewStatusFilter: null,
+  // Kanban view mode state
+  kanbanViewMode: 'kanban' as KanbanViewMode,
+  listViewStatusFilter: null,
 
-      // UI preferences actions
-      setRepoAction: (repoId, action) =>
-        set((s) => ({ repoActions: { ...s.repoActions, [repoId]: action } })),
-      setExpanded: (key, value) =>
-        set((s) => ({ expanded: { ...s.expanded, [key]: value } })),
-      toggleExpanded: (key, defaultValue = true) =>
-        set((s) => ({
-          expanded: {
-            ...s.expanded,
-            [key]: !(s.expanded[key] ?? defaultValue),
-          },
-        })),
-      setExpandedAll: (keys, value) =>
-        set((s) => ({
-          expanded: {
-            ...s.expanded,
-            ...Object.fromEntries(keys.map((k) => [k, value])),
-          },
-        })),
-      setContextBarPosition: (position) =>
-        set({ contextBarPosition: position }),
-      setPaneSize: (key, size) =>
-        set((s) => ({ paneSizes: { ...s.paneSizes, [key]: size } })),
-      setCollapsedPaths: (key, paths) =>
-        set((s) => ({ collapsedPaths: { ...s.collapsedPaths, [key]: paths } })),
+  // Per-project sub-issues visibility (default to hidden)
+  showSubIssuesByProject: {},
 
-      // Layout actions
-      setLayoutMode: (mode) => set({ layoutMode: mode }),
-      toggleLayoutMode: () =>
-        set((s) => ({
-          layoutMode: s.layoutMode === 'workspaces' ? 'kanban' : 'workspaces',
-        })),
-      toggleLeftSidebar: () =>
-        set((s) => ({ isLeftSidebarVisible: !s.isLeftSidebarVisible })),
-
-      toggleLeftMainPanel: (workspaceId) => {
-        if (!workspaceId) return;
-        const state = get();
-        const wsState =
-          state.workspacePanelStates[workspaceId] ??
-          DEFAULT_WORKSPACE_PANEL_STATE;
-        if (
-          wsState.isLeftMainPanelVisible &&
-          wsState.rightMainPanelMode === null
-        )
-          return;
-        set({
-          workspacePanelStates: {
-            ...state.workspacePanelStates,
-            [workspaceId]: {
-              ...wsState,
-              isLeftMainPanelVisible: !wsState.isLeftMainPanelVisible,
-            },
-          },
-        });
+  // UI preferences actions
+  setRepoAction: (repoId, action) =>
+    set((s) => ({ repoActions: { ...s.repoActions, [repoId]: action } })),
+  setExpanded: (key, value) =>
+    set((s) => ({ expanded: { ...s.expanded, [key]: value } })),
+  toggleExpanded: (key, defaultValue = true) =>
+    set((s) => ({
+      expanded: {
+        ...s.expanded,
+        [key]: !(s.expanded[key] ?? defaultValue),
       },
-
-      toggleRightSidebar: () =>
-        set((s) => ({ isRightSidebarVisible: !s.isRightSidebarVisible })),
-
-      toggleTerminal: () =>
-        set((s) => ({ isTerminalVisible: !s.isTerminalVisible })),
-
-      setTerminalVisible: (value) => set({ isTerminalVisible: value }),
-
-      toggleRightMainPanelMode: (mode, workspaceId) => {
-        if (!workspaceId) return;
-        const state = get();
-        const wsState =
-          state.workspacePanelStates[workspaceId] ??
-          DEFAULT_WORKSPACE_PANEL_STATE;
-        const isCurrentlyActive = wsState.rightMainPanelMode === mode;
-
-        set({
-          workspacePanelStates: {
-            ...state.workspacePanelStates,
-            [workspaceId]: {
-              ...wsState,
-              rightMainPanelMode: isCurrentlyActive ? null : mode,
-            },
-          },
-          isLeftSidebarVisible: isCurrentlyActive
-            ? true
-            : isWideScreen()
-              ? state.isLeftSidebarVisible
-              : false,
-        });
+    })),
+  setExpandedAll: (keys, value) =>
+    set((s) => ({
+      expanded: {
+        ...s.expanded,
+        ...Object.fromEntries(keys.map((k) => [k, value])),
       },
+    })),
+  setContextBarPosition: (position) => set({ contextBarPosition: position }),
+  setPaneSize: (key, size) =>
+    set((s) => ({ paneSizes: { ...s.paneSizes, [key]: size } })),
+  setCollapsedPaths: (key, paths) =>
+    set((s) => ({ collapsedPaths: { ...s.collapsedPaths, [key]: paths } })),
 
-      setRightMainPanelMode: (mode, workspaceId) => {
-        if (!workspaceId) return;
-        const state = get();
-        const wsState =
-          state.workspacePanelStates[workspaceId] ??
-          DEFAULT_WORKSPACE_PANEL_STATE;
-        set({
-          workspacePanelStates: {
-            ...state.workspacePanelStates,
-            [workspaceId]: {
-              ...wsState,
-              rightMainPanelMode: mode,
-            },
-          },
-          ...(mode !== null && {
-            isLeftSidebarVisible: isWideScreen()
-              ? state.isLeftSidebarVisible
-              : false,
-          }),
-        });
+  // Layout actions
+  setLayoutMode: (mode) => set({ layoutMode: mode }),
+  toggleLayoutMode: () =>
+    set((s) => ({
+      layoutMode: s.layoutMode === 'workspaces' ? 'kanban' : 'workspaces',
+    })),
+  toggleLeftSidebar: () =>
+    set((s) => ({ isLeftSidebarVisible: !s.isLeftSidebarVisible })),
+
+  toggleLeftMainPanel: (workspaceId) => {
+    if (!workspaceId) return;
+    const state = get();
+    const wsState =
+      state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+    if (wsState.isLeftMainPanelVisible && wsState.rightMainPanelMode === null)
+      return;
+    set({
+      workspacePanelStates: {
+        ...state.workspacePanelStates,
+        [workspaceId]: {
+          ...wsState,
+          isLeftMainPanelVisible: !wsState.isLeftMainPanelVisible,
+        },
       },
+    });
+  },
 
-      setLeftSidebarVisible: (value) => set({ isLeftSidebarVisible: value }),
+  toggleRightSidebar: () =>
+    set((s) => ({ isRightSidebarVisible: !s.isRightSidebarVisible })),
 
-      setLeftMainPanelVisible: (value, workspaceId) => {
-        if (!workspaceId) return;
-        const state = get();
-        const wsState =
-          state.workspacePanelStates[workspaceId] ??
-          DEFAULT_WORKSPACE_PANEL_STATE;
-        set({
-          workspacePanelStates: {
-            ...state.workspacePanelStates,
-            [workspaceId]: {
-              ...wsState,
-              isLeftMainPanelVisible: value,
-            },
-          },
-        });
+  toggleTerminal: () =>
+    set((s) => ({ isTerminalVisible: !s.isTerminalVisible })),
+
+  setTerminalVisible: (value) => set({ isTerminalVisible: value }),
+
+  toggleRightMainPanelMode: (mode, workspaceId) => {
+    if (!workspaceId) return;
+    const state = get();
+    const wsState =
+      state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+    const isCurrentlyActive = wsState.rightMainPanelMode === mode;
+
+    set({
+      workspacePanelStates: {
+        ...state.workspacePanelStates,
+        [workspaceId]: {
+          ...wsState,
+          rightMainPanelMode: isCurrentlyActive ? null : mode,
+        },
       },
+      isLeftSidebarVisible: isCurrentlyActive
+        ? true
+        : isWideScreen()
+          ? state.isLeftSidebarVisible
+          : false,
+    });
+  },
 
-      triggerPreviewRefresh: () =>
-        set((s) => ({ previewRefreshKey: s.previewRefreshKey + 1 })),
-
-      // Workspace-specific panel state actions
-      getWorkspacePanelState: (workspaceId) => {
-        const state = get();
-        return (
-          state.workspacePanelStates[workspaceId] ??
-          DEFAULT_WORKSPACE_PANEL_STATE
-        );
+  setRightMainPanelMode: (mode, workspaceId) => {
+    if (!workspaceId) return;
+    const state = get();
+    const wsState =
+      state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+    set({
+      workspacePanelStates: {
+        ...state.workspacePanelStates,
+        [workspaceId]: {
+          ...wsState,
+          rightMainPanelMode: mode,
+        },
       },
-
-      setWorkspacePanelState: (workspaceId, panelState) => {
-        const state = get();
-        const currentWsState =
-          state.workspacePanelStates[workspaceId] ??
-          DEFAULT_WORKSPACE_PANEL_STATE;
-        set({
-          workspacePanelStates: {
-            ...state.workspacePanelStates,
-            [workspaceId]: {
-              ...currentWsState,
-              ...panelState,
-            },
-          },
-        });
-      },
-
-      // Kanban filter actions
-      setKanbanSearchQuery: (query) =>
-        set((s) => ({
-          kanbanFilters: { ...s.kanbanFilters, searchQuery: query },
-        })),
-
-      setKanbanPriorities: (priorities) =>
-        set((s) => ({
-          kanbanFilters: { ...s.kanbanFilters, priorities },
-        })),
-
-      setKanbanAssignees: (assigneeIds) =>
-        set((s) => ({
-          kanbanFilters: { ...s.kanbanFilters, assigneeIds },
-        })),
-
-      setKanbanTags: (tagIds) =>
-        set((s) => ({
-          kanbanFilters: { ...s.kanbanFilters, tagIds },
-        })),
-
-      setKanbanSort: (field, direction) =>
-        set((s) => ({
-          kanbanFilters: {
-            ...s.kanbanFilters,
-            sortField: field,
-            sortDirection: direction,
-          },
-        })),
-
-      clearKanbanFilters: () =>
-        set({ kanbanFilters: DEFAULT_KANBAN_FILTER_STATE }),
-
-      // Kanban view mode actions
-      setKanbanViewMode: (mode) => set({ kanbanViewMode: mode }),
-
-      setListViewStatusFilter: (statusId) =>
-        set({ listViewStatusFilter: statusId }),
-    }),
-    {
-      name: 'ui-preferences',
-      partialize: (state) => ({
-        // UI preferences (all persisted)
-        repoActions: state.repoActions,
-        expanded: state.expanded,
-        contextBarPosition: state.contextBarPosition,
-        paneSizes: state.paneSizes,
-        collapsedPaths: state.collapsedPaths,
-        // Global layout (persist sidebar visibility)
-        layoutMode: state.layoutMode,
-        isLeftSidebarVisible: state.isLeftSidebarVisible,
-        isRightSidebarVisible: state.isRightSidebarVisible,
-        isTerminalVisible: state.isTerminalVisible,
-        // Note: Kanban panel state is derived from URL via useKanbanNavigation
-        // Workspace-specific panel state (persisted)
-        workspacePanelStates: state.workspacePanelStates,
-        // Note: Kanban filters and view mode are NOT persisted - they reset on page reload
+      ...(mode !== null && {
+        isLeftSidebarVisible: isWideScreen()
+          ? state.isLeftSidebarVisible
+          : false,
       }),
-    }
-  )
-);
+    });
+  },
+
+  setLeftSidebarVisible: (value) => set({ isLeftSidebarVisible: value }),
+
+  setLeftMainPanelVisible: (value, workspaceId) => {
+    if (!workspaceId) return;
+    const state = get();
+    const wsState =
+      state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+    set({
+      workspacePanelStates: {
+        ...state.workspacePanelStates,
+        [workspaceId]: {
+          ...wsState,
+          isLeftMainPanelVisible: value,
+        },
+      },
+    });
+  },
+
+  triggerPreviewRefresh: () =>
+    set((s) => ({ previewRefreshKey: s.previewRefreshKey + 1 })),
+
+  // Workspace-specific panel state actions
+  getWorkspacePanelState: (workspaceId) => {
+    const state = get();
+    return (
+      state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE
+    );
+  },
+
+  setWorkspacePanelState: (workspaceId, panelState) => {
+    const state = get();
+    const currentWsState =
+      state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+    set({
+      workspacePanelStates: {
+        ...state.workspacePanelStates,
+        [workspaceId]: {
+          ...currentWsState,
+          ...panelState,
+        },
+      },
+    });
+  },
+
+  // Kanban filter actions
+  setKanbanSearchQuery: (query) =>
+    set((s) => ({
+      kanbanFilters: { ...s.kanbanFilters, searchQuery: query },
+    })),
+
+  setKanbanPriorities: (priorities) =>
+    set((s) => ({
+      kanbanFilters: { ...s.kanbanFilters, priorities },
+    })),
+
+  setKanbanAssignees: (assigneeIds) =>
+    set((s) => ({
+      kanbanFilters: { ...s.kanbanFilters, assigneeIds },
+    })),
+
+  setKanbanTags: (tagIds) =>
+    set((s) => ({
+      kanbanFilters: { ...s.kanbanFilters, tagIds },
+    })),
+
+  setKanbanSort: (field, direction) =>
+    set((s) => ({
+      kanbanFilters: {
+        ...s.kanbanFilters,
+        sortField: field,
+        sortDirection: direction,
+      },
+    })),
+
+  clearKanbanFilters: () => set({ kanbanFilters: DEFAULT_KANBAN_FILTER_STATE }),
+
+  // Kanban view mode actions
+  setKanbanViewMode: (mode) => set({ kanbanViewMode: mode }),
+
+  setListViewStatusFilter: (statusId) =>
+    set({ listViewStatusFilter: statusId }),
+
+  // Per-project sub-issues visibility action
+  setShowSubIssues: (projectId, show) =>
+    set((s) => ({
+      showSubIssuesByProject: {
+        ...s.showSubIssuesByProject,
+        [projectId]: show,
+      },
+    })),
+}));
 
 // Hook for repo action preference
 export function useRepoAction(

@@ -11,6 +11,7 @@ import { SharedAppLayout } from '@/components/ui-new/containers/SharedAppLayout'
 import { usePostHog } from 'posthog-js/react';
 import { useAuth } from '@/hooks';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
+import { useUiPreferencesScratch } from '@/hooks/useUiPreferencesScratch';
 
 import {
   AgentSettings,
@@ -39,10 +40,12 @@ import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 // Design scope components
 import { LegacyDesignScope } from '@/components/legacy-design/LegacyDesignScope';
 import { NewDesignScope } from '@/components/ui-new/scope/NewDesignScope';
+import { VSCodeScope } from '@/components/ui-new/scope/VSCodeScope';
 import { TerminalProvider } from '@/contexts/TerminalContext';
 
 // New design pages
 import { Workspaces } from '@/pages/ui-new/Workspaces';
+import { VSCodeWorkspacePage } from '@/pages/ui-new/VSCodeWorkspacePage';
 import { WorkspacesLanding } from '@/pages/ui-new/WorkspacesLanding';
 import { ElectricTestPage } from '@/pages/ui-new/ElectricTestPage';
 import { ProjectKanban } from '@/pages/ui-new/ProjectKanban';
@@ -57,6 +60,9 @@ function AppContent() {
 
   // Track previous path for back navigation
   usePreviousPath();
+
+  // Sync UI preferences with server scratch storage
+  useUiPreferencesScratch();
 
   // Handle opt-in/opt-out and user identification when config loads
   useEffect(() => {
@@ -186,6 +192,18 @@ function AppContent() {
             </Route>
 
             {/* ========== NEW DESIGN ROUTES ========== */}
+            {/* VS Code workspace route (standalone, no layout, no keyboard shortcuts) */}
+            <Route
+              path="/workspaces/:workspaceId/vscode"
+              element={
+                <VSCodeScope>
+                  <TerminalProvider>
+                    <VSCodeWorkspacePage />
+                  </TerminalProvider>
+                </VSCodeScope>
+              }
+            />
+
             {/* Unified layout for workspaces and projects - AppBar/Navbar rendered once */}
             <Route
               element={

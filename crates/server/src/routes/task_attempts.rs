@@ -70,6 +70,11 @@ pub struct AbortConflictsRequest {
     pub repo_id: Uuid,
 }
 
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct ContinueRebaseRequest {
+    pub repo_id: Uuid,
+}
+
 #[derive(Debug, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[ts(tag = "type", rename_all = "snake_case")]
@@ -148,6 +153,8 @@ pub async fn update_workspace(
     Json(request): Json<UpdateWorkspace>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
     let pool = &deployment.db().pool;
+    let is_archiving = request.archived == Some(true) && !workspace.archived;
+
     Workspace::update(
         pool,
         workspace.id,
@@ -179,6 +186,19 @@ pub async fn update_workspace(
             )
             .await;
         });
+    }
+
+    if is_archiving
+        && let Err(e) = deployment
+            .container()
+            .try_run_archive_script(workspace.id)
+            .await
+    {
+        tracing::error!(
+            "Failed to run archive script for workspace {}: {}",
+            workspace.id,
+            e
+        );
     }
 
     Ok(ResponseJson(ApiResponse::success(updated)))
@@ -537,8 +557,18 @@ pub async fn merge_task_attempt(
     Task::update_status(pool, task.id, TaskStatus::Done).await?;
     if !workspace.pinned {
         Workspace::set_archived(pool, workspace.id, true).await?;
+        if let Err(e) = deployment
+            .container()
+            .try_run_archive_script(workspace.id)
+            .await
+        {
+            tracing::error!(
+                "Failed to run archive script for workspace {}: {}",
+                workspace.id,
+                e
+            );
+        }
     }
-
     // Stop any running dev servers for this workspace
     let dev_servers =
         ExecutionProcess::find_running_dev_servers_by_workspace(pool, workspace.id).await?;
@@ -1259,6 +1289,30 @@ pub async fn abort_conflicts_task_attempt(
 }
 
 #[axum::debug_handler]
+pub async fn continue_rebase_task_attempt(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<ContinueRebaseRequest>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    let repo = Repo::find_by_id(pool, payload.repo_id)
+        .await?
+        .ok_or(RepoError::NotFound)?;
+
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&workspace)
+        .await?;
+    let workspace_path = Path::new(&container_ref);
+    let worktree_path = workspace_path.join(&repo.name);
+
+    deployment.git().continue_rebase(&worktree_path)?;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
+#[axum::debug_handler]
 pub async fn start_dev_server(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -1588,6 +1642,80 @@ pub async fn run_cleanup_script(
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
+pub async fn run_archive_script(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<ExecutionProcess, RunScriptError>>, ApiError> {
+    let pool = &deployment.db().pool;
+    if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
+        .await?
+    {
+        return Ok(ResponseJson(ApiResponse::error_with_data(
+            RunScriptError::ProcessAlreadyRunning,
+        )));
+    }
+
+    deployment
+        .container()
+        .ensure_container_exists(&workspace)
+        .await?;
+
+    let task = workspace
+        .parent_task(pool)
+        .await?
+        .ok_or(SqlxError::RowNotFound)?;
+
+    let project = task
+        .parent_project(pool)
+        .await?
+        .ok_or(SqlxError::RowNotFound)?;
+
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let executor_action = match deployment.container().archive_actions_for_repos(&repos) {
+        Some(action) => action,
+        None => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                RunScriptError::NoScriptConfigured,
+            )));
+        }
+    };
+    let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
+        Some(s) => s,
+        None => {
+            Session::create(
+                pool,
+                &CreateSession { executor: None },
+                Uuid::new_v4(),
+                workspace.id,
+            )
+            .await?
+        }
+    };
+
+    let execution_process = deployment
+        .container()
+        .start_execution(
+            &workspace,
+            &session,
+            &executor_action,
+            &ExecutionProcessRunReason::ArchiveScript,
+        )
+        .await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "archive_script_executed",
+            serde_json::json!({
+                "task_id": task.id.to_string(),
+                "project_id": project.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(execution_process)))
+}
+
 #[axum::debug_handler]
 pub async fn gh_cli_setup_handler(
     Extension(workspace): Extension<Workspace>,
@@ -1847,12 +1975,14 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
                 .route("/start-dev-server", post(start_dev_server))
                 .route("/run-setup-script", post(run_setup_script))
                 .route("/run-cleanup-script", post(run_cleanup_script))
+                .route("/run-archive-script", post(run_archive_script))
                 .route("/branch-status", get(get_task_attempt_branch_status))
                 .route("/diff/ws", get(stream_task_attempt_diff_ws))
                 .route("/merge", post(merge_task_attempt))
                 .route("/push", post(push_task_attempt_branch))
                 .route("/push/force", post(force_push_task_attempt_branch))
                 .route("/rebase", post(rebase_task_attempt))
+                .route("/rebase/continue", post(continue_rebase_task_attempt))
                 .route("/conflicts/abort", post(abort_conflicts_task_attempt))
                 .route("/pr", post(pr::create_pr))
                 .route("/pr/attach", post(pr::attach_existing_pr))

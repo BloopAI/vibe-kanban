@@ -98,7 +98,8 @@
     "currentBadge": " (現在)",
     "organizations": "組織",
     "createOrganization": "組織を作成",
-    "orgSettings": "組織の設定"
+    "orgSettings": "組織の設定",
+    "migrate": "移行"
   },
   "navbar": {
     "tryNewUI": "新しいUIを試す"
@@ -145,6 +146,7 @@
     "active": "アクティブ",
     "archived": "アーカイブ済み",
     "loading": "読み込み中...",
+    "notFound": "ワークスペースが見つかりません",
     "selectToStart": "ワークスペースを選択して開始",
     "draft": "下書き",
     "viewArchive": "アーカイブを表示",
@@ -365,6 +367,7 @@
     "noSubIssues": "サブ課題なし",
     "parentIssue": "親",
     "subIssueIndicator": "↳",
+    "showSubIssues": "サブ課題を表示",
     "viewTabs": {
       "active": "アクティブ",
       "all": "すべて"

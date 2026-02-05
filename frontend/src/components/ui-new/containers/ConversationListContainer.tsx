@@ -8,6 +8,7 @@ import {
 } from '@virtuoso.dev/message-list';
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -29,6 +30,10 @@ import {
 } from '@/components/ui-new/hooks/useConversationHistory';
 import { aggregateConsecutiveEntries } from '@/utils/aggregateEntries';
 import type { WorkspaceWithSession } from '@/types/attempt';
+import type { RepoWithTargetBranch } from 'shared/types';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { ChatScriptPlaceholder } from '../primitives/conversation/ChatScriptPlaceholder';
+import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialog';
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
@@ -41,6 +46,10 @@ export interface ConversationListHandle {
 
 interface MessageListContext {
   attempt: WorkspaceWithSession;
+  onConfigureSetup: (() => void) | undefined;
+  onConfigureCleanup: (() => void) | undefined;
+  showSetupPlaceholder: boolean;
+  showCleanupPlaceholder: boolean;
 }
 
 const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
@@ -140,6 +149,51 @@ export const ConversationList = forwardRef<
   } | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Get repos from workspace context to check if scripts are configured
+  let repos: RepoWithTargetBranch[] = [];
+  try {
+    const workspaceContext = useWorkspaceContext();
+    repos = workspaceContext.repos;
+  } catch {
+    // Context not available
+  }
+
+  // Use ref to access current repos without causing callback recreation
+  const reposRef = useRef(repos);
+  reposRef.current = repos;
+
+  // Check if any repo has setup or cleanup scripts configured
+  const hasSetupScript = repos.some((repo) => repo.setup_script);
+  const hasCleanupScript = repos.some((repo) => repo.cleanup_script);
+
+  // Handlers to open script fixer dialog for setup/cleanup scripts
+  const handleConfigureSetup = useCallback(() => {
+    const currentRepos = reposRef.current;
+    if (currentRepos.length === 0) return;
+
+    ScriptFixerDialog.show({
+      scriptType: 'setup',
+      repos: currentRepos,
+      workspaceId: attempt.id,
+      sessionId: attempt.session?.id,
+    });
+  }, [attempt.id, attempt.session?.id]);
+
+  const handleConfigureCleanup = useCallback(() => {
+    const currentRepos = reposRef.current;
+    if (currentRepos.length === 0) return;
+
+    ScriptFixerDialog.show({
+      scriptType: 'cleanup',
+      repos: currentRepos,
+      workspaceId: attempt.id,
+      sessionId: attempt.session?.id,
+    });
+  }, [attempt.id, attempt.session?.id]);
+
+  // Determine if configure buttons should be shown
+  const canConfigure = repos.length > 0;
+
   useEffect(() => {
     setLoading(true);
     setChannelData(null);
@@ -181,7 +235,6 @@ export const ConversationList = forwardRef<
         scrollModifier = AutoScrollToBottom;
       }
 
-      // Aggregate consecutive read/search entries into groups
       const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
 
       setChannelData({ data: aggregatedEntries, scrollModifier });
@@ -193,10 +246,40 @@ export const ConversationList = forwardRef<
     }, 100);
   };
 
-  useConversationHistory({ attempt, onEntriesUpdated });
+  const { hasSetupScriptRun, hasCleanupScriptRun, hasRunningProcess } =
+    useConversationHistory({ attempt, onEntriesUpdated });
+
+  // Determine if there are entries to show placeholders
+  const entries = channelData?.data ?? [];
+  const hasEntries = entries.length > 0;
+
+  // Show placeholders only if script not configured AND not already run
+  const showSetupPlaceholder =
+    !hasSetupScript && !hasSetupScriptRun && hasEntries;
+  const showCleanupPlaceholder =
+    !hasCleanupScript &&
+    !hasCleanupScriptRun &&
+    !hasRunningProcess &&
+    hasEntries;
 
   const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
-  const messageListContext = useMemo(() => ({ attempt }), [attempt]);
+  const messageListContext = useMemo(
+    () => ({
+      attempt,
+      onConfigureSetup: canConfigure ? handleConfigureSetup : undefined,
+      onConfigureCleanup: canConfigure ? handleConfigureCleanup : undefined,
+      showSetupPlaceholder,
+      showCleanupPlaceholder,
+    }),
+    [
+      attempt,
+      canConfigure,
+      handleConfigureSetup,
+      handleConfigureCleanup,
+      showSetupPlaceholder,
+      showCleanupPlaceholder,
+    ]
+  );
 
   // Expose scroll to previous user message functionality via ref
   useImperativeHandle(
@@ -274,8 +357,30 @@ export const ConversationList = forwardRef<
             context={messageListContext}
             computeItemKey={computeItemKey}
             ItemContent={ItemContent}
-            Header={() => <div className="h-2" />}
-            Footer={() => <div className="h-2" />}
+            Header={({ context }) => (
+              <div className="pt-2">
+                {context?.showSetupPlaceholder && (
+                  <div className="my-base px-double">
+                    <ChatScriptPlaceholder
+                      type="setup"
+                      onConfigure={context.onConfigureSetup}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+            Footer={({ context }) => (
+              <div className="pb-2">
+                {context?.showCleanupPlaceholder && (
+                  <div className="my-base px-double">
+                    <ChatScriptPlaceholder
+                      type="cleanup"
+                      onConfigure={context.onConfigureCleanup}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           />
         </VirtuosoMessageListLicense>
       </div>

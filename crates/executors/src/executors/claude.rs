@@ -53,7 +53,7 @@ fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
         "npx -y @musistudio/claude-code-router@1.0.66 code"
     } else {
-        "npx -y @anthropic-ai/claude-code@2.1.22"
+        "npx -y @anthropic-ai/claude-code@2.1.31"
     }
 }
 
@@ -341,6 +341,7 @@ impl ClaudeCode {
         let prompt_clone = combined_prompt.clone();
         let approvals_clone = self.approvals_service.clone();
         let repo_context = env.repo_context.clone();
+        let commit_reminder_prompt = env.commit_reminder_prompt.clone();
         let cancel_for_task = cancel.clone();
         tokio::spawn(async move {
             let log_writer = LogWriter::new(new_stdout);
@@ -348,6 +349,7 @@ impl ClaudeCode {
                 log_writer.clone(),
                 approvals_clone,
                 repo_context,
+                commit_reminder_prompt,
                 cancel_for_task.clone(),
             );
             let protocol_peer =

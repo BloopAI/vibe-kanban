@@ -600,6 +600,18 @@ impl GitCli {
         self.git(worktree_path, ["rebase", "--quit"]).map(|_| ())
     }
 
+    /// Continue an in-progress rebase. Returns error if no rebase is in progress
+    /// or if there are unresolved conflicts.
+    pub fn continue_rebase(&self, worktree_path: &Path) -> Result<(), GitCliError> {
+        if !self.is_rebase_in_progress(worktree_path)? {
+            return Err(GitCliError::CommandFailed(
+                "No rebase in progress".to_string(),
+            ));
+        }
+        self.git(worktree_path, ["rebase", "--continue"])
+            .map(|_| ())
+    }
+
     /// Return true if there are staged changes (index differs from HEAD)
     pub fn has_staged_changes(&self, repo_path: &Path) -> Result<bool, GitCliError> {
         // `git diff --cached --quiet` returns exit code 1 if there are differences

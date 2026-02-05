@@ -4,7 +4,9 @@ on:
   pull_request:
     branches:
       - main
-      - louis/remote-kanban
+    paths-ignore:
+      - .github/workflows/**
+      - '!.github/workflows/test.yml'
   workflow_dispatch:
 
 concurrency:

@@ -780,41 +780,6 @@ export const Actions = {
     },
   },
 
-  // === Navigation Actions ===
-  OpenInOldUI: {
-    id: 'open-in-old-ui',
-    label: 'Open in Old UI',
-    icon: SignOutIcon,
-    requiresTarget: ActionTargetType.NONE,
-    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
-    execute: async (ctx) => {
-      // If no workspace is selected, navigate to root
-      if (!ctx.currentWorkspaceId) {
-        ctx.navigate('/');
-        return;
-      }
-
-      const workspace = await getWorkspace(
-        ctx.queryClient,
-        ctx.currentWorkspaceId
-      );
-      if (!workspace?.task_id) {
-        ctx.navigate('/');
-        return;
-      }
-
-      // Fetch task lazily to get project_id
-      const task = await tasksApi.getById(workspace.task_id);
-      if (task?.project_id) {
-        ctx.navigate(
-          `/local-projects/${task.project_id}/tasks/${workspace.task_id}/attempts/${ctx.currentWorkspaceId}`
-        );
-      } else {
-        ctx.navigate('/');
-      }
-    },
-  },
-
   // === Diff Actions for Navbar ===
   ToggleAllDiffs: {
     id: 'toggle-all-diffs',
@@ -1224,6 +1189,28 @@ export const Actions = {
     },
   },
 
+  RunArchiveScript: {
+    id: 'run-archive-script',
+    label: 'Run Archive Script',
+    icon: TerminalIcon,
+    shortcut: 'R A',
+    requiresTarget: ActionTargetType.WORKSPACE,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    isEnabled: (ctx) => !ctx.isAttemptRunning,
+    execute: async (_ctx, workspaceId) => {
+      const result = await attemptsApi.runArchiveScript(workspaceId);
+      if (!result.success) {
+        if (result.error?.type === 'no_script_configured') {
+          throw new Error('No archive script configured for this project');
+        }
+        if (result.error?.type === 'process_already_running') {
+          throw new Error('Cannot run script while another process is running');
+        }
+        throw new Error('Failed to run archive script');
+      }
+    },
+  } satisfies WorkspaceActionDefinition,
+
   // === Issue Actions ===
   CreateIssue: {
     id: 'create-issue',
@@ -1445,7 +1432,7 @@ export type NavbarItem = ActionDefinition | typeof NavbarDivider;
 
 // Navbar action groups define which actions appear in each section
 export const NavbarActionGroups = {
-  left: [Actions.ArchiveWorkspace, Actions.OpenInOldUI] as NavbarItem[],
+  left: [Actions.ArchiveWorkspace] as NavbarItem[],
   right: [
     Actions.ToggleDiffViewMode,
     Actions.ToggleAllDiffs,

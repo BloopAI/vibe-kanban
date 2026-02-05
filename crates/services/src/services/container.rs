@@ -443,6 +443,86 @@ pub trait ContainerService {
         Some(root_action)
     }
 
+    fn archive_actions_for_repos(&self, repos: &[Repo]) -> Option<ExecutorAction> {
+        let repos_with_archive: Vec<_> = repos
+            .iter()
+            .filter(|r| r.archive_script.is_some())
+            .collect();
+
+        if repos_with_archive.is_empty() {
+            return None;
+        }
+
+        let mut iter = repos_with_archive.iter();
+        let first = iter.next()?;
+        let mut root_action = ExecutorAction::new(
+            ExecutorActionType::ScriptRequest(ScriptRequest {
+                script: first.archive_script.clone().unwrap(),
+                language: ScriptRequestLanguage::Bash,
+                context: ScriptContext::ArchiveScript,
+                working_dir: Some(first.name.clone()),
+            }),
+            None,
+        );
+
+        for repo in iter {
+            root_action = root_action.append_action(ExecutorAction::new(
+                ExecutorActionType::ScriptRequest(ScriptRequest {
+                    script: repo.archive_script.clone().unwrap(),
+                    language: ScriptRequestLanguage::Bash,
+                    context: ScriptContext::ArchiveScript,
+                    working_dir: Some(repo.name.clone()),
+                }),
+                None,
+            ));
+        }
+
+        Some(root_action)
+    }
+
+    /// Attempts to run the archive script for a workspace if configured.
+    /// Silently returns Ok if no archive script is configured or if conditions aren't met.
+    async fn try_run_archive_script(&self, workspace_id: Uuid) -> Result<(), ContainerError> {
+        let pool = &self.db().pool;
+        let workspace = Workspace::find_by_id(pool, workspace_id)
+            .await?
+            .ok_or(ContainerError::Other(anyhow!("Workspace not found")))?;
+        if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
+            .await
+            .unwrap_or(true)
+        {
+            return Ok(());
+        }
+        if self.ensure_container_exists(&workspace).await.is_err() {
+            return Ok(());
+        }
+        let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+        let Some(action) = self.archive_actions_for_repos(&repos) else {
+            return Ok(());
+        };
+        let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
+            Some(s) => s,
+            None => {
+                Session::create(
+                    pool,
+                    &CreateSession { executor: None },
+                    Uuid::new_v4(),
+                    workspace.id,
+                )
+                .await?
+            }
+        };
+        self.start_execution(
+            &workspace,
+            &session,
+            &action,
+            &ExecutionProcessRunReason::ArchiveScript,
+        )
+        .await?;
+
+        Ok(())
+    }
+
     fn setup_actions_for_repos(&self, repos: &[Repo]) -> Option<ExecutorAction> {
         let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 
@@ -1064,8 +1144,9 @@ pub trait ContainerService {
             &repo_states,
         )
         .await?;
-
-        Workspace::set_archived(&self.db().pool, workspace.id, false).await?;
+        if *run_reason != ExecutionProcessRunReason::ArchiveScript {
+            Workspace::set_archived(&self.db().pool, workspace.id, false).await?;
+        }
 
         if let Some(prompt) = match executor_action.typ() {
             ExecutorActionType::CodingAgentInitialRequest(coding_agent_request) => {

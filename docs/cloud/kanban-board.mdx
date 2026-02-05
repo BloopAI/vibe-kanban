@@ -1,0 +1,195 @@
+---
+title: "Kanban View"
+description: "Visualise and manage your work with the kanban board"
+---
+
+The kanban board is your primary view for managing work. Issues are organised into columns representing different stages of your workflow, and you can drag and drop them as work progresses.
+
+<Frame>
+  <img src="/images/cloud/project-kanban-board.png" alt="Kanban board showing columns with issue cards" />
+</Frame>
+
+## Board Layout
+
+The kanban board consists of:
+
+- **Filter Bar** - Search, filter, and sort your issues (top)
+- **Status Columns** - Vertical columns representing workflow stages
+- **Issue Cards** - Individual work items within columns
+- **Column Headers** - Show status name with colour indicator
+
+### Status Columns
+
+Each column represents a status in your workflow. By default, projects have six statuses:
+
+| Column | Purpose |
+|--------|---------|
+| **To do** | Ready to start |
+| **In progress** | Currently being worked on |
+| **In review** | Waiting for code review |
+| **Done** | Completed |
+
+Two additional statuses are hidden by default: **Backlog** (for ideas and future work) and **Cancelled** (for issues that won't be done). You can access them via the status tabs above the board.
+
+You can [customise these columns](/cloud/customisation) - add new ones, rename them, change colours, or hide/show ones you need.
+
+### Issue Cards
+
+Each card shows key information at a glance:
+
+- **Simple ID** - The issue identifier (e.g., ISS-1)
+- **Title** - What needs to be done
+- **Priority** - Colour-coded indicator (if set)
+- **Assignees** - Avatar(s) of assigned team members
+- **Tags** - Coloured labels (if any)
+
+Click any card to open the full [issue panel](/cloud/issues).
+
+## Drag and Drop
+
+Move issues between columns and reorder them within columns using drag and drop.
+
+<Frame>
+  <img src="/images/cloud/drag-drop.png" alt="Dragging an issue card between columns" />
+</Frame>
+
+### Moving Between Columns
+
+To change an issue's status:
+
+1. Click and hold an issue card
+2. Drag it to the target column
+3. Release to drop it
+
+
+The issue's status updates immediately, and all team members see the change in real-time.
+
+### Reordering Within a Column
+
+To change the order of issues within a column:
+
+1. Make sure you're in **Manual** sort mode (check the sort dropdown in the filter bar)
+2. Click and hold an issue card
+3. Drag it up or down within the same column
+4. Release to drop it in the new position
+
+<Info>
+Reordering only works when sort mode is set to **Manual**. If you're sorting by Priority, Created, or another field, the order is determined automatically and you can't drag to reorder.
+</Info>
+
+### Drag Indicators
+
+While dragging, you'll see visual feedback:
+
+- **Cursor changes** - Shows you're in drag mode
+- **Drop target** - Highlights where the card will land
+- **Card shadow** - Shows the card being moved
+
+## Status Tabs
+
+Above the board, tabs let you switch between views:
+
+<Frame>
+  <img src="/images/cloud/status-tabs.png" alt="Status tabs showing Active, All, Backlog, and Cancelled" />
+</Frame>
+
+| Tab | View | Shows |
+|-----|------|-------|
+| **Active** | Kanban | Kanban columns for visible statuses |
+| **All** | [List View](/cloud/list-view) | All issues including hidden statuses |
+| **Backlog**, **Cancelled**, etc. | [List View](/cloud/list-view) | Issues in that specific hidden status |
+
+<Info>
+Hidden status tabs (like Backlog or Cancelled) only appear if you've hidden those statuses in [Display Settings](/cloud/customisation). This is useful for keeping your board clean while still having quick access to archived or backlogged items.
+</Info>
+
+## Working with the Board
+
+### Opening an Issue
+
+Click any issue card to open the issue panel on the right side of the screen. The panel shows full details and lets you edit the issue.
+
+### Quick Status Change
+
+Instead of opening an issue, you can change its status by dragging it to another column. This is the fastest way to update many issues.
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Escape` | Close the issue panel |
+| `Cmd/Ctrl + K` | Open the command bar for quick actions |
+
+## Real-Time Collaboration
+
+The board updates in real-time as team members make changes:
+
+- **Issue moved** - Cards animate to their new position
+- **Issue created** - New cards appear automatically
+- **Issue updated** - Changes to titles, priorities, etc. appear instantly
+- **Issue deleted** - Cards disappear from the board
+
+You don't need to refresh the page - everything syncs automatically.
+
+<Info>
+If you and a teammate move the same issue at the same time, the last action wins. The board will show the final position after both actions complete.
+</Info>
+
+## Empty Columns
+
+Columns with no issues show an empty state. You can:
+
+- Drag issues into empty columns
+- Use the **+** button to create a new issue in that column
+- [Hide the status](/cloud/customisation) in Display Settings if you don't need it on the board
+
+<Frame>
+  <img style={{maxHeight: "300px"}} src="/images/cloud/empty-column.png" alt="Empty column showing the + button to create a new issue" />
+</Frame>
+
+## Best Practices
+
+<CardGroup cols={2}>
+<Card title="Limit work in progress" icon="gauge-high">
+  Don't have too many issues in "In Progress". It's better to finish work than to start new work. Consider adding WIP limits to your process.
+</Card>
+
+<Card title="Review regularly" icon="calendar-check">
+  Use the board in daily standups to review what's in progress and identify blockers. The visual layout makes status updates quick.
+</Card>
+
+<Card title="Keep columns meaningful" icon="columns">
+  Each column should represent a real stage in your workflow. If issues skip a column, you probably don't need it.
+</Card>
+
+<Card title="Use filters for focus" icon="filter">
+  When the board gets busy, use filters to focus on what matters - your assigned issues, high priority items, or specific tags.
+</Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="I can't reorder issues within a column">
+Make sure you're in **Manual** sort mode. Click the sort dropdown in the filter bar and select "Manual". If you're sorting by Priority, Created, or another field, the order is fixed.
+</Accordion>
+
+<Accordion title="Issues aren't appearing">
+Check your filters - you might have active filters hiding some issues. Click **Clear All** in the filter bar to reset filters and see all issues.
+</Accordion>
+
+<Accordion title="A column is missing">
+The column might be hidden. Go to [Display Settings](/cloud/customisation) and check if the status is set to hidden. Toggle it back to visible.
+</Accordion>
+
+<Accordion title="Changes aren't saving">
+Check your internet connection. The board requires an active connection to sync changes. If you're offline, changes won't be saved until you reconnect.
+</Accordion>
+</AccordionGroup>
+
+## Related Documentation
+
+- [List View](/cloud/list-view) - Alternative tabular view for issues
+- [Issues](/cloud/issues) - Creating and editing issues
+- [Filtering & Sorting](/cloud/filtering) - Finding issues quickly
+- [Customising Your Board](/cloud/customisation) - Configuring columns and display

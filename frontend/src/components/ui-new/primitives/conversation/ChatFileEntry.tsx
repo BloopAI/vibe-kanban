@@ -5,6 +5,7 @@ import { getFileIcon } from '@/utils/fileTypeIcon';
 import { useTheme } from '@/components/ThemeProvider';
 import { getActualTheme } from '@/utils/theme';
 import { ToolStatus } from 'shared/types';
+import { inIframe, openFileInVSCode } from '@/vscode/bridge';
 import { ToolStatusDot } from './ToolStatusDot';
 import {
   DiffViewBody,
@@ -43,6 +44,15 @@ export function ChatFileEntry({
   const hasStats = additions !== undefined || deletions !== undefined;
   const FileIcon = getFileIcon(filename, actualTheme);
   const isDenied = status?.status === 'denied';
+  const isVSCode = inIframe();
+
+  const handleClick = () => {
+    if (isVSCode) {
+      openFileInVSCode(filename, { openAsDiff: false });
+    } else {
+      onToggle?.();
+    }
+  };
 
   // Process diff content if provided
   const diffData = useDiffData(
@@ -65,9 +75,9 @@ export function ChatFileEntry({
           className={cn(
             'flex items-center p-base w-full',
             isDenied ? 'bg-error/20' : 'bg-panel',
-            onToggle && 'cursor-pointer'
+            (onToggle || isVSCode) && 'cursor-pointer'
           )}
-          onClick={onToggle}
+          onClick={handleClick}
         >
           <div className="flex-1 flex items-center gap-base min-w-0">
             <span className="relative shrink-0">
@@ -105,7 +115,7 @@ export function ChatFileEntry({
               </span>
             )}
           </div>
-          {onToggle && (
+          {!isVSCode && onToggle && (
             <CaretDownIcon
               className={cn(
                 'size-icon-xs shrink-0 text-low transition-transform',
@@ -116,7 +126,7 @@ export function ChatFileEntry({
         </div>
 
         {/* Diff body - shown when expanded */}
-        {expanded && (
+        {!isVSCode && expanded && (
           <DiffViewBody
             fileDiffMetadata={diffData.fileDiffMetadata}
             unifiedDiff={diffData.unifiedDiff}
@@ -135,10 +145,10 @@ export function ChatFileEntry({
       className={cn(
         'flex items-center border rounded-sm p-base w-full',
         isDenied ? 'bg-error/20 border-error' : 'bg-panel',
-        onToggle && 'cursor-pointer',
+        (onToggle || isVSCode) && 'cursor-pointer',
         className
       )}
-      onClick={onToggle}
+      onClick={handleClick}
     >
       <div className="flex-1 flex items-center gap-base min-w-0">
         <span className="relative shrink-0">
@@ -176,7 +186,7 @@ export function ChatFileEntry({
           </span>
         )}
       </div>
-      {onToggle && (
+      {!isVSCode && onToggle && (
         <CaretDownIcon
           className={cn(
             'size-icon-xs shrink-0 text-low transition-transform',

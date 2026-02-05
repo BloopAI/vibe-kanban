@@ -25,6 +25,7 @@ const RUN_REASON_LABELS: Record<ExecutionProcessRunReason, string> = {
   codingagent: 'Coding Agent',
   setupscript: 'Setup Script',
   cleanupscript: 'Cleanup Script',
+  archivescript: 'Archive Script',
   devserver: 'Dev Server',
 };
 
@@ -33,6 +34,7 @@ const RUN_REASON_ICONS: Record<ExecutionProcessRunReason, typeof TerminalIcon> =
     codingagent: CodeIcon,
     setupscript: GearIcon,
     cleanupscript: GearIcon,
+    archivescript: GearIcon,
     devserver: GlobeIcon,
   };
 

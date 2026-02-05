@@ -98,7 +98,8 @@
     "currentBadge": "（当前）",
     "organizations": "组织",
     "createOrganization": "创建组织",
-    "orgSettings": "组织设置"
+    "orgSettings": "组织设置",
+    "migrate": "迁移"
   },
   "navbar": {
     "tryNewUI": "试用新界面"
@@ -145,6 +146,7 @@
     "active": "活跃",
     "archived": "已归档",
     "loading": "加载中...",
+    "notFound": "未找到工作区",
     "selectToStart": "选择一个工作区开始",
     "draft": "草稿",
     "viewArchive": "查看归档",
@@ -365,6 +367,7 @@
     "noSubIssues": "无子任务",
     "parentIssue": "父级",
     "subIssueIndicator": "↳",
+    "showSubIssues": "显示子任务",
     "viewTabs": {
       "active": "活动",
       "all": "全部"

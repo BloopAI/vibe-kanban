@@ -1,6 +1,7 @@
 import {
   BuildingsIcon,
   CheckIcon,
+  CloudArrowUpIcon,
   GearIcon,
   PlusIcon,
   SignInIcon,
@@ -33,6 +34,7 @@ interface AppBarUserPopoverProps {
   onSignIn: () => void;
   onLogout: () => void;
   onAvatarError: () => void;
+  onMigrate?: () => void;
 }
 
 export function AppBarUserPopover({
@@ -49,6 +51,7 @@ export function AppBarUserPopover({
   onSignIn,
   onLogout,
   onAvatarError,
+  onMigrate,
 }: AppBarUserPopoverProps) {
   const { t } = useTranslation();
 
@@ -139,6 +142,14 @@ export function AppBarUserPopover({
         <DropdownMenuItem icon={PlusIcon} onClick={onCreateOrg}>
           {t('orgSwitcher.createOrganization')}
         </DropdownMenuItem>
+        {onMigrate && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem icon={CloudArrowUpIcon} onClick={onMigrate}>
+              {t('orgSwitcher.migrate')}
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem icon={SignOutIcon} onClick={onLogout}>
           {t('signOut')}

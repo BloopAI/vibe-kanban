@@ -11,6 +11,7 @@ type UseKanbanFiltersParams = {
   issues: Issue[];
   issueAssignees: IssueAssignee[];
   issueTags: IssueTag[];
+  projectId: string;
 };
 
 type UseKanbanFiltersResult = {
@@ -29,8 +30,13 @@ export function useKanbanFilters({
   issues,
   issueAssignees,
   issueTags,
+  projectId,
 }: UseKanbanFiltersParams): UseKanbanFiltersResult {
   const kanbanFilters = useUiPreferencesStore((s) => s.kanbanFilters);
+  const showSubIssuesByProject = useUiPreferencesStore(
+    (s) => s.showSubIssuesByProject
+  );
+  const showSubIssues = showSubIssuesByProject[projectId] ?? false;
 
   // Create lookup maps for efficient filtering
   const assigneesByIssue = useMemo(() => {
@@ -68,6 +74,11 @@ export function useKanbanFilters({
   // Filter issues
   const filteredIssues = useMemo(() => {
     let result = issues;
+
+    // Filter sub-issues based on per-project preference
+    if (!showSubIssues) {
+      result = result.filter((issue) => issue.parent_issue_id === null);
+    }
 
     // Text search (title)
     const query = kanbanFilters.searchQuery.trim().toLowerCase();
@@ -117,7 +128,7 @@ export function useKanbanFilters({
     // so that sort order is applied within each column
 
     return result;
-  }, [issues, kanbanFilters, assigneesByIssue, tagsByIssue]);
+  }, [issues, kanbanFilters, assigneesByIssue, tagsByIssue, showSubIssues]);
 
   return {
     filteredIssues,

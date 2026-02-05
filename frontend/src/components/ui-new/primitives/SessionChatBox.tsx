@@ -581,12 +581,35 @@ export function SessionChatBox({
                       </span>
                     </span>
                   )}
-                  <PrimaryButton
-                    variant="tertiary"
-                    onClick={onViewCode}
-                    className="min-w-0"
-                  >
-                    <span className="text-sm space-x-half whitespace-nowrap truncate">
+                  {onViewCode ? (
+                    <PrimaryButton
+                      variant="tertiary"
+                      onClick={onViewCode}
+                      className="min-w-0"
+                    >
+                      <span className="text-sm space-x-half whitespace-nowrap truncate">
+                        <span>
+                          {t('diff.filesChanged', { count: filesChanged })}
+                        </span>
+                        {(linesAdded !== undefined ||
+                          linesRemoved !== undefined) && (
+                          <span className="space-x-half">
+                            {linesAdded !== undefined && (
+                              <span className="text-success">
+                                +{linesAdded}
+                              </span>
+                            )}
+                            {linesRemoved !== undefined && (
+                              <span className="text-error">
+                                -{linesRemoved}
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </span>
+                    </PrimaryButton>
+                  ) : (
+                    <span className="text-sm text-low space-x-half whitespace-nowrap truncate min-w-0">
                       <span>
                         {t('diff.filesChanged', { count: filesChanged })}
                       </span>
@@ -602,7 +625,7 @@ export function SessionChatBox({
                         </span>
                       )}
                     </span>
-                  </PrimaryButton>
+                  )}
                 </>
               )}
             </>

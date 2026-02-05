@@ -1,0 +1,208 @@
+---
+title: "Authentication"
+description: "Sign in with GitHub or Google and manage your sessions"
+---
+
+Vibe Kanban Cloud uses OAuth authentication, allowing you to sign in with your existing GitHub or Google account instead of creating a new password.
+
+## How Authentication Works
+
+<Info>
+**What is OAuth?**
+
+OAuth is a secure way to sign in to applications using accounts you already have. When you click "Sign in with GitHub", you're redirected to GitHub to confirm you want to allow Vibe Kanban access. GitHub then tells Vibe Kanban who you are, without Vibe Kanban ever seeing your GitHub password.
+</Info>
+
+### The Sign-In Flow
+
+<Steps>
+<Step title="Click Sign In">
+  On the login page, click **Sign in with GitHub** or **Sign in with Google**.
+
+  <Frame>
+    <img src="/images/cloud/sign-in-dialog.png" alt="Sign in dialog with GitHub and Google options" />
+  </Frame>
+</Step>
+
+<Step title="Authorise on Provider">
+  You'll be redirected to GitHub or Google. If you're not already logged in there, you'll need to log in first.
+
+
+  Click **Authorize** (GitHub) or **Allow** (Google) to grant Vibe Kanban access.
+</Step>
+
+<Step title="Redirected Back">
+  After authorising, you're automatically redirected back to Vibe Kanban and signed in.
+</Step>
+</Steps>
+
+### What Vibe Kanban Can Access
+
+When you authorise Vibe Kanban, it only requests minimal permissions:
+
+| Provider | Access Granted |
+|----------|----------------|
+| **GitHub** | Your public profile (name, email, avatar) |
+| **Google** | Your basic profile (name, email, avatar) |
+
+<Info>
+Vibe Kanban **cannot**:
+- Access your private repositories (unless you grant additional permissions later)
+- Post on your behalf
+- Change your account settings
+- See your password
+</Info>
+
+## Signing In
+
+### First-Time Sign In
+
+The first time you sign in:
+
+1. Click a sign-in button (GitHub or Google)
+2. Authorise the application on the provider's website
+3. A personal organisation is automatically created for you
+
+
+### Returning Sign In
+
+For subsequent sign-ins:
+
+1. Click the same sign-in button you used before
+2. If you're already logged into the provider, you'll be signed in automatically
+3. You'll land on your organisation's dashboard
+
+<Tip>
+**Tip:** If you're already signed into GitHub or Google in your browser, clicking the sign-in button will log you in almost instantly without any prompts.
+</Tip>
+
+## Signing Out
+
+To sign out:
+
+1. Click your **profile icon** in the bottom of the left sidebar
+2. Click **Sign out**
+
+<Frame>
+  <img src="/images/cloud/user-menu.png" alt="User menu showing Sign out option" />
+</Frame>
+
+
+<Warning>
+Signing out only affects the current browser. If you're signed in on multiple devices, you'll remain signed in on those devices.
+</Warning>
+
+### Signing Out of All Devices
+
+Currently, there's no way to sign out of all devices at once. If you need to revoke all sessions (e.g., if you suspect unauthorised access):
+
+1. Go to your OAuth provider's settings:
+   - **GitHub:** [github.com/settings/applications](https://github.com/settings/applications)
+   - **Google:** [myaccount.google.com/permissions](https://myaccount.google.com/permissions)
+2. Find "Vibe Kanban Cloud" and revoke access
+3. All sessions will be invalidated
+
+## Multiple Accounts
+
+### Using Different Providers
+
+You can sign in with either GitHub or Google - they're treated as separate accounts. If you sign in with GitHub, then later sign in with Google, you'll have two separate accounts.
+
+<Warning>
+**Account linking is not currently supported.** If you want to use both GitHub and Google, pick one and stick with it to avoid having duplicate accounts.
+</Warning>
+
+### Switching Accounts
+
+To switch to a different account:
+
+1. Sign out of your current account
+2. Sign in with the different provider or account
+
+If you need to sign in with a different GitHub/Google account than the one your browser remembers:
+
+1. Sign out of Vibe Kanban
+2. Go to the provider's website (github.com or google.com)
+3. Sign out there
+4. Return to Vibe Kanban and sign in - you'll be prompted to log in to the provider
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+<Card title="Use a strong provider password" icon="lock">
+  Your Vibe Kanban security depends on your GitHub/Google account security. Use a strong, unique password.
+</Card>
+
+<Card title="Enable 2FA on your provider" icon="shield-check">
+  Enable two-factor authentication on GitHub or Google for extra security.
+</Card>
+
+<Card title="Sign out on shared computers" icon="right-from-bracket">
+  Always sign out when using a shared or public computer.
+</Card>
+
+<Card title="Review authorised apps periodically" icon="clipboard-check">
+  Periodically check what apps have access to your GitHub/Google account and revoke any you don't recognise.
+</Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="'Invalid redirect URI' error">
+**Problem:** After clicking sign in, you see an error about invalid redirect URI.
+
+**Cause:** The callback URL in your OAuth app doesn't match.
+
+**Solution:**
+1. Check your OAuth app settings
+2. Ensure the callback URL is exactly:
+   - GitHub: `http://localhost:8081/v1/oauth/github/callback`
+   - Google: `http://localhost:8081/v1/oauth/google/callback`
+3. No trailing slashes, exact capitalisation
+</Accordion>
+
+<Accordion title="'Access denied' error">
+**Problem:** The provider shows "access denied" or similar.
+
+**Cause:** You clicked "Deny" instead of "Authorize", or your organisation has OAuth app restrictions.
+
+**Solution:**
+1. Try again and click "Authorize" or "Allow"
+2. If you're part of a GitHub organisation with app restrictions, ask your admin to approve Vibe Kanban
+</Accordion>
+
+<Accordion title="Signed in as wrong account">
+**Problem:** You're signed in with the wrong GitHub/Google account.
+
+**Solution:**
+1. Sign out of Vibe Kanban
+2. Go to github.com or google.com and sign out there
+3. Sign in to the correct account on the provider
+4. Return to Vibe Kanban and sign in
+</Accordion>
+
+<Accordion title="Session expired unexpectedly">
+**Problem:** You keep getting signed out.
+
+**Possible causes:**
+- Server was restarted (invalidates all sessions)
+- JWT secret was changed
+- You've been inactive for more than 7 days
+
+**Solution:**
+Simply sign in again. If it keeps happening, check if the server is restarting frequently.
+</Accordion>
+
+<Accordion title="Can't sign in after revoking access">
+**Problem:** You revoked Vibe Kanban's access on GitHub/Google and now can't sign in.
+
+**Solution:**
+Just sign in again - you'll be prompted to re-authorise the application.
+</Accordion>
+</AccordionGroup>
+
+## Related Documentation
+
+- [Getting Started](/cloud/getting-started) - Initial setup including OAuth app creation
+- [Team Members](/cloud/team-members) - Managing user access within your organisation

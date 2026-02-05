@@ -1569,6 +1569,14 @@ impl GitService {
         })
     }
 
+    /// Continue an in-progress rebase. Fails if there are unresolved conflicts.
+    pub fn continue_rebase(&self, worktree_path: &Path) -> Result<(), GitServiceError> {
+        let git = GitCli::new();
+        git.continue_rebase(worktree_path).map_err(|e| {
+            GitServiceError::InvalidRepository(format!("git rebase --continue failed: {e}"))
+        })
+    }
+
     pub fn abort_conflicts(&self, worktree_path: &Path) -> Result<(), GitServiceError> {
         let git = GitCli::new();
         if git.is_rebase_in_progress(worktree_path).unwrap_or(false) {

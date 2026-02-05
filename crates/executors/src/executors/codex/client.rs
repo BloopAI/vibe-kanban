@@ -45,6 +45,7 @@ pub struct AppServerClient {
     auto_approve: bool,
     repo_context: RepoContext,
     commit_reminder: bool,
+    commit_reminder_prompt: String,
     commit_reminder_sent: AtomicBool,
     cancel: CancellationToken,
 }
@@ -56,6 +57,7 @@ impl AppServerClient {
         auto_approve: bool,
         repo_context: RepoContext,
         commit_reminder: bool,
+        commit_reminder_prompt: String,
         cancel: CancellationToken,
     ) -> Arc<Self> {
         Arc::new(Self {
@@ -67,6 +69,7 @@ impl AppServerClient {
             pending_feedback: Mutex::new(VecDeque::new()),
             repo_context,
             commit_reminder,
+            commit_reminder_prompt,
             commit_reminder_sent: AtomicBool::new(false),
             cancel,
         })
@@ -506,20 +509,13 @@ impl JsonRpcCallbacks for AppServerClient {
         if has_finished
             && self.commit_reminder
             && !self.commit_reminder_sent.swap(true, Ordering::SeqCst)
+            && let status = self.repo_context.check_uncommitted_changes().await
+            && !status.is_empty()
+            && let Some(conversation_id) = *self.conversation_id.lock().await
         {
-            let status = self.repo_context.check_uncommitted_changes().await;
-            if !status.is_empty()
-                && let Some(conversation_id) = *self.conversation_id.lock().await
-            {
-                self.spawn_user_message(
-                    conversation_id,
-                    format!(
-                        "You have uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
-                        status
-                    ),
-                );
-                return Ok(false);
-            }
+            let prompt = format!("{}\n{}", self.commit_reminder_prompt, status);
+            self.spawn_user_message(conversation_id, prompt);
+            return Ok(false);
         }
 
         Ok(has_finished)

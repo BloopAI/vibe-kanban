@@ -80,7 +80,7 @@ type ServerPassword = String;
 
 impl Opencode {
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
-        let builder = CommandBuilder::new("npx -y opencode-ai@1.1.25")
+        let builder = CommandBuilder::new("npx -y opencode-ai@1.1.51")
             // Pass hostname/port as separate args so OpenCode treats them as explicitly set
             // (it checks `process.argv.includes(\"--port\")` / `\"--hostname\"`).
             .extend_params(["serve", "--hostname", "127.0.0.1", "--port", "0"]);
@@ -186,6 +186,7 @@ impl Opencode {
         let models_cache_key = self.compute_models_cache_key();
         let cancel_for_task = cancel.clone();
         let commit_reminder = env.commit_reminder;
+        let commit_reminder_prompt = env.commit_reminder_prompt.clone();
         let repo_context = env.repo_context.clone();
 
         tokio::spawn(async move {
@@ -215,6 +216,7 @@ impl Opencode {
                 server_password,
                 models_cache_key,
                 commit_reminder,
+                commit_reminder_prompt,
                 repo_context,
             };
 

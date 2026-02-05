@@ -23,7 +23,7 @@ interface MultiSelectCommandBarProps<T extends string = string> {
   options: MultiSelectOption<T>[];
   selectedValues: T[];
   onToggle: (value: T) => void;
-  onConfirm: () => void;
+  onClose: () => void;
   search: string;
   onSearchChange: (search: string) => void;
 }
@@ -33,12 +33,11 @@ export function MultiSelectCommandBar<T extends string = string>({
   options,
   selectedValues,
   onToggle,
-  onConfirm,
+  onClose,
   search,
   onSearchChange,
 }: MultiSelectCommandBarProps<T>) {
   const { t } = useTranslation('common');
-  const selectedCount = selectedValues.length;
 
   return (
     <Command
@@ -51,7 +50,7 @@ export function MultiSelectCommandBar<T extends string = string>({
       onKeyDown={(e) => {
         if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
           e.preventDefault();
-          onConfirm();
+          onClose();
         }
       }}
     >
@@ -87,13 +86,8 @@ export function MultiSelectCommandBar<T extends string = string>({
         </CommandGroup>
       </CommandList>
       <div className="border-t border-border p-base">
-        <PrimaryButton
-          onClick={onConfirm}
-          actionIcon={CheckIcon}
-          className="w-full justify-center"
-        >
-          {t('commandBar.done', 'Done')}
-          {selectedCount > 0 ? ` (${selectedCount})` : ''}
+        <PrimaryButton onClick={onClose} className="w-full justify-center">
+          {t('commandBar.close', 'Close')}
         </PrimaryButton>
       </div>
     </Command>

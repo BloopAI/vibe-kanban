@@ -22,6 +22,7 @@ import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import type { Result } from '@/lib/api';
 import { ResolveConflictsDialog } from './ResolveConflictsDialog';
+import { RebaseInProgressDialog } from './RebaseInProgressDialog';
 
 export interface RebaseDialogProps {
   attemptId: string;
@@ -59,29 +60,45 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
   const isInitialLoading =
     branchesLoading || reposLoading || branchStatusLoading;
 
-  // Check for existing conflicts
-  const hasConflicts =
-    repoStatus?.is_rebase_in_progress ||
-    (repoStatus?.conflicted_files?.length ?? 0) > 0;
+  // Check for existing conflicts and rebase state
+  const isRebaseInProgress = repoStatus?.is_rebase_in_progress ?? false;
+  const hasConflictedFiles = (repoStatus?.conflicted_files?.length ?? 0) > 0;
 
-  // If conflicts exist, redirect to resolve conflicts dialog
+  // If rebase is in progress, redirect to the appropriate dialog
   useEffect(() => {
-    if (!isInitialLoading && hasConflicts && repoStatus) {
+    if (
+      !isInitialLoading &&
+      (isRebaseInProgress || hasConflictedFiles) &&
+      repoStatus
+    ) {
       modal.hide();
-      ResolveConflictsDialog.show({
-        workspaceId: attemptId,
-        conflictOp: repoStatus.conflict_op ?? 'rebase',
-        sourceBranch: workspace?.branch ?? null,
-        targetBranch: repoStatus.target_branch_name,
-        conflictedFiles: repoStatus.conflicted_files ?? [],
-        repoName: repoStatus.repo_name,
-      });
+
+      if (hasConflictedFiles) {
+        // Rebase in progress WITH conflicts -> show resolve conflicts dialog
+        ResolveConflictsDialog.show({
+          workspaceId: attemptId,
+          conflictOp: repoStatus.conflict_op ?? 'rebase',
+          sourceBranch: workspace?.branch ?? null,
+          targetBranch: repoStatus.target_branch_name,
+          conflictedFiles: repoStatus.conflicted_files ?? [],
+          repoName: repoStatus.repo_name,
+        });
+      } else {
+        // Rebase in progress WITHOUT conflicts -> show simpler dialog
+        RebaseInProgressDialog.show({
+          workspaceId: attemptId,
+          repoId,
+          targetBranch: repoStatus.target_branch_name,
+        });
+      }
     }
   }, [
     isInitialLoading,
-    hasConflicts,
+    isRebaseInProgress,
+    hasConflictedFiles,
     repoStatus,
     attemptId,
+    repoId,
     workspace?.branch,
     modal,
   ]);
@@ -133,15 +150,12 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
       }
 
       if (errorData?.type === 'rebase_in_progress') {
-        // Hide this dialog and show the resolve conflicts dialog
+        // Hide this dialog and show the simpler rebase in progress dialog
         modal.hide();
-        await ResolveConflictsDialog.show({
+        await RebaseInProgressDialog.show({
           workspaceId: attemptId,
-          conflictOp: 'rebase',
-          sourceBranch: workspace?.branch ?? null,
+          repoId,
           targetBranch: selectedBranch,
-          conflictedFiles: [],
-          repoName: undefined,
         });
         return;
       }
@@ -177,8 +191,8 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
 
   const isRebasePending = git.states.rebasePending;
 
-  // Don't render if we're redirecting to conflicts dialog
-  if (!isInitialLoading && hasConflicts) {
+  // Don't render if we're redirecting to another dialog
+  if (!isInitialLoading && (isRebaseInProgress || hasConflictedFiles)) {
     return null;
   }
 

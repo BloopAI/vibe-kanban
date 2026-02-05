@@ -129,6 +129,12 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   // TODO: Support multiple repos - currently only fetches comments from the primary repo.
   const primaryRepoId = repos[0]?.id;
 
+  // Check if current workspace has a PR attached (from workspace summaries)
+  const currentWorkspaceSummary = activeWorkspaces.find(
+    (w) => w.id === workspaceId
+  );
+  const hasPrAttached = !!currentWorkspaceSummary?.prStatus;
+
   // GitHub comments hook (fetching, normalization, and helpers)
   const {
     gitHubComments,
@@ -142,7 +148,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   } = useGitHubComments({
     workspaceId,
     repoId: primaryRepoId,
-    enabled: !isCreateMode,
+    enabled: !isCreateMode && hasPrAttached,
   });
 
   // Stream diffs for the current workspace

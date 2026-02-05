@@ -98,7 +98,8 @@
     "currentBadge": " (actuelle)",
     "organizations": "Organisations",
     "createOrganization": "Créer une organisation",
-    "orgSettings": "Paramètres de l'organisation"
+    "orgSettings": "Paramètres de l'organisation",
+    "migrate": "Migrer"
   },
   "navbar": {
     "tryNewUI": "essayer la nouvelle interface"
@@ -145,6 +146,7 @@
     "active": "Actif",
     "archived": "Archivé",
     "loading": "Chargement...",
+    "notFound": "Espace de travail introuvable",
     "selectToStart": "Sélectionnez un espace de travail pour commencer",
     "draft": "Brouillon",
     "viewArchive": "Voir les archives",
@@ -365,6 +367,7 @@
     "noSubIssues": "Aucune sous-tâche",
     "parentIssue": "Parent",
     "subIssueIndicator": "↳",
+    "showSubIssues": "Afficher les sous-tâches",
     "viewTabs": {
       "active": "Actif",
       "all": "Tout"

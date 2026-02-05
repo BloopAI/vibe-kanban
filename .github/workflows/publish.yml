@@ -28,8 +28,8 @@ env:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    # Only run if this was converted from a pre-release
-    if: github.event.release.prerelease == false
+    # Only run for main app releases (not remote-v* tags) that were converted from pre-release
+    if: github.event.release.prerelease == false && !startsWith(github.event.release.tag_name, 'remote-')
     steps:
       - uses: actions/checkout@v6
         with:

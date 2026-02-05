@@ -38,22 +38,22 @@ impl From<StoredCredentials> for Credentials {
 }
 
 /// Service for managing OAuth credentials (JWT tokens) in memory and persistent storage.
-/// The token is loaded into memory on startup and persisted to disk/keychain on save.
+/// The token is loaded into memory on startup and persisted to disk on save.
 pub struct OAuthCredentials {
-    backend: Backend,
+    path: PathBuf,
     inner: RwLock<Option<Credentials>>,
 }
 
 impl OAuthCredentials {
     pub fn new(path: PathBuf) -> Self {
         Self {
-            backend: Backend::detect(path),
+            path,
             inner: RwLock::new(None),
         }
     }
 
     pub async fn load(&self) -> std::io::Result<()> {
-        let creds = self.backend.load().await?.map(Credentials::from);
+        let creds = self.load_from_file().await?.map(Credentials::from);
         *self.inner.write().await = creds;
         Ok(())
     }
@@ -62,13 +62,13 @@ impl OAuthCredentials {
         let stored = StoredCredentials {
             refresh_token: creds.refresh_token.clone(),
         };
-        self.backend.save(&stored).await?;
+        self.save_to_file(&stored).await?;
         *self.inner.write().await = Some(creds.clone());
         Ok(())
     }
 
     pub async fn clear(&self) -> std::io::Result<()> {
-        self.backend.clear().await?;
+        let _ = std::fs::remove_file(&self.path);
         *self.inner.write().await = None;
         Ok(())
     }
@@ -76,83 +76,14 @@ impl OAuthCredentials {
     pub async fn get(&self) -> Option<Credentials> {
         self.inner.read().await.clone()
     }
-}
 
-trait StoreBackend {
-    async fn load(&self) -> std::io::Result<Option<StoredCredentials>>;
-    async fn save(&self, creds: &StoredCredentials) -> std::io::Result<()>;
-    async fn clear(&self) -> std::io::Result<()>;
-}
-
-enum Backend {
-    File(FileBackend),
-    #[cfg(target_os = "macos")]
-    Keychain(KeychainBackend),
-}
-
-impl Backend {
-    fn detect(path: PathBuf) -> Self {
-        #[cfg(target_os = "macos")]
-        {
-            let use_file = match std::env::var("OAUTH_CREDENTIALS_BACKEND") {
-                Ok(v) if v.eq_ignore_ascii_case("file") => true,
-                Ok(v) if v.eq_ignore_ascii_case("keychain") => false,
-                _ => cfg!(debug_assertions),
-            };
-            if use_file {
-                tracing::info!("OAuth credentials backend: file");
-                Backend::File(FileBackend { path })
-            } else {
-                tracing::info!("OAuth credentials backend: keychain");
-                Backend::Keychain(KeychainBackend)
-            }
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
-            tracing::info!("OAuth credentials backend: file");
-            Backend::File(FileBackend { path })
-        }
-    }
-}
-
-impl StoreBackend for Backend {
-    async fn load(&self) -> std::io::Result<Option<StoredCredentials>> {
-        match self {
-            Backend::File(b) => b.load().await,
-            #[cfg(target_os = "macos")]
-            Backend::Keychain(b) => b.load().await,
-        }
-    }
-
-    async fn save(&self, creds: &StoredCredentials) -> std::io::Result<()> {
-        match self {
-            Backend::File(b) => b.save(creds).await,
-            #[cfg(target_os = "macos")]
-            Backend::Keychain(b) => b.save(creds).await,
-        }
-    }
-
-    async fn clear(&self) -> std::io::Result<()> {
-        match self {
-            Backend::File(b) => b.clear().await,
-            #[cfg(target_os = "macos")]
-            Backend::Keychain(b) => b.clear().await,
-        }
-    }
-}
-
-struct FileBackend {
-    path: PathBuf,
-}
-
-impl FileBackend {
-    async fn load(&self) -> std::io::Result<Option<StoredCredentials>> {
+    async fn load_from_file(&self) -> std::io::Result<Option<StoredCredentials>> {
         if !self.path.exists() {
             return Ok(None);
         }
 
         let bytes = std::fs::read(&self.path)?;
-        match Self::parse_credentials(&bytes) {
+        match serde_json::from_slice::<StoredCredentials>(&bytes) {
             Ok(creds) => Ok(Some(creds)),
             Err(e) => {
                 tracing::warn!(?e, "failed to parse credentials file, renaming to .bad");
@@ -163,11 +94,7 @@ impl FileBackend {
         }
     }
 
-    fn parse_credentials(bytes: &[u8]) -> Result<StoredCredentials, serde_json::Error> {
-        serde_json::from_slice::<StoredCredentials>(bytes)
-    }
-
-    async fn save(&self, creds: &StoredCredentials) -> std::io::Result<()> {
+    async fn save_to_file(&self, creds: &StoredCredentials) -> std::io::Result<()> {
         let tmp = self.path.with_extension("tmp");
 
         let file = {
@@ -189,57 +116,5 @@ impl FileBackend {
 
         std::fs::rename(&tmp, &self.path)?;
         Ok(())
-    }
-
-    async fn clear(&self) -> std::io::Result<()> {
-        let _ = std::fs::remove_file(&self.path);
-        Ok(())
-    }
-}
-
-#[cfg(target_os = "macos")]
-struct KeychainBackend;
-
-#[cfg(target_os = "macos")]
-impl KeychainBackend {
-    const SERVICE_NAME: &'static str = concat!(env!("CARGO_PKG_NAME"), ":oauth");
-    const ACCOUNT_NAME: &'static str = "default";
-    const ERR_SEC_ITEM_NOT_FOUND: i32 = -25300;
-
-    async fn load(&self) -> std::io::Result<Option<StoredCredentials>> {
-        use security_framework::passwords::get_generic_password;
-
-        match get_generic_password(Self::SERVICE_NAME, Self::ACCOUNT_NAME) {
-            Ok(bytes) => match serde_json::from_slice::<StoredCredentials>(&bytes) {
-                Ok(creds) => Ok(Some(creds)),
-                Err(error) => {
-                    tracing::warn!(
-                        ?error,
-                        "failed to parse keychain credentials; ignoring entry and requiring re-login"
-                    );
-                    Ok(None)
-                }
-            },
-            Err(e) if e.code() == Self::ERR_SEC_ITEM_NOT_FOUND => Ok(None),
-            Err(e) => Err(std::io::Error::other(e)),
-        }
-    }
-
-    async fn save(&self, creds: &StoredCredentials) -> std::io::Result<()> {
-        use security_framework::passwords::set_generic_password;
-
-        let bytes = serde_json::to_vec_pretty(creds).map_err(std::io::Error::other)?;
-        set_generic_password(Self::SERVICE_NAME, Self::ACCOUNT_NAME, &bytes)
-            .map_err(std::io::Error::other)
-    }
-
-    async fn clear(&self) -> std::io::Result<()> {
-        use security_framework::passwords::delete_generic_password;
-
-        match delete_generic_password(Self::SERVICE_NAME, Self::ACCOUNT_NAME) {
-            Ok(()) => Ok(()),
-            Err(e) if e.code() == Self::ERR_SEC_ITEM_NOT_FOUND => Ok(()),
-            Err(e) => Err(std::io::Error::other(e)),
-        }
     }
 }

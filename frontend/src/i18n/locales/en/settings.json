@@ -24,8 +24,8 @@
         "mcpDesc": "Model Context Protocol servers",
         "organizations": "Organization Settings",
         "organizationsDesc": "Manage organization members and permissions",
-        "remote-projects": "Remote Projects",
-        "remote-projectsDesc": "Manage cloud-synced projects"
+        "remote-projects": "Projects",
+        "remote-projectsDesc": "Manage projects"
       }
     },
     "general": {
@@ -168,6 +168,18 @@
           "helper": "Custom prompt for the AI agent when generating PR descriptions. Use {pr_number} and {pr_url} as placeholders."
         }
       },
+      "commits": {
+        "title": "Commits",
+        "description": "Configure commit behavior for task attempts",
+        "reminder": {
+          "label": "Commit reminder",
+          "helper": "Prompt supported agents to commit changes before stopping."
+        },
+        "customPrompt": {
+          "useCustom": "Use custom prompt",
+          "helper": "Custom prompt for the commit reminder. The git status will be appended automatically."
+        }
+      },
       "notifications": {
         "title": "Notifications",
         "description": "Control when and how you receive notifications.",
@@ -267,10 +279,6 @@
         "workspaces": {
           "label": "Enable Workspaces Beta",
           "helper": "Use the new workspaces interface when viewing task attempts. Tasks will open in task view first, and attempts will open in the new workspaces view."
-        },
-        "commitReminder": {
-          "label": "Commit reminder",
-          "helper": "Prompt supported agents to commit changes before stopping."
         }
       }
     },
@@ -456,6 +464,10 @@
         "cleanup": {
           "label": "Cleanup Script",
           "helper": "This script runs from within the worktree after coding agent execution, only if changes were made. Use it for quality assurance tasks like running linters, formatters, tests, or other validation steps."
+        },
+        "archive": {
+          "label": "Archive Script",
+          "helper": "This script runs from within the worktree when the workspace is archived. Use it for cleanup tasks like stopping services, releasing resources, or saving state."
         },
         "copyFiles": {
           "label": "Copy Files",

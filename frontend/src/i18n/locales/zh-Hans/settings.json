@@ -24,8 +24,8 @@
         "mcpDesc": "模型上下文协议服务器",
         "organizations": "组织设置",
         "organizationsDesc": "管理组织成员和权限",
-        "remote-projects": "远程项目",
-        "remote-projectsDesc": "管理云同步项目"
+        "remote-projects": "项目",
+        "remote-projectsDesc": "管理项目"
       }
     },
     "general": {
@@ -168,6 +168,18 @@
           "helper": "生成PR描述时AI代理使用的自定义提示。使用{pr_number}和{pr_url}作为占位符。"
         }
       },
+      "commits": {
+        "title": "提交",
+        "description": "配置任务尝试的提交行为",
+        "reminder": {
+          "label": "提交提醒",
+          "helper": "提示支持的代理在停止前提交更改。"
+        },
+        "customPrompt": {
+          "useCustom": "使用自定义提示",
+          "helper": "提交提醒的自定义提示。git 状态将自动追加。"
+        }
+      },
       "notifications": {
         "title": "通知",
         "description": "控制何时以及如何接收通知。",
@@ -267,10 +279,6 @@
         "workspaces": {
           "label": "启用工作区 Beta",
           "helper": "查看任务尝试时使用新的工作区界面。任务将首先在任务视图中打开，尝试将在新的工作区视图中打开。"
-        },
-        "commitReminder": {
-          "label": "提交提醒",
-          "helper": "提示支持的代理在停止前提交更改。"
         }
       }
     },
@@ -456,6 +464,10 @@
         "cleanup": {
           "label": "清理脚本",
           "helper": "此脚本从工作树内部运行，在编码代理执行后执行（仅在进行了更改时）。用于质量保证任务，如运行 linter、格式化程序、测试或其他验证步骤。"
+        },
+        "archive": {
+          "label": "归档脚本",
+          "helper": "当工作区被归档时，此脚本从工作树内部运行。用于清理任务，如停止服务、释放资源或保存状态。"
         },
         "copyFiles": {
           "label": "复制文件",

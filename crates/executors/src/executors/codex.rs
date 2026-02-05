@@ -489,6 +489,7 @@ impl Codex {
         let approvals = self.approvals.clone();
         let repo_context = env.repo_context.clone();
         let commit_reminder = env.commit_reminder;
+        let commit_reminder_prompt = env.commit_reminder_prompt.clone();
         let cancel_for_task = cancel.clone();
 
         tokio::spawn(async move {
@@ -502,6 +503,7 @@ impl Codex {
                 auto_approve,
                 repo_context,
                 commit_reminder,
+                commit_reminder_prompt,
                 cancel_for_task.clone(),
             );
             let rpc_peer = JsonRpcPeer::spawn(

@@ -1,0 +1,199 @@
+---
+title: "Getting Started with Cloud"
+description: "Sign in and start collaborating with your team"
+sidebarTitle: "Getting Started"
+---
+
+Vibe Kanban Cloud lets you collaborate with your team in real-time. Your data syncs to the cloud, so everyone sees the same projects, issues, and updates.
+
+<Info>
+**Already using Vibe Kanban locally?** Cloud uses the same interface you're familiar with. The difference is your data syncs to the cloud and you can invite team members.
+</Info>
+
+## Step 1: Launch Vibe Kanban
+
+If you haven't already, start Vibe Kanban:
+
+```bash
+npx vibe-kanban
+```
+
+The application opens in your browser at `http://localhost:...`.
+
+## Step 2: Sign In
+
+To access Cloud features, you need to sign in.
+
+<Steps>
+<Step title="Click Login">
+  Click the **Login** button in the sidebar or when prompted.
+</Step>
+
+<Step title="Choose a sign-in method">
+  Select how you want to sign in:
+  - **Sign in with GitHub** - Use your GitHub account
+  - **Sign in with Google** - Use your Google account
+
+  <Frame>
+    <img src="/images/cloud/sign-in-dialog.png" alt="Sign in dialog with GitHub and Google options" />
+  </Frame>
+</Step>
+
+<Step title="Authorise the application">
+  You'll be redirected to GitHub or Google. Sign in if needed, then click **Authorize** or **Allow** to grant Vibe Kanban access.
+
+  <Info>
+  Vibe Kanban only requests access to your basic profile (name, email, avatar). It cannot access your private repositories or post on your behalf.
+  </Info>
+</Step>
+
+<Step title="Return to Vibe Kanban">
+  After authorising, you're automatically redirected back and signed in.
+</Step>
+</Steps>
+
+## Step 3: Your Personal Organisation
+
+When you sign in for the first time, a **personal organisation** is automatically created for you, along with an **Initial Project** to get you started. This is your private workspace.
+
+<Info>
+Personal organisations are just for you - you cannot invite other members. To collaborate with a team, create a new organisation (see Step 5).
+</Info>
+
+## Step 4: Create Your First Project
+
+Now create a project to organise your work.
+
+<Steps>
+<Step title="Click New Project">
+  Click the **+ New Project** button in the sidebar.
+</Step>
+
+<Step title="Enter project details">
+  - **Name** - What you're working on (e.g., "Mobile App", "Website Redesign")
+  - **Colour** - Pick a colour to identify the project
+
+  <Frame>
+    <img style={{maxHeight: "300px"}} src="/images/cloud/create-project-dialog.png" alt="Create Project dialog with name and colour fields" />
+  </Frame>
+</Step>
+
+<Step title="Click Create">
+  Your project is created with a kanban board ready to use.
+
+  <Frame>
+    <img src="/images/cloud/project-kanban-board.png" alt="Project kanban board with default columns" />
+  </Frame>
+</Step>
+</Steps>
+
+## Step 5: Create a Team Organisation (Optional)
+
+To collaborate with others, create a new organisation and invite team members.
+
+<Steps>
+<Step title="Open the user menu">
+  Click your **profile icon** in the bottom of the left sidebar.
+</Step>
+
+<Step title="Create a new organisation">
+  Click **+ Create organization** and enter your team or company name.
+
+  <Frame>
+    <img style={{maxHeight: "300px"}} src="/images/cloud/create-organization-dialog.png" alt="Create Organization dialog" />
+  </Frame>
+</Step>
+
+<Step title="Invite team members">
+  Open Organisation Settings (click the gear icon next to your org name), then:
+  - Click **Invite Member**
+  - Enter your teammate's email address
+  - Select their role (**Member** or **Admin**)
+  - Click **Send Invitation**
+
+  <Frame>
+    <img style={{maxHeight: "300px"}} src="/images/cloud/invite-member-dialog.png" alt="Invite Member dialog" />
+  </Frame>
+</Step>
+</Steps>
+
+They'll receive an email with a link to join your organisation.
+
+## You're Ready!
+
+You now have:
+- ✅ A Cloud account
+- ✅ An organisation for your team
+- ✅ A project with a kanban board
+
+**Next steps:**
+- [Create issues](/cloud/issues) to track your work
+- [Learn the kanban board](/cloud/kanban-board) to manage tasks
+- [Customise your board](/cloud/customisation) with columns and tags
+- [Invite more team members](/cloud/team-members) to collaborate
+
+## Signing Out
+
+To sign out:
+1. Click your **profile icon** in the bottom of the left sidebar
+2. Click **Sign out**
+
+<Frame>
+  <img style={{maxHeight: "350px"}} src="/images/cloud/user-menu.png" alt="User menu showing Sign out option" />
+</Frame>
+
+Your data remains safe in the cloud. Sign in again anytime to continue where you left off.
+
+## Switching Between Local and Cloud
+
+You can use both local projects and Cloud projects:
+
+| Local Projects | Cloud Projects |
+|----------------|----------------|
+| Data stored on your machine | Data synced to cloud |
+| Only you can access | Team members can collaborate |
+| No sign-in required | Requires sign-in |
+| Works offline | Requires internet connection |
+
+Both appear in the same Vibe Kanban interface. Local projects show in one section, Cloud projects in another.
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="I can't sign in">
+**Possible causes:**
+- Pop-up blocker preventing the OAuth window
+- Network connectivity issues
+
+**Solutions:**
+1. Disable pop-up blocker for localhost
+2. Check your internet connection
+3. Try a different browser
+</Accordion>
+
+<Accordion title="I don't see Cloud features">
+**Possible causes:**
+- You're not signed in
+
+**Solutions:**
+1. Click **Login** in the sidebar
+2. Complete the sign-in process
+</Accordion>
+
+<Accordion title="My teammate can't see our projects">
+**Possible causes:**
+- They haven't accepted the invitation
+- They signed in with a different email
+
+**Solutions:**
+1. Check if the invitation is still pending in your Members settings
+2. Resend the invitation
+3. Verify they're using the email address you invited
+</Accordion>
+</AccordionGroup>
+
+## Related Documentation
+
+- [Authentication](/cloud/authentication) - More about signing in and sessions
+- [Organisations](/cloud/organizations) - Managing your organisation
+- [Team Members](/cloud/team-members) - Inviting and managing collaborators

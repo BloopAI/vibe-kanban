@@ -18,6 +18,7 @@ use utils::api::pull_requests::{PullRequestStatus, UpsertPullRequestRequest};
 
 use crate::services::{
     analytics::AnalyticsContext,
+    container::ContainerService,
     git_host::{self, GitHostError, GitHostProvider},
     remote_client::RemoteClient,
     remote_sync,
@@ -34,23 +35,26 @@ enum PrMonitorError {
 }
 
 /// Service to monitor PRs and update task status when they are merged
-pub struct PrMonitorService {
+pub struct PrMonitorService<C: ContainerService> {
     db: DBService,
     poll_interval: Duration,
     analytics: Option<AnalyticsContext>,
+    container: C,
     remote_client: Option<RemoteClient>,
 }
 
-impl PrMonitorService {
+impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
     pub async fn spawn(
         db: DBService,
         analytics: Option<AnalyticsContext>,
+        container: C,
         remote_client: Option<RemoteClient>,
     ) -> tokio::task::JoinHandle<()> {
         let service = Self {
             db,
             poll_interval: Duration::from_secs(60), // Check every minute
             analytics,
+            container,
             remote_client,
         };
         tokio::spawn(async move {
@@ -130,10 +134,14 @@ impl PrMonitorService {
                     pr_merge.pr_info.number, workspace.task_id
                 );
                 Task::update_status(&self.db.pool, workspace.task_id, TaskStatus::Done).await?;
-
-                // Archive workspace unless pinned
                 if !workspace.pinned {
                     Workspace::set_archived(&self.db.pool, workspace.id, true).await?;
+                    if let Err(e) = self.container.try_run_archive_script(workspace.id).await {
+                        error!(
+                            "Failed to run archive script for workspace {}: {}",
+                            workspace.id, e
+                        );
+                    }
                 }
 
                 // Track analytics event

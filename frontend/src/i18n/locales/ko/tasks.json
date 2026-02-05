@@ -104,6 +104,19 @@
       "andMore": "...외 {{count}}개"
     }
   },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "리베이스 진행 중",
+      "description": "{{targetBranch}}으로의 리베이스가 충돌 없이 진행 중입니다. 진행 방법을 선택하세요.",
+      "hint": "리베이스를 계속하여 완료하거나, 중단하여 이전 상태로 돌아갈 수 있습니다.",
+      "continue": "리베이스 계속",
+      "continuing": "계속 중...",
+      "abort": "리베이스 중단",
+      "aborting": "중단 중...",
+      "continueError": "리베이스를 계속할 수 없습니다. 해결되지 않은 충돌이 있을 수 있습니다.",
+      "abortError": "리베이스 중단에 실패했습니다. 다시 시도해 주세요."
+    }
+  },
   "createPrDialog": {
     "title": "Pull Request 생성",
     "description": "이 작업 시도에 대한 Pull Request를 생성합니다.",
@@ -225,8 +238,10 @@
     "queuedMessage": "메시지가 대기열에 추가됨 - 현재 실행이 완료되면 실행됩니다",
     "runSetupScript": "설정 스크립트 실행",
     "runCleanupScript": "정리 스크립트 실행",
+    "runArchiveScript": "아카이브 스크립트 실행",
     "noSetupScript": "이 프로젝트에 설정 스크립트가 구성되어 있지 않습니다",
     "noCleanupScript": "이 프로젝트에 정리 스크립트가 구성되어 있지 않습니다",
+    "noArchiveScript": "이 프로젝트에 아카이브 스크립트가 구성되어 있지 않습니다",
     "scriptsDisabledWhileRunning": "프로세스가 실행 중일 때는 스크립트를 실행할 수 없습니다"
   },
   "git": {
@@ -655,6 +670,13 @@
       "exitCode": "종료 코드: {{code}}",
       "running": "실행 중..."
     },
+    "scriptPlaceholder": {
+      "setupTitle": "설정 스크립트",
+      "setupDescription": "설정 스크립트가 구성되지 않았습니다. 설정 스크립트는 코딩 에이전트가 시작되기 전에 실행됩니다.",
+      "cleanupTitle": "정리 스크립트",
+      "cleanupDescription": "정리 스크립트가 구성되지 않았습니다. 정리 스크립트는 코딩 에이전트가 완료된 후에 실행됩니다.",
+      "configure": "구성"
+    },
     "unableToRenderDiff": "차이를 표시할 수 없습니다.",
     "updatedTodos": "업데이트된 할 일",
     "viewInChangesPanel": "변경사항 패널에서 보기",
@@ -684,6 +706,7 @@
     "title": "스크립트 수정",
     "setupScriptTitle": "설정 스크립트 수정",
     "cleanupScriptTitle": "정리 스크립트 수정",
+    "archiveScriptTitle": "아카이브 스크립트 수정",
     "devServerTitle": "개발 서버 스크립트 수정",
     "scriptLabel": "스크립트 (편집)",
     "logsLabel": "마지막 실행 로그",

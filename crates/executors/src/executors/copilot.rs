@@ -1,40 +1,24 @@
-use std::{
-    path::{Path, PathBuf},
-    process::Stdio,
-    sync::Arc,
-    time::Duration,
-};
+use std::{path::Path, sync::Arc};
 
 use async_trait::async_trait;
-use command_group::AsyncCommandGroup;
-use futures::StreamExt;
-use regex::Regex;
+use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use tokio::{
-    fs,
-    io::AsyncWriteExt,
-    process::Command,
-    time::{interval, timeout},
-};
 use ts_rs::TS;
-use uuid::Uuid;
-use workspace_utils::{msg_store::MsgStore, path::get_vibe_kanban_temp_dir};
+use workspace_utils::msg_store::MsgStore;
 
+pub use super::acp::AcpAgentHarness;
 use crate::{
+    approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
     },
-    logs::{
-        NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor,
-        stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider,
-    },
-    stdout_dup::{self, StdoutAppender},
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
+#[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
+#[derivative(Debug, PartialEq)]
 pub struct Copilot {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
@@ -52,17 +36,15 @@ pub struct Copilot {
     pub disable_mcp_server: Option<Vec<String>>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
+    #[serde(skip)]
+    #[ts(skip)]
+    #[derivative(Debug = "ignore", PartialEq = "ignore")]
+    pub approvals: Option<Arc<dyn ExecutorApprovalService>>,
 }
 
 impl Copilot {
-    fn build_command_builder(&self, log_dir: &str) -> Result<CommandBuilder, CommandBuildError> {
-        let mut builder = CommandBuilder::new("npx -y @github/copilot@0.0.375").params([
-            "--no-color",
-            "--log-level",
-            "debug",
-            "--log-dir",
-            log_dir,
-        ]);
+    fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
+        let mut builder = CommandBuilder::new("npx -y @github/copilot@0.0.403");
 
         if self.allow_all_tools.unwrap_or(false) {
             builder = builder.extend_params(["--allow-all-tools"]);
@@ -92,53 +74,37 @@ impl Copilot {
             }
         }
 
+        builder = builder.extend_params(["--acp"]);
+
         apply_overrides(builder, &self.cmd)
     }
 }
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Copilot {
+    fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
+        self.approvals = Some(approvals);
+    }
+
     async fn spawn(
         &self,
         current_dir: &Path,
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let log_dir = Self::create_temp_log_dir(current_dir).await?;
-        let command_parts = self
-            .build_command_builder(&log_dir.to_string_lossy())?
-            .build_initial()?;
-        let (program_path, args) = command_parts.into_resolved().await?;
-
+        let harness = AcpAgentHarness::new();
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-
-        let mut command = Command::new(program_path);
-        command
-            .kill_on_drop(true)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(current_dir)
-            .env("NPM_CONFIG_LOGLEVEL", "error")
-            .env("NODE_NO_WARNINGS", "1")
-            .args(&args);
-
-        env.clone()
-            .with_profile(&self.cmd)
-            .apply_to_command(&mut command);
-
-        let mut child = command.group_spawn()?;
-
-        // Write prompt to stdin
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(combined_prompt.as_bytes()).await?;
-            stdin.shutdown().await?;
-        }
-
-        let (_, appender) = stdout_dup::tee_stdout_with_appender(&mut child)?;
-        Self::send_session_id(log_dir, appender);
-
-        Ok(child.into())
+        let copilot_command = self.build_command_builder()?.build_initial()?;
+        harness
+            .spawn_with_command(
+                current_dir,
+                combined_prompt,
+                copilot_command,
+                env,
+                &self.cmd,
+                self.approvals.clone(),
+            )
+            .await
     }
 
     async fn spawn_follow_up(
@@ -149,71 +115,26 @@ impl StandardCodingAgentExecutor for Copilot {
         _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let log_dir = Self::create_temp_log_dir(current_dir).await?;
-        let command_parts = self
-            .build_command_builder(&log_dir.to_string_lossy())?
-            .build_follow_up(&["--resume".to_string(), session_id.to_string()])?;
-        let (program_path, args) = command_parts.into_resolved().await?;
-
+        let harness = AcpAgentHarness::new();
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-
-        let mut command = Command::new(program_path);
-
-        command
-            .kill_on_drop(true)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(current_dir)
-            .env("NPM_CONFIG_LOGLEVEL", "error")
-            .env("NODE_NO_WARNINGS", "1")
-            .args(&args);
-
-        env.clone()
-            .with_profile(&self.cmd)
-            .apply_to_command(&mut command);
-
-        let mut child = command.group_spawn()?;
-
-        // Write comprehensive prompt to stdin
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(combined_prompt.as_bytes()).await?;
-            stdin.shutdown().await?;
-        }
-
-        let (_, appender) = stdout_dup::tee_stdout_with_appender(&mut child)?;
-        Self::send_session_id(log_dir, appender);
-
-        Ok(child.into())
+        let copilot_command = self.build_command_builder()?.build_follow_up(&[])?;
+        harness
+            .spawn_follow_up_with_command(
+                current_dir,
+                combined_prompt,
+                session_id,
+                copilot_command,
+                env,
+                &self.cmd,
+                self.approvals.clone(),
+            )
+            .await
     }
 
-    /// Parses both stderr and stdout logs for Copilot executor using PlainTextLogProcessor.
-    ///
-    /// Each entry is converted into an `AssistantMessage` or `ErrorMessage` and emitted as patches.
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, _worktree_path: &Path) {
-        let entry_index_counter = EntryIndexProvider::start_from(&msg_store);
-        normalize_stderr_logs(msg_store.clone(), entry_index_counter.clone());
-
-        // Normalize Agent logs
-        tokio::spawn(async move {
-            let mut stdout_lines = msg_store.stdout_lines_stream();
-
-            let mut processor = Self::create_simple_stdout_normalizer(entry_index_counter);
-
-            while let Some(Ok(line)) = stdout_lines.next().await {
-                if let Some(session_id) = line.strip_prefix(Self::SESSION_PREFIX) {
-                    msg_store.push_session_id(session_id.trim().to_string());
-                    continue;
-                }
-
-                for patch in processor.process(line + "\n") {
-                    msg_store.push_patch(patch);
-                }
-            }
-        });
+    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) {
+        super::acp::normalize_logs(msg_store, worktree_path);
     }
 
-    // MCP configuration methods
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         dirs::home_dir().map(|home| home.join(".copilot").join("mcp-config.json"))
     }
@@ -233,90 +154,5 @@ impl StandardCodingAgentExecutor for Copilot {
         } else {
             AvailabilityInfo::NotFound
         }
-    }
-}
-
-impl Copilot {
-    fn create_simple_stdout_normalizer(
-        index_provider: EntryIndexProvider,
-    ) -> PlainTextLogProcessor {
-        PlainTextLogProcessor::builder()
-            .normalized_entry_producer(Box::new(|content: String| NormalizedEntry {
-                timestamp: None,
-                entry_type: NormalizedEntryType::AssistantMessage,
-                content,
-                metadata: None,
-            }))
-            .transform_lines(Box::new(|lines| {
-                lines.iter_mut().for_each(|line| {
-                    *line = strip_ansi_escapes::strip_str(&line);
-                })
-            }))
-            .index_provider(index_provider)
-            .build()
-    }
-
-    async fn create_temp_log_dir(current_dir: &Path) -> Result<PathBuf, ExecutorError> {
-        let base_log_dir = get_vibe_kanban_temp_dir().join("copilot_logs");
-        fs::create_dir_all(&base_log_dir)
-            .await
-            .map_err(ExecutorError::Io)?;
-
-        let run_log_dir = base_log_dir
-            .join(current_dir.file_name().unwrap_or_default())
-            .join(Uuid::new_v4().to_string());
-        fs::create_dir_all(&run_log_dir)
-            .await
-            .map_err(ExecutorError::Io)?;
-
-        Ok(run_log_dir)
-    }
-
-    // Scan the log directory for a file named `<UUID>.log` or `session-<UUID>.log` and extract the UUID as session ID.
-    async fn watch_session_id(log_dir_path: PathBuf) -> Result<String, String> {
-        let session_regex =
-            Regex::new(r"events to session ([0-9a-fA-F-]{36})").map_err(|e| e.to_string())?;
-
-        let log_dir_clone = log_dir_path.clone();
-        timeout(Duration::from_secs(600), async move {
-            let mut ticker = interval(Duration::from_millis(200));
-            loop {
-                if let Ok(mut rd) = fs::read_dir(&log_dir_clone).await {
-                    while let Ok(Some(entry)) = rd.next_entry().await {
-                        let path = entry.path();
-                        if path.extension().map(|e| e == "log").unwrap_or(false)
-                            && let Ok(content) = fs::read_to_string(&path).await
-                            && let Some(caps) = session_regex.captures(&content)
-                            && let Some(matched) = caps.get(1)
-                        {
-                            let uuid_str = matched.as_str();
-                            if Uuid::parse_str(uuid_str).is_ok() {
-                                return Ok(uuid_str.to_string());
-                            }
-                        }
-                    }
-                }
-                ticker.tick().await;
-            }
-        })
-        .await
-        .map_err(|_| format!("No session ID found in log files at {log_dir_path:?}"))?
-    }
-
-    const SESSION_PREFIX: &'static str = "[copilot-session] ";
-
-    // Find session id and write it to stdout prefixed
-    fn send_session_id(log_dir_path: PathBuf, stdout_appender: StdoutAppender) {
-        tokio::spawn(async move {
-            match Self::watch_session_id(log_dir_path).await {
-                Ok(session_id) => {
-                    let session_line = format!("{}{}\n", Self::SESSION_PREFIX, session_id);
-                    stdout_appender.append_line(&session_line);
-                }
-                Err(e) => {
-                    tracing::error!("Failed to find session ID: {}", e);
-                }
-            }
-        });
     }
 }

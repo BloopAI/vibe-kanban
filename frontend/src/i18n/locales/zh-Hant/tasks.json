@@ -236,8 +236,10 @@
     "queuedMessage": "訊息已加入佇列 - 會在目前執行完成後處理",
     "runSetupScript": "執行設定腳本",
     "runCleanupScript": "執行清理腳本",
+    "runArchiveScript": "執行封存腳本",
     "noSetupScript": "未為此專案設定設定腳本",
     "noCleanupScript": "未為此專案設定清理腳本",
+    "noArchiveScript": "未為此專案設定封存腳本",
     "scriptsDisabledWhileRunning": "程序執行時無法執行腳本"
   },
   "todos": {
@@ -467,6 +469,19 @@
       "andMore": "...還有 {{count}} 個"
     }
   },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "變基進行中",
+      "description": "正在無衝突地變基到 {{targetBranch}}。請選擇如何繼續。",
+      "hint": "您可以繼續變基以完成操作，或中止以返回之前的狀態。",
+      "continue": "繼續變基",
+      "continuing": "繼續中...",
+      "abort": "中止變基",
+      "aborting": "中止中...",
+      "continueError": "繼續變基失敗。可能存在未解決的衝突。",
+      "abortError": "中止變基失敗。請重試。"
+    }
+  },
   "createPrDialog": {
     "title": "建立 PR",
     "description": "為此任務嘗試建立 PR。",
@@ -655,6 +670,13 @@
       "exitCode": "結束代碼: {{code}}",
       "running": "執行中..."
     },
+    "scriptPlaceholder": {
+      "setupTitle": "設定腳本",
+      "setupDescription": "未配置設定腳本。設定腳本在程式碼代理啟動前執行。",
+      "cleanupTitle": "清理腳本",
+      "cleanupDescription": "未配置清理腳本。清理腳本在程式碼代理完成後執行。",
+      "configure": "設定"
+    },
     "unableToRenderDiff": "無法顯示差異。",
     "updatedTodos": "更新的待辦事項",
     "viewInChangesPanel": "在變更面板中檢視",
@@ -684,6 +706,7 @@
     "title": "修復腳本",
     "setupScriptTitle": "修復設定腳本",
     "cleanupScriptTitle": "修復清理腳本",
+    "archiveScriptTitle": "修復封存腳本",
     "devServerTitle": "修復開發伺服器腳本",
     "scriptLabel": "腳本（編輯）",
     "logsLabel": "上次執行日誌",

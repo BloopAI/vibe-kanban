@@ -98,7 +98,8 @@
     "currentBadge": "（目前）",
     "organizations": "組織",
     "createOrganization": "建立組織",
-    "orgSettings": "組織設定"
+    "orgSettings": "組織設定",
+    "migrate": "遷移"
   },
   "ok": "確定",
   "error": "錯誤",
@@ -145,6 +146,7 @@
     "active": "活躍",
     "archived": "已封存",
     "loading": "載入中...",
+    "notFound": "找不到工作區",
     "selectToStart": "選擇一個工作區開始",
     "draft": "草稿",
     "viewArchive": "檢視封存",
@@ -365,6 +367,7 @@
     "noSubIssues": "無子任務",
     "parentIssue": "父級",
     "subIssueIndicator": "↳",
+    "showSubIssues": "顯示子任務",
     "viewTabs": {
       "active": "活動",
       "all": "全部"

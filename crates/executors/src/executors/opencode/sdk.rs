@@ -87,6 +87,7 @@ pub struct RunConfig {
     /// that affects available models (e.g., env vars, base command).
     pub models_cache_key: String,
     pub commit_reminder: bool,
+    pub commit_reminder_prompt: String,
     pub repo_context: RepoContext,
 }
 
@@ -336,40 +337,37 @@ async fn run_session_inner(
     }
 
     // Handle commit reminder if enabled
-    if config.commit_reminder && !cancel.is_cancelled() {
-        let uncommitted_changes = config.repo_context.check_uncommitted_changes().await;
-        if !uncommitted_changes.is_empty() {
-            let reminder_prompt = format!(
-                "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
-                uncommitted_changes
-            );
+    if config.commit_reminder
+        && !cancel.is_cancelled()
+        && let status = config.repo_context.check_uncommitted_changes().await
+        && !status.is_empty()
+    {
+        let reminder_prompt = format!("{}\n{}", config.commit_reminder_prompt, status);
+        tracing::debug!("Sending commit reminder prompt to OpenCode session");
 
-            tracing::debug!("Sending commit reminder prompt to OpenCode session");
+        // Log as system message so it's visible in the UI (user_message gets filtered out)
+        let _ = log_writer
+            .log_event(&OpencodeExecutorEvent::SystemMessage {
+                content: reminder_prompt.clone(),
+            })
+            .await;
 
-            // Log as system message so it's visible in the UI (user_message gets filtered out)
-            let _ = log_writer
-                .log_event(&OpencodeExecutorEvent::SystemMessage {
-                    content: reminder_prompt.clone(),
-                })
-                .await;
+        let reminder_fut = Box::pin(prompt(
+            &client,
+            &config.base_url,
+            &config.directory,
+            &session_id,
+            &reminder_prompt,
+            model,
+            config.model_variant.clone(),
+            config.agent.clone(),
+        ));
+        let reminder_result =
+            run_request_with_control(reminder_fut, &mut control_rx, cancel.clone()).await;
 
-            let reminder_fut = Box::pin(prompt(
-                &client,
-                &config.base_url,
-                &config.directory,
-                &session_id,
-                &reminder_prompt,
-                model,
-                config.model_variant.clone(),
-                config.agent.clone(),
-            ));
-            let reminder_result =
-                run_request_with_control(reminder_fut, &mut control_rx, cancel.clone()).await;
-
-            if let Err(e) = reminder_result {
-                // Log but don't fail the session on commit reminder errors
-                tracing::warn!("Commit reminder prompt failed: {e}");
-            }
+        if let Err(e) = reminder_result {
+            // Log but don't fail the session on commit reminder errors
+            tracing::warn!("Commit reminder prompt failed: {e}");
         }
     }
 

@@ -64,7 +64,7 @@ impl Opencode {
             return Ok((*cached).clone());
         }
 
-        let env = ExecutionEnv::new(RepoContext::default(), false);
+        let env = ExecutionEnv::new(RepoContext::default(), false, String::new());
         let server = self.spawn_server(current_dir, &env).await?;
         let commands = sdk::discover_commands(&server, current_dir).await?;
 

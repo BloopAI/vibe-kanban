@@ -23,7 +23,7 @@ use services::services::{
     repo::RepoService,
     worktree_manager::WorktreeManager,
 };
-use tokio::{sync::RwLock, task::JoinHandle};
+use tokio::sync::RwLock;
 use utils::{
     api::oauth::LoginStatus,
     assets::{config_path, credentials_path},
@@ -189,6 +189,16 @@ impl Deployment for LocalDeployment {
         let file_search_cache = Arc::new(FileSearchCache::new());
 
         let pty = PtyService::new();
+        {
+            let db = db.clone();
+            let analytics = analytics.as_ref().map(|s| AnalyticsContext {
+                user_id: user_id.clone(),
+                analytics_service: s.clone(),
+            });
+            let container = container.clone();
+            let rc = remote_client.clone().ok();
+            PrMonitorService::spawn(db, analytics, container, rc).await;
+        }
 
         let deployment = Self {
             config,
@@ -272,19 +282,6 @@ impl Deployment for LocalDeployment {
 
     fn auth_context(&self) -> &AuthContext {
         &self.auth_context
-    }
-
-    async fn spawn_pr_monitor_service(&self) -> JoinHandle<()> {
-        let db = self.db().clone();
-        let analytics = self
-            .analytics()
-            .as_ref()
-            .map(|analytics_service| AnalyticsContext {
-                user_id: self.user_id().to_string(),
-                analytics_service: analytics_service.clone(),
-            });
-        let remote_client = self.remote_client().ok();
-        PrMonitorService::spawn(db, analytics, remote_client).await
     }
 }
 

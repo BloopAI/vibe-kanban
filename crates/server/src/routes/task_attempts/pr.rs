@@ -24,6 +24,7 @@ use executors::actions::{
 use git::{GitCliError, GitRemote, GitServiceError};
 use serde::{Deserialize, Serialize};
 use services::services::{
+    config::DEFAULT_PR_DESCRIPTION_PROMPT,
     container::ContainerService,
     git_host::{
         self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
@@ -94,19 +95,6 @@ pub enum GetPrCommentsError {
 pub struct GetPrCommentsQuery {
     pub repo_id: Uuid,
 }
-
-pub const DEFAULT_PR_DESCRIPTION_PROMPT: &str = r#"Update the PR that was just created with a better title and description.
-The PR number is #{pr_number} and the URL is {pr_url}.
-
-Analyze the changes in this branch and write:
-1. A concise, descriptive title that summarizes the changes, postfixed with "(Vibe Kanban)"
-2. A detailed description that explains:
-   - What changes were made
-   - Why they were made (based on the task context)
-   - Any important implementation details
-   - At the end, include a note: "This PR was written using [Vibe Kanban](https://vibekanban.com)"
-
-Use the appropriate CLI tool to update the PR (gh pr edit for GitHub, az repos pr update for Azure DevOps)."#;
 
 async fn trigger_pr_description_follow_up(
     deployment: &DeploymentImpl,
@@ -520,6 +508,17 @@ pub async fn attach_existing_pr(
             Task::update_status(pool, task.id, TaskStatus::Done).await?;
             if !workspace.pinned {
                 Workspace::set_archived(pool, workspace.id, true).await?;
+                if let Err(e) = deployment
+                    .container()
+                    .try_run_archive_script(workspace.id)
+                    .await
+                {
+                    tracing::error!(
+                        "Failed to run archive script for workspace {}: {}",
+                        workspace.id,
+                        e
+                    );
+                }
             }
         }
 

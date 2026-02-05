@@ -43,7 +43,7 @@ use serde_json::json;
 use services::services::{
     analytics::AnalyticsContext,
     approvals::{Approvals, executor_approvals::ExecutorApprovalBridge},
-    config::Config,
+    config::{Config, DEFAULT_COMMIT_REMINDER_PROMPT},
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
     image::ImageService,
@@ -1170,8 +1170,18 @@ impl ContainerService for LocalContainerService {
         let repo_names: Vec<String> = repos.iter().map(|r| r.name.clone()).collect();
         let repo_context = RepoContext::new(current_dir.clone(), repo_names);
 
-        let commit_reminder = self.config.read().await.commit_reminder;
-        let mut env = ExecutionEnv::new(repo_context, commit_reminder);
+        let config = self.config.read().await;
+        let commit_reminder_enabled = config.commit_reminder_enabled;
+        let commit_reminder_prompt = config
+            .commit_reminder_prompt
+            .clone()
+            .unwrap_or_else(|| DEFAULT_COMMIT_REMINDER_PROMPT.to_string());
+        drop(config);
+        let mut env = ExecutionEnv::new(
+            repo_context,
+            commit_reminder_enabled,
+            commit_reminder_prompt,
+        );
 
         // Load task and project context for environment variables
         let task = workspace

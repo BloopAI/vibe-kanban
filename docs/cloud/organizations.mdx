@@ -1,0 +1,255 @@
+---
+title: "Organisations"
+description: "Create and manage organisations to group your team and projects"
+---
+
+Organisations are the top-level container in Vibe Kanban Cloud. They group your team members and projects together.
+
+## What is an Organisation?
+
+An **organisation** represents your team, company, or group. It contains:
+
+- **Projects** - Your kanban boards for managing tasks
+- **Members** - People who can access the organisation
+- **Settings** - Configuration that applies to all projects
+
+
+### Organisation Structure
+
+An organisation acts as a container that holds two main things:
+
+**Members** are the people who belong to your organisation. Each member has a role:
+- **Admins** have full control - they can invite/remove members, change settings, and delete the organisation
+- **Members** can work on all projects but cannot manage organisation settings
+
+**Projects** are your kanban boards. Each project contains tasks, statuses, and tags. All members of an organisation can see and work on all projects within it.
+
+<Tip>
+Think of an organisation like a company: the company has employees (members) and departments or initiatives (projects). Everyone in the company can see what each department is working on.
+</Tip>
+
+## Personal Organisation
+
+When you sign in for the first time, a **personal organisation** is automatically created for you, along with an **Initial Project**. This is your private workspace.
+
+Personal organisations:
+- Are created automatically on first sign-in
+- Come with an "Initial Project" ready to use
+- Cannot have additional members invited
+- Cannot be deleted
+- Are only accessible by you
+
+<Info>
+To collaborate with others, you need to create a new (non-personal) organisation.
+</Info>
+
+## Creating a Team Organisation
+
+To collaborate with team members, create a new organisation:
+
+<Steps>
+<Step title="Open the user menu">
+  Click your **profile icon** in the bottom of the left sidebar.
+</Step>
+
+<Step title="Click Create organization">
+  Select **+ Create organization** from the menu.
+</Step>
+
+<Step title="Enter details and create">
+  Fill in the organisation details:
+
+  <Frame>
+    <img src="/images/cloud/create-organization-dialog.png" alt="Create New Organization dialog" />
+  </Frame>
+
+  - **Organization Name** - Your team or company name (e.g., "Acme Corporation")
+  - **Slug** - URL-friendly identifier, auto-generated from the name (lowercase, numbers, hyphens only)
+
+  Click **Create Organization** to finish. An **Initial Project** is automatically created in your new organisation.
+</Step>
+</Steps>
+
+<Info>
+You can be a member of multiple organisations. Use the user menu to switch between them.
+</Info>
+
+## Organisation Settings
+
+Access organisation settings by clicking the **settings icon** (<Icon icon="gear" />) next to your organisation name in the user menu.
+
+<Frame>
+  <img src="/images/cloud/user-menu-settings.png" alt="User menu showing settings icon next to organisation" />
+</Frame>
+
+For detailed information about all organisation settings, see the [Organisation Settings](/settings-beta/organization-settings) page.
+
+From Organisation Settings you can:
+- **Select organisation** - Switch between organisations you belong to
+- **Create organisation** - Create a new organisation
+- **Manage members** - View, invite, and remove members (Admin only)
+- **Manage invitations** - View and revoke pending invitations (Admin only)
+- **Delete organisation** - Permanently delete the organisation (Admin only)
+
+## Switching Organisations
+
+If you're a member of multiple organisations:
+
+<Steps>
+<Step title="Open the user menu">
+  Click your **profile icon** in the bottom of the left sidebar.
+</Step>
+
+<Step title="Select the organisation">
+  Click on the organisation you want to switch to from the list.
+</Step>
+</Steps>
+
+The page will refresh to show the selected organisation's projects and data.
+
+## Leaving an Organisation
+
+If you want to leave an organisation you're a member of:
+
+<Steps>
+<Step title="Go to Settings">
+  Open the organisation settings.
+</Step>
+
+<Step title="Find Leave Organisation">
+  Scroll down to the **Danger Zone** section.
+</Step>
+
+<Step title="Click Leave">
+  Click **Leave Organisation** and confirm.
+</Step>
+</Steps>
+
+<Warning>
+**You cannot leave if you're the only admin.** Transfer ownership to another member first, or delete the organisation.
+</Warning>
+
+## Deleting an Organisation
+
+<Warning>
+**This action is permanent and cannot be undone.** All projects, tasks, and data will be deleted.
+</Warning>
+
+Only organisation admins can delete an organisation. Personal organisations cannot be deleted.
+
+<Frame>
+  <img src="/images/cloud/danger-zone.png" alt="Danger Zone section with Delete Organization button" />
+</Frame>
+
+<Steps>
+<Step title="Go to Settings">
+  Open the organisation settings.
+</Step>
+
+<Step title="Find Danger Zone">
+  Scroll down to the **Danger Zone** section.
+</Step>
+
+<Step title="Confirm deletion">
+  Click **Delete** and confirm when prompted.
+</Step>
+</Steps>
+
+<Info>
+Before deleting, consider:
+- Exporting any data you need
+- Removing all members (they'll lose access immediately upon deletion)
+- This cannot be recovered
+</Info>
+
+## Organisation Roles
+
+Members can have one of two roles:
+
+| Role | Capabilities |
+|------|--------------|
+| **Admin** | Full access - manage members, settings, and can delete the organisation |
+| **Member** | Can view and work on projects, but cannot manage organisation settings or members |
+
+### Role Permissions
+
+| Action | Admin | Member |
+|--------|-------|--------|
+| View projects | ✅ | ✅ |
+| Create projects | ✅ | ✅ |
+| Edit project settings | ✅ | ✅ |
+| Create/edit tasks | ✅ | ✅ |
+| Invite members | ✅ | ❌ |
+| Remove members | ✅ | ❌ |
+| Change member roles | ✅ | ❌ |
+| Edit organisation settings | ✅ | ❌ |
+| Delete organisation | ✅ | ❌ |
+
+<Info>
+The person who creates an organisation is automatically an Admin. There must always be at least one Admin.
+</Info>
+
+## Best Practices
+
+<CardGroup cols={2}>
+<Card title="One org per team/company" icon="building">
+  Create one organisation for your team or company. Don't create separate orgs for each project.
+</Card>
+
+<Card title="Use descriptive names" icon="tag">
+  Choose organisation names that clearly identify the team. "Engineering" is better than "Org 1".
+</Card>
+
+<Card title="Have multiple admins" icon="users">
+  Ensure at least two people are admins in case one leaves or is unavailable.
+</Card>
+
+<Card title="Regular member audits" icon="clipboard-check">
+  Periodically review who has access and remove members who no longer need it.
+</Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="Can't create an organisation">
+**Problem:** The create organisation button doesn't appear or doesn't work.
+
+**Possible causes:**
+- You're already in the organisation creation flow
+- Network connectivity issues
+
+**Solution:**
+Refresh the page and try again. If the issue persists, check your browser's console for errors.
+</Accordion>
+
+<Accordion title="Can't see an organisation I should have access to">
+**Problem:** An organisation you were invited to doesn't appear in your list.
+
+**Possible causes:**
+- The invitation is still pending (check your email)
+- You signed in with a different account
+- You were removed from the organisation
+
+**Solution:**
+1. Check your email for an invitation link
+2. Verify you're signed in with the correct account
+3. Ask an admin of the organisation to check your membership
+</Accordion>
+
+<Accordion title="Can't leave the organisation">
+**Problem:** The "Leave Organisation" button is disabled.
+
+**Cause:** You're the only admin.
+
+**Solution:**
+1. Promote another member to admin first
+2. Then you can leave
+3. Or delete the organisation if no one else needs it
+</Accordion>
+</AccordionGroup>
+
+## Related Documentation
+
+- [Team Members](/cloud/team-members) - Inviting and managing organisation members
+- [Getting Started](/cloud/getting-started) - Initial setup of Vibe Kanban Cloud

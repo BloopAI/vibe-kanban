@@ -32,6 +32,7 @@ pub struct ClaudeAgentClient {
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool, // true when approvals is None
     repo_context: RepoContext,
+    commit_reminder_prompt: String,
     cancel: CancellationToken,
 }
 
@@ -41,6 +42,7 @@ impl ClaudeAgentClient {
         log_writer: LogWriter,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
         repo_context: RepoContext,
+        commit_reminder_prompt: String,
         cancel: CancellationToken,
     ) -> Arc<Self> {
         let auto_approve = approvals.is_none();
@@ -49,6 +51,7 @@ impl ClaudeAgentClient {
             approvals,
             auto_approve,
             repo_context,
+            commit_reminder_prompt,
             cancel,
         })
     }
@@ -178,10 +181,7 @@ impl ClaudeAgentClient {
             } else {
                 serde_json::json!({
                     "decision": "block",
-                    "reason": format!(
-                        "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
-                        status
-                    )
+                    "reason": format!("{}\n{}", self.commit_reminder_prompt, status)
                 })
             });
         }

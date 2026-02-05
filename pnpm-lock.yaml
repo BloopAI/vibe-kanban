@@ -233,9 +233,6 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@3.4.17)
-      vibe-kanban-web-companion:
-        specifier: ^0.0.4
-        version: 0.0.4(@types/react@18.3.23)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       wa-sqlite:
         specifier: ^1.0.0
         version: 1.0.0
@@ -3707,11 +3704,6 @@ packages:
 
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
-
-  vibe-kanban-web-companion@0.0.4:
-    resolution: {integrity: sha512-6UsoqLkcOC2nU/sNxRfzHp17G3px4PvpJ49qCcASONjXWcNuStg2FD2AcVoviquHRFQfy7JjaOO5or5/cY/bdQ==}
-    peerDependencies:
-      react: '>=16.8.0'
 
   vite@5.4.19:
     resolution: {integrity: sha512-qO3aKv3HoQC8QKiNSTuUM1l9o/XX3+c+VTgLHbJWHZGeTPVAg2XwazI9UWzoxjIJCGCV2zU60uqMzjeLZuULqA==}
@@ -7352,16 +7344,6 @@ snapshots:
     dependencies:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
-
-  vibe-kanban-web-companion@0.0.4(@types/react@18.3.23)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      '@floating-ui/react-dom-interactions': 0.3.1(@types/react@18.3.23)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      htm: 3.1.1
-      react: 18.3.1
-      react-merge-refs: 1.1.0
-    transitivePeerDependencies:
-      - '@types/react'
-      - react-dom
 
   vite@5.4.19(@types/node@24.10.1):
     dependencies:
