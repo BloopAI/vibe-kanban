@@ -324,7 +324,7 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
                       scriptType === 'setup'
                         ? 'npm install'
                         : scriptType === 'cleanup'
-                          ? 'rm -rf node_modules'
+                          ? 'npm run lint'
                           : 'npm run dev'
                     }
                     disableInternalScroll
