@@ -293,7 +293,8 @@ export const useConversationHistory = ({
           ) {
             // Add setup and cleanup script as a tool call
             let toolName = '';
-            const scriptContext = p.executionProcess.executor_action.typ.context;
+            const scriptContext =
+              p.executionProcess.executor_action.typ.context;
             switch (scriptContext) {
               case 'SetupScript':
                 toolName = 'Setup Script';

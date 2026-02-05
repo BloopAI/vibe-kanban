@@ -257,7 +257,10 @@ export const ConversationList = forwardRef<
   const showSetupPlaceholder =
     !hasSetupScript && !hasSetupScriptRun && hasEntries;
   const showCleanupPlaceholder =
-    !hasCleanupScript && !hasCleanupScriptRun && !hasRunningProcess && hasEntries;
+    !hasCleanupScript &&
+    !hasCleanupScriptRun &&
+    !hasRunningProcess &&
+    hasEntries;
 
   const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
   const messageListContext = useMemo(
