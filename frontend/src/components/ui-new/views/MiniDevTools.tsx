@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   CaretUpIcon,
   CaretDownIcon,
@@ -12,6 +11,8 @@ import type {
   ErrorEntry,
 } from '@/types/previewDevTools';
 
+export type MiniDevToolsTabType = 'console' | 'network' | 'errors';
+
 interface MiniDevToolsProps {
   consoleLogs: ConsoleEntry[];
   networkRequests: NetworkEntry[];
@@ -21,10 +22,12 @@ interface MiniDevToolsProps {
   onClearErrors: () => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  activeTab: MiniDevToolsTabType;
+  onTabChange: (tab: MiniDevToolsTabType) => void;
+  expandedErrorId: string | null;
+  onExpandedErrorIdChange: (id: string | null) => void;
   className?: string;
 }
-
-type TabType = 'console' | 'network' | 'errors';
 
 const getLevelColor = (level: string): string => {
   switch (level) {
@@ -110,11 +113,12 @@ export function MiniDevTools({
   onClearErrors,
   isCollapsed,
   onToggleCollapse,
+  activeTab,
+  onTabChange,
+  expandedErrorId,
+  onExpandedErrorIdChange,
   className,
 }: MiniDevToolsProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('console');
-  const [expandedErrorId, setExpandedErrorId] = useState<string | null>(null);
-
   const handleClearClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (activeTab === 'console') onClearConsole();
@@ -162,7 +166,7 @@ export function MiniDevTools({
           <span className="text-sm text-high font-medium">DevTools</span>
           <div className="flex items-center gap-base">
             <button
-              onClick={() => setActiveTab('console')}
+              onClick={() => onTabChange('console')}
               className={cn(
                 'text-xs px-base py-half rounded border transition-colors',
                 activeTab === 'console'
@@ -173,7 +177,7 @@ export function MiniDevTools({
               Console ({consoleLogs.length})
             </button>
             <button
-              onClick={() => setActiveTab('network')}
+              onClick={() => onTabChange('network')}
               className={cn(
                 'text-xs px-base py-half rounded border transition-colors',
                 activeTab === 'network'
@@ -184,7 +188,7 @@ export function MiniDevTools({
               Network ({networkRequests.length})
             </button>
             <button
-              onClick={() => setActiveTab('errors')}
+              onClick={() => onTabChange('errors')}
               className={cn(
                 'text-xs px-base py-half rounded border transition-colors',
                 activeTab === 'errors'
@@ -296,7 +300,7 @@ export function MiniDevTools({
                     >
                       <button
                         onClick={() =>
-                          setExpandedErrorId(
+                          onExpandedErrorIdChange(
                             expandedErrorId === entry.id ? null : entry.id
                           )
                         }
