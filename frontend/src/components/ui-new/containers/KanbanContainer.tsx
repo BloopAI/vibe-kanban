@@ -604,7 +604,9 @@ export function KanbanContainer() {
               issueMap={issueMap}
               issueAssigneesMap={issueAssigneesMap}
               getTagObjectsForIssue={getTagObjectsForIssue}
-              getResolvedRelationshipsForIssue={getResolvedRelationshipsForIssue}
+              getResolvedRelationshipsForIssue={
+                getResolvedRelationshipsForIssue
+              }
               onIssueClick={handleCardClick}
               selectedIssueId={selectedKanbanIssueId}
             />

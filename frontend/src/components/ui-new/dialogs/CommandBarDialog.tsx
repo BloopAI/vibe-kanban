@@ -621,8 +621,7 @@ function CommandBarWithStatuses(
       issueRelationships
         .filter(
           (r) =>
-            r.issue_id === anchorIssueId ||
-            r.related_issue_id === anchorIssueId
+            r.issue_id === anchorIssueId || r.related_issue_id === anchorIssueId
         )
         .flatMap((r) => [r.issue_id, r.related_issue_id])
     );
@@ -632,11 +631,7 @@ function CommandBarWithStatuses(
       if (existingRelatedIds.has(issue.id)) return false;
       return true;
     });
-  }, [
-    issues,
-    issueRelationships,
-    props.pendingRelationshipSelection?.issueId,
-  ]);
+  }, [issues, issueRelationships, props.pendingRelationshipSelection?.issueId]);
 
   const handleAddRelationship = useCallback(
     (

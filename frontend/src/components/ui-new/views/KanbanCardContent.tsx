@@ -162,7 +162,9 @@ export const KanbanCardContent = ({
             />
           ))}
           {relationships.length > 2 && (
-            <span className="text-sm text-low">+{relationships.length - 2}</span>
+            <span className="text-sm text-low">
+              +{relationships.length - 2}
+            </span>
           )}
         </div>
         {onAssigneeClick ? (

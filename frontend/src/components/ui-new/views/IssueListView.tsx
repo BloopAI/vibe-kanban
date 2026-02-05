@@ -12,7 +12,9 @@ export interface IssueListViewProps {
   issueMap: Record<string, Issue>;
   issueAssigneesMap: Record<string, OrganizationMemberWithProfile[]>;
   getTagObjectsForIssue: (issueId: string) => Tag[];
-  getResolvedRelationshipsForIssue?: (issueId: string) => ResolvedRelationship[];
+  getResolvedRelationshipsForIssue?: (
+    issueId: string
+  ) => ResolvedRelationship[];
   onIssueClick: (issueId: string) => void;
   selectedIssueId: string | null;
   className?: string;

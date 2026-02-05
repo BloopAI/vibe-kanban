@@ -56,9 +56,7 @@ export function RelationshipBadge({
         'rounded-sm',
         'text-sm font-medium',
         'whitespace-nowrap',
-        isBlocking
-          ? 'bg-error/10 text-error'
-          : 'bg-panel text-low',
+        isBlocking ? 'bg-error/10 text-error' : 'bg-panel text-low',
         onClick && 'cursor-pointer hover:opacity-80',
         className
       )}
