@@ -780,41 +780,6 @@ export const Actions = {
     },
   },
 
-  // === Navigation Actions ===
-  OpenInOldUI: {
-    id: 'open-in-old-ui',
-    label: 'Open in Old UI',
-    icon: SignOutIcon,
-    requiresTarget: ActionTargetType.NONE,
-    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
-    execute: async (ctx) => {
-      // If no workspace is selected, navigate to root
-      if (!ctx.currentWorkspaceId) {
-        ctx.navigate('/');
-        return;
-      }
-
-      const workspace = await getWorkspace(
-        ctx.queryClient,
-        ctx.currentWorkspaceId
-      );
-      if (!workspace?.task_id) {
-        ctx.navigate('/');
-        return;
-      }
-
-      // Fetch task lazily to get project_id
-      const task = await tasksApi.getById(workspace.task_id);
-      if (task?.project_id) {
-        ctx.navigate(
-          `/local-projects/${task.project_id}/tasks/${workspace.task_id}/attempts/${ctx.currentWorkspaceId}`
-        );
-      } else {
-        ctx.navigate('/');
-      }
-    },
-  },
-
   // === Diff Actions for Navbar ===
   ToggleAllDiffs: {
     id: 'toggle-all-diffs',
@@ -1467,7 +1432,7 @@ export type NavbarItem = ActionDefinition | typeof NavbarDivider;
 
 // Navbar action groups define which actions appear in each section
 export const NavbarActionGroups = {
-  left: [Actions.ArchiveWorkspace, Actions.OpenInOldUI] as NavbarItem[],
+  left: [Actions.ArchiveWorkspace] as NavbarItem[],
   right: [
     Actions.ToggleDiffViewMode,
     Actions.ToggleAllDiffs,
