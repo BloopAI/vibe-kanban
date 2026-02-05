@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PlusIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useActions } from '@/contexts/ActionsContext';
 import { attemptsApi } from '@/lib/api';
@@ -26,6 +27,7 @@ export function IssueWorkspacesSectionContainer({
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { openWorkspaceSelection } = useActions();
+  const { userId } = useAuth();
 
   const {
     pullRequests,
@@ -62,9 +64,10 @@ export function IssueWorkspacesSectionContainer({
         prs: linkedPrs,
         owner,
         updatedAt: workspace.updated_at,
+        isOwnedByCurrentUser: workspace.owner_user_id === userId,
       };
     });
-  }, [issueId, getWorkspacesForIssue, pullRequests, membersWithProfilesById]);
+  }, [issueId, getWorkspacesForIssue, pullRequests, membersWithProfilesById, userId]);
 
   const isLoading = projectLoading || orgLoading;
 

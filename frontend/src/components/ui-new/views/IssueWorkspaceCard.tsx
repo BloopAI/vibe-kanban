@@ -31,6 +31,7 @@ export interface WorkspaceWithStats {
   prs: WorkspacePr[];
   owner: OrganizationMemberWithProfile | null;
   updatedAt: string;
+  isOwnedByCurrentUser: boolean;
 }
 
 export interface IssueWorkspaceCardProps {
