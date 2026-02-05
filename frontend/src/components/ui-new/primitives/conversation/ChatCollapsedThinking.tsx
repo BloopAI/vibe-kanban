@@ -68,9 +68,8 @@ export function ChatCollapsedThinking({
           {entries.map((entry) => (
             <div
               key={entry.expansionKey}
-              className="flex items-start gap-base text-sm text-low pl-base"
+              className="text-sm text-low pl-base"
             >
-              <ChatDotsIcon className="shrink-0 size-icon-base mt-0.5" />
               <ChatMarkdown
                 content={entry.content}
                 workspaceId={taskAttemptId}
