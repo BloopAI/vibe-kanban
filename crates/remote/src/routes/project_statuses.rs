@@ -2,19 +2,25 @@ use axum::{
     Json,
     extract::{Extension, Path, Query, State},
     http::StatusCode,
+    routing::{get, post},
 };
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
-use super::{error::ErrorResponse, organization_members::ensure_project_access};
+use super::{
+    error::{ErrorResponse, db_error},
+    organization_members::ensure_project_access,
+};
 use crate::{
     AppState,
     auth::RequestContext,
     db::{
+        get_txid,
         project_statuses::{ProjectStatus, ProjectStatusRepository},
         types::is_valid_hsl_color,
     },
-    define_mutation_router,
     entities::{
         CreateProjectStatusRequest, ListProjectStatussQuery, ListProjectStatussResponse,
         UpdateProjectStatusRequest,
@@ -22,8 +28,21 @@ use crate::{
     mutation_types::{DeleteResponse, MutationResponse},
 };
 
-// Generate router that references handlers below
-define_mutation_router!(ProjectStatus, table: "project_statuses");
+/// Router for project status endpoints including bulk update
+pub fn router() -> axum::Router<AppState> {
+    axum::Router::new()
+        .route(
+            "/project_statuses",
+            get(list_project_statuss).post(create_project_status),
+        )
+        .route(
+            "/project_statuses/{project_status_id}",
+            get(get_project_status)
+                .patch(update_project_status)
+                .delete(delete_project_status),
+        )
+        .route("/project_statuses/bulk", post(bulk_update_project_statuses))
+}
 
 #[instrument(
     name = "project_statuses.list_project_statuss",
@@ -107,7 +126,7 @@ async fn create_project_status(
     .await
     .map_err(|error| {
         tracing::error!(?error, "failed to create project status");
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        db_error(error, "failed to create project status")
     })?;
 
     Ok(Json(response))
@@ -194,4 +213,139 @@ async fn delete_project_status(
         })?;
 
     Ok(Json(response))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BulkUpdateProjectStatusItem {
+    pub id: Uuid,
+    #[serde(flatten)]
+    pub changes: UpdateProjectStatusRequest,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BulkUpdateProjectStatusesRequest {
+    pub updates: Vec<BulkUpdateProjectStatusItem>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BulkUpdateProjectStatusesResponse {
+    pub data: Vec<ProjectStatus>,
+    pub txid: i64,
+}
+
+#[instrument(
+    name = "project_statuses.bulk_update",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, count = payload.updates.len())
+)]
+async fn bulk_update_project_statuses(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Json(payload): Json<BulkUpdateProjectStatusesRequest>,
+) -> Result<Json<BulkUpdateProjectStatusesResponse>, ErrorResponse> {
+    if payload.updates.is_empty() {
+        return Ok(Json(BulkUpdateProjectStatusesResponse {
+            data: vec![],
+            txid: 0,
+        }));
+    }
+
+    // Get first status to determine project_id for access check
+    let first_status = ProjectStatusRepository::find_by_id(state.pool(), payload.updates[0].id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to find first project status");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to find status")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project status not found"))?;
+
+    let project_id = first_status.project_id;
+    ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
+
+    let mut tx = state.pool().begin().await.map_err(|error| {
+        tracing::error!(?error, "failed to begin transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    let mut results = Vec::with_capacity(payload.updates.len());
+
+    for item in payload.updates {
+        // Verify status belongs to the same project
+        let status = ProjectStatusRepository::find_by_id(state.pool(), item.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, status_id = %item.id, "failed to find project status");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to find status")
+            })?
+            .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project status not found"))?;
+
+        if status.project_id != project_id {
+            return Err(ErrorResponse::new(
+                StatusCode::BAD_REQUEST,
+                "all statuses must belong to the same project",
+            ));
+        }
+
+        // Validate color if provided
+        if let Some(ref color) = item.changes.color
+            && !is_valid_hsl_color(color)
+        {
+            return Err(ErrorResponse::new(
+                StatusCode::BAD_REQUEST,
+                "Invalid color format. Expected HSL format: 'H S% L%'",
+            ));
+        }
+
+        // Update the status within the transaction
+        let updated = sqlx::query_as!(
+            ProjectStatus,
+            r#"
+            UPDATE project_statuses
+            SET
+                name = COALESCE($1, name),
+                color = COALESCE($2, color),
+                sort_order = COALESCE($3, sort_order),
+                hidden = COALESCE($4, hidden)
+            WHERE id = $5
+            RETURNING
+                id              AS "id!: Uuid",
+                project_id      AS "project_id!: Uuid",
+                name            AS "name!",
+                color           AS "color!",
+                sort_order      AS "sort_order!",
+                hidden          AS "hidden!",
+                created_at      AS "created_at!: DateTime<Utc>"
+            "#,
+            item.changes.name,
+            item.changes.color,
+            item.changes.sort_order,
+            item.changes.hidden,
+            item.id
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, status_id = %item.id, "failed to update project status");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to update project status",
+            )
+        })?;
+
+        results.push(updated);
+    }
+
+    let txid = get_txid(&mut *tx).await.map_err(|error| {
+        tracing::error!(?error, "failed to get txid");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+    tx.commit().await.map_err(|error| {
+        tracing::error!(?error, "failed to commit transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    Ok(Json(BulkUpdateProjectStatusesResponse {
+        data: results,
+        txid,
+    }))
 }

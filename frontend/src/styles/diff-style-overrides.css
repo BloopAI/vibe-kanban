@@ -882,3 +882,108 @@
 .diff-tailwindcss-wrapper .group:hover .group-hover\:visible {
   visibility: visible;
 }
+
+/* =============================================================================
+   Pierre/Diffs Overrides - Remove black bars (padding on [data-code])
+   ============================================================================= */
+
+/* Remove padding that creates black bars above/below diff content */
+diffs-container [data-code] {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Alternative: Set the gap-block variable to 0 */
+diffs-container {
+  --diffs-gap-block: 0;
+}
+
+/* =============================================================================
+   Pierre/Diffs Design Overrides - Match Old @git-diff-view/react Design
+   ============================================================================= */
+
+/* Font: Use IBM Plex Mono to match old design */
+diffs-container {
+  --diffs-font-family: 'IBM Plex Mono', 'SF Mono', Monaco, Consolas, monospace;
+  --diffs-font-size: 12px;
+  --diffs-line-height: 18px;
+}
+
+/* Light Mode Colors - Match old design */
+.light diffs-container,
+diffs-container[data-theme-type='light'] {
+  /* Addition colors - soft green (HSL 160 77% 88%) */
+  --diffs-light-addition-color: hsl(160, 77%, 40%);
+  --diffs-bg-addition-override: hsl(160, 77%, 88%);
+  --diffs-bg-addition-number-override: hsl(160, 77%, 85%);
+  --diffs-bg-addition-hover-override: hsl(160, 77%, 82%);
+
+  /* Deletion colors - soft red (HSL 10 100% 90%) */
+  --diffs-light-deletion-color: hsl(10, 100%, 45%);
+  --diffs-bg-deletion-override: hsl(10, 100%, 90%);
+  --diffs-bg-deletion-number-override: hsl(10, 100%, 87%);
+  --diffs-bg-deletion-hover-override: hsl(10, 100%, 84%);
+
+  /* Context/unchanged - white background */
+  --diffs-light-bg: hsl(0, 0%, 100%);
+  --diffs-bg-context-override: hsl(0, 0%, 98%);
+
+  /* Line numbers */
+  --diffs-fg-number-override: hsl(0, 0%, 39%);
+}
+
+/* Dark Mode Colors - Match old design */
+.dark diffs-container,
+diffs-container[data-theme-type='dark'] {
+  /* Addition colors - dark green (HSL 130 30% 20%) */
+  --diffs-dark-addition-color: hsl(130, 50%, 50%);
+  --diffs-bg-addition-override: hsl(130, 30%, 20%);
+  --diffs-bg-addition-number-override: hsl(130, 30%, 18%);
+  --diffs-bg-addition-hover-override: hsl(130, 30%, 25%);
+
+  /* Deletion colors - dark red (HSL 12 30% 18%) */
+  --diffs-dark-deletion-color: hsl(12, 50%, 55%);
+  --diffs-bg-deletion-override: hsl(12, 30%, 18%);
+  --diffs-bg-deletion-number-override: hsl(12, 30%, 16%);
+  --diffs-bg-deletion-hover-override: hsl(12, 30%, 23%);
+
+  /* Context/unchanged - match app's bg-panel (lighter gray, not black) */
+  /* --diffs-bg directly overrides the base since light-dark() may not pick up --diffs-dark-bg */
+  --diffs-bg: hsl(0, 0%, 20%);
+  --diffs-dark-bg: hsl(0, 0%, 20%);
+  --diffs-bg-context-override: hsl(0, 0%, 20%);
+  --diffs-bg-hover-override: hsl(0, 0%, 25%);
+
+  /* Line numbers */
+  --diffs-fg-number-override: hsl(0, 0%, 56%);
+}
+
+/* =============================================================================
+   Hover Utility Button Positioning
+   ============================================================================= */
+
+/*
+ * The [data-hover-slot] in shadow DOM is positioned at right:0 of the number column.
+ * The slotted content needs to appear BETWEEN the number and code columns.
+ * Using left:100% positions it just to the right of the hover slot container.
+ */
+diffs-container [slot='hover-slot'] {
+  left: 100%;
+  right: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 4px;
+}
+
+/* Style the hover utility button - no visual changes on hover */
+diffs-container [slot='hover-slot'] button,
+diffs-container [slot='hover-slot'] button:hover,
+diffs-container [slot='hover-slot'] button:focus,
+diffs-container [slot='hover-slot'] button:active {
+  background-color: hsl(var(--brand) / 0.2);
+  color: hsl(var(--brand));
+  border: none;
+  outline: none;
+  box-shadow: none;
+}

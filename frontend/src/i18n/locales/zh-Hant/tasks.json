@@ -174,7 +174,13 @@
     "collapseAll": "收合所有差異",
     "filesChanged_one": "{{count}} 個檔案已變更",
     "filesChanged_other": "{{count}} 個檔案已變更",
-    "noChanges": "尚未進行任何變更"
+    "noChanges": "尚未進行任何變更",
+    "largeDiff": {
+      "title": "大型檔案",
+      "linesChanged": "{{count}} 行已變更",
+      "loadAnyway": "仍然載入差異",
+      "warning": "大型差異可能會降低瀏覽器速度。"
+    }
   },
   "taskPanel": {
     "noTaskSelected": "未選擇任務",
@@ -230,8 +236,10 @@
     "queuedMessage": "訊息已加入佇列 - 會在目前執行完成後處理",
     "runSetupScript": "執行設定腳本",
     "runCleanupScript": "執行清理腳本",
+    "runArchiveScript": "執行封存腳本",
     "noSetupScript": "未為此專案設定設定腳本",
     "noCleanupScript": "未為此專案設定清理腳本",
+    "noArchiveScript": "未為此專案設定封存腳本",
     "scriptsDisabledWhileRunning": "程序執行時無法執行腳本"
   },
   "todos": {
@@ -461,6 +469,19 @@
       "andMore": "...還有 {{count}} 個"
     }
   },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "變基進行中",
+      "description": "正在無衝突地變基到 {{targetBranch}}。請選擇如何繼續。",
+      "hint": "您可以繼續變基以完成操作，或中止以返回之前的狀態。",
+      "continue": "繼續變基",
+      "continuing": "繼續中...",
+      "abort": "中止變基",
+      "aborting": "中止中...",
+      "continueError": "繼續變基失敗。可能存在未解決的衝突。",
+      "abortError": "中止變基失敗。請重試。"
+    }
+  },
   "createPrDialog": {
     "title": "建立 PR",
     "description": "為此任務嘗試建立 PR。",
@@ -565,9 +586,12 @@
   },
   "restoreLogsDialog": {
     "title": "確認重試",
+    "titleReset": "確認重設",
     "historyChange": {
       "title": "歷史紀錄變更",
       "willDelete": "將刪除此程序",
+      "willDeleteProcesses_one": "將刪除 {{count}} 個程序",
+      "willDeleteProcesses_other": "將刪除 {{count}} 個程序",
       "andLaterProcesses_one": "及後續 {{count}} 個程序",
       "andLaterProcesses_other": "及後續 {{count}} 個程序",
       "fromHistory": "從歷史紀錄中刪除。",
@@ -603,7 +627,8 @@
       "uncommittedPresentHint": "存在未提交的變更。請啟用強制重設或先提交/暫存後再繼續。"
     },
     "buttons": {
-      "retry": "重試"
+      "retry": "重試",
+      "reset": "重設"
     }
   },
   "conversation": {
@@ -634,7 +659,9 @@
       "approve": "核准",
       "clearReviewComments": "清除審查評論",
       "edit": "編輯訊息",
-      "scrollToPreviousMessage": "Go to previous message"
+      "scrollToPreviousMessage": "Go to previous message",
+      "reset": "重設",
+      "resetTooltip": "重設到此時點"
     },
     "approval": {
       "conflictWarning": "衝突檔案需要手動解決",
@@ -648,6 +675,13 @@
       "completedSuccessfully": "成功完成",
       "exitCode": "結束代碼: {{code}}",
       "running": "執行中..."
+    },
+    "scriptPlaceholder": {
+      "setupTitle": "設定腳本",
+      "setupDescription": "未配置設定腳本。設定腳本在程式碼代理啟動前執行。",
+      "cleanupTitle": "清理腳本",
+      "cleanupDescription": "未配置清理腳本。清理腳本在程式碼代理完成後執行。",
+      "configure": "設定"
     },
     "unableToRenderDiff": "無法顯示差異。",
     "updatedTodos": "更新的待辦事項",
@@ -678,6 +712,7 @@
     "title": "修復腳本",
     "setupScriptTitle": "修復設定腳本",
     "cleanupScriptTitle": "修復清理腳本",
+    "archiveScriptTitle": "修復封存腳本",
     "devServerTitle": "修復開發伺服器腳本",
     "scriptLabel": "腳本（編輯）",
     "logsLabel": "上次執行日誌",
@@ -692,5 +727,36 @@
     "statusSuccess": "成功完成",
     "statusFailed": "失敗，結束代碼 {{exitCode}}",
     "statusKilled": "程序已被終止"
+  },
+  "createWorkspaceFromPr": {
+    "title": "從 PR 建立工作區",
+    "description": "選擇一個開啟的拉取請求來建立工作區。將使用 PR 標題自動建立任務。",
+    "repositoryLabel": "儲存庫",
+    "remoteLabel": "遠端儲存庫",
+    "pullRequestLabel": "拉取請求",
+    "loadingRepositories": "正在載入儲存庫...",
+    "loadingRemotes": "正在載入遠端儲存庫...",
+    "noRepositoriesFound": "找不到儲存庫",
+    "loadingPullRequests": "正在載入拉取請求...",
+    "selectRepositoryFirst": "請先選擇儲存庫",
+    "noPullRequestsFound": "找不到開啟的拉取請求",
+    "runSetupScript": "執行設定腳本",
+    "creating": "建立中...",
+    "createWorkspace": "建立工作區",
+    "selectRepository": "選擇儲存庫",
+    "selectRemote": "選擇遠端儲存庫",
+    "selectPullRequest": "選擇拉取請求",
+    "searchPrsPlaceholder": "按編號或標題搜尋 PR...",
+    "noMatchingPrs": "沒有符合的拉取請求",
+    "default": "預設",
+    "openPrInBrowser": "在瀏覽器中開啟 PR",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLI 未安裝",
+      "unsupportedProvider": "不支援的 Git 提供者",
+      "failedToLoadPrs": "載入拉取請求失敗",
+      "prNotFound": "找不到拉取請求",
+      "repoNotInProject": "儲存庫不在任何專案中",
+      "failedToCreateWorkspace": "建立工作區失敗"
+    }
   }
 }

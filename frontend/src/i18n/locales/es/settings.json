@@ -23,7 +23,9 @@
         "mcp": "Servidores MCP",
         "mcpDesc": "Servidores de Protocolo de Contexto de Modelo (MCP)",
         "organizations": "Organization Settings",
-        "organizationsDesc": "Manage organization members and permissions"
+        "organizationsDesc": "Manage organization members and permissions",
+        "remote-projects": "Proyectos",
+        "remote-projectsDesc": "Gestionar proyectos"
       }
     },
     "general": {
@@ -166,6 +168,18 @@
           "helper": "Prompt personalizado para el agente de IA al generar descripciones de PR. Usa {pr_number} y {pr_url} como marcadores de posición."
         }
       },
+      "commits": {
+        "title": "Commits",
+        "description": "Configura el comportamiento de commits para los intentos de tareas",
+        "reminder": {
+          "label": "Recordatorio de commit",
+          "helper": "Solicitar a los agentes compatibles que confirmen los cambios antes de detenerse."
+        },
+        "customPrompt": {
+          "useCustom": "Usar prompt personalizado",
+          "helper": "Prompt personalizado para el recordatorio de commit. El estado de git se añadirá automáticamente."
+        }
+      },
       "notifications": {
         "title": "Notificaciones",
         "description": "Controla cuándo y cómo recibes notificaciones.",
@@ -265,10 +279,6 @@
         "workspaces": {
           "label": "Habilitar Beta de Workspaces",
           "helper": "Usa la nueva interfaz de workspaces al ver intentos de tareas. Las tareas se abrirán primero en la vista de tareas, y los intentos se abrirán en la nueva vista de workspaces."
-        },
-        "commitReminder": {
-          "label": "Recordatorio de commit",
-          "helper": "Solicitar a los agentes compatibles que confirmen los cambios antes de detenerse."
         }
       }
     },
@@ -322,6 +332,10 @@
         "noResults": "No se encontraron configuraciones",
         "noConfigs": "No hay configuraciones disponibles",
         "selectConfig": "Selecciona una configuración de la barra lateral para ver y editar sus ajustes."
+      },
+      "deleteConfigDialog": {
+        "title": "¿Eliminar configuración?",
+        "description": "Esto eliminará permanentemente \"{{configName}}\" del ejecutor {{executorType}}. Esta acción no se puede deshacer."
       }
     },
     "mcp": {
@@ -423,6 +437,11 @@
         "path": {
           "label": "Ruta del Repositorio"
         },
+        "defaultWorkingDir": {
+          "label": "Directorio de Trabajo Predeterminado",
+          "placeholder": "ej., packages/frontend",
+          "helper": "Subdirectorio relativo a la raíz del repositorio donde se ejecuta el agente de codificación para espacios de trabajo de un solo repositorio. Se establece al crear el espacio de trabajo. Déjelo vacío para usar la raíz del repositorio."
+        },
         "defaultTargetBranch": {
           "label": "Rama Objetivo Predeterminada",
           "placeholder": "Seleccionar una rama",
@@ -445,6 +464,10 @@
         "cleanup": {
           "label": "Script de Limpieza",
           "helper": "Este script se ejecuta desde dentro del worktree después de la ejecución del agente de codificación, solo si se realizaron cambios. Úsalo para tareas de garantía de calidad como ejecutar linters, formateadores, pruebas u otros pasos de validación."
+        },
+        "archive": {
+          "label": "Script de Archivo",
+          "helper": "Este script se ejecuta desde dentro del worktree cuando se archiva el espacio de trabajo. Úsalo para tareas de limpieza como detener servicios, liberar recursos o guardar estado."
         },
         "copyFiles": {
           "label": "Copiar Archivos",

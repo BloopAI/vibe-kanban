@@ -161,7 +161,13 @@
     "collapseAll": "Réduire tous les diffs",
     "filesChanged_one": "{{count}} fichier modifié",
     "filesChanged_other": "{{count}} fichiers modifiés",
-    "noChanges": "Aucune modification n'a encore été effectuée"
+    "noChanges": "Aucune modification n'a encore été effectuée",
+    "largeDiff": {
+      "title": "Fichier volumineux",
+      "linesChanged": "{{count}} lignes modifiées",
+      "loadAnyway": "Charger le diff quand même",
+      "warning": "Les gros diffs peuvent ralentir votre navigateur."
+    }
   },
   "taskPanel": {
     "noTaskSelected": "Aucune tâche sélectionnée",
@@ -217,8 +223,10 @@
     "queuedMessage": "Message en file d'attente - s'exécutera lorsque l'exécution actuelle sera terminée",
     "runSetupScript": "Exécuter le script de configuration",
     "runCleanupScript": "Exécuter le script de nettoyage",
+    "runArchiveScript": "Exécuter le script d'archivage",
     "noSetupScript": "Aucun script de configuration configuré pour ce projet",
     "noCleanupScript": "Aucun script de nettoyage configuré pour ce projet",
+    "noArchiveScript": "Aucun script d'archivage configuré pour ce projet",
     "scriptsDisabledWhileRunning": "Impossible d'exécuter les scripts pendant qu'un processus est en cours"
   },
   "todos": {
@@ -275,7 +283,9 @@
       "approve": "Approuver",
       "clearReviewComments": "Effacer les commentaires de révision",
       "edit": "Modifier le message",
-      "scrollToPreviousMessage": "Go to previous message"
+      "scrollToPreviousMessage": "Go to previous message",
+      "reset": "Réinitialiser",
+      "resetTooltip": "Réinitialiser à ce point"
     },
     "approval": {
       "conflictWarning": "Les fichiers en conflit nécessitent une résolution manuelle",
@@ -308,6 +318,13 @@
       "exitCode": "Code de sortie : {{code}}",
       "completedSuccessfully": "Terminé avec succès",
       "clickToViewLogs": "Cliquer pour voir les logs"
+    },
+    "scriptPlaceholder": {
+      "setupTitle": "Script de configuration",
+      "setupDescription": "Aucun script de configuration. Les scripts de configuration s'exécutent avant le démarrage de l'agent de codage.",
+      "cleanupTitle": "Script de nettoyage",
+      "cleanupDescription": "Aucun script de nettoyage. Les scripts de nettoyage s'exécutent après la fin de l'agent de codage.",
+      "configure": "Configurer"
     },
     "updatedTodos": "À faire mis à jour",
     "viewInChangesPanel": "Voir dans le panneau des modifications",
@@ -529,6 +546,19 @@
       "andMore": "...et {{count}} autres"
     }
   },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "Rebase en cours",
+      "description": "Un rebase vers {{targetBranch}} est en cours sans conflits. Choisissez comment procéder.",
+      "hint": "Vous pouvez continuer le rebase pour le terminer, ou abandonner pour revenir à l'état précédent.",
+      "continue": "Continuer le rebase",
+      "continuing": "Continuation...",
+      "abort": "Abandonner le rebase",
+      "aborting": "Abandon...",
+      "continueError": "Échec de la continuation du rebase. Il peut y avoir des conflits non résolus.",
+      "abortError": "Échec de l'abandon du rebase. Veuillez réessayer."
+    }
+  },
   "createPrDialog": {
     "title": "Créer une Pull Request",
     "description": "Créer une pull request pour cette tentative de tâche.",
@@ -633,9 +663,12 @@
   },
   "restoreLogsDialog": {
     "title": "Confirmer la nouvelle tentative",
+    "titleReset": "Confirmer la réinitialisation",
     "historyChange": {
       "title": "Changement d'historique",
       "willDelete": "Supprimera ce processus",
+      "willDeleteProcesses_one": "Supprimera {{count}} processus",
+      "willDeleteProcesses_other": "Supprimera {{count}} processus",
       "andLaterProcesses_one": "et {{count}} processus ultérieur",
       "andLaterProcesses_other": "et {{count}} processus ultérieurs",
       "fromHistory": "de l'historique.",
@@ -671,13 +704,15 @@
       "uncommittedPresentHint": "Modifications non commitées présentes. Activez la réinitialisation forcée ou commitez/stashez pour continuer."
     },
     "buttons": {
-      "retry": "Réessayer"
+      "retry": "Réessayer",
+      "reset": "Réinitialiser"
     }
   },
   "scriptFixer": {
     "title": "Corriger le script",
     "setupScriptTitle": "Corriger le script de configuration",
     "cleanupScriptTitle": "Corriger le script de nettoyage",
+    "archiveScriptTitle": "Corriger le script d'archivage",
     "devServerTitle": "Corriger le script du serveur de développement",
     "scriptLabel": "Script (modifier)",
     "logsLabel": "Logs de la dernière exécution",
@@ -692,5 +727,36 @@
     "statusSuccess": "Terminé avec succès",
     "statusFailed": "Échec avec le code de sortie {{exitCode}}",
     "statusKilled": "Le processus a été interrompu"
+  },
+  "createWorkspaceFromPr": {
+    "title": "Créer un espace de travail à partir d'une PR",
+    "description": "Sélectionnez une pull request ouverte pour créer un espace de travail. Une tâche sera créée automatiquement avec le titre de la PR.",
+    "repositoryLabel": "Dépôt",
+    "remoteLabel": "Distant",
+    "pullRequestLabel": "Pull Request",
+    "loadingRepositories": "Chargement des dépôts...",
+    "loadingRemotes": "Chargement des distants...",
+    "noRepositoriesFound": "Aucun dépôt trouvé",
+    "loadingPullRequests": "Chargement des pull requests...",
+    "selectRepositoryFirst": "Sélectionnez d'abord un dépôt",
+    "noPullRequestsFound": "Aucune pull request ouverte trouvée",
+    "runSetupScript": "Exécuter le script de configuration",
+    "creating": "Création...",
+    "createWorkspace": "Créer l'espace de travail",
+    "selectRepository": "Sélectionner un dépôt",
+    "selectRemote": "Sélectionner un distant",
+    "selectPullRequest": "Sélectionner une pull request",
+    "searchPrsPlaceholder": "Rechercher des PRs par numéro ou titre...",
+    "noMatchingPrs": "Aucune pull request correspondante",
+    "default": "par défaut",
+    "openPrInBrowser": "Ouvrir la PR dans le navigateur",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLI n'est pas installé",
+      "unsupportedProvider": "Fournisseur Git non pris en charge",
+      "failedToLoadPrs": "Échec du chargement des pull requests",
+      "prNotFound": "Pull request non trouvée",
+      "repoNotInProject": "Le dépôt n'est dans aucun projet",
+      "failedToCreateWorkspace": "Échec de la création de l'espace de travail"
+    }
   }
 }

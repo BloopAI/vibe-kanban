@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-pub const APPROVAL_TIMEOUT_SECONDS: i64 = 3600; // 1 hour
+pub const APPROVAL_TIMEOUT_SECONDS: i64 = 36000; // 10 hours
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ApprovalRequest {

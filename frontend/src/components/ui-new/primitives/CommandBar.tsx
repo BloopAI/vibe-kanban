@@ -1,4 +1,13 @@
-import { CaretLeftIcon, CopyIcon, FolderIcon } from '@phosphor-icons/react';
+import {
+  CaretLeftIcon,
+  CopyIcon,
+  FolderIcon,
+  ArrowFatLineUpIcon,
+  ArrowUpIcon,
+  MinusIcon,
+  ArrowDownIcon,
+  PlusIcon,
+} from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
   Command,
@@ -11,7 +20,11 @@ import {
 } from './Command';
 import type { ActionDefinition, ActionIcon } from '../actions';
 import { isSpecialIcon } from '../actions';
-import type { ResolvedGroup, ResolvedGroupItem } from '../actions/pages';
+import type {
+  ResolvedGroup,
+  ResolvedGroupItem,
+  StatusItem,
+} from '../actions/pages';
 import { IdeIcon } from '@/components/ide/IdeIcon';
 
 /**
@@ -53,6 +66,8 @@ interface CommandBarProps {
   search: string;
   // Called when search changes
   onSearchChange: (search: string) => void;
+  // Statuses for looking up issue status colors
+  statuses?: StatusItem[];
 }
 
 export function CommandBar({
@@ -63,6 +78,7 @@ export function CommandBar({
   getLabel,
   search,
   onSearchChange,
+  statuses = [],
 }: CommandBarProps) {
   const { t } = useTranslation('common');
 
@@ -120,6 +136,104 @@ export function CommandBar({
                   >
                     <FolderIcon className="h-4 w-4" weight="regular" />
                     <span>{item.repo.display_name}</span>
+                  </CommandItem>
+                );
+              } else if (item.type === 'status') {
+                return (
+                  <CommandItem
+                    key={item.status.id}
+                    value={`${item.status.id} ${item.status.name}`}
+                    onSelect={() => onSelect(item)}
+                  >
+                    <div
+                      className="h-4 w-4 rounded-full shrink-0"
+                      style={{ backgroundColor: `hsl(${item.status.color})` }}
+                    />
+                    <span>{item.status.name}</span>
+                  </CommandItem>
+                );
+              } else if (item.type === 'priority') {
+                const priorityConfig = {
+                  urgent: {
+                    icon: ArrowFatLineUpIcon,
+                    colorClass: 'text-error',
+                  },
+                  high: { icon: ArrowUpIcon, colorClass: 'text-brand' },
+                  medium: { icon: MinusIcon, colorClass: 'text-low' },
+                  low: { icon: ArrowDownIcon, colorClass: 'text-success' },
+                } as const;
+                const config = item.priority.id
+                  ? priorityConfig[item.priority.id]
+                  : null;
+                const IconComponent = config?.icon;
+                return (
+                  <CommandItem
+                    key={item.priority.id ?? 'no-priority'}
+                    value={`${item.priority.id ?? 'none'} ${item.priority.name}`}
+                    onSelect={() => onSelect(item)}
+                  >
+                    {IconComponent && (
+                      <IconComponent
+                        className={`h-4 w-4 ${config?.colorClass}`}
+                        weight="bold"
+                      />
+                    )}
+                    <span>{item.priority.name}</span>
+                  </CommandItem>
+                );
+              } else if (item.type === 'createSubIssue') {
+                return (
+                  <CommandItem
+                    key="create-sub-issue"
+                    value="create new issue"
+                    onSelect={() => onSelect(item)}
+                  >
+                    <PlusIcon
+                      className="h-4 w-4 shrink-0 text-brand"
+                      weight="bold"
+                    />
+                    <span>{t('kanban.createNewIssue')}</span>
+                  </CommandItem>
+                );
+              } else if (item.type === 'issue') {
+                const priorityConfig = {
+                  urgent: {
+                    icon: ArrowFatLineUpIcon,
+                    colorClass: 'text-error',
+                  },
+                  high: { icon: ArrowUpIcon, colorClass: 'text-brand' },
+                  medium: { icon: MinusIcon, colorClass: 'text-low' },
+                  low: { icon: ArrowDownIcon, colorClass: 'text-success' },
+                } as const;
+                const config = item.issue.priority
+                  ? priorityConfig[item.issue.priority]
+                  : null;
+                const PriorityIconComponent = config?.icon;
+                const statusColor =
+                  statuses.find((s) => s.id === item.issue.status_id)?.color ??
+                  '0 0% 50%';
+                return (
+                  <CommandItem
+                    key={item.issue.id}
+                    value={`${item.issue.id} ${item.issue.simple_id} ${item.issue.title}`}
+                    onSelect={() => onSelect(item)}
+                  >
+                    {PriorityIconComponent && (
+                      <PriorityIconComponent
+                        className={`h-4 w-4 shrink-0 ${config?.colorClass}`}
+                        weight="bold"
+                      />
+                    )}
+                    <span className="font-mono text-low shrink-0">
+                      {item.issue.simple_id}
+                    </span>
+                    <div
+                      className="h-2 w-2 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: `hsl(${statusColor})`,
+                      }}
+                    />
+                    <span className="truncate">{item.issue.title}</span>
                   </CommandItem>
                 );
               } else if (item.type === 'action') {

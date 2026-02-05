@@ -8,6 +8,7 @@ import {
 } from '@virtuoso.dev/message-list';
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -20,11 +21,23 @@ import NewDisplayConversationEntry from './NewDisplayConversationEntry';
 import { ApprovalFormProvider } from '@/contexts/ApprovalFormContext';
 import { useEntries } from '@/contexts/EntriesContext';
 import {
+  useResetProcess,
+  type UseResetProcessResult,
+} from '@/components/ui-new/hooks/useResetProcess';
+import {
   AddEntryType,
   PatchTypeWithKey,
+  DisplayEntry,
+  isAggregatedGroup,
+  isAggregatedDiffGroup,
   useConversationHistory,
 } from '@/components/ui-new/hooks/useConversationHistory';
+import { aggregateConsecutiveEntries } from '@/utils/aggregateEntries';
 import type { WorkspaceWithSession } from '@/types/attempt';
+import type { RepoWithTargetBranch } from 'shared/types';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { ChatScriptPlaceholder } from '../primitives/conversation/ChatScriptPlaceholder';
+import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialog';
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
@@ -37,6 +50,11 @@ export interface ConversationListHandle {
 
 interface MessageListContext {
   attempt: WorkspaceWithSession;
+  onConfigureSetup: (() => void) | undefined;
+  onConfigureCleanup: (() => void) | undefined;
+  showSetupPlaceholder: boolean;
+  showCleanupPlaceholder: boolean;
+  resetAction: UseResetProcessResult;
 }
 
 const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
@@ -61,10 +79,41 @@ const ScrollToTopOfLastItem: ScrollModifier = {
 };
 
 const ItemContent: VirtuosoMessageListProps<
-  PatchTypeWithKey,
+  DisplayEntry,
   MessageListContext
 >['ItemContent'] = ({ data, context }) => {
   const attempt = context?.attempt;
+  const resetAction = context?.resetAction;
+
+  // Handle aggregated tool groups (file_read, search, web_fetch)
+  if (isAggregatedGroup(data)) {
+    return (
+      <NewDisplayConversationEntry
+        expansionKey={data.patchKey}
+        aggregatedGroup={data}
+        aggregatedDiffGroup={null}
+        entry={null}
+        executionProcessId={data.executionProcessId}
+        taskAttempt={attempt}
+        resetAction={resetAction}
+      />
+    );
+  }
+
+  // Handle aggregated diff groups (file_edit by same path)
+  if (isAggregatedDiffGroup(data)) {
+    return (
+      <NewDisplayConversationEntry
+        expansionKey={data.patchKey}
+        aggregatedGroup={null}
+        aggregatedDiffGroup={data}
+        entry={null}
+        executionProcessId={data.executionProcessId}
+        taskAttempt={attempt}
+        resetAction={resetAction}
+      />
+    );
+  }
 
   if (data.type === 'STDOUT') {
     return <p>{data.content}</p>;
@@ -77,8 +126,11 @@ const ItemContent: VirtuosoMessageListProps<
       <NewDisplayConversationEntry
         expansionKey={data.patchKey}
         entry={data.content}
+        aggregatedGroup={null}
+        aggregatedDiffGroup={null}
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
+        resetAction={resetAction}
       />
     );
   }
@@ -87,7 +139,7 @@ const ItemContent: VirtuosoMessageListProps<
 };
 
 const computeItemKey: VirtuosoMessageListProps<
-  PatchTypeWithKey,
+  DisplayEntry,
   MessageListContext
 >['computeItemKey'] = ({ data }) => `conv-${data.patchKey}`;
 
@@ -95,8 +147,9 @@ export const ConversationList = forwardRef<
   ConversationListHandle,
   ConversationListProps
 >(function ConversationList({ attempt }, ref) {
+  const resetAction = useResetProcess();
   const [channelData, setChannelData] =
-    useState<DataWithScrollModifier<PatchTypeWithKey> | null>(null);
+    useState<DataWithScrollModifier<DisplayEntry> | null>(null);
   const [loading, setLoading] = useState(true);
   const { setEntries, reset } = useEntries();
   const pendingUpdateRef = useRef<{
@@ -105,6 +158,51 @@ export const ConversationList = forwardRef<
     loading: boolean;
   } | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Get repos from workspace context to check if scripts are configured
+  let repos: RepoWithTargetBranch[] = [];
+  try {
+    const workspaceContext = useWorkspaceContext();
+    repos = workspaceContext.repos;
+  } catch {
+    // Context not available
+  }
+
+  // Use ref to access current repos without causing callback recreation
+  const reposRef = useRef(repos);
+  reposRef.current = repos;
+
+  // Check if any repo has setup or cleanup scripts configured
+  const hasSetupScript = repos.some((repo) => repo.setup_script);
+  const hasCleanupScript = repos.some((repo) => repo.cleanup_script);
+
+  // Handlers to open script fixer dialog for setup/cleanup scripts
+  const handleConfigureSetup = useCallback(() => {
+    const currentRepos = reposRef.current;
+    if (currentRepos.length === 0) return;
+
+    ScriptFixerDialog.show({
+      scriptType: 'setup',
+      repos: currentRepos,
+      workspaceId: attempt.id,
+      sessionId: attempt.session?.id,
+    });
+  }, [attempt.id, attempt.session?.id]);
+
+  const handleConfigureCleanup = useCallback(() => {
+    const currentRepos = reposRef.current;
+    if (currentRepos.length === 0) return;
+
+    ScriptFixerDialog.show({
+      scriptType: 'cleanup',
+      repos: currentRepos,
+      workspaceId: attempt.id,
+      sessionId: attempt.session?.id,
+    });
+  }, [attempt.id, attempt.session?.id]);
+
+  // Determine if configure buttons should be shown
+  const canConfigure = repos.length > 0;
 
   useEffect(() => {
     setLoading(true);
@@ -147,7 +245,9 @@ export const ConversationList = forwardRef<
         scrollModifier = AutoScrollToBottom;
       }
 
-      setChannelData({ data: pending.entries, scrollModifier });
+      const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
+
+      setChannelData({ data: aggregatedEntries, scrollModifier });
       setEntries(pending.entries);
 
       if (loading) {
@@ -156,10 +256,42 @@ export const ConversationList = forwardRef<
     }, 100);
   };
 
-  useConversationHistory({ attempt, onEntriesUpdated });
+  const { hasSetupScriptRun, hasCleanupScriptRun, hasRunningProcess } =
+    useConversationHistory({ attempt, onEntriesUpdated });
+
+  // Determine if there are entries to show placeholders
+  const entries = channelData?.data ?? [];
+  const hasEntries = entries.length > 0;
+
+  // Show placeholders only if script not configured AND not already run
+  const showSetupPlaceholder =
+    !hasSetupScript && !hasSetupScriptRun && hasEntries;
+  const showCleanupPlaceholder =
+    !hasCleanupScript &&
+    !hasCleanupScriptRun &&
+    !hasRunningProcess &&
+    hasEntries;
 
   const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
-  const messageListContext = useMemo(() => ({ attempt }), [attempt]);
+  const messageListContext = useMemo(
+    () => ({
+      attempt,
+      onConfigureSetup: canConfigure ? handleConfigureSetup : undefined,
+      onConfigureCleanup: canConfigure ? handleConfigureCleanup : undefined,
+      showSetupPlaceholder,
+      showCleanupPlaceholder,
+      resetAction,
+    }),
+    [
+      attempt,
+      canConfigure,
+      handleConfigureSetup,
+      handleConfigureCleanup,
+      showSetupPlaceholder,
+      showCleanupPlaceholder,
+      resetAction,
+    ]
+  );
 
   // Expose scroll to previous user message functionality via ref
   useImperativeHandle(
@@ -229,7 +361,7 @@ export const ConversationList = forwardRef<
         <VirtuosoMessageListLicense
           licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
         >
-          <VirtuosoMessageList<PatchTypeWithKey, MessageListContext>
+          <VirtuosoMessageList<DisplayEntry, MessageListContext>
             ref={messageListRef}
             className="h-full scrollbar-none"
             data={channelData}
@@ -237,8 +369,30 @@ export const ConversationList = forwardRef<
             context={messageListContext}
             computeItemKey={computeItemKey}
             ItemContent={ItemContent}
-            Header={() => <div className="h-2" />}
-            Footer={() => <div className="h-2" />}
+            Header={({ context }) => (
+              <div className="pt-2">
+                {context?.showSetupPlaceholder && (
+                  <div className="my-base px-double">
+                    <ChatScriptPlaceholder
+                      type="setup"
+                      onConfigure={context.onConfigureSetup}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+            Footer={({ context }) => (
+              <div className="pb-2">
+                {context?.showCleanupPlaceholder && (
+                  <div className="my-base px-double">
+                    <ChatScriptPlaceholder
+                      type="cleanup"
+                      onConfigure={context.onConfigureCleanup}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           />
         </VirtuosoMessageListLicense>
       </div>

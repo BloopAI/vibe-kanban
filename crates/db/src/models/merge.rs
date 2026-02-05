@@ -169,7 +169,32 @@ impl Merge {
         .map(Into::into)
     }
 
-    /// Get all open PRs for monitoring
+    pub async fn find_all_pr(pool: &SqlitePool) -> Result<Vec<PrMerge>, sqlx::Error> {
+        let rows = sqlx::query_as!(
+            MergeRow,
+            r#"SELECT
+                id as "id!: Uuid",
+                workspace_id as "workspace_id!: Uuid",
+                repo_id as "repo_id!: Uuid",
+                merge_type as "merge_type!: MergeType",
+                merge_commit,
+                pr_number,
+                pr_url,
+                pr_status as "pr_status?: MergeStatus",
+                pr_merged_at as "pr_merged_at?: DateTime<Utc>",
+                pr_merge_commit_sha,
+                created_at as "created_at!: DateTime<Utc>",
+                target_branch_name as "target_branch_name!: String"
+               FROM merges
+               WHERE merge_type = 'pr'
+               ORDER BY created_at ASC"#,
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows.into_iter().map(Into::into).collect())
+    }
+
     pub async fn get_open_prs(pool: &SqlitePool) -> Result<Vec<PrMerge>, sqlx::Error> {
         let rows = sqlx::query_as!(
             MergeRow,

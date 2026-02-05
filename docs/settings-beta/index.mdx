@@ -1,0 +1,106 @@
+---
+title: "Settings Overview"
+description: "Configure application-wide settings including themes, editor, agents, and more"
+sidebarTitle: "Overview"
+---
+
+<Note>
+This is the new Settings UI currently in <Badge color="orange">Beta</Badge>. It provides the same configuration options with a redesigned interface accessible from the Workspaces UI.
+</Note>
+
+The new Settings dialog provides a streamlined, tabbed interface for configuring Vibe Kanban.
+
+## Accessing Settings
+
+<Frame>
+<img src="/images/settings-beta-accessing.png" alt="Workspaces navbar showing the Settings gear icon with tooltip" />
+</Frame>
+
+- Click the **Settings** icon (<Icon icon="gear" />) in the Workspaces navbar
+- Press `Cmd/Ctrl + K` and select **Settings**
+
+## Settings Tabs
+
+<Frame>
+<img src="/images/settings-beta-general.png" alt="Settings dialog showing the tabbed interface with General, Projects, Repositories, Organization Settings, Agents, and MCP Servers tabs" />
+</Frame>
+
+The settings dialog is organised into the following tabs:
+
+| Tab | Description |
+|-----|-------------|
+| **General** | Appearance, default agent, editor, git, and notifications |
+| **Projects** | Project-specific settings |
+| **Repositories** | Repository scripts (dev server, setup, cleanup) |
+| **Organization Settings** | Organisation members, invitations, and settings |
+| **Remote Projects** | Cloud-synced projects across organisations |
+| **Agents** | Agent profiles and variants |
+| **MCP Servers** | Model Context Protocol server configuration |
+
+## General
+
+Configure appearance, default agent, editor, git preferences, notifications, tags, and beta features.
+
+<Card title="General Settings" icon="gear" href="/settings-beta/general">
+  Complete guide to general settings including appearance, editor configuration, and more
+</Card>
+
+## Projects & Repositories
+
+Configure project-specific settings and repository scripts including dev server, setup, and cleanup commands.
+
+<Card title="Projects & Repositories" icon="folder-tree" href="/settings-beta/projects-repositories">
+  Configure project settings and repository scripts
+</Card>
+
+## Organization Settings
+
+Manage your Cloud organisations, invite team members, and configure organisation-level settings.
+
+<Card title="Organisation Settings" icon="buildings" href="/settings-beta/organization-settings">
+  Manage members, invitations, and organisation settings
+</Card>
+
+## Remote Projects
+
+View and manage all your Cloud-synced projects across organisations. Create, edit, and delete projects from a centralised interface.
+
+<Card title="Remote Projects" icon="cloud" href="/settings-beta/remote-projects">
+  Manage Cloud projects across all your organisations
+</Card>
+
+## Agents
+
+<Frame>
+<img src="/images/settings-beta-agents.png" alt="Agents tab showing agent list, configuration variants, and settings options" />
+</Frame>
+
+Define and customise agent variants using a form-based interface. The Agents tab uses a finder-style two-column layout:
+
+- **Left column (Agents)** - Available coding agents (Claude Code, Codex, Opencode, Cursor Agent, etc.)
+- **Right column (Configurations)** - Different variants for the selected agent (Default, Opus, Approvals, Plan, etc.)
+
+<Card title="Agent Profiles & Variants" icon="robot" href="/settings-beta/agent-configurations">
+  Detailed guide with examples for configuring agent variants
+</Card>
+
+## MCP Servers
+
+<Frame>
+<img src="/images/settings-beta-mcp.png" alt="MCP Servers tab showing agent selection, JSON configuration, and popular servers" />
+</Frame>
+
+Configure Model Context Protocol servers to extend coding agent capabilities with custom tools and resources.
+
+- **Agent** - Choose which agent to configure MCP servers for (e.g., Claude Code)
+- **Server Configuration (JSON)** - Edit the MCP server configuration directly in JSON format
+- **Popular servers** - Click a card to insert a pre-configured MCP server into the JSON
+
+<Card title="Connecting MCP Servers" icon="server" href="/settings-beta/mcp-servers">
+  Configure MCP servers within Vibe Kanban for your coding agents
+</Card>
+
+## Related Documentation
+
+- [Classic Settings](/configuration-customisation/global-settings) - Original settings page documentation
+- [Workspaces](/workspaces) - The new Workspaces UI where beta settings are accessed

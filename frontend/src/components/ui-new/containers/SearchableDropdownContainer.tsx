@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { VirtuosoHandle } from 'react-virtuoso';
 import { SearchableDropdown } from '@/components/ui-new/primitives/SearchableDropdown';
@@ -30,6 +31,9 @@ interface SearchableDropdownContainerProps<T> {
 
   /** Badge text for each item (null = no badges) */
   getItemBadge: ((item: T) => string | undefined) | null;
+
+  /** Icon/avatar to render before each item's label (null = no icons) */
+  getItemIcon: ((item: T) => ReactNode) | null;
 }
 
 export function SearchableDropdownContainer<T>({
@@ -44,6 +48,7 @@ export function SearchableDropdownContainer<T>({
   placeholder,
   emptyMessage,
   getItemBadge,
+  getItemIcon,
 }: SearchableDropdownContainerProps<T>) {
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
@@ -161,6 +166,7 @@ export function SearchableDropdownContainer<T>({
       placeholder={placeholder}
       emptyMessage={emptyMessage}
       getItemBadge={getItemBadge ?? undefined}
+      getItemIcon={getItemIcon ?? undefined}
     />
   );
 }

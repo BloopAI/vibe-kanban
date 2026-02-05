@@ -9,10 +9,26 @@ Workspaces is currently in <Badge color="orange">Beta</Badge>. You can enable it
 </Note>
 
 <Frame>
-<img src="/images/workspaces-overview.png" alt="Workspaces UI showing the four-panel layout with workspace sidebar, conversation, changes panel, and details sidebar" />
+<img style={{maxHeight: "400px"}} src="/images/workspaces-overview.png" alt="Workspaces UI showing the four-panel layout with workspace sidebar, conversation, changes panel, and details sidebar" />
 </Frame>
 
 The Workspaces UI is a complete redesign of the task execution experience, providing an IDE-like interface optimised for AI-assisted development workflows.
+
+## What is a Workspace?
+
+A **workspace** is an isolated environment for completing a coding task. Think of it as a dedicated "project room" where you:
+
+1. **Work on a specific task** - Each workspace focuses on one goal (e.g., "Add user authentication")
+2. **Chat with coding agents** - AI assistants that write and modify code for you
+3. **Review changes** - See exactly what code was added, modified, or deleted
+4. **Test your application** - Built-in preview browser to see changes in action
+5. **Create pull requests** - Submit your changes for review when ready
+
+<Info>
+**Why use Workspaces instead of coding manually?**
+
+Workspaces let you describe what you want in plain English, and AI coding agents do the implementation. You review the changes, provide feedback, and iterate until the task is complete. It's like having a junior developer who works instantly and never gets tired.
+</Info>
 
 ## Key Concepts
 
@@ -92,4 +108,57 @@ You can return to the classic kanban board interface at any time:
 <Info>
 Your workspaces and task data are preserved when switching between the classic and new UI. You can switch back and forth without losing any work.
 </Info>
+
+## Common Questions
+
+<AccordionGroup>
+<Accordion title="What happens to my code when I create a workspace?">
+When you create a workspace, Vibe Kanban:
+
+1. Creates a **git worktree** - a separate working directory linked to a new branch
+2. Your original repository stays untouched
+3. All changes happen in the worktree on a new branch
+4. Nothing is pushed to remote until you explicitly create a PR
+
+**Your main branch is safe.** The workspace isolates all changes until you're ready to merge.
+</Accordion>
+
+<Accordion title="Can I work on multiple tasks at once?">
+Yes. Each workspace is completely independent:
+
+- Create as many workspaces as you need
+- Each has its own branch, changes, and sessions
+- Switch between workspaces using the sidebar
+- Agents in different workspaces don't interfere with each other
+</Accordion>
+
+<Accordion title="What if the agent makes a mistake?">
+You have full control:
+
+- **Review changes** in the Changes panel before committing
+- **Add comments** on specific lines to request fixes
+- **Edit messages** to retry with different instructions
+- **Start a new session** if the conversation goes off track
+- **Delete the workspace** if you want to start completely fresh
+
+The agent only modifies files in your workspace - it cannot push code or merge without your explicit action.
+</Accordion>
+
+<Accordion title="How do I know when the agent is done?">
+Watch for these indicators:
+
+- **Status in sidebar** changes from "Running" to "Idle"
+- **Chat shows completion** message or asks for next steps
+- **Changes panel** shows all modifications made
+
+If the agent needs your input (approval, clarification), you'll see a "Needs Attention" indicator with a raised hand icon.
+</Accordion>
+
+<Accordion title="What's the difference between a Project and a Workspace?">
+- **Project** = A container that groups related repositories (configured once in Settings)
+- **Workspace** = A task execution environment for a specific coding task
+
+Think of it this way: A Project is like a team folder that contains your repos. A Workspace is a task you're working on using those repos.
+</Accordion>
+</AccordionGroup>
 

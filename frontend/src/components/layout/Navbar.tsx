@@ -41,7 +41,9 @@ import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { oauthApi } from '@/lib/api';
 
-const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
+const INTERNAL_NAV = [
+  { label: 'Projects', icon: FolderOpen, to: '/local-projects' },
+];
 
 const EXTERNAL_LINKS = [
   {
@@ -91,7 +93,9 @@ export function Navbar() {
   );
   const { t } = useTranslation(['tasks', 'common']);
   // Navbar is global, but the share tasks toggle only makes sense on the tasks route
-  const isTasksRoute = /^\/projects\/[^/]+\/tasks/.test(location.pathname);
+  const isTasksRoute = /^\/local-projects\/[^/]+\/tasks/.test(
+    location.pathname
+  );
   const showSharedTasks = searchParams.get('shared') !== 'off';
   const shouldShowSharedToggle =
     isTasksRoute && active && project?.remote_project_id != null;
@@ -142,7 +146,7 @@ export function Navbar() {
       <div className="w-full px-3">
         <div className="flex items-center h-12 py-2">
           <div className="flex-1 flex items-center">
-            <Link to="/projects">
+            <Link to="/local-projects">
               <Logo />
             </Link>
             <a
@@ -318,7 +322,7 @@ export function Navbar() {
                   ) : (
                     <DropdownMenuItem onSelect={handleOpenOAuth}>
                       <LogIn className="mr-2 h-4 w-4" />
-                      Sign in
+                      {t('common:signIn')}
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>

@@ -1,5 +1,5 @@
 # Rust
-/target
+target/
 **/*.rs.bk
 
 # Node.js
@@ -85,3 +85,4 @@ dev_assets
 vibe-kanban-cloud/
 
 .jj
+.sisyphus/

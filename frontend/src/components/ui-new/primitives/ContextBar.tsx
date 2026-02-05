@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import type { Icon } from '@phosphor-icons/react';
+import { CopyIcon, type Icon } from '@phosphor-icons/react';
 import type { EditorType } from 'shared/types';
 import { cn } from '@/lib/utils';
 import { Tooltip } from './Tooltip';
@@ -191,6 +191,8 @@ export function ContextBar({
             key={key}
             onCopy={() => onExecuteAction(action)}
             disabled={!enabled}
+            iconSize="size-icon-base"
+            icon={CopyIcon}
           />
         );
       }

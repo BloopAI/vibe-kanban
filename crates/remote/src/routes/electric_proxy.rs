@@ -44,6 +44,10 @@ pub fn router() -> Router<AppState> {
         .route(shapes::USERS.url, get(proxy_users))
         // Project-scoped
         .route(shapes::WORKSPACES.url, get(proxy_workspaces))
+        .route(
+            shapes::PROJECT_WORKSPACES.url,
+            get(proxy_project_workspaces),
+        )
         .route(shapes::PROJECT_STATUSES.url, get(proxy_project_statuses))
         .route(shapes::TAGS.url, get(proxy_tags))
         .route(shapes::ISSUES.url, get(proxy_issues))
@@ -138,6 +142,20 @@ async fn proxy_users(
 async fn proxy_workspaces(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
+    Query(query): Query<ShapeQuery>,
+) -> Result<Response, ProxyError> {
+    proxy_table(
+        &state,
+        &shapes::WORKSPACES,
+        &query.params,
+        &[ctx.user.id.to_string()],
+    )
+    .await
+}
+
+async fn proxy_project_workspaces(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
     Query(query): Query<ShapeQuery>,
 ) -> Result<Response, ProxyError> {
@@ -147,7 +165,7 @@ async fn proxy_workspaces(
 
     proxy_table(
         &state,
-        &shapes::WORKSPACES,
+        &shapes::PROJECT_WORKSPACES,
         &query.params,
         &[project_id.to_string()],
     )

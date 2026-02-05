@@ -36,7 +36,8 @@
     "reset": "초기화",
     "save": "저장",
     "send": "보내기",
-    "addItem": "항목 추가"
+    "addItem": "항목 추가",
+    "reply": "답장"
   },
   "form": {
     "notSpecified": "지정되지 않음",
@@ -67,7 +68,10 @@
       "createdTask": "작업 생성: {{description}}",
       "todoOperation": "{{operation}} 할 일"
     },
-    "fixScript": "스크립트 수정"
+    "fixScript": "스크립트 수정",
+    "subagent": {
+      "defaultType": "서브에이전트"
+    }
   },
   "language": {
     "browserDefault": "브라우저 기본값"
@@ -91,11 +95,18 @@
     "menuItem": "조직",
     "loadingPlaceholder": "조직 로딩 중...",
     "selectPlaceholder": "조직 선택",
-    "currentBadge": " (현재)"
+    "currentBadge": " (현재)",
+    "organizations": "조직",
+    "createOrganization": "조직 만들기",
+    "orgSettings": "조직 설정",
+    "migrate": "마이그레이션"
   },
   "navbar": {
     "tryNewUI": "새로운 UI 사용해보기"
   },
+  "ok": "확인",
+  "error": "오류",
+  "signIn": "로그인",
   "signOut": "로그아웃",
   "devMode": {
     "banner": "개발 모드 - 개발 빌드입니다"
@@ -135,6 +146,7 @@
     "active": "활성",
     "archived": "보관됨",
     "loading": "로딩 중...",
+    "notFound": "워크스페이스를 찾을 수 없음",
     "selectToStart": "워크스페이스를 선택하여 시작",
     "draft": "초안",
     "viewArchive": "보관함 보기",
@@ -155,7 +167,16 @@
       "placeholder": "워크스페이스 이름 입력",
       "action": "이름 변경",
       "renaming": "이름 변경 중..."
-    }
+    },
+    "unlinkFromIssue": "이슈에서 연결 해제",
+    "deleteWorkspace": "워크스페이스 삭제",
+    "unlink": "연결 해제",
+    "delete": "삭제",
+    "unlinkConfirmMessage": "이 워크스페이스를 이슈에서 연결 해제하시겠습니까? 워크스페이스는 그대로 유지되지만 이 이슈와의 연결이 끊어집니다.",
+    "deleteConfirmMessage": "이 워크스페이스를 삭제하시겠습니까? 이슈에서 연결이 해제되고 로컬 워크스페이스가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
+    "unlinkError": "워크스페이스 연결 해제 실패",
+    "deleteError": "워크스페이스 삭제 실패",
+    "filesChanged": "{{count}}개 파일"
   },
   "fileTree": {
     "searchPlaceholder": "파일 검색...",
@@ -324,5 +345,44 @@
     "commands": "명령어",
     "noTagsOrFiles": "태그 또는 파일을 찾을 수 없습니다",
     "noCommands": "이 에이전트에 사용 가능한 명령어가 없습니다."
+  },
+  "kanban": {
+    "noStatusesFound": "이 프로젝트의 상태를 찾을 수 없습니다",
+    "noVisibleStatuses": "모든 상태가 숨겨져 있습니다. 표시 설정을 사용하거나 다른 탭으로 전환하여 이슈를 확인하세요.",
+    "noProjectFound": "프로젝트를 찾을 수 없습니다",
+    "noOrganizationFound": "조직을 찾을 수 없습니다",
+    "unassigned": "미할당",
+    "noTagsAvailable": "사용 가능한 태그 없음",
+    "createNewIssue": "새 이슈 만들기",
+    "createNewTag": "새 태그 만들기",
+    "searchTags": "태그 검색...",
+    "selectColorFor": "색상 선택:",
+    "createTag": "만들기",
+    "filesCount": "{{count}}개 파일",
+    "noPrCreated": "PR이 생성되지 않음",
+    "noCommentsYet": "아직 댓글이 없습니다",
+    "comments": "댓글",
+    "enterCommentPlaceholder": "댓글을 입력하세요...",
+    "subIssues": "하위 이슈",
+    "noSubIssues": "하위 이슈 없음",
+    "parentIssue": "상위",
+    "subIssueIndicator": "↳",
+    "showSubIssues": "하위 이슈 표시",
+    "viewTabs": {
+      "active": "활성",
+      "all": "전체"
+    },
+    "loginRequired": {
+      "title": "로그인 필요",
+      "description": "이 프로젝트를 보려면 로그인하세요.",
+      "action": "로그인"
+    }
+  },
+  "syncError": {
+    "networkErrors": "네트워크 오류",
+    "streamsAffected": "{{count}}개 스트림이 영향을 받음",
+    "streamsAffected_other": "{{count}}개 스트림이 영향을 받음",
+    "status": "(상태 {{status}})",
+    "refreshPage": "페이지 새로고침"
   }
 }

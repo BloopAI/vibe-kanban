@@ -17,6 +17,7 @@ use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
+use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 use workspace_utils::{
     approvals::ApprovalStatus, diff::create_unified_diff, log_msg::LogMsg, msg_store::MsgStore,
@@ -52,7 +53,7 @@ fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
         "npx -y @musistudio/claude-code-router@1.0.66 code"
     } else {
-        "npx -y @anthropic-ai/claude-code@2.1.12"
+        "npx -y @anthropic-ai/claude-code@2.1.32"
     }
 }
 
@@ -121,6 +122,7 @@ impl ClaudeCode {
             "--output-format=stream-json",
             "--input-format=stream-json",
             "--include-partial-messages",
+            "--replay-user-messages",
             "--disallowedTools=AskUserQuestion",
         ]);
 
@@ -203,14 +205,21 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await?;
-        let command_parts = command_builder.build_follow_up(&[
-            "--fork-session".to_string(),
-            "--resume".to_string(),
-            session_id.to_string(),
-        ])?;
+
+        let mut args = vec!["--resume".to_string(), session_id.to_string()];
+
+        // --resume-session-at truncates Claude's conversation history to the specified
+        // message and continues from there.
+        if let Some(uuid) = reset_to_message_id {
+            args.push("--resume-session-at".to_string());
+            args.push(uuid.to_string());
+        }
+
+        let command_parts = command_builder.build_follow_up(&args)?;
         self.spawn_internal(current_dir, prompt, command_parts, env)
             .await
     }
@@ -325,18 +334,26 @@ impl ClaudeCode {
         let permission_mode = self.permission_mode();
         let hooks = self.get_hooks(env.commit_reminder);
 
-        // Create interrupt channel for graceful shutdown
-        let (interrupt_tx, interrupt_rx) = tokio::sync::oneshot::channel::<()>();
+        // Create cancellation token for graceful shutdown
+        let cancel = CancellationToken::new();
 
         // Spawn task to handle the SDK client with control protocol
         let prompt_clone = combined_prompt.clone();
         let approvals_clone = self.approvals_service.clone();
         let repo_context = env.repo_context.clone();
+        let commit_reminder_prompt = env.commit_reminder_prompt.clone();
+        let cancel_for_task = cancel.clone();
         tokio::spawn(async move {
             let log_writer = LogWriter::new(new_stdout);
-            let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone, repo_context);
+            let client = ClaudeAgentClient::new(
+                log_writer.clone(),
+                approvals_clone,
+                repo_context,
+                commit_reminder_prompt,
+                cancel_for_task.clone(),
+            );
             let protocol_peer =
-                ProtocolPeer::spawn(child_stdin, child_stdout, client.clone(), interrupt_rx);
+                ProtocolPeer::spawn(child_stdin, child_stdout, client.clone(), cancel_for_task);
 
             // Initialize control protocol
             if let Err(e) = protocol_peer.initialize(hooks).await {
@@ -363,7 +380,7 @@ impl ClaudeCode {
         Ok(SpawnedChild {
             child,
             exit_signal: None,
-            interrupt_sender: Some(interrupt_tx),
+            cancel: Some(cancel),
         })
     }
 }
@@ -429,12 +446,15 @@ impl ClaudeLogProcessor {
             let worktree_path = current_dir_clone.to_string_lossy().to_string();
             let mut session_id_extracted = false;
             let mut processor = Self::new_with_strategy(strategy);
+            // Track pending assistant UUID - only committed when we see a Result message
+            let mut pending_assistant_uuid: Option<String> = None;
 
             while let Some(Ok(msg)) = stream.next().await {
                 let chunk = match msg {
                     LogMsg::Stdout(x) => x,
                     LogMsg::JsonPatch(_)
                     | LogMsg::SessionId(_)
+                    | LogMsg::MessageId(_)
                     | LogMsg::Stderr(_)
                     | LogMsg::Ready => continue,
                     LogMsg::Finished => break,
@@ -464,12 +484,33 @@ impl ClaudeLogProcessor {
 
                     match serde_json::from_str::<ClaudeJson>(trimmed) {
                         Ok(claude_json) => {
-                            // Extract session ID if present
                             if !session_id_extracted
                                 && let Some(session_id) = Self::extract_session_id(&claude_json)
                             {
                                 msg_store.push_session_id(session_id);
                                 session_id_extracted = true;
+                            }
+
+                            // Track message UUIDs for --resume-session-at:
+                            // - User messages: always valid, push immediately and clear pending
+                            // - Assistant messages: may have incomplete tool calls, store as pending
+                            // - Result messages: confirms assistant turn is complete, commit pending
+                            match &claude_json {
+                                ClaudeJson::User { uuid, .. } => {
+                                    pending_assistant_uuid = None;
+                                    if let Some(uuid) = uuid {
+                                        msg_store.push_message_id(uuid.clone());
+                                    }
+                                }
+                                ClaudeJson::Assistant { uuid, .. } => {
+                                    pending_assistant_uuid = uuid.clone();
+                                }
+                                ClaudeJson::Result { .. } => {
+                                    if let Some(uuid) = pending_assistant_uuid.take() {
+                                        msg_store.push_message_id(uuid);
+                                    }
+                                }
+                                _ => {}
                             }
 
                             let patches = processor.normalize_entries(
@@ -727,7 +768,7 @@ impl ClaudeLogProcessor {
             ClaudeToolData::Task {
                 description,
                 prompt,
-                ..
+                subagent_type,
             } => {
                 let task_description = if let Some(desc) = description {
                     desc.clone()
@@ -736,6 +777,8 @@ impl ClaudeLogProcessor {
                 };
                 ActionType::TaskCreate {
                     description: task_description,
+                    subagent_type: subagent_type.clone(),
+                    result: None,
                 }
             }
             ClaudeToolData::ExitPlanMode { plan } => {
@@ -965,8 +1008,14 @@ impl ClaudeLogProcessor {
             ClaudeJson::User {
                 message,
                 is_synthetic,
+                is_replay,
                 ..
             } => {
+                // Skip replay messages entirely - they're historical context from resumed sessions
+                if *is_replay {
+                    return patches;
+                }
+
                 if matches!(self.strategy, HistoryStrategy::AmpResume)
                     && message
                         .content
@@ -1091,6 +1140,44 @@ impl ClaudeLogProcessor {
                                     action_type: ActionType::CommandRun {
                                         command: info.content.clone(),
                                         result,
+                                    },
+                                    status,
+                                },
+                                content: info.content.clone(),
+                                metadata: None,
+                            };
+                            patches.push(ConversationPatch::replace(info.entry_index, entry));
+                        } else if matches!(info.tool_data, ClaudeToolData::Task { .. }) {
+                            // Handle Task tool results - capture subagent output
+                            let (res_type, res_value) =
+                                Self::normalize_claude_tool_result_value(content);
+
+                            let status = if is_error.unwrap_or(false) {
+                                ToolStatus::Failed
+                            } else {
+                                ToolStatus::Success
+                            };
+
+                            // Extract subagent_type from the original tool_data
+                            let subagent_type =
+                                if let ClaudeToolData::Task { subagent_type, .. } = &info.tool_data
+                                {
+                                    subagent_type.clone()
+                                } else {
+                                    None
+                                };
+
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::ToolUse {
+                                    tool_name: info.tool_name.clone(),
+                                    action_type: ActionType::TaskCreate {
+                                        description: info.content.clone(),
+                                        subagent_type,
+                                        result: Some(crate::logs::ToolResult {
+                                            r#type: res_type,
+                                            value: res_value,
+                                        }),
                                     },
                                     status,
                                 },
@@ -1375,7 +1462,7 @@ impl ClaudeLogProcessor {
             ActionType::CommandRun { command, .. } => command.to_string(),
             ActionType::Search { query } => query.to_string(),
             ActionType::WebFetch { url } => url.to_string(),
-            ActionType::TaskCreate { description } => {
+            ActionType::TaskCreate { description, .. } => {
                 if description.is_empty() {
                     "Task".to_string()
                 } else {
@@ -1671,12 +1758,18 @@ pub enum ClaudeJson {
     Assistant {
         message: ClaudeMessage,
         session_id: Option<String>,
+        #[serde(default)]
+        uuid: Option<String>,
     },
     User {
         message: ClaudeMessage,
         session_id: Option<String>,
+        #[serde(default)]
+        uuid: Option<String>,
         #[serde(default, rename = "isSynthetic")]
         is_synthetic: bool,
+        #[serde(default, rename = "isReplay")]
+        is_replay: bool,
     },
     ToolUse {
         tool_name: String,

@@ -1,0 +1,161 @@
+---
+title: "Vibe Kanban Cloud"
+description: "Collaborate with your team in real-time with Cloud features"
+sidebarTitle: "Overview"
+---
+
+<Note>
+Vibe Kanban Cloud is currently in <Badge color="orange">Beta</Badge>. Features may change before stable release.
+</Note>
+
+## What is Vibe Kanban Cloud?
+
+**Vibe Kanban Cloud** adds team collaboration to Vibe Kanban. Your projects, issues, and progress sync to the cloud so your entire team stays in sync.
+
+### Key Benefits
+
+<CardGroup cols={2}>
+<Card title="Team Collaboration" icon="users">
+  Invite team members and work together on the same projects. Everyone sees updates in real-time.
+</Card>
+
+<Card title="Work From Anywhere" icon="globe">
+  Your data syncs to the cloud. Access your projects from any computer by signing in.
+</Card>
+
+<Card title="Real-Time Sync" icon="bolt">
+  Changes appear instantly for all team members. No need to refresh or manually sync.
+</Card>
+
+<Card title="Same Interface" icon="desktop">
+  Cloud uses the same Vibe Kanban interface you already know. No new tools to learn.
+</Card>
+</CardGroup>
+
+### Cloud vs Local
+
+| Feature | Local | Cloud |
+|---------|-------|-------|
+| **Data storage** | On your computer | Synced to cloud |
+| **Team access** | Only you | Invite team members |
+| **Sign-in required** | No | Yes (GitHub or Google) |
+| **Real-time collaboration** | No | Yes |
+| **Works offline** | Yes | Requires internet |
+
+<Info>
+You can use both Local and Cloud projects in the same Vibe Kanban installation. They appear in separate sections of the sidebar.
+</Info>
+
+## How It Works
+
+1. **Run Vibe Kanban** as usual with `npx vibe-kanban`
+2. **Sign in** with your GitHub or Google account (a personal organisation is created automatically)
+3. **Create projects** in your personal workspace
+4. **Create a team organisation** if you want to collaborate (optional)
+5. **Invite team members** via email and collaborate in real-time
+
+Your local projects remain untouched. Cloud projects are stored separately and sync automatically.
+
+## Key Concepts
+
+### Organisations
+
+An **organisation** is your team's shared space. It contains:
+- Team members with different roles (Admin, Member)
+- Projects that everyone can access
+- Shared settings
+
+Think of it as your company or team in Vibe Kanban.
+
+### Projects
+
+A **project** is a kanban board for a specific initiative. Each project has:
+- Customisable status columns
+- Issues to track work
+- Tags for categorisation
+
+### Issues
+
+An **issue** is a single piece of work. Unlike local tasks, Cloud issues have:
+- Simple IDs (like `TASK-123`) for easy reference
+- Multiple assignees
+- Priority levels
+- Comments for discussion
+- Sub-issues for breaking down work
+
+## Features
+
+### Team Collaboration
+- Invite members via email
+- Role-based permissions (Admin and Member)
+- See who's assigned to what
+
+### Real-Time Sync
+- Changes appear instantly for everyone
+- No conflicts or manual merging
+- Always up to date
+
+### Advanced Kanban
+- Drag-and-drop issues between columns
+- Custom status columns with colours
+- Filter by priority, assignee, or tags
+- Multiple sort options
+
+### GitHub Integration
+- Link pull requests to issues
+- Review code directly in Vibe Kanban
+- Track PR status
+
+## Getting Started
+
+<Steps>
+<Step title="Run Vibe Kanban">
+  ```bash
+  npx vibe-kanban
+  ```
+</Step>
+
+<Step title="Sign in">
+  Click **Login** and sign in with GitHub or Google. A personal organisation is created automatically.
+</Step>
+
+<Step title="Create a project">
+  Click **+ New Project** and start adding issues.
+</Step>
+
+<Step title="Create team organisation (optional)">
+  To collaborate, create a new organisation from the user menu and invite members by email.
+</Step>
+</Steps>
+
+<Card title="Full Getting Started Guide" icon="rocket" href="/cloud/getting-started">
+  Step-by-step instructions for setting up Cloud
+</Card>
+
+## Current Limitations (Beta)
+
+<Warning>
+During beta, be aware of these limitations:
+- Some features may change between updates
+- Advanced features like notifications are still in development
+</Warning>
+
+## Learn More
+
+<CardGroup cols={2}>
+<Card title="Issues" icon="circle-dot" href="/cloud/issues">
+  Create and manage issues to track your work
+</Card>
+
+<Card title="Kanban Board" icon="columns" href="/cloud/kanban-board">
+  Use the board to visualise and manage progress
+</Card>
+
+<Card title="Team Members" icon="user-plus" href="/cloud/team-members">
+  Invite colleagues and manage permissions
+</Card>
+
+<Card title="Customisation" icon="palette" href="/cloud/customisation">
+  Configure columns, colours, and tags
+</Card>
+</CardGroup>

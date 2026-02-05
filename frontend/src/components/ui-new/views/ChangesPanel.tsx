@@ -1,10 +1,18 @@
-import { memo, forwardRef } from 'react';
+import { memo, forwardRef, useRef, useImperativeHandle, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Virtuoso, VirtuosoHandle, ListRange } from 'react-virtuoso';
 import { usePersistedExpanded } from '@/stores/useUiPreferencesStore';
 import { cn } from '@/lib/utils';
-import { DiffViewCardWithComments } from '../containers/DiffViewCardWithComments';
-import type { DiffInput } from '../containers/DiffViewCardWithComments';
+import { PierreDiffCard } from '../containers/PierreDiffCard';
+import { calculateDefaultHeight } from '@/utils/diffHeightEstimate';
 import type { Diff } from 'shared/types';
+
+export interface ChangesPanelHandle {
+  scrollToIndex: (
+    index: number,
+    options?: { align?: 'start' | 'center' | 'end' }
+  ) => void;
+}
 
 interface DiffItemData {
   diff: Diff;
@@ -15,13 +23,16 @@ interface ChangesPanelProps {
   className?: string;
   diffItems: DiffItemData[];
   onDiffRef?: (path: string, el: HTMLDivElement | null) => void;
+  /** Callback for Virtuoso's scroll container ref */
+  onScrollerRef?: (ref: HTMLElement | Window | null) => void;
+  /** Callback when visible range changes (for scroll sync) */
+  onRangeChanged?: (range: { startIndex: number; endIndex: number }) => void;
   /** Project ID for @ mentions in comments */
   projectId: string;
   /** Attempt ID for opening files in IDE */
   attemptId: string;
 }
 
-// Memoized DiffItem - only re-renders when its specific diff reference changes
 const DiffItem = memo(function DiffItem({
   diff,
   initialExpanded = true,
@@ -41,64 +52,108 @@ const DiffItem = memo(function DiffItem({
     initialExpanded
   );
 
-  // Compute input inside the component - this is fine because
-  // React.memo compares the diff reference, not the input object
-  const input: DiffInput = {
-    type: 'content',
-    oldContent: diff.oldContent || '',
-    newContent: diff.newContent || '',
-    oldPath: diff.oldPath || undefined,
-    newPath: diff.newPath || '',
-    changeKind: diff.change,
-  };
-
   return (
     <div ref={(el) => onRef?.(path, el)}>
-      <DiffViewCardWithComments
-        mode="collapsible"
-        input={input}
+      <PierreDiffCard
+        diff={diff}
         expanded={expanded}
         onToggle={toggle}
-        className=""
         projectId={projectId}
         attemptId={attemptId}
+        className=""
       />
     </div>
   );
 });
 
-export const ChangesPanel = forwardRef<HTMLDivElement, ChangesPanelProps>(
+export const ChangesPanel = forwardRef<ChangesPanelHandle, ChangesPanelProps>(
   function ChangesPanel(
-    { className, diffItems, onDiffRef, projectId, attemptId },
+    {
+      className,
+      diffItems,
+      onDiffRef,
+      onScrollerRef,
+      onRangeChanged,
+      projectId,
+      attemptId,
+    },
     ref
   ) {
     const { t } = useTranslation(['tasks', 'common']);
+    const virtuosoRef = useRef<VirtuosoHandle>(null);
 
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          'w-full h-full bg-secondary flex flex-col px-base overflow-y-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent',
-          className
-        )}
-      >
-        <div className="space-y-base">
-          {diffItems.map(({ diff, initialExpanded }) => (
-            <DiffItem
-              key={diff.newPath || diff.oldPath || ''}
-              diff={diff}
-              initialExpanded={initialExpanded}
-              onRef={onDiffRef}
-              projectId={projectId}
-              attemptId={attemptId}
-            />
-          ))}
-        </div>
-        {diffItems.length === 0 && (
+    useImperativeHandle(ref, () => ({
+      scrollToIndex: (
+        index: number,
+        options?: { align?: 'start' | 'center' | 'end' }
+      ) => {
+        virtuosoRef.current?.scrollToIndex({
+          index,
+          align: options?.align ?? 'start',
+          behavior: 'auto',
+        });
+      },
+    }));
+
+    const handleRangeChanged = (range: ListRange) => {
+      onRangeChanged?.({
+        startIndex: range.startIndex,
+        endIndex: range.endIndex,
+      });
+    };
+
+    const defaultItemHeight = useMemo(
+      () => calculateDefaultHeight(diffItems.map((item) => item.diff)),
+      [diffItems]
+    );
+
+    if (diffItems.length === 0) {
+      return (
+        <div
+          className={cn(
+            'w-full h-full bg-secondary flex flex-col px-base',
+            className
+          )}
+        >
           <div className="flex-1 flex items-center justify-center text-low">
             <p className="text-sm">{t('common:empty.noChanges')}</p>
           </div>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={cn(
+          'w-full h-full bg-secondary flex flex-col px-base',
+          className
         )}
+      >
+        <Virtuoso
+          ref={virtuosoRef}
+          scrollerRef={onScrollerRef}
+          data={diffItems}
+          defaultItemHeight={defaultItemHeight}
+          components={{
+            Header: () => <div className="h-base" />,
+          }}
+          itemContent={(_index, { diff, initialExpanded }) => (
+            <div>
+              <DiffItem
+                diff={diff}
+                initialExpanded={initialExpanded}
+                onRef={onDiffRef}
+                projectId={projectId}
+                attemptId={attemptId}
+              />
+            </div>
+          )}
+          computeItemKey={(index, { diff }) =>
+            diff.newPath || diff.oldPath || String(index)
+          }
+          rangeChanged={handleRangeChanged}
+          increaseViewportBy={{ top: 500, bottom: 300 }}
+        />
       </div>
     );
   }

@@ -1,4 +1,5 @@
 import type { Icon } from '@phosphor-icons/react';
+import type { Issue, IssuePriority } from 'shared/remote-types';
 import { type ActionDefinition, type ActionVisibilityContext } from './index';
 import { Actions } from './index';
 import { RIGHT_MAIN_PANEL_MODES } from '@/stores/useUiPreferencesStore';
@@ -9,9 +10,12 @@ export type PageId =
   | 'workspaceActions'
   | 'diffOptions'
   | 'viewOptions'
-  | 'gitActions'
-  | 'repoActions' // Page for repo-specific actions (opened from repo card)
-  | 'selectRepo'; // Dynamic page for repo selection (not in Pages record)
+  | 'repoActions' // Page for repo-specific actions (opened from repo card or CMD+K)
+  | 'issueActions' // Page for issue-specific actions (kanban mode)
+  | 'selectRepo' // Dynamic page for repo selection (not in Pages record)
+  | 'selectStatus' // Dynamic page for status selection (not in Pages record)
+  | 'selectPriority' // Dynamic page for priority selection (not in Pages record)
+  | 'selectSubIssue'; // Dynamic page for sub-issue selection (not in Pages record)
 
 // Items that can appear inside a group
 export type CommandBarGroupItem =
@@ -35,11 +39,28 @@ export interface RepoItem {
   display_name: string;
 }
 
+// Status item for dynamic status selection page
+export interface StatusItem {
+  id: string;
+  name: string;
+  color: string;
+}
+
+// Priority item for dynamic priority selection page
+export interface PriorityItem {
+  id: IssuePriority | null;
+  name: string;
+}
+
 // Resolved types (after childPages expansion)
 export type ResolvedGroupItem =
   | { type: 'action'; action: ActionDefinition }
   | { type: 'page'; pageId: PageId; label: string; icon: Icon }
-  | { type: 'repo'; repo: RepoItem };
+  | { type: 'repo'; repo: RepoItem }
+  | { type: 'status'; status: StatusItem }
+  | { type: 'priority'; priority: PriorityItem }
+  | { type: 'issue'; issue: Issue }
+  | { type: 'createSubIssue' };
 
 export interface ResolvedGroup {
   label: string;
@@ -56,8 +77,11 @@ export interface CommandBarPage {
   isVisible?: (ctx: ActionVisibilityContext) => boolean;
 }
 
-// Static page IDs (excludes dynamic pages like selectRepo)
-export type StaticPageId = Exclude<PageId, 'selectRepo'>;
+// Static page IDs (excludes dynamic pages like selectRepo, selectStatus, selectPriority, and selectSubIssue)
+export type StaticPageId = Exclude<
+  PageId,
+  'selectRepo' | 'selectStatus' | 'selectPriority' | 'selectSubIssue'
+>;
 
 export const Pages: Record<StaticPageId, CommandBarPage> = {
   // Root page - shown when opening via CMD+K
@@ -69,13 +93,15 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
         label: 'Actions',
         items: [
           { type: 'action', action: Actions.NewWorkspace },
+          { type: 'action', action: Actions.CreateWorkspaceFromPR },
           { type: 'action', action: Actions.OpenInIDE },
-          { type: 'action', action: Actions.CopyPath },
+          { type: 'action', action: Actions.CopyWorkspacePath },
           { type: 'action', action: Actions.CopyRawLogs },
           { type: 'action', action: Actions.ToggleDevServer },
-          { type: 'action', action: Actions.OpenInOldUI },
+
           { type: 'childPages', id: 'workspaceActions' },
-          { type: 'childPages', id: 'gitActions' },
+          { type: 'childPages', id: 'repoActions' },
+          { type: 'childPages', id: 'issueActions' },
         ],
       },
       {
@@ -90,8 +116,11 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
         type: 'group',
         label: 'General',
         items: [
+          { type: 'action', action: Actions.SignIn },
+          { type: 'action', action: Actions.SignOut },
           { type: 'action', action: Actions.Feedback },
           { type: 'action', action: Actions.WorkspacesGuide },
+          { type: 'action', action: Actions.ProjectSettings },
           { type: 'action', action: Actions.Settings },
         ],
       },
@@ -124,6 +153,7 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
         items: [
           { type: 'action', action: Actions.RunSetupScript },
           { type: 'action', action: Actions.RunCleanupScript },
+          { type: 'action', action: Actions.RunArchiveScript },
         ],
       },
     ],
@@ -171,31 +201,11 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
     ],
   },
 
-  // Git actions page - git operations
-  gitActions: {
-    id: 'git-actions',
-    title: 'Git Actions',
-    parent: 'root',
-    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    items: [
-      {
-        type: 'group',
-        label: 'Git',
-        items: [
-          { type: 'action', action: Actions.GitCreatePR },
-          { type: 'action', action: Actions.GitMerge },
-          { type: 'action', action: Actions.GitPush },
-          { type: 'action', action: Actions.GitRebase },
-          { type: 'action', action: Actions.GitChangeTarget },
-        ],
-      },
-    ],
-  },
-
-  // Repo actions page - shown when clicking "..." on a repo card
+  // Repository actions page - shown when clicking "..." on a repo card or via CMD+K
   repoActions: {
     id: 'repo-actions',
     title: 'Repository Actions',
+    parent: 'root',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     items: [
       {
@@ -207,8 +217,37 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
           { type: 'action', action: Actions.RepoSettings },
           { type: 'action', action: Actions.GitCreatePR },
           { type: 'action', action: Actions.GitMerge },
+          { type: 'action', action: Actions.GitPush },
           { type: 'action', action: Actions.GitRebase },
           { type: 'action', action: Actions.GitChangeTarget },
+        ],
+      },
+    ],
+  },
+
+  // Issue actions page - shown in kanban mode
+  issueActions: {
+    id: 'issue-actions',
+    title: 'Issue Actions',
+    parent: 'root',
+    isVisible: (ctx) => ctx.layoutMode === 'kanban',
+    items: [
+      {
+        type: 'group',
+        label: 'Actions',
+        items: [
+          { type: 'action', action: Actions.CreateIssue },
+          { type: 'action', action: Actions.ChangeIssueStatus },
+          { type: 'action', action: Actions.ChangeNewIssueStatus },
+          { type: 'action', action: Actions.ChangePriority },
+          { type: 'action', action: Actions.ChangeNewIssuePriority },
+          { type: 'action', action: Actions.ChangeAssignees },
+          { type: 'action', action: Actions.ChangeNewIssueAssignees },
+          { type: 'action', action: Actions.MakeSubIssueOf },
+          { type: 'action', action: Actions.AddSubIssue },
+          { type: 'action', action: Actions.LinkWorkspace },
+          { type: 'action', action: Actions.DuplicateIssue },
+          { type: 'action', action: Actions.DeleteIssue },
         ],
       },
     ],

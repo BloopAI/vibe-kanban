@@ -104,6 +104,19 @@
       "andMore": "...외 {{count}}개"
     }
   },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "리베이스 진행 중",
+      "description": "{{targetBranch}}으로의 리베이스가 충돌 없이 진행 중입니다. 진행 방법을 선택하세요.",
+      "hint": "리베이스를 계속하여 완료하거나, 중단하여 이전 상태로 돌아갈 수 있습니다.",
+      "continue": "리베이스 계속",
+      "continuing": "계속 중...",
+      "abort": "리베이스 중단",
+      "aborting": "중단 중...",
+      "continueError": "리베이스를 계속할 수 없습니다. 해결되지 않은 충돌이 있을 수 있습니다.",
+      "abortError": "리베이스 중단에 실패했습니다. 다시 시도해 주세요."
+    }
+  },
   "createPrDialog": {
     "title": "Pull Request 생성",
     "description": "이 작업 시도에 대한 Pull Request를 생성합니다.",
@@ -198,6 +211,12 @@
     "viewModes": {
       "inline": "Inline view",
       "split": "Split view"
+    },
+    "largeDiff": {
+      "title": "큰 파일",
+      "linesChanged": "{{count}} 줄 변경됨",
+      "loadAnyway": "그래도 diff 로드",
+      "warning": "큰 diff는 브라우저를 느리게 할 수 있습니다."
     }
   },
   "empty": {
@@ -219,8 +238,10 @@
     "queuedMessage": "메시지가 대기열에 추가됨 - 현재 실행이 완료되면 실행됩니다",
     "runSetupScript": "설정 스크립트 실행",
     "runCleanupScript": "정리 스크립트 실행",
+    "runArchiveScript": "아카이브 스크립트 실행",
     "noSetupScript": "이 프로젝트에 설정 스크립트가 구성되어 있지 않습니다",
     "noCleanupScript": "이 프로젝트에 정리 스크립트가 구성되어 있지 않습니다",
+    "noArchiveScript": "이 프로젝트에 아카이브 스크립트가 구성되어 있지 않습니다",
     "scriptsDisabledWhileRunning": "프로세스가 실행 중일 때는 스크립트를 실행할 수 없습니다"
   },
   "git": {
@@ -565,9 +586,12 @@
   },
   "restoreLogsDialog": {
     "title": "재시도 확인",
+    "titleReset": "초기화 확인",
     "historyChange": {
       "title": "히스토리 변경",
       "willDelete": "이 프로세스를 삭제합니다",
+      "willDeleteProcesses_one": "{{count}}개 프로세스를 삭제합니다",
+      "willDeleteProcesses_other": "{{count}}개 프로세스를 삭제합니다",
       "andLaterProcesses_one": "및 이후 {{count}}개 프로세스",
       "andLaterProcesses_other": "및 이후 {{count}}개 프로세스",
       "fromHistory": "를 히스토리에서 삭제합니다.",
@@ -603,7 +627,8 @@
       "uncommittedPresentHint": "커밋되지 않은 변경사항이 있습니다. 강제 초기화를 켜거나 커밋/스태시한 후 진행하세요."
     },
     "buttons": {
-      "retry": "재시도"
+      "retry": "재시도",
+      "reset": "초기화"
     }
   },
   "conversation": {
@@ -634,7 +659,9 @@
       "approve": "승인",
       "clearReviewComments": "리뷰 댓글 지우기",
       "edit": "메시지 편집",
-      "scrollToPreviousMessage": "Go to previous message"
+      "scrollToPreviousMessage": "Go to previous message",
+      "reset": "초기화",
+      "resetTooltip": "이 시점으로 초기화"
     },
     "approval": {
       "conflictWarning": "충돌하는 파일은 수동으로 해결해야 합니다",
@@ -648,6 +675,13 @@
       "completedSuccessfully": "성공적으로 완료됨",
       "exitCode": "종료 코드: {{code}}",
       "running": "실행 중..."
+    },
+    "scriptPlaceholder": {
+      "setupTitle": "설정 스크립트",
+      "setupDescription": "설정 스크립트가 구성되지 않았습니다. 설정 스크립트는 코딩 에이전트가 시작되기 전에 실행됩니다.",
+      "cleanupTitle": "정리 스크립트",
+      "cleanupDescription": "정리 스크립트가 구성되지 않았습니다. 정리 스크립트는 코딩 에이전트가 완료된 후에 실행됩니다.",
+      "configure": "구성"
     },
     "unableToRenderDiff": "차이를 표시할 수 없습니다.",
     "updatedTodos": "업데이트된 할 일",
@@ -678,6 +712,7 @@
     "title": "스크립트 수정",
     "setupScriptTitle": "설정 스크립트 수정",
     "cleanupScriptTitle": "정리 스크립트 수정",
+    "archiveScriptTitle": "아카이브 스크립트 수정",
     "devServerTitle": "개발 서버 스크립트 수정",
     "scriptLabel": "스크립트 (편집)",
     "logsLabel": "마지막 실행 로그",
@@ -692,5 +727,36 @@
     "statusSuccess": "성공적으로 완료됨",
     "statusFailed": "종료 코드 {{exitCode}}(으)로 실패함",
     "statusKilled": "프로세스가 종료되었습니다"
+  },
+  "createWorkspaceFromPr": {
+    "title": "PR에서 워크스페이스 만들기",
+    "description": "열린 풀 리퀘스트를 선택하여 워크스페이스를 만듭니다. PR 제목을 사용하여 태스크가 자동으로 생성됩니다.",
+    "repositoryLabel": "저장소",
+    "remoteLabel": "리모트",
+    "pullRequestLabel": "풀 리퀘스트",
+    "loadingRepositories": "저장소 로드 중...",
+    "loadingRemotes": "리모트 로드 중...",
+    "noRepositoriesFound": "저장소를 찾을 수 없습니다",
+    "loadingPullRequests": "풀 리퀘스트 로드 중...",
+    "selectRepositoryFirst": "먼저 저장소를 선택하세요",
+    "noPullRequestsFound": "열린 풀 리퀘스트가 없습니다",
+    "runSetupScript": "설정 스크립트 실행",
+    "creating": "만드는 중...",
+    "createWorkspace": "워크스페이스 만들기",
+    "selectRepository": "저장소 선택",
+    "selectRemote": "리모트 선택",
+    "selectPullRequest": "풀 리퀘스트 선택",
+    "searchPrsPlaceholder": "번호 또는 제목으로 PR 검색...",
+    "noMatchingPrs": "일치하는 풀 리퀘스트가 없습니다",
+    "default": "기본값",
+    "openPrInBrowser": "브라우저에서 PR 열기",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLI가 설치되어 있지 않습니다",
+      "unsupportedProvider": "Git 공급자가 지원되지 않습니다",
+      "failedToLoadPrs": "풀 리퀘스트 로드 실패",
+      "prNotFound": "풀 리퀘스트를 찾을 수 없습니다",
+      "repoNotInProject": "저장소가 어떤 프로젝트에도 없습니다",
+      "failedToCreateWorkspace": "워크스페이스 만들기 실패"
+    }
   }
 }

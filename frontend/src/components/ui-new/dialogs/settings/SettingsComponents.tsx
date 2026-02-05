@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import {
@@ -8,6 +9,135 @@ import {
   DropdownMenuTriggerButton,
 } from '../../primitives/Dropdown';
 import { PrimaryButton } from '../../primitives/PrimaryButton';
+
+// ============================================================================
+// Two-Column Picker Components
+// ============================================================================
+
+// TwoColumnPicker - Container for the two-column layout
+interface TwoColumnPickerProps {
+  children: ReactNode;
+}
+
+export function TwoColumnPicker({ children }: TwoColumnPickerProps) {
+  return (
+    <div className="flex flex-col md:flex-row border border-border rounded-sm overflow-hidden">
+      {children}
+    </div>
+  );
+}
+
+// TwoColumnPickerColumn - A single column within the picker
+interface TwoColumnPickerColumnProps {
+  label: string;
+  headerAction?: ReactNode;
+  isFirst?: boolean;
+  children: ReactNode;
+}
+
+export function TwoColumnPickerColumn({
+  label,
+  headerAction,
+  isFirst,
+  children,
+}: TwoColumnPickerColumnProps) {
+  return (
+    <div
+      className={cn(
+        'flex-1',
+        isFirst && 'border-b md:border-b-0 md:border-r border-border'
+      )}
+    >
+      <div className="h-9 px-base border-b border-border bg-secondary/50 flex items-center justify-between">
+        <span className="text-sm font-medium text-low tracking-wide">
+          {label}
+        </span>
+        {headerAction}
+      </div>
+      <div className="max-h-32 md:h-32 overflow-y-auto bg-panel">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// TwoColumnPickerItem - A selectable row within a column
+interface TwoColumnPickerItemProps {
+  selected?: boolean;
+  onClick?: () => void;
+  leading?: ReactNode;
+  trailing?: ReactNode;
+  children: ReactNode;
+}
+
+export function TwoColumnPickerItem({
+  selected,
+  onClick,
+  leading,
+  trailing,
+  children,
+}: TwoColumnPickerItemProps) {
+  return (
+    <div
+      className={cn(
+        'group flex items-center gap-half px-base py-half cursor-pointer transition-colors',
+        'hover:bg-secondary',
+        selected && 'bg-brand/10 text-brand'
+      )}
+      onClick={onClick}
+    >
+      {leading}
+      <span
+        className={cn(
+          'text-sm truncate flex-1',
+          selected ? 'text-brand font-medium' : 'text-normal'
+        )}
+      >
+        {children}
+      </span>
+      {trailing}
+    </div>
+  );
+}
+
+// TwoColumnPickerBadge - A small badge/tag for items
+interface TwoColumnPickerBadgeProps {
+  variant?: 'default' | 'brand';
+  children: ReactNode;
+}
+
+export function TwoColumnPickerBadge({
+  variant = 'default',
+  children,
+}: TwoColumnPickerBadgeProps) {
+  return (
+    <span
+      className={cn(
+        'text-xs px-half rounded font-medium shrink-0',
+        variant === 'brand' ? 'bg-brand/15 text-brand' : 'bg-secondary text-low'
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+// TwoColumnPickerEmpty - Empty state message for a column
+interface TwoColumnPickerEmptyProps {
+  children: ReactNode;
+}
+
+export function TwoColumnPickerEmpty({ children }: TwoColumnPickerEmptyProps) {
+  return (
+    <div className="px-base py-plusfifty text-sm text-low text-center">
+      {children}
+    </div>
+  );
+}
+
+// ============================================================================
+// Settings Card Components
+// ============================================================================
 
 // SettingsCard - A card container for a settings subsection
 export function SettingsCard({

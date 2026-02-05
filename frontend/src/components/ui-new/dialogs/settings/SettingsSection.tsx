@@ -2,38 +2,65 @@ import { useTranslation } from 'react-i18next';
 import { XIcon } from '@phosphor-icons/react';
 
 import { GeneralSettingsSectionContent } from './GeneralSettingsSection';
-import { ProjectsSettingsSectionContent } from './ProjectsSettingsSection';
 import { ReposSettingsSectionContent } from './ReposSettingsSection';
 import { OrganizationsSettingsSectionContent } from './OrganizationsSettingsSection';
+import { RemoteProjectsSettingsSectionContent } from './RemoteProjectsSettingsSection';
 import { AgentsSettingsSectionContent } from './AgentsSettingsSection';
 import { McpSettingsSectionContent } from './McpSettingsSection';
 
 export type SettingsSectionType =
   | 'general'
-  | 'projects'
   | 'repos'
   | 'organizations'
+  | 'remote-projects'
   | 'agents'
   | 'mcp';
+
+// Section-specific initial state types
+export type SettingsSectionInitialState = {
+  general: undefined;
+  repos: { repoId?: string } | undefined;
+  organizations: { organizationId?: string } | undefined;
+  'remote-projects':
+    | { organizationId?: string; projectId?: string }
+    | undefined;
+  agents: { executor?: string; variant?: string } | undefined;
+  mcp: undefined;
+};
 
 interface SettingsSectionProps {
   type: SettingsSectionType;
   onClose?: () => void;
+  initialState?: SettingsSectionInitialState[SettingsSectionType];
 }
 
-export function SettingsSection({ type, onClose }: SettingsSectionProps) {
+export function SettingsSection({
+  type,
+  onClose,
+  initialState,
+}: SettingsSectionProps) {
   const { t } = useTranslation('settings');
 
   const renderContent = () => {
     switch (type) {
       case 'general':
         return <GeneralSettingsSectionContent />;
-      case 'projects':
-        return <ProjectsSettingsSectionContent />;
       case 'repos':
-        return <ReposSettingsSectionContent />;
+        return (
+          <ReposSettingsSectionContent
+            initialState={initialState as SettingsSectionInitialState['repos']}
+          />
+        );
       case 'organizations':
         return <OrganizationsSettingsSectionContent />;
+      case 'remote-projects':
+        return (
+          <RemoteProjectsSettingsSectionContent
+            initialState={
+              initialState as SettingsSectionInitialState['remote-projects']
+            }
+          />
+        );
       case 'agents':
         return <AgentsSettingsSectionContent />;
       case 'mcp':

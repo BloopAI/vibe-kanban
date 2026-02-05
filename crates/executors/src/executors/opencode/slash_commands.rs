@@ -64,7 +64,7 @@ impl Opencode {
             return Ok((*cached).clone());
         }
 
-        let env = ExecutionEnv::new(RepoContext::default(), false);
+        let env = ExecutionEnv::new(RepoContext::default(), false, String::new());
         let server = self.spawn_server(current_dir, &env).await?;
         let commands = sdk::discover_commands(&server, current_dir).await?;
 
@@ -516,6 +516,7 @@ pub async fn execute(
             auto_approve: config.auto_approve,
             control_tx,
             models_cache_key: config.models_cache_key.clone(),
+            cancel: cancel.clone(),
         },
         event_resp,
     ));

@@ -4,12 +4,16 @@ import React, {
   useState,
   useCallback,
   useMemo,
+  useRef,
 } from 'react';
 import {
   useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+
+/** Callback type for scroll-to-file implementation (provided by ChangesPanelContainer) */
+export type ScrollToFileCallback = (path: string, lineNumber?: number) => void;
 
 interface ChangesViewContextValue {
   /** File path selected by user (triggers scroll-to in ChangesPanelContainer) */
@@ -18,8 +22,10 @@ interface ChangesViewContextValue {
   selectedLineNumber: number | null;
   /** File currently in view from scrolling (for FileTree highlighting) */
   fileInView: string | null;
-  /** Select a file and optionally scroll to a specific line */
+  /** Select a file and optionally scroll to a specific line (legacy - use scrollToFile for tree clicks) */
   selectFile: (path: string, lineNumber?: number) => void;
+  /** Scroll to a file in the diff view (for file tree clicks - uses state machine) */
+  scrollToFile: (path: string, lineNumber?: number) => void;
   /** Update the file currently in view (from scroll observer) */
   setFileInView: (path: string | null) => void;
   /** Navigate to changes mode and scroll to a specific file */
@@ -28,6 +34,8 @@ interface ChangesViewContextValue {
   diffPaths: Set<string>;
   /** Find a diff path matching the given text (supports partial/right-hand match) */
   findMatchingDiffPath: (text: string) => string | null;
+  /** Register the scroll-to-file callback (called by ChangesPanelContainer) */
+  registerScrollToFile: (callback: ScrollToFileCallback | null) => void;
 }
 
 const EMPTY_SET = new Set<string>();
@@ -37,10 +45,12 @@ const defaultValue: ChangesViewContextValue = {
   selectedLineNumber: null,
   fileInView: null,
   selectFile: () => {},
+  scrollToFile: () => {},
   setFileInView: () => {},
   viewFileInChanges: () => {},
   diffPaths: EMPTY_SET,
   findMatchingDiffPath: () => null,
+  registerScrollToFile: () => {},
 };
 
 const ChangesViewContext = createContext<ChangesViewContextValue>(defaultValue);
@@ -58,11 +68,31 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
   const [fileInView, setFileInView] = useState<string | null>(null);
   const { setRightMainPanelMode } = useUiPreferencesStore();
 
+  const scrollToFileCallbackRef = useRef<ScrollToFileCallback | null>(null);
+
+  const registerScrollToFile = useCallback(
+    (callback: ScrollToFileCallback | null) => {
+      scrollToFileCallbackRef.current = callback;
+    },
+    []
+  );
+
   const selectFile = useCallback((path: string, lineNumber?: number) => {
     setSelectedFilePath(path);
     setSelectedLineNumber(lineNumber ?? null);
     setFileInView(path);
   }, []);
+
+  const scrollToFile = useCallback(
+    (path: string, lineNumber?: number) => {
+      if (scrollToFileCallbackRef.current) {
+        scrollToFileCallbackRef.current(path, lineNumber);
+      } else {
+        selectFile(path, lineNumber);
+      }
+    },
+    [selectFile]
+  );
 
   const viewFileInChanges = useCallback(
     (filePath: string) => {
@@ -91,19 +121,23 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
       selectedLineNumber,
       fileInView,
       selectFile,
+      scrollToFile,
       setFileInView,
       viewFileInChanges,
       diffPaths,
       findMatchingDiffPath,
+      registerScrollToFile,
     }),
     [
       selectedFilePath,
       selectedLineNumber,
       fileInView,
       selectFile,
+      scrollToFile,
       viewFileInChanges,
       diffPaths,
       findMatchingDiffPath,
+      registerScrollToFile,
     ]
   );
 

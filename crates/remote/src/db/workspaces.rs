@@ -14,6 +14,7 @@ pub struct Workspace {
     pub owner_user_id: Uuid,
     pub issue_id: Option<Uuid>,
     pub local_workspace_id: Option<Uuid>,
+    pub name: Option<String>,
     pub archived: bool,
     pub files_changed: Option<i32>,
     pub lines_added: Option<i32>,
@@ -24,7 +25,7 @@ pub struct Workspace {
 
 #[derive(Debug, Error)]
 pub enum WorkspaceError {
-    #[error(transparent)]
+    #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
 }
 
@@ -33,6 +34,7 @@ pub struct CreateWorkspaceParams {
     pub owner_user_id: Uuid,
     pub local_workspace_id: Option<Uuid>,
     pub issue_id: Option<Uuid>,
+    pub name: Option<String>,
     pub archived: Option<bool>,
     pub files_changed: Option<i32>,
     pub lines_added: Option<i32>,
@@ -51,6 +53,7 @@ impl WorkspaceRepository {
             owner_user_id,
             local_workspace_id,
             issue_id,
+            name,
             archived,
             files_changed,
             lines_added,
@@ -60,14 +63,15 @@ impl WorkspaceRepository {
         let record = sqlx::query_as!(
             Workspace,
             r#"
-            INSERT INTO workspaces (project_id, owner_user_id, local_workspace_id, issue_id, archived, files_changed, lines_added, lines_removed)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            INSERT INTO workspaces (project_id, owner_user_id, local_workspace_id, issue_id, name, archived, files_changed, lines_added, lines_removed)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING
                 id                  AS "id!: Uuid",
                 project_id          AS "project_id!: Uuid",
                 owner_user_id       AS "owner_user_id!: Uuid",
                 issue_id            AS "issue_id: Uuid",
                 local_workspace_id  AS "local_workspace_id: Uuid",
+                name                AS "name: String",
                 archived            AS "archived!: bool",
                 files_changed       AS "files_changed: i32",
                 lines_added         AS "lines_added: i32",
@@ -79,6 +83,7 @@ impl WorkspaceRepository {
             owner_user_id,
             local_workspace_id,
             issue_id,
+            name,
             archived,
             files_changed,
             lines_added,
@@ -99,6 +104,7 @@ impl WorkspaceRepository {
                 owner_user_id       AS "owner_user_id!: Uuid",
                 issue_id            AS "issue_id: Uuid",
                 local_workspace_id  AS "local_workspace_id: Uuid",
+                name                AS "name: String",
                 archived            AS "archived!: bool",
                 files_changed       AS "files_changed: i32",
                 lines_added         AS "lines_added: i32",
@@ -129,6 +135,7 @@ impl WorkspaceRepository {
                 owner_user_id       AS "owner_user_id!: Uuid",
                 issue_id            AS "issue_id: Uuid",
                 local_workspace_id  AS "local_workspace_id: Uuid",
+                name                AS "name: String",
                 archived            AS "archived!: bool",
                 files_changed       AS "files_changed: i32",
                 lines_added         AS "lines_added: i32",
@@ -144,6 +151,19 @@ impl WorkspaceRepository {
         .await?;
 
         Ok(record)
+    }
+
+    pub async fn exists_by_local_id(
+        pool: &PgPool,
+        local_workspace_id: Uuid,
+    ) -> Result<bool, WorkspaceError> {
+        let exists = sqlx::query_scalar!(
+            r#"SELECT EXISTS(SELECT 1 FROM workspaces WHERE local_workspace_id = $1) AS "exists!""#,
+            local_workspace_id
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(exists)
     }
 
     pub async fn delete_by_local_id(
@@ -179,11 +199,15 @@ impl WorkspaceRepository {
     pub async fn update(
         pool: &PgPool,
         id: Uuid,
+        name: Option<Option<String>>,
         archived: Option<bool>,
         files_changed: Option<Option<i32>>,
         lines_added: Option<Option<i32>>,
         lines_removed: Option<Option<i32>>,
     ) -> Result<Workspace, WorkspaceError> {
+        let update_name = name.is_some();
+        let name_value = name.flatten();
+
         let update_archived = archived.is_some();
         let archived_value = archived.unwrap_or(false);
 
@@ -200,18 +224,20 @@ impl WorkspaceRepository {
             Workspace,
             r#"
             UPDATE workspaces SET
-                archived = CASE WHEN $1 THEN $2 ELSE archived END,
-                files_changed = CASE WHEN $3 THEN $4 ELSE files_changed END,
-                lines_added = CASE WHEN $5 THEN $6 ELSE lines_added END,
-                lines_removed = CASE WHEN $7 THEN $8 ELSE lines_removed END,
+                name = CASE WHEN $1 THEN $2 ELSE name END,
+                archived = CASE WHEN $3 THEN $4 ELSE archived END,
+                files_changed = CASE WHEN $5 THEN $6 ELSE files_changed END,
+                lines_added = CASE WHEN $7 THEN $8 ELSE lines_added END,
+                lines_removed = CASE WHEN $9 THEN $10 ELSE lines_removed END,
                 updated_at = NOW()
-            WHERE id = $9
+            WHERE id = $11
             RETURNING
                 id                  AS "id!: Uuid",
                 project_id          AS "project_id!: Uuid",
                 owner_user_id       AS "owner_user_id!: Uuid",
                 issue_id            AS "issue_id: Uuid",
                 local_workspace_id  AS "local_workspace_id: Uuid",
+                name                AS "name: String",
                 archived            AS "archived!: bool",
                 files_changed       AS "files_changed: i32",
                 lines_added         AS "lines_added: i32",
@@ -219,6 +245,8 @@ impl WorkspaceRepository {
                 created_at          AS "created_at!: DateTime<Utc>",
                 updated_at          AS "updated_at!: DateTime<Utc>"
             "#,
+            update_name,
+            name_value,
             update_archived,
             archived_value,
             update_files_changed,

@@ -161,7 +161,13 @@
     "collapseAll": "Collapse all diffs",
     "filesChanged_one": "{{count}} file changed",
     "filesChanged_other": "{{count}} files changed",
-    "noChanges": "No changes have been made yet"
+    "noChanges": "No changes have been made yet",
+    "largeDiff": {
+      "title": "Large file",
+      "linesChanged": "{{count}} lines changed",
+      "loadAnyway": "Load diff anyway",
+      "warning": "Large diffs may slow down your browser."
+    }
   },
   "taskPanel": {
     "noTaskSelected": "No task selected",
@@ -217,8 +223,10 @@
     "queuedMessage": "Message queued - will execute when current run finishes",
     "runSetupScript": "Run setup script",
     "runCleanupScript": "Run cleanup script",
+    "runArchiveScript": "Run archive script",
     "noSetupScript": "No setup script configured for this project",
     "noCleanupScript": "No cleanup script configured for this project",
+    "noArchiveScript": "No archive script configured for this project",
     "scriptsDisabledWhileRunning": "Cannot run scripts while a process is running"
   },
   "todos": {
@@ -275,7 +283,9 @@
       "approve": "Approve",
       "clearReviewComments": "Clear review comments",
       "edit": "Edit message",
-      "scrollToPreviousMessage": "Go to previous message"
+      "scrollToPreviousMessage": "Go to previous message",
+      "reset": "Reset",
+      "resetTooltip": "Reset to this point"
     },
     "approval": {
       "conflictWarning": "Conflicted files need manual resolution",
@@ -308,6 +318,13 @@
       "exitCode": "Exit code: {{code}}",
       "completedSuccessfully": "Completed successfully",
       "clickToViewLogs": "Click to view logs"
+    },
+    "scriptPlaceholder": {
+      "setupTitle": "Setup Script",
+      "setupDescription": "No setup script configured. Setup scripts run before the coding agent starts.",
+      "cleanupTitle": "Cleanup Script",
+      "cleanupDescription": "No cleanup script configured. Cleanup scripts run after the coding agent finishes.",
+      "configure": "Configure"
     },
     "updatedTodos": "Updated Todos",
     "viewInChangesPanel": "View in changes panel",
@@ -529,6 +546,19 @@
       "andMore": "...and {{count}} more"
     }
   },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "Rebase In Progress",
+      "description": "A rebase onto {{targetBranch}} is in progress with no conflicts. Choose how to proceed.",
+      "hint": "You can continue the rebase to complete it, or abort to return to your previous state.",
+      "continue": "Continue Rebase",
+      "continuing": "Continuing...",
+      "abort": "Abort Rebase",
+      "aborting": "Aborting...",
+      "continueError": "Failed to continue rebase. There may be unresolved conflicts.",
+      "abortError": "Failed to abort rebase. Please try again."
+    }
+  },
   "createPrDialog": {
     "title": "Create Pull Request",
     "description": "Create a pull request for this task attempt.",
@@ -633,9 +663,12 @@
   },
   "restoreLogsDialog": {
     "title": "Confirm Retry",
+    "titleReset": "Confirm Reset",
     "historyChange": {
       "title": "History change",
       "willDelete": "Will delete this process",
+      "willDeleteProcesses_one": "Will delete {{count}} process",
+      "willDeleteProcesses_other": "Will delete {{count}} processes",
       "andLaterProcesses_one": "and {{count}} later process",
       "andLaterProcesses_other": "and {{count}} later processes",
       "fromHistory": "from history.",
@@ -671,13 +704,15 @@
       "uncommittedPresentHint": "Uncommitted changes present. Turn on Force reset or commit/stash to proceed."
     },
     "buttons": {
-      "retry": "Retry"
+      "retry": "Retry",
+      "reset": "Reset"
     }
   },
   "scriptFixer": {
     "title": "Fix Script",
     "setupScriptTitle": "Fix Setup Script",
     "cleanupScriptTitle": "Fix Cleanup Script",
+    "archiveScriptTitle": "Fix Archive Script",
     "devServerTitle": "Fix Dev Server Script",
     "scriptLabel": "Script (edit)",
     "logsLabel": "Last Execution Logs",
@@ -692,5 +727,36 @@
     "statusSuccess": "Completed successfully",
     "statusFailed": "Failed with exit code {{exitCode}}",
     "statusKilled": "Process was killed"
+  },
+  "createWorkspaceFromPr": {
+    "title": "Create Workspace from PR",
+    "description": "Select an open pull request to create a workspace from. A task will be created automatically using the PR title.",
+    "repositoryLabel": "Repository",
+    "remoteLabel": "Remote",
+    "pullRequestLabel": "Pull Request",
+    "loadingRepositories": "Loading repositories...",
+    "loadingRemotes": "Loading remotes...",
+    "noRepositoriesFound": "No repositories found",
+    "loadingPullRequests": "Loading pull requests...",
+    "selectRepositoryFirst": "Select a repository first",
+    "noPullRequestsFound": "No open pull requests found",
+    "runSetupScript": "Run setup script",
+    "creating": "Creating...",
+    "createWorkspace": "Create Workspace",
+    "selectRepository": "Select a repository",
+    "selectRemote": "Select a remote",
+    "selectPullRequest": "Select a pull request",
+    "searchPrsPlaceholder": "Search PRs by number or title...",
+    "noMatchingPrs": "No matching pull requests",
+    "default": "default",
+    "openPrInBrowser": "Open PR in browser",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLI is not installed",
+      "unsupportedProvider": "Git provider not supported",
+      "failedToLoadPrs": "Failed to load pull requests",
+      "prNotFound": "Pull request not found",
+      "repoNotInProject": "Repository is not in any project",
+      "failedToCreateWorkspace": "Failed to create workspace"
+    }
   }
 }

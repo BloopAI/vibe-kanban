@@ -36,7 +36,8 @@
     "reset": "Restablecer",
     "save": "Guardar",
     "send": "Enviar",
-    "addItem": "Añadir elemento"
+    "addItem": "Añadir elemento",
+    "reply": "Responder"
   },
   "form": {
     "notSpecified": "No especificado",
@@ -67,7 +68,10 @@
       "createdTask": "Creó tarea: {{description}}",
       "todoOperation": "{{operation}} tareas pendientes"
     },
-    "fixScript": "Corregir Script"
+    "fixScript": "Corregir Script",
+    "subagent": {
+      "defaultType": "Subagente"
+    }
   },
   "language": {
     "browserDefault": "Predeterminado del navegador"
@@ -91,11 +95,18 @@
     "menuItem": "Organización",
     "loadingPlaceholder": "Cargando organizaciones...",
     "selectPlaceholder": "Seleccionar una organización",
-    "currentBadge": " (actual)"
+    "currentBadge": " (actual)",
+    "organizations": "Organizaciones",
+    "createOrganization": "Crear organización",
+    "orgSettings": "Configuración de la organización",
+    "migrate": "Migrar"
   },
   "navbar": {
     "tryNewUI": "prueba la nueva interfaz"
   },
+  "ok": "OK",
+  "error": "Error",
+  "signIn": "Iniciar sesión",
   "signOut": "Cerrar sesión",
   "devMode": {
     "banner": "Modo de Desarrollo - Esta es una compilación de desarrollo"
@@ -135,6 +146,7 @@
     "active": "Activo",
     "archived": "Archivado",
     "loading": "Cargando...",
+    "notFound": "Espacio de trabajo no encontrado",
     "selectToStart": "Selecciona un espacio de trabajo para comenzar",
     "draft": "Borrador",
     "viewArchive": "Ver archivo",
@@ -155,7 +167,16 @@
       "placeholder": "Ingresa el nombre del espacio de trabajo",
       "action": "Renombrar",
       "renaming": "Renombrando..."
-    }
+    },
+    "unlinkFromIssue": "Desvincular del problema",
+    "deleteWorkspace": "Eliminar espacio de trabajo",
+    "unlink": "Desvincular",
+    "delete": "Eliminar",
+    "unlinkConfirmMessage": "¿Estás seguro de que deseas desvincular este espacio de trabajo del problema? El espacio de trabajo seguirá existiendo pero ya no estará asociado con este problema.",
+    "deleteConfirmMessage": "¿Estás seguro de que deseas eliminar este espacio de trabajo? Esto lo desvinculará del problema y eliminará el espacio de trabajo local. Esta acción no se puede deshacer.",
+    "unlinkError": "Error al desvincular el espacio de trabajo",
+    "deleteError": "Error al eliminar el espacio de trabajo",
+    "filesChanged": "{{count}} archivos"
   },
   "fileTree": {
     "searchPlaceholder": "Buscar archivos...",
@@ -324,5 +345,44 @@
     "commands": "Comandos",
     "noTagsOrFiles": "No se encontraron etiquetas ni archivos",
     "noCommands": "No hay comandos disponibles para este agente."
+  },
+  "kanban": {
+    "noStatusesFound": "No se encontraron estados para este proyecto",
+    "noVisibleStatuses": "Todos los estados están ocultos. Usa la configuración de visualización o cambia a otra pestaña para ver los problemas.",
+    "noProjectFound": "No se encontró el proyecto",
+    "noOrganizationFound": "No se encontró la organización",
+    "unassigned": "Sin asignar",
+    "noTagsAvailable": "No hay etiquetas disponibles",
+    "createNewIssue": "Crear nuevo issue",
+    "createNewTag": "Crear nueva etiqueta",
+    "searchTags": "Buscar etiquetas...",
+    "selectColorFor": "Seleccionar color para",
+    "createTag": "Crear",
+    "filesCount": "{{count}} Archivos",
+    "noPrCreated": "No se creó PR",
+    "noCommentsYet": "Sin comentarios aún",
+    "comments": "Comentarios",
+    "enterCommentPlaceholder": "Ingresa tu comentario aquí...",
+    "subIssues": "Subtareas",
+    "noSubIssues": "Sin subtareas",
+    "parentIssue": "Padre",
+    "subIssueIndicator": "↳",
+    "showSubIssues": "Mostrar subtareas",
+    "viewTabs": {
+      "active": "Activo",
+      "all": "Todo"
+    },
+    "loginRequired": {
+      "title": "Se requiere iniciar sesión",
+      "description": "Por favor inicia sesión para ver este proyecto.",
+      "action": "Iniciar sesión"
+    }
+  },
+  "syncError": {
+    "networkErrors": "Errores de red",
+    "streamsAffected": "{{count}} flujo afectado",
+    "streamsAffected_other": "{{count}} flujos afectados",
+    "status": "(estado {{status}})",
+    "refreshPage": "Actualizar página"
   }
 }

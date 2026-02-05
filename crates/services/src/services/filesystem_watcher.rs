@@ -21,6 +21,7 @@ use notify_debouncer_full::{
     DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache, new_debouncer,
 };
 use thiserror::Error;
+use utils::path::ALWAYS_SKIP_DIRS;
 
 pub type WatcherComponents = (
     Arc<Mutex<Debouncer<RecommendedWatcher, RecommendedCache>>>,
@@ -45,10 +46,6 @@ pub enum FilesystemWatcherError {
 fn canonicalize_lossy(path: &Path) -> PathBuf {
     dunce::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
-
-/// Directories that should always be skipped regardless of gitignore.
-/// .git is not in .gitignore but should never be watched.
-pub const ALWAYS_SKIP_DIRS: &[&str] = &[".git", "node_modules"];
 
 fn should_skip_dir(name: &str) -> bool {
     ALWAYS_SKIP_DIRS.contains(&name)

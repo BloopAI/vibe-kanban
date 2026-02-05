@@ -41,8 +41,8 @@ pub struct Opencode {
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub variant: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none", alias = "agent")]
-    pub mode: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "mode")]
+    pub agent: Option<String>,
     /// Auto-approve agent actions
     #[serde(default = "default_to_true")]
     pub auto_approve: bool,
@@ -60,16 +60,27 @@ pub struct Opencode {
 /// Represents a spawned OpenCode server with its base URL
 struct OpencodeServer {
     #[allow(unused)]
-    child: AsyncGroupChild,
+    child: Option<AsyncGroupChild>,
     base_url: String,
     server_password: ServerPassword,
+}
+
+impl Drop for OpencodeServer {
+    fn drop(&mut self) {
+        // kill the process properly using the kill helper as the native kill_on_drop doesn't work reliably causing orphaned processes and memory leaks
+        if let Some(mut child) = self.child.take() {
+            tokio::spawn(async move {
+                let _ = workspace_utils::process::kill_process_group(&mut child).await;
+            });
+        }
+    }
 }
 
 type ServerPassword = String;
 
 impl Opencode {
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
-        let builder = CommandBuilder::new("npx -y opencode-ai@1.1.25")
+        let builder = CommandBuilder::new("npx -y opencode-ai@1.1.51")
             // Pass hostname/port as separate args so OpenCode treats them as explicitly set
             // (it checks `process.argv.includes(\"--port\")` / `\"--hostname\"`).
             .extend_params(["serve", "--hostname", "127.0.0.1", "--port", "0"]);
@@ -102,6 +113,7 @@ impl Opencode {
             .env("NPM_CONFIG_LOGLEVEL", "error")
             .env("NODE_NO_WARNINGS", "1")
             .env("NO_COLOR", "1")
+            .env("OPENCODE_SERVER_USERNAME", "opencode")
             .env("OPENCODE_SERVER_PASSWORD", &server_password)
             .args(&args);
 
@@ -128,7 +140,7 @@ impl Opencode {
         let base_url = wait_for_server_url(server_stdout, None).await?;
 
         Ok(OpencodeServer {
-            child,
+            child: Some(child),
             base_url,
             server_password,
         })
@@ -157,7 +169,7 @@ impl Opencode {
         let log_writer = LogWriter::new(stdout);
 
         let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
-        let (interrupt_tx, interrupt_rx) = tokio::sync::oneshot::channel();
+        let cancel = tokio_util::sync::CancellationToken::new();
 
         // Prepare config values that will be moved into the spawned task
         let directory = current_dir.to_string_lossy().to_string();
@@ -168,10 +180,14 @@ impl Opencode {
         };
         let model = self.model.clone();
         let model_variant = self.variant.clone();
-        let agent = self.mode.clone();
+        let agent = self.agent.clone();
         let auto_approve = self.auto_approve;
         let resume_session_id = resume_session.map(|s| s.to_string());
         let models_cache_key = self.compute_models_cache_key();
+        let cancel_for_task = cancel.clone();
+        let commit_reminder = env.commit_reminder;
+        let commit_reminder_prompt = env.commit_reminder_prompt.clone();
+        let repo_context = env.repo_context.clone();
 
         tokio::spawn(async move {
             // Wait for server to print listening URL
@@ -199,13 +215,16 @@ impl Opencode {
                 auto_approve,
                 server_password,
                 models_cache_key,
+                commit_reminder,
+                commit_reminder_prompt,
+                repo_context,
             };
 
             let result = match slash_command {
                 Some(command) => {
-                    run_slash_command(config, log_writer.clone(), command, interrupt_rx).await
+                    run_slash_command(config, log_writer.clone(), command, cancel_for_task).await
                 }
-                None => run_session(config, log_writer.clone(), interrupt_rx).await,
+                None => run_session(config, log_writer.clone(), cancel_for_task).await,
             };
             let exit_result = match result {
                 Ok(()) => ExecutorExitResult::Success,
@@ -222,7 +241,7 @@ impl Opencode {
         Ok(SpawnedChild {
             child,
             exit_signal: Some(exit_signal_rx),
-            interrupt_sender: Some(interrupt_tx),
+            cancel: Some(cancel),
         })
     }
 }
@@ -336,6 +355,7 @@ impl StandardCodingAgentExecutor for Opencode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let env = setup_permissions_env(self.auto_approve, env);
@@ -349,8 +369,7 @@ impl StandardCodingAgentExecutor for Opencode {
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
-        // Try multiple config file names (.json and .jsonc) in XDG/platform config dirs
-        #[cfg(unix)]
+        #[cfg(not(windows))]
         {
             let base_dirs = xdg::BaseDirectories::with_prefix("opencode");
             // First try opencode.json, then opencode.jsonc
@@ -359,18 +378,18 @@ impl StandardCodingAgentExecutor for Opencode {
                 .filter(|p| p.exists())
                 .or_else(|| base_dirs.get_config_file("opencode.jsonc"))
         }
-        #[cfg(not(unix))]
+        #[cfg(windows)]
         {
-            dirs::config_dir().and_then(|config| {
-                let opencode_dir = config.join("opencode");
-                let json_path = opencode_dir.join("opencode.json");
-                let jsonc_path = opencode_dir.join("opencode.jsonc");
-                if json_path.exists() {
-                    Some(json_path)
-                } else {
-                    Some(jsonc_path)
-                }
-            })
+            let config_dir = std::env::var("XDG_CONFIG_HOME")
+                .map(std::path::PathBuf::from)
+                .ok()
+                .or_else(|| dirs::home_dir().map(|p| p.join(".config")))
+                .map(|p| p.join("opencode"))?;
+
+            let path = Some(config_dir.join("opencode.json"))
+                .filter(|p| p.exists())
+                .unwrap_or_else(|| config_dir.join("opencode.jsonc"));
+            Some(path)
         }
     }
 
@@ -381,30 +400,48 @@ impl StandardCodingAgentExecutor for Opencode {
             .unwrap_or(false);
 
         // Check multiple installation indicator paths:
-        // 1. XDG config dir: ~/.config/opencode (Unix)
-        // 2. Platform config dir: ~/Library/Application Support/opencode (macOS)
-        // 3. OpenCode Desktop app: ~/Library/Application Support/ai.opencode.desktop (macOS)
-        // 4. OpenCode CLI home: ~/.opencode (cross-platform)
+        // 1. XDG config dir: $XDG_CONFIG_HOME/opencode
+        // 2. XDG data dir: $XDG_DATA_HOME/opencode
+        // 3. XDG state dir: $XDG_STATE_HOME/opencode
+        // 4. OpenCode CLI home: ~/.opencode
+        #[cfg(not(windows))]
         let installation_indicator_found = {
-            // Check XDG/platform config directory
-            let config_dir_exists = dirs::config_dir()
-                .map(|config| config.join("opencode").exists())
+            let base_dirs = xdg::BaseDirectories::with_prefix("opencode");
+
+            let config_dir_exists = base_dirs
+                .get_config_home()
+                .map(|config| config.exists())
                 .unwrap_or(false);
 
-            // Check OpenCode Desktop app directory (macOS)
-            let desktop_app_exists = dirs::config_dir()
-                .map(|config| config.join("ai.opencode.desktop").exists())
+            let data_dir_exists = base_dirs
+                .get_data_home()
+                .map(|data| data.exists())
                 .unwrap_or(false);
 
-            // Check ~/.opencode directory (CLI installation)
-            let home_opencode_exists = dirs::home_dir()
-                .map(|home| home.join(".opencode").exists())
+            let state_dir_exists = base_dirs
+                .get_state_home()
+                .map(|state| state.exists())
                 .unwrap_or(false);
 
-            config_dir_exists || desktop_app_exists || home_opencode_exists
+            config_dir_exists || data_dir_exists || state_dir_exists
         };
 
-        if mcp_config_found || installation_indicator_found {
+        #[cfg(windows)]
+        let installation_indicator_found = std::env::var("XDG_CONFIG_HOME")
+            .ok()
+            .map(std::path::PathBuf::from)
+            .and_then(|p| p.join("opencode").exists().then_some(()))
+            .or_else(|| {
+                dirs::home_dir()
+                    .and_then(|p| p.join(".config").join("opencode").exists().then_some(()))
+            })
+            .is_some();
+
+        let home_opencode_exists = dirs::home_dir()
+            .map(|home| home.join(".opencode").exists())
+            .unwrap_or(false);
+
+        if mcp_config_found || installation_indicator_found || home_opencode_exists {
             AvailabilityInfo::InstallationFound
         } else {
             AvailabilityInfo::NotFound

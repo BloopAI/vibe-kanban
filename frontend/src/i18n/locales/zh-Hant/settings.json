@@ -23,7 +23,9 @@
         "mcp": "MCP 伺服器",
         "mcpDesc": "模型上下文協議伺服器",
         "organizations": "組織設定",
-        "organizationsDesc": "管理組織成員與權限"
+        "organizationsDesc": "管理組織成員與權限",
+        "remote-projects": "專案",
+        "remote-projectsDesc": "管理專案"
       }
     },
     "general": {
@@ -166,6 +168,18 @@
           "helper": "產生 PR 描述時 AI 代理使用的自訂提示。使用 {pr_number} 與 {pr_url} 作為佔位符。"
         }
       },
+      "commits": {
+        "title": "提交",
+        "description": "設定任務嘗試的提交行為",
+        "reminder": {
+          "label": "提交提醒",
+          "helper": "提示支援的代理在停止前提交變更。"
+        },
+        "customPrompt": {
+          "useCustom": "使用自訂提示",
+          "helper": "提交提醒的自訂提示。git 狀態將自動追加。"
+        }
+      },
       "notifications": {
         "title": "通知",
         "description": "控制何時與如何接收通知。",
@@ -265,10 +279,6 @@
         "workspaces": {
           "label": "啟用工作區 Beta",
           "helper": "查看任務嘗試時使用新的工作區介面。任務將首先在任務檢視中開啟，嘗試將在新的工作區檢視中開啟。"
-        },
-        "commitReminder": {
-          "label": "提交提醒",
-          "helper": "提示支援的代理在停止前提交變更。"
         }
       }
     },
@@ -322,6 +332,10 @@
         "noResults": "沒有符合的設定",
         "noConfigs": "沒有可用的設定",
         "selectConfig": "從側邊欄選擇一個設定來查看和編輯其設定。"
+      },
+      "deleteConfigDialog": {
+        "title": "刪除設定？",
+        "description": "這將從 {{executorType}} 執行器中永久刪除「{{configName}}」。此操作無法復原。"
       }
     },
     "mcp": {
@@ -423,6 +437,11 @@
         "path": {
           "label": "儲存庫路徑"
         },
+        "defaultWorkingDir": {
+          "label": "預設工作目錄",
+          "placeholder": "例如：packages/frontend",
+          "helper": "單儲存庫工作區中程式碼代理執行的子目錄。在建立工作區時設定。留空則使用儲存庫根目錄。"
+        },
         "defaultTargetBranch": {
           "label": "預設目標分支",
           "placeholder": "選擇分支",
@@ -445,6 +464,10 @@
         "cleanup": {
           "label": "清理腳本",
           "helper": "此腳本在工作樹內執行，於編碼代理執行後（僅在有變更時）執行。用於品質保證工作，如執行 linter、格式化工具、測試或其他驗證步驟。"
+        },
+        "archive": {
+          "label": "歸檔腳本",
+          "helper": "當工作區被歸檔時，此腳本在工作樹內執行。用於清理工作，如停止服務、釋放資源或儲存狀態。"
         },
         "copyFiles": {
           "label": "複製檔案",

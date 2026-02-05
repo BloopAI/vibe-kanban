@@ -5,11 +5,13 @@ import i18n from '@/i18n';
 import { Projects } from '@/pages/Projects';
 import { ProjectTasks } from '@/pages/ProjectTasks';
 import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
+import { Migration } from '@/pages/Migration';
 import { NormalLayout } from '@/components/layout/NormalLayout';
-import { NewDesignLayout } from '@/components/layout/NewDesignLayout';
+import { SharedAppLayout } from '@/components/ui-new/containers/SharedAppLayout';
 import { usePostHog } from 'posthog-js/react';
 import { useAuth } from '@/hooks';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
+import { useUiPreferencesScratch } from '@/hooks/useUiPreferencesScratch';
 
 import {
   AgentSettings,
@@ -38,12 +40,16 @@ import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 // Design scope components
 import { LegacyDesignScope } from '@/components/legacy-design/LegacyDesignScope';
 import { NewDesignScope } from '@/components/ui-new/scope/NewDesignScope';
+import { VSCodeScope } from '@/components/ui-new/scope/VSCodeScope';
 import { TerminalProvider } from '@/contexts/TerminalContext';
 
 // New design pages
 import { Workspaces } from '@/pages/ui-new/Workspaces';
+import { VSCodeWorkspacePage } from '@/pages/ui-new/VSCodeWorkspacePage';
 import { WorkspacesLanding } from '@/pages/ui-new/WorkspacesLanding';
 import { ElectricTestPage } from '@/pages/ui-new/ElectricTestPage';
+import { ProjectKanban } from '@/pages/ui-new/ProjectKanban';
+import { MigratePage } from '@/pages/ui-new/MigratePage';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
@@ -54,6 +60,9 @@ function AppContent() {
 
   // Track previous path for back navigation
   usePreviousPath();
+
+  // Sync UI preferences with server scratch storage
+  useUiPreferencesScratch();
 
   // Handle opt-in/opt-out and user identification when config loads
   useEffect(() => {
@@ -133,7 +142,7 @@ function AppContent() {
             {/* ========== LEGACY DESIGN ROUTES ========== */}
             {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
             <Route
-              path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
+              path="/local-projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
               element={
                 <LegacyDesignScope>
                   <FullAttemptLogsPage />
@@ -149,10 +158,11 @@ function AppContent() {
               }
             >
               <Route path="/" element={<Projects />} />
-              <Route path="/projects" element={<Projects />} />
-              <Route path="/projects/:projectId" element={<Projects />} />
+              <Route path="/local-projects" element={<Projects />} />
+              <Route path="/local-projects/:projectId" element={<Projects />} />
+              <Route path="/migration" element={<Migration />} />
               <Route
-                path="/projects/:projectId/tasks"
+                path="/local-projects/:projectId/tasks"
                 element={<ProjectTasks />}
               />
               <Route path="/settings/*" element={<SettingsLayout />}>
@@ -172,30 +182,56 @@ function AppContent() {
                 element={<Navigate to="/settings/mcp" replace />}
               />
               <Route
-                path="/projects/:projectId/tasks/:taskId"
+                path="/local-projects/:projectId/tasks/:taskId"
                 element={<ProjectTasks />}
               />
               <Route
-                path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
+                path="/local-projects/:projectId/tasks/:taskId/attempts/:attemptId"
                 element={<ProjectTasks />}
               />
             </Route>
 
             {/* ========== NEW DESIGN ROUTES ========== */}
+            {/* VS Code workspace route (standalone, no layout, no keyboard shortcuts) */}
             <Route
-              path="/workspaces"
+              path="/workspaces/:workspaceId/vscode"
+              element={
+                <VSCodeScope>
+                  <TerminalProvider>
+                    <VSCodeWorkspacePage />
+                  </TerminalProvider>
+                </VSCodeScope>
+              }
+            />
+
+            {/* Unified layout for workspaces and projects - AppBar/Navbar rendered once */}
+            <Route
               element={
                 <NewDesignScope>
                   <TerminalProvider>
-                    <NewDesignLayout />
+                    <SharedAppLayout />
                   </TerminalProvider>
                 </NewDesignScope>
               }
             >
-              <Route index element={<WorkspacesLanding />} />
-              <Route path="create" element={<Workspaces />} />
-              <Route path="electric-test" element={<ElectricTestPage />} />
-              <Route path=":workspaceId" element={<Workspaces />} />
+              {/* Workspaces routes */}
+              <Route path="/workspaces" element={<WorkspacesLanding />} />
+              <Route path="/workspaces/create" element={<Workspaces />} />
+              <Route
+                path="/workspaces/electric-test"
+                element={<ElectricTestPage />}
+              />
+              <Route path="/workspaces/:workspaceId" element={<Workspaces />} />
+
+              {/* Projects routes */}
+              <Route path="/projects/:projectId" element={<ProjectKanban />} />
+              <Route
+                path="/projects/:projectId/issues/:issueId"
+                element={<ProjectKanban />}
+              />
+
+              {/* Migration route */}
+              <Route path="/migrate" element={<MigratePage />} />
             </Route>
           </SentryRoutes>
         </SearchProvider>

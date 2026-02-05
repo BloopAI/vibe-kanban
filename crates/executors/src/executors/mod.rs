@@ -57,6 +57,8 @@ pub enum BaseAgentCapability {
     SessionFork,
     /// Agent requires a setup script before it can run (e.g., login, installation)
     SetupHelper,
+    /// Agent reports context/token usage information
+    ContextUsage,
 }
 
 #[derive(Debug, Error)]
@@ -172,16 +174,22 @@ impl CodingAgent {
 
     pub fn capabilities(&self) -> Vec<BaseAgentCapability> {
         match self {
-            Self::ClaudeCode(_)
-            | Self::Amp(_)
-            | Self::Gemini(_)
-            | Self::QwenCode(_)
-            | Self::Droid(_)
-            | Self::Opencode(_) => vec![BaseAgentCapability::SessionFork],
+            Self::ClaudeCode(_) => vec![
+                BaseAgentCapability::SessionFork,
+                BaseAgentCapability::ContextUsage,
+            ],
+            Self::Opencode(_) => vec![
+                BaseAgentCapability::SessionFork,
+                BaseAgentCapability::ContextUsage,
+            ],
             Self::Codex(_) => vec![
                 BaseAgentCapability::SessionFork,
                 BaseAgentCapability::SetupHelper,
+                BaseAgentCapability::ContextUsage,
             ],
+            Self::Amp(_) | Self::Gemini(_) | Self::QwenCode(_) | Self::Droid(_) => {
+                vec![BaseAgentCapability::SessionFork]
+            }
             Self::CursorAgent(_) => vec![BaseAgentCapability::SetupHelper],
             Self::Copilot(_) => vec![],
             #[cfg(feature = "qa-mode")]
@@ -229,11 +237,13 @@ pub trait StandardCodingAgentExecutor {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError>;
 
+    /// Continue a session, optionally resetting to a specific message.
     async fn spawn_follow_up(
         &self,
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError>;
 
@@ -245,7 +255,10 @@ pub trait StandardCodingAgentExecutor {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         match session_id {
-            Some(id) => self.spawn_follow_up(current_dir, prompt, id, env).await,
+            Some(id) => {
+                self.spawn_follow_up(current_dir, prompt, id, None, env)
+                    .await
+            }
             None => self.spawn(current_dir, prompt, env).await,
         }
     }
@@ -287,17 +300,17 @@ pub enum ExecutorExitResult {
 /// and mark it according to the result.
 pub type ExecutorExitSignal = tokio::sync::oneshot::Receiver<ExecutorExitResult>;
 
-/// Sender for requesting graceful interrupt of an executor.
-/// When sent, the executor should attempt to interrupt gracefully before being killed.
-pub type InterruptSender = tokio::sync::oneshot::Sender<()>;
+/// Cancellation token for requesting graceful shutdown of an executor.
+/// When cancelled, the executor should attempt to cancel gracefully before being killed.
+pub type CancellationToken = tokio_util::sync::CancellationToken;
 
 #[derive(Debug)]
 pub struct SpawnedChild {
     pub child: AsyncGroupChild,
     /// Executor → Container: signals when executor wants to exit
     pub exit_signal: Option<ExecutorExitSignal>,
-    /// Container → Executor: signals when container wants to interrupt
-    pub interrupt_sender: Option<InterruptSender>,
+    /// Container → Executor: signals when container wants to cancel the execution
+    pub cancel: Option<CancellationToken>,
 }
 
 impl From<AsyncGroupChild> for SpawnedChild {
@@ -305,7 +318,7 @@ impl From<AsyncGroupChild> for SpawnedChild {
         Self {
             child,
             exit_signal: None,
-            interrupt_sender: None,
+            cancel: None,
         }
     }
 }

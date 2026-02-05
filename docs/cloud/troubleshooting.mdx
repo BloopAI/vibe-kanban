@@ -1,0 +1,305 @@
+---
+title: "Troubleshooting"
+description: "Solutions for common issues with Vibe Kanban Cloud"
+---
+
+This page covers common issues you might encounter with Vibe Kanban Cloud and how to resolve them.
+
+## Sign-In Issues
+
+<AccordionGroup>
+<Accordion title="I can't sign in">
+**Possible causes:**
+- Pop-up blocker preventing the OAuth window
+- Network connectivity issues
+- Browser extensions interfering
+
+**Solutions:**
+1. Disable pop-up blocker for localhost
+2. Check your internet connection
+3. Try disabling browser extensions temporarily
+4. Try a different browser
+5. Clear your browser cache and cookies
+</Accordion>
+
+<Accordion title="OAuth window doesn't open">
+**Possible causes:**
+- Pop-up blocker is active
+- Browser security settings
+
+**Solutions:**
+1. Look for a blocked pop-up notification in your browser's address bar
+2. Allow pop-ups for `localhost`
+3. Try right-clicking the sign-in button and selecting "Open in new tab"
+</Accordion>
+
+<Accordion title="'Access denied' error from GitHub/Google">
+**Possible causes:**
+- You clicked "Deny" instead of "Authorize"
+- Your organisation has app restrictions (GitHub)
+
+**Solutions:**
+1. Try again and click **Authorize** or **Allow**
+2. If using a GitHub organisation account, ask your admin to approve the app
+</Accordion>
+
+<Accordion title="Signed in as the wrong account">
+**Possible causes:**
+- Your browser is logged into a different GitHub/Google account
+
+**Solutions:**
+1. Sign out of Vibe Kanban
+2. Go to [github.com](https://github.com) or [google.com](https://google.com) and sign out
+3. Sign in with the correct account
+4. Return to Vibe Kanban and sign in again
+</Accordion>
+
+<Accordion title="Session keeps expiring">
+**Possible causes:**
+- Network issues preventing token refresh
+- Browser blocking cookies
+
+**Solutions:**
+1. Check your internet connection
+2. Ensure cookies are enabled for localhost
+3. Try signing out and back in
+</Accordion>
+</AccordionGroup>
+
+## Organisation Issues
+
+<AccordionGroup>
+<Accordion title="I can't create an organisation">
+**Possible causes:**
+- Network connectivity issues
+- You're not signed in
+
+**Solutions:**
+1. Ensure you're signed in (check for your avatar in the corner)
+2. Check your internet connection
+3. Try refreshing the page
+</Accordion>
+
+<Accordion title="I can't see an organisation I was invited to">
+**Possible causes:**
+- You haven't accepted the invitation yet
+- You signed in with a different email
+- The invitation expired
+
+**Solutions:**
+1. Check your email for an invitation link and click it
+2. Verify you're signed in with the email that was invited
+3. Ask the organisation admin to resend the invitation
+</Accordion>
+
+<Accordion title="I can't leave an organisation">
+**Possible causes:**
+- You're the only admin
+
+**Solutions:**
+1. Promote another member to admin first
+2. Then you can leave
+3. Or delete the organisation if no one else needs it
+</Accordion>
+</AccordionGroup>
+
+## Team Member Issues
+
+<AccordionGroup>
+<Accordion title="Invitation email not received">
+**Possible causes:**
+- Email went to spam/junk folder
+- Wrong email address entered
+- Email delivery delay
+
+**Solutions:**
+1. Check spam/junk folder
+2. Verify the email address is correct in the pending invitations list
+3. Resend the invitation
+4. Try a different email address
+</Accordion>
+
+<Accordion title="Invitation link doesn't work">
+**Possible causes:**
+- Invitation expired (after 7 days)
+- Invitation was cancelled
+- Link was copied incorrectly
+
+**Solutions:**
+1. Ask for a new invitation to be sent
+2. Make sure you're clicking the full link from the email
+</Accordion>
+
+<Accordion title="New member can't see projects">
+**Possible causes:**
+- They signed in with a different email
+- Browser cache issue
+
+**Solutions:**
+1. Verify they're signed in with the invited email (check their profile)
+2. Have them refresh the page
+3. Have them sign out and back in
+</Accordion>
+</AccordionGroup>
+
+## Project and Board Issues
+
+<AccordionGroup>
+<Accordion title="Projects not loading">
+**Possible causes:**
+- Network connectivity issues
+- Sync delay
+
+**Solutions:**
+1. Check your internet connection
+2. Refresh the page
+3. Sign out and back in
+</Accordion>
+
+<Accordion title="Changes not syncing">
+**Possible causes:**
+- Internet connection lost
+- Temporary sync issue
+
+**Solutions:**
+1. Check your internet connection
+2. Refresh the page - your changes should still be there
+3. If changes were lost, you may need to re-enter them
+</Accordion>
+
+<Accordion title="I can't delete a status column">
+**Possible causes:**
+- The column has issues in it
+
+**Solutions:**
+1. Move all issues to another column first
+2. Check for issues in hidden views (use "All" status tab)
+3. Then delete the empty column
+</Accordion>
+
+<Accordion title="Drag and drop not working">
+**Possible causes:**
+- Sort mode is not set to "Manual"
+- Browser issue
+
+**Solutions:**
+1. Check the sort dropdown - select "Manual" to enable drag and drop
+2. Try refreshing the page
+3. Try a different browser
+</Accordion>
+</AccordionGroup>
+
+## Issue Problems
+
+<AccordionGroup>
+<Accordion title="Can't find an issue">
+**Possible causes:**
+- Active filters hiding the issue
+- Issue is in a hidden column
+
+**Solutions:**
+1. Click **Clear All** in the filter bar to reset filters
+2. Use the "All" status tab to see issues in hidden columns
+3. Try searching for the issue ID or title
+</Accordion>
+
+<Accordion title="Changes to an issue aren't saving">
+**Possible causes:**
+- Network issue
+- You closed the panel too quickly
+
+**Solutions:**
+1. Wait a moment after editing before closing the panel (auto-save has a short delay)
+2. Check your internet connection
+3. Refresh and check if the change was saved
+</Accordion>
+
+<Accordion title="Can't assign someone to an issue">
+**Possible causes:**
+- They're not a member of the organisation
+
+**Solutions:**
+1. Invite them to the organisation first
+2. Once they accept, they'll appear in the assignee list
+</Accordion>
+</AccordionGroup>
+
+## GitHub Integration Issues
+
+<AccordionGroup>
+<Accordion title="GitHub integration not working">
+**Possible causes:**
+- GitHub App not installed
+- Repository not connected
+
+**Solutions:**
+1. Go to Organisation Settings → GitHub Integration
+2. Install the GitHub App if not already installed
+3. Ensure the repository has access granted
+</Accordion>
+
+<Accordion title="Pull requests not linking to issues">
+**Possible causes:**
+- Branch name doesn't include issue ID
+- PR was created before integration was set up
+
+**Solutions:**
+1. Include the issue ID in your branch name (e.g., `TASK-123-feature`)
+2. Or include the issue ID in the PR title
+3. New PRs should link automatically
+</Accordion>
+
+<Accordion title="Code review not available">
+**Possible causes:**
+- Code review not enabled for the repository
+
+**Solutions:**
+1. Go to Organisation Settings → GitHub Integration
+2. Enable "Code Review" for the repository
+</Accordion>
+</AccordionGroup>
+
+## General Issues
+
+<AccordionGroup>
+<Accordion title="Page won't load">
+**Solutions:**
+1. Refresh the page
+2. Clear browser cache
+3. Try a different browser
+4. Restart Vibe Kanban (`npx vibe-kanban`)
+</Accordion>
+
+<Accordion title="Everything is slow">
+**Possible causes:**
+- Network connectivity issues
+- Many browser tabs open
+
+**Solutions:**
+1. Check your internet connection
+2. Close unnecessary browser tabs
+3. Refresh the page
+</Accordion>
+
+<Accordion title="Data seems out of date">
+**Solutions:**
+1. Refresh the page to force a sync
+2. Check your internet connection
+3. Sign out and back in
+</Accordion>
+</AccordionGroup>
+
+## Getting Help
+
+If you can't resolve an issue:
+
+1. **Check existing issues:** [github.com/BloopAI/vibe-kanban/issues](https://github.com/BloopAI/vibe-kanban/issues)
+
+2. **Report a bug:** Create a new issue with:
+   - What you were trying to do
+   - What happened instead
+   - Your browser and operating system
+
+<Card title="Report an Issue" icon="github" href="https://github.com/BloopAI/vibe-kanban/issues/new">
+  Open a new issue on GitHub for bugs or feature requests
+</Card>

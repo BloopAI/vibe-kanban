@@ -7,6 +7,7 @@
 
 use chrono::{DateTime, Utc};
 use serde_json::Value;
+use uuid::Uuid;
 
 use crate::{
     db::{
@@ -111,25 +112,35 @@ crate::define_entity!(
         status_id: uuid::Uuid,
         title: String,
         description: Option<String>,
-        priority: IssuePriority,
+        priority: Option<IssuePriority>,
         start_date: Option<DateTime<Utc>>,
         target_date: Option<DateTime<Utc>>,
         completed_at: Option<DateTime<Utc>>,
         sort_order: f64,
         parent_issue_id: Option<uuid::Uuid>,
+        parent_issue_sort_order: Option<f64>,
         extension_metadata: Value,
     ],
 );
 
-// Workspace: shape-only (no mutations) with custom URL
+// Workspace: shape-only (no mutations), multiple scopes
 crate::define_entity!(
     Workspace,
     table: "workspaces",
-    shape: {
-        where_clause: r#""project_id" = $1"#,
-        params: ["project_id"],
-        url: "/shape/project/{project_id}/workspaces",
-    },
+    shapes: [
+        {
+            name: Workspace,
+            where_clause: r#""owner_user_id" = $1"#,
+            params: ["owner_user_id"],
+            url: "/shape/user/workspaces",
+        },
+        {
+            name: ProjectWorkspace,
+            where_clause: r#""project_id" = $1"#,
+            params: ["project_id"],
+            url: "/shape/project/{project_id}/workspaces",
+        }
+    ],
 );
 
 // =============================================================================
@@ -201,7 +212,7 @@ crate::define_entity!(
         params: ["issue_id"],
         url: "/shape/issue/{issue_id}/comments",
     },
-    fields: [message: String],
+    fields: [message: String, parent_id: Option<Uuid>],
 );
 
 // =============================================================================
@@ -262,6 +273,7 @@ pub fn all_shapes() -> Vec<&'static dyn crate::shapes::ShapeExport> {
         &PROJECT_STATUS_SHAPE,
         &ISSUE_SHAPE,
         &WORKSPACE_SHAPE,
+        &PROJECT_WORKSPACE_SHAPE,
         &ISSUE_ASSIGNEE_SHAPE,
         &ISSUE_FOLLOWER_SHAPE,
         &ISSUE_TAG_SHAPE,

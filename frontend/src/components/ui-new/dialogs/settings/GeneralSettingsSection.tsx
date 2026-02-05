@@ -1,22 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { cloneDeep, merge, isEqual } from 'lodash';
+import { cloneDeep, isEqual, merge } from 'lodash';
 import {
-  SpinnerIcon,
-  SpeakerHighIcon,
-  CaretDownIcon,
   FolderSimpleIcon,
+  SpeakerHighIcon,
+  SpinnerIcon,
 } from '@phosphor-icons/react';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
 import {
+  type BaseCodingAgent,
+  DEFAULT_COMMIT_REMINDER_PROMPT,
   DEFAULT_PR_DESCRIPTION_PROMPT,
   EditorType,
+  type ExecutorProfileId,
+  type SendMessageShortcut,
   SoundFile,
   ThemeMode,
   UiLanguage,
-  type SendMessageShortcut,
-  type BaseCodingAgent,
-  type ExecutorProfileId,
 } from 'shared/types';
 import { getModifierKey } from '@/utils/platform';
 import { getLanguageOptions } from '@/i18n/languages';
@@ -36,12 +36,12 @@ import {
 } from '../../primitives/Dropdown';
 import {
   SettingsCard,
-  SettingsField,
   SettingsCheckbox,
-  SettingsSelect,
+  SettingsField,
   SettingsInput,
-  SettingsTextarea,
   SettingsSaveBar,
+  SettingsSelect,
+  SettingsTextarea,
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 
@@ -428,19 +428,14 @@ export function GeneralSettingsSection() {
             {hasVariants ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button
-                    className={cn(
-                      'flex items-center justify-between w-full px-base py-half rounded-sm border border-border bg-secondary',
-                      'text-base text-normal hover:bg-secondary/80 focus:outline-none focus:ring-1 focus:ring-brand'
-                    )}
-                  >
-                    <span className="truncate">
-                      {draft?.executor_profile?.variant
+                  <DropdownMenuTriggerButton
+                    label={
+                      draft?.executor_profile?.variant
                         ? toPrettyCase(draft.executor_profile.variant)
-                        : t('settings.general.taskExecution.defaultLabel')}
-                    </span>
-                    <CaretDownIcon className="size-icon-xs ml-2 shrink-0" />
-                  </button>
+                        : t('settings.general.taskExecution.defaultLabel')
+                    }
+                    className="w-full justify-between"
+                  />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
                   {Object.keys(selectedAgentProfile).map((variantLabel) => (
@@ -590,6 +585,57 @@ export function GeneralSettingsSection() {
             disabled={draft?.pr_auto_description_prompt == null}
           />
         </SettingsField>
+      </SettingsCard>
+
+      {/* Commits */}
+      <SettingsCard
+        title={t('settings.general.commits.title')}
+        description={t('settings.general.commits.description')}
+      >
+        <SettingsCheckbox
+          id="commit-reminder"
+          label={t('settings.general.commits.reminder.label')}
+          description={t('settings.general.commits.reminder.helper')}
+          checked={draft?.commit_reminder_enabled ?? true}
+          onChange={(checked) =>
+            updateDraft({ commit_reminder_enabled: checked })
+          }
+        />
+
+        {draft?.commit_reminder_enabled && (
+          <>
+            <SettingsCheckbox
+              id="use-custom-commit-prompt"
+              label={t('settings.general.commits.customPrompt.useCustom')}
+              checked={draft?.commit_reminder_prompt != null}
+              onChange={(checked) => {
+                if (checked) {
+                  updateDraft({
+                    commit_reminder_prompt: DEFAULT_COMMIT_REMINDER_PROMPT,
+                  });
+                } else {
+                  updateDraft({ commit_reminder_prompt: null });
+                }
+              }}
+            />
+
+            <SettingsField
+              label=""
+              description={t('settings.general.commits.customPrompt.helper')}
+            >
+              <SettingsTextarea
+                value={
+                  draft?.commit_reminder_prompt ??
+                  DEFAULT_COMMIT_REMINDER_PROMPT
+                }
+                onChange={(value) =>
+                  updateDraft({ commit_reminder_prompt: value })
+                }
+                disabled={draft?.commit_reminder_prompt == null}
+              />
+            </SettingsField>
+          </>
+        )}
       </SettingsCard>
 
       {/* Notifications */}
@@ -762,13 +808,6 @@ export function GeneralSettingsSection() {
           description={t('settings.general.beta.workspaces.helper')}
           checked={draft?.beta_workspaces ?? false}
           onChange={(checked) => updateDraft({ beta_workspaces: checked })}
-        />
-        <SettingsCheckbox
-          id="commit-reminder"
-          label={t('settings.general.beta.commitReminder.label')}
-          description={t('settings.general.beta.commitReminder.helper')}
-          checked={draft?.commit_reminder ?? false}
-          onChange={(checked) => updateDraft({ commit_reminder: checked })}
         />
       </SettingsCard>
 

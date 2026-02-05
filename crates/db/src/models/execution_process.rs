@@ -55,6 +55,7 @@ pub enum ExecutionProcessStatus {
 pub enum ExecutionProcessRunReason {
     SetupScript,
     CleanupScript,
+    ArchiveScript,
     CodingAgent,
     DevServer,
 }
@@ -354,35 +355,6 @@ impl ExecutionProcess {
         )
         .fetch_all(pool)
         .await
-    }
-
-    /// Find latest coding_agent_turn agent_session_id by session (simple scalar query)
-    pub async fn find_latest_coding_agent_turn_session_id(
-        pool: &SqlitePool,
-        session_id: Uuid,
-    ) -> Result<Option<String>, sqlx::Error> {
-        tracing::info!(
-            "Finding latest coding agent turn session id for session {}",
-            session_id
-        );
-        let row = sqlx::query!(
-            r#"SELECT cat.agent_session_id
-               FROM execution_processes ep
-               JOIN coding_agent_turns cat ON ep.id = cat.execution_process_id
-               WHERE ep.session_id = $1
-                 AND ep.run_reason = 'codingagent'
-                 AND ep.dropped = FALSE
-                 AND cat.agent_session_id IS NOT NULL
-               ORDER BY ep.created_at DESC
-               LIMIT 1"#,
-            session_id
-        )
-        .fetch_optional(pool)
-        .await?;
-
-        tracing::info!("Latest coding agent turn session id: {:?}", row);
-
-        Ok(row.and_then(|r| r.agent_session_id))
     }
 
     /// Find latest execution process by session and run reason

@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use axum::{Extension, Json, extract::State, response::Json as ResponseJson};
 use db::models::{
+    coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     session::Session,
     workspace::{Workspace, WorkspaceError},
@@ -65,8 +66,9 @@ pub async fn start_review(
         .ensure_container_exists(&workspace)
         .await?;
 
-    let agent_session_id =
-        ExecutionProcess::find_latest_coding_agent_turn_session_id(pool, session.id).await?;
+    let agent_session_id = CodingAgentTurn::find_latest_session_info(pool, session.id)
+        .await?
+        .map(|info| info.session_id);
 
     let context: Option<Vec<ExecutorRepoReviewContext>> = if payload.use_all_workspace_commits {
         let repos =

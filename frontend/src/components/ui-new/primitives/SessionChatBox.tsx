@@ -12,11 +12,12 @@ import {
   ArrowUpIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import type {
-  BaseCodingAgent,
-  Session,
-  TodoItem,
-  TokenUsageInfo,
+import {
+  BaseAgentCapability,
+  type BaseCodingAgent,
+  type Session,
+  type TodoItem,
+  type TokenUsageInfo,
 } from 'shared/types';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { formatDateShortWithTime } from '@/utils/date';
@@ -48,6 +49,7 @@ import {
 import { type ExecutorProps } from './CreateChatBox';
 import { ContextUsageGauge } from './ContextUsageGauge';
 import { TodoProgressPopup } from './TodoProgressPopup';
+import { useUserSystem } from '@/components/ConfigProvider';
 
 // Re-export shared types
 export type { EditorProps, VariantProps } from './ChatBoxBase';
@@ -140,7 +142,7 @@ interface SessionChatBoxProps {
   reviewComments?: ReviewCommentsProps;
   toolbarActions?: ToolbarActionsProps;
   error?: string | null;
-  workspaceId?: string;
+  repoIds?: string[];
   projectId?: string;
   agent?: BaseCodingAgent | null;
   executor?: ExecutorProps;
@@ -170,7 +172,7 @@ export function SessionChatBox({
   reviewComments,
   toolbarActions,
   error,
-  workspaceId,
+  repoIds,
   projectId,
   agent,
   executor,
@@ -184,6 +186,10 @@ export function SessionChatBox({
 }: SessionChatBoxProps) {
   const { t } = useTranslation('tasks');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { capabilities } = useUserSystem();
+
+  const supportsContextUsage =
+    agent && capabilities?.[agent]?.includes(BaseAgentCapability.CONTEXT_USAGE);
 
   // Determine if in feedback mode, edit mode, or approval mode
   const isInFeedbackMode = feedbackMode?.isActive ?? false;
@@ -511,7 +517,7 @@ export function SessionChatBox({
       placeholder={placeholder}
       onCmdEnter={handleCmdEnter}
       disabled={isDisabled}
-      workspaceId={workspaceId}
+      repoIds={repoIds}
       projectId={projectId}
       executor={agent || executor?.selected}
       autoFocus={true}
@@ -564,19 +570,46 @@ export function SessionChatBox({
                 <>
                   {stats?.hasConflicts && (
                     <span
-                      className="flex items-center gap-1 text-warning text-sm"
+                      className="flex items-center gap-1 text-warning text-sm min-w-0"
                       title={t('conversation.approval.conflictWarning')}
                     >
-                      <WarningIcon className="size-icon-sm" />
-                      <span>
+                      <WarningIcon className="size-icon-sm flex-shrink-0" />
+                      <span className="truncate">
                         {t('conversation.approval.conflicts', {
                           count: stats.conflictedFilesCount,
                         })}
                       </span>
                     </span>
                   )}
-                  <PrimaryButton variant="tertiary" onClick={onViewCode}>
-                    <span className="text-sm space-x-half">
+                  {onViewCode ? (
+                    <PrimaryButton
+                      variant="tertiary"
+                      onClick={onViewCode}
+                      className="min-w-0"
+                    >
+                      <span className="text-sm space-x-half whitespace-nowrap truncate">
+                        <span>
+                          {t('diff.filesChanged', { count: filesChanged })}
+                        </span>
+                        {(linesAdded !== undefined ||
+                          linesRemoved !== undefined) && (
+                          <span className="space-x-half">
+                            {linesAdded !== undefined && (
+                              <span className="text-success">
+                                +{linesAdded}
+                              </span>
+                            )}
+                            {linesRemoved !== undefined && (
+                              <span className="text-error">
+                                -{linesRemoved}
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </span>
+                    </PrimaryButton>
+                  ) : (
+                    <span className="text-sm text-low space-x-half whitespace-nowrap truncate min-w-0">
                       <span>
                         {t('diff.filesChanged', { count: filesChanged })}
                       </span>
@@ -592,7 +625,7 @@ export function SessionChatBox({
                         </span>
                       )}
                     </span>
-                  </PrimaryButton>
+                  )}
                 </>
               )}
             </>
@@ -617,10 +650,13 @@ export function SessionChatBox({
           )}
           {/* Todo progress popup - always rendered, disabled when no todos */}
           <TodoProgressPopup todos={todos ?? []} />
-          <ContextUsageGauge tokenUsageInfo={tokenUsageInfo} />
+          {supportsContextUsage && (
+            <ContextUsageGauge tokenUsageInfo={tokenUsageInfo} />
+          )}
           <ToolbarDropdown
             label={sessionLabel}
             disabled={isInFeedbackMode || isInEditMode || isInApprovalMode}
+            className="min-w-0 max-w-[120px]"
           >
             {/* New Session option */}
             <DropdownMenuItem
@@ -645,9 +681,15 @@ export function SessionChatBox({
                     }
                     onClick={() => onSelectSession(s.id)}
                   >
-                    {index === 0
-                      ? t('conversation.sessions.latest')
-                      : formatDateShortWithTime(s.created_at)}
+                    <span className="flex items-center gap-1.5">
+                      <AgentIcon
+                        agent={s.executor as BaseCodingAgent}
+                        className="size-icon shrink-0"
+                      />
+                      {index === 0
+                        ? t('conversation.sessions.latest')
+                        : formatDateShortWithTime(s.created_at)}
+                    </span>
                   </DropdownMenuItem>
                 ))}
               </>

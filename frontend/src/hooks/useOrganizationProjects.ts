@@ -1,16 +1,23 @@
-import { useQuery } from '@tanstack/react-query';
-import { organizationsApi } from '../lib/api';
-import type { RemoteProject } from 'shared/types';
+import { useShape } from '@/lib/electric/hooks';
+import { PROJECTS_SHAPE } from 'shared/remote-types';
+import { useAuth } from '@/hooks/auth/useAuth';
 
 export function useOrganizationProjects(organizationId: string | null) {
-  return useQuery<RemoteProject[]>({
-    queryKey: ['organizations', organizationId, 'projects'],
-    queryFn: async () => {
-      if (!organizationId) return [];
-      const projects = await organizationsApi.getProjects(organizationId);
-      return projects || [];
-    },
-    enabled: Boolean(organizationId),
-    staleTime: 2 * 60 * 1000, // 2 minutes
-  });
+  const { isSignedIn } = useAuth();
+
+  // Only subscribe to Electric when signed in AND have an org
+  const enabled = isSignedIn && !!organizationId;
+
+  const { data, isLoading, error } = useShape(
+    PROJECTS_SHAPE,
+    { organization_id: organizationId || '' },
+    { enabled }
+  );
+
+  return {
+    data,
+    isLoading,
+    isError: !!error,
+    error,
+  };
 }

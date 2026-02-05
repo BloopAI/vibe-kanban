@@ -9,6 +9,7 @@ pub mod issue_followers;
 pub mod issue_relationships;
 pub mod issue_tags;
 pub mod issues;
+pub mod migration;
 pub mod notifications;
 pub mod oauth;
 pub mod oauth_accounts;
@@ -47,7 +48,7 @@ pub(crate) async fn migrate(pool: &PgPool) -> Result<(), MigrateError> {
     sqlx::migrate!("./migrations").run(pool).await
 }
 
-pub(crate) async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
+pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
     PgPoolOptions::new()
         .max_connections(10)
         .connect(database_url)

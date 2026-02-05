@@ -104,6 +104,19 @@
       "andMore": "...y {{count}} más"
     }
   },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "Rebase en Progreso",
+      "description": "Un rebase hacia {{targetBranch}} está en progreso sin conflictos. Elige cómo proceder.",
+      "hint": "Puedes continuar el rebase para completarlo, o cancelar para volver al estado anterior.",
+      "continue": "Continuar Rebase",
+      "continuing": "Continuando...",
+      "abort": "Cancelar Rebase",
+      "aborting": "Cancelando...",
+      "continueError": "Error al continuar el rebase. Puede haber conflictos sin resolver.",
+      "abortError": "Error al cancelar el rebase. Por favor, inténtalo de nuevo."
+    }
+  },
   "createPrDialog": {
     "title": "Crear Pull Request",
     "description": "Crea un pull request para este intento de tarea.",
@@ -198,6 +211,12 @@
     "viewModes": {
       "inline": "Inline view",
       "split": "Split view"
+    },
+    "largeDiff": {
+      "title": "Archivo grande",
+      "linesChanged": "{{count}} líneas cambiadas",
+      "loadAnyway": "Cargar diff de todos modos",
+      "warning": "Los diffs grandes pueden ralentizar tu navegador."
     }
   },
   "empty": {
@@ -219,8 +238,10 @@
     "queuedMessage": "Mensaje en cola - se ejecutará cuando finalice la ejecución actual",
     "runSetupScript": "Ejecutar script de configuración",
     "runCleanupScript": "Ejecutar script de limpieza",
+    "runArchiveScript": "Ejecutar script de archivo",
     "noSetupScript": "No hay script de configuración configurado para este proyecto",
     "noCleanupScript": "No hay script de limpieza configurado para este proyecto",
+    "noArchiveScript": "No hay script de archivo configurado para este proyecto",
     "scriptsDisabledWhileRunning": "No se pueden ejecutar scripts mientras un proceso está en ejecución"
   },
   "git": {
@@ -565,9 +586,12 @@
   },
   "restoreLogsDialog": {
     "title": "Confirmar Reintento",
+    "titleReset": "Confirmar Restablecimiento",
     "historyChange": {
       "title": "Cambio de historial",
       "willDelete": "Eliminará este proceso",
+      "willDeleteProcesses_one": "Eliminará {{count}} proceso",
+      "willDeleteProcesses_other": "Eliminará {{count}} procesos",
       "andLaterProcesses_one": "y {{count}} proceso posterior",
       "andLaterProcesses_other": "y {{count}} procesos posteriores",
       "fromHistory": "del historial.",
@@ -603,7 +627,8 @@
       "uncommittedPresentHint": "Hay cambios sin confirmar. Activa Forzar restablecimiento o confirma/guarda para continuar."
     },
     "buttons": {
-      "retry": "Reintentar"
+      "retry": "Reintentar",
+      "reset": "Restablecer"
     }
   },
   "conversation": {
@@ -634,7 +659,9 @@
       "approve": "Aprobar",
       "clearReviewComments": "Limpiar comentarios de revisión",
       "edit": "Editar mensaje",
-      "scrollToPreviousMessage": "Go to previous message"
+      "scrollToPreviousMessage": "Go to previous message",
+      "reset": "Restablecer",
+      "resetTooltip": "Restablecer a este punto"
     },
     "approval": {
       "conflictWarning": "Los archivos en conflicto necesitan resolución manual",
@@ -648,6 +675,13 @@
       "completedSuccessfully": "Completado exitosamente",
       "exitCode": "Código de salida: {{code}}",
       "running": "Ejecutando..."
+    },
+    "scriptPlaceholder": {
+      "setupTitle": "Script de Configuración",
+      "setupDescription": "No hay script de configuración. Los scripts de configuración se ejecutan antes de que el agente de codificación comience.",
+      "cleanupTitle": "Script de Limpieza",
+      "cleanupDescription": "No hay script de limpieza. Los scripts de limpieza se ejecutan después de que el agente de codificación termine.",
+      "configure": "Configurar"
     },
     "unableToRenderDiff": "No se puede mostrar la diferencia.",
     "updatedTodos": "Tareas actualizadas",
@@ -678,6 +712,7 @@
     "title": "Corregir Script",
     "setupScriptTitle": "Corregir Script de Configuración",
     "cleanupScriptTitle": "Corregir Script de Limpieza",
+    "archiveScriptTitle": "Corregir Script de Archivo",
     "devServerTitle": "Corregir Script del Servidor de Desarrollo",
     "scriptLabel": "Script (editar)",
     "logsLabel": "Últimos Registros de Ejecución",
@@ -692,5 +727,36 @@
     "statusSuccess": "Completado exitosamente",
     "statusFailed": "Falló con código de salida {{exitCode}}",
     "statusKilled": "El proceso fue terminado"
+  },
+  "createWorkspaceFromPr": {
+    "title": "Crear Espacio de Trabajo desde PR",
+    "description": "Selecciona una solicitud de extracción abierta para crear un espacio de trabajo. Se creará una tarea automáticamente usando el título del PR.",
+    "repositoryLabel": "Repositorio",
+    "remoteLabel": "Remoto",
+    "pullRequestLabel": "Solicitud de Extracción",
+    "loadingRepositories": "Cargando repositorios...",
+    "loadingRemotes": "Cargando remotos...",
+    "noRepositoriesFound": "No se encontraron repositorios",
+    "loadingPullRequests": "Cargando solicitudes de extracción...",
+    "selectRepositoryFirst": "Selecciona un repositorio primero",
+    "noPullRequestsFound": "No se encontraron solicitudes de extracción abiertas",
+    "runSetupScript": "Ejecutar script de configuración",
+    "creating": "Creando...",
+    "createWorkspace": "Crear Espacio de Trabajo",
+    "selectRepository": "Seleccionar un repositorio",
+    "selectRemote": "Seleccionar un remoto",
+    "selectPullRequest": "Seleccionar una solicitud de extracción",
+    "searchPrsPlaceholder": "Buscar PRs por número o título...",
+    "noMatchingPrs": "No hay solicitudes de extracción coincidentes",
+    "default": "predeterminado",
+    "openPrInBrowser": "Abrir PR en el navegador",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLI no está instalado",
+      "unsupportedProvider": "Proveedor Git no soportado",
+      "failedToLoadPrs": "Error al cargar solicitudes de extracción",
+      "prNotFound": "Solicitud de extracción no encontrada",
+      "repoNotInProject": "El repositorio no está en ningún proyecto",
+      "failedToCreateWorkspace": "Error al crear espacio de trabajo"
+    }
   }
 }

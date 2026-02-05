@@ -157,6 +157,7 @@ impl StandardCodingAgentExecutor for Droid {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let forked_session_id = fork_session(session_id).map_err(|e| {

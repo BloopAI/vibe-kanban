@@ -13,10 +13,11 @@ use db::{
 };
 use executors::executors::ExecutorError;
 use futures::{StreamExt, TryStreamExt};
+use git::{GitService, GitServiceError};
 use git2::Error as Git2Error;
 use serde_json::Value;
 use services::services::{
-    analytics::{AnalyticsContext, AnalyticsService},
+    analytics::AnalyticsService,
     approvals::Approvals,
     auth::AuthContext,
     config::{Config, ConfigError},
@@ -25,11 +26,10 @@ use services::services::{
     file_search::FileSearchCache,
     filesystem::{FilesystemError, FilesystemService},
     filesystem_watcher::FilesystemWatcherError,
-    git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
-    pr_monitor::PrMonitorService,
     project::ProjectService,
     queued_message::QueuedMessageService,
+    remote_client::RemoteClient,
     repo::RepoService,
     worktree_manager::WorktreeError,
 };
@@ -110,6 +110,10 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn auth_context(&self) -> &AuthContext;
 
+    fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
+        Err(RemoteClientNotConfigured)
+    }
+
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {
         let user_id = self.user_id();
         let config = self.config().read().await;
@@ -118,18 +122,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
         sentry_utils::configure_user_scope(user_id, username, email);
 
         Ok(())
-    }
-
-    async fn spawn_pr_monitor_service(&self) -> tokio::task::JoinHandle<()> {
-        let db = self.db().clone();
-        let analytics = self
-            .analytics()
-            .as_ref()
-            .map(|analytics_service| AnalyticsContext {
-                user_id: self.user_id().to_string(),
-                analytics_service: analytics_service.clone(),
-            });
-        PrMonitorService::spawn(db, analytics).await
     }
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {

@@ -162,7 +162,7 @@ fn export_shapes() -> String {
     // Generate individual shape definitions
     output.push_str("// Individual shape definitions with embedded types\n");
     for shape in &shapes {
-        let const_name = shape.table().to_uppercase();
+        let const_name = url_to_const_name(shape.url());
         let params_str = shape
             .params()
             .iter()
@@ -180,88 +180,81 @@ fn export_shapes() -> String {
         ));
     }
 
-    // Generate EntityDefinition interface for SDK generation
-    output.push_str(
-        "// =============================================================================\n",
-    );
-    output.push_str("// Entity Definitions for SDK Generation\n");
-    output.push_str(
-        "// =============================================================================\n\n",
-    );
+    // Generate MutationDefinition interface
+    let entities = all_entities();
 
     output.push_str("// Scope enum matching Rust\n");
     output.push_str("export type Scope = 'Organization' | 'Project' | 'Issue' | 'Comment';\n\n");
 
-    output.push_str("// Entity definition interface\n");
     output.push_str(
-        "export interface EntityDefinition<TRow, TCreate = unknown, TUpdate = unknown> {\n",
+        "// =============================================================================\n",
+    );
+    output.push_str("// Mutation Definitions\n");
+    output.push_str(
+        "// =============================================================================\n\n",
+    );
+
+    output.push_str("// Mutation definition interface\n");
+    output.push_str(
+        "export interface MutationDefinition<TRow, TCreate = unknown, TUpdate = unknown> {\n",
     );
     output.push_str("  readonly name: string;\n");
     output.push_str("  readonly table: string;\n");
-    output.push_str("  readonly mutationScope: Scope | null;\n");
-    output.push_str("  readonly shapeScope: Scope | null;\n");
-    output.push_str("  readonly shape: ShapeDefinition<TRow> | null;\n");
-    output.push_str("  readonly mutations: {\n");
-    output.push_str("    readonly url: string;\n");
-    output.push_str("    readonly _createType: TCreate;  // Phantom (not present at runtime)\n");
-    output.push_str("    readonly _updateType: TUpdate;  // Phantom (not present at runtime)\n");
-    output.push_str("  } | null;\n");
+    output.push_str("  readonly mutationScope: Scope;\n");
+    output.push_str("  readonly url: string;\n");
+    output.push_str(
+        "  readonly _rowType: TRow;  // Phantom field for type inference (not present at runtime)\n",
+    );
+    output.push_str(
+        "  readonly _createType: TCreate;  // Phantom field for type inference (not present at runtime)\n",
+    );
+    output.push_str(
+        "  readonly _updateType: TUpdate;  // Phantom field for type inference (not present at runtime)\n",
+    );
     output.push_str("}\n\n");
 
-    // Generate individual entity definitions
-    let entities = all_entities();
-    output.push_str("// Individual entity definitions\n");
-    for entity in &entities {
-        let const_name = to_screaming_snake_case(entity.name());
-        let shape_name = format!("{}_SHAPE", entity.table().to_uppercase());
+    // Helper function for mutation definitions
+    output.push_str("// Helper to create type-safe mutation definitions\n");
+    output.push_str("function defineMutation<TRow, TCreate, TUpdate>(\n");
+    output.push_str("  name: string,\n");
+    output.push_str("  table: string,\n");
+    output.push_str("  mutationScope: Scope,\n");
+    output.push_str("  url: string\n");
+    output.push_str("): MutationDefinition<TRow, TCreate, TUpdate> {\n");
+    output.push_str(
+        "  return { name, table, mutationScope, url } as MutationDefinition<TRow, TCreate, TUpdate>;\n",
+    );
+    output.push_str("}\n\n");
 
+    // Generate individual mutation definitions
+    output.push_str("// Individual mutation definitions\n");
+    for entity in &entities {
+        let has_mutations = entity.mutation_scope().is_some() && !entity.fields().is_empty();
+        if !has_mutations {
+            continue;
+        }
+
+        let const_name = to_screaming_snake_case(entity.name());
         let mutation_scope = entity
             .mutation_scope()
             .map(|s| format!("'{:?}'", s))
-            .unwrap_or_else(|| "null".to_string());
-        let shape_scope = entity
-            .shape_scope()
-            .map(|s| format!("'{:?}'", s))
-            .unwrap_or_else(|| "null".to_string());
-
-        let has_mutations = entity.mutation_scope().is_some() && !entity.fields().is_empty();
-        let mutations_str = if has_mutations {
-            format!(
-                "{{ url: '/v1/{table}' }} as EntityDefinition<{ts_type}, Create{name}Request, Update{name}Request>['mutations']",
-                table = entity.table(),
-                ts_type = entity.ts_type_name(),
-                name = entity.name()
-            )
-        } else {
-            "null".to_string()
-        };
+            .unwrap();
 
         output.push_str(&format!(
-            "export const {const_name}_ENTITY: EntityDefinition<{ts_type}{create_update}> = {{\n",
+            "export const {const_name}_MUTATION = defineMutation<{ts_type}, Create{name}Request, Update{name}Request>(\n  '{name}',\n  '{table}',\n  {scope},\n  '/v1/{table}'\n);\n\n",
             const_name = const_name,
             ts_type = entity.ts_type_name(),
-            create_update = if has_mutations {
-                format!(
-                    ", Create{}Request, Update{}Request",
-                    entity.name(),
-                    entity.name()
-                )
-            } else {
-                "".to_string()
-            }
+            name = entity.name(),
+            table = entity.table(),
+            scope = mutation_scope,
         ));
-        output.push_str(&format!("  name: '{}',\n", entity.name()));
-        output.push_str(&format!("  table: '{}',\n", entity.table()));
-        output.push_str(&format!("  mutationScope: {},\n", mutation_scope));
-        output.push_str(&format!("  shapeScope: {},\n", shape_scope));
-        output.push_str(&format!("  shape: {},\n", shape_name));
-        output.push_str(&format!("  mutations: {},\n", mutations_str));
-        output.push_str("};\n\n");
     }
 
-    // Type helpers for entities
-    output.push_str("// Type helper to extract row type from an entity\n");
-    output.push_str("export type EntityRowType<E extends EntityDefinition<unknown>> = E extends EntityDefinition<infer R> ? R : never;\n");
+    // Type helpers for mutations
+    output.push_str("// Type helpers to extract types from a mutation definition\n");
+    output.push_str("export type MutationRowType<M extends MutationDefinition<unknown>> = M extends MutationDefinition<infer R> ? R : never;\n");
+    output.push_str("export type MutationCreateType<M extends MutationDefinition<unknown, unknown>> = M extends MutationDefinition<unknown, infer C> ? C : never;\n");
+    output.push_str("export type MutationUpdateType<M extends MutationDefinition<unknown, unknown, unknown>> = M extends MutationDefinition<unknown, unknown, infer U> ? U : never;\n");
 
     output
 }
@@ -276,4 +269,16 @@ fn to_screaming_snake_case(s: &str) -> String {
         result.push(c.to_ascii_uppercase());
     }
     result
+}
+
+/// Convert URL path to const name
+/// "/shape/user/workspaces" -> "USER_WORKSPACES"
+/// "/shape/project/{project_id}/workspaces" -> "PROJECT_WORKSPACES"
+fn url_to_const_name(url: &str) -> String {
+    url.trim_start_matches("/shape/")
+        .split('/')
+        .filter(|s| !s.starts_with('{'))
+        .collect::<Vec<_>>()
+        .join("_")
+        .to_uppercase()
 }

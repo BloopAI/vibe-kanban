@@ -1,13 +1,17 @@
 {
   "name": "vibe-kanban",
   "private": false,
-  "version": "0.0.161",
+  "version": "0.1.5",
   "main": "index.js",
   "bin": {
     "vibe-kanban": "bin/cli.js"
   },
   "keywords": [],
   "author": "bloop",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BloopAI/vibe-kanban"
+  },
   "license": "",
   "description": "NPX wrapper around vibe-kanban and vibe-kanban-mcp",
   "dependencies": {

@@ -34,10 +34,6 @@ export function XTermInstance({
     getTerminalConnection,
   } = useTerminal();
 
-  const onData = useCallback((data: string) => {
-    terminalRef.current?.write(data);
-  }, []);
-
   const endpoint = useMemo(() => {
     const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
     const host = window.location.host;
@@ -69,10 +65,6 @@ export function XTermInstance({
 
     if (terminalRef.current) return;
 
-    if (!getTerminalConnection(tabId)) {
-      createTerminalConnection(tabId, endpoint, onData, onClose);
-    }
-
     const terminal = new Terminal({
       cursorBlink: true,
       fontSize: 12,
@@ -93,6 +85,15 @@ export function XTermInstance({
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
+    if (!getTerminalConnection(tabId)) {
+      createTerminalConnection(
+        tabId,
+        endpoint,
+        (data) => terminal?.write(data),
+        onClose
+      );
+    }
+
     registerTerminalInstance(tabId, terminal, fitAddon);
 
     terminal.onData((data) => {
@@ -110,7 +111,6 @@ export function XTermInstance({
   }, [
     tabId,
     endpoint,
-    onData,
     onClose,
     getTerminalInstance,
     registerTerminalInstance,

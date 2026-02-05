@@ -214,7 +214,7 @@ impl ClaudeCode {
             .current_dir(current_dir)
             .args(&args);
 
-        ExecutionEnv::new(RepoContext::default(), false)
+        ExecutionEnv::new(RepoContext::default(), false, String::new())
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 

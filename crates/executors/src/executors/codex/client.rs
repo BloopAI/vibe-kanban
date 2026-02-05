@@ -26,6 +26,7 @@ use tokio::{
     io::{AsyncWrite, AsyncWriteExt, BufWriter},
     sync::Mutex,
 };
+use tokio_util::sync::CancellationToken;
 use workspace_utils::approvals::ApprovalStatus;
 
 use super::jsonrpc::{JsonRpcCallbacks, JsonRpcPeer};
@@ -44,7 +45,9 @@ pub struct AppServerClient {
     auto_approve: bool,
     repo_context: RepoContext,
     commit_reminder: bool,
+    commit_reminder_prompt: String,
     commit_reminder_sent: AtomicBool,
+    cancel: CancellationToken,
 }
 
 impl AppServerClient {
@@ -54,6 +57,8 @@ impl AppServerClient {
         auto_approve: bool,
         repo_context: RepoContext,
         commit_reminder: bool,
+        commit_reminder_prompt: String,
+        cancel: CancellationToken,
     ) -> Arc<Self> {
         Arc::new(Self {
             rpc: OnceLock::new(),
@@ -64,7 +69,9 @@ impl AppServerClient {
             pending_feedback: Mutex::new(VecDeque::new()),
             repo_context,
             commit_reminder,
+            commit_reminder_prompt,
             commit_reminder_sent: AtomicBool::new(false),
+            cancel,
         })
     }
 
@@ -204,18 +211,21 @@ impl AppServerClient {
             ServerRequest::ApplyPatchApproval { request_id, params } => {
                 let input = serde_json::to_value(&params)
                     .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
-                let status = match self
+                let status = self
                     .request_tool_approval("edit", input, &params.call_id)
                     .await
-                {
-                    Ok(status) => status,
-                    Err(err) => {
-                        tracing::error!("failed to request patch approval: {err}");
-                        ApprovalStatus::Denied {
-                            reason: Some("approval service error".to_string()),
+                    .map_err(|err| {
+                        if !matches!(
+                            err,
+                            ExecutorError::ExecutorApprovalError(ExecutorApprovalError::Cancelled)
+                        ) {
+                            tracing::error!(
+                                "Codex apply_patch approval failed for call_id={}: {err}",
+                                params.call_id
+                            );
                         }
-                    }
-                };
+                        err
+                    })?;
                 self.log_writer
                     .log_raw(
                         &Approval::approval_response(
@@ -238,18 +248,16 @@ impl AppServerClient {
             ServerRequest::ExecCommandApproval { request_id, params } => {
                 let input = serde_json::to_value(&params)
                     .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
-                let status = match self
+                let status = self
                     .request_tool_approval("bash", input, &params.call_id)
                     .await
-                {
-                    Ok(status) => status,
-                    Err(err) => {
-                        tracing::error!("failed to request command approval: {err}");
-                        ApprovalStatus::Denied {
-                            reason: Some("approval service error".to_string()),
-                        }
-                    }
-                };
+                    .map_err(|err| {
+                        tracing::error!(
+                            "Codex exec_command approval failed for call_id={}: {err}",
+                            params.call_id
+                        );
+                        err
+                    })?;
                 self.log_writer
                     .log_raw(
                         &Approval::approval_response(
@@ -292,11 +300,13 @@ impl AppServerClient {
         if self.auto_approve {
             return Ok(ApprovalStatus::Approved);
         }
-        Ok(self
+        let approval_service = self
             .approvals
             .as_ref()
-            .ok_or(ExecutorApprovalError::ServiceUnavailable)?
-            .request_tool_approval(tool_name, tool_input, tool_call_id)
+            .ok_or(ExecutorApprovalError::ServiceUnavailable)?;
+
+        Ok(approval_service
+            .request_tool_approval(tool_name, tool_input, tool_call_id, self.cancel.clone())
             .await?)
     }
 
@@ -321,7 +331,9 @@ impl AppServerClient {
         R: DeserializeOwned + std::fmt::Debug,
     {
         let request_id = request_id(&request);
-        self.rpc().request(request_id, &request, label).await
+        self.rpc()
+            .request(request_id, &request, label, self.cancel.clone())
+            .await
     }
 
     fn next_request_id(&self) -> RequestId {
@@ -393,6 +405,7 @@ impl AppServerClient {
 
     fn spawn_user_message(&self, conversation_id: ThreadId, message: String) {
         let peer = self.rpc().clone();
+        let cancel = self.cancel.clone();
         let request = ClientRequest::SendUserMessage {
             request_id: peer.next_request_id(),
             params: SendUserMessageParams {
@@ -406,6 +419,7 @@ impl AppServerClient {
                     request_id(&request),
                     &request,
                     "sendUserMessage",
+                    cancel,
                 )
                 .await
             {
@@ -495,22 +509,13 @@ impl JsonRpcCallbacks for AppServerClient {
         if has_finished
             && self.commit_reminder
             && !self.commit_reminder_sent.swap(true, Ordering::SeqCst)
+            && let status = self.repo_context.check_uncommitted_changes().await
+            && !status.is_empty()
+            && let Some(conversation_id) = *self.conversation_id.lock().await
         {
-            let status =
-                workspace_utils::git::check_uncommitted_changes(&self.repo_context.repo_paths())
-                    .await;
-            if !status.is_empty()
-                && let Some(conversation_id) = *self.conversation_id.lock().await
-            {
-                self.spawn_user_message(
-                    conversation_id,
-                    format!(
-                        "You have uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
-                        status
-                    ),
-                );
-                return Ok(false);
-            }
+            let prompt = format!("{}\n{}", self.commit_reminder_prompt, status);
+            self.spawn_user_message(conversation_id, prompt);
+            return Ok(false);
         }
 
         Ok(has_finished)

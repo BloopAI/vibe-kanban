@@ -4,10 +4,36 @@ description: "Learn how to create and configure workspaces for your development 
 ---
 
 <Frame>
-<img src="/images/workspaces-create-new.png" alt="Create workspace view showing project selection, repository list, and task input" />
+<img style={{maxHeight: "400px"}} src="/images/workspaces-create-new.png" alt="Create workspace view showing project selection, repository list, and task input" />
 </Frame>
 
 A workspace is your task execution environment where you work with coding agents. Each workspace can include one or more repositories and supports multiple conversation sessions.
+
+## What Happens When You Create a Workspace
+
+Understanding what happens behind the scenes helps you work more effectively:
+
+<Steps>
+<Step title="Git worktree is created">
+Vibe Kanban creates a **git worktree** - a separate working directory with its own branch. This keeps your changes isolated from your main codebase. Your original repository remains untouched.
+</Step>
+
+<Step title="Working branch is created">
+A new branch is created based on your target branch (e.g., `main`). The branch name is auto-generated based on your task (e.g., `vk/abc123-add-login-page`).
+</Step>
+
+<Step title="Agent session starts">
+A coding agent is initialised and ready to receive your instructions. The agent can read files, make changes, and run commands within your workspace.
+</Step>
+
+<Step title="Setup scripts run (if configured)">
+If your repository has setup scripts configured (e.g., `npm install`), they run automatically to prepare the environment.
+</Step>
+</Steps>
+
+<Info>
+**Where do workspaces live?** Worktrees are created in a `.vibe-kanban-workspaces` directory (configurable in Settings → General → Workspace Directory). Each workspace gets its own folder.
+</Info>
 
 ## Creating a New Workspace
 
@@ -16,7 +42,7 @@ A workspace is your task execution environment where you work with coding agents
   Click the **+** button at the top of the workspace sidebar, or use the command bar (`Cmd/Ctrl + K`) and select **New Workspace**.
 
   <Frame>
-  <img src="/images/workspaces-sidebar-create-button.png" alt="Workspace sidebar showing the plus button for creating new workspaces" />
+  <img style={{maxHeight: "300px"}} src="/images/workspaces-sidebar-create-button.png" alt="Workspace sidebar showing the plus button for creating new workspaces" />
   </Frame>
 </Step>
 
@@ -24,7 +50,7 @@ A workspace is your task execution environment where you work with coding agents
   Choose a project from the **Project** dropdown in the right panel. Projects group related repositories together.
 
   <Frame>
-  <img src="/images/workspaces-select-project.png" alt="Project dropdown showing selected project" />
+  <img style={{maxHeight: "300px"}} src="/images/workspaces-select-project.png" alt="Project dropdown showing selected project" />
   </Frame>
 
   <Note>
@@ -34,7 +60,7 @@ A workspace is your task execution environment where you work with coding agents
 
 <Step title="Add Repositories">
   <Frame>
-  <img src="/images/workspaces-add-repo.png" alt="Repository selection showing selected repo with branch dropdown and list of available repositories" />
+  <img style={{maxHeight: "350px"}} src="/images/workspaces-add-repo.png" alt="Repository selection showing selected repo with branch dropdown and list of available repositories" />
   </Frame>
 
   Select which repositories to include in your workspace:
@@ -54,7 +80,12 @@ A workspace is your task execution environment where you work with coding agents
   Click the branch dropdown next to each repository to change the target branch.
 
   <Info>
-  The workspace will create a new working branch from your target branch. Your changes won't affect the target branch until you create a pull request.
+  **Target branch vs Working branch - what's the difference?**
+
+  - **Target branch** = Where your changes will eventually be merged (e.g., `main`). You set this.
+  - **Working branch** = Where your changes are made (e.g., `vk/abc123-task-name`). Auto-created from target.
+
+  Your changes are made on the working branch and don't affect the target until you create and merge a PR.
   </Info>
 </Step>
 
@@ -92,7 +123,7 @@ If you need to create a new project before setting up your workspace:
   In the create workspace view, click the **Project** dropdown.
 
   <Frame>
-  <img src="/images/workspaces-project-dropdown.png" alt="Project dropdown showing Create new project option and list of existing projects" />
+  <img style={{maxHeight: "300px"}} src="/images/workspaces-project-dropdown.png" alt="Project dropdown showing Create new project option and list of existing projects" />
   </Frame>
 </Step>
 
@@ -102,7 +133,7 @@ If you need to create a new project before setting up your workspace:
 
 <Step title="Enter Project Details">
   <Frame>
-  <img src="/images/workspaces-create-project.png" alt="Create Project dialog with name field" />
+  <img style={{maxHeight: "250px"}} src="/images/workspaces-create-project.png" alt="Create Project dialog with name field" />
   </Frame>
 
   Enter a name for your project and click **Create**.
@@ -165,6 +196,58 @@ Archived workspaces can be viewed by clicking **View Archive** at the bottom of 
 <Tip>
 Use the **Pin** feature to keep important active workspaces at the top of your list.
 </Tip>
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="I can't see my repository in the list">
+**Possible causes:**
+- The repository hasn't been added to a project yet
+- The folder isn't a git repository (no `.git` folder)
+- The path isn't accessible
+
+**Solutions:**
+1. Click **Browse repos on disk** to manually locate the repository
+2. Ensure the folder contains a `.git` directory
+3. Check that Vibe Kanban has permission to access the folder
+</Accordion>
+
+<Accordion title="Workspace creation fails">
+**Possible causes:**
+- Git worktree creation failed (usually due to uncommitted changes in the original repo)
+- Branch name conflict
+- Disk space issues
+
+**Solutions:**
+1. Commit or stash any uncommitted changes in your original repository
+2. Try a different target branch
+3. Check available disk space (worktrees require space for a full copy of tracked files)
+</Accordion>
+
+<Accordion title="Agent doesn't start after creating workspace">
+**Possible causes:**
+- Agent isn't installed or configured
+- API key issues
+- Network connectivity problems
+
+**Solutions:**
+1. Check that your agent (e.g., Claude Code) is installed: run the CLI command manually in terminal
+2. Verify API keys are configured in Settings → Agents
+3. Check your internet connection
+</Accordion>
+
+<Accordion title="Setup script fails">
+**Possible causes:**
+- Script has errors
+- Missing dependencies
+- Wrong working directory
+
+**Solutions:**
+1. Test the script manually in terminal first
+2. Check the Logs panel for error messages
+3. Ensure paths in the script are relative to the repository root
+</Accordion>
+</AccordionGroup>
 
 ## Related Documentation
 

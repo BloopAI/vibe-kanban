@@ -215,6 +215,7 @@ impl StandardCodingAgentExecutor for Codex {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         self.spawn_slash_command(current_dir, prompt, Some(session_id), env)
@@ -479,6 +480,7 @@ impl Codex {
 
         let new_stdout = create_stdout_pipe_writer(&mut child)?;
         let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
+        let cancel = tokio_util::sync::CancellationToken::new();
 
         let auto_approve = matches!(
             (&self.sandbox, &self.ask_for_approval),
@@ -487,6 +489,8 @@ impl Codex {
         let approvals = self.approvals.clone();
         let repo_context = env.repo_context.clone();
         let commit_reminder = env.commit_reminder;
+        let commit_reminder_prompt = env.commit_reminder_prompt.clone();
+        let cancel_for_task = cancel.clone();
 
         tokio::spawn(async move {
             let exit_signal_tx = ExitSignalSender::new(exit_signal_tx);
@@ -499,12 +503,15 @@ impl Codex {
                 auto_approve,
                 repo_context,
                 commit_reminder,
+                commit_reminder_prompt,
+                cancel_for_task.clone(),
             );
             let rpc_peer = JsonRpcPeer::spawn(
                 child_stdin,
                 child_stdout,
                 client.clone(),
                 exit_signal_tx.clone(),
+                cancel_for_task,
             );
             client.connect(rpc_peer);
 
@@ -549,7 +556,7 @@ impl Codex {
         Ok(SpawnedChild {
             child,
             exit_signal: Some(exit_signal_rx),
-            interrupt_sender: None,
+            cancel: Some(cancel),
         })
     }
 }

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, env, fs, path::Path};
 
 use schemars::{JsonSchema, Schema, SchemaGenerator, generate::SchemaSettings};
-use server::routes::task_attempts::pr::DEFAULT_PR_DESCRIPTION_PROMPT;
+use services::services::config::{DEFAULT_COMMIT_REMINDER_PROMPT, DEFAULT_PR_DESCRIPTION_PROMPT};
 use ts_rs::TS;
 
 fn generate_types_content() -> String {
@@ -34,9 +34,12 @@ fn generate_types_content() -> String {
         db::models::task::UpdateTask::decl(),
         db::models::scratch::DraftFollowUpData::decl(),
         db::models::scratch::DraftWorkspaceData::decl(),
+        db::models::scratch::DraftWorkspaceLinkedIssue::decl(),
         db::models::scratch::DraftWorkspaceRepo::decl(),
         db::models::scratch::PreviewSettingsData::decl(),
         db::models::scratch::WorkspaceNotesData::decl(),
+        db::models::scratch::WorkspacePanelStateData::decl(),
+        db::models::scratch::UiPreferencesData::decl(),
         db::models::scratch::ScratchPayload::decl(),
         db::models::scratch::ScratchType::decl(),
         db::models::scratch::Scratch::decl(),
@@ -87,11 +90,11 @@ fn generate_types_content() -> String {
         utils::api::organizations::ListMembersResponse::decl(),
         utils::api::organizations::UpdateMemberRoleRequest::decl(),
         utils::api::organizations::UpdateMemberRoleResponse::decl(),
-        utils::api::projects::RemoteProject::decl(),
-        utils::api::projects::ListProjectsResponse::decl(),
-        utils::api::projects::RemoteProjectMembersResponse::decl(),
-        server::routes::projects::CreateRemoteProjectRequest::decl(),
-        server::routes::projects::LinkToExistingRequest::decl(),
+        services::services::migration::MigrationRequest::decl(),
+        services::services::migration::MigrationResponse::decl(),
+        services::services::migration::MigrationReport::decl(),
+        services::services::migration::EntityReport::decl(),
+        services::services::migration::EntityError::decl(),
         server::routes::repo::RegisterRepoRequest::decl(),
         server::routes::repo::InitRepoRequest::decl(),
         server::routes::tags::TagSearchParams::decl(),
@@ -106,6 +109,7 @@ fn generate_types_content() -> String {
         server::routes::config::CheckAgentAvailabilityQuery::decl(),
         server::routes::oauth::CurrentUserResponse::decl(),
         server::routes::sessions::CreateFollowUpAttempt::decl(),
+        server::routes::sessions::ResetProcessRequest::decl(),
         server::routes::task_attempts::ChangeTargetBranchRequest::decl(),
         server::routes::task_attempts::ChangeTargetBranchResponse::decl(),
         server::routes::task_attempts::MergeTaskAttemptRequest::decl(),
@@ -126,6 +130,7 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::RunAgentSetupResponse::decl(),
         server::routes::task_attempts::gh_cli_setup::GhCliSetupError::decl(),
         server::routes::task_attempts::RebaseTaskAttemptRequest::decl(),
+        server::routes::task_attempts::ContinueRebaseRequest::decl(),
         server::routes::task_attempts::AbortConflictsRequest::decl(),
         server::routes::task_attempts::GitOperationError::decl(),
         server::routes::task_attempts::PushError::decl(),
@@ -138,6 +143,12 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::pr::GetPrCommentsQuery::decl(),
         services::services::git_host::UnifiedPrComment::decl(),
         services::services::git_host::ProviderKind::decl(),
+        services::services::git_host::OpenPrInfo::decl(),
+        git::GitRemote::decl(),
+        server::routes::repo::ListPrsError::decl(),
+        server::routes::task_attempts::pr::CreateWorkspaceFromPrBody::decl(),
+        server::routes::task_attempts::pr::CreateWorkspaceFromPrResponse::decl(),
+        server::routes::task_attempts::pr::CreateFromPrError::decl(),
         server::routes::task_attempts::RepoBranchStatus::decl(),
         server::routes::task_attempts::UpdateWorkspace::decl(),
         server::routes::task_attempts::workspace_summary::WorkspaceSummaryRequest::decl(),
@@ -158,10 +169,10 @@ fn generate_types_content() -> String {
         services::services::config::UiLanguage::decl(),
         services::services::config::ShowcaseState::decl(),
         services::services::config::SendMessageShortcut::decl(),
-        services::services::git::GitBranch::decl(),
+        git::GitBranch::decl(),
         services::services::queued_message::QueuedMessage::decl(),
         services::services::queued_message::QueueStatus::decl(),
-        services::services::git::ConflictOp::decl(),
+        git::ConflictOp::decl(),
         executors::actions::ExecutorAction::decl(),
         executors::mcp_config::McpConfig::decl(),
         executors::actions::ExecutorActionType::decl(),
@@ -228,12 +239,10 @@ fn generate_types_content() -> String {
         .join("\n\n");
 
     // Append exported constants
-    let prompt_escaped = DEFAULT_PR_DESCRIPTION_PROMPT
-        .replace('\\', "\\\\")
-        .replace('`', "\\`");
     let constants = format!(
-        "export const DEFAULT_PR_DESCRIPTION_PROMPT = `{}`;",
-        prompt_escaped
+        "export const DEFAULT_PR_DESCRIPTION_PROMPT = {};\n\nexport const DEFAULT_COMMIT_REMINDER_PROMPT = {};",
+        serde_json::to_string(DEFAULT_PR_DESCRIPTION_PROMPT).unwrap(),
+        serde_json::to_string(DEFAULT_COMMIT_REMINDER_PROMPT).unwrap()
     );
 
     format!("{HEADER}\n\n{body}\n\n{constants}")

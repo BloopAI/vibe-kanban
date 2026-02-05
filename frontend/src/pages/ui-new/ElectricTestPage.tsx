@@ -1,20 +1,23 @@
 import { useState } from 'react';
 import { useAuth, useUserOrganizations, useCurrentUser } from '@/hooks';
-import { useEntity } from '@/lib/electric/hooks';
+import { useShape } from '@/lib/electric/hooks';
 import type { SyncError } from '@/lib/electric/types';
 import {
-  PROJECT_ENTITY,
-  NOTIFICATION_ENTITY,
-  WORKSPACE_ENTITY,
-  PROJECT_STATUS_ENTITY,
-  TAG_ENTITY,
-  ISSUE_ENTITY,
-  ISSUE_ASSIGNEE_ENTITY,
-  ISSUE_FOLLOWER_ENTITY,
-  ISSUE_TAG_ENTITY,
-  ISSUE_RELATIONSHIP_ENTITY,
-  ISSUE_COMMENT_ENTITY,
-  ISSUE_COMMENT_REACTION_ENTITY,
+  PROJECTS_SHAPE,
+  PROJECT_TAGS_SHAPE,
+  ISSUE_COMMENTS_SHAPE,
+  PROJECT_MUTATION,
+  TAG_MUTATION,
+  ISSUE_COMMENT_MUTATION,
+  NOTIFICATIONS_SHAPE,
+  PROJECT_ISSUES_SHAPE,
+  PROJECT_WORKSPACES_SHAPE,
+  PROJECT_PROJECT_STATUSES_SHAPE,
+  PROJECT_ISSUE_ASSIGNEES_SHAPE,
+  PROJECT_ISSUE_FOLLOWERS_SHAPE,
+  PROJECT_ISSUE_TAGS_SHAPE,
+  PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
+  ISSUE_REACTIONS_SHAPE,
   type Project,
   type Issue,
 } from 'shared/remote-types';
@@ -242,9 +245,10 @@ function ProjectsList({
   onSelectProject: (project: Project | null) => void;
   selectedProjectId: string | null;
 }) {
-  const { data, isLoading, error, retry, insert, update, remove } = useEntity(
-    PROJECT_ENTITY,
-    { organization_id: organizationId }
+  const { data, isLoading, error, retry, insert, update, remove } = useShape(
+    PROJECTS_SHAPE,
+    { organization_id: organizationId },
+    { mutation: PROJECT_MUTATION }
   );
 
   const [newProjectName, setNewProjectName] = useState('');
@@ -355,7 +359,7 @@ function NotificationsList({
   organizationId: string;
   userId: string;
 }) {
-  const { data, isLoading, error, retry } = useEntity(NOTIFICATION_ENTITY, {
+  const { data, isLoading, error, retry } = useShape(NOTIFICATIONS_SHAPE, {
     organization_id: organizationId,
     user_id: userId,
   });
@@ -398,7 +402,7 @@ function IssuesList({
   onSelectIssue: (issue: Issue) => void;
   selectedIssueId: string | null;
 }) {
-  const { data, isLoading, error, retry } = useEntity(ISSUE_ENTITY, {
+  const { data, isLoading, error, retry } = useShape(PROJECT_ISSUES_SHAPE, {
     project_id: projectId,
   });
 
@@ -430,7 +434,7 @@ function IssuesList({
 }
 
 function WorkspacesList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useEntity(WORKSPACE_ENTITY, {
+  const { data, isLoading, error, retry } = useShape(PROJECT_WORKSPACES_SHAPE, {
     project_id: projectId,
   });
 
@@ -464,9 +468,10 @@ function WorkspacesList({ projectId }: { projectId: string }) {
 }
 
 function StatusesList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useEntity(PROJECT_STATUS_ENTITY, {
-    project_id: projectId,
-  });
+  const { data, isLoading, error, retry } = useShape(
+    PROJECT_PROJECT_STATUSES_SHAPE,
+    { project_id: projectId }
+  );
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
@@ -501,9 +506,10 @@ function StatusesList({ projectId }: { projectId: string }) {
 }
 
 function TagsList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry, insert, update, remove } = useEntity(
-    TAG_ENTITY,
-    { project_id: projectId }
+  const { data, isLoading, error, retry, insert, update, remove } = useShape(
+    PROJECT_TAGS_SHAPE,
+    { project_id: projectId },
+    { mutation: TAG_MUTATION }
   );
 
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
@@ -601,9 +607,10 @@ function TagsList({ projectId }: { projectId: string }) {
 }
 
 function AssigneesList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useEntity(ISSUE_ASSIGNEE_ENTITY, {
-    project_id: projectId,
-  });
+  const { data, isLoading, error, retry } = useShape(
+    PROJECT_ISSUE_ASSIGNEES_SHAPE,
+    { project_id: projectId }
+  );
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
@@ -638,9 +645,10 @@ function AssigneesList({ projectId }: { projectId: string }) {
 }
 
 function FollowersList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useEntity(ISSUE_FOLLOWER_ENTITY, {
-    project_id: projectId,
-  });
+  const { data, isLoading, error, retry } = useShape(
+    PROJECT_ISSUE_FOLLOWERS_SHAPE,
+    { project_id: projectId }
+  );
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
@@ -670,7 +678,7 @@ function FollowersList({ projectId }: { projectId: string }) {
 }
 
 function IssueTagsList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useEntity(ISSUE_TAG_ENTITY, {
+  const { data, isLoading, error, retry } = useShape(PROJECT_ISSUE_TAGS_SHAPE, {
     project_id: projectId,
   });
 
@@ -702,8 +710,8 @@ function IssueTagsList({ projectId }: { projectId: string }) {
 }
 
 function DependenciesList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useEntity(
-    ISSUE_RELATIONSHIP_ENTITY,
+  const { data, isLoading, error, retry } = useShape(
+    PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
     { project_id: projectId }
   );
 
@@ -740,9 +748,10 @@ function DependenciesList({ projectId }: { projectId: string }) {
 }
 
 function CommentsList({ issueId }: { issueId: string }) {
-  const { data, isLoading, error, retry, insert, update, remove } = useEntity(
-    ISSUE_COMMENT_ENTITY,
-    { issue_id: issueId }
+  const { data, isLoading, error, retry, insert, update, remove } = useShape(
+    ISSUE_COMMENTS_SHAPE,
+    { issue_id: issueId },
+    { mutation: ISSUE_COMMENT_MUTATION }
   );
 
   const [selectedCommentId, setSelectedCommentId] = useState<string | null>(
@@ -752,7 +761,7 @@ function CommentsList({ issueId }: { issueId: string }) {
 
   const handleCreate = () => {
     if (!newMessage.trim()) return;
-    insert({ issue_id: issueId, message: newMessage.trim() });
+    insert({ issue_id: issueId, message: newMessage.trim(), parent_id: null });
     setNewMessage('');
   };
 
@@ -797,7 +806,7 @@ function CommentsList({ issueId }: { issueId: string }) {
           {
             key: 'author_id',
             label: 'Author',
-            render: (c) => truncateId(c.author_id),
+            render: (c) => (c.author_id ? truncateId(c.author_id) : '-'),
           },
           { key: 'id', label: 'ID', render: (c) => truncateId(c.id) },
           {
@@ -831,10 +840,9 @@ function CommentsList({ issueId }: { issueId: string }) {
 }
 
 function ReactionsList({ issueId }: { issueId: string }) {
-  const { data, isLoading, error, retry } = useEntity(
-    ISSUE_COMMENT_REACTION_ENTITY,
-    { issue_id: issueId }
-  );
+  const { data, isLoading, error, retry } = useShape(ISSUE_REACTIONS_SHAPE, {
+    issue_id: issueId,
+  });
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;

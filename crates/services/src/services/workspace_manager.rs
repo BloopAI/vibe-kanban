@@ -285,9 +285,9 @@ impl WorkspaceManager {
     }
 
     pub async fn cleanup_orphan_workspaces(db: &Pool<Sqlite>) {
-        if std::env::var("DISABLE_WORKTREE_ORPHAN_CLEANUP").is_ok() {
-            debug!(
-                "Orphan workspace cleanup is disabled via DISABLE_WORKTREE_ORPHAN_CLEANUP environment variable"
+        if std::env::var("DISABLE_WORKTREE_CLEANUP").is_ok() {
+            info!(
+                "Orphan workspace cleanup is disabled via DISABLE_WORKTREE_CLEANUP environment variable"
             );
             return;
         }

@@ -9,7 +9,7 @@ import {
 } from 'shared/types';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import { useEntries } from '@/contexts/EntriesContext';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { streamJsonPatchEntries } from '@/utils/streamJsonPatchEntries';
 import type {
   AddEntryType,
@@ -17,8 +17,17 @@ import type {
   OnEntriesUpdated,
   PatchTypeWithKey,
   UseConversationHistoryParams,
-  UseConversationHistoryResult,
 } from '@/hooks/useConversationHistory/types';
+
+// Result type for the new UI's conversation history hook
+export interface UseConversationHistoryResult {
+  /** Whether a setup script has already run in this conversation */
+  hasSetupScriptRun: boolean;
+  /** Whether a cleanup script has already run in this conversation */
+  hasCleanupScriptRun: boolean;
+  /** Whether there is currently a running process */
+  hasRunningProcess: boolean;
+}
 import {
   makeLoadingPatch,
   MIN_INITIAL_ENTRIES,
@@ -30,20 +39,39 @@ export type {
   AddEntryType,
   OnEntriesUpdated,
   PatchTypeWithKey,
+  DisplayEntry,
+  AggregatedPatchGroup,
+  AggregatedDiffGroup,
+} from '@/hooks/useConversationHistory/types';
+
+export {
+  isAggregatedGroup,
+  isAggregatedDiffGroup,
 } from '@/hooks/useConversationHistory/types';
 
 export const useConversationHistory = ({
   attempt,
   onEntriesUpdated,
 }: UseConversationHistoryParams): UseConversationHistoryResult => {
-  const { executionProcessesVisible: executionProcessesRaw } =
-    useExecutionProcessesContext();
+  const {
+    executionProcessesVisible: executionProcessesRaw,
+    isLoading,
+    isConnected,
+  } = useExecutionProcessesContext();
   const { setTokenUsageInfo } = useEntries();
   const executionProcesses = useRef<ExecutionProcess[]>(executionProcessesRaw);
   const displayedExecutionProcesses = useRef<ExecutionProcessStateStore>({});
   const loadedInitialEntries = useRef(false);
   const streamingProcessIdsRef = useRef<Set<string>>(new Set());
   const onEntriesUpdatedRef = useRef<OnEntriesUpdated | null>(null);
+  const previousStatusMapRef = useRef<Map<string, ExecutionProcessStatus>>(
+    new Map()
+  );
+
+  // Track whether scripts have run in this conversation
+  const [hasSetupScriptRun, setHasSetupScriptRun] = useState(false);
+  const [hasCleanupScriptRun, setHasCleanupScriptRun] = useState(false);
+  const [hasRunningProcess, setHasRunningProcess] = useState(false);
 
   const mergeIntoDisplayed = (
     mutator: (state: ExecutionProcessStateStore) => void
@@ -61,6 +89,7 @@ export const useConversationHistory = ({
       (ep) =>
         ep.run_reason === 'setupscript' ||
         ep.run_reason === 'cleanupscript' ||
+        ep.run_reason === 'archivescript' ||
         ep.run_reason === 'codingagent'
     );
   }, [executionProcessesRaw]);
@@ -276,18 +305,30 @@ export const useConversationHistory = ({
           ) {
             // Add setup and cleanup script as a tool call
             let toolName = '';
-            switch (p.executionProcess.executor_action.typ.context) {
+            const scriptContext =
+              p.executionProcess.executor_action.typ.context;
+            switch (scriptContext) {
               case 'SetupScript':
                 toolName = 'Setup Script';
                 break;
               case 'CleanupScript':
                 toolName = 'Cleanup Script';
                 break;
+              case 'ArchiveScript':
+                toolName = 'Archive Script';
+                break;
               case 'ToolInstallScript':
                 toolName = 'Tool Install Script';
                 break;
               default:
                 return [];
+            }
+
+            // Track that setup/cleanup scripts have run
+            if (scriptContext === 'SetupScript') {
+              setHasSetupScriptRun(true);
+            } else if (scriptContext === 'CleanupScript') {
+              setHasCleanupScriptRun(true);
             }
 
             const executionProcess = getLiveExecutionProcess(
@@ -356,6 +397,9 @@ export const useConversationHistory = ({
 
           return entries;
         });
+
+      // Update running process state
+      setHasRunningProcess(hasRunningProcess);
 
       // Emit the next action bar if no process running
       if (!hasRunningProcess && !hasPendingApproval) {
@@ -557,6 +601,25 @@ export const useConversationHistory = ({
     [executionProcessesRaw]
   );
 
+  // Clean up entries for processes that have been removed (e.g., after reset)
+  useEffect(() => {
+    if (isLoading || !isConnected) return;
+    const visibleProcessIds = new Set(executionProcessesRaw.map((p) => p.id));
+    const displayedIds = Object.keys(displayedExecutionProcesses.current);
+    let changed = false;
+
+    for (const id of displayedIds) {
+      if (!visibleProcessIds.has(id)) {
+        delete displayedExecutionProcesses.current[id];
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      emitEntries(displayedExecutionProcesses.current, 'historic', false);
+    }
+  }, [idListKey, executionProcessesRaw, emitEntries, isLoading, isConnected]);
+
   // Initial load when attempt changes
   useEffect(() => {
     let cancelled = false;
@@ -634,6 +697,54 @@ export const useConversationHistory = ({
     loadRunningAndEmitWithBackoff,
   ]);
 
+  useEffect(() => {
+    if (!executionProcessesRaw) return;
+
+    const processesToReload: ExecutionProcess[] = [];
+
+    for (const process of executionProcessesRaw) {
+      const previousStatus = previousStatusMapRef.current.get(process.id);
+      const currentStatus = process.status;
+
+      if (
+        previousStatus === ExecutionProcessStatus.running &&
+        currentStatus !== ExecutionProcessStatus.running &&
+        displayedExecutionProcesses.current[process.id]
+      ) {
+        processesToReload.push(process);
+      }
+
+      previousStatusMapRef.current.set(process.id, currentStatus);
+    }
+
+    if (processesToReload.length === 0) return;
+
+    (async () => {
+      let anyUpdated = false;
+
+      for (const process of processesToReload) {
+        const entries = await loadEntriesForHistoricExecutionProcess(process);
+        if (entries.length === 0) continue;
+
+        const entriesWithKey = entries.map((e, idx) =>
+          patchWithKey(e, process.id, idx)
+        );
+
+        mergeIntoDisplayed((state) => {
+          state[process.id] = {
+            executionProcess: process,
+            entries: entriesWithKey,
+          };
+        });
+        anyUpdated = true;
+      }
+
+      if (anyUpdated) {
+        emitEntries(displayedExecutionProcesses.current, 'running', false);
+      }
+    })();
+  }, [idStatusKey, executionProcessesRaw, emitEntries]);
+
   // If an execution process is removed, remove it from the state
   useEffect(() => {
     if (!executionProcessesRaw) return;
@@ -651,13 +762,21 @@ export const useConversationHistory = ({
     }
   }, [attempt.id, idListKey, executionProcessesRaw]);
 
-  // Reset state when attempt changes
   useEffect(() => {
     displayedExecutionProcesses.current = {};
     loadedInitialEntries.current = false;
     streamingProcessIdsRef.current.clear();
+    previousStatusMapRef.current.clear();
+    // Reset script run status when attempt changes
+    setHasSetupScriptRun(false);
+    setHasCleanupScriptRun(false);
+    setHasRunningProcess(false);
     emitEntries(displayedExecutionProcesses.current, 'initial', true);
   }, [attempt.id, emitEntries]);
 
-  return {};
+  return {
+    hasSetupScriptRun,
+    hasCleanupScriptRun,
+    hasRunningProcess,
+  };
 };

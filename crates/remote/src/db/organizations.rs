@@ -54,18 +54,7 @@ impl<'a> OrganizationRepository<'a> {
     }
 
     pub async fn is_personal(&self, organization_id: Uuid) -> Result<bool, IdentityError> {
-        let result = sqlx::query_scalar!(
-            r#"
-            SELECT is_personal
-            FROM organizations
-            WHERE id = $1
-            "#,
-            organization_id
-        )
-        .fetch_optional(self.pool)
-        .await?;
-
-        result.ok_or(IdentityError::NotFound)
+        is_personal_org(self.pool, organization_id).await
     }
 
     pub async fn ensure_personal_org_and_admin_membership(
@@ -160,6 +149,15 @@ impl<'a> OrganizationRepository<'a> {
             }
             IdentityError::from(e)
         })?;
+
+        // Create initial project with default tags and statuses
+        ProjectRepository::create_initial_project_tx(&mut tx, org.id)
+            .await
+            .map_err(|e| {
+                IdentityError::Database(sqlx::Error::Protocol(format!(
+                    "Failed to create initial project: {e}"
+                )))
+            })?;
 
         add_member(&mut *tx, org.id, creator_user_id, MemberRole::Admin).await?;
 
@@ -280,6 +278,23 @@ impl<'a> OrganizationRepository<'a> {
 
         Ok(())
     }
+}
+
+pub async fn is_personal_org<'e, E>(
+    executor: E,
+    organization_id: Uuid,
+) -> Result<bool, IdentityError>
+where
+    E: Executor<'e, Database = Postgres>,
+{
+    let result: Option<bool> = sqlx::query_scalar!(
+        r#"SELECT is_personal FROM organizations WHERE id = $1"#,
+        organization_id
+    )
+    .fetch_optional(executor)
+    .await?;
+
+    result.ok_or(IdentityError::NotFound)
 }
 
 async fn find_organization_by_slug(

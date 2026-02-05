@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   GithubLogoIcon,
@@ -13,11 +14,7 @@ interface GitHubCommentRendererProps {
   onCopyToUserComment: () => void;
 }
 
-/**
- * Read-only renderer for GitHub PR comments.
- * Uses CommentCard primitive with 'github' variant for neutral styling.
- */
-export function GitHubCommentRenderer({
+export const GitHubCommentRenderer = memo(function GitHubCommentRenderer({
   comment,
   onCopyToUserComment,
 }: GitHubCommentRendererProps) {
@@ -61,4 +58,4 @@ export function GitHubCommentRenderer({
       </div>
     </CommentCard>
   );
-}
+});

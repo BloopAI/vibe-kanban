@@ -17,12 +17,21 @@ import { projectsApi, repoApi } from '@/lib/api';
 // Types
 // ============================================================================
 
+interface LinkedIssue {
+  issueId: string;
+  simpleId: string;
+  title: string;
+  remoteProjectId: string;
+}
+
 interface LocationState {
   initialPrompt?: string | null;
   preferredRepos?: Array<{
     repo_id: string;
     target_branch: string | null;
   }> | null;
+  project_id?: string | null;
+  linkedIssue?: LinkedIssue | null;
 }
 
 /** Unified repo model - keeps repo and branch together */
@@ -40,6 +49,7 @@ interface DraftState {
   repos: SelectedRepo[];
   profile: ExecutorProfileId | null;
   message: string;
+  linkedIssue: LinkedIssue | null;
 }
 
 type DraftAction =
@@ -55,7 +65,8 @@ type DraftAction =
   | { type: 'SET_PROFILE'; profile: ExecutorProfileId | null }
   | { type: 'SET_MESSAGE'; message: string }
   | { type: 'CLEAR_REPOS' }
-  | { type: 'CLEAR' };
+  | { type: 'CLEAR' }
+  | { type: 'CLEAR_LINKED_ISSUE' };
 
 // ============================================================================
 // Reducer
@@ -68,6 +79,7 @@ const initialState: DraftState = {
   repos: [],
   profile: null,
   message: '',
+  linkedIssue: null,
 };
 
 function draftReducer(state: DraftState, action: DraftAction): DraftState {
@@ -132,6 +144,9 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
     case 'CLEAR':
       return { ...initialState, phase: 'ready' };
 
+    case 'CLEAR_LINKED_ISSUE':
+      return { ...state, linkedIssue: null };
+
     default:
       return state;
   }
@@ -161,6 +176,7 @@ interface UseCreateModeStateResult {
   message: string;
   isLoading: boolean;
   hasInitialValue: boolean;
+  linkedIssue: LinkedIssue | null;
 
   // Actions
   setSelectedProjectId: (id: string | null) => void;
@@ -171,6 +187,7 @@ interface UseCreateModeStateResult {
   clearRepos: () => void;
   setTargetBranch: (repoId: string, branch: string) => void;
   clearDraft: () => Promise<void>;
+  clearLinkedIssue: () => void;
 }
 
 export function useCreateModeState({
@@ -223,7 +240,11 @@ export function useCreateModeState({
     const navState = navStateRef.current;
 
     // Clear navigation state immediately to prevent re-initialization
-    if (navState?.preferredRepos || navState?.initialPrompt) {
+    if (
+      navState?.preferredRepos ||
+      navState?.initialPrompt ||
+      navState?.linkedIssue
+    ) {
       navigate(location.pathname, { replace: true, state: {} });
     }
 
@@ -254,6 +275,7 @@ export function useCreateModeState({
   // Auto-select project when none selected
   // ============================================================================
   const hasAttemptedAutoSelect = useRef(false);
+  const initialProjectIdRef = useRef(initialProjectId);
 
   useEffect(() => {
     if (state.phase !== 'ready') return;
@@ -263,6 +285,16 @@ export function useCreateModeState({
 
     hasAttemptedAutoSelect.current = true;
 
+    // Priority 1: Use initialProjectId from last workspace
+    if (
+      initialProjectIdRef.current &&
+      initialProjectIdRef.current in projectsById
+    ) {
+      dispatch({ type: 'SET_PROJECT', projectId: initialProjectIdRef.current });
+      return;
+    }
+
+    // Priority 2: Most recently created project
     const projectsList = Object.values(projectsById);
     if (projectsList.length > 0) {
       const sortedProjects = [...projectsList].sort(
@@ -272,7 +304,7 @@ export function useCreateModeState({
       );
       dispatch({ type: 'SET_PROJECT', projectId: sortedProjects[0].id });
     } else {
-      // Create default project
+      // Priority 3: Create default project
       projectsApi
         .create({ name: 'My first project', repositories: [] })
         .then((newProject) => {
@@ -322,6 +354,14 @@ export function useCreateModeState({
         target_branch: r.targetBranch ?? '',
       })),
       selected_profile: state.profile,
+      linked_issue: state.linkedIssue
+        ? {
+            issue_id: state.linkedIssue.issueId,
+            simple_id: state.linkedIssue.simpleId,
+            title: state.linkedIssue.title,
+            remote_project_id: state.linkedIssue.remoteProjectId,
+          }
+        : null,
     });
   }, [
     state.phase,
@@ -329,6 +369,7 @@ export function useCreateModeState({
     state.projectId,
     state.repos,
     state.profile,
+    state.linkedIssue,
     debouncedSave,
   ]);
 
@@ -393,6 +434,10 @@ export function useCreateModeState({
     }
   }, [deleteScratch]);
 
+  const clearLinkedIssue = useCallback(() => {
+    dispatch({ type: 'CLEAR_LINKED_ISSUE' });
+  }, []);
+
   return {
     selectedProjectId: state.projectId,
     repos,
@@ -401,6 +446,7 @@ export function useCreateModeState({
     message: state.message,
     isLoading: scratchLoading,
     hasInitialValue: state.phase === 'ready',
+    linkedIssue: state.linkedIssue,
     setSelectedProjectId,
     setMessage,
     setSelectedProfile,
@@ -409,6 +455,7 @@ export function useCreateModeState({
     clearRepos,
     setTargetBranch,
     clearDraft,
+    clearLinkedIssue,
   };
 }
 
@@ -437,14 +484,20 @@ async function initializeState({
   dispatch,
 }: InitializeParams): Promise<void> {
   try {
-    // Priority 1: Navigation state (preferredRepos and/or initialPrompt)
+    // Priority 1: Navigation state (preferredRepos, initialPrompt, and/or linkedIssue)
     const hasPreferredRepos =
       navState?.preferredRepos && navState.preferredRepos.length > 0;
     const hasInitialPrompt = !!navState?.initialPrompt;
+    const hasLinkedIssue = !!navState?.linkedIssue;
 
-    if (hasPreferredRepos || hasInitialPrompt) {
+    if (hasPreferredRepos || hasInitialPrompt || hasLinkedIssue) {
       const data: Partial<DraftState> = {};
       let appliedNavState = false;
+
+      // Handle project_id from navigation state (e.g., from duplicate/spin-off)
+      if (navState?.project_id && navState.project_id in projectsById) {
+        data.projectId = navState.project_id;
+      }
 
       // Handle preferred repos
       if (hasPreferredRepos) {
@@ -470,6 +523,12 @@ async function initializeState({
       // Handle initial prompt (can be combined with preferred repos)
       if (hasInitialPrompt) {
         data.message = navState!.initialPrompt!;
+        appliedNavState = true;
+      }
+
+      // Handle linked issue
+      if (hasLinkedIssue) {
+        data.linkedIssue = navState!.linkedIssue!;
         appliedNavState = true;
       }
 
@@ -543,6 +602,16 @@ async function initializeState({
         if (restoredRepos.length > 0) {
           restoredData.repos = restoredRepos;
         }
+      }
+
+      // Restore linked issue
+      if (scratchData.linked_issue) {
+        restoredData.linkedIssue = {
+          issueId: scratchData.linked_issue.issue_id,
+          simpleId: scratchData.linked_issue.simple_id,
+          title: scratchData.linked_issue.title,
+          remoteProjectId: scratchData.linked_issue.remote_project_id,
+        };
       }
 
       dispatch({ type: 'INIT_COMPLETE', data: restoredData });

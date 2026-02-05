@@ -1,6 +1,6 @@
 [package]
 name = "services"
-version = "0.0.161"
+version = "0.1.5"
 edition = "2024"
 
 [features]
@@ -10,9 +10,9 @@ qa-mode = ["executors/qa-mode"]
 
 [dependencies]
 utils = { path = "../utils" }
+git = { path = "../git" }
 executors = { path = "../executors" }
 db = { path = "../db" }
-remote = { path = "../remote" }
 tokio = { workspace = true }
 tokio-util = { version = "0.7", features = ["io"] }
 axum = { workspace = true }
@@ -54,6 +54,3 @@ sha2 = "0.10"
 fst = "0.4"
 secrecy = "0.10.3"
 moka = { version = "0.12", features = ["future"] }
-
-[target.'cfg(target_os = "macos")'.dependencies]
-security-framework = "2"

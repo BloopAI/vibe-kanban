@@ -26,6 +26,9 @@ pub enum OpencodeExecutorEvent {
         tool_call_id: String,
         status: ApprovalStatus,
     },
+    SystemMessage {
+        content: String,
+    },
     Error {
         message: String,
     },

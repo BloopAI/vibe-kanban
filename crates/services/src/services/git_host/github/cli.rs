@@ -15,22 +15,35 @@ use db::models::merge::{MergeStatus, PullRequestInfo};
 use serde::Deserialize;
 use tempfile::NamedTempFile;
 use thiserror::Error;
+use url::Url;
 use utils::shell::resolve_executable_path_blocking;
 
 use crate::services::git_host::types::{
-    CreatePrRequest, PrComment, PrCommentAuthor, PrReviewComment, ReviewCommentUser,
+    CreatePrRequest, OpenPrInfo, PrComment, PrCommentAuthor, PrReviewComment, ReviewCommentUser,
 };
 
 #[derive(Debug, Clone)]
 pub struct GitHubRepoInfo {
     pub owner: String,
     pub repo_name: String,
+    /// GitHub hostname (e.g., "github.com" or enterprise hostname)
+    pub hostname: Option<String>,
+}
+
+impl GitHubRepoInfo {
+    pub fn repo_spec(&self) -> String {
+        match &self.hostname {
+            Some(host) => format!("{}/{}/{}", host, self.owner, self.repo_name),
+            None => format!("{}/{}", self.owner, self.repo_name),
+        }
+    }
 }
 
 #[derive(Deserialize)]
 struct GhRepoViewResponse {
     owner: GhRepoOwner,
     name: String,
+    url: String,
 }
 
 #[derive(Deserialize)]
@@ -95,6 +108,17 @@ struct GhPrResponse {
     state: String,
     merged_at: Option<DateTime<Utc>>,
     merge_commit: Option<GhMergeCommit>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GhPrListExtendedResponse {
+    number: i64,
+    url: String,
+    #[serde(default)]
+    title: String,
+    head_ref_name: String,
+    base_ref_name: String,
 }
 
 #[derive(Debug, Error)]
@@ -172,7 +196,7 @@ impl GhCli {
         repo_path: &Path,
     ) -> Result<GitHubRepoInfo, GhCliError> {
         let raw = self.run(
-            ["repo", "view", remote_url, "--json", "owner,name"],
+            ["repo", "view", remote_url, "--json", "owner,name,url"],
             Some(repo_path),
         )?;
         Self::parse_repo_info_response(&raw)
@@ -183,9 +207,14 @@ impl GhCli {
             GhCliError::UnexpectedOutput(format!("Failed to parse gh repo view response: {e}"))
         })?;
 
+        let hostname = Url::parse(&resp.url)
+            .ok()
+            .and_then(|u| u.host_str().map(String::from));
+
         Ok(GitHubRepoInfo {
             owner: resp.owner.login,
             repo_name: resp.name,
+            hostname,
         })
     }
 
@@ -197,8 +226,7 @@ impl GhCli {
     pub fn create_pr(
         &self,
         request: &CreatePrRequest,
-        owner: &str,
-        repo_name: &str,
+        repo_info: &GitHubRepoInfo,
         repo_path: &Path,
     ) -> Result<PullRequestInfo, GhCliError> {
         // Write body to temp file to avoid shell escaping and length issues
@@ -209,11 +237,13 @@ impl GhCli {
             .write_all(body.as_bytes())
             .map_err(|e| GhCliError::CommandFailed(format!("Failed to write body: {e}")))?;
 
+        let repo_spec = repo_info.repo_spec();
+
         let mut args: Vec<OsString> = Vec::with_capacity(14);
         args.push(OsString::from("pr"));
         args.push(OsString::from("create"));
         args.push(OsString::from("--repo"));
-        args.push(OsString::from(format!("{}/{}", owner, repo_name)));
+        args.push(OsString::from(&repo_spec));
         args.push(OsString::from("--head"));
         args.push(OsString::from(&request.head_branch));
         args.push(OsString::from("--base"));
@@ -249,16 +279,16 @@ impl GhCli {
     /// List pull requests for a branch (includes closed/merged).
     pub fn list_prs_for_branch(
         &self,
-        owner: &str,
-        repo: &str,
+        repo_info: &GitHubRepoInfo,
         branch: &str,
     ) -> Result<Vec<PullRequestInfo>, GhCliError> {
+        let repo_spec = repo_info.repo_spec();
         let raw = self.run(
             [
                 "pr",
                 "list",
                 "--repo",
-                &format!("{owner}/{repo}"),
+                &repo_spec,
                 "--state",
                 "all",
                 "--head",
@@ -271,20 +301,37 @@ impl GhCli {
         Self::parse_pr_list(&raw)
     }
 
+    pub fn list_open_prs(&self, owner: &str, repo: &str) -> Result<Vec<OpenPrInfo>, GhCliError> {
+        let raw = self.run(
+            [
+                "pr",
+                "list",
+                "--repo",
+                &format!("{owner}/{repo}"),
+                "--state",
+                "open",
+                "--json",
+                "number,url,title,headRefName,baseRefName",
+            ],
+            None,
+        )?;
+        Self::parse_open_pr_list(&raw)
+    }
+
     /// Fetch comments for a pull request.
     pub fn get_pr_comments(
         &self,
-        owner: &str,
-        repo: &str,
+        repo_info: &GitHubRepoInfo,
         pr_number: i64,
     ) -> Result<Vec<PrComment>, GhCliError> {
+        let repo_spec = repo_info.repo_spec();
         let raw = self.run(
             [
                 "pr",
                 "view",
                 &pr_number.to_string(),
                 "--repo",
-                &format!("{owner}/{repo}"),
+                &repo_spec,
                 "--json",
                 "comments",
             ],
@@ -296,18 +343,43 @@ impl GhCli {
     /// Fetch inline review comments for a pull request via API.
     pub fn get_pr_review_comments(
         &self,
+        repo_info: &GitHubRepoInfo,
+        pr_number: i64,
+    ) -> Result<Vec<PrReviewComment>, GhCliError> {
+        let mut args = vec![
+            "api".to_string(),
+            format!(
+                "repos/{}/{}/pulls/{}/comments",
+                repo_info.owner, repo_info.repo_name, pr_number
+            ),
+        ];
+        if let Some(ref host) = repo_info.hostname {
+            args.push("--hostname".to_string());
+            args.push(host.clone());
+        }
+        let raw = self.run(args, None)?;
+        Self::parse_pr_review_comments(&raw)
+    }
+
+    pub fn pr_checkout(
+        &self,
+        repo_path: &Path,
         owner: &str,
         repo: &str,
         pr_number: i64,
-    ) -> Result<Vec<PrReviewComment>, GhCliError> {
-        let raw = self.run(
+    ) -> Result<(), GhCliError> {
+        self.run(
             [
-                "api",
-                &format!("repos/{owner}/{repo}/pulls/{pr_number}/comments"),
+                "pr",
+                "checkout",
+                &pr_number.to_string(),
+                "--repo",
+                &format!("{owner}/{repo}"),
+                "--force",
             ],
-            None,
+            Some(repo_path),
         )?;
-        Self::parse_pr_review_comments(&raw)
+        Ok(())
     }
 }
 
@@ -368,6 +440,25 @@ impl GhCli {
             ))
         })?;
         Ok(prs.into_iter().map(Self::pr_response_to_info).collect())
+    }
+
+    fn parse_open_pr_list(raw: &str) -> Result<Vec<OpenPrInfo>, GhCliError> {
+        let prs: Vec<GhPrListExtendedResponse> =
+            serde_json::from_str(raw.trim()).map_err(|err| {
+                GhCliError::UnexpectedOutput(format!(
+                    "Failed to parse gh pr list response: {err}; raw: {raw}"
+                ))
+            })?;
+        Ok(prs
+            .into_iter()
+            .map(|pr| OpenPrInfo {
+                number: pr.number,
+                url: pr.url,
+                title: pr.title,
+                head_branch: pr.head_ref_name,
+                base_branch: pr.base_ref_name,
+            })
+            .collect())
     }
 
     fn pr_response_to_info(pr: GhPrResponse) -> PullRequestInfo {

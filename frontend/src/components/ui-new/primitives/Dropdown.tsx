@@ -40,6 +40,7 @@ const DropdownMenuTriggerButton = React.forwardRef<
       'flex items-center gap-half bg-secondary border border-border rounded-sm px-base py-half',
       'focus:outline-none focus-visible:ring-1 focus-visible:ring-brand',
       'disabled:opacity-50 disabled:cursor-not-allowed',
+      'min-w-0',
       className
     )}
     {...props}
@@ -53,7 +54,10 @@ const DropdownMenuTriggerButton = React.forwardRef<
       </span>
     )}
     {children}
-    <CaretDownIcon className="size-icon-2xs text-normal" weight="bold" />
+    <CaretDownIcon
+      className="size-icon-2xs text-normal flex-shrink-0"
+      weight="bold"
+    />
   </DropdownMenuPrimitive.Trigger>
 ));
 DropdownMenuTriggerButton.displayName = 'DropdownMenuTriggerButton';
@@ -210,31 +214,15 @@ const DropdownMenuCheckboxItem = React.forwardRef<
     ref={ref}
     className={cn(
       'relative flex cursor-pointer select-none items-center',
-      'py-half pl-double pr-base mx-half rounded-sm text-sm text-high',
+      'py-half px-base mx-half rounded-sm text-sm text-low',
       'outline-none transition-colors focus:bg-secondary',
+      'data-[state=checked]:text-high',
       'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className
     )}
     checked={checked}
     {...props}
   >
-    <span className="absolute left-base flex h-3.5 w-3.5 items-center justify-center">
-      <DropdownMenuPrimitive.ItemIndicator>
-        <svg
-          className="size-icon-xs"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={3}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M5 13l4 4L19 7"
-          />
-        </svg>
-      </DropdownMenuPrimitive.ItemIndicator>
-    </span>
     {children}
   </DropdownMenuPrimitive.CheckboxItem>
 ));

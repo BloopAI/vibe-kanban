@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::PgPool;
+use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
@@ -25,12 +25,13 @@ pub struct Issue {
     pub status_id: Uuid,
     pub title: String,
     pub description: Option<String>,
-    pub priority: IssuePriority,
+    pub priority: Option<IssuePriority>,
     pub start_date: Option<DateTime<Utc>>,
     pub target_date: Option<DateTime<Utc>>,
     pub completed_at: Option<DateTime<Utc>>,
     pub sort_order: f64,
     pub parent_issue_id: Option<Uuid>,
+    pub parent_issue_sort_order: Option<f64>,
     pub extension_metadata: Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -38,7 +39,7 @@ pub struct Issue {
 
 #[derive(Debug, Error)]
 pub enum IssueError {
-    #[error(transparent)]
+    #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("pull request error: {0}")]
     PullRequest(#[from] super::pull_requests::PullRequestError),
@@ -51,7 +52,10 @@ pub enum IssueError {
 pub struct IssueRepository;
 
 impl IssueRepository {
-    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Issue>, IssueError> {
+    pub async fn find_by_id<'e, E>(executor: E, id: Uuid) -> Result<Option<Issue>, IssueError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let record = sqlx::query_as!(
             Issue,
             r#"
@@ -63,12 +67,13 @@ impl IssueRepository {
                 status_id           AS "status_id!: Uuid",
                 title               AS "title!",
                 description         AS "description?",
-                priority            AS "priority!: IssuePriority",
+                priority            AS "priority: IssuePriority",
                 start_date          AS "start_date?: DateTime<Utc>",
                 target_date         AS "target_date?: DateTime<Utc>",
                 completed_at        AS "completed_at?: DateTime<Utc>",
                 sort_order          AS "sort_order!",
                 parent_issue_id     AS "parent_issue_id?: Uuid",
+                parent_issue_sort_order AS "parent_issue_sort_order?",
                 extension_metadata  AS "extension_metadata!: Value",
                 created_at          AS "created_at!: DateTime<Utc>",
                 updated_at          AS "updated_at!: DateTime<Utc>"
@@ -77,7 +82,7 @@ impl IssueRepository {
             "#,
             id
         )
-        .fetch_optional(pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(record)
@@ -117,12 +122,13 @@ impl IssueRepository {
                 status_id           AS "status_id!: Uuid",
                 title               AS "title!",
                 description         AS "description?",
-                priority            AS "priority!: IssuePriority",
+                priority            AS "priority: IssuePriority",
                 start_date          AS "start_date?: DateTime<Utc>",
                 target_date         AS "target_date?: DateTime<Utc>",
                 completed_at        AS "completed_at?: DateTime<Utc>",
                 sort_order          AS "sort_order!",
                 parent_issue_id     AS "parent_issue_id?: Uuid",
+                parent_issue_sort_order AS "parent_issue_sort_order?",
                 extension_metadata  AS "extension_metadata!: Value",
                 created_at          AS "created_at!: DateTime<Utc>",
                 updated_at          AS "updated_at!: DateTime<Utc>"
@@ -145,12 +151,13 @@ impl IssueRepository {
         status_id: Uuid,
         title: String,
         description: Option<String>,
-        priority: IssuePriority,
+        priority: Option<IssuePriority>,
         start_date: Option<DateTime<Utc>>,
         target_date: Option<DateTime<Utc>>,
         completed_at: Option<DateTime<Utc>>,
         sort_order: f64,
         parent_issue_id: Option<Uuid>,
+        parent_issue_sort_order: Option<f64>,
         extension_metadata: Value,
     ) -> Result<MutationResponse<Issue>, IssueError> {
         let mut tx = pool.begin().await?;
@@ -163,9 +170,9 @@ impl IssueRepository {
             INSERT INTO issues (
                 id, project_id, status_id, title, description, priority,
                 start_date, target_date, completed_at, sort_order,
-                parent_issue_id, extension_metadata
+                parent_issue_id, parent_issue_sort_order, extension_metadata
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             RETURNING
                 id                  AS "id!: Uuid",
                 project_id          AS "project_id!: Uuid",
@@ -174,12 +181,13 @@ impl IssueRepository {
                 status_id           AS "status_id!: Uuid",
                 title               AS "title!",
                 description         AS "description?",
-                priority            AS "priority!: IssuePriority",
+                priority            AS "priority: IssuePriority",
                 start_date          AS "start_date?: DateTime<Utc>",
                 target_date         AS "target_date?: DateTime<Utc>",
                 completed_at        AS "completed_at?: DateTime<Utc>",
                 sort_order          AS "sort_order!",
                 parent_issue_id     AS "parent_issue_id?: Uuid",
+                parent_issue_sort_order AS "parent_issue_sort_order?",
                 extension_metadata  AS "extension_metadata!: Value",
                 created_at          AS "created_at!: DateTime<Utc>",
                 updated_at          AS "updated_at!: DateTime<Utc>"
@@ -189,12 +197,13 @@ impl IssueRepository {
             status_id,
             title,
             description,
-            priority as IssuePriority,
+            priority as Option<IssuePriority>,
             start_date,
             target_date,
             completed_at,
             sort_order,
             parent_issue_id,
+            parent_issue_sort_order,
             extension_metadata
         )
         .fetch_one(&mut *tx)
@@ -214,26 +223,30 @@ impl IssueRepository {
     /// - Some(None): set the field to NULL
     /// - Some(Some(value)): set the field to the value
     #[allow(clippy::too_many_arguments)]
-    pub async fn update(
-        pool: &PgPool,
+    pub async fn update<'e, E>(
+        executor: E,
         id: Uuid,
         status_id: Option<Uuid>,
         title: Option<String>,
         description: Option<Option<String>>,
-        priority: Option<IssuePriority>,
+        priority: Option<Option<IssuePriority>>,
         start_date: Option<Option<DateTime<Utc>>>,
         target_date: Option<Option<DateTime<Utc>>>,
         completed_at: Option<Option<DateTime<Utc>>>,
         sort_order: Option<f64>,
         parent_issue_id: Option<Option<Uuid>>,
+        parent_issue_sort_order: Option<Option<f64>>,
         extension_metadata: Option<Value>,
-    ) -> Result<MutationResponse<Issue>, IssueError> {
-        let mut tx = pool.begin().await?;
-
+    ) -> Result<Issue, IssueError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         // For nullable fields, extract boolean flags and flattened values
         // This preserves the distinction between "don't update" and "set to NULL"
         let update_description = description.is_some();
         let description_value = description.flatten();
+        let update_priority = priority.is_some();
+        let priority_value = priority.flatten();
         let update_start_date = start_date.is_some();
         let start_date_value = start_date.flatten();
         let update_target_date = target_date.is_some();
@@ -242,6 +255,8 @@ impl IssueRepository {
         let completed_at_value = completed_at.flatten();
         let update_parent_issue_id = parent_issue_id.is_some();
         let parent_issue_id_value = parent_issue_id.flatten();
+        let update_parent_issue_sort_order = parent_issue_sort_order.is_some();
+        let parent_issue_sort_order_value = parent_issue_sort_order.flatten();
 
         let data = sqlx::query_as!(
             Issue,
@@ -251,15 +266,16 @@ impl IssueRepository {
                 status_id = COALESCE($1, status_id),
                 title = COALESCE($2, title),
                 description = CASE WHEN $3 THEN $4 ELSE description END,
-                priority = COALESCE($5, priority),
-                start_date = CASE WHEN $6 THEN $7 ELSE start_date END,
-                target_date = CASE WHEN $8 THEN $9 ELSE target_date END,
-                completed_at = CASE WHEN $10 THEN $11 ELSE completed_at END,
-                sort_order = COALESCE($12, sort_order),
-                parent_issue_id = CASE WHEN $13 THEN $14 ELSE parent_issue_id END,
-                extension_metadata = COALESCE($15, extension_metadata),
+                priority = CASE WHEN $5 THEN $6 ELSE priority END,
+                start_date = CASE WHEN $7 THEN $8 ELSE start_date END,
+                target_date = CASE WHEN $9 THEN $10 ELSE target_date END,
+                completed_at = CASE WHEN $11 THEN $12 ELSE completed_at END,
+                sort_order = COALESCE($13, sort_order),
+                parent_issue_id = CASE WHEN $14 THEN $15 ELSE parent_issue_id END,
+                parent_issue_sort_order = CASE WHEN $16 THEN $17 ELSE parent_issue_sort_order END,
+                extension_metadata = COALESCE($18, extension_metadata),
                 updated_at = NOW()
-            WHERE id = $16
+            WHERE id = $19
             RETURNING
                 id                  AS "id!: Uuid",
                 project_id          AS "project_id!: Uuid",
@@ -268,12 +284,13 @@ impl IssueRepository {
                 status_id           AS "status_id!: Uuid",
                 title               AS "title!",
                 description         AS "description?",
-                priority            AS "priority!: IssuePriority",
+                priority            AS "priority: IssuePriority",
                 start_date          AS "start_date?: DateTime<Utc>",
                 target_date         AS "target_date?: DateTime<Utc>",
                 completed_at        AS "completed_at?: DateTime<Utc>",
                 sort_order          AS "sort_order!",
                 parent_issue_id     AS "parent_issue_id?: Uuid",
+                parent_issue_sort_order AS "parent_issue_sort_order?",
                 extension_metadata  AS "extension_metadata!: Value",
                 created_at          AS "created_at!: DateTime<Utc>",
                 updated_at          AS "updated_at!: DateTime<Utc>"
@@ -282,7 +299,8 @@ impl IssueRepository {
             title,
             update_description,
             description_value,
-            priority as Option<IssuePriority>,
+            update_priority,
+            priority_value as Option<IssuePriority>,
             update_start_date,
             start_date_value,
             update_target_date,
@@ -292,16 +310,15 @@ impl IssueRepository {
             sort_order,
             update_parent_issue_id,
             parent_issue_id_value,
+            update_parent_issue_sort_order,
+            parent_issue_sort_order_value,
             extension_metadata,
             id
         )
-        .fetch_one(&mut *tx)
+        .fetch_one(executor)
         .await?;
 
-        let txid = get_txid(&mut *tx).await?;
-        tx.commit().await?;
-
-        Ok(MutationResponse { data, txid })
+        Ok(data)
     }
 
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, IssueError> {
@@ -365,6 +382,7 @@ impl IssueRepository {
             None,
             None,
             None,
+            None,
         )
         .await?;
 
@@ -408,6 +426,7 @@ impl IssueRepository {
             pool,
             issue_id,
             Some(in_progress_status.id),
+            None,
             None,
             None,
             None,

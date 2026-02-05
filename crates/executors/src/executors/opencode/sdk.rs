@@ -9,14 +9,14 @@ use std::{
 
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use eventsource_stream::Eventsource;
-use futures::{FutureExt, StreamExt};
+use futures::StreamExt;
 use rand::{Rng, distributions::Alphanumeric};
 use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::{
     io::{AsyncWrite, AsyncWriteExt, BufWriter},
-    sync::{Mutex as AsyncMutex, mpsc, oneshot},
+    sync::{Mutex as AsyncMutex, mpsc},
 };
 use tokio_util::sync::CancellationToken;
 use workspace_utils::approvals::ApprovalStatus;
@@ -24,6 +24,7 @@ use workspace_utils::approvals::ApprovalStatus;
 use super::{slash_commands, types::OpencodeExecutorEvent};
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
+    env::RepoContext,
     executors::{
         ExecutorError,
         opencode::{OpencodeServer, models::maybe_emit_token_usage},
@@ -85,6 +86,9 @@ pub struct RunConfig {
     /// Cache key for model context windows. Should be derived from configuration
     /// that affects available models (e.g., env vars, base command).
     pub models_cache_key: String,
+    pub commit_reminder: bool,
+    pub commit_reminder_prompt: String,
+    pub repo_context: RepoContext,
 }
 
 /// Generate a cryptographically secure random password for OpenCode server auth.
@@ -211,10 +215,8 @@ pub enum ControlEvent {
 pub async fn run_session(
     config: RunConfig,
     log_writer: LogWriter,
-    interrupt_rx: oneshot::Receiver<()>,
+    cancel: CancellationToken,
 ) -> Result<(), ExecutorError> {
-    let cancel = CancellationToken::new();
-
     let client = reqwest::Client::builder()
         .default_headers(build_default_headers(
             &config.directory,
@@ -223,28 +225,7 @@ pub async fn run_session(
         .build()
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
 
-    let mut interrupted = false;
-    let interrupt_rx = interrupt_rx.fuse();
-    let session_fut = run_session_inner(config, log_writer, client, cancel.clone()).fuse();
-
-    tokio::pin!(interrupt_rx);
-    tokio::pin!(session_fut);
-
-    loop {
-        tokio::select! {
-            biased;
-            _ = &mut interrupt_rx => {
-                interrupted = true;
-                cancel.cancel();
-            }
-            res = &mut session_fut => {
-                if interrupted {
-                    return Ok(());
-                }
-                return res;
-            }
-        }
-    }
+    run_session_inner(config, log_writer, client, cancel).await
 }
 
 pub(super) async fn discover_commands(
@@ -265,10 +246,8 @@ pub async fn run_slash_command(
     config: RunConfig,
     log_writer: LogWriter,
     command: slash_commands::OpencodeSlashCommand,
-    interrupt_rx: oneshot::Receiver<()>,
+    cancel: CancellationToken,
 ) -> Result<(), ExecutorError> {
-    let cancel = CancellationToken::new();
-
     let client = reqwest::Client::builder()
         .default_headers(build_default_headers(
             &config.directory,
@@ -277,29 +256,7 @@ pub async fn run_slash_command(
         .build()
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
 
-    let mut interrupted = false;
-    let interrupt_rx = interrupt_rx.fuse();
-    let command_fut =
-        slash_commands::execute(config, command, log_writer, client, cancel.clone()).fuse();
-
-    tokio::pin!(interrupt_rx);
-    tokio::pin!(command_fut);
-
-    loop {
-        tokio::select! {
-            biased;
-            _ = &mut interrupt_rx => {
-                interrupted = true;
-                cancel.cancel();
-            }
-            res = &mut command_fut => {
-                if interrupted {
-                    return Ok(());
-                }
-                return res;
-            }
-        }
-    }
+    slash_commands::execute(config, command, log_writer, client, cancel.clone()).await
 }
 
 async fn run_session_inner(
@@ -351,6 +308,7 @@ async fn run_session_inner(
             auto_approve: config.auto_approve,
             control_tx,
             models_cache_key: config.models_cache_key.clone(),
+            cancel: cancel.clone(),
         },
         event_resp,
     ));
@@ -373,9 +331,52 @@ async fn run_session_inner(
         return Ok(());
     }
 
+    if let Err(err) = prompt_result {
+        event_handle.abort();
+        return Err(err);
+    }
+
+    // Handle commit reminder if enabled
+    if config.commit_reminder
+        && !cancel.is_cancelled()
+        && let status = config.repo_context.check_uncommitted_changes().await
+        && !status.is_empty()
+    {
+        let reminder_prompt = format!("{}\n{}", config.commit_reminder_prompt, status);
+        tracing::debug!("Sending commit reminder prompt to OpenCode session");
+
+        // Log as system message so it's visible in the UI (user_message gets filtered out)
+        let _ = log_writer
+            .log_event(&OpencodeExecutorEvent::SystemMessage {
+                content: reminder_prompt.clone(),
+            })
+            .await;
+
+        let reminder_fut = Box::pin(prompt(
+            &client,
+            &config.base_url,
+            &config.directory,
+            &session_id,
+            &reminder_prompt,
+            model,
+            config.model_variant.clone(),
+            config.agent.clone(),
+        ));
+        let reminder_result =
+            run_request_with_control(reminder_fut, &mut control_rx, cancel.clone()).await;
+
+        if let Err(e) = reminder_result {
+            // Log but don't fail the session on commit reminder errors
+            tracing::warn!("Commit reminder prompt failed: {e}");
+        }
+    }
+
+    if cancel.is_cancelled() {
+        send_abort(&client, &config.base_url, &config.directory, &session_id).await;
+    }
+
     event_handle.abort();
 
-    prompt_result?;
     log_writer.log_event(&OpencodeExecutorEvent::Done).await?;
 
     Ok(())
@@ -1067,6 +1068,7 @@ pub struct EventListenerConfig {
     pub auto_approve: bool,
     pub control_tx: mpsc::UnboundedSender<ControlEvent>,
     pub models_cache_key: String,
+    pub cancel: CancellationToken,
 }
 
 pub async fn spawn_event_listener(config: EventListenerConfig, initial_resp: reqwest::Response) {
@@ -1080,6 +1082,7 @@ pub async fn spawn_event_listener(config: EventListenerConfig, initial_resp: req
         auto_approve,
         control_tx,
         models_cache_key,
+        cancel,
     } = config;
 
     let mut seen_permissions: HashSet<String> = HashSet::new();
@@ -1134,13 +1137,20 @@ pub async fn spawn_event_listener(config: EventListenerConfig, initial_resp: req
                 base_retry_delay: &mut base_retry_delay,
                 last_event_id: &mut last_event_id,
                 models_cache_key: &models_cache_key,
+                cancel: cancel.clone(),
             },
             current_resp,
         )
         .await;
 
         match outcome {
-            Ok(EventStreamOutcome::Idle) | Ok(EventStreamOutcome::Terminal) => return,
+            Ok(EventStreamOutcome::Idle) => {
+                // Keep listening - there may be more prompts (e.g., commit reminder)
+                // The task will be aborted by event_handle.abort() when done
+                resp = None;
+                continue;
+            }
+            Ok(EventStreamOutcome::Terminal) => return,
             Ok(EventStreamOutcome::Disconnected) | Err(_) => {
                 attempt += 1;
                 if attempt >= max_attempts {
@@ -1184,6 +1194,7 @@ pub(super) struct EventStreamContext<'a> {
     last_event_id: &'a mut Option<String>,
     /// Cache key for model context windows, derived from config that affects available models.
     pub models_cache_key: &'a str,
+    cancel: CancellationToken,
 }
 
 async fn process_event_stream(
@@ -1192,7 +1203,18 @@ async fn process_event_stream(
 ) -> Result<EventStreamOutcome, ExecutorError> {
     let mut stream = resp.bytes_stream().eventsource();
 
-    while let Some(evt) = stream.next().await {
+    loop {
+        let evt = tokio::select! {
+            _ = ctx.cancel.cancelled() => {
+                return Ok(EventStreamOutcome::Terminal);
+            }
+            evt = stream.next() => {
+                match evt {
+                    Some(evt) => evt,
+                    None => break,
+                }
+            }
+        };
         let evt = evt.map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
 
         if !evt.id.trim().is_empty() {
@@ -1294,15 +1316,34 @@ async fn process_event_stream(
                 let directory = ctx.directory.to_string();
                 let log_writer = ctx.log_writer.clone();
                 let auto_approve = ctx.auto_approve;
+                let cancel = ctx.cancel.clone();
                 tokio::spawn(async move {
-                    let status = request_permission_approval(
+                    let status = match request_permission_approval(
                         auto_approve,
                         approvals,
                         &permission,
                         tool_input,
                         &tool_call_id,
+                        cancel,
                     )
-                    .await;
+                    .await
+                    {
+                        Ok(status) => status,
+                        Err(ExecutorApprovalError::Cancelled) => {
+                            tracing::debug!(
+                                "OpenCode approval cancelled for tool_call_id={}",
+                                tool_call_id
+                            );
+                            return;
+                        }
+                        Err(err) => {
+                            tracing::error!(
+                                "OpenCode approval failed for tool_call_id={}: {err}",
+                                tool_call_id
+                            );
+                            return;
+                        }
+                    };
 
                     let _ = log_writer
                         .log_event(&OpencodeExecutorEvent::ApprovalResponse {
@@ -1399,25 +1440,24 @@ async fn request_permission_approval(
     tool_name: &str,
     tool_input: Value,
     tool_call_id: &str,
-) -> ApprovalStatus {
+    cancel: CancellationToken,
+) -> Result<ApprovalStatus, ExecutorApprovalError> {
     if auto_approve {
-        return ApprovalStatus::Approved;
+        return Ok(ApprovalStatus::Approved);
     }
 
     let Some(approvals) = approvals else {
-        return ApprovalStatus::Approved;
+        return Ok(ApprovalStatus::Approved);
     };
 
     match approvals
-        .request_tool_approval(tool_name, tool_input, tool_call_id)
+        .request_tool_approval(tool_name, tool_input, tool_call_id, cancel)
         .await
     {
-        Ok(status) => status,
+        Ok(status) => Ok(status),
         Err(
             ExecutorApprovalError::ServiceUnavailable | ExecutorApprovalError::SessionNotRegistered,
-        ) => ApprovalStatus::Approved,
-        Err(err) => ApprovalStatus::Denied {
-            reason: Some(format!("Approval request failed: {err}")),
-        },
+        ) => Ok(ApprovalStatus::Approved),
+        Err(err) => Err(err),
     }
 }

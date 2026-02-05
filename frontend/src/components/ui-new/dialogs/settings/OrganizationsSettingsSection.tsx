@@ -6,6 +6,8 @@ import {
   UserPlusIcon,
   TrashIcon,
   SignInIcon,
+  ArrowSquareOutIcon,
+  InfoIcon,
 } from '@phosphor-icons/react';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
@@ -26,6 +28,7 @@ import { PendingInvitationItem } from '@/components/org/PendingInvitationItem';
 import type { MemberRole } from 'shared/types';
 import { MemberRole as MemberRoleEnum } from 'shared/types';
 import { cn } from '@/lib/utils';
+import { REMOTE_API_URL } from '@/lib/remoteApi';
 import { PrimaryButton } from '../../primitives/PrimaryButton';
 import {
   DropdownMenu,
@@ -366,6 +369,32 @@ export function OrganizationsSettingsSection() {
             ) : undefined
           }
         >
+          {isPersonalOrg && (
+            <div className="bg-info/10 border border-info/50 rounded-sm p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <InfoIcon
+                  className="size-icon-sm text-info flex-shrink-0 mt-0.5"
+                  weight="bold"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-high">
+                    {t('personalOrg.cannotInvite')}
+                  </p>
+                  <p className="text-sm text-low mt-1">
+                    {t('personalOrg.createOrgPrompt')}
+                  </p>
+                  <PrimaryButton
+                    variant="secondary"
+                    value={t('personalOrg.createOrgButton')}
+                    onClick={handleCreateOrganization}
+                    className="mt-3"
+                  >
+                    <PlusIcon className="size-icon-xs mr-1" weight="bold" />
+                  </PrimaryButton>
+                </div>
+              </div>
+            </div>
+          )}
           {loadingMembers ? (
             <div className="flex items-center justify-center py-4 gap-2">
               <SpinnerIcon className="size-icon-sm animate-spin" />
@@ -393,6 +422,31 @@ export function OrganizationsSettingsSection() {
               ))}
             </div>
           )}
+        </SettingsCard>
+      )}
+
+      {/* Billing Link (admin only, non-personal orgs, when remote URL is configured) */}
+      {selectedOrg && isAdmin && !isPersonalOrg && REMOTE_API_URL && (
+        <SettingsCard
+          title={t('billing.title')}
+          description={t('billing.description')}
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-low">{t('billing.openInBrowser')}</p>
+            <a
+              href={`${REMOTE_API_URL}/account/organizations/${selectedOrgId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                'flex items-center gap-2 px-base py-half rounded-sm text-sm font-medium',
+                'bg-brand/10 text-brand hover:bg-brand/20 border border-brand/50',
+                'transition-colors'
+              )}
+            >
+              <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
+              {t('billing.manageButton')}
+            </a>
+          </div>
         </SettingsCard>
       )}
 

@@ -103,6 +103,10 @@ impl CommandBuilder {
             .collect::<Vec<String>>()
             .join(" ");
 
+        if joined.trim().is_empty() {
+            return Ok(self);
+        }
+
         let extra: Vec<String> = split_command_line(&joined)
             .map_err(|err| CommandBuildError::InvalidShellParams(format!("{joined}: {err}")))?;
 

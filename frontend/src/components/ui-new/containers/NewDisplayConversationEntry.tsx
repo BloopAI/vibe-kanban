@@ -5,17 +5,19 @@ import {
   ActionType,
   NormalizedEntry,
   ToolStatus,
+  ToolResult,
   TodoItem,
   type RepoWithTargetBranch,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
-import { DiffLineType, parseInstance } from '@git-diff-view/react';
+import { parseDiffStats } from '@/utils/diffStatsParser';
 import {
   usePersistedExpanded,
   type PersistKey,
 } from '@/stores/useUiPreferencesStore';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
+import type { UseResetProcessResult } from '@/components/ui-new/hooks/useResetProcess';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
@@ -34,44 +36,31 @@ import { ChatSystemMessage } from '../primitives/conversation/ChatSystemMessage'
 import { ChatThinkingMessage } from '../primitives/conversation/ChatThinkingMessage';
 import { ChatErrorMessage } from '../primitives/conversation/ChatErrorMessage';
 import { ChatScriptEntry } from '../primitives/conversation/ChatScriptEntry';
-import type { DiffInput } from '../primitives/conversation/DiffViewCard';
+import { ChatSubagentEntry } from '../primitives/conversation/ChatSubagentEntry';
+import { ChatAggregatedToolEntries } from '../primitives/conversation/ChatAggregatedToolEntries';
+import { ChatAggregatedDiffEntries } from '../primitives/conversation/ChatAggregatedDiffEntries';
+import type { DiffInput } from '../primitives/conversation/PierreConversationDiff';
+import type {
+  AggregatedPatchGroup,
+  AggregatedDiffGroup,
+} from '@/hooks/useConversationHistory/types';
+import {
+  FileTextIcon,
+  ListMagnifyingGlassIcon,
+  GlobeIcon,
+} from '@phosphor-icons/react';
 
 type Props = {
-  entry: NormalizedEntry;
   expansionKey: string;
   executionProcessId: string;
   taskAttempt: WorkspaceWithSession;
+  resetAction: UseResetProcessResult;
+  entry: NormalizedEntry | null;
+  aggregatedGroup: AggregatedPatchGroup | null;
+  aggregatedDiffGroup: AggregatedDiffGroup | null;
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
-
-/**
- * Parse unified diff to extract addition/deletion counts
- */
-function parseDiffStats(unifiedDiff: string): {
-  additions: number;
-  deletions: number;
-} {
-  let additions = 0;
-  let deletions = 0;
-  try {
-    const parsed = parseInstance.parse(unifiedDiff);
-    for (const h of parsed.hunks) {
-      for (const line of h.lines) {
-        if (line.type === DiffLineType.Add) additions++;
-        else if (line.type === DiffLineType.Delete) deletions++;
-      }
-    }
-  } catch {
-    // Fallback: count lines starting with + or -
-    const lines = unifiedDiff.split('\n');
-    for (const line of lines) {
-      if (line.startsWith('+') && !line.startsWith('+++')) additions++;
-      else if (line.startsWith('-') && !line.startsWith('---')) deletions++;
-    }
-  }
-  return { additions, deletions };
-}
 
 /**
  * Generate tool summary text from action type
@@ -155,6 +144,7 @@ function getToolCommand(
  */
 function renderToolUseEntry(
   entryType: Extract<NormalizedEntry['entry_type'], { type: 'tool_use' }>,
+  entry: NormalizedEntry,
   props: Props,
   t: TFunction<'common'>
 ): React.ReactNode {
@@ -201,10 +191,25 @@ function renderToolUseEntry(
     );
   }
 
-  // Script entries (Setup Script, Cleanup Script, Tool Install Script)
+  // Task/Subagent - use ChatSubagentEntry
+  if (action_type.action === 'task_create') {
+    return (
+      <SubagentEntry
+        description={action_type.description}
+        subagentType={action_type.subagent_type}
+        result={action_type.result}
+        expansionKey={expansionKey}
+        status={status}
+        workspaceId={taskAttempt?.id}
+      />
+    );
+  }
+
+  // Script entries (Setup Script, Cleanup Script, Archive Script, Tool Install Script)
   const scriptToolNames = [
     'Setup Script',
     'Cleanup Script',
+    'Archive Script',
     'Tool Install Script',
   ];
   if (
@@ -233,7 +238,7 @@ function renderToolUseEntry(
     return (
       <GenericToolApprovalEntry
         toolName={entryType.tool_name}
-        content={props.entry.content}
+        content={entry.content}
         expansionKey={expansionKey}
         workspaceId={taskAttempt?.id}
         status={status}
@@ -247,21 +252,46 @@ function renderToolUseEntry(
       summary={getToolSummary(entryType, t)}
       expansionKey={expansionKey}
       status={status}
-      content={getToolOutput(entryType, props.entry.content)}
+      content={getToolOutput(entryType, entry.content)}
       toolName={entryType.tool_name}
       command={getToolCommand(entryType)}
+      actionType={action_type.action}
     />
   );
 }
 
 function NewDisplayConversationEntry(props: Props) {
   const { t } = useTranslation('common');
-  const { entry, expansionKey, executionProcessId, taskAttempt } = props;
+  const {
+    entry,
+    aggregatedGroup,
+    aggregatedDiffGroup,
+    expansionKey,
+    executionProcessId,
+    taskAttempt,
+    resetAction,
+  } = props;
+
+  // Handle aggregated groups (consecutive file_read or search entries)
+  if (aggregatedGroup) {
+    return <AggregatedGroupEntry group={aggregatedGroup} />;
+  }
+
+  // Handle aggregated diff groups (consecutive file_edit entries for same file)
+  if (aggregatedDiffGroup) {
+    return <AggregatedDiffGroupEntry group={aggregatedDiffGroup} />;
+  }
+
+  // If no entry, return null (shouldn't happen in normal usage)
+  if (!entry) {
+    return null;
+  }
+
   const entryType = entry.entry_type;
 
   switch (entryType.type) {
     case 'tool_use':
-      return renderToolUseEntry(entryType, props, t);
+      return renderToolUseEntry(entryType, entry, props, t);
 
     case 'user_message':
       return (
@@ -270,6 +300,7 @@ function NewDisplayConversationEntry(props: Props) {
           expansionKey={expansionKey}
           workspaceId={taskAttempt?.id}
           executionProcessId={executionProcessId}
+          resetAction={resetAction}
         />
       );
 
@@ -493,25 +524,36 @@ function UserMessageEntry({
   expansionKey,
   workspaceId,
   executionProcessId,
+  resetAction,
 }: {
   content: string;
   expansionKey: string;
   workspaceId: string | undefined;
   executionProcessId: string | undefined;
+  resetAction: UseResetProcessResult;
 }) {
   const [expanded, toggle] = usePersistedExpanded(`user:${expansionKey}`, true);
   const { startEdit, isEntryGreyed, isInEditMode } = useMessageEditContext();
+  const { resetProcess, canResetProcess, isResetPending } = resetAction;
 
   const isGreyed = isEntryGreyed(expansionKey);
 
-  const handleEdit = useCallback(() => {
+  const handleEdit = () => {
     if (executionProcessId) {
       startEdit(expansionKey, executionProcessId, content);
     }
-  }, [startEdit, expansionKey, executionProcessId, content]);
+  };
+
+  const handleReset = () => {
+    if (executionProcessId) {
+      resetProcess(executionProcessId);
+    }
+  };
 
   // Only show edit button if we have a process ID and not already in edit mode
-  const canEdit = !!executionProcessId && !isInEditMode;
+  const canEdit = !!executionProcessId && !isInEditMode && !isResetPending;
+  // Only show reset if we have a process ID, not in edit mode, not pending, and not first process
+  const canReset = canEdit && canResetProcess(executionProcessId);
 
   return (
     <ChatUserMessage
@@ -520,6 +562,7 @@ function UserMessageEntry({
       onToggle={toggle}
       workspaceId={workspaceId}
       onEdit={canEdit ? handleEdit : undefined}
+      onReset={canReset ? handleReset : undefined}
       isGreyed={isGreyed}
     />
   );
@@ -548,6 +591,7 @@ function ToolSummaryEntry({
   content,
   toolName,
   command,
+  actionType,
 }: {
   summary: string;
   expansionKey: string;
@@ -555,6 +599,7 @@ function ToolSummaryEntry({
   content: string;
   toolName: string;
   command: string | undefined;
+  actionType: string;
 }) {
   const [expanded, toggle] = usePersistedExpanded(
     `tool:${expansionKey}`,
@@ -588,6 +633,7 @@ function ToolSummaryEntry({
       onViewContent={hasOutput ? handleViewContent : undefined}
       toolName={toolName}
       isTruncated={isTruncated}
+      actionType={actionType}
     />
   );
 }
@@ -608,6 +654,44 @@ function TodoManagementEntry({
   );
 
   return <ChatTodoList todos={todos} expanded={expanded} onToggle={toggle} />;
+}
+
+/**
+ * Subagent/Task entry with expandable output
+ */
+function SubagentEntry({
+  description,
+  subagentType,
+  result,
+  expansionKey,
+  status,
+  workspaceId,
+}: {
+  description: string;
+  subagentType: string | null | undefined;
+  result: ToolResult | null | undefined;
+  expansionKey: string;
+  status: ToolStatus;
+  workspaceId: string | undefined;
+}) {
+  // Only auto-expand if there's a result to show
+  const hasResult = Boolean(result?.value);
+  const [expanded, toggle] = usePersistedExpanded(
+    `subagent:${expansionKey}`,
+    false
+  );
+
+  return (
+    <ChatSubagentEntry
+      description={description}
+      subagentType={subagentType}
+      result={result}
+      expanded={expanded}
+      onToggle={hasResult ? toggle : undefined}
+      status={status}
+      workspaceId={workspaceId}
+    />
+  );
 }
 
 /**
@@ -675,7 +759,9 @@ function ScriptEntryWithFix({
         ? 'setup'
         : title === 'Cleanup Script'
           ? 'cleanup'
-          : 'dev_server';
+          : title === 'Archive Script'
+            ? 'archive'
+            : 'dev_server';
 
     ScriptFixerDialog.show({
       scriptType,
@@ -717,6 +803,165 @@ function ErrorMessageEntry({
 
   return (
     <ChatErrorMessage content={content} expanded={expanded} onToggle={toggle} />
+  );
+}
+
+/**
+ * Aggregated group entry for consecutive file_read, search, or web_fetch entries
+ */
+function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
+  const { viewToolContentInPanel } = useLogsPanel();
+  const [expanded, setExpanded] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Extract summary and status from each entry in the group
+  const aggregatedEntries = useMemo(() => {
+    return group.entries.map((patchEntry) => {
+      if (patchEntry.type !== 'NORMALIZED_ENTRY') {
+        return {
+          summary: '',
+          status: undefined,
+          expansionKey: patchEntry.patchKey,
+          content: '',
+          toolName: '',
+        };
+      }
+
+      const entryType = patchEntry.content.entry_type;
+      if (entryType.type !== 'tool_use') {
+        return {
+          summary: '',
+          status: undefined,
+          expansionKey: patchEntry.patchKey,
+          content: '',
+          toolName: '',
+        };
+      }
+
+      const { action_type, status, tool_name } = entryType;
+      let summary = '';
+      if (action_type.action === 'file_read') {
+        summary = action_type.path;
+      } else if (action_type.action === 'search') {
+        summary = action_type.query;
+      } else if (action_type.action === 'web_fetch') {
+        summary = action_type.url;
+      }
+
+      return {
+        summary,
+        status,
+        expansionKey: patchEntry.patchKey,
+        content: patchEntry.content.content,
+        toolName: tool_name,
+      };
+    });
+  }, [group.entries]);
+
+  const handleViewContent = useCallback(
+    (index: number) => {
+      const entry = aggregatedEntries[index];
+      if (entry && entry.content) {
+        viewToolContentInPanel(entry.toolName, entry.content);
+      }
+    },
+    [aggregatedEntries, viewToolContentInPanel]
+  );
+
+  const handleToggle = useCallback(() => {
+    setExpanded((prev) => !prev);
+  }, []);
+
+  const handleHoverChange = useCallback((hovered: boolean) => {
+    setIsHovered(hovered);
+  }, []);
+
+  // Get the label, icon, and unit based on aggregation type
+  const getDisplayProps = () => {
+    switch (group.aggregationType) {
+      case 'file_read':
+        return { label: 'Read', icon: FileTextIcon, unit: 'file' };
+      case 'search':
+        return { label: 'Search', icon: ListMagnifyingGlassIcon, unit: 'file' };
+      case 'web_fetch':
+        return { label: 'Fetched', icon: GlobeIcon, unit: 'URL' };
+    }
+  };
+  const { label, icon, unit } = getDisplayProps();
+
+  return (
+    <ChatAggregatedToolEntries
+      entries={aggregatedEntries}
+      expanded={expanded}
+      isHovered={isHovered}
+      onToggle={handleToggle}
+      onHoverChange={handleHoverChange}
+      onViewContent={handleViewContent}
+      label={label}
+      icon={icon}
+      unit={unit}
+    />
+  );
+}
+
+/**
+ * Aggregated diff group entry for consecutive file_edit entries on the same file
+ */
+function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
+  const { viewFileInChanges, diffPaths } = useChangesView();
+  const [expanded, setExpanded] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Extract change data and status from each entry
+  const aggregatedDiffEntries = useMemo(() => {
+    return group.entries.flatMap((patchEntry, entryIdx) => {
+      if (patchEntry.type !== 'NORMALIZED_ENTRY') {
+        return [];
+      }
+
+      const entryType = patchEntry.content.entry_type;
+      if (entryType.type !== 'tool_use') {
+        return [];
+      }
+
+      const { action_type, status } = entryType;
+      if (action_type.action !== 'file_edit') {
+        return [];
+      }
+
+      // Each file_edit entry can have multiple changes
+      return action_type.changes.map((change, changeIdx) => ({
+        change,
+        status,
+        expansionKey: `${patchEntry.patchKey}:${entryIdx}:${changeIdx}`,
+      }));
+    });
+  }, [group.entries]);
+
+  const handleToggle = useCallback(() => {
+    setExpanded((prev) => !prev);
+  }, []);
+
+  const handleHoverChange = useCallback((hovered: boolean) => {
+    setIsHovered(hovered);
+  }, []);
+
+  const handleOpenInChanges = useCallback(() => {
+    viewFileInChanges(group.filePath);
+  }, [viewFileInChanges, group.filePath]);
+
+  const canOpenInChanges = diffPaths.has(group.filePath);
+
+  return (
+    <ChatAggregatedDiffEntries
+      filePath={group.filePath}
+      entries={aggregatedDiffEntries}
+      expanded={expanded}
+      isHovered={isHovered}
+      onToggle={handleToggle}
+      onHoverChange={handleHoverChange}
+      onOpenInChanges={canOpenInChanges ? handleOpenInChanges : null}
+    />
   );
 }
 

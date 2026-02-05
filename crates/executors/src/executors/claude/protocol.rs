@@ -1,18 +1,21 @@
 use std::sync::Arc;
 
-use futures::FutureExt;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::{ChildStdin, ChildStdout},
-    sync::{Mutex, oneshot},
+    sync::Mutex,
 };
+use tokio_util::sync::CancellationToken;
 
 use super::types::{CLIMessage, ControlRequestType, ControlResponseMessage, ControlResponseType};
-use crate::executors::{
-    ExecutorError,
-    claude::{
-        client::ClaudeAgentClient,
-        types::{Message, PermissionMode, SDKControlRequest, SDKControlRequestType},
+use crate::{
+    approvals::ExecutorApprovalError,
+    executors::{
+        ExecutorError,
+        claude::{
+            client::ClaudeAgentClient,
+            types::{Message, PermissionMode, SDKControlRequest, SDKControlRequestType},
+        },
     },
 };
 
@@ -27,7 +30,7 @@ impl ProtocolPeer {
         stdin: ChildStdin,
         stdout: ChildStdout,
         client: Arc<ClaudeAgentClient>,
-        interrupt_rx: oneshot::Receiver<()>,
+        cancel: CancellationToken,
     ) -> Self {
         let peer = Self {
             stdin: Arc::new(Mutex::new(stdin)),
@@ -35,7 +38,7 @@ impl ProtocolPeer {
 
         let reader_peer = peer.clone();
         tokio::spawn(async move {
-            if let Err(e) = reader_peer.read_loop(stdout, client, interrupt_rx).await {
+            if let Err(e) = reader_peer.read_loop(stdout, client, cancel).await {
                 tracing::error!("Protocol reader loop error: {}", e);
             }
         });
@@ -47,16 +50,24 @@ impl ProtocolPeer {
         &self,
         stdout: ChildStdout,
         client: Arc<ClaudeAgentClient>,
-        interrupt_rx: oneshot::Receiver<()>,
+        cancel: CancellationToken,
     ) -> Result<(), ExecutorError> {
         let mut reader = BufReader::new(stdout);
         let mut buffer = String::new();
-        // Fuse the receiver so it returns Pending forever after completing
-        let mut interrupt_rx = interrupt_rx.fuse();
+        let mut interrupt_sent = false;
 
         loop {
             buffer.clear();
             tokio::select! {
+                biased;
+                _ = cancel.cancelled(), if !interrupt_sent => {
+                    interrupt_sent = true;
+                    tracing::info!("Cancellation received in read_loop, sending interrupt to Claude");
+                    if let Err(e) = self.interrupt().await {
+                        tracing::warn!("Failed to send interrupt to Claude: {e}");
+                    }
+                    // Continue the loop to read Claude's response (it should send a result)
+                }
                 line_result = reader.read_line(&mut buffer) => {
                     match line_result {
                         Ok(0) => break, // EOF
@@ -86,11 +97,6 @@ impl ProtocolPeer {
                             tracing::error!("Error reading stdout: {}", e);
                             break;
                         }
-                    }
-                }
-                _ = &mut interrupt_rx => {
-                    if let Err(e) = self.interrupt().await {
-                        tracing::debug!("Failed to send interrupt to Claude: {e}");
                     }
                 }
             }
@@ -123,6 +129,8 @@ impl ProtocolPeer {
                         {
                             tracing::error!("Failed to send permission result: {e}");
                         }
+                    }
+                    Err(ExecutorError::ExecutorApprovalError(ExecutorApprovalError::Cancelled)) => {
                     }
                     Err(e) => {
                         tracing::error!("Error in on_can_use_tool: {e}");

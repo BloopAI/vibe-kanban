@@ -1,0 +1,275 @@
+---
+title: "Team Members"
+description: "Invite colleagues and manage team access to your organisation"
+---
+
+Collaborate with your team by inviting members to your organisation. Members can view projects, work on tasks, and receive real-time updates.
+
+## Inviting Team Members
+
+Only organisation **Admins** can invite new members.
+
+<Steps>
+<Step title="Go to Organisation Settings">
+  Click your **profile icon** in the bottom of the left sidebar, then click the **gear icon** (<Icon icon="gear" />) next to your organisation name.
+</Step>
+
+<Step title="Click Invite Member">
+  Click the **Invite Member** button in the top-right corner.
+</Step>
+
+<Step title="Enter their email">
+  Enter the email address of the person you want to invite.
+
+
+  <Info>
+  Use the email they'll sign in with (their GitHub or Google email). If you're unsure, ask them which email is associated with their GitHub/Google account.
+  </Info>
+</Step>
+
+<Step title="Select a role">
+  Choose their role:
+  - **Member** - Can work on projects but can't manage organisation settings
+  - **Admin** - Full access including member management
+
+  <Tip>
+  Start with **Member** role. You can always promote them to Admin later if needed.
+  </Tip>
+</Step>
+
+<Step title="Send invitation">
+  Click **Send Invitation**. They'll receive an email with instructions to join.
+
+  <Frame>
+    <img src="/images/cloud/invite-member-dialog.png" alt="Invite Member dialog with email and role fields" />
+  </Frame>
+</Step>
+</Steps>
+
+### What Happens After Inviting
+
+1. The invitee receives an email with an invitation link
+2. They click the link and sign in (or create an account)
+3. They're automatically added to your organisation
+4. They appear in your members list
+
+
+<Warning>
+**Invitation links expire after 7 days.** If the invitee doesn't accept in time, you'll need to send a new invitation.
+</Warning>
+
+## Viewing Pending Invitations
+
+Pending invitations are shown in Organisation Settings above the Members list. Only Admins can see pending invitations.
+
+Each pending invitation shows:
+- **Email address** - Who was invited
+- **Expiry** - Invitations expire after 7 days
+- **Revoke button** - Cancel the invitation if needed
+
+## Managing Members
+
+### Viewing Members
+
+All current members are listed in Organisation Settings under the **Members** section.
+
+<Frame>
+  <img src="/images/cloud/members-section.png" alt="Members section showing member list with Invite Member button" />
+</Frame>
+
+Each member shows:
+- **Name** - Their display name and avatar from GitHub/Google
+- **Role** - Admin or Member
+
+### Changing a Member's Role
+
+To promote a member to Admin or demote an Admin to Member:
+
+<Steps>
+<Step title="Find the member">
+  Open Organisation Settings and locate the person in the Members list.
+</Step>
+
+<Step title="Click the role dropdown">
+  Click on their current role badge to open the dropdown.
+</Step>
+
+<Step title="Select the new role">
+  Choose **Admin** or **Member**. The change takes effect immediately.
+</Step>
+</Steps>
+
+<Warning>
+**You cannot demote yourself.** If you're the only admin and want to demote yourself, first promote another member to admin.
+</Warning>
+
+### Removing a Member
+
+To remove someone from your organisation:
+
+<Steps>
+<Step title="Find the member">
+  Open Organisation Settings and locate the person in the Members list.
+</Step>
+
+<Step title="Click Remove">
+  Click the **Remove** button next to their name.
+</Step>
+
+<Step title="Confirm removal">
+  Confirm the removal when prompted.
+</Step>
+</Steps>
+
+<Info>
+**What happens when you remove someone:**
+- They immediately lose access to the organisation
+- They cannot see any projects or data
+- Their past activity (comments, task updates) remains but shows their name
+- They can be re-invited later if needed
+</Info>
+
+## Member Roles Explained
+
+### Admin Role
+
+Admins have full control over the organisation:
+
+| Capability | Description |
+|------------|-------------|
+| ✅ All project access | View, create, edit all projects |
+| ✅ Task management | Create, edit, delete tasks |
+| ✅ Invite members | Send invitations to new members |
+| ✅ Remove members | Remove people from the organisation |
+| ✅ Change roles | Promote members to admin or demote |
+| ✅ Organisation settings | Edit name, configure settings |
+| ✅ Delete organisation | Permanently delete the organisation |
+
+### Member Role
+
+Members can work on projects but cannot manage the organisation:
+
+| Capability | Description |
+|------------|-------------|
+| ✅ All project access | View, create, edit all projects |
+| ✅ Task management | Create, edit, delete tasks |
+| ❌ Invite members | Cannot send invitations |
+| ❌ Remove members | Cannot remove people |
+| ❌ Change roles | Cannot change anyone's role |
+| ❌ Organisation settings | Cannot edit organisation settings |
+| ❌ Delete organisation | Cannot delete the organisation |
+
+<Info>
+Both roles have **equal access to projects and tasks**. The difference is only in organisation management capabilities.
+</Info>
+
+## Transferring Ownership
+
+If you need to transfer full ownership of an organisation (e.g., you're leaving the company):
+
+<Steps>
+<Step title="Promote the new owner to Admin">
+  Ensure the person taking over has the Admin role.
+</Step>
+
+<Step title="(Optional) Demote yourself">
+  If you're staying as a regular member, another admin can demote you.
+</Step>
+
+<Step title="Leave the organisation">
+  If you're leaving entirely, you can now leave the organisation from settings.
+</Step>
+</Steps>
+
+<Warning>
+**There must always be at least one Admin.** The system won't allow the last admin to be demoted or removed.
+</Warning>
+
+## Best Practices
+
+<CardGroup cols={2}>
+<Card title="Least privilege" icon="shield">
+  Give people Member role by default. Only promote to Admin those who need to manage the organisation.
+</Card>
+
+<Card title="Multiple admins" icon="users">
+  Have at least two Admins. If one is unavailable, the other can still manage the organisation.
+</Card>
+
+<Card title="Prompt removal" icon="user-minus">
+  Remove members promptly when they leave your team or company to maintain security.
+</Card>
+
+<Card title="Verify emails" icon="envelope">
+  Before inviting, confirm you have the correct email - the one associated with their GitHub/Google account.
+</Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="Invitee didn't receive the email">
+**Problem:** The person you invited says they didn't get an email.
+
+**Solutions:**
+1. Ask them to check their spam/junk folder
+2. Verify you entered the correct email address
+3. Revoke the old invitation and send a new one
+4. Have them check if emails from your domain are blocked
+</Accordion>
+
+<Accordion title="Invitation link doesn't work">
+**Problem:** Clicking the invitation link shows an error.
+
+**Possible causes:**
+- The invitation expired (after 7 days)
+- The invitation was cancelled
+- The link was copied incorrectly
+
+**Solution:**
+Send a new invitation from the Members settings page.
+</Accordion>
+
+<Accordion title="Member can't see projects">
+**Problem:** A new member says they can't see any projects.
+
+**Possible causes:**
+- They signed in with a different account than the one invited
+- There's a sync delay
+
+**Solutions:**
+1. Ask them to refresh the page
+2. Verify they're signed in with the correct account (check the email in their profile)
+3. Check the members list to confirm they appear
+</Accordion>
+
+<Accordion title="Can't invite more members">
+**Problem:** The invite button is disabled or shows an error.
+
+**Possible causes:**
+- You're not an Admin
+- You've reached a plan limit (if applicable)
+
+**Solutions:**
+1. Check your role - only Admins can invite
+2. Check if there are billing/plan limitations
+</Accordion>
+
+<Accordion title="Removed member still has access">
+**Problem:** Someone you removed says they can still access the organisation.
+
+**Possible causes:**
+- Browser cache
+- They have a different account that's still a member
+
+**Solutions:**
+1. Ask them to clear their browser cache and refresh
+2. Check if they might be signed in with a different account
+3. Verify they're actually removed in your members list
+</Accordion>
+</AccordionGroup>
+
+## Related Documentation
+
+- [Organisations](/cloud/organizations) - Creating and managing organisations
+- [Authentication](/cloud/authentication) - How sign-in works

@@ -34,11 +34,7 @@ CREATE TABLE project_statuses (
     color VARCHAR(20) NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
     hidden BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    -- Prevents duplicate sort orders within the same project
-    CONSTRAINT project_statuses_project_sort_order_uniq
-        UNIQUE (project_id, sort_order)
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 
@@ -67,7 +63,7 @@ CREATE TABLE issues (
 
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    priority issue_priority NOT NULL DEFAULT 'medium',
+    priority issue_priority,
 
     start_date TIMESTAMPTZ,
     target_date TIMESTAMPTZ,
@@ -80,6 +76,7 @@ CREATE TABLE issues (
 
     -- Parent Issue (Self-referential)
     parent_issue_id UUID REFERENCES issues(id) ON DELETE SET NULL,
+    parent_issue_sort_order DOUBLE PRECISION,
 
     -- Extension Metadata (JSONB for flexibility)
     extension_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -175,7 +172,8 @@ CREATE TABLE issue_tags (
 CREATE TABLE issue_comments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
-    author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    author_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    parent_id UUID REFERENCES issue_comments(id) ON DELETE SET NULL,
 
     message TEXT NOT NULL,
 
@@ -227,6 +225,7 @@ CREATE INDEX idx_issues_status_id ON issues(status_id);
 CREATE INDEX idx_issues_parent_issue_id ON issues(parent_issue_id);
 CREATE INDEX idx_issues_simple_id ON issues(simple_id);
 CREATE INDEX idx_issue_comments_issue_id ON issue_comments(issue_id);
+CREATE INDEX idx_issue_comments_parent_id ON issue_comments(parent_id);
 
 CREATE INDEX idx_notifications_user_unseen
     ON notifications (user_id, seen)
@@ -240,14 +239,13 @@ CREATE INDEX idx_notifications_org
 
 -- 16. WORKSPACES
 -- Workspace metadata pushed from local clients
-CREATE TYPE workspace_pr_status AS ENUM ('open', 'merged', 'closed');
-
 CREATE TABLE workspaces (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     owner_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     issue_id UUID REFERENCES issues(id) ON DELETE SET NULL,
     local_workspace_id UUID UNIQUE,
+    name TEXT,
     archived BOOLEAN NOT NULL DEFAULT FALSE,
     files_changed INTEGER,
     lines_added INTEGER,
@@ -256,34 +254,10 @@ CREATE TABLE workspaces (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE workspace_repos (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-    repo_name TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (workspace_id, repo_name)
-);
-
-CREATE TABLE workspace_prs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    workspace_repo_id UUID NOT NULL REFERENCES workspace_repos(id) ON DELETE CASCADE,
-    pr_url TEXT NOT NULL,
-    pr_number INTEGER NOT NULL,
-    pr_status workspace_pr_status NOT NULL DEFAULT 'open',
-    merged_at TIMESTAMPTZ,
-    closed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (workspace_repo_id)
-);
-
 CREATE INDEX idx_workspaces_project_id ON workspaces(project_id);
 CREATE INDEX idx_workspaces_owner_user_id ON workspaces(owner_user_id);
 CREATE INDEX idx_workspaces_issue_id ON workspaces(issue_id) WHERE issue_id IS NOT NULL;
 CREATE INDEX idx_workspaces_local_workspace_id ON workspaces(local_workspace_id);
-CREATE INDEX idx_workspace_repos_workspace_id ON workspace_repos(workspace_id);
-CREATE INDEX idx_workspace_prs_workspace_repo_id ON workspace_prs(workspace_repo_id);
 
 -- 17. PULL REQUESTS
 -- Direct PR tracking linked to issues (tasks)

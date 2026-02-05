@@ -15,6 +15,7 @@ import { Tag as TagIcon, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { WorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useTypeaheadOpen } from '@/components/ui/wysiwyg/context/typeahead-open-context';
 import {
   searchTagsAndFiles,
   type SearchResultItem,
@@ -71,16 +72,17 @@ function getMatchingDiffFiles(
 }
 
 export function FileTagTypeaheadPlugin({
-  workspaceId,
+  repoIds,
   projectId,
 }: {
-  workspaceId?: string;
+  repoIds?: string[];
   projectId?: string;
 }) {
   const [editor] = useLexicalComposerContext();
   const [options, setOptions] = useState<FileTagOption[]>([]);
   const portalContainer = usePortalContainer();
   const { t } = useTranslation('common');
+  const { setIsOpen } = useTypeaheadOpen();
   // Use context directly to gracefully handle missing WorkspaceProvider (old UI)
   const workspaceContext = useContext(WorkspaceContext);
   const diffPaths = useMemo(
@@ -101,7 +103,7 @@ export function FileTagTypeaheadPlugin({
       const localFilePaths = new Set(localFiles.map((f) => f.path));
 
       // Here query is a string, including possible empty string ''
-      searchTagsAndFiles(query, { workspaceId, projectId })
+      searchTagsAndFiles(query, { repoIds, projectId })
         .then((serverResults) => {
           // Separate tags and files from server results
           const tagResults = serverResults.filter((r) => r.type === 'tag');
@@ -130,7 +132,7 @@ export function FileTagTypeaheadPlugin({
           console.error('Failed to search tags/files', err);
         });
     },
-    [workspaceId, projectId, diffPaths]
+    [repoIds, projectId, diffPaths]
   );
 
   return (
@@ -148,6 +150,8 @@ export function FileTagTypeaheadPlugin({
       }}
       options={options}
       onQueryChange={onQueryChange}
+      onOpen={() => setIsOpen(true)}
+      onClose={() => setIsOpen(false)}
       onSelectOption={(option, nodeToReplace, closeMenu) => {
         editor.update(() => {
           if (!nodeToReplace) return;
@@ -172,6 +176,9 @@ export function FileTagTypeaheadPlugin({
             // Add a space after the inline code for better UX
             const spaceNode = $createTextNode(' ');
             fileNameNode.insertAfter(spaceNode);
+            // setFormat must be called AFTER insertion to prevent Lexical from
+            // re-applying adjacent node formatting during reconciliation
+            spaceNode.setFormat(0);
             spaceNode.select(1, 1); // Position cursor after the space
 
             // Step 2: Check if full path already exists at the bottom
@@ -202,6 +209,14 @@ export function FileTagTypeaheadPlugin({
               const pathNode = $createTextNode(fullPath);
               pathNode.toggleFormat('code');
               pathParagraph.append(pathNode);
+
+              // Add trailing space with cleared formatting to allow escaping inline code
+              const trailingSpace = $createTextNode(' ');
+              pathParagraph.append(trailingSpace);
+              // setFormat must be called AFTER append to prevent Lexical from
+              // re-applying adjacent node formatting during reconciliation
+              trailingSpace.setFormat(0);
+
               root.append(pathParagraph);
             }
           }

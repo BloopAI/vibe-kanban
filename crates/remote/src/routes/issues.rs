@@ -2,22 +2,37 @@ use axum::{
     Json,
     extract::{Extension, Path, Query, State},
     http::StatusCode,
+    routing::{get, post},
 };
+use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
-use super::{error::ErrorResponse, organization_members::ensure_project_access};
+use super::{
+    error::{ErrorResponse, db_error},
+    organization_members::ensure_project_access,
+};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::issues::{Issue, IssueRepository},
-    define_mutation_router,
+    db::{
+        get_txid,
+        issues::{Issue, IssueRepository},
+    },
     entities::{CreateIssueRequest, ListIssuesQuery, ListIssuesResponse, UpdateIssueRequest},
     mutation_types::{DeleteResponse, MutationResponse},
 };
 
-// Generate router that references handlers below
-define_mutation_router!(Issue, table: "issues");
+/// Router for issue endpoints including bulk update
+pub fn router() -> axum::Router<AppState> {
+    axum::Router::new()
+        .route("/issues", get(list_issues).post(create_issue))
+        .route(
+            "/issues/{issue_id}",
+            get(get_issue).patch(update_issue).delete(delete_issue),
+        )
+        .route("/issues/bulk", post(bulk_update_issues))
+}
 
 #[instrument(
     name = "issues.list_issues",
@@ -74,7 +89,13 @@ async fn create_issue(
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateIssueRequest>,
 ) -> Result<Json<MutationResponse<Issue>>, ErrorResponse> {
-    ensure_project_access(state.pool(), ctx.user.id, payload.project_id).await?;
+    let organization_id =
+        ensure_project_access(state.pool(), ctx.user.id, payload.project_id).await?;
+
+    let has_parent = payload.parent_issue_id.is_some();
+    let has_description = payload.description.is_some();
+    let priority = payload.priority;
+    let parent_issue_id = payload.parent_issue_id;
 
     let response = IssueRepository::create(
         state.pool(),
@@ -89,13 +110,42 @@ async fn create_issue(
         payload.completed_at,
         payload.sort_order,
         payload.parent_issue_id,
+        payload.parent_issue_sort_order,
         payload.extension_metadata,
     )
     .await
     .map_err(|error| {
         tracing::error!(?error, "failed to create issue");
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        db_error(error, "failed to create issue")
     })?;
+
+    if let Some(analytics) = state.analytics() {
+        analytics.track(
+            ctx.user.id,
+            "issue_created",
+            serde_json::json!({
+                "issue_id": response.data.id,
+                "project_id": response.data.project_id,
+                "organization_id": organization_id,
+                "has_description": has_description,
+                "has_parent": has_parent,
+                "priority": format!("{:?}", priority),
+            }),
+        );
+
+        if let Some(parent_id) = parent_issue_id {
+            analytics.track(
+                ctx.user.id,
+                "subtask_created",
+                serde_json::json!({
+                    "issue_id": response.data.id,
+                    "parent_issue_id": parent_id,
+                    "project_id": response.data.project_id,
+                    "organization_id": organization_id,
+                }),
+            );
+        }
+    }
 
     Ok(Json(response))
 }
@@ -121,8 +171,13 @@ async fn update_issue(
 
     ensure_project_access(state.pool(), ctx.user.id, issue.project_id).await?;
 
-    let response = IssueRepository::update(
-        state.pool(),
+    let mut tx = state.pool().begin().await.map_err(|error| {
+        tracing::error!(?error, "failed to begin transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    let data = IssueRepository::update(
+        &mut *tx,
         issue_id,
         payload.status_id,
         payload.title,
@@ -133,6 +188,7 @@ async fn update_issue(
         payload.completed_at,
         payload.sort_order,
         payload.parent_issue_id,
+        payload.parent_issue_sort_order,
         payload.extension_metadata,
     )
     .await
@@ -141,7 +197,17 @@ async fn update_issue(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(response))
+    let txid = get_txid(&mut *tx).await.map_err(|error| {
+        tracing::error!(?error, "failed to get txid");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    tx.commit().await.map_err(|error| {
+        tracing::error!(?error, "failed to commit transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    Ok(Json(MutationResponse { data, txid }))
 }
 
 #[instrument(
@@ -172,4 +238,119 @@ async fn delete_issue(
         })?;
 
     Ok(Json(response))
+}
+
+// =============================================================================
+// Bulk Update
+// =============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct BulkUpdateIssueItem {
+    pub id: Uuid,
+    #[serde(flatten)]
+    pub changes: UpdateIssueRequest,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BulkUpdateIssuesRequest {
+    pub updates: Vec<BulkUpdateIssueItem>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BulkUpdateIssuesResponse {
+    pub data: Vec<Issue>,
+    pub txid: i64,
+}
+
+#[instrument(
+    name = "issues.bulk_update",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, count = payload.updates.len())
+)]
+async fn bulk_update_issues(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Json(payload): Json<BulkUpdateIssuesRequest>,
+) -> Result<Json<BulkUpdateIssuesResponse>, ErrorResponse> {
+    if payload.updates.is_empty() {
+        return Ok(Json(BulkUpdateIssuesResponse {
+            data: vec![],
+            txid: 0,
+        }));
+    }
+
+    // Get first issue to determine project_id for access check
+    let first_issue = IssueRepository::find_by_id(state.pool(), payload.updates[0].id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to find first issue");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to find issue")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "issue not found"))?;
+
+    let project_id = first_issue.project_id;
+    ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
+
+    let mut tx = state.pool().begin().await.map_err(|error| {
+        tracing::error!(?error, "failed to begin transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    let mut results = Vec::with_capacity(payload.updates.len());
+
+    for item in payload.updates {
+        // Verify issue belongs to the same project
+        let issue = IssueRepository::find_by_id(&mut *tx, item.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, issue_id = %item.id, "failed to find issue");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to find issue")
+            })?
+            .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "issue not found"))?;
+
+        if issue.project_id != project_id {
+            return Err(ErrorResponse::new(
+                StatusCode::BAD_REQUEST,
+                "all issues must belong to the same project",
+            ));
+        }
+
+        // Update the issue
+        let updated = IssueRepository::update(
+            &mut *tx,
+            item.id,
+            item.changes.status_id,
+            item.changes.title,
+            item.changes.description,
+            item.changes.priority,
+            item.changes.start_date,
+            item.changes.target_date,
+            item.changes.completed_at,
+            item.changes.sort_order,
+            item.changes.parent_issue_id,
+            item.changes.parent_issue_sort_order,
+            item.changes.extension_metadata,
+        )
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, issue_id = %item.id, "failed to update issue");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to update issue")
+        })?;
+
+        results.push(updated);
+    }
+
+    let txid = get_txid(&mut *tx).await.map_err(|error| {
+        tracing::error!(?error, "failed to get txid");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+    tx.commit().await.map_err(|error| {
+        tracing::error!(?error, "failed to commit transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    Ok(Json(BulkUpdateIssuesResponse {
+        data: results,
+        txid,
+    }))
 }

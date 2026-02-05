@@ -295,6 +295,27 @@ export function parentClipboardRead(): Promise<string> {
   });
 }
 
+/** Ask the extension to open a file in VS Code at an optional line. */
+export function openFileInVSCode(
+  filePath: string,
+  options?: { lineNumber?: number; openAsDiff?: boolean }
+) {
+  if (!inIframe()) return;
+  try {
+    window.parent.postMessage(
+      {
+        type: 'VIBE_OPEN_FILE',
+        filePath,
+        lineNumber: options?.lineNumber,
+        openAsDiff: options?.openAsDiff ?? true,
+      },
+      '*'
+    );
+  } catch (_err) {
+    void 0;
+  }
+}
+
 /** Message union used for iframe <-> extension communications. */
 type IframeMessage = {
   type: string;

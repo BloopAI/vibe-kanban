@@ -7,6 +7,7 @@ import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { getActualTheme } from '@/utils/theme';
 import { stripLineEnding } from '@/utils/string';
 import { Button } from '@/components/ui/button';
+import { DiffSide } from '@/types/diff';
 import {
   ChevronRight,
   ChevronUp,
@@ -58,12 +59,12 @@ function labelAndIcon(diff: Diff) {
 function readPlainLine(
   diffFile: DiffFile | null,
   lineNumber: number,
-  side: SplitSide
+  side: DiffSide
 ) {
   if (!diffFile) return undefined;
   try {
     const rawLine =
-      side === SplitSide.old
+      side === DiffSide.Old
         ? diffFile.getOldPlainLine(lineNumber)
         : diffFile.getNewPlainLine(lineNumber);
     if (rawLine?.value === undefined) return undefined;
@@ -160,7 +161,7 @@ export default function DiffCard({
 
     commentsForFile.forEach((comment) => {
       const lineKey = String(comment.lineNumber);
-      if (comment.side === SplitSide.old) {
+      if (comment.side === DiffSide.Old) {
         oldFileData[lineKey] = { data: comment };
       } else {
         newFileData[lineKey] = { data: comment };
@@ -174,11 +175,12 @@ export default function DiffCard({
   }, [commentsForFile]);
 
   const handleAddWidgetClick = (lineNumber: number, side: SplitSide) => {
-    const widgetKey = `${filePath}-${side}-${lineNumber}`;
-    const codeLine = readPlainLine(diffFile, lineNumber, side);
+    const diffSide = side === SplitSide.old ? DiffSide.Old : DiffSide.New;
+    const widgetKey = `${filePath}-${diffSide}-${lineNumber}`;
+    const codeLine = readPlainLine(diffFile, lineNumber, diffSide);
     const draft: ReviewDraft = {
       filePath,
-      side,
+      side: diffSide,
       lineNumber,
       text: '',
       ...(codeLine !== undefined ? { codeLine } : {}),
@@ -191,7 +193,8 @@ export default function DiffCard({
     lineNumber: number;
     onClose: () => void;
   }) => {
-    const widgetKey = `${filePath}-${props.side}-${props.lineNumber}`;
+    const diffSide = props.side === SplitSide.old ? DiffSide.Old : DiffSide.New;
+    const widgetKey = `${filePath}-${diffSide}-${props.lineNumber}`;
     const draft = drafts[widgetKey];
     if (!draft) return null;
 

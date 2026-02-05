@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PrimaryButton } from '../primitives/PrimaryButton';
 import { CommentCard } from '../primitives/CommentCard';
@@ -10,7 +10,7 @@ interface ReviewCommentRendererProps {
   projectId: string;
 }
 
-export function ReviewCommentRenderer({
+export const ReviewCommentRenderer = memo(function ReviewCommentRenderer({
   comment,
   projectId,
 }: ReviewCommentRendererProps) {
@@ -83,4 +83,4 @@ export function ReviewCommentRenderer({
       />
     </CommentCard>
   );
-}
+});

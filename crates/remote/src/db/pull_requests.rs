@@ -25,7 +25,7 @@ pub struct PullRequest {
 
 #[derive(Debug, Error)]
 pub enum PullRequestError {
-    #[error(transparent)]
+    #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
 }
 

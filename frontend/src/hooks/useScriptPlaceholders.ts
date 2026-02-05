@@ -19,5 +19,7 @@ export function useScriptPlaceholders(): ScriptPlaceholders {
     dev: '#!/bin/bash\nnpm run dev\n# Add dev server start command here...',
     cleanup:
       '#!/bin/bash\n# Add cleanup commands here...\n# This runs after coding agent execution',
+    archive:
+      '#!/bin/bash\n# Add archive commands here...\n# This runs when the workspace is archived',
   };
 }

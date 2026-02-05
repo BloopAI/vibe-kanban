@@ -2,13 +2,16 @@ use axum::{
     Json, Router,
     extract::{Extension, Path, State},
     http::StatusCode,
-    routing::{delete, post},
+    routing::{delete, head, post},
 };
 use serde::Deserialize;
 use tracing::instrument;
 use uuid::Uuid;
 
-use super::{error::ErrorResponse, organization_members::ensure_project_access};
+use super::{
+    error::{ErrorResponse, db_error},
+    organization_members::ensure_project_access,
+};
 use crate::{
     AppState,
     auth::RequestContext,
@@ -23,6 +26,7 @@ pub struct CreateWorkspaceRequest {
     pub project_id: Uuid,
     pub local_workspace_id: Option<Uuid>,
     pub issue_id: Option<Uuid>,
+    pub name: Option<String>,
     pub archived: Option<bool>,
     pub files_changed: Option<i32>,
     pub lines_added: Option<i32>,
@@ -32,6 +36,7 @@ pub struct CreateWorkspaceRequest {
 #[derive(Debug, Deserialize)]
 pub struct UpdateWorkspaceRequest {
     pub local_workspace_id: Uuid,
+    pub name: Option<Option<String>>,
     pub archived: Option<bool>,
     pub files_changed: Option<Option<i32>>,
     pub lines_added: Option<Option<i32>>,
@@ -52,6 +57,10 @@ pub fn router() -> Router<AppState> {
                 .delete(delete_workspace),
         )
         .route("/workspaces/{workspace_id}", delete(unlink_workspace))
+        .route(
+            "/workspaces/exists/{local_workspace_id}",
+            head(workspace_exists),
+        )
 }
 
 #[instrument(
@@ -73,6 +82,7 @@ async fn create_workspace(
             owner_user_id: ctx.user.id,
             local_workspace_id: payload.local_workspace_id,
             issue_id: payload.issue_id,
+            name: payload.name,
             archived: payload.archived,
             files_changed: payload.files_changed,
             lines_added: payload.lines_added,
@@ -82,20 +92,30 @@ async fn create_workspace(
     .await
     .map_err(|error| {
         tracing::error!(?error, "failed to create workspace");
-        ErrorResponse::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "failed to create workspace",
-        )
+        db_error(error, "failed to create workspace")
     })?;
 
-    if let Some(issue_id) = payload.issue_id
-        && let Err(error) =
+    if let Some(issue_id) = payload.issue_id {
+        if let Err(error) =
             IssueRepository::sync_status_from_workspace_created(state.pool(), issue_id).await
-    {
-        tracing::warn!(
-            ?error,
-            "failed to sync issue status from workspace creation"
-        );
+        {
+            tracing::warn!(
+                ?error,
+                "failed to sync issue status from workspace creation"
+            );
+        }
+
+        if let Some(analytics) = state.analytics() {
+            analytics.track(
+                ctx.user.id,
+                "workspace_created_from_issue",
+                serde_json::json!({
+                    "workspace_id": workspace.id,
+                    "project_id": workspace.project_id,
+                    "issue_id": issue_id,
+                }),
+            );
+        }
     }
 
     Ok(Json(workspace))
@@ -124,6 +144,7 @@ async fn update_workspace(
     let updated = WorkspaceRepository::update(
         state.pool(),
         workspace.id,
+        payload.name,
         payload.archived,
         payload.files_changed,
         payload.lines_added,
@@ -211,4 +232,34 @@ async fn unlink_workspace(
         })?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[instrument(
+    name = "workspaces.workspace_exists",
+    skip(state, _ctx),
+    fields(local_workspace_id = %local_workspace_id)
+)]
+async fn workspace_exists(
+    State(state): State<AppState>,
+    Extension(_ctx): Extension<RequestContext>,
+    Path(local_workspace_id): Path<Uuid>,
+) -> Result<StatusCode, ErrorResponse> {
+    let exists = WorkspaceRepository::exists_by_local_id(state.pool(), local_workspace_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to check workspace existence");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to check workspace",
+            )
+        })?;
+
+    if exists {
+        Ok(StatusCode::OK)
+    } else {
+        Err(ErrorResponse::new(
+            StatusCode::NOT_FOUND,
+            "workspace not found",
+        ))
+    }
 }

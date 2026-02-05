@@ -8,6 +8,7 @@ import {
   type BaseCodingAgent,
 } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
+import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
@@ -77,6 +78,8 @@ interface SharedProps {
   onScrollToPreviousMessage: () => void;
   /** Callback to scroll to bottom of conversation */
   onScrollToBottom: () => void;
+  /** Disable the "view code" click handler (for VS Code extension) */
+  disableViewCode: boolean;
 }
 
 /** Props for existing session mode */
@@ -119,6 +122,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     linesRemoved,
     onScrollToPreviousMessage,
     onScrollToBottom,
+    disableViewCode = false,
   } = props;
 
   // Extract mode-specific values
@@ -191,6 +195,10 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   // Execution state
   const { isAttemptRunning, stopExecution, isStopping, processes } =
     useAttemptExecution(workspaceId);
+
+  // Get repos for file search
+  const { repos } = useAttemptRepo(workspaceId);
+  const repoIds = repos.map((r) => r.id);
 
   // Approval feedback context
   const feedbackContext = useApprovalFeedbackOptional();
@@ -332,7 +340,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   } = useExecutorSelection({
     profiles,
     latestProfileId,
-    isNewSessionMode,
     scratchVariant: scratchData?.executor_profile_id?.variant,
     configExecutorProfile: config?.executor_profile,
   });
@@ -601,10 +608,17 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
       // Invalidate workspace summary cache to update sidebar
       queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+      onScrollToBottom();
     } catch {
       // Error is handled by mutation
     }
-  }, [pendingApproval, feedbackContext, approveAsync, queryClient]);
+  }, [
+    pendingApproval,
+    feedbackContext,
+    approveAsync,
+    queryClient,
+    onScrollToBottom,
+  ]);
 
   // Handle request changes (deny with feedback)
   const handleRequestChanges = useCallback(async () => {
@@ -622,6 +636,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
       // Invalidate workspace summary cache to update sidebar
       queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+      onScrollToBottom();
     } catch {
       // Error is handled by mutation
     }
@@ -633,6 +648,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     setLocalMessage,
     clearDraft,
     queryClient,
+    onScrollToBottom,
   ]);
 
   // Check if approval is timed out
@@ -669,7 +685,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     return (
       <SessionChatBox
         status="idle"
-        workspaceId={workspaceId}
+        repoIds={repoIds}
         projectId={projectId}
         tokenUsageInfo={tokenUsageInfo}
         editor={{
@@ -695,7 +711,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
           linesAdded: 0,
           linesRemoved: 0,
         }}
-        onViewCode={handleViewCode}
+        onViewCode={disableViewCode ? undefined : handleViewCode}
       />
     );
   }
@@ -703,9 +719,9 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   return (
     <SessionChatBox
       status={status}
-      onViewCode={handleViewCode}
+      onViewCode={disableViewCode ? undefined : handleViewCode}
       onScrollToPreviousMessage={onScrollToPreviousMessage}
-      workspaceId={workspaceId}
+      repoIds={repoIds}
       projectId={projectId}
       tokenUsageInfo={tokenUsageInfo}
       editor={{
@@ -745,7 +761,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         conflictedFilesCount,
       }}
       error={sendError}
-      agent={latestProfileId?.executor}
+      agent={effectiveExecutor}
       todos={todos}
       inProgressTodo={inProgressTodo}
       executor={

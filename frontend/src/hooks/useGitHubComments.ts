@@ -1,11 +1,11 @@
 import { useMemo, useCallback } from 'react';
-import { SplitSide } from '@git-diff-view/react';
 import { usePrComments } from './usePrComments';
 import {
   usePersistedExpanded,
   PERSIST_KEYS,
 } from '@/stores/useUiPreferencesStore';
 import type { UnifiedPrComment } from 'shared/types';
+import { DiffSide } from '@/types/diff';
 
 /**
  * Normalized GitHub comment for diff view display
@@ -18,7 +18,7 @@ export interface NormalizedGitHubComment {
   url: string | null;
   filePath: string;
   lineNumber: number;
-  side: SplitSide;
+  side: DiffSide;
   diffHunk: string | null;
 }
 
@@ -77,7 +77,7 @@ export function useGitHubComments({
         filePath: comment.path,
         lineNumber: Number(comment.line),
         // Use side from API: "LEFT" = old/deleted side, "RIGHT" = new/added side (default)
-        side: comment.side === 'LEFT' ? SplitSide.old : SplitSide.new,
+        side: comment.side === 'LEFT' ? DiffSide.Old : DiffSide.New,
         diffHunk: comment.diff_hunk,
       });
     }

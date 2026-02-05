@@ -367,6 +367,7 @@ export function GeneralSettings() {
           )}
 
           {(draft?.editor.editor_type === EditorType.VS_CODE ||
+            draft?.editor.editor_type === EditorType.VS_CODE_INSIDERS ||
             draft?.editor.editor_type === EditorType.CURSOR ||
             draft?.editor.editor_type === EditorType.WINDSURF ||
             draft?.editor.editor_type === EditorType.GOOGLE_ANTIGRAVITY ||
@@ -777,23 +778,6 @@ export function GeneralSettings() {
               </Label>
               <p className="text-sm text-muted-foreground">
                 {t('settings.general.beta.workspaces.helper')}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="commit-reminder"
-              checked={draft?.commit_reminder ?? false}
-              onCheckedChange={(checked: boolean) =>
-                updateDraft({ commit_reminder: checked })
-              }
-            />
-            <div className="space-y-0.5">
-              <Label htmlFor="commit-reminder" className="cursor-pointer">
-                {t('settings.general.beta.commitReminder.label')}
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                {t('settings.general.beta.commitReminder.helper')}
               </p>
             </div>
           </div>

@@ -147,13 +147,13 @@ export function WorkspaceSummary({
             {/* PR status icon */}
             {prStatus === 'open' && (
               <GitPullRequestIcon
-                className="size-icon-xs text-brand shrink-0"
+                className="size-icon-xs text-success shrink-0"
                 weight="fill"
               />
             )}
             {prStatus === 'merged' && (
               <GitPullRequestIcon
-                className="size-icon-xs text-success shrink-0"
+                className="size-icon-xs text-merged shrink-0"
                 weight="fill"
               />
             )}
