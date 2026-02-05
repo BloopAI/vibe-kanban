@@ -673,10 +673,9 @@ function FollowersList({ projectId }: { projectId: string }) {
 }
 
 function IssueTagsList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useShape(
-    PROJECT_ISSUE_TAGS_SHAPE,
-    { project_id: projectId }
-  );
+  const { data, isLoading, error, retry } = useShape(PROJECT_ISSUE_TAGS_SHAPE, {
+    project_id: projectId,
+  });
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
