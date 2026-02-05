@@ -170,6 +170,28 @@ impl<T: TS + Sync> EntityExport for EntityDefinition<T> {
 ///     scope: Project,
 /// );
 /// ```
+///
+/// ## Multiple named shapes (no mutations, each gets its own _SHAPE + _ENTITY)
+/// ```ignore
+/// define_entity!(
+///     Workspace,
+///     table: "workspaces",
+///     shapes: [
+///         {
+///             name: Workspace,
+///             where_clause: r#""owner_user_id" = $1"#,
+///             params: ["owner_user_id"],
+///             url: "/shape/user/workspaces",
+///         },
+///         {
+///             name: ProjectWorkspace,
+///             where_clause: r#""project_id" = $1"#,
+///             params: ["project_id"],
+///             url: "/shape/project/{project_id}/workspaces",
+///         }
+///     ],
+/// );
+/// ```
 #[macro_export]
 macro_rules! define_entity {
     // Simple case: same scope for mutations and shape, with fields
@@ -317,6 +339,47 @@ macro_rules! define_entity {
                     _phantom: std::marker::PhantomData,
                 };
         }
+    };
+
+    // Shape-only with multiple named shapes (each gets its own _SHAPE + _ENTITY constant)
+    (
+        $entity:ident,
+        table: $table:literal,
+        shapes: [
+            $({
+                name: $shape_name:ident,
+                where_clause: $where_clause:literal,
+                params: [$($param:literal),* $(,)?],
+                url: $url:literal $(,)?
+            }),+ $(,)?
+        ] $(,)?
+    ) => {
+        $(
+            paste::paste! {
+                $crate::define_shape!(
+                    [<$shape_name:snake:upper _SHAPE>], $entity,
+                    table: $table,
+                    where_clause: $where_clause,
+                    url: $url,
+                    params: [$($param),*]
+                );
+
+                pub const [<$shape_name:snake:upper _ENTITY>]: $crate::entity::EntityDefinition<$entity> =
+                    $crate::entity::EntityDefinition {
+                        name: stringify!($shape_name),
+                        table: $table,
+                        mutation_scope: None,
+                        shape_scope: None,
+                        shape: Some($crate::entity::ShapeConfig {
+                            where_clause: $where_clause,
+                            params: &[$($param),*],
+                            url: $url,
+                        }),
+                        fields: &[],
+                        _phantom: std::marker::PhantomData,
+                    };
+            }
+        )+
     };
 
     // Shape-only with fully custom shape config

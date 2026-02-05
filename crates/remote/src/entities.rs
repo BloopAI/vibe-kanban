@@ -123,23 +123,24 @@ crate::define_entity!(
     ],
 );
 
-// Workspace: shape-only (no mutations), scoped by owner user
+// Workspace: shape-only (no mutations), multiple scopes
 crate::define_entity!(
     Workspace,
     table: "workspaces",
-    shape: {
-        where_clause: r#""owner_user_id" = $1"#,
-        params: ["owner_user_id"],
-        url: "/shape/user/workspaces",
-    },
-);
-
-crate::define_shape!(
-    PROJECT_WORKSPACE_SHAPE, Workspace,
-    table: "workspaces",
-    where_clause: r#""project_id" = $1"#,
-    url: "/shape/project/{project_id}/workspaces",
-    params: ["project_id"]
+    shapes: [
+        {
+            name: Workspace,
+            where_clause: r#""owner_user_id" = $1"#,
+            params: ["owner_user_id"],
+            url: "/shape/user/workspaces",
+        },
+        {
+            name: ProjectWorkspace,
+            where_clause: r#""project_id" = $1"#,
+            params: ["project_id"],
+            url: "/shape/project/{project_id}/workspaces",
+        }
+    ],
 );
 
 // =============================================================================
@@ -248,6 +249,7 @@ pub fn all_entities() -> Vec<&'static dyn EntityExport> {
         &PROJECT_STATUS_ENTITY,
         &ISSUE_ENTITY,
         &WORKSPACE_ENTITY,
+        &PROJECT_WORKSPACE_ENTITY,
         // Issue-scoped (project streaming)
         &ISSUE_ASSIGNEE_ENTITY,
         &ISSUE_FOLLOWER_ENTITY,

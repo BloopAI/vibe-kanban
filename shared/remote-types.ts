@@ -353,6 +353,15 @@ export const WORKSPACE_ENTITY: EntityDefinition<Workspace> = {
   mutations: null,
 };
 
+export const PROJECT_WORKSPACE_ENTITY: EntityDefinition<Workspace> = {
+  name: 'ProjectWorkspace',
+  table: 'workspaces',
+  mutationScope: null,
+  shapeScope: null,
+  shape: PROJECT_WORKSPACES_SHAPE,
+  mutations: null,
+};
+
 export const ISSUE_ASSIGNEE_ENTITY: EntityDefinition<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest> = {
   name: 'IssueAssignee',
   table: 'issue_assignees',
