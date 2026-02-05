@@ -22,7 +22,7 @@ import {
   IconButtonGroupItem,
 } from '../primitives/IconButtonGroup';
 import { PreviewNavigation } from './PreviewNavigation';
-import { MiniDevTools } from './MiniDevTools';
+import { MiniDevTools, type MiniDevToolsTabType } from './MiniDevTools';
 import type { Repo } from 'shared/types';
 import type {
   ScreenSize,
@@ -76,6 +76,10 @@ interface PreviewBrowserProps {
   onToggleInspectMode: () => void;
   devToolsCollapsed: boolean;
   onToggleDevToolsCollapsed: () => void;
+  devToolsActiveTab: MiniDevToolsTabType;
+  onDevToolsTabChange: (tab: MiniDevToolsTabType) => void;
+  devToolsExpandedErrorId: string | null;
+  onDevToolsExpandedErrorIdChange: (id: string | null) => void;
 }
 
 export function PreviewBrowser({
@@ -117,6 +121,10 @@ export function PreviewBrowser({
   onToggleInspectMode,
   devToolsCollapsed,
   onToggleDevToolsCollapsed,
+  devToolsActiveTab,
+  onDevToolsTabChange,
+  devToolsExpandedErrorId,
+  onDevToolsExpandedErrorIdChange,
 }: PreviewBrowserProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const isLoading = isStarting || (isServerRunning && !url);
@@ -481,6 +489,10 @@ export function PreviewBrowser({
             onClearErrors={devTools.clearErrors}
             isCollapsed={devToolsCollapsed}
             onToggleCollapse={onToggleDevToolsCollapsed}
+            activeTab={devToolsActiveTab}
+            onTabChange={onDevToolsTabChange}
+            expandedErrorId={devToolsExpandedErrorId}
+            onExpandedErrorIdChange={onDevToolsExpandedErrorIdChange}
           />
         </div>
       )}

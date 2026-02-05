@@ -14,6 +14,7 @@ import {
   MOBILE_HEIGHT,
   PHONE_FRAME_PADDING,
 } from '../views/PreviewBrowser';
+import type { MiniDevToolsTabType } from '../views/MiniDevTools';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { usePreviewUrl } from '../hooks/usePreviewUrl';
 import {
@@ -36,10 +37,7 @@ const MIN_RESPONSIVE_HEIGHT = 480;
  * Proxy format: http://{devPort}.localhost:{proxyPort}{path}?_refresh=...
  * Dev format:   http://localhost:{devPort}{path}
  */
-function transformProxyUrlToDevUrl(
-  proxyUrl: string,
-  _proxyPort: number
-): string | null {
+function transformProxyUrlToDevUrl(proxyUrl: string): string | null {
   try {
     const url = new URL(proxyUrl);
 
@@ -156,6 +154,11 @@ export function PreviewBrowserContainer({
 
   // DevTools state
   const [devToolsCollapsed, setDevToolsCollapsed] = useState(true);
+  const [devToolsActiveTab, setDevToolsActiveTab] =
+    useState<MiniDevToolsTabType>('console');
+  const [devToolsExpandedErrorId, setDevToolsExpandedErrorId] = useState<
+    string | null
+  >(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const devTools = usePreviewDevTools();
   const bridgeRef = useRef<PreviewDevToolsBridge | null>(null);
@@ -172,7 +175,7 @@ export function PreviewBrowserContainer({
 
     const navUrl = devTools.navigation?.url;
     if (navUrl && previewProxyPort) {
-      const devUrl = transformProxyUrlToDevUrl(navUrl, previewProxyPort);
+      const devUrl = transformProxyUrlToDevUrl(navUrl);
       if (devUrl) {
         setUrlInputValue(devUrl);
         return;
@@ -608,6 +611,10 @@ export function PreviewBrowserContainer({
       onToggleInspectMode={toggleInspectMode}
       devToolsCollapsed={devToolsCollapsed}
       onToggleDevToolsCollapsed={handleToggleDevToolsCollapsed}
+      devToolsActiveTab={devToolsActiveTab}
+      onDevToolsTabChange={setDevToolsActiveTab}
+      devToolsExpandedErrorId={devToolsExpandedErrorId}
+      onDevToolsExpandedErrorIdChange={setDevToolsExpandedErrorId}
     />
   );
 }
