@@ -102,10 +102,7 @@ export const KanbanCardContent = ({
             >
               <PriorityIcon priority={priority} />
               {!priority && (
-                <MinusIcon
-                  className="size-icon-xs text-low"
-                  weight="bold"
-                />
+                <MinusIcon className="size-icon-xs text-low" weight="bold" />
               )}
             </button>
           ) : (
