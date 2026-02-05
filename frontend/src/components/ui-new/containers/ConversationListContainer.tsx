@@ -261,20 +261,42 @@ export const ConversationList = forwardRef<
       // Aggregate consecutive read/search entries into groups
       const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
 
-      // Inject script placeholders if scripts are not configured
+      // Check if there's already a script entry in the conversation
+      const hasSetupScriptEntry = pending.entries.some(
+        (entry) =>
+          entry.type === 'NORMALIZED_ENTRY' &&
+          entry.content.entry_type.type === 'tool_use' &&
+          entry.content.entry_type.tool_name === 'Setup Script'
+      );
+      const hasCleanupScriptEntry = pending.entries.some(
+        (entry) =>
+          entry.type === 'NORMALIZED_ENTRY' &&
+          entry.content.entry_type.type === 'tool_use' &&
+          entry.content.entry_type.tool_name === 'Cleanup Script'
+      );
+
+      // Inject script placeholders if scripts are not configured AND no script has run
       const entriesWithPlaceholders: DisplayEntry[] = [];
 
-      // Add setup placeholder at the beginning if no setup script is configured
-      if (!hasSetupScriptRef.current && aggregatedEntries.length > 0) {
+      // Add setup placeholder at the beginning if no setup script is configured and none has run
+      if (
+        !hasSetupScriptRef.current &&
+        !hasSetupScriptEntry &&
+        aggregatedEntries.length > 0
+      ) {
         entriesWithPlaceholders.push(setupPlaceholder);
       }
 
       // Add all regular entries
       entriesWithPlaceholders.push(...aggregatedEntries);
 
-      // Add cleanup placeholder at the end if no cleanup script is configured
+      // Add cleanup placeholder at the end if no cleanup script is configured and none has run
       // Only show if there are entries (conversation has started)
-      if (!hasCleanupScriptRef.current && aggregatedEntries.length > 0) {
+      if (
+        !hasCleanupScriptRef.current &&
+        !hasCleanupScriptEntry &&
+        aggregatedEntries.length > 0
+      ) {
         // Check if the last process is not running (agent has finished)
         const hasRunningProcess = pending.entries.some(
           (entry) =>
@@ -304,15 +326,38 @@ export const ConversationList = forwardRef<
 
     // Re-run the same logic to update placeholders
     const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
+
+    // Check if there's already a script entry in the conversation
+    const hasSetupScriptEntry = pending.entries.some(
+      (entry) =>
+        entry.type === 'NORMALIZED_ENTRY' &&
+        entry.content.entry_type.type === 'tool_use' &&
+        entry.content.entry_type.tool_name === 'Setup Script'
+    );
+    const hasCleanupScriptEntry = pending.entries.some(
+      (entry) =>
+        entry.type === 'NORMALIZED_ENTRY' &&
+        entry.content.entry_type.type === 'tool_use' &&
+        entry.content.entry_type.tool_name === 'Cleanup Script'
+    );
+
     const entriesWithPlaceholders: DisplayEntry[] = [];
 
-    if (!hasSetupScript && aggregatedEntries.length > 0) {
+    if (
+      !hasSetupScript &&
+      !hasSetupScriptEntry &&
+      aggregatedEntries.length > 0
+    ) {
       entriesWithPlaceholders.push(setupPlaceholder);
     }
 
     entriesWithPlaceholders.push(...aggregatedEntries);
 
-    if (!hasCleanupScript && aggregatedEntries.length > 0) {
+    if (
+      !hasCleanupScript &&
+      !hasCleanupScriptEntry &&
+      aggregatedEntries.length > 0
+    ) {
       const hasRunningProcess = pending.entries.some(
         (entry) =>
           entry.type === 'NORMALIZED_ENTRY' &&
