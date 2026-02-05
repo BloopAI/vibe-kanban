@@ -139,6 +139,25 @@
     "urlInput": {
       "placeholder": "输入 URL..."
     },
+    "devTools": {
+      "title": "DevTools",
+      "expandAriaLabel": "Expand DevTools",
+      "collapseAriaLabel": "Collapse DevTools",
+      "clearAriaLabel": "Clear current tab",
+      "summary": "Console ({{consoleCount}}) · Network ({{networkCount}}) · Errors ({{errorCount}})",
+      "tabs": {
+        "console": "Console ({{count}})",
+        "network": "Network ({{count}})",
+        "errors": "Errors ({{count}})"
+      },
+      "clear": "Clear",
+      "empty": {
+        "console": "No console logs",
+        "network": "No network requests",
+        "errors": "No errors"
+      },
+      "networkError": "Error: {{error}}"
+    },
     "iframe": {
       "title": "开发服务器预览"
     },
