@@ -19,6 +19,7 @@ import {
   PROJECT_ISSUE_TAGS_SHAPE,
   PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
   PROJECT_PULL_REQUESTS_SHAPE,
+  PROJECT_WORKSPACES_SHAPE,
   ISSUE_MUTATION,
   PROJECT_STATUS_MUTATION,
   TAG_MUTATION,
@@ -34,6 +35,7 @@ import {
   type IssueTag,
   type IssueRelationship,
   type PullRequest,
+  type Workspace,
   type CreateIssueRequest,
   type UpdateIssueRequest,
   type CreateProjectStatusRequest,
@@ -59,8 +61,7 @@ import type { SyncError } from '@/lib/electric/types';
  * - IssueTags (data + mutations)
  * - IssueRelationships (data + mutations)
  * - PullRequests (data only)
- *
- * Note: Workspaces are user-scoped and provided by UserContext.
+ * - Workspaces (data only)
  */
 export interface ProjectContextValue {
   projectId: string;
@@ -74,6 +75,7 @@ export interface ProjectContextValue {
   issueTags: IssueTag[];
   issueRelationships: IssueRelationship[];
   pullRequests: PullRequest[];
+  workspaces: Workspace[];
 
   // Loading/error state
   isLoading: boolean;
@@ -136,6 +138,7 @@ export interface ProjectContextValue {
   getStatus: (statusId: string) => ProjectStatus | undefined;
   getTag: (tagId: string) => Tag | undefined;
   getPullRequestsForIssue: (issueId: string) => PullRequest[];
+  getWorkspacesForIssue: (issueId: string) => Workspace[];
 
   // Computed aggregations (Maps for O(1) lookup)
   issuesById: Map<string, Issue>;
@@ -187,6 +190,9 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
   const pullRequestsResult = useShape(PROJECT_PULL_REQUESTS_SHAPE, params, {
     enabled,
   });
+  const workspacesResult = useShape(PROJECT_WORKSPACES_SHAPE, params, {
+    enabled,
+  });
 
   // Combined loading state
   const isLoading =
@@ -197,7 +203,8 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueFollowersResult.isLoading ||
     issueTagsResult.isLoading ||
     issueRelationshipsResult.isLoading ||
-    pullRequestsResult.isLoading;
+    pullRequestsResult.isLoading ||
+    workspacesResult.isLoading;
 
   // First error found
   const error =
@@ -209,6 +216,7 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueTagsResult.error ||
     issueRelationshipsResult.error ||
     pullRequestsResult.error ||
+    workspacesResult.error ||
     null;
 
   // Combined retry
@@ -221,6 +229,7 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueTagsResult.retry();
     issueRelationshipsResult.retry();
     pullRequestsResult.retry();
+    workspacesResult.retry();
   }, [
     issuesResult,
     statusesResult,
@@ -230,6 +239,7 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueTagsResult,
     issueRelationshipsResult,
     pullRequestsResult,
+    workspacesResult,
   ]);
 
   // Computed Maps for O(1) lookup
@@ -321,6 +331,12 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     [pullRequestsResult.data]
   );
 
+  const getWorkspacesForIssue = useCallback(
+    (issueId: string) =>
+      workspacesResult.data.filter((w) => w.issue_id === issueId),
+    [workspacesResult.data]
+  );
+
   const value = useMemo<ProjectContextValue>(
     () => ({
       projectId,
@@ -334,6 +350,7 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       issueTags: issueTagsResult.data,
       issueRelationships: issueRelationshipsResult.data,
       pullRequests: pullRequestsResult.data,
+      workspaces: workspacesResult.data,
 
       // Loading/error
       isLoading,
@@ -382,6 +399,7 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       getStatus,
       getTag,
       getPullRequestsForIssue,
+      getWorkspacesForIssue,
 
       // Computed aggregations
       issuesById,
@@ -398,6 +416,7 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       issueTagsResult,
       issueRelationshipsResult,
       pullRequestsResult,
+      workspacesResult,
       isLoading,
       error,
       retry,
@@ -411,6 +430,7 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       getStatus,
       getTag,
       getPullRequestsForIssue,
+      getWorkspacesForIssue,
       issuesById,
       statusesById,
       tagsById,
