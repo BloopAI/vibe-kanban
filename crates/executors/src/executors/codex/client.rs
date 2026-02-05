@@ -10,16 +10,16 @@ use std::{
 
 use async_trait::async_trait;
 use codex_app_server_protocol::{
-    ApplyPatchApprovalResponse, ClientInfo, ClientNotification, ClientRequest,
-    CommandExecutionApprovalDecision, CommandExecutionRequestApprovalResponse,
-    ExecCommandApprovalResponse, FileChangeApprovalDecision, FileChangeRequestApprovalResponse,
-    GetAuthStatusParams, GetAuthStatusResponse, InitializeParams, InitializeResponse, JSONRPCError,
-    JSONRPCNotification, JSONRPCRequest, JSONRPCResponse, ListMcpServerStatusParams,
-    ListMcpServerStatusResponse, RequestId, ReviewStartParams, ReviewStartResponse, ReviewTarget,
-    ServerNotification, ServerRequest, ThreadForkParams, ThreadForkResponse, ThreadStartParams,
-    ThreadStartResponse, TurnStartParams, TurnStartResponse, UserInput,
+    ClientInfo, ClientNotification, ClientRequest, CommandExecutionApprovalDecision,
+    CommandExecutionRequestApprovalResponse, FileChangeApprovalDecision,
+    FileChangeRequestApprovalResponse, GetAuthStatusParams, GetAuthStatusResponse,
+    InitializeParams, InitializeResponse, JSONRPCError, JSONRPCNotification, JSONRPCRequest,
+    JSONRPCResponse, ListMcpServerStatusParams, ListMcpServerStatusResponse, RequestId,
+    ReviewStartParams, ReviewStartResponse, ReviewTarget, ServerNotification, ServerRequest,
+    ThreadForkParams, ThreadForkResponse, ThreadStartParams, ThreadStartResponse, TurnStartParams,
+    TurnStartResponse, UserInput,
 };
-use codex_protocol::{ThreadId, protocol::ReviewDecision};
+use codex_protocol::ThreadId;
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{self, Value};
 use tokio::{
@@ -257,77 +257,9 @@ impl AppServerClient {
                 }
                 Ok(())
             }
-            // v1 approval handlers (kept as fallback)
-            ServerRequest::ApplyPatchApproval { request_id, params } => {
-                let input = serde_json::to_value(&params)
-                    .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
-                let status = self
-                    .request_tool_approval("edit", input, &params.call_id)
-                    .await
-                    .map_err(|err| {
-                        if !matches!(
-                            err,
-                            ExecutorError::ExecutorApprovalError(ExecutorApprovalError::Cancelled)
-                        ) {
-                            tracing::error!(
-                                "Codex apply_patch approval failed for call_id={}: {err}",
-                                params.call_id
-                            );
-                        }
-                        err
-                    })?;
-                self.log_writer
-                    .log_raw(
-                        &Approval::approval_response(
-                            params.call_id,
-                            "codex.apply_patch".to_string(),
-                            status.clone(),
-                        )
-                        .raw(),
-                    )
-                    .await?;
-                let (decision, feedback) = self.review_decision(&status).await?;
-                let response = ApplyPatchApprovalResponse { decision };
-                send_server_response(peer, request_id, response).await?;
-                if let Some(message) = feedback {
-                    tracing::debug!("queueing patch denial feedback: {message}");
-                    self.enqueue_feedback(message).await;
-                }
-                Ok(())
-            }
-            ServerRequest::ExecCommandApproval { request_id, params } => {
-                let input = serde_json::to_value(&params)
-                    .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
-                let status = self
-                    .request_tool_approval("bash", input, &params.call_id)
-                    .await
-                    .map_err(|err| {
-                        tracing::error!(
-                            "Codex exec_command approval failed for call_id={}: {err}",
-                            params.call_id
-                        );
-                        err
-                    })?;
-                self.log_writer
-                    .log_raw(
-                        &Approval::approval_response(
-                            params.call_id,
-                            "codex.exec_command".to_string(),
-                            status.clone(),
-                        )
-                        .raw(),
-                    )
-                    .await?;
-                let (decision, feedback) = self.review_decision(&status).await?;
-                let response = ExecCommandApprovalResponse { decision };
-                send_server_response(peer, request_id, response).await?;
-                if let Some(message) = feedback {
-                    tracing::debug!("queueing exec denial feedback: {message}");
-                    self.enqueue_feedback(message).await;
-                }
-                Ok(())
-            }
-            ServerRequest::ToolRequestUserInput { .. }
+            ServerRequest::ApplyPatchApproval { .. }
+            | ServerRequest::ExecCommandApproval { .. }
+            | ServerRequest::ToolRequestUserInput { .. }
             | ServerRequest::DynamicToolCall { .. }
             | ServerRequest::ChatgptAuthTokensRefresh { .. } => {
                 tracing::error!("received unsupported server request: {:?}", request);
@@ -386,34 +318,6 @@ impl AppServerClient {
 
     fn next_request_id(&self) -> RequestId {
         self.rpc().next_request_id()
-    }
-
-    async fn review_decision(
-        &self,
-        status: &ApprovalStatus,
-    ) -> Result<(ReviewDecision, Option<String>), ExecutorError> {
-        if self.auto_approve {
-            return Ok((ReviewDecision::ApprovedForSession, None));
-        }
-
-        let outcome = match status {
-            ApprovalStatus::Approved => (ReviewDecision::Approved, None),
-            ApprovalStatus::Denied { reason } => {
-                let feedback = reason
-                    .as_ref()
-                    .map(|s| s.trim())
-                    .filter(|s| !s.is_empty())
-                    .map(|s| s.to_string());
-                if feedback.is_some() {
-                    (ReviewDecision::Abort, feedback)
-                } else {
-                    (ReviewDecision::Denied, None)
-                }
-            }
-            ApprovalStatus::TimedOut => (ReviewDecision::Denied, None),
-            ApprovalStatus::Pending => (ReviewDecision::Denied, None),
-        };
-        Ok(outcome)
     }
 
     async fn command_execution_decision(
