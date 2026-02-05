@@ -48,9 +48,7 @@ export function SettingsSection({
       case 'repos':
         return (
           <ReposSettingsSectionContent
-            initialState={
-              initialState as SettingsSectionInitialState['repos']
-            }
+            initialState={initialState as SettingsSectionInitialState['repos']}
           />
         );
       case 'organizations':
