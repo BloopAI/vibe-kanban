@@ -73,7 +73,7 @@ pub struct EntityMeta {
 /// - `C`: The create request type, or `()` if no create
 /// - `U`: The update request type, or `()` if no update
 pub struct EntityDef<E, C = (), U = ()> {
-    shape: &'static dyn crate::shapes::ShapeExport,
+    shape: &'static ShapeDefinition,
     base_route: MethodRouter<AppState>,
     id_route: MethodRouter<AppState>,
     has_create: bool,
@@ -84,7 +84,7 @@ pub struct EntityDef<E, C = (), U = ()> {
 
 impl<E: TS + Send + Sync + 'static> EntityDef<E, NoCreate, NoUpdate> {
     /// Create a new EntityDef from a shape definition.
-    pub fn new(shape: &'static ShapeDefinition<E>) -> Self {
+    pub fn new(shape: &'static ShapeDefinition) -> Self {
         Self {
             shape,
             base_route: MethodRouter::new(),

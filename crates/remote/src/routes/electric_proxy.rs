@@ -12,7 +12,6 @@ use futures::TryStreamExt;
 use secrecy::ExposeSecret;
 use serde::Deserialize;
 use tracing::error;
-use ts_rs::TS;
 use uuid::Uuid;
 
 use crate::{AppState, auth::RequestContext, db::organization_members, shapes};
@@ -366,9 +365,9 @@ async fn proxy_issue_comment_reactions(
 ///
 /// The table and where clause are set server-side (not from client params)
 /// to prevent unauthorized access to other tables or data.
-async fn proxy_table<T: TS + Sync>(
+async fn proxy_table(
     state: &AppState,
-    shape: &shapes::ShapeDefinition<T>,
+    shape: &shapes::ShapeDefinition,
     client_params: &HashMap<String, String>,
     electric_params: &[String],
 ) -> Result<Response, ProxyError> {
