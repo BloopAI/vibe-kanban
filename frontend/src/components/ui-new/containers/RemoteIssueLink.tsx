@@ -24,7 +24,7 @@ export function RemoteIssueLink({ projectId, issueId }: RemoteIssueLinkProps) {
   return (
     <Link
       to={`/projects/${projectId}/issues/${issueId}`}
-      className="flex items-center gap-half px-base py-half text-sm text-low hover:text-normal hover:bg-secondary rounded-sm transition-colors"
+      className="flex items-center gap-half px-base text-sm text-low hover:text-normal hover:bg-secondary rounded-sm transition-colors"
     >
       <LinkIcon className="size-icon-xs" weight="bold" />
       <span>{issue.simple_id}</span>
