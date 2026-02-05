@@ -163,6 +163,22 @@ export function useResolvedPage(
       };
     }
 
+    if (pageId === 'selectRelationshipIssue') {
+      return {
+        id: 'selectRelationshipIssue',
+        title: 'Select Issue',
+        groups: [
+          {
+            label: 'Issues',
+            items: issues.map((issue) => ({
+              type: 'issue' as const,
+              issue,
+            })),
+          },
+        ],
+      };
+    }
+
     const groups = buildPageGroups(pageId as StaticPageId, ctx);
     if (pageId === 'root' && search.trim()) {
       groups.push(...injectSearchMatches(search, ctx, workspace));

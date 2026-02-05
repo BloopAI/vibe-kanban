@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils';
 import type { ProjectStatus, Issue, Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
+import type { ResolvedRelationship } from '@/lib/resolveRelationships';
 import { Droppable } from '@hello-pangea/dnd';
 import { CaretDownIcon } from '@phosphor-icons/react';
 import { StatusDot } from '@/components/ui-new/primitives/StatusDot';
@@ -19,6 +20,7 @@ export interface IssueListSectionProps {
   issueMap: Record<string, Issue>;
   issueAssigneesMap: Record<string, OrganizationMemberWithProfile[]>;
   getTagObjectsForIssue: (issueId: string) => Tag[];
+  getResolvedRelationshipsForIssue?: (issueId: string) => ResolvedRelationship[];
   onIssueClick: (issueId: string) => void;
   selectedIssueId: string | null;
   className?: string;
@@ -30,6 +32,7 @@ export function IssueListSection({
   issueMap,
   issueAssigneesMap,
   getTagObjectsForIssue,
+  getResolvedRelationshipsForIssue,
   onIssueClick,
   selectedIssueId,
   className,
@@ -85,6 +88,7 @@ export function IssueListSection({
                     index={index}
                     statusColor={status.color}
                     tags={getTagObjectsForIssue(issue.id)}
+                    relationships={getResolvedRelationshipsForIssue?.(issue.id)}
                     assignees={issueAssigneesMap[issue.id] ?? []}
                     onClick={() => onIssueClick(issue.id)}
                     isSelected={selectedIssueId === issue.id}

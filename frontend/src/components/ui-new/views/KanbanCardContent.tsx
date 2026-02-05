@@ -5,11 +5,13 @@ import { CircleDashedIcon, PlusIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { IssuePriority, PullRequest, Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
+import type { ResolvedRelationship } from '@/lib/resolveRelationships';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
 import { KanbanBadge } from '@/components/ui-new/primitives/KanbanBadge';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
 import { RunningDots } from '@/components/ui-new/primitives/RunningDots';
 import { PrBadge } from '@/components/ui-new/primitives/PrBadge';
+import { RelationshipBadge } from '@/components/ui-new/primitives/RelationshipBadge';
 import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';
 
 export type TagEditProps = {
@@ -27,6 +29,7 @@ export type KanbanCardContentProps = {
   tags: { id: string; name: string; color: string }[];
   assignees: OrganizationMemberWithProfile[];
   pullRequests?: PullRequest[];
+  relationships?: ResolvedRelationship[];
   isSubIssue?: boolean;
   isLoading?: boolean;
   className?: string;
@@ -43,6 +46,7 @@ export const KanbanCardContent = ({
   tags,
   assignees,
   pullRequests = [],
+  relationships = [],
   isSubIssue,
   isLoading = false,
   className,
@@ -149,6 +153,16 @@ export const KanbanCardContent = ({
           ))}
           {pullRequests.length > 2 && (
             <span className="text-sm text-low">+{pullRequests.length - 2}</span>
+          )}
+          {relationships.slice(0, 2).map((rel) => (
+            <RelationshipBadge
+              key={rel.relationshipId}
+              displayType={rel.displayType}
+              relatedIssueDisplayId={rel.relatedIssueDisplayId}
+            />
+          ))}
+          {relationships.length > 2 && (
+            <span className="text-sm text-low">+{relationships.length - 2}</span>
           )}
         </div>
         {onAssigneeClick ? (

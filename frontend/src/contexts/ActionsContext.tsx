@@ -69,6 +69,14 @@ interface ActionsContextValue {
   // Open workspace selection dialog to link a workspace to an issue
   openWorkspaceSelection: (projectId: string, issueId: string) => Promise<void>;
 
+  // Open relationship selection in command bar
+  openRelationshipSelection: (
+    projectId: string,
+    issueId: string,
+    relationshipType: 'blocking' | 'related' | 'has_duplicate',
+    direction: 'forward' | 'reverse'
+  ) => Promise<void>;
+
   // Set default status for issue creation based on current kanban tab
   setDefaultCreateStatusId: (statusId: string | undefined) => void;
 
@@ -209,6 +217,29 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     []
   );
 
+  // Open relationship selection in command bar (uses dynamic import to avoid circular deps)
+  const openRelationshipSelection = useCallback(
+    async (
+      projectId: string,
+      issueId: string,
+      relationshipType: 'blocking' | 'related' | 'has_duplicate',
+      direction: 'forward' | 'reverse'
+    ) => {
+      const { CommandBarDialog } = await import(
+        '@/components/ui-new/dialogs/CommandBarDialog'
+      );
+      await CommandBarDialog.show({
+        pendingRelationshipSelection: {
+          projectId,
+          issueId,
+          relationshipType,
+          direction,
+        },
+      });
+    },
+    []
+  );
+
   // Build executor context from hooks
   const executorContext = useMemo<ActionExecutorContext>(() => {
     return {
@@ -228,6 +259,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openAssigneeSelection,
       openSubIssueSelection,
       openWorkspaceSelection,
+      openRelationshipSelection,
       navigateToCreateIssue,
       defaultCreateStatusId,
       kanbanOrgId: selectedOrgId ?? undefined,
@@ -251,6 +283,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     openAssigneeSelection,
     openSubIssueSelection,
     openWorkspaceSelection,
+    openRelationshipSelection,
     navigateToCreateIssue,
     defaultCreateStatusId,
     selectedOrgId,
@@ -341,6 +374,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openAssigneeSelection,
       openSubIssueSelection,
       openWorkspaceSelection,
+      openRelationshipSelection,
       setDefaultCreateStatusId,
       registerProjectMutations,
       executorContext,
@@ -353,6 +387,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       openAssigneeSelection,
       openSubIssueSelection,
       openWorkspaceSelection,
+      openRelationshipSelection,
       registerProjectMutations,
       executorContext,
     ]

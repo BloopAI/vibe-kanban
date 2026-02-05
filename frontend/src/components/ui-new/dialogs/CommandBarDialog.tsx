@@ -52,6 +52,14 @@ export interface PendingSubIssueSelection {
   mode?: 'addChild' | 'setParent';
 }
 
+/** Options for starting in relationship issue selection mode */
+export interface PendingRelationshipSelection {
+  projectId: string;
+  issueId: string;
+  relationshipType: 'blocking' | 'related' | 'has_duplicate';
+  direction: 'forward' | 'reverse';
+}
+
 export interface CommandBarDialogProps {
   page?: PageId;
   workspaceId?: string;
@@ -64,6 +72,8 @@ export interface CommandBarDialogProps {
   pendingPrioritySelection?: PendingPrioritySelection;
   /** When provided, opens directly in sub-issue selection mode */
   pendingSubIssueSelection?: PendingSubIssueSelection;
+  /** When provided, opens directly in relationship issue selection mode */
+  pendingRelationshipSelection?: PendingRelationshipSelection;
   /** Issue context for kanban mode - projectId */
   projectId?: string;
   /** Issue context for kanban mode - selected issue IDs */
@@ -79,6 +89,7 @@ interface CommandBarContentProps {
   pendingStatusSelection?: PendingStatusSelection;
   pendingPrioritySelection?: PendingPrioritySelection;
   pendingSubIssueSelection?: PendingSubIssueSelection;
+  pendingRelationshipSelection?: PendingRelationshipSelection;
   propProjectId?: string;
   propIssueIds?: string[];
   statuses: StatusItem[];
@@ -90,6 +101,12 @@ interface CommandBarContentProps {
   ) => void;
   onAddSubIssue?: (parentIssueId: string, childIssueId: string) => void;
   onCreateSubIssue?: (parentIssueId: string) => void;
+  onAddRelationship?: (
+    issueId: string,
+    relatedIssueId: string,
+    relationshipType: 'blocking' | 'related' | 'has_duplicate',
+    direction: 'forward' | 'reverse'
+  ) => void;
 }
 
 function CommandBarContent({
@@ -100,6 +117,7 @@ function CommandBarContent({
   pendingStatusSelection,
   pendingPrioritySelection,
   pendingSubIssueSelection,
+  pendingRelationshipSelection,
   propProjectId,
   propIssueIds,
   statuses,
@@ -108,6 +126,7 @@ function CommandBarContent({
   onPriorityUpdate,
   onAddSubIssue,
   onCreateSubIssue,
+  onAddRelationship,
 }: CommandBarContentProps) {
   const modal = useModal();
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -176,6 +195,17 @@ function CommandBarContent({
           parentIssueId: pendingSubIssueSelection.parentIssueId,
         });
       }
+
+      // If we have pending relationship selection, transition to that state
+      if (pendingRelationshipSelection) {
+        dispatch({
+          type: 'START_RELATIONSHIP_SELECTION',
+          projectId: pendingRelationshipSelection.projectId,
+          issueId: pendingRelationshipSelection.issueId,
+          relationshipType: pendingRelationshipSelection.relationshipType,
+          direction: pendingRelationshipSelection.direction,
+        });
+      }
     }
   }, [
     modal.visible,
@@ -184,6 +214,7 @@ function CommandBarContent({
     pendingStatusSelection,
     pendingPrioritySelection,
     pendingSubIssueSelection,
+    pendingRelationshipSelection,
   ]);
 
   // Resolve current page to renderable data
@@ -242,6 +273,14 @@ function CommandBarContent({
       } else if (effect.type === 'createSubIssue') {
         modal.hide();
         onCreateSubIssue?.(effect.parentIssueId);
+      } else if (effect.type === 'addRelationship') {
+        modal.hide();
+        onAddRelationship?.(
+          effect.issueId,
+          effect.relatedIssueId,
+          effect.relationshipType,
+          effect.direction
+        );
       }
     },
     [
@@ -257,6 +296,7 @@ function CommandBarContent({
       onPriorityUpdate,
       onAddSubIssue,
       onCreateSubIssue,
+      onAddRelationship,
     ]
   );
 
@@ -291,11 +331,12 @@ function CommandBarContent({
   );
 }
 
-/** Wrapper that provides ProjectContext for status/priority/sub-issue selection */
+/** Wrapper that provides ProjectContext for status/priority/sub-issue/relationship selection */
 function CommandBarWithProjectContext({
   pendingStatusSelection,
   pendingPrioritySelection,
   pendingSubIssueSelection,
+  pendingRelationshipSelection,
   propProjectId,
   ...props
 }: Omit<
@@ -306,17 +347,19 @@ function CommandBarWithProjectContext({
   | 'onPriorityUpdate'
   | 'onAddSubIssue'
   | 'onCreateSubIssue'
+  | 'onAddRelationship'
 > & {
   pendingStatusSelection?: PendingStatusSelection;
   pendingPrioritySelection?: PendingPrioritySelection;
   pendingSubIssueSelection?: PendingSubIssueSelection;
+  pendingRelationshipSelection?: PendingRelationshipSelection;
 }) {
   // For create mode, projectId may be empty - use propProjectId as fallback
-  // Also check pendingPrioritySelection and pendingSubIssueSelection
   const effectiveProjectId =
     pendingStatusSelection?.projectId ||
     pendingPrioritySelection?.projectId ||
     pendingSubIssueSelection?.projectId ||
+    pendingRelationshipSelection?.projectId ||
     propProjectId ||
     '';
 
@@ -333,6 +376,7 @@ function CommandBarWithProjectContext({
         pendingStatusSelection={pendingStatusSelection}
         pendingPrioritySelection={pendingPrioritySelection}
         pendingSubIssueSelection={pendingSubIssueSelection}
+        pendingRelationshipSelection={pendingRelationshipSelection}
       />
     </ProjectProvider>
   );
@@ -348,9 +392,16 @@ function CommandBarWithStatuses(
     | 'onPriorityUpdate'
     | 'onAddSubIssue'
     | 'onCreateSubIssue'
+    | 'onAddRelationship'
   >
 ) {
-  const { statuses, issues, updateIssue } = useProjectContext();
+  const {
+    statuses,
+    issues,
+    updateIssue,
+    insertIssueRelationship,
+    issueRelationships,
+  } = useProjectContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
@@ -560,15 +611,72 @@ function CommandBarWithStatuses(
     ]
   );
 
+  // Build filtered issue list for relationship selection
+  const relationshipFilteredIssues: Issue[] = useMemo(() => {
+    const anchorIssueId = props.pendingRelationshipSelection?.issueId;
+    if (!anchorIssueId) return [];
+
+    // Get existing relationships for this issue
+    const existingRelatedIds = new Set(
+      issueRelationships
+        .filter(
+          (r) =>
+            r.issue_id === anchorIssueId ||
+            r.related_issue_id === anchorIssueId
+        )
+        .flatMap((r) => [r.issue_id, r.related_issue_id])
+    );
+
+    return issues.filter((issue) => {
+      if (issue.id === anchorIssueId) return false;
+      if (existingRelatedIds.has(issue.id)) return false;
+      return true;
+    });
+  }, [
+    issues,
+    issueRelationships,
+    props.pendingRelationshipSelection?.issueId,
+  ]);
+
+  const handleAddRelationship = useCallback(
+    (
+      issueId: string,
+      relatedIssueId: string,
+      relationshipType: 'blocking' | 'related' | 'has_duplicate',
+      direction: 'forward' | 'reverse'
+    ) => {
+      if (direction === 'forward') {
+        insertIssueRelationship({
+          issue_id: issueId,
+          related_issue_id: relatedIssueId,
+          relationship_type: relationshipType,
+        });
+      } else {
+        insertIssueRelationship({
+          issue_id: relatedIssueId,
+          related_issue_id: issueId,
+          relationship_type: relationshipType,
+        });
+      }
+    },
+    [insertIssueRelationship]
+  );
+
+  // Pick the right filtered issues list based on which selection is active
+  const effectiveIssues = props.pendingRelationshipSelection
+    ? relationshipFilteredIssues
+    : filteredIssues;
+
   return (
     <CommandBarContent
       {...props}
       statuses={sortedStatuses}
-      issues={filteredIssues}
+      issues={effectiveIssues}
       onStatusUpdate={handleStatusUpdate}
       onPriorityUpdate={handlePriorityUpdate}
       onAddSubIssue={handleAddSubIssue}
       onCreateSubIssue={handleCreateSubIssue}
+      onAddRelationship={handleAddRelationship}
     />
   );
 }
@@ -582,14 +690,16 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
     pendingStatusSelection,
     pendingPrioritySelection,
     pendingSubIssueSelection,
+    pendingRelationshipSelection,
     projectId: propProjectId,
     issueIds: propIssueIds,
   }) => {
-    // If we have pending status, priority, or sub-issue selection, wrap with ProjectProvider
+    // If we have pending selection, wrap with ProjectProvider
     if (
       pendingStatusSelection ||
       pendingPrioritySelection ||
-      pendingSubIssueSelection
+      pendingSubIssueSelection ||
+      pendingRelationshipSelection
     ) {
       return (
         <CommandBarWithProjectContext
@@ -600,6 +710,7 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
           pendingStatusSelection={pendingStatusSelection}
           pendingPrioritySelection={pendingPrioritySelection}
           pendingSubIssueSelection={pendingSubIssueSelection}
+          pendingRelationshipSelection={pendingRelationshipSelection}
           propProjectId={propProjectId}
           propIssueIds={propIssueIds}
         />

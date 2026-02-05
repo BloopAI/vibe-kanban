@@ -19,6 +19,7 @@ import {
   type DropResult,
 } from '@/components/ui-new/views/KanbanBoard';
 import { KanbanCardContent } from '@/components/ui-new/views/KanbanCardContent';
+import { resolveRelationshipsForIssue } from '@/lib/resolveRelationships';
 import { KanbanFilterBar } from '@/components/ui-new/views/KanbanFilterBar';
 import { ViewNavTabs } from '@/components/ui-new/primitives/ViewNavTabs';
 import { IssueListView } from '@/components/ui-new/views/IssueListView';
@@ -53,6 +54,8 @@ export function KanbanContainer() {
     getTagObjectsForIssue,
     getTagsForIssue,
     getPullRequestsForIssue,
+    getRelationshipsForIssue,
+    issuesById,
     insertIssueTag,
     removeIssueTag,
     insertTag,
@@ -416,6 +419,16 @@ export function KanbanContainer() {
     [getTagsForIssue, insertIssueTag, removeIssueTag]
   );
 
+  const getResolvedRelationshipsForIssue = useCallback(
+    (issueId: string) =>
+      resolveRelationshipsForIssue(
+        issueId,
+        getRelationshipsForIssue(issueId),
+        issuesById
+      ),
+    [getRelationshipsForIssue, issuesById]
+  );
+
   const handleCreateTag = useCallback(
     (data: { name: string; color: string }): string => {
       const { data: newTag } = insertTag({
@@ -548,6 +561,11 @@ export function KanbanContainer() {
                               tags={getTagObjectsForIssue(issue.id)}
                               assignees={issueAssigneesMap[issue.id] ?? []}
                               pullRequests={getPullRequestsForIssue(issue.id)}
+                              relationships={resolveRelationshipsForIssue(
+                                issue.id,
+                                getRelationshipsForIssue(issue.id),
+                                issuesById
+                              )}
                               isSubIssue={!!issue.parent_issue_id}
                               onPriorityClick={(e) => {
                                 e.stopPropagation();
@@ -586,6 +604,7 @@ export function KanbanContainer() {
               issueMap={issueMap}
               issueAssigneesMap={issueAssigneesMap}
               getTagObjectsForIssue={getTagObjectsForIssue}
+              getResolvedRelationshipsForIssue={getResolvedRelationshipsForIssue}
               onIssueClick={handleCardClick}
               selectedIssueId={selectedKanbanIssueId}
             />

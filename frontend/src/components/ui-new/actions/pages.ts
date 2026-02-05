@@ -15,7 +15,8 @@ export type PageId =
   | 'selectRepo' // Dynamic page for repo selection (not in Pages record)
   | 'selectStatus' // Dynamic page for status selection (not in Pages record)
   | 'selectPriority' // Dynamic page for priority selection (not in Pages record)
-  | 'selectSubIssue'; // Dynamic page for sub-issue selection (not in Pages record)
+  | 'selectSubIssue' // Dynamic page for sub-issue selection (not in Pages record)
+  | 'selectRelationshipIssue'; // Dynamic page for relationship issue selection (not in Pages record)
 
 // Items that can appear inside a group
 export type CommandBarGroupItem =
@@ -80,7 +81,11 @@ export interface CommandBarPage {
 // Static page IDs (excludes dynamic pages like selectRepo, selectStatus, selectPriority, and selectSubIssue)
 export type StaticPageId = Exclude<
   PageId,
-  'selectRepo' | 'selectStatus' | 'selectPriority' | 'selectSubIssue'
+  | 'selectRepo'
+  | 'selectStatus'
+  | 'selectPriority'
+  | 'selectSubIssue'
+  | 'selectRelationshipIssue'
 >;
 
 export const Pages: Record<StaticPageId, CommandBarPage> = {
@@ -246,6 +251,10 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
           { type: 'action', action: Actions.MakeSubIssueOf },
           { type: 'action', action: Actions.AddSubIssue },
           { type: 'action', action: Actions.LinkWorkspace },
+          { type: 'action', action: Actions.MarkBlocking },
+          { type: 'action', action: Actions.MarkBlockedBy },
+          { type: 'action', action: Actions.MarkRelated },
+          { type: 'action', action: Actions.MarkDuplicateOf },
           { type: 'action', action: Actions.DuplicateIssue },
           { type: 'action', action: Actions.DeleteIssue },
         ],

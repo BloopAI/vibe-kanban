@@ -37,6 +37,15 @@ export type CommandBarState =
       search: string;
       pendingProjectId: string;
       pendingParentIssueId: string;
+    }
+  | {
+      status: 'selectingRelationshipIssue';
+      stack: PageId[];
+      search: string;
+      pendingProjectId: string;
+      pendingIssueId: string;
+      pendingRelationshipType: 'blocking' | 'related' | 'has_duplicate';
+      pendingDirection: 'forward' | 'reverse';
     };
 
 export type CommandBarEvent =
@@ -50,6 +59,13 @@ export type CommandBarEvent =
       type: 'START_SUB_ISSUE_SELECTION';
       projectId: string;
       parentIssueId: string;
+    }
+  | {
+      type: 'START_RELATIONSHIP_SELECTION';
+      projectId: string;
+      issueId: string;
+      relationshipType: 'blocking' | 'related' | 'has_duplicate';
+      direction: 'forward' | 'reverse';
     };
 
 export type CommandBarEffect =
@@ -77,6 +93,14 @@ export type CommandBarEffect =
       type: 'createSubIssue';
       projectId: string;
       parentIssueId: string;
+    }
+  | {
+      type: 'addRelationship';
+      projectId: string;
+      issueId: string;
+      relatedIssueId: string;
+      relationshipType: 'blocking' | 'related' | 'has_duplicate';
+      direction: 'forward' | 'reverse';
     };
 
 const browsing = (page: PageId, stack: PageId[] = []): CommandBarState => ({
@@ -132,6 +156,22 @@ const selectingSubIssue = (
   pendingParentIssueId,
 });
 
+const selectingRelationshipIssue = (
+  pendingProjectId: string,
+  pendingIssueId: string,
+  pendingRelationshipType: 'blocking' | 'related' | 'has_duplicate',
+  pendingDirection: 'forward' | 'reverse',
+  stack: PageId[] = []
+): CommandBarState => ({
+  status: 'selectingRelationshipIssue',
+  stack,
+  search: '',
+  pendingProjectId,
+  pendingIssueId,
+  pendingRelationshipType,
+  pendingDirection,
+});
+
 const noEffect: CommandBarEffect = { type: 'none' };
 
 function reducer(
@@ -174,6 +214,19 @@ function reducer(
   if (event.type === 'START_SUB_ISSUE_SELECTION') {
     return [
       selectingSubIssue(event.projectId, event.parentIssueId, state.stack),
+      noEffect,
+    ];
+  }
+
+  if (event.type === 'START_RELATIONSHIP_SELECTION') {
+    return [
+      selectingRelationshipIssue(
+        event.projectId,
+        event.issueId,
+        event.relationshipType,
+        event.direction,
+        state.stack
+      ),
       noEffect,
     ];
   }
@@ -239,6 +292,23 @@ function reducer(
           type: 'createSubIssue',
           projectId: state.pendingProjectId,
           parentIssueId: state.pendingParentIssueId,
+        },
+      ];
+    }
+
+    if (
+      state.status === 'selectingRelationshipIssue' &&
+      event.item.type === 'issue'
+    ) {
+      return [
+        browsing('root'),
+        {
+          type: 'addRelationship',
+          projectId: state.pendingProjectId,
+          issueId: state.pendingIssueId,
+          relatedIssueId: event.item.issue.id,
+          relationshipType: state.pendingRelationshipType,
+          direction: state.pendingDirection,
         },
       ];
     }
@@ -347,7 +417,9 @@ export function useCommandBarState(
           ? 'selectPriority'
           : state.status === 'selectingSubIssue'
             ? 'selectSubIssue'
-            : state.page;
+            : state.status === 'selectingRelationshipIssue'
+              ? 'selectRelationshipIssue'
+              : state.page;
 
   return {
     state,

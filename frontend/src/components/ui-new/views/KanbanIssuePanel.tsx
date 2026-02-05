@@ -15,6 +15,7 @@ import { Toggle } from '@/components/ui-new/primitives/Toggle';
 import { CopyButton } from '@/components/ui-new/containers/CopyButton';
 import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/IssueCommentsSectionContainer';
 import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/IssueSubIssuesSectionContainer';
+import { IssueRelationshipsSectionContainer } from '@/components/ui-new/containers/IssueRelationshipsSectionContainer';
 import { IssueWorkspacesSectionContainer } from '@/components/ui-new/containers/IssueWorkspacesSectionContainer';
 
 export type IssuePanelMode = 'create' | 'edit';
@@ -274,6 +275,13 @@ export function KanbanIssuePanel({
         {!isCreateMode && issueId && (
           <div className="border-t">
             <IssueWorkspacesSectionContainer issueId={issueId} />
+          </div>
+        )}
+
+        {/* Relationships Section (Edit mode only) */}
+        {!isCreateMode && issueId && (
+          <div className="border-t">
+            <IssueRelationshipsSectionContainer issueId={issueId} />
           </div>
         )}
 

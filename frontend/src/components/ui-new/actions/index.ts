@@ -51,6 +51,8 @@ import {
   UsersIcon,
   TreeStructureIcon,
   LinkIcon,
+  ArrowBendUpRightIcon,
+  ProhibitIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import {
@@ -136,6 +138,12 @@ export interface ActionExecutorContext {
     mode?: 'addChild' | 'setParent'
   ) => Promise<void>;
   openWorkspaceSelection: (projectId: string, issueId: string) => Promise<void>;
+  openRelationshipSelection: (
+    projectId: string,
+    issueId: string,
+    relationshipType: 'blocking' | 'related' | 'has_duplicate',
+    direction: 'forward' | 'reverse'
+  ) => Promise<void>;
   // Kanban navigation (URL-based)
   navigateToCreateIssue: (options?: { statusId?: string }) => void;
   // Default status for issue creation based on current kanban tab
@@ -1412,6 +1420,82 @@ export const Actions = {
         throw new Error('Can only duplicate one issue at a time');
       }
       ctx.projectMutations?.duplicateIssue(issueIds[0]);
+    },
+  } satisfies IssueActionDefinition,
+
+  MarkBlocking: {
+    id: 'mark-blocking',
+    label: 'Mark Blocking',
+    icon: ArrowBendUpRightIcon,
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openRelationshipSelection(
+          projectId,
+          issueIds[0],
+          'blocking',
+          'forward'
+        );
+      }
+    },
+  } satisfies IssueActionDefinition,
+
+  MarkBlockedBy: {
+    id: 'mark-blocked-by',
+    label: 'Mark Blocked By',
+    icon: ProhibitIcon,
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openRelationshipSelection(
+          projectId,
+          issueIds[0],
+          'blocking',
+          'reverse'
+        );
+      }
+    },
+  } satisfies IssueActionDefinition,
+
+  MarkRelated: {
+    id: 'mark-related',
+    label: 'Mark Related',
+    icon: ArrowsLeftRightIcon,
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openRelationshipSelection(
+          projectId,
+          issueIds[0],
+          'related',
+          'forward'
+        );
+      }
+    },
+  } satisfies IssueActionDefinition,
+
+  MarkDuplicateOf: {
+    id: 'mark-duplicate-of',
+    label: 'Mark Duplicate Of',
+    icon: CopyIcon,
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openRelationshipSelection(
+          projectId,
+          issueIds[0],
+          'has_duplicate',
+          'forward'
+        );
+      }
     },
   } satisfies IssueActionDefinition,
 } as const satisfies Record<string, ActionDefinition>;

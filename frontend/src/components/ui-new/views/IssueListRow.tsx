@@ -3,12 +3,14 @@
 import { cn } from '@/lib/utils';
 import type { Issue, Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
+import type { ResolvedRelationship } from '@/lib/resolveRelationships';
 import { Draggable } from '@hello-pangea/dnd';
 import { DotsSixVerticalIcon } from '@phosphor-icons/react';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
 import { StatusDot } from '@/components/ui-new/primitives/StatusDot';
 import { KanbanBadge } from '@/components/ui-new/primitives/KanbanBadge';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
+import { RelationshipBadge } from '@/components/ui-new/primitives/RelationshipBadge';
 
 /**
  * Formats a date as a relative time string (e.g., "1d", "2h", "3m")
@@ -40,6 +42,7 @@ export interface IssueListRowProps {
   index: number;
   statusColor: string;
   tags: Tag[];
+  relationships?: ResolvedRelationship[];
   assignees: OrganizationMemberWithProfile[];
   onClick: () => void;
   isSelected: boolean;
@@ -51,6 +54,7 @@ export function IssueListRow({
   index,
   statusColor,
   tags,
+  relationships = [],
   assignees,
   onClick,
   isSelected,
@@ -109,6 +113,22 @@ export function IssueListRow({
                 {visibleTags.map((tag) => (
                   <KanbanBadge key={tag.id} name={tag.name} color={tag.color} />
                 ))}
+              </div>
+            )}
+            {relationships.length > 0 && (
+              <div className="flex items-center gap-half">
+                {relationships.slice(0, 2).map((rel) => (
+                  <RelationshipBadge
+                    key={rel.relationshipId}
+                    displayType={rel.displayType}
+                    relatedIssueDisplayId={rel.relatedIssueDisplayId}
+                  />
+                ))}
+                {relationships.length > 2 && (
+                  <span className="text-sm text-low">
+                    +{relationships.length - 2}
+                  </span>
+                )}
               </div>
             )}
             <KanbanAssignee assignees={assignees} />

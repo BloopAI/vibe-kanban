@@ -311,7 +311,9 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
 
   const getRelationshipsForIssue = useCallback(
     (issueId: string) =>
-      issueRelationshipsResult.data.filter((r) => r.issue_id === issueId),
+      issueRelationshipsResult.data.filter(
+        (r) => r.issue_id === issueId || r.related_issue_id === issueId
+      ),
     [issueRelationshipsResult.data]
   );
 

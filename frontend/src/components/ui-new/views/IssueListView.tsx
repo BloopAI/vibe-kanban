@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils';
 import type { ProjectStatus, Issue, Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
+import type { ResolvedRelationship } from '@/lib/resolveRelationships';
 import { IssueListSection } from '@/components/ui-new/views/IssueListSection';
 
 export interface IssueListViewProps {
@@ -11,6 +12,7 @@ export interface IssueListViewProps {
   issueMap: Record<string, Issue>;
   issueAssigneesMap: Record<string, OrganizationMemberWithProfile[]>;
   getTagObjectsForIssue: (issueId: string) => Tag[];
+  getResolvedRelationshipsForIssue?: (issueId: string) => ResolvedRelationship[];
   onIssueClick: (issueId: string) => void;
   selectedIssueId: string | null;
   className?: string;
@@ -22,6 +24,7 @@ export function IssueListView({
   issueMap,
   issueAssigneesMap,
   getTagObjectsForIssue,
+  getResolvedRelationshipsForIssue,
   onIssueClick,
   selectedIssueId,
   className,
@@ -36,6 +39,7 @@ export function IssueListView({
           issueMap={issueMap}
           issueAssigneesMap={issueAssigneesMap}
           getTagObjectsForIssue={getTagObjectsForIssue}
+          getResolvedRelationshipsForIssue={getResolvedRelationshipsForIssue}
           onIssueClick={onIssueClick}
           selectedIssueId={selectedIssueId}
         />
