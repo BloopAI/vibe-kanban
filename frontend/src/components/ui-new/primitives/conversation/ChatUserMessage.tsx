@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { PencilSimpleIcon, ScissorsIcon } from '@phosphor-icons/react';
+import { PencilSimpleIcon, ArrowUUpLeftIcon } from '@phosphor-icons/react';
 import { ChatEntryContainer } from './ChatEntryContainer';
 import { ChatMarkdown } from './ChatMarkdown';
 
@@ -40,7 +40,7 @@ export function ChatUserMessage({
             aria-label={t('conversation.actions.reset')}
             title={t('conversation.actions.resetTooltip')}
           >
-            <ScissorsIcon className="size-icon-xs" />
+            <ArrowUUpLeftIcon className="size-icon-xs" />
           </button>
         )}
         {onEdit && (
