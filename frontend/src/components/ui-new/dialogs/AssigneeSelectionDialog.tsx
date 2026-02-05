@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useCallback, useMemo, useRef, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
@@ -76,28 +76,25 @@ function AssigneeSelectionContent({
     [searchParams, setSearchParams]
   );
 
-  // Compute initial assignee IDs based on mode
-  const initialAssigneeIds = useMemo(() => {
+  // Derive selected assignee IDs from persisted state (no local state needed)
+  const selectedIds = useMemo(() => {
     if (isCreateMode) {
       return kanbanCreateDefaultAssigneeIds;
     }
-    // Edit mode: get current assignees for the issue(s)
     return issueAssignees
       .filter((a) => issueIds.includes(a.issue_id))
       .map((a) => a.user_id);
   }, [isCreateMode, issueIds, issueAssignees, kanbanCreateDefaultAssigneeIds]);
 
-  const [selectedIds, setSelectedIds] = useState<string[]>(initialAssigneeIds);
   const [search, setSearch] = useState('');
 
-  // Capture focus when dialog opens and reset state
+  // Capture focus when dialog opens and reset search
   useEffect(() => {
     if (modal.visible) {
       previousFocusRef.current = document.activeElement as HTMLElement;
-      setSelectedIds(initialAssigneeIds);
       setSearch('');
     }
-  }, [modal.visible, initialAssigneeIds]);
+  }, [modal.visible]);
 
   const options: MultiSelectOption<string>[] = useMemo(
     () =>
@@ -115,62 +112,48 @@ function AssigneeSelectionContent({
     [users]
   );
 
-  const handleToggle = useCallback((userId: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(userId)
-        ? prev.filter((id) => id !== userId)
-        : [...prev, userId]
-    );
-  }, []);
+  const handleToggle = useCallback(
+    (userId: string) => {
+      const isSelected = selectedIds.includes(userId);
 
-  const handleConfirm = useCallback(() => {
-    if (isCreateMode) {
-      // Create mode: update the default assignees in store
-      setKanbanCreateDefaultAssigneeIds(selectedIds);
-    } else {
-      // Edit mode: apply changes via junction table mutations
-      const currentAssigneeRecords = issueAssignees.filter((a) =>
-        issueIds.includes(a.issue_id)
-      );
-
-      // For each issue, compute and apply changes
-      for (const issueId of issueIds) {
-        const issueAssigneeRecords = currentAssigneeRecords.filter(
-          (a) => a.issue_id === issueId
-        );
-        const issueCurrentIds = new Set(
-          issueAssigneeRecords.map((a) => a.user_id)
-        );
-
-        // Remove assignees no longer selected
-        for (const record of issueAssigneeRecords) {
-          if (!selectedIds.includes(record.user_id)) {
-            removeIssueAssignee(record.id);
-          }
-        }
-
-        // Add new assignees
-        for (const userId of selectedIds) {
-          if (!issueCurrentIds.has(userId)) {
-            insertIssueAssignee({
-              issue_id: issueId,
-              user_id: userId,
-            });
+      if (isCreateMode) {
+        // Create mode: update URL params immediately
+        const newIds = isSelected
+          ? selectedIds.filter((id) => id !== userId)
+          : [...selectedIds, userId];
+        setKanbanCreateDefaultAssigneeIds(newIds);
+      } else {
+        // Edit mode: apply mutation immediately for each issue
+        for (const issueId of issueIds) {
+          if (isSelected) {
+            // Remove the assignee
+            const record = issueAssignees.find(
+              (a) => a.issue_id === issueId && a.user_id === userId
+            );
+            if (record) {
+              removeIssueAssignee(record.id);
+            }
+          } else {
+            // Add the assignee
+            insertIssueAssignee({ issue_id: issueId, user_id: userId });
           }
         }
       }
-    }
+    },
+    [
+      isCreateMode,
+      selectedIds,
+      issueIds,
+      issueAssignees,
+      setKanbanCreateDefaultAssigneeIds,
+      insertIssueAssignee,
+      removeIssueAssignee,
+    ]
+  );
+
+  const handleClose = useCallback(() => {
     modal.hide();
-  }, [
-    isCreateMode,
-    selectedIds,
-    issueIds,
-    issueAssignees,
-    setKanbanCreateDefaultAssigneeIds,
-    insertIssueAssignee,
-    removeIssueAssignee,
-    modal,
-  ]);
+  }, [modal]);
 
   // Restore focus when dialog closes
   const handleCloseAutoFocus = useCallback((event: Event) => {
@@ -189,7 +172,7 @@ function AssigneeSelectionContent({
         options={options}
         selectedValues={selectedIds}
         onToggle={handleToggle}
-        onConfirm={handleConfirm}
+        onClose={handleClose}
         search={search}
         onSearchChange={setSearch}
       />
