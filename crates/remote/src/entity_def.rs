@@ -133,7 +133,7 @@ impl<E: TS, C, U> EntityDef<E, C, U> {
     pub fn router(self) -> axum::Router<AppState> {
         let table = self.shape.table();
         let base_path = format!("/{}", table);
-        let id_path = format!("/{}/{{{}_id}}", table, self.shape.singular());
+        let id_path = format!("/{}/{{id}}", table);
 
         axum::Router::new()
             .route(&base_path, self.base_route)
