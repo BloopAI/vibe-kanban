@@ -67,7 +67,13 @@ export function IssueWorkspacesSectionContainer({
         isOwnedByCurrentUser: workspace.owner_user_id === userId,
       };
     });
-  }, [issueId, getWorkspacesForIssue, pullRequests, membersWithProfilesById, userId]);
+  }, [
+    issueId,
+    getWorkspacesForIssue,
+    pullRequests,
+    membersWithProfilesById,
+    userId,
+  ]);
 
   const isLoading = projectLoading || orgLoading;
 
