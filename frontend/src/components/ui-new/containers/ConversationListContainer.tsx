@@ -161,8 +161,11 @@ export const ConversationList = forwardRef<
   const navigate = useNavigate();
 
   // Get repos from workspace context to check if scripts are configured
-  let repos: { setup_script: string | null; cleanup_script: string | null }[] =
-    [];
+  let repos: {
+    id: string;
+    setup_script: string | null;
+    cleanup_script: string | null;
+  }[] = [];
   try {
     const workspaceContext = useWorkspaceContext();
     repos = workspaceContext.repos;
@@ -177,13 +180,20 @@ export const ConversationList = forwardRef<
   // Use refs to avoid stale closures in callbacks
   const hasSetupScriptRef = useRef(hasSetupScript);
   const hasCleanupScriptRef = useRef(hasCleanupScript);
+  const reposRef = useRef(repos);
   hasSetupScriptRef.current = hasSetupScript;
   hasCleanupScriptRef.current = hasCleanupScript;
+  reposRef.current = repos;
 
-  // Handler to navigate to repository settings
+  // Handler to navigate to repository settings (first repo in workspace)
   const handleOpenSettings = useMemo(
     () => () => {
-      navigate('/settings/repos');
+      const firstRepoId = reposRef.current[0]?.id;
+      if (firstRepoId) {
+        navigate(`/settings/repos?repoId=${firstRepoId}`);
+      } else {
+        navigate('/settings/repos');
+      }
     },
     [navigate]
   );
