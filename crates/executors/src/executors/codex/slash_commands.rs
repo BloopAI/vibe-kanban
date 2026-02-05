@@ -108,9 +108,9 @@ impl Codex {
         }
 
         // No slash command matched — check if compact without a session
-        if parse_slash_command(prompt)
-            .is_some_and(|cmd: SlashCommandCall<'_>| cmd.name.as_str() == "compact" && session_id.is_none())
-        {
+        if parse_slash_command(prompt).is_some_and(|cmd: SlashCommandCall<'_>| {
+            cmd.name.as_str() == "compact" && session_id.is_none()
+        }) {
             return self
                 .return_static_reply(
                     current_dir,
@@ -190,17 +190,14 @@ impl Codex {
                                 sandbox: thread_start_params.sandbox,
                                 config: thread_start_params.config,
                                 base_instructions: thread_start_params.base_instructions,
-                                developer_instructions: thread_start_params
-                                    .developer_instructions,
+                                developer_instructions: thread_start_params.developer_instructions,
                             })
                             .await?;
 
                         // Trigger compaction — the response is immediate/empty.
                         // Completion streams back as codex/event/task_complete,
                         // which on_notification detects and signals exit automatically.
-                        client
-                            .thread_compact_start(response.thread.id)
-                            .await?;
+                        client.thread_compact_start(response.thread.id).await?;
                     }
                     _ => {
                         return Err(ExecutorError::Io(std::io::Error::other(
