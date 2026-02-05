@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslation } from 'react-i18next';
-import { PlusIcon } from '@phosphor-icons/react';
+import { MinusIcon, PlusIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { IssuePriority, PullRequest, Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
@@ -101,6 +101,12 @@ export const KanbanCardContent = ({
               className="flex items-center cursor-pointer hover:bg-secondary rounded-sm transition-colors"
             >
               <PriorityIcon priority={priority} />
+              {!priority && (
+                <MinusIcon
+                  className="size-icon-xs text-low"
+                  weight="bold"
+                />
+              )}
             </button>
           ) : (
             <PriorityIcon priority={priority} />
