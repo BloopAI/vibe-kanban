@@ -12,7 +12,7 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_project_access,
 };
-use api_types::Workspace;
+use api_types::{DeleteWorkspaceRequest, UpdateWorkspaceRequest, Workspace};
 use crate::{
     AppState,
     auth::RequestContext,
@@ -29,21 +29,6 @@ pub struct CreateWorkspaceRequest {
     pub files_changed: Option<i32>,
     pub lines_added: Option<i32>,
     pub lines_removed: Option<i32>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UpdateWorkspaceRequest {
-    pub local_workspace_id: Uuid,
-    pub name: Option<Option<String>>,
-    pub archived: Option<bool>,
-    pub files_changed: Option<Option<i32>>,
-    pub lines_added: Option<Option<i32>>,
-    pub lines_removed: Option<Option<i32>>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct DeleteWorkspaceRequest {
-    pub local_workspace_id: Uuid,
 }
 
 pub fn router() -> Router<AppState> {
