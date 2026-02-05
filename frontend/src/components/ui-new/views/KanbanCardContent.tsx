@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslation } from 'react-i18next';
-import { MinusIcon, PlusIcon } from '@phosphor-icons/react';
+import { CircleDashedIcon, PlusIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { IssuePriority, PullRequest, Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
@@ -102,7 +102,7 @@ export const KanbanCardContent = ({
             >
               <PriorityIcon priority={priority} />
               {!priority && (
-                <MinusIcon className="size-icon-xs text-low" weight="bold" />
+                <CircleDashedIcon className="size-icon-xs text-low" weight="bold" />
               )}
             </button>
           ) : (

@@ -1,7 +1,7 @@
 'use client';
 
 import { Draggable } from '@hello-pangea/dnd';
-import { DotsSixVerticalIcon, MinusIcon } from '@phosphor-icons/react';
+import { CircleDashedIcon, DotsSixVerticalIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { IssuePriority } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
@@ -105,7 +105,7 @@ export function SubIssueRow({
               >
                 <PriorityIcon priority={priority} />
                 {!priority && (
-                  <MinusIcon className="size-icon-xs text-low" weight="bold" />
+                  <CircleDashedIcon className="size-icon-xs text-low" weight="bold" />
                 )}
               </button>
             ) : (
