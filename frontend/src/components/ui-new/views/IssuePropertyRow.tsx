@@ -2,9 +2,11 @@ import { cn } from '@/lib/utils';
 import { PlusIcon, UsersIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import type { IssuePriority, ProjectStatus } from 'shared/remote-types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { StatusDot } from '@/components/ui-new/primitives/StatusDot';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
+import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 import { Badge } from '@/components/ui/badge';
 
 const priorityLabels: Record<IssuePriority, string> = {
@@ -19,6 +21,7 @@ export interface IssuePropertyRowProps {
   priority: IssuePriority | null;
   assigneeIds: string[];
   statuses: ProjectStatus[];
+  creatorUser?: OrganizationMemberWithProfile | null;
   parentIssue?: { id: string; simpleId: string } | null;
   onParentIssueClick?: () => void;
   onStatusClick: () => void;
@@ -34,6 +37,7 @@ export function IssuePropertyRow({
   priority,
   assigneeIds,
   statuses,
+  creatorUser,
   parentIssue,
   onParentIssueClick,
   onStatusClick,
@@ -83,6 +87,19 @@ export function IssuePropertyRow({
           </Badge>
         )}
       </PrimaryButton>
+
+      {creatorUser &&
+        (creatorUser.first_name?.trim() || creatorUser.username?.trim()) && (
+          <div className="flex items-center gap-half px-base py-half bg-panel rounded-sm text-sm whitespace-nowrap">
+            <UserAvatar
+              user={creatorUser}
+              className="h-5 w-5 text-[9px] border border-border"
+            />
+            <span className="text-normal truncate max-w-[120px]">
+              {creatorUser.first_name?.trim() || creatorUser.username?.trim()}
+            </span>
+          </div>
+        )}
 
       {parentIssue && (
         <button

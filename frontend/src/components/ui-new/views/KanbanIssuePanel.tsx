@@ -1,6 +1,5 @@
 import type { RefCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { useTranslation } from 'react-i18next';
 import { XIcon, LinkIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type {
@@ -19,7 +18,6 @@ import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/Is
 import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/IssueSubIssuesSectionContainer';
 import { IssueRelationshipsSectionContainer } from '@/components/ui-new/containers/IssueRelationshipsSectionContainer';
 import { IssueWorkspacesSectionContainer } from '@/components/ui-new/containers/IssueWorkspacesSectionContainer';
-import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 
 export type IssuePanelMode = 'create' | 'edit';
 
@@ -109,7 +107,6 @@ export function KanbanIssuePanel({
   onCopyLink,
   onMoreActions,
 }: KanbanIssuePanelProps) {
-  const { t } = useTranslation('common');
   const isCreateMode = mode === 'create';
   const creatorName =
     creatorUser?.first_name?.trim() || creatorUser?.username?.trim() || null;
@@ -179,6 +176,7 @@ export function KanbanIssuePanel({
             priority={formData.priority}
             assigneeIds={formData.assigneeIds}
             statuses={statuses}
+            creatorUser={showCreator ? creatorUser : undefined}
             parentIssue={parentIssue}
             onParentIssueClick={onParentIssueClick}
             onStatusClick={() => onFormChange('statusId', formData.statusId)}
@@ -189,26 +187,6 @@ export function KanbanIssuePanel({
             disabled={isSubmitting}
           />
         </div>
-
-        {/* Creator row (Edit mode only) */}
-        {showCreator && creatorName && (
-          <div className="border-t px-base py-base flex items-center justify-between">
-            <span className="text-xs font-medium text-low">
-              {t('kanban.createdBy')}
-            </span>
-            <div className="flex items-center gap-half">
-              {creatorUser && (
-                <UserAvatar
-                  user={creatorUser}
-                  className="h-5 w-5 text-[9px] border border-border"
-                />
-              )}
-              <span className="text-sm text-normal truncate max-w-[160px]">
-                {creatorName}
-              </span>
-            </div>
-          </div>
-        )}
 
         {/* Tags Row */}
         <div className="px-base py-base border-b">
