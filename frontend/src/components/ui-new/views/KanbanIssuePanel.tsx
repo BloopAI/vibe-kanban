@@ -190,6 +190,26 @@ export function KanbanIssuePanel({
           />
         </div>
 
+        {/* Creator row (Edit mode only) */}
+        {showCreator && creatorName && (
+          <div className="border-t px-base py-base flex items-center justify-between">
+            <span className="text-xs font-medium text-low">
+              {t('kanban.createdBy')}
+            </span>
+            <div className="flex items-center gap-half">
+              {creatorUser && (
+                <UserAvatar
+                  user={creatorUser}
+                  className="h-5 w-5 text-[9px] border border-border"
+                />
+              )}
+              <span className="text-sm text-normal truncate max-w-[160px]">
+                {creatorName}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Tags Row */}
         <div className="px-base py-base border-b">
           <IssueTagsRow
@@ -280,29 +300,9 @@ export function KanbanIssuePanel({
           </div>
         )}
 
-        {/* Creator row (Edit mode only) */}
-        {showCreator && creatorName && (
-          <div className="border-t px-base py-base flex items-center justify-between">
-            <span className="text-xs font-medium text-low">
-              {t('kanban.createdBy')}
-            </span>
-            <div className="flex items-center gap-half">
-              {creatorUser && (
-                <UserAvatar
-                  user={creatorUser}
-                  className="h-5 w-5 text-[9px] border border-border"
-                />
-              )}
-              <span className="text-sm text-normal truncate max-w-[160px]">
-                {creatorName}
-              </span>
-            </div>
-          </div>
-        )}
-
         {/* Workspaces Section (Edit mode only) */}
         {!isCreateMode && issueId && (
-          <div className={cn(!showCreator && 'border-t')}>
+          <div className="border-t">
             <IssueWorkspacesSectionContainer issueId={issueId} />
           </div>
         )}
