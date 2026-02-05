@@ -257,7 +257,11 @@ export const ConversationList = forwardRef<
       result.push(...aggregatedEntries);
 
       // Cleanup placeholder: show if no script configured AND none has run AND agent finished
-      if (!hasCleanupScriptConfig && !hasCleanupScriptEntry && !hasRunningProcess) {
+      if (
+        !hasCleanupScriptConfig &&
+        !hasCleanupScriptEntry &&
+        !hasRunningProcess
+      ) {
         result.push(cleanupPlaceholder);
       }
 
