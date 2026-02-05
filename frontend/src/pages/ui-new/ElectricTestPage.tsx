@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useAuth, useUserOrganizations, useCurrentUser } from '@/hooks';
-import { useEntity, useShape } from '@/lib/electric/hooks';
+import { useShape } from '@/lib/electric/hooks';
 import type { SyncError } from '@/lib/electric/types';
 import {
-  PROJECT_ENTITY,
-  TAG_ENTITY,
-  ISSUE_COMMENT_ENTITY,
+  PROJECTS_SHAPE,
+  PROJECT_TAGS_SHAPE,
+  ISSUE_COMMENTS_SHAPE,
+  PROJECT_MUTATION,
+  TAG_MUTATION,
+  ISSUE_COMMENT_MUTATION,
   NOTIFICATIONS_SHAPE,
   PROJECT_ISSUES_SHAPE,
   PROJECT_WORKSPACES_SHAPE,
@@ -242,9 +245,10 @@ function ProjectsList({
   onSelectProject: (project: Project | null) => void;
   selectedProjectId: string | null;
 }) {
-  const { data, isLoading, error, retry, insert, update, remove } = useEntity(
-    PROJECT_ENTITY,
-    { organization_id: organizationId }
+  const { data, isLoading, error, retry, insert, update, remove } = useShape(
+    PROJECTS_SHAPE,
+    { organization_id: organizationId },
+    { mutation: PROJECT_MUTATION }
   );
 
   const [newProjectName, setNewProjectName] = useState('');
@@ -502,9 +506,10 @@ function StatusesList({ projectId }: { projectId: string }) {
 }
 
 function TagsList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry, insert, update, remove } = useEntity(
-    TAG_ENTITY,
-    { project_id: projectId }
+  const { data, isLoading, error, retry, insert, update, remove } = useShape(
+    PROJECT_TAGS_SHAPE,
+    { project_id: projectId },
+    { mutation: TAG_MUTATION }
   );
 
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
@@ -743,9 +748,10 @@ function DependenciesList({ projectId }: { projectId: string }) {
 }
 
 function CommentsList({ issueId }: { issueId: string }) {
-  const { data, isLoading, error, retry, insert, update, remove } = useEntity(
-    ISSUE_COMMENT_ENTITY,
-    { issue_id: issueId }
+  const { data, isLoading, error, retry, insert, update, remove } = useShape(
+    ISSUE_COMMENTS_SHAPE,
+    { issue_id: issueId },
+    { mutation: ISSUE_COMMENT_MUTATION }
   );
 
   const [selectedCommentId, setSelectedCommentId] = useState<string | null>(

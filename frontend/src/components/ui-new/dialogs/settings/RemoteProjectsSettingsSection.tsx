@@ -19,8 +19,12 @@ import { useAuth } from '@/hooks/auth/useAuth';
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { CreateRemoteProjectDialog } from '@/components/dialogs/org/CreateRemoteProjectDialog';
 import { DeleteRemoteProjectDialog } from '@/components/dialogs/org/DeleteRemoteProjectDialog';
-import { useEntity } from '@/lib/electric/hooks';
-import { PROJECT_ENTITY, type Project } from 'shared/remote-types';
+import { useShape } from '@/lib/electric/hooks';
+import {
+  PROJECTS_SHAPE,
+  PROJECT_MUTATION,
+  type Project,
+} from 'shared/remote-types';
 import { PRESET_COLORS } from '@/lib/colors';
 import { InlineColorPicker } from '../../primitives/ColorPicker';
 import { cn } from '@/lib/utils';
@@ -103,7 +107,10 @@ export function RemoteProjectsSettingsSection({
     isLoading: projectsLoading,
     update,
     remove,
-  } = useEntity(PROJECT_ENTITY, params, { enabled: !!selectedOrgId });
+  } = useShape(PROJECTS_SHAPE, params, {
+    enabled: !!selectedOrgId,
+    mutation: PROJECT_MUTATION,
+  });
 
   // Initialize form state when project is pre-selected and projects are loaded
   useEffect(() => {

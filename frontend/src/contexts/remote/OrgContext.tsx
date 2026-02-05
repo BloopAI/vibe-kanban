@@ -7,13 +7,15 @@ import {
 } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  useEntity,
+  useShape,
   type InsertResult,
   type MutationResult,
 } from '@/lib/electric/hooks';
 import {
-  PROJECT_ENTITY,
-  NOTIFICATION_ENTITY,
+  PROJECTS_SHAPE,
+  NOTIFICATIONS_SHAPE,
+  PROJECT_MUTATION,
+  NOTIFICATION_MUTATION,
   type Project,
   type Notification,
   type CreateProjectRequest,
@@ -82,12 +84,15 @@ export function OrgProvider({ organizationId, children }: OrgProviderProps) {
   );
   const enabled = Boolean(organizationId);
 
-  // Entity subscriptions (Electric sync)
-  const projectsResult = useEntity(PROJECT_ENTITY, params, { enabled });
-  const notificationsResult = useEntity(
-    NOTIFICATION_ENTITY,
+  // Shape subscriptions (Electric sync)
+  const projectsResult = useShape(PROJECTS_SHAPE, params, {
+    enabled,
+    mutation: PROJECT_MUTATION,
+  });
+  const notificationsResult = useShape(
+    NOTIFICATIONS_SHAPE,
     { ...params, user_id: '' }, // user_id will be filled by Electric based on auth
-    { enabled }
+    { enabled, mutation: NOTIFICATION_MUTATION }
   );
 
   // Members data from API

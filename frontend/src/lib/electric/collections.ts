@@ -4,7 +4,6 @@ import { createCollection } from '@tanstack/react-db';
 import { tokenManager } from '../auth/tokenManager';
 import { makeRequest, REMOTE_API_URL } from '@/lib/remoteApi';
 import type {
-  EntityDefinition,
   MutationDefinition,
   ShapeDefinition,
 } from 'shared/remote-types';
@@ -209,29 +208,6 @@ const collectionCache = new Map<string, ReturnType<typeof createCollection>>();
 const DEFAULT_GC_TIME_MS = 5 * 60 * 1000;
 
 /**
- * Select the matching shape for an entity based on provided params.
- * Matches the first shape whose declared params are all present in the provided params.
- */
-function selectShape<TRow>(
-  entity: EntityDefinition<TRow, unknown, unknown>,
-  params: Record<string, string>
-): ShapeDefinition<TRow> {
-  const paramKeys = new Set(Object.keys(params));
-  const match = entity.shapes.find((s) =>
-    s.params.every((p) => paramKeys.has(p))
-  );
-  if (!match) {
-    const available = entity.shapes
-      .map((s) => `[${s.params.join(', ')}]`)
-      .join(', ');
-    throw new Error(
-      `No shape on ${entity.name} matches params {${[...paramKeys].join(', ')}}. Available: ${available}`
-    );
-  }
-  return match;
-}
-
-/**
  * Build a stable collection ID from entity table and params.
  * Sorts param keys for consistency regardless of insertion order.
  * Adds `-mut` suffix for mutation-enabled collections to avoid cache conflicts.
@@ -254,19 +230,24 @@ function buildCollectionId(
 type ElectricConfig = Parameters<typeof electricCollectionOptions>[0];
 
 /**
- * Create a read-only Electric collection for a shape.
- * No mutation handlers — use this for data subscriptions that don't need insert/update/delete.
+ * Create an Electric collection for a shape, optionally with mutation support.
+ *
+ * When `mutation` is provided, adds `onInsert`, `onUpdate`, and `onDelete` handlers
+ * that call the remote API and support optimistic updates via TanStack DB.
  *
  * @param shape - The shape definition from shared/remote-types.ts
  * @param params - URL parameters matching the shape's requirements
  * @param config - Optional configuration (error handlers, etc.)
+ * @param mutation - Optional mutation definition to enable insert/update/delete
  */
 export function createShapeCollection<TRow extends ElectricRow>(
   shape: ShapeDefinition<TRow>,
   params: Record<string, string>,
-  config?: CollectionConfig
+  config?: CollectionConfig,
+  mutation?: MutationDefinition<unknown, unknown, unknown>
 ) {
-  const collectionId = buildCollectionId(shape.table, params);
+  const hasMutations = !!mutation;
+  const collectionId = buildCollectionId(shape.table, params, hasMutations);
 
   const cached = collectionCache.get(collectionId);
   if (cached) {
@@ -274,12 +255,14 @@ export function createShapeCollection<TRow extends ElectricRow>(
   }
 
   const shapeOptions = getAuthenticatedShapeOptions(shape, params, config);
+  const mutationHandlers = mutation ? buildMutationHandlers(mutation) : {};
 
   const options = electricCollectionOptions({
     id: collectionId,
     shapeOptions: shapeOptions as unknown as ElectricConfig['shapeOptions'],
     getKey: (item: ElectricRow) => getRowKey(item),
     gcTime: DEFAULT_GC_TIME_MS,
+    ...mutationHandlers,
   } as unknown as ElectricConfig);
 
   const collection = createCollection(options) as unknown as ReturnType<
@@ -377,75 +360,3 @@ function buildMutationHandlers(
   };
 }
 
-/**
- * Create an Electric collection for an entity with mutation support.
- *
- * Adds `onInsert`, `onUpdate`, and `onDelete` handlers that call the remote API
- * and support optimistic updates.
- *
- * When you call `collection.insert()`, `collection.update()`, or `collection.delete()`:
- * 1. The optimistic state is immediately applied locally
- * 2. The mutation handler calls the remote API in the background
- * 3. Electric syncs the real data from Postgres, replacing optimistic state
- * 4. If the handler throws, optimistic state is automatically rolled back
- *
- * @param entity - The entity definition from shared/remote-types.ts
- * @param params - URL parameters matching the entity's shape requirements
- * @param config - Optional configuration (error handlers, etc.)
- *
- * @example
- * const collection = createEntityCollection(ISSUE_ENTITY, { project_id: '123' });
- * collection.insert({ project_id: '123', title: 'New Issue', ... }); // Optimistic
- */
-export function createEntityCollection<
-  TRow extends ElectricRow,
-  TCreate,
-  TUpdate,
->(
-  entity: EntityDefinition<TRow, TCreate, TUpdate>,
-  params: Record<string, string>,
-  config?: CollectionConfig
-) {
-  const shape = selectShape(entity, params);
-  const hasMutations = !!entity.mutations;
-  const collectionId = buildCollectionId(entity.table, params, hasMutations);
-
-  const cached = collectionCache.get(collectionId);
-  if (cached) {
-    return cached as typeof cached & {
-      __rowType?: TRow;
-      __createType?: TCreate;
-      __updateType?: TUpdate;
-    };
-  }
-
-  const shapeOptions = getAuthenticatedShapeOptions(shape, params, config);
-
-  const mutationHandlers = entity.mutations
-    ? buildMutationHandlers({
-        name: entity.name,
-        table: entity.table,
-        mutationScope: entity.mutationScope!,
-        url: entity.mutations.url,
-      } as MutationDefinition<unknown, unknown, unknown>)
-    : {};
-
-  const options = electricCollectionOptions({
-    id: collectionId,
-    shapeOptions: shapeOptions as unknown as ElectricConfig['shapeOptions'],
-    getKey: (item: ElectricRow) => getRowKey(item),
-    gcTime: DEFAULT_GC_TIME_MS,
-    ...mutationHandlers,
-  } as unknown as ElectricConfig);
-
-  const collection = createCollection(options) as unknown as ReturnType<
-    typeof createCollection
-  > & {
-    __rowType?: TRow;
-    __createType?: TCreate;
-    __updateType?: TUpdate;
-  };
-
-  collectionCache.set(collectionId, collection);
-  return collection;
-}

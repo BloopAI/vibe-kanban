@@ -180,89 +180,12 @@ fn export_shapes() -> String {
         ));
     }
 
-    // Generate EntityDefinition interface for SDK generation
-    output.push_str(
-        "// =============================================================================\n",
-    );
-    output.push_str("// Entity Definitions for SDK Generation\n");
-    output.push_str(
-        "// =============================================================================\n\n",
-    );
+    // Generate MutationDefinition interface
+    let entities = all_entities();
 
     output.push_str("// Scope enum matching Rust\n");
     output.push_str("export type Scope = 'Organization' | 'Project' | 'Issue' | 'Comment';\n\n");
 
-    output.push_str("// Entity definition interface\n");
-    output.push_str(
-        "export interface EntityDefinition<TRow, TCreate = unknown, TUpdate = unknown> {\n",
-    );
-    output.push_str("  readonly name: string;\n");
-    output.push_str("  readonly table: string;\n");
-    output.push_str("  readonly mutationScope: Scope | null;\n");
-    output.push_str("  readonly shapes: readonly ShapeDefinition<TRow>[];\n");
-    output.push_str("  readonly mutations: {\n");
-    output.push_str("    readonly url: string;\n");
-    output.push_str("    readonly _createType: TCreate;  // Phantom (not present at runtime)\n");
-    output.push_str("    readonly _updateType: TUpdate;  // Phantom (not present at runtime)\n");
-    output.push_str("  } | null;\n");
-    output.push_str("}\n\n");
-
-    // Generate individual entity definitions
-    let entities = all_entities();
-    output.push_str("// Individual entity definitions\n");
-    for entity in &entities {
-        let const_name = to_screaming_snake_case(entity.name());
-        let shapes_str = entity
-            .shapes()
-            .iter()
-            .map(|s| format!("{}_SHAPE", url_to_const_name(s.url)))
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        let mutation_scope = entity
-            .mutation_scope()
-            .map(|s| format!("'{:?}'", s))
-            .unwrap_or_else(|| "null".to_string());
-
-        let has_mutations = entity.mutation_scope().is_some() && !entity.fields().is_empty();
-        let mutations_str = if has_mutations {
-            format!(
-                "{{ url: '/v1/{table}' }} as EntityDefinition<{ts_type}, Create{name}Request, Update{name}Request>['mutations']",
-                table = entity.table(),
-                ts_type = entity.ts_type_name(),
-                name = entity.name()
-            )
-        } else {
-            "null".to_string()
-        };
-
-        output.push_str(&format!(
-            "export const {const_name}_ENTITY: EntityDefinition<{ts_type}{create_update}> = {{\n",
-            const_name = const_name,
-            ts_type = entity.ts_type_name(),
-            create_update = if has_mutations {
-                format!(
-                    ", Create{}Request, Update{}Request",
-                    entity.name(),
-                    entity.name()
-                )
-            } else {
-                "".to_string()
-            }
-        ));
-        output.push_str(&format!("  name: '{}',\n", entity.name()));
-        output.push_str(&format!("  table: '{}',\n", entity.table()));
-        output.push_str(&format!("  mutationScope: {},\n", mutation_scope));
-        output.push_str(&format!("  shapes: [{}],\n", shapes_str));
-        output.push_str(&format!("  mutations: {},\n", mutations_str));
-        output.push_str("};\n\n");
-    }
-
-    // Type helpers for entities
-    output.push_str("// Type helper to extract row type from an entity\n");
-    output.push_str("export type EntityRowType<E extends EntityDefinition<unknown>> = E extends EntityDefinition<infer R> ? R : never;\n\n");
-
-    // Generate MutationDefinition interface
     output.push_str(
         "// =============================================================================\n",
     );

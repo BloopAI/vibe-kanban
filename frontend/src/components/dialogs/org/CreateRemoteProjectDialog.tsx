@@ -14,8 +14,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import { defineModal } from '@/lib/modals';
-import { useEntity } from '@/lib/electric/hooks';
-import { PROJECT_ENTITY, type Project } from 'shared/remote-types';
+import { useShape } from '@/lib/electric/hooks';
+import {
+  PROJECTS_SHAPE,
+  PROJECT_MUTATION,
+  type Project,
+} from 'shared/remote-types';
 import { getRandomPresetColor, PRESET_COLORS } from '@/lib/colors';
 import { ColorPicker } from '@/components/ui-new/containers/ColorPickerContainer';
 
@@ -42,7 +46,9 @@ const CreateRemoteProjectDialogImpl =
       [organizationId]
     );
 
-    const { insert, error: entityError } = useEntity(PROJECT_ENTITY, params);
+    const { insert, error: entityError } = useShape(PROJECTS_SHAPE, params, {
+      mutation: PROJECT_MUTATION,
+    });
 
     useEffect(() => {
       // Reset form when dialog opens

@@ -6,13 +6,15 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  useEntity,
+  useShape,
   type InsertResult,
   type MutationResult,
 } from '@/lib/electric/hooks';
 import {
-  ISSUE_COMMENT_ENTITY,
-  ISSUE_COMMENT_REACTION_ENTITY,
+  ISSUE_COMMENTS_SHAPE,
+  ISSUE_REACTIONS_SHAPE,
+  ISSUE_COMMENT_MUTATION,
+  ISSUE_COMMENT_REACTION_MUTATION,
   type IssueComment,
   type IssueCommentReaction,
   type CreateIssueCommentRequest,
@@ -95,10 +97,14 @@ export function IssueProvider({ issueId, children }: IssueProviderProps) {
   const params = useMemo(() => ({ issue_id: issueId }), [issueId]);
   const enabled = Boolean(issueId);
 
-  // Entity subscriptions
-  const commentsResult = useEntity(ISSUE_COMMENT_ENTITY, params, { enabled });
-  const reactionsResult = useEntity(ISSUE_COMMENT_REACTION_ENTITY, params, {
+  // Shape subscriptions
+  const commentsResult = useShape(ISSUE_COMMENTS_SHAPE, params, {
     enabled,
+    mutation: ISSUE_COMMENT_MUTATION,
+  });
+  const reactionsResult = useShape(ISSUE_REACTIONS_SHAPE, params, {
+    enabled,
+    mutation: ISSUE_COMMENT_REACTION_MUTATION,
   });
 
   // Combined loading state

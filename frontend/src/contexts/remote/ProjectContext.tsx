@@ -6,20 +6,26 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  useEntity,
   useShape,
   type InsertResult,
   type MutationResult,
 } from '@/lib/electric/hooks';
 import {
-  ISSUE_ENTITY,
-  PROJECT_STATUS_ENTITY,
-  TAG_ENTITY,
-  ISSUE_ASSIGNEE_ENTITY,
-  ISSUE_FOLLOWER_ENTITY,
-  ISSUE_TAG_ENTITY,
-  ISSUE_RELATIONSHIP_ENTITY,
+  PROJECT_ISSUES_SHAPE,
+  PROJECT_PROJECT_STATUSES_SHAPE,
+  PROJECT_TAGS_SHAPE,
+  PROJECT_ISSUE_ASSIGNEES_SHAPE,
+  PROJECT_ISSUE_FOLLOWERS_SHAPE,
+  PROJECT_ISSUE_TAGS_SHAPE,
+  PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
   PROJECT_PULL_REQUESTS_SHAPE,
+  ISSUE_MUTATION,
+  PROJECT_STATUS_MUTATION,
+  TAG_MUTATION,
+  ISSUE_ASSIGNEE_MUTATION,
+  ISSUE_FOLLOWER_MUTATION,
+  ISSUE_TAG_MUTATION,
+  ISSUE_RELATIONSHIP_MUTATION,
   type Issue,
   type ProjectStatus,
   type Tag,
@@ -148,21 +154,35 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
   const params = useMemo(() => ({ project_id: projectId }), [projectId]);
   const enabled = Boolean(projectId);
 
-  // Entity subscriptions
-  const issuesResult = useEntity(ISSUE_ENTITY, params, { enabled });
-  const statusesResult = useEntity(PROJECT_STATUS_ENTITY, params, { enabled });
-  const tagsResult = useEntity(TAG_ENTITY, params, { enabled });
-  const issueAssigneesResult = useEntity(ISSUE_ASSIGNEE_ENTITY, params, {
+  // Shape subscriptions (with mutations where needed)
+  const issuesResult = useShape(PROJECT_ISSUES_SHAPE, params, {
     enabled,
+    mutation: ISSUE_MUTATION,
   });
-  const issueFollowersResult = useEntity(ISSUE_FOLLOWER_ENTITY, params, {
+  const statusesResult = useShape(PROJECT_PROJECT_STATUSES_SHAPE, params, {
     enabled,
+    mutation: PROJECT_STATUS_MUTATION,
   });
-  const issueTagsResult = useEntity(ISSUE_TAG_ENTITY, params, { enabled });
-  const issueRelationshipsResult = useEntity(
-    ISSUE_RELATIONSHIP_ENTITY,
+  const tagsResult = useShape(PROJECT_TAGS_SHAPE, params, {
+    enabled,
+    mutation: TAG_MUTATION,
+  });
+  const issueAssigneesResult = useShape(PROJECT_ISSUE_ASSIGNEES_SHAPE, params, {
+    enabled,
+    mutation: ISSUE_ASSIGNEE_MUTATION,
+  });
+  const issueFollowersResult = useShape(PROJECT_ISSUE_FOLLOWERS_SHAPE, params, {
+    enabled,
+    mutation: ISSUE_FOLLOWER_MUTATION,
+  });
+  const issueTagsResult = useShape(PROJECT_ISSUE_TAGS_SHAPE, params, {
+    enabled,
+    mutation: ISSUE_TAG_MUTATION,
+  });
+  const issueRelationshipsResult = useShape(
+    PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
     params,
-    { enabled }
+    { enabled, mutation: ISSUE_RELATIONSHIP_MUTATION }
   );
   const pullRequestsResult = useShape(PROJECT_PULL_REQUESTS_SHAPE, params, {
     enabled,

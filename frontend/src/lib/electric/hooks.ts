@@ -1,17 +1,15 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useLiveQuery } from '@tanstack/react-db';
-import { createEntityCollection, createShapeCollection } from './collections';
+import { createShapeCollection } from './collections';
 import { useSyncErrorContext } from '@/contexts/SyncErrorContext';
-import type { EntityDefinition, ShapeDefinition } from 'shared/remote-types';
+import type { MutationDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { SyncError } from './types';
 
-// Type helpers for extracting types from EntityDefinition
-type EntityRowType<E> =
-  E extends EntityDefinition<infer R, unknown, unknown> ? R : never;
-type EntityCreateType<E> =
-  E extends EntityDefinition<unknown, infer C, unknown> ? C : never;
-type EntityUpdateType<E> =
-  E extends EntityDefinition<unknown, unknown, infer U> ? U : never;
+// Type helpers for extracting types from MutationDefinition
+type MutationCreateType<M> =
+  M extends MutationDefinition<unknown, infer C, unknown> ? C : never;
+type MutationUpdateType<M> =
+  M extends MutationDefinition<unknown, unknown, infer U> ? U : never;
 
 /**
  * Result of an optimistic mutation operation.
@@ -33,40 +31,7 @@ export interface InsertResult<TRow> {
 }
 
 /**
- * Result type returned by useEntity hook.
- */
-export interface UseEntityResult<TRow, TCreate = unknown, TUpdate = unknown> {
-  /** The synced data array */
-  data: TRow[];
-  /** Whether the initial sync is still loading */
-  isLoading: boolean;
-  /** Sync error if one occurred */
-  error: SyncError | null;
-  /** Function to retry after an error */
-  retry: () => void;
-  /** Insert a new entity (optimistic), returns entity and persistence promise */
-  insert: (data: TCreate) => InsertResult<TRow>;
-  /** Update an entity by ID (optimistic), returns persistence promise */
-  update: (id: string, changes: Partial<TUpdate>) => MutationResult;
-  /** Delete an entity by ID (optimistic), returns persistence promise */
-  remove: (id: string) => MutationResult;
-}
-
-/**
- * Options for the useEntity hook.
- */
-export interface UseEntityOptions {
-  /**
-   * Whether to enable the Electric sync subscription.
-   * When false, returns empty data and no-op mutation functions.
-   * Similar to React Query's `enabled` option.
-   * @default true
-   */
-  enabled?: boolean;
-}
-
-/**
- * Result type returned by useShape hook.
+ * Base result type returned by useShape (read-only).
  */
 export interface UseShapeResult<TRow> {
   /** The synced data array */
@@ -80,25 +45,69 @@ export interface UseShapeResult<TRow> {
 }
 
 /**
- * Read-only hook for subscribing to a shape's data via Electric sync.
- * Use this when you only need data — no mutations.
+ * Extended result when mutation is provided — adds insert/update/remove.
+ */
+export interface UseShapeMutationResult<TRow, TCreate, TUpdate>
+  extends UseShapeResult<TRow> {
+  /** Insert a new entity (optimistic), returns entity and persistence promise */
+  insert: (data: TCreate) => InsertResult<TRow>;
+  /** Update an entity by ID (optimistic), returns persistence promise */
+  update: (id: string, changes: Partial<TUpdate>) => MutationResult;
+  /** Delete an entity by ID (optimistic), returns persistence promise */
+  remove: (id: string) => MutationResult;
+}
+
+/**
+ * Options for the useShape hook.
+ */
+export interface UseShapeOptions<
+  M extends MutationDefinition<unknown, unknown, unknown> | undefined =
+    undefined,
+> {
+  /**
+   * Whether to enable the Electric sync subscription.
+   * When false, returns empty data and no-op mutation functions.
+   * @default true
+   */
+  enabled?: boolean;
+  /**
+   * Optional mutation definition. When provided, the hook returns
+   * insert/update/remove functions for optimistic mutations.
+   */
+  mutation?: M;
+}
+
+/**
+ * Hook for subscribing to a shape's data via Electric sync,
+ * with optional optimistic mutation support.
  *
  * @param shape - The shape definition from shared/remote-types.ts
  * @param params - URL parameters matching the shape's requirements
- * @param options - Optional configuration (enabled, etc.)
+ * @param options - Optional configuration (enabled, mutation, etc.)
  *
  * @example
- * const { data, isLoading } = useShape(
+ * // Read-only:
+ * const { data, isLoading } = useShape(PROJECT_PULL_REQUESTS_SHAPE, { project_id });
+ *
+ * // With mutations:
+ * const { data, insert, update, remove } = useShape(
  *   PROJECT_ISSUES_SHAPE,
- *   { project_id: projectId }
+ *   { project_id },
+ *   { mutation: ISSUE_MUTATION }
  * );
  */
-export function useShape<T extends Record<string, unknown>>(
+export function useShape<
+  T extends Record<string, unknown>,
+  M extends MutationDefinition<unknown, unknown, unknown> | undefined =
+    undefined,
+>(
   shape: ShapeDefinition<T>,
   params: Record<string, string>,
-  options: UseEntityOptions = {}
-): UseShapeResult<T> {
-  const { enabled = true } = options;
+  options: UseShapeOptions<M> = {} as UseShapeOptions<M>
+): M extends MutationDefinition<unknown, unknown, unknown>
+  ? UseShapeMutationResult<T, MutationCreateType<M>, MutationUpdateType<M>>
+  : UseShapeResult<T> {
+  const { enabled = true, mutation } = options;
 
   const [error, setError] = useState<SyncError | null>(null);
   const [retryKey, setRetryKey] = useState(0);
@@ -141,8 +150,8 @@ export function useShape<T extends Record<string, unknown>>(
     if (!enabled) return null;
     const config = { onError: handleError };
     void retryKey;
-    return createShapeCollection(shape, stableParams, config);
-  }, [enabled, shape, handleError, retryKey, stableParams]);
+    return createShapeCollection(shape, stableParams, config, mutation);
+  }, [enabled, shape, mutation, handleError, retryKey, stableParams]);
 
   const { data, isLoading: queryLoading } = useLiveQuery(
     (query) => (collection ? query.from({ item: collection }) : undefined),
@@ -156,132 +165,13 @@ export function useShape<T extends Record<string, unknown>>(
 
   const isLoading = enabled ? queryLoading : false;
 
-  return {
-    data: items,
-    isLoading,
-    error,
-    retry,
-  };
-}
+  // --- Mutation support (only used when mutation is provided) ---
 
-/**
- * Unified hook for entity data sync + optimistic mutations.
- *
- * Combines Electric real-time sync with TanStack DB's built-in
- * optimistic update support. When you call insert/update/remove:
- * 1. The change is immediately applied optimistically
- * 2. The API request is made in the background
- * 3. Electric syncs the real data, replacing optimistic state
- * 4. If the API fails, optimistic state is automatically rolled back
- *
- * @param entity - The entity definition from shared/remote-types.ts
- * @param params - URL parameters matching the entity's shape requirements
- * @param options - Optional configuration (enabled, etc.)
- *
- * @example
- * const { data, isLoading, insert, update, remove } = useEntity(
- *   ISSUE_ENTITY,
- *   { project_id: projectId }
- * );
- *
- * // Create a new issue (instant optimistic update)
- * insert({ project_id, status_id, title: 'New Issue', ... });
- *
- * // Update an issue (instant optimistic update)
- * update(issueId, { title: 'Updated Title' });
- *
- * // Delete an issue (instant optimistic removal)
- * remove(issueId);
- */
-export function useEntity<
-  E extends EntityDefinition<Record<string, unknown>, unknown, unknown>,
->(
-  entity: E,
-  params: Record<string, string>,
-  options: UseEntityOptions = {}
-): UseEntityResult<EntityRowType<E>, EntityCreateType<E>, EntityUpdateType<E>> {
-  const { enabled = true } = options;
-
-  const [error, setError] = useState<SyncError | null>(null);
-  const [retryKey, setRetryKey] = useState(0);
-
-  // Access sync error context for global error aggregation (optional - works without provider)
-  // Extract stable function references to avoid infinite loops
-  // (the context value changes when errors change, but the functions are stable via useCallback)
-  const syncErrorContext = useSyncErrorContext();
-  const registerErrorFn = syncErrorContext?.registerError;
-  const clearErrorFn = syncErrorContext?.clearError;
-
-  const handleError = useCallback((err: SyncError) => setError(err), []);
-
-  const retry = useCallback(() => {
-    setError(null);
-    setRetryKey((k) => k + 1);
-  }, []);
-
-  // Memoize params by serialized value to get stable reference
-  const paramsKey = JSON.stringify(params);
-  const stableParams = useMemo(
-    () => JSON.parse(paramsKey) as Record<string, string>,
-    [paramsKey]
-  );
-
-  // Generate stable stream ID for error registration
-  const streamId = useMemo(
-    () => `${entity.name}:${paramsKey}`,
-    [entity.name, paramsKey]
-  );
-
-  // Register/clear errors with global context
-  useEffect(() => {
-    if (error && registerErrorFn) {
-      registerErrorFn(streamId, entity.name, error, retry);
-    } else if (!error && clearErrorFn) {
-      clearErrorFn(streamId);
-    }
-
-    // Cleanup: clear error when component unmounts
-    return () => {
-      clearErrorFn?.(streamId);
-    };
-  }, [error, streamId, entity.name, retry, registerErrorFn, clearErrorFn]);
-
-  // Create collection with mutation handlers - retryKey forces recreation on retry
-  // When enabled changes from false to true, collection is recreated with fresh auth state
-  const collection = useMemo(() => {
-    if (!enabled) return null;
-    const config = { onError: handleError };
-    void retryKey; // Reference to force recreation on retry
-    return createEntityCollection(entity, stableParams, config);
-  }, [enabled, entity, handleError, retryKey, stableParams]);
-
-  // Subscribe to Electric when enabled (collection exists)
-  // When disabled, return undefined to use useLiveQuery's built-in disabled state
-  const { data, isLoading: queryLoading } = useLiveQuery(
-    (query) => (collection ? query.from({ item: collection }) : undefined),
-    [collection]
-  );
-
-  // useLiveQuery returns data as flat objects directly, not wrapped in { item: {...} }
-  // Return empty array while loading or when disabled
-  const items = useMemo(() => {
-    if (!enabled || !collection || !data || queryLoading) return [];
-    return data as unknown as EntityRowType<E>[];
-  }, [enabled, collection, data, queryLoading]);
-
-  // When disabled, isLoading should be false (not waiting for data)
-  const isLoading = enabled ? queryLoading : false;
-
-  // Keep a ref to the latest items for lookup after persistence
-  // This allows insert() to return the synced entity with server-generated fields
-  const itemsRef = useRef<EntityRowType<E>[]>([]);
+  const itemsRef = useRef<T[]>([]);
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
 
-  // Expose collection mutation methods with stable callbacks
-  // Type assertion needed because TanStack DB collection types are complex
-  // TanStack DB mutations return a Transaction with isPersisted.promise
   type TransactionResult = { isPersisted: { promise: Promise<void> } };
   type CollectionWithMutations = {
     insert: (data: unknown) => TransactionResult;
@@ -295,29 +185,26 @@ export function useEntity<
     collection as unknown as CollectionWithMutations | null;
 
   const insert = useCallback(
-    (insertData: EntityCreateType<E>): InsertResult<EntityRowType<E>> => {
-      // Auto-generate ID for optimistic inserts
-      // TanStack DB requires client-generated IDs for stable optimistic rendering
+    (insertData: unknown): InsertResult<T> => {
       const dataWithId = {
         id: crypto.randomUUID(),
         ...(insertData as Record<string, unknown>),
       };
       if (!typedCollection) {
-        // When disabled, return no-op result
         return {
-          data: dataWithId as EntityRowType<E>,
-          persisted: Promise.resolve(dataWithId as EntityRowType<E>),
+          data: dataWithId as unknown as T,
+          persisted: Promise.resolve(dataWithId as unknown as T),
         };
       }
       const tx = typedCollection.insert(dataWithId);
       return {
-        data: dataWithId as EntityRowType<E>,
+        data: dataWithId as unknown as T,
         persisted: tx.isPersisted.promise.then(() => {
-          // After persistence confirmed, look up the synced entity with server-generated fields
           const synced = itemsRef.current.find(
-            (item) => (item as { id: string }).id === dataWithId.id
+            (item) =>
+              (item as unknown as { id: string }).id === dataWithId.id
           );
-          return (synced ?? dataWithId) as EntityRowType<E>;
+          return (synced ?? dataWithId) as unknown as T;
         }),
       };
     },
@@ -325,9 +212,8 @@ export function useEntity<
   );
 
   const update = useCallback(
-    (id: string, changes: Partial<EntityUpdateType<E>>): MutationResult => {
+    (id: string, changes: unknown): MutationResult => {
       if (!typedCollection) {
-        // When disabled, return no-op result
         return { persisted: Promise.resolve() };
       }
       const tx = typedCollection.update(id, (draft: Record<string, unknown>) =>
@@ -341,7 +227,6 @@ export function useEntity<
   const remove = useCallback(
     (id: string): MutationResult => {
       if (!typedCollection) {
-        // When disabled, return no-op result
         return { persisted: Promise.resolve() };
       }
       const tx = typedCollection.delete(id);
@@ -350,13 +235,25 @@ export function useEntity<
     [typedCollection]
   );
 
-  return {
+  const base: UseShapeResult<T> = {
     data: items,
     isLoading,
     error,
     retry,
-    insert,
-    update,
-    remove,
   };
+
+  if (mutation) {
+    return {
+      ...base,
+      insert,
+      update,
+      remove,
+    } as M extends MutationDefinition<unknown, unknown, unknown>
+      ? UseShapeMutationResult<T, MutationCreateType<M>, MutationUpdateType<M>>
+      : UseShapeResult<T>;
+  }
+
+  return base as M extends MutationDefinition<unknown, unknown, unknown>
+    ? UseShapeMutationResult<T, MutationCreateType<M>, MutationUpdateType<M>>
+    : UseShapeResult<T>;
 }
