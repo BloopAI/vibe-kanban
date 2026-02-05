@@ -48,58 +48,46 @@ impl<T: TS + Sync> ShapeExport for ShapeDefinition<T> {
     }
 }
 
-/// Macro to define shapes with compile-time SQL validation.
+/// Macro to construct a `ShapeDefinition` with compile-time SQL validation.
 ///
-/// The macro validates SQL at compile time using `sqlx::query!`, ensuring that:
+/// The SQL validation uses `sqlx::query!` to ensure at compile time that:
 /// - The table exists
 /// - The columns in the WHERE clause exist
 /// - The SQL syntax is correct
 ///
-/// The const name is auto-generated from the type name (e.g., `Tag` → `TAG_SHAPE`).
-///
 /// Usage:
 /// ```ignore
-/// define_shape!(
-///     Project,
+/// pub const PROJECT_SHAPE: ShapeDefinition<Project> = define_shape!(
 ///     table: "projects",
 ///     where_clause: r#""organization_id" = $1"#,
 ///     url: "/shape/projects",
 ///     params: ["organization_id"]
 /// );
-/// // Generates: pub const PROJECT_SHAPE: ShapeDefinition<Project> = ...
 /// ```
 #[macro_export]
 macro_rules! define_shape {
     (
-        $type:ident,
         table: $table:literal,
         where_clause: $where:literal,
         url: $url:expr,
         params: [$($param:literal),* $(,)?] $(,)?
-    ) => {
-        paste::paste! {
-            pub const [<$type:snake:upper _SHAPE>]: $crate::shapes::ShapeDefinition<$type> = {
-                // Compile-time SQL validation - this ensures table and columns exist
-                // We use dummy UUID values for parameter validation since all shape
-                // params are UUIDs
-                #[allow(dead_code)]
-                fn _validate() {
-                    let _ = sqlx::query!(
-                        "SELECT 1 AS v FROM " + $table + " WHERE " + $where
-                        $(, { let _ = stringify!($param); uuid::Uuid::nil() })*
-                    );
-                }
-
-                $crate::shapes::ShapeDefinition {
-                    table: $table,
-                    where_clause: $where,
-                    params: &[$($param),*],
-                    url: $url,
-                    _phantom: std::marker::PhantomData,
-                }
-            };
+    ) => {{
+        #[allow(dead_code)]
+        fn _validate() {
+            let _ = sqlx::query!(
+                "SELECT 1 AS v FROM " + $table + " WHERE " + $where
+                $(, { let _ = stringify!($param); uuid::Uuid::nil() })*
+            );
         }
-    };
+
+        $crate::shapes::ShapeDefinition {
+            table: $table,
+            where_clause: $where,
+            params: &[$($param),*],
+            url: $url,
+            _phantom: std::marker::PhantomData,
+        }
+    }};
 }
 
 // Re-export shape constants from entities module for backward compatibility
