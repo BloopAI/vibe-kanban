@@ -61,8 +61,9 @@ export interface UseShapeMutationResult<TRow, TCreate, TUpdate>
  * Options for the useShape hook.
  */
 export interface UseShapeOptions<
-  M extends MutationDefinition<unknown, unknown, unknown> | undefined =
-    undefined,
+  M extends
+    | MutationDefinition<unknown, unknown, unknown>
+    | undefined = undefined,
 > {
   /**
    * Whether to enable the Electric sync subscription.
@@ -98,8 +99,9 @@ export interface UseShapeOptions<
  */
 export function useShape<
   T extends Record<string, unknown>,
-  M extends MutationDefinition<unknown, unknown, unknown> | undefined =
-    undefined,
+  M extends
+    | MutationDefinition<unknown, unknown, unknown>
+    | undefined = undefined,
 >(
   shape: ShapeDefinition<T>,
   params: Record<string, string>,
@@ -201,8 +203,7 @@ export function useShape<
         data: dataWithId as unknown as T,
         persisted: tx.isPersisted.promise.then(() => {
           const synced = itemsRef.current.find(
-            (item) =>
-              (item as unknown as { id: string }).id === dataWithId.id
+            (item) => (item as unknown as { id: string }).id === dataWithId.id
           );
           return (synced ?? dataWithId) as unknown as T;
         }),
