@@ -1,11 +1,22 @@
 import { useMemo, useCallback } from 'react';
-import { PlusIcon } from '@phosphor-icons/react';
+import {
+  PlusIcon,
+  ArrowBendUpRightIcon,
+  ProhibitIcon,
+  ArrowsLeftRightIcon,
+  CopyIcon,
+} from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useActions } from '@/contexts/ActionsContext';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
 import { resolveRelationshipsForIssue } from '@/lib/resolveRelationships';
 import { IssueRelationshipsSection } from '@/components/ui-new/views/IssueRelationshipsSection';
-import type { SectionAction } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui-new/primitives/Dropdown';
 
 interface IssueRelationshipsSectionContainerProps {
   issueId: string;
@@ -48,20 +59,62 @@ export function IssueRelationshipsSectionContainer({
     [removeIssueRelationship]
   );
 
-  const handleAddRelationship = useCallback(() => {
-    if (projectId) {
-      openRelationshipSelection(projectId, issueId, 'related', 'forward');
-    }
-  }, [projectId, issueId, openRelationshipSelection]);
+  const handleSelectType = useCallback(
+    (
+      relationshipType: 'blocking' | 'related' | 'has_duplicate',
+      direction: 'forward' | 'reverse'
+    ) => {
+      if (projectId) {
+        openRelationshipSelection(
+          projectId,
+          issueId,
+          relationshipType,
+          direction
+        );
+      }
+    },
+    [projectId, issueId, openRelationshipSelection]
+  );
 
-  const actions: SectionAction[] = useMemo(
-    () => [
-      {
-        icon: PlusIcon,
-        onClick: handleAddRelationship,
-      },
-    ],
-    [handleAddRelationship]
+  const headerExtra = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <span
+          role="button"
+          tabIndex={0}
+          className="text-low hover:text-normal"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <PlusIcon className="size-icon-xs" weight="bold" />
+        </span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          icon={ArrowBendUpRightIcon}
+          onSelect={() => handleSelectType('blocking', 'forward')}
+        >
+          Blocks...
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          icon={ProhibitIcon}
+          onSelect={() => handleSelectType('blocking', 'reverse')}
+        >
+          Blocked by...
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          icon={ArrowsLeftRightIcon}
+          onSelect={() => handleSelectType('related', 'forward')}
+        >
+          Related to...
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          icon={CopyIcon}
+          onSelect={() => handleSelectType('has_duplicate', 'forward')}
+        >
+          Duplicate of...
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 
   return (
@@ -70,7 +123,7 @@ export function IssueRelationshipsSectionContainer({
       onRelationshipClick={handleRelationshipClick}
       onRemoveRelationship={handleRemoveRelationship}
       isLoading={isLoading}
-      actions={actions}
+      headerExtra={headerExtra}
     />
   );
 }

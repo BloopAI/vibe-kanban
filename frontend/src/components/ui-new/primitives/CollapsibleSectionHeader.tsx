@@ -18,6 +18,7 @@ interface CollapsibleSectionHeaderProps {
   defaultExpanded?: boolean;
   collapsible?: boolean;
   actions?: SectionAction[];
+  headerExtra?: React.ReactNode;
   children?: React.ReactNode;
   className?: string;
 }
@@ -28,6 +29,7 @@ export function CollapsibleSectionHeader({
   defaultExpanded = true,
   collapsible = true,
   actions = [],
+  headerExtra,
   children,
   className,
 }: CollapsibleSectionHeaderProps) {
@@ -47,6 +49,7 @@ export function CollapsibleSectionHeader({
     <>
       <span className="font-medium truncate text-normal">{title}</span>
       <div className="flex items-center gap-half">
+        {headerExtra}
         {actions.map((action, index) => {
           const ActionIcon = action.icon;
           return (
