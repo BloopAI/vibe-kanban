@@ -102,7 +102,10 @@ export const KanbanCardContent = ({
             >
               <PriorityIcon priority={priority} />
               {!priority && (
-                <CircleDashedIcon className="size-icon-xs text-low" weight="bold" />
+                <CircleDashedIcon
+                  className="size-icon-xs text-low"
+                  weight="bold"
+                />
               )}
             </button>
           ) : (
