@@ -60,6 +60,7 @@
     "taskCompleted": "Tarea completada",
     "ran": "Ejecutó",
     "tool": "Herramienta",
+    "thinking": "Pensando",
     "toolSummary": {
       "read": "Leyó {{path}}",
       "searched": "Buscó \"{{query}}\"",

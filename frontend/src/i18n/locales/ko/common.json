@@ -60,6 +60,7 @@
     "taskCompleted": "작업 완료",
     "ran": "실행함",
     "tool": "도구",
+    "thinking": "생각 중",
     "toolSummary": {
       "read": "{{path}} 읽기",
       "searched": "\"{{query}}\" 검색",

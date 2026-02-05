@@ -49,6 +49,7 @@
     "taskCompleted": "任务完成",
     "ran": "执行了",
     "tool": "工具",
+    "thinking": "思考中",
     "toolSummary": {
       "read": "读取 {{path}}",
       "searched": "搜索 \"{{query}}\"",

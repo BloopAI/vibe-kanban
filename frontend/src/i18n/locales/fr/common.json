@@ -49,6 +49,7 @@
     "taskCompleted": "Tâche terminée",
     "ran": "Exécuté",
     "tool": "Outil",
+    "thinking": "Réflexion",
     "toolSummary": {
       "read": "Lu {{path}}",
       "searched": "Recherché \"{{query}}\"",

@@ -35,10 +35,24 @@ export type AggregatedDiffGroup = {
   executionProcessId: string;
 };
 
+/**
+ * A group of thinking entries from a previous conversation turn.
+ * Used to collapse thinking steps in previous answers for cleaner display.
+ */
+export type AggregatedThinkingGroup = {
+  type: 'AGGREGATED_THINKING_GROUP';
+  /** The individual thinking entries in this group */
+  entries: PatchTypeWithKey[];
+  /** Unique key for the group */
+  patchKey: string;
+  executionProcessId: string;
+};
+
 export type DisplayEntry =
   | PatchTypeWithKey
   | AggregatedPatchGroup
-  | AggregatedDiffGroup;
+  | AggregatedDiffGroup
+  | AggregatedThinkingGroup;
 
 export function isAggregatedGroup(
   entry: DisplayEntry
@@ -50,6 +64,12 @@ export function isAggregatedDiffGroup(
   entry: DisplayEntry
 ): entry is AggregatedDiffGroup {
   return entry.type === 'AGGREGATED_DIFF_GROUP';
+}
+
+export function isAggregatedThinkingGroup(
+  entry: DisplayEntry
+): entry is AggregatedThinkingGroup {
+  return entry.type === 'AGGREGATED_THINKING_GROUP';
 }
 
 export type AddEntryType = 'initial' | 'running' | 'historic' | 'plan';

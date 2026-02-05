@@ -39,10 +39,12 @@ import { ChatScriptEntry } from '../primitives/conversation/ChatScriptEntry';
 import { ChatSubagentEntry } from '../primitives/conversation/ChatSubagentEntry';
 import { ChatAggregatedToolEntries } from '../primitives/conversation/ChatAggregatedToolEntries';
 import { ChatAggregatedDiffEntries } from '../primitives/conversation/ChatAggregatedDiffEntries';
+import { ChatCollapsedThinking } from '../primitives/conversation/ChatCollapsedThinking';
 import type { DiffInput } from '../primitives/conversation/PierreConversationDiff';
 import type {
   AggregatedPatchGroup,
   AggregatedDiffGroup,
+  AggregatedThinkingGroup,
 } from '@/hooks/useConversationHistory/types';
 import {
   FileTextIcon,
@@ -58,6 +60,7 @@ type Props = {
   entry: NormalizedEntry | null;
   aggregatedGroup: AggregatedPatchGroup | null;
   aggregatedDiffGroup: AggregatedDiffGroup | null;
+  aggregatedThinkingGroup: AggregatedThinkingGroup | null;
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
@@ -266,6 +269,7 @@ function NewDisplayConversationEntry(props: Props) {
     entry,
     aggregatedGroup,
     aggregatedDiffGroup,
+    aggregatedThinkingGroup,
     expansionKey,
     executionProcessId,
     taskAttempt,
@@ -280,6 +284,16 @@ function NewDisplayConversationEntry(props: Props) {
   // Handle aggregated diff groups (consecutive file_edit entries for same file)
   if (aggregatedDiffGroup) {
     return <AggregatedDiffGroupEntry group={aggregatedDiffGroup} />;
+  }
+
+  // Handle aggregated thinking groups (thinking entries in previous turns)
+  if (aggregatedThinkingGroup) {
+    return (
+      <AggregatedThinkingGroupEntry
+        group={aggregatedThinkingGroup}
+        taskAttemptId={taskAttempt?.id}
+      />
+    );
   }
 
   // If no entry, return null (shouldn't happen in normal usage)
@@ -900,6 +914,50 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
       label={label}
       icon={icon}
       unit={unit}
+    />
+  );
+}
+
+/**
+ * Aggregated thinking group entry for thinking entries in previous turns
+ */
+function AggregatedThinkingGroupEntry({
+  group,
+  taskAttemptId,
+}: {
+  group: AggregatedThinkingGroup;
+  taskAttemptId: string | undefined;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Extract thinking entries from the group
+  const thinkingEntries = useMemo(() => {
+    return group.entries
+      .filter((entry) => entry.type === 'NORMALIZED_ENTRY')
+      .map((entry) => ({
+        content:
+          entry.type === 'NORMALIZED_ENTRY' ? entry.content.content : '',
+        expansionKey: entry.patchKey,
+      }));
+  }, [group.entries]);
+
+  const handleToggle = useCallback(() => {
+    setExpanded((prev) => !prev);
+  }, []);
+
+  const handleHoverChange = useCallback((hovered: boolean) => {
+    setIsHovered(hovered);
+  }, []);
+
+  return (
+    <ChatCollapsedThinking
+      entries={thinkingEntries}
+      expanded={expanded}
+      isHovered={isHovered}
+      onToggle={handleToggle}
+      onHoverChange={handleHoverChange}
+      taskAttemptId={taskAttemptId}
     />
   );
 }

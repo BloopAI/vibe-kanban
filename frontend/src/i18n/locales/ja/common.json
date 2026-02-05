@@ -60,6 +60,7 @@
     "taskCompleted": "タスク完了",
     "ran": "実行",
     "tool": "ツール",
+    "thinking": "思考中",
     "toolSummary": {
       "read": "{{path}} を読み込み",
       "searched": "「{{query}}」を検索",

@@ -51,6 +51,7 @@
     "taskCompleted": "Task completed",
     "ran": "Ran",
     "tool": "Tool",
+    "thinking": "Thinking",
     "toolSummary": {
       "read": "Read {{path}}",
       "searched": "Searched for \"{{query}}\"",
