@@ -30,6 +30,19 @@ pub struct GitHubRepoInfo {
     pub hostname: Option<String>,
 }
 
+impl GitHubRepoInfo {
+    /// Returns the repository specification in the format expected by gh CLI.
+    /// For GitHub Enterprise: "hostname/owner/repo", otherwise "owner/repo".
+    pub fn repo_spec(&self) -> String {
+        match &self.hostname {
+            Some(host) if host != "github.com" => {
+                format!("{}/{}/{}", host, self.owner, self.repo_name)
+            }
+            _ => format!("{}/{}", self.owner, self.repo_name),
+        }
+    }
+}
+
 #[derive(Deserialize)]
 struct GhRepoViewResponse {
     owner: GhRepoOwner,
@@ -220,13 +233,7 @@ impl GhCli {
             .write_all(body.as_bytes())
             .map_err(|e| GhCliError::CommandFailed(format!("Failed to write body: {e}")))?;
 
-        // Use HOST/OWNER/REPO format for GitHub Enterprise
-        let repo_spec = match &repo_info.hostname {
-            Some(host) if host != "github.com" => {
-                format!("{}/{}/{}", host, repo_info.owner, repo_info.repo_name)
-            }
-            _ => format!("{}/{}", repo_info.owner, repo_info.repo_name),
-        };
+        let repo_spec = repo_info.repo_spec();
 
         let mut args: Vec<OsString> = Vec::with_capacity(14);
         args.push(OsString::from("pr"));
@@ -271,13 +278,7 @@ impl GhCli {
         repo_info: &GitHubRepoInfo,
         branch: &str,
     ) -> Result<Vec<PullRequestInfo>, GhCliError> {
-        // Use HOST/OWNER/REPO format for GitHub Enterprise
-        let repo_spec = match &repo_info.hostname {
-            Some(host) if host != "github.com" => {
-                format!("{}/{}/{}", host, repo_info.owner, repo_info.repo_name)
-            }
-            _ => format!("{}/{}", repo_info.owner, repo_info.repo_name),
-        };
+        let repo_spec = repo_info.repo_spec();
         let raw = self.run(
             [
                 "pr",
@@ -302,13 +303,7 @@ impl GhCli {
         repo_info: &GitHubRepoInfo,
         pr_number: i64,
     ) -> Result<Vec<PrComment>, GhCliError> {
-        // Use HOST/OWNER/REPO format for GitHub Enterprise
-        let repo_spec = match &repo_info.hostname {
-            Some(host) if host != "github.com" => {
-                format!("{}/{}/{}", host, repo_info.owner, repo_info.repo_name)
-            }
-            _ => format!("{}/{}", repo_info.owner, repo_info.repo_name),
-        };
+        let repo_spec = repo_info.repo_spec();
         let raw = self.run(
             [
                 "pr",
