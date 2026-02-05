@@ -138,13 +138,6 @@ impl GhCli {
         Ok(())
     }
 
-    /// Extract hostname from an HTTPS URL returned by the GitHub CLI.
-    fn extract_hostname(url: &str) -> Option<String> {
-        Url::parse(url)
-            .ok()
-            .and_then(|u| u.host_str().map(String::from))
-    }
-
     fn run<I, S>(&self, args: I, dir: Option<&Path>) -> Result<String, GhCliError>
     where
         I: IntoIterator<Item = S>,
@@ -193,8 +186,10 @@ impl GhCli {
         remote_url: &str,
         repo_path: &Path,
     ) -> Result<GitHubRepoInfo, GhCliError> {
-        let args = vec!["repo", "view", remote_url, "--json", "owner,name,url"];
-        let raw = self.run(args, Some(repo_path))?;
+        let raw = self.run(
+            ["repo", "view", remote_url, "--json", "owner,name,url"],
+            Some(repo_path),
+        )?;
         Self::parse_repo_info_response(&raw)
     }
 
@@ -203,7 +198,9 @@ impl GhCli {
             GhCliError::UnexpectedOutput(format!("Failed to parse gh repo view response: {e}"))
         })?;
 
-        let hostname = Self::extract_hostname(&resp.url);
+        let hostname = Url::parse(&resp.url)
+            .ok()
+            .and_then(|u| u.host_str().map(String::from));
 
         Ok(GitHubRepoInfo {
             owner: resp.owner.login,
@@ -330,7 +327,6 @@ impl GhCli {
                 repo_info.owner, repo_info.repo_name, pr_number
             ),
         ];
-        // Add --hostname for GitHub Enterprise
         if let Some(ref host) = repo_info.hostname {
             args.push("--hostname".to_string());
             args.push(host.clone());
