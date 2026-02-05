@@ -297,6 +297,37 @@ export const ConversationList = forwardRef<
 
   useConversationHistory({ attempt, onEntriesUpdated });
 
+  // Re-process entries when script configuration changes
+  useEffect(() => {
+    const pending = pendingUpdateRef.current;
+    if (!pending || pending.entries.length === 0) return;
+
+    // Re-run the same logic to update placeholders
+    const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
+    const entriesWithPlaceholders: DisplayEntry[] = [];
+
+    if (!hasSetupScript && aggregatedEntries.length > 0) {
+      entriesWithPlaceholders.push(setupPlaceholder);
+    }
+
+    entriesWithPlaceholders.push(...aggregatedEntries);
+
+    if (!hasCleanupScript && aggregatedEntries.length > 0) {
+      const hasRunningProcess = pending.entries.some(
+        (entry) =>
+          entry.type === 'NORMALIZED_ENTRY' &&
+          entry.content.entry_type.type === 'loading'
+      );
+      if (!hasRunningProcess) {
+        entriesWithPlaceholders.push(cleanupPlaceholder);
+      }
+    }
+
+    setChannelData((prev) =>
+      prev ? { ...prev, data: entriesWithPlaceholders } : null
+    );
+  }, [hasSetupScript, hasCleanupScript, setupPlaceholder, cleanupPlaceholder]);
+
   const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
   const messageListContext = useMemo(
     () => ({ attempt, onOpenSettings: handleOpenSettings }),
