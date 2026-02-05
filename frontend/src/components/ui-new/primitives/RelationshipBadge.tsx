@@ -13,6 +13,7 @@ import { getRelationshipLabel } from '@/lib/resolveRelationships';
 export interface RelationshipBadgeProps {
   displayType: RelationshipDisplayType;
   relatedIssueDisplayId: string;
+  compact?: boolean;
   className?: string;
   onClick?: (e: React.MouseEvent) => void;
 }
@@ -28,6 +29,7 @@ const RELATIONSHIP_ICONS = {
 export function RelationshipBadge({
   displayType,
   relatedIssueDisplayId,
+  compact,
   className,
   onClick,
 }: RelationshipBadgeProps) {
@@ -62,9 +64,7 @@ export function RelationshipBadge({
       )}
     >
       <Icon className="size-icon-2xs" weight="bold" />
-      <span>
-        {label} {relatedIssueDisplayId}
-      </span>
+      <span>{compact ? relatedIssueDisplayId : `${label} ${relatedIssueDisplayId}`}</span>
     </span>
   );
 }

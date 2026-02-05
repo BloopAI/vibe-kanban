@@ -122,6 +122,7 @@ export function IssueListRow({
                     key={rel.relationshipId}
                     displayType={rel.displayType}
                     relatedIssueDisplayId={rel.relatedIssueDisplayId}
+                    compact
                   />
                 ))}
                 {relationships.length > 2 && (
