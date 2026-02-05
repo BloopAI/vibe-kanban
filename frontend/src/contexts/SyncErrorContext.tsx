@@ -10,11 +10,11 @@ import {
 import type { SyncError } from '@/lib/electric/types';
 
 /**
- * Represents an error from a specific entity stream.
+ * Represents an error from a specific shape stream.
  */
 export interface StreamError {
   streamId: string;
-  entityName: string;
+  tableName: string;
   error: SyncError;
   retry: () => void;
 }
@@ -30,7 +30,7 @@ export interface SyncErrorContextValue {
   /** Register an error for a specific stream */
   registerError: (
     streamId: string,
-    entityName: string,
+    tableName: string,
     error: SyncError,
     retry: () => void
   ) => void;
@@ -54,13 +54,13 @@ export function SyncErrorProvider({ children }: SyncErrorProviderProps) {
   const registerError = useCallback(
     (
       streamId: string,
-      entityName: string,
+      tableName: string,
       error: SyncError,
       retry: () => void
     ) => {
       setErrorsMap((prev) => {
         const next = new Map(prev);
-        next.set(streamId, { streamId, entityName, error, retry });
+        next.set(streamId, { streamId, tableName, error, retry });
         return next;
       });
     },

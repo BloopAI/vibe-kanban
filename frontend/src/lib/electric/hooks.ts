@@ -21,12 +21,12 @@ export interface MutationResult {
 }
 
 /**
- * Result of an insert operation, including the created entity data.
+ * Result of an insert operation, including the created row data.
  */
 export interface InsertResult<TRow> {
-  /** The optimistically created entity with generated ID */
+  /** The optimistically created row with generated ID */
   data: TRow;
-  /** Promise that resolves with the synced entity (including server-generated fields) when confirmed by backend */
+  /** Promise that resolves with the synced row (including server-generated fields) when confirmed by backend */
   persisted: Promise<TRow>;
 }
 
@@ -49,11 +49,11 @@ export interface UseShapeResult<TRow> {
  */
 export interface UseShapeMutationResult<TRow, TCreate, TUpdate>
   extends UseShapeResult<TRow> {
-  /** Insert a new entity (optimistic), returns entity and persistence promise */
+  /** Insert a new row (optimistic), returns row and persistence promise */
   insert: (data: TCreate) => InsertResult<TRow>;
-  /** Update an entity by ID (optimistic), returns persistence promise */
+  /** Update a row by ID (optimistic), returns persistence promise */
   update: (id: string, changes: Partial<TUpdate>) => MutationResult;
-  /** Delete an entity by ID (optimistic), returns persistence promise */
+  /** Delete a row by ID (optimistic), returns persistence promise */
   remove: (id: string) => MutationResult;
 }
 

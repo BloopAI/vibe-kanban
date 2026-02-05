@@ -52,7 +52,7 @@ export function SyncErrorIndicator() {
                 className="rounded-sm bg-error/10 p-half text-xs"
               >
                 <div className="font-medium text-error">
-                  {streamError.entityName}
+                  {streamError.tableName}
                 </div>
                 <div className="text-low mt-quarter truncate">
                   {streamError.error.message}

@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/auth/useAuth';
 /**
  * UserContext provides user-scoped data.
  *
- * Entities synced at user scope:
+ * Shapes synced at user scope:
  * - Workspaces (data only, scoped by owner_user_id)
  */
 export interface UserContextValue {
@@ -42,7 +42,7 @@ export function UserProvider({ children }: UserProviderProps) {
   const params = useMemo(() => ({}), []);
   const enabled = isSignedIn;
 
-  // Entity subscriptions
+  // Shape subscriptions
   const workspacesResult = useShape(USER_WORKSPACES_SHAPE, params, { enabled });
 
   // Lookup helpers

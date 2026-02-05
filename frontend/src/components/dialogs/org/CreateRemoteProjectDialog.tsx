@@ -46,7 +46,7 @@ const CreateRemoteProjectDialogImpl =
       [organizationId]
     );
 
-    const { insert, error: entityError } = useShape(PROJECTS_SHAPE, params, {
+    const { insert, error: syncError } = useShape(PROJECTS_SHAPE, params, {
       mutation: PROJECT_MUTATION,
     });
 
@@ -61,11 +61,11 @@ const CreateRemoteProjectDialogImpl =
     }, [modal.visible]);
 
     useEffect(() => {
-      if (entityError) {
-        setError(entityError.message || 'Failed to create project');
+      if (syncError) {
+        setError(syncError.message || 'Failed to create project');
         setIsCreating(false);
       }
-    }, [entityError]);
+    }, [syncError]);
 
     const validateName = (value: string): string | null => {
       const trimmedValue = value.trim();

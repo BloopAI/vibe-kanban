@@ -94,7 +94,7 @@ function buildUrl(baseUrl: string, params: Record<string, string>): string {
 
 /**
  * Auto-detect the primary key for a row.
- * - If entity has an 'id' field, use it
+ * - If row has an 'id' field, use it
  * - Otherwise, concatenate all *_id fields (for junction tables)
  */
 function getRowKey(item: Record<string, unknown>): string {
@@ -205,7 +205,7 @@ const collectionCache = new Map<string, ReturnType<typeof createCollection>>();
 const DEFAULT_GC_TIME_MS = 5 * 60 * 1000;
 
 /**
- * Build a stable collection ID from entity table and params.
+ * Build a stable collection ID from table name and params.
  * Sorts param keys for consistency regardless of insertion order.
  * Adds `-mut` suffix for mutation-enabled collections to avoid cache conflicts.
  */
