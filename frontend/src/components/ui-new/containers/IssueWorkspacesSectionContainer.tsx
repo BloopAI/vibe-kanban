@@ -27,8 +27,11 @@ export function IssueWorkspacesSectionContainer({
   const navigate = useNavigate();
   const { openWorkspaceSelection } = useActions();
 
-  const { pullRequests, getWorkspacesForIssue, isLoading: projectLoading } =
-    useProjectContext();
+  const {
+    pullRequests,
+    getWorkspacesForIssue,
+    isLoading: projectLoading,
+  } = useProjectContext();
   const { membersWithProfilesById, isLoading: orgLoading } = useOrgContext();
 
   // Get workspaces for the issue, with PR info
