@@ -31,8 +31,6 @@ pub struct GitHubRepoInfo {
 }
 
 impl GitHubRepoInfo {
-    /// Returns the repository specification in the format expected by gh CLI.
-    /// For GitHub Enterprise: "hostname/owner/repo", otherwise "owner/repo".
     pub fn repo_spec(&self) -> String {
         match &self.hostname {
             Some(host) => format!("{}/{}/{}", host, self.owner, self.repo_name),
