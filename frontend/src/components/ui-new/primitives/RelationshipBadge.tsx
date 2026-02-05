@@ -54,7 +54,7 @@ export function RelationshipBadge({
       }
       className={cn(
         'inline-flex items-center gap-half',
-        'h-5 px-base',
+        'h-5 px-half',
         'rounded-sm',
         'text-sm font-medium',
         'whitespace-nowrap',
