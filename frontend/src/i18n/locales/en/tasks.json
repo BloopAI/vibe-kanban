@@ -322,7 +322,7 @@
       "setupDescription": "No setup script configured. Setup scripts run before the coding agent starts.",
       "cleanupTitle": "Cleanup Script",
       "cleanupDescription": "No cleanup script configured. Cleanup scripts run after the coding agent finishes.",
-      "configureInSettings": "Configure in repository settings"
+      "configure": "Configure"
     },
     "updatedTodos": "Updated Todos",
     "viewInChangesPanel": "View in changes panel",

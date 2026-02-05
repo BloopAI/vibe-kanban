@@ -675,7 +675,7 @@
       "setupDescription": "설정 스크립트가 구성되지 않았습니다. 설정 스크립트는 코딩 에이전트가 시작되기 전에 실행됩니다.",
       "cleanupTitle": "정리 스크립트",
       "cleanupDescription": "정리 스크립트가 구성되지 않았습니다. 정리 스크립트는 코딩 에이전트가 완료된 후에 실행됩니다.",
-      "configureInSettings": "저장소 설정에서 구성"
+      "configure": "구성"
     },
     "unableToRenderDiff": "차이를 표시할 수 없습니다.",
     "updatedTodos": "업데이트된 할 일",
