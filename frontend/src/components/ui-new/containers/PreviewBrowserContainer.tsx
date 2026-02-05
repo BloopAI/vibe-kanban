@@ -150,7 +150,9 @@ export function PreviewBrowserContainer({
   // Inspect mode state
   const isInspectMode = useInspectModeStore((s) => s.isInspectMode);
   const toggleInspectMode = useInspectModeStore((s) => s.toggleInspectMode);
-  const setPendingComponentMarkdown = useInspectModeStore((s) => s.setPendingComponentMarkdown);
+  const setPendingComponentMarkdown = useInspectModeStore(
+    (s) => s.setPendingComponentMarkdown
+  );
 
   // DevTools state
   const [devToolsCollapsed, setDevToolsCollapsed] = useState(true);
@@ -202,18 +204,24 @@ export function PreviewBrowserContainer({
     const iframe = iframeRef.current;
     if (!iframe?.contentWindow) return;
 
-    iframe.contentWindow.postMessage({
-      source: 'click-to-component',
-      type: 'toggle-inspect',
-      payload: { active: isInspectMode }
-    }, '*');
+    iframe.contentWindow.postMessage(
+      {
+        source: 'click-to-component',
+        type: 'toggle-inspect',
+        payload: { active: isInspectMode },
+      },
+      '*'
+    );
   }, [isInspectMode]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
       if (!event.data || event.data.source !== 'click-to-component') return;
-      if (event.data.type === 'component-detected' && event.data.payload?.markdown) {
+      if (
+        event.data.type === 'component-detected' &&
+        event.data.payload?.markdown
+      ) {
         setPendingComponentMarkdown(event.data.payload.markdown);
       }
     };
@@ -518,9 +526,7 @@ export function PreviewBrowserContainer({
       }
 
       // Warn if not on localhost (subdomain routing requires localhost)
-      if (
-        !['localhost', '127.0.0.1'].includes(window.location.hostname)
-      ) {
+      if (!['localhost', '127.0.0.1'].includes(window.location.hostname)) {
         console.warn(
           '[Preview] Preview proxy subdomain routing may not work on non-localhost hostname'
         );

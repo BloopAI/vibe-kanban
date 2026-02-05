@@ -356,7 +356,11 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       handleInsertMarkdown(pendingComponentMarkdown);
       clearPendingComponentMarkdown();
     }
-  }, [pendingComponentMarkdown, handleInsertMarkdown, clearPendingComponentMarkdown]);
+  }, [
+    pendingComponentMarkdown,
+    handleInsertMarkdown,
+    clearPendingComponentMarkdown,
+  ]);
 
   const { uploadFiles, localImages, clearUploadedImages } =
     useSessionAttachments(workspaceId, handleInsertMarkdown);

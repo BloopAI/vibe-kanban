@@ -97,7 +97,9 @@ export type PreviewDevToolsCommand = NavigationCommand;
 
 // === Type Guards ===
 
-export function isPreviewDevToolsMessage(data: unknown): data is PreviewDevToolsMessage {
+export function isPreviewDevToolsMessage(
+  data: unknown
+): data is PreviewDevToolsMessage {
   return (
     typeof data === 'object' &&
     data !== null &&

@@ -141,7 +141,8 @@ export function MiniDevTools({
         <CaretUpIcon size={14} weight="fill" />
         <span>DevTools</span>
         <span className="text-low">
-          Console ({consoleLogs.length}) · Network ({networkRequests.length}) · Errors ({errors.length})
+          Console ({consoleLogs.length}) · Network ({networkRequests.length}) ·
+          Errors ({errors.length})
         </span>
       </button>
     );
@@ -213,126 +214,131 @@ export function MiniDevTools({
 
       <div className="border-t border-brand/20" />
       <div className="flex-1 min-h-0 overflow-auto max-h-64 font-mono text-xs">
-            {activeTab === 'console' && (
-              <div className="divide-y divide-brand/10">
-                {consoleLogs.length === 0 ? (
-                  <div className="p-base text-low">No console logs</div>
-                ) : (
-                  consoleLogs.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="p-base hover:bg-secondary/50 transition-colors"
-                    >
-                      <div className="flex items-start gap-base">
-                        <span className="text-low whitespace-nowrap flex-shrink-0">
-                          {formatTimestamp(entry.timestamp)}
-                        </span>
-                        <span
-                          className={cn(
-                            'px-half py-0.5 rounded text-xs font-medium whitespace-nowrap flex-shrink-0',
-                            getLevelBadgeColor(entry.level)
-                          )}
-                        >
-                          {entry.level.toUpperCase()}
-                        </span>
-                        <span className={cn('text-normal break-words', getLevelColor(entry.level))}>
-                          {formatArgs(entry.args)}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-
-            {activeTab === 'network' && (
-              <div className="divide-y divide-brand/10">
-                {networkRequests.length === 0 ? (
-                  <div className="p-base text-low">No network requests</div>
-                ) : (
-                  networkRequests.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="p-base hover:bg-secondary/50 transition-colors"
-                    >
-                      <div className="flex items-start gap-base">
-                        <span className="text-low whitespace-nowrap flex-shrink-0">
-                          {formatTimestamp(entry.timestamp)}
-                        </span>
-                        <span
-                          className={cn(
-                            'px-half py-0.5 rounded text-xs font-medium whitespace-nowrap flex-shrink-0',
-                            getStatusColor(entry.status)
-                          )}
-                        >
-                          {entry.status || 'PENDING'}
-                        </span>
-                        <span className="text-normal whitespace-nowrap flex-shrink-0">
-                          {entry.method}
-                        </span>
-                        <span className="text-low break-all flex-1">
-                          {formatUrl(entry.url)}
-                        </span>
-                        <span className="text-low whitespace-nowrap flex-shrink-0">
-                          {formatDuration(entry.duration)}
-                        </span>
-                      </div>
-                      {entry.error && (
-                        <div className="mt-half text-red-500 text-xs">
-                          Error: {entry.error}
-                        </div>
+        {activeTab === 'console' && (
+          <div className="divide-y divide-brand/10">
+            {consoleLogs.length === 0 ? (
+              <div className="p-base text-low">No console logs</div>
+            ) : (
+              consoleLogs.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="p-base hover:bg-secondary/50 transition-colors"
+                >
+                  <div className="flex items-start gap-base">
+                    <span className="text-low whitespace-nowrap flex-shrink-0">
+                      {formatTimestamp(entry.timestamp)}
+                    </span>
+                    <span
+                      className={cn(
+                        'px-half py-0.5 rounded text-xs font-medium whitespace-nowrap flex-shrink-0',
+                        getLevelBadgeColor(entry.level)
                       )}
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-
-            {activeTab === 'errors' && (
-              <div className="divide-y divide-brand/10">
-                {errors.length === 0 ? (
-                  <div className="p-base text-low">No errors</div>
-                ) : (
-                  errors.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="p-base hover:bg-secondary/50 transition-colors"
                     >
-                      <button
-                        onClick={() =>
-                          onExpandedErrorIdChange(
-                            expandedErrorId === entry.id ? null : entry.id
-                          )
-                        }
-                        className="w-full text-left flex items-start gap-base"
-                      >
-                        <span className="text-red-500 flex-shrink-0 mt-0.5">
-                          <WarningCircleIcon size={14} weight="fill" />
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-normal text-red-500 break-words">
-                            {entry.message}
-                          </div>
-                          {(entry.filename || entry.lineno) && (
-                            <div className="text-low text-xs mt-half">
-                              {entry.filename}
-                              {entry.lineno && `:${entry.lineno}`}
-                              {entry.colno && `:${entry.colno}`}
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                      {expandedErrorId === entry.id && entry.stack && (
-                        <div className="mt-base p-half bg-secondary/50 rounded border border-brand/10 text-low text-xs whitespace-pre-wrap break-words">
-                          {entry.stack}
-                        </div>
+                      {entry.level.toUpperCase()}
+                    </span>
+                    <span
+                      className={cn(
+                        'text-normal break-words',
+                        getLevelColor(entry.level)
                       )}
-                    </div>
-                  ))
-                )}
-              </div>
+                    >
+                      {formatArgs(entry.args)}
+                    </span>
+                  </div>
+                </div>
+              ))
             )}
           </div>
+        )}
+
+        {activeTab === 'network' && (
+          <div className="divide-y divide-brand/10">
+            {networkRequests.length === 0 ? (
+              <div className="p-base text-low">No network requests</div>
+            ) : (
+              networkRequests.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="p-base hover:bg-secondary/50 transition-colors"
+                >
+                  <div className="flex items-start gap-base">
+                    <span className="text-low whitespace-nowrap flex-shrink-0">
+                      {formatTimestamp(entry.timestamp)}
+                    </span>
+                    <span
+                      className={cn(
+                        'px-half py-0.5 rounded text-xs font-medium whitespace-nowrap flex-shrink-0',
+                        getStatusColor(entry.status)
+                      )}
+                    >
+                      {entry.status || 'PENDING'}
+                    </span>
+                    <span className="text-normal whitespace-nowrap flex-shrink-0">
+                      {entry.method}
+                    </span>
+                    <span className="text-low break-all flex-1">
+                      {formatUrl(entry.url)}
+                    </span>
+                    <span className="text-low whitespace-nowrap flex-shrink-0">
+                      {formatDuration(entry.duration)}
+                    </span>
+                  </div>
+                  {entry.error && (
+                    <div className="mt-half text-red-500 text-xs">
+                      Error: {entry.error}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {activeTab === 'errors' && (
+          <div className="divide-y divide-brand/10">
+            {errors.length === 0 ? (
+              <div className="p-base text-low">No errors</div>
+            ) : (
+              errors.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="p-base hover:bg-secondary/50 transition-colors"
+                >
+                  <button
+                    onClick={() =>
+                      onExpandedErrorIdChange(
+                        expandedErrorId === entry.id ? null : entry.id
+                      )
+                    }
+                    className="w-full text-left flex items-start gap-base"
+                  >
+                    <span className="text-red-500 flex-shrink-0 mt-0.5">
+                      <WarningCircleIcon size={14} weight="fill" />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-normal text-red-500 break-words">
+                        {entry.message}
+                      </div>
+                      {(entry.filename || entry.lineno) && (
+                        <div className="text-low text-xs mt-half">
+                          {entry.filename}
+                          {entry.lineno && `:${entry.lineno}`}
+                          {entry.colno && `:${entry.colno}`}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                  {expandedErrorId === entry.id && entry.stack && (
+                    <div className="mt-base p-half bg-secondary/50 rounded border border-brand/10 text-low text-xs whitespace-pre-wrap break-words">
+                      {entry.stack}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

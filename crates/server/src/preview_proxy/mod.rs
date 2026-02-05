@@ -155,17 +155,17 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
 
     for (name, value) in headers.iter() {
         let name_lower = name.as_str().to_lowercase();
-        if !SKIP_REQUEST_HEADERS.contains(&name_lower.as_str()) {
-            if let Ok(v) = value.to_str() {
-                req_builder = req_builder.header(name.as_str(), v);
-            }
+        if !SKIP_REQUEST_HEADERS.contains(&name_lower.as_str())
+            && let Ok(v) = value.to_str()
+        {
+            req_builder = req_builder.header(name.as_str(), v);
         }
     }
 
-    if let Some(host) = headers.get(header::HOST) {
-        if let Ok(host_str) = host.to_str() {
-            req_builder = req_builder.header("X-Forwarded-Host", host_str);
-        }
+    if let Some(host) = headers.get(header::HOST)
+        && let Ok(host_str) = host.to_str()
+    {
+        req_builder = req_builder.header("X-Forwarded-Host", host_str);
     }
     req_builder = req_builder.header("X-Forwarded-Proto", "http");
     req_builder = req_builder.header("Accept-Encoding", "identity");
@@ -214,10 +214,11 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
             if is_html && name_lower == "content-length" {
                 continue;
             }
-            if let Ok(header_name) = HeaderName::try_from(name.as_str()) {
-                if let Ok(header_value) = HeaderValue::from_bytes(value.as_bytes()) {
-                    response_headers.insert(header_name, header_value);
-                }
+            if let (Ok(header_name), Ok(header_value)) = (
+                HeaderName::try_from(name.as_str()),
+                HeaderValue::from_bytes(value.as_bytes()),
+            ) {
+                response_headers.insert(header_name, header_value);
             }
         }
     }
@@ -251,7 +252,11 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
                 }
 
                 builder.body(Body::from(html)).unwrap_or_else(|_| {
-                    (StatusCode::INTERNAL_SERVER_ERROR, "Failed to build response").into_response()
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Failed to build response",
+                    )
+                        .into_response()
                 })
             }
             Err(e) => {
@@ -273,7 +278,11 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
         }
 
         builder.body(body).unwrap_or_else(|_| {
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to build response").into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to build response",
+            )
+                .into_response()
         })
     }
 }
@@ -298,16 +307,16 @@ async fn handle_ws_proxy(
                 Ok(axum_msg) => {
                     let tungstenite_msg = match axum_msg {
                         axum::extract::ws::Message::Text(text) => {
-                            tungstenite::Message::Text(text.to_string().into())
+                            tungstenite::Message::Text(text.to_string())
                         }
                         axum::extract::ws::Message::Binary(data) => {
-                            tungstenite::Message::Binary(data.to_vec().into())
+                            tungstenite::Message::Binary(data.to_vec())
                         }
                         axum::extract::ws::Message::Ping(data) => {
-                            tungstenite::Message::Ping(data.to_vec().into())
+                            tungstenite::Message::Ping(data.to_vec())
                         }
                         axum::extract::ws::Message::Pong(data) => {
-                            tungstenite::Message::Pong(data.to_vec().into())
+                            tungstenite::Message::Pong(data.to_vec())
                         }
                         axum::extract::ws::Message::Close(close_frame) => {
                             let close = close_frame.map(|cf| tungstenite::protocol::CloseFrame {
