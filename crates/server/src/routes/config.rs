@@ -40,6 +40,7 @@ pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/info", get(get_user_system_info))
         .route("/config", put(update_config))
+        .route("/sounds/validate", axum::routing::post(validate_custom_sound))
         .route("/sounds/{sound}", get(get_sound))
         .route("/mcp-config", get(get_mcp_servers).post(update_mcp_servers))
         .route("/profiles", get(get_profiles).put(update_profiles))
@@ -201,17 +202,121 @@ async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &C
     }
 }
 
-async fn get_sound(Path(sound): Path<SoundFile>) -> Result<Response, ApiError> {
-    let sound = sound.serve().await.map_err(DeploymentError::Other)?;
+async fn get_sound(Path(sound): Path<String>) -> Result<Response, ApiError> {
+    use services::services::config::PresetSound;
+    use std::str::FromStr;
+
+    // Try to parse as a preset sound first
+    let sound_file = if let Ok(preset) = PresetSound::from_str(&sound) {
+        SoundFile::Preset(preset)
+    } else {
+        // Assume it's a custom sound path (base64 encoded to be URL-safe)
+        let decoded = base64::Engine::decode(
+            &base64::engine::general_purpose::URL_SAFE_NO_PAD,
+            &sound,
+        )
+        .map_err(|e| DeploymentError::Other(anyhow::anyhow!("Invalid sound identifier: {}", e)))?;
+        let path = String::from_utf8(decoded)
+            .map_err(|e| DeploymentError::Other(anyhow::anyhow!("Invalid sound path: {}", e)))?;
+        SoundFile::Custom(path)
+    };
+
+    let sound_data = sound_file.serve().await.map_err(DeploymentError::Other)?;
+
+    // Determine content type based on file extension for custom sounds
+    let content_type = match &sound_file {
+        SoundFile::Preset(_) => "audio/wav",
+        SoundFile::Custom(path) => {
+            let ext = std::path::Path::new(path)
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|e| e.to_lowercase());
+            match ext.as_deref() {
+                Some("mp3") => "audio/mpeg",
+                Some("ogg") => "audio/ogg",
+                Some("m4a") | Some("aac") => "audio/aac",
+                _ => "audio/wav",
+            }
+        }
+    };
+
     let response = Response::builder()
         .status(http::StatusCode::OK)
-        .header(
-            http::header::CONTENT_TYPE,
-            http::HeaderValue::from_static("audio/wav"),
-        )
-        .body(Body::from(sound.data.into_owned()))
+        .header(http::header::CONTENT_TYPE, content_type)
+        .body(Body::from(sound_data))
         .unwrap();
     Ok(response)
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct ValidateCustomSoundRequest {
+    path: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct ValidateCustomSoundResponse {
+    valid: bool,
+    error: Option<String>,
+    filename: Option<String>,
+}
+
+/// Validate that a path points to a valid audio file
+async fn validate_custom_sound(
+    Json(request): Json<ValidateCustomSoundRequest>,
+) -> ResponseJson<ApiResponse<ValidateCustomSoundResponse>> {
+    let path = std::path::Path::new(&request.path);
+
+    // Check if file exists
+    if !path.exists() {
+        return ResponseJson(ApiResponse::success(ValidateCustomSoundResponse {
+            valid: false,
+            error: Some("File not found".to_string()),
+            filename: None,
+        }));
+    }
+
+    // Check if it's a file (not a directory)
+    if !path.is_file() {
+        return ResponseJson(ApiResponse::success(ValidateCustomSoundResponse {
+            valid: false,
+            error: Some("Path is not a file".to_string()),
+            filename: None,
+        }));
+    }
+
+    // Check file extension
+    let extension = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase());
+
+    let valid_extensions = ["wav", "mp3", "ogg", "m4a", "aac"];
+    if !extension
+        .as_ref()
+        .map(|e| valid_extensions.contains(&e.as_str()))
+        .unwrap_or(false)
+    {
+        return ResponseJson(ApiResponse::success(ValidateCustomSoundResponse {
+            valid: false,
+            error: Some(format!(
+                "Invalid file type. Supported: {}",
+                valid_extensions.join(", ")
+            )),
+            filename: None,
+        }));
+    }
+
+    // Get filename for display
+    let filename = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|s| s.to_string());
+
+    ResponseJson(ApiResponse::success(ValidateCustomSoundResponse {
+        valid: true,
+        error: None,
+        filename,
+    }))
 }
 
 #[derive(TS, Debug, Deserialize)]

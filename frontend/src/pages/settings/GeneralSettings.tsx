@@ -20,10 +20,11 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { FolderOpen, Loader2, Volume2 } from 'lucide-react';
+import { FolderOpen, Loader2, Volume2, Music } from 'lucide-react';
 import {
   DEFAULT_PR_DESCRIPTION_PROMPT,
   EditorType,
+  PresetSound,
   SoundFile,
   ThemeMode,
   UiLanguage,
@@ -31,12 +32,18 @@ import {
 import { getLanguageOptions } from '@/i18n/languages';
 
 import { toPrettyCase } from '@/utils/string';
+
+// Helper to check if a sound file is a custom path (not a preset)
+function isCustomSound(sound: SoundFile | string): sound is string {
+  return typeof sound === 'string' && !Object.values(PresetSound).includes(sound as PresetSound);
+}
 import { useEditorAvailability } from '@/hooks/useEditorAvailability';
 import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndicator';
 import { useTheme } from '@/components/ThemeProvider';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
+import { AudioFilePickerDialog } from '@/components/dialogs/shared/AudioFilePickerDialog';
 
 export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
@@ -64,6 +71,11 @@ export function GeneralSettings() {
     null
   );
   const { setTheme } = useTheme();
+
+  // Check if current sound is a custom one
+  const currentSoundIsCustom = draft?.notifications.sound_file
+    ? isCustomSound(draft.notifications.sound_file as string)
+    : false;
 
   // Check editor availability when draft editor changes
   const editorAvailability = useEditorAvailability(draft?.editor.editor_type);
@@ -134,12 +146,58 @@ export function GeneralSettings() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [hasUnsavedChanges]);
 
-  const playSound = async (soundFile: SoundFile) => {
-    const audio = new Audio(`/api/sounds/${soundFile}`);
+  const playSound = async (soundFile: SoundFile | string) => {
+    let url: string;
+    if (isCustomSound(soundFile)) {
+      // Encode custom path as base64 for URL safety
+      const encoded = btoa(soundFile)
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+      url = `/api/sounds/${encoded}`;
+    } else {
+      url = `/api/sounds/${soundFile}`;
+    }
+    const audio = new Audio(url);
     try {
       await audio.play();
     } catch (err) {
       console.error('Failed to play sound:', err);
+    }
+  };
+
+  const CUSTOM_SOUND_OPTION = '__SELECT_CUSTOM_SOUND__';
+
+  const handleSoundChange = async (value: string) => {
+    if (value === CUSTOM_SOUND_OPTION) {
+      // Open the file picker
+      const currentCustomPath = currentSoundIsCustom 
+        ? (draft?.notifications.sound_file as string) 
+        : '';
+      
+      const result = await AudioFilePickerDialog.show({
+        value: currentCustomPath,
+        title: 'Select Custom Sound',
+        description: 'Choose an audio file (wav, mp3, ogg, m4a, aac, flac, wma)',
+      });
+      
+      if (result) {
+        updateDraft({
+          notifications: {
+            ...draft!.notifications,
+            sound_file: result as SoundFile,
+          },
+        });
+      }
+      // If cancelled, the value stays the same (no update needed)
+    } else {
+      // Regular preset sound selection
+      updateDraft({
+        notifications: {
+          ...draft!.notifications,
+          sound_file: value as SoundFile,
+        },
+      });
     }
   };
 
@@ -616,35 +674,57 @@ export function GeneralSettings() {
               <div className="flex gap-2">
                 <Select
                   value={draft.notifications.sound_file}
-                  onValueChange={(value: SoundFile) =>
-                    updateDraft({
-                      notifications: {
-                        ...draft.notifications,
-                        sound_file: value,
-                      },
-                    })
-                  }
+                  onValueChange={handleSoundChange}
                 >
                   <SelectTrigger id="sound-file" className="flex-1">
                     <SelectValue
                       placeholder={t(
                         'settings.general.notifications.sound.filePlaceholder'
                       )}
-                    />
+                    >
+                      {currentSoundIsCustom 
+                        ? (draft.notifications.sound_file as string)
+                        : toPrettyCase(draft.notifications.sound_file as string)
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.values(SoundFile).map((soundFile) => (
+                    {/* Show current custom sound as an option if one is set */}
+                    {currentSoundIsCustom && (
+                      <SelectItem 
+                        key="current-custom" 
+                        value={draft.notifications.sound_file}
+                      >
+                        <span className="flex items-center gap-2">
+                          <Music className="h-4 w-4" />
+                          {draft.notifications.sound_file as string}
+                        </span>
+                      </SelectItem>
+                    )}
+                    {/* Preset sounds */}
+                    {Object.values(PresetSound).map((soundFile) => (
                       <SelectItem key={soundFile} value={soundFile}>
                         {toPrettyCase(soundFile)}
                       </SelectItem>
                     ))}
+                    {/* Option to select a custom sound */}
+                    <SelectItem 
+                      key="select-custom" 
+                      value={CUSTOM_SOUND_OPTION}
+                      className="border-t mt-1 pt-1"
+                    >
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <FolderOpen className="h-4 w-4" />
+                        Select a custom sound...
+                      </span>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="icon"
                   onClick={() => playSound(draft.notifications.sound_file)}
-                  className="px-3"
+                  title="Preview sound"
                 >
                   <Volume2 className="h-4 w-4" />
                 </Button>

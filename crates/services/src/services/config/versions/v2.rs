@@ -173,7 +173,7 @@ impl Default for NotificationConfig {
         Self {
             sound_enabled: true,
             push_enabled: true,
-            sound_file: SoundFile::CowMooing,
+            sound_file: SoundFile::Preset(PresetSound::CowMooing),
         }
     }
 }
@@ -199,11 +199,20 @@ impl GitHubConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(untagged)]
+pub enum SoundFile {
+    /// Built-in preset sound
+    Preset(PresetSound),
+    /// Custom sound file path
+    Custom(String),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString, PartialEq)]
 #[ts(use_ts_enum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
-pub enum SoundFile {
+pub enum PresetSound {
     AbstractSound1,
     AbstractSound2,
     AbstractSound3,
@@ -213,82 +222,136 @@ pub enum SoundFile {
     Rooster,
 }
 
-impl SoundFile {
+impl PresetSound {
     pub fn to_filename(&self) -> &'static str {
         match self {
-            SoundFile::AbstractSound1 => "abstract-sound1.wav",
-            SoundFile::AbstractSound2 => "abstract-sound2.wav",
-            SoundFile::AbstractSound3 => "abstract-sound3.wav",
-            SoundFile::AbstractSound4 => "abstract-sound4.wav",
-            SoundFile::CowMooing => "cow-mooing.wav",
-            SoundFile::PhoneVibration => "phone-vibration.wav",
-            SoundFile::Rooster => "rooster.wav",
+            PresetSound::AbstractSound1 => "abstract-sound1.wav",
+            PresetSound::AbstractSound2 => "abstract-sound2.wav",
+            PresetSound::AbstractSound3 => "abstract-sound3.wav",
+            PresetSound::AbstractSound4 => "abstract-sound4.wav",
+            PresetSound::CowMooing => "cow-mooing.wav",
+            PresetSound::PhoneVibration => "phone-vibration.wav",
+            PresetSound::Rooster => "rooster.wav",
+        }
+    }
+}
+
+impl SoundFile {
+    /// Check if this is a custom sound file
+    pub fn is_custom(&self) -> bool {
+        matches!(self, SoundFile::Custom(_))
+    }
+
+    /// Get the custom path if this is a custom sound
+    pub fn custom_path(&self) -> Option<&str> {
+        match self {
+            SoundFile::Custom(path) => Some(path),
+            _ => None,
         }
     }
 
-    // load the sound file from the embedded assets or cache
-    pub async fn serve(&self) -> Result<rust_embed::EmbeddedFile, Error> {
-        match SoundAssets::get(self.to_filename()) {
-            Some(content) => Ok(content),
-            None => {
-                tracing::error!("Sound file not found: {}", self.to_filename());
-                Err(anyhow::anyhow!(
-                    "Sound file not found: {}",
-                    self.to_filename()
-                ))
+    // load the sound file from the embedded assets or disk (for custom sounds)
+    pub async fn serve(&self) -> Result<Vec<u8>, Error> {
+        match self {
+            SoundFile::Preset(preset) => {
+                match SoundAssets::get(preset.to_filename()) {
+                    Some(content) => Ok(content.data.to_vec()),
+                    None => {
+                        tracing::error!("Sound file not found: {}", preset.to_filename());
+                        Err(anyhow::anyhow!(
+                            "Sound file not found: {}",
+                            preset.to_filename()
+                        ))
+                    }
+                }
+            }
+            SoundFile::Custom(path) => {
+                // Read custom sound file from disk
+                let path = PathBuf::from(path);
+                if !path.exists() {
+                    return Err(anyhow::anyhow!("Custom sound file not found: {}", path.display()));
+                }
+                // Validate it's an audio file by extension
+                let extension = path.extension()
+                    .and_then(|e| e.to_str())
+                    .map(|e| e.to_lowercase());
+                match extension.as_deref() {
+                    Some("wav") | Some("mp3") | Some("ogg") | Some("m4a") | Some("aac") => {}
+                    _ => {
+                        return Err(anyhow::anyhow!(
+                            "Invalid audio file type. Supported: wav, mp3, ogg, m4a, aac"
+                        ));
+                    }
+                }
+                std::fs::read(&path)
+                    .map_err(|e| anyhow::anyhow!("Failed to read custom sound file: {}", e))
             }
         }
     }
-    /// Get or create a cached sound file with the embedded sound data
+
+    /// Get the path to the sound file for playback
     pub async fn get_path(&self) -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
-        use std::io::Write;
+        match self {
+            SoundFile::Custom(path) => {
+                // For custom sounds, just return the path directly
+                let path = PathBuf::from(path);
+                if !path.exists() {
+                    return Err(format!("Custom sound file not found: {}", path.display()).into());
+                }
+                Ok(path)
+            }
+            SoundFile::Preset(preset) => {
+                use std::io::Write;
 
-        let filename = self.to_filename();
-        let cache_dir = cache_dir();
-        let cached_path = cache_dir.join(format!("sound-{filename}"));
+                let filename = preset.to_filename();
+                let cache_dir = cache_dir();
+                let cached_path = cache_dir.join(format!("sound-{filename}"));
 
-        // Check if cached file already exists and is valid
-        if cached_path.exists() {
-            // Verify file has content (basic validation)
-            if let Ok(metadata) = std::fs::metadata(&cached_path)
-                && metadata.len() > 0
-            {
-                return Ok(cached_path);
+                // Check if cached file already exists and is valid
+                if cached_path.exists() {
+                    // Verify file has content (basic validation)
+                    if let Ok(metadata) = std::fs::metadata(&cached_path)
+                        && metadata.len() > 0
+                    {
+                        return Ok(cached_path);
+                    }
+                }
+
+                // File doesn't exist or is invalid, create it
+                let sound_data = SoundAssets::get(filename)
+                    .ok_or_else(|| format!("Embedded sound file not found: {filename}"))?
+                    .data;
+
+                // Ensure cache directory exists
+                std::fs::create_dir_all(&cache_dir)
+                    .map_err(|e| format!("Failed to create cache directory: {e}"))?;
+
+                let mut file = std::fs::File::create(&cached_path)
+                    .map_err(|e| format!("Failed to create cached sound file: {e}"))?;
+
+                file.write_all(&sound_data)
+                    .map_err(|e| format!("Failed to write sound data to cached file: {e}"))?;
+
+                drop(file); // Ensure file is closed
+
+                Ok(cached_path)
             }
         }
-
-        // File doesn't exist or is invalid, create it
-        let sound_data = SoundAssets::get(filename)
-            .ok_or_else(|| format!("Embedded sound file not found: {filename}"))?
-            .data;
-
-        // Ensure cache directory exists
-        std::fs::create_dir_all(&cache_dir)
-            .map_err(|e| format!("Failed to create cache directory: {e}"))?;
-
-        let mut file = std::fs::File::create(&cached_path)
-            .map_err(|e| format!("Failed to create cached sound file: {e}"))?;
-
-        file.write_all(&sound_data)
-            .map_err(|e| format!("Failed to write sound data to cached file: {e}"))?;
-
-        drop(file); // Ensure file is closed
-
-        Ok(cached_path)
     }
 }
 
 impl From<v1::SoundFile> for SoundFile {
     fn from(old: v1::SoundFile) -> Self {
-        match old {
-            v1::SoundFile::AbstractSound1 => SoundFile::AbstractSound1,
-            v1::SoundFile::AbstractSound2 => SoundFile::AbstractSound2,
-            v1::SoundFile::AbstractSound3 => SoundFile::AbstractSound3,
-            v1::SoundFile::AbstractSound4 => SoundFile::AbstractSound4,
-            v1::SoundFile::CowMooing => SoundFile::CowMooing,
-            v1::SoundFile::PhoneVibration => SoundFile::PhoneVibration,
-            v1::SoundFile::Rooster => SoundFile::Rooster,
-        }
+        let preset = match old {
+            v1::SoundFile::AbstractSound1 => PresetSound::AbstractSound1,
+            v1::SoundFile::AbstractSound2 => PresetSound::AbstractSound2,
+            v1::SoundFile::AbstractSound3 => PresetSound::AbstractSound3,
+            v1::SoundFile::AbstractSound4 => PresetSound::AbstractSound4,
+            v1::SoundFile::CowMooing => PresetSound::CowMooing,
+            v1::SoundFile::PhoneVibration => PresetSound::PhoneVibration,
+            v1::SoundFile::Rooster => PresetSound::Rooster,
+        };
+        SoundFile::Preset(preset)
     }
 }
 

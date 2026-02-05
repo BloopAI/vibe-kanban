@@ -2,9 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cloneDeep, isEqual, merge } from 'lodash';
 import {
+  CheckCircleIcon,
   FolderSimpleIcon,
+  MusicNoteIcon,
   SpeakerHighIcon,
   SpinnerIcon,
+  XCircleIcon,
 } from '@phosphor-icons/react';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
 import {
@@ -13,10 +16,38 @@ import {
   EditorType,
   type ExecutorProfileId,
   type SendMessageShortcut,
-  SoundFile,
+  type SoundFile,
   ThemeMode,
   UiLanguage,
 } from 'shared/types';
+
+// Preset sound options (until types are regenerated from Rust)
+const PRESET_SOUNDS = [
+  'ABSTRACT_SOUND1',
+  'ABSTRACT_SOUND2',
+  'ABSTRACT_SOUND3',
+  'ABSTRACT_SOUND4',
+  'COW_MOOING',
+  'PHONE_VIBRATION',
+  'ROOSTER',
+] as const;
+
+type PresetSound = (typeof PRESET_SOUNDS)[number];
+
+// Helper to check if a sound file is a custom path
+function isCustomSound(sound: SoundFile | string): sound is string {
+  return typeof sound === 'string' && !PRESET_SOUNDS.includes(sound as PresetSound);
+}
+
+// Helper to get display name for a sound
+function getSoundDisplayName(sound: SoundFile | string): string {
+  if (isCustomSound(sound)) {
+    // Extract filename from path
+    const parts = sound.split(/[/\\]/);
+    return parts[parts.length - 1] || 'Custom Sound';
+  }
+  return toPrettyCase(sound as string);
+}
 import { getModifierKey } from '@/utils/platform';
 import { getLanguageOptions } from '@/i18n/languages';
 import { toPrettyCase } from '@/utils/string';
@@ -64,6 +95,10 @@ export function GeneralSettingsSection() {
   const [branchPrefixError, setBranchPrefixError] = useState<string | null>(
     null
   );
+  const [customSoundPath, setCustomSoundPath] = useState<string>('');
+  const [customSoundValidating, setCustomSoundValidating] = useState(false);
+  const [customSoundError, setCustomSoundError] = useState<string | null>(null);
+  const [customSoundFilename, setCustomSoundFilename] = useState<string | null>(null);
   const { setTheme } = useTheme();
 
   // Executor options for the default coding agent dropdown
@@ -154,12 +189,71 @@ export function GeneralSettingsSection() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [hasUnsavedChanges]);
 
-  const playSound = async (soundFile: SoundFile) => {
-    const audio = new Audio(`/api/sounds/${soundFile}`);
+  const playSound = async (soundFile: SoundFile | string) => {
+    let url: string;
+    if (isCustomSound(soundFile)) {
+      // Encode custom path as base64 for URL safety
+      const encoded = btoa(soundFile)
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+      url = `/api/sounds/${encoded}`;
+    } else {
+      url = `/api/sounds/${soundFile}`;
+    }
+    const audio = new Audio(url);
     try {
       await audio.play();
     } catch (err) {
       console.error('Failed to play sound:', err);
+    }
+  };
+
+  const validateCustomSound = async (path: string) => {
+    if (!path.trim()) {
+      setCustomSoundError(null);
+      setCustomSoundFilename(null);
+      return;
+    }
+
+    setCustomSoundValidating(true);
+    setCustomSoundError(null);
+    setCustomSoundFilename(null);
+
+    try {
+      const response = await fetch('/api/sounds/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path }),
+      });
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        if (result.data.valid) {
+          setCustomSoundFilename(result.data.filename);
+          setCustomSoundError(null);
+        } else {
+          setCustomSoundError(result.data.error || 'Invalid file');
+          setCustomSoundFilename(null);
+        }
+      } else {
+        setCustomSoundError(result.message || 'Validation failed');
+      }
+    } catch (err) {
+      setCustomSoundError('Failed to validate file');
+    } finally {
+      setCustomSoundValidating(false);
+    }
+  };
+
+  const applyCustomSound = () => {
+    if (customSoundFilename && customSoundPath.trim() && !customSoundError) {
+      updateDraft({
+        notifications: {
+          ...draft!.notifications,
+          sound_file: customSoundPath as SoundFile,
+        },
+      });
     }
   };
 
@@ -232,10 +326,15 @@ export function GeneralSettingsSection() {
     label: toPrettyCase(editor),
   }));
 
-  const soundOptions = Object.values(SoundFile).map((sound) => ({
+  const soundOptions = PRESET_SOUNDS.map((sound) => ({
     value: sound,
     label: toPrettyCase(sound),
   }));
+
+  // Check if current sound is a custom one
+  const currentSoundIsCustom = draft?.notifications.sound_file
+    ? isCustomSound(draft.notifications.sound_file as string)
+    : false;
 
   return (
     <>
@@ -607,38 +706,109 @@ export function GeneralSettingsSection() {
         />
 
         {draft?.notifications.sound_enabled && (
-          <div className="ml-7 space-y-2">
-            <label className="text-sm font-medium text-normal">
-              {t('settings.general.notifications.sound.fileLabel')}
-            </label>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <SettingsSelect
-                  value={draft.notifications.sound_file}
-                  options={soundOptions}
-                  onChange={(value: SoundFile) =>
-                    updateDraft({
-                      notifications: {
-                        ...draft.notifications,
-                        sound_file: value,
-                      },
-                    })
-                  }
-                  placeholder={t(
-                    'settings.general.notifications.sound.filePlaceholder'
-                  )}
+          <div className="ml-7 space-y-4">
+            {/* Preset sound selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-normal">
+                {t('settings.general.notifications.sound.fileLabel')}
+              </label>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <SettingsSelect
+                    value={currentSoundIsCustom ? '' : (draft.notifications.sound_file as string)}
+                    options={soundOptions}
+                    onChange={(value: string) =>
+                      updateDraft({
+                        notifications: {
+                          ...draft.notifications,
+                          sound_file: value as SoundFile,
+                        },
+                      })
+                    }
+                    placeholder={currentSoundIsCustom ? 'Using custom sound' : t(
+                      'settings.general.notifications.sound.filePlaceholder'
+                    )}
+                  />
+                </div>
+                <IconButton
+                  icon={SpeakerHighIcon}
+                  onClick={() => playSound(draft.notifications.sound_file)}
+                  aria-label="Preview sound"
+                  title="Preview sound"
                 />
               </div>
-              <IconButton
-                icon={SpeakerHighIcon}
-                onClick={() => playSound(draft.notifications.sound_file)}
-                aria-label="Preview sound"
-                title="Preview sound"
-              />
+              <p className="text-sm text-low">
+                {t('settings.general.notifications.sound.fileHelper')}
+              </p>
             </div>
-            <p className="text-sm text-low">
-              {t('settings.general.notifications.sound.fileHelper')}
-            </p>
+
+            {/* Custom sound input */}
+            <div className="space-y-2 border-t pt-4">
+              <label className="text-sm font-medium text-normal flex items-center gap-2">
+                <MusicNoteIcon className="size-icon-sm" weight="bold" />
+                Custom Sound File
+              </label>
+              <p className="text-sm text-low">
+                Enter the full path to a custom audio file (wav, mp3, ogg, m4a, aac)
+              </p>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <SettingsInput
+                    value={customSoundPath}
+                    onChange={(value) => {
+                      setCustomSoundPath(value);
+                      setCustomSoundError(null);
+                      setCustomSoundFilename(null);
+                    }}
+                    placeholder="/path/to/your/sound.wav"
+                    error={!!customSoundError}
+                  />
+                </div>
+                <PrimaryButton
+                  variant="tertiary"
+                  onClick={() => validateCustomSound(customSoundPath)}
+                  disabled={!customSoundPath.trim() || customSoundValidating}
+                >
+                  {customSoundValidating ? (
+                    <SpinnerIcon className="size-icon-sm animate-spin" />
+                  ) : (
+                    'Validate'
+                  )}
+                </PrimaryButton>
+              </div>
+              {customSoundError && (
+                <div className="flex items-center gap-2 text-sm text-error">
+                  <XCircleIcon className="size-icon-sm" weight="bold" />
+                  {customSoundError}
+                </div>
+              )}
+              {customSoundFilename && !customSoundError && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 text-sm text-success">
+                    <CheckCircleIcon className="size-icon-sm" weight="bold" />
+                    Valid: {customSoundFilename}
+                  </div>
+                  <PrimaryButton
+                    variant="secondary"
+                    onClick={applyCustomSound}
+                  >
+                    Use This Sound
+                  </PrimaryButton>
+                  <IconButton
+                    icon={SpeakerHighIcon}
+                    onClick={() => playSound(customSoundPath)}
+                    aria-label="Preview custom sound"
+                    title="Preview custom sound"
+                  />
+                </div>
+              )}
+              {currentSoundIsCustom && (
+                <div className="flex items-center gap-2 text-sm text-low bg-secondary/50 p-2 rounded">
+                  <MusicNoteIcon className="size-icon-sm" weight="bold" />
+                  Current custom sound: {getSoundDisplayName(draft.notifications.sound_file as string)}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
