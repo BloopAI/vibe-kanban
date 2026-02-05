@@ -936,8 +936,7 @@ function AggregatedThinkingGroupEntry({
     return group.entries
       .filter((entry) => entry.type === 'NORMALIZED_ENTRY')
       .map((entry) => ({
-        content:
-          entry.type === 'NORMALIZED_ENTRY' ? entry.content.content : '',
+        content: entry.type === 'NORMALIZED_ENTRY' ? entry.content.content : '',
         expansionKey: entry.patchKey,
       }));
   }, [group.entries]);

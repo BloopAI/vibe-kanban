@@ -82,7 +82,8 @@ function aggregateThinkingInPreviousTurns(
   }
 
   // The last user message index marks the start of the "current" turn
-  const lastUserMessageIndex = userMessageIndices[userMessageIndices.length - 1];
+  const lastUserMessageIndex =
+    userMessageIndices[userMessageIndices.length - 1];
 
   // Process entries, grouping thinking entries in previous turns
   const result: PatchTypeWithKey[] = [];
@@ -167,7 +168,8 @@ export function aggregateConsecutiveEntries(
   if (entries.length === 0) return [];
 
   // First pass: aggregate thinking entries in previous turns
-  const entriesWithThinkingAggregated = aggregateThinkingInPreviousTurns(entries);
+  const entriesWithThinkingAggregated =
+    aggregateThinkingInPreviousTurns(entries);
 
   const result: DisplayEntry[] = [];
 
@@ -227,7 +229,10 @@ export function aggregateConsecutiveEntries(
 
   for (const entry of entriesWithThinkingAggregated) {
     // Check if this is already an aggregated thinking group (from first pass)
-    if ((entry as unknown as AggregatedThinkingGroup).type === 'AGGREGATED_THINKING_GROUP') {
+    if (
+      (entry as unknown as AggregatedThinkingGroup).type ===
+      'AGGREGATED_THINKING_GROUP'
+    ) {
       flushToolGroup();
       flushDiffGroup();
       result.push(entry as unknown as DisplayEntry);
