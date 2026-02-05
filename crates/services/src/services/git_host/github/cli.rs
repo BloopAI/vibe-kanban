@@ -35,10 +35,8 @@ impl GitHubRepoInfo {
     /// For GitHub Enterprise: "hostname/owner/repo", otherwise "owner/repo".
     pub fn repo_spec(&self) -> String {
         match &self.hostname {
-            Some(host) if host != "github.com" => {
-                format!("{}/{}/{}", host, self.owner, self.repo_name)
-            }
-            _ => format!("{}/{}", self.owner, self.repo_name),
+            Some(host) => format!("{}/{}/{}", host, self.owner, self.repo_name),
+            None => format!("{}/{}", self.owner, self.repo_name),
         }
     }
 }
@@ -334,10 +332,8 @@ impl GhCli {
         ];
         // Add --hostname for GitHub Enterprise
         if let Some(ref host) = repo_info.hostname {
-            if host != "github.com" {
-                args.push("--hostname".to_string());
-                args.push(host.clone());
-            }
+            args.push("--hostname".to_string());
+            args.push(host.clone());
         }
         let raw = self.run(args, None)?;
         Self::parse_pr_review_comments(&raw)
