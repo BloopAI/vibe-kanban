@@ -66,10 +66,7 @@ export function ChatCollapsedThinking({
       {expanded && (
         <div className="ml-6 mt-1 flex flex-col gap-base">
           {entries.map((entry) => (
-            <div
-              key={entry.expansionKey}
-              className="text-sm text-low pl-base"
-            >
+            <div key={entry.expansionKey} className="text-sm text-low pl-base">
               <ChatMarkdown
                 content={entry.content}
                 workspaceId={taskAttemptId}
