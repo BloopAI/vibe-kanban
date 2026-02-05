@@ -205,6 +205,29 @@ const collectionCache = new Map<string, ReturnType<typeof createCollection>>();
 const DEFAULT_GC_TIME_MS = 5 * 60 * 1000;
 
 /**
+ * Select the matching shape for an entity based on provided params.
+ * Matches the first shape whose declared params are all present in the provided params.
+ */
+function selectShape<TRow>(
+  entity: EntityDefinition<TRow, unknown, unknown>,
+  params: Record<string, string>
+): ShapeDefinition<TRow> {
+  const paramKeys = new Set(Object.keys(params));
+  const match = entity.shapes.find((s) =>
+    s.params.every((p) => paramKeys.has(p))
+  );
+  if (!match) {
+    const available = entity.shapes
+      .map((s) => `[${s.params.join(', ')}]`)
+      .join(', ');
+    throw new Error(
+      `No shape on ${entity.name} matches params {${[...paramKeys].join(', ')}}. Available: ${available}`
+    );
+  }
+  return match;
+}
+
+/**
  * Build a stable collection ID from entity table and params.
  * Sorts param keys for consistency regardless of insertion order.
  */
@@ -248,9 +271,7 @@ export function createEntityCollection<
   params: Record<string, string>,
   config?: CollectionConfig
 ) {
-  if (!entity.shape) {
-    throw new Error(`Entity ${entity.name} does not have a shape defined`);
-  }
+  const shape = selectShape(entity, params);
 
   const collectionId = buildCollectionId(entity.table, params);
 
@@ -264,11 +285,7 @@ export function createEntityCollection<
     };
   }
 
-  const shapeOptions = getAuthenticatedShapeOptions(
-    entity.shape,
-    params,
-    config
-  );
+  const shapeOptions = getAuthenticatedShapeOptions(shape, params, config);
 
   // Build mutation handlers if entity supports mutations
   //

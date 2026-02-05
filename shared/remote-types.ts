@@ -271,8 +271,7 @@ export interface EntityDefinition<TRow, TCreate = unknown, TUpdate = unknown> {
   readonly name: string;
   readonly table: string;
   readonly mutationScope: Scope | null;
-  readonly shapeScope: Scope | null;
-  readonly shape: ShapeDefinition<TRow> | null;
+  readonly shapes: readonly ShapeDefinition<TRow>[];
   readonly mutations: {
     readonly url: string;
     readonly _createType: TCreate;  // Phantom (not present at runtime)
@@ -285,8 +284,7 @@ export const PROJECT_ENTITY: EntityDefinition<Project, CreateProjectRequest, Upd
   name: 'Project',
   table: 'projects',
   mutationScope: 'Organization',
-  shapeScope: 'Organization',
-  shape: PROJECTS_SHAPE,
+  shapes: [PROJECTS_SHAPE],
   mutations: { url: '/v1/projects' } as EntityDefinition<Project, CreateProjectRequest, UpdateProjectRequest>['mutations'],
 };
 
@@ -294,8 +292,7 @@ export const NOTIFICATION_ENTITY: EntityDefinition<Notification, CreateNotificat
   name: 'Notification',
   table: 'notifications',
   mutationScope: 'Organization',
-  shapeScope: 'Organization',
-  shape: NOTIFICATIONS_SHAPE,
+  shapes: [NOTIFICATIONS_SHAPE],
   mutations: { url: '/v1/notifications' } as EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest>['mutations'],
 };
 
@@ -303,8 +300,7 @@ export const ORGANIZATION_MEMBER_ENTITY: EntityDefinition<OrganizationMember> = 
   name: 'OrganizationMember',
   table: 'organization_member_metadata',
   mutationScope: null,
-  shapeScope: null,
-  shape: ORGANIZATION_MEMBERS_SHAPE,
+  shapes: [ORGANIZATION_MEMBERS_SHAPE],
   mutations: null,
 };
 
@@ -312,8 +308,7 @@ export const USER_ENTITY: EntityDefinition<User> = {
   name: 'User',
   table: 'users',
   mutationScope: null,
-  shapeScope: null,
-  shape: USERS_SHAPE,
+  shapes: [USERS_SHAPE],
   mutations: null,
 };
 
@@ -321,8 +316,7 @@ export const TAG_ENTITY: EntityDefinition<Tag, CreateTagRequest, UpdateTagReques
   name: 'Tag',
   table: 'tags',
   mutationScope: 'Project',
-  shapeScope: 'Project',
-  shape: PROJECT_TAGS_SHAPE,
+  shapes: [PROJECT_TAGS_SHAPE],
   mutations: { url: '/v1/tags' } as EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest>['mutations'],
 };
 
@@ -330,8 +324,7 @@ export const PROJECT_STATUS_ENTITY: EntityDefinition<ProjectStatus, CreateProjec
   name: 'ProjectStatus',
   table: 'project_statuses',
   mutationScope: 'Project',
-  shapeScope: 'Project',
-  shape: PROJECT_PROJECT_STATUSES_SHAPE,
+  shapes: [PROJECT_PROJECT_STATUSES_SHAPE],
   mutations: { url: '/v1/project_statuses' } as EntityDefinition<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest>['mutations'],
 };
 
@@ -339,8 +332,7 @@ export const ISSUE_ENTITY: EntityDefinition<Issue, CreateIssueRequest, UpdateIss
   name: 'Issue',
   table: 'issues',
   mutationScope: 'Project',
-  shapeScope: 'Project',
-  shape: PROJECT_ISSUES_SHAPE,
+  shapes: [PROJECT_ISSUES_SHAPE],
   mutations: { url: '/v1/issues' } as EntityDefinition<Issue, CreateIssueRequest, UpdateIssueRequest>['mutations'],
 };
 
@@ -348,17 +340,7 @@ export const WORKSPACE_ENTITY: EntityDefinition<Workspace> = {
   name: 'Workspace',
   table: 'workspaces',
   mutationScope: null,
-  shapeScope: null,
-  shape: USER_WORKSPACES_SHAPE,
-  mutations: null,
-};
-
-export const PROJECT_WORKSPACE_ENTITY: EntityDefinition<Workspace> = {
-  name: 'ProjectWorkspace',
-  table: 'workspaces',
-  mutationScope: null,
-  shapeScope: null,
-  shape: PROJECT_WORKSPACES_SHAPE,
+  shapes: [USER_WORKSPACES_SHAPE, PROJECT_WORKSPACES_SHAPE],
   mutations: null,
 };
 
@@ -366,8 +348,7 @@ export const ISSUE_ASSIGNEE_ENTITY: EntityDefinition<IssueAssignee, CreateIssueA
   name: 'IssueAssignee',
   table: 'issue_assignees',
   mutationScope: 'Issue',
-  shapeScope: 'Project',
-  shape: PROJECT_ISSUE_ASSIGNEES_SHAPE,
+  shapes: [PROJECT_ISSUE_ASSIGNEES_SHAPE],
   mutations: { url: '/v1/issue_assignees' } as EntityDefinition<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest>['mutations'],
 };
 
@@ -375,8 +356,7 @@ export const ISSUE_FOLLOWER_ENTITY: EntityDefinition<IssueFollower, CreateIssueF
   name: 'IssueFollower',
   table: 'issue_followers',
   mutationScope: 'Issue',
-  shapeScope: 'Project',
-  shape: PROJECT_ISSUE_FOLLOWERS_SHAPE,
+  shapes: [PROJECT_ISSUE_FOLLOWERS_SHAPE],
   mutations: { url: '/v1/issue_followers' } as EntityDefinition<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest>['mutations'],
 };
 
@@ -384,8 +364,7 @@ export const ISSUE_TAG_ENTITY: EntityDefinition<IssueTag, CreateIssueTagRequest,
   name: 'IssueTag',
   table: 'issue_tags',
   mutationScope: 'Issue',
-  shapeScope: 'Project',
-  shape: PROJECT_ISSUE_TAGS_SHAPE,
+  shapes: [PROJECT_ISSUE_TAGS_SHAPE],
   mutations: { url: '/v1/issue_tags' } as EntityDefinition<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest>['mutations'],
 };
 
@@ -393,8 +372,7 @@ export const ISSUE_RELATIONSHIP_ENTITY: EntityDefinition<IssueRelationship, Crea
   name: 'IssueRelationship',
   table: 'issue_relationships',
   mutationScope: 'Issue',
-  shapeScope: 'Project',
-  shape: PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
+  shapes: [PROJECT_ISSUE_RELATIONSHIPS_SHAPE],
   mutations: { url: '/v1/issue_relationships' } as EntityDefinition<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest>['mutations'],
 };
 
@@ -402,8 +380,7 @@ export const PULL_REQUEST_ENTITY: EntityDefinition<PullRequest> = {
   name: 'PullRequest',
   table: 'pull_requests',
   mutationScope: null,
-  shapeScope: null,
-  shape: PROJECT_PULL_REQUESTS_SHAPE,
+  shapes: [PROJECT_PULL_REQUESTS_SHAPE],
   mutations: null,
 };
 
@@ -411,8 +388,7 @@ export const ISSUE_COMMENT_ENTITY: EntityDefinition<IssueComment, CreateIssueCom
   name: 'IssueComment',
   table: 'issue_comments',
   mutationScope: 'Issue',
-  shapeScope: 'Issue',
-  shape: ISSUE_COMMENTS_SHAPE,
+  shapes: [ISSUE_COMMENTS_SHAPE],
   mutations: { url: '/v1/issue_comments' } as EntityDefinition<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest>['mutations'],
 };
 
@@ -420,8 +396,7 @@ export const ISSUE_COMMENT_REACTION_ENTITY: EntityDefinition<IssueCommentReactio
   name: 'IssueCommentReaction',
   table: 'issue_comment_reactions',
   mutationScope: 'Comment',
-  shapeScope: 'Comment',
-  shape: ISSUE_REACTIONS_SHAPE,
+  shapes: [ISSUE_REACTIONS_SHAPE],
   mutations: { url: '/v1/issue_comment_reactions' } as EntityDefinition<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>['mutations'],
 };
 

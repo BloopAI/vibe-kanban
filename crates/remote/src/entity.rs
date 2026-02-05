@@ -31,6 +31,26 @@
 //!     table: "workspaces",
 //!     scope: Project,
 //! );
+//!
+//! // Multiple shapes (no mutations, one entity with multiple query paths)
+//! define_entity!(
+//!     Workspace,
+//!     table: "workspaces",
+//!     shapes: [
+//!         {
+//!             name: Workspace,
+//!             where_clause: r#""owner_user_id" = $1"#,
+//!             params: ["owner_user_id"],
+//!             url: "/shape/user/workspaces",
+//!         },
+//!         {
+//!             name: ProjectWorkspace,
+//!             where_clause: r#""project_id" = $1"#,
+//!             params: ["project_id"],
+//!             url: "/shape/project/{project_id}/workspaces",
+//!         }
+//!     ],
+//! );
 //! ```
 
 use std::marker::PhantomData;
@@ -90,8 +110,7 @@ pub struct EntityDefinition<T: TS> {
     pub name: &'static str,
     pub table: &'static str,
     pub mutation_scope: Option<Scope>,
-    pub shape_scope: Option<Scope>,
-    pub shape: Option<ShapeConfig>,
+    pub shapes: &'static [ShapeConfig],
     pub fields: &'static [FieldDef],
     pub _phantom: PhantomData<T>,
 }
@@ -101,8 +120,7 @@ pub trait EntityExport: Sync {
     fn name(&self) -> &'static str;
     fn table(&self) -> &'static str;
     fn mutation_scope(&self) -> Option<Scope>;
-    fn shape_scope(&self) -> Option<Scope>;
-    fn shape(&self) -> Option<&ShapeConfig>;
+    fn shapes(&self) -> &'static [ShapeConfig];
     fn fields(&self) -> &'static [FieldDef];
     fn ts_type_name(&self) -> String;
 }
@@ -117,11 +135,8 @@ impl<T: TS + Sync> EntityExport for EntityDefinition<T> {
     fn mutation_scope(&self) -> Option<Scope> {
         self.mutation_scope
     }
-    fn shape_scope(&self) -> Option<Scope> {
-        self.shape_scope
-    }
-    fn shape(&self) -> Option<&ShapeConfig> {
-        self.shape.as_ref()
+    fn shapes(&self) -> &'static [ShapeConfig] {
+        self.shapes
     }
     fn fields(&self) -> &'static [FieldDef] {
         self.fields
@@ -171,7 +186,7 @@ impl<T: TS + Sync> EntityExport for EntityDefinition<T> {
 /// );
 /// ```
 ///
-/// ## Multiple named shapes (no mutations, each gets its own _SHAPE + _ENTITY)
+/// ## Multiple shapes (no mutations, one entity with multiple query paths)
 /// ```ignore
 /// define_entity!(
 ///     Workspace,
@@ -221,7 +236,6 @@ macro_rules! define_entity {
             $entity,
             table: $table,
             mutation_scope: $scope,
-            shape_scope: $scope,
             fields: [$($field : $ty),*]
         );
     };
@@ -243,7 +257,7 @@ macro_rules! define_entity {
         $crate::define_entity!(@entity_def_shape_only
             $entity,
             table: $table,
-            shape_scope: $scope,
+            scope: $scope,
         );
     };
 
@@ -321,12 +335,11 @@ macro_rules! define_entity {
                     name: stringify!($entity),
                     table: $table,
                     mutation_scope: Some($crate::entity::Scope::$mut_scope),
-                    shape_scope: Some($crate::entity::Scope::$mut_scope),
-                    shape: Some($crate::entity::ShapeConfig {
+                    shapes: &[$crate::entity::ShapeConfig {
                         where_clause: $where_clause,
                         params: &[$($param),*],
                         url: $url,
-                    }),
+                    }],
                     fields: &[
                         $(
                             $crate::entity::FieldDef {
@@ -341,7 +354,8 @@ macro_rules! define_entity {
         }
     };
 
-    // Shape-only with multiple named shapes (each gets its own _SHAPE + _ENTITY constant)
+    // Multiple shapes: shape-only entity with multiple query paths
+    // Each shape needs a name for its _SHAPE constant
     (
         $entity:ident,
         table: $table:literal,
@@ -354,6 +368,7 @@ macro_rules! define_entity {
             }),+ $(,)?
         ] $(,)?
     ) => {
+        // Generate a _SHAPE constant for each named shape
         $(
             paste::paste! {
                 $crate::define_shape!(
@@ -363,23 +378,27 @@ macro_rules! define_entity {
                     url: $url,
                     params: [$($param),*]
                 );
+            }
+        )+
 
-                pub const [<$shape_name:snake:upper _ENTITY>]: $crate::entity::EntityDefinition<$entity> =
-                    $crate::entity::EntityDefinition {
-                        name: stringify!($shape_name),
-                        table: $table,
-                        mutation_scope: None,
-                        shape_scope: None,
-                        shape: Some($crate::entity::ShapeConfig {
+        // Generate one entity with all shapes
+        paste::paste! {
+            pub const [<$entity:snake:upper _ENTITY>]: $crate::entity::EntityDefinition<$entity> =
+                $crate::entity::EntityDefinition {
+                    name: stringify!($entity),
+                    table: $table,
+                    mutation_scope: None,
+                    shapes: &[
+                        $($crate::entity::ShapeConfig {
                             where_clause: $where_clause,
                             params: &[$($param),*],
                             url: $url,
-                        }),
-                        fields: &[],
-                        _phantom: std::marker::PhantomData,
-                    };
-            }
-        )+
+                        }),+
+                    ],
+                    fields: &[],
+                    _phantom: std::marker::PhantomData,
+                };
+        }
     };
 
     // Shape-only with fully custom shape config
@@ -410,12 +429,11 @@ macro_rules! define_entity {
                     name: stringify!($entity),
                     table: $table,
                     mutation_scope: None,
-                    shape_scope: None,
-                    shape: Some($crate::entity::ShapeConfig {
+                    shapes: &[$crate::entity::ShapeConfig {
                         where_clause: $where_clause,
                         params: &[$($param),*],
                         url: $url,
-                    }),
+                    }],
                     fields: &[],
                     _phantom: std::marker::PhantomData,
                 };
@@ -423,11 +441,7 @@ macro_rules! define_entity {
     };
 
     // Internal: Generate shape with auto-derived where clause
-    (@shape
-        $entity:ident,
-        table: $table:literal,
-        scope: Organization,
-    ) => {
+    (@shape $entity:ident, table: $table:literal, scope: Organization,) => {
         paste::paste! {
             $crate::define_shape!(
                 [<$entity:snake:upper _SHAPE>], $entity,
@@ -438,11 +452,7 @@ macro_rules! define_entity {
             );
         }
     };
-    (@shape
-        $entity:ident,
-        table: $table:literal,
-        scope: Project,
-    ) => {
+    (@shape $entity:ident, table: $table:literal, scope: Project,) => {
         paste::paste! {
             $crate::define_shape!(
                 [<$entity:snake:upper _SHAPE>], $entity,
@@ -453,11 +463,7 @@ macro_rules! define_entity {
             );
         }
     };
-    (@shape
-        $entity:ident,
-        table: $table:literal,
-        scope: Issue,
-    ) => {
+    (@shape $entity:ident, table: $table:literal, scope: Issue,) => {
         paste::paste! {
             $crate::define_shape!(
                 [<$entity:snake:upper _SHAPE>], $entity,
@@ -468,11 +474,7 @@ macro_rules! define_entity {
             );
         }
     };
-    (@shape
-        $entity:ident,
-        table: $table:literal,
-        scope: Comment,
-    ) => {
+    (@shape $entity:ident, table: $table:literal, scope: Comment,) => {
         paste::paste! {
             $crate::define_shape!(
                 [<$entity:snake:upper _SHAPE>], $entity,
@@ -485,77 +487,44 @@ macro_rules! define_entity {
     };
 
     // Internal: Generate shape with custom where clause
-    (@shape_custom
-        $entity:ident,
-        table: $table:literal,
-        scope: Organization,
-        where_clause: $where:literal,
-    ) => {
+    (@shape_custom $entity:ident, table: $table:literal, scope: Organization, where_clause: $where:literal,) => {
         paste::paste! {
             $crate::define_shape!(
-                [<$entity:snake:upper _SHAPE>], $entity,
-                table: $table,
-                where_clause: $where,
-                url: concat!("/shape/", $table),
-                params: ["organization_id"]
+                [<$entity:snake:upper _SHAPE>], $entity, table: $table,
+                where_clause: $where, url: concat!("/shape/", $table), params: ["organization_id"]
             );
         }
     };
-    (@shape_custom
-        $entity:ident,
-        table: $table:literal,
-        scope: Project,
-        where_clause: $where:literal,
-    ) => {
+    (@shape_custom $entity:ident, table: $table:literal, scope: Project, where_clause: $where:literal,) => {
         paste::paste! {
             $crate::define_shape!(
-                [<$entity:snake:upper _SHAPE>], $entity,
-                table: $table,
-                where_clause: $where,
-                url: concat!("/shape/project/{project_id}/", $table),
-                params: ["project_id"]
+                [<$entity:snake:upper _SHAPE>], $entity, table: $table,
+                where_clause: $where, url: concat!("/shape/project/{project_id}/", $table), params: ["project_id"]
             );
         }
     };
-    (@shape_custom
-        $entity:ident,
-        table: $table:literal,
-        scope: Issue,
-        where_clause: $where:literal,
-    ) => {
+    (@shape_custom $entity:ident, table: $table:literal, scope: Issue, where_clause: $where:literal,) => {
         paste::paste! {
             $crate::define_shape!(
-                [<$entity:snake:upper _SHAPE>], $entity,
-                table: $table,
-                where_clause: $where,
-                url: concat!("/shape/issue/{issue_id}/", $table),
-                params: ["issue_id"]
+                [<$entity:snake:upper _SHAPE>], $entity, table: $table,
+                where_clause: $where, url: concat!("/shape/issue/{issue_id}/", $table), params: ["issue_id"]
             );
         }
     };
-    (@shape_custom
-        $entity:ident,
-        table: $table:literal,
-        scope: Comment,
-        where_clause: $where:literal,
-    ) => {
+    (@shape_custom $entity:ident, table: $table:literal, scope: Comment, where_clause: $where:literal,) => {
         paste::paste! {
             $crate::define_shape!(
-                [<$entity:snake:upper _SHAPE>], $entity,
-                table: $table,
-                where_clause: $where,
-                url: concat!("/shape/comment/{comment_id}/", $table),
-                params: ["comment_id"]
+                [<$entity:snake:upper _SHAPE>], $entity, table: $table,
+                where_clause: $where, url: concat!("/shape/comment/{comment_id}/", $table), params: ["comment_id"]
             );
         }
     };
 
-    // Internal: Generate EntityDefinition with same mutation and shape scope
+    // Internal: Generate EntityDefinition with mutation scope (shape derived from scope)
     (@entity_def
         $entity:ident,
         table: $table:literal,
         mutation_scope: $scope:ident,
-        shape_scope: $scope2:ident,
         fields: [$($field:ident : $ty:ty),*]
     ) => {
         paste::paste! {
@@ -564,12 +533,11 @@ macro_rules! define_entity {
                     name: stringify!($entity),
                     table: $table,
                     mutation_scope: Some($crate::entity::Scope::$scope),
-                    shape_scope: Some($crate::entity::Scope::$scope2),
-                    shape: Some($crate::entity::ShapeConfig {
+                    shapes: &[$crate::entity::ShapeConfig {
                         where_clause: $crate::define_entity!(@default_where $scope),
                         params: &[$crate::define_entity!(@default_param $scope)],
                         url: $crate::define_entity!(@default_url $scope, $table),
-                    }),
+                    }],
                     fields: &[
                         $(
                             $crate::entity::FieldDef {
@@ -588,7 +556,7 @@ macro_rules! define_entity {
     (@entity_def_shape_only
         $entity:ident,
         table: $table:literal,
-        shape_scope: $scope:ident,
+        scope: $scope:ident,
     ) => {
         paste::paste! {
             pub const [<$entity:snake:upper _ENTITY>]: $crate::entity::EntityDefinition<$entity> =
@@ -596,12 +564,11 @@ macro_rules! define_entity {
                     name: stringify!($entity),
                     table: $table,
                     mutation_scope: None,
-                    shape_scope: Some($crate::entity::Scope::$scope),
-                    shape: Some($crate::entity::ShapeConfig {
+                    shapes: &[$crate::entity::ShapeConfig {
                         where_clause: $crate::define_entity!(@default_where $scope),
                         params: &[$crate::define_entity!(@default_param $scope)],
                         url: $crate::define_entity!(@default_url $scope, $table),
-                    }),
+                    }],
                     fields: &[],
                     _phantom: std::marker::PhantomData,
                 };
@@ -623,12 +590,11 @@ macro_rules! define_entity {
                     name: stringify!($entity),
                     table: $table,
                     mutation_scope: Some($crate::entity::Scope::$mut_scope),
-                    shape_scope: Some($crate::entity::Scope::$shape_scope),
-                    shape: Some($crate::entity::ShapeConfig {
+                    shapes: &[$crate::entity::ShapeConfig {
                         where_clause: $where,
                         params: &[$crate::define_entity!(@default_param $shape_scope)],
                         url: $crate::define_entity!(@default_url $shape_scope, $table),
-                    }),
+                    }],
                     fields: &[
                         $(
                             $crate::entity::FieldDef {

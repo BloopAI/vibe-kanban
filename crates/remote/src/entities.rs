@@ -249,7 +249,6 @@ pub fn all_entities() -> Vec<&'static dyn EntityExport> {
         &PROJECT_STATUS_ENTITY,
         &ISSUE_ENTITY,
         &WORKSPACE_ENTITY,
-        &PROJECT_WORKSPACE_ENTITY,
         // Issue-scoped (project streaming)
         &ISSUE_ASSIGNEE_ENTITY,
         &ISSUE_FOLLOWER_ENTITY,

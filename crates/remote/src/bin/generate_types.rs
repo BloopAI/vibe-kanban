@@ -199,8 +199,7 @@ fn export_shapes() -> String {
     output.push_str("  readonly name: string;\n");
     output.push_str("  readonly table: string;\n");
     output.push_str("  readonly mutationScope: Scope | null;\n");
-    output.push_str("  readonly shapeScope: Scope | null;\n");
-    output.push_str("  readonly shape: ShapeDefinition<TRow> | null;\n");
+    output.push_str("  readonly shapes: readonly ShapeDefinition<TRow>[];\n");
     output.push_str("  readonly mutations: {\n");
     output.push_str("    readonly url: string;\n");
     output.push_str("    readonly _createType: TCreate;  // Phantom (not present at runtime)\n");
@@ -213,17 +212,15 @@ fn export_shapes() -> String {
     output.push_str("// Individual entity definitions\n");
     for entity in &entities {
         let const_name = to_screaming_snake_case(entity.name());
-        let shape_name = entity
-            .shape()
+        let shapes_str = entity
+            .shapes()
+            .iter()
             .map(|s| format!("{}_SHAPE", url_to_const_name(s.url)))
-            .unwrap_or_else(|| "null".to_string());
+            .collect::<Vec<_>>()
+            .join(", ");
 
         let mutation_scope = entity
             .mutation_scope()
-            .map(|s| format!("'{:?}'", s))
-            .unwrap_or_else(|| "null".to_string());
-        let shape_scope = entity
-            .shape_scope()
             .map(|s| format!("'{:?}'", s))
             .unwrap_or_else(|| "null".to_string());
 
@@ -256,8 +253,7 @@ fn export_shapes() -> String {
         output.push_str(&format!("  name: '{}',\n", entity.name()));
         output.push_str(&format!("  table: '{}',\n", entity.table()));
         output.push_str(&format!("  mutationScope: {},\n", mutation_scope));
-        output.push_str(&format!("  shapeScope: {},\n", shape_scope));
-        output.push_str(&format!("  shape: {},\n", shape_name));
+        output.push_str(&format!("  shapes: [{}],\n", shapes_str));
         output.push_str(&format!("  mutations: {},\n", mutations_str));
         output.push_str("};\n\n");
     }
