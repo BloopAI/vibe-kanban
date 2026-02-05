@@ -25,9 +25,13 @@ pub fn codex_home() -> Option<PathBuf> {
 }
 
 use async_trait::async_trait;
-use codex_app_server_protocol::{NewConversationParams, ReviewTarget};
+use codex_app_server_protocol::{
+    AskForApproval as V2AskForApproval, ReviewTarget, SandboxMode as V2SandboxMode,
+    ThreadForkParams, ThreadStartParams, TurnStartParams, UserInput,
+};
 use codex_protocol::{
-    config_types::SandboxMode as CodexSandboxMode, protocol::AskForApproval as CodexAskForApproval,
+    ThreadId,
+    config_types::{CollaborationMode, ModeKind, Settings},
 };
 use command_group::AsyncCommandGroup;
 use derivative::Derivative;
@@ -154,6 +158,8 @@ pub struct Codex {
     pub compact_prompt: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub developer_instructions: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plan: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 
@@ -292,38 +298,36 @@ impl Codex {
         apply_overrides(builder, &self.cmd)
     }
 
-    fn build_new_conversation_params(&self, cwd: &Path) -> NewConversationParams {
+    fn build_thread_start_params(&self, cwd: &Path) -> ThreadStartParams {
         let sandbox = match self.sandbox.as_ref() {
-            None | Some(SandboxMode::Auto) => Some(CodexSandboxMode::WorkspaceWrite), // match the Auto preset in codex
-            Some(SandboxMode::ReadOnly) => Some(CodexSandboxMode::ReadOnly),
-            Some(SandboxMode::WorkspaceWrite) => Some(CodexSandboxMode::WorkspaceWrite),
-            Some(SandboxMode::DangerFullAccess) => Some(CodexSandboxMode::DangerFullAccess),
+            None | Some(SandboxMode::Auto) => Some(V2SandboxMode::WorkspaceWrite), // match the Auto preset in codex
+            Some(SandboxMode::ReadOnly) => Some(V2SandboxMode::ReadOnly),
+            Some(SandboxMode::WorkspaceWrite) => Some(V2SandboxMode::WorkspaceWrite),
+            Some(SandboxMode::DangerFullAccess) => Some(V2SandboxMode::DangerFullAccess),
         };
 
         let approval_policy = match self.ask_for_approval.as_ref() {
             None if matches!(self.sandbox.as_ref(), None | Some(SandboxMode::Auto)) => {
                 // match the Auto preset in codex
-                Some(CodexAskForApproval::OnRequest)
+                Some(V2AskForApproval::OnRequest)
             }
             None => None,
-            Some(AskForApproval::UnlessTrusted) => Some(CodexAskForApproval::UnlessTrusted),
-            Some(AskForApproval::OnFailure) => Some(CodexAskForApproval::OnFailure),
-            Some(AskForApproval::OnRequest) => Some(CodexAskForApproval::OnRequest),
-            Some(AskForApproval::Never) => Some(CodexAskForApproval::Never),
+            Some(AskForApproval::UnlessTrusted) => Some(V2AskForApproval::UnlessTrusted),
+            Some(AskForApproval::OnFailure) => Some(V2AskForApproval::OnFailure),
+            Some(AskForApproval::OnRequest) => Some(V2AskForApproval::OnRequest),
+            Some(AskForApproval::Never) => Some(V2AskForApproval::Never),
         };
 
-        NewConversationParams {
+        ThreadStartParams {
             model: self.model.clone(),
-            profile: self.profile.clone(),
+            model_provider: self.model_provider.clone(),
             cwd: Some(cwd.to_string_lossy().to_string()),
             approval_policy,
             sandbox,
             config: self.build_config_overrides(),
             base_instructions: self.base_instructions.clone(),
-            include_apply_patch_tool: self.include_apply_patch_tool,
-            model_provider: self.model_provider.clone(),
-            compact_prompt: self.compact_prompt.clone(),
             developer_instructions: self.developer_instructions.clone(),
+            ..Default::default()
         }
     }
 
@@ -368,8 +372,11 @@ impl Codex {
         resume_session: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let params = self.build_new_conversation_params(current_dir);
+        let params = self.build_thread_start_params(current_dir);
         let resume_session = resume_session.map(|s| s.to_string());
+        let plan = self.plan.unwrap_or(false);
+        let model = self.model.clone();
+        let developer_instructions = self.developer_instructions.clone();
 
         self.spawn_app_server(
             current_dir,
@@ -378,7 +385,16 @@ impl Codex {
             move |client, _| async move {
                 match action {
                     CodexSessionAction::Chat { prompt } => {
-                        Self::launch_codex_agent(params, resume_session, prompt, client).await
+                        Self::launch_codex_agent(
+                            params,
+                            resume_session,
+                            prompt,
+                            plan,
+                            model,
+                            developer_instructions,
+                            client,
+                        )
+                        .await
                     }
                     CodexSessionAction::Review { target } => {
                         review::launch_codex_review(params, resume_session, target, client).await
@@ -390,9 +406,12 @@ impl Codex {
     }
 
     async fn launch_codex_agent(
-        conversation_params: NewConversationParams,
+        thread_start_params: ThreadStartParams,
         resume_session: Option<String>,
         combined_prompt: String,
+        plan: bool,
+        model: Option<String>,
+        developer_instructions: Option<String>,
         client: Arc<AppServerClient>,
     ) -> Result<(), ExecutorError> {
         let auth_status = client.get_auth_status().await?;
@@ -401,38 +420,62 @@ impl Codex {
                 "Codex authentication required".to_string(),
             ));
         }
-        match resume_session {
+
+        let thread_id_str = match resume_session {
             None => {
-                let params = conversation_params;
-                let response = client.new_conversation(params).await?;
-                let conversation_id = response.conversation_id;
-                client.register_session(&conversation_id).await?;
-                client.add_conversation_listener(conversation_id).await?;
-                client
-                    .send_user_message(conversation_id, combined_prompt)
-                    .await?;
+                let response = client.thread_start(thread_start_params).await?;
+                response.thread.id
             }
             Some(session_id) => {
-                let (rollout_path, _forked_session_id) =
-                    SessionHandler::fork_rollout_file(&session_id)
-                        .map_err(|e| ExecutorError::FollowUpNotSupported(e.to_string()))?;
-                let overrides = conversation_params;
+                let rollout_path = SessionHandler::find_rollout_file_path(&session_id)
+                    .map_err(|e| ExecutorError::FollowUpNotSupported(e.to_string()))?;
                 let response = client
-                    .resume_conversation(rollout_path.clone(), overrides)
+                    .thread_fork(ThreadForkParams {
+                        thread_id: session_id,
+                        path: Some(rollout_path),
+                        model: thread_start_params.model,
+                        model_provider: thread_start_params.model_provider,
+                        cwd: thread_start_params.cwd,
+                        approval_policy: thread_start_params.approval_policy,
+                        sandbox: thread_start_params.sandbox,
+                        config: thread_start_params.config,
+                        base_instructions: thread_start_params.base_instructions,
+                        developer_instructions: thread_start_params.developer_instructions,
+                    })
                     .await?;
-                tracing::debug!(
-                    "resuming session using rollout file {}, response {:?}",
-                    rollout_path.display(),
-                    response
-                );
-                let conversation_id = response.conversation_id;
-                client.register_session(&conversation_id).await?;
-                client.add_conversation_listener(conversation_id).await?;
-                client
-                    .send_user_message(conversation_id, combined_prompt)
-                    .await?;
+                response.thread.id
             }
-        }
+        };
+
+        let thread_id = ThreadId::from_string(&thread_id_str)
+            .map_err(|e| ExecutorError::Io(std::io::Error::other(e.to_string())))?;
+        client.register_session(&thread_id).await?;
+
+        let collaboration_mode = if plan {
+            Some(CollaborationMode {
+                mode: ModeKind::Plan,
+                settings: Settings {
+                    model: model.unwrap_or_default(),
+                    reasoning_effort: None,
+                    developer_instructions,
+                },
+            })
+        } else {
+            None
+        };
+
+        client
+            .turn_start(TurnStartParams {
+                thread_id: thread_id_str,
+                input: vec![UserInput::Text {
+                    text: combined_prompt,
+                    text_elements: vec![],
+                }],
+                collaboration_mode,
+                ..Default::default()
+            })
+            .await?;
+
         Ok(())
     }
 

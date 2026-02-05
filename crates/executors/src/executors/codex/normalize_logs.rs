@@ -6,6 +6,7 @@ use std::{
 
 use codex_app_server_protocol::{
     JSONRPCNotification, JSONRPCResponse, NewConversationResponse, ServerNotification,
+    ThreadForkResponse, ThreadStartResponse,
 };
 use codex_protocol::{
     openai_models::ReasoningEffort,
@@ -1085,22 +1086,26 @@ fn handle_jsonrpc_response(
     msg_store: &Arc<MsgStore>,
     entry_index: &EntryIndexProvider,
 ) {
-    let Ok(response) = serde_json::from_value::<NewConversationResponse>(response.result.clone())
-    else {
+    // Try v2 ThreadStartResponse first
+    if let Ok(resp) = serde_json::from_value::<ThreadStartResponse>(response.result.clone()) {
+        msg_store.push_session_id(resp.thread.id);
+        handle_model_params(resp.model, resp.reasoning_effort, msg_store, entry_index);
         return;
-    };
-
-    match SessionHandler::extract_session_id_from_rollout_path(response.rollout_path) {
-        Ok(session_id) => msg_store.push_session_id(session_id),
-        Err(err) => tracing::error!("failed to extract session id: {err}"),
     }
-
-    handle_model_params(
-        response.model,
-        response.reasoning_effort,
-        msg_store,
-        entry_index,
-    );
+    // Try v2 ThreadForkResponse
+    if let Ok(resp) = serde_json::from_value::<ThreadForkResponse>(response.result.clone()) {
+        msg_store.push_session_id(resp.thread.id);
+        handle_model_params(resp.model, resp.reasoning_effort, msg_store, entry_index);
+        return;
+    }
+    // Fallback: v1 NewConversationResponse
+    if let Ok(resp) = serde_json::from_value::<NewConversationResponse>(response.result.clone()) {
+        match SessionHandler::extract_session_id_from_rollout_path(resp.rollout_path) {
+            Ok(session_id) => msg_store.push_session_id(session_id),
+            Err(err) => tracing::error!("failed to extract session id: {err}"),
+        }
+        handle_model_params(resp.model, resp.reasoning_effort, msg_store, entry_index);
+    }
 }
 
 fn handle_model_params(
