@@ -8,6 +8,7 @@ import {
 } from '@virtuoso.dev/message-list';
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -29,9 +30,10 @@ import {
 } from '@/components/ui-new/hooks/useConversationHistory';
 import { aggregateConsecutiveEntries } from '@/utils/aggregateEntries';
 import type { WorkspaceWithSession } from '@/types/attempt';
+import type { RepoWithTargetBranch } from 'shared/types';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ChatScriptPlaceholder } from '../primitives/conversation/ChatScriptPlaceholder';
-import { SettingsDialog } from '../dialogs/SettingsDialog';
+import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialog';
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
@@ -44,7 +46,8 @@ export interface ConversationListHandle {
 
 interface MessageListContext {
   attempt: WorkspaceWithSession;
-  onOpenSettings: (() => void) | undefined;
+  onConfigureSetup: (() => void) | undefined;
+  onConfigureCleanup: (() => void) | undefined;
   showSetupPlaceholder: boolean;
   showCleanupPlaceholder: boolean;
 }
@@ -147,11 +150,7 @@ export const ConversationList = forwardRef<
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Get repos from workspace context to check if scripts are configured
-  let repos: {
-    id: string;
-    setup_script: string | null;
-    cleanup_script: string | null;
-  }[] = [];
+  let repos: RepoWithTargetBranch[] = [];
   try {
     const workspaceContext = useWorkspaceContext();
     repos = workspaceContext.repos;
@@ -159,21 +158,41 @@ export const ConversationList = forwardRef<
     // Context not available
   }
 
+  // Use ref to access current repos without causing callback recreation
+  const reposRef = useRef(repos);
+  reposRef.current = repos;
+
   // Check if any repo has setup or cleanup scripts configured
   const hasSetupScript = repos.some((repo) => repo.setup_script);
   const hasCleanupScript = repos.some((repo) => repo.cleanup_script);
 
-  // Handler to open repository settings dialog (first repo in workspace)
-  const firstRepoId = repos[0]?.id;
-  const handleOpenSettings = useMemo(
-    () => () => {
-      SettingsDialog.show({
-        initialSection: 'repos',
-        initialState: firstRepoId ? { repoId: firstRepoId } : undefined,
-      });
-    },
-    [firstRepoId]
-  );
+  // Handlers to open script fixer dialog for setup/cleanup scripts
+  const handleConfigureSetup = useCallback(() => {
+    const currentRepos = reposRef.current;
+    if (currentRepos.length === 0) return;
+
+    ScriptFixerDialog.show({
+      scriptType: 'setup',
+      repos: currentRepos,
+      workspaceId: attempt.id,
+      sessionId: attempt.session?.id,
+    });
+  }, [attempt.id, attempt.session?.id]);
+
+  const handleConfigureCleanup = useCallback(() => {
+    const currentRepos = reposRef.current;
+    if (currentRepos.length === 0) return;
+
+    ScriptFixerDialog.show({
+      scriptType: 'cleanup',
+      repos: currentRepos,
+      workspaceId: attempt.id,
+      sessionId: attempt.session?.id,
+    });
+  }, [attempt.id, attempt.session?.id]);
+
+  // Determine if configure buttons should be shown
+  const canConfigure = repos.length > 0;
 
   useEffect(() => {
     setLoading(true);
@@ -263,11 +282,19 @@ export const ConversationList = forwardRef<
   const messageListContext = useMemo(
     () => ({
       attempt,
-      onOpenSettings: handleOpenSettings,
+      onConfigureSetup: canConfigure ? handleConfigureSetup : undefined,
+      onConfigureCleanup: canConfigure ? handleConfigureCleanup : undefined,
       showSetupPlaceholder,
       showCleanupPlaceholder,
     }),
-    [attempt, handleOpenSettings, showSetupPlaceholder, showCleanupPlaceholder]
+    [
+      attempt,
+      canConfigure,
+      handleConfigureSetup,
+      handleConfigureCleanup,
+      showSetupPlaceholder,
+      showCleanupPlaceholder,
+    ]
   );
 
   // Expose scroll to previous user message functionality via ref
@@ -352,7 +379,7 @@ export const ConversationList = forwardRef<
                   <div className="my-base px-double">
                     <ChatScriptPlaceholder
                       type="setup"
-                      onOpenSettings={context.onOpenSettings}
+                      onConfigure={context.onConfigureSetup}
                     />
                   </div>
                 )}
@@ -364,7 +391,7 @@ export const ConversationList = forwardRef<
                   <div className="my-base px-double">
                     <ChatScriptPlaceholder
                       type="cleanup"
-                      onOpenSettings={context.onOpenSettings}
+                      onConfigure={context.onConfigureCleanup}
                     />
                   </div>
                 )}

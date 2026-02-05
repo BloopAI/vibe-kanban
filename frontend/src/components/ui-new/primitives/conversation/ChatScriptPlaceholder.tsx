@@ -7,13 +7,13 @@ export type ScriptPlaceholderType = 'setup' | 'cleanup';
 interface ChatScriptPlaceholderProps {
   type: ScriptPlaceholderType;
   className?: string;
-  onOpenSettings?: () => void;
+  onConfigure?: () => void;
 }
 
 export function ChatScriptPlaceholder({
   type,
   className,
-  onOpenSettings,
+  onConfigure,
 }: ChatScriptPlaceholderProps) {
   const { t } = useTranslation('tasks');
 
@@ -41,10 +41,10 @@ export function ChatScriptPlaceholder({
         <span className="text-low font-medium">{title}</span>
         <span className="text-lowest text-xs">{description}</span>
       </div>
-      {onOpenSettings && (
+      {onConfigure && (
         <button
           type="button"
-          onClick={onOpenSettings}
+          onClick={onConfigure}
           className="shrink-0 flex items-center gap-1 px-2 py-1 text-xs text-brand hover:text-brand-hover hover:bg-secondary rounded transition-colors"
         >
           <GearSixIcon className="size-icon-xs" />
