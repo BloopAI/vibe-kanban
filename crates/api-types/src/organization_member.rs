@@ -1,5 +1,3 @@
-//! Organization member entity types.
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
