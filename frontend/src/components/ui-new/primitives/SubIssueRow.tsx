@@ -42,6 +42,8 @@ export interface SubIssueRowProps {
   assignees: OrganizationMemberWithProfile[];
   createdAt: string;
   onClick?: () => void;
+  onPriorityClick?: (e: React.MouseEvent) => void;
+  onAssigneeClick?: (e: React.MouseEvent) => void;
   className?: string;
 }
 
@@ -55,6 +57,8 @@ export function SubIssueRow({
   assignees,
   createdAt,
   onClick,
+  onPriorityClick,
+  onAssigneeClick,
   className,
 }: SubIssueRowProps) {
   return (
@@ -93,7 +97,17 @@ export function SubIssueRow({
 
           {/* Left side: Priority, ID, Status, Title */}
           <div className="flex items-center gap-half flex-1 min-w-0">
-            <PriorityIcon priority={priority} />
+            {onPriorityClick ? (
+              <button
+                type="button"
+                onClick={onPriorityClick}
+                className="flex items-center cursor-pointer hover:bg-secondary rounded-sm transition-colors"
+              >
+                <PriorityIcon priority={priority} />
+              </button>
+            ) : (
+              <PriorityIcon priority={priority} />
+            )}
             <span className="font-ibm-plex-mono text-sm text-normal shrink-0">
               {simpleId}
             </span>
@@ -103,7 +117,17 @@ export function SubIssueRow({
 
           {/* Right side: Assignee, Age */}
           <div className="flex items-center gap-half shrink-0">
-            <KanbanAssignee assignees={assignees} />
+            {onAssigneeClick ? (
+              <button
+                type="button"
+                onClick={onAssigneeClick}
+                className="cursor-pointer hover:bg-secondary rounded-sm transition-colors"
+              >
+                <KanbanAssignee assignees={assignees} />
+              </button>
+            ) : (
+              <KanbanAssignee assignees={assignees} />
+            )}
             <span className="text-sm text-low">
               {formatRelativeTime(createdAt)}
             </span>

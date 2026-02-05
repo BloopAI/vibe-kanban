@@ -51,7 +51,11 @@ export function KanbanContainer() {
     updateStatus,
     removeStatus,
     getTagObjectsForIssue,
+    getTagsForIssue,
     getPullRequestsForIssue,
+    insertIssueTag,
+    removeIssueTag,
+    insertTag,
     isLoading: projectLoading,
   } = useProjectContext();
 
@@ -80,7 +84,12 @@ export function KanbanContainer() {
   } = useKanbanNavigation();
 
   // Get setter and executor from ActionsContext
-  const { setDefaultCreateStatusId, executeAction } = useActions();
+  const {
+    setDefaultCreateStatusId,
+    executeAction,
+    openPrioritySelection,
+    openAssigneeSelection,
+  } = useActions();
 
   const kanbanFilters = useUiPreferencesStore((s) => s.kanbanFilters);
   const kanbanViewMode = useUiPreferencesStore((s) => s.kanbanViewMode);
@@ -379,6 +388,46 @@ export function KanbanContainer() {
     [startCreate]
   );
 
+  // Inline editing callbacks for kanban cards
+  const handleCardPriorityClick = useCallback(
+    (issueId: string) => {
+      openPrioritySelection(projectId, [issueId]);
+    },
+    [projectId, openPrioritySelection]
+  );
+
+  const handleCardAssigneeClick = useCallback(
+    (issueId: string) => {
+      openAssigneeSelection(projectId, [issueId]);
+    },
+    [projectId, openAssigneeSelection]
+  );
+
+  const handleCardTagToggle = useCallback(
+    (issueId: string, tagId: string) => {
+      const currentIssueTags = getTagsForIssue(issueId);
+      const existing = currentIssueTags.find((it) => it.tag_id === tagId);
+      if (existing) {
+        removeIssueTag(existing.id);
+      } else {
+        insertIssueTag({ issue_id: issueId, tag_id: tagId });
+      }
+    },
+    [getTagsForIssue, insertIssueTag, removeIssueTag]
+  );
+
+  const handleCreateTag = useCallback(
+    (data: { name: string; color: string }): string => {
+      const { data: newTag } = insertTag({
+        project_id: projectId,
+        name: data.name,
+        color: data.color,
+      });
+      return newTag.id;
+    },
+    [insertTag, projectId]
+  );
+
   // Handler for create issue button in ViewNavTabs
   // Determines default status based on current view/tab
   const handleCreateIssueFromNav = useCallback(() => {
@@ -500,6 +549,23 @@ export function KanbanContainer() {
                               assignees={issueAssigneesMap[issue.id] ?? []}
                               pullRequests={getPullRequestsForIssue(issue.id)}
                               isSubIssue={!!issue.parent_issue_id}
+                              onPriorityClick={(e) => {
+                                e.stopPropagation();
+                                handleCardPriorityClick(issue.id);
+                              }}
+                              onAssigneeClick={(e) => {
+                                e.stopPropagation();
+                                handleCardAssigneeClick(issue.id);
+                              }}
+                              tagEditProps={{
+                                allTags: tags,
+                                selectedTagIds: getTagsForIssue(issue.id).map(
+                                  (it) => it.tag_id
+                                ),
+                                onTagToggle: (tagId) =>
+                                  handleCardTagToggle(issue.id, tagId),
+                                onCreateTag: handleCreateTag,
+                              }}
                             />
                           </KanbanCard>
                         );

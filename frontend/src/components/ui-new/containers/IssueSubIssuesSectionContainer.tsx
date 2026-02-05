@@ -25,7 +25,12 @@ export function IssueSubIssuesSectionContainer({
   issueId,
 }: IssueSubIssuesSectionContainerProps) {
   const { projectId, openIssue, startCreate } = useKanbanNavigation();
-  const { openSubIssueSelection, executorContext } = useActions();
+  const {
+    openSubIssueSelection,
+    openPrioritySelection,
+    openAssigneeSelection,
+    executorContext,
+  } = useActions();
 
   const {
     issues,
@@ -143,6 +148,25 @@ export function IssueSubIssuesSectionContainer({
     }
   }, [projectId, issueId, openSubIssueSelection]);
 
+  // Inline editing callbacks for sub-issue rows
+  const handleSubIssuePriorityClick = useCallback(
+    (subIssueId: string) => {
+      if (projectId) {
+        openPrioritySelection(projectId, [subIssueId]);
+      }
+    },
+    [projectId, openPrioritySelection]
+  );
+
+  const handleSubIssueAssigneeClick = useCallback(
+    (subIssueId: string) => {
+      if (projectId) {
+        openAssigneeSelection(projectId, [subIssueId]);
+      }
+    },
+    [projectId, openAssigneeSelection]
+  );
+
   // Actions for the section header
   const actions: SectionAction[] = useMemo(
     () => [
@@ -164,6 +188,8 @@ export function IssueSubIssuesSectionContainer({
         parentIssueId={issueId}
         subIssues={subIssues}
         onSubIssueClick={handleSubIssueClick}
+        onSubIssuePriorityClick={handleSubIssuePriorityClick}
+        onSubIssueAssigneeClick={handleSubIssueAssigneeClick}
         isLoading={isLoading}
         isReordering={isReordering}
         actions={actions}

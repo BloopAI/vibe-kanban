@@ -1,14 +1,23 @@
 'use client';
 
 import { useTranslation } from 'react-i18next';
+import { PlusIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import type { IssuePriority, PullRequest } from 'shared/remote-types';
+import type { IssuePriority, PullRequest, Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
 import { KanbanBadge } from '@/components/ui-new/primitives/KanbanBadge';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
 import { RunningDots } from '@/components/ui-new/primitives/RunningDots';
 import { PrBadge } from '@/components/ui-new/primitives/PrBadge';
+import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';
+
+export type TagEditProps = {
+  allTags: Tag[];
+  selectedTagIds: string[];
+  onTagToggle: (tagId: string) => void;
+  onCreateTag: (data: { name: string; color: string }) => string;
+};
 
 export type KanbanCardContentProps = {
   displayId: string;
@@ -21,6 +30,9 @@ export type KanbanCardContentProps = {
   isSubIssue?: boolean;
   isLoading?: boolean;
   className?: string;
+  onPriorityClick?: (e: React.MouseEvent) => void;
+  onAssigneeClick?: (e: React.MouseEvent) => void;
+  tagEditProps?: TagEditProps;
 };
 
 export const KanbanCardContent = ({
@@ -34,8 +46,25 @@ export const KanbanCardContent = ({
   isSubIssue,
   isLoading = false,
   className,
+  onPriorityClick,
+  onAssigneeClick,
+  tagEditProps,
 }: KanbanCardContentProps) => {
   const { t } = useTranslation('common');
+
+  const tagsDisplay = (
+    <>
+      {tags.slice(0, 2).map((tag) => (
+        <KanbanBadge key={tag.id} name={tag.name} color={tag.color} />
+      ))}
+      {tags.length > 2 && (
+        <span className="text-sm text-low">+{tags.length - 2}</span>
+      )}
+      {tagEditProps && tags.length === 0 && (
+        <PlusIcon className="size-icon-xs text-low" weight="bold" />
+      )}
+    </>
+  );
 
   return (
     <div className={cn('flex flex-col gap-half min-w-0', className)}>
@@ -65,12 +94,48 @@ export const KanbanCardContent = ({
       {/* Row 4: Priority, Tags, Assignee */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-half flex-wrap flex-1 min-w-0">
-          <PriorityIcon priority={priority} />
-          {tags.slice(0, 2).map((tag) => (
-            <KanbanBadge key={tag.id} name={tag.name} color={tag.color} />
-          ))}
-          {tags.length > 2 && (
-            <span className="text-sm text-low">+{tags.length - 2}</span>
+          {onPriorityClick ? (
+            <button
+              type="button"
+              onClick={onPriorityClick}
+              className="flex items-center cursor-pointer hover:bg-secondary rounded-sm transition-colors"
+            >
+              <PriorityIcon priority={priority} />
+            </button>
+          ) : (
+            <PriorityIcon priority={priority} />
+          )}
+          {tagEditProps ? (
+            <SearchableTagDropdownContainer
+              tags={tagEditProps.allTags}
+              selectedTagIds={tagEditProps.selectedTagIds}
+              onTagToggle={tagEditProps.onTagToggle}
+              onCreateTag={tagEditProps.onCreateTag}
+              disabled={false}
+              contentClassName=""
+              trigger={
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-half cursor-pointer hover:bg-secondary rounded-sm transition-colors"
+                >
+                  {tagsDisplay}
+                </button>
+              }
+            />
+          ) : (
+            <>
+              {tags.slice(0, 2).map((tag) => (
+                <KanbanBadge
+                  key={tag.id}
+                  name={tag.name}
+                  color={tag.color}
+                />
+              ))}
+              {tags.length > 2 && (
+                <span className="text-sm text-low">+{tags.length - 2}</span>
+              )}
+            </>
           )}
           {pullRequests.slice(0, 2).map((pr) => (
             <PrBadge
@@ -84,7 +149,17 @@ export const KanbanCardContent = ({
             <span className="text-sm text-low">+{pullRequests.length - 2}</span>
           )}
         </div>
-        <KanbanAssignee assignees={assignees} />
+        {onAssigneeClick ? (
+          <button
+            type="button"
+            onClick={onAssigneeClick}
+            className="cursor-pointer hover:bg-secondary rounded-sm transition-colors"
+          >
+            <KanbanAssignee assignees={assignees} />
+          </button>
+        ) : (
+          <KanbanAssignee assignees={assignees} />
+        )}
       </div>
     </div>
   );
