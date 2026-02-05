@@ -19,6 +19,5 @@ export const useInspectModeStore = create<InspectModeState>((set) => ({
       pendingComponentMarkdown: markdown,
       ...(markdown !== null ? { isInspectMode: false } : {}),
     }),
-  clearPendingComponentMarkdown: () =>
-    set({ pendingComponentMarkdown: null }),
+  clearPendingComponentMarkdown: () => set({ pendingComponentMarkdown: null }),
 }));
