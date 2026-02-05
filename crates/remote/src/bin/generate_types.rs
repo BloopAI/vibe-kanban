@@ -1,6 +1,10 @@
 use std::{env, fs, path::Path};
 
-use remote::{entities::all_shapes, routes::all_entity_metadata, shapes::ShapeDefinition};
+use remote::{
+    entities::{self, all_shapes},
+    routes::all_entity_metadata,
+    shapes::ShapeDefinition,
+};
 use ts_rs::TS;
 use api_types::{
     CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
@@ -19,12 +23,11 @@ use api_types::{
 /// Shape-only entities that don't have CRUD mutation routes.
 /// These only have shapes for Electric realtime streaming.
 fn shape_only_entities() -> Vec<&'static ShapeDefinition> {
-    use remote::shapes::*;
     vec![
-        &ORGANIZATION_MEMBERS,
-        &USERS,
-        &WORKSPACES,
-        &PULL_REQUESTS,
+        &entities::ORGANIZATION_MEMBER_SHAPE,
+        &entities::USER_SHAPE,
+        &entities::WORKSPACE_SHAPE,
+        &entities::PULL_REQUEST_SHAPE,
     ]
 }
 

@@ -77,8 +77,9 @@ pub const WORKSPACE_SHAPE: ShapeDefinition = crate::define_shape!(
     params: ["owner_user_id"],
 );
 
-pub const PROJECT_WORKSPACE_SHAPE: ShapeDefinition<Workspace> = crate::define_shape!(
+pub const PROJECT_WORKSPACE_SHAPE: ShapeDefinition = crate::define_shape!(
     table: "workspaces",
+    ts_type_name: "Workspace",
     where_clause: r#""project_id" = $1"#,
     url: "/shape/project/{project_id}/workspaces",
     params: ["project_id"],
