@@ -408,6 +408,25 @@
     "urlInput": {
       "placeholder": "URL 입력..."
     },
+    "devTools": {
+      "title": "DevTools",
+      "expandAriaLabel": "Expand DevTools",
+      "collapseAriaLabel": "Collapse DevTools",
+      "clearAriaLabel": "Clear current tab",
+      "summary": "Console ({{consoleCount}}) · Network ({{networkCount}}) · Errors ({{errorCount}})",
+      "tabs": {
+        "console": "Console ({{count}})",
+        "network": "Network ({{count}})",
+        "errors": "Errors ({{count}})"
+      },
+      "clear": "Clear",
+      "empty": {
+        "console": "No console logs",
+        "network": "No network requests",
+        "errors": "No errors"
+      },
+      "networkError": "Error: {{error}}"
+    },
     "noDevScript": "개발 스크립트가 설정되지 않았습니다",
     "noDevScriptHint": "미리보기를 활성화하려면 프로젝트 설정에서 개발 스크립트를 추가하세요."
   },

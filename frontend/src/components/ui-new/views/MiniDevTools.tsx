@@ -4,6 +4,7 @@ import {
   TrashIcon,
   WarningCircleIcon,
 } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import type {
   ConsoleEntry,
@@ -119,6 +120,8 @@ export function MiniDevTools({
   onExpandedErrorIdChange,
   className,
 }: MiniDevToolsProps) {
+  const { t } = useTranslation('tasks');
+
   const handleClearClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (activeTab === 'console') onClearConsole();
@@ -136,13 +139,16 @@ export function MiniDevTools({
           'text-xs text-low hover:text-normal transition-colors',
           className
         )}
-        aria-label="Expand DevTools"
+        aria-label={t('preview.devTools.expandAriaLabel')}
       >
         <CaretUpIcon size={14} weight="fill" />
-        <span>DevTools</span>
+        <span>{t('preview.devTools.title')}</span>
         <span className="text-low">
-          Console ({consoleLogs.length}) · Network ({networkRequests.length}) ·
-          Errors ({errors.length})
+          {t('preview.devTools.summary', {
+            consoleCount: consoleLogs.length,
+            networkCount: networkRequests.length,
+            errorCount: errors.length,
+          })}
         </span>
       </button>
     );
@@ -160,11 +166,13 @@ export function MiniDevTools({
           <button
             onClick={onToggleCollapse}
             className="flex items-center justify-center text-low hover:text-normal transition-colors"
-            aria-label="Collapse DevTools"
+            aria-label={t('preview.devTools.collapseAriaLabel')}
           >
             <CaretDownIcon size={16} weight="fill" />
           </button>
-          <span className="text-sm text-high font-medium">DevTools</span>
+          <span className="text-sm text-high font-medium">
+            {t('preview.devTools.title')}
+          </span>
           <div className="flex items-center gap-base">
             <button
               onClick={() => onTabChange('console')}
@@ -175,7 +183,9 @@ export function MiniDevTools({
                   : 'border-transparent text-low hover:text-normal'
               )}
             >
-              Console ({consoleLogs.length})
+              {t('preview.devTools.tabs.console', {
+                count: consoleLogs.length,
+              })}
             </button>
             <button
               onClick={() => onTabChange('network')}
@@ -186,7 +196,9 @@ export function MiniDevTools({
                   : 'border-transparent text-low hover:text-normal'
               )}
             >
-              Network ({networkRequests.length})
+              {t('preview.devTools.tabs.network', {
+                count: networkRequests.length,
+              })}
             </button>
             <button
               onClick={() => onTabChange('errors')}
@@ -197,7 +209,7 @@ export function MiniDevTools({
                   : 'border-transparent text-low hover:text-normal'
               )}
             >
-              Errors ({errors.length})
+              {t('preview.devTools.tabs.errors', { count: errors.length })}
             </button>
           </div>
         </div>
@@ -205,10 +217,10 @@ export function MiniDevTools({
         <button
           onClick={handleClearClick}
           className="flex items-center justify-center gap-half px-base py-half rounded border border-transparent text-low hover:text-normal transition-colors text-xs whitespace-nowrap"
-          aria-label="Clear current tab"
+          aria-label={t('preview.devTools.clearAriaLabel')}
         >
           <TrashIcon size={14} />
-          Clear
+          {t('preview.devTools.clear')}
         </button>
       </div>
 
@@ -217,7 +229,9 @@ export function MiniDevTools({
         {activeTab === 'console' && (
           <div className="divide-y divide-brand/10">
             {consoleLogs.length === 0 ? (
-              <div className="p-base text-low">No console logs</div>
+              <div className="p-base text-low">
+                {t('preview.devTools.empty.console')}
+              </div>
             ) : (
               consoleLogs.map((entry) => (
                 <div
@@ -254,7 +268,9 @@ export function MiniDevTools({
         {activeTab === 'network' && (
           <div className="divide-y divide-brand/10">
             {networkRequests.length === 0 ? (
-              <div className="p-base text-low">No network requests</div>
+              <div className="p-base text-low">
+                {t('preview.devTools.empty.network')}
+              </div>
             ) : (
               networkRequests.map((entry) => (
                 <div
@@ -285,7 +301,9 @@ export function MiniDevTools({
                   </div>
                   {entry.error && (
                     <div className="mt-half text-red-500 text-xs">
-                      Error: {entry.error}
+                      {t('preview.devTools.networkError', {
+                        error: entry.error,
+                      })}
                     </div>
                   )}
                 </div>
@@ -297,7 +315,9 @@ export function MiniDevTools({
         {activeTab === 'errors' && (
           <div className="divide-y divide-brand/10">
             {errors.length === 0 ? (
-              <div className="p-base text-low">No errors</div>
+              <div className="p-base text-low">
+                {t('preview.devTools.empty.errors')}
+              </div>
             ) : (
               errors.map((entry) => (
                 <div
