@@ -47,7 +47,6 @@ use self::{
     client::{AppServerClient, LogWriter},
     jsonrpc::{ExitSignalSender, JsonRpcPeer},
     normalize_logs::{Error, normalize_logs},
-    session::SessionHandler,
 };
 use crate::{
     approvals::ExecutorApprovalService,
@@ -414,8 +413,8 @@ impl Codex {
         developer_instructions: Option<String>,
         client: Arc<AppServerClient>,
     ) -> Result<(), ExecutorError> {
-        let auth_status = client.get_auth_status().await?;
-        if auth_status.requires_openai_auth.unwrap_or(true) && auth_status.auth_method.is_none() {
+        let account = client.get_account(false).await?;
+        if account.requires_openai_auth && account.account.is_none() {
             return Err(ExecutorError::AuthRequired(
                 "Codex authentication required".to_string(),
             ));
@@ -427,12 +426,10 @@ impl Codex {
                 response.thread.id
             }
             Some(session_id) => {
-                let rollout_path = SessionHandler::find_rollout_file_path(&session_id)
-                    .map_err(|e| ExecutorError::FollowUpNotSupported(e.to_string()))?;
                 let response = client
                     .thread_fork(ThreadForkParams {
                         thread_id: session_id,
-                        path: Some(rollout_path),
+                        path: None,
                         model: thread_start_params.model,
                         model_provider: thread_start_params.model_provider,
                         cwd: thread_start_params.cwd,

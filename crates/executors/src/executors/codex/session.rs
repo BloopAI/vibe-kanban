@@ -1,18 +1,9 @@
-use std::{
-    fs::File,
-    io::{BufRead, BufReader, BufWriter, Write},
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
-use chrono::Local;
-use codex_protocol::protocol::SessionSource;
 use regex::Regex;
-use serde_json::{Map, Value};
 use thiserror::Error;
 
 use super::codex_home;
-
-const FILENAME_TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H-%M-%S";
 
 #[derive(Debug, Error)]
 pub enum SessionError {
@@ -62,117 +53,6 @@ impl SessionHandler {
         Self::scan_directory(&sessions_dir, session_id)
     }
 
-    /// Fork a Codex rollout file by copying it to a temp location and assigning a new session id.
-    /// Returns (new_rollout_path, new_session_id).
-    pub fn fork_rollout_file(session_id: &str) -> Result<(PathBuf, String), SessionError> {
-        let original = Self::find_rollout_file_path(session_id)?;
-        tracing::debug!("Forking rollout file: {}", original.display());
-        let file = File::open(&original).map_err(|e| {
-            SessionError::Io(format!(
-                "Failed to open rollout file {}: {e}",
-                original.display()
-            ))
-        })?;
-        let mut reader = BufReader::new(file);
-
-        let mut first_line = String::new();
-        reader.read_line(&mut first_line).map_err(|e| {
-            SessionError::Io(format!(
-                "Failed to read first line from {}: {e}",
-                original.display()
-            ))
-        })?;
-        let trimmed_header = first_line.trim();
-        if trimmed_header.is_empty() {
-            return Err(SessionError::Format(format!(
-                "Rollout file {} missing header line",
-                original.display()
-            )));
-        }
-
-        let mut meta: Value = serde_json::from_str(trimmed_header).map_err(|e| {
-            SessionError::Format(format!(
-                "Failed to parse first line JSON in {}: {e}",
-                original.display()
-            ))
-        })?;
-
-        let new_session_id = uuid::Uuid::new_v4().to_string();
-
-        let destination = Self::create_new_rollout_path(&new_session_id)?;
-        let dest_file = File::create(&destination).map_err(|e| {
-            SessionError::Io(format!(
-                "Failed to create forked rollout {}: {e}",
-                destination.display()
-            ))
-        })?;
-        let mut writer = BufWriter::new(dest_file);
-
-        Self::replace_session_id(&mut meta, &new_session_id)?;
-        let meta_line = serde_json::to_string(&meta)
-            .map_err(|e| SessionError::Format(format!("Failed to serialize modified meta: {e}")))?;
-        writeln!(writer, "{meta_line}").map_err(|e| {
-            SessionError::Io(format!(
-                "Failed to write meta to {}: {e}",
-                destination.display()
-            ))
-        })?;
-
-        // write all remaining lines as-is
-        for line in reader.lines() {
-            let line = line.map_err(|e| {
-                SessionError::Io(format!(
-                    "Failed to read line from {}: {e}",
-                    original.display()
-                ))
-            })?;
-            writeln!(writer, "{line}").map_err(|e| {
-                SessionError::Io(format!(
-                    "Failed to write line to {}: {e}",
-                    destination.display()
-                ))
-            })?;
-        }
-
-        writer.flush().map_err(|e| {
-            SessionError::Io(format!("Failed to flush {}: {e}", destination.display()))
-        })?;
-
-        Ok((destination, new_session_id))
-    }
-
-    pub(crate) fn replace_session_id(
-        session_meta: &mut Value,
-        new_id: &str,
-    ) -> Result<(), SessionError> {
-        let Value::Object(map) = session_meta else {
-            return Err(SessionError::Format(
-                "First line of rollout file is not a JSON object".to_string(),
-            ));
-        };
-
-        let Some(Value::Object(payload)) = map.get_mut("payload") else {
-            return Err(SessionError::Format(
-                "Rollout meta payload missing or not an object".to_string(),
-            ));
-        };
-
-        payload.insert("id".to_string(), Value::String(new_id.to_string()));
-
-        Self::ensure_required_payload_fields(payload);
-        Ok(())
-    }
-
-    fn ensure_required_payload_fields(payload: &mut Map<String, Value>) {
-        if !payload.contains_key("source") {
-            let Ok(value) = serde_json::to_value(SessionSource::default()) else {
-                tracing::error!("Failed to serialize default SessionSource");
-                return;
-            };
-            payload.insert("source".to_string(), value);
-        }
-    }
-
     fn sessions_root() -> Result<PathBuf, SessionError> {
         let codex_dir = codex_home().ok_or_else(|| {
             SessionError::Io("Could not determine Codex home directory".to_string())
@@ -218,30 +98,5 @@ impl SessionHandler {
         Err(SessionError::NotFound(format!(
             "Could not find rollout file for session_id: {session_id}"
         )))
-    }
-
-    fn create_new_rollout_path(new_session_id: &str) -> Result<PathBuf, SessionError> {
-        let sessions_root = Self::sessions_root()?;
-        let now_local = Local::now();
-
-        let dir = sessions_root
-            .join(now_local.format("%Y").to_string())
-            .join(now_local.format("%m").to_string())
-            .join(now_local.format("%d").to_string());
-
-        std::fs::create_dir_all(&dir).map_err(|e| {
-            SessionError::Io(format!(
-                "Failed to create sessions directory {}: {e}",
-                dir.display()
-            ))
-        })?;
-
-        let filename = Self::rollout_filename_from_time(new_session_id, &now_local);
-        Ok(dir.join(filename))
-    }
-
-    fn rollout_filename_from_time(new_id: &str, now_local: &chrono::DateTime<Local>) -> String {
-        let ts = now_local.format(FILENAME_TIMESTAMP_FORMAT).to_string();
-        format!("rollout-{ts}-{new_id}.jsonl")
     }
 }

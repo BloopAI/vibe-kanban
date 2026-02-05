@@ -12,12 +12,12 @@ use async_trait::async_trait;
 use codex_app_server_protocol::{
     ClientInfo, ClientNotification, ClientRequest, CommandExecutionApprovalDecision,
     CommandExecutionRequestApprovalResponse, FileChangeApprovalDecision,
-    FileChangeRequestApprovalResponse, GetAuthStatusParams, GetAuthStatusResponse,
-    InitializeParams, InitializeResponse, JSONRPCError, JSONRPCNotification, JSONRPCRequest,
-    JSONRPCResponse, ListMcpServerStatusParams, ListMcpServerStatusResponse, RequestId,
-    ReviewStartParams, ReviewStartResponse, ReviewTarget, ServerNotification, ServerRequest,
-    ThreadForkParams, ThreadForkResponse, ThreadStartParams, ThreadStartResponse, TurnStartParams,
-    TurnStartResponse, UserInput,
+    FileChangeRequestApprovalResponse, GetAccountParams, GetAccountResponse, InitializeParams,
+    InitializeResponse, JSONRPCError, JSONRPCNotification, JSONRPCRequest, JSONRPCResponse,
+    ListMcpServerStatusParams, ListMcpServerStatusResponse, RequestId, ReviewStartParams,
+    ReviewStartResponse, ReviewTarget, ServerNotification, ServerRequest,
+    ThreadCompactStartParams, ThreadCompactStartResponse, ThreadForkParams, ThreadForkResponse,
+    ThreadStartParams, ThreadStartResponse, TurnStartParams, TurnStartResponse, UserInput,
 };
 use codex_protocol::ThreadId;
 use serde::{Serialize, de::DeserializeOwned};
@@ -138,15 +138,26 @@ impl AppServerClient {
         self.send_request(request, "turn/start").await
     }
 
-    pub async fn get_auth_status(&self) -> Result<GetAuthStatusResponse, ExecutorError> {
-        let request = ClientRequest::GetAuthStatus {
+    pub async fn get_account(
+        &self,
+        refresh_token: bool,
+    ) -> Result<GetAccountResponse, ExecutorError> {
+        let request = ClientRequest::GetAccount {
             request_id: self.next_request_id(),
-            params: GetAuthStatusParams {
-                include_token: Some(true),
-                refresh_token: Some(false),
-            },
+            params: GetAccountParams { refresh_token },
         };
-        self.send_request(request, "getAuthStatus").await
+        self.send_request(request, "account/read").await
+    }
+
+    pub async fn thread_compact_start(
+        &self,
+        thread_id: String,
+    ) -> Result<ThreadCompactStartResponse, ExecutorError> {
+        let request = ClientRequest::ThreadCompactStart {
+            request_id: self.next_request_id(),
+            params: ThreadCompactStartParams { thread_id },
+        };
+        self.send_request(request, "thread/compact/start").await
     }
 
     pub async fn start_review(
@@ -560,7 +571,8 @@ fn request_id(request: &ClientRequest) -> RequestId {
         | ClientRequest::ThreadStart { request_id, .. }
         | ClientRequest::ThreadFork { request_id, .. }
         | ClientRequest::TurnStart { request_id, .. }
-        | ClientRequest::GetAuthStatus { request_id, .. }
+        | ClientRequest::GetAccount { request_id, .. }
+        | ClientRequest::ThreadCompactStart { request_id, .. }
         | ClientRequest::ReviewStart { request_id, .. }
         | ClientRequest::McpServerStatusList { request_id, .. } => request_id.clone(),
         _ => unreachable!("request_id called for unsupported request variant"),

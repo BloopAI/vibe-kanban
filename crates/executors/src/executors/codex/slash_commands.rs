@@ -1,21 +1,16 @@
 use std::path::Path;
 
-use codex_app_server_protocol::JSONRPCNotification;
+use codex_app_server_protocol::{JSONRPCNotification, ThreadForkParams};
 use codex_core::{
-    AuthManager, RolloutRecorder, ThreadManager,
-    config::{Config, ConfigOverrides},
+    RolloutRecorder,
     protocol::{
-        AgentMessageEvent, ErrorEvent, Event, EventMsg, Op as CoreOp, RolloutItem, SessionSource,
-        TokenUsageInfo, TurnContextItem,
+        AgentMessageEvent, ErrorEvent, EventMsg, RolloutItem, TokenUsageInfo, TurnContextItem,
     },
-};
-use codex_protocol::{
-    config_types::SandboxMode as CodexSandboxMode, protocol::AskForApproval as CodexAskForApproval,
 };
 use serde_json::json;
 
 use super::{
-    AskForApproval, Codex, SandboxMode,
+    Codex,
     client::{AppServerClient, LogWriter},
     session::SessionHandler,
 };
@@ -34,23 +29,30 @@ const DEFAULT_PROJECT_DOC_FILENAME: &str = "AGENTS.md";
 #[derive(Debug, Clone)]
 pub enum CodexSlashCommand {
     Init,
-    Compact { instructions: Option<String> },
+    Compact {
+        session_id: String,
+        instructions: Option<String>,
+    },
     Status,
     Mcp,
 }
 
 impl CodexSlashCommand {
-    pub fn parse(prompt: &str) -> Option<Self> {
+    pub fn parse(prompt: &str, session_id: Option<&str>) -> Option<Self> {
         let cmd: SlashCommandCall<'_> = parse_slash_command(prompt)?;
         match cmd.name.as_str() {
             "init" => Some(Self::Init),
-            "compact" => Some(Self::Compact {
-                instructions: if cmd.arguments.is_empty() {
-                    None
-                } else {
-                    Some(cmd.arguments.to_string())
-                },
-            }),
+            "compact" => {
+                let session_id = session_id?.to_string();
+                Some(Self::Compact {
+                    session_id,
+                    instructions: if cmd.arguments.is_empty() {
+                        None
+                    } else {
+                        Some(cmd.arguments.to_string())
+                    },
+                })
+            }
             "status" => Some(Self::Status),
             "mcp" => Some(Self::Mcp),
             _ => None,
@@ -66,7 +68,7 @@ impl Codex {
         session_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        if let Some(command) = CodexSlashCommand::parse(prompt) {
+        if let Some(command) = CodexSlashCommand::parse(prompt, session_id) {
             return match command {
                 CodexSlashCommand::Init => {
                     let init_target = current_dir.join(DEFAULT_PROJECT_DOC_FILENAME);
@@ -85,19 +87,10 @@ impl Codex {
                         .await
                     }
                 }
-                CodexSlashCommand::Compact { instructions } => match session_id {
-                    Some(session_id) => {
-                        self.perform_compact(current_dir, session_id, instructions, env)
-                            .await
-                    }
-                    None => {
-                        self.return_static_reply(
-                            current_dir,
-                            Ok("_No active session to compact._".to_string()),
-                        )
+                CodexSlashCommand::Compact { .. } => {
+                    self.handle_app_server_slash_command(current_dir, command, env)
                         .await
-                    }
-                },
+                }
                 CodexSlashCommand::Status => {
                     self.return_static_reply(
                         current_dir,
@@ -112,6 +105,18 @@ impl Codex {
                         .await
                 }
             };
+        }
+
+        // No slash command matched — check if compact without a session
+        if parse_slash_command(prompt)
+            .is_some_and(|cmd: SlashCommandCall<'_>| cmd.name.as_str() == "compact" && session_id.is_none())
+        {
+            return self
+                .return_static_reply(
+                    current_dir,
+                    Ok("_No active session to compact._".to_string()),
+                )
+                .await;
         }
 
         self.spawn_agent_with_prompt(current_dir, prompt, session_id, env)
@@ -137,98 +142,6 @@ impl Codex {
             .await
     }
 
-    async fn perform_compact(
-        &self,
-        current_dir: &Path,
-        session_id: &str,
-        instructions: Option<String>,
-        _env: &ExecutionEnv,
-    ) -> Result<SpawnedChild, ExecutorError> {
-        let (mut spawned, writer) = spawn_local_output_process()?;
-        let log_writer = LogWriter::new(writer);
-        let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
-
-        let codex = self.clone();
-        let session_id = session_id.to_string();
-        let current_dir = current_dir.to_path_buf();
-        tokio::spawn(async move {
-            let result = codex
-                .compact_inner(&current_dir, &session_id, instructions, &log_writer)
-                .await;
-            let exit_result = match result {
-                Ok(()) => ExecutorExitResult::Success,
-                Err(err) => {
-                    let message = format!("Compact failed: {err}");
-                    let _ = codex
-                        .log_event(
-                            &log_writer,
-                            EventMsg::Error(ErrorEvent {
-                                message,
-                                codex_error_info: None,
-                            }),
-                        )
-                        .await;
-                    ExecutorExitResult::Failure
-                }
-            };
-            let _ = exit_signal_tx.send(exit_result);
-        });
-
-        spawned.exit_signal = Some(exit_signal_rx);
-        Ok(spawned)
-    }
-
-    async fn compact_inner(
-        &self,
-        current_dir: &Path,
-        session_id: &str,
-        instructions: Option<String>,
-        log_writer: &LogWriter,
-    ) -> Result<(), ExecutorError> {
-        let rollout_path = SessionHandler::find_rollout_file_path(session_id)
-            .map_err(|err| ExecutorError::Io(std::io::Error::other(err.to_string())))?;
-        let config = self.build_core_config(current_dir, instructions).await?;
-        let auth_manager = AuthManager::shared(
-            config.codex_home.clone(),
-            true,
-            config.cli_auth_credentials_store_mode,
-        );
-        let thread_manager = ThreadManager::new(
-            config.codex_home.clone(),
-            auth_manager.clone(),
-            SessionSource::Exec,
-        );
-        let new_thread = thread_manager
-            .resume_thread_from_rollout(config, rollout_path, auth_manager)
-            .await
-            .map_err(|err| ExecutorError::Io(std::io::Error::other(err.to_string())))?;
-        let thread = new_thread.thread;
-        thread
-            .submit(CoreOp::Compact)
-            .await
-            .map_err(|err| ExecutorError::Io(std::io::Error::other(err.to_string())))?;
-
-        loop {
-            let event: Event = thread
-                .next_event()
-                .await
-                .map_err(|err| ExecutorError::Io(std::io::Error::other(err.to_string())))?;
-            self.log_event(log_writer, event.msg.clone()).await?;
-            if matches!(event.msg, EventMsg::TurnComplete(_)) {
-                break;
-            }
-        }
-
-        let _ = thread.submit(CoreOp::Shutdown).await;
-        while let Ok(event) = thread.next_event().await {
-            if matches!(event.msg, EventMsg::ShutdownComplete) {
-                break;
-            }
-        }
-
-        Ok(())
-    }
-
     // Handle slash commands that require interaction with the app server
     async fn handle_app_server_slash_command(
         &self,
@@ -237,6 +150,7 @@ impl Codex {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder()?.build_initial()?;
+        let thread_start_params = self.build_thread_start_params(current_dir);
 
         self.spawn_app_server(
             current_dir,
@@ -247,6 +161,46 @@ impl Codex {
                     CodexSlashCommand::Mcp => {
                         let message = fetch_mcp_status_message(&client).await?;
                         log_event_raw(client.log_writer(), message).await?;
+                        // Signal completion because the app server doesn't produce
+                        // codex/event/task_complete for MCP status queries
+                        exit_signal_tx
+                            .send_exit_signal(ExecutorExitResult::Success)
+                            .await;
+                    }
+                    CodexSlashCommand::Compact {
+                        session_id,
+                        instructions: _,
+                    } => {
+                        let account = client.get_account(false).await?;
+                        if account.requires_openai_auth && account.account.is_none() {
+                            return Err(ExecutorError::AuthRequired(
+                                "Codex authentication required".to_string(),
+                            ));
+                        }
+
+                        // Fork the thread into the app-server so it can manage it
+                        let response = client
+                            .thread_fork(ThreadForkParams {
+                                thread_id: session_id,
+                                path: None,
+                                model: thread_start_params.model,
+                                model_provider: thread_start_params.model_provider,
+                                cwd: thread_start_params.cwd,
+                                approval_policy: thread_start_params.approval_policy,
+                                sandbox: thread_start_params.sandbox,
+                                config: thread_start_params.config,
+                                base_instructions: thread_start_params.base_instructions,
+                                developer_instructions: thread_start_params
+                                    .developer_instructions,
+                            })
+                            .await?;
+
+                        // Trigger compaction — the response is immediate/empty.
+                        // Completion streams back as codex/event/task_complete,
+                        // which on_notification detects and signals exit automatically.
+                        client
+                            .thread_compact_start(response.thread.id)
+                            .await?;
                     }
                     _ => {
                         return Err(ExecutorError::Io(std::io::Error::other(
@@ -254,11 +208,6 @@ impl Codex {
                         )));
                     }
                 }
-
-                // singal completion because the app server doesn't produce codex/event/task_complete for these API calls
-                exit_signal_tx
-                    .send_exit_signal(ExecutorExitResult::Success)
-                    .await;
 
                 Ok(())
             },
@@ -308,44 +257,6 @@ impl Codex {
 
         spawned.exit_signal = Some(exit_signal_rx);
         Ok(spawned)
-    }
-
-    pub async fn build_core_config(
-        &self,
-        current_dir: &Path,
-        compact_prompt_override: Option<String>,
-    ) -> Result<Config, ExecutorError> {
-        let approval_policy = match self.ask_for_approval.as_ref() {
-            Some(policy) => Some(Self::map_ask_for_approval(policy)),
-            None if matches!(self.sandbox.as_ref(), None | Some(SandboxMode::Auto)) => {
-                Some(CodexAskForApproval::OnRequest)
-            }
-            None => None,
-        };
-        let sandbox_mode = match self.sandbox.as_ref() {
-            None | Some(SandboxMode::Auto) => Some(CodexSandboxMode::WorkspaceWrite),
-            Some(SandboxMode::ReadOnly) => Some(CodexSandboxMode::ReadOnly),
-            Some(SandboxMode::WorkspaceWrite) => Some(CodexSandboxMode::WorkspaceWrite),
-            Some(SandboxMode::DangerFullAccess) => Some(CodexSandboxMode::DangerFullAccess),
-        };
-
-        let overrides = ConfigOverrides {
-            cwd: Some(current_dir.to_path_buf()),
-            model: self.model.clone(),
-            model_provider: self.model_provider.clone(),
-            config_profile: self.profile.clone(),
-            approval_policy,
-            sandbox_mode,
-            base_instructions: self.base_instructions.clone(),
-            developer_instructions: self.developer_instructions.clone(),
-            compact_prompt: compact_prompt_override.or_else(|| self.compact_prompt.clone()),
-            include_apply_patch_tool: self.include_apply_patch_tool,
-            ..Default::default()
-        };
-
-        Config::load_with_cli_overrides_and_harness_overrides(Vec::new(), overrides)
-            .await
-            .map_err(|err| ExecutorError::Io(std::io::Error::other(err.to_string())))
     }
 
     async fn build_status_message(
@@ -463,15 +374,6 @@ impl Codex {
         }
 
         lines
-    }
-
-    fn map_ask_for_approval(value: &AskForApproval) -> CodexAskForApproval {
-        match value {
-            AskForApproval::UnlessTrusted => CodexAskForApproval::UnlessTrusted,
-            AskForApproval::OnFailure => CodexAskForApproval::OnFailure,
-            AskForApproval::OnRequest => CodexAskForApproval::OnRequest,
-            AskForApproval::Never => CodexAskForApproval::Never,
-        }
     }
 
     pub async fn log_event(
