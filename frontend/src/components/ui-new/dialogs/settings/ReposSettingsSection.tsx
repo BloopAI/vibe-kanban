@@ -50,7 +50,13 @@ function repoToFormState(repo: Repo): RepoScriptsFormState {
   };
 }
 
-export function ReposSettingsSection() {
+interface ReposSettingsSectionProps {
+  initialState?: { repoId?: string };
+}
+
+export function ReposSettingsSection({
+  initialState,
+}: ReposSettingsSectionProps) {
   const { t } = useTranslation('settings');
   const queryClient = useQueryClient();
 
@@ -64,8 +70,10 @@ export function ReposSettingsSection() {
     queryFn: () => repoApi.list(),
   });
 
-  // Selected repo state
-  const [selectedRepoId, setSelectedRepoId] = useState<string>('');
+  // Selected repo state - initialize from props if provided
+  const [selectedRepoId, setSelectedRepoId] = useState<string>(
+    initialState?.repoId ?? ''
+  );
 
   // Fetch branches for the selected repo
   const { data: branches = [], isLoading: branchesLoading } = useRepoBranches(

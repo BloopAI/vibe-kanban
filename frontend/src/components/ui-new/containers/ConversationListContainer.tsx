@@ -33,7 +33,7 @@ import { aggregateConsecutiveEntries } from '@/utils/aggregateEntries';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ChatScriptPlaceholder } from '../primitives/conversation/ChatScriptPlaceholder';
-import { useNavigate } from 'react-router-dom';
+import { SettingsDialog } from '../dialogs/SettingsDialog';
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
@@ -158,7 +158,6 @@ export const ConversationList = forwardRef<
     loading: boolean;
   } | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const navigate = useNavigate();
 
   // Get repos from workspace context to check if scripts are configured
   let repos: {
@@ -185,17 +184,16 @@ export const ConversationList = forwardRef<
   hasCleanupScriptRef.current = hasCleanupScript;
   reposRef.current = repos;
 
-  // Handler to navigate to repository settings (first repo in workspace)
+  // Handler to open repository settings dialog (first repo in workspace)
   const handleOpenSettings = useMemo(
     () => () => {
       const firstRepoId = reposRef.current[0]?.id;
-      if (firstRepoId) {
-        navigate(`/settings/repos?repoId=${firstRepoId}`);
-      } else {
-        navigate('/settings/repos');
-      }
+      SettingsDialog.show({
+        initialSection: 'repos',
+        initialState: firstRepoId ? { repoId: firstRepoId } : undefined,
+      });
     },
-    [navigate]
+    []
   );
 
   // Create stable placeholder entries

@@ -19,7 +19,7 @@ export type SettingsSectionType =
 // Section-specific initial state types
 export type SettingsSectionInitialState = {
   general: undefined;
-  repos: undefined;
+  repos: { repoId?: string } | undefined;
   organizations: { organizationId?: string } | undefined;
   'remote-projects':
     | { organizationId?: string; projectId?: string }
@@ -46,7 +46,13 @@ export function SettingsSection({
       case 'general':
         return <GeneralSettingsSectionContent />;
       case 'repos':
-        return <ReposSettingsSectionContent />;
+        return (
+          <ReposSettingsSectionContent
+            initialState={
+              initialState as SettingsSectionInitialState['repos']
+            }
+          />
+        );
       case 'organizations':
         return <OrganizationsSettingsSectionContent />;
       case 'remote-projects':
