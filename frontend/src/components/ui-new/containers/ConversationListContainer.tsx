@@ -8,6 +8,7 @@ import {
 } from '@virtuoso.dev/message-list';
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -176,13 +177,13 @@ export const ConversationList = forwardRef<
   const hasSetupScript = repos.some((repo) => repo.setup_script);
   const hasCleanupScript = repos.some((repo) => repo.cleanup_script);
 
-  // Use refs to avoid stale closures in callbacks
+  // Use refs for current values (needed for callbacks and settings dialog)
+  const reposRef = useRef(repos);
   const hasSetupScriptRef = useRef(hasSetupScript);
   const hasCleanupScriptRef = useRef(hasCleanupScript);
-  const reposRef = useRef(repos);
+  reposRef.current = repos;
   hasSetupScriptRef.current = hasSetupScript;
   hasCleanupScriptRef.current = hasCleanupScript;
-  reposRef.current = repos;
 
   // Handler to open repository settings dialog (first repo in workspace)
   const handleOpenSettings = useMemo(
@@ -215,6 +216,54 @@ export const ConversationList = forwardRef<
       executionProcessId: '',
     }),
     []
+  );
+
+  // Helper to build entries with placeholders based on script configuration
+  const buildEntriesWithPlaceholders = useCallback(
+    (
+      entries: PatchTypeWithKey[],
+      hasSetupScriptConfig: boolean,
+      hasCleanupScriptConfig: boolean
+    ): DisplayEntry[] => {
+      const aggregatedEntries = aggregateConsecutiveEntries(entries);
+      if (aggregatedEntries.length === 0) return aggregatedEntries;
+
+      // Check if scripts have already run in this conversation
+      const hasSetupScriptEntry = entries.some(
+        (entry) =>
+          entry.type === 'NORMALIZED_ENTRY' &&
+          entry.content.entry_type.type === 'tool_use' &&
+          entry.content.entry_type.tool_name === 'Setup Script'
+      );
+      const hasCleanupScriptEntry = entries.some(
+        (entry) =>
+          entry.type === 'NORMALIZED_ENTRY' &&
+          entry.content.entry_type.type === 'tool_use' &&
+          entry.content.entry_type.tool_name === 'Cleanup Script'
+      );
+      const hasRunningProcess = entries.some(
+        (entry) =>
+          entry.type === 'NORMALIZED_ENTRY' &&
+          entry.content.entry_type.type === 'loading'
+      );
+
+      const result: DisplayEntry[] = [];
+
+      // Setup placeholder: show if no script configured AND none has run
+      if (!hasSetupScriptConfig && !hasSetupScriptEntry) {
+        result.push(setupPlaceholder);
+      }
+
+      result.push(...aggregatedEntries);
+
+      // Cleanup placeholder: show if no script configured AND none has run AND agent finished
+      if (!hasCleanupScriptConfig && !hasCleanupScriptEntry && !hasRunningProcess) {
+        result.push(cleanupPlaceholder);
+      }
+
+      return result;
+    },
+    [setupPlaceholder, cleanupPlaceholder]
   );
 
   useEffect(() => {
@@ -258,55 +307,11 @@ export const ConversationList = forwardRef<
         scrollModifier = AutoScrollToBottom;
       }
 
-      // Aggregate consecutive read/search entries into groups
-      const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
-
-      // Check if there's already a script entry in the conversation
-      const hasSetupScriptEntry = pending.entries.some(
-        (entry) =>
-          entry.type === 'NORMALIZED_ENTRY' &&
-          entry.content.entry_type.type === 'tool_use' &&
-          entry.content.entry_type.tool_name === 'Setup Script'
+      const entriesWithPlaceholders = buildEntriesWithPlaceholders(
+        pending.entries,
+        hasSetupScriptRef.current,
+        hasCleanupScriptRef.current
       );
-      const hasCleanupScriptEntry = pending.entries.some(
-        (entry) =>
-          entry.type === 'NORMALIZED_ENTRY' &&
-          entry.content.entry_type.type === 'tool_use' &&
-          entry.content.entry_type.tool_name === 'Cleanup Script'
-      );
-
-      // Inject script placeholders if scripts are not configured AND no script has run
-      const entriesWithPlaceholders: DisplayEntry[] = [];
-
-      // Add setup placeholder at the beginning if no setup script is configured and none has run
-      if (
-        !hasSetupScriptRef.current &&
-        !hasSetupScriptEntry &&
-        aggregatedEntries.length > 0
-      ) {
-        entriesWithPlaceholders.push(setupPlaceholder);
-      }
-
-      // Add all regular entries
-      entriesWithPlaceholders.push(...aggregatedEntries);
-
-      // Add cleanup placeholder at the end if no cleanup script is configured and none has run
-      // Only show if there are entries (conversation has started)
-      if (
-        !hasCleanupScriptRef.current &&
-        !hasCleanupScriptEntry &&
-        aggregatedEntries.length > 0
-      ) {
-        // Check if the last process is not running (agent has finished)
-        const hasRunningProcess = pending.entries.some(
-          (entry) =>
-            entry.type === 'NORMALIZED_ENTRY' &&
-            entry.content.entry_type.type === 'loading'
-        );
-        if (!hasRunningProcess) {
-          entriesWithPlaceholders.push(cleanupPlaceholder);
-        }
-      }
 
       setChannelData({ data: entriesWithPlaceholders, scrollModifier });
       setEntries(pending.entries);
@@ -324,54 +329,16 @@ export const ConversationList = forwardRef<
     const pending = pendingUpdateRef.current;
     if (!pending || pending.entries.length === 0) return;
 
-    // Re-run the same logic to update placeholders
-    const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
-
-    // Check if there's already a script entry in the conversation
-    const hasSetupScriptEntry = pending.entries.some(
-      (entry) =>
-        entry.type === 'NORMALIZED_ENTRY' &&
-        entry.content.entry_type.type === 'tool_use' &&
-        entry.content.entry_type.tool_name === 'Setup Script'
+    const entriesWithPlaceholders = buildEntriesWithPlaceholders(
+      pending.entries,
+      hasSetupScript,
+      hasCleanupScript
     );
-    const hasCleanupScriptEntry = pending.entries.some(
-      (entry) =>
-        entry.type === 'NORMALIZED_ENTRY' &&
-        entry.content.entry_type.type === 'tool_use' &&
-        entry.content.entry_type.tool_name === 'Cleanup Script'
-    );
-
-    const entriesWithPlaceholders: DisplayEntry[] = [];
-
-    if (
-      !hasSetupScript &&
-      !hasSetupScriptEntry &&
-      aggregatedEntries.length > 0
-    ) {
-      entriesWithPlaceholders.push(setupPlaceholder);
-    }
-
-    entriesWithPlaceholders.push(...aggregatedEntries);
-
-    if (
-      !hasCleanupScript &&
-      !hasCleanupScriptEntry &&
-      aggregatedEntries.length > 0
-    ) {
-      const hasRunningProcess = pending.entries.some(
-        (entry) =>
-          entry.type === 'NORMALIZED_ENTRY' &&
-          entry.content.entry_type.type === 'loading'
-      );
-      if (!hasRunningProcess) {
-        entriesWithPlaceholders.push(cleanupPlaceholder);
-      }
-    }
 
     setChannelData((prev) =>
       prev ? { ...prev, data: entriesWithPlaceholders } : null
     );
-  }, [hasSetupScript, hasCleanupScript, setupPlaceholder, cleanupPlaceholder]);
+  }, [hasSetupScript, hasCleanupScript, buildEntriesWithPlaceholders]);
 
   const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
   const messageListContext = useMemo(
