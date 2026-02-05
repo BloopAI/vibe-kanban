@@ -79,11 +79,4 @@ export interface UseConversationHistoryParams {
   onEntriesUpdated: OnEntriesUpdated;
 }
 
-export interface UseConversationHistoryResult {
-  /** Whether a setup script has already run in this conversation */
-  hasSetupScriptRun: boolean;
-  /** Whether a cleanup script has already run in this conversation */
-  hasCleanupScriptRun: boolean;
-  /** Whether there is currently a running process */
-  hasRunningProcess: boolean;
-}
+export interface UseConversationHistoryResult {}

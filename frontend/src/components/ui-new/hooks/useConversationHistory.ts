@@ -17,8 +17,17 @@ import type {
   OnEntriesUpdated,
   PatchTypeWithKey,
   UseConversationHistoryParams,
-  UseConversationHistoryResult,
 } from '@/hooks/useConversationHistory/types';
+
+// Result type for the new UI's conversation history hook
+export interface UseConversationHistoryResult {
+  /** Whether a setup script has already run in this conversation */
+  hasSetupScriptRun: boolean;
+  /** Whether a cleanup script has already run in this conversation */
+  hasCleanupScriptRun: boolean;
+  /** Whether there is currently a running process */
+  hasRunningProcess: boolean;
+}
 import {
   makeLoadingPatch,
   MIN_INITIAL_ENTRIES,
