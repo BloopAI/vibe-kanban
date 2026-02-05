@@ -317,6 +317,13 @@
       "completedSuccessfully": "Terminé avec succès",
       "clickToViewLogs": "Cliquer pour voir les logs"
     },
+    "scriptPlaceholder": {
+      "setupTitle": "Script de configuration",
+      "setupDescription": "Aucun script de configuration. Les scripts de configuration s'exécutent avant le démarrage de l'agent de codage.",
+      "cleanupTitle": "Script de nettoyage",
+      "cleanupDescription": "Aucun script de nettoyage. Les scripts de nettoyage s'exécutent après la fin de l'agent de codage.",
+      "configureInSettings": "Configurer dans les paramètres du dépôt"
+    },
     "updatedTodos": "À faire mis à jour",
     "viewInChangesPanel": "Voir dans le panneau des modifications",
     "unableToRenderDiff": "Impossible d'afficher le diff."

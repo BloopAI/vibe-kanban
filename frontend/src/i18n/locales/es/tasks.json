@@ -670,6 +670,13 @@
       "exitCode": "Código de salida: {{code}}",
       "running": "Ejecutando..."
     },
+    "scriptPlaceholder": {
+      "setupTitle": "Script de Configuración",
+      "setupDescription": "No hay script de configuración. Los scripts de configuración se ejecutan antes de que el agente de codificación comience.",
+      "cleanupTitle": "Script de Limpieza",
+      "cleanupDescription": "No hay script de limpieza. Los scripts de limpieza se ejecutan después de que el agente de codificación termine.",
+      "configureInSettings": "Configurar en ajustes del repositorio"
+    },
     "unableToRenderDiff": "No se puede mostrar la diferencia.",
     "updatedTodos": "Tareas actualizadas",
     "viewInChangesPanel": "Ver en panel de cambios",

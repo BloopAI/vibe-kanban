@@ -689,6 +689,13 @@
       "completedSuccessfully": "成功完成",
       "clickToViewLogs": "点击查看日志"
     },
+    "scriptPlaceholder": {
+      "setupTitle": "设置脚本",
+      "setupDescription": "未配置设置脚本。设置脚本在编码代理启动前运行。",
+      "cleanupTitle": "清理脚本",
+      "cleanupDescription": "未配置清理脚本。清理脚本在编码代理完成后运行。",
+      "configureInSettings": "在仓库设置中配置"
+    },
     "executors": "执行器",
     "saveAsDefault": "设为默认",
     "updatedTodos": "更新的待办事项",

@@ -670,6 +670,13 @@
       "exitCode": "結束代碼: {{code}}",
       "running": "執行中..."
     },
+    "scriptPlaceholder": {
+      "setupTitle": "設定腳本",
+      "setupDescription": "未配置設定腳本。設定腳本在程式碼代理啟動前執行。",
+      "cleanupTitle": "清理腳本",
+      "cleanupDescription": "未配置清理腳本。清理腳本在程式碼代理完成後執行。",
+      "configureInSettings": "在儲存庫設定中配置"
+    },
     "unableToRenderDiff": "無法顯示差異。",
     "updatedTodos": "更新的待辦事項",
     "viewInChangesPanel": "在變更面板中檢視",

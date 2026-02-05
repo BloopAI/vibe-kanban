@@ -670,6 +670,13 @@
       "exitCode": "終了コード: {{code}}",
       "running": "実行中..."
     },
+    "scriptPlaceholder": {
+      "setupTitle": "セットアップスクリプト",
+      "setupDescription": "セットアップスクリプトが設定されていません。セットアップスクリプトはコーディングエージェントの開始前に実行されます。",
+      "cleanupTitle": "クリーンアップスクリプト",
+      "cleanupDescription": "クリーンアップスクリプトが設定されていません。クリーンアップスクリプトはコーディングエージェントの終了後に実行されます。",
+      "configureInSettings": "リポジトリ設定で構成"
+    },
     "unableToRenderDiff": "差分を表示できません。",
     "updatedTodos": "更新されたTodo",
     "viewInChangesPanel": "変更パネルで表示",
