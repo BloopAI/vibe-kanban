@@ -47,7 +47,9 @@ export function ChatScriptPlaceholder({
             className="mt-1 inline-flex items-center gap-1 text-xs text-brand hover:text-brand-hover transition-colors w-fit"
           >
             <GearSixIcon className="size-icon-xs" />
-            <span>{t('conversation.scriptPlaceholder.configureInSettings')}</span>
+            <span>
+              {t('conversation.scriptPlaceholder.configureInSettings')}
+            </span>
           </button>
         )}
       </div>
