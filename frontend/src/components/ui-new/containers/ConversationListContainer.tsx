@@ -25,10 +25,15 @@ import {
   DisplayEntry,
   isAggregatedGroup,
   isAggregatedDiffGroup,
+  isScriptPlaceholder,
   useConversationHistory,
+  ScriptPlaceholderEntry,
 } from '@/components/ui-new/hooks/useConversationHistory';
 import { aggregateConsecutiveEntries } from '@/utils/aggregateEntries';
 import type { WorkspaceWithSession } from '@/types/attempt';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { ChatScriptPlaceholder } from '../primitives/conversation/ChatScriptPlaceholder';
+import { useNavigate } from 'react-router-dom';
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
@@ -41,6 +46,7 @@ export interface ConversationListHandle {
 
 interface MessageListContext {
   attempt: WorkspaceWithSession;
+  onOpenSettings: (() => void) | undefined;
 }
 
 const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
@@ -69,6 +75,19 @@ const ItemContent: VirtuosoMessageListProps<
   MessageListContext
 >['ItemContent'] = ({ data, context }) => {
   const attempt = context?.attempt;
+  const onOpenSettings = context?.onOpenSettings;
+
+  // Handle script placeholder entries
+  if (isScriptPlaceholder(data)) {
+    return (
+      <div className="my-base px-double">
+        <ChatScriptPlaceholder
+          type={data.scriptType}
+          onOpenSettings={onOpenSettings}
+        />
+      </div>
+    );
+  }
 
   // Handle aggregated tool groups (file_read, search, web_fetch)
   if (isAggregatedGroup(data)) {
@@ -139,6 +158,56 @@ export const ConversationList = forwardRef<
     loading: boolean;
   } | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navigate = useNavigate();
+
+  // Get repos from workspace context to check if scripts are configured
+  let repos: { setup_script: string | null; cleanup_script: string | null }[] =
+    [];
+  try {
+    const workspaceContext = useWorkspaceContext();
+    repos = workspaceContext.repos;
+  } catch {
+    // Context not available
+  }
+
+  // Check if any repo has setup or cleanup scripts configured
+  const hasSetupScript = repos.some((repo) => repo.setup_script);
+  const hasCleanupScript = repos.some((repo) => repo.cleanup_script);
+
+  // Use refs to avoid stale closures in callbacks
+  const hasSetupScriptRef = useRef(hasSetupScript);
+  const hasCleanupScriptRef = useRef(hasCleanupScript);
+  hasSetupScriptRef.current = hasSetupScript;
+  hasCleanupScriptRef.current = hasCleanupScript;
+
+  // Handler to navigate to repository settings
+  const handleOpenSettings = useMemo(
+    () => () => {
+      navigate('/settings/repos');
+    },
+    [navigate]
+  );
+
+  // Create stable placeholder entries
+  const setupPlaceholder = useMemo(
+    (): ScriptPlaceholderEntry => ({
+      type: 'SCRIPT_PLACEHOLDER',
+      scriptType: 'setup',
+      patchKey: 'script-placeholder-setup',
+      executionProcessId: '',
+    }),
+    []
+  );
+
+  const cleanupPlaceholder = useMemo(
+    (): ScriptPlaceholderEntry => ({
+      type: 'SCRIPT_PLACEHOLDER',
+      scriptType: 'cleanup',
+      patchKey: 'script-placeholder-cleanup',
+      executionProcessId: '',
+    }),
+    []
+  );
 
   useEffect(() => {
     setLoading(true);
@@ -184,7 +253,32 @@ export const ConversationList = forwardRef<
       // Aggregate consecutive read/search entries into groups
       const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
 
-      setChannelData({ data: aggregatedEntries, scrollModifier });
+      // Inject script placeholders if scripts are not configured
+      const entriesWithPlaceholders: DisplayEntry[] = [];
+
+      // Add setup placeholder at the beginning if no setup script is configured
+      if (!hasSetupScriptRef.current && aggregatedEntries.length > 0) {
+        entriesWithPlaceholders.push(setupPlaceholder);
+      }
+
+      // Add all regular entries
+      entriesWithPlaceholders.push(...aggregatedEntries);
+
+      // Add cleanup placeholder at the end if no cleanup script is configured
+      // Only show if there are entries (conversation has started)
+      if (!hasCleanupScriptRef.current && aggregatedEntries.length > 0) {
+        // Check if the last process is not running (agent has finished)
+        const hasRunningProcess = pending.entries.some(
+          (entry) =>
+            entry.type === 'NORMALIZED_ENTRY' &&
+            entry.content.entry_type.type === 'loading'
+        );
+        if (!hasRunningProcess) {
+          entriesWithPlaceholders.push(cleanupPlaceholder);
+        }
+      }
+
+      setChannelData({ data: entriesWithPlaceholders, scrollModifier });
       setEntries(pending.entries);
 
       if (loading) {
@@ -196,7 +290,10 @@ export const ConversationList = forwardRef<
   useConversationHistory({ attempt, onEntriesUpdated });
 
   const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
-  const messageListContext = useMemo(() => ({ attempt }), [attempt]);
+  const messageListContext = useMemo(
+    () => ({ attempt, onOpenSettings: handleOpenSettings }),
+    [attempt, handleOpenSettings]
+  );
 
   // Expose scroll to previous user message functionality via ref
   useImperativeHandle(

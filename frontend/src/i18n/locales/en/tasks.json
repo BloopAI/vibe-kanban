@@ -317,6 +317,13 @@
       "completedSuccessfully": "Completed successfully",
       "clickToViewLogs": "Click to view logs"
     },
+    "scriptPlaceholder": {
+      "setupTitle": "Setup Script",
+      "setupDescription": "No setup script configured. Setup scripts run before the coding agent starts.",
+      "cleanupTitle": "Cleanup Script",
+      "cleanupDescription": "No cleanup script configured. Cleanup scripts run after the coding agent finishes.",
+      "configureInSettings": "Configure in repository settings"
+    },
     "updatedTodos": "Updated Todos",
     "viewInChangesPanel": "View in changes panel",
     "unableToRenderDiff": "Unable to render diff."
