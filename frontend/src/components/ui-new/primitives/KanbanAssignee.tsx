@@ -20,7 +20,7 @@ export const KanbanAssignee = ({
     // Unassigned state - show users icon
     return (
       <div
-        className={cn('flex items-center justify-center', 'h-5 w-5', className)}
+        className={cn('flex items-center justify-center', 'h-6 w-6', className)}
         aria-label="Unassigned"
       >
         <UsersIcon className="size-icon-xs text-low" weight="bold" />
@@ -32,13 +32,13 @@ export const KanbanAssignee = ({
   const remainingCount = assignees.length - MAX_VISIBLE_AVATARS;
 
   return (
-    <div className={cn('flex items-center h-5', className)}>
+    <div className={cn('flex items-center h-6', className)}>
       <div className="flex -space-x-1">
         {visibleAssignees.map((assignee) => (
           <UserAvatar
             key={assignee.user_id}
             user={assignee}
-            className="h-4 w-4 text-[8px] ring-1 ring-background"
+            className="h-5 w-5 text-[10px] ring-1 ring-background"
           />
         ))}
       </div>
