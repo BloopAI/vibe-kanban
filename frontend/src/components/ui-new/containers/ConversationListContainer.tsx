@@ -8,7 +8,6 @@ import {
 } from '@virtuoso.dev/message-list';
 import {
   forwardRef,
-  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -26,9 +25,7 @@ import {
   DisplayEntry,
   isAggregatedGroup,
   isAggregatedDiffGroup,
-  isScriptPlaceholder,
   useConversationHistory,
-  ScriptPlaceholderEntry,
 } from '@/components/ui-new/hooks/useConversationHistory';
 import { aggregateConsecutiveEntries } from '@/utils/aggregateEntries';
 import type { WorkspaceWithSession } from '@/types/attempt';
@@ -48,6 +45,8 @@ export interface ConversationListHandle {
 interface MessageListContext {
   attempt: WorkspaceWithSession;
   onOpenSettings: (() => void) | undefined;
+  showSetupPlaceholder: boolean;
+  showCleanupPlaceholder: boolean;
 }
 
 const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
@@ -76,19 +75,6 @@ const ItemContent: VirtuosoMessageListProps<
   MessageListContext
 >['ItemContent'] = ({ data, context }) => {
   const attempt = context?.attempt;
-  const onOpenSettings = context?.onOpenSettings;
-
-  // Handle script placeholder entries
-  if (isScriptPlaceholder(data)) {
-    return (
-      <div className="my-base px-double">
-        <ChatScriptPlaceholder
-          type={data.scriptType}
-          onOpenSettings={onOpenSettings}
-        />
-      </div>
-    );
-  }
 
   // Handle aggregated tool groups (file_read, search, web_fetch)
   if (isAggregatedGroup(data)) {
@@ -177,97 +163,16 @@ export const ConversationList = forwardRef<
   const hasSetupScript = repos.some((repo) => repo.setup_script);
   const hasCleanupScript = repos.some((repo) => repo.cleanup_script);
 
-  // Use refs for current values (needed for callbacks and settings dialog)
-  const reposRef = useRef(repos);
-  const hasSetupScriptRef = useRef(hasSetupScript);
-  const hasCleanupScriptRef = useRef(hasCleanupScript);
-  reposRef.current = repos;
-  hasSetupScriptRef.current = hasSetupScript;
-  hasCleanupScriptRef.current = hasCleanupScript;
-
   // Handler to open repository settings dialog (first repo in workspace)
+  const firstRepoId = repos[0]?.id;
   const handleOpenSettings = useMemo(
     () => () => {
-      const firstRepoId = reposRef.current[0]?.id;
       SettingsDialog.show({
         initialSection: 'repos',
         initialState: firstRepoId ? { repoId: firstRepoId } : undefined,
       });
     },
-    []
-  );
-
-  // Create stable placeholder entries
-  const setupPlaceholder = useMemo(
-    (): ScriptPlaceholderEntry => ({
-      type: 'SCRIPT_PLACEHOLDER',
-      scriptType: 'setup',
-      patchKey: 'script-placeholder-setup',
-      executionProcessId: '',
-    }),
-    []
-  );
-
-  const cleanupPlaceholder = useMemo(
-    (): ScriptPlaceholderEntry => ({
-      type: 'SCRIPT_PLACEHOLDER',
-      scriptType: 'cleanup',
-      patchKey: 'script-placeholder-cleanup',
-      executionProcessId: '',
-    }),
-    []
-  );
-
-  // Helper to build entries with placeholders based on script configuration
-  const buildEntriesWithPlaceholders = useCallback(
-    (
-      entries: PatchTypeWithKey[],
-      hasSetupScriptConfig: boolean,
-      hasCleanupScriptConfig: boolean
-    ): DisplayEntry[] => {
-      const aggregatedEntries = aggregateConsecutiveEntries(entries);
-      if (aggregatedEntries.length === 0) return aggregatedEntries;
-
-      // Check if scripts have already run in this conversation
-      const hasSetupScriptEntry = entries.some(
-        (entry) =>
-          entry.type === 'NORMALIZED_ENTRY' &&
-          entry.content.entry_type.type === 'tool_use' &&
-          entry.content.entry_type.tool_name === 'Setup Script'
-      );
-      const hasCleanupScriptEntry = entries.some(
-        (entry) =>
-          entry.type === 'NORMALIZED_ENTRY' &&
-          entry.content.entry_type.type === 'tool_use' &&
-          entry.content.entry_type.tool_name === 'Cleanup Script'
-      );
-      const hasRunningProcess = entries.some(
-        (entry) =>
-          entry.type === 'NORMALIZED_ENTRY' &&
-          entry.content.entry_type.type === 'loading'
-      );
-
-      const result: DisplayEntry[] = [];
-
-      // Setup placeholder: show if no script configured AND none has run
-      if (!hasSetupScriptConfig && !hasSetupScriptEntry) {
-        result.push(setupPlaceholder);
-      }
-
-      result.push(...aggregatedEntries);
-
-      // Cleanup placeholder: show if no script configured AND none has run AND agent finished
-      if (
-        !hasCleanupScriptConfig &&
-        !hasCleanupScriptEntry &&
-        !hasRunningProcess
-      ) {
-        result.push(cleanupPlaceholder);
-      }
-
-      return result;
-    },
-    [setupPlaceholder, cleanupPlaceholder]
+    [firstRepoId]
   );
 
   useEffect(() => {
@@ -311,13 +216,9 @@ export const ConversationList = forwardRef<
         scrollModifier = AutoScrollToBottom;
       }
 
-      const entriesWithPlaceholders = buildEntriesWithPlaceholders(
-        pending.entries,
-        hasSetupScriptRef.current,
-        hasCleanupScriptRef.current
-      );
+      const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
 
-      setChannelData({ data: entriesWithPlaceholders, scrollModifier });
+      setChannelData({ data: aggregatedEntries, scrollModifier });
       setEntries(pending.entries);
 
       if (loading) {
@@ -328,26 +229,42 @@ export const ConversationList = forwardRef<
 
   useConversationHistory({ attempt, onEntriesUpdated });
 
-  // Re-process entries when script configuration changes
-  useEffect(() => {
-    const pending = pendingUpdateRef.current;
-    if (!pending || pending.entries.length === 0) return;
+  // Determine if scripts have already run in this conversation
+  const entries = channelData?.data ?? [];
+  const rawEntries = pendingUpdateRef.current?.entries ?? [];
+  const hasSetupScriptRun = rawEntries.some(
+    (entry) =>
+      entry.type === 'NORMALIZED_ENTRY' &&
+      entry.content.entry_type.type === 'tool_use' &&
+      entry.content.entry_type.tool_name === 'Setup Script'
+  );
+  const hasCleanupScriptRun = rawEntries.some(
+    (entry) =>
+      entry.type === 'NORMALIZED_ENTRY' &&
+      entry.content.entry_type.type === 'tool_use' &&
+      entry.content.entry_type.tool_name === 'Cleanup Script'
+  );
+  const hasRunningProcess = rawEntries.some(
+    (entry) =>
+      entry.type === 'NORMALIZED_ENTRY' &&
+      entry.content.entry_type.type === 'loading'
+  );
 
-    const entriesWithPlaceholders = buildEntriesWithPlaceholders(
-      pending.entries,
-      hasSetupScript,
-      hasCleanupScript
-    );
-
-    setChannelData((prev) =>
-      prev ? { ...prev, data: entriesWithPlaceholders } : null
-    );
-  }, [hasSetupScript, hasCleanupScript, buildEntriesWithPlaceholders]);
+  // Show placeholders only if script not configured AND not already run
+  const showSetupPlaceholder =
+    !hasSetupScript && !hasSetupScriptRun && entries.length > 0;
+  const showCleanupPlaceholder =
+    !hasCleanupScript && !hasCleanupScriptRun && !hasRunningProcess && entries.length > 0;
 
   const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
   const messageListContext = useMemo(
-    () => ({ attempt, onOpenSettings: handleOpenSettings }),
-    [attempt, handleOpenSettings]
+    () => ({
+      attempt,
+      onOpenSettings: handleOpenSettings,
+      showSetupPlaceholder,
+      showCleanupPlaceholder,
+    }),
+    [attempt, handleOpenSettings, showSetupPlaceholder, showCleanupPlaceholder]
   );
 
   // Expose scroll to previous user message functionality via ref
@@ -426,8 +343,30 @@ export const ConversationList = forwardRef<
             context={messageListContext}
             computeItemKey={computeItemKey}
             ItemContent={ItemContent}
-            Header={() => <div className="h-2" />}
-            Footer={() => <div className="h-2" />}
+            Header={({ context }) => (
+              <div className="pt-2">
+                {context?.showSetupPlaceholder && (
+                  <div className="my-base px-double">
+                    <ChatScriptPlaceholder
+                      type="setup"
+                      onOpenSettings={context.onOpenSettings}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+            Footer={({ context }) => (
+              <div className="pb-2">
+                {context?.showCleanupPlaceholder && (
+                  <div className="my-base px-double">
+                    <ChatScriptPlaceholder
+                      type="cleanup"
+                      onOpenSettings={context.onOpenSettings}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           />
         </VirtuosoMessageListLicense>
       </div>

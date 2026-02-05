@@ -35,24 +35,10 @@ export type AggregatedDiffGroup = {
   executionProcessId: string;
 };
 
-/**
- * A placeholder entry for unconfigured scripts (setup or cleanup).
- * Shown when a script would run but is not configured.
- */
-export type ScriptPlaceholderEntry = {
-  type: 'SCRIPT_PLACEHOLDER';
-  /** The type of script placeholder */
-  scriptType: 'setup' | 'cleanup';
-  /** Unique key for the placeholder */
-  patchKey: string;
-  executionProcessId: string;
-};
-
 export type DisplayEntry =
   | PatchTypeWithKey
   | AggregatedPatchGroup
-  | AggregatedDiffGroup
-  | ScriptPlaceholderEntry;
+  | AggregatedDiffGroup;
 
 export function isAggregatedGroup(
   entry: DisplayEntry
@@ -64,12 +50,6 @@ export function isAggregatedDiffGroup(
   entry: DisplayEntry
 ): entry is AggregatedDiffGroup {
   return entry.type === 'AGGREGATED_DIFF_GROUP';
-}
-
-export function isScriptPlaceholder(
-  entry: DisplayEntry
-): entry is ScriptPlaceholderEntry {
-  return entry.type === 'SCRIPT_PLACEHOLDER';
 }
 
 export type AddEntryType = 'initial' | 'running' | 'historic' | 'plan';
