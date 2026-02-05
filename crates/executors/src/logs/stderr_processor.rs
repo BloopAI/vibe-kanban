@@ -50,6 +50,11 @@ pub fn normalize_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: Ent
                 content: strip_ansi_escapes::strip_str(&content),
                 metadata: None,
             }))
+            .transform_lines(Box::new(|lines: &mut Vec<String>| {
+                lines.retain(|line| {
+                    !line.contains("state db missing rollout path for thread")
+                });
+            }))
             .time_gap(Duration::from_secs(2)) // Break messages if they are 2 seconds apart
             .index_provider(entry_index_provider)
             .build();
