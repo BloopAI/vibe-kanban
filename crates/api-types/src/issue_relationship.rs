@@ -7,10 +7,6 @@ use uuid::Uuid;
 
 use crate::{some_if_present, types::IssueRelationshipType};
 
-// =============================================================================
-// Row type
-// =============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct IssueRelationship {
@@ -20,10 +16,6 @@ pub struct IssueRelationship {
     pub relationship_type: IssueRelationshipType,
     pub created_at: DateTime<Utc>,
 }
-
-// =============================================================================
-// Request types
-// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateIssueRelationshipRequest {
@@ -48,10 +40,6 @@ pub struct UpdateIssueRelationshipRequest {
 pub struct ListIssueRelationshipsQuery {
     pub issue_id: Uuid,
 }
-
-// =============================================================================
-// Response types
-// =============================================================================
 
 #[derive(Debug, Clone, Serialize, TS)]
 pub struct ListIssueRelationshipsResponse {

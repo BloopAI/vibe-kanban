@@ -7,10 +7,6 @@ use uuid::Uuid;
 
 use crate::some_if_present;
 
-// =============================================================================
-// Row type
-// =============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct Project {
@@ -21,10 +17,6 @@ pub struct Project {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
-
-// =============================================================================
-// Request types
-// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateProjectRequest {
@@ -49,10 +41,6 @@ pub struct UpdateProjectRequest {
 pub struct ListProjectsQuery {
     pub organization_id: Uuid,
 }
-
-// =============================================================================
-// Response types
-// =============================================================================
 
 #[derive(Debug, Clone, Serialize, TS)]
 pub struct ListProjectsResponse {

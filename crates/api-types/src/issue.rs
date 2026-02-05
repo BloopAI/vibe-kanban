@@ -8,10 +8,6 @@ use uuid::Uuid;
 
 use crate::{some_if_present, types::IssuePriority};
 
-// =============================================================================
-// Row type
-// =============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct Issue {
@@ -33,10 +29,6 @@ pub struct Issue {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
-
-// =============================================================================
-// Request types
-// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateIssueRequest {
@@ -88,10 +80,6 @@ pub struct UpdateIssueRequest {
 pub struct ListIssuesQuery {
     pub project_id: Uuid,
 }
-
-// =============================================================================
-// Response types
-// =============================================================================
 
 #[derive(Debug, Clone, Serialize, TS)]
 pub struct ListIssuesResponse {

@@ -7,10 +7,6 @@ use uuid::Uuid;
 
 use crate::some_if_present;
 
-// =============================================================================
-// Row type
-// =============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct IssueCommentReaction {
@@ -20,10 +16,6 @@ pub struct IssueCommentReaction {
     pub emoji: String,
     pub created_at: DateTime<Utc>,
 }
-
-// =============================================================================
-// Request types
-// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateIssueCommentReactionRequest {
@@ -45,10 +37,6 @@ pub struct UpdateIssueCommentReactionRequest {
 pub struct ListIssueCommentReactionsQuery {
     pub comment_id: Uuid,
 }
-
-// =============================================================================
-// Response types
-// =============================================================================
 
 #[derive(Debug, Clone, Serialize, TS)]
 pub struct ListIssueCommentReactionsResponse {

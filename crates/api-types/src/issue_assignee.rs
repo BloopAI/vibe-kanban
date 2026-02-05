@@ -7,10 +7,6 @@ use uuid::Uuid;
 
 use crate::some_if_present;
 
-// =============================================================================
-// Row type
-// =============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct IssueAssignee {
@@ -19,10 +15,6 @@ pub struct IssueAssignee {
     pub user_id: Uuid,
     pub assigned_at: DateTime<Utc>,
 }
-
-// =============================================================================
-// Request types
-// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateIssueAssigneeRequest {
@@ -44,10 +36,6 @@ pub struct UpdateIssueAssigneeRequest {
 pub struct ListIssueAssigneesQuery {
     pub issue_id: Uuid,
 }
-
-// =============================================================================
-// Response types
-// =============================================================================
 
 #[derive(Debug, Clone, Serialize, TS)]
 pub struct ListIssueAssigneesResponse {

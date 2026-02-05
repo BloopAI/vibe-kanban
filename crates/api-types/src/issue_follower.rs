@@ -6,10 +6,6 @@ use uuid::Uuid;
 
 use crate::some_if_present;
 
-// =============================================================================
-// Row type
-// =============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct IssueFollower {
@@ -17,10 +13,6 @@ pub struct IssueFollower {
     pub issue_id: Uuid,
     pub user_id: Uuid,
 }
-
-// =============================================================================
-// Request types
-// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateIssueFollowerRequest {
@@ -42,10 +34,6 @@ pub struct UpdateIssueFollowerRequest {
 pub struct ListIssueFollowersQuery {
     pub issue_id: Uuid,
 }
-
-// =============================================================================
-// Response types
-// =============================================================================
 
 #[derive(Debug, Clone, Serialize, TS)]
 pub struct ListIssueFollowersResponse {

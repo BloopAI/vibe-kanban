@@ -5,10 +5,6 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-// =============================================================================
-// Row types
-// =============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
 #[ts(export)]
 pub struct User {

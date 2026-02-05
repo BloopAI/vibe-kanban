@@ -9,10 +9,6 @@ use uuid::Uuid;
 
 use crate::some_if_present;
 
-// =============================================================================
-// Types
-// =============================================================================
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
 #[sqlx(type_name = "notification_type", rename_all = "snake_case")]
 #[ts(export)]
@@ -22,10 +18,6 @@ pub enum NotificationType {
     IssueAssigneeChanged,
     IssueDeleted,
 }
-
-// =============================================================================
-// Row type
-// =============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -41,10 +33,6 @@ pub struct Notification {
     pub dismissed_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
 }
-
-// =============================================================================
-// Request types
-// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateNotificationRequest {
@@ -66,10 +54,6 @@ pub struct UpdateNotificationRequest {
 pub struct ListNotificationsQuery {
     pub organization_id: Uuid,
 }
-
-// =============================================================================
-// Response types
-// =============================================================================
 
 #[derive(Debug, Clone, Serialize, TS)]
 pub struct ListNotificationsResponse {

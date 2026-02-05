@@ -7,10 +7,6 @@ use uuid::Uuid;
 
 use crate::types::MemberRole;
 
-// =============================================================================
-// Row types
-// =============================================================================
-
 /// Organization member as stored in the database / streamed via Electric.
 /// This is the full row type with organization_id for shapes.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

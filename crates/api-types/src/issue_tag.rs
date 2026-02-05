@@ -6,10 +6,6 @@ use uuid::Uuid;
 
 use crate::some_if_present;
 
-// =============================================================================
-// Row type
-// =============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct IssueTag {
@@ -17,10 +13,6 @@ pub struct IssueTag {
     pub issue_id: Uuid,
     pub tag_id: Uuid,
 }
-
-// =============================================================================
-// Request types
-// =============================================================================
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateIssueTagRequest {
@@ -42,10 +34,6 @@ pub struct UpdateIssueTagRequest {
 pub struct ListIssueTagsQuery {
     pub issue_id: Uuid,
 }
-
-// =============================================================================
-// Response types
-// =============================================================================
 
 #[derive(Debug, Clone, Serialize, TS)]
 pub struct ListIssueTagsResponse {
