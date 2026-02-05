@@ -133,7 +133,7 @@ impl<E: TS, C, U> EntityDef<E, C, U> {
     pub fn router(self) -> axum::Router<AppState> {
         let table = self.shape.table();
         let base_path = format!("/{}", table);
-        let id_path = format!("/{}/{{{}_id}}", table, singular(table));
+        let id_path = format!("/{}/{{{}_id}}", table, self.shape.singular());
 
         axum::Router::new()
             .route(&base_path, self.base_route)
@@ -232,35 +232,5 @@ impl<E: TS, C: MaybeTypeName, U: MaybeTypeName> EntityDef<E, C, U> {
             update_type: U::maybe_name(),
             has_delete: self.has_delete,
         }
-    }
-}
-
-/// Convert a plural table name to singular for the ID path parameter.
-/// e.g., "tags" -> "tag", "issues" -> "issue", "project_statuses" -> "project_status"
-fn singular(table: &str) -> String {
-    if table.ends_with("ies") {
-        // e.g., "entries" -> "entry"
-        format!("{}y", &table[..table.len() - 3])
-    } else if table.ends_with("ses") || table.ends_with("xes") {
-        // e.g., "statuses" -> "status", "boxes" -> "box"
-        table[..table.len() - 2].to_string()
-    } else if table.ends_with('s') {
-        // e.g., "tags" -> "tag"
-        table[..table.len() - 1].to_string()
-    } else {
-        table.to_string()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_singular() {
-        assert_eq!(singular("tags"), "tag");
-        assert_eq!(singular("issues"), "issue");
-        assert_eq!(singular("project_statuses"), "project_status");
-        assert_eq!(singular("entries"), "entry");
     }
 }

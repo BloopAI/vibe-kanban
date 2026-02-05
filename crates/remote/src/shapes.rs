@@ -15,6 +15,7 @@ use ts_rs::TS;
 #[derive(Debug)]
 pub struct ShapeDefinition<T: TS> {
     pub table: &'static str,
+    pub singular: &'static str,
     pub where_clause: &'static str,
     pub params: &'static [&'static str],
     pub url: &'static str,
@@ -24,6 +25,7 @@ pub struct ShapeDefinition<T: TS> {
 /// Trait to allow heterogeneous collection of shapes for export
 pub trait ShapeExport: Sync {
     fn table(&self) -> &'static str;
+    fn singular(&self) -> &'static str;
     fn where_clause(&self) -> &'static str;
     fn params(&self) -> &'static [&'static str];
     fn url(&self) -> &'static str;
@@ -33,6 +35,9 @@ pub trait ShapeExport: Sync {
 impl<T: TS + Sync> ShapeExport for ShapeDefinition<T> {
     fn table(&self) -> &'static str {
         self.table
+    }
+    fn singular(&self) -> &'static str {
+        self.singular
     }
     fn where_clause(&self) -> &'static str {
         self.where_clause
@@ -62,6 +67,7 @@ impl<T: TS + Sync> ShapeExport for ShapeDefinition<T> {
 /// define_shape!(
 ///     Project,
 ///     table: "projects",
+///     singular: "project",
 ///     where_clause: r#""organization_id" = $1"#,
 ///     url: "/shape/projects",
 ///     params: ["organization_id"]
@@ -73,6 +79,7 @@ macro_rules! define_shape {
     (
         $type:ident,
         table: $table:literal,
+        singular: $singular:literal,
         where_clause: $where:literal,
         url: $url:expr,
         params: [$($param:literal),* $(,)?] $(,)?
@@ -92,6 +99,7 @@ macro_rules! define_shape {
 
                 $crate::shapes::ShapeDefinition {
                     table: $table,
+                    singular: $singular,
                     where_clause: $where,
                     params: &[$($param),*],
                     url: $url,
