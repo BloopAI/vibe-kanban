@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useLiveQuery } from '@tanstack/react-db';
-import { createEntityCollection } from './collections';
+import { createEntityCollection, createShapeCollection } from './collections';
 import { useSyncErrorContext } from '@/contexts/SyncErrorContext';
-import type { EntityDefinition } from 'shared/remote-types';
+import type { EntityDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { SyncError } from './types';
 
 // Type helpers for extracting types from EntityDefinition
@@ -63,6 +63,105 @@ export interface UseEntityOptions {
    * @default true
    */
   enabled?: boolean;
+}
+
+/**
+ * Result type returned by useShape hook.
+ */
+export interface UseShapeResult<TRow> {
+  /** The synced data array */
+  data: TRow[];
+  /** Whether the initial sync is still loading */
+  isLoading: boolean;
+  /** Sync error if one occurred */
+  error: SyncError | null;
+  /** Function to retry after an error */
+  retry: () => void;
+}
+
+/**
+ * Read-only hook for subscribing to a shape's data via Electric sync.
+ * Use this when you only need data — no mutations.
+ *
+ * @param shape - The shape definition from shared/remote-types.ts
+ * @param params - URL parameters matching the shape's requirements
+ * @param options - Optional configuration (enabled, etc.)
+ *
+ * @example
+ * const { data, isLoading } = useShape(
+ *   PROJECT_ISSUES_SHAPE,
+ *   { project_id: projectId }
+ * );
+ */
+export function useShape<T extends Record<string, unknown>>(
+  shape: ShapeDefinition<T>,
+  params: Record<string, string>,
+  options: UseEntityOptions = {}
+): UseShapeResult<T> {
+  const { enabled = true } = options;
+
+  const [error, setError] = useState<SyncError | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
+
+  const syncErrorContext = useSyncErrorContext();
+  const registerErrorFn = syncErrorContext?.registerError;
+  const clearErrorFn = syncErrorContext?.clearError;
+
+  const handleError = useCallback((err: SyncError) => setError(err), []);
+
+  const retry = useCallback(() => {
+    setError(null);
+    setRetryKey((k) => k + 1);
+  }, []);
+
+  const paramsKey = JSON.stringify(params);
+  const stableParams = useMemo(
+    () => JSON.parse(paramsKey) as Record<string, string>,
+    [paramsKey]
+  );
+
+  const streamId = useMemo(
+    () => `${shape.table}:${paramsKey}`,
+    [shape.table, paramsKey]
+  );
+
+  useEffect(() => {
+    if (error && registerErrorFn) {
+      registerErrorFn(streamId, shape.table, error, retry);
+    } else if (!error && clearErrorFn) {
+      clearErrorFn(streamId);
+    }
+
+    return () => {
+      clearErrorFn?.(streamId);
+    };
+  }, [error, streamId, shape.table, retry, registerErrorFn, clearErrorFn]);
+
+  const collection = useMemo(() => {
+    if (!enabled) return null;
+    const config = { onError: handleError };
+    void retryKey;
+    return createShapeCollection(shape, stableParams, config);
+  }, [enabled, shape, handleError, retryKey, stableParams]);
+
+  const { data, isLoading: queryLoading } = useLiveQuery(
+    (query) => (collection ? query.from({ item: collection }) : undefined),
+    [collection]
+  );
+
+  const items = useMemo(() => {
+    if (!enabled || !collection || !data || queryLoading) return [];
+    return data as unknown as T[];
+  }, [enabled, collection, data, queryLoading]);
+
+  const isLoading = enabled ? queryLoading : false;
+
+  return {
+    data: items,
+    isLoading,
+    error,
+    retry,
+  };
 }
 
 /**

@@ -1,5 +1,5 @@
-import { useEntity } from '@/lib/electric/hooks';
-import { PROJECT_ENTITY } from 'shared/remote-types';
+import { useShape } from '@/lib/electric/hooks';
+import { PROJECTS_SHAPE } from 'shared/remote-types';
 import { useAuth } from '@/hooks/auth/useAuth';
 
 export function useOrganizationProjects(organizationId: string | null) {
@@ -8,8 +8,8 @@ export function useOrganizationProjects(organizationId: string | null) {
   // Only subscribe to Electric when signed in AND have an org
   const enabled = isSignedIn && !!organizationId;
 
-  const { data, isLoading, error } = useEntity(
-    PROJECT_ENTITY,
+  const { data, isLoading, error } = useShape(
+    PROJECTS_SHAPE,
     { organization_id: organizationId || '' },
     { enabled }
   );

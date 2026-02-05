@@ -260,7 +260,78 @@ fn export_shapes() -> String {
 
     // Type helpers for entities
     output.push_str("// Type helper to extract row type from an entity\n");
-    output.push_str("export type EntityRowType<E extends EntityDefinition<unknown>> = E extends EntityDefinition<infer R> ? R : never;\n");
+    output.push_str("export type EntityRowType<E extends EntityDefinition<unknown>> = E extends EntityDefinition<infer R> ? R : never;\n\n");
+
+    // Generate MutationDefinition interface
+    output.push_str(
+        "// =============================================================================\n",
+    );
+    output.push_str("// Mutation Definitions\n");
+    output.push_str(
+        "// =============================================================================\n\n",
+    );
+
+    output.push_str("// Mutation definition interface\n");
+    output.push_str(
+        "export interface MutationDefinition<TRow, TCreate = unknown, TUpdate = unknown> {\n",
+    );
+    output.push_str("  readonly name: string;\n");
+    output.push_str("  readonly table: string;\n");
+    output.push_str("  readonly mutationScope: Scope;\n");
+    output.push_str("  readonly url: string;\n");
+    output.push_str(
+        "  readonly _rowType: TRow;  // Phantom field for type inference (not present at runtime)\n",
+    );
+    output.push_str(
+        "  readonly _createType: TCreate;  // Phantom field for type inference (not present at runtime)\n",
+    );
+    output.push_str(
+        "  readonly _updateType: TUpdate;  // Phantom field for type inference (not present at runtime)\n",
+    );
+    output.push_str("}\n\n");
+
+    // Helper function for mutation definitions
+    output.push_str("// Helper to create type-safe mutation definitions\n");
+    output.push_str("function defineMutation<TRow, TCreate, TUpdate>(\n");
+    output.push_str("  name: string,\n");
+    output.push_str("  table: string,\n");
+    output.push_str("  mutationScope: Scope,\n");
+    output.push_str("  url: string\n");
+    output.push_str("): MutationDefinition<TRow, TCreate, TUpdate> {\n");
+    output.push_str(
+        "  return { name, table, mutationScope, url } as MutationDefinition<TRow, TCreate, TUpdate>;\n",
+    );
+    output.push_str("}\n\n");
+
+    // Generate individual mutation definitions
+    output.push_str("// Individual mutation definitions\n");
+    for entity in &entities {
+        let has_mutations = entity.mutation_scope().is_some() && !entity.fields().is_empty();
+        if !has_mutations {
+            continue;
+        }
+
+        let const_name = to_screaming_snake_case(entity.name());
+        let mutation_scope = entity
+            .mutation_scope()
+            .map(|s| format!("'{:?}'", s))
+            .unwrap();
+
+        output.push_str(&format!(
+            "export const {const_name}_MUTATION = defineMutation<{ts_type}, Create{name}Request, Update{name}Request>(\n  '{name}',\n  '{table}',\n  {scope},\n  '/v1/{table}'\n);\n\n",
+            const_name = const_name,
+            ts_type = entity.ts_type_name(),
+            name = entity.name(),
+            table = entity.table(),
+            scope = mutation_scope,
+        ));
+    }
+
+    // Type helpers for mutations
+    output.push_str("// Type helpers to extract types from a mutation definition\n");
+    output.push_str("export type MutationRowType<M extends MutationDefinition<unknown>> = M extends MutationDefinition<infer R> ? R : never;\n");
+    output.push_str("export type MutationCreateType<M extends MutationDefinition<unknown, unknown>> = M extends MutationDefinition<unknown, infer C> ? C : never;\n");
+    output.push_str("export type MutationUpdateType<M extends MutationDefinition<unknown, unknown, unknown>> = M extends MutationDefinition<unknown, unknown, infer U> ? U : never;\n");
 
     output
 }

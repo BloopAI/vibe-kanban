@@ -3,7 +3,11 @@ import { createCollection } from '@tanstack/react-db';
 
 import { tokenManager } from '../auth/tokenManager';
 import { makeRequest, REMOTE_API_URL } from '@/lib/remoteApi';
-import type { EntityDefinition, ShapeDefinition } from 'shared/remote-types';
+import type {
+  EntityDefinition,
+  MutationDefinition,
+  ShapeDefinition,
+} from 'shared/remote-types';
 import type { CollectionConfig, SyncError } from './types';
 
 /**
@@ -230,16 +234,147 @@ function selectShape<TRow>(
 /**
  * Build a stable collection ID from entity table and params.
  * Sorts param keys for consistency regardless of insertion order.
+ * Adds `-mut` suffix for mutation-enabled collections to avoid cache conflicts.
  */
 function buildCollectionId(
   table: string,
-  params: Record<string, string>
+  params: Record<string, string>,
+  hasMutations: boolean = false
 ): string {
   const sortedParams = Object.keys(params)
     .sort()
     .map((k) => params[k])
     .join('-');
-  return sortedParams ? `${table}-${sortedParams}` : table;
+  const base = sortedParams ? `${table}-${sortedParams}` : table;
+  return hasMutations ? `${base}-mut` : base;
+}
+
+// Type assertion needed because the specific return types for mutation handlers
+// ({ txid: number[] }) need to be compatible with electricCollectionOptions.
+type ElectricConfig = Parameters<typeof electricCollectionOptions>[0];
+
+/**
+ * Create a read-only Electric collection for a shape.
+ * No mutation handlers — use this for data subscriptions that don't need insert/update/delete.
+ *
+ * @param shape - The shape definition from shared/remote-types.ts
+ * @param params - URL parameters matching the shape's requirements
+ * @param config - Optional configuration (error handlers, etc.)
+ */
+export function createShapeCollection<TRow extends ElectricRow>(
+  shape: ShapeDefinition<TRow>,
+  params: Record<string, string>,
+  config?: CollectionConfig
+) {
+  const collectionId = buildCollectionId(shape.table, params);
+
+  const cached = collectionCache.get(collectionId);
+  if (cached) {
+    return cached as typeof cached & { __rowType?: TRow };
+  }
+
+  const shapeOptions = getAuthenticatedShapeOptions(shape, params, config);
+
+  const options = electricCollectionOptions({
+    id: collectionId,
+    shapeOptions: shapeOptions as unknown as ElectricConfig['shapeOptions'],
+    getKey: (item: ElectricRow) => getRowKey(item),
+    gcTime: DEFAULT_GC_TIME_MS,
+  } as unknown as ElectricConfig);
+
+  const collection = createCollection(options) as unknown as ReturnType<
+    typeof createCollection
+  > & { __rowType?: TRow };
+
+  collectionCache.set(collectionId, collection);
+  return collection;
+}
+
+type MutationFnParams = {
+  transaction: {
+    mutations: Array<{
+      modified?: unknown;
+      original?: unknown;
+      key?: string;
+      changes?: unknown;
+    }>;
+  };
+};
+
+/**
+ * Build mutation handlers (onInsert/onUpdate/onDelete) for a mutation definition.
+ * Handlers call the remote API and return { txid } for Electric sync tracking.
+ */
+function buildMutationHandlers(
+  mutation: MutationDefinition<unknown, unknown, unknown>
+) {
+  return {
+    onInsert: async ({
+      transaction,
+    }: MutationFnParams): Promise<{ txid: number[] }> => {
+      const results = await Promise.all(
+        transaction.mutations.map(async (m) => {
+          const data = m.modified as Record<string, unknown>;
+          const response = await makeRequest(mutation.url, {
+            method: 'POST',
+            body: JSON.stringify(data),
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(
+              error.message || `Failed to create ${mutation.name}`
+            );
+          }
+          const result = (await response.json()) as { txid: number };
+          return result.txid;
+        })
+      );
+      return { txid: results };
+    },
+    onUpdate: async ({
+      transaction,
+    }: MutationFnParams): Promise<{ txid: number[] }> => {
+      const results = await Promise.all(
+        transaction.mutations.map(async (m) => {
+          const { key, changes } = m;
+          const response = await makeRequest(`${mutation.url}/${key}`, {
+            method: 'PATCH',
+            body: JSON.stringify(changes),
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(
+              error.message || `Failed to update ${mutation.name}`
+            );
+          }
+          const result = (await response.json()) as { txid: number };
+          return result.txid;
+        })
+      );
+      return { txid: results };
+    },
+    onDelete: async ({
+      transaction,
+    }: MutationFnParams): Promise<{ txid: number[] }> => {
+      const results = await Promise.all(
+        transaction.mutations.map(async (m) => {
+          const { key } = m;
+          const response = await makeRequest(`${mutation.url}/${key}`, {
+            method: 'DELETE',
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(
+              error.message || `Failed to delete ${mutation.name}`
+            );
+          }
+          const result = (await response.json()) as { txid: number };
+          return result.txid;
+        })
+      );
+      return { txid: results };
+    },
+  };
 }
 
 /**
@@ -272,10 +407,9 @@ export function createEntityCollection<
   config?: CollectionConfig
 ) {
   const shape = selectShape(entity, params);
+  const hasMutations = !!entity.mutations;
+  const collectionId = buildCollectionId(entity.table, params, hasMutations);
 
-  const collectionId = buildCollectionId(entity.table, params);
-
-  // Return cached collection if it exists (avoids reload on remount)
   const cached = collectionCache.get(collectionId);
   if (cached) {
     return cached as typeof cached & {
@@ -287,101 +421,15 @@ export function createEntityCollection<
 
   const shapeOptions = getAuthenticatedShapeOptions(shape, params, config);
 
-  // Build mutation handlers if entity supports mutations
-  //
-  // Handlers return { txid: number[] } to allow Electric to wait for the
-  // transaction to be synced before resolving. This is more reliable than
-  // awaitMatch which was previously used.
-  type MutationFnParams = {
-    transaction: {
-      mutations: Array<{
-        modified?: unknown; // For inserts - the new data
-        original?: unknown; // For updates/deletes - the original item
-        key?: string; // The ID/key of the item
-        changes?: unknown; // For updates - the changed fields
-      }>;
-    };
-  };
-
   const mutationHandlers = entity.mutations
-    ? {
-        onInsert: async ({
-          transaction,
-        }: MutationFnParams): Promise<{ txid: number[] }> => {
-          const results = await Promise.all(
-            transaction.mutations.map(async (mutation) => {
-              const data = mutation.modified as Record<string, unknown>;
-              const response = await makeRequest(entity.mutations!.url, {
-                method: 'POST',
-                body: JSON.stringify(data),
-              });
-              if (!response.ok) {
-                const error = await response.json();
-                throw new Error(
-                  error.message || `Failed to create ${entity.name}`
-                );
-              }
-              const result = (await response.json()) as { txid: number };
-              return result.txid;
-            })
-          );
-          return { txid: results };
-        },
-        onUpdate: async ({
-          transaction,
-        }: MutationFnParams): Promise<{ txid: number[] }> => {
-          const results = await Promise.all(
-            transaction.mutations.map(async (mutation) => {
-              const { key, changes } = mutation;
-              const response = await makeRequest(
-                `${entity.mutations!.url}/${key}`,
-                {
-                  method: 'PATCH',
-                  body: JSON.stringify(changes),
-                }
-              );
-              if (!response.ok) {
-                const error = await response.json();
-                throw new Error(
-                  error.message || `Failed to update ${entity.name}`
-                );
-              }
-              const result = (await response.json()) as { txid: number };
-              return result.txid;
-            })
-          );
-          return { txid: results };
-        },
-        onDelete: async ({
-          transaction,
-        }: MutationFnParams): Promise<{ txid: number[] }> => {
-          const results = await Promise.all(
-            transaction.mutations.map(async (mutation) => {
-              const { key } = mutation;
-              const response = await makeRequest(
-                `${entity.mutations!.url}/${key}`,
-                {
-                  method: 'DELETE',
-                }
-              );
-              if (!response.ok) {
-                const error = await response.json();
-                throw new Error(
-                  error.message || `Failed to delete ${entity.name}`
-                );
-              }
-              const result = (await response.json()) as { txid: number };
-              return result.txid;
-            })
-          );
-          return { txid: results };
-        },
-      }
+    ? buildMutationHandlers({
+        name: entity.name,
+        table: entity.table,
+        mutationScope: entity.mutationScope!,
+        url: entity.mutations.url,
+      } as MutationDefinition<unknown, unknown, unknown>)
     : {};
 
-  // Type assertion needed because the specific return types for mutation handlers
-  // ({ txid: number[] }) need to be compatible with electricCollectionOptions.
-  type ElectricConfig = Parameters<typeof electricCollectionOptions>[0];
   const options = electricCollectionOptions({
     id: collectionId,
     shapeOptions: shapeOptions as unknown as ElectricConfig['shapeOptions'],
@@ -398,8 +446,6 @@ export function createEntityCollection<
     __updateType?: TUpdate;
   };
 
-  // Cache the collection for future mounts
   collectionCache.set(collectionId, collection);
-
   return collection;
 }

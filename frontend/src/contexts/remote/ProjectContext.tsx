@@ -7,6 +7,7 @@ import {
 } from 'react';
 import {
   useEntity,
+  useShape,
   type InsertResult,
   type MutationResult,
 } from '@/lib/electric/hooks';
@@ -18,7 +19,7 @@ import {
   ISSUE_FOLLOWER_ENTITY,
   ISSUE_TAG_ENTITY,
   ISSUE_RELATIONSHIP_ENTITY,
-  PULL_REQUEST_ENTITY,
+  PROJECT_PULL_REQUESTS_SHAPE,
   type Issue,
   type ProjectStatus,
   type Tag,
@@ -163,7 +164,7 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     params,
     { enabled }
   );
-  const pullRequestsResult = useEntity(PULL_REQUEST_ENTITY, params, {
+  const pullRequestsResult = useShape(PROJECT_PULL_REQUESTS_SHAPE, params, {
     enabled,
   });
 
