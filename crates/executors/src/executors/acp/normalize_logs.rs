@@ -1144,8 +1144,7 @@ impl PipelineProfiler {
             .unwrap_or_default()
             .as_secs();
         // Write into <repo_root>/profiling/ directory (CARGO_MANIFEST_DIR is crates/executors)
-        let profiling_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../profiling");
+        let profiling_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../profiling");
         let _ = std::fs::create_dir_all(&profiling_dir);
         let output_path = profiling_dir.join(format!("acp_normalize_profile_{}.jsonl", timestamp));
         tracing::info!(
