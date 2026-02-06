@@ -91,10 +91,7 @@ export function WorkspaceSidebarFilters({
                       key={project.id}
                       checked={selectedProjectIds.includes(project.id)}
                       onCheckedChange={() => toggleProject(project.id)}
-                      className={cn(
-                        'gap-base',
-                        showOrgHeaders && 'pl-lg'
-                      )}
+                      className={cn('gap-base', showOrgHeaders && 'pl-lg')}
                     >
                       <span
                         className="w-2 h-2 rounded-full shrink-0"
