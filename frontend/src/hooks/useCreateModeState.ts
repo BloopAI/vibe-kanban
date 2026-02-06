@@ -308,29 +308,35 @@ export function useCreateModeState({
       return;
     }
 
-    // Priority 2: Most recently created project
-    const projectsList = Object.values(projectsById);
-    if (projectsList.length > 0) {
-      const sortedProjects = [...projectsList].sort(
-        (a, b) =>
-          new Date(b.created_at as unknown as string).getTime() -
-          new Date(a.created_at as unknown as string).getTime()
-      );
-      dispatch({ type: 'SET_PROJECT', projectId: sortedProjects[0].id });
-    } else {
-      // Priority 3: Create default project
-      projectsApi
-        .create({ name: 'My first project', repositories: [] })
-        .then((newProject) => {
-          dispatch({ type: 'SET_PROJECT', projectId: newProject.id });
-        })
-        .catch((e) => {
-          console.error(
-            '[useCreateModeState] Failed to create default project:',
-            e
-          );
-        });
-    }
+    // Priority 2: Fetch projects via API for deterministic ordering
+    projectsApi
+      .getAll()
+      .then((projects) => {
+        if (projects.length > 0) {
+          // Pick the oldest project (last in DESC-ordered list) as a stable default
+          const oldest = projects[projects.length - 1];
+          dispatch({ type: 'SET_PROJECT', projectId: oldest.id });
+        } else {
+          // Priority 3: Create default project
+          projectsApi
+            .create({ name: 'My first project', repositories: [] })
+            .then((newProject) => {
+              dispatch({ type: 'SET_PROJECT', projectId: newProject.id });
+            })
+            .catch((e) => {
+              console.error(
+                '[useCreateModeState] Failed to create default project:',
+                e
+              );
+            });
+        }
+      })
+      .catch((e) => {
+        console.error(
+          '[useCreateModeState] Failed to fetch projects:',
+          e
+        );
+      });
   }, [state.phase, state.projectId, projectsById, projectsLoading]);
 
   // ============================================================================
