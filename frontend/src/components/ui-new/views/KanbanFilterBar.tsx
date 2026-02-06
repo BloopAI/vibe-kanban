@@ -174,9 +174,7 @@ export function KanbanFilterBar({
       const resolved = selectedIds
         .filter((id) => id !== 'unassigned')
         .map((id) => usersById.get(id))
-        .filter(
-          (m): m is OrganizationMemberWithProfile => m != null
-        );
+        .filter((m): m is OrganizationMemberWithProfile => m != null);
 
       if (resolved.length === 0) {
         return (
