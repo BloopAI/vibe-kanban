@@ -173,7 +173,7 @@ impl Default for NotificationConfig {
         Self {
             sound_enabled: true,
             push_enabled: true,
-            sound_file: SoundFile::CowMooing,
+            sound_file: SoundFile::Rooster,
         }
     }
 }
