@@ -830,14 +830,16 @@ pub async fn get_task_attempt_branch_status(
             (in_rebase, conflicts, op)
         };
 
-        let (uncommitted_count, untracked_count) =
-            match deployment.git().get_worktree_change_counts(&worktree_path) {
-                Ok((a, b)) => (Some(a), Some(b)),
-                Err(e) => {
-                    tracing::warn!(repo_name = %repo.name, "Failed to get worktree change counts: {}", e);
-                    (None, None)
-                }
-            };
+        let (uncommitted_count, untracked_count) = match deployment
+            .git()
+            .get_worktree_change_counts(&worktree_path)
+        {
+            Ok((a, b)) => (Some(a), Some(b)),
+            Err(e) => {
+                tracing::warn!(repo_name = %repo.name, "Failed to get worktree change counts: {}", e);
+                (None, None)
+            }
+        };
 
         let has_uncommitted_changes = uncommitted_count.map(|c| c > 0);
 
