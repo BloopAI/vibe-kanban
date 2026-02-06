@@ -71,7 +71,15 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             msg_store.push_session_id(id);
                             stored_session_id = true;
                         }
-                        profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), Duration::ZERO, Duration::ZERO, None);
+                        profiler.record_event(
+                            event_type,
+                            line_len,
+                            parse_elapsed,
+                            match_start.elapsed(),
+                            Duration::ZERO,
+                            Duration::ZERO,
+                            None,
+                        );
                     }
                     AcpEvent::Error(msg) => {
                         let idx = entry_index.next();
@@ -94,12 +102,28 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         profiler.time_in_push_patch += push_elapsed;
                         profiler.total_patches += 1;
 
-                        profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), patch_elapsed, push_elapsed, None);
+                        profiler.record_event(
+                            event_type,
+                            line_len,
+                            parse_elapsed,
+                            match_start.elapsed(),
+                            patch_elapsed,
+                            push_elapsed,
+                            None,
+                        );
                     }
                     AcpEvent::Done(_) => {
                         streaming.assistant_text = None;
                         streaming.thinking_text = None;
-                        profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), Duration::ZERO, Duration::ZERO, None);
+                        profiler.record_event(
+                            event_type,
+                            line_len,
+                            parse_elapsed,
+                            match_start.elapsed(),
+                            Duration::ZERO,
+                            Duration::ZERO,
+                            None,
+                        );
                     }
                     AcpEvent::Message(content) => {
                         streaming.thinking_text = None;
@@ -107,7 +131,15 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             let is_new = streaming.assistant_text.is_none();
                             if is_new {
                                 if text.text == "\n" {
-                                    profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), Duration::ZERO, Duration::ZERO, None);
+                                    profiler.record_event(
+                                        event_type,
+                                        line_len,
+                                        parse_elapsed,
+                                        match_start.elapsed(),
+                                        Duration::ZERO,
+                                        Duration::ZERO,
+                                        None,
+                                    );
                                     wait_start = Instant::now();
                                     continue;
                                 }
@@ -148,10 +180,26 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 profiler.time_in_push_patch += push_elapsed;
                                 profiler.total_patches += 1;
 
-                                profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), patch_elapsed, push_elapsed, Some(clone_bytes as u64));
+                                profiler.record_event(
+                                    event_type,
+                                    line_len,
+                                    parse_elapsed,
+                                    match_start.elapsed(),
+                                    patch_elapsed,
+                                    push_elapsed,
+                                    Some(clone_bytes as u64),
+                                );
                             }
                         } else {
-                            profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), Duration::ZERO, Duration::ZERO, None);
+                            profiler.record_event(
+                                event_type,
+                                line_len,
+                                parse_elapsed,
+                                match_start.elapsed(),
+                                Duration::ZERO,
+                                Duration::ZERO,
+                                None,
+                            );
                         }
                     }
                     AcpEvent::Thought(content) => {
@@ -196,10 +244,26 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 profiler.time_in_push_patch += push_elapsed;
                                 profiler.total_patches += 1;
 
-                                profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), patch_elapsed, push_elapsed, Some(clone_bytes as u64));
+                                profiler.record_event(
+                                    event_type,
+                                    line_len,
+                                    parse_elapsed,
+                                    match_start.elapsed(),
+                                    patch_elapsed,
+                                    push_elapsed,
+                                    Some(clone_bytes as u64),
+                                );
                             }
                         } else {
-                            profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), Duration::ZERO, Duration::ZERO, None);
+                            profiler.record_event(
+                                event_type,
+                                line_len,
+                                parse_elapsed,
+                                match_start.elapsed(),
+                                Duration::ZERO,
+                                Duration::ZERO,
+                                None,
+                            );
                         }
                     }
                     AcpEvent::Plan(plan) => {
@@ -245,7 +309,15 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         profiler.time_in_push_patch += push_elapsed;
                         profiler.total_patches += 1;
 
-                        profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), patch_elapsed, push_elapsed, None);
+                        profiler.record_event(
+                            event_type,
+                            line_len,
+                            parse_elapsed,
+                            match_start.elapsed(),
+                            patch_elapsed,
+                            push_elapsed,
+                            None,
+                        );
                     }
                     AcpEvent::AvailableCommands(cmds) => {
                         let mut body = String::from("Available commands:\n");
@@ -270,7 +342,15 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         profiler.time_in_push_patch += push_elapsed;
                         profiler.total_patches += 1;
 
-                        profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), patch_elapsed, push_elapsed, None);
+                        profiler.record_event(
+                            event_type,
+                            line_len,
+                            parse_elapsed,
+                            match_start.elapsed(),
+                            patch_elapsed,
+                            push_elapsed,
+                            None,
+                        );
                     }
                     AcpEvent::CurrentMode(mode_id) => {
                         let idx = entry_index.next();
@@ -291,7 +371,15 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         profiler.time_in_push_patch += push_elapsed;
                         profiler.total_patches += 1;
 
-                        profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), patch_elapsed, push_elapsed, None);
+                        profiler.record_event(
+                            event_type,
+                            line_len,
+                            parse_elapsed,
+                            match_start.elapsed(),
+                            patch_elapsed,
+                            push_elapsed,
+                            None,
+                        );
                     }
                     AcpEvent::RequestPermission(perm) => {
                         if let Ok(tc) = agent_client_protocol::ToolCall::try_from(perm.tool_call) {
@@ -305,7 +393,15 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 &mut profiler,
                             );
                         }
-                        profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), Duration::ZERO, Duration::ZERO, None);
+                        profiler.record_event(
+                            event_type,
+                            line_len,
+                            parse_elapsed,
+                            match_start.elapsed(),
+                            Duration::ZERO,
+                            Duration::ZERO,
+                            None,
+                        );
                     }
                     AcpEvent::ToolCall(tc) => {
                         handle_tool_call(
@@ -317,7 +413,15 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             &msg_store,
                             &mut profiler,
                         );
-                        profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), Duration::ZERO, Duration::ZERO, None);
+                        profiler.record_event(
+                            event_type,
+                            line_len,
+                            parse_elapsed,
+                            match_start.elapsed(),
+                            Duration::ZERO,
+                            Duration::ZERO,
+                            None,
+                        );
                     }
                     AcpEvent::ToolUpdate(update) => {
                         let mut update = update;
@@ -341,7 +445,15 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         } else {
                             tracing::debug!("Failed to convert tool call update to ToolCall");
                         }
-                        profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), Duration::ZERO, Duration::ZERO, None);
+                        profiler.record_event(
+                            event_type,
+                            line_len,
+                            parse_elapsed,
+                            match_start.elapsed(),
+                            Duration::ZERO,
+                            Duration::ZERO,
+                            None,
+                        );
                     }
                     AcpEvent::ApprovalResponse(resp) => {
                         tracing::trace!("Received approval response: {:?}", resp);
@@ -379,13 +491,37 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             profiler.time_in_push_patch += push_elapsed;
                             profiler.total_patches += 1;
 
-                            profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), patch_elapsed, push_elapsed, None);
+                            profiler.record_event(
+                                event_type,
+                                line_len,
+                                parse_elapsed,
+                                match_start.elapsed(),
+                                patch_elapsed,
+                                push_elapsed,
+                                None,
+                            );
                         } else {
-                            profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), Duration::ZERO, Duration::ZERO, None);
+                            profiler.record_event(
+                                event_type,
+                                line_len,
+                                parse_elapsed,
+                                match_start.elapsed(),
+                                Duration::ZERO,
+                                Duration::ZERO,
+                                None,
+                            );
                         }
                     }
                     AcpEvent::User(_) | AcpEvent::Other(_) => {
-                        profiler.record_event(event_type, line_len, parse_elapsed, match_start.elapsed(), Duration::ZERO, Duration::ZERO, None);
+                        profiler.record_event(
+                            event_type,
+                            line_len,
+                            parse_elapsed,
+                            match_start.elapsed(),
+                            Duration::ZERO,
+                            Duration::ZERO,
+                            None,
+                        );
                     }
                 }
             } else {
@@ -1008,7 +1144,10 @@ impl PipelineProfiler {
             .unwrap_or_default()
             .as_secs();
         let output_path = PathBuf::from(format!("/tmp/acp_normalize_profile_{}.jsonl", timestamp));
-        tracing::info!("ACP normalize profiler writing to: {}", output_path.display());
+        tracing::info!(
+            "ACP normalize profiler writing to: {}",
+            output_path.display()
+        );
 
         let now = Instant::now();
         Self {
@@ -1075,7 +1214,10 @@ impl PipelineProfiler {
             .append(true)
             .open(&self.output_path)
         else {
-            tracing::warn!("Failed to open profiler output file: {}", self.output_path.display());
+            tracing::warn!(
+                "Failed to open profiler output file: {}",
+                self.output_path.display()
+            );
             self.event_log.clear();
             return;
         };
@@ -1091,7 +1233,8 @@ impl PipelineProfiler {
         self.flush_events();
 
         let wall_clock = self.pipeline_start.elapsed();
-        let processing_time = self.time_in_parse + self.time_in_patch_creation + self.time_in_push_patch;
+        let processing_time =
+            self.time_in_parse + self.time_in_patch_creation + self.time_in_push_patch;
 
         let summary = serde_json::json!({
             "type": "SUMMARY",
@@ -1150,8 +1293,11 @@ impl PipelineProfiler {
             self.total_patches,
             wall_clock.as_secs_f64(),
             if wall_clock.as_micros() > 0 {
-                self.time_waiting_for_line.as_micros() as f64 / wall_clock.as_micros() as f64 * 100.0
-            } else { 0.0 },
+                self.time_waiting_for_line.as_micros() as f64 / wall_clock.as_micros() as f64
+                    * 100.0
+            } else {
+                0.0
+            },
             self.output_path.display(),
         );
     }
