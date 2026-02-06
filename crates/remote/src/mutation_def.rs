@@ -66,7 +66,6 @@ pub struct MutationMeta {
     pub row_type: String,
     pub create_type: Option<String>,
     pub update_type: Option<String>,
-    pub has_delete: bool,
 }
 
 // =============================================================================
@@ -84,7 +83,6 @@ pub struct MutationDef<E, C = (), U = ()> {
     url: &'static str,
     base_route: MethodRouter<AppState>,
     id_route: MethodRouter<AppState>,
-    has_delete: bool,
     _phantom: PhantomData<fn() -> (E, C, U)>,
 }
 
@@ -96,7 +94,6 @@ impl<E: TS + Send + Sync + 'static> MutationDef<E, NoCreate, NoUpdate> {
             url,
             base_route: MethodRouter::new(),
             id_route: MethodRouter::new(),
-            has_delete: false,
             _phantom: PhantomData,
         }
     }
@@ -129,7 +126,6 @@ impl<E: TS, C, U> MutationDef<E, C, U> {
         H: Handler<T, AppState> + Clone + Send + 'static,
         T: 'static,
     {
-        self.has_delete = true;
         self.id_route = self.id_route.delete(handler);
         self
     }
@@ -161,7 +157,6 @@ impl<E: TS, U> MutationDef<E, NoCreate, U> {
             url: self.url,
             base_route: self.base_route.post(handler),
             id_route: self.id_route,
-            has_delete: self.has_delete,
             _phantom: PhantomData,
         }
     }
@@ -183,7 +178,6 @@ impl<E: TS, C> MutationDef<E, C, NoUpdate> {
             url: self.url,
             base_route: self.base_route,
             id_route: self.id_route.patch(handler),
-            has_delete: self.has_delete,
             _phantom: PhantomData,
         }
     }
@@ -233,7 +227,6 @@ impl<E: TS, C: MaybeTypeName, U: MaybeTypeName> MutationDef<E, C, U> {
             row_type: E::name(),
             create_type: C::maybe_name(),
             update_type: U::maybe_name(),
-            has_delete: self.has_delete,
         }
     }
 }
