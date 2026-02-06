@@ -6,9 +6,11 @@ pub mod types;
 
 use std::{
     collections::HashMap,
+    io::Write as IoWrite,
     path::{Path, PathBuf},
     process::Stdio,
     sync::Arc,
+    time::{Duration, Instant},
 };
 
 use async_trait::async_trait;
@@ -449,14 +451,24 @@ impl ClaudeLogProcessor {
             // Track pending assistant UUID - only committed when we see a Result message
             let mut pending_assistant_uuid: Option<String> = None;
 
+            let mut profiler = ClaudeProfiler::new();
+            let mut wait_start = Instant::now();
+
             while let Some(Ok(msg)) = stream.next().await {
+                let wait_elapsed = wait_start.elapsed();
+                profiler.time_waiting_for_chunk += wait_elapsed;
+                profiler.total_chunks += 1;
+
                 let chunk = match msg {
                     LogMsg::Stdout(x) => x,
                     LogMsg::JsonPatch(_)
                     | LogMsg::SessionId(_)
                     | LogMsg::MessageId(_)
                     | LogMsg::Stderr(_)
-                    | LogMsg::Ready => continue,
+                    | LogMsg::Ready => {
+                        wait_start = Instant::now();
+                        continue;
+                    }
                     LogMsg::Finished => break,
                 };
 
@@ -482,8 +494,22 @@ impl ClaudeLogProcessor {
                         continue;
                     }
 
+                    let line_bytes = trimmed.len();
+                    profiler.total_lines += 1;
+                    profiler.total_line_bytes += line_bytes as u64;
+                    if line_bytes as u64 > profiler.max_line_bytes {
+                        profiler.max_line_bytes = line_bytes as u64;
+                    }
+
+                    let parse_start = Instant::now();
                     match serde_json::from_str::<ClaudeJson>(trimmed) {
                         Ok(claude_json) => {
+                            let parse_elapsed = parse_start.elapsed();
+                            profiler.time_in_parse += parse_elapsed;
+
+                            let event_type = claude_json_variant_name(&claude_json);
+                            *profiler.event_counts.entry(event_type).or_insert(0) += 1;
+
                             if !session_id_extracted
                                 && let Some(session_id) = Self::extract_session_id(&claude_json)
                             {
@@ -513,18 +539,41 @@ impl ClaudeLogProcessor {
                                 _ => {}
                             }
 
+                            let normalize_start = Instant::now();
                             let patches = processor.normalize_entries(
                                 &claude_json,
                                 &worktree_path,
                                 &entry_index_provider,
                             );
+                            let normalize_elapsed = normalize_start.elapsed();
+                            profiler.time_in_normalize += normalize_elapsed;
+
+                            let patch_count = patches.len() as u32;
+                            let push_start = Instant::now();
                             for patch in patches {
                                 msg_store.push_patch(patch);
                             }
+                            let push_elapsed = push_start.elapsed();
+                            profiler.time_in_push_patch += push_elapsed;
+                            profiler.total_patches += patch_count as u64;
+
+                            profiler.record_event(
+                                event_type,
+                                line_bytes,
+                                parse_elapsed,
+                                normalize_elapsed,
+                                push_elapsed,
+                                patch_count,
+                            );
                         }
                         Err(_) => {
+                            let parse_elapsed = parse_start.elapsed();
+                            profiler.time_in_parse += parse_elapsed;
+                            profiler.parse_fail_count += 1;
+
                             // Handle non-JSON output as raw system message
                             if !trimmed.is_empty() {
+                                let normalize_start = Instant::now();
                                 let entry = NormalizedEntry {
                                     timestamp: None,
                                     entry_type: NormalizedEntryType::SystemMessage,
@@ -535,7 +584,23 @@ impl ClaudeLogProcessor {
                                 let patch_id = entry_index_provider.next();
                                 let patch =
                                     ConversationPatch::add_normalized_entry(patch_id, entry);
+                                let normalize_elapsed = normalize_start.elapsed();
+                                profiler.time_in_normalize += normalize_elapsed;
+
+                                let push_start = Instant::now();
                                 msg_store.push_patch(patch);
+                                let push_elapsed = push_start.elapsed();
+                                profiler.time_in_push_patch += push_elapsed;
+                                profiler.total_patches += 1;
+
+                                profiler.record_event(
+                                    "ParseFail",
+                                    line_bytes,
+                                    parse_elapsed,
+                                    normalize_elapsed,
+                                    push_elapsed,
+                                    1,
+                                );
                             }
                         }
                     }
@@ -543,6 +608,8 @@ impl ClaudeLogProcessor {
 
                 // Keep the partial line in the buffer
                 buffer = buffer.rsplit('\n').next().unwrap_or("").to_owned();
+                wait_start = Instant::now();
+                profiler.maybe_flush();
             }
 
             // Handle any remaining content in buffer
@@ -558,6 +625,8 @@ impl ClaudeLogProcessor {
                 let patch = ConversationPatch::add_normalized_entry(patch_id, entry);
                 msg_store.push_patch(patch);
             }
+
+            profiler.write_summary();
         });
     }
 
@@ -2174,6 +2243,208 @@ impl ClaudeToolData {
                 .and_then(|v| v.as_str())
                 .unwrap_or("unknown"),
         }
+    }
+}
+
+// ── Claude normalizer profiler ──────────────────────────────────────────
+
+fn claude_json_variant_name(cj: &ClaudeJson) -> &'static str {
+    match cj {
+        ClaudeJson::System { .. } => "System",
+        ClaudeJson::Assistant { .. } => "Assistant",
+        ClaudeJson::User { .. } => "User",
+        ClaudeJson::ToolUse { .. } => "ToolUse",
+        ClaudeJson::ToolResult { .. } => "ToolResult",
+        ClaudeJson::StreamEvent { .. } => "StreamEvent",
+        ClaudeJson::Result { .. } => "Result",
+        ClaudeJson::ApprovalResponse { .. } => "ApprovalResponse",
+        ClaudeJson::ControlRequest { .. } => "ControlRequest",
+        ClaudeJson::ControlResponse { .. } => "ControlResponse",
+        ClaudeJson::ControlCancelRequest { .. } => "ControlCancelRequest",
+        ClaudeJson::Unknown { .. } => "Unknown",
+    }
+}
+
+#[derive(serde::Serialize)]
+struct ClaudeEventRecord {
+    ts_us: u64,
+    event_type: &'static str,
+    line_bytes: usize,
+    parse_us: u64,
+    normalize_us: u64,
+    push_patch_us: u64,
+    patch_count: u32,
+}
+
+struct ClaudeProfiler {
+    pipeline_start: Instant,
+
+    // Phase-level aggregates
+    time_waiting_for_chunk: Duration,
+    time_in_parse: Duration,
+    time_in_normalize: Duration,
+    time_in_push_patch: Duration,
+
+    // Per-event-type breakdown
+    event_counts: HashMap<&'static str, u64>,
+
+    // Volume metrics
+    total_chunks: u64,
+    total_lines: u64,
+    total_patches: u64,
+    total_line_bytes: u64,
+    max_line_bytes: u64,
+    parse_fail_count: u64,
+
+    // Per-event records
+    event_log: Vec<ClaudeEventRecord>,
+
+    // Output
+    output_path: PathBuf,
+    last_flush: Instant,
+}
+
+impl ClaudeProfiler {
+    fn new() -> Self {
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let profiling_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../profiling");
+        let _ = std::fs::create_dir_all(&profiling_dir);
+        let output_path =
+            profiling_dir.join(format!("claude_normalize_profile_{}.jsonl", timestamp));
+        tracing::info!(
+            "Claude normalize profiler writing to: {}",
+            output_path.display()
+        );
+
+        let now = Instant::now();
+        Self {
+            pipeline_start: now,
+            time_waiting_for_chunk: Duration::ZERO,
+            time_in_parse: Duration::ZERO,
+            time_in_normalize: Duration::ZERO,
+            time_in_push_patch: Duration::ZERO,
+            event_counts: HashMap::new(),
+            total_chunks: 0,
+            total_lines: 0,
+            total_patches: 0,
+            total_line_bytes: 0,
+            max_line_bytes: 0,
+            parse_fail_count: 0,
+            event_log: Vec::with_capacity(1024),
+            output_path,
+            last_flush: now,
+        }
+    }
+
+    fn record_event(
+        &mut self,
+        event_type: &'static str,
+        line_bytes: usize,
+        parse_elapsed: Duration,
+        normalize_elapsed: Duration,
+        push_patch_elapsed: Duration,
+        patch_count: u32,
+    ) {
+        self.event_log.push(ClaudeEventRecord {
+            ts_us: self.pipeline_start.elapsed().as_micros() as u64,
+            event_type,
+            line_bytes,
+            parse_us: parse_elapsed.as_micros() as u64,
+            normalize_us: normalize_elapsed.as_micros() as u64,
+            push_patch_us: push_patch_elapsed.as_micros() as u64,
+            patch_count,
+        });
+    }
+
+    fn maybe_flush(&mut self) {
+        if self.event_log.len() >= 1000 || self.last_flush.elapsed() > Duration::from_secs(5) {
+            self.flush_events();
+            self.last_flush = Instant::now();
+        }
+    }
+
+    fn flush_events(&mut self) {
+        if self.event_log.is_empty() {
+            return;
+        }
+        let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&self.output_path)
+        else {
+            tracing::warn!(
+                "Failed to open profiler output file: {}",
+                self.output_path.display()
+            );
+            self.event_log.clear();
+            return;
+        };
+
+        for record in self.event_log.drain(..) {
+            if let Ok(json) = serde_json::to_string(&record) {
+                let _ = writeln!(file, "{}", json);
+            }
+        }
+    }
+
+    fn write_summary(&mut self) {
+        self.flush_events();
+
+        let wall_clock = self.pipeline_start.elapsed();
+        let processing_time =
+            self.time_in_parse + self.time_in_normalize + self.time_in_push_patch;
+
+        let summary = serde_json::json!({
+            "type": "SUMMARY",
+            "total_wall_clock_ms": wall_clock.as_millis() as u64,
+            "time_waiting_for_chunk_ms": self.time_waiting_for_chunk.as_millis() as u64,
+            "time_waiting_for_chunk_pct": if wall_clock.as_micros() > 0 {
+                (self.time_waiting_for_chunk.as_micros() as f64 / wall_clock.as_micros() as f64 * 100.0) as u64
+            } else { 0 },
+            "time_in_parse_ms": self.time_in_parse.as_millis() as u64,
+            "time_in_normalize_ms": self.time_in_normalize.as_millis() as u64,
+            "time_in_push_patch_ms": self.time_in_push_patch.as_millis() as u64,
+            "total_processing_ms": processing_time.as_millis() as u64,
+            "total_chunks": self.total_chunks,
+            "total_lines": self.total_lines,
+            "total_patches": self.total_patches,
+            "parse_fail_count": self.parse_fail_count,
+            "total_line_bytes": self.total_line_bytes,
+            "max_line_bytes": self.max_line_bytes,
+            "avg_line_bytes": if self.total_lines > 0 { self.total_line_bytes / self.total_lines } else { 0 },
+            "event_type_counts": self.event_counts,
+            "per_event_avg_us": {
+                "parse": if self.total_lines > 0 { self.time_in_parse.as_micros() as u64 / self.total_lines } else { 0 },
+                "normalize": if self.total_lines > 0 { self.time_in_normalize.as_micros() as u64 / self.total_lines } else { 0 },
+                "push_patch": if self.total_patches > 0 { self.time_in_push_patch.as_micros() as u64 / self.total_patches } else { 0 },
+            },
+        });
+
+        if let Ok(json) = serde_json::to_string(&summary) {
+            if let Ok(mut file) = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&self.output_path)
+            {
+                let _ = writeln!(file, "{}", json);
+            }
+        }
+
+        tracing::info!(
+            wall_clock_ms = wall_clock.as_millis() as u64,
+            waiting_pct = if wall_clock.as_micros() > 0 {
+                (self.time_waiting_for_chunk.as_micros() as f64 / wall_clock.as_micros() as f64 * 100.0) as u64
+            } else { 0 },
+            parse_ms = self.time_in_parse.as_millis() as u64,
+            normalize_ms = self.time_in_normalize.as_millis() as u64,
+            push_patch_ms = self.time_in_push_patch.as_millis() as u64,
+            total_lines = self.total_lines,
+            total_patches = self.total_patches,
+            "Claude normalize profiler summary"
+        );
     }
 }
 
