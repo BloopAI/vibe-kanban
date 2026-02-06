@@ -161,6 +161,8 @@ export function PreviewBrowserContainer({
   const [devToolsExpandedErrorId, setDevToolsExpandedErrorId] = useState<
     string | null
   >(null);
+  // Eruda DevTools state
+  const [isErudaVisible, setIsErudaVisible] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const devTools = usePreviewDevTools();
   const bridgeRef = useRef<PreviewDevToolsBridge | null>(null);
@@ -478,6 +480,22 @@ export function PreviewBrowserContainer({
     setDevToolsCollapsed((prev) => !prev);
   }, []);
 
+  const handleToggleEruda = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe?.contentWindow) return;
+
+    const newState = !isErudaVisible;
+    setIsErudaVisible(newState);
+
+    iframe.contentWindow.postMessage(
+      {
+        source: 'vibe-kanban',
+        command: newState ? 'show-eruda' : 'hide-eruda',
+      },
+      '*'
+    );
+  }, [isErudaVisible]);
+
   const handleCopyUrl = useCallback(async () => {
     if (effectiveUrl) {
       await navigator.clipboard.writeText(effectiveUrl);
@@ -615,6 +633,8 @@ export function PreviewBrowserContainer({
       onNavigateForward={handleNavigateForward}
       isInspectMode={isInspectMode}
       onToggleInspectMode={toggleInspectMode}
+      isErudaVisible={isErudaVisible}
+      onToggleEruda={handleToggleEruda}
       devToolsCollapsed={devToolsCollapsed}
       onToggleDevToolsCollapsed={handleToggleDevToolsCollapsed}
       devToolsActiveTab={devToolsActiveTab}
