@@ -338,13 +338,12 @@ export const Actions = {
         const remoteWs = ctx.remoteWorkspaces.find(
           (w) => w.local_workspace_id === workspaceId
         );
-        const linkedIssue =
-          remoteWs?.issue_id
-            ? {
-                issueId: remoteWs.issue_id,
-                remoteProjectId: remoteWs.project_id,
-              }
-            : undefined;
+        const linkedIssue = remoteWs?.issue_id
+          ? {
+              issueId: remoteWs.issue_id,
+              remoteProjectId: remoteWs.project_id,
+            }
+          : undefined;
 
         ctx.navigate('/workspaces/create', {
           state: {
