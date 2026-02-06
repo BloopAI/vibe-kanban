@@ -1,13 +1,18 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useUserContext } from '@/contexts/remote/UserContext';
 import { useScratch } from '@/hooks/useScratch';
+import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
+import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';
 import { splitMessageToTitleDescription } from '@/utils/string';
 import {
   PERSIST_KEYS,
   usePersistedExpanded,
+  useUiPreferencesStore,
 } from '@/stores/useUiPreferencesStore';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
+import { WorkspaceSidebarFilters } from '@/components/ui-new/views/WorkspaceSidebarFilters';
 
 export type WorkspaceLayoutMode = 'flat' | 'accordion';
 
@@ -47,37 +52,113 @@ export function WorkspacesSidebarContainer({
     : 'flat';
   const toggleLayoutMode = () => setAccordionLayout(!isAccordionLayout);
 
+  // Workspace sidebar filters
+  const workspaceFilters = useUiPreferencesStore((s) => s.workspaceFilters);
+  const setWorkspaceProjectFilter = useUiPreferencesStore(
+    (s) => s.setWorkspaceProjectFilter
+  );
+  const setWorkspacePrFilter = useUiPreferencesStore(
+    (s) => s.setWorkspacePrFilter
+  );
+  const clearWorkspaceFilters = useUiPreferencesStore(
+    (s) => s.clearWorkspaceFilters
+  );
+
+  // Remote data for project filter
+  const { workspaces: remoteWorkspaces } = useUserContext();
+  const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
+  const { data: remoteProjects = [] } =
+    useOrganizationProjects(selectedOrgId);
+
+  // Map local workspace ID → remote project ID
+  const remoteProjectByLocalId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const rw of remoteWorkspaces) {
+      if (rw.local_workspace_id) {
+        map.set(rw.local_workspace_id, rw.project_id);
+      }
+    }
+    return map;
+  }, [remoteWorkspaces]);
+
+  // Only show projects that have at least one linked workspace
+  const projectsWithWorkspaces = useMemo(() => {
+    const linkedProjectIds = new Set(remoteProjectByLocalId.values());
+    return remoteProjects.filter((p) => linkedProjectIds.has(p.id));
+  }, [remoteProjects, remoteProjectByLocalId]);
+
+  const hasActiveFilters =
+    workspaceFilters.projectIds.length > 0 ||
+    workspaceFilters.prFilter !== 'all';
+
   // Pagination state for infinite scroll
   const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
 
-  // Reset display limit when search changes or archive view changes
+  // Reset display limit when search or filters change
   useEffect(() => {
     setDisplayLimit(PAGE_SIZE);
-  }, [searchQuery, showArchive]);
+  }, [searchQuery, showArchive, workspaceFilters]);
 
   const searchLower = searchQuery.toLowerCase();
   const isSearching = searchQuery.length > 0;
 
-  // Filter workspaces by search
-  const filteredActiveWorkspaces = useMemo(
-    () =>
-      activeWorkspaces.filter(
-        (workspace) =>
-          workspace.name.toLowerCase().includes(searchLower) ||
-          workspace.branch.toLowerCase().includes(searchLower)
-      ),
-    [activeWorkspaces, searchLower]
-  );
+  // Apply sidebar filters (project + PR), then search
+  const filteredActiveWorkspaces = useMemo(() => {
+    let result = activeWorkspaces;
 
-  const filteredArchivedWorkspaces = useMemo(
-    () =>
-      archivedWorkspaces.filter(
-        (workspace) =>
-          workspace.name.toLowerCase().includes(searchLower) ||
-          workspace.branch.toLowerCase().includes(searchLower)
-      ),
-    [archivedWorkspaces, searchLower]
-  );
+    // Project filter
+    if (workspaceFilters.projectIds.length > 0) {
+      result = result.filter((ws) => {
+        const projectId = remoteProjectByLocalId.get(ws.id);
+        return projectId && workspaceFilters.projectIds.includes(projectId);
+      });
+    }
+
+    // PR filter
+    if (workspaceFilters.prFilter === 'has_pr') {
+      result = result.filter((ws) => !!ws.prStatus);
+    } else if (workspaceFilters.prFilter === 'no_pr') {
+      result = result.filter((ws) => !ws.prStatus);
+    }
+
+    // Search filter
+    if (searchLower) {
+      result = result.filter(
+        (ws) =>
+          ws.name.toLowerCase().includes(searchLower) ||
+          ws.branch.toLowerCase().includes(searchLower)
+      );
+    }
+
+    return result;
+  }, [activeWorkspaces, workspaceFilters, remoteProjectByLocalId, searchLower]);
+
+  const filteredArchivedWorkspaces = useMemo(() => {
+    let result = archivedWorkspaces;
+
+    if (workspaceFilters.projectIds.length > 0) {
+      result = result.filter((ws) => {
+        const projectId = remoteProjectByLocalId.get(ws.id);
+        return projectId && workspaceFilters.projectIds.includes(projectId);
+      });
+    }
+
+    if (workspaceFilters.prFilter === 'has_pr') {
+      result = result.filter((ws) => !!ws.prStatus);
+    } else if (workspaceFilters.prFilter === 'no_pr') {
+      result = result.filter((ws) => !ws.prStatus);
+    }
+
+    if (searchLower) {
+      result = result.filter(
+        (ws) =>
+          ws.name.toLowerCase().includes(searchLower) ||
+          ws.branch.toLowerCase().includes(searchLower)
+      );
+    }
+
+    return result;
+  }, [archivedWorkspaces, workspaceFilters, remoteProjectByLocalId, searchLower]);
 
   // Apply pagination (only when not searching)
   const paginatedActiveWorkspaces = useMemo(
@@ -140,6 +221,18 @@ export function WorkspacesSidebarContainer({
     [selectedWorkspaceId, selectWorkspace, onScrollToBottom]
   );
 
+  const filterElement = (
+    <WorkspaceSidebarFilters
+      projects={projectsWithWorkspaces}
+      selectedProjectIds={workspaceFilters.projectIds}
+      prFilter={workspaceFilters.prFilter}
+      hasActiveFilters={hasActiveFilters}
+      onProjectFilterChange={setWorkspaceProjectFilter}
+      onPrFilterChange={setWorkspacePrFilter}
+      onClearFilters={clearWorkspaceFilters}
+    />
+  );
+
   return (
     <WorkspacesSidebar
       workspaces={paginatedActiveWorkspaces}
@@ -159,6 +252,7 @@ export function WorkspacesSidebarContainer({
       onToggleLayoutMode={toggleLayoutMode}
       onLoadMore={handleLoadMore}
       hasMoreWorkspaces={hasMoreWorkspaces && !isSearching}
+      filterElement={filterElement}
     />
   );
 }

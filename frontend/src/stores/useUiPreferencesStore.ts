@@ -61,6 +61,19 @@ const DEFAULT_KANBAN_FILTER_STATE: KanbanFilterState = {
   sortDirection: 'asc',
 };
 
+// Workspace sidebar filter state
+export type WorkspacePrFilter = 'all' | 'has_pr' | 'no_pr';
+
+export type WorkspaceFilterState = {
+  projectIds: string[]; // remote project IDs
+  prFilter: WorkspacePrFilter;
+};
+
+const DEFAULT_WORKSPACE_FILTER_STATE: WorkspaceFilterState = {
+  projectIds: [],
+  prFilter: 'all',
+};
+
 // Centralized persist keys for type safety
 export const PERSIST_KEYS = {
   // Sidebar sections
@@ -159,6 +172,9 @@ type State = {
   // Kanban filter state
   kanbanFilters: KanbanFilterState;
 
+  // Workspace sidebar filter state
+  workspaceFilters: WorkspaceFilterState;
+
   // Kanban view mode state
   kanbanViewMode: KanbanViewMode;
   listViewStatusFilter: string | null;
@@ -212,6 +228,11 @@ type State = {
   setKanbanSort: (field: KanbanSortField, direction: 'asc' | 'desc') => void;
   clearKanbanFilters: () => void;
 
+  // Workspace sidebar filter actions
+  setWorkspaceProjectFilter: (projectIds: string[]) => void;
+  setWorkspacePrFilter: (prFilter: WorkspacePrFilter) => void;
+  clearWorkspaceFilters: () => void;
+
   // Kanban view mode actions
   setKanbanViewMode: (mode: KanbanViewMode) => void;
   setListViewStatusFilter: (statusId: string | null) => void;
@@ -240,6 +261,9 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
 
   // Kanban filter state
   kanbanFilters: DEFAULT_KANBAN_FILTER_STATE,
+
+  // Workspace sidebar filter state
+  workspaceFilters: DEFAULT_WORKSPACE_FILTER_STATE,
 
   // Kanban view mode state
   kanbanViewMode: 'kanban' as KanbanViewMode,
@@ -427,6 +451,20 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
     })),
 
   clearKanbanFilters: () => set({ kanbanFilters: DEFAULT_KANBAN_FILTER_STATE }),
+
+  // Workspace sidebar filter actions
+  setWorkspaceProjectFilter: (projectIds) =>
+    set((s) => ({
+      workspaceFilters: { ...s.workspaceFilters, projectIds },
+    })),
+
+  setWorkspacePrFilter: (prFilter) =>
+    set((s) => ({
+      workspaceFilters: { ...s.workspaceFilters, prFilter },
+    })),
+
+  clearWorkspaceFilters: () =>
+    set({ workspaceFilters: DEFAULT_WORKSPACE_FILTER_STATE }),
 
   // Kanban view mode actions
   setKanbanViewMode: (mode) => set({ kanbanViewMode: mode }),

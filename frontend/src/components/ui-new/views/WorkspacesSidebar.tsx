@@ -43,6 +43,8 @@ interface WorkspacesSidebarProps {
   onLoadMore?: () => void;
   /** Whether there are more workspaces to load */
   hasMoreWorkspaces?: boolean;
+  /** Filter element rendered in the header */
+  filterElement?: React.ReactNode;
 }
 
 function WorkspaceList({
@@ -98,6 +100,7 @@ export function WorkspacesSidebar({
   onToggleLayoutMode,
   onLoadMore,
   hasMoreWorkspaces = false,
+  filterElement,
 }: WorkspacesSidebarProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -150,6 +153,7 @@ export function WorkspacesSidebar({
           title={t('common:workspaces.title')}
           collapsible={false}
           actions={headerActions}
+          headerExtra={filterElement}
           className="border-b"
         />
         <div className="px-base">
