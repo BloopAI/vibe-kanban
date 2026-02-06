@@ -36,7 +36,10 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{ExecutorError, StandardCodingAgentExecutor},
-    logs::{NormalizedEntry, NormalizedEntryError, NormalizedEntryType, utils::ConversationPatch},
+    logs::{
+        NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
+        utils::{ConversationPatch, patch::patch_entry_path},
+    },
     profile::ExecutorProfileId,
 };
 use futures::{StreamExt, future, stream::BoxStream};
@@ -1005,15 +1008,55 @@ pub trait ContainerService {
                     return None;
                 }
             }
-            Some(
-                temp_store
-                    .history_plus_stream()
-                    .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
-                    .chain(futures::stream::once(async {
-                        Ok::<_, std::io::Error>(LogMsg::Finished)
-                    }))
-                    .boxed(),
+            // Stream normalized patches, deduplicating consecutive patches
+            // that target the same path (only the final state matters for
+            // historical replay).
+            let patch_stream = temp_store
+                .history_plus_stream()
+                .take_while(|msg| future::ready(!matches!(msg, Ok(LogMsg::Finished))))
+                .filter_map(|msg| async move {
+                    match msg {
+                        Ok(LogMsg::JsonPatch(patch)) => Some(patch),
+                        _ => None,
+                    }
+                });
+
+            let deduped = futures::stream::unfold(
+                (patch_stream.boxed(), None::<Patch>),
+                |(mut stream, buffered)| async move {
+                    loop {
+                        match stream.next().await {
+                            Some(patch) => {
+                                let Some(prev) = buffered else {
+                                    // First patch — just buffer it
+                                    break Some((None, (stream, Some(patch))));
+                                };
+                                if patch_entry_path(&patch) == patch_entry_path(&prev) {
+                                    // Same path — replace buffer
+                                    break Some((None, (stream, Some(patch))));
+                                } else {
+                                    // Different path — emit prev, buffer new
+                                    break Some((Some(prev), (stream, Some(patch))));
+                                }
+                            }
+                            None => {
+                                // Stream ended — emit buffered if any
+                                if let Some(prev) = buffered {
+                                    break Some((Some(prev), (stream, None)));
+                                }
+                                break None;
+                            }
+                        }
+                    }
+                },
             )
+            .filter_map(|opt| async move { opt })
+            .map(|p| Ok::<_, std::io::Error>(LogMsg::JsonPatch(p)))
+            .chain(futures::stream::once(async {
+                Ok::<_, std::io::Error>(LogMsg::Finished)
+            }));
+
+            Some(deduped.boxed())
         }
     }
 

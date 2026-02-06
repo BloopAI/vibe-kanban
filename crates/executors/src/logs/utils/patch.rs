@@ -179,6 +179,11 @@ pub fn replace_normalized_entry(
     upsert_normalized_entry(msg_store, index, normalized_entry, false);
 }
 
+/// Extract the path string from a Patch (assumes single-operation patches).
+pub fn patch_entry_path(patch: &Patch) -> Option<String> {
+    patch.0.first().map(|op| op.path().to_string())
+}
+
 pub fn slash_commands(
     commands: Vec<SlashCommandDescription>,
     discovering: bool,
