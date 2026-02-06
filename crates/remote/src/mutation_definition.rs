@@ -1,6 +1,6 @@
 //! Mutation definition builder for type-safe route and metadata generation.
 //!
-//! This module provides `MutationDef`, a builder that:
+//! This module provides `MutationBuilder`, a builder that:
 //! - Generates axum routers for CRUD mutation routes
 //! - Captures type information for TypeScript generation
 //! - Uses `HasJsonPayload` to ensure handler signatures match declared C/U types
@@ -8,10 +8,10 @@
 //! # Example
 //!
 //! ```ignore
-//! use crate::mutation_def::MutationDef;
+//! use crate::mutation_definition::MutationBuilder;
 //!
-//! pub fn mutation() -> MutationDef<Tag, CreateTagRequest, UpdateTagRequest> {
-//!     MutationDef::new("tags", "/v1/tags")
+//! pub fn mutation() -> MutationBuilder<Tag, CreateTagRequest, UpdateTagRequest> {
+//!     MutationBuilder::new("tags", "/v1/tags")
 //!         .list(list_tags)
 //!         .get(get_tag)
 //!         .create(create_tag)
@@ -37,7 +37,7 @@ use crate::AppState;
 
 /// Marker trait implemented for extractor tuples that include `Json<T>` as payload.
 ///
-/// This links MutationDef's `C`/`U` generic arguments to the actual handler payload
+/// This links MutationBuilder's `C`/`U` generic arguments to the actual handler payload
 /// type and prevents metadata drift from handler signatures.
 pub trait HasJsonPayload<T> {}
 
@@ -55,12 +55,12 @@ impl<A, B, C, D, E0, F, G, H, T> HasJsonPayload<T>
 }
 
 // =============================================================================
-// MutationMeta - Metadata for TypeScript generation
+// MutationDefinition - Metadata for TypeScript generation
 // =============================================================================
 
-/// Metadata extracted from a MutationDef for TypeScript code generation.
+/// Metadata extracted from a MutationBuilder for TypeScript code generation.
 #[derive(Debug)]
-pub struct MutationMeta {
+pub struct MutationDefinition {
     pub table: &'static str,
     pub url: &'static str,
     pub row_type: String,
@@ -69,7 +69,7 @@ pub struct MutationMeta {
 }
 
 // =============================================================================
-// MutationDef Builder
+// MutationBuilder Builder
 // =============================================================================
 
 /// Builder for mutation routes and metadata.
@@ -78,7 +78,7 @@ pub struct MutationMeta {
 /// - `E`: The row type (e.g., `Tag`)
 /// - `C`: The create request type, or `NoCreate` if no create
 /// - `U`: The update request type, or `NoUpdate` if no update
-pub struct MutationDef<E, C = (), U = ()> {
+pub struct MutationBuilder<E, C = (), U = ()> {
     table: &'static str,
     url: &'static str,
     base_route: MethodRouter<AppState>,
@@ -86,8 +86,8 @@ pub struct MutationDef<E, C = (), U = ()> {
     _phantom: PhantomData<fn() -> (E, C, U)>,
 }
 
-impl<E: TS + Send + Sync + 'static> MutationDef<E, NoCreate, NoUpdate> {
-    /// Create a new MutationDef with explicit table name and URL.
+impl<E: TS + Send + Sync + 'static> MutationBuilder<E, NoCreate, NoUpdate> {
+    /// Create a new MutationBuilder with explicit table name and URL.
     pub fn new(table: &'static str, url: &'static str) -> Self {
         Self {
             table,
@@ -99,7 +99,7 @@ impl<E: TS + Send + Sync + 'static> MutationDef<E, NoCreate, NoUpdate> {
     }
 }
 
-impl<E: TS, C, U> MutationDef<E, C, U> {
+impl<E: TS, C, U> MutationBuilder<E, C, U> {
     /// Add a list handler (GET /{table}).
     pub fn list<H, T>(mut self, handler: H) -> Self
     where
@@ -141,18 +141,18 @@ impl<E: TS, C, U> MutationDef<E, C, U> {
     }
 }
 
-impl<E: TS, U> MutationDef<E, NoCreate, U> {
+impl<E: TS, U> MutationBuilder<E, NoCreate, U> {
     /// Add a create handler (POST /{table}).
     ///
     /// The handler's extractor tuple must contain `Json<C>`, ensuring the
     /// declared create type matches what the handler actually accepts.
-    pub fn create<C, H, T>(self, handler: H) -> MutationDef<E, C, U>
+    pub fn create<C, H, T>(self, handler: H) -> MutationBuilder<E, C, U>
     where
         C: TS,
         H: Handler<T, AppState> + Clone + Send + 'static,
         T: HasJsonPayload<C> + 'static,
     {
-        MutationDef {
+        MutationBuilder {
             table: self.table,
             url: self.url,
             base_route: self.base_route.post(handler),
@@ -162,18 +162,18 @@ impl<E: TS, U> MutationDef<E, NoCreate, U> {
     }
 }
 
-impl<E: TS, C> MutationDef<E, C, NoUpdate> {
+impl<E: TS, C> MutationBuilder<E, C, NoUpdate> {
     /// Add an update handler (PATCH /{table}/{id}).
     ///
     /// The handler's extractor tuple must contain `Json<U>`, ensuring the
     /// declared update type matches what the handler actually accepts.
-    pub fn update<U, H, T>(self, handler: H) -> MutationDef<E, C, U>
+    pub fn update<U, H, T>(self, handler: H) -> MutationBuilder<E, C, U>
     where
         U: TS,
         H: Handler<T, AppState> + Clone + Send + 'static,
         T: HasJsonPayload<U> + 'static,
     {
-        MutationDef {
+        MutationBuilder {
             table: self.table,
             url: self.url,
             base_route: self.base_route,
@@ -191,9 +191,9 @@ pub struct NoUpdate;
 
 // Metadata extraction — one impl per combination of NoCreate/NoUpdate vs real types.
 
-impl<E: TS, C: TS, U: TS> MutationDef<E, C, U> {
-    pub fn metadata(&self) -> MutationMeta {
-        MutationMeta {
+impl<E: TS, C: TS, U: TS> MutationBuilder<E, C, U> {
+    pub fn metadata(&self) -> MutationDefinition {
+        MutationDefinition {
             table: self.table,
             url: self.url,
             row_type: E::name(),
@@ -203,9 +203,9 @@ impl<E: TS, C: TS, U: TS> MutationDef<E, C, U> {
     }
 }
 
-impl<E: TS, U: TS> MutationDef<E, NoCreate, U> {
-    pub fn metadata(&self) -> MutationMeta {
-        MutationMeta {
+impl<E: TS, U: TS> MutationBuilder<E, NoCreate, U> {
+    pub fn metadata(&self) -> MutationDefinition {
+        MutationDefinition {
             table: self.table,
             url: self.url,
             row_type: E::name(),
@@ -215,9 +215,9 @@ impl<E: TS, U: TS> MutationDef<E, NoCreate, U> {
     }
 }
 
-impl<E: TS, C: TS> MutationDef<E, C, NoUpdate> {
-    pub fn metadata(&self) -> MutationMeta {
-        MutationMeta {
+impl<E: TS, C: TS> MutationBuilder<E, C, NoUpdate> {
+    pub fn metadata(&self) -> MutationDefinition {
+        MutationDefinition {
             table: self.table,
             url: self.url,
             row_type: E::name(),
@@ -227,9 +227,9 @@ impl<E: TS, C: TS> MutationDef<E, C, NoUpdate> {
     }
 }
 
-impl<E: TS> MutationDef<E, NoCreate, NoUpdate> {
-    pub fn metadata(&self) -> MutationMeta {
-        MutationMeta {
+impl<E: TS> MutationBuilder<E, NoCreate, NoUpdate> {
+    pub fn metadata(&self) -> MutationDefinition {
+        MutationDefinition {
             table: self.table,
             url: self.url,
             row_type: E::name(),

@@ -11,7 +11,7 @@ use uuid::Uuid;
 use super::error::ErrorResponse;
 use crate::{
     AppState, auth::RequestContext, db::notifications::NotificationRepository,
-    mutation_def::{MutationDef, NoCreate},
+    mutation_definition::{MutationBuilder, NoCreate},
 };
 use api_types::{Notification, UpdateNotificationRequest};
 
@@ -36,8 +36,8 @@ pub struct ListNotificationsQuery {
     pub include_dismissed: bool,
 }
 
-pub fn mutation() -> MutationDef<Notification, NoCreate, UpdateNotificationRequest> {
-    MutationDef::new("notifications", "/v1/notifications")
+pub fn mutation() -> MutationBuilder<Notification, NoCreate, UpdateNotificationRequest> {
+    MutationBuilder::new("notifications", "/v1/notifications")
         .list(list_notifications)
         .get(get_notification)
         .update(update_notification)

@@ -14,7 +14,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::issue_assignees::IssueAssigneeRepository,
-    mutation_def::MutationDef,
+    mutation_definition::MutationBuilder,
     response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
@@ -23,8 +23,8 @@ use api_types::{
 };
 
 /// Mutation definition for IssueAssignee - provides both router and TypeScript metadata.
-pub fn mutation() -> MutationDef<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest> {
-    MutationDef::new("issue_assignees", "/v1/issue_assignees")
+pub fn mutation() -> MutationBuilder<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest> {
+    MutationBuilder::new("issue_assignees", "/v1/issue_assignees")
         .list(list_issue_assignees)
         .get(get_issue_assignee)
         .create(create_issue_assignee)

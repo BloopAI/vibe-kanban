@@ -14,7 +14,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::issue_followers::IssueFollowerRepository,
-    mutation_def::MutationDef,
+    mutation_definition::MutationBuilder,
     response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
@@ -23,8 +23,8 @@ use api_types::{
 };
 
 /// Mutation definition for IssueFollower - provides both router and TypeScript metadata.
-pub fn mutation() -> MutationDef<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest> {
-    MutationDef::new("issue_followers", "/v1/issue_followers")
+pub fn mutation() -> MutationBuilder<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest> {
+    MutationBuilder::new("issue_followers", "/v1/issue_followers")
         .list(list_issue_followers)
         .get(get_issue_follower)
         .create(create_issue_follower)

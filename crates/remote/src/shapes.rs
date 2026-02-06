@@ -1,6 +1,6 @@
 //! All shape constant instances for realtime streaming.
 
-pub use crate::define_shape::{ShapeDefinition, ShapeExport};
+use crate::shape_definition::{ShapeDefinition, ShapeExport};
 use api_types::{
     Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssueRelationship,
     IssueTag, Notification, OrganizationMember, Project, ProjectStatus, PullRequest, Tag, User,

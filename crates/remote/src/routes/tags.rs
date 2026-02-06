@@ -14,14 +14,14 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{tags::TagRepository, types::is_valid_hsl_color},
-    mutation_def::MutationDef,
+    mutation_definition::MutationBuilder,
     response::{DeleteResponse, MutationResponse},
 };
 use api_types::{CreateTagRequest, ListTagsQuery, ListTagsResponse, Tag, UpdateTagRequest};
 
 /// Mutation definition for Tags - provides both router and TypeScript metadata.
-pub fn mutation() -> MutationDef<Tag, CreateTagRequest, UpdateTagRequest> {
-    MutationDef::new("tags", "/v1/tags")
+pub fn mutation() -> MutationBuilder<Tag, CreateTagRequest, UpdateTagRequest> {
+    MutationBuilder::new("tags", "/v1/tags")
         .list(list_tags)
         .get(get_tag)
         .create(create_tag)

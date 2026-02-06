@@ -17,7 +17,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{get_txid, project_statuses::ProjectStatusRepository, types::is_valid_hsl_color},
-    mutation_def::MutationDef,
+    mutation_definition::MutationBuilder,
     response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
@@ -26,8 +26,8 @@ use api_types::{
 };
 
 /// Mutation definition for ProjectStatus - provides both router and TypeScript metadata.
-pub fn mutation() -> MutationDef<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest> {
-    MutationDef::new("project_statuses", "/v1/project_statuses")
+pub fn mutation() -> MutationBuilder<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest> {
+    MutationBuilder::new("project_statuses", "/v1/project_statuses")
         .list(list_project_statuses)
         .get(get_project_status)
         .create(create_project_status)

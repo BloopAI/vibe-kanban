@@ -14,7 +14,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::issue_relationships::IssueRelationshipRepository,
-    mutation_def::MutationDef,
+    mutation_definition::MutationBuilder,
     response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
@@ -24,8 +24,8 @@ use api_types::{
 
 /// Mutation definition for IssueRelationship - provides both router and TypeScript metadata.
 pub fn mutation(
-) -> MutationDef<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest> {
-    MutationDef::new("issue_relationships", "/v1/issue_relationships")
+) -> MutationBuilder<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest> {
+    MutationBuilder::new("issue_relationships", "/v1/issue_relationships")
         .list(list_issue_relationships)
         .get(get_issue_relationship)
         .create(create_issue_relationship)

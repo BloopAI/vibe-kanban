@@ -18,13 +18,13 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{issue_comments::IssueCommentRepository, organization_members::check_user_role},
-    mutation_def::MutationDef,
+    mutation_definition::MutationBuilder,
     response::{DeleteResponse, MutationResponse},
 };
 
 /// Mutation definition for IssueComment - provides both router and TypeScript metadata.
-pub fn mutation() -> MutationDef<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> {
-    MutationDef::new("issue_comments", "/v1/issue_comments")
+pub fn mutation() -> MutationBuilder<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> {
+    MutationBuilder::new("issue_comments", "/v1/issue_comments")
         .list(list_issue_comments)
         .get(get_issue_comment)
         .create(create_issue_comment)

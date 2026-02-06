@@ -14,7 +14,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::issue_tags::IssueTagRepository,
-    mutation_def::MutationDef,
+    mutation_definition::MutationBuilder,
     response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
@@ -22,8 +22,8 @@ use api_types::{
 };
 
 /// Mutation definition for IssueTag - provides both router and TypeScript metadata.
-pub fn mutation() -> MutationDef<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest> {
-    MutationDef::new("issue_tags", "/v1/issue_tags")
+pub fn mutation() -> MutationBuilder<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest> {
+    MutationBuilder::new("issue_tags", "/v1/issue_tags")
         .list(list_issue_tags)
         .get(get_issue_tag)
         .create(create_issue_tag)

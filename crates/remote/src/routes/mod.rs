@@ -178,7 +178,7 @@ async fn health() -> Json<HealthResponse> {
 }
 
 /// Collect metadata from all mutation definitions for TypeScript generation.
-pub fn all_mutation_metadata() -> Vec<crate::mutation_def::MutationMeta> {
+pub fn all_mutation_metadata() -> Vec<crate::mutation_definition::MutationDefinition> {
     vec![
         projects::mutation().metadata(),
         notifications::mutation().metadata(),

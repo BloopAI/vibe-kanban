@@ -4,14 +4,14 @@ mod auth;
 mod billing;
 pub mod config;
 pub mod db;
-pub mod mutation_def;
+pub mod mutation_definition;
 pub mod github_app;
 pub mod mail;
 mod middleware;
 pub mod response;
 pub mod r2;
 pub mod routes;
-pub mod define_shape;
+pub mod shape_definition;
 pub mod shapes;
 mod state;
 

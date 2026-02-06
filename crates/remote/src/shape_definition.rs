@@ -70,7 +70,7 @@ macro_rules! define_shape {
             );
         }
 
-        $crate::define_shape::ShapeDefinition {
+        $crate::shape_definition::ShapeDefinition {
             table: $table,
             where_clause: $where,
             params: &[$($param),*],

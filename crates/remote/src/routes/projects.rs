@@ -14,7 +14,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{projects::ProjectRepository, types::is_valid_hsl_color},
-    mutation_def::MutationDef,
+    mutation_definition::MutationBuilder,
     response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
@@ -22,8 +22,8 @@ use api_types::{
 };
 
 /// Mutation definition for Projects - provides both router and TypeScript metadata.
-pub fn mutation() -> MutationDef<Project, CreateProjectRequest, UpdateProjectRequest> {
-    MutationDef::new("projects", "/v1/projects")
+pub fn mutation() -> MutationBuilder<Project, CreateProjectRequest, UpdateProjectRequest> {
+    MutationBuilder::new("projects", "/v1/projects")
         .list(list_projects)
         .get(get_project)
         .create(create_project)

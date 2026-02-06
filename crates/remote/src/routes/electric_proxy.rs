@@ -14,7 +14,7 @@ use serde::Deserialize;
 use tracing::error;
 use uuid::Uuid;
 
-use crate::{AppState, auth::RequestContext, db::organization_members, shapes::{self, ShapeExport}};
+use crate::{AppState, auth::RequestContext, db::organization_members, shape_definition::ShapeExport, shapes};
 
 #[derive(Deserialize)]
 struct OrgShapeQuery {

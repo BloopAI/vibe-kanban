@@ -19,13 +19,13 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{get_txid, issues::IssueRepository},
-    mutation_def::MutationDef,
+    mutation_definition::MutationBuilder,
     response::{DeleteResponse, MutationResponse},
 };
 
 /// Mutation definition for Issue - provides both router and TypeScript metadata.
-pub fn mutation() -> MutationDef<Issue, CreateIssueRequest, UpdateIssueRequest> {
-    MutationDef::new("issues", "/v1/issues")
+pub fn mutation() -> MutationBuilder<Issue, CreateIssueRequest, UpdateIssueRequest> {
+    MutationBuilder::new("issues", "/v1/issues")
         .list(list_issues)
         .get(get_issue)
         .create(create_issue)

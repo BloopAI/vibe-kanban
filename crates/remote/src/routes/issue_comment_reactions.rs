@@ -17,7 +17,7 @@ use crate::{
         issue_comment_reactions::IssueCommentReactionRepository,
         issue_comments::IssueCommentRepository,
     },
-    mutation_def::MutationDef,
+    mutation_definition::MutationBuilder,
     response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
@@ -27,9 +27,9 @@ use api_types::{
 
 /// Mutation definition for IssueCommentReaction - provides both router and TypeScript metadata.
 pub fn mutation(
-) -> MutationDef<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>
+) -> MutationBuilder<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>
 {
-    MutationDef::new("issue_comment_reactions", "/v1/issue_comment_reactions")
+    MutationBuilder::new("issue_comment_reactions", "/v1/issue_comment_reactions")
         .list(list_issue_comment_reactions)
         .get(get_issue_comment_reaction)
         .create(create_issue_comment_reaction)
