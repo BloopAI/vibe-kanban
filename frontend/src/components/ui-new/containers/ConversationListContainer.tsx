@@ -113,6 +113,7 @@ const ItemContent: VirtuosoMessageListProps<
         entry={null}
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
+        resetAction={resetAction}
       />
     );
   }
