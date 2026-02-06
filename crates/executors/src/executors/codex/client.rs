@@ -156,7 +156,10 @@ impl AppServerClient {
             request_id: self.next_request_id(),
             params: SendUserMessageParams {
                 conversation_id,
-                items: vec![InputItem::Text { text: message, text_elements: vec![] }],
+                items: vec![InputItem::Text {
+                    text: message,
+                    text_elements: vec![],
+                }],
             },
         };
         self.send_request(request, "sendUserMessage").await
@@ -414,7 +417,10 @@ impl AppServerClient {
             request_id: peer.next_request_id(),
             params: SendUserMessageParams {
                 conversation_id,
-                items: vec![InputItem::Text { text: message, text_elements: vec![] }],
+                items: vec![InputItem::Text {
+                    text: message,
+                    text_elements: vec![],
+                }],
             },
         };
         tokio::spawn(async move {

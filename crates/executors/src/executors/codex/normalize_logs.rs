@@ -730,11 +730,9 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 } else {
                                     ToolStatus::Success
                                 };
-                                if value
-                                    .content
-                                    .iter()
-                                    .all(|block| block.get("type").and_then(|t| t.as_str()) == Some("text"))
-                                {
+                                if value.content.iter().all(|block| {
+                                    block.get("type").and_then(|t| t.as_str()) == Some("text")
+                                }) {
                                     mcp_tool_state.result = Some(ToolResult {
                                         r#type: ToolResultValueType::Markdown,
                                         value: Value::String(
@@ -742,7 +740,10 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                                 .content
                                                 .iter()
                                                 .filter_map(|block| {
-                                                    block.get("text").and_then(|t| t.as_str()).map(|s| s.to_owned())
+                                                    block
+                                                        .get("text")
+                                                        .and_then(|t| t.as_str())
+                                                        .map(|s| s.to_owned())
                                                 })
                                                 .collect::<Vec<String>>()
                                                 .join("\n"),
