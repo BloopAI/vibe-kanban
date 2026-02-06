@@ -13,11 +13,10 @@ import type {
   PageId,
   ResolvedGroupItem,
 } from '@/components/ui-new/actions/pages';
-import {
-  type GitActionDefinition,
-  ActionTargetType,
-} from '@/components/ui-new/actions';
+import { ActionTargetType } from '@/components/ui-new/actions';
 import { useActionVisibilityContext } from '@/components/ui-new/actions/useActionVisibility';
+import type { SelectionPage } from './SelectionDialog';
+import type { RepoSelectionResult } from './selections/repoBranchSelection';
 import { useCommandBarState } from './commandBar/useCommandBarState';
 import { useResolvedPage } from './commandBar/useResolvedPage';
 
@@ -25,8 +24,6 @@ export interface CommandBarDialogProps {
   page?: PageId;
   workspaceId?: string;
   repoId?: string;
-  /** When provided, opens directly in repo selection mode for this git action */
-  pendingGitAction?: GitActionDefinition;
   /** Issue context for kanban mode - projectId */
   projectId?: string;
   /** Issue context for kanban mode - selected issue IDs */
@@ -37,14 +34,12 @@ function CommandBarContent({
   page,
   workspaceId,
   initialRepoId,
-  pendingGitAction,
   propProjectId,
   propIssueIds,
 }: {
   page: PageId;
   workspaceId?: string;
   initialRepoId?: string;
-  pendingGitAction?: GitActionDefinition;
   propProjectId?: string;
   propIssueIds?: string[];
 }) {
@@ -76,11 +71,8 @@ function CommandBarContent({
     : undefined;
 
   // State machine
-  const { state, currentPage, canGoBack, dispatch } = useCommandBarState(
-    page,
-    repos.length,
-    pendingGitAction
-  );
+  const { state, currentPage, canGoBack, dispatch } =
+    useCommandBarState(page);
 
   // Reset state and capture focus when dialog opens
   useEffect(() => {
@@ -95,42 +87,50 @@ function CommandBarContent({
     currentPage,
     state.search,
     visibilityContext,
-    workspace,
-    repos
+    workspace
   );
 
   // Handle item selection with side effects
   const handleSelect = useCallback(
-    (item: ResolvedGroupItem) => {
-      // If initialRepoId is provided and user selects a git action,
-      // execute immediately without going through repo selection
-      if (
-        initialRepoId &&
-        item.type === 'action' &&
-        item.action.requiresTarget === ActionTargetType.GIT
-      ) {
-        modal.hide();
-        executeAction(item.action, effectiveWorkspaceId, initialRepoId);
-        return;
-      }
-
+    async (item: ResolvedGroupItem) => {
       const effect = dispatch({ type: 'SELECT_ITEM', item });
+      if (effect.type !== 'execute') return;
 
-      if (effect.type === 'execute') {
-        modal.hide();
-        // Handle issue actions
-        if (effect.action.requiresTarget === ActionTargetType.ISSUE) {
-          executeAction(
-            effect.action,
-            undefined,
-            effectiveProjectId,
-            effectiveIssueIds
+      modal.hide();
+
+      if (effect.action.requiresTarget === ActionTargetType.ISSUE) {
+        executeAction(
+          effect.action,
+          undefined,
+          effectiveProjectId,
+          effectiveIssueIds
+        );
+      } else if (effect.action.requiresTarget === ActionTargetType.GIT) {
+        // Resolve repoId: use initialRepoId, single repo, or show selection dialog
+        let repoId: string | undefined = initialRepoId;
+        if (!repoId && repos.length === 1) {
+          repoId = repos[0].id;
+        } else if (!repoId && repos.length > 1) {
+          const { SelectionDialog } = await import('./SelectionDialog');
+          const { buildRepoSelectionPages } = await import(
+            './selections/repoBranchSelection'
           );
-        } else {
-          const repoId =
-            effect.repoId === '__single__' ? repos[0]?.id : effect.repoId;
+          const result = await SelectionDialog.show({
+            initialPageId: 'selectRepo',
+            pages: buildRepoSelectionPages(repos) as Record<
+              string,
+              SelectionPage
+            >,
+          });
+          if (result && typeof result === 'object' && 'repoId' in result) {
+            repoId = (result as RepoSelectionResult).repoId;
+          }
+        }
+        if (repoId) {
           executeAction(effect.action, effectiveWorkspaceId, repoId);
         }
+      } else {
+        executeAction(effect.action, effectiveWorkspaceId);
       }
     },
     [
@@ -180,7 +180,6 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
     page = 'root',
     workspaceId,
     repoId: initialRepoId,
-    pendingGitAction,
     projectId: propProjectId,
     issueIds: propIssueIds,
   }) => {
@@ -189,7 +188,6 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
         page={page}
         workspaceId={workspaceId}
         initialRepoId={initialRepoId}
-        pendingGitAction={pendingGitAction}
         propProjectId={propProjectId}
         propIssueIds={propIssueIds}
       />

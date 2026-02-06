@@ -14,7 +14,6 @@ import {
   type CommandBarGroupItem,
   type ResolvedGroup,
   type ResolvedGroupItem,
-  type RepoItem,
 } from '@/components/ui-new/actions/pages';
 import type { ActionVisibilityContext } from '@/components/ui-new/actions';
 import {
@@ -76,32 +75,18 @@ export function useResolvedPage(
   pageId: PageId,
   search: string,
   ctx: ActionVisibilityContext,
-  workspace: Workspace | undefined,
-  repos: RepoItem[]
+  workspace: Workspace | undefined
 ): ResolvedCommandBarPage {
   return useMemo(() => {
-    if (pageId === 'selectRepo') {
-      return {
-        id: 'selectRepo',
-        title: 'Select Repository',
-        groups: [
-          {
-            label: 'Repositories',
-            items: repos.map((r) => ({ type: 'repo' as const, repo: r })),
-          },
-        ],
-      };
-    }
-
-    const groups = buildPageGroups(pageId as StaticPageId, ctx);
+    const groups = buildPageGroups(pageId, ctx);
     if (pageId === 'root' && search.trim()) {
       groups.push(...injectSearchMatches(search, ctx, workspace));
     }
 
     return {
-      id: Pages[pageId as StaticPageId].id,
-      title: Pages[pageId as StaticPageId].title,
+      id: Pages[pageId].id,
+      title: Pages[pageId].title,
       groups,
     };
-  }, [pageId, search, ctx, workspace, repos]);
+  }, [pageId, search, ctx, workspace]);
 }

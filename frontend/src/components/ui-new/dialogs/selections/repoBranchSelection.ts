@@ -1,6 +1,35 @@
 import type { RepoItem, BranchItem } from '@/components/ui-new/actions/pages';
 import type { SelectionPage } from '../SelectionDialog';
 
+// Repo-only selection (for git action disambiguation)
+export interface RepoSelectionResult {
+  repoId: string;
+}
+
+export function buildRepoSelectionPages(
+  repos: RepoItem[]
+): Record<string, SelectionPage<RepoSelectionResult>> {
+  return {
+    selectRepo: {
+      id: 'selectRepo',
+      title: 'Select Repository',
+      buildGroups: () => [
+        {
+          label: 'Repositories',
+          items: repos.map((r) => ({ type: 'repo' as const, repo: r })),
+        },
+      ],
+      onSelect: (item) => {
+        if (item.type === 'repo') {
+          return { type: 'complete', data: { repoId: item.repo.id } };
+        }
+        return { type: 'complete', data: undefined as never };
+      },
+    },
+  };
+}
+
+// Repo + branch two-step selection (for future workspace creation)
 export interface RepoBranchSelectionResult {
   repoId: string;
   repoDisplayName: string;

@@ -11,8 +11,7 @@ export type PageId =
   | 'diffOptions'
   | 'viewOptions'
   | 'repoActions' // Page for repo-specific actions (opened from repo card or CMD+K)
-  | 'issueActions' // Page for issue-specific actions (kanban mode)
-  | 'selectRepo'; // Dynamic page for repo selection (not in Pages record)
+  | 'issueActions'; // Page for issue-specific actions (kanban mode)
 
 // Items that can appear inside a group
 export type CommandBarGroupItem =
@@ -81,8 +80,7 @@ export interface CommandBarPage {
   isVisible?: (ctx: ActionVisibilityContext) => boolean;
 }
 
-// Static page IDs (excludes dynamic pages like selectRepo)
-export type StaticPageId = Exclude<PageId, 'selectRepo'>;
+export type StaticPageId = PageId;
 
 export const Pages: Record<StaticPageId, CommandBarPage> = {
   // Root page - shown when opening via CMD+K
