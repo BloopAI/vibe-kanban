@@ -1,23 +1,33 @@
+use std::fmt;
+use std::sync::Arc;
 use std::time::Duration;
 
-use azure_core::auth::Secret;
-use azure_storage::prelude::*;
-use azure_storage::shared_access_signature::{
-    service_sas::{BlobSasPermissions, BlobSharedAccessSignature, BlobSignedResource, SasKey},
-    SasProtocol, SasToken,
+use azure_core::{
+    credentials::Secret,
+    http::{ClientOptions, RequestContent},
 };
-use azure_storage::CloudLocation;
-use azure_storage_blobs::prelude::*;
+use azure_storage_blob::{
+    models::{
+        BlobClientGetPropertiesResultHeaders, BlobContainerClientListBlobFlatSegmentOptions,
+        BlockBlobClientUploadOptions,
+    },
+    BlobClient, BlobContainerClient, BlobServiceClient, BlobServiceClientOptions,
+};
+use base64::prelude::*;
 use chrono::{DateTime, Utc};
-use futures::StreamExt;
+use futures::TryStreamExt;
+use hmac::{Hmac, Mac};
 use secrecy::ExposeSecret;
+use sha2::Sha256;
 use time::OffsetDateTime;
+use url::form_urlencoded;
 
 use crate::config::AzureBlobConfig;
+use crate::shared_key_auth::SharedKeyAuthorizationPolicy;
 
 #[derive(Clone)]
 pub struct AzureBlobService {
-    blob_service_client: BlobServiceClient,
+    service_client: Arc<BlobServiceClient>,
     account_name: String,
     account_key: String,
     container_name: String,
@@ -57,25 +67,33 @@ impl AzureBlobService {
         let public_endpoint_url = config.public_endpoint_url.clone();
         let presign_expiry = Duration::from_secs(config.presign_expiry_secs);
 
-        let storage_credentials = StorageCredentials::access_key(
-            account_name.clone(),
-            Secret::new(account_key.clone()),
-        );
-
-        let blob_service_client = match &endpoint_url {
-            Some(endpoint) => ClientBuilder::with_location(
-                CloudLocation::Custom {
-                    account: account_name.clone(),
-                    uri: endpoint.clone(),
-                },
-                storage_credentials,
-            )
-            .blob_service_client(),
-            None => BlobServiceClient::new(account_name.clone(), storage_credentials),
+        let endpoint = match &endpoint_url {
+            Some(url) => url.clone(),
+            None => format!("https://{}.blob.core.windows.net", account_name),
         };
 
+        let policy = Arc::new(SharedKeyAuthorizationPolicy {
+            account: account_name.clone(),
+            key: Secret::new(account_key.clone()),
+        });
+
+        let service_client = Arc::new(
+            BlobServiceClient::new(
+                &endpoint,
+                None,
+                Some(BlobServiceClientOptions {
+                    client_options: ClientOptions {
+                        per_try_policies: vec![policy],
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }),
+            )
+            .expect("failed to create BlobServiceClient"),
+        );
+
         Self {
-            blob_service_client,
+            service_client,
             account_name,
             account_key,
             container_name,
@@ -85,9 +103,9 @@ impl AzureBlobService {
         }
     }
 
-    fn container_client(&self) -> ContainerClient {
-        self.blob_service_client
-            .container_client(&self.container_name)
+    fn container_client(&self) -> BlobContainerClient {
+        self.service_client
+            .blob_container_client(&self.container_name)
     }
 
     fn blob_client(&self, blob_path: &str) -> BlobClient {
@@ -125,38 +143,42 @@ impl AzureBlobService {
         self.generate_sas_url(blob_path, permissions, expiry)
     }
 
-    pub async fn get_blob_properties(&self, blob_path: &str) -> Result<BlobProperties, AzureBlobError> {
-        let blob_client = self.blob_client(blob_path);
-        let props = blob_client
-            .get_properties()
+    pub async fn get_blob_properties(
+        &self,
+        blob_path: &str,
+    ) -> Result<BlobProperties, AzureBlobError> {
+        let response = self
+            .blob_client(blob_path)
+            .get_properties(None)
             .await
             .map_err(|e| AzureBlobError::Storage(e.to_string()))?;
 
-        Ok(BlobProperties {
-            content_length: props.blob.properties.content_length as i64,
-        })
+        let content_length = response
+            .content_length()
+            .map_err(|e| AzureBlobError::Storage(e.to_string()))?
+            .unwrap_or(0) as i64;
+
+        Ok(BlobProperties { content_length })
     }
 
     pub async fn download_blob(&self, blob_path: &str) -> Result<Vec<u8>, AzureBlobError> {
-        let blob_client = self.blob_client(blob_path);
+        let response = self
+            .blob_client(blob_path)
+            .download(None)
+            .await
+            .map_err(|e| AzureBlobError::Storage(e.to_string()))?;
 
-        let mut stream = blob_client.get().into_stream();
-        let mut result = Vec::new();
+        let bytes = response
+            .into_body()
+            .collect()
+            .await
+            .map_err(|e| AzureBlobError::Storage(e.to_string()))?;
 
-        while let Some(value) = stream.next().await {
-            let response = value.map_err(|e| AzureBlobError::Storage(e.to_string()))?;
-            let mut body = response.data;
-            while let Some(chunk) = body.next().await {
-                let chunk = chunk.map_err(|e| AzureBlobError::Storage(e.to_string()))?;
-                result.extend(&chunk);
-            }
-        }
-
-        if result.is_empty() {
+        if bytes.is_empty() {
             return Err(AzureBlobError::NotFound(blob_path.to_string()));
         }
 
-        Ok(result)
+        Ok(bytes.to_vec())
     }
 
     pub async fn upload_blob(
@@ -165,11 +187,18 @@ impl AzureBlobService {
         data: Vec<u8>,
         content_type: String,
     ) -> Result<(), AzureBlobError> {
-        let blob_client = self.blob_client(blob_path);
+        let len = data.len() as u64;
 
-        blob_client
-            .put_block_blob(data)
-            .content_type(content_type)
+        self.blob_client(blob_path)
+            .upload(
+                RequestContent::from(data),
+                true,
+                len,
+                Some(BlockBlobClientUploadOptions {
+                    blob_content_type: Some(content_type),
+                    ..Default::default()
+                }),
+            )
             .await
             .map_err(|e| AzureBlobError::Storage(e.to_string()))?;
 
@@ -178,7 +207,7 @@ impl AzureBlobService {
 
     pub async fn delete_blob(&self, blob_path: &str) -> Result<(), AzureBlobError> {
         self.blob_client(blob_path)
-            .delete()
+            .delete(None)
             .await
             .map_err(|e| AzureBlobError::Storage(e.to_string()))?;
 
@@ -205,7 +234,7 @@ impl AzureBlobService {
         };
 
         let sas = BlobSharedAccessSignature::new(
-            SasKey::Key(Secret::new(self.account_key.clone())),
+            Secret::new(self.account_key.clone()),
             canonicalized_resource,
             permissions,
             expiry_time,
@@ -235,18 +264,36 @@ impl AzureBlobService {
         prefix: &str,
     ) -> Result<Vec<BlobListItem>, AzureBlobError> {
         let mut items = Vec::new();
-        let mut stream = self
+        let mut pager = self
             .container_client()
-            .list_blobs()
-            .prefix(prefix.to_string())
-            .into_stream();
+            .list_blobs(Some(BlobContainerClientListBlobFlatSegmentOptions {
+                prefix: Some(prefix.to_string()),
+                ..Default::default()
+            }))
+            .map_err(|e| AzureBlobError::Storage(e.to_string()))?
+            .into_pages();
 
-        while let Some(response) = stream.next().await {
-            let response = response.map_err(|e| AzureBlobError::Storage(e.to_string()))?;
-            for blob in response.blobs.blobs() {
+        while let Some(page) = pager
+            .try_next()
+            .await
+            .map_err(|e| AzureBlobError::Storage(e.to_string()))?
+        {
+            let page = page
+                .into_model()
+                .map_err(|e| AzureBlobError::Storage(e.to_string()))?;
+            for blob in &page.segment.blob_items {
+                let name = blob
+                    .name
+                    .as_ref()
+                    .and_then(|n| n.content.clone())
+                    .unwrap_or_default();
+                let last_modified = blob
+                    .properties
+                    .as_ref()
+                    .and_then(|p| p.last_modified);
                 items.push(BlobListItem {
-                    name: blob.name.clone(),
-                    last_modified: blob.properties.last_modified,
+                    name,
+                    last_modified,
                 });
             }
         }
@@ -258,5 +305,251 @@ impl AzureBlobService {
 #[derive(Debug)]
 pub struct BlobListItem {
     pub name: String,
-    pub last_modified: OffsetDateTime,
+    pub last_modified: Option<OffsetDateTime>,
+}
+
+// ── SAS token generation (ported from azure_storage 0.21) ────────────────────
+
+const SERVICE_SAS_VERSION: &str = "2022-11-02";
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum SasProtocol {
+    Https,
+    HttpHttps,
+}
+
+impl fmt::Display for SasProtocol {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SasProtocol::Https => write!(f, "https"),
+            SasProtocol::HttpHttps => write!(f, "http,https"),
+        }
+    }
+}
+
+pub enum BlobSignedResource {
+    Blob,
+    BlobVersion,
+    BlobSnapshot,
+    Container,
+    Directory,
+}
+
+impl fmt::Display for BlobSignedResource {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Blob => write!(f, "b"),
+            Self::BlobVersion => write!(f, "bv"),
+            Self::BlobSnapshot => write!(f, "bs"),
+            Self::Container => write!(f, "c"),
+            Self::Directory => write!(f, "d"),
+        }
+    }
+}
+
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Default)]
+pub struct BlobSasPermissions {
+    pub read: bool,
+    pub add: bool,
+    pub create: bool,
+    pub write: bool,
+    pub delete: bool,
+    pub delete_version: bool,
+    pub permanent_delete: bool,
+    pub list: bool,
+    pub tags: bool,
+    pub move_: bool,
+    pub execute: bool,
+    pub ownership: bool,
+    pub permissions: bool,
+}
+
+impl fmt::Display for BlobSasPermissions {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.read {
+            write!(f, "r")?;
+        }
+        if self.add {
+            write!(f, "a")?;
+        }
+        if self.create {
+            write!(f, "c")?;
+        }
+        if self.write {
+            write!(f, "w")?;
+        }
+        if self.delete {
+            write!(f, "d")?;
+        }
+        if self.delete_version {
+            write!(f, "x")?;
+        }
+        if self.permanent_delete {
+            write!(f, "y")?;
+        }
+        if self.list {
+            write!(f, "l")?;
+        }
+        if self.tags {
+            write!(f, "t")?;
+        }
+        if self.move_ {
+            write!(f, "m")?;
+        }
+        if self.execute {
+            write!(f, "e")?;
+        }
+        if self.ownership {
+            write!(f, "o")?;
+        }
+        if self.permissions {
+            write!(f, "p")?;
+        }
+        Ok(())
+    }
+}
+
+pub struct BlobSharedAccessSignature {
+    key: Secret,
+    canonicalized_resource: String,
+    resource: BlobSignedResource,
+    permissions: BlobSasPermissions,
+    expiry: OffsetDateTime,
+    protocol: Option<SasProtocol>,
+}
+
+impl BlobSharedAccessSignature {
+    pub fn new(
+        key: Secret,
+        canonicalized_resource: String,
+        permissions: BlobSasPermissions,
+        expiry: OffsetDateTime,
+        resource: BlobSignedResource,
+    ) -> Self {
+        Self {
+            key,
+            canonicalized_resource,
+            resource,
+            permissions,
+            expiry,
+            protocol: None,
+        }
+    }
+
+    pub fn protocol(mut self, protocol: SasProtocol) -> Self {
+        self.protocol = Some(protocol);
+        self
+    }
+
+    fn sign(&self) -> String {
+        let content = [
+            self.permissions.to_string(),
+            String::new(), // start time
+            format_sas_date(self.expiry),
+            self.canonicalized_resource.clone(),
+            String::new(), // identifier
+            String::new(), // ip
+            self.protocol.map(|x| x.to_string()).unwrap_or_default(),
+            SERVICE_SAS_VERSION.to_string(),
+            self.resource.to_string(),
+            String::new(), // snapshot time
+            String::new(), // signed encryption scope
+            String::new(), // signed cache control
+            String::new(), // signed content disposition
+            String::new(), // signed content encoding
+            String::new(), // signed content language
+            String::new(), // signed content type
+        ];
+
+        sas_hmac_sha256(&content.join("\n"), &self.key)
+    }
+
+    pub fn token(&self) -> Result<String, AzureBlobError> {
+        let mut form = form_urlencoded::Serializer::new(String::new());
+
+        form.extend_pairs(&[
+            ("sv", SERVICE_SAS_VERSION),
+            ("sp", &self.permissions.to_string()),
+            ("sr", &self.resource.to_string()),
+            ("se", &format_sas_date(self.expiry)),
+        ]);
+
+        if let Some(protocol) = &self.protocol {
+            form.append_pair("spr", &protocol.to_string());
+        }
+
+        let sig = self.sign();
+        form.append_pair("sig", &sig);
+        Ok(form.finish())
+    }
+}
+
+fn format_sas_date(d: OffsetDateTime) -> String {
+    // Truncate nanoseconds to match Azure's canonicalization.
+    let d = d.replace_nanosecond(0).unwrap();
+    d.format(&time::format_description::well_known::Rfc3339).unwrap()
+}
+
+fn sas_hmac_sha256(data: &str, key: &Secret) -> String {
+    let key_bytes = BASE64_STANDARD.decode(key.secret()).unwrap();
+    let mut hmac = Hmac::<Sha256>::new_from_slice(&key_bytes).unwrap();
+    hmac.update(data.as_bytes());
+    BASE64_STANDARD.encode(hmac.finalize().into_bytes())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use time::Duration;
+
+    const MOCK_SECRET_KEY: &str = "RZfi3m1W7eyQ5zD4ymSmGANVdJ2SDQmg4sE89SW104s=";
+    const MOCK_CANONICALIZED_RESOURCE: &str = "/blob/STORAGE_ACCOUNT_NAME/CONTAINER_NAME/";
+
+    #[test]
+    fn test_blob_scoped_sas_token() {
+        let permissions = BlobSasPermissions {
+            read: true,
+            ..Default::default()
+        };
+        let signed_token = BlobSharedAccessSignature::new(
+            Secret::new(MOCK_SECRET_KEY),
+            String::from(MOCK_CANONICALIZED_RESOURCE),
+            permissions,
+            OffsetDateTime::UNIX_EPOCH + Duration::days(7),
+            BlobSignedResource::Blob,
+        )
+        .token()
+        .unwrap();
+
+        assert_eq!(
+            signed_token,
+            "sv=2022-11-02&sp=r&sr=b&se=1970-01-08T00%3A00%3A00Z&sig=VRZjVZ1c%2FLz7IXCp17Sdx9%2BR9JDrnJdzE3NW56DMjNs%3D"
+        );
+
+        let parsed = url::form_urlencoded::parse(signed_token.as_bytes());
+        assert!(parsed.clone().any(|(k, v)| k == "sr" && v == "b"));
+        assert!(!parsed.clone().any(|(k, _)| k == "sdd"));
+    }
+
+    #[test]
+    fn test_directory_scoped_sas_token() {
+        let permissions = BlobSasPermissions {
+            read: true,
+            ..Default::default()
+        };
+        let signed_token = BlobSharedAccessSignature::new(
+            Secret::new(MOCK_SECRET_KEY),
+            String::from(MOCK_CANONICALIZED_RESOURCE),
+            permissions,
+            OffsetDateTime::UNIX_EPOCH + Duration::days(7),
+            BlobSignedResource::Directory,
+        )
+        .token()
+        .unwrap();
+
+        // The directory test from the original just checks sr=d is present
+        let parsed = url::form_urlencoded::parse(signed_token.as_bytes());
+        assert!(parsed.clone().any(|(k, v)| k == "sr" && v == "d"));
+    }
 }

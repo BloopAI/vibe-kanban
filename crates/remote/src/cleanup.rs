@@ -108,7 +108,7 @@ async fn cleanup_orphan_staging_blobs(azure: &AzureBlobService) -> anyhow::Resul
     let mut deleted_count: u32 = 0;
 
     for blob in staging_blobs {
-        if blob.last_modified < cutoff {
+        if blob.last_modified.is_some_and(|t| t < cutoff) {
             if let Err(e) = azure.delete_blob(&blob.name).await {
                 warn!(blob_name = %blob.name, error = %e, "Failed to delete orphan staging blob");
             } else {

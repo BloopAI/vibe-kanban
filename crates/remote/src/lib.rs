@@ -2,6 +2,7 @@ mod analytics;
 mod app;
 mod auth;
 pub mod azure_blob;
+mod shared_key_auth;
 mod billing;
 mod cleanup;
 pub mod config;
