@@ -15,7 +15,7 @@ use crate::{
     auth::RequestContext,
     db::issue_tags::IssueTagRepository,
     mutation_def::MutationDef,
-    mutation_types::{DeleteResponse, MutationResponse},
+    response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
     CreateIssueTagRequest, IssueTag, ListIssueTagsQuery, ListIssueTagsResponse, UpdateIssueTagRequest,

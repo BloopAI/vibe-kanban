@@ -18,7 +18,7 @@ use crate::{
         issue_comments::IssueCommentRepository,
     },
     mutation_def::MutationDef,
-    mutation_types::{DeleteResponse, MutationResponse},
+    response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
     CreateIssueCommentReactionRequest, IssueCommentReaction, ListIssueCommentReactionsQuery,

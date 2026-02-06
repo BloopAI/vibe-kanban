@@ -15,7 +15,7 @@ use crate::{
     auth::RequestContext,
     db::issue_followers::IssueFollowerRepository,
     mutation_def::MutationDef,
-    mutation_types::{DeleteResponse, MutationResponse},
+    response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
     CreateIssueFollowerRequest, IssueFollower, ListIssueFollowersQuery, ListIssueFollowersResponse,

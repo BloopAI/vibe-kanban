@@ -8,7 +8,7 @@ pub mod mutation_def;
 pub mod github_app;
 pub mod mail;
 mod middleware;
-pub mod mutation_types;
+pub mod response;
 pub mod r2;
 pub mod routes;
 pub mod shapes;

@@ -19,7 +19,7 @@ use crate::{
     auth::RequestContext,
     db::{issue_comments::IssueCommentRepository, organization_members::check_user_role},
     mutation_def::MutationDef,
-    mutation_types::{DeleteResponse, MutationResponse},
+    response::{DeleteResponse, MutationResponse},
 };
 
 /// Mutation definition for IssueComment - provides both router and TypeScript metadata.

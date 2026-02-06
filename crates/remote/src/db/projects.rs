@@ -5,7 +5,7 @@ use api_types::Project;
 use uuid::Uuid;
 
 use super::{get_txid, project_statuses::ProjectStatusRepository, tags::TagRepository};
-use crate::mutation_types::{DeleteResponse, MutationResponse};
+use crate::response::{DeleteResponse, MutationResponse};
 
 /// Default color for the initial project created with personal organizations
 /// HSL format: "H S% L%" (blue - matches "To do" status)

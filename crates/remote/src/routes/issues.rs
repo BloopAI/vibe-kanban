@@ -20,7 +20,7 @@ use crate::{
     auth::RequestContext,
     db::{get_txid, issues::IssueRepository},
     mutation_def::MutationDef,
-    mutation_types::{DeleteResponse, MutationResponse},
+    response::{DeleteResponse, MutationResponse},
 };
 
 /// Mutation definition for Issue - provides both router and TypeScript metadata.

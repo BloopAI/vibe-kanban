@@ -15,7 +15,7 @@ use crate::{
     auth::RequestContext,
     db::{tags::TagRepository, types::is_valid_hsl_color},
     mutation_def::MutationDef,
-    mutation_types::{DeleteResponse, MutationResponse},
+    response::{DeleteResponse, MutationResponse},
 };
 use api_types::{CreateTagRequest, ListTagsQuery, ListTagsResponse, Tag, UpdateTagRequest};
 

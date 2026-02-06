@@ -15,7 +15,7 @@ use crate::{
     auth::RequestContext,
     db::issue_assignees::IssueAssigneeRepository,
     mutation_def::MutationDef,
-    mutation_types::{DeleteResponse, MutationResponse},
+    response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
     CreateIssueAssigneeRequest, IssueAssignee, ListIssueAssigneesQuery, ListIssueAssigneesResponse,

@@ -18,7 +18,7 @@ use crate::{
     auth::RequestContext,
     db::{get_txid, project_statuses::ProjectStatusRepository, types::is_valid_hsl_color},
     mutation_def::MutationDef,
-    mutation_types::{DeleteResponse, MutationResponse},
+    response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
     CreateProjectStatusRequest, ListProjectStatusesQuery, ListProjectStatusesResponse,

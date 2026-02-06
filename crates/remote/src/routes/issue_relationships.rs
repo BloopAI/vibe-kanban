@@ -15,7 +15,7 @@ use crate::{
     auth::RequestContext,
     db::issue_relationships::IssueRelationshipRepository,
     mutation_def::MutationDef,
-    mutation_types::{DeleteResponse, MutationResponse},
+    response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
     CreateIssueRelationshipRequest, IssueRelationship, ListIssueRelationshipsQuery,
