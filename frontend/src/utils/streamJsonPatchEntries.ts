@@ -3,8 +3,6 @@ import type { Operation } from 'rfc6902';
 import { produce } from 'immer';
 import { applyUpsertPatch } from '@/utils/jsonPatch';
 
-let _wsFlushSeq = 0;
-
 type PatchContainer<E = unknown> = { entries: E[] };
 
 export interface StreamOptions<E = unknown> {
@@ -74,37 +72,13 @@ export function streamJsonPatchEntries<E = unknown>(
     rafId = null;
     if (pendingOps.length === 0) return;
 
-    const DEV = import.meta.env.DEV;
-    const seq = _wsFlushSeq++;
-    const m = `ws-flush-${seq}`;
-
-    if (DEV) performance.mark(`${m}:dedupe-s`);
     const ops = dedupeOps(pendingOps);
-    const opsCount = pendingOps.length;
     pendingOps = [];
-    if (DEV) performance.mark(`${m}:dedupe-e`);
 
-    if (DEV) performance.mark(`${m}:produce-s`);
     snapshot = produce(snapshot, (draft) => {
       applyUpsertPatch(draft, ops);
     });
-    if (DEV) performance.mark(`${m}:produce-e`);
-
-    if (DEV) performance.mark(`${m}:notify-s`);
     notify();
-    if (DEV) performance.mark(`${m}:notify-e`);
-
-    if (DEV) {
-      performance.measure('ws:dedupe', `${m}:dedupe-s`, `${m}:dedupe-e`);
-      performance.measure('ws:produce', `${m}:produce-s`, `${m}:produce-e`);
-      performance.measure('ws:notify', `${m}:notify-s`, `${m}:notify-e`);
-      performance.measure('ws:flush', `${m}:dedupe-s`, `${m}:notify-e`);
-      if (seq % 10 === 0) {
-        console.log(
-          `[ws-perf] flush#${seq}: ops=${opsCount} deduped=${ops.length} entries=${snapshot.entries.length}`
-        );
-      }
-    }
   };
 
   const handleMessage = (event: MessageEvent) => {
