@@ -36,6 +36,7 @@ RUN apt-get update \
 
 WORKDIR /app
 
+COPY rust-toolchain.toml ./
 COPY Cargo.toml Cargo.lock ./
 COPY crates crates
 COPY shared shared
