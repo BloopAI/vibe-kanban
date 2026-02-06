@@ -91,6 +91,7 @@ export function IssuePropertyRow({
       {creatorUser &&
         (creatorUser.first_name?.trim() || creatorUser.username?.trim()) && (
           <div className="flex items-center gap-half px-base py-half bg-panel rounded-sm text-sm whitespace-nowrap">
+            <span className="text-low">{t('kanban.createdBy', 'Created by')}</span>
             <UserAvatar
               user={creatorUser}
               className="h-5 w-5 text-[9px] border border-border"
