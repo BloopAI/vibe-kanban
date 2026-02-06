@@ -201,6 +201,15 @@ export function KanbanIssuePanelContainer() {
         if (mode === 'create') {
           requestAnimationFrame(() => {
             node.focus();
+            // Place cursor at end of content (not start)
+            if (node.textContent) {
+              const selection = window.getSelection();
+              const range = document.createRange();
+              range.selectNodeContents(node);
+              range.collapse(false);
+              selection?.removeAllRanges();
+              selection?.addRange(range);
+            }
           });
         }
       }
