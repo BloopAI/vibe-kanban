@@ -318,8 +318,8 @@ export function KanbanIssuePanelContainer() {
     }
   }, 500);
 
-  // Track whether we've already restored from scratch in this create-mode session
-  const hasRestoredFromScratch = useRef(false);
+  // Track whether create form has been initialized (guards auto-save from writing empty data)
+  const hasInitializedCreateForm = useRef(false);
 
   // Reset save status only when switching to a different issue or mode
   useEffect(() => {
@@ -344,13 +344,20 @@ export function KanbanIssuePanelContainer() {
   );
 
   // Reset local state when switching issues or modes
+  // In create mode, waits for scratch to finish loading before initializing
+  // (follows the useCreateModeState.ts pattern to avoid race conditions)
   useEffect(() => {
     const currentIssueId = selectedKanbanIssueId;
     const isNewIssue = currentIssueId !== prevIssueIdRef.current;
 
-    if (!isNewIssue) {
-      // Same issue - no reset needed
+    if (!isNewIssue && !draftIssueLoading) {
+      // Same issue and scratch loaded - no reset needed
       // (dropdown fields derive from server state, text fields preserve local edits)
+      return;
+    }
+
+    if (mode === 'create' && draftIssueLoading) {
+      // Wait for scratch to load before initializing create form
       return;
     }
 
@@ -367,7 +374,7 @@ export function KanbanIssuePanelContainer() {
 
     // Initialize create form data if in create mode
     if (mode === 'create') {
-      hasRestoredFromScratch.current = false;
+      hasInitializedCreateForm.current = false;
 
       // Try to restore from scratch if available for this project
       const scratchData =
@@ -376,8 +383,9 @@ export function KanbanIssuePanelContainer() {
           : undefined;
 
       if (scratchData && scratchData.project_id === projectId) {
-        hasRestoredFromScratch.current = true;
         setCreateFormData(restoreFromScratch(scratchData));
+        // Force title contentEditable to re-sync
+        lastTitleIssueIdRef.current = null;
       } else {
         setCreateFormData({
           title: '',
@@ -389,8 +397,11 @@ export function KanbanIssuePanelContainer() {
           createDraftWorkspace: false,
         });
       }
+
+      hasInitializedCreateForm.current = true;
     } else {
       // Edit mode: clear createFormData, displayData will derive from selectedIssue
+      hasInitializedCreateForm.current = false;
       setCreateFormData(null);
     }
   }, [
@@ -401,31 +412,6 @@ export function KanbanIssuePanelContainer() {
     cancelDebouncedDescription,
     cancelDebouncedDraftIssue,
     draftIssueScratch,
-    projectId,
-    restoreFromScratch,
-  ]);
-
-  // Handle late scratch loading: if scratch arrives after initial create mode render
-  useEffect(() => {
-    if (mode !== 'create') {
-      hasRestoredFromScratch.current = false;
-      return;
-    }
-    if (hasRestoredFromScratch.current) return;
-    if (draftIssueLoading || !draftIssueScratch) return;
-
-    const scratchData =
-      draftIssueScratch.payload?.type === 'DRAFT_ISSUE'
-        ? draftIssueScratch.payload.data
-        : undefined;
-
-    if (scratchData && scratchData.project_id === projectId) {
-      hasRestoredFromScratch.current = true;
-      setCreateFormData(restoreFromScratch(scratchData));
-    }
-  }, [
-    mode,
-    draftIssueScratch,
     draftIssueLoading,
     projectId,
     restoreFromScratch,
@@ -434,6 +420,7 @@ export function KanbanIssuePanelContainer() {
   // Auto-save draft issue to scratch when form data changes in create mode
   useEffect(() => {
     if (mode !== 'create' || !createFormData || !projectId) return;
+    if (!hasInitializedCreateForm.current) return;
 
     debouncedSaveDraftIssue({
       title: createFormData.title,
