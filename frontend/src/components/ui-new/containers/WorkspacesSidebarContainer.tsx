@@ -11,9 +11,12 @@ import {
   PERSIST_KEYS,
   usePersistedExpanded,
   useUiPreferencesStore,
+  type WorkspacePrFilter,
 } from '@/stores/useUiPreferencesStore';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
-import { WorkspaceSidebarFilters } from '@/components/ui-new/views/WorkspaceSidebarFilters';
+import { MultiSelectDropdown } from '@/components/ui-new/primitives/MultiSelectDropdown';
+import { PropertyDropdown } from '@/components/ui-new/primitives/PropertyDropdown';
+import { FolderIcon, GitPullRequestIcon } from '@phosphor-icons/react';
 
 export type WorkspaceLayoutMode = 'flat' | 'accordion';
 
@@ -61,10 +64,6 @@ export function WorkspacesSidebarContainer({
   const setWorkspacePrFilter = useUiPreferencesStore(
     (s) => s.setWorkspacePrFilter
   );
-  const clearWorkspaceFilters = useUiPreferencesStore(
-    (s) => s.clearWorkspaceFilters
-  );
-
   // Remote data for project filter (all orgs)
   const { workspaces: remoteWorkspaces } = useUserContext();
   const { data: allRemoteProjects } = useAllOrganizationProjects();
@@ -117,9 +116,35 @@ export function WorkspacesSidebarContainer({
       .sort((a, b) => a.orgName.localeCompare(b.orgName));
   }, [allRemoteProjects, remoteProjectByLocalId, orgNameById]);
 
-  const hasActiveFilters =
-    workspaceFilters.projectIds.length > 0 ||
-    workspaceFilters.prFilter !== 'all';
+  // Build flat project options for MultiSelectDropdown
+  const projectOptions = useMemo(
+    () =>
+      projectGroups.flatMap((g) =>
+        g.projects.map((p) => ({
+          value: p.id,
+          label: p.name,
+          renderOption: () => (
+            <div className="flex items-center gap-base">
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: p.color }}
+              />
+              {p.name}
+            </div>
+          ),
+        }))
+      ),
+    [projectGroups]
+  );
+
+  const PR_FILTER_OPTIONS: {
+    value: WorkspacePrFilter;
+    label: string;
+  }[] = [
+    { value: 'all', label: 'All' },
+    { value: 'has_pr', label: 'Has PR' },
+    { value: 'no_pr', label: 'No PR' },
+  ];
 
   // Pagination state for infinite scroll
   const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
@@ -256,16 +281,26 @@ export function WorkspacesSidebarContainer({
     [selectedWorkspaceId, selectWorkspace, onScrollToBottom]
   );
 
-  const filterElement = (
-    <WorkspaceSidebarFilters
-      projectGroups={projectGroups}
-      selectedProjectIds={workspaceFilters.projectIds}
-      prFilter={workspaceFilters.prFilter}
-      hasActiveFilters={hasActiveFilters}
-      onProjectFilterChange={setWorkspaceProjectFilter}
-      onPrFilterChange={setWorkspacePrFilter}
-      onClearFilters={clearWorkspaceFilters}
-    />
+  const filterBar = (
+    <div className="flex items-center gap-half flex-wrap">
+      {projectOptions.length > 0 && (
+        <MultiSelectDropdown
+          values={workspaceFilters.projectIds}
+          options={projectOptions}
+          onChange={setWorkspaceProjectFilter}
+          icon={FolderIcon}
+          label="Project"
+          menuLabel="Filter by project"
+        />
+      )}
+      <PropertyDropdown
+        value={workspaceFilters.prFilter}
+        options={PR_FILTER_OPTIONS}
+        onChange={setWorkspacePrFilter}
+        icon={GitPullRequestIcon}
+        label="PR"
+      />
+    </div>
   );
 
   return (
@@ -287,7 +322,7 @@ export function WorkspacesSidebarContainer({
       onToggleLayoutMode={toggleLayoutMode}
       onLoadMore={handleLoadMore}
       hasMoreWorkspaces={hasMoreWorkspaces && !isSearching}
-      filterElement={filterElement}
+      filterBar={filterBar}
     />
   );
 }
