@@ -117,8 +117,14 @@ export function InputField({
               : onChange(e.target.value)
           }
           onKeyDown={handleKeyDown}
-          onFocus={() => { setIsFocused(true); onFocusChange?.(true); }}
-          onBlur={() => { setIsFocused(false); onFocusChange?.(false); }}
+          onFocus={() => {
+            setIsFocused(true);
+            onFocusChange?.(true);
+          }}
+          onBlur={() => {
+            setIsFocused(false);
+            onFocusChange?.(false);
+          }}
           placeholder={placeholder}
           disabled={disabled}
           className="flex-1 text-sm text-high bg-transparent placeholder:text-low placeholder:opacity-80 focus:outline-none min-w-0"
