@@ -75,6 +75,7 @@ jobs:
           # Update version in crates/remote/Cargo.toml
           cd crates/remote
           cargo set-version "$new_version"
+          cargo update remote
           cd ../..
 
           echo "New version: $new_version"
@@ -87,7 +88,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add crates/remote/Cargo.toml
+          git add crates/remote/Cargo.toml crates/remote/Cargo.lock
           git commit -m "chore: bump remote version to ${{ steps.version.outputs.new_version }}"
           git tag -a ${{ steps.version.outputs.new_tag }} -m "Remote release ${{ steps.version.outputs.new_tag }}"
           git push
