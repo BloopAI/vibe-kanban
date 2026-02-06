@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { CaretDownIcon, type Icon } from '@phosphor-icons/react';
+import { CaretDownIcon, CheckIcon, type Icon } from '@phosphor-icons/react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,8 +75,16 @@ export function PropertyDropdown<T extends string = string>({
           <DropdownMenuItem
             key={option.value}
             onClick={() => onChange(option.value)}
+            badge={
+              option.value === value ? (
+                <CheckIcon
+                  className="size-icon-xs text-brand"
+                  weight="bold"
+                />
+              ) : undefined
+            }
           >
-            {option.renderOption?.() ?? <span>{option.label}</span>}
+            {option.renderOption?.() ?? option.label}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

@@ -3,6 +3,7 @@ import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import {
   CaretDownIcon,
   CaretRightIcon,
+  CheckIcon,
   MagnifyingGlassIcon,
   type Icon,
 } from '@phosphor-icons/react';
@@ -144,7 +145,7 @@ DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 interface DropdownMenuItemProps
   extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> {
   icon?: Icon;
-  badge?: string;
+  badge?: React.ReactNode;
   variant?: 'default' | 'destructive';
   /** When true, prevents hover from stealing focus (useful for searchable dropdowns) */
   preventFocusOnHover?: boolean;
@@ -213,7 +214,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
     className={cn(
-      'relative flex cursor-pointer select-none items-center',
+      'relative flex cursor-pointer select-none items-center gap-base',
       'py-half px-base mx-half rounded-sm text-sm text-low',
       'outline-none transition-colors focus:bg-secondary',
       'data-[state=checked]:text-high',
@@ -223,7 +224,10 @@ const DropdownMenuCheckboxItem = React.forwardRef<
     checked={checked}
     {...props}
   >
-    {children}
+    <span className="flex-1">{children}</span>
+    <DropdownMenuPrimitive.ItemIndicator>
+      <CheckIcon className="size-icon-xs text-brand shrink-0" weight="bold" />
+    </DropdownMenuPrimitive.ItemIndicator>
   </DropdownMenuPrimitive.CheckboxItem>
 ));
 DropdownMenuCheckboxItem.displayName =
