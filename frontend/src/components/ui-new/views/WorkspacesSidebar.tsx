@@ -116,17 +116,32 @@ export function WorkspacesSidebar({
     }
   };
 
-  // Categorize workspaces for accordion layout
+  // Categorize workspaces for accordion layout, sorted by latestProcessCompletedAt (oldest first)
   const { raisedHandWorkspaces, idleWorkspaces, runningWorkspaces } = useMemo(
-    () => ({
-      raisedHandWorkspaces: workspaces.filter((ws) => ws.hasPendingApproval),
-      idleWorkspaces: workspaces.filter(
-        (ws) => !ws.isRunning && !ws.hasPendingApproval
-      ),
-      runningWorkspaces: workspaces.filter(
-        (ws) => ws.isRunning && !ws.hasPendingApproval
-      ),
-    }),
+    () => {
+      const sortByCompletedAt = (a: Workspace, b: Workspace) => {
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+        const aTime = a.latestProcessCompletedAt
+          ? new Date(a.latestProcessCompletedAt).getTime()
+          : Infinity;
+        const bTime = b.latestProcessCompletedAt
+          ? new Date(b.latestProcessCompletedAt).getTime()
+          : Infinity;
+        return aTime - bTime;
+      };
+
+      return {
+        raisedHandWorkspaces: workspaces
+          .filter((ws) => ws.hasPendingApproval)
+          .sort(sortByCompletedAt),
+        idleWorkspaces: workspaces
+          .filter((ws) => !ws.isRunning && !ws.hasPendingApproval)
+          .sort(sortByCompletedAt),
+        runningWorkspaces: workspaces
+          .filter((ws) => ws.isRunning && !ws.hasPendingApproval)
+          .sort(sortByCompletedAt),
+      };
+    },
     [workspaces]
   );
 
