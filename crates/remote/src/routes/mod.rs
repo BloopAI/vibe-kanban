@@ -177,19 +177,19 @@ async fn health() -> Json<HealthResponse> {
     })
 }
 
-/// Collect metadata from all mutation definitions for TypeScript generation.
-pub fn all_mutation_metadata() -> Vec<crate::mutation_definition::MutationDefinition> {
+/// Collect all mutation definitions for TypeScript generation.
+pub fn all_mutation_definitions() -> Vec<crate::mutation_definition::MutationDefinition> {
     vec![
-        projects::mutation().metadata(),
-        notifications::mutation().metadata(),
-        tags::mutation().metadata(),
-        project_statuses::mutation().metadata(),
-        issues::mutation().metadata(),
-        issue_assignees::mutation().metadata(),
-        issue_followers::mutation().metadata(),
-        issue_tags::mutation().metadata(),
-        issue_relationships::mutation().metadata(),
-        issue_comments::mutation().metadata(),
-        issue_comment_reactions::mutation().metadata(),
+        projects::mutation().definition(),
+        notifications::mutation().definition(),
+        tags::mutation().definition(),
+        project_statuses::mutation().definition(),
+        issues::mutation().definition(),
+        issue_assignees::mutation().definition(),
+        issue_followers::mutation().definition(),
+        issue_tags::mutation().definition(),
+        issue_relationships::mutation().definition(),
+        issue_comments::mutation().definition(),
+        issue_comment_reactions::mutation().definition(),
     ]
 }

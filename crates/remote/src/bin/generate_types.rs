@@ -2,7 +2,7 @@ use std::{env, fs, path::Path};
 
 use remote::{
     shapes::all_shapes,
-    routes::all_mutation_metadata,
+    routes::all_mutation_definitions,
 };
 use ts_rs::TS;
 use api_types::{
@@ -201,7 +201,7 @@ fn export_shapes() -> String {
 
     // Generate individual mutation definitions
     output.push_str("// Individual mutation definitions\n");
-    for mutation in all_mutation_metadata() {
+    for mutation in all_mutation_definitions() {
         let ts_type = &mutation.row_type;
         let const_name = to_screaming_snake_case(ts_type);
         let create_type = mutation.create_type.as_deref().unwrap_or("unknown");

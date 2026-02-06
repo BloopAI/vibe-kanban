@@ -192,7 +192,7 @@ pub struct NoUpdate;
 // Metadata extraction — one impl per combination of NoCreate/NoUpdate vs real types.
 
 impl<E: TS, C: TS, U: TS> MutationBuilder<E, C, U> {
-    pub fn metadata(&self) -> MutationDefinition {
+    pub fn definition(&self) -> MutationDefinition {
         MutationDefinition {
             table: self.table,
             url: self.url,
@@ -204,7 +204,7 @@ impl<E: TS, C: TS, U: TS> MutationBuilder<E, C, U> {
 }
 
 impl<E: TS, U: TS> MutationBuilder<E, NoCreate, U> {
-    pub fn metadata(&self) -> MutationDefinition {
+    pub fn definition(&self) -> MutationDefinition {
         MutationDefinition {
             table: self.table,
             url: self.url,
@@ -216,7 +216,7 @@ impl<E: TS, U: TS> MutationBuilder<E, NoCreate, U> {
 }
 
 impl<E: TS, C: TS> MutationBuilder<E, C, NoUpdate> {
-    pub fn metadata(&self) -> MutationDefinition {
+    pub fn definition(&self) -> MutationDefinition {
         MutationDefinition {
             table: self.table,
             url: self.url,
@@ -228,7 +228,7 @@ impl<E: TS, C: TS> MutationBuilder<E, C, NoUpdate> {
 }
 
 impl<E: TS> MutationBuilder<E, NoCreate, NoUpdate> {
-    pub fn metadata(&self) -> MutationDefinition {
+    pub fn definition(&self) -> MutationDefinition {
         MutationDefinition {
             table: self.table,
             url: self.url,
