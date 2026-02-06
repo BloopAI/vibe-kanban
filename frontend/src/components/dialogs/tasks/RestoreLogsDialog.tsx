@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -15,14 +15,14 @@ import { useKeySubmitTask } from '@/keyboard/hooks';
 import { Scope } from '@/keyboard/registry';
 import { executionProcessesApi } from '@/lib/api';
 import {
-  shouldShowInLogs,
   isCodingAgent,
   PROCESS_RUN_REASONS,
+  shouldShowInLogs,
 } from '@/constants/processes';
 import type {
-  RepoBranchStatus,
   ExecutionProcess,
   ExecutionProcessRepoState,
+  RepoBranchStatus,
 } from 'shared/types';
 
 export interface RestoreLogsDialogProps {
@@ -315,7 +315,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                               className={
                                 (acknowledgeUncommitted
                                   ? 'bg-amber-500'
-                                  : 'bg-muted-foreground/30') +
+                                  : 'bg-panel') +
                                 ' absolute inset-0 rounded-full transition-colors'
                               }
                             />
@@ -373,7 +373,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                               className={
                                 (worktreeResetOn
                                   ? 'bg-emerald-500'
-                                  : 'bg-muted-foreground/30') +
+                                  : 'bg-panel') +
                                 ' absolute inset-0 rounded-full transition-colors'
                               }
                             />
@@ -479,7 +479,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                               className={
                                 (worktreeResetOn && forceReset
                                   ? 'bg-emerald-500'
-                                  : 'bg-muted-foreground/30') +
+                                  : 'bg-panel') +
                                 ' absolute inset-0 rounded-full transition-colors'
                               }
                             />
@@ -510,9 +510,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                           <div className="ml-auto relative inline-flex h-5 w-9 items-center rounded-full">
                             <span
                               className={
-                                (forceReset
-                                  ? 'bg-destructive'
-                                  : 'bg-muted-foreground/30') +
+                                (forceReset ? 'bg-destructive' : 'bg-panel') +
                                 ' absolute inset-0 rounded-full transition-colors'
                               }
                             />
