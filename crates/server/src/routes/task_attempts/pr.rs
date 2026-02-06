@@ -506,19 +506,10 @@ pub async fn attach_existing_pr(
         // If PR is merged, mark task as done and archive workspace
         if matches!(pr_info.status, MergeStatus::Merged) {
             Task::update_status(pool, task.id, TaskStatus::Done).await?;
-            if !workspace.pinned {
-                Workspace::set_archived(pool, workspace.id, true).await?;
-                if let Err(e) = deployment
-                    .container()
-                    .try_run_archive_script(workspace.id)
-                    .await
-                {
-                    tracing::error!(
-                        "Failed to run archive script for workspace {}: {}",
-                        workspace.id,
-                        e
-                    );
-                }
+            if !workspace.pinned
+                && let Err(e) = deployment.container().archive_workspace(workspace.id).await
+            {
+                tracing::error!("Failed to archive workspace {}: {}", workspace.id, e);
             }
         }
 

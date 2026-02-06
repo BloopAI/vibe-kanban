@@ -189,17 +189,8 @@ pub async fn update_workspace(
         });
     }
 
-    if is_archiving
-        && let Err(e) = deployment
-            .container()
-            .try_run_archive_script(workspace.id)
-            .await
-    {
-        tracing::error!(
-            "Failed to run archive script for workspace {}: {}",
-            workspace.id,
-            e
-        );
+    if is_archiving && let Err(e) = deployment.container().archive_workspace(workspace.id).await {
+        tracing::error!("Failed to archive workspace {}: {}", workspace.id, e);
     }
 
     Ok(ResponseJson(ApiResponse::success(updated)))
@@ -556,43 +547,10 @@ pub async fn merge_task_attempt(
     )
     .await?;
     Task::update_status(pool, task.id, TaskStatus::Done).await?;
-    if !workspace.pinned {
-        Workspace::set_archived(pool, workspace.id, true).await?;
-        if let Err(e) = deployment
-            .container()
-            .try_run_archive_script(workspace.id)
-            .await
-        {
-            tracing::error!(
-                "Failed to run archive script for workspace {}: {}",
-                workspace.id,
-                e
-            );
-        }
-    }
-    // Stop any running dev servers for this workspace
-    let dev_servers =
-        ExecutionProcess::find_running_dev_servers_by_workspace(pool, workspace.id).await?;
-
-    for dev_server in dev_servers {
-        tracing::info!(
-            "Stopping dev server {} for completed task attempt {}",
-            dev_server.id,
-            workspace.id
-        );
-
-        if let Err(e) = deployment
-            .container()
-            .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
-            .await
-        {
-            tracing::error!(
-                "Failed to stop dev server {} for task attempt {}: {}",
-                dev_server.id,
-                workspace.id,
-                e
-            );
-        }
+    if !workspace.pinned
+        && let Err(e) = deployment.container().archive_workspace(workspace.id).await
+    {
+        tracing::error!("Failed to archive workspace {}: {}", workspace.id, e);
     }
 
     deployment

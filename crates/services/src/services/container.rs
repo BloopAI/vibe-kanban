@@ -523,6 +523,43 @@ pub trait ContainerService {
         Ok(())
     }
 
+    /// Archive a workspace: set archived flag, stop running dev servers, and run archive script.
+    async fn archive_workspace(&self, workspace_id: Uuid) -> Result<(), ContainerError> {
+        let pool = &self.db().pool;
+
+        Workspace::set_archived(pool, workspace_id, true).await?;
+
+        // Stop running dev servers
+        if let Ok(dev_servers) =
+            ExecutionProcess::find_running_dev_servers_by_workspace(pool, workspace_id).await
+        {
+            for dev_server in dev_servers {
+                if let Err(e) = self
+                    .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
+                    .await
+                {
+                    tracing::error!(
+                        "Failed to stop dev server {} for workspace {}: {}",
+                        dev_server.id,
+                        workspace_id,
+                        e
+                    );
+                }
+            }
+        }
+
+        // Run archive script (silently skips if not configured)
+        if let Err(e) = self.try_run_archive_script(workspace_id).await {
+            tracing::error!(
+                "Failed to run archive script for workspace {}: {}",
+                workspace_id,
+                e
+            );
+        }
+
+        Ok(())
+    }
+
     fn setup_actions_for_repos(&self, repos: &[Repo]) -> Option<ExecutorAction> {
         let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 
