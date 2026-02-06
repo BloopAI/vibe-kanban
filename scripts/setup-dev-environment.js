@@ -7,6 +7,7 @@ const net = require("net");
 const PORTS_FILE = path.join(__dirname, "..", ".dev-ports.json");
 const DEV_ASSETS_SEED = path.join(__dirname, "..", "dev_assets_seed");
 const DEV_ASSETS = path.join(__dirname, "..", "dev_assets");
+const DEFAULT_MEETING_PORT = 8081;
 
 /**
  * Check if a port is available
@@ -69,14 +70,15 @@ function savePorts(ports) {
 async function verifyPorts(ports) {
   const frontendAvailable = await isPortAvailable(ports.frontend);
   const backendAvailable = await isPortAvailable(ports.backend);
+  const meetingAvailable = ports.meeting ? await isPortAvailable(ports.meeting) : true;
 
-  if (process.argv[2] === "get" && (!frontendAvailable || !backendAvailable)) {
+  if (process.argv[2] === "get" && (!frontendAvailable || !backendAvailable || !meetingAvailable)) {
     console.log(
-      `Port availability check failed: frontend:${ports.frontend}=${frontendAvailable}, backend:${ports.backend}=${backendAvailable}`
+      `Port availability check failed: frontend:${ports.frontend}=${frontendAvailable}, backend:${ports.backend}=${backendAvailable}, meeting:${ports.meeting}=${meetingAvailable}`
     );
   }
 
-  return frontendAvailable && backendAvailable;
+  return frontendAvailable && backendAvailable && meetingAvailable;
 }
 
 /**
@@ -127,10 +129,12 @@ async function allocatePorts() {
   // Find new free ports
   const frontendPort = await findFreePort(3000);
   const backendPort = await findFreePort(frontendPort + 1);
+  const meetingPort = await findFreePort(DEFAULT_MEETING_PORT);
 
   const ports = {
     frontend: frontendPort,
     backend: backendPort,
+    meeting: meetingPort,
     timestamp: new Date().toISOString(),
   };
 
@@ -221,6 +225,14 @@ if (require.main === module) {
         .catch(console.error);
       break;
 
+    case "meeting":
+      getPorts()
+        .then((ports) => {
+          console.log(JSON.stringify(ports.meeting || DEFAULT_MEETING_PORT, null, 2));
+        })
+        .catch(console.error);
+      break;
+
     default:
       console.log("Usage:");
       console.log(
@@ -231,6 +243,9 @@ if (require.main === module) {
       );
       console.log(
         "  node setup-dev-environment.js backend  - Get backend port only"
+      );
+      console.log(
+        "  node setup-dev-environment.js meeting  - Get meeting port only"
       );
       console.log(
         "  node setup-dev-environment.js clear    - Clear saved ports"
