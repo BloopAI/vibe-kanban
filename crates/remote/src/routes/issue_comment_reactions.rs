@@ -17,8 +17,7 @@ use crate::{
         issue_comment_reactions::IssueCommentReactionRepository,
         issue_comments::IssueCommentRepository,
     },
-    entities::ISSUE_COMMENT_REACTION_SHAPE,
-    entity_def::EntityDef,
+    mutation_def::MutationDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
 use api_types::{
@@ -26,11 +25,11 @@ use api_types::{
     ListIssueCommentReactionsResponse, UpdateIssueCommentReactionRequest,
 };
 
-/// Entity definition for IssueCommentReaction - provides both router and TypeScript metadata.
-pub fn entity(
-) -> EntityDef<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>
+/// Mutation definition for IssueCommentReaction - provides both router and TypeScript metadata.
+pub fn mutation(
+) -> MutationDef<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>
 {
-    EntityDef::new(&ISSUE_COMMENT_REACTION_SHAPE)
+    MutationDef::new("issue_comment_reactions", "/v1/issue_comment_reactions")
         .list(list_issue_comment_reactions)
         .get(get_issue_comment_reaction)
         .create(create_issue_comment_reaction)
@@ -39,7 +38,7 @@ pub fn entity(
 }
 
 pub fn router() -> axum::Router<AppState> {
-    entity().router()
+    mutation().router()
 }
 
 #[instrument(

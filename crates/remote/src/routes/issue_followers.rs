@@ -14,8 +14,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::issue_followers::IssueFollowerRepository,
-    entities::ISSUE_FOLLOWER_SHAPE,
-    entity_def::EntityDef,
+    mutation_def::MutationDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
 use api_types::{
@@ -23,9 +22,9 @@ use api_types::{
     UpdateIssueFollowerRequest,
 };
 
-/// Entity definition for IssueFollower - provides both router and TypeScript metadata.
-pub fn entity() -> EntityDef<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest> {
-    EntityDef::new(&ISSUE_FOLLOWER_SHAPE)
+/// Mutation definition for IssueFollower - provides both router and TypeScript metadata.
+pub fn mutation() -> MutationDef<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest> {
+    MutationDef::new("issue_followers", "/v1/issue_followers")
         .list(list_issue_followers)
         .get(get_issue_follower)
         .create(create_issue_follower)
@@ -34,7 +33,7 @@ pub fn entity() -> EntityDef<IssueFollower, CreateIssueFollowerRequest, UpdateIs
 }
 
 pub fn router() -> axum::Router<AppState> {
-    entity().router()
+    mutation().router()
 }
 
 #[instrument(

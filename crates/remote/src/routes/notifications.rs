@@ -11,8 +11,7 @@ use uuid::Uuid;
 use super::error::ErrorResponse;
 use crate::{
     AppState, auth::RequestContext, db::notifications::NotificationRepository,
-    entities::NOTIFICATION_SHAPE,
-    entity_def::{EntityDef, NoCreate},
+    mutation_def::{MutationDef, NoCreate},
 };
 use api_types::{Notification, UpdateNotificationRequest};
 
@@ -37,8 +36,8 @@ pub struct ListNotificationsQuery {
     pub include_dismissed: bool,
 }
 
-pub fn entity() -> EntityDef<Notification, NoCreate, UpdateNotificationRequest> {
-    EntityDef::new(&NOTIFICATION_SHAPE)
+pub fn mutation() -> MutationDef<Notification, NoCreate, UpdateNotificationRequest> {
+    MutationDef::new("notifications", "/v1/notifications")
         .list(list_notifications)
         .get(get_notification)
         .update(update_notification)
@@ -46,7 +45,7 @@ pub fn entity() -> EntityDef<Notification, NoCreate, UpdateNotificationRequest> 
 }
 
 pub fn router() -> Router<AppState> {
-    entity()
+    mutation()
         .router()
         .route("/notifications/unread-count", get(unread_count))
         .route("/notifications/mark-all-seen", post(mark_all_seen))

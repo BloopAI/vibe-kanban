@@ -19,14 +19,13 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{get_txid, issues::IssueRepository},
-    entities::ISSUE_SHAPE,
-    entity_def::EntityDef,
+    mutation_def::MutationDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
 
-/// Entity definition for Issue - provides both router and TypeScript metadata.
-pub fn entity() -> EntityDef<Issue, CreateIssueRequest, UpdateIssueRequest> {
-    EntityDef::new(&ISSUE_SHAPE)
+/// Mutation definition for Issue - provides both router and TypeScript metadata.
+pub fn mutation() -> MutationDef<Issue, CreateIssueRequest, UpdateIssueRequest> {
+    MutationDef::new("issues", "/v1/issues")
         .list(list_issues)
         .get(get_issue)
         .create(create_issue)
@@ -36,7 +35,7 @@ pub fn entity() -> EntityDef<Issue, CreateIssueRequest, UpdateIssueRequest> {
 
 /// Router for issue endpoints including bulk update
 pub fn router() -> axum::Router<AppState> {
-    entity()
+    mutation()
         .router()
         .route("/issues/bulk", post(bulk_update_issues))
 }

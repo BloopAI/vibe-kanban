@@ -14,17 +14,16 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{projects::ProjectRepository, types::is_valid_hsl_color},
-    entities::PROJECT_SHAPE,
-    entity_def::EntityDef,
+    mutation_def::MutationDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
 use api_types::{
     CreateProjectRequest, ListProjectsQuery, ListProjectsResponse, Project, UpdateProjectRequest,
 };
 
-/// Entity definition for Projects - provides both router and TypeScript metadata.
-pub fn entity() -> EntityDef<Project, CreateProjectRequest, UpdateProjectRequest> {
-    EntityDef::new(&PROJECT_SHAPE)
+/// Mutation definition for Projects - provides both router and TypeScript metadata.
+pub fn mutation() -> MutationDef<Project, CreateProjectRequest, UpdateProjectRequest> {
+    MutationDef::new("projects", "/v1/projects")
         .list(list_projects)
         .get(get_project)
         .create(create_project)
@@ -33,7 +32,7 @@ pub fn entity() -> EntityDef<Project, CreateProjectRequest, UpdateProjectRequest
 }
 
 pub fn router() -> axum::Router<AppState> {
-    entity().router()
+    mutation().router()
 }
 
 #[instrument(

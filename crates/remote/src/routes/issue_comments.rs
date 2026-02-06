@@ -18,14 +18,13 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{issue_comments::IssueCommentRepository, organization_members::check_user_role},
-    entities::ISSUE_COMMENT_SHAPE,
-    entity_def::EntityDef,
+    mutation_def::MutationDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
 
-/// Entity definition for IssueComment - provides both router and TypeScript metadata.
-pub fn entity() -> EntityDef<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> {
-    EntityDef::new(&ISSUE_COMMENT_SHAPE)
+/// Mutation definition for IssueComment - provides both router and TypeScript metadata.
+pub fn mutation() -> MutationDef<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> {
+    MutationDef::new("issue_comments", "/v1/issue_comments")
         .list(list_issue_comments)
         .get(get_issue_comment)
         .create(create_issue_comment)
@@ -34,7 +33,7 @@ pub fn entity() -> EntityDef<IssueComment, CreateIssueCommentRequest, UpdateIssu
 }
 
 pub fn router() -> axum::Router<AppState> {
-    entity().router()
+    mutation().router()
 }
 
 #[instrument(

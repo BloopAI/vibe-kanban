@@ -14,7 +14,7 @@ use api_types::{
     UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest, UpdateTagRequest,
 };
 
-use crate::entity_def::{CreateRequestFor, UpdateRequestFor};
+use crate::mutation_def::{CreateRequestFor, UpdateRequestFor};
 
 // =============================================================================
 // Project

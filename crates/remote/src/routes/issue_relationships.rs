@@ -14,8 +14,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::issue_relationships::IssueRelationshipRepository,
-    entities::ISSUE_RELATIONSHIP_SHAPE,
-    entity_def::EntityDef,
+    mutation_def::MutationDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
 use api_types::{
@@ -23,10 +22,10 @@ use api_types::{
     ListIssueRelationshipsResponse, UpdateIssueRelationshipRequest,
 };
 
-/// Entity definition for IssueRelationship - provides both router and TypeScript metadata.
-pub fn entity(
-) -> EntityDef<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest> {
-    EntityDef::new(&ISSUE_RELATIONSHIP_SHAPE)
+/// Mutation definition for IssueRelationship - provides both router and TypeScript metadata.
+pub fn mutation(
+) -> MutationDef<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest> {
+    MutationDef::new("issue_relationships", "/v1/issue_relationships")
         .list(list_issue_relationships)
         .get(get_issue_relationship)
         .create(create_issue_relationship)
@@ -35,7 +34,7 @@ pub fn entity(
 }
 
 pub fn router() -> axum::Router<AppState> {
-    entity().router()
+    mutation().router()
 }
 
 #[instrument(

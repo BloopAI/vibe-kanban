@@ -177,19 +177,19 @@ async fn health() -> Json<HealthResponse> {
     })
 }
 
-/// Collect metadata from all entity definitions for TypeScript generation.
-pub fn all_entity_metadata() -> Vec<crate::entity_def::EntityMeta> {
+/// Collect metadata from all mutation definitions for TypeScript generation.
+pub fn all_mutation_metadata() -> Vec<crate::mutation_def::MutationMeta> {
     vec![
-        projects::entity().metadata(),
-        notifications::entity().metadata(),
-        tags::entity().metadata(),
-        project_statuses::entity().metadata(),
-        issues::entity().metadata(),
-        issue_assignees::entity().metadata(),
-        issue_followers::entity().metadata(),
-        issue_tags::entity().metadata(),
-        issue_relationships::entity().metadata(),
-        issue_comments::entity().metadata(),
-        issue_comment_reactions::entity().metadata(),
+        projects::mutation().metadata(),
+        notifications::mutation().metadata(),
+        tags::mutation().metadata(),
+        project_statuses::mutation().metadata(),
+        issues::mutation().metadata(),
+        issue_assignees::mutation().metadata(),
+        issue_followers::mutation().metadata(),
+        issue_tags::mutation().metadata(),
+        issue_relationships::mutation().metadata(),
+        issue_comments::mutation().metadata(),
+        issue_comment_reactions::mutation().metadata(),
     ]
 }

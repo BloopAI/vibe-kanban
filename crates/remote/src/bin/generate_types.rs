@@ -1,9 +1,8 @@
 use std::{env, fs, path::Path};
 
 use remote::{
-    entities::{self, all_shapes},
-    routes::all_entity_metadata,
-    shapes::ShapeExport,
+    entities::all_shapes,
+    routes::all_mutation_metadata,
 };
 use ts_rs::TS;
 use api_types::{
@@ -19,17 +18,6 @@ use api_types::{
     UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest, UpdateTagRequest,
     User, UserData, Workspace,
 };
-
-/// Shape-only entities that don't have CRUD mutation routes.
-/// These only have shapes for Electric realtime streaming.
-fn shape_only_entities() -> Vec<&'static dyn ShapeExport> {
-    vec![
-        &entities::ORGANIZATION_MEMBER_SHAPE,
-        &entities::USER_SHAPE,
-        &entities::WORKSPACE_SHAPE,
-        &entities::PULL_REQUEST_SHAPE,
-    ]
-}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -158,7 +146,7 @@ fn export_shapes() -> String {
 
     // Generate individual shape definitions
     output.push_str("// Individual shape definitions with embedded types\n");
-    for shape in &shapes {
+    for (name, shape) in &shapes {
         let params_str = shape
             .params()
             .iter()
@@ -168,7 +156,7 @@ fn export_shapes() -> String {
 
         output.push_str(&format!(
             "export const {} = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '/v1{}'\n);\n\n",
-            shape.name(),
+            name,
             shape.ts_type_name(),
             shape.table(),
             params_str,
@@ -179,70 +167,63 @@ fn export_shapes() -> String {
     output.push_str(
         "// =============================================================================\n",
     );
-    output.push_str("// Entity Definitions for SDK Generation\n");
+    output.push_str("// Mutation Definitions\n");
     output.push_str(
         "// =============================================================================\n\n",
     );
 
-    output.push_str("// Entity definition interface\n");
+    // MutationDefinition interface
+    output.push_str("// Mutation definition interface\n");
     output.push_str(
-        "export interface EntityDefinition<TRow, TCreate = unknown, TUpdate = unknown> {\n",
+        "export interface MutationDefinition<TRow, TCreate = unknown, TUpdate = unknown> {\n",
     );
     output.push_str("  readonly name: string;\n");
     output.push_str("  readonly table: string;\n");
-    output.push_str("  readonly shape: ShapeDefinition<TRow>;\n");
-    output.push_str("  readonly mutations: {\n");
-    output.push_str("    readonly url: string;\n");
-    output.push_str("    readonly _createType: TCreate;  // Phantom (not present at runtime)\n");
-    output.push_str("    readonly _updateType: TUpdate;  // Phantom (not present at runtime)\n");
-    output.push_str("  } | null;\n");
+    output.push_str("  readonly url: string;\n");
+    output.push_str(
+        "  readonly _rowType: TRow;  // Phantom field for type inference (not present at runtime)\n",
+    );
+    output.push_str("  readonly _createType: TCreate;  // Phantom field for type inference (not present at runtime)\n");
+    output.push_str("  readonly _updateType: TUpdate;  // Phantom field for type inference (not present at runtime)\n");
     output.push_str("}\n\n");
 
-    // Generate entity definitions from route modules
-    output.push_str("// Entity definitions with mutations\n");
-    for entity in all_entity_metadata() {
-        let ts_type = &entity.row_type;
-        let table = entity.table;
+    // Helper function
+    output.push_str("// Helper to create type-safe mutation definitions\n");
+    output.push_str("function defineMutation<TRow, TCreate, TUpdate>(\n");
+    output.push_str("  name: string,\n");
+    output.push_str("  table: string,\n");
+    output.push_str("  url: string\n");
+    output.push_str("): MutationDefinition<TRow, TCreate, TUpdate> {\n");
+    output.push_str(
+        "  return { name, table, url } as MutationDefinition<TRow, TCreate, TUpdate>;\n",
+    );
+    output.push_str("}\n\n");
+
+    // Generate individual mutation definitions
+    output.push_str("// Individual mutation definitions\n");
+    for mutation in all_mutation_metadata() {
+        let ts_type = &mutation.row_type;
         let const_name = to_screaming_snake_case(ts_type);
-        let shape_name = entity.shape_name;
+        let create_type = mutation.create_type.as_deref().unwrap_or("unknown");
+        let update_type = mutation.update_type.as_deref().unwrap_or("unknown");
 
-        let create_type = entity.create_type.as_deref().unwrap_or("unknown");
-        let update_type = entity.update_type.as_deref().unwrap_or("unknown");
         output.push_str(&format!(
-            "export const {}_ENTITY: EntityDefinition<{}, {}, {}> = {{\n",
-            const_name, ts_type, create_type, update_type
+            "export const {}_MUTATION = defineMutation<{}, {}, {}>(\n  '{}',\n  '{}',\n  '{}'\n);\n\n",
+            const_name,
+            ts_type,
+            create_type,
+            update_type,
+            ts_type,
+            mutation.table,
+            mutation.url
         ));
-        output.push_str(&format!("  name: '{}',\n", ts_type));
-        output.push_str(&format!("  table: '{}',\n", table));
-        output.push_str(&format!("  shape: {},\n", shape_name));
-        output.push_str(&format!(
-            "  mutations: {{ url: '{}' }} as EntityDefinition<{}, {}, {}>['mutations'],\n",
-            entity.mutations_url, ts_type, create_type, update_type
-        ));
-        output.push_str("};\n\n");
     }
 
-    // Generate entity definitions for shape-only entities (no mutations)
-    output.push_str("// Entity definitions without mutations (shape-only)\n");
-    for shape in shape_only_entities() {
-        let ts_type = shape.ts_type_name();
-        let const_name = to_screaming_snake_case(&ts_type);
-        let shape_name = shape.name();
-
-        output.push_str(&format!(
-            "export const {}_ENTITY: EntityDefinition<{}> = {{\n",
-            const_name, ts_type
-        ));
-        output.push_str(&format!("  name: '{}',\n", ts_type));
-        output.push_str(&format!("  table: '{}',\n", shape.table()));
-        output.push_str(&format!("  shape: {},\n", shape_name));
-        output.push_str("  mutations: null,\n");
-        output.push_str("};\n\n");
-    }
-
-    // Type helper to extract row type from an entity
-    output.push_str("// Type helper to extract row type from an entity\n");
-    output.push_str("export type EntityRowType<E extends EntityDefinition<unknown>> = E extends EntityDefinition<infer R> ? R : never;\n");
+    // Type helpers
+    output.push_str("// Type helpers to extract types from a mutation definition\n");
+    output.push_str("export type MutationRowType<M extends MutationDefinition<unknown>> = M extends MutationDefinition<infer R> ? R : never;\n");
+    output.push_str("export type MutationCreateType<M extends MutationDefinition<unknown, unknown>> = M extends MutationDefinition<unknown, infer C> ? C : never;\n");
+    output.push_str("export type MutationUpdateType<M extends MutationDefinition<unknown, unknown, unknown>> = M extends MutationDefinition<unknown, unknown, infer U> ? U : never;\n");
 
     output
 }

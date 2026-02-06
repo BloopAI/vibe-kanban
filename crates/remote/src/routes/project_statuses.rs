@@ -17,8 +17,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{get_txid, project_statuses::ProjectStatusRepository, types::is_valid_hsl_color},
-    entities::PROJECT_STATUS_SHAPE,
-    entity_def::EntityDef,
+    mutation_def::MutationDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
 use api_types::{
@@ -26,9 +25,9 @@ use api_types::{
     ProjectStatus, UpdateProjectStatusRequest,
 };
 
-/// Entity definition for ProjectStatus - provides both router and TypeScript metadata.
-pub fn entity() -> EntityDef<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest> {
-    EntityDef::new(&PROJECT_STATUS_SHAPE)
+/// Mutation definition for ProjectStatus - provides both router and TypeScript metadata.
+pub fn mutation() -> MutationDef<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest> {
+    MutationDef::new("project_statuses", "/v1/project_statuses")
         .list(list_project_statuses)
         .get(get_project_status)
         .create(create_project_status)
@@ -38,7 +37,7 @@ pub fn entity() -> EntityDef<ProjectStatus, CreateProjectStatusRequest, UpdatePr
 
 /// Router for project status endpoints including bulk update
 pub fn router() -> axum::Router<AppState> {
-    entity()
+    mutation()
         .router()
         .route("/project_statuses/bulk", post(bulk_update_project_statuses))
 }

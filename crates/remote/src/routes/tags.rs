@@ -14,15 +14,14 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{tags::TagRepository, types::is_valid_hsl_color},
-    entities::TAG_SHAPE,
-    entity_def::EntityDef,
+    mutation_def::MutationDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
 use api_types::{CreateTagRequest, ListTagsQuery, ListTagsResponse, Tag, UpdateTagRequest};
 
-/// Entity definition for Tags - provides both router and TypeScript metadata.
-pub fn entity() -> EntityDef<Tag, CreateTagRequest, UpdateTagRequest> {
-    EntityDef::new(&TAG_SHAPE)
+/// Mutation definition for Tags - provides both router and TypeScript metadata.
+pub fn mutation() -> MutationDef<Tag, CreateTagRequest, UpdateTagRequest> {
+    MutationDef::new("tags", "/v1/tags")
         .list(list_tags)
         .get(get_tag)
         .create(create_tag)
@@ -31,7 +30,7 @@ pub fn entity() -> EntityDef<Tag, CreateTagRequest, UpdateTagRequest> {
 }
 
 pub fn router() -> axum::Router<AppState> {
-    entity().router()
+    mutation().router()
 }
 
 #[instrument(

@@ -5,7 +5,7 @@ mod billing;
 pub mod config;
 pub mod db;
 pub mod entities;
-pub mod entity_def;
+pub mod mutation_def;
 mod entity_requests;
 pub mod github_app;
 pub mod mail;

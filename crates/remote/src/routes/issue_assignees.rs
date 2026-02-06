@@ -14,8 +14,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::issue_assignees::IssueAssigneeRepository,
-    entities::ISSUE_ASSIGNEE_SHAPE,
-    entity_def::EntityDef,
+    mutation_def::MutationDef,
     mutation_types::{DeleteResponse, MutationResponse},
 };
 use api_types::{
@@ -23,9 +22,9 @@ use api_types::{
     UpdateIssueAssigneeRequest,
 };
 
-/// Entity definition for IssueAssignee - provides both router and TypeScript metadata.
-pub fn entity() -> EntityDef<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest> {
-    EntityDef::new(&ISSUE_ASSIGNEE_SHAPE)
+/// Mutation definition for IssueAssignee - provides both router and TypeScript metadata.
+pub fn mutation() -> MutationDef<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest> {
+    MutationDef::new("issue_assignees", "/v1/issue_assignees")
         .list(list_issue_assignees)
         .get(get_issue_assignee)
         .create(create_issue_assignee)
@@ -34,7 +33,7 @@ pub fn entity() -> EntityDef<IssueAssignee, CreateIssueAssigneeRequest, UpdateIs
 }
 
 pub fn router() -> axum::Router<AppState> {
-    entity().router()
+    mutation().router()
 }
 
 #[instrument(

@@ -1,18 +1,17 @@
-//! Entity definition builder for type-safe route and metadata generation.
+//! Mutation definition builder for type-safe route and metadata generation.
 //!
-//! This module provides `EntityDef`, a builder that:
-//! - Generates axum routers with URLs derived from the shape's table name
+//! This module provides `MutationDef`, a builder that:
+//! - Generates axum routers for CRUD mutation routes
 //! - Captures type information for TypeScript generation
 //! - Uses marker traits to enforce request/entity type relationships
 //!
 //! # Example
 //!
 //! ```ignore
-//! use crate::entity_def::EntityDef;
-//! use crate::entities::TAG_SHAPE;
+//! use crate::mutation_def::MutationDef;
 //!
-//! pub fn entity() -> EntityDef<Tag, CreateTagRequest, UpdateTagRequest> {
-//!     EntityDef::new(&TAG_SHAPE)
+//! pub fn mutation() -> MutationDef<Tag, CreateTagRequest, UpdateTagRequest> {
+//!     MutationDef::new("tags", "/v1/tags")
 //!         .list(list_tags)
 //!         .get(get_tag)
 //!         .create(create_tag)
@@ -21,7 +20,7 @@
 //! }
 //!
 //! pub fn router() -> Router<AppState> {
-//!     entity().router()
+//!     mutation().router()
 //! }
 //! ```
 
@@ -30,10 +29,7 @@ use std::marker::PhantomData;
 use axum::{handler::Handler, routing::MethodRouter};
 use ts_rs::TS;
 
-use crate::{
-    shapes::{ShapeDefinition, ShapeExport},
-    AppState,
-};
+use crate::AppState;
 
 // =============================================================================
 // Marker Traits
@@ -50,15 +46,14 @@ pub trait UpdateRequestFor {
 }
 
 // =============================================================================
-// EntityMeta - Metadata for TypeScript generation
+// MutationMeta - Metadata for TypeScript generation
 // =============================================================================
 
-/// Metadata extracted from an EntityDef for TypeScript code generation.
+/// Metadata extracted from a MutationDef for TypeScript code generation.
 #[derive(Debug)]
-pub struct EntityMeta {
+pub struct MutationMeta {
     pub table: &'static str,
-    pub shape_name: &'static str,
-    pub mutations_url: String,
+    pub url: &'static str,
     pub row_type: String,
     pub create_type: Option<String>,
     pub update_type: Option<String>,
@@ -66,17 +61,18 @@ pub struct EntityMeta {
 }
 
 // =============================================================================
-// EntityDef Builder
+// MutationDef Builder
 // =============================================================================
 
-/// Builder for entity routes and metadata.
+/// Builder for mutation routes and metadata.
 ///
 /// Type parameters:
 /// - `E`: The entity/row type (e.g., `Tag`)
-/// - `C`: The create request type, or `()` if no create
-/// - `U`: The update request type, or `()` if no update
-pub struct EntityDef<E, C = (), U = ()> {
-    shape: &'static dyn ShapeExport,
+/// - `C`: The create request type, or `NoCreate` if no create
+/// - `U`: The update request type, or `NoUpdate` if no update
+pub struct MutationDef<E, C = (), U = ()> {
+    table: &'static str,
+    url: &'static str,
     base_route: MethodRouter<AppState>,
     id_route: MethodRouter<AppState>,
     has_create: bool,
@@ -85,11 +81,12 @@ pub struct EntityDef<E, C = (), U = ()> {
     _phantom: PhantomData<fn() -> (E, C, U)>,
 }
 
-impl<E: TS + Send + Sync + 'static> EntityDef<E, NoCreate, NoUpdate> {
-    /// Create a new EntityDef from a shape definition.
-    pub fn new(shape: &'static ShapeDefinition<E>) -> Self {
+impl<E: TS + Send + Sync + 'static> MutationDef<E, NoCreate, NoUpdate> {
+    /// Create a new MutationDef with explicit table name and URL.
+    pub fn new(table: &'static str, url: &'static str) -> Self {
         Self {
-            shape,
+            table,
+            url,
             base_route: MethodRouter::new(),
             id_route: MethodRouter::new(),
             has_create: false,
@@ -100,8 +97,8 @@ impl<E: TS + Send + Sync + 'static> EntityDef<E, NoCreate, NoUpdate> {
     }
 }
 
-impl<E: TS, C, U> EntityDef<E, C, U> {
-    /// Add a list handler (GET /table).
+impl<E: TS, C, U> MutationDef<E, C, U> {
+    /// Add a list handler (GET /{table}).
     pub fn list<H, T>(mut self, handler: H) -> Self
     where
         H: Handler<T, AppState> + Clone + Send + 'static,
@@ -111,7 +108,7 @@ impl<E: TS, C, U> EntityDef<E, C, U> {
         self
     }
 
-    /// Add a get handler (GET /table/{id}).
+    /// Add a get handler (GET /{table}/{id}).
     pub fn get<H, T>(mut self, handler: H) -> Self
     where
         H: Handler<T, AppState> + Clone + Send + 'static,
@@ -121,7 +118,7 @@ impl<E: TS, C, U> EntityDef<E, C, U> {
         self
     }
 
-    /// Add a delete handler (DELETE /table/{id}).
+    /// Add a delete handler (DELETE /{table}/{id}).
     pub fn delete<H, T>(mut self, handler: H) -> Self
     where
         H: Handler<T, AppState> + Clone + Send + 'static,
@@ -134,9 +131,8 @@ impl<E: TS, C, U> EntityDef<E, C, U> {
 
     /// Build the axum router from the registered handlers.
     pub fn router(self) -> axum::Router<AppState> {
-        let table = self.shape.table();
-        let base_path = format!("/{}", table);
-        let id_path = format!("/{}/{{id}}", table);
+        let base_path = format!("/{}", self.table);
+        let id_path = format!("/{}/{{id}}", self.table);
 
         axum::Router::new()
             .route(&base_path, self.base_route)
@@ -144,18 +140,19 @@ impl<E: TS, C, U> EntityDef<E, C, U> {
     }
 }
 
-impl<E: TS, U> EntityDef<E, NoCreate, U> {
-    /// Add a create handler (POST /table).
+impl<E: TS, U> MutationDef<E, NoCreate, U> {
+    /// Add a create handler (POST /{table}).
     ///
     /// The create request type must implement `CreateRequestFor<Entity = E>`.
-    pub fn create<C, H, T>(self, handler: H) -> EntityDef<E, C, U>
+    pub fn create<C, H, T>(self, handler: H) -> MutationDef<E, C, U>
     where
         C: TS + CreateRequestFor<Entity = E>,
         H: Handler<T, AppState> + Clone + Send + 'static,
         T: 'static,
     {
-        EntityDef {
-            shape: self.shape,
+        MutationDef {
+            table: self.table,
+            url: self.url,
             base_route: self.base_route.post(handler),
             id_route: self.id_route,
             has_create: true,
@@ -166,18 +163,19 @@ impl<E: TS, U> EntityDef<E, NoCreate, U> {
     }
 }
 
-impl<E: TS, C> EntityDef<E, C, NoUpdate> {
-    /// Add an update handler (PATCH /table/{id}).
+impl<E: TS, C> MutationDef<E, C, NoUpdate> {
+    /// Add an update handler (PATCH /{table}/{id}).
     ///
     /// The update request type must implement `UpdateRequestFor<Entity = E>`.
-    pub fn update<U, H, T>(self, handler: H) -> EntityDef<E, C, U>
+    pub fn update<U, H, T>(self, handler: H) -> MutationDef<E, C, U>
     where
         U: TS + UpdateRequestFor<Entity = E>,
         H: Handler<T, AppState> + Clone + Send + 'static,
         T: 'static,
     {
-        EntityDef {
-            shape: self.shape,
+        MutationDef {
+            table: self.table,
+            url: self.url,
             base_route: self.base_route,
             id_route: self.id_route.patch(handler),
             has_create: self.has_create,
@@ -193,15 +191,15 @@ impl<E: TS, C> EntityDef<E, C, NoUpdate> {
 // =============================================================================
 
 /// Trait for types that may or may not have a TS type name.
-/// Used to handle entities that don't have create or update endpoints.
+/// Used to handle mutations that don't have create or update endpoints.
 pub trait MaybeTypeName {
     fn maybe_name() -> Option<String>;
 }
 
-/// Marker type for entities without a create endpoint.
+/// Marker type for mutations without a create endpoint.
 pub struct NoCreate;
 
-/// Marker type for entities without an update endpoint.
+/// Marker type for mutations without an update endpoint.
 pub struct NoUpdate;
 
 impl MaybeTypeName for NoCreate {
@@ -223,13 +221,12 @@ impl<T: TS> MaybeTypeName for T {
 }
 
 // Metadata extraction
-impl<E: TS, C: MaybeTypeName, U: MaybeTypeName> EntityDef<E, C, U> {
+impl<E: TS, C: MaybeTypeName, U: MaybeTypeName> MutationDef<E, C, U> {
     /// Extract metadata for TypeScript generation.
-    pub fn metadata(&self) -> EntityMeta {
-        EntityMeta {
-            table: self.shape.table(),
-            shape_name: self.shape.name(),
-            mutations_url: format!("/v1/{}", self.shape.table()),
+    pub fn metadata(&self) -> MutationMeta {
+        MutationMeta {
+            table: self.table,
+            url: self.url,
             row_type: E::name(),
             create_type: C::maybe_name(),
             update_type: U::maybe_name(),

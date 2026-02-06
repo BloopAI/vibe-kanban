@@ -11,7 +11,6 @@ use ts_rs::TS;
 
 #[derive(Debug)]
 pub struct ShapeDefinition<T: TS> {
-    pub name: &'static str,
     pub table: &'static str,
     pub where_clause: &'static str,
     pub params: &'static [&'static str],
@@ -24,7 +23,6 @@ pub struct ShapeDefinition<T: TS> {
 /// This enables collecting `ShapeDefinition<T>` values with different `T`
 /// into a single `Vec<&dyn ShapeExport>`.
 pub trait ShapeExport: Sync {
-    fn name(&self) -> &'static str;
     fn table(&self) -> &'static str;
     fn where_clause(&self) -> &'static str;
     fn params(&self) -> &'static [&'static str];
@@ -33,9 +31,6 @@ pub trait ShapeExport: Sync {
 }
 
 impl<T: TS + Sync> ShapeExport for ShapeDefinition<T> {
-    fn name(&self) -> &'static str {
-        self.name
-    }
     fn table(&self) -> &'static str {
         self.table
     }
@@ -58,7 +53,6 @@ impl<T: TS + Sync> ShapeExport for ShapeDefinition<T> {
 /// Usage:
 /// ```ignore
 /// pub const PROJECT_SHAPE: ShapeDefinition<Project> = define_shape!(
-///     "PROJECT_SHAPE",
 ///     table: "projects",
 ///     where_clause: r#""organization_id" = $1"#,
 ///     url: "/shape/projects",
@@ -68,7 +62,6 @@ impl<T: TS + Sync> ShapeExport for ShapeDefinition<T> {
 #[macro_export]
 macro_rules! define_shape {
     (
-        $name:literal,
         table: $table:literal,
         where_clause: $where:literal,
         url: $url:expr,
@@ -83,7 +76,6 @@ macro_rules! define_shape {
         }
 
         $crate::shapes::ShapeDefinition {
-            name: $name,
             table: $table,
             where_clause: $where,
             params: &[$($param),*],
