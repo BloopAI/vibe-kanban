@@ -74,6 +74,10 @@ const BIPPY_BUNDLE: &str = include_str!("bippy_bundle.js");
 /// Enables inspect mode for detecting React component hierarchy.
 const CLICK_TO_COMPONENT_SCRIPT: &str = include_str!("click_to_component_script.js");
 
+/// Eruda DevTools initialization script. Initializes Eruda with dark theme
+/// and listens for toggle commands from parent window.
+const ERUDA_INIT: &str = include_str!("eruda_init.js");
+
 fn extract_target_from_host(headers: &HeaderMap) -> Option<u16> {
     let host = headers.get(header::HOST)?.to_str().ok()?;
     let subdomain = host.split('.').next()?;
@@ -237,11 +241,11 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
                     html.insert_str(head_end, &bippy_tag);
                 }
 
-                // Inject devtools and click-to-component scripts before </body>
+                // Inject Eruda CDN, init, devtools and click-to-component scripts before </body>
                 if let Some(pos) = html.to_lowercase().rfind("</body>") {
                     let scripts = format!(
-                        "<script>{}</script><script>{}</script>",
-                        DEVTOOLS_SCRIPT, CLICK_TO_COMPONENT_SCRIPT
+                        "<script src=\"https://cdn.jsdelivr.net/npm/eruda@3.4.3/eruda.js\"></script><script>{}</script><script>{}</script><script>{}</script>",
+                        ERUDA_INIT, DEVTOOLS_SCRIPT, CLICK_TO_COMPONENT_SCRIPT
                     );
                     html.insert_str(pos, &scripts);
                 }

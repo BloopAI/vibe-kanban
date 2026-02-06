@@ -13,6 +13,7 @@ import {
   ArrowsOutCardinalIcon,
   PauseIcon,
   CheckIcon,
+  TerminalIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -74,6 +75,8 @@ interface PreviewBrowserProps {
   onNavigateForward: () => void;
   isInspectMode: boolean;
   onToggleInspectMode: () => void;
+  isErudaVisible: boolean;
+  onToggleEruda: () => void;
   devToolsCollapsed: boolean;
   onToggleDevToolsCollapsed: () => void;
   devToolsActiveTab: MiniDevToolsTabType;
@@ -119,6 +122,8 @@ export function PreviewBrowser({
   onNavigateForward,
   isInspectMode,
   onToggleInspectMode,
+  isErudaVisible,
+  onToggleEruda,
   devToolsCollapsed,
   onToggleDevToolsCollapsed,
   devToolsActiveTab,
@@ -176,7 +181,7 @@ export function PreviewBrowser({
             disabled={!isServerRunning}
           />
 
-          {/* Inspect Mode */}
+          {/* Inspect Mode & DevTools */}
           <IconButtonGroup>
             <IconButtonGroupItem
               icon={CrosshairIcon}
@@ -185,6 +190,14 @@ export function PreviewBrowser({
               disabled={!isServerRunning}
               aria-label="Inspect component"
               title="Inspect component"
+            />
+            <IconButtonGroupItem
+              icon={TerminalIcon}
+              onClick={onToggleEruda}
+              active={isErudaVisible}
+              disabled={!isServerRunning}
+              aria-label={t('preview.toolbar.toggleDevTools')}
+              title={t('preview.toolbar.toggleDevTools')}
             />
           </IconButtonGroup>
 
