@@ -40,7 +40,7 @@ use executors::{
     executors::{CodingAgent, ExecutorError},
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
-use git::{ConflictOp, GitCli, GitCliError, GitServiceError};
+use git::{ConflictOp, GitCliError, GitService, GitServiceError};
 use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
@@ -1903,9 +1903,9 @@ pub async fn delete_workspace(
             }
 
             if delete_branches {
-                let git_cli = GitCli::new();
+                let git_service = GitService::new();
                 for repo_path in repo_paths {
-                    match git_cli.delete_branch(&repo_path, &branch_name) {
+                    match git_service.delete_branch(&repo_path, &branch_name) {
                         Ok(()) => {
                             tracing::info!(
                                 "Deleted branch '{}' from repo {:?}",
