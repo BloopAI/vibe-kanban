@@ -30,7 +30,10 @@ use std::marker::PhantomData;
 use axum::{handler::Handler, routing::MethodRouter};
 use ts_rs::TS;
 
-use crate::{shapes::ShapeDefinition, AppState};
+use crate::{
+    shapes::{ShapeDefinition, ShapeExport},
+    AppState,
+};
 
 // =============================================================================
 // Marker Traits
@@ -54,7 +57,7 @@ pub trait UpdateRequestFor {
 #[derive(Debug)]
 pub struct EntityMeta {
     pub table: &'static str,
-    pub shape_url: &'static str,
+    pub shape_name: &'static str,
     pub mutations_url: String,
     pub row_type: String,
     pub create_type: Option<String>,
@@ -73,7 +76,7 @@ pub struct EntityMeta {
 /// - `C`: The create request type, or `()` if no create
 /// - `U`: The update request type, or `()` if no update
 pub struct EntityDef<E, C = (), U = ()> {
-    shape: &'static ShapeDefinition,
+    shape: &'static dyn ShapeExport,
     base_route: MethodRouter<AppState>,
     id_route: MethodRouter<AppState>,
     has_create: bool,
@@ -84,7 +87,7 @@ pub struct EntityDef<E, C = (), U = ()> {
 
 impl<E: TS + Send + Sync + 'static> EntityDef<E, NoCreate, NoUpdate> {
     /// Create a new EntityDef from a shape definition.
-    pub fn new(shape: &'static ShapeDefinition) -> Self {
+    pub fn new(shape: &'static ShapeDefinition<E>) -> Self {
         Self {
             shape,
             base_route: MethodRouter::new(),
@@ -225,7 +228,7 @@ impl<E: TS, C: MaybeTypeName, U: MaybeTypeName> EntityDef<E, C, U> {
     pub fn metadata(&self) -> EntityMeta {
         EntityMeta {
             table: self.shape.table(),
-            shape_url: self.shape.url(),
+            shape_name: self.shape.name(),
             mutations_url: format!("/v1/{}", self.shape.table()),
             row_type: E::name(),
             create_type: C::maybe_name(),

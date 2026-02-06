@@ -3,7 +3,7 @@ use std::{env, fs, path::Path};
 use remote::{
     entities::{self, all_shapes},
     routes::all_entity_metadata,
-    shapes::ShapeDefinition,
+    shapes::ShapeExport,
 };
 use ts_rs::TS;
 use api_types::{
@@ -22,7 +22,7 @@ use api_types::{
 
 /// Shape-only entities that don't have CRUD mutation routes.
 /// These only have shapes for Electric realtime streaming.
-fn shape_only_entities() -> Vec<&'static ShapeDefinition> {
+fn shape_only_entities() -> Vec<&'static dyn ShapeExport> {
     vec![
         &entities::ORGANIZATION_MEMBER_SHAPE,
         &entities::USER_SHAPE,
@@ -159,7 +159,6 @@ fn export_shapes() -> String {
     // Generate individual shape definitions
     output.push_str("// Individual shape definitions with embedded types\n");
     for shape in &shapes {
-        let const_name = url_to_const_name(shape.url());
         let params_str = shape
             .params()
             .iter()
@@ -168,8 +167,8 @@ fn export_shapes() -> String {
             .join(", ");
 
         output.push_str(&format!(
-            "export const {}_SHAPE = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '/v1{}'\n);\n\n",
-            const_name,
+            "export const {} = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '/v1{}'\n);\n\n",
+            shape.name(),
             shape.ts_type_name(),
             shape.table(),
             params_str,
@@ -205,7 +204,7 @@ fn export_shapes() -> String {
         let ts_type = &entity.row_type;
         let table = entity.table;
         let const_name = to_screaming_snake_case(ts_type);
-        let shape_name = format!("{}_SHAPE", table.to_uppercase());
+        let shape_name = entity.shape_name;
 
         let create_type = entity.create_type.as_deref().unwrap_or("unknown");
         let update_type = entity.update_type.as_deref().unwrap_or("unknown");
@@ -227,16 +226,15 @@ fn export_shapes() -> String {
     output.push_str("// Entity definitions without mutations (shape-only)\n");
     for shape in shape_only_entities() {
         let ts_type = shape.ts_type_name();
-        let table = shape.table();
         let const_name = to_screaming_snake_case(&ts_type);
-        let shape_name = format!("{}_SHAPE", table.to_uppercase());
+        let shape_name = shape.name();
 
         output.push_str(&format!(
             "export const {}_ENTITY: EntityDefinition<{}> = {{\n",
             const_name, ts_type
         ));
         output.push_str(&format!("  name: '{}',\n", ts_type));
-        output.push_str(&format!("  table: '{}',\n", table));
+        output.push_str(&format!("  table: '{}',\n", shape.table()));
         output.push_str(&format!("  shape: {},\n", shape_name));
         output.push_str("  mutations: null,\n");
         output.push_str("};\n\n");
@@ -259,16 +257,4 @@ fn to_screaming_snake_case(s: &str) -> String {
         result.push(c.to_ascii_uppercase());
     }
     result
-}
-
-/// Convert URL path to const name
-/// "/shape/user/workspaces" -> "USER_WORKSPACES"
-/// "/shape/project/{project_id}/workspaces" -> "PROJECT_WORKSPACES"
-fn url_to_const_name(url: &str) -> String {
-    url.trim_start_matches("/shape/")
-        .split('/')
-        .filter(|s| !s.starts_with('{'))
-        .collect::<Vec<_>>()
-        .join("_")
-        .to_uppercase()
 }

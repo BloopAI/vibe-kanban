@@ -14,7 +14,7 @@ use serde::Deserialize;
 use tracing::error;
 use uuid::Uuid;
 
-use crate::{AppState, auth::RequestContext, db::organization_members, entities, shapes::ShapeDefinition};
+use crate::{AppState, auth::RequestContext, db::organization_members, entities, shapes::ShapeExport};
 
 #[derive(Deserialize)]
 struct OrgShapeQuery {
@@ -382,7 +382,7 @@ async fn proxy_issue_comment_reactions(
 /// to prevent unauthorized access to other tables or data.
 async fn proxy_table(
     state: &AppState,
-    shape: &ShapeDefinition,
+    shape: &dyn ShapeExport,
     client_params: &HashMap<String, String>,
     electric_params: &[String],
 ) -> Result<Response, ProxyError> {
@@ -395,12 +395,12 @@ async fn proxy_table(
     // Set table server-side (security: client can't override)
     origin_url
         .query_pairs_mut()
-        .append_pair("table", shape.table);
+        .append_pair("table", shape.table());
 
     // Set WHERE clause with parameterized values
     origin_url
         .query_pairs_mut()
-        .append_pair("where", shape.where_clause);
+        .append_pair("where", shape.where_clause());
 
     // Pass params for $1, $2, etc. placeholders
     for (i, param) in electric_params.iter().enumerate() {

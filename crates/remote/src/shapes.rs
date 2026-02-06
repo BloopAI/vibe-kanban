@@ -1,48 +1,65 @@
 //! Shape definitions for realtime streaming.
 //!
 //! This module provides the core shape infrastructure:
-//! - `ShapeDefinition` struct for shape metadata
+//! - `ShapeDefinition<T>` struct for shape metadata
+//! - `ShapeExport` trait for heterogeneous shape collections
 //! - `define_shape!` macro for compile-time SQL validation
 
+use std::marker::PhantomData;
+
+use ts_rs::TS;
+
 #[derive(Debug)]
-pub struct ShapeDefinition {
+pub struct ShapeDefinition<T: TS> {
+    pub name: &'static str,
     pub table: &'static str,
-    pub ts_type_name: &'static str,
     pub where_clause: &'static str,
     pub params: &'static [&'static str],
     pub url: &'static str,
+    pub _phantom: PhantomData<T>,
 }
 
-impl ShapeDefinition {
-    pub fn table(&self) -> &'static str {
+/// Trait to allow heterogeneous collection of shapes for export.
+///
+/// This enables collecting `ShapeDefinition<T>` values with different `T`
+/// into a single `Vec<&dyn ShapeExport>`.
+pub trait ShapeExport: Sync {
+    fn name(&self) -> &'static str;
+    fn table(&self) -> &'static str;
+    fn where_clause(&self) -> &'static str;
+    fn params(&self) -> &'static [&'static str];
+    fn url(&self) -> &'static str;
+    fn ts_type_name(&self) -> String;
+}
+
+impl<T: TS + Sync> ShapeExport for ShapeDefinition<T> {
+    fn name(&self) -> &'static str {
+        self.name
+    }
+    fn table(&self) -> &'static str {
         self.table
     }
-    pub fn ts_type_name(&self) -> &'static str {
-        self.ts_type_name
-    }
-    pub fn where_clause(&self) -> &'static str {
+    fn where_clause(&self) -> &'static str {
         self.where_clause
     }
-    pub fn params(&self) -> &'static [&'static str] {
+    fn params(&self) -> &'static [&'static str] {
         self.params
     }
-    pub fn url(&self) -> &'static str {
+    fn url(&self) -> &'static str {
         self.url
+    }
+    fn ts_type_name(&self) -> String {
+        T::name()
     }
 }
 
 /// Macro to construct a `ShapeDefinition` with compile-time SQL validation.
 ///
-/// The SQL validation uses `sqlx::query!` to ensure at compile time that:
-/// - The table exists
-/// - The columns in the WHERE clause exist
-/// - The SQL syntax is correct
-///
 /// Usage:
 /// ```ignore
-/// pub const PROJECT_SHAPE: ShapeDefinition = define_shape!(
+/// pub const PROJECT_SHAPE: ShapeDefinition<Project> = define_shape!(
+///     "PROJECT_SHAPE",
 ///     table: "projects",
-///     ts_type_name: "Project",
 ///     where_clause: r#""organization_id" = $1"#,
 ///     url: "/shape/projects",
 ///     params: ["organization_id"]
@@ -51,8 +68,8 @@ impl ShapeDefinition {
 #[macro_export]
 macro_rules! define_shape {
     (
+        $name:literal,
         table: $table:literal,
-        ts_type_name: $ts_type_name:literal,
         where_clause: $where:literal,
         url: $url:expr,
         params: [$($param:literal),* $(,)?] $(,)?
@@ -66,11 +83,12 @@ macro_rules! define_shape {
         }
 
         $crate::shapes::ShapeDefinition {
+            name: $name,
             table: $table,
-            ts_type_name: $ts_type_name,
             where_clause: $where,
             params: &[$($param),*],
             url: $url,
+            _phantom: std::marker::PhantomData,
         }
     }};
 }
