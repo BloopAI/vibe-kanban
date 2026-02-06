@@ -204,9 +204,7 @@ pub struct McpUpdateIssueRequest {
     pub title: Option<String>,
     #[schemars(description = "New description for the issue")]
     pub description: Option<String>,
-    #[schemars(
-        description = "New status name for the issue (must match a project status name)"
-    )]
+    #[schemars(description = "New status name for the issue (must match a project status name)")]
     pub status: Option<String>,
 }
 
@@ -530,8 +528,7 @@ impl TaskServer {
             "/api/remote/project-statuses?project_id={}",
             project_id
         ));
-        let response: ListProjectStatusesResponse =
-            self.send_json(self.client.get(&url)).await?;
+        let response: ListProjectStatusesResponse = self.send_json(self.client.get(&url)).await?;
         Ok(response.project_statuses)
     }
 
@@ -665,13 +662,11 @@ impl TaskServer {
         };
 
         let url = self.url("/api/remote/issues");
-        let response: RemoteMutationResponse<Issue> = match self
-            .send_json(self.client.post(&url).json(&payload))
-            .await
-        {
-            Ok(r) => r,
-            Err(e) => return Ok(e),
-        };
+        let response: RemoteMutationResponse<Issue> =
+            match self.send_json(self.client.post(&url).json(&payload)).await {
+                Ok(r) => r,
+                Err(e) => return Ok(e),
+            };
 
         TaskServer::success(&McpCreateIssueResponse {
             issue_id: response.data.id.to_string(),
@@ -690,10 +685,7 @@ impl TaskServer {
             }
         };
 
-        let url = self.url(&format!(
-            "/api/remote/projects?organization_id={}",
-            org_id
-        ));
+        let url = self.url(&format!("/api/remote/projects?organization_id={}", org_id));
         let response: api_types::ListProjectsResponse =
             match self.send_json(self.client.get(&url)).await {
                 Ok(r) => r,
@@ -849,9 +841,7 @@ impl TaskServer {
         })
     }
 
-    #[tool(
-        description = "List all the issues in a project. `project_id` is required!"
-    )]
+    #[tool(description = "List all the issues in a project. `project_id` is required!")]
     async fn list_issues(
         &self,
         Parameters(McpListIssuesRequest { project_id, limit }): Parameters<McpListIssuesRequest>,
@@ -890,10 +880,7 @@ impl TaskServer {
         }): Parameters<StartWorkspaceSessionRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         if repos.is_empty() {
-            return Self::err(
-                "At least one repository must be specified.",
-                None::<&str>,
-            );
+            return Self::err("At least one repository must be specified.", None::<&str>);
         }
 
         let executor_trimmed = executor.trim();
