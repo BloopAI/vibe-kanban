@@ -541,12 +541,7 @@ function CommandBarWithStatuses(
         updateIssue(issueId, { status_id: statusId });
       }
     },
-    [
-      updateIssue,
-      props.pendingStatusSelection?.isCreateMode,
-      props.pendingStatusSelection?.onCreateModeUpdate,
-      updateCreateDefaults,
-    ]
+    [updateIssue, props.pendingStatusSelection, updateCreateDefaults]
   );
 
   const handlePriorityUpdate = useCallback(
@@ -569,12 +564,7 @@ function CommandBarWithStatuses(
         updateIssue(issueId, { priority });
       }
     },
-    [
-      updateIssue,
-      props.pendingPrioritySelection?.isCreateMode,
-      props.pendingPrioritySelection?.onCreateModeUpdate,
-      updateCreateDefaults,
-    ]
+    [updateIssue, props.pendingPrioritySelection, updateCreateDefaults]
   );
 
   const handleAddSubIssue = useCallback(
