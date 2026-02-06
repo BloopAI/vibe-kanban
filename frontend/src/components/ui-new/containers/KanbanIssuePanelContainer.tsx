@@ -180,16 +180,6 @@ export function KanbanIssuePanelContainer() {
   // Callback ref that handles title content sync and auto-focus
   const titleRefCallback = useCallback(
     (node: HTMLDivElement | null) => {
-      console.log('[draft-debug] titleRefCallback', {
-        hasNode: !!node,
-        selectedKanbanIssueId,
-        lastTitleIssueId: lastTitleIssueIdRef.current,
-        willUpdate: node
-          ? selectedKanbanIssueId !== lastTitleIssueIdRef.current
-          : false,
-        createFormTitle: createFormData?.title,
-        mode,
-      });
       if (node) {
         // Set title content when issue changes
         if (selectedKanbanIssueId !== lastTitleIssueIdRef.current) {
@@ -199,6 +189,13 @@ export function KanbanIssuePanelContainer() {
               : (selectedIssue?.title ?? '');
           node.textContent = title;
           lastTitleIssueIdRef.current = selectedKanbanIssueId;
+        } else if (
+          mode === 'create' &&
+          createFormData?.title &&
+          node.textContent !== createFormData.title
+        ) {
+          // Handle late scratch restore: title data changed but issue ID didn't
+          node.textContent = createFormData.title;
         }
         // Auto-focus in create mode after any dialog close focus handling runs.
         if (mode === 'create') {
@@ -358,24 +355,6 @@ export function KanbanIssuePanelContainer() {
     const currentIssueId = selectedKanbanIssueId;
     const isNewIssue = currentIssueId !== prevIssueIdRef.current;
 
-    console.log('[draft-debug] mode-switch effect', {
-      mode,
-      isNewIssue,
-      currentIssueId,
-      prevIssueId: prevIssueIdRef.current,
-      draftIssueLoading,
-      scratchPayloadType: draftIssueScratch?.payload?.type,
-      scratchProjectId:
-        draftIssueScratch?.payload?.type === 'DRAFT_ISSUE'
-          ? draftIssueScratch.payload.data.project_id
-          : null,
-      scratchTitle:
-        draftIssueScratch?.payload?.type === 'DRAFT_ISSUE'
-          ? draftIssueScratch.payload.data.title
-          : null,
-      projectId,
-    });
-
     if (!isNewIssue) {
       // Same issue - no reset needed
       // (dropdown fields derive from server state, text fields preserve local edits)
@@ -404,11 +383,9 @@ export function KanbanIssuePanelContainer() {
           : undefined;
 
       if (scratchData && scratchData.project_id === projectId) {
-        console.log('[draft-debug] RESTORING from scratch', scratchData.title);
         hasRestoredFromScratch.current = true;
         setCreateFormData(restoreFromScratch(scratchData));
       } else {
-        console.log('[draft-debug] INITIALIZING EMPTY form');
         setCreateFormData({
           title: '',
           description: null,
@@ -437,16 +414,6 @@ export function KanbanIssuePanelContainer() {
 
   // Handle late scratch loading: if scratch arrives after initial create mode render
   useEffect(() => {
-    console.log('[draft-debug] late-loading effect', {
-      mode,
-      hasRestored: hasRestoredFromScratch.current,
-      draftIssueLoading,
-      hasScratch: !!draftIssueScratch,
-      scratchTitle:
-        draftIssueScratch?.payload?.type === 'DRAFT_ISSUE'
-          ? draftIssueScratch.payload.data.title
-          : null,
-    });
     if (mode !== 'create') {
       hasRestoredFromScratch.current = false;
       return;
@@ -460,7 +427,6 @@ export function KanbanIssuePanelContainer() {
         : undefined;
 
     if (scratchData && scratchData.project_id === projectId) {
-      console.log('[draft-debug] LATE RESTORE from scratch', scratchData.title);
       hasRestoredFromScratch.current = true;
       setCreateFormData(restoreFromScratch(scratchData));
     }
@@ -474,12 +440,6 @@ export function KanbanIssuePanelContainer() {
 
   // Auto-save draft issue to scratch when form data changes in create mode
   useEffect(() => {
-    console.log('[draft-debug] auto-save effect', {
-      mode,
-      hasFormData: !!createFormData,
-      formTitle: createFormData?.title,
-      projectId,
-    });
     if (mode !== 'create' || !createFormData || !projectId) return;
 
     debouncedSaveDraftIssue({
