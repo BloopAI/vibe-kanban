@@ -329,15 +329,12 @@ export function KanbanIssuePanelContainer() {
   // Helper to build form data from a draft issue scratch
   const restoreFromScratch = useCallback(
     (scratchData: DraftIssueData): IssueFormData => {
-      const statusExists = statuses.some(
-        (s) => s.id === scratchData.status_id
-      );
+      const statusExists = statuses.some((s) => s.id === scratchData.status_id);
       return {
         title: scratchData.title,
         description: scratchData.description ?? null,
         statusId: statusExists ? scratchData.status_id : defaultStatusId,
-        priority:
-          (scratchData.priority as IssueFormData['priority']) ?? null,
+        priority: (scratchData.priority as IssueFormData['priority']) ?? null,
         assigneeIds: scratchData.assignee_ids,
         tagIds: scratchData.tag_ids,
         createDraftWorkspace: scratchData.create_draft_workspace,
