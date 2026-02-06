@@ -1,4 +1,9 @@
-import { LayoutIcon, PlusIcon, SpinnerIcon } from '@phosphor-icons/react';
+import {
+  LayoutIcon,
+  PlusIcon,
+  SpinnerIcon,
+  StarIcon,
+} from '@phosphor-icons/react';
 import { siDiscord, siGithub } from 'simple-icons';
 import { cn } from '@/lib/utils';
 import type { OrganizationWithRole } from 'shared/types';
@@ -8,6 +13,12 @@ import { AppBarUserPopoverContainer } from '../containers/AppBarUserPopoverConta
 import { Tooltip } from './Tooltip';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/hooks/useGitHubStars';
+
+function formatStarCount(count: number): string {
+  if (count < 1000) return String(count);
+  const k = count / 1000;
+  return k >= 10 ? `${Math.floor(k)}k` : `${k.toFixed(1)}k`;
+}
 
 function getProjectInitials(name: string): string {
   const trimmed = name.trim();
@@ -154,8 +165,9 @@ export function AppBar({
               <path d={siGithub.path} />
             </svg>
             {starCount != null && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-brand text-[10px] font-medium text-white">
-                {starCount > 999 ? '999+' : starCount}
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center gap-0.5 rounded-full bg-brand text-[10px] font-medium text-white">
+                <StarIcon size={8} weight="fill" />
+                {formatStarCount(starCount)}
               </span>
             )}
           </a>
