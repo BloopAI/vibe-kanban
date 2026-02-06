@@ -793,28 +793,39 @@ pub async fn get_task_attempt_branch_status(
 
         let worktree_path = workspace_dir.join(&repo.name);
 
-        let head_oid = deployment
-            .git()
-            .get_head_info(&worktree_path)
-            .ok()
-            .map(|h| h.oid);
+        let head_oid = match deployment.git().get_head_info(&worktree_path) {
+            Ok(h) => Some(h.oid),
+            Err(e) => {
+                tracing::warn!(repo_name = %repo.name, "Failed to get HEAD info: {}", e);
+                None
+            }
+        };
 
         let (is_rebase_in_progress, conflicted_files, conflict_op) = {
-            let in_rebase = deployment
-                .git()
-                .is_rebase_in_progress(&worktree_path)
-                .unwrap_or(false);
-            let conflicts = deployment
-                .git()
-                .get_conflicted_files(&worktree_path)
-                .unwrap_or_default();
+            let in_rebase = match deployment.git().is_rebase_in_progress(&worktree_path) {
+                Ok(v) => v,
+                Err(e) => {
+                    tracing::warn!(repo_name = %repo.name, "Failed to check rebase state: {}", e);
+                    false
+                }
+            };
+            let conflicts = match deployment.git().get_conflicted_files(&worktree_path) {
+                Ok(v) => v,
+                Err(e) => {
+                    tracing::warn!(repo_name = %repo.name, "Failed to get conflicted files: {}", e);
+                    vec![]
+                }
+            };
             let op = if conflicts.is_empty() {
                 None
             } else {
-                deployment
-                    .git()
-                    .detect_conflict_op(&worktree_path)
-                    .unwrap_or(None)
+                match deployment.git().detect_conflict_op(&worktree_path) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        tracing::warn!(repo_name = %repo.name, "Failed to detect conflict op: {}", e);
+                        None
+                    }
+                }
             };
             (in_rebase, conflicts, op)
         };
@@ -822,7 +833,10 @@ pub async fn get_task_attempt_branch_status(
         let (uncommitted_count, untracked_count) =
             match deployment.git().get_worktree_change_counts(&worktree_path) {
                 Ok((a, b)) => (Some(a), Some(b)),
-                Err(_) => (None, None),
+                Err(e) => {
+                    tracing::warn!(repo_name = %repo.name, "Failed to get worktree change counts: {}", e);
+                    (None, None)
+                }
             };
 
         let has_uncommitted_changes = uncommitted_count.map(|c| c > 0);

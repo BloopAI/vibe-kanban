@@ -316,7 +316,56 @@ impl IntoResponse for ApiError {
                 "GitServiceError",
                 "A rebase is already in progress. Resolve conflicts or abort the rebase, then retry.",
             ),
-            ApiError::GitService(_) => ErrorInfo::internal("GitServiceError"),
+            ApiError::GitService(git::GitServiceError::BranchNotFound(branch)) => {
+                ErrorInfo::not_found("GitServiceError", format!("Branch '{}' not found.", branch))
+            }
+            ApiError::GitService(git::GitServiceError::BranchesDiverged(msg)) => {
+                ErrorInfo::conflict("GitServiceError", msg.clone())
+            }
+            ApiError::GitService(git::GitServiceError::WorktreeDirty(branch, files)) => {
+                ErrorInfo::conflict(
+                    "GitServiceError",
+                    format!("Branch '{}' has uncommitted changes: {}", branch, files),
+                )
+            }
+            ApiError::GitService(git::GitServiceError::InvalidRepository(msg)) => {
+                ErrorInfo::bad_request("GitServiceError", msg.clone())
+            }
+            ApiError::GitService(git::GitServiceError::GitCLI(
+                git::GitCliError::AuthFailed(msg),
+            )) => ErrorInfo::with_status(
+                StatusCode::UNAUTHORIZED,
+                "GitServiceError",
+                format!("Git authentication failed: {}", msg),
+            ),
+            ApiError::GitService(git::GitServiceError::GitCLI(git::GitCliError::NotAvailable)) => {
+                ErrorInfo::with_status(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "GitServiceError",
+                    "Git is not installed or not available on PATH.".to_string(),
+                )
+            }
+            ApiError::GitService(git::GitServiceError::GitCLI(
+                git::GitCliError::PushRejected(msg),
+            )) => ErrorInfo::conflict("GitServiceError", format!("Push rejected: {}", msg)),
+            ApiError::GitService(git::GitServiceError::GitCLI(
+                git::GitCliError::RebaseInProgress,
+            )) => ErrorInfo::conflict(
+                "GitServiceError",
+                "A rebase is in progress in this worktree.",
+            ),
+            ApiError::GitService(git::GitServiceError::GitCLI(
+                git::GitCliError::CommandFailed(msg),
+            )) => ErrorInfo::with_status(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "GitServiceError",
+                format!("Git command failed: {}", msg),
+            ),
+            ApiError::GitService(e) => ErrorInfo::with_status(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "GitServiceError",
+                format!("Git operation failed: {}", e),
+            ),
             ApiError::GitHost(_) => ErrorInfo::internal("GitHostError"),
 
             ApiError::Image(ImageError::InvalidFormat) => ErrorInfo::bad_request(
