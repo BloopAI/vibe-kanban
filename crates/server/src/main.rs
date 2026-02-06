@@ -111,9 +111,9 @@ async fn main() -> Result<(), VibeKanbanError> {
         }
         tracing::info!("Opening browser...");
         tokio::spawn(async move {
-            if let Err(e) = open_browser(&format!("http://127.0.0.1:{actual_port}")).await {
+            if let Err(e) = open_browser(&format!("http://{host}:{actual_port}")).await {
                 tracing::warn!(
-                    "Failed to open browser automatically: {}. Please open http://127.0.0.1:{} manually.",
+                    "Failed to open browser automatically: {}. Please open http://{host}:{} manually.",
                     e,
                     actual_port
                 );
