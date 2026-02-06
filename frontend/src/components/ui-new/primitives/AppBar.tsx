@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import type { OrganizationWithRole } from 'shared/types';
 import type { Project as RemoteProject } from 'shared/remote-types';
 import { AppBarButton } from './AppBarButton';
+import { AppBarSocialLink } from './AppBarSocialLink';
 import { AppBarUserPopoverContainer } from '../containers/AppBarUserPopoverContainer';
 import { Tooltip } from './Tooltip';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
@@ -143,63 +144,28 @@ export function AppBar({
           onOrgSelect={onOrgSelect}
           onCreateOrg={onCreateOrg}
         />
-        <Tooltip content="Star on GitHub" side="right">
-          <a
-            href="https://github.com/BloopAI/vibe-kanban"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              'relative flex items-center justify-center w-10 h-10 rounded-lg',
-              'text-sm font-medium transition-colors cursor-pointer',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-              'bg-primary text-normal hover:opacity-80'
-            )}
-            aria-label="Star on GitHub"
-          >
-            <svg
-              className="w-5 h-5"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path d={siGithub.path} />
-            </svg>
-            {starCount != null && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center gap-0.5 rounded-full bg-brand text-[10px] font-medium text-white">
+        <AppBarSocialLink
+          href="https://github.com/BloopAI/vibe-kanban"
+          label="Star on GitHub"
+          iconPath={siGithub.path}
+          badge={
+            starCount != null && (
+              <>
                 <StarIcon size={8} weight="fill" />
                 {formatStarCount(starCount)}
-              </span>
-            )}
-          </a>
-        </Tooltip>
-        <Tooltip content="Join our Discord" side="right">
-          <a
-            href="https://discord.gg/AC4nwVtJM3"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              'relative flex items-center justify-center w-10 h-10 rounded-lg',
-              'text-sm font-medium transition-colors cursor-pointer',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-              'bg-primary text-normal hover:opacity-80'
-            )}
-            aria-label="Join our Discord"
-          >
-            <svg
-              className="w-5 h-5"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path d={siDiscord.path} />
-            </svg>
-            {onlineCount != null && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-brand text-[10px] font-medium text-white">
-                {onlineCount > 999 ? '999+' : onlineCount}
-              </span>
-            )}
-          </a>
-        </Tooltip>
+              </>
+            )
+          }
+        />
+        <AppBarSocialLink
+          href="https://discord.gg/AC4nwVtJM3"
+          label="Join our Discord"
+          iconPath={siDiscord.path}
+          badge={
+            onlineCount != null &&
+            (onlineCount > 999 ? '999+' : onlineCount)
+          }
+        />
       </div>
     </div>
   );
