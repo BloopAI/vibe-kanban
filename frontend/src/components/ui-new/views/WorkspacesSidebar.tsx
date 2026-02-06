@@ -158,7 +158,7 @@ export function WorkspacesSidebar({
           actions={headerActions}
           className="border-b"
         />
-        <div className="px-base flex items-center gap-half">
+        <div className="px-base flex items-stretch gap-half">
           <div className="flex-1 min-w-0">
             <InputField
               variant="search"
