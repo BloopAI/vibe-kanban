@@ -77,10 +77,7 @@ export function PropertyDropdown<T extends string = string>({
             onClick={() => onChange(option.value)}
             badge={
               option.value === value ? (
-                <CheckIcon
-                  className="size-icon-xs text-brand"
-                  weight="bold"
-                />
+                <CheckIcon className="size-icon-xs text-brand" weight="bold" />
               ) : undefined
             }
           >
