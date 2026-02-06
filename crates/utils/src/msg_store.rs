@@ -48,10 +48,18 @@ impl MsgStore {
     }
 
     pub fn push(&self, msg: LogMsg) {
+        let t0 = std::time::Instant::now();
         let _ = self.sender.send(msg.clone()); // live listeners
-        let bytes = msg.approx_bytes();
+        let broadcast_us = t0.elapsed().as_micros();
 
+        let t1 = std::time::Instant::now();
+        let bytes = msg.approx_bytes();
+        let approx_bytes_us = t1.elapsed().as_micros();
+
+        let t2 = std::time::Instant::now();
         let mut inner = self.inner.write().unwrap();
+        let lock_us = t2.elapsed().as_micros();
+
         while inner.total_bytes.saturating_add(bytes) > HISTORY_BYTES {
             if let Some(front) = inner.history.pop_front() {
                 inner.total_bytes = inner.total_bytes.saturating_sub(front.bytes);
@@ -61,6 +69,14 @@ impl MsgStore {
         }
         inner.history.push_back(StoredMsg { msg, bytes });
         inner.total_bytes = inner.total_bytes.saturating_add(bytes);
+
+        tracing::trace!(
+            broadcast_us = broadcast_us,
+            approx_bytes_us = approx_bytes_us,
+            lock_acquire_us = lock_us,
+            bytes = bytes,
+            "MsgStore::push timing"
+        );
     }
 
     // Convenience
