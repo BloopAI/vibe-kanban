@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useEffect } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useJsonPatchWsStream } from '@/hooks/useJsonPatchWsStream';
 import type {
@@ -106,15 +106,6 @@ async function fetchWorkspaceSummariesByArchived(
       return new Map();
     }
 
-    console.log(
-      `[useWorkspaces] Summary fetch (archived=${archived}):`,
-      data.data.summaries.map((s) => ({
-        id: s.workspace_id,
-        completedAt: s.latest_process_completed_at,
-        status: s.latest_process_status,
-      }))
-    );
-
     const map = new Map<string, WorkspaceSummary>();
     for (const summary of data.data.summaries) {
       map.set(summary.workspace_id, summary);
@@ -182,27 +173,6 @@ export function useWorkspaces(): UseWorkspacesResult {
       placeholderData: keepPreviousData,
     });
 
-  // DEBUG: Track is_running changes from WebSocket stream
-  const prevRunningRef = useRef<Record<string, boolean>>({});
-
-  useEffect(() => {
-    if (!activeData?.workspaces) return;
-    const prev = prevRunningRef.current;
-    const curr = activeData.workspaces;
-    const next: Record<string, boolean> = {};
-
-    for (const [id, ws] of Object.entries(curr)) {
-      next[id] = ws.is_running;
-      if (id in prev && prev[id] !== ws.is_running) {
-        console.log(
-          `[useWorkspaces] is_running changed: ${ws.name ?? ws.branch} (${id}) ${prev[id]} → ${ws.is_running}`
-        );
-      }
-    }
-
-    prevRunningRef.current = next;
-  }, [activeData]);
-
   const workspaces = useMemo(() => {
     if (!activeData?.workspaces) return [];
     return Object.values(activeData.workspaces)
@@ -216,15 +186,7 @@ export function useWorkspaces(): UseWorkspacesResult {
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
       })
-      .map((ws) => {
-        const summary = activeSummaries.get(ws.id);
-        if (summary) {
-          console.log(
-            `[useWorkspaces] Merge: ${ws.name ?? ws.branch} running=${ws.is_running} completedAt=${summary.latest_process_completed_at} status=${summary.latest_process_status}`
-          );
-        }
-        return toSidebarWorkspace(ws, summary);
-      });
+      .map((ws) => toSidebarWorkspace(ws, activeSummaries.get(ws.id)));
   }, [activeData, activeSummaries]);
 
   const archivedWorkspaces = useMemo(() => {
