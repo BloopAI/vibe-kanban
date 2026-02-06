@@ -151,7 +151,7 @@ export function AppBar({
           badge={
             starCount != null && (
               <>
-                <StarIcon size={8} weight="fill" />
+                <StarIcon size={10} weight="fill" />
                 {formatStarCount(starCount)}
               </>
             )

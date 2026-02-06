@@ -25,7 +25,7 @@ export function AppBarSocialLink({
           'relative flex items-center justify-center w-10 h-10 rounded-lg',
           'text-sm font-medium transition-colors cursor-pointer',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-          'bg-primary text-normal hover:opacity-80'
+          'bg-panel text-normal hover:opacity-80'
         )}
         aria-label={label}
       >
@@ -38,7 +38,7 @@ export function AppBarSocialLink({
           <path d={iconPath} />
         </svg>
         {badge != null && badge !== false && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center gap-0.5 rounded-full bg-brand text-[10px] font-medium text-white">
+          <span className="absolute -top-2 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center gap-0.5 rounded-full bg-brand-secondary text-[10px] font-medium text-white">
             {badge}
           </span>
         )}
