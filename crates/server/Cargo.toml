@@ -29,10 +29,8 @@ chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { workspace = true }
 tower-http = { workspace = true }
-nix = { version = "0.29", features = ["signal", "process"] }
 rmcp = { version = "0.5.0", features = ["server", "transport-io"] }
 schemars = { workspace = true }
-secrecy = "0.10.3"
 sentry = { version = "0.41.0", default-features = false, features = ["anyhow", "backtrace", "panic", "debug-images", "reqwest"] }
 reqwest = { workspace = true }
 rustls = { workspace = true }
@@ -41,14 +39,12 @@ thiserror = { workspace = true }
 os_info = "3.12.0"
 futures-util = "0.3"
 base64 = "0.22"
-ignore = "0.4"
 git2 = { workspace = true }
 mime_guess = "2.0"
 rust-embed = "8.2"
 url = "2.5"
 rand = { version = "0.8", features = ["std"] }
 sha2 = "0.10"
-strum = "0.27.2"
 regex = "1"
 
 [build-dependencies]

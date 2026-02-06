@@ -11,7 +11,6 @@ services = { path = "../services" }
 utils = { path = "../utils" }
 git = { path = "../git" }
 tokio-util = { version = "0.7", features = ["io"] }
-bytes = "1.0"
 serde_json = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
@@ -20,11 +19,7 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 async-trait = { workspace = true }
 thiserror = { workspace = true }
 command-group = { version = "5.0", features = ["with-tokio"] }
-nix = { version = "0.29", features = ["signal", "process"] }
-reqwest = { workspace = true }
-sentry = { version = "0.41.0", default-features = false, features = ["anyhow", "backtrace", "panic", "debug-images", "reqwest"] }
 futures = "0.3"
-json-patch = "2.0"
 tokio = { workspace = true }
 globwalk = "0.9"
 portable-pty = "0.8"

@@ -21,7 +21,6 @@ indicatif = "0.17"
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 uuid = { version = "1.0", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
 tempfile = "3.8"
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

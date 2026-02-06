@@ -8,7 +8,6 @@ workspace_utils = { path = "../utils", package = "utils" }
 git = { path = "../git" }
 tokio = { workspace = true }
 tokio-util = { version = "0.7", features = ["io", "compat", "rt"] }
-bytes = "1.0"
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tracing = { workspace = true }
@@ -20,7 +19,6 @@ schemars = { workspace = true }
 dirs = "5.0"
 xdg = "3.0"
 async-trait = { workspace = true } 
-directories = "6.0.0"
 command-group = { version = "5.0", features = ["with-tokio"] }
 regex = "1.11.1"
 json-patch = "2.0"
@@ -30,14 +28,12 @@ futures-io = "0.3.31"
 tokio-stream = { version = "0.1.17", features = ["io-util"] }
 futures = "0.3.31"
 bon = "3.6"
-fork_stream = "0.1.0"
 os_pipe = "1.2"
 strip-ansi-escapes = "0.2.1"
 strum = "0.27.2"
 strum_macros = "0.27.2"
 convert_case = "0.6"
 sqlx = "0.8.6"
-axum = { workspace = true }
 shlex = "1.3.0"
 agent-client-protocol = { version = "0.8", features = ["unstable"] }
 codex-protocol = { git = "https://github.com/openai/codex.git", package = "codex-protocol", tag = "rust-v0.98.0" }
@@ -46,7 +42,6 @@ codex-core = { git = "https://github.com/openai/codex.git", package = "codex-cor
 sha2 = "0.10"
 derivative = "2.2.0"
 reqwest = { workspace = true }
-rustls = { workspace = true }
 eventsource-stream = "0.2"
 walkdir = "2"
 rand = "0.8"
