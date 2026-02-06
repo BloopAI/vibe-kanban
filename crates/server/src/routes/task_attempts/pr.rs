@@ -329,11 +329,6 @@ pub async fn create_pr(
                 });
             }
 
-            // Auto-open PR in browser
-            if let Err(e) = utils::browser::open_browser(&pr_info.url).await {
-                tracing::warn!("Failed to open PR in browser: {}", e);
-            }
-
             deployment
                 .track_if_analytics_allowed(
                     "pr_created",
