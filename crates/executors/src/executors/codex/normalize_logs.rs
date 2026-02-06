@@ -7,7 +7,6 @@ use std::{
 use codex_app_server_protocol::{
     JSONRPCNotification, JSONRPCResponse, NewConversationResponse, ServerNotification,
 };
-use codex_mcp_types::ContentBlock;
 use codex_protocol::{
     openai_models::ReasoningEffort,
     plan_tool::{StepStatus, UpdatePlanArgs},
@@ -734,7 +733,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 if value
                                     .content
                                     .iter()
-                                    .all(|block| matches!(block, ContentBlock::TextContent(_)))
+                                    .all(|block| block.get("type").and_then(|t| t.as_str()) == Some("text"))
                                 {
                                     mcp_tool_state.result = Some(ToolResult {
                                         r#type: ToolResultValueType::Markdown,
@@ -742,14 +741,8 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                             value
                                                 .content
                                                 .iter()
-                                                .map(|block| {
-                                                    if let ContentBlock::TextContent(content) =
-                                                        block
-                                                    {
-                                                        content.text.clone()
-                                                    } else {
-                                                        unreachable!()
-                                                    }
+                                                .filter_map(|block| {
+                                                    block.get("text").and_then(|t| t.as_str()).map(|s| s.to_owned())
                                                 })
                                                 .collect::<Vec<String>>()
                                                 .join("\n"),
@@ -890,7 +883,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     let index = add_normalized_entry(&msg_store, &entry_index, normalized_entry);
                     web_search_state.index = Some(index);
                 }
-                EventMsg::WebSearchEnd(WebSearchEndEvent { call_id, query }) => {
+                EventMsg::WebSearchEnd(WebSearchEndEvent { call_id, query, .. }) => {
                     state.assistant = None;
                     state.thinking = None;
                     if let Some(mut entry) = state.web_searches.remove(&call_id) {
@@ -1071,7 +1064,13 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 | EventMsg::CollabWaitingBegin(..)
                 | EventMsg::CollabWaitingEnd(..)
                 | EventMsg::CollabCloseBegin(..)
-                | EventMsg::CollabCloseEnd(..) => {}
+                | EventMsg::CollabCloseEnd(..)
+                | EventMsg::ThreadNameUpdated(..)
+                | EventMsg::RequestUserInput(..)
+                | EventMsg::DynamicToolCallRequest(..)
+                | EventMsg::ListRemoteSkillsResponse(..)
+                | EventMsg::RemoteSkillDownloaded(..)
+                | EventMsg::PlanDelta(..) => {}
             }
         }
     });
