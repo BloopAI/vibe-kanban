@@ -503,9 +503,9 @@ impl WsProfiler {
                 .create(true)
                 .append(true)
                 .open(&self.output_path)
-            {
-                let _ = writeln!(file, "{}", json);
-            }
+        {
+            let _ = writeln!(file, "{}", json);
+        }
 
         tracing::info!(
             wall_clock_ms = wall_clock.as_millis() as u64,
