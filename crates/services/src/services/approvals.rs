@@ -31,8 +31,10 @@ use uuid::Uuid;
 
 #[derive(Debug)]
 struct PendingApproval {
-    entry_index: usize,
-    entry: NormalizedEntry,
+    /// Index + entry for the matching tool-use in the MsgStore.
+    /// `None` when the approval request arrived before the tool-use event
+    /// was normalised into the store (timing race).
+    tool_entry: Option<(usize, NormalizedEntry)>,
     execution_process_id: Uuid,
     tool_name: String,
     response_tx: oneshot::Sender<ApprovalStatus>,
@@ -89,49 +91,58 @@ impl Approvals {
             .shared();
         let req_id = request.id.clone();
 
-        if let Some(store) = self.msg_store_by_id(&request.execution_process_id).await {
-            // Find the matching tool use entry by name and input
+        // Try to find and update the matching tool-use entry in the MsgStore
+        // for UI display. This is best-effort — the approval channel must stay
+        // alive even if the entry hasn't been normalised yet (timing race).
+        let tool_entry = if let Some(store) =
+            self.msg_store_by_id(&request.execution_process_id).await
+        {
             let matching_tool = find_matching_tool_use(store.clone(), &request.tool_call_id);
 
             if let Some((idx, matching_tool)) = matching_tool {
-                let approval_entry = matching_tool
-                    .with_tool_status(ToolStatus::PendingApproval {
+                if let Some(approval_entry) =
+                    matching_tool.with_tool_status(ToolStatus::PendingApproval {
                         approval_id: req_id.clone(),
                         requested_at: request.created_at,
                         timeout_at: request.timeout_at,
                     })
-                    .ok_or(ApprovalError::NoToolUseEntry)?;
-                store.push_patch(ConversationPatch::replace(idx, approval_entry));
-
-                self.pending.insert(
-                    req_id.clone(),
-                    PendingApproval {
-                        entry_index: idx,
-                        entry: matching_tool,
-                        execution_process_id: request.execution_process_id,
-                        tool_name: request.tool_name.clone(),
-                        response_tx: tx,
-                    },
-                );
+                {
+                    store.push_patch(ConversationPatch::replace(idx, approval_entry));
+                }
                 tracing::debug!(
                     "Created approval {} for tool '{}' at entry index {}",
                     req_id,
                     request.tool_name,
                     idx
                 );
+                Some((idx, matching_tool))
             } else {
                 tracing::warn!(
                     "No matching tool use entry found for approval request: tool='{}', execution_process_id={}",
                     request.tool_name,
                     request.execution_process_id
                 );
+                None
             }
         } else {
             tracing::warn!(
                 "No msg_store found for execution_process_id: {}",
                 request.execution_process_id
             );
-        }
+            None
+        };
+
+        // Always insert into pending so the oneshot sender stays alive.
+        // Without this, tx is dropped and the waiter resolves as TimedOut immediately.
+        self.pending.insert(
+            req_id.clone(),
+            PendingApproval {
+                tool_entry,
+                execution_process_id: request.execution_process_id,
+                tool_name: request.tool_name.clone(),
+                response_tx: tx,
+            },
+        );
 
         self.spawn_timeout_watcher(req_id.clone(), request.timeout_at, waiter.clone());
         Ok((request, waiter))
@@ -148,21 +159,22 @@ impl Approvals {
             self.completed.insert(id.to_string(), req.status.clone());
             let _ = p.response_tx.send(req.status.clone());
 
-            if let Some(store) = self.msg_store_by_id(&p.execution_process_id).await {
-                let status = ToolStatus::from_approval_status(&req.status).ok_or(
-                    ApprovalError::Custom(anyhow::anyhow!("Invalid approval status")),
-                )?;
-                let updated_entry = p
-                    .entry
-                    .with_tool_status(status)
-                    .ok_or(ApprovalError::NoToolUseEntry)?;
+            if let Some((entry_index, entry)) = p.tool_entry {
+                if let Some(store) = self.msg_store_by_id(&p.execution_process_id).await {
+                    let status = ToolStatus::from_approval_status(&req.status).ok_or(
+                        ApprovalError::Custom(anyhow::anyhow!("Invalid approval status")),
+                    )?;
+                    let updated_entry = entry
+                        .with_tool_status(status)
+                        .ok_or(ApprovalError::NoToolUseEntry)?;
 
-                store.push_patch(ConversationPatch::replace(p.entry_index, updated_entry));
-            } else {
-                tracing::warn!(
-                    "No msg_store found for execution_process_id: {}",
-                    p.execution_process_id
-                );
+                    store.push_patch(ConversationPatch::replace(entry_index, updated_entry));
+                } else {
+                    tracing::warn!(
+                        "No msg_store found for execution_process_id: {}",
+                        p.execution_process_id
+                    );
+                }
             }
 
             let tool_ctx = ToolContext {
@@ -226,31 +238,32 @@ impl Approvals {
                     tracing::debug!("approval '{}' timeout notification receiver dropped", id);
                 }
 
-                let store = {
-                    let map = msg_stores.read().await;
-                    map.get(&pending_approval.execution_process_id).cloned()
-                };
+                if let Some((entry_index, entry)) = pending_approval.tool_entry {
+                    let store = {
+                        let map = msg_stores.read().await;
+                        map.get(&pending_approval.execution_process_id).cloned()
+                    };
 
-                if let Some(store) = store {
-                    if let Some(updated_entry) = pending_approval
-                        .entry
-                        .with_tool_status(ToolStatus::TimedOut)
-                    {
-                        store.push_patch(ConversationPatch::replace(
-                            pending_approval.entry_index,
-                            updated_entry,
-                        ));
+                    if let Some(store) = store {
+                        if let Some(updated_entry) =
+                            entry.with_tool_status(ToolStatus::TimedOut)
+                        {
+                            store.push_patch(ConversationPatch::replace(
+                                entry_index,
+                                updated_entry,
+                            ));
+                        } else {
+                            tracing::warn!(
+                                "Timed out approval '{}' but couldn't update tool status (no tool-use entry).",
+                                id
+                            );
+                        }
                     } else {
                         tracing::warn!(
-                            "Timed out approval '{}' but couldn't update tool status (no tool-use entry).",
-                            id
+                            "No msg_store found for execution_process_id: {}",
+                            pending_approval.execution_process_id
                         );
                     }
-                } else {
-                    tracing::warn!(
-                        "No msg_store found for execution_process_id: {}",
-                        pending_approval.execution_process_id
-                    );
                 }
             }
         });
@@ -270,17 +283,15 @@ impl Approvals {
                 },
             );
 
-            if let Some(store) = self
-                .msg_store_by_id(&pending_approval.execution_process_id)
-                .await
-                && let Some(entry) = pending_approval.entry.with_tool_status(ToolStatus::Denied {
+            if let Some((entry_index, entry)) = pending_approval.tool_entry
+                && let Some(store) = self
+                    .msg_store_by_id(&pending_approval.execution_process_id)
+                    .await
+                && let Some(updated) = entry.with_tool_status(ToolStatus::Denied {
                     reason: Some("Cancelled".to_string()),
                 })
             {
-                store.push_patch(ConversationPatch::replace(
-                    pending_approval.entry_index,
-                    entry,
-                ));
+                store.push_patch(ConversationPatch::replace(entry_index, updated));
             }
 
             tracing::debug!("Cancelled approval '{}'", id);
