@@ -486,6 +486,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         command_state.command = command_text;
                     }
                     command_state.awaiting_approval = true;
+                    command_state.call_id = call_id.clone();
                     if let Some(index) = command_state.index {
                         replace_normalized_entry(
                             &msg_store,
