@@ -77,7 +77,7 @@ export function useResolvedPage(
   search: string,
   ctx: ActionVisibilityContext,
   workspace: Workspace | undefined,
-  repos: RepoItem[],
+  repos: RepoItem[]
 ): ResolvedCommandBarPage {
   return useMemo(() => {
     if (pageId === 'selectRepo') {

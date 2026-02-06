@@ -1,7 +1,4 @@
-import type {
-  RepoItem,
-  BranchItem,
-} from '@/components/ui-new/actions/pages';
+import type { RepoItem, BranchItem } from '@/components/ui-new/actions/pages';
 import type { SelectionPage } from '../SelectionDialog';
 
 export interface RepoBranchSelectionResult {

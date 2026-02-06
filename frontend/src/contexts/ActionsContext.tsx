@@ -236,7 +236,12 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       );
       await ProjectSelectionDialog.show({
         projectId,
-        selection: { type: 'relationship', issueId, relationshipType, direction },
+        selection: {
+          type: 'relationship',
+          issueId,
+          relationshipType,
+          direction,
+        },
       });
     },
     []

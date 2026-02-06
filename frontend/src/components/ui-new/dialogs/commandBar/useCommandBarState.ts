@@ -178,9 +178,7 @@ export function useCommandBarState(
   );
 
   const currentPage: PageId =
-    state.status === 'selectingRepo'
-      ? 'selectRepo'
-      : state.page;
+    state.status === 'selectingRepo' ? 'selectRepo' : state.page;
 
   return {
     state,

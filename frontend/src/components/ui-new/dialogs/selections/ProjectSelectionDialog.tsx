@@ -47,11 +47,7 @@ interface ProjectSelectionDialogProps {
 }
 
 // Inner component that has access to ProjectContext
-function ProjectSelectionContent({
-  selection,
-}: {
-  selection: SelectionMode;
-}) {
+function ProjectSelectionContent({ selection }: { selection: SelectionMode }) {
   const modal = useModal();
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const navigate = useNavigate();
@@ -166,9 +162,7 @@ function ProjectSelectionContent({
 
     const existingRelatedIds = new Set(
       issueRelationships
-        .filter(
-          (r) => r.issue_id === issueId || r.related_issue_id === issueId
-        )
+        .filter((r) => r.issue_id === issueId || r.related_issue_id === issueId)
         .flatMap((r) => [r.issue_id, r.related_issue_id])
     );
 
@@ -353,15 +347,13 @@ function ProjectSelectionContent({
 }
 
 const ProjectSelectionDialogImpl =
-  NiceModal.create<ProjectSelectionDialogProps>(
-    ({ projectId, selection }) => {
-      return (
-        <ProjectProvider projectId={projectId}>
-          <ProjectSelectionContent selection={selection} />
-        </ProjectProvider>
-      );
-    }
-  );
+  NiceModal.create<ProjectSelectionDialogProps>(({ projectId, selection }) => {
+    return (
+      <ProjectProvider projectId={projectId}>
+        <ProjectSelectionContent selection={selection} />
+      </ProjectProvider>
+    );
+  });
 
 export const ProjectSelectionDialog = defineModal<
   ProjectSelectionDialogProps,
