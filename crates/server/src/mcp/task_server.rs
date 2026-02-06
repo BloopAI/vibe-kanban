@@ -1,10 +1,9 @@
-use std::{future::Future, str::FromStr};
+use std::str::FromStr;
 
+use api_types::{Issue, ListIssuesResponse, ListProjectStatusesResponse, ProjectStatus};
 use db::models::{
-    project::Project,
     repo::Repo,
     tag::Tag,
-    task::{CreateTask, Task, TaskStatus, TaskWithAttemptStatus, UpdateTask},
     workspace::{Workspace, WorkspaceContext},
 };
 use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
@@ -19,6 +18,7 @@ use rmcp::{
 };
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json;
+use services::services::remote_client::RemoteMutationResponse;
 use uuid::Uuid;
 
 use crate::routes::{
@@ -26,19 +26,21 @@ use crate::routes::{
     task_attempts::{CreateTaskAttemptBody, WorkspaceRepoInput},
 };
 
+// ── MCP request/response types ──────────────────────────────────────────────
+
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct CreateTaskRequest {
-    #[schemars(description = "The ID of the project to create the task in. This is required!")]
+pub struct McpCreateIssueRequest {
+    #[schemars(description = "The ID of the project to create the issue in. This is required!")]
     pub project_id: Uuid,
-    #[schemars(description = "The title of the task")]
+    #[schemars(description = "The title of the issue")]
     pub title: String,
-    #[schemars(description = "Optional description of the task")]
+    #[schemars(description = "Optional description of the issue")]
     pub description: Option<String>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
-pub struct CreateTaskResponse {
-    pub task_id: String,
+pub struct McpCreateIssueResponse {
+    pub issue_id: String,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -54,7 +56,7 @@ pub struct ProjectSummary {
 }
 
 impl ProjectSummary {
-    fn from_project(project: Project) -> Self {
+    fn from_remote_project(project: api_types::Project) -> Self {
         Self {
             id: project.id.to_string(),
             name: project.name,
@@ -142,125 +144,97 @@ pub struct ListReposResponse {
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
-pub struct ListProjectsResponse {
+pub struct McpListProjectsResponse {
     pub projects: Vec<ProjectSummary>,
     pub count: usize,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct ListTasksRequest {
-    #[schemars(description = "The ID of the project to list tasks from")]
+pub struct McpListIssuesRequest {
+    #[schemars(description = "The ID of the project to list issues from")]
     pub project_id: Uuid,
-    #[schemars(
-        description = "Optional status filter: 'todo', 'inprogress', 'inreview', 'done', 'cancelled'"
-    )]
-    pub status: Option<String>,
-    #[schemars(description = "Maximum number of tasks to return (default: 50)")]
+    #[schemars(description = "Maximum number of issues to return (default: 50)")]
     pub limit: Option<i32>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
-pub struct TaskSummary {
-    #[schemars(description = "The unique identifier of the task")]
+pub struct IssueSummary {
+    #[schemars(description = "The unique identifier of the issue")]
     pub id: String,
-    #[schemars(description = "The title of the task")]
+    #[schemars(description = "The title of the issue")]
     pub title: String,
-    #[schemars(description = "Current status of the task")]
+    #[schemars(description = "Current status of the issue")]
     pub status: String,
-    #[schemars(description = "When the task was created")]
+    #[schemars(description = "When the issue was created")]
     pub created_at: String,
-    #[schemars(description = "When the task was last updated")]
+    #[schemars(description = "When the issue was last updated")]
     pub updated_at: String,
-    #[schemars(description = "Whether the task has an in-progress execution attempt")]
-    pub has_in_progress_attempt: Option<bool>,
-    #[schemars(description = "Whether the last execution attempt failed")]
-    pub last_attempt_failed: Option<bool>,
-}
-
-impl TaskSummary {
-    fn from_task_with_status(task: TaskWithAttemptStatus) -> Self {
-        Self {
-            id: task.id.to_string(),
-            title: task.title.to_string(),
-            status: task.status.to_string(),
-            created_at: task.created_at.to_rfc3339(),
-            updated_at: task.updated_at.to_rfc3339(),
-            has_in_progress_attempt: Some(task.has_in_progress_attempt),
-            last_attempt_failed: Some(task.last_attempt_failed),
-        }
-    }
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
-pub struct TaskDetails {
-    #[schemars(description = "The unique identifier of the task")]
+pub struct IssueDetails {
+    #[schemars(description = "The unique identifier of the issue")]
     pub id: String,
-    #[schemars(description = "The title of the task")]
+    #[schemars(description = "The title of the issue")]
     pub title: String,
-    #[schemars(description = "Optional description of the task")]
+    #[schemars(description = "Optional description of the issue")]
     pub description: Option<String>,
-    #[schemars(description = "Current status of the task")]
+    #[schemars(description = "Current status of the issue")]
     pub status: String,
-    #[schemars(description = "When the task was created")]
+    #[schemars(description = "The status ID (UUID)")]
+    pub status_id: String,
+    #[schemars(description = "When the issue was created")]
     pub created_at: String,
-    #[schemars(description = "When the task was last updated")]
+    #[schemars(description = "When the issue was last updated")]
     pub updated_at: String,
-    #[schemars(description = "Whether the task has an in-progress execution attempt")]
-    pub has_in_progress_attempt: Option<bool>,
-    #[schemars(description = "Whether the last execution attempt failed")]
-    pub last_attempt_failed: Option<bool>,
-}
-
-impl TaskDetails {
-    fn from_task(task: Task) -> Self {
-        Self {
-            id: task.id.to_string(),
-            title: task.title,
-            description: task.description,
-            status: task.status.to_string(),
-            created_at: task.created_at.to_rfc3339(),
-            updated_at: task.updated_at.to_rfc3339(),
-            has_in_progress_attempt: None,
-            last_attempt_failed: None,
-        }
-    }
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
-pub struct ListTasksResponse {
-    pub tasks: Vec<TaskSummary>,
+pub struct McpListIssuesResponse {
+    pub issues: Vec<IssueSummary>,
     pub count: usize,
     pub project_id: String,
-    pub applied_filters: ListTasksFilters,
-}
-
-#[derive(Debug, Serialize, schemars::JsonSchema)]
-pub struct ListTasksFilters {
-    pub status: Option<String>,
-    pub limit: i32,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct UpdateTaskRequest {
-    #[schemars(description = "The ID of the task to update")]
-    pub task_id: Uuid,
-    #[schemars(description = "New title for the task")]
+pub struct McpUpdateIssueRequest {
+    #[schemars(description = "The ID of the issue to update")]
+    pub issue_id: Uuid,
+    #[schemars(description = "New title for the issue")]
     pub title: Option<String>,
-    #[schemars(description = "New description for the task")]
+    #[schemars(description = "New description for the issue")]
     pub description: Option<String>,
-    #[schemars(description = "New status: 'todo', 'inprogress', 'inreview', 'done', 'cancelled'")]
+    #[schemars(
+        description = "New status name for the issue (must match a project status name)"
+    )]
     pub status: Option<String>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
-pub struct UpdateTaskResponse {
-    pub task: TaskDetails,
+pub struct McpUpdateIssueResponse {
+    pub issue: IssueDetails,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct DeleteTaskRequest {
-    #[schemars(description = "The ID of the task to delete")]
-    pub task_id: Uuid,
+pub struct McpDeleteIssueRequest {
+    #[schemars(description = "The ID of the issue to delete")]
+    pub issue_id: Uuid,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct McpDeleteIssueResponse {
+    pub deleted_issue_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct McpGetIssueRequest {
+    #[schemars(description = "The ID of the issue to retrieve")]
+    pub issue_id: Uuid,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct McpGetIssueResponse {
+    pub issue: IssueDetails,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -291,21 +265,7 @@ pub struct StartWorkspaceSessionResponse {
     pub workspace_id: String,
 }
 
-#[derive(Debug, Serialize, schemars::JsonSchema)]
-pub struct DeleteTaskResponse {
-    pub deleted_task_id: Option<String>,
-}
-
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct GetTaskRequest {
-    #[schemars(description = "The ID of the task to retrieve")]
-    pub task_id: Uuid,
-}
-
-#[derive(Debug, Serialize, schemars::JsonSchema)]
-pub struct GetTaskResponse {
-    pub task: TaskDetails,
-}
+// ── Server struct ───────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
 pub struct TaskServer {
@@ -313,6 +273,7 @@ pub struct TaskServer {
     base_url: String,
     tool_router: ToolRouter<TaskServer>,
     context: Option<McpContext>,
+    organization_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
@@ -328,8 +289,8 @@ pub struct McpRepoContext {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
 pub struct McpContext {
     pub project_id: Uuid,
-    pub task_id: Uuid,
-    pub task_title: String,
+    pub issue_id: Uuid,
+    pub issue_title: String,
     pub workspace_id: Uuid,
     pub workspace_branch: String,
     #[schemars(
@@ -339,12 +300,13 @@ pub struct McpContext {
 }
 
 impl TaskServer {
-    pub fn new(base_url: &str) -> Self {
+    pub fn new(base_url: &str, organization_id: Option<Uuid>) -> Self {
         Self {
             client: reqwest::Client::new(),
             base_url: base_url.to_string(),
             tool_router: Self::tool_router(),
             context: None,
+            organization_id,
         }
     }
 
@@ -392,7 +354,6 @@ impl TaskServer {
 
         let ctx = api_response.data?;
 
-        // Map RepoWithTargetBranch to McpRepoContext
         let workspace_repos: Vec<McpRepoContext> = ctx
             .workspace_repos
             .into_iter()
@@ -405,14 +366,16 @@ impl TaskServer {
 
         Some(McpContext {
             project_id: ctx.project.id,
-            task_id: ctx.task.id,
-            task_title: ctx.task.title,
+            issue_id: ctx.task.id,
+            issue_title: ctx.task.title,
             workspace_id: ctx.workspace.id,
             workspace_branch: ctx.workspace.branch,
             workspace_repos,
         })
     }
 }
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
 struct ApiResponseEnvelope<T> {
@@ -514,16 +477,12 @@ impl TaskServer {
     }
 
     /// Expands @tagname references in text by replacing them with tag content.
-    /// Returns the original text if expansion fails (e.g., network error).
-    /// Unknown tags are left as-is (not expanded, not an error).
     async fn expand_tags(&self, text: &str) -> String {
-        // Pattern matches @tagname where tagname is non-whitespace, non-@ characters
         let tag_pattern = match Regex::new(r"@([^\s@]+)") {
             Ok(re) => re,
             Err(_) => return text.to_string(),
         };
 
-        // Find all unique tag names referenced in the text
         let tag_names: Vec<String> = tag_pattern
             .captures_iter(text)
             .filter_map(|cap| cap.get(1).map(|m| m.as_str().to_string()))
@@ -535,7 +494,6 @@ impl TaskServer {
             return text.to_string();
         }
 
-        // Fetch all tags from the API
         let url = self.url("/api/tags");
         let tags: Vec<Tag> = match self.client.get(&url).send().await {
             Ok(resp) if resp.status().is_success() => {
@@ -547,13 +505,11 @@ impl TaskServer {
             _ => return text.to_string(),
         };
 
-        // Build a map of tag_name -> content for quick lookup
         let tag_map: std::collections::HashMap<&str, &str> = tags
             .iter()
             .map(|t| (t.tag_name.as_str(), t.content.as_str()))
             .collect();
 
-        // Replace each @tagname with its content (if found)
         let result = tag_pattern.replace_all(text, |caps: &regex::Captures| {
             let tag_name = caps.get(1).map(|m| m.as_str()).unwrap_or("");
             match tag_map.get(tag_name) {
@@ -564,79 +520,196 @@ impl TaskServer {
 
         result.into_owned()
     }
+
+    /// Fetches project statuses for a project, returning a map of status name → status.
+    async fn fetch_project_statuses(
+        &self,
+        project_id: Uuid,
+    ) -> Result<Vec<ProjectStatus>, CallToolResult> {
+        let url = self.url(&format!(
+            "/api/remote/project-statuses?project_id={}",
+            project_id
+        ));
+        let response: ListProjectStatusesResponse =
+            self.send_json(self.client.get(&url)).await?;
+        Ok(response.project_statuses)
+    }
+
+    /// Resolves a status name to a status_id UUID using project statuses.
+    async fn resolve_status_id(
+        &self,
+        project_id: Uuid,
+        status_name: &str,
+    ) -> Result<Uuid, CallToolResult> {
+        let statuses = self.fetch_project_statuses(project_id).await?;
+        statuses
+            .iter()
+            .find(|s| s.name.eq_ignore_ascii_case(status_name))
+            .map(|s| s.id)
+            .ok_or_else(|| {
+                let available: Vec<&str> = statuses.iter().map(|s| s.name.as_str()).collect();
+                Self::err(
+                    format!(
+                        "Unknown status '{}'. Available statuses: {:?}",
+                        status_name, available
+                    ),
+                    None::<String>,
+                )
+                .unwrap()
+            })
+    }
+
+    /// Gets the default status_id for a project (first non-hidden status by sort_order).
+    async fn default_status_id(&self, project_id: Uuid) -> Result<Uuid, CallToolResult> {
+        let statuses = self.fetch_project_statuses(project_id).await?;
+        statuses
+            .iter()
+            .filter(|s| !s.hidden)
+            .min_by_key(|s| s.sort_order)
+            .map(|s| s.id)
+            .ok_or_else(|| {
+                Self::err("No visible statuses found for project", None::<&str>).unwrap()
+            })
+    }
+
+    /// Resolves a status_id to its display name. Falls back to UUID string if lookup fails.
+    async fn resolve_status_name(&self, project_id: Uuid, status_id: Uuid) -> String {
+        match self.fetch_project_statuses(project_id).await {
+            Ok(statuses) => statuses
+                .iter()
+                .find(|s| s.id == status_id)
+                .map(|s| s.name.clone())
+                .unwrap_or_else(|| status_id.to_string()),
+            Err(_) => status_id.to_string(),
+        }
+    }
+
+    /// Converts an Issue to IssueSummary, resolving status_id to name.
+    async fn issue_to_summary(&self, issue: &Issue) -> IssueSummary {
+        let status = self
+            .resolve_status_name(issue.project_id, issue.status_id)
+            .await;
+        IssueSummary {
+            id: issue.id.to_string(),
+            title: issue.title.clone(),
+            status,
+            created_at: issue.created_at.to_rfc3339(),
+            updated_at: issue.updated_at.to_rfc3339(),
+        }
+    }
+
+    /// Converts an Issue to IssueDetails, resolving status_id to name.
+    async fn issue_to_details(&self, issue: &Issue) -> IssueDetails {
+        let status = self
+            .resolve_status_name(issue.project_id, issue.status_id)
+            .await;
+        IssueDetails {
+            id: issue.id.to_string(),
+            title: issue.title.clone(),
+            description: issue.description.clone(),
+            status,
+            status_id: issue.status_id.to_string(),
+            created_at: issue.created_at.to_rfc3339(),
+            updated_at: issue.updated_at.to_rfc3339(),
+        }
+    }
 }
+
+// ── MCP Tools ───────────────────────────────────────────────────────────────
 
 #[tool_router]
 impl TaskServer {
     #[tool(
-        description = "Return project, task, and workspace metadata for the current workspace session context."
+        description = "Return project, issue, and workspace metadata for the current workspace session context."
     )]
     async fn get_context(&self) -> Result<CallToolResult, ErrorData> {
-        // Context was fetched at startup and cached
-        // This tool is only registered if context exists, so unwrap is safe
         let context = self.context.as_ref().expect("VK context should exist");
         TaskServer::success(context)
     }
 
     #[tool(
-        description = "Create a new task/ticket in a project. Always pass the `project_id` of the project you want to create the task in - it is required!"
+        description = "Create a new issue in a project. Always pass the `project_id` of the project you want to create the issue in - it is required!"
     )]
-    async fn create_task(
+    async fn create_issue(
         &self,
-        Parameters(CreateTaskRequest {
+        Parameters(McpCreateIssueRequest {
             project_id,
             title,
             description,
-        }): Parameters<CreateTaskRequest>,
+        }): Parameters<McpCreateIssueRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        // Expand @tagname references in description
         let expanded_description = match description {
             Some(desc) => Some(self.expand_tags(&desc).await),
             None => None,
         };
 
-        let url = self.url("/api/tasks");
-
-        let task: Task = match self
-            .send_json(
-                self.client
-                    .post(&url)
-                    .json(&CreateTask::from_title_description(
-                        project_id,
-                        title,
-                        expanded_description,
-                    )),
-            )
-            .await
-        {
-            Ok(t) => t,
+        let status_id = match self.default_status_id(project_id).await {
+            Ok(id) => id,
             Err(e) => return Ok(e),
         };
 
-        TaskServer::success(&CreateTaskResponse {
-            task_id: task.id.to_string(),
+        let payload = api_types::CreateIssueRequest {
+            id: None,
+            project_id,
+            status_id,
+            title,
+            description: expanded_description,
+            priority: None,
+            start_date: None,
+            target_date: None,
+            completed_at: None,
+            sort_order: 0.0,
+            parent_issue_id: None,
+            parent_issue_sort_order: None,
+            extension_metadata: serde_json::json!({}),
+        };
+
+        let url = self.url("/api/remote/issues");
+        let response: RemoteMutationResponse<Issue> = match self
+            .send_json(self.client.post(&url).json(&payload))
+            .await
+        {
+            Ok(r) => r,
+            Err(e) => return Ok(e),
+        };
+
+        TaskServer::success(&McpCreateIssueResponse {
+            issue_id: response.data.id.to_string(),
         })
     }
 
     #[tool(description = "List all the available projects")]
     async fn list_projects(&self) -> Result<CallToolResult, ErrorData> {
-        let url = self.url("/api/projects");
-        let projects: Vec<Project> = match self.send_json(self.client.get(&url)).await {
-            Ok(ps) => ps,
-            Err(e) => return Ok(e),
+        let org_id = match self.organization_id {
+            Some(id) => id,
+            None => {
+                return Self::err(
+                    "Organization ID not configured. Set VK_ORGANIZATION_ID environment variable.",
+                    None::<&str>,
+                );
+            }
         };
 
-        let project_summaries: Vec<ProjectSummary> = projects
+        let url = self.url(&format!(
+            "/api/remote/projects?organization_id={}",
+            org_id
+        ));
+        let response: api_types::ListProjectsResponse =
+            match self.send_json(self.client.get(&url)).await {
+                Ok(r) => r,
+                Err(e) => return Ok(e),
+            };
+
+        let project_summaries: Vec<ProjectSummary> = response
+            .projects
             .into_iter()
-            .map(ProjectSummary::from_project)
+            .map(ProjectSummary::from_remote_project)
             .collect();
 
-        let response = ListProjectsResponse {
+        TaskServer::success(&McpListProjectsResponse {
             count: project_summaries.len(),
             projects: project_summaries,
-        };
-
-        TaskServer::success(&response)
+        })
     }
 
     #[tool(description = "List all repositories for a project. `project_id` is required!")]
@@ -777,63 +850,31 @@ impl TaskServer {
     }
 
     #[tool(
-        description = "List all the task/tickets in a project with optional filtering and execution status. `project_id` is required!"
+        description = "List all the issues in a project. `project_id` is required!"
     )]
-    async fn list_tasks(
+    async fn list_issues(
         &self,
-        Parameters(ListTasksRequest {
-            project_id,
-            status,
-            limit,
-        }): Parameters<ListTasksRequest>,
+        Parameters(McpListIssuesRequest { project_id, limit }): Parameters<McpListIssuesRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let status_filter = if let Some(ref status_str) = status {
-            match TaskStatus::from_str(status_str) {
-                Ok(s) => Some(s),
-                Err(_) => {
-                    return Self::err(
-                        "Invalid status filter. Valid values: 'todo', 'inprogress', 'inreview', 'done', 'cancelled'".to_string(),
-                        Some(status_str.to_string()),
-                    );
-                }
-            }
-        } else {
-            None
+        let url = self.url(&format!("/api/remote/issues?project_id={}", project_id));
+        let response: ListIssuesResponse = match self.send_json(self.client.get(&url)).await {
+            Ok(r) => r,
+            Err(e) => return Ok(e),
         };
 
-        let url = self.url(&format!("/api/tasks?project_id={}", project_id));
-        let all_tasks: Vec<TaskWithAttemptStatus> =
-            match self.send_json(self.client.get(&url)).await {
-                Ok(t) => t,
-                Err(e) => return Ok(e),
-            };
+        let issue_limit = limit.unwrap_or(50).max(0) as usize;
+        let limited: Vec<&Issue> = response.issues.iter().take(issue_limit).collect();
 
-        let task_limit = limit.unwrap_or(50).max(0) as usize;
-        let filtered = all_tasks.into_iter().filter(|t| {
-            if let Some(ref want) = status_filter {
-                &t.status == want
-            } else {
-                true
-            }
-        });
-        let limited: Vec<TaskWithAttemptStatus> = filtered.take(task_limit).collect();
+        let mut summaries = Vec::with_capacity(limited.len());
+        for issue in &limited {
+            summaries.push(self.issue_to_summary(issue).await);
+        }
 
-        let task_summaries: Vec<TaskSummary> = limited
-            .into_iter()
-            .map(TaskSummary::from_task_with_status)
-            .collect();
-
-        let response = ListTasksResponse {
-            count: task_summaries.len(),
-            tasks: task_summaries,
+        TaskServer::success(&McpListIssuesResponse {
+            count: summaries.len(),
+            issues: summaries,
             project_id: project_id.to_string(),
-            applied_filters: ListTasksFilters {
-                status: status.clone(),
-                limit: task_limit as i32,
-            },
-        };
-
-        TaskServer::success(&response)
+        })
     }
 
     #[tool(
@@ -850,14 +891,14 @@ impl TaskServer {
     ) -> Result<CallToolResult, ErrorData> {
         if repos.is_empty() {
             return Self::err(
-                "At least one repository must be specified.".to_string(),
-                None::<String>,
+                "At least one repository must be specified.",
+                None::<&str>,
             );
         }
 
         let executor_trimmed = executor.trim();
         if executor_trimmed.is_empty() {
-            return Self::err("Executor must not be empty.".to_string(), None::<String>);
+            return Self::err("Executor must not be empty.", None::<&str>);
         }
 
         let normalized_executor = executor_trimmed.replace('-', "_").to_ascii_uppercase();
@@ -915,26 +956,32 @@ impl TaskServer {
     }
 
     #[tool(
-        description = "Update an existing task/ticket's title, description, or status. `task_id` is required. `title`, `description`, and `status` are optional."
+        description = "Update an existing issue's title, description, or status. `issue_id` is required. `title`, `description`, and `status` are optional."
     )]
-    async fn update_task(
+    async fn update_issue(
         &self,
-        Parameters(UpdateTaskRequest {
-            task_id,
+        Parameters(McpUpdateIssueRequest {
+            issue_id,
             title,
             description,
             status,
-        }): Parameters<UpdateTaskRequest>,
+        }): Parameters<McpUpdateIssueRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let status = if let Some(ref status_str) = status {
-            match TaskStatus::from_str(status_str) {
-                Ok(s) => Some(s),
-                Err(_) => {
-                    return Self::err(
-                        "Invalid status filter. Valid values: 'todo', 'inprogress', 'inreview', 'done', 'cancelled'".to_string(),
-                        Some(status_str.to_string()),
-                    );
-                }
+        // First get the issue to know its project_id for status resolution
+        let get_url = self.url(&format!("/api/remote/issues/{}", issue_id));
+        let existing_issue: Issue = match self.send_json(self.client.get(&get_url)).await {
+            Ok(i) => i,
+            Err(e) => return Ok(e),
+        };
+
+        // Resolve status name to status_id if provided
+        let status_id = if let Some(ref status_name) = status {
+            match self
+                .resolve_status_id(existing_issue.project_id, status_name)
+                .await
+            {
+                Ok(id) => Some(id),
+                Err(e) => return Ok(e),
             }
         } else {
             None
@@ -942,71 +989,74 @@ impl TaskServer {
 
         // Expand @tagname references in description
         let expanded_description = match description {
-            Some(desc) => Some(self.expand_tags(&desc).await),
+            Some(desc) => Some(Some(self.expand_tags(&desc).await)),
             None => None,
         };
 
-        let payload = UpdateTask {
+        let payload = api_types::UpdateIssueRequest {
+            status_id,
             title,
             description: expanded_description,
-            status,
-            parent_workspace_id: None,
-            image_ids: None,
-        };
-        let url = self.url(&format!("/api/tasks/{}", task_id));
-        let updated_task: Task = match self.send_json(self.client.put(&url).json(&payload)).await {
-            Ok(t) => t,
-            Err(e) => return Ok(e),
+            priority: None,
+            start_date: None,
+            target_date: None,
+            completed_at: None,
+            sort_order: None,
+            parent_issue_id: None,
+            parent_issue_sort_order: None,
+            extension_metadata: None,
         };
 
-        let details = TaskDetails::from_task(updated_task);
-        let response = UpdateTaskResponse { task: details };
-        TaskServer::success(&response)
+        let url = self.url(&format!("/api/remote/issues/{}", issue_id));
+        let response: RemoteMutationResponse<Issue> =
+            match self.send_json(self.client.patch(&url).json(&payload)).await {
+                Ok(r) => r,
+                Err(e) => return Ok(e),
+            };
+
+        let details = self.issue_to_details(&response.data).await;
+        TaskServer::success(&McpUpdateIssueResponse { issue: details })
     }
 
-    #[tool(description = "Delete a task/ticket. `task_id` is required.")]
-    async fn delete_task(
+    #[tool(description = "Delete an issue. `issue_id` is required.")]
+    async fn delete_issue(
         &self,
-        Parameters(DeleteTaskRequest { task_id }): Parameters<DeleteTaskRequest>,
+        Parameters(McpDeleteIssueRequest { issue_id }): Parameters<McpDeleteIssueRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let url = self.url(&format!("/api/tasks/{}", task_id));
+        let url = self.url(&format!("/api/remote/issues/{}", issue_id));
         if let Err(e) = self.send_empty_json(self.client.delete(&url)).await {
             return Ok(e);
         }
 
-        let response = DeleteTaskResponse {
-            deleted_task_id: Some(task_id.to_string()),
-        };
-
-        TaskServer::success(&response)
+        TaskServer::success(&McpDeleteIssueResponse {
+            deleted_issue_id: Some(issue_id.to_string()),
+        })
     }
 
     #[tool(
-        description = "Get detailed information (like task description) about a specific task/ticket. You can use `list_tasks` to find the `task_ids` of all tasks in a project. `task_id` is required."
+        description = "Get detailed information about a specific issue. You can use `list_issues` to find issue IDs. `issue_id` is required."
     )]
-    async fn get_task(
+    async fn get_issue(
         &self,
-        Parameters(GetTaskRequest { task_id }): Parameters<GetTaskRequest>,
+        Parameters(McpGetIssueRequest { issue_id }): Parameters<McpGetIssueRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let url = self.url(&format!("/api/tasks/{}", task_id));
-        let task: Task = match self.send_json(self.client.get(&url)).await {
-            Ok(t) => t,
+        let url = self.url(&format!("/api/remote/issues/{}", issue_id));
+        let issue: Issue = match self.send_json(self.client.get(&url)).await {
+            Ok(i) => i,
             Err(e) => return Ok(e),
         };
 
-        let details = TaskDetails::from_task(task);
-        let response = GetTaskResponse { task: details };
-
-        TaskServer::success(&response)
+        let details = self.issue_to_details(&issue).await;
+        TaskServer::success(&McpGetIssueResponse { issue: details })
     }
 }
 
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
-        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_workspace_session', 'get_task', 'update_task', 'delete_task', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script'. Make sure to pass `project_id`, `task_id`, or `repo_id` where required. You can use list tools to get the available ids.".to_string();
+        let mut instruction = "A task and project management server. If you need to create or update tickets or issues then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list_projects`. Call `list_issues` to fetch the issue IDs of all issues in a project. TOOLS: 'list_projects', 'list_issues', 'create_issue', 'start_workspace_session', 'get_issue', 'update_issue', 'delete_issue', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script'. Make sure to pass `project_id`, `issue_id`, or `repo_id` where required. You can use list tools to get the available ids.".to_string();
         if self.context.is_some() {
-            let context_instruction = "Use 'get_context' to fetch project/task/workspace metadata for the active Vibe Kanban workspace session when available.";
+            let context_instruction = "Use 'get_context' to fetch project/issue/workspace metadata for the active Vibe Kanban workspace session when available.";
             instruction = format!("{} {}", context_instruction, instruction);
         }
 
