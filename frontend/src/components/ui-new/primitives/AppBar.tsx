@@ -162,8 +162,7 @@ export function AppBar({
           label="Join our Discord"
           iconPath={siDiscord.path}
           badge={
-            onlineCount != null &&
-            (onlineCount > 999 ? '999+' : onlineCount)
+            onlineCount != null && (onlineCount > 999 ? '999+' : onlineCount)
           }
         />
       </div>
