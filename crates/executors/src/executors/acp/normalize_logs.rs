@@ -1,15 +1,13 @@
 use std::{
     collections::HashMap,
-    io::Write as IoWrite,
     path::{Path, PathBuf},
     sync::{Arc, LazyLock},
-    time::{Duration, Instant},
 };
 
 use agent_client_protocol::{self as acp, SessionNotification};
 use futures::StreamExt;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use workspace_utils::{approvals::ApprovalStatus, msg_store::MsgStore};
 
 pub use super::AcpAgentHarness;
@@ -39,31 +37,9 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
         let mut streaming: StreamingState = StreamingState::default();
         let mut tool_states: ToolStates = HashMap::new();
 
-        let mut profiler = PipelineProfiler::new();
-        let mut wait_start = Instant::now();
-
         let mut stdout_lines = msg_store.stdout_lines_stream();
         while let Some(Ok(line)) = stdout_lines.next().await {
-            let wait_elapsed = wait_start.elapsed();
-            profiler.time_waiting_for_line += wait_elapsed;
-
-            let line_len = line.len();
-            profiler.total_line_bytes += line_len as u64;
-            if line_len as u64 > profiler.max_line_bytes {
-                profiler.max_line_bytes = line_len as u64;
-            }
-
-            let parse_start = Instant::now();
             if let Some(parsed) = AcpEventParser::parse_line(&line) {
-                let parse_elapsed = parse_start.elapsed();
-                profiler.time_in_parse += parse_elapsed;
-                profiler.total_events += 1;
-
-                let event_type = event_variant_name(&parsed);
-                *profiler.event_counts.entry(event_type).or_insert(0) += 1;
-
-                let match_start = Instant::now();
-
                 tracing::trace!("Parsed ACP line: {:?}", parsed);
                 match parsed {
                     AcpEvent::SessionStart(id) => {
@@ -71,15 +47,6 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             msg_store.push_session_id(id);
                             stored_session_id = true;
                         }
-                        profiler.record_event(
-                            event_type,
-                            line_len,
-                            parse_elapsed,
-                            match_start.elapsed(),
-                            Duration::ZERO,
-                            Duration::ZERO,
-                            None,
-                        );
                     }
                     AcpEvent::Error(msg) => {
                         let idx = entry_index.next();
@@ -91,39 +58,11 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             content: msg,
                             metadata: None,
                         };
-                        let patch_start = Instant::now();
-                        let patch = ConversationPatch::add_normalized_entry(idx, entry);
-                        let patch_elapsed = patch_start.elapsed();
-                        profiler.time_in_patch_creation += patch_elapsed;
-
-                        let push_start = Instant::now();
-                        msg_store.push_patch(patch);
-                        let push_elapsed = push_start.elapsed();
-                        profiler.time_in_push_patch += push_elapsed;
-                        profiler.total_patches += 1;
-
-                        profiler.record_event(
-                            event_type,
-                            line_len,
-                            parse_elapsed,
-                            match_start.elapsed(),
-                            patch_elapsed,
-                            push_elapsed,
-                            None,
-                        );
+                        msg_store.push_patch(ConversationPatch::add_normalized_entry(idx, entry));
                     }
                     AcpEvent::Done(_) => {
                         streaming.assistant_text = None;
                         streaming.thinking_text = None;
-                        profiler.record_event(
-                            event_type,
-                            line_len,
-                            parse_elapsed,
-                            match_start.elapsed(),
-                            Duration::ZERO,
-                            Duration::ZERO,
-                            None,
-                        );
                     }
                     AcpEvent::Message(content) => {
                         streaming.thinking_text = None;
@@ -131,16 +70,6 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             let is_new = streaming.assistant_text.is_none();
                             if is_new {
                                 if text.text == "\n" {
-                                    profiler.record_event(
-                                        event_type,
-                                        line_len,
-                                        parse_elapsed,
-                                        match_start.elapsed(),
-                                        Duration::ZERO,
-                                        Duration::ZERO,
-                                        None,
-                                    );
-                                    wait_start = Instant::now();
                                     continue;
                                 }
                                 let idx = entry_index.next();
@@ -151,55 +80,19 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             }
                             if let Some(ref mut s) = streaming.assistant_text {
                                 s.content.push_str(&text.text);
-                                let clone_bytes = s.content.len();
-
-                                profiler.assistant_clone_count += 1;
-                                profiler.assistant_clone_total_bytes += clone_bytes as u64;
-                                if clone_bytes as u64 > profiler.assistant_max_clone_bytes {
-                                    profiler.assistant_max_clone_bytes = clone_bytes as u64;
-                                }
-
                                 let entry = NormalizedEntry {
                                     timestamp: None,
                                     entry_type: NormalizedEntryType::AssistantMessage,
                                     content: s.content.clone(),
                                     metadata: None,
                                 };
-                                let patch_start = Instant::now();
                                 let patch = if is_new {
                                     ConversationPatch::add_normalized_entry(s.index, entry)
                                 } else {
                                     ConversationPatch::replace(s.index, entry)
                                 };
-                                let patch_elapsed = patch_start.elapsed();
-                                profiler.time_in_patch_creation += patch_elapsed;
-
-                                let push_start = Instant::now();
                                 msg_store.push_patch(patch);
-                                let push_elapsed = push_start.elapsed();
-                                profiler.time_in_push_patch += push_elapsed;
-                                profiler.total_patches += 1;
-
-                                profiler.record_event(
-                                    event_type,
-                                    line_len,
-                                    parse_elapsed,
-                                    match_start.elapsed(),
-                                    patch_elapsed,
-                                    push_elapsed,
-                                    Some(clone_bytes as u64),
-                                );
                             }
-                        } else {
-                            profiler.record_event(
-                                event_type,
-                                line_len,
-                                parse_elapsed,
-                                match_start.elapsed(),
-                                Duration::ZERO,
-                                Duration::ZERO,
-                                None,
-                            );
                         }
                     }
                     AcpEvent::Thought(content) => {
@@ -215,55 +108,19 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             }
                             if let Some(ref mut s) = streaming.thinking_text {
                                 s.content.push_str(&text.text);
-                                let clone_bytes = s.content.len();
-
-                                profiler.thinking_clone_count += 1;
-                                profiler.thinking_clone_total_bytes += clone_bytes as u64;
-                                if clone_bytes as u64 > profiler.thinking_max_clone_bytes {
-                                    profiler.thinking_max_clone_bytes = clone_bytes as u64;
-                                }
-
                                 let entry = NormalizedEntry {
                                     timestamp: None,
                                     entry_type: NormalizedEntryType::Thinking,
                                     content: s.content.clone(),
                                     metadata: None,
                                 };
-                                let patch_start = Instant::now();
                                 let patch = if is_new {
                                     ConversationPatch::add_normalized_entry(s.index, entry)
                                 } else {
                                     ConversationPatch::replace(s.index, entry)
                                 };
-                                let patch_elapsed = patch_start.elapsed();
-                                profiler.time_in_patch_creation += patch_elapsed;
-
-                                let push_start = Instant::now();
                                 msg_store.push_patch(patch);
-                                let push_elapsed = push_start.elapsed();
-                                profiler.time_in_push_patch += push_elapsed;
-                                profiler.total_patches += 1;
-
-                                profiler.record_event(
-                                    event_type,
-                                    line_len,
-                                    parse_elapsed,
-                                    match_start.elapsed(),
-                                    patch_elapsed,
-                                    push_elapsed,
-                                    Some(clone_bytes as u64),
-                                );
                             }
-                        } else {
-                            profiler.record_event(
-                                event_type,
-                                line_len,
-                                parse_elapsed,
-                                match_start.elapsed(),
-                                Duration::ZERO,
-                                Duration::ZERO,
-                                None,
-                            );
                         }
                     }
                     AcpEvent::Plan(plan) => {
@@ -298,26 +155,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             content: "Plan updated".to_string(),
                             metadata: None,
                         };
-                        let patch_start = Instant::now();
-                        let patch = ConversationPatch::add_normalized_entry(idx, entry);
-                        let patch_elapsed = patch_start.elapsed();
-                        profiler.time_in_patch_creation += patch_elapsed;
-
-                        let push_start = Instant::now();
-                        msg_store.push_patch(patch);
-                        let push_elapsed = push_start.elapsed();
-                        profiler.time_in_push_patch += push_elapsed;
-                        profiler.total_patches += 1;
-
-                        profiler.record_event(
-                            event_type,
-                            line_len,
-                            parse_elapsed,
-                            match_start.elapsed(),
-                            patch_elapsed,
-                            push_elapsed,
-                            None,
-                        );
+                        msg_store.push_patch(ConversationPatch::add_normalized_entry(idx, entry));
                     }
                     AcpEvent::AvailableCommands(cmds) => {
                         let mut body = String::from("Available commands:\n");
@@ -331,26 +169,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             content: body,
                             metadata: None,
                         };
-                        let patch_start = Instant::now();
-                        let patch = ConversationPatch::add_normalized_entry(idx, entry);
-                        let patch_elapsed = patch_start.elapsed();
-                        profiler.time_in_patch_creation += patch_elapsed;
-
-                        let push_start = Instant::now();
-                        msg_store.push_patch(patch);
-                        let push_elapsed = push_start.elapsed();
-                        profiler.time_in_push_patch += push_elapsed;
-                        profiler.total_patches += 1;
-
-                        profiler.record_event(
-                            event_type,
-                            line_len,
-                            parse_elapsed,
-                            match_start.elapsed(),
-                            patch_elapsed,
-                            push_elapsed,
-                            None,
-                        );
+                        msg_store.push_patch(ConversationPatch::add_normalized_entry(idx, entry));
                     }
                     AcpEvent::CurrentMode(mode_id) => {
                         let idx = entry_index.next();
@@ -360,26 +179,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             content: format!("Current mode: {}", mode_id.0),
                             metadata: None,
                         };
-                        let patch_start = Instant::now();
-                        let patch = ConversationPatch::add_normalized_entry(idx, entry);
-                        let patch_elapsed = patch_start.elapsed();
-                        profiler.time_in_patch_creation += patch_elapsed;
-
-                        let push_start = Instant::now();
-                        msg_store.push_patch(patch);
-                        let push_elapsed = push_start.elapsed();
-                        profiler.time_in_push_patch += push_elapsed;
-                        profiler.total_patches += 1;
-
-                        profiler.record_event(
-                            event_type,
-                            line_len,
-                            parse_elapsed,
-                            match_start.elapsed(),
-                            patch_elapsed,
-                            push_elapsed,
-                            None,
-                        );
+                        msg_store.push_patch(ConversationPatch::add_normalized_entry(idx, entry));
                     }
                     AcpEvent::RequestPermission(perm) => {
                         if let Ok(tc) = agent_client_protocol::ToolCall::try_from(perm.tool_call) {
@@ -390,39 +190,17 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 &mut tool_states,
                                 &entry_index,
                                 &msg_store,
-                                &mut profiler,
                             );
                         }
-                        profiler.record_event(
-                            event_type,
-                            line_len,
-                            parse_elapsed,
-                            match_start.elapsed(),
-                            Duration::ZERO,
-                            Duration::ZERO,
-                            None,
-                        );
                     }
-                    AcpEvent::ToolCall(tc) => {
-                        handle_tool_call(
-                            &tc,
-                            &worktree_path,
-                            &mut streaming,
-                            &mut tool_states,
-                            &entry_index,
-                            &msg_store,
-                            &mut profiler,
-                        );
-                        profiler.record_event(
-                            event_type,
-                            line_len,
-                            parse_elapsed,
-                            match_start.elapsed(),
-                            Duration::ZERO,
-                            Duration::ZERO,
-                            None,
-                        );
-                    }
+                    AcpEvent::ToolCall(tc) => handle_tool_call(
+                        &tc,
+                        &worktree_path,
+                        &mut streaming,
+                        &mut tool_states,
+                        &entry_index,
+                        &msg_store,
+                    ),
                     AcpEvent::ToolUpdate(update) => {
                         let mut update = update;
                         if update.fields.title.is_none() {
@@ -440,20 +218,10 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 &mut tool_states,
                                 &entry_index,
                                 &msg_store,
-                                &mut profiler,
                             );
                         } else {
                             tracing::debug!("Failed to convert tool call update to ToolCall");
                         }
-                        profiler.record_event(
-                            event_type,
-                            line_len,
-                            parse_elapsed,
-                            match_start.elapsed(),
-                            Duration::ZERO,
-                            Duration::ZERO,
-                            None,
-                        );
                     }
                     AcpEvent::ApprovalResponse(resp) => {
                         tracing::trace!("Received approval response: {:?}", resp);
@@ -480,62 +248,14 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                     .to_string(),
                                 metadata: None,
                             };
-                            let patch_start = Instant::now();
-                            let patch = ConversationPatch::add_normalized_entry(idx, entry);
-                            let patch_elapsed = patch_start.elapsed();
-                            profiler.time_in_patch_creation += patch_elapsed;
-
-                            let push_start = Instant::now();
-                            msg_store.push_patch(patch);
-                            let push_elapsed = push_start.elapsed();
-                            profiler.time_in_push_patch += push_elapsed;
-                            profiler.total_patches += 1;
-
-                            profiler.record_event(
-                                event_type,
-                                line_len,
-                                parse_elapsed,
-                                match_start.elapsed(),
-                                patch_elapsed,
-                                push_elapsed,
-                                None,
-                            );
-                        } else {
-                            profiler.record_event(
-                                event_type,
-                                line_len,
-                                parse_elapsed,
-                                match_start.elapsed(),
-                                Duration::ZERO,
-                                Duration::ZERO,
-                                None,
-                            );
+                            msg_store
+                                .push_patch(ConversationPatch::add_normalized_entry(idx, entry));
                         }
                     }
-                    AcpEvent::User(_) | AcpEvent::Other(_) => {
-                        profiler.record_event(
-                            event_type,
-                            line_len,
-                            parse_elapsed,
-                            match_start.elapsed(),
-                            Duration::ZERO,
-                            Duration::ZERO,
-                            None,
-                        );
-                    }
+                    AcpEvent::User(_) | AcpEvent::Other(_) => (),
                 }
-            } else {
-                let parse_elapsed = parse_start.elapsed();
-                profiler.time_in_parse += parse_elapsed;
-                profiler.parse_fail_count += 1;
             }
-
-            profiler.maybe_flush();
-            wait_start = Instant::now();
         }
-
-        // Stream ended — write final summary
-        profiler.write_summary();
 
         fn handle_tool_call(
             tc: &agent_client_protocol::ToolCall,
@@ -544,7 +264,6 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
             tool_states: &mut ToolStates,
             entry_index: &EntryIndexProvider,
             msg_store: &Arc<MsgStore>,
-            profiler: &mut PipelineProfiler,
         ) {
             streaming.assistant_text = None;
             streaming.thinking_text = None;
@@ -569,27 +288,12 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 })
                 .ok(),
             };
-
-            let patch_start = Instant::now();
             let patch = if is_new {
                 ConversationPatch::add_normalized_entry(tool_data.index, entry)
             } else {
                 ConversationPatch::replace(tool_data.index, entry)
             };
-            let patch_elapsed = patch_start.elapsed();
-            profiler.time_in_patch_creation += patch_elapsed;
-
-            let push_start = Instant::now();
             msg_store.push_patch(patch);
-            let push_elapsed = push_start.elapsed();
-            profiler.time_in_push_patch += push_elapsed;
-            profiler.total_patches += 1;
-
-            if is_new {
-                profiler.tool_call_count += 1;
-            } else {
-                profiler.tool_update_count += 1;
-            }
         }
 
         fn map_to_action_type(tc: &PartialToolCallData) -> ActionType {
@@ -902,25 +606,6 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
     });
 }
 
-fn event_variant_name(event: &AcpEvent) -> &'static str {
-    match event {
-        AcpEvent::User(_) => "User",
-        AcpEvent::SessionStart(_) => "SessionStart",
-        AcpEvent::Message(_) => "Message",
-        AcpEvent::Thought(_) => "Thought",
-        AcpEvent::ToolCall(_) => "ToolCall",
-        AcpEvent::ToolUpdate(_) => "ToolUpdate",
-        AcpEvent::Plan(_) => "Plan",
-        AcpEvent::AvailableCommands(_) => "AvailableCommands",
-        AcpEvent::CurrentMode(_) => "CurrentMode",
-        AcpEvent::RequestPermission(_) => "RequestPermission",
-        AcpEvent::ApprovalResponse(_) => "ApprovalResponse",
-        AcpEvent::Error(_) => "Error",
-        AcpEvent::Done(_) => "Done",
-        AcpEvent::Other(_) => "Other",
-    }
-}
-
 struct PartialToolCallData {
     index: usize,
     id: agent_client_protocol::ToolCallId,
@@ -1081,227 +766,4 @@ struct EditInput {
     old_string: Option<String>,
     #[serde(default)]
     new_string: Option<String>,
-}
-
-// ============================================================================
-// Profiling instrumentation (temporary diagnostic code)
-// ============================================================================
-
-#[derive(Serialize)]
-struct EventRecord {
-    ts_us: u64,
-    event_type: &'static str,
-    line_bytes: usize,
-    parse_us: u64,
-    match_us: u64,
-    patch_create_us: u64,
-    push_patch_us: u64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    clone_bytes: Option<u64>,
-}
-
-struct PipelineProfiler {
-    pipeline_start: Instant,
-
-    // Phase-level aggregates
-    time_waiting_for_line: Duration,
-    time_in_parse: Duration,
-    time_in_patch_creation: Duration,
-    time_in_push_patch: Duration,
-
-    // Per-event-type breakdown
-    event_counts: HashMap<&'static str, u64>,
-
-    // Streaming text clone tracking (suspected O(n^2))
-    assistant_clone_count: u64,
-    assistant_clone_total_bytes: u64,
-    assistant_max_clone_bytes: u64,
-    thinking_clone_count: u64,
-    thinking_clone_total_bytes: u64,
-    thinking_max_clone_bytes: u64,
-
-    // Volume metrics
-    total_line_bytes: u64,
-    max_line_bytes: u64,
-    total_events: u64,
-    total_patches: u64,
-    parse_fail_count: u64,
-    tool_call_count: u64,
-    tool_update_count: u64,
-
-    // Per-event records
-    event_log: Vec<EventRecord>,
-
-    // Output
-    output_path: PathBuf,
-    last_flush: Instant,
-}
-
-impl PipelineProfiler {
-    fn new() -> Self {
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        // Write into <repo_root>/profiling/ directory (CARGO_MANIFEST_DIR is crates/executors)
-        let profiling_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../profiling");
-        let _ = std::fs::create_dir_all(&profiling_dir);
-        let output_path = profiling_dir.join(format!("acp_normalize_profile_{}.jsonl", timestamp));
-        tracing::info!(
-            "ACP normalize profiler writing to: {}",
-            output_path.display()
-        );
-
-        let now = Instant::now();
-        Self {
-            pipeline_start: now,
-            time_waiting_for_line: Duration::ZERO,
-            time_in_parse: Duration::ZERO,
-            time_in_patch_creation: Duration::ZERO,
-            time_in_push_patch: Duration::ZERO,
-            event_counts: HashMap::new(),
-            assistant_clone_count: 0,
-            assistant_clone_total_bytes: 0,
-            assistant_max_clone_bytes: 0,
-            thinking_clone_count: 0,
-            thinking_clone_total_bytes: 0,
-            thinking_max_clone_bytes: 0,
-            total_line_bytes: 0,
-            max_line_bytes: 0,
-            total_events: 0,
-            total_patches: 0,
-            parse_fail_count: 0,
-            tool_call_count: 0,
-            tool_update_count: 0,
-            event_log: Vec::with_capacity(1024),
-            output_path,
-            last_flush: now,
-        }
-    }
-
-    fn record_event(
-        &mut self,
-        event_type: &'static str,
-        line_bytes: usize,
-        parse_elapsed: Duration,
-        match_elapsed: Duration,
-        patch_create_elapsed: Duration,
-        push_patch_elapsed: Duration,
-        clone_bytes: Option<u64>,
-    ) {
-        self.event_log.push(EventRecord {
-            ts_us: self.pipeline_start.elapsed().as_micros() as u64,
-            event_type,
-            line_bytes,
-            parse_us: parse_elapsed.as_micros() as u64,
-            match_us: match_elapsed.as_micros() as u64,
-            patch_create_us: patch_create_elapsed.as_micros() as u64,
-            push_patch_us: push_patch_elapsed.as_micros() as u64,
-            clone_bytes,
-        });
-    }
-
-    fn maybe_flush(&mut self) {
-        if self.event_log.len() >= 1000 || self.last_flush.elapsed() > Duration::from_secs(5) {
-            self.flush_events();
-            self.last_flush = Instant::now();
-        }
-    }
-
-    fn flush_events(&mut self) {
-        if self.event_log.is_empty() {
-            return;
-        }
-        let Ok(mut file) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&self.output_path)
-        else {
-            tracing::warn!(
-                "Failed to open profiler output file: {}",
-                self.output_path.display()
-            );
-            self.event_log.clear();
-            return;
-        };
-
-        for record in self.event_log.drain(..) {
-            if let Ok(json) = serde_json::to_string(&record) {
-                let _ = writeln!(file, "{}", json);
-            }
-        }
-    }
-
-    fn write_summary(&mut self) {
-        self.flush_events();
-
-        let wall_clock = self.pipeline_start.elapsed();
-        let processing_time =
-            self.time_in_parse + self.time_in_patch_creation + self.time_in_push_patch;
-
-        let summary = serde_json::json!({
-            "type": "SUMMARY",
-            "total_wall_clock_ms": wall_clock.as_millis() as u64,
-            "time_waiting_for_line_ms": self.time_waiting_for_line.as_millis() as u64,
-            "time_waiting_for_line_pct": if wall_clock.as_micros() > 0 {
-                (self.time_waiting_for_line.as_micros() as f64 / wall_clock.as_micros() as f64 * 100.0) as u64
-            } else { 0 },
-            "time_in_parse_ms": self.time_in_parse.as_millis() as u64,
-            "time_in_patch_creation_ms": self.time_in_patch_creation.as_millis() as u64,
-            "time_in_push_patch_ms": self.time_in_push_patch.as_millis() as u64,
-            "total_processing_ms": processing_time.as_millis() as u64,
-            "total_events": self.total_events,
-            "total_patches": self.total_patches,
-            "parse_fail_count": self.parse_fail_count,
-            "total_line_bytes": self.total_line_bytes,
-            "max_line_bytes": self.max_line_bytes,
-            "avg_line_bytes": if self.total_events > 0 { self.total_line_bytes / self.total_events } else { 0 },
-            "assistant_streaming": {
-                "clone_count": self.assistant_clone_count,
-                "clone_total_bytes": self.assistant_clone_total_bytes,
-                "max_clone_bytes": self.assistant_max_clone_bytes,
-                "avg_clone_bytes": if self.assistant_clone_count > 0 { self.assistant_clone_total_bytes / self.assistant_clone_count } else { 0 },
-            },
-            "thinking_streaming": {
-                "clone_count": self.thinking_clone_count,
-                "clone_total_bytes": self.thinking_clone_total_bytes,
-                "max_clone_bytes": self.thinking_max_clone_bytes,
-            },
-            "tool_call_count": self.tool_call_count,
-            "tool_update_count": self.tool_update_count,
-            "event_type_counts": self.event_counts,
-            "per_event_avg_us": {
-                "parse": if self.total_events > 0 { self.time_in_parse.as_micros() as u64 / self.total_events } else { 0 },
-                "patch_creation": if self.total_patches > 0 { self.time_in_patch_creation.as_micros() as u64 / self.total_patches } else { 0 },
-                "push_patch": if self.total_patches > 0 { self.time_in_push_patch.as_micros() as u64 / self.total_patches } else { 0 },
-            },
-        });
-
-        let Ok(mut file) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&self.output_path)
-        else {
-            tracing::warn!("Failed to open profiler output file for summary");
-            return;
-        };
-
-        if let Ok(json) = serde_json::to_string_pretty(&summary) {
-            let _ = writeln!(file, "{}", json);
-        }
-
-        tracing::info!(
-            "ACP normalize profiler summary: {} events, {} patches, {:.1}s wall clock, {:.1}% waiting for input. Output: {}",
-            self.total_events,
-            self.total_patches,
-            wall_clock.as_secs_f64(),
-            if wall_clock.as_micros() > 0 {
-                self.time_waiting_for_line.as_micros() as f64 / wall_clock.as_micros() as f64
-                    * 100.0
-            } else {
-                0.0
-            },
-            self.output_path.display(),
-        );
-    }
 }

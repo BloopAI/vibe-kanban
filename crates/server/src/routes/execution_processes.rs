@@ -147,37 +147,25 @@ async fn handle_normalized_logs_ws(
     socket: WebSocket,
     stream: impl futures_util::Stream<Item = anyhow::Result<LogMsg>> + Unpin + Send + 'static,
 ) -> anyhow::Result<()> {
-    use axum::extract::ws::Message;
     use futures_util::FutureExt;
 
     let mut stream = stream;
     let (mut sender, mut receiver) = socket.split();
     tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
 
-    let mut profiler = WsProfiler::new();
-    let mut wait_start = std::time::Instant::now();
-
     loop {
-        // Phase 1: Block on the first message (the "wait" phase)
         let first = match stream.next().await {
             Some(item) => item,
-            None => break, // stream ended
+            None => break,
         };
-
-        let wait_elapsed = wait_start.elapsed();
-        profiler.time_waiting += wait_elapsed;
 
         let mut patches: Vec<json_patch::Patch> = Vec::new();
         let mut finished = false;
         let mut had_error = false;
 
         match first {
-            Ok(LogMsg::JsonPatch(patch)) => {
-                patches.push(patch);
-            }
-            Ok(LogMsg::Finished) => {
-                finished = true;
-            }
+            Ok(LogMsg::JsonPatch(patch)) => patches.push(patch),
+            Ok(LogMsg::Finished) => finished = true,
             Ok(_) => {}
             Err(e) => {
                 tracing::error!("stream error: {}", e);
@@ -185,13 +173,11 @@ async fn handle_normalized_logs_ws(
             }
         }
 
-        // Phase 2: Drain all immediately-available messages (non-blocking)
+        // Drain all immediately-available messages without blocking
         if !finished && !had_error {
             while let Some(Some(item)) = stream.next().now_or_never() {
                 match item {
-                    Ok(LogMsg::JsonPatch(patch)) => {
-                        patches.push(patch);
-                    }
+                    Ok(LogMsg::JsonPatch(patch)) => patches.push(patch),
                     Ok(LogMsg::Finished) => {
                         finished = true;
                         break;
@@ -206,45 +192,19 @@ async fn handle_normalized_logs_ws(
             }
         }
 
-        // Phase 3: Send the combined batch as a single WS frame
-        let patches_in_batch = patches.len() as u64;
+        // Send the combined batch as a single WS frame
         if !patches.is_empty() {
-            // Concatenate all operations from all patches into a single Patch
             let mut all_ops = patches.remove(0).0;
             for p in patches {
                 all_ops.extend(p.0);
             }
             let combined = LogMsg::JsonPatch(json_patch::Patch(all_ops));
-
-            let ser_start = std::time::Instant::now();
             let ws_msg = combined.to_ws_message_unchecked();
-            let ser_elapsed = ser_start.elapsed();
-            profiler.time_serializing += ser_elapsed;
-
-            let msg_bytes = match &ws_msg {
-                Message::Text(t) => t.len(),
-                _ => 0,
-            };
-
-            let send_start = std::time::Instant::now();
             if sender.send(ws_msg).await.is_err() {
                 break;
             }
-            let send_elapsed = send_start.elapsed();
-            profiler.time_sending += send_elapsed;
-            profiler.total_messages += 1;
-            profiler.total_bytes += msg_bytes as u64;
-
-            profiler.record_event(
-                wait_elapsed,
-                ser_elapsed,
-                send_elapsed,
-                msg_bytes,
-                patches_in_batch,
-            );
         }
 
-        // Phase 4: Handle terminal conditions
         if finished {
             let ws_msg = LogMsg::Finished.to_ws_message_unchecked();
             let _ = sender.send(ws_msg).await;
@@ -254,12 +214,8 @@ async fn handle_normalized_logs_ws(
         if had_error {
             break;
         }
-
-        wait_start = std::time::Instant::now();
-        profiler.maybe_flush();
     }
 
-    profiler.write_summary();
     Ok(())
 }
 
@@ -360,166 +316,4 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .nest("/{id}", workspace_id_router);
 
     Router::new().nest("/execution-processes", workspaces_router)
-}
-
-// ── WebSocket delivery profiler ─────────────────────────────────────────
-
-use std::{
-    io::Write as IoWrite,
-    path::PathBuf,
-    time::{Duration, Instant},
-};
-
-#[derive(serde::Serialize)]
-struct WsEventRecord {
-    ts_us: u64,
-    wait_us: u64,
-    serialize_us: u64,
-    send_us: u64,
-    msg_bytes: usize,
-    patches_in_batch: u64,
-}
-
-struct WsProfiler {
-    start: Instant,
-    time_waiting: Duration,
-    time_serializing: Duration,
-    time_sending: Duration,
-    total_messages: u64,
-    total_bytes: u64,
-    total_patches_batched: u64,
-    max_batch_size: u64,
-    event_log: Vec<WsEventRecord>,
-    output_path: PathBuf,
-    last_flush: Instant,
-}
-
-impl WsProfiler {
-    fn new() -> Self {
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        let profiling_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../profiling");
-        let _ = std::fs::create_dir_all(&profiling_dir);
-        let output_path = profiling_dir.join(format!("ws_delivery_profile_{}.jsonl", timestamp));
-        tracing::info!("WS delivery profiler writing to: {}", output_path.display());
-
-        let now = Instant::now();
-        Self {
-            start: now,
-            time_waiting: Duration::ZERO,
-            time_serializing: Duration::ZERO,
-            time_sending: Duration::ZERO,
-            total_messages: 0,
-            total_bytes: 0,
-            total_patches_batched: 0,
-            max_batch_size: 0,
-            event_log: Vec::with_capacity(1024),
-            output_path,
-            last_flush: now,
-        }
-    }
-
-    fn record_event(
-        &mut self,
-        wait_elapsed: Duration,
-        ser_elapsed: Duration,
-        send_elapsed: Duration,
-        msg_bytes: usize,
-        patches_in_batch: u64,
-    ) {
-        self.total_patches_batched += patches_in_batch;
-        self.max_batch_size = self.max_batch_size.max(patches_in_batch);
-        self.event_log.push(WsEventRecord {
-            ts_us: self.start.elapsed().as_micros() as u64,
-            wait_us: wait_elapsed.as_micros() as u64,
-            serialize_us: ser_elapsed.as_micros() as u64,
-            send_us: send_elapsed.as_micros() as u64,
-            msg_bytes,
-            patches_in_batch,
-        });
-    }
-
-    fn maybe_flush(&mut self) {
-        if self.event_log.len() >= 1000 || self.last_flush.elapsed() > Duration::from_secs(5) {
-            self.flush_events();
-            self.last_flush = Instant::now();
-        }
-    }
-
-    fn flush_events(&mut self) {
-        if self.event_log.is_empty() {
-            return;
-        }
-        let Ok(mut file) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&self.output_path)
-        else {
-            tracing::warn!(
-                "Failed to open WS profiler output: {}",
-                self.output_path.display()
-            );
-            self.event_log.clear();
-            return;
-        };
-
-        for record in self.event_log.drain(..) {
-            if let Ok(json) = serde_json::to_string(&record) {
-                let _ = writeln!(file, "{}", json);
-            }
-        }
-    }
-
-    fn write_summary(&mut self) {
-        self.flush_events();
-
-        let wall_clock = self.start.elapsed();
-
-        let summary = serde_json::json!({
-            "type": "SUMMARY",
-            "total_wall_clock_ms": wall_clock.as_millis() as u64,
-            "time_waiting_for_stream_ms": self.time_waiting.as_millis() as u64,
-            "time_waiting_pct": if wall_clock.as_micros() > 0 {
-                (self.time_waiting.as_micros() as f64 / wall_clock.as_micros() as f64 * 100.0) as u64
-            } else { 0 },
-            "time_serializing_ms": self.time_serializing.as_millis() as u64,
-            "time_sending_ms": self.time_sending.as_millis() as u64,
-            "total_ws_frames": self.total_messages,
-            "total_patches_batched": self.total_patches_batched,
-            "avg_patches_per_frame": if self.total_messages > 0 { self.total_patches_batched / self.total_messages } else { 0 },
-            "max_batch_size": self.max_batch_size,
-            "total_bytes": self.total_bytes,
-            "avg_msg_bytes": if self.total_messages > 0 { self.total_bytes / self.total_messages } else { 0 },
-            "per_msg_avg_us": {
-                "serialize": if self.total_messages > 0 { self.time_serializing.as_micros() as u64 / self.total_messages } else { 0 },
-                "send": if self.total_messages > 0 { self.time_sending.as_micros() as u64 / self.total_messages } else { 0 },
-            },
-        });
-
-        if let Ok(json) = serde_json::to_string(&summary)
-            && let Ok(mut file) = std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&self.output_path)
-        {
-            let _ = writeln!(file, "{}", json);
-        }
-
-        tracing::info!(
-            wall_clock_ms = wall_clock.as_millis() as u64,
-            waiting_pct = if wall_clock.as_micros() > 0 {
-                (self.time_waiting.as_micros() as f64 / wall_clock.as_micros() as f64 * 100.0)
-                    as u64
-            } else {
-                0
-            },
-            serialize_ms = self.time_serializing.as_millis() as u64,
-            send_ms = self.time_sending.as_millis() as u64,
-            total_messages = self.total_messages,
-            total_bytes = self.total_bytes,
-            "WS delivery profiler summary"
-        );
-    }
 }
