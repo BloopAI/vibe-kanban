@@ -148,6 +148,7 @@ async fn handle_normalized_logs_ws(
     stream: impl futures_util::Stream<Item = anyhow::Result<LogMsg>> + Unpin + Send + 'static,
 ) -> anyhow::Result<()> {
     use axum::extract::ws::Message;
+    use futures_util::FutureExt;
 
     let mut stream = stream;
     let (mut sender, mut receiver) = socket.split();
@@ -156,38 +157,104 @@ async fn handle_normalized_logs_ws(
     let mut profiler = WsProfiler::new();
     let mut wait_start = std::time::Instant::now();
 
-    while let Some(item) = stream.next().await {
+    loop {
+        // Phase 1: Block on the first message (the "wait" phase)
+        let first = match stream.next().await {
+            Some(item) => item,
+            None => break, // stream ended
+        };
+
         let wait_elapsed = wait_start.elapsed();
         profiler.time_waiting += wait_elapsed;
 
-        match item {
-            Ok(msg) => {
-                let ser_start = std::time::Instant::now();
-                let ws_msg = msg.to_ws_message_unchecked();
-                let ser_elapsed = ser_start.elapsed();
-                profiler.time_serializing += ser_elapsed;
+        let mut patches: Vec<json_patch::Patch> = Vec::new();
+        let mut finished = false;
+        let mut had_error = false;
 
-                let msg_bytes = match &ws_msg {
-                    Message::Text(t) => t.len(),
-                    _ => 0,
-                };
-
-                let send_start = std::time::Instant::now();
-                if sender.send(ws_msg).await.is_err() {
-                    break;
-                }
-                let send_elapsed = send_start.elapsed();
-                profiler.time_sending += send_elapsed;
-                profiler.total_messages += 1;
-                profiler.total_bytes += msg_bytes as u64;
-
-                profiler.record_event(wait_elapsed, ser_elapsed, send_elapsed, msg_bytes);
+        match first {
+            Ok(LogMsg::JsonPatch(patch)) => {
+                patches.push(patch);
             }
+            Ok(LogMsg::Finished) => {
+                finished = true;
+            }
+            Ok(_) => {}
             Err(e) => {
                 tracing::error!("stream error: {}", e);
-                break;
+                had_error = true;
             }
         }
+
+        // Phase 2: Drain all immediately-available messages (non-blocking)
+        if !finished && !had_error {
+            while let Some(Some(item)) = stream.next().now_or_never() {
+                match item {
+                    Ok(LogMsg::JsonPatch(patch)) => {
+                        patches.push(patch);
+                    }
+                    Ok(LogMsg::Finished) => {
+                        finished = true;
+                        break;
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        tracing::error!("stream error: {}", e);
+                        had_error = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Phase 3: Send the combined batch as a single WS frame
+        let patches_in_batch = patches.len() as u64;
+        if !patches.is_empty() {
+            // Concatenate all operations from all patches into a single Patch
+            let mut all_ops = patches.remove(0).0;
+            for p in patches {
+                all_ops.extend(p.0);
+            }
+            let combined = LogMsg::JsonPatch(json_patch::Patch(all_ops));
+
+            let ser_start = std::time::Instant::now();
+            let ws_msg = combined.to_ws_message_unchecked();
+            let ser_elapsed = ser_start.elapsed();
+            profiler.time_serializing += ser_elapsed;
+
+            let msg_bytes = match &ws_msg {
+                Message::Text(t) => t.len(),
+                _ => 0,
+            };
+
+            let send_start = std::time::Instant::now();
+            if sender.send(ws_msg).await.is_err() {
+                break;
+            }
+            let send_elapsed = send_start.elapsed();
+            profiler.time_sending += send_elapsed;
+            profiler.total_messages += 1;
+            profiler.total_bytes += msg_bytes as u64;
+
+            profiler.record_event(
+                wait_elapsed,
+                ser_elapsed,
+                send_elapsed,
+                msg_bytes,
+                patches_in_batch,
+            );
+        }
+
+        // Phase 4: Handle terminal conditions
+        if finished {
+            let ws_msg = LogMsg::Finished.to_ws_message_unchecked();
+            let _ = sender.send(ws_msg).await;
+            break;
+        }
+
+        if had_error {
+            break;
+        }
+
         wait_start = std::time::Instant::now();
         profiler.maybe_flush();
     }
@@ -310,6 +377,7 @@ struct WsEventRecord {
     serialize_us: u64,
     send_us: u64,
     msg_bytes: usize,
+    patches_in_batch: u64,
 }
 
 struct WsProfiler {
@@ -319,6 +387,8 @@ struct WsProfiler {
     time_sending: Duration,
     total_messages: u64,
     total_bytes: u64,
+    total_patches_batched: u64,
+    max_batch_size: u64,
     event_log: Vec<WsEventRecord>,
     output_path: PathBuf,
     last_flush: Instant,
@@ -343,6 +413,8 @@ impl WsProfiler {
             time_sending: Duration::ZERO,
             total_messages: 0,
             total_bytes: 0,
+            total_patches_batched: 0,
+            max_batch_size: 0,
             event_log: Vec::with_capacity(1024),
             output_path,
             last_flush: now,
@@ -355,13 +427,17 @@ impl WsProfiler {
         ser_elapsed: Duration,
         send_elapsed: Duration,
         msg_bytes: usize,
+        patches_in_batch: u64,
     ) {
+        self.total_patches_batched += patches_in_batch;
+        self.max_batch_size = self.max_batch_size.max(patches_in_batch);
         self.event_log.push(WsEventRecord {
             ts_us: self.start.elapsed().as_micros() as u64,
             wait_us: wait_elapsed.as_micros() as u64,
             serialize_us: ser_elapsed.as_micros() as u64,
             send_us: send_elapsed.as_micros() as u64,
             msg_bytes,
+            patches_in_batch,
         });
     }
 
@@ -410,7 +486,10 @@ impl WsProfiler {
             } else { 0 },
             "time_serializing_ms": self.time_serializing.as_millis() as u64,
             "time_sending_ms": self.time_sending.as_millis() as u64,
-            "total_messages": self.total_messages,
+            "total_ws_frames": self.total_messages,
+            "total_patches_batched": self.total_patches_batched,
+            "avg_patches_per_frame": if self.total_messages > 0 { self.total_patches_batched / self.total_messages } else { 0 },
+            "max_batch_size": self.max_batch_size,
             "total_bytes": self.total_bytes,
             "avg_msg_bytes": if self.total_messages > 0 { self.total_bytes / self.total_messages } else { 0 },
             "per_msg_avg_us": {
