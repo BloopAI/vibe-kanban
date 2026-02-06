@@ -1,5 +1,5 @@
 import { LayoutIcon, PlusIcon, SpinnerIcon } from '@phosphor-icons/react';
-import { siDiscord } from 'simple-icons';
+import { siDiscord, siGithub } from 'simple-icons';
 import { cn } from '@/lib/utils';
 import type { OrganizationWithRole } from 'shared/types';
 import type { Project as RemoteProject } from 'shared/remote-types';
@@ -7,6 +7,7 @@ import { AppBarButton } from './AppBarButton';
 import { AppBarUserPopoverContainer } from '../containers/AppBarUserPopoverContainer';
 import { Tooltip } from './Tooltip';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
+import { useGitHubStars } from '@/hooks/useGitHubStars';
 
 function getProjectInitials(name: string): string {
   const trimmed = name.trim();
@@ -49,6 +50,7 @@ export function AppBar({
   isLoadingProjects,
 }: AppBarProps) {
   const { data: onlineCount } = useDiscordOnlineCount();
+  const { data: starCount } = useGitHubStars();
 
   return (
     <div
@@ -122,14 +124,42 @@ export function AppBar({
         </Tooltip>
       )}
 
-      {/* Bottom section: User popover + Discord */}
-      <div className="mt-auto pt-base flex flex-col items-center gap-base">
+      {/* Bottom section: User popover + GitHub + Discord */}
+      <div className="mt-auto pt-base flex flex-col items-center gap-4">
         <AppBarUserPopoverContainer
           organizations={organizations}
           selectedOrgId={selectedOrgId}
           onOrgSelect={onOrgSelect}
           onCreateOrg={onCreateOrg}
         />
+        <Tooltip content="Star on GitHub" side="right">
+          <a
+            href="https://github.com/BloopAI/vibe-kanban"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              'relative flex items-center justify-center w-10 h-10 rounded-lg',
+              'text-sm font-medium transition-colors cursor-pointer',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+              'bg-primary text-normal hover:opacity-80'
+            )}
+            aria-label="Star on GitHub"
+          >
+            <svg
+              className="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d={siGithub.path} />
+            </svg>
+            {starCount != null && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-brand text-[10px] font-medium text-white">
+                {starCount > 999 ? '999+' : starCount}
+              </span>
+            )}
+          </a>
+        </Tooltip>
         <Tooltip content="Join our Discord" side="right">
           <a
             href="https://discord.gg/AC4nwVtJM3"
