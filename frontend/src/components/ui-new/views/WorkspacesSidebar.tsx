@@ -117,8 +117,8 @@ export function WorkspacesSidebar({
   };
 
   // Categorize workspaces for accordion layout, sorted by latestProcessCompletedAt (oldest first)
-  const { raisedHandWorkspaces, idleWorkspaces, runningWorkspaces } = useMemo(
-    () => {
+  const { raisedHandWorkspaces, idleWorkspaces, runningWorkspaces } =
+    useMemo(() => {
       const sortByCompletedAt = (a: Workspace, b: Workspace) => {
         if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
         const aTime = a.latestProcessCompletedAt
@@ -141,9 +141,7 @@ export function WorkspacesSidebar({
           .filter((ws) => ws.isRunning && !ws.hasPendingApproval)
           .sort(sortByCompletedAt),
       };
-    },
-    [workspaces]
-  );
+    }, [workspaces]);
 
   const headerActions: SectionAction[] = [
     {
