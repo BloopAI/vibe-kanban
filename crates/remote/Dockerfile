@@ -19,7 +19,7 @@ COPY remote-frontend/ remote-frontend/
 
 RUN pnpm -C remote-frontend build
 
-FROM rust:1.89-slim-bookworm AS builder
+FROM rust:1.93-slim-bookworm AS builder
 ARG APP_NAME
 ARG FEATURES
 ARG POSTHOG_API_KEY=""
