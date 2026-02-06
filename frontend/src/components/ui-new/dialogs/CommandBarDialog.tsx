@@ -71,8 +71,7 @@ function CommandBarContent({
     : undefined;
 
   // State machine
-  const { state, currentPage, canGoBack, dispatch } =
-    useCommandBarState(page);
+  const { state, currentPage, canGoBack, dispatch } = useCommandBarState(page);
 
   // Reset state and capture focus when dialog opens
   useEffect(() => {
