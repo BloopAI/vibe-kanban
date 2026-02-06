@@ -6,6 +6,7 @@ import {
   useWorkspaceContext,
 } from '@/contexts/WorkspaceContext';
 import { ActionsProvider } from '@/contexts/ActionsContext';
+import { UserProvider } from '@/contexts/remote/UserContext';
 import { SequenceTrackerProvider } from '@/keyboard/SequenceTracker';
 import { SequenceIndicator } from '@/keyboard/SequenceIndicator';
 import { useWorkspaceShortcuts } from '@/keyboard/useWorkspaceShortcuts';
@@ -67,15 +68,17 @@ export function NewDesignScope({ children }: NewDesignScopeProps) {
           <WorkspaceProvider>
             <ExecutionProcessesProviderWrapper>
               <LogsPanelProvider>
-                <ActionsProvider>
-                  <SequenceTrackerProvider>
-                    <SequenceIndicator />
-                    <NiceModal.Provider>
-                      <KeyboardShortcutsHandler />
-                      {children}
-                    </NiceModal.Provider>
-                  </SequenceTrackerProvider>
-                </ActionsProvider>
+                <UserProvider>
+                  <ActionsProvider>
+                    <SequenceTrackerProvider>
+                      <SequenceIndicator />
+                      <NiceModal.Provider>
+                        <KeyboardShortcutsHandler />
+                        {children}
+                      </NiceModal.Provider>
+                    </SequenceTrackerProvider>
+                  </ActionsProvider>
+                </UserProvider>
               </LogsPanelProvider>
             </ExecutionProcessesProviderWrapper>
           </WorkspaceProvider>

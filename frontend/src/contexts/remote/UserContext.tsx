@@ -29,7 +29,7 @@ export interface UserContextValue {
   getWorkspacesForIssue: (issueId: string) => Workspace[];
 }
 
-const UserContext = createContext<UserContextValue | null>(null);
+export const UserContext = createContext<UserContextValue | null>(null);
 
 interface UserProviderProps {
   children: ReactNode;
