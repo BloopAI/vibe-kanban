@@ -163,224 +163,193 @@ function defineShape<T>(
 }
 
 // Individual shape definitions with embedded types
-export const PROJECTS_SHAPE = defineShape<Project>(
+export const PROJECT_SHAPE = defineShape<Project>(
   'projects',
   ['organization_id'] as const,
   '/v1/shape/projects'
 );
 
-export const NOTIFICATIONS_SHAPE = defineShape<Notification>(
+export const NOTIFICATION_SHAPE = defineShape<Notification>(
   'notifications',
   ['organization_id', 'user_id'] as const,
   '/v1/shape/notifications'
 );
 
-export const ORGANIZATION_MEMBERS_SHAPE = defineShape<OrganizationMember>(
+export const ORGANIZATION_MEMBER_SHAPE = defineShape<OrganizationMember>(
   'organization_member_metadata',
   ['organization_id'] as const,
   '/v1/shape/organization_members'
 );
 
-export const USERS_SHAPE = defineShape<User>(
+export const USER_SHAPE = defineShape<User>(
   'users',
   ['organization_id'] as const,
   '/v1/shape/users'
 );
 
-export const PROJECT_TAGS_SHAPE = defineShape<Tag>(
+export const TAG_SHAPE = defineShape<Tag>(
   'tags',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/tags'
 );
 
-export const PROJECT_PROJECT_STATUSES_SHAPE = defineShape<ProjectStatus>(
+export const PROJECT_STATUS_SHAPE = defineShape<ProjectStatus>(
   'project_statuses',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/project_statuses'
 );
 
-export const PROJECT_ISSUES_SHAPE = defineShape<Issue>(
+export const ISSUE_SHAPE = defineShape<Issue>(
   'issues',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/issues'
 );
 
-export const USER_WORKSPACES_SHAPE = defineShape<Workspace>(
+export const WORKSPACE_SHAPE = defineShape<Workspace>(
   'workspaces',
   ['owner_user_id'] as const,
   '/v1/shape/user/workspaces'
 );
 
-export const PROJECT_WORKSPACES_SHAPE = defineShape<Workspace>(
+export const PROJECT_WORKSPACE_SHAPE = defineShape<Workspace>(
   'workspaces',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/workspaces'
 );
 
-export const PROJECT_ISSUE_ASSIGNEES_SHAPE = defineShape<IssueAssignee>(
+export const ISSUE_ASSIGNEE_SHAPE = defineShape<IssueAssignee>(
   'issue_assignees',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/issue_assignees'
 );
 
-export const PROJECT_ISSUE_FOLLOWERS_SHAPE = defineShape<IssueFollower>(
+export const ISSUE_FOLLOWER_SHAPE = defineShape<IssueFollower>(
   'issue_followers',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/issue_followers'
 );
 
-export const PROJECT_ISSUE_TAGS_SHAPE = defineShape<IssueTag>(
+export const ISSUE_TAG_SHAPE = defineShape<IssueTag>(
   'issue_tags',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/issue_tags'
 );
 
-export const PROJECT_ISSUE_RELATIONSHIPS_SHAPE = defineShape<IssueRelationship>(
+export const ISSUE_RELATIONSHIP_SHAPE = defineShape<IssueRelationship>(
   'issue_relationships',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/issue_relationships'
 );
 
-export const PROJECT_PULL_REQUESTS_SHAPE = defineShape<PullRequest>(
+export const PULL_REQUEST_SHAPE = defineShape<PullRequest>(
   'pull_requests',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/pull_requests'
 );
 
-export const ISSUE_COMMENTS_SHAPE = defineShape<IssueComment>(
+export const ISSUE_COMMENT_SHAPE = defineShape<IssueComment>(
   'issue_comments',
   ['issue_id'] as const,
   '/v1/shape/issue/{issue_id}/comments'
 );
 
-export const ISSUE_REACTIONS_SHAPE = defineShape<IssueCommentReaction>(
+export const ISSUE_COMMENT_REACTION_SHAPE = defineShape<IssueCommentReaction>(
   'issue_comment_reactions',
   ['issue_id'] as const,
   '/v1/shape/issue/{issue_id}/reactions'
 );
 
 // =============================================================================
-// Entity Definitions for SDK Generation
+// Mutation Definitions
 // =============================================================================
 
-// Entity definition interface
-export interface EntityDefinition<TRow, TCreate = unknown, TUpdate = unknown> {
+// Mutation definition interface
+export interface MutationDefinition<TRow, TCreate = unknown, TUpdate = unknown> {
   readonly name: string;
   readonly table: string;
-  readonly shape: ShapeDefinition<TRow>;
-  readonly mutations: {
-    readonly url: string;
-    readonly _createType: TCreate;  // Phantom (not present at runtime)
-    readonly _updateType: TUpdate;  // Phantom (not present at runtime)
-  } | null;
+  readonly url: string;
+  readonly _rowType: TRow;  // Phantom field for type inference (not present at runtime)
+  readonly _createType: TCreate;  // Phantom field for type inference (not present at runtime)
+  readonly _updateType: TUpdate;  // Phantom field for type inference (not present at runtime)
 }
 
-// Entity definitions with mutations
-export const PROJECT_ENTITY: EntityDefinition<Project, CreateProjectRequest, UpdateProjectRequest> = {
-  name: 'Project',
-  table: 'projects',
-  shape: PROJECTS_SHAPE,
-  mutations: { url: '/v1/projects' } as EntityDefinition<Project, CreateProjectRequest, UpdateProjectRequest>['mutations'],
-};
+// Helper to create type-safe mutation definitions
+function defineMutation<TRow, TCreate, TUpdate>(
+  name: string,
+  table: string,
+  url: string
+): MutationDefinition<TRow, TCreate, TUpdate> {
+  return { name, table, url } as MutationDefinition<TRow, TCreate, TUpdate>;
+}
 
-export const NOTIFICATION_ENTITY: EntityDefinition<Notification, unknown, UpdateNotificationRequest> = {
-  name: 'Notification',
-  table: 'notifications',
-  shape: NOTIFICATIONS_SHAPE,
-  mutations: { url: '/v1/notifications' } as EntityDefinition<Notification, unknown, UpdateNotificationRequest>['mutations'],
-};
+// Individual mutation definitions
+export const PROJECT_MUTATION = defineMutation<Project, CreateProjectRequest, UpdateProjectRequest>(
+  'Project',
+  'projects',
+  '/v1/projects'
+);
 
-export const TAG_ENTITY: EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest> = {
-  name: 'Tag',
-  table: 'tags',
-  shape: TAGS_SHAPE,
-  mutations: { url: '/v1/tags' } as EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest>['mutations'],
-};
+export const NOTIFICATION_MUTATION = defineMutation<Notification, unknown, UpdateNotificationRequest>(
+  'Notification',
+  'notifications',
+  '/v1/notifications'
+);
 
-export const PROJECT_STATUS_ENTITY: EntityDefinition<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest> = {
-  name: 'ProjectStatus',
-  table: 'project_statuses',
-  shape: PROJECT_STATUSES_SHAPE,
-  mutations: { url: '/v1/project_statuses' } as EntityDefinition<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest>['mutations'],
-};
+export const TAG_MUTATION = defineMutation<Tag, CreateTagRequest, UpdateTagRequest>(
+  'Tag',
+  'tags',
+  '/v1/tags'
+);
 
-export const ISSUE_ENTITY: EntityDefinition<Issue, CreateIssueRequest, UpdateIssueRequest> = {
-  name: 'Issue',
-  table: 'issues',
-  shape: ISSUES_SHAPE,
-  mutations: { url: '/v1/issues' } as EntityDefinition<Issue, CreateIssueRequest, UpdateIssueRequest>['mutations'],
-};
+export const PROJECT_STATUS_MUTATION = defineMutation<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest>(
+  'ProjectStatus',
+  'project_statuses',
+  '/v1/project_statuses'
+);
 
-export const ISSUE_ASSIGNEE_ENTITY: EntityDefinition<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest> = {
-  name: 'IssueAssignee',
-  table: 'issue_assignees',
-  shape: ISSUE_ASSIGNEES_SHAPE,
-  mutations: { url: '/v1/issue_assignees' } as EntityDefinition<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest>['mutations'],
-};
+export const ISSUE_MUTATION = defineMutation<Issue, CreateIssueRequest, UpdateIssueRequest>(
+  'Issue',
+  'issues',
+  '/v1/issues'
+);
 
-export const ISSUE_FOLLOWER_ENTITY: EntityDefinition<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest> = {
-  name: 'IssueFollower',
-  table: 'issue_followers',
-  shape: ISSUE_FOLLOWERS_SHAPE,
-  mutations: { url: '/v1/issue_followers' } as EntityDefinition<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest>['mutations'],
-};
+export const ISSUE_ASSIGNEE_MUTATION = defineMutation<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest>(
+  'IssueAssignee',
+  'issue_assignees',
+  '/v1/issue_assignees'
+);
 
-export const ISSUE_TAG_ENTITY: EntityDefinition<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest> = {
-  name: 'IssueTag',
-  table: 'issue_tags',
-  shape: ISSUE_TAGS_SHAPE,
-  mutations: { url: '/v1/issue_tags' } as EntityDefinition<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest>['mutations'],
-};
+export const ISSUE_FOLLOWER_MUTATION = defineMutation<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest>(
+  'IssueFollower',
+  'issue_followers',
+  '/v1/issue_followers'
+);
 
-export const ISSUE_RELATIONSHIP_ENTITY: EntityDefinition<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest> = {
-  name: 'IssueRelationship',
-  table: 'issue_relationships',
-  shape: ISSUE_RELATIONSHIPS_SHAPE,
-  mutations: { url: '/v1/issue_relationships' } as EntityDefinition<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest>['mutations'],
-};
+export const ISSUE_TAG_MUTATION = defineMutation<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest>(
+  'IssueTag',
+  'issue_tags',
+  '/v1/issue_tags'
+);
 
-export const ISSUE_COMMENT_ENTITY: EntityDefinition<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> = {
-  name: 'IssueComment',
-  table: 'issue_comments',
-  shape: ISSUE_COMMENTS_SHAPE,
-  mutations: { url: '/v1/issue_comments' } as EntityDefinition<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest>['mutations'],
-};
+export const ISSUE_RELATIONSHIP_MUTATION = defineMutation<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest>(
+  'IssueRelationship',
+  'issue_relationships',
+  '/v1/issue_relationships'
+);
 
-export const ISSUE_COMMENT_REACTION_ENTITY: EntityDefinition<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest> = {
-  name: 'IssueCommentReaction',
-  table: 'issue_comment_reactions',
-  shape: ISSUE_COMMENT_REACTIONS_SHAPE,
-  mutations: { url: '/v1/issue_comment_reactions' } as EntityDefinition<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>['mutations'],
-};
+export const ISSUE_COMMENT_MUTATION = defineMutation<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest>(
+  'IssueComment',
+  'issue_comments',
+  '/v1/issue_comments'
+);
 
-// Entity definitions without mutations (shape-only)
-export const ORGANIZATION_MEMBER_ENTITY: EntityDefinition<OrganizationMember> = {
-  name: 'OrganizationMember',
-  table: 'organization_member_metadata',
-  shape: ORGANIZATION_MEMBER_METADATA_SHAPE,
-  mutations: null,
-};
+export const ISSUE_COMMENT_REACTION_MUTATION = defineMutation<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>(
+  'IssueCommentReaction',
+  'issue_comment_reactions',
+  '/v1/issue_comment_reactions'
+);
 
-export const USER_ENTITY: EntityDefinition<User> = {
-  name: 'User',
-  table: 'users',
-  shape: USERS_SHAPE,
-  mutations: null,
-};
-
-export const WORKSPACE_ENTITY: EntityDefinition<Workspace> = {
-  name: 'Workspace',
-  table: 'workspaces',
-  shape: WORKSPACES_SHAPE,
-  mutations: null,
-};
-
-export const PULL_REQUEST_ENTITY: EntityDefinition<PullRequest> = {
-  name: 'PullRequest',
-  table: 'pull_requests',
-  shape: PULL_REQUESTS_SHAPE,
-  mutations: null,
-};
-
-// Type helper to extract row type from an entity
-export type EntityRowType<E extends EntityDefinition<unknown>> = E extends EntityDefinition<infer R> ? R : never;
+// Type helpers to extract types from a mutation definition
+export type MutationRowType<M extends MutationDefinition<unknown>> = M extends MutationDefinition<infer R> ? R : never;
+export type MutationCreateType<M extends MutationDefinition<unknown, unknown>> = M extends MutationDefinition<unknown, infer C> ? C : never;
+export type MutationUpdateType<M extends MutationDefinition<unknown, unknown, unknown>> = M extends MutationDefinition<unknown, unknown, infer U> ? U : never;
