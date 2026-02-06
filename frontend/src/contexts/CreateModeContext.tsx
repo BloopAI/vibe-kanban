@@ -7,8 +7,8 @@ import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 
 interface LinkedIssue {
   issueId: string;
-  simpleId: string;
-  title: string;
+  simpleId?: string;
+  title?: string;
   remoteProjectId: string;
 }
 

@@ -292,10 +292,10 @@ export function CreateChatBoxContainer() {
           localImages={localImages}
           dropzone={{ getRootProps, getInputProps, isDragActive }}
           linkedIssue={
-            linkedIssue
+            linkedIssue?.simpleId
               ? {
                   simpleId: linkedIssue.simpleId,
-                  title: linkedIssue.title,
+                  title: linkedIssue.title ?? '',
                   onRemove: clearLinkedIssue,
                 }
               : null

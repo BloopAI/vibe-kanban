@@ -7,10 +7,12 @@ import type {
   RepoWithTargetBranch,
 } from 'shared/types';
 import { ScratchType } from 'shared/types';
+import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
 import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjects } from '@/hooks/useProjects';
 import { useUserSystem } from '@/components/ConfigProvider';
+import { useShape } from '@/lib/electric/hooks';
 import { projectsApi, repoApi } from '@/lib/api';
 
 // ============================================================================
@@ -19,8 +21,8 @@ import { projectsApi, repoApi } from '@/lib/api';
 
 interface LinkedIssue {
   issueId: string;
-  simpleId: string;
-  title: string;
+  simpleId?: string;
+  title?: string;
   remoteProjectId: string;
 }
 
@@ -66,7 +68,8 @@ type DraftAction =
   | { type: 'SET_MESSAGE'; message: string }
   | { type: 'CLEAR_REPOS' }
   | { type: 'CLEAR' }
-  | { type: 'CLEAR_LINKED_ISSUE' };
+  | { type: 'CLEAR_LINKED_ISSUE' }
+  | { type: 'RESOLVE_LINKED_ISSUE'; simpleId: string; title: string };
 
 // ============================================================================
 // Reducer
@@ -146,6 +149,17 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
 
     case 'CLEAR_LINKED_ISSUE':
       return { ...state, linkedIssue: null };
+
+    case 'RESOLVE_LINKED_ISSUE':
+      if (!state.linkedIssue) return state;
+      return {
+        ...state,
+        linkedIssue: {
+          ...state.linkedIssue,
+          simpleId: action.simpleId,
+          title: action.title,
+        },
+      };
 
     default:
       return state;
@@ -357,8 +371,8 @@ export function useCreateModeState({
       linked_issue: state.linkedIssue
         ? {
             issue_id: state.linkedIssue.issueId,
-            simple_id: state.linkedIssue.simpleId,
-            title: state.linkedIssue.title,
+            simple_id: state.linkedIssue.simpleId ?? '',
+            title: state.linkedIssue.title ?? '',
             remote_project_id: state.linkedIssue.remoteProjectId,
           }
         : null,
@@ -372,6 +386,33 @@ export function useCreateModeState({
     state.linkedIssue,
     debouncedSave,
   ]);
+
+  // ============================================================================
+  // Resolve linked issue details from Electric (when simpleId/title are missing)
+  // ============================================================================
+  const needsIssueResolution =
+    !!state.linkedIssue && !state.linkedIssue.simpleId;
+  const issueProjectId = state.linkedIssue?.remoteProjectId ?? '';
+
+  const { data: issuesForResolution } = useShape(
+    PROJECT_ISSUES_SHAPE,
+    { project_id: issueProjectId },
+    { enabled: needsIssueResolution && !!issueProjectId }
+  );
+
+  useEffect(() => {
+    if (!needsIssueResolution || !state.linkedIssue) return;
+    const issue = issuesForResolution.find(
+      (i) => i.id === state.linkedIssue!.issueId
+    );
+    if (issue) {
+      dispatch({
+        type: 'RESOLVE_LINKED_ISSUE',
+        simpleId: issue.simple_id,
+        title: issue.title,
+      });
+    }
+  }, [needsIssueResolution, issuesForResolution, state.linkedIssue]);
 
   // ============================================================================
   // Derived state
@@ -608,8 +649,8 @@ async function initializeState({
       if (scratchData.linked_issue) {
         restoredData.linkedIssue = {
           issueId: scratchData.linked_issue.issue_id,
-          simpleId: scratchData.linked_issue.simple_id,
-          title: scratchData.linked_issue.title,
+          simpleId: scratchData.linked_issue.simple_id || undefined,
+          title: scratchData.linked_issue.title || undefined,
           remoteProjectId: scratchData.linked_issue.remote_project_id,
         };
       }

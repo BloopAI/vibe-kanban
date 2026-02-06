@@ -8,6 +8,7 @@ import type {
   Merge,
   Workspace,
 } from 'shared/types';
+import type { Workspace as RemoteWorkspace } from 'shared/remote-types';
 import type { DiffViewMode } from '@/stores/useDiffViewStore';
 import type { LogsPanelContent } from '../containers/LogsContentContainer';
 import type { LogEntry } from '../containers/VirtualizedProcessLogs';
@@ -154,6 +155,8 @@ export interface ActionExecutorContext {
   kanbanProjectId?: string;
   // Project mutations (registered when inside ProjectProvider)
   projectMutations?: ProjectMutations;
+  // Remote workspaces (from Electric sync via UserContext)
+  remoteWorkspaces: RemoteWorkspace[];
 }
 
 // Context for evaluating action visibility and state conditions
@@ -330,6 +333,19 @@ export const Actions = {
           attemptsApi.getRepos(workspaceId),
         ]);
         const task = await tasksApi.getById(workspace.task_id);
+
+        // Find linked issue from remote workspace (synced via Electric)
+        const remoteWs = ctx.remoteWorkspaces.find(
+          (w) => w.local_workspace_id === workspaceId
+        );
+        const linkedIssue =
+          remoteWs?.issue_id
+            ? {
+                issueId: remoteWs.issue_id,
+                remoteProjectId: remoteWs.project_id,
+              }
+            : undefined;
+
         ctx.navigate('/workspaces/create', {
           state: {
             initialPrompt: firstMessage,
@@ -338,6 +354,7 @@ export const Actions = {
               target_branch: r.target_branch,
             })),
             project_id: task.project_id,
+            linkedIssue,
           },
         });
       } catch {
