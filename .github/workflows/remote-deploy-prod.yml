@@ -89,6 +89,9 @@ jobs:
           echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
           echo "new_ref=$new_tag" >> $GITHUB_OUTPUT
 
+      - name: Stop SSH agent
+        run: ssh-agent -k
+
       - name: Commit changes and create tag
         run: |
           git config --local user.email "action@github.com"
