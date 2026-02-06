@@ -2,9 +2,10 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useScratch } from '@/hooks/useScratch';
-import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
-import { useOrganizationStore } from '@/stores/useOrganizationStore';
+import { useAllOrganizationProjects } from '@/hooks/useAllOrganizationProjects';
+import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';
+import type { Project } from 'shared/remote-types';
 import { splitMessageToTitleDescription } from '@/utils/string';
 import {
   PERSIST_KEYS,
@@ -64,10 +65,14 @@ export function WorkspacesSidebarContainer({
     (s) => s.clearWorkspaceFilters
   );
 
-  // Remote data for project filter
+  // Remote data for project filter (all orgs)
   const { workspaces: remoteWorkspaces } = useUserContext();
-  const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
-  const { data: remoteProjects = [] } = useOrganizationProjects(selectedOrgId);
+  const { data: allRemoteProjects } = useAllOrganizationProjects();
+  const { data: orgsData } = useUserOrganizations();
+  const organizations = useMemo(
+    () => orgsData?.organizations ?? [],
+    [orgsData?.organizations]
+  );
 
   // Map local workspace ID → remote project ID
   const remoteProjectByLocalId = useMemo(() => {
@@ -80,11 +85,37 @@ export function WorkspacesSidebarContainer({
     return map;
   }, [remoteWorkspaces]);
 
-  // Only show projects that have at least one linked workspace
-  const projectsWithWorkspaces = useMemo(() => {
+  // Build org name lookup
+  const orgNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const org of organizations) {
+      map.set(org.id, org.name);
+    }
+    return map;
+  }, [organizations]);
+
+  // Group projects by org, only including projects with linked workspaces
+  const projectGroups = useMemo(() => {
     const linkedProjectIds = new Set(remoteProjectByLocalId.values());
-    return remoteProjects.filter((p) => linkedProjectIds.has(p.id));
-  }, [remoteProjects, remoteProjectByLocalId]);
+    const relevant = allRemoteProjects.filter((p) =>
+      linkedProjectIds.has(p.id)
+    );
+
+    const groupMap = new Map<string, Project[]>();
+    for (const project of relevant) {
+      const arr = groupMap.get(project.organization_id) ?? [];
+      arr.push(project);
+      groupMap.set(project.organization_id, arr);
+    }
+
+    return Array.from(groupMap.entries())
+      .map(([orgId, projects]) => ({
+        orgId,
+        orgName: orgNameById.get(orgId) ?? 'Unknown',
+        projects: projects.sort((a, b) => a.name.localeCompare(b.name)),
+      }))
+      .sort((a, b) => a.orgName.localeCompare(b.orgName));
+  }, [allRemoteProjects, remoteProjectByLocalId, orgNameById]);
 
   const hasActiveFilters =
     workspaceFilters.projectIds.length > 0 ||
@@ -227,7 +258,7 @@ export function WorkspacesSidebarContainer({
 
   const filterElement = (
     <WorkspaceSidebarFilters
-      projects={projectsWithWorkspaces}
+      projectGroups={projectGroups}
       selectedProjectIds={workspaceFilters.projectIds}
       prFilter={workspaceFilters.prFilter}
       hasActiveFilters={hasActiveFilters}
