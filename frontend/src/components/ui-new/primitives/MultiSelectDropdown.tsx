@@ -51,7 +51,7 @@ export function MultiSelectDropdown<T extends string = string>({
             'text-sm text-normal hover:bg-secondary transition-colors',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             'py-half',
-            iconOnly ? 'px-half' : 'px-base'
+            'px-base'
           )}
         >
           <IconComponent className="size-icon-xs" weight="bold" />
