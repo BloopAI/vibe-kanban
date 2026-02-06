@@ -16,7 +16,7 @@ import type {
 import { ActionTargetType } from '@/components/ui-new/actions';
 import { useActionVisibilityContext } from '@/components/ui-new/actions/useActionVisibility';
 import type { SelectionPage } from './SelectionDialog';
-import type { RepoSelectionResult } from './selections/repoBranchSelection';
+import type { RepoSelectionResult } from './selections/repoSelection';
 import { useCommandBarState } from './commandBar/useCommandBarState';
 import { useResolvedPage } from './commandBar/useResolvedPage';
 
@@ -112,7 +112,7 @@ function CommandBarContent({
         } else if (!repoId && repos.length > 1) {
           const { SelectionDialog } = await import('./SelectionDialog');
           const { buildRepoSelectionPages } = await import(
-            './selections/repoBranchSelection'
+            './selections/repoSelection'
           );
           const result = await SelectionDialog.show({
             initialPageId: 'selectRepo',
