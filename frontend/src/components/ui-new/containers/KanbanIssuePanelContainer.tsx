@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { useNavigate } from 'react-router-dom';
+import type { IssuePriority } from 'shared/remote-types';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
@@ -35,6 +36,7 @@ export function KanbanIssuePanelContainer() {
     createDefaultParentIssueId: kanbanCreateDefaultParentIssueId,
     openIssue,
     closePanel,
+    updateCreateDefaults,
   } = useKanbanNavigation();
 
   const navigate = useNavigate();
@@ -506,41 +508,33 @@ export function KanbanIssuePanelContainer() {
       if (kanbanCreateMode || !selectedKanbanIssueId) {
         // For statusId, open the status selection dialog with callback
         if (field === 'statusId') {
-          const { CommandBarDialog } = await import(
-            '@/components/ui-new/dialogs/CommandBarDialog'
+          const { ProjectSelectionDialog } = await import(
+            '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
           );
-          await CommandBarDialog.show({
-            pendingStatusSelection: {
-              projectId,
-              issueIds: [],
-              isCreateMode: true,
-              onCreateModeUpdate: (statusId: string) => {
-                setCreateFormData((prev) =>
-                  prev ? { ...prev, statusId } : prev
-                );
-              },
-            },
+          const result = await ProjectSelectionDialog.show({
+            projectId,
+            selection: { type: 'status', issueIds: [], isCreateMode: true },
           });
+          if (result && typeof result === 'object' && 'statusId' in result) {
+            updateCreateDefaults({ statusId: result.statusId as string });
+          }
           return;
         }
 
         // For priority, open the priority selection dialog with callback
         if (field === 'priority') {
-          const { CommandBarDialog } = await import(
-            '@/components/ui-new/dialogs/CommandBarDialog'
+          const { ProjectSelectionDialog } = await import(
+            '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
           );
-          await CommandBarDialog.show({
-            pendingPrioritySelection: {
-              projectId,
-              issueIds: [],
-              isCreateMode: true,
-              onCreateModeUpdate: (priority) => {
-                setCreateFormData((prev) =>
-                  prev ? { ...prev, priority } : prev
-                );
-              },
-            },
+          const result = await ProjectSelectionDialog.show({
+            projectId,
+            selection: { type: 'priority', issueIds: [], isCreateMode: true },
           });
+          if (result && typeof result === 'object' && 'priority' in result) {
+            updateCreateDefaults({
+              priority: (result as { priority: IssuePriority | null }).priority,
+            });
+          }
           return;
         }
 
@@ -643,6 +637,7 @@ export function KanbanIssuePanelContainer() {
       openStatusSelection,
       openPrioritySelection,
       openAssigneeSelection,
+      updateCreateDefaults,
       issueTags,
       insertIssueTag,
       removeIssueTag,

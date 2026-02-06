@@ -155,27 +155,29 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     return null;
   }, [logsPanelContent, processLogs]);
 
-  // Open status selection in command bar (uses dynamic import to avoid circular deps)
+  // Open status selection dialog (uses dynamic import to avoid circular deps)
   const openStatusSelection = useCallback(
     async (projectId: string, issueIds: string[]) => {
-      const { CommandBarDialog } = await import(
-        '@/components/ui-new/dialogs/CommandBarDialog'
+      const { ProjectSelectionDialog } = await import(
+        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
       );
-      await CommandBarDialog.show({
-        pendingStatusSelection: { projectId, issueIds },
+      await ProjectSelectionDialog.show({
+        projectId,
+        selection: { type: 'status', issueIds },
       });
     },
     []
   );
 
-  // Open priority selection in command bar (uses dynamic import to avoid circular deps)
+  // Open priority selection dialog (uses dynamic import to avoid circular deps)
   const openPrioritySelection = useCallback(
     async (projectId: string, issueIds: string[]) => {
-      const { CommandBarDialog } = await import(
-        '@/components/ui-new/dialogs/CommandBarDialog'
+      const { ProjectSelectionDialog } = await import(
+        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
       );
-      await CommandBarDialog.show({
-        pendingPrioritySelection: { projectId, issueIds },
+      await ProjectSelectionDialog.show({
+        projectId,
+        selection: { type: 'priority', issueIds },
       });
     },
     []
@@ -192,18 +194,19 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     []
   );
 
-  // Open sub-issue selection in command bar (uses dynamic import to avoid circular deps)
+  // Open sub-issue selection dialog (uses dynamic import to avoid circular deps)
   const openSubIssueSelection = useCallback(
     async (
       projectId: string,
       parentIssueId: string,
       mode: 'addChild' | 'setParent' = 'addChild'
     ) => {
-      const { CommandBarDialog } = await import(
-        '@/components/ui-new/dialogs/CommandBarDialog'
+      const { ProjectSelectionDialog } = await import(
+        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
       );
-      await CommandBarDialog.show({
-        pendingSubIssueSelection: { projectId, parentIssueId, mode },
+      await ProjectSelectionDialog.show({
+        projectId,
+        selection: { type: 'subIssue', parentIssueId, mode },
       });
     },
     []
@@ -220,7 +223,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     []
   );
 
-  // Open relationship selection in command bar (uses dynamic import to avoid circular deps)
+  // Open relationship selection dialog (uses dynamic import to avoid circular deps)
   const openRelationshipSelection = useCallback(
     async (
       projectId: string,
@@ -228,16 +231,12 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       relationshipType: 'blocking' | 'related' | 'has_duplicate',
       direction: 'forward' | 'reverse'
     ) => {
-      const { CommandBarDialog } = await import(
-        '@/components/ui-new/dialogs/CommandBarDialog'
+      const { ProjectSelectionDialog } = await import(
+        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
       );
-      await CommandBarDialog.show({
-        pendingRelationshipSelection: {
-          projectId,
-          issueId,
-          relationshipType,
-          direction,
-        },
+      await ProjectSelectionDialog.show({
+        projectId,
+        selection: { type: 'relationship', issueId, relationshipType, direction },
       });
     },
     []

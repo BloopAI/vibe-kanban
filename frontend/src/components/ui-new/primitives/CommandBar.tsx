@@ -2,6 +2,7 @@ import {
   CaretLeftIcon,
   CopyIcon,
   FolderIcon,
+  GitBranchIcon,
   ArrowFatLineUpIcon,
   ArrowUpIcon,
   MinusIcon,
@@ -136,6 +137,20 @@ export function CommandBar({
                   >
                     <FolderIcon className="h-4 w-4" weight="regular" />
                     <span>{item.repo.display_name}</span>
+                  </CommandItem>
+                );
+              } else if (item.type === 'branch') {
+                return (
+                  <CommandItem
+                    key={item.branch.name}
+                    value={item.branch.name}
+                    onSelect={() => onSelect(item)}
+                  >
+                    <GitBranchIcon className="h-4 w-4" weight="regular" />
+                    <span>{item.branch.name}</span>
+                    {item.branch.isCurrent && (
+                      <span className="ml-auto text-xs text-low">Current</span>
+                    )}
                   </CommandItem>
                 );
               } else if (item.type === 'status') {

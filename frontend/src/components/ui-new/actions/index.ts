@@ -1265,19 +1265,14 @@ export const Actions = {
     shortcut: 'I S',
     requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => ctx.layoutMode === 'kanban' && ctx.isCreatingIssue,
-    execute: async () => {
-      // Opens status selection for the issue being created
-      // The CommandBarDialog will handle this specially for create mode
-      // ProjectId will be resolved from route params inside the dialog
-      const { CommandBarDialog } = await import(
-        '@/components/ui-new/dialogs/CommandBarDialog'
+    execute: async (ctx) => {
+      if (!ctx.kanbanProjectId) return;
+      const { ProjectSelectionDialog } = await import(
+        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
       );
-      await CommandBarDialog.show({
-        pendingStatusSelection: {
-          projectId: '',
-          issueIds: [],
-          isCreateMode: true,
-        },
+      await ProjectSelectionDialog.show({
+        projectId: ctx.kanbanProjectId,
+        selection: { type: 'status', issueIds: [], isCreateMode: true },
       });
     },
   } satisfies GlobalActionDefinition,
@@ -1302,19 +1297,14 @@ export const Actions = {
     shortcut: 'I P',
     requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => ctx.layoutMode === 'kanban' && ctx.isCreatingIssue,
-    execute: async () => {
-      // Opens priority selection for the issue being created
-      // The CommandBarDialog will handle this specially for create mode
-      // ProjectId will be resolved from route params inside the dialog
-      const { CommandBarDialog } = await import(
-        '@/components/ui-new/dialogs/CommandBarDialog'
+    execute: async (ctx) => {
+      if (!ctx.kanbanProjectId) return;
+      const { ProjectSelectionDialog } = await import(
+        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
       );
-      await CommandBarDialog.show({
-        pendingPrioritySelection: {
-          projectId: '',
-          issueIds: [],
-          isCreateMode: true,
-        },
+      await ProjectSelectionDialog.show({
+        projectId: ctx.kanbanProjectId,
+        selection: { type: 'priority', issueIds: [], isCreateMode: true },
       });
     },
   } satisfies GlobalActionDefinition,

@@ -12,11 +12,7 @@ export type PageId =
   | 'viewOptions'
   | 'repoActions' // Page for repo-specific actions (opened from repo card or CMD+K)
   | 'issueActions' // Page for issue-specific actions (kanban mode)
-  | 'selectRepo' // Dynamic page for repo selection (not in Pages record)
-  | 'selectStatus' // Dynamic page for status selection (not in Pages record)
-  | 'selectPriority' // Dynamic page for priority selection (not in Pages record)
-  | 'selectSubIssue' // Dynamic page for sub-issue selection (not in Pages record)
-  | 'selectRelationshipIssue'; // Dynamic page for relationship issue selection (not in Pages record)
+  | 'selectRepo'; // Dynamic page for repo selection (not in Pages record)
 
 // Items that can appear inside a group
 export type CommandBarGroupItem =
@@ -53,6 +49,12 @@ export interface PriorityItem {
   name: string;
 }
 
+// Branch item for dynamic branch selection page
+export interface BranchItem {
+  name: string;
+  isCurrent: boolean;
+}
+
 // Resolved types (after childPages expansion)
 export type ResolvedGroupItem =
   | { type: 'action'; action: ActionDefinition }
@@ -61,7 +63,8 @@ export type ResolvedGroupItem =
   | { type: 'status'; status: StatusItem }
   | { type: 'priority'; priority: PriorityItem }
   | { type: 'issue'; issue: Issue }
-  | { type: 'createSubIssue' };
+  | { type: 'createSubIssue' }
+  | { type: 'branch'; branch: BranchItem };
 
 export interface ResolvedGroup {
   label: string;
@@ -78,15 +81,8 @@ export interface CommandBarPage {
   isVisible?: (ctx: ActionVisibilityContext) => boolean;
 }
 
-// Static page IDs (excludes dynamic pages like selectRepo, selectStatus, selectPriority, and selectSubIssue)
-export type StaticPageId = Exclude<
-  PageId,
-  | 'selectRepo'
-  | 'selectStatus'
-  | 'selectPriority'
-  | 'selectSubIssue'
-  | 'selectRelationshipIssue'
->;
+// Static page IDs (excludes dynamic pages like selectRepo)
+export type StaticPageId = Exclude<PageId, 'selectRepo'>;
 
 export const Pages: Record<StaticPageId, CommandBarPage> = {
   // Root page - shown when opening via CMD+K
