@@ -5,14 +5,13 @@ use std::time::Duration;
 use api_types::{
     AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
     CreateIssueRequest, CreateOrganizationRequest, CreateOrganizationResponse,
-    CreateWorkspaceRequest, DeleteWorkspaceRequest, GetInvitationResponse,
-    GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
-    HandoffRedeemResponse, Issue, ListInvitationsResponse, ListIssuesResponse,
-    ListMembersResponse, ListOrganizationsResponse, ListProjectStatusesResponse,
-    ListProjectsResponse, Organization, ProfileResponse, RevokeInvitationRequest,
-    TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest,
-    UpdateMemberRoleResponse, UpdateOrganizationRequest, UpdateWorkspaceRequest,
-    UpsertPullRequestRequest,
+    CreateWorkspaceRequest, DeleteWorkspaceRequest, GetInvitationResponse, GetOrganizationResponse,
+    HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest, HandoffRedeemResponse, Issue,
+    ListInvitationsResponse, ListIssuesResponse, ListMembersResponse, ListOrganizationsResponse,
+    ListProjectStatusesResponse, ListProjectsResponse, Organization, ProfileResponse,
+    RevokeInvitationRequest, TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest,
+    UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
+    UpdateWorkspaceRequest, UpsertPullRequestRequest,
 };
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
@@ -693,10 +692,8 @@ impl RemoteClient {
         &self,
         organization_id: Uuid,
     ) -> Result<ListProjectsResponse, RemoteClientError> {
-        self.get_authed(&format!(
-            "/v1/projects?organization_id={organization_id}"
-        ))
-        .await
+        self.get_authed(&format!("/v1/projects?organization_id={organization_id}"))
+            .await
     }
 
     // ── Project Statuses ────────────────────────────────────────────────
@@ -706,10 +703,8 @@ impl RemoteClient {
         &self,
         project_id: Uuid,
     ) -> Result<ListProjectStatusesResponse, RemoteClientError> {
-        self.get_authed(&format!(
-            "/v1/project-statuses?project_id={project_id}"
-        ))
-        .await
+        self.get_authed(&format!("/v1/project-statuses?project_id={project_id}"))
+            .await
     }
 
     // ── Pull Requests ───────────────────────────────────────────────────
