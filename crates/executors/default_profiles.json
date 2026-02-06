@@ -74,6 +74,12 @@
           "ask_for_approval": "unless-trusted"
         }
       },
+      "GPT_5_3_CODEX": {
+        "CODEX": {
+          "model": "gpt-5.3-codex",
+          "sandbox": "danger-full-access"
+        }
+      },
       "MAX": {
         "CODEX": {
           "model": "gpt-5.1-codex-max",
