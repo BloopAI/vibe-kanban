@@ -1,8 +1,9 @@
 // streamJsonPatchEntries.ts - WebSocket JSON patch streaming utility
 import type { Operation } from 'rfc6902';
+import { produce } from 'immer';
 import { applyUpsertPatch } from '@/utils/jsonPatch';
 
-let _wsMsgSeq = 0;
+let _wsFlushSeq = 0;
 
 type PatchContainer<E = unknown> = { entries: E[] };
 
@@ -35,6 +36,9 @@ interface StreamController<E = unknown> {
  *   {"Finished": ""}
  *
  * Maintains an in-memory { entries: [] } snapshot and returns a controller.
+ *
+ * Messages are batched per animation frame and applied using immer for
+ * structural sharing, avoiding a full deep clone on every message.
  */
 export function streamJsonPatchEntries<E = unknown>(
   url: string,
@@ -52,6 +56,10 @@ export function streamJsonPatchEntries<E = unknown>(
   const wsUrl = url.replace(/^http/, 'ws');
   const ws = new WebSocket(wsUrl);
 
+  // --- rAF batching state ---
+  let pendingOps: Operation[] = [];
+  let rafId: number | null = null;
+
   const notify = () => {
     for (const cb of subscribers) {
       try {
@@ -62,56 +70,62 @@ export function streamJsonPatchEntries<E = unknown>(
     }
   };
 
+  const flush = () => {
+    rafId = null;
+    if (pendingOps.length === 0) return;
+
+    const DEV = import.meta.env.DEV;
+    const seq = _wsFlushSeq++;
+    const m = `ws-flush-${seq}`;
+
+    if (DEV) performance.mark(`${m}:dedupe-s`);
+    const ops = dedupeOps(pendingOps);
+    const opsCount = pendingOps.length;
+    pendingOps = [];
+    if (DEV) performance.mark(`${m}:dedupe-e`);
+
+    if (DEV) performance.mark(`${m}:produce-s`);
+    snapshot = produce(snapshot, (draft) => {
+      applyUpsertPatch(draft, ops);
+    });
+    if (DEV) performance.mark(`${m}:produce-e`);
+
+    if (DEV) performance.mark(`${m}:notify-s`);
+    notify();
+    if (DEV) performance.mark(`${m}:notify-e`);
+
+    if (DEV) {
+      performance.measure('ws:dedupe', `${m}:dedupe-s`, `${m}:dedupe-e`);
+      performance.measure('ws:produce', `${m}:produce-s`, `${m}:produce-e`);
+      performance.measure('ws:notify', `${m}:notify-s`, `${m}:notify-e`);
+      performance.measure('ws:flush', `${m}:dedupe-s`, `${m}:notify-e`);
+      if (seq % 10 === 0) {
+        console.log(
+          `[ws-perf] flush#${seq}: ops=${opsCount} deduped=${ops.length} entries=${snapshot.entries.length}`
+        );
+      }
+    }
+  };
+
   const handleMessage = (event: MessageEvent) => {
     try {
-      const seq = _wsMsgSeq++;
-      const m = `ws-msg-${seq}`;
-      const DEV = import.meta.env.DEV;
-
-      if (DEV) performance.mark(`${m}:parse-s`);
       const msg = JSON.parse(event.data);
-      if (DEV) performance.mark(`${m}:parse-e`);
 
-      // Handle JsonPatch messages (from LogMsg::to_ws_message)
+      // Handle JsonPatch messages — accumulate ops for next rAF flush
       if (msg.JsonPatch) {
         const raw = msg.JsonPatch as Operation[];
-
-        if (DEV) performance.mark(`${m}:dedupe-s`);
-        const ops = dedupeOps(raw);
-        if (DEV) performance.mark(`${m}:dedupe-e`);
-
-        // Apply to a working copy (applyPatch mutates)
-        if (DEV) performance.mark(`${m}:clone-s`);
-        const next = structuredClone(snapshot);
-        if (DEV) performance.mark(`${m}:clone-e`);
-
-        if (DEV) performance.mark(`${m}:patch-s`);
-        applyUpsertPatch(next, ops);
-        if (DEV) performance.mark(`${m}:patch-e`);
-
-        snapshot = next;
-
-        if (DEV) performance.mark(`${m}:notify-s`);
-        notify();
-        if (DEV) performance.mark(`${m}:notify-e`);
-
-        if (DEV) {
-          performance.measure('ws:parse', `${m}:parse-s`, `${m}:parse-e`);
-          performance.measure('ws:dedupe', `${m}:dedupe-s`, `${m}:dedupe-e`);
-          performance.measure('ws:clone', `${m}:clone-s`, `${m}:clone-e`);
-          performance.measure('ws:patch', `${m}:patch-s`, `${m}:patch-e`);
-          performance.measure('ws:notify', `${m}:notify-s`, `${m}:notify-e`);
-          performance.measure('ws:total', `${m}:parse-s`, `${m}:notify-e`);
-          if (seq % 50 === 0) {
-            console.log(
-              `[ws-perf] msg#${seq}: entries=${snapshot.entries.length}`
-            );
-          }
+        pendingOps.push(...raw);
+        if (rafId === null) {
+          rafId = requestAnimationFrame(flush);
         }
       }
 
-      // Handle Finished messages
+      // Handle Finished messages — flush synchronously before closing
       if (msg.finished !== undefined) {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+        }
+        flush();
         opts.onFinished?.(snapshot.entries);
         ws.close();
       }
@@ -134,6 +148,10 @@ export function streamJsonPatchEntries<E = unknown>(
 
   ws.addEventListener('close', () => {
     connected = false;
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
   });
 
   return {
@@ -153,6 +171,10 @@ export function streamJsonPatchEntries<E = unknown>(
       return () => subscribers.delete(cb);
     },
     close(): void {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       ws.close();
       subscribers.clear();
       connected = false;
@@ -161,7 +183,7 @@ export function streamJsonPatchEntries<E = unknown>(
 }
 
 /**
- * Dedupe multiple ops that touch the same path within a single event.
+ * Dedupe multiple ops that touch the same path within a batch.
  * Last write for a path wins, while preserving the overall left-to-right
  * order of the *kept* final operations.
  *

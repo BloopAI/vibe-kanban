@@ -5,14 +5,12 @@
  */
 function wsPerfReport() {
   const names = [
-    'ws:parse',
     'ws:dedupe',
-    'ws:clone',
-    'ws:patch',
+    'ws:produce',
     'ws:notify',
     'ws:flatten',
     'ws:aggregate',
-    'ws:total',
+    'ws:flush',
   ];
 
   for (const name of names) {
@@ -37,20 +35,20 @@ function wsPerfReport() {
     );
   }
 
-  const totals = performance.getEntriesByName('ws:total', 'measure');
-  if (totals.length >= 2) {
-    const first = totals[0]!.startTime;
-    const last = totals[totals.length - 1]!.startTime;
+  const flushes = performance.getEntriesByName('ws:flush', 'measure');
+  if (flushes.length >= 2) {
+    const first = flushes[0]!.startTime;
+    const last = flushes[flushes.length - 1]!.startTime;
     const elapsed = (last - first) / 1000;
     console.log(
-      `\nMessage rate: ${(totals.length / elapsed).toFixed(1)} msg/sec over ${elapsed.toFixed(1)}s`
+      `\nFlush rate: ${(flushes.length / elapsed).toFixed(1)} flushes/sec over ${elapsed.toFixed(1)}s`
     );
 
-    const totalTime = totals.reduce((s, e) => s + e.duration, 0);
+    const totalTime = flushes.reduce((s, e) => s + e.duration, 0);
     const wallClock =
-      totals[totals.length - 1]!.startTime +
-      totals[totals.length - 1]!.duration -
-      totals[0]!.startTime;
+      flushes[flushes.length - 1]!.startTime +
+      flushes[flushes.length - 1]!.duration -
+      flushes[0]!.startTime;
     if (wallClock > 0) {
       console.log(
         `Main thread budget used: ${((totalTime / wallClock) * 100).toFixed(1)}%`
