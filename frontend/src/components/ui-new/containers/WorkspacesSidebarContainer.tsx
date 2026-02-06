@@ -284,7 +284,7 @@ export function WorkspacesSidebarContainer({
   );
 
   const filterBar = (
-    <div className="flex items-center gap-half shrink-0">
+    <div className="flex items-stretch gap-half shrink-0">
       {projectOptions.length > 0 && (
         <MultiSelectDropdown
           values={workspaceFilters.projectIds}
