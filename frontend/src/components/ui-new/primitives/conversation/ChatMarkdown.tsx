@@ -16,13 +16,14 @@ export function ChatMarkdown({
   workspaceId,
 }: ChatMarkdownProps) {
   const { viewFileInChanges, findMatchingDiffPath } = useChangesView();
+  const wysiwygClassName = cn('whitespace-pre-wrap break-words', className)
 
   return (
-    <div className={cn('text-sm', className)} style={{ maxWidth }}>
+    <div className="text-sm" style={{ maxWidth }}>
       <WYSIWYGEditor
         value={content}
         disabled
-        className="whitespace-pre-wrap break-words"
+        className={wysiwygClassName}
         taskAttemptId={workspaceId}
         findMatchingDiffPath={findMatchingDiffPath}
         onCodeClick={viewFileInChanges}

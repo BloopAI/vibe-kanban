@@ -70,6 +70,7 @@ export function ChatCollapsedThinking({
               <ChatMarkdown
                 content={entry.content}
                 workspaceId={taskAttemptId}
+                className="text-sm"
               />
             </div>
           ))}
