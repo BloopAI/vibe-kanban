@@ -16,13 +16,9 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{
-        issues::IssueRepository,
-        pull_requests::{PullRequest, PullRequestRepository},
-        types::PullRequestStatus,
-        workspaces::WorkspaceRepository,
-    },
+    db::{issues::IssueRepository, pull_requests::PullRequestRepository, workspaces::WorkspaceRepository},
 };
+use api_types::{PullRequest, PullRequestStatus, UpsertPullRequestRequest};
 
 #[derive(Debug, Deserialize)]
 pub struct CreatePullRequestRequest {
@@ -42,17 +38,6 @@ pub struct UpdatePullRequestRequest {
     pub status: Option<PullRequestStatus>,
     pub merged_at: Option<Option<DateTime<Utc>>>,
     pub merge_commit_sha: Option<Option<String>>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UpsertPullRequestRequest {
-    pub url: String,
-    pub number: i32,
-    pub status: PullRequestStatus,
-    pub merged_at: Option<DateTime<Utc>>,
-    pub merge_commit_sha: Option<String>,
-    pub target_branch_name: String,
-    pub local_workspace_id: Uuid,
 }
 
 pub fn router() -> Router<AppState> {

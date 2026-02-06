@@ -5,7 +5,7 @@ use axum::{
     response::IntoResponse,
     routing::{delete, get, patch, post},
 };
-use utils::api::organizations::{
+use api_types::{
     CreateOrganizationRequest, CreateOrganizationResponse, GetOrganizationResponse,
     ListOrganizationsResponse, MemberRole, UpdateOrganizationRequest,
 };

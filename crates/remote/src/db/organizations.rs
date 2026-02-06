@@ -1,5 +1,5 @@
+pub use api_types::{MemberRole, Organization, OrganizationWithRole};
 use sqlx::{Executor, PgPool, Postgres, query_as};
-pub use utils::api::organizations::{MemberRole, Organization, OrganizationWithRole};
 use uuid::Uuid;
 
 use super::{

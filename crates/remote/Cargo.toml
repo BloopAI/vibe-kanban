@@ -38,6 +38,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"]
 tracing-error = "0.2"
 thiserror = "2.0.12"
 ts-rs = { git = "https://github.com/xazukx/ts-rs.git", branch = "use-ts-enum", features = ["uuid-impl", "chrono-impl", "no-serde-warnings", "serde-json-impl"] }
+api-types = { path = "../api-types" }
 utils = { path = "../utils" }
 uuid = { version = "1", features = ["serde", "v4"] }
 jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"] }
@@ -54,6 +55,6 @@ aws-credential-types = "1.2"
 tempfile = "3"
 tar = "0.4"
 flate2 = "1.0"
-paste = "1.0"
+
 
 [workspace]

@@ -6,7 +6,7 @@ use axum::{
     routing::post,
 };
 use tracing::warn;
-use utils::api::oauth::{TokenRefreshRequest, TokenRefreshResponse};
+use api_types::{TokenRefreshRequest, TokenRefreshResponse};
 
 use crate::{
     AppState,

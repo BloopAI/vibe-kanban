@@ -10,11 +10,10 @@ use uuid::Uuid;
 
 use super::error::ErrorResponse;
 use crate::{
-    AppState,
-    auth::RequestContext,
-    db::notifications::{Notification, NotificationRepository},
-    entities::UpdateNotificationRequest,
+    AppState, auth::RequestContext, db::notifications::NotificationRepository,
+    mutation_definition::{MutationBuilder, NoCreate},
 };
+use api_types::{Notification, UpdateNotificationRequest};
 
 #[derive(Debug, Serialize)]
 pub struct ListNotificationsResponse {
@@ -37,17 +36,19 @@ pub struct ListNotificationsQuery {
     pub include_dismissed: bool,
 }
 
+pub fn mutation() -> MutationBuilder<Notification, NoCreate, UpdateNotificationRequest> {
+    MutationBuilder::new("notifications")
+        .list(list_notifications)
+        .get(get_notification)
+        .update(update_notification)
+        .delete(delete_notification)
+}
+
 pub fn router() -> Router<AppState> {
-    Router::new()
-        .route("/notifications", get(list_notifications))
+    mutation()
+        .router()
         .route("/notifications/unread-count", get(unread_count))
         .route("/notifications/mark-all-seen", post(mark_all_seen))
-        .route(
-            "/notifications/{notification_id}",
-            get(get_notification)
-                .patch(update_notification)
-                .delete(delete_notification),
-        )
 }
 
 #[instrument(

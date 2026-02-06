@@ -1,14 +1,13 @@
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use thiserror::Error;
-use utils::api::migration::{
+use api_types::{
     MigrateIssueRequest, MigrateProjectRequest, MigratePullRequestRequest, MigrateWorkspaceRequest,
 };
 use uuid::Uuid;
 
-use super::{
-    project_statuses::ProjectStatusRepository, tags::TagRepository, types::PullRequestStatus,
-};
+use super::{project_statuses::ProjectStatusRepository, tags::TagRepository};
+use api_types::PullRequestStatus;
 
 #[derive(Debug, Error)]
 pub enum MigrationError {

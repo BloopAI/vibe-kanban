@@ -1,16 +1,10 @@
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum PullRequestStatus {
-    Open,
-    Merged,
-    Closed,
-}
+use crate::PullRequestStatus;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct UpsertPullRequestRequest {
     pub url: String,
     pub number: i32,

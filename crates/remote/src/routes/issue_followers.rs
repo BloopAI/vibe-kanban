@@ -13,17 +13,28 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::issue_followers::{IssueFollower, IssueFollowerRepository},
-    define_mutation_router,
-    entities::{
-        CreateIssueFollowerRequest, ListIssueFollowersQuery, ListIssueFollowersResponse,
-        UpdateIssueFollowerRequest,
-    },
-    mutation_types::{DeleteResponse, MutationResponse},
+    db::issue_followers::IssueFollowerRepository,
+    mutation_definition::MutationBuilder,
+    response::{DeleteResponse, MutationResponse},
+};
+use api_types::{
+    CreateIssueFollowerRequest, IssueFollower, ListIssueFollowersQuery, ListIssueFollowersResponse,
+    UpdateIssueFollowerRequest,
 };
 
-// Generate router that references handlers below
-define_mutation_router!(IssueFollower, table: "issue_followers");
+/// Mutation definition for IssueFollower - provides both router and TypeScript metadata.
+pub fn mutation() -> MutationBuilder<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest> {
+    MutationBuilder::new("issue_followers")
+        .list(list_issue_followers)
+        .get(get_issue_follower)
+        .create(create_issue_follower)
+        .update(update_issue_follower)
+        .delete(delete_issue_follower)
+}
+
+pub fn router() -> axum::Router<AppState> {
+    mutation().router()
+}
 
 #[instrument(
     name = "issue_followers.list_issue_followers",

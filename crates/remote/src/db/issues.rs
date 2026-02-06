@@ -1,42 +1,16 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
-use ts_rs::TS;
+use api_types::{Issue, IssuePriority};
 use uuid::Uuid;
 
 use super::{
-    get_txid,
-    project_statuses::ProjectStatusRepository,
-    pull_requests::PullRequestRepository,
-    types::{IssuePriority, PullRequestStatus},
+    get_txid, project_statuses::ProjectStatusRepository, pull_requests::PullRequestRepository,
     workspaces::WorkspaceRepository,
 };
-use crate::mutation_types::{DeleteResponse, MutationResponse};
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct Issue {
-    pub id: Uuid,
-    pub project_id: Uuid,
-    pub issue_number: i32,
-    pub simple_id: String,
-    pub status_id: Uuid,
-    pub title: String,
-    pub description: Option<String>,
-    pub priority: Option<IssuePriority>,
-    pub start_date: Option<DateTime<Utc>>,
-    pub target_date: Option<DateTime<Utc>>,
-    pub completed_at: Option<DateTime<Utc>>,
-    pub sort_order: f64,
-    pub parent_issue_id: Option<Uuid>,
-    pub parent_issue_sort_order: Option<f64>,
-    pub extension_metadata: Value,
-    pub creator_user_id: Option<Uuid>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
+use api_types::PullRequestStatus;
+use crate::response::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum IssueError {

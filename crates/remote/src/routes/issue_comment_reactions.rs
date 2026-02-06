@@ -14,19 +14,32 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{
-        issue_comment_reactions::{IssueCommentReaction, IssueCommentReactionRepository},
+        issue_comment_reactions::IssueCommentReactionRepository,
         issue_comments::IssueCommentRepository,
     },
-    define_mutation_router,
-    entities::{
-        CreateIssueCommentReactionRequest, ListIssueCommentReactionsQuery,
-        ListIssueCommentReactionsResponse, UpdateIssueCommentReactionRequest,
-    },
-    mutation_types::{DeleteResponse, MutationResponse},
+    mutation_definition::MutationBuilder,
+    response::{DeleteResponse, MutationResponse},
+};
+use api_types::{
+    CreateIssueCommentReactionRequest, IssueCommentReaction, ListIssueCommentReactionsQuery,
+    ListIssueCommentReactionsResponse, UpdateIssueCommentReactionRequest,
 };
 
-// Generate router that references handlers below
-define_mutation_router!(IssueCommentReaction, table: "issue_comment_reactions");
+/// Mutation definition for IssueCommentReaction - provides both router and TypeScript metadata.
+pub fn mutation(
+) -> MutationBuilder<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>
+{
+    MutationBuilder::new("issue_comment_reactions")
+        .list(list_issue_comment_reactions)
+        .get(get_issue_comment_reaction)
+        .create(create_issue_comment_reaction)
+        .update(update_issue_comment_reaction)
+        .delete(delete_issue_comment_reaction)
+}
+
+pub fn router() -> axum::Router<AppState> {
+    mutation().router()
+}
 
 #[instrument(
     name = "issue_comment_reactions.list_issue_comment_reactions",

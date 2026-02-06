@@ -194,6 +194,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f0e0fee31ef5ed1ba1316088939cea399010ed7731dba877ed44aeb407a75ea"
 
 [[package]]
+name = "api-types"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "ts-rs 11.0.1",
+ "uuid",
+]
+
+[[package]]
 name = "arbitrary"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3757,6 +3769,7 @@ name = "local-deployment"
 version = "0.1.6"
 dependencies = [
  "anyhow",
+ "api-types",
  "async-trait",
  "bytes",
  "command-group",
@@ -6353,6 +6366,7 @@ name = "server"
 version = "0.1.6"
 dependencies = [
  "anyhow",
+ "api-types",
  "axum",
  "base64",
  "chrono",
@@ -6402,6 +6416,7 @@ name = "services"
 version = "0.1.6"
 dependencies = [
  "anyhow",
+ "api-types",
  "async-trait",
  "axum",
  "backon",
@@ -7980,6 +7995,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 name = "utils"
 version = "0.1.6"
 dependencies = [
+ "api-types",
  "axum",
  "bytes",
  "chrono",

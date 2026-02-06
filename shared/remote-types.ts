@@ -259,9 +259,6 @@ export const ISSUE_REACTIONS_SHAPE = defineShape<IssueCommentReaction>(
   '/v1/shape/issue/{issue_id}/reactions'
 );
 
-// Scope enum matching Rust
-export type Scope = 'Organization' | 'Project' | 'Issue' | 'Comment';
-
 // =============================================================================
 // Mutation Definitions
 // =============================================================================
@@ -269,8 +266,6 @@ export type Scope = 'Organization' | 'Project' | 'Issue' | 'Comment';
 // Mutation definition interface
 export interface MutationDefinition<TRow, TCreate = unknown, TUpdate = unknown> {
   readonly name: string;
-  readonly table: string;
-  readonly mutationScope: Scope;
   readonly url: string;
   readonly _rowType: TRow;  // Phantom field for type inference (not present at runtime)
   readonly _createType: TCreate;  // Phantom field for type inference (not present at runtime)
@@ -280,88 +275,64 @@ export interface MutationDefinition<TRow, TCreate = unknown, TUpdate = unknown> 
 // Helper to create type-safe mutation definitions
 function defineMutation<TRow, TCreate, TUpdate>(
   name: string,
-  table: string,
-  mutationScope: Scope,
   url: string
 ): MutationDefinition<TRow, TCreate, TUpdate> {
-  return { name, table, mutationScope, url } as MutationDefinition<TRow, TCreate, TUpdate>;
+  return { name, url } as MutationDefinition<TRow, TCreate, TUpdate>;
 }
 
 // Individual mutation definitions
 export const PROJECT_MUTATION = defineMutation<Project, CreateProjectRequest, UpdateProjectRequest>(
   'Project',
-  'projects',
-  'Organization',
   '/v1/projects'
 );
 
-export const NOTIFICATION_MUTATION = defineMutation<Notification, CreateNotificationRequest, UpdateNotificationRequest>(
+export const NOTIFICATION_MUTATION = defineMutation<Notification, unknown, UpdateNotificationRequest>(
   'Notification',
-  'notifications',
-  'Organization',
   '/v1/notifications'
 );
 
 export const TAG_MUTATION = defineMutation<Tag, CreateTagRequest, UpdateTagRequest>(
   'Tag',
-  'tags',
-  'Project',
   '/v1/tags'
 );
 
 export const PROJECT_STATUS_MUTATION = defineMutation<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest>(
   'ProjectStatus',
-  'project_statuses',
-  'Project',
   '/v1/project_statuses'
 );
 
 export const ISSUE_MUTATION = defineMutation<Issue, CreateIssueRequest, UpdateIssueRequest>(
   'Issue',
-  'issues',
-  'Project',
   '/v1/issues'
 );
 
 export const ISSUE_ASSIGNEE_MUTATION = defineMutation<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest>(
   'IssueAssignee',
-  'issue_assignees',
-  'Issue',
   '/v1/issue_assignees'
 );
 
 export const ISSUE_FOLLOWER_MUTATION = defineMutation<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest>(
   'IssueFollower',
-  'issue_followers',
-  'Issue',
   '/v1/issue_followers'
 );
 
 export const ISSUE_TAG_MUTATION = defineMutation<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest>(
   'IssueTag',
-  'issue_tags',
-  'Issue',
   '/v1/issue_tags'
 );
 
 export const ISSUE_RELATIONSHIP_MUTATION = defineMutation<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest>(
   'IssueRelationship',
-  'issue_relationships',
-  'Issue',
   '/v1/issue_relationships'
 );
 
 export const ISSUE_COMMENT_MUTATION = defineMutation<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest>(
   'IssueComment',
-  'issue_comments',
-  'Issue',
   '/v1/issue_comments'
 );
 
 export const ISSUE_COMMENT_REACTION_MUTATION = defineMutation<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>(
   'IssueCommentReaction',
-  'issue_comment_reactions',
-  'Comment',
   '/v1/issue_comment_reactions'
 );
 

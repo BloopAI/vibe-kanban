@@ -10,7 +10,7 @@ use axum::{
 use serde::Deserialize;
 use tracing::warn;
 use url::Url;
-use utils::api::oauth::{
+use api_types::{
     HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest, HandoffRedeemResponse,
     ProfileResponse, ProviderProfile,
 };
