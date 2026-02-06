@@ -52,10 +52,7 @@ export function useAllOrganizationProjects() {
       // Subscribe to live changes
       const sub = collection.subscribeChanges(
         () => {
-          projectsByOrg.set(
-            orgId,
-            collection.toArray as unknown as Project[]
-          );
+          projectsByOrg.set(orgId, collection.toArray as unknown as Project[]);
           updateAggregated();
           setIsLoading(false);
         },
