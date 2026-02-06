@@ -23,7 +23,10 @@ use deployment::Deployment;
 use executors::profile::ExecutorProfileId;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
-use services::services::{container::ContainerService, workspace_manager::WorkspaceManager};
+use services::services::{
+    container::ContainerService, image::ImageService, remote_client::RemoteClient,
+    workspace_manager::WorkspaceManager,
+};
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -138,15 +141,92 @@ pub async fn create_task(
 }
 
 #[derive(Debug, Deserialize, TS)]
+pub struct LinkedIssueInfo {
+    pub remote_project_id: Uuid,
+    pub issue_id: Uuid,
+}
+
+#[derive(Debug, Deserialize, TS)]
 pub struct CreateAndStartTaskRequest {
     pub task: CreateTask,
     pub executor_profile_id: ExecutorProfileId,
     pub repos: Vec<WorkspaceRepoInput>,
+    pub linked_issue: Option<LinkedIssueInfo>,
+}
+
+struct ImportedImage {
+    image_id: Uuid,
+    markdown: String,
+}
+
+/// Downloads image attachments from a remote issue and stores them in the local cache.
+/// Returns metadata for each successfully imported image, including markdown references.
+/// Individual attachment failures are logged and skipped; the function continues with the rest.
+async fn import_issue_attachments(
+    client: &RemoteClient,
+    image_service: &ImageService,
+    issue_id: Uuid,
+) -> anyhow::Result<Vec<ImportedImage>> {
+    let response = client.list_issue_attachments(issue_id).await?;
+
+    let mut imported = Vec::new();
+
+    for attachment in response.attachments {
+        // Only import image types
+        let is_image = attachment
+            .mime_type
+            .as_ref()
+            .is_some_and(|m| m.starts_with("image/"));
+        if !is_image {
+            continue;
+        }
+
+        // Download the file bytes from the remote server
+        let bytes = match client.download_attachment_file(attachment.id).await {
+            Ok(b) => b,
+            Err(e) => {
+                tracing::warn!("Failed to download attachment {}: {}", attachment.id, e);
+                continue;
+            }
+        };
+
+        // Store in local image cache (deduplicates by SHA256 hash)
+        let image = match image_service
+            .store_image(&bytes, &attachment.original_name)
+            .await
+        {
+            Ok(img) => img,
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to store imported image '{}': {}",
+                    attachment.original_name,
+                    e
+                );
+                continue;
+            }
+        };
+
+        // Associate with the task (will be done in bulk by caller via image_ids,
+        // but we still need the IDs)
+        let markdown = format!(
+            "![{}]({}/{})",
+            attachment.original_name,
+            utils::path::VIBE_IMAGES_DIR,
+            image.file_path
+        );
+
+        imported.push(ImportedImage {
+            image_id: image.id,
+            markdown,
+        });
+    }
+
+    Ok(imported)
 }
 
 pub async fn create_task_and_start(
     State(deployment): State<DeploymentImpl>,
-    Json(payload): Json<CreateAndStartTaskRequest>,
+    Json(mut payload): Json<CreateAndStartTaskRequest>,
 ) -> Result<ResponseJson<ApiResponse<TaskWithAttemptStatus>>, ApiError> {
     if payload.repos.is_empty() {
         return Err(ApiError::BadRequest(
@@ -155,6 +235,50 @@ pub async fn create_task_and_start(
     }
 
     let pool = &deployment.db().pool;
+
+    // Import images from linked remote issue before creating the task,
+    // so the description and image_ids are complete from the start.
+    if let Some(linked_issue) = &payload.linked_issue {
+        if let Ok(client) = deployment.remote_client() {
+            match import_issue_attachments(&client, deployment.image(), linked_issue.issue_id).await
+            {
+                Ok(imported) if !imported.is_empty() => {
+                    // Append image markdown to description
+                    let image_section = imported
+                        .iter()
+                        .map(|i| i.markdown.as_str())
+                        .collect::<Vec<_>>()
+                        .join("\n\n");
+                    payload.task.description = Some(match &payload.task.description {
+                        Some(desc) => format!("{}\n\n{}", desc, image_section),
+                        None => image_section,
+                    });
+
+                    // Merge imported image IDs into the task's image_ids
+                    let imported_ids: Vec<Uuid> = imported.iter().map(|i| i.image_id).collect();
+                    match &mut payload.task.image_ids {
+                        Some(ids) => ids.extend(imported_ids),
+                        None => payload.task.image_ids = Some(imported_ids),
+                    }
+
+                    tracing::info!(
+                        "Imported {} images from issue {}",
+                        imported.len(),
+                        linked_issue.issue_id
+                    );
+                }
+                Ok(_) => {} // No images to import
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to import issue attachments for issue {}: {}",
+                        linked_issue.issue_id,
+                        e
+                    );
+                    // Non-fatal: workspace creation continues without images
+                }
+            }
+        }
+    }
 
     let task_id = Uuid::new_v4();
     let task = Task::create(pool, &payload.task, task_id).await?;
