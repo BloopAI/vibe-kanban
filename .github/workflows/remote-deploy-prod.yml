@@ -43,6 +43,11 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ssh-key: ${{ secrets.DEPLOY_KEY }}
 
+      - name: Setup SSH Agent for private dependencies
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VK_PRIVATE_DEPLOY_KEY }}
+
       - name: Determine and update version
         id: version
         run: |
