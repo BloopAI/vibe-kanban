@@ -1143,7 +1143,11 @@ impl PipelineProfiler {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        let output_path = PathBuf::from(format!("/tmp/acp_normalize_profile_{}.jsonl", timestamp));
+        // Write into <repo_root>/profiling/ directory (CARGO_MANIFEST_DIR is crates/executors)
+        let profiling_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../profiling");
+        let _ = std::fs::create_dir_all(&profiling_dir);
+        let output_path = profiling_dir.join(format!("acp_normalize_profile_{}.jsonl", timestamp));
         tracing::info!(
             "ACP normalize profiler writing to: {}",
             output_path.display()
