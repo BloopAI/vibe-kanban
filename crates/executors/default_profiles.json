@@ -56,20 +56,17 @@
     "CODEX": {
       "DEFAULT": {
         "CODEX": {
-          "model": "gpt-5.2-codex",
           "sandbox": "danger-full-access"
         }
       },
       "HIGH": {
         "CODEX": {
-          "model": "gpt-5.2-codex",
           "sandbox": "danger-full-access",
           "model_reasoning_effort": "high"
         }
       },
       "APPROVALS": {
         "CODEX": {
-          "model": "gpt-5.2",
           "sandbox": "workspace-write",
           "ask_for_approval": "unless-trusted"
         }
