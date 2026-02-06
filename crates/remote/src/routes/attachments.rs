@@ -10,14 +10,13 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
-use super::organization_members::{ensure_issue_access, ensure_project_access};
+use super::organization_members::{ensure_comment_access, ensure_issue_access, ensure_project_access};
 use crate::{
     AppState,
     auth::RequestContext,
     azure_blob::AzureBlobError,
     db::attachments::{AttachmentError, AttachmentRepository, AttachmentWithBlob},
     db::blobs::{BlobError, BlobRepository},
-    db::issue_comments::IssueCommentRepository,
     thumbnail::ThumbnailService,
 };
 
@@ -25,12 +24,13 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/attachments/init", post(init_upload))
         .route("/attachments/confirm", post(confirm_upload))
-        .route("/attachments/commit", post(commit_attachments))
         .route("/attachments/{id}/file", get(get_attachment_file))
         .route("/attachments/{id}/thumbnail", get(get_attachment_thumbnail))
         .route("/attachments/{id}", delete(delete_attachment))
         .route("/issues/{issue_id}/attachments", get(list_issue_attachments))
+        .route("/issues/{issue_id}/attachments/commit", post(commit_issue_attachments))
         .route("/comments/{comment_id}/attachments", get(list_comment_attachments))
+        .route("/comments/{comment_id}/attachments/commit", post(commit_comment_attachments))
 }
 
 #[derive(Debug, Deserialize)]
@@ -65,8 +65,6 @@ pub struct ConfirmUploadRequest {
 #[derive(Debug, Deserialize)]
 pub struct CommitAttachmentsRequest {
     pub attachment_ids: Vec<Uuid>,
-    pub issue_id: Option<Uuid>,
-    pub comment_id: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize)]
@@ -99,10 +97,6 @@ pub enum RouteError {
     FileTooLarge,
     #[error("thumbnail generation failed: {0}")]
     ThumbnailError(String),
-    #[error("invalid request: must specify either issue_id or comment_id")]
-    InvalidTarget,
-    #[error("comment not found")]
-    CommentNotFound,
 }
 
 impl IntoResponse for RouteError {
@@ -129,8 +123,6 @@ impl IntoResponse for RouteError {
                 tracing::error!(error = %e, "Thumbnail generation failed");
                 (StatusCode::INTERNAL_SERVER_ERROR, "Thumbnail generation failed")
             }
-            RouteError::InvalidTarget => (StatusCode::BAD_REQUEST, "Must specify either issue_id or comment_id"),
-            RouteError::CommentNotFound => (StatusCode::NOT_FOUND, "Comment not found"),
         };
 
         let body = serde_json::json!({ "error": message });
@@ -139,14 +131,6 @@ impl IntoResponse for RouteError {
 }
 
 const MAX_FILE_SIZE: i64 = 20 * 1024 * 1024;
-
-async fn get_comment_issue_id(state: &AppState, comment_id: Uuid) -> Result<Uuid, RouteError> {
-    let comment = IssueCommentRepository::find_by_id(state.pool(), comment_id)
-        .await
-        .map_err(|_| RouteError::CommentNotFound)?
-        .ok_or(RouteError::CommentNotFound)?;
-    Ok(comment.issue_id)
-}
 
 #[instrument(name = "attachments.init_upload", skip(state, ctx, payload), fields(project_id = %payload.project_id, user_id = %ctx.user.id))]
 async fn init_upload(
@@ -205,8 +189,7 @@ async fn confirm_upload(
             .map_err(|_| RouteError::AccessDenied)?;
     }
     if let Some(comment_id) = payload.comment_id {
-        let issue_id = get_comment_issue_id(&state, comment_id).await?;
-        ensure_issue_access(state.pool(), ctx.user.id, issue_id)
+        ensure_comment_access(state.pool(), ctx.user.id, comment_id)
             .await
             .map_err(|_| RouteError::AccessDenied)?;
     }
@@ -279,32 +262,34 @@ async fn confirm_upload(
     Ok(Json(result))
 }
 
-#[instrument(name = "attachments.commit", skip(state, ctx, payload), fields(user_id = %ctx.user.id))]
-async fn commit_attachments(
+#[instrument(name = "attachments.commit_issue", skip(state, ctx, payload), fields(issue_id = %issue_id, user_id = %ctx.user.id))]
+async fn commit_issue_attachments(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
+    Path(issue_id): Path<Uuid>,
     Json(payload): Json<CommitAttachmentsRequest>,
 ) -> Result<Json<CommitAttachmentsResponse>, RouteError> {
-    match (payload.issue_id, payload.comment_id) {
-        (Some(issue_id), None) => {
-            ensure_issue_access(state.pool(), ctx.user.id, issue_id)
-                .await
-                .map_err(|_| RouteError::AccessDenied)?;
+    ensure_issue_access(state.pool(), ctx.user.id, issue_id)
+        .await
+        .map_err(|_| RouteError::AccessDenied)?;
 
-            let attachments = AttachmentRepository::commit_to_issue(state.pool(), &payload.attachment_ids, issue_id).await?;
-            Ok(Json(CommitAttachmentsResponse { attachments }))
-        }
-        (None, Some(comment_id)) => {
-            let issue_id = get_comment_issue_id(&state, comment_id).await?;
-            ensure_issue_access(state.pool(), ctx.user.id, issue_id)
-                .await
-                .map_err(|_| RouteError::AccessDenied)?;
+    let attachments = AttachmentRepository::commit_to_issue(state.pool(), &payload.attachment_ids, issue_id).await?;
+    Ok(Json(CommitAttachmentsResponse { attachments }))
+}
 
-            let attachments = AttachmentRepository::commit_to_comment(state.pool(), &payload.attachment_ids, comment_id).await?;
-            Ok(Json(CommitAttachmentsResponse { attachments }))
-        }
-        _ => Err(RouteError::InvalidTarget),
-    }
+#[instrument(name = "attachments.commit_comment", skip(state, ctx, payload), fields(comment_id = %comment_id, user_id = %ctx.user.id))]
+async fn commit_comment_attachments(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(comment_id): Path<Uuid>,
+    Json(payload): Json<CommitAttachmentsRequest>,
+) -> Result<Json<CommitAttachmentsResponse>, RouteError> {
+    ensure_comment_access(state.pool(), ctx.user.id, comment_id)
+        .await
+        .map_err(|_| RouteError::AccessDenied)?;
+
+    let attachments = AttachmentRepository::commit_to_comment(state.pool(), &payload.attachment_ids, comment_id).await?;
+    Ok(Json(CommitAttachmentsResponse { attachments }))
 }
 
 #[instrument(name = "attachments.list_issue", skip(state, ctx), fields(issue_id = %issue_id, user_id = %ctx.user.id))]
@@ -327,8 +312,7 @@ async fn list_comment_attachments(
     Extension(ctx): Extension<RequestContext>,
     Path(comment_id): Path<Uuid>,
 ) -> Result<Json<ListAttachmentsResponse>, RouteError> {
-    let issue_id = get_comment_issue_id(&state, comment_id).await?;
-    ensure_issue_access(state.pool(), ctx.user.id, issue_id)
+    ensure_comment_access(state.pool(), ctx.user.id, comment_id)
         .await
         .map_err(|_| RouteError::AccessDenied)?;
 
@@ -410,8 +394,7 @@ async fn ensure_attachment_access(state: &AppState, user_id: Uuid, attachment: &
             .await
             .map_err(|_| RouteError::AccessDenied)?;
     } else if let Some(comment_id) = attachment.comment_id {
-        let issue_id = get_comment_issue_id(state, comment_id).await?;
-        ensure_issue_access(state.pool(), user_id, issue_id)
+        ensure_comment_access(state.pool(), user_id, comment_id)
             .await
             .map_err(|_| RouteError::AccessDenied)?;
     } else if let Some(project_id) = AttachmentRepository::project_id(state.pool(), attachment.id).await? {
