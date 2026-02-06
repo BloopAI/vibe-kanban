@@ -11,6 +11,7 @@ mod middleware;
 pub mod response;
 pub mod r2;
 pub mod routes;
+mod define_shape;
 pub mod shapes;
 mod state;
 
