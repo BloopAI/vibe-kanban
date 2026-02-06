@@ -154,8 +154,10 @@ export function WorkspacesSidebarContainer({
     setDisplayLimit(PAGE_SIZE);
   }, [searchQuery, showArchive, workspaceFilters]);
 
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchLower = searchQuery.toLowerCase();
   const isSearching = searchQuery.length > 0;
+  const compactFilters = isSearching || isSearchFocused;
 
   // Apply sidebar filters (project + PR), then search
   const filteredActiveWorkspaces = useMemo(() => {
@@ -291,7 +293,7 @@ export function WorkspacesSidebarContainer({
           icon={FolderIcon}
           label="Project"
           menuLabel="Filter by project"
-          iconOnly={isSearching}
+          iconOnly={compactFilters}
         />
       )}
       <PropertyDropdown
@@ -300,7 +302,7 @@ export function WorkspacesSidebarContainer({
         onChange={setWorkspacePrFilter}
         icon={GitPullRequestIcon}
         label="PR"
-        iconOnly={isSearching}
+        iconOnly={compactFilters}
       />
     </div>
   );
@@ -325,6 +327,7 @@ export function WorkspacesSidebarContainer({
       onLoadMore={handleLoadMore}
       hasMoreWorkspaces={hasMoreWorkspaces && !isSearching}
       filterBar={filterBar}
+      onSearchFocusChange={setIsSearchFocused}
     />
   );
 }

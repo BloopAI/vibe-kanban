@@ -49,7 +49,8 @@ export function PropertyDropdown<T extends string = string>({
             'flex items-center gap-half bg-panel rounded-sm',
             'text-sm text-normal hover:bg-secondary transition-colors',
             'disabled:opacity-50 disabled:cursor-not-allowed',
-            iconOnly ? 'p-half' : 'px-base py-half',
+            'py-half',
+            iconOnly ? 'px-half' : 'px-base',
             iconOnly && isNonDefault && 'text-brand'
           )}
         >
