@@ -4,11 +4,13 @@ use std::time::Duration;
 
 use api_types::{
     AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
-    CreateOrganizationRequest, CreateOrganizationResponse, CreateWorkspaceRequest,
-    DeleteWorkspaceRequest, GetInvitationResponse, GetOrganizationResponse, HandoffInitRequest,
-    HandoffInitResponse, HandoffRedeemRequest, HandoffRedeemResponse, ListInvitationsResponse,
-    ListMembersResponse, ListOrganizationsResponse, Organization, ProfileResponse,
-    RevokeInvitationRequest, TokenRefreshRequest, TokenRefreshResponse, UpdateMemberRoleRequest,
+    CreateIssueRequest, CreateOrganizationRequest, CreateOrganizationResponse,
+    CreateWorkspaceRequest, DeleteWorkspaceRequest, GetInvitationResponse,
+    GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
+    HandoffRedeemResponse, Issue, ListInvitationsResponse, ListIssuesResponse,
+    ListMembersResponse, ListOrganizationsResponse, ListProjectStatusesResponse,
+    ListProjectsResponse, Organization, ProfileResponse, RevokeInvitationRequest,
+    TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest,
     UpdateMemberRoleResponse, UpdateOrganizationRequest, UpdateWorkspaceRequest,
     UpsertPullRequestRequest,
 };
@@ -23,6 +25,19 @@ use utils::jwt::extract_expiration;
 use uuid::Uuid;
 
 use super::{auth::AuthContext, oauth_credentials::Credentials};
+
+/// Response wrapper for remote mutation endpoints (create/update).
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RemoteMutationResponse<T> {
+    pub data: T,
+    pub txid: i64,
+}
+
+/// Response wrapper for remote delete endpoints.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RemoteDeleteResponse {
+    pub txid: i64,
+}
 
 #[derive(Debug, Clone, Error)]
 pub enum RemoteClientError {
@@ -618,6 +633,86 @@ impl RemoteClient {
         .await?;
         Ok(())
     }
+
+    // ── Issues ──────────────────────────────────────────────────────────
+
+    /// Lists issues for a project.
+    pub async fn list_issues(
+        &self,
+        project_id: Uuid,
+    ) -> Result<ListIssuesResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/issues?project_id={project_id}"))
+            .await
+    }
+
+    /// Gets a single issue by ID.
+    pub async fn get_issue(&self, issue_id: Uuid) -> Result<Issue, RemoteClientError> {
+        self.get_authed(&format!("/v1/issues/{issue_id}")).await
+    }
+
+    /// Creates a new issue.
+    pub async fn create_issue(
+        &self,
+        request: &CreateIssueRequest,
+    ) -> Result<RemoteMutationResponse<Issue>, RemoteClientError> {
+        self.post_authed("/v1/issues", Some(request)).await
+    }
+
+    /// Updates an existing issue.
+    pub async fn update_issue(
+        &self,
+        issue_id: Uuid,
+        request: &UpdateIssueRequest,
+    ) -> Result<RemoteMutationResponse<Issue>, RemoteClientError> {
+        self.patch_authed(&format!("/v1/issues/{issue_id}"), request)
+            .await
+    }
+
+    /// Deletes an issue.
+    pub async fn delete_issue(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<RemoteDeleteResponse, RemoteClientError> {
+        let res = self
+            .send(
+                reqwest::Method::DELETE,
+                &format!("/v1/issues/{issue_id}"),
+                true,
+                None::<&()>,
+            )
+            .await?;
+        res.json::<RemoteDeleteResponse>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    // ── Remote Projects ─────────────────────────────────────────────────
+
+    /// Lists projects for an organization.
+    pub async fn list_remote_projects(
+        &self,
+        organization_id: Uuid,
+    ) -> Result<ListProjectsResponse, RemoteClientError> {
+        self.get_authed(&format!(
+            "/v1/projects?organization_id={organization_id}"
+        ))
+        .await
+    }
+
+    // ── Project Statuses ────────────────────────────────────────────────
+
+    /// Lists project statuses for a project (used for status name ↔ UUID mapping).
+    pub async fn list_project_statuses(
+        &self,
+        project_id: Uuid,
+    ) -> Result<ListProjectStatusesResponse, RemoteClientError> {
+        self.get_authed(&format!(
+            "/v1/project-statuses?project_id={project_id}"
+        ))
+        .await
+    }
+
+    // ── Pull Requests ───────────────────────────────────────────────────
 
     /// Upserts a pull request on the remote server.
     /// Creates if not exists, updates if exists.

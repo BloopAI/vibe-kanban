@@ -47,7 +47,7 @@ pub struct ListProjectStatusesQuery {
     pub project_id: Uuid,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ListProjectStatusesResponse {
     pub project_statuses: Vec<ProjectStatus>,
 }

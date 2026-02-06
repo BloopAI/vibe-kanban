@@ -40,7 +40,7 @@ pub struct Issue {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct CreateIssueRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     /// Using client-generated IDs enables stable optimistic updates.
@@ -60,7 +60,7 @@ pub struct CreateIssueRequest {
     pub extension_metadata: Value,
 }
 
-#[derive(Debug, Clone, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct UpdateIssueRequest {
     #[serde(default, deserialize_with = "some_if_present")]
     pub status_id: Option<Uuid>,
@@ -91,7 +91,7 @@ pub struct ListIssuesQuery {
     pub project_id: Uuid,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ListIssuesResponse {
     pub issues: Vec<Issue>,
 }

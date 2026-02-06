@@ -40,7 +40,7 @@ pub struct ListProjectsQuery {
     pub organization_id: Uuid,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ListProjectsResponse {
     pub projects: Vec<Project>,
 }
