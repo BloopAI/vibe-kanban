@@ -3,6 +3,7 @@ mod app;
 mod auth;
 pub mod azure_blob;
 mod billing;
+mod cleanup;
 pub mod config;
 pub mod db;
 pub mod entities;

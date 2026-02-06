@@ -7,6 +7,7 @@ use tracing::instrument;
 use crate::{
     AppState,
     analytics::{AnalyticsConfig, AnalyticsService},
+    cleanup::spawn_cleanup_task,
     auth::{
         GitHubOAuthProvider, GoogleOAuthProvider, JwtService, OAuthHandoffService,
         OAuthTokenValidator, ProviderRegistry,
@@ -154,6 +155,10 @@ impl Server {
                 None
             }
         };
+
+        if let Some(ref azure_blob_service) = azure_blob {
+            spawn_cleanup_task(pool.clone(), azure_blob_service.clone());
+        }
 
         let state = AppState::new(
             pool.clone(),

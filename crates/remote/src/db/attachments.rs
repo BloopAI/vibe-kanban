@@ -388,4 +388,33 @@ impl AttachmentRepository {
 
         Ok(record)
     }
+
+    /// Find attachments whose `expires_at` is in the past (abandoned staged uploads).
+    /// Returns up to `limit` results, oldest expired first.
+    pub async fn find_expired(
+        pool: &PgPool,
+        limit: i64,
+    ) -> Result<Vec<Attachment>, AttachmentError> {
+        let records = sqlx::query_as!(
+            Attachment,
+            r#"
+            SELECT
+                id          AS "id!: Uuid",
+                blob_id     AS "blob_id!: Uuid",
+                issue_id    AS "issue_id?: Uuid",
+                comment_id  AS "comment_id?: Uuid",
+                created_at  AS "created_at!: DateTime<Utc>",
+                expires_at  AS "expires_at?: DateTime<Utc>"
+            FROM attachments
+            WHERE expires_at IS NOT NULL AND expires_at < NOW()
+            ORDER BY expires_at ASC
+            LIMIT $1
+            "#,
+            limit
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(records)
+    }
 }

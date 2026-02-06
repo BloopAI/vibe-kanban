@@ -228,4 +228,35 @@ impl AzureBlobService {
             base_url, self.container_name, blob_path, token
         ))
     }
+
+    /// List all blobs in the container whose path starts with `prefix`.
+    pub async fn list_blobs_with_prefix(
+        &self,
+        prefix: &str,
+    ) -> Result<Vec<BlobListItem>, AzureBlobError> {
+        let mut items = Vec::new();
+        let mut stream = self
+            .container_client()
+            .list_blobs()
+            .prefix(prefix.to_string())
+            .into_stream();
+
+        while let Some(response) = stream.next().await {
+            let response = response.map_err(|e| AzureBlobError::Storage(e.to_string()))?;
+            for blob in response.blobs.blobs() {
+                items.push(BlobListItem {
+                    name: blob.name.clone(),
+                    last_modified: blob.properties.last_modified,
+                });
+            }
+        }
+
+        Ok(items)
+    }
+}
+
+#[derive(Debug)]
+pub struct BlobListItem {
+    pub name: String,
+    pub last_modified: OffsetDateTime,
 }
