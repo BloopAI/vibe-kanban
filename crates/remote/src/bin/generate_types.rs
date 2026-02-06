@@ -1,7 +1,7 @@
 use std::{env, fs, path::Path};
 
 use remote::{
-    entities::all_shapes,
+    shapes::all_shapes,
     routes::all_mutation_metadata,
 };
 use ts_rs::TS;

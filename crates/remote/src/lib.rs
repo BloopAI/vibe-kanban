@@ -4,7 +4,6 @@ mod auth;
 mod billing;
 pub mod config;
 pub mod db;
-pub mod entities;
 pub mod mutation_def;
 mod mutation_requests;
 pub mod github_app;
