@@ -282,7 +282,7 @@ export function WorkspacesSidebarContainer({
   );
 
   const filterBar = (
-    <div className="flex items-center gap-half flex-wrap">
+    <div className="flex items-center gap-half shrink-0">
       {projectOptions.length > 0 && (
         <MultiSelectDropdown
           values={workspaceFilters.projectIds}
@@ -291,6 +291,7 @@ export function WorkspacesSidebarContainer({
           icon={FolderIcon}
           label="Project"
           menuLabel="Filter by project"
+          iconOnly={isSearching}
         />
       )}
       <PropertyDropdown
@@ -299,6 +300,7 @@ export function WorkspacesSidebarContainer({
         onChange={setWorkspacePrFilter}
         icon={GitPullRequestIcon}
         label="PR"
+        iconOnly={isSearching}
       />
     </div>
   );

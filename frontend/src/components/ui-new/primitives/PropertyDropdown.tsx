@@ -21,6 +21,10 @@ export interface PropertyDropdownProps<T extends string = string> {
   icon?: Icon;
   label?: string;
   disabled?: boolean;
+  /** Show only icon without label, value, or caret */
+  iconOnly?: boolean;
+  /** Value considered "default" (no highlight in icon-only mode). Defaults to first option. */
+  defaultValue?: T;
 }
 
 export function PropertyDropdown<T extends string = string>({
@@ -30,8 +34,11 @@ export function PropertyDropdown<T extends string = string>({
   icon: IconComponent,
   label,
   disabled,
+  iconOnly,
+  defaultValue,
 }: PropertyDropdownProps<T>) {
   const selectedOption = options.find((opt) => opt.value === value);
+  const isNonDefault = value !== (defaultValue ?? options[0]?.value);
 
   return (
     <DropdownMenu>
@@ -39,12 +46,16 @@ export function PropertyDropdown<T extends string = string>({
         <button
           type="button"
           className={cn(
-            'flex items-center gap-half px-base py-half bg-panel rounded-sm',
+            'flex items-center gap-half bg-panel rounded-sm',
             'text-sm text-normal hover:bg-secondary transition-colors',
-            'disabled:opacity-50 disabled:cursor-not-allowed'
+            'disabled:opacity-50 disabled:cursor-not-allowed',
+            iconOnly ? 'p-half' : 'px-base py-half',
+            iconOnly && isNonDefault && 'text-brand'
           )}
         >
-          {IconComponent ? (
+          {iconOnly && IconComponent ? (
+            <IconComponent className="size-icon-xs" weight="bold" />
+          ) : IconComponent ? (
             <>
               <IconComponent className="size-icon-xs" weight="bold" />
               {label && <span>{label}:</span>}
@@ -53,7 +64,9 @@ export function PropertyDropdown<T extends string = string>({
           ) : (
             (selectedOption?.renderOption?.() ?? selectedOption?.label)
           )}
-          <CaretDownIcon className="size-icon-2xs text-low" weight="bold" />
+          {!iconOnly && (
+            <CaretDownIcon className="size-icon-2xs text-low" weight="bold" />
+          )}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">

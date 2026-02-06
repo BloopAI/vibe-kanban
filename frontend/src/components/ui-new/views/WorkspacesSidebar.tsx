@@ -155,13 +155,15 @@ export function WorkspacesSidebar({
           actions={headerActions}
           className="border-b"
         />
-        <div className="px-base flex flex-col gap-base">
-          <InputField
-            variant="search"
-            value={searchQuery}
-            onChange={onSearchChange}
-            placeholder={t('common:workspaces.searchPlaceholder')}
-          />
+        <div className="px-base flex items-center gap-half">
+          <div className="flex-1 min-w-0">
+            <InputField
+              variant="search"
+              value={searchQuery}
+              onChange={onSearchChange}
+              placeholder={t('common:workspaces.searchPlaceholder')}
+            />
+          </div>
           {filterBar}
         </div>
       </div>
