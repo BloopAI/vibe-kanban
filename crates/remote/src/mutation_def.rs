@@ -183,50 +183,58 @@ impl<E: TS, C> MutationDef<E, C, NoUpdate> {
     }
 }
 
-// =============================================================================
-// MaybeTypeName - Helper for optional type names in metadata
-// =============================================================================
-
-/// Trait for types that may or may not have a TS type name.
-/// Used to handle mutations that don't have create or update endpoints.
-pub trait MaybeTypeName {
-    fn maybe_name() -> Option<String>;
-}
-
 /// Marker type for mutations without a create endpoint.
 pub struct NoCreate;
 
 /// Marker type for mutations without an update endpoint.
 pub struct NoUpdate;
 
-impl MaybeTypeName for NoCreate {
-    fn maybe_name() -> Option<String> {
-        None
-    }
-}
+// Metadata extraction — one impl per combination of NoCreate/NoUpdate vs real types.
 
-impl MaybeTypeName for NoUpdate {
-    fn maybe_name() -> Option<String> {
-        None
-    }
-}
-
-impl<T: TS> MaybeTypeName for T {
-    fn maybe_name() -> Option<String> {
-        Some(T::name())
-    }
-}
-
-// Metadata extraction
-impl<E: TS, C: MaybeTypeName, U: MaybeTypeName> MutationDef<E, C, U> {
-    /// Extract metadata for TypeScript generation.
+impl<E: TS, C: TS, U: TS> MutationDef<E, C, U> {
     pub fn metadata(&self) -> MutationMeta {
         MutationMeta {
             table: self.table,
             url: self.url,
             row_type: E::name(),
-            create_type: C::maybe_name(),
-            update_type: U::maybe_name(),
+            create_type: Some(C::name()),
+            update_type: Some(U::name()),
+        }
+    }
+}
+
+impl<E: TS, U: TS> MutationDef<E, NoCreate, U> {
+    pub fn metadata(&self) -> MutationMeta {
+        MutationMeta {
+            table: self.table,
+            url: self.url,
+            row_type: E::name(),
+            create_type: None,
+            update_type: Some(U::name()),
+        }
+    }
+}
+
+impl<E: TS, C: TS> MutationDef<E, C, NoUpdate> {
+    pub fn metadata(&self) -> MutationMeta {
+        MutationMeta {
+            table: self.table,
+            url: self.url,
+            row_type: E::name(),
+            create_type: Some(C::name()),
+            update_type: None,
+        }
+    }
+}
+
+impl<E: TS> MutationDef<E, NoCreate, NoUpdate> {
+    pub fn metadata(&self) -> MutationMeta {
+        MutationMeta {
+            table: self.table,
+            url: self.url,
+            row_type: E::name(),
+            create_type: None,
+            update_type: None,
         }
     }
 }
