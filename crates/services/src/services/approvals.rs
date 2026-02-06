@@ -245,13 +245,9 @@ impl Approvals {
                     };
 
                     if let Some(store) = store {
-                        if let Some(updated_entry) =
-                            entry.with_tool_status(ToolStatus::TimedOut)
-                        {
-                            store.push_patch(ConversationPatch::replace(
-                                entry_index,
-                                updated_entry,
-                            ));
+                        if let Some(updated_entry) = entry.with_tool_status(ToolStatus::TimedOut) {
+                            store
+                                .push_patch(ConversationPatch::replace(entry_index, updated_entry));
                         } else {
                             tracing::warn!(
                                 "Timed out approval '{}' but couldn't update tool status (no tool-use entry).",
