@@ -332,12 +332,8 @@ impl WsProfiler {
             .as_secs();
         let profiling_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../profiling");
         let _ = std::fs::create_dir_all(&profiling_dir);
-        let output_path =
-            profiling_dir.join(format!("ws_delivery_profile_{}.jsonl", timestamp));
-        tracing::info!(
-            "WS delivery profiler writing to: {}",
-            output_path.display()
-        );
+        let output_path = profiling_dir.join(format!("ws_delivery_profile_{}.jsonl", timestamp));
+        tracing::info!("WS delivery profiler writing to: {}", output_path.display());
 
         let now = Instant::now();
         Self {
@@ -423,21 +419,23 @@ impl WsProfiler {
             },
         });
 
-        if let Ok(json) = serde_json::to_string(&summary) {
-            if let Ok(mut file) = std::fs::OpenOptions::new()
+        if let Ok(json) = serde_json::to_string(&summary)
+            && let Ok(mut file) = std::fs::OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(&self.output_path)
             {
                 let _ = writeln!(file, "{}", json);
             }
-        }
 
         tracing::info!(
             wall_clock_ms = wall_clock.as_millis() as u64,
             waiting_pct = if wall_clock.as_micros() > 0 {
-                (self.time_waiting.as_micros() as f64 / wall_clock.as_micros() as f64 * 100.0) as u64
-            } else { 0 },
+                (self.time_waiting.as_micros() as f64 / wall_clock.as_micros() as f64 * 100.0)
+                    as u64
+            } else {
+                0
+            },
             serialize_ms = self.time_serializing.as_millis() as u64,
             send_ms = self.time_sending.as_millis() as u64,
             total_messages = self.total_messages,
