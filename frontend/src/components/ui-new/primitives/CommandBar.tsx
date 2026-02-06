@@ -149,7 +149,7 @@ export function CommandBar({
                     <GitBranchIcon className="h-4 w-4" weight="regular" />
                     <span>{item.branch.name}</span>
                     {item.branch.isCurrent && (
-                      <span className="ml-auto text-xs text-low">Current</span>
+                      <span className="ml-auto text-xs capitalize text-low">{t('branchSelector.badges.current')}</span>
                     )}
                   </CommandItem>
                 );
