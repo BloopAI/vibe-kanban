@@ -2394,8 +2394,7 @@ impl ClaudeProfiler {
         self.flush_events();
 
         let wall_clock = self.pipeline_start.elapsed();
-        let processing_time =
-            self.time_in_parse + self.time_in_normalize + self.time_in_push_patch;
+        let processing_time = self.time_in_parse + self.time_in_normalize + self.time_in_push_patch;
 
         let summary = serde_json::json!({
             "type": "SUMMARY",
@@ -2423,21 +2422,23 @@ impl ClaudeProfiler {
             },
         });
 
-        if let Ok(json) = serde_json::to_string(&summary) {
-            if let Ok(mut file) = std::fs::OpenOptions::new()
+        if let Ok(json) = serde_json::to_string(&summary)
+            && let Ok(mut file) = std::fs::OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(&self.output_path)
             {
                 let _ = writeln!(file, "{}", json);
             }
-        }
 
         tracing::info!(
             wall_clock_ms = wall_clock.as_millis() as u64,
             waiting_pct = if wall_clock.as_micros() > 0 {
-                (self.time_waiting_for_chunk.as_micros() as f64 / wall_clock.as_micros() as f64 * 100.0) as u64
-            } else { 0 },
+                (self.time_waiting_for_chunk.as_micros() as f64 / wall_clock.as_micros() as f64
+                    * 100.0) as u64
+            } else {
+                0
+            },
             parse_ms = self.time_in_parse.as_millis() as u64,
             normalize_ms = self.time_in_normalize.as_millis() as u64,
             push_patch_ms = self.time_in_push_patch.as_millis() as u64,
