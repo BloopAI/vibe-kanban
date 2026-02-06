@@ -252,7 +252,9 @@
   "commandBar": {
     "noResults": "No se encontraron resultados.",
     "back": "Atrás",
-    "defaultPlaceholder": "Escribe un comando o busca..."
+    "defaultPlaceholder": "Escribe un comando o busca...",
+    "selectBranch": "Select Branch",
+    "selectBranchFor": "Select Branch for {{repoName}}"
   },
   "chatBox": {
     "variants": "Variantes",

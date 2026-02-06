@@ -252,7 +252,9 @@
   "commandBar": {
     "noResults": "결과를 찾을 수 없습니다.",
     "back": "뒤로",
-    "defaultPlaceholder": "명령어를 입력하거나 검색..."
+    "defaultPlaceholder": "명령어를 입력하거나 검색...",
+    "selectBranch": "Select Branch",
+    "selectBranchFor": "Select Branch for {{repoName}}"
   },
   "chatBox": {
     "variants": "변형",

@@ -1,3 +1,4 @@
+import i18n from '@/i18n';
 import type { BranchItem } from '@/components/ui-new/actions/pages';
 import type { SelectionPage } from '../SelectionDialog';
 
@@ -13,8 +14,8 @@ export function buildBranchSelectionPages(
     selectBranch: {
       id: 'selectBranch',
       title: repoDisplayName
-        ? `Select Branch for ${repoDisplayName}`
-        : 'Select Branch',
+        ? i18n.t('commandBar.selectBranchFor', { repoName: repoDisplayName })
+        : i18n.t('commandBar.selectBranch'),
       buildGroups: () => [
         {
           label: 'Branches',

@@ -252,7 +252,9 @@
   "commandBar": {
     "noResults": "未找到结果。",
     "back": "返回",
-    "defaultPlaceholder": "输入命令或搜索..."
+    "defaultPlaceholder": "输入命令或搜索...",
+    "selectBranch": "Select Branch",
+    "selectBranchFor": "Select Branch for {{repoName}}"
   },
   "chatBox": {
     "variants": "变体",
