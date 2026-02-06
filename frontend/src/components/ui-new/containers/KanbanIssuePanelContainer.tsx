@@ -229,15 +229,17 @@ export function KanbanIssuePanelContainer() {
   // - Edit mode: text fields from localTextEdits (if editing) or server, dropdown fields always from server
   const displayData = useMemo((): IssueFormData => {
     if (mode === 'create') {
-      return createFormData ?? {
-        title: '',
-        description: null,
-        statusId: defaultStatusId,
-        priority: null,
-        assigneeIds: [],
-        tagIds: [],
-        createDraftWorkspace: false,
-      };
+      return (
+        createFormData ?? {
+          title: '',
+          description: null,
+          statusId: defaultStatusId,
+          priority: null,
+          assigneeIds: [],
+          tagIds: [],
+          createDraftWorkspace: false,
+        }
+      );
     }
 
     // Edit mode: dropdown fields from server, text fields from local edits or server
