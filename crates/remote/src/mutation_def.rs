@@ -3,7 +3,7 @@
 //! This module provides `MutationDef`, a builder that:
 //! - Generates axum routers for CRUD mutation routes
 //! - Captures type information for TypeScript generation
-//! - Uses marker traits to enforce request/row type relationships
+//! - Uses `HasJsonPayload` to ensure handler signatures match declared C/U types
 //!
 //! # Example
 //!
@@ -26,23 +26,32 @@
 
 use std::marker::PhantomData;
 
-use axum::{handler::Handler, routing::MethodRouter};
+use axum::{Json, handler::Handler, routing::MethodRouter};
 use ts_rs::TS;
 
 use crate::AppState;
 
 // =============================================================================
-// Marker Traits
+// HasJsonPayload - Structural trait linking handlers to their payload types
 // =============================================================================
 
-/// Marker trait linking a create request type to its row type.
-pub trait CreateRequestFor {
-    type Row;
-}
+/// Marker trait implemented for extractor tuples that include `Json<T>` as payload.
+///
+/// This links MutationDef's `C`/`U` generic arguments to the actual handler payload
+/// type and prevents metadata drift from handler signatures.
+pub trait HasJsonPayload<T> {}
 
-/// Marker trait linking an update request type to its row type.
-pub trait UpdateRequestFor {
-    type Row;
+impl<T> HasJsonPayload<T> for (Json<T>,) {}
+impl<A, T> HasJsonPayload<T> for (A, Json<T>) {}
+impl<A, B, T> HasJsonPayload<T> for (A, B, Json<T>) {}
+impl<A, B, C, T> HasJsonPayload<T> for (A, B, C, Json<T>) {}
+impl<A, B, C, D, T> HasJsonPayload<T> for (A, B, C, D, Json<T>) {}
+impl<A, B, C, D, E0, T> HasJsonPayload<T> for (A, B, C, D, E0, Json<T>) {}
+impl<A, B, C, D, E0, F, T> HasJsonPayload<T> for (A, B, C, D, E0, F, Json<T>) {}
+impl<A, B, C, D, E0, F, G, T> HasJsonPayload<T> for (A, B, C, D, E0, F, G, Json<T>) {}
+impl<A, B, C, D, E0, F, G, H, T> HasJsonPayload<T>
+    for (A, B, C, D, E0, F, G, H, Json<T>)
+{
 }
 
 // =============================================================================
@@ -143,12 +152,13 @@ impl<E: TS, C, U> MutationDef<E, C, U> {
 impl<E: TS, U> MutationDef<E, NoCreate, U> {
     /// Add a create handler (POST /{table}).
     ///
-    /// The create request type must implement `CreateRequestFor<Row = E>`.
+    /// The handler's extractor tuple must contain `Json<C>`, ensuring the
+    /// declared create type matches what the handler actually accepts.
     pub fn create<C, H, T>(self, handler: H) -> MutationDef<E, C, U>
     where
-        C: TS + CreateRequestFor<Row = E>,
+        C: TS,
         H: Handler<T, AppState> + Clone + Send + 'static,
-        T: 'static,
+        T: HasJsonPayload<C> + 'static,
     {
         MutationDef {
             table: self.table,
@@ -166,12 +176,13 @@ impl<E: TS, U> MutationDef<E, NoCreate, U> {
 impl<E: TS, C> MutationDef<E, C, NoUpdate> {
     /// Add an update handler (PATCH /{table}/{id}).
     ///
-    /// The update request type must implement `UpdateRequestFor<Row = E>`.
+    /// The handler's extractor tuple must contain `Json<U>`, ensuring the
+    /// declared update type matches what the handler actually accepts.
     pub fn update<U, H, T>(self, handler: H) -> MutationDef<E, C, U>
     where
-        U: TS + UpdateRequestFor<Row = E>,
+        U: TS,
         H: Handler<T, AppState> + Clone + Send + 'static,
-        T: 'static,
+        T: HasJsonPayload<U> + 'static,
     {
         MutationDef {
             table: self.table,
