@@ -111,6 +111,30 @@ pub struct DraftWorkspaceRepo {
     pub target_branch: String,
 }
 
+/// Data for a draft issue scratch (issue creation on kanban board)
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct DraftIssueData {
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    pub status_id: String,
+    /// Stored as the string value of IssuePriority (e.g. "urgent", "high", "medium", "low")
+    #[serde(default)]
+    pub priority: Option<String>,
+    #[serde(default)]
+    pub assignee_ids: Vec<String>,
+    #[serde(default)]
+    pub tag_ids: Vec<String>,
+    #[serde(default)]
+    pub create_draft_workspace: bool,
+    /// The project this draft belongs to
+    pub project_id: String,
+    /// Parent issue ID if creating a sub-issue
+    #[serde(default)]
+    pub parent_issue_id: Option<String>,
+}
+
 /// The payload of a scratch, tagged by type. The type is part of the composite primary key.
 /// Data is stored as markdown string.
 #[derive(Debug, Clone, Serialize, Deserialize, TS, EnumDiscriminants)]
@@ -124,6 +148,7 @@ pub enum ScratchPayload {
     DraftTask(String),
     DraftFollowUp(DraftFollowUpData),
     DraftWorkspace(DraftWorkspaceData),
+    DraftIssue(DraftIssueData),
     PreviewSettings(PreviewSettingsData),
     WorkspaceNotes(WorkspaceNotesData),
     UiPreferences(UiPreferencesData),
