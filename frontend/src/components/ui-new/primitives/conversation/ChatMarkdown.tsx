@@ -16,7 +16,7 @@ export function ChatMarkdown({
   workspaceId,
 }: ChatMarkdownProps) {
   const { viewFileInChanges, findMatchingDiffPath } = useChangesView();
-  const wysiwygClassName = cn('whitespace-pre-wrap break-words', className)
+  const wysiwygClassName = cn('whitespace-pre-wrap break-words', className);
 
   return (
     <div className="text-sm" style={{ maxWidth }}>
