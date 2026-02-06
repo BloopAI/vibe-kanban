@@ -67,8 +67,7 @@ export function WorkspacesSidebarContainer({
   // Remote data for project filter
   const { workspaces: remoteWorkspaces } = useUserContext();
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
-  const { data: remoteProjects = [] } =
-    useOrganizationProjects(selectedOrgId);
+  const { data: remoteProjects = [] } = useOrganizationProjects(selectedOrgId);
 
   // Map local workspace ID → remote project ID
   const remoteProjectByLocalId = useMemo(() => {
@@ -158,7 +157,12 @@ export function WorkspacesSidebarContainer({
     }
 
     return result;
-  }, [archivedWorkspaces, workspaceFilters, remoteProjectByLocalId, searchLower]);
+  }, [
+    archivedWorkspaces,
+    workspaceFilters,
+    remoteProjectByLocalId,
+    searchLower,
+  ]);
 
   // Apply pagination (only when not searching)
   const paginatedActiveWorkspaces = useMemo(

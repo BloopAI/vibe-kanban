@@ -124,9 +124,7 @@ export function WorkspaceSidebarFilters({
                   <span
                     className={cn(
                       'w-3 h-3 rounded-full border shrink-0 flex items-center justify-center',
-                      prFilter === option.value
-                        ? 'border-brand'
-                        : 'border-low'
+                      prFilter === option.value ? 'border-brand' : 'border-low'
                     )}
                   >
                     {prFilter === option.value && (
