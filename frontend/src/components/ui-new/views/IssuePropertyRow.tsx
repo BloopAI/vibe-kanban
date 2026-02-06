@@ -7,7 +7,7 @@ import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { StatusDot } from '@/components/ui-new/primitives/StatusDot';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
-import { Badge } from '@/components/ui/badge';
+import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
 
 const priorityLabels: Record<IssuePriority, string> = {
   urgent: 'Urgent',
@@ -20,6 +20,7 @@ export interface IssuePropertyRowProps {
   statusId: string;
   priority: IssuePriority | null;
   assigneeIds: string[];
+  assigneeUsers?: OrganizationMemberWithProfile[];
   statuses: ProjectStatus[];
   creatorUser?: OrganizationMemberWithProfile | null;
   parentIssue?: { id: string; simpleId: string } | null;
@@ -35,7 +36,7 @@ export interface IssuePropertyRowProps {
 export function IssuePropertyRow({
   statusId,
   priority,
-  assigneeIds,
+  assigneeUsers,
   statuses,
   creatorUser,
   parentIssue,
@@ -76,15 +77,13 @@ export function IssuePropertyRow({
         onClick={onAssigneeClick}
         disabled={disabled}
       >
-        <UsersIcon className="size-icon-xs" weight="bold" />
-        {t('kanban.assignee', 'Assignee')}
-        {assigneeIds.length > 0 && (
-          <Badge
-            variant="secondary"
-            className="px-1.5 py-0 text-xs h-5 min-w-5 justify-center bg-brand text-on-brand border-none"
-          >
-            {assigneeIds.length}
-          </Badge>
+        {assigneeUsers && assigneeUsers.length > 0 ? (
+          <KanbanAssignee assignees={assigneeUsers} />
+        ) : (
+          <>
+            <UsersIcon className="size-icon-xs" weight="bold" />
+            {t('kanban.assignee', 'Assignee')}
+          </>
         )}
       </PrimaryButton>
 

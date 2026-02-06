@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 import { useNavigate } from 'react-router-dom';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
@@ -262,6 +263,13 @@ export function KanbanIssuePanelContainer() {
     currentAssigneeIds,
     currentTagIds,
   ]);
+
+  // Resolve assignee IDs to full profiles for avatar display
+  const displayAssigneeUsers = useMemo(() => {
+    return displayData.assigneeIds
+      .map((id) => membersWithProfilesById.get(id))
+      .filter((m): m is OrganizationMemberWithProfile => m != null);
+  }, [displayData.assigneeIds, membersWithProfilesById]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -621,6 +629,7 @@ export function KanbanIssuePanelContainer() {
       mode={mode}
       displayId={displayId}
       formData={displayData}
+      assigneeUsers={displayAssigneeUsers}
       onFormChange={handlePropertyChange}
       statuses={sortedStatuses}
       tags={tags}

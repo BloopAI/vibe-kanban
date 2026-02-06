@@ -53,6 +53,9 @@ export interface KanbanIssuePanelProps {
   statuses: ProjectStatus[];
   tags: Tag[];
 
+  // Resolved assignee profiles for avatar display
+  assigneeUsers?: OrganizationMemberWithProfile[];
+
   // Edit mode data
   issueId?: string | null;
   creatorUser?: OrganizationMemberWithProfile | null;
@@ -92,6 +95,7 @@ export function KanbanIssuePanel({
   onFormChange,
   statuses,
   tags,
+  assigneeUsers,
   issueId,
   creatorUser,
   parentIssue,
@@ -175,6 +179,7 @@ export function KanbanIssuePanel({
             statusId={formData.statusId}
             priority={formData.priority}
             assigneeIds={formData.assigneeIds}
+            assigneeUsers={assigneeUsers}
             statuses={statuses}
             creatorUser={showCreator ? creatorUser : undefined}
             parentIssue={parentIssue}

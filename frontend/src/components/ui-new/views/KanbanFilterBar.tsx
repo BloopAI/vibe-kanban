@@ -15,6 +15,8 @@ import {
 import type { Tag, ProjectStatus } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
+import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
+import { Badge } from '@/components/ui/badge';
 import { InputField } from '@/components/ui-new/primitives/InputField';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import {
@@ -158,6 +160,40 @@ export function KanbanFilterBar({
     [tags]
   );
 
+  // Build user lookup for rendering selected assignee avatars in filter trigger
+  const usersById = useMemo(() => {
+    const map = new Map<string, OrganizationMemberWithProfile>();
+    for (const user of users) {
+      map.set(user.user_id, user);
+    }
+    return map;
+  }, [users]);
+
+  const renderAssigneeBadge = useMemo(
+    () => (selectedIds: string[]) => {
+      const resolved = selectedIds
+        .filter((id) => id !== 'unassigned')
+        .map((id) => usersById.get(id))
+        .filter(
+          (m): m is OrganizationMemberWithProfile => m != null
+        );
+
+      if (resolved.length === 0) {
+        return (
+          <Badge
+            variant="secondary"
+            className="px-1.5 py-0 text-xs h-5 min-w-5 justify-center bg-brand border-none"
+          >
+            {selectedIds.length}
+          </Badge>
+        );
+      }
+
+      return <KanbanAssignee assignees={resolved} />;
+    },
+    [usersById]
+  );
+
   return (
     <div className="flex items-center gap-base flex-wrap">
       {/* Search Input */}
@@ -185,6 +221,7 @@ export function KanbanFilterBar({
         icon={UsersIcon}
         label={t('kanban.assignee', 'Assignee')}
         menuLabel={t('kanban.filterByAssignee', 'Filter by assignee')}
+        renderBadge={renderAssigneeBadge}
       />
 
       {/* Tags Filter */}

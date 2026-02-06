@@ -25,6 +25,7 @@ export interface MultiSelectDropdownProps<T extends string = string> {
   label: string;
   menuLabel?: string;
   disabled?: boolean;
+  renderBadge?: (values: T[]) => ReactNode;
 }
 
 export function MultiSelectDropdown<T extends string = string>({
@@ -35,6 +36,7 @@ export function MultiSelectDropdown<T extends string = string>({
   label,
   menuLabel,
   disabled,
+  renderBadge,
 }: MultiSelectDropdownProps<T>) {
   return (
     <DropdownMenu>
@@ -49,14 +51,17 @@ export function MultiSelectDropdown<T extends string = string>({
         >
           <IconComponent className="size-icon-xs" weight="bold" />
           <span>{label}</span>
-          {values.length > 0 && (
-            <Badge
-              variant="secondary"
-              className="px-1.5 py-0 text-xs h-5 min-w-5 justify-center bg-brand border-none"
-            >
-              {values.length}
-            </Badge>
-          )}
+          {values.length > 0 &&
+            (renderBadge ? (
+              renderBadge(values)
+            ) : (
+              <Badge
+                variant="secondary"
+                className="px-1.5 py-0 text-xs h-5 min-w-5 justify-center bg-brand border-none"
+              >
+                {values.length}
+              </Badge>
+            ))}
           <CaretDownIcon className="size-icon-2xs text-low" weight="bold" />
         </button>
       </DropdownMenuTrigger>
