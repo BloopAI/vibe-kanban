@@ -292,7 +292,6 @@ export function WorkspacesSidebarContainer({
           onChange={setWorkspaceProjectFilter}
           icon={FolderIcon}
           label="Project"
-          menuLabel="Filter by project"
           iconOnly={compactFilters}
         />
       )}
