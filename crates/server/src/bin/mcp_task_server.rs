@@ -63,15 +63,17 @@ fn main() -> anyhow::Result<()> {
                 url
             };
 
-            let organization_id = std::env::var("VK_ORGANIZATION_ID").ok().and_then(|s| {
-                s.parse::<Uuid>().ok().or_else(|| {
-                    tracing::warn!(
-                        "[MCP] VK_ORGANIZATION_ID '{}' is not a valid UUID, ignoring",
-                        s
-                    );
-                    None
-                })
-            });
+            let organization_id = std::env::var("VK_ORGANIZATION_ID")
+                .ok()
+                .and_then(|s| {
+                    s.parse::<Uuid>().ok().or_else(|| {
+                        tracing::warn!(
+                            "[MCP] VK_ORGANIZATION_ID '{}' is not a valid UUID, ignoring",
+                            s
+                        );
+                        None
+                    })
+                });
 
             if let Some(org_id) = &organization_id {
                 tracing::info!("[MCP] Using organization ID: {}", org_id);
