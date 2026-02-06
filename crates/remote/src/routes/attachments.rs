@@ -73,8 +73,15 @@ pub struct CommitAttachmentsResponse {
 }
 
 #[derive(Debug, Serialize)]
+pub(crate) struct AttachmentWithUrl {
+    #[serde(flatten)]
+    attachment: AttachmentWithBlob,
+    file_url: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct ListAttachmentsResponse {
-    pub attachments: Vec<AttachmentWithBlob>,
+    pub attachments: Vec<AttachmentWithUrl>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -302,7 +309,15 @@ async fn list_issue_attachments(
         .await
         .map_err(|_| RouteError::AccessDenied)?;
 
-    let attachments = AttachmentRepository::find_by_issue_id(state.pool(), issue_id).await?;
+    let azure = state.azure_blob();
+    let attachments = AttachmentRepository::find_by_issue_id(state.pool(), issue_id)
+        .await?
+        .into_iter()
+        .map(|a| {
+            let file_url = azure.and_then(|az| az.create_read_url(&a.blob_path).ok());
+            AttachmentWithUrl { attachment: a, file_url }
+        })
+        .collect();
     Ok(Json(ListAttachmentsResponse { attachments }))
 }
 
@@ -316,7 +331,15 @@ async fn list_comment_attachments(
         .await
         .map_err(|_| RouteError::AccessDenied)?;
 
-    let attachments = AttachmentRepository::find_by_comment_id(state.pool(), comment_id).await?;
+    let azure = state.azure_blob();
+    let attachments = AttachmentRepository::find_by_comment_id(state.pool(), comment_id)
+        .await?
+        .into_iter()
+        .map(|a| {
+            let file_url = azure.and_then(|az| az.create_read_url(&a.blob_path).ok());
+            AttachmentWithUrl { attachment: a, file_url }
+        })
+        .collect();
     Ok(Json(ListAttachmentsResponse { attachments }))
 }
 

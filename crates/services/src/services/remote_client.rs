@@ -651,21 +651,15 @@ impl RemoteClient {
             .await
     }
 
-    /// Downloads the file content for an attachment from the remote server.
-    /// The remote endpoint returns a redirect to an Azure presigned URL;
-    /// reqwest follows it automatically (stripping auth headers on cross-host redirect).
-    pub async fn download_attachment_file(
-        &self,
-        attachment_id: Uuid,
-    ) -> Result<Vec<u8>, RemoteClientError> {
-        let res = self
-            .send(
-                reqwest::Method::GET,
-                &format!("/v1/attachments/{attachment_id}/file"),
-                true,
-                None::<&()>,
-            )
-            .await?;
+    /// Used for fetching from presigned Azure SAS URLs.
+    pub async fn download_from_url(&self, url: &str) -> Result<Vec<u8>, RemoteClientError> {
+        let res = self.http.get(url).send().await.map_err(map_reqwest_error)?;
+        if !res.status().is_success() {
+            return Err(RemoteClientError::Http {
+                status: res.status().as_u16(),
+                body: res.text().await.unwrap_or_default(),
+            });
+        }
         let bytes = res
             .bytes()
             .await
@@ -681,6 +675,7 @@ pub struct RemoteAttachment {
     pub original_name: String,
     pub mime_type: Option<String>,
     pub size_bytes: i64,
+    pub file_url: Option<String>,
 }
 
 /// Response from listing issue attachments on the remote server.

@@ -159,9 +159,7 @@ struct ImportedImage {
     markdown: String,
 }
 
-/// Downloads image attachments from a remote issue and stores them in the local cache.
-/// Returns metadata for each successfully imported image, including markdown references.
-/// Individual attachment failures are logged and skipped; the function continues with the rest.
+/// Downloads attachments from a remote issue and stores them in the local cache.
 async fn import_issue_attachments(
     client: &RemoteClient,
     image_service: &ImageService,
@@ -181,8 +179,14 @@ async fn import_issue_attachments(
             continue;
         }
 
-        // Download the file bytes from the remote server
-        let bytes = match client.download_attachment_file(attachment.id).await {
+        let file_url = match &attachment.file_url {
+            Some(url) => url,
+            None => {
+                tracing::warn!("No file_url for attachment {}, skipping", attachment.id);
+                continue;
+            }
+        };
+        let bytes = match client.download_from_url(file_url).await {
             Ok(b) => b,
             Err(e) => {
                 tracing::warn!("Failed to download attachment {}: {}", attachment.id, e);
@@ -190,7 +194,6 @@ async fn import_issue_attachments(
             }
         };
 
-        // Store in local image cache (deduplicates by SHA256 hash)
         let image = match image_service
             .store_image(&bytes, &attachment.original_name)
             .await
@@ -238,44 +241,40 @@ pub async fn create_task_and_start(
 
     // Import images from linked remote issue before creating the task,
     // so the description and image_ids are complete from the start.
-    if let Some(linked_issue) = &payload.linked_issue {
-        if let Ok(client) = deployment.remote_client() {
-            match import_issue_attachments(&client, deployment.image(), linked_issue.issue_id).await
-            {
-                Ok(imported) if !imported.is_empty() => {
-                    // Append image markdown to description
-                    let image_section = imported
-                        .iter()
-                        .map(|i| i.markdown.as_str())
-                        .collect::<Vec<_>>()
-                        .join("\n\n");
-                    payload.task.description = Some(match &payload.task.description {
-                        Some(desc) => format!("{}\n\n{}", desc, image_section),
-                        None => image_section,
-                    });
+    if let Some(linked_issue) = &payload.linked_issue
+        && let Ok(client) = deployment.remote_client()
+    {
+        match import_issue_attachments(&client, deployment.image(), linked_issue.issue_id).await {
+            Ok(imported) if !imported.is_empty() => {
+                let image_section = imported
+                    .iter()
+                    .map(|i| i.markdown.as_str())
+                    .collect::<Vec<_>>()
+                    .join("\n\n");
+                payload.task.description = Some(match &payload.task.description {
+                    Some(desc) => format!("{}\n\n{}", desc, image_section),
+                    None => image_section,
+                });
 
-                    // Merge imported image IDs into the task's image_ids
-                    let imported_ids: Vec<Uuid> = imported.iter().map(|i| i.image_id).collect();
-                    match &mut payload.task.image_ids {
-                        Some(ids) => ids.extend(imported_ids),
-                        None => payload.task.image_ids = Some(imported_ids),
-                    }
+                let imported_ids: Vec<Uuid> = imported.iter().map(|i| i.image_id).collect();
+                match &mut payload.task.image_ids {
+                    Some(ids) => ids.extend(imported_ids),
+                    None => payload.task.image_ids = Some(imported_ids),
+                }
 
-                    tracing::info!(
-                        "Imported {} images from issue {}",
-                        imported.len(),
-                        linked_issue.issue_id
-                    );
-                }
-                Ok(_) => {} // No images to import
-                Err(e) => {
-                    tracing::warn!(
-                        "Failed to import issue attachments for issue {}: {}",
-                        linked_issue.issue_id,
-                        e
-                    );
-                    // Non-fatal: workspace creation continues without images
-                }
+                tracing::info!(
+                    "Imported {} images from issue {}",
+                    imported.len(),
+                    linked_issue.issue_id
+                );
+            }
+            Ok(_) => {}
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to import issue attachments for issue {}: {}",
+                    linked_issue.issue_id,
+                    e
+                );
             }
         }
     }
