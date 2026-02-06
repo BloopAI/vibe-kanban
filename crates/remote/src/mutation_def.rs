@@ -3,7 +3,7 @@
 //! This module provides `MutationDef`, a builder that:
 //! - Generates axum routers for CRUD mutation routes
 //! - Captures type information for TypeScript generation
-//! - Uses marker traits to enforce request/entity type relationships
+//! - Uses marker traits to enforce request/row type relationships
 //!
 //! # Example
 //!
@@ -35,14 +35,14 @@ use crate::AppState;
 // Marker Traits
 // =============================================================================
 
-/// Marker trait linking a create request type to its entity type.
+/// Marker trait linking a create request type to its row type.
 pub trait CreateRequestFor {
-    type Entity;
+    type Row;
 }
 
-/// Marker trait linking an update request type to its entity type.
+/// Marker trait linking an update request type to its row type.
 pub trait UpdateRequestFor {
-    type Entity;
+    type Row;
 }
 
 // =============================================================================
@@ -67,7 +67,7 @@ pub struct MutationMeta {
 /// Builder for mutation routes and metadata.
 ///
 /// Type parameters:
-/// - `E`: The entity/row type (e.g., `Tag`)
+/// - `E`: The row type (e.g., `Tag`)
 /// - `C`: The create request type, or `NoCreate` if no create
 /// - `U`: The update request type, or `NoUpdate` if no update
 pub struct MutationDef<E, C = (), U = ()> {
@@ -143,10 +143,10 @@ impl<E: TS, C, U> MutationDef<E, C, U> {
 impl<E: TS, U> MutationDef<E, NoCreate, U> {
     /// Add a create handler (POST /{table}).
     ///
-    /// The create request type must implement `CreateRequestFor<Entity = E>`.
+    /// The create request type must implement `CreateRequestFor<Row = E>`.
     pub fn create<C, H, T>(self, handler: H) -> MutationDef<E, C, U>
     where
-        C: TS + CreateRequestFor<Entity = E>,
+        C: TS + CreateRequestFor<Row = E>,
         H: Handler<T, AppState> + Clone + Send + 'static,
         T: 'static,
     {
@@ -166,10 +166,10 @@ impl<E: TS, U> MutationDef<E, NoCreate, U> {
 impl<E: TS, C> MutationDef<E, C, NoUpdate> {
     /// Add an update handler (PATCH /{table}/{id}).
     ///
-    /// The update request type must implement `UpdateRequestFor<Entity = E>`.
+    /// The update request type must implement `UpdateRequestFor<Row = E>`.
     pub fn update<U, H, T>(self, handler: H) -> MutationDef<E, C, U>
     where
-        U: TS + UpdateRequestFor<Entity = E>,
+        U: TS + UpdateRequestFor<Row = E>,
         H: Handler<T, AppState> + Clone + Send + 'static,
         T: 'static,
     {

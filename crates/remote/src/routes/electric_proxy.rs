@@ -34,49 +34,49 @@ const ELECTRIC_PARAMS: &[&str] = &["offset", "handle", "live", "cursor", "column
 pub fn router() -> Router<AppState> {
     Router::new()
         // Org-scoped
-        .route(entities::PROJECT_SHAPE.url, get(proxy_projects))
-        .route(entities::NOTIFICATION_SHAPE.url, get(proxy_notifications))
+        .route(entities::PROJECTS_SHAPE.url, get(proxy_projects))
+        .route(entities::NOTIFICATIONS_SHAPE.url, get(proxy_notifications))
         .route(
-            entities::ORGANIZATION_MEMBER_SHAPE.url,
+            entities::ORGANIZATION_MEMBERS_SHAPE.url,
             get(proxy_organization_members),
         )
-        .route(entities::USER_SHAPE.url, get(proxy_users))
+        .route(entities::USERS_SHAPE.url, get(proxy_users))
         // Project-scoped
-        .route(entities::WORKSPACE_SHAPE.url, get(proxy_workspaces))
+        .route(entities::USER_WORKSPACES_SHAPE.url, get(proxy_workspaces))
         .route(
-            entities::PROJECT_WORKSPACE_SHAPE.url,
+            entities::PROJECT_WORKSPACES_SHAPE.url,
             get(proxy_project_workspaces),
         )
         .route(
-            entities::PROJECT_STATUS_SHAPE.url,
+            entities::PROJECT_PROJECT_STATUSES_SHAPE.url,
             get(proxy_project_statuses),
         )
-        .route(entities::TAG_SHAPE.url, get(proxy_tags))
-        .route(entities::ISSUE_SHAPE.url, get(proxy_issues))
+        .route(entities::PROJECT_TAGS_SHAPE.url, get(proxy_tags))
+        .route(entities::PROJECT_ISSUES_SHAPE.url, get(proxy_issues))
         .route(
-            entities::ISSUE_ASSIGNEE_SHAPE.url,
+            entities::PROJECT_ISSUE_ASSIGNEES_SHAPE.url,
             get(proxy_issue_assignees),
         )
         .route(
-            entities::ISSUE_FOLLOWER_SHAPE.url,
+            entities::PROJECT_ISSUE_FOLLOWERS_SHAPE.url,
             get(proxy_issue_followers),
         )
-        .route(entities::ISSUE_TAG_SHAPE.url, get(proxy_issue_tags))
+        .route(entities::PROJECT_ISSUE_TAGS_SHAPE.url, get(proxy_issue_tags))
         .route(
-            entities::ISSUE_RELATIONSHIP_SHAPE.url,
+            entities::PROJECT_ISSUE_RELATIONSHIPS_SHAPE.url,
             get(proxy_issue_relationships),
         )
         .route(
-            entities::PULL_REQUEST_SHAPE.url,
+            entities::PROJECT_PULL_REQUESTS_SHAPE.url,
             get(proxy_pull_requests),
         )
         // Issue-scoped
         .route(
-            entities::ISSUE_COMMENT_SHAPE.url,
+            entities::ISSUE_COMMENTS_SHAPE.url,
             get(proxy_issue_comments),
         )
         .route(
-            entities::ISSUE_COMMENT_REACTION_SHAPE.url,
+            entities::ISSUE_REACTIONS_SHAPE.url,
             get(proxy_issue_comment_reactions),
         )
 }
@@ -92,7 +92,7 @@ async fn proxy_projects(
 
     proxy_table(
         &state,
-        &entities::PROJECT_SHAPE,
+        &entities::PROJECTS_SHAPE,
         &query.params,
         &[query.organization_id.to_string()],
     )
@@ -110,7 +110,7 @@ async fn proxy_notifications(
 
     proxy_table(
         &state,
-        &entities::NOTIFICATION_SHAPE,
+        &entities::NOTIFICATIONS_SHAPE,
         &query.params,
         &[query.organization_id.to_string(), ctx.user.id.to_string()],
     )
@@ -128,7 +128,7 @@ async fn proxy_organization_members(
 
     proxy_table(
         &state,
-        &entities::ORGANIZATION_MEMBER_SHAPE,
+        &entities::ORGANIZATION_MEMBERS_SHAPE,
         &query.params,
         &[query.organization_id.to_string()],
     )
@@ -146,7 +146,7 @@ async fn proxy_users(
 
     proxy_table(
         &state,
-        &entities::USER_SHAPE,
+        &entities::USERS_SHAPE,
         &query.params,
         &[query.organization_id.to_string()],
     )
@@ -160,7 +160,7 @@ async fn proxy_workspaces(
 ) -> Result<Response, ProxyError> {
     proxy_table(
         &state,
-        &entities::WORKSPACE_SHAPE,
+        &entities::USER_WORKSPACES_SHAPE,
         &query.params,
         &[ctx.user.id.to_string()],
     )
@@ -179,7 +179,7 @@ async fn proxy_project_workspaces(
 
     proxy_table(
         &state,
-        &entities::PROJECT_WORKSPACE_SHAPE,
+        &entities::PROJECT_WORKSPACES_SHAPE,
         &query.params,
         &[project_id.to_string()],
     )
@@ -198,7 +198,7 @@ async fn proxy_project_statuses(
 
     proxy_table(
         &state,
-        &entities::PROJECT_STATUS_SHAPE,
+        &entities::PROJECT_PROJECT_STATUSES_SHAPE,
         &query.params,
         &[project_id.to_string()],
     )
@@ -217,7 +217,7 @@ async fn proxy_tags(
 
     proxy_table(
         &state,
-        &entities::TAG_SHAPE,
+        &entities::PROJECT_TAGS_SHAPE,
         &query.params,
         &[project_id.to_string()],
     )
@@ -236,7 +236,7 @@ async fn proxy_issues(
 
     proxy_table(
         &state,
-        &entities::ISSUE_SHAPE,
+        &entities::PROJECT_ISSUES_SHAPE,
         &query.params,
         &[project_id.to_string()],
     )
@@ -255,7 +255,7 @@ async fn proxy_issue_assignees(
 
     proxy_table(
         &state,
-        &entities::ISSUE_ASSIGNEE_SHAPE,
+        &entities::PROJECT_ISSUE_ASSIGNEES_SHAPE,
         &query.params,
         &[project_id.to_string()],
     )
@@ -274,7 +274,7 @@ async fn proxy_issue_followers(
 
     proxy_table(
         &state,
-        &entities::ISSUE_FOLLOWER_SHAPE,
+        &entities::PROJECT_ISSUE_FOLLOWERS_SHAPE,
         &query.params,
         &[project_id.to_string()],
     )
@@ -293,7 +293,7 @@ async fn proxy_issue_tags(
 
     proxy_table(
         &state,
-        &entities::ISSUE_TAG_SHAPE,
+        &entities::PROJECT_ISSUE_TAGS_SHAPE,
         &query.params,
         &[project_id.to_string()],
     )
@@ -312,7 +312,7 @@ async fn proxy_issue_comments(
 
     proxy_table(
         &state,
-        &entities::ISSUE_COMMENT_SHAPE,
+        &entities::ISSUE_COMMENTS_SHAPE,
         &query.params,
         &[issue_id.to_string()],
     )
@@ -331,7 +331,7 @@ async fn proxy_issue_relationships(
 
     proxy_table(
         &state,
-        &entities::ISSUE_RELATIONSHIP_SHAPE,
+        &entities::PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
         &query.params,
         &[project_id.to_string()],
     )
@@ -350,7 +350,7 @@ async fn proxy_pull_requests(
 
     proxy_table(
         &state,
-        &entities::PULL_REQUEST_SHAPE,
+        &entities::PROJECT_PULL_REQUESTS_SHAPE,
         &query.params,
         &[project_id.to_string()],
     )
@@ -369,7 +369,7 @@ async fn proxy_issue_comment_reactions(
 
     proxy_table(
         &state,
-        &entities::ISSUE_COMMENT_REACTION_SHAPE,
+        &entities::ISSUE_REACTIONS_SHAPE,
         &query.params,
         &[issue_id.to_string()],
     )

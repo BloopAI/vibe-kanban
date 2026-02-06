@@ -1,7 +1,7 @@
-//! Marker trait implementations linking request types to entity types.
+//! Marker trait implementations linking request types to row types.
 //!
-//! These traits are used by `EntityDef` to enforce compile-time type safety
-//! between request types and their corresponding entity types.
+//! These traits are used by `MutationDef` to enforce compile-time type safety
+//! between request types and their corresponding row types.
 
 use api_types::{
     CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
@@ -21,11 +21,11 @@ use crate::mutation_def::{CreateRequestFor, UpdateRequestFor};
 // =============================================================================
 
 impl CreateRequestFor for CreateProjectRequest {
-    type Entity = Project;
+    type Row = Project;
 }
 
 impl UpdateRequestFor for UpdateProjectRequest {
-    type Entity = Project;
+    type Row = Project;
 }
 
 // =============================================================================
@@ -33,7 +33,7 @@ impl UpdateRequestFor for UpdateProjectRequest {
 // =============================================================================
 
 impl UpdateRequestFor for UpdateNotificationRequest {
-    type Entity = Notification;
+    type Row = Notification;
 }
 
 // =============================================================================
@@ -41,11 +41,11 @@ impl UpdateRequestFor for UpdateNotificationRequest {
 // =============================================================================
 
 impl CreateRequestFor for CreateTagRequest {
-    type Entity = Tag;
+    type Row = Tag;
 }
 
 impl UpdateRequestFor for UpdateTagRequest {
-    type Entity = Tag;
+    type Row = Tag;
 }
 
 // =============================================================================
@@ -53,11 +53,11 @@ impl UpdateRequestFor for UpdateTagRequest {
 // =============================================================================
 
 impl CreateRequestFor for CreateProjectStatusRequest {
-    type Entity = ProjectStatus;
+    type Row = ProjectStatus;
 }
 
 impl UpdateRequestFor for UpdateProjectStatusRequest {
-    type Entity = ProjectStatus;
+    type Row = ProjectStatus;
 }
 
 // =============================================================================
@@ -65,11 +65,11 @@ impl UpdateRequestFor for UpdateProjectStatusRequest {
 // =============================================================================
 
 impl CreateRequestFor for CreateIssueRequest {
-    type Entity = Issue;
+    type Row = Issue;
 }
 
 impl UpdateRequestFor for UpdateIssueRequest {
-    type Entity = Issue;
+    type Row = Issue;
 }
 
 // =============================================================================
@@ -77,11 +77,11 @@ impl UpdateRequestFor for UpdateIssueRequest {
 // =============================================================================
 
 impl CreateRequestFor for CreateIssueAssigneeRequest {
-    type Entity = IssueAssignee;
+    type Row = IssueAssignee;
 }
 
 impl UpdateRequestFor for UpdateIssueAssigneeRequest {
-    type Entity = IssueAssignee;
+    type Row = IssueAssignee;
 }
 
 // =============================================================================
@@ -89,11 +89,11 @@ impl UpdateRequestFor for UpdateIssueAssigneeRequest {
 // =============================================================================
 
 impl CreateRequestFor for CreateIssueFollowerRequest {
-    type Entity = IssueFollower;
+    type Row = IssueFollower;
 }
 
 impl UpdateRequestFor for UpdateIssueFollowerRequest {
-    type Entity = IssueFollower;
+    type Row = IssueFollower;
 }
 
 // =============================================================================
@@ -101,11 +101,11 @@ impl UpdateRequestFor for UpdateIssueFollowerRequest {
 // =============================================================================
 
 impl CreateRequestFor for CreateIssueTagRequest {
-    type Entity = IssueTag;
+    type Row = IssueTag;
 }
 
 impl UpdateRequestFor for UpdateIssueTagRequest {
-    type Entity = IssueTag;
+    type Row = IssueTag;
 }
 
 // =============================================================================
@@ -113,11 +113,11 @@ impl UpdateRequestFor for UpdateIssueTagRequest {
 // =============================================================================
 
 impl CreateRequestFor for CreateIssueRelationshipRequest {
-    type Entity = IssueRelationship;
+    type Row = IssueRelationship;
 }
 
 impl UpdateRequestFor for UpdateIssueRelationshipRequest {
-    type Entity = IssueRelationship;
+    type Row = IssueRelationship;
 }
 
 // =============================================================================
@@ -125,11 +125,11 @@ impl UpdateRequestFor for UpdateIssueRelationshipRequest {
 // =============================================================================
 
 impl CreateRequestFor for CreateIssueCommentRequest {
-    type Entity = IssueComment;
+    type Row = IssueComment;
 }
 
 impl UpdateRequestFor for UpdateIssueCommentRequest {
-    type Entity = IssueComment;
+    type Row = IssueComment;
 }
 
 // =============================================================================
@@ -137,9 +137,9 @@ impl UpdateRequestFor for UpdateIssueCommentRequest {
 // =============================================================================
 
 impl CreateRequestFor for CreateIssueCommentReactionRequest {
-    type Entity = IssueCommentReaction;
+    type Row = IssueCommentReaction;
 }
 
 impl UpdateRequestFor for UpdateIssueCommentReactionRequest {
-    type Entity = IssueCommentReaction;
+    type Row = IssueCommentReaction;
 }

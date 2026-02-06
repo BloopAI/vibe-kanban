@@ -163,97 +163,97 @@ function defineShape<T>(
 }
 
 // Individual shape definitions with embedded types
-export const PROJECT_SHAPE = defineShape<Project>(
+export const PROJECTS_SHAPE = defineShape<Project>(
   'projects',
   ['organization_id'] as const,
   '/v1/shape/projects'
 );
 
-export const NOTIFICATION_SHAPE = defineShape<Notification>(
+export const NOTIFICATIONS_SHAPE = defineShape<Notification>(
   'notifications',
   ['organization_id', 'user_id'] as const,
   '/v1/shape/notifications'
 );
 
-export const ORGANIZATION_MEMBER_SHAPE = defineShape<OrganizationMember>(
+export const ORGANIZATION_MEMBERS_SHAPE = defineShape<OrganizationMember>(
   'organization_member_metadata',
   ['organization_id'] as const,
   '/v1/shape/organization_members'
 );
 
-export const USER_SHAPE = defineShape<User>(
+export const USERS_SHAPE = defineShape<User>(
   'users',
   ['organization_id'] as const,
   '/v1/shape/users'
 );
 
-export const TAG_SHAPE = defineShape<Tag>(
+export const PROJECT_TAGS_SHAPE = defineShape<Tag>(
   'tags',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/tags'
 );
 
-export const PROJECT_STATUS_SHAPE = defineShape<ProjectStatus>(
+export const PROJECT_PROJECT_STATUSES_SHAPE = defineShape<ProjectStatus>(
   'project_statuses',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/project_statuses'
 );
 
-export const ISSUE_SHAPE = defineShape<Issue>(
+export const PROJECT_ISSUES_SHAPE = defineShape<Issue>(
   'issues',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/issues'
 );
 
-export const WORKSPACE_SHAPE = defineShape<Workspace>(
+export const USER_WORKSPACES_SHAPE = defineShape<Workspace>(
   'workspaces',
   ['owner_user_id'] as const,
   '/v1/shape/user/workspaces'
 );
 
-export const PROJECT_WORKSPACE_SHAPE = defineShape<Workspace>(
+export const PROJECT_WORKSPACES_SHAPE = defineShape<Workspace>(
   'workspaces',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/workspaces'
 );
 
-export const ISSUE_ASSIGNEE_SHAPE = defineShape<IssueAssignee>(
+export const PROJECT_ISSUE_ASSIGNEES_SHAPE = defineShape<IssueAssignee>(
   'issue_assignees',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/issue_assignees'
 );
 
-export const ISSUE_FOLLOWER_SHAPE = defineShape<IssueFollower>(
+export const PROJECT_ISSUE_FOLLOWERS_SHAPE = defineShape<IssueFollower>(
   'issue_followers',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/issue_followers'
 );
 
-export const ISSUE_TAG_SHAPE = defineShape<IssueTag>(
+export const PROJECT_ISSUE_TAGS_SHAPE = defineShape<IssueTag>(
   'issue_tags',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/issue_tags'
 );
 
-export const ISSUE_RELATIONSHIP_SHAPE = defineShape<IssueRelationship>(
+export const PROJECT_ISSUE_RELATIONSHIPS_SHAPE = defineShape<IssueRelationship>(
   'issue_relationships',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/issue_relationships'
 );
 
-export const PULL_REQUEST_SHAPE = defineShape<PullRequest>(
+export const PROJECT_PULL_REQUESTS_SHAPE = defineShape<PullRequest>(
   'pull_requests',
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/pull_requests'
 );
 
-export const ISSUE_COMMENT_SHAPE = defineShape<IssueComment>(
+export const ISSUE_COMMENTS_SHAPE = defineShape<IssueComment>(
   'issue_comments',
   ['issue_id'] as const,
   '/v1/shape/issue/{issue_id}/comments'
 );
 
-export const ISSUE_COMMENT_REACTION_SHAPE = defineShape<IssueCommentReaction>(
+export const ISSUE_REACTIONS_SHAPE = defineShape<IssueCommentReaction>(
   'issue_comment_reactions',
   ['issue_id'] as const,
   '/v1/shape/issue/{issue_id}/reactions'
