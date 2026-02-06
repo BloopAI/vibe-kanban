@@ -4,13 +4,17 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useMemo,
 } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { configApi } from '@/lib/api';
 import {
   PreviewBrowser,
   MOBILE_WIDTH,
   MOBILE_HEIGHT,
   PHONE_FRAME_PADDING,
 } from '../views/PreviewBrowser';
+import type { MiniDevToolsTabType } from '../views/MiniDevTools';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { usePreviewUrl } from '../hooks/usePreviewUrl';
 import {
@@ -21,9 +25,58 @@ import { useLogStream } from '@/hooks/useLogStream';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialog';
+import { usePreviewDevTools } from '@/hooks/usePreviewDevTools';
+import { PreviewDevToolsBridge } from '@/utils/previewDevToolsBridge';
+import { useInspectModeStore } from '@/stores/useInspectModeStore';
 
 const MIN_RESPONSIVE_WIDTH = 320;
 const MIN_RESPONSIVE_HEIGHT = 480;
+
+/**
+ * Transform a proxy URL back to the dev server URL.
+ * Proxy format: http://{devPort}.localhost:{proxyPort}{path}?_refresh=...
+ * Dev format:   http://localhost:{devPort}{path}
+ */
+function transformProxyUrlToDevUrl(proxyUrl: string): string | null {
+  try {
+    const url = new URL(proxyUrl);
+
+    const hostnameParts = url.hostname.split('.');
+    if (
+      hostnameParts.length < 2 ||
+      !hostnameParts.slice(1).join('.').startsWith('localhost')
+    ) {
+      return null;
+    }
+
+    const devPort = hostnameParts[0];
+    if (!/^\d+$/.test(devPort)) {
+      return null;
+    }
+
+    url.searchParams.delete('_refresh');
+
+    const devUrl = new URL(`http://localhost${url.pathname}`);
+
+    const search = url.searchParams.toString();
+    if (search) {
+      devUrl.search = search;
+    }
+
+    if (url.hash) {
+      devUrl.hash = url.hash;
+    }
+
+    const portNum = parseInt(devPort, 10);
+    if (portNum !== 80) {
+      devUrl.port = devPort;
+    }
+
+    return devUrl.toString();
+  } catch {
+    return null;
+  }
+}
 
 interface PreviewBrowserContainerProps {
   attemptId: string;
@@ -39,6 +92,14 @@ export function PreviewBrowserContainer({
     (s) => s.triggerPreviewRefresh
   );
   const { repos, workspaceId } = useWorkspaceContext();
+
+  // Get preview proxy port for security isolation
+  const { data: systemInfo } = useQuery({
+    queryKey: ['user-system'],
+    queryFn: configApi.getConfig,
+    staleTime: 5 * 60 * 1000,
+  });
+  const previewProxyPort = systemInfo?.preview_proxy_port;
 
   const {
     start,
@@ -79,18 +140,97 @@ export function PreviewBrowserContainer({
   // Local state for URL input to prevent updates from disrupting typing
   const urlInputRef = useRef<HTMLInputElement>(null);
   const [urlInputValue, setUrlInputValue] = useState(effectiveUrl ?? '');
+  const prevEffectiveUrlRef = useRef(effectiveUrl);
 
   // Iframe display timing state
   const [showIframe, setShowIframe] = useState(false);
   const [allowManualUrl, setAllowManualUrl] = useState(false);
   const [immediateLoad, setImmediateLoad] = useState(false);
 
-  // Sync from prop only when input is not focused
+  // Inspect mode state
+  const isInspectMode = useInspectModeStore((s) => s.isInspectMode);
+  const toggleInspectMode = useInspectModeStore((s) => s.toggleInspectMode);
+  const setPendingComponentMarkdown = useInspectModeStore(
+    (s) => s.setPendingComponentMarkdown
+  );
+
+  // DevTools state
+  const [devToolsCollapsed, setDevToolsCollapsed] = useState(true);
+  const [devToolsActiveTab, setDevToolsActiveTab] =
+    useState<MiniDevToolsTabType>('console');
+  const [devToolsExpandedErrorId, setDevToolsExpandedErrorId] = useState<
+    string | null
+  >(null);
+  // Eruda DevTools state
+  const [isErudaVisible, setIsErudaVisible] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const devTools = usePreviewDevTools();
+  const bridgeRef = useRef<PreviewDevToolsBridge | null>(null);
+
+  // Sync URL bar from effectiveUrl changes OR iframe navigation
   useEffect(() => {
-    if (document.activeElement !== urlInputRef.current) {
+    if (document.activeElement === urlInputRef.current) return;
+
+    if (prevEffectiveUrlRef.current !== effectiveUrl) {
+      prevEffectiveUrlRef.current = effectiveUrl;
       setUrlInputValue(effectiveUrl ?? '');
+      return;
     }
-  }, [effectiveUrl]);
+
+    const navUrl = devTools.navigation?.url;
+    if (navUrl && previewProxyPort) {
+      const devUrl = transformProxyUrlToDevUrl(navUrl);
+      if (devUrl) {
+        setUrlInputValue(devUrl);
+        return;
+      }
+    }
+
+    setUrlInputValue(effectiveUrl ?? '');
+  }, [effectiveUrl, devTools.navigation?.url, previewProxyPort]);
+
+  useEffect(() => {
+    bridgeRef.current = new PreviewDevToolsBridge(
+      devTools.handleMessage,
+      iframeRef
+    );
+    bridgeRef.current.start();
+
+    return () => {
+      bridgeRef.current?.stop();
+    };
+  }, [devTools.handleMessage]);
+
+  // Send inspect mode toggle to iframe
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe?.contentWindow) return;
+
+    iframe.contentWindow.postMessage(
+      {
+        source: 'click-to-component',
+        type: 'toggle-inspect',
+        payload: { active: isInspectMode },
+      },
+      '*'
+    );
+  }, [isInspectMode]);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      if (!event.data || event.data.source !== 'click-to-component') return;
+      if (
+        event.data.type === 'component-detected' &&
+        event.data.payload?.markdown
+      ) {
+        setPendingComponentMarkdown(event.data.payload.markdown);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [setPendingComponentMarkdown]);
 
   // 10-second timeout to enable manual URL entry when no URL detected
   useEffect(() => {
@@ -328,6 +468,34 @@ export function PreviewBrowserContainer({
     setUrlInputValue('');
   }, [clearOverride]);
 
+  const handleNavigateBack = useCallback(() => {
+    bridgeRef.current?.navigateBack();
+  }, []);
+
+  const handleNavigateForward = useCallback(() => {
+    bridgeRef.current?.navigateForward();
+  }, []);
+
+  const handleToggleDevToolsCollapsed = useCallback(() => {
+    setDevToolsCollapsed((prev) => !prev);
+  }, []);
+
+  const handleToggleEruda = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe?.contentWindow) return;
+
+    const newState = !isErudaVisible;
+    setIsErudaVisible(newState);
+
+    iframe.contentWindow.postMessage(
+      {
+        source: 'vibe-kanban',
+        command: newState ? 'show-eruda' : 'hide-eruda',
+      },
+      '*'
+    );
+  }, [isErudaVisible]);
+
   const handleCopyUrl = useCallback(async () => {
     if (effectiveUrl) {
       await navigator.clipboard.writeText(effectiveUrl);
@@ -347,10 +515,54 @@ export function PreviewBrowserContainer({
     [setScreenSize]
   );
 
-  // Use previewRefreshKey from store to force iframe reload
-  const iframeUrl = effectiveUrl
-    ? `${effectiveUrl}${effectiveUrl.includes('?') ? '&' : '?'}_refresh=${previewRefreshKey}`
-    : undefined;
+  // Construct proxy URL for iframe to enable security isolation via separate origin
+  // Uses subdomain-based routing: http://{devPort}.localhost:{proxyPort}{path}
+  const iframeUrl = useMemo(() => {
+    if (!effectiveUrl || !previewProxyPort) return undefined;
+
+    try {
+      const parsed = new URL(effectiveUrl);
+      const devServerPort =
+        parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
+
+      // Don't proxy to Vibe Kanban's own ports (would create infinite loop)
+      const vibeKanbanPort = window.location.port || '80';
+      if (devServerPort === vibeKanbanPort) {
+        console.warn(
+          `[Preview] Ignoring dev server URL with same port as Vibe Kanban (${devServerPort}). ` +
+            'This usually means the dev server failed to start or reported the wrong port.'
+        );
+        return undefined;
+      }
+
+      // Also check if it's the preview proxy port itself
+      if (devServerPort === String(previewProxyPort)) {
+        console.warn(
+          `[Preview] Ignoring dev server URL with same port as preview proxy (${devServerPort}).`
+        );
+        return undefined;
+      }
+
+      // Warn if not on localhost (subdomain routing requires localhost)
+      if (!['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+        console.warn(
+          '[Preview] Preview proxy subdomain routing may not work on non-localhost hostname'
+        );
+      }
+
+      const path = parsed.pathname + parsed.search;
+
+      // Subdomain-based routing: the proxy extracts the port from the Host header
+      const proxyUrl = new URL(
+        `http://${devServerPort}.localhost:${previewProxyPort}${path}`
+      );
+      proxyUrl.searchParams.set('_refresh', String(previewRefreshKey));
+
+      return proxyUrl.toString();
+    } catch {
+      return undefined;
+    }
+  }, [effectiveUrl, previewProxyPort, previewRefreshKey]);
 
   const handleEditDevScript = useCallback(() => {
     if (!attemptId || repos.length === 0) return;
@@ -415,6 +627,20 @@ export function PreviewBrowserContainer({
       hasFailedDevServer={hasFailedDevServer}
       mobileScale={mobileScale}
       className={className}
+      iframeRef={iframeRef}
+      devTools={devTools}
+      onNavigateBack={handleNavigateBack}
+      onNavigateForward={handleNavigateForward}
+      isInspectMode={isInspectMode}
+      onToggleInspectMode={toggleInspectMode}
+      isErudaVisible={isErudaVisible}
+      onToggleEruda={handleToggleEruda}
+      devToolsCollapsed={devToolsCollapsed}
+      onToggleDevToolsCollapsed={handleToggleDevToolsCollapsed}
+      devToolsActiveTab={devToolsActiveTab}
+      onDevToolsTabChange={setDevToolsActiveTab}
+      devToolsExpandedErrorId={devToolsExpandedErrorId}
+      onDevToolsExpandedErrorIdChange={setDevToolsExpandedErrorId}
     />
   );
 }

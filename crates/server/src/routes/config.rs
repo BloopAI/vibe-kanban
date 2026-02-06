@@ -90,6 +90,7 @@ pub struct UserSystemInfo {
     pub environment: Environment,
     /// Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
     pub capabilities: HashMap<String, Vec<BaseAgentCapability>>,
+    pub preview_proxy_port: Option<u16>,
 }
 
 // TODO: update frontend, BE schema has changed, this replaces GET /config and /config/constants
@@ -121,6 +122,7 @@ async fn get_user_system_info(
             }
             caps
         },
+        preview_proxy_port: crate::preview_proxy::get_proxy_port(),
     };
 
     ResponseJson(ApiResponse::success(user_system_info))
