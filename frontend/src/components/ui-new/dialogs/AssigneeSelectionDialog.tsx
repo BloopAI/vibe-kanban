@@ -23,6 +23,10 @@ export interface AssigneeSelectionDialogProps {
   projectId: string;
   issueIds: string[];
   isCreateMode?: boolean;
+  /** Initial assignee IDs for create mode (used instead of URL params when provided) */
+  createModeAssigneeIds?: string[];
+  /** Callback for create-mode assignee changes (bypasses URL params when provided) */
+  onCreateModeAssigneesChange?: (assigneeIds: string[]) => void;
 }
 
 const getUserDisplayName = (user: OrganizationMemberWithProfile): string => {
@@ -37,13 +41,18 @@ const getUserDisplayName = (user: OrganizationMemberWithProfile): string => {
 function AssigneeSelectionContent({
   issueIds,
   isCreateMode,
+  createModeAssigneeIds,
+  onCreateModeAssigneesChange,
 }: {
   issueIds: string[];
   isCreateMode: boolean;
+  createModeAssigneeIds?: string[];
+  onCreateModeAssigneesChange?: (assigneeIds: string[]) => void;
 }) {
   const { t } = useTranslation('common');
   const modal = useModal();
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const hasCreateCallback = onCreateModeAssigneesChange != null;
 
   // Get users from OrgContext - use membersWithProfilesById for OrganizationMemberWithProfile
   const { membersWithProfilesById } = useOrgContext();
@@ -56,7 +65,12 @@ function AssigneeSelectionContent({
   const { issueAssignees, insertIssueAssignee, removeIssueAssignee } =
     useProjectContext();
 
-  // Get/set create mode defaults from URL (URL is single source of truth)
+  // Local state for create mode when using callback pattern
+  const [localCreateAssignees, setLocalCreateAssignees] = useState<string[]>(
+    createModeAssigneeIds ?? []
+  );
+
+  // Fallback: Get/set create mode defaults from URL (for callers without callback)
   const [searchParams, setSearchParams] = useSearchParams();
   const kanbanCreateDefaultAssigneeIds = useMemo(() => {
     const assigneesParam = searchParams.get('assignees');
@@ -76,15 +90,24 @@ function AssigneeSelectionContent({
     [searchParams, setSearchParams]
   );
 
-  // Derive selected assignee IDs from persisted state (no local state needed)
+  // Derive selected assignee IDs based on mode and callback availability
   const selectedIds = useMemo(() => {
     if (isCreateMode) {
-      return kanbanCreateDefaultAssigneeIds;
+      return hasCreateCallback
+        ? localCreateAssignees
+        : kanbanCreateDefaultAssigneeIds;
     }
     return issueAssignees
       .filter((a) => issueIds.includes(a.issue_id))
       .map((a) => a.user_id);
-  }, [isCreateMode, issueIds, issueAssignees, kanbanCreateDefaultAssigneeIds]);
+  }, [
+    isCreateMode,
+    issueIds,
+    issueAssignees,
+    hasCreateCallback,
+    localCreateAssignees,
+    kanbanCreateDefaultAssigneeIds,
+  ]);
 
   const [search, setSearch] = useState('');
 
@@ -117,11 +140,15 @@ function AssigneeSelectionContent({
       const isSelected = selectedIds.includes(userId);
 
       if (isCreateMode) {
-        // Create mode: update URL params immediately
         const newIds = isSelected
           ? selectedIds.filter((id) => id !== userId)
           : [...selectedIds, userId];
-        setKanbanCreateDefaultAssigneeIds(newIds);
+        if (onCreateModeAssigneesChange) {
+          setLocalCreateAssignees(newIds);
+          onCreateModeAssigneesChange(newIds);
+        } else {
+          setKanbanCreateDefaultAssigneeIds(newIds);
+        }
       } else {
         // Edit mode: apply mutation immediately for each issue
         for (const issueId of issueIds) {
@@ -145,6 +172,7 @@ function AssigneeSelectionContent({
       selectedIds,
       issueIds,
       issueAssignees,
+      onCreateModeAssigneesChange,
       setKanbanCreateDefaultAssigneeIds,
       insertIssueAssignee,
       removeIssueAssignee,
@@ -185,6 +213,8 @@ function AssigneeSelectionWithContext({
   projectId,
   issueIds,
   isCreateMode = false,
+  createModeAssigneeIds,
+  onCreateModeAssigneesChange,
 }: AssigneeSelectionDialogProps) {
   // Get organization ID from store (set when navigating to project)
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
@@ -205,6 +235,8 @@ function AssigneeSelectionWithContext({
         <AssigneeSelectionContent
           issueIds={issueIds}
           isCreateMode={isCreateMode}
+          createModeAssigneeIds={createModeAssigneeIds}
+          onCreateModeAssigneesChange={onCreateModeAssigneesChange}
         />
       </ProjectProvider>
     </OrgProvider>
@@ -213,12 +245,20 @@ function AssigneeSelectionWithContext({
 
 const AssigneeSelectionDialogImpl =
   NiceModal.create<AssigneeSelectionDialogProps>(
-    ({ projectId, issueIds, isCreateMode }) => {
+    ({
+      projectId,
+      issueIds,
+      isCreateMode,
+      createModeAssigneeIds,
+      onCreateModeAssigneesChange,
+    }) => {
       return (
         <AssigneeSelectionWithContext
           projectId={projectId}
           issueIds={issueIds}
           isCreateMode={isCreateMode}
+          createModeAssigneeIds={createModeAssigneeIds}
+          onCreateModeAssigneesChange={onCreateModeAssigneesChange}
         />
       );
     }

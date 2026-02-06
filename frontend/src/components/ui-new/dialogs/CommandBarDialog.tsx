@@ -34,6 +34,8 @@ export interface PendingStatusSelection {
   issueIds: string[];
   /** When true, this is for changing status of an issue being created (not yet saved) */
   isCreateMode?: boolean;
+  /** Callback for create-mode status changes (bypasses URL params) */
+  onCreateModeUpdate?: (statusId: string) => void;
 }
 
 /** Options for starting in priority selection mode */
@@ -42,6 +44,10 @@ export interface PendingPrioritySelection {
   issueIds: string[];
   /** When true, this is for changing priority of an issue being created (not yet saved) */
   isCreateMode?: boolean;
+  /** Callback for create-mode priority changes (bypasses URL params) */
+  onCreateModeUpdate?: (
+    priority: 'urgent' | 'high' | 'medium' | 'low' | null
+  ) => void;
 }
 
 /** Options for starting in sub-issue selection mode */
@@ -522,8 +528,11 @@ function CommandBarWithStatuses(
     (issueIds: string[], statusId: string) => {
       // Check if this is for create mode (empty issueIds array with isCreateMode flag)
       if (props.pendingStatusSelection?.isCreateMode) {
-        // Update the URL params for the issue being created
-        updateCreateDefaults({ statusId });
+        if (props.pendingStatusSelection.onCreateModeUpdate) {
+          props.pendingStatusSelection.onCreateModeUpdate(statusId);
+        } else {
+          updateCreateDefaults({ statusId });
+        }
         return;
       }
 
@@ -535,6 +544,7 @@ function CommandBarWithStatuses(
     [
       updateIssue,
       props.pendingStatusSelection?.isCreateMode,
+      props.pendingStatusSelection?.onCreateModeUpdate,
       updateCreateDefaults,
     ]
   );
@@ -546,8 +556,11 @@ function CommandBarWithStatuses(
     ) => {
       // Check if this is for create mode (empty issueIds array with isCreateMode flag)
       if (props.pendingPrioritySelection?.isCreateMode) {
-        // Update the URL params for the issue being created
-        updateCreateDefaults({ priority });
+        if (props.pendingPrioritySelection.onCreateModeUpdate) {
+          props.pendingPrioritySelection.onCreateModeUpdate(priority);
+        } else {
+          updateCreateDefaults({ priority });
+        }
         return;
       }
 
@@ -559,6 +572,7 @@ function CommandBarWithStatuses(
     [
       updateIssue,
       props.pendingPrioritySelection?.isCreateMode,
+      props.pendingPrioritySelection?.onCreateModeUpdate,
       updateCreateDefaults,
     ]
   );

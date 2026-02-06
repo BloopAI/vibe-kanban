@@ -225,11 +225,11 @@ export function KanbanIssuePanelContainer() {
   } | null>(null);
 
   // Compute display values based on mode
-  // - Create mode: use createFormData
+  // - Create mode: createFormData is the single source of truth
   // - Edit mode: text fields from localTextEdits (if editing) or server, dropdown fields always from server
   const displayData = useMemo((): IssueFormData => {
     if (mode === 'create') {
-      const base = createFormData ?? {
+      return createFormData ?? {
         title: '',
         description: null,
         statusId: defaultStatusId,
@@ -237,14 +237,6 @@ export function KanbanIssuePanelContainer() {
         assigneeIds: [],
         tagIds: [],
         createDraftWorkspace: false,
-      };
-      // If kanbanCreateDefault* fields are explicitly set,
-      // use them (user selected via command bar). Otherwise use the form data defaults.
-      return {
-        ...base,
-        statusId: kanbanCreateDefaultStatusId ?? base.statusId,
-        priority: kanbanCreateDefaultPriority ?? base.priority,
-        assigneeIds: kanbanCreateDefaultAssigneeIds ?? base.assigneeIds,
       };
     }
 
@@ -270,9 +262,6 @@ export function KanbanIssuePanelContainer() {
     localTextEdits,
     selectedIssue,
     defaultStatusId,
-    kanbanCreateDefaultStatusId,
-    kanbanCreateDefaultPriority,
-    kanbanCreateDefaultAssigneeIds,
     currentAssigneeIds,
     currentTagIds,
   ]);
@@ -376,7 +365,13 @@ export function KanbanIssuePanelContainer() {
     if (mode === 'create') {
       hasRestoredFromScratch.current = false;
 
-      // Try to restore from scratch if available for this project
+      // Gate on scratch loading — don't initialize until we know the scratch state
+      if (draftIssueLoading) {
+        setCreateFormData(null);
+        return;
+      }
+
+      // Priority 1: Restore from scratch if available for this project
       const scratchData =
         draftIssueScratch?.payload?.type === 'DRAFT_ISSUE'
           ? draftIssueScratch.payload.data
@@ -386,12 +381,13 @@ export function KanbanIssuePanelContainer() {
         hasRestoredFromScratch.current = true;
         setCreateFormData(restoreFromScratch(scratchData));
       } else {
+        // Priority 2: Seed from URL defaults (read once), then empty form
         setCreateFormData({
           title: '',
           description: null,
-          statusId: defaultStatusId,
-          priority: null,
-          assigneeIds: [],
+          statusId: kanbanCreateDefaultStatusId ?? defaultStatusId,
+          priority: kanbanCreateDefaultPriority ?? null,
+          assigneeIds: kanbanCreateDefaultAssigneeIds ?? [],
           tagIds: [],
           createDraftWorkspace: false,
         });
@@ -408,8 +404,12 @@ export function KanbanIssuePanelContainer() {
     cancelDebouncedDescription,
     cancelDebouncedDraftIssue,
     draftIssueScratch,
+    draftIssueLoading,
     projectId,
     restoreFromScratch,
+    kanbanCreateDefaultStatusId,
+    kanbanCreateDefaultPriority,
+    kanbanCreateDefaultAssigneeIds,
   ]);
 
   // Handle late scratch loading: if scratch arrives after initial create mode render
@@ -419,16 +419,27 @@ export function KanbanIssuePanelContainer() {
       return;
     }
     if (hasRestoredFromScratch.current) return;
-    if (draftIssueLoading || !draftIssueScratch) return;
+    if (draftIssueLoading) return;
 
     const scratchData =
-      draftIssueScratch.payload?.type === 'DRAFT_ISSUE'
+      draftIssueScratch?.payload?.type === 'DRAFT_ISSUE'
         ? draftIssueScratch.payload.data
         : undefined;
 
     if (scratchData && scratchData.project_id === projectId) {
       hasRestoredFromScratch.current = true;
       setCreateFormData(restoreFromScratch(scratchData));
+    } else if (createFormData === null) {
+      // Scratch loaded but no data — seed from URL defaults
+      setCreateFormData({
+        title: '',
+        description: null,
+        statusId: kanbanCreateDefaultStatusId ?? defaultStatusId,
+        priority: kanbanCreateDefaultPriority ?? null,
+        assigneeIds: kanbanCreateDefaultAssigneeIds ?? [],
+        tagIds: [],
+        createDraftWorkspace: false,
+      });
     }
   }, [
     mode,
@@ -436,6 +447,11 @@ export function KanbanIssuePanelContainer() {
     draftIssueLoading,
     projectId,
     restoreFromScratch,
+    createFormData,
+    kanbanCreateDefaultStatusId,
+    kanbanCreateDefaultPriority,
+    kanbanCreateDefaultAssigneeIds,
+    defaultStatusId,
   ]);
 
   // Auto-save draft issue to scratch when form data changes in create mode
@@ -469,7 +485,7 @@ export function KanbanIssuePanelContainer() {
     ) => {
       // Create mode: update createFormData for all fields
       if (kanbanCreateMode || !selectedKanbanIssueId) {
-        // For statusId, open the status selection dialog
+        // For statusId, open the status selection dialog with callback
         if (field === 'statusId') {
           const { CommandBarDialog } = await import(
             '@/components/ui-new/dialogs/CommandBarDialog'
@@ -479,12 +495,17 @@ export function KanbanIssuePanelContainer() {
               projectId,
               issueIds: [],
               isCreateMode: true,
+              onCreateModeUpdate: (statusId: string) => {
+                setCreateFormData((prev) =>
+                  prev ? { ...prev, statusId } : prev
+                );
+              },
             },
           });
           return;
         }
 
-        // For priority, open the priority selection dialog
+        // For priority, open the priority selection dialog with callback
         if (field === 'priority') {
           const { CommandBarDialog } = await import(
             '@/components/ui-new/dialogs/CommandBarDialog'
@@ -494,14 +515,32 @@ export function KanbanIssuePanelContainer() {
               projectId,
               issueIds: [],
               isCreateMode: true,
+              onCreateModeUpdate: (priority) => {
+                setCreateFormData((prev) =>
+                  prev ? { ...prev, priority } : prev
+                );
+              },
             },
           });
           return;
         }
 
-        // For assigneeIds, open the assignee selection dialog
+        // For assigneeIds, open the assignee selection dialog with callback
         if (field === 'assigneeIds') {
-          openAssigneeSelection(projectId, [], true);
+          const { AssigneeSelectionDialog } = await import(
+            '@/components/ui-new/dialogs/AssigneeSelectionDialog'
+          );
+          await AssigneeSelectionDialog.show({
+            projectId,
+            issueIds: [],
+            isCreateMode: true,
+            createModeAssigneeIds: createFormData?.assigneeIds ?? [],
+            onCreateModeAssigneesChange: (assigneeIds: string[]) => {
+              setCreateFormData((prev) =>
+                prev ? { ...prev, assigneeIds } : prev
+              );
+            },
+          });
           return;
         }
 
@@ -579,6 +618,7 @@ export function KanbanIssuePanelContainer() {
       selectedKanbanIssueId,
       projectId,
       defaultStatusId,
+      createFormData,
       debouncedSaveTitle,
       debouncedSaveDescription,
       openStatusSelection,
