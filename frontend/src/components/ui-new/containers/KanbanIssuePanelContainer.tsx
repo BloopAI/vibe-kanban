@@ -184,7 +184,9 @@ export function KanbanIssuePanelContainer() {
         hasNode: !!node,
         selectedKanbanIssueId,
         lastTitleIssueId: lastTitleIssueIdRef.current,
-        willUpdate: node ? selectedKanbanIssueId !== lastTitleIssueIdRef.current : false,
+        willUpdate: node
+          ? selectedKanbanIssueId !== lastTitleIssueIdRef.current
+          : false,
         createFormTitle: createFormData?.title,
         mode,
       });
@@ -363,8 +365,14 @@ export function KanbanIssuePanelContainer() {
       prevIssueId: prevIssueIdRef.current,
       draftIssueLoading,
       scratchPayloadType: draftIssueScratch?.payload?.type,
-      scratchProjectId: draftIssueScratch?.payload?.type === 'DRAFT_ISSUE' ? draftIssueScratch.payload.data.project_id : null,
-      scratchTitle: draftIssueScratch?.payload?.type === 'DRAFT_ISSUE' ? draftIssueScratch.payload.data.title : null,
+      scratchProjectId:
+        draftIssueScratch?.payload?.type === 'DRAFT_ISSUE'
+          ? draftIssueScratch.payload.data.project_id
+          : null,
+      scratchTitle:
+        draftIssueScratch?.payload?.type === 'DRAFT_ISSUE'
+          ? draftIssueScratch.payload.data.title
+          : null,
       projectId,
     });
 
@@ -434,7 +442,10 @@ export function KanbanIssuePanelContainer() {
       hasRestored: hasRestoredFromScratch.current,
       draftIssueLoading,
       hasScratch: !!draftIssueScratch,
-      scratchTitle: draftIssueScratch?.payload?.type === 'DRAFT_ISSUE' ? draftIssueScratch.payload.data.title : null,
+      scratchTitle:
+        draftIssueScratch?.payload?.type === 'DRAFT_ISSUE'
+          ? draftIssueScratch.payload.data.title
+          : null,
     });
     if (mode !== 'create') {
       hasRestoredFromScratch.current = false;
