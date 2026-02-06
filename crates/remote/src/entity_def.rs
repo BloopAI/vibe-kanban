@@ -3,7 +3,6 @@
 //! This module provides `EntityDef`, a builder that:
 //! - Generates axum routers with URLs derived from the shape's table name
 //! - Captures type information for TypeScript generation
-//! - Uses marker traits to enforce request/entity type relationships
 //!
 //! # Example
 //!
@@ -27,23 +26,32 @@
 
 use std::marker::PhantomData;
 
-use axum::{handler::Handler, routing::MethodRouter};
+use axum::{Json, handler::Handler, routing::MethodRouter};
 use ts_rs::TS;
 
 use crate::{shapes::ShapeDefinition, AppState};
 
 // =============================================================================
-// Marker Traits
+// Handler payload typing
 // =============================================================================
 
-/// Marker trait linking a create request type to its entity type.
-pub trait CreateRequestFor {
-    type Entity;
-}
+/// Marker trait implemented for extractor tuples that include `Json<T>` as payload.
+///
+/// This links EntityDef's `C`/`U` generic arguments to the actual handler payload
+/// type and prevents metadata drift from handler signatures.
+pub trait HasJsonPayload<T> {}
 
-/// Marker trait linking an update request type to its entity type.
-pub trait UpdateRequestFor {
-    type Entity;
+impl<T> HasJsonPayload<T> for (Json<T>,) {}
+impl<A, T> HasJsonPayload<T> for (A, Json<T>) {}
+impl<A, B, T> HasJsonPayload<T> for (A, B, Json<T>) {}
+impl<A, B, C, T> HasJsonPayload<T> for (A, B, C, Json<T>) {}
+impl<A, B, C, D, T> HasJsonPayload<T> for (A, B, C, D, Json<T>) {}
+impl<A, B, C, D, E0, T> HasJsonPayload<T> for (A, B, C, D, E0, Json<T>) {}
+impl<A, B, C, D, E0, F, T> HasJsonPayload<T> for (A, B, C, D, E0, F, Json<T>) {}
+impl<A, B, C, D, E0, F, G, T> HasJsonPayload<T> for (A, B, C, D, E0, F, G, Json<T>) {}
+impl<A, B, C, D, E0, F, G, H, T> HasJsonPayload<T>
+    for (A, B, C, D, E0, F, G, H, Json<T>)
+{
 }
 
 // =============================================================================
@@ -54,12 +62,10 @@ pub trait UpdateRequestFor {
 #[derive(Debug)]
 pub struct EntityMeta {
     pub table: &'static str,
-    pub shape_url: &'static str,
     pub mutations_url: String,
     pub row_type: String,
     pub create_type: Option<String>,
     pub update_type: Option<String>,
-    pub has_delete: bool,
 }
 
 // =============================================================================
@@ -76,9 +82,6 @@ pub struct EntityDef<E, C = (), U = ()> {
     shape: &'static ShapeDefinition,
     base_route: MethodRouter<AppState>,
     id_route: MethodRouter<AppState>,
-    has_create: bool,
-    has_update: bool,
-    has_delete: bool,
     _phantom: PhantomData<fn() -> (E, C, U)>,
 }
 
@@ -89,9 +92,6 @@ impl<E: TS + Send + Sync + 'static> EntityDef<E, NoCreate, NoUpdate> {
             shape,
             base_route: MethodRouter::new(),
             id_route: MethodRouter::new(),
-            has_create: false,
-            has_update: false,
-            has_delete: false,
             _phantom: PhantomData,
         }
     }
@@ -124,7 +124,6 @@ impl<E: TS, C, U> EntityDef<E, C, U> {
         H: Handler<T, AppState> + Clone + Send + 'static,
         T: 'static,
     {
-        self.has_delete = true;
         self.id_route = self.id_route.delete(handler);
         self
     }
@@ -143,21 +142,16 @@ impl<E: TS, C, U> EntityDef<E, C, U> {
 
 impl<E: TS, U> EntityDef<E, NoCreate, U> {
     /// Add a create handler (POST /table).
-    ///
-    /// The create request type must implement `CreateRequestFor<Entity = E>`.
-    pub fn create<C, H, T>(self, handler: H) -> EntityDef<E, C, U>
+    pub fn create<C, H, Extractors>(self, handler: H) -> EntityDef<E, C, U>
     where
-        C: TS + CreateRequestFor<Entity = E>,
-        H: Handler<T, AppState> + Clone + Send + 'static,
-        T: 'static,
+        C: TS,
+        H: Handler<Extractors, AppState> + Clone + Send + 'static,
+        Extractors: HasJsonPayload<C> + 'static,
     {
         EntityDef {
             shape: self.shape,
             base_route: self.base_route.post(handler),
             id_route: self.id_route,
-            has_create: true,
-            has_update: self.has_update,
-            has_delete: self.has_delete,
             _phantom: PhantomData,
         }
     }
@@ -165,21 +159,16 @@ impl<E: TS, U> EntityDef<E, NoCreate, U> {
 
 impl<E: TS, C> EntityDef<E, C, NoUpdate> {
     /// Add an update handler (PATCH /table/{id}).
-    ///
-    /// The update request type must implement `UpdateRequestFor<Entity = E>`.
-    pub fn update<U, H, T>(self, handler: H) -> EntityDef<E, C, U>
+    pub fn update<U, H, Extractors>(self, handler: H) -> EntityDef<E, C, U>
     where
-        U: TS + UpdateRequestFor<Entity = E>,
-        H: Handler<T, AppState> + Clone + Send + 'static,
-        T: 'static,
+        U: TS,
+        H: Handler<Extractors, AppState> + Clone + Send + 'static,
+        Extractors: HasJsonPayload<U> + 'static,
     {
         EntityDef {
             shape: self.shape,
             base_route: self.base_route,
             id_route: self.id_route.patch(handler),
-            has_create: self.has_create,
-            has_update: true,
-            has_delete: self.has_delete,
             _phantom: PhantomData,
         }
     }
@@ -225,12 +214,10 @@ impl<E: TS, C: MaybeTypeName, U: MaybeTypeName> EntityDef<E, C, U> {
     pub fn metadata(&self) -> EntityMeta {
         EntityMeta {
             table: self.shape.table(),
-            shape_url: self.shape.url(),
             mutations_url: format!("/v1/{}", self.shape.table()),
             row_type: E::name(),
             create_type: C::maybe_name(),
             update_type: U::maybe_name(),
-            has_delete: self.has_delete,
         }
     }
 }
