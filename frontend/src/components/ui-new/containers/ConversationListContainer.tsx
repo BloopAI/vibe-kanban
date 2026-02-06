@@ -265,7 +265,12 @@ export const ConversationList = forwardRef<
         scrollModifier = AutoScrollToBottom;
       }
 
+      if (import.meta.env.DEV) performance.mark('aggregate-s');
       const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
+      if (import.meta.env.DEV) {
+        performance.mark('aggregate-e');
+        performance.measure('ws:aggregate', 'aggregate-s', 'aggregate-e');
+      }
 
       setChannelData({ data: aggregatedEntries, scrollModifier });
       setEntries(pending.entries);

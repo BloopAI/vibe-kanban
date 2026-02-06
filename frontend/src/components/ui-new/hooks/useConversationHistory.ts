@@ -429,7 +429,12 @@ export const useConversationHistory = ({
       addEntryType: AddEntryType,
       loading: boolean
     ) => {
+      if (import.meta.env.DEV) performance.mark('flatten-s');
       const entries = flattenEntriesForEmit(executionProcessState);
+      if (import.meta.env.DEV) {
+        performance.mark('flatten-e');
+        performance.measure('ws:flatten', 'flatten-s', 'flatten-e');
+      }
       let modifiedAddEntryType = addEntryType;
 
       // Modify so that if last entry is ExitPlanMode, emit special plan type

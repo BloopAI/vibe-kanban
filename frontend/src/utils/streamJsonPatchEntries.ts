@@ -2,6 +2,8 @@
 import type { Operation } from 'rfc6902';
 import { applyUpsertPatch } from '@/utils/jsonPatch';
 
+let _wsMsgSeq = 0;
+
 type PatchContainer<E = unknown> = { entries: E[] };
 
 export interface StreamOptions<E = unknown> {
@@ -62,19 +64,50 @@ export function streamJsonPatchEntries<E = unknown>(
 
   const handleMessage = (event: MessageEvent) => {
     try {
+      const seq = _wsMsgSeq++;
+      const m = `ws-msg-${seq}`;
+      const DEV = import.meta.env.DEV;
+
+      if (DEV) performance.mark(`${m}:parse-s`);
       const msg = JSON.parse(event.data);
+      if (DEV) performance.mark(`${m}:parse-e`);
 
       // Handle JsonPatch messages (from LogMsg::to_ws_message)
       if (msg.JsonPatch) {
         const raw = msg.JsonPatch as Operation[];
+
+        if (DEV) performance.mark(`${m}:dedupe-s`);
         const ops = dedupeOps(raw);
+        if (DEV) performance.mark(`${m}:dedupe-e`);
 
         // Apply to a working copy (applyPatch mutates)
+        if (DEV) performance.mark(`${m}:clone-s`);
         const next = structuredClone(snapshot);
+        if (DEV) performance.mark(`${m}:clone-e`);
+
+        if (DEV) performance.mark(`${m}:patch-s`);
         applyUpsertPatch(next, ops);
+        if (DEV) performance.mark(`${m}:patch-e`);
 
         snapshot = next;
+
+        if (DEV) performance.mark(`${m}:notify-s`);
         notify();
+        if (DEV) performance.mark(`${m}:notify-e`);
+
+        if (DEV) {
+          performance.measure('ws:parse', `${m}:parse-s`, `${m}:parse-e`);
+          performance.measure('ws:dedupe', `${m}:dedupe-s`, `${m}:dedupe-e`);
+          performance.measure('ws:clone', `${m}:clone-s`, `${m}:clone-e`);
+          performance.measure('ws:patch', `${m}:patch-s`, `${m}:patch-e`);
+          performance.measure('ws:notify', `${m}:notify-s`, `${m}:notify-e`);
+          performance.measure('ws:total', `${m}:parse-s`, `${m}:notify-e`);
+          if (seq % 50 === 0) {
+            console.log(
+              `[ws-perf] msg#${seq}: entries=${snapshot.entries.length}`
+            );
+          }
+        }
       }
 
       // Handle Finished messages
