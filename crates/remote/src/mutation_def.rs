@@ -84,8 +84,6 @@ pub struct MutationDef<E, C = (), U = ()> {
     url: &'static str,
     base_route: MethodRouter<AppState>,
     id_route: MethodRouter<AppState>,
-    has_create: bool,
-    has_update: bool,
     has_delete: bool,
     _phantom: PhantomData<fn() -> (E, C, U)>,
 }
@@ -98,8 +96,6 @@ impl<E: TS + Send + Sync + 'static> MutationDef<E, NoCreate, NoUpdate> {
             url,
             base_route: MethodRouter::new(),
             id_route: MethodRouter::new(),
-            has_create: false,
-            has_update: false,
             has_delete: false,
             _phantom: PhantomData,
         }
@@ -165,8 +161,6 @@ impl<E: TS, U> MutationDef<E, NoCreate, U> {
             url: self.url,
             base_route: self.base_route.post(handler),
             id_route: self.id_route,
-            has_create: true,
-            has_update: self.has_update,
             has_delete: self.has_delete,
             _phantom: PhantomData,
         }
@@ -189,8 +183,6 @@ impl<E: TS, C> MutationDef<E, C, NoUpdate> {
             url: self.url,
             base_route: self.base_route,
             id_route: self.id_route.patch(handler),
-            has_create: self.has_create,
-            has_update: true,
             has_delete: self.has_delete,
             _phantom: PhantomData,
         }
