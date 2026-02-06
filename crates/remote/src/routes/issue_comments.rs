@@ -24,7 +24,7 @@ use crate::{
 
 /// Mutation definition for IssueComment - provides both router and TypeScript metadata.
 pub fn mutation() -> MutationBuilder<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> {
-    MutationBuilder::new("issue_comments", "/v1/issue_comments")
+    MutationBuilder::new("issue_comments")
         .list(list_issue_comments)
         .get(get_issue_comment)
         .create(create_issue_comment)

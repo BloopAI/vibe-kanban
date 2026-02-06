@@ -29,7 +29,7 @@ use api_types::{
 pub fn mutation(
 ) -> MutationBuilder<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>
 {
-    MutationBuilder::new("issue_comment_reactions", "/v1/issue_comment_reactions")
+    MutationBuilder::new("issue_comment_reactions")
         .list(list_issue_comment_reactions)
         .get(get_issue_comment_reaction)
         .create(create_issue_comment_reaction)

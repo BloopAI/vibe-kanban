@@ -37,7 +37,7 @@ pub struct ListNotificationsQuery {
 }
 
 pub fn mutation() -> MutationBuilder<Notification, NoCreate, UpdateNotificationRequest> {
-    MutationBuilder::new("notifications", "/v1/notifications")
+    MutationBuilder::new("notifications")
         .list(list_notifications)
         .get(get_notification)
         .update(update_notification)

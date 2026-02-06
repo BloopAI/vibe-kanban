@@ -11,7 +11,7 @@
 //! use crate::mutation_definition::MutationBuilder;
 //!
 //! pub fn mutation() -> MutationBuilder<Tag, CreateTagRequest, UpdateTagRequest> {
-//!     MutationBuilder::new("tags", "/v1/tags")
+//!     MutationBuilder::new("tags")
 //!         .list(list_tags)
 //!         .get(get_tag)
 //!         .create(create_tag)
@@ -62,7 +62,6 @@ impl<A, B, C, D, E0, F, G, H, T> HasJsonPayload<T>
 #[derive(Debug)]
 pub struct MutationDefinition {
     pub table: &'static str,
-    pub url: &'static str,
     pub row_type: String,
     pub create_type: Option<String>,
     pub update_type: Option<String>,
@@ -80,18 +79,16 @@ pub struct MutationDefinition {
 /// - `U`: The update request type, or `NoUpdate` if no update
 pub struct MutationBuilder<E, C = (), U = ()> {
     table: &'static str,
-    url: &'static str,
     base_route: MethodRouter<AppState>,
     id_route: MethodRouter<AppState>,
     _phantom: PhantomData<fn() -> (E, C, U)>,
 }
 
 impl<E: TS + Send + Sync + 'static> MutationBuilder<E, NoCreate, NoUpdate> {
-    /// Create a new MutationBuilder with explicit table name and URL.
-    pub fn new(table: &'static str, url: &'static str) -> Self {
+    /// Create a new MutationBuilder for the given table.
+    pub fn new(table: &'static str) -> Self {
         Self {
             table,
-            url,
             base_route: MethodRouter::new(),
             id_route: MethodRouter::new(),
             _phantom: PhantomData,
@@ -154,7 +151,6 @@ impl<E: TS, U> MutationBuilder<E, NoCreate, U> {
     {
         MutationBuilder {
             table: self.table,
-            url: self.url,
             base_route: self.base_route.post(handler),
             id_route: self.id_route,
             _phantom: PhantomData,
@@ -175,7 +171,6 @@ impl<E: TS, C> MutationBuilder<E, C, NoUpdate> {
     {
         MutationBuilder {
             table: self.table,
-            url: self.url,
             base_route: self.base_route,
             id_route: self.id_route.patch(handler),
             _phantom: PhantomData,
@@ -195,7 +190,6 @@ impl<E: TS, C: TS, U: TS> MutationBuilder<E, C, U> {
     pub fn definition(&self) -> MutationDefinition {
         MutationDefinition {
             table: self.table,
-            url: self.url,
             row_type: E::name(),
             create_type: Some(C::name()),
             update_type: Some(U::name()),
@@ -207,7 +201,6 @@ impl<E: TS, U: TS> MutationBuilder<E, NoCreate, U> {
     pub fn definition(&self) -> MutationDefinition {
         MutationDefinition {
             table: self.table,
-            url: self.url,
             row_type: E::name(),
             create_type: None,
             update_type: Some(U::name()),
@@ -219,7 +212,6 @@ impl<E: TS, C: TS> MutationBuilder<E, C, NoUpdate> {
     pub fn definition(&self) -> MutationDefinition {
         MutationDefinition {
             table: self.table,
-            url: self.url,
             row_type: E::name(),
             create_type: Some(C::name()),
             update_type: None,
@@ -231,7 +223,6 @@ impl<E: TS> MutationBuilder<E, NoCreate, NoUpdate> {
     pub fn definition(&self) -> MutationDefinition {
         MutationDefinition {
             table: self.table,
-            url: self.url,
             row_type: E::name(),
             create_type: None,
             update_type: None,

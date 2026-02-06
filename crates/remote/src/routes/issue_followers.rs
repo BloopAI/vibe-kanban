@@ -24,7 +24,7 @@ use api_types::{
 
 /// Mutation definition for IssueFollower - provides both router and TypeScript metadata.
 pub fn mutation() -> MutationBuilder<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest> {
-    MutationBuilder::new("issue_followers", "/v1/issue_followers")
+    MutationBuilder::new("issue_followers")
         .list(list_issue_followers)
         .get(get_issue_follower)
         .create(create_issue_follower)

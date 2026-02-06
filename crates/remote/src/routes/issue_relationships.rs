@@ -25,7 +25,7 @@ use api_types::{
 /// Mutation definition for IssueRelationship - provides both router and TypeScript metadata.
 pub fn mutation(
 ) -> MutationBuilder<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest> {
-    MutationBuilder::new("issue_relationships", "/v1/issue_relationships")
+    MutationBuilder::new("issue_relationships")
         .list(list_issue_relationships)
         .get(get_issue_relationship)
         .create(create_issue_relationship)

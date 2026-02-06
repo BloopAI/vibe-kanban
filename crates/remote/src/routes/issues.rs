@@ -25,7 +25,7 @@ use crate::{
 
 /// Mutation definition for Issue - provides both router and TypeScript metadata.
 pub fn mutation() -> MutationBuilder<Issue, CreateIssueRequest, UpdateIssueRequest> {
-    MutationBuilder::new("issues", "/v1/issues")
+    MutationBuilder::new("issues")
         .list(list_issues)
         .get(get_issue)
         .create(create_issue)

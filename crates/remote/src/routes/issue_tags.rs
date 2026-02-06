@@ -23,7 +23,7 @@ use api_types::{
 
 /// Mutation definition for IssueTag - provides both router and TypeScript metadata.
 pub fn mutation() -> MutationBuilder<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest> {
-    MutationBuilder::new("issue_tags", "/v1/issue_tags")
+    MutationBuilder::new("issue_tags")
         .list(list_issue_tags)
         .get(get_issue_tag)
         .create(create_issue_tag)

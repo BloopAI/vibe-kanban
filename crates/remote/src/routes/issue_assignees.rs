@@ -24,7 +24,7 @@ use api_types::{
 
 /// Mutation definition for IssueAssignee - provides both router and TypeScript metadata.
 pub fn mutation() -> MutationBuilder<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest> {
-    MutationBuilder::new("issue_assignees", "/v1/issue_assignees")
+    MutationBuilder::new("issue_assignees")
         .list(list_issue_assignees)
         .get(get_issue_assignee)
         .create(create_issue_assignee)
