@@ -5,7 +5,10 @@ import type { BranchItem, RepoItem } from '@/components/ui-new/actions/pages';
 import { repoApi } from '@/lib/api';
 import { useCreateMode } from '@/contexts/CreateModeContext';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
-import { SelectionDialog, type SelectionPage } from '../dialogs/SelectionDialog';
+import {
+  SelectionDialog,
+  type SelectionPage,
+} from '../dialogs/SelectionDialog';
 import {
   buildRepoSelectionPages,
   type RepoSelectionResult,
@@ -22,7 +25,10 @@ function toRepoItem(repo: Repo): RepoItem {
   };
 }
 
-function toBranchItem(branch: { name: string; is_current: boolean }): BranchItem {
+function toBranchItem(branch: {
+  name: string;
+  is_current: boolean;
+}): BranchItem {
   return {
     name: branch.name,
     isCurrent: branch.is_current,
@@ -78,7 +84,9 @@ export function CreateModeRepoPickerBar() {
 
       if (!repoResult?.repoId) return;
 
-      const selectedRepo = availableRepos.find((r) => r.id === repoResult.repoId);
+      const selectedRepo = availableRepos.find(
+        (r) => r.id === repoResult.repoId
+      );
       if (!selectedRepo) return;
 
       const selectedBranch = await pickBranchForRepo(selectedRepo);
@@ -167,7 +175,9 @@ export function CreateModeRepoPickerBar() {
           </p>
         )}
       </div>
-      {pickerError && <p className="mt-half text-xs text-error">{pickerError}</p>}
+      {pickerError && (
+        <p className="mt-half text-xs text-error">{pickerError}</p>
+      )}
     </div>
   );
 }
