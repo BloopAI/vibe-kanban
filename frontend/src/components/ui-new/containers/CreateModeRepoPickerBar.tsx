@@ -91,9 +91,7 @@ export function CreateModeRepoPickerBar() {
       try {
         await run();
       } catch (error) {
-        setPickerError(
-          error instanceof Error ? error.message : fallbackError
-        );
+        setPickerError(error instanceof Error ? error.message : fallbackError);
       } finally {
         setPendingAction(null);
         if (action === 'branch') {
