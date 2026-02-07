@@ -2,7 +2,9 @@ import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useActions } from '@/contexts/ActionsContext';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useKanbanFilters, PRIORITY_ORDER } from '@/hooks/useKanbanFilters';
 import { bulkUpdateIssues, type BulkUpdateIssueItem } from '@/lib/remoteApi';
@@ -19,6 +21,11 @@ import {
   type DropResult,
 } from '@/components/ui-new/views/KanbanBoard';
 import { KanbanCardContent } from '@/components/ui-new/views/KanbanCardContent';
+import {
+  IssueWorkspaceCard,
+  type WorkspaceWithStats,
+  type WorkspacePr,
+} from '@/components/ui-new/views/IssueWorkspaceCard';
 import { resolveRelationshipsForIssue } from '@/lib/resolveRelationships';
 import { KanbanFilterBar } from '@/components/ui-new/views/KanbanFilterBar';
 import { ViewNavTabs } from '@/components/ui-new/primitives/ViewNavTabs';
@@ -54,11 +61,13 @@ export function KanbanContainer() {
     getTagObjectsForIssue,
     getTagsForIssue,
     getPullRequestsForIssue,
+    getWorkspacesForIssue,
     getRelationshipsForIssue,
     issuesById,
     insertIssueTag,
     removeIssueTag,
     insertTag,
+    pullRequests,
     isLoading: projectLoading,
   } = useProjectContext();
 
@@ -67,6 +76,8 @@ export function KanbanContainer() {
     membersWithProfilesById,
     isLoading: orgLoading,
   } = useOrgContext();
+  const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
+  const { userId } = useAuth();
 
   // Get project name by finding the project matching current projectId
   const projectName = projects.find((p) => p.id === projectId)?.name ?? '';
@@ -271,6 +282,85 @@ export function KanbanContainer() {
     }
     return map;
   }, [issueAssignees, membersWithProfilesById]);
+
+  const localWorkspacesById = useMemo(() => {
+    const map = new Map<string, (typeof activeWorkspaces)[number]>();
+
+    for (const workspace of activeWorkspaces) {
+      map.set(workspace.id, workspace);
+    }
+
+    for (const workspace of archivedWorkspaces) {
+      map.set(workspace.id, workspace);
+    }
+
+    return map;
+  }, [activeWorkspaces, archivedWorkspaces]);
+
+  const prsByWorkspaceId = useMemo(() => {
+    const map = new Map<string, WorkspacePr[]>();
+
+    for (const pr of pullRequests) {
+      if (!pr.workspace_id) continue;
+
+      const prs = map.get(pr.workspace_id) ?? [];
+      prs.push({
+        number: pr.number,
+        url: pr.url,
+        status: pr.status as 'open' | 'merged' | 'closed',
+      });
+      map.set(pr.workspace_id, prs);
+    }
+
+    return map;
+  }, [pullRequests]);
+
+  const workspacesByIssueId = useMemo(() => {
+    const map = new Map<string, WorkspaceWithStats[]>();
+
+    for (const issue of issues) {
+      const nonArchivedWorkspaces = getWorkspacesForIssue(issue.id)
+        .filter((workspace) => !workspace.archived)
+        .map((workspace) => {
+          const localWorkspace = workspace.local_workspace_id
+            ? localWorkspacesById.get(workspace.local_workspace_id)
+            : undefined;
+
+          return {
+            id: workspace.id,
+            localWorkspaceId: workspace.local_workspace_id,
+            name: workspace.name,
+            archived: workspace.archived,
+            filesChanged: workspace.files_changed ?? 0,
+            linesAdded: workspace.lines_added ?? 0,
+            linesRemoved: workspace.lines_removed ?? 0,
+            prs: prsByWorkspaceId.get(workspace.id) ?? [],
+            owner: membersWithProfilesById.get(workspace.owner_user_id) ?? null,
+            updatedAt: workspace.updated_at,
+            isOwnedByCurrentUser: workspace.owner_user_id === userId,
+            isRunning: localWorkspace?.isRunning,
+            hasPendingApproval: localWorkspace?.hasPendingApproval,
+            hasRunningDevServer: localWorkspace?.hasRunningDevServer,
+            hasUnseenActivity: localWorkspace?.hasUnseenActivity,
+            latestProcessCompletedAt: localWorkspace?.latestProcessCompletedAt,
+            latestProcessStatus: localWorkspace?.latestProcessStatus,
+          };
+        });
+
+      if (nonArchivedWorkspaces.length > 0) {
+        map.set(issue.id, nonArchivedWorkspaces);
+      }
+    }
+
+    return map;
+  }, [
+    issues,
+    getWorkspacesForIssue,
+    localWorkspacesById,
+    prsByWorkspaceId,
+    membersWithProfilesById,
+    userId,
+  ]);
 
   // Calculate sort_order based on column index and issue position
   // Formula: 1000 * [COLUMN_INDEX] + [ISSUE_INDEX] (both 1-based)
@@ -543,6 +633,8 @@ export function KanbanContainer() {
                       {issueIds.map((issueId, index) => {
                         const issue = issueMap[issueId];
                         if (!issue) return null;
+                        const issueWorkspaces =
+                          workspacesByIssueId.get(issue.id) ?? [];
 
                         return (
                           <KanbanCard
@@ -585,6 +677,16 @@ export function KanbanContainer() {
                                 onCreateTag: handleCreateTag,
                               }}
                             />
+                            {issueWorkspaces.length > 0 && (
+                              <div className="mt-base pt-base border-t border-border/60 flex flex-col gap-half">
+                                {issueWorkspaces.map((workspace) => (
+                                  <IssueWorkspaceCard
+                                    key={workspace.id}
+                                    workspace={workspace}
+                                  />
+                                ))}
+                              </div>
+                            )}
                           </KanbanCard>
                         );
                       })}
