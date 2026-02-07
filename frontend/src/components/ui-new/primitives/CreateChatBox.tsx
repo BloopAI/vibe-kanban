@@ -108,7 +108,7 @@ export function CreateChatBox({
   return (
     <ChatBoxBase
       editor={editor}
-      placeholder="Describe the task..."
+      placeholder="Describe what you'd like the agent to work on..."
       onCmdEnter={handleCmdEnter}
       disabled={isDisabled}
       repoIds={repoIds}
