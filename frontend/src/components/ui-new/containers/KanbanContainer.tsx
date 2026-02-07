@@ -679,11 +679,14 @@ export function KanbanContainer() {
                               }}
                             />
                             {issueWorkspaces.length > 0 && (
-                              <div className="mt-base pt-base border-t border-border/60 flex flex-col gap-half">
+                              <div className="mt-base flex flex-col gap-half">
                                 {issueWorkspaces.map((workspace) => (
                                   <IssueWorkspaceCard
                                     key={workspace.id}
                                     workspace={workspace}
+                                    showOwner={false}
+                                    showStatusBadge={false}
+                                    showNoPrText={false}
                                   />
                                 ))}
                               </div>

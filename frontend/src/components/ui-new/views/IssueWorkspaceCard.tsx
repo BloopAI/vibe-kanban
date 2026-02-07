@@ -51,6 +51,9 @@ export interface IssueWorkspaceCardProps {
   onClick?: () => void;
   onUnlink?: () => void;
   onDelete?: () => void;
+  showOwner?: boolean;
+  showStatusBadge?: boolean;
+  showNoPrText?: boolean;
   className?: string;
 }
 
@@ -59,6 +62,9 @@ export function IssueWorkspaceCard({
   onClick,
   onUnlink,
   onDelete,
+  showOwner = true,
+  showStatusBadge = true,
+  showNoPrText = true,
   className,
 }: IssueWorkspaceCardProps) {
   const { t } = useTranslation('common');
@@ -102,25 +108,27 @@ export function IssueWorkspaceCard({
       {/* Row 1: Status badge + Name (left), Owner avatar + menu (right) */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-half min-w-0">
-          <span
-            className={cn(
-              'px-1.5 py-0.5 rounded text-xs font-medium shrink-0',
-              workspace.archived
-                ? 'bg-secondary text-low'
-                : 'bg-success/10 text-success'
-            )}
-          >
-            {workspace.archived
-              ? t('workspaces.archived')
-              : t('workspaces.active')}
-          </span>
+          {showStatusBadge && (
+            <span
+              className={cn(
+                'px-1.5 py-0.5 rounded text-xs font-medium shrink-0',
+                workspace.archived
+                  ? 'bg-secondary text-low'
+                  : 'bg-success/10 text-success'
+              )}
+            >
+              {workspace.archived
+                ? t('workspaces.archived')
+                : t('workspaces.active')}
+            </span>
+          )}
           {workspace.name && (
             <span className="text-sm text-high truncate">{workspace.name}</span>
           )}
         </div>
 
         <div className="flex items-center gap-half">
-          {workspace.owner && (
+          {showOwner && workspace.owner && (
             <UserAvatar
               user={workspace.owner}
               className="h-5 w-5 text-[10px] border-2 border-panel"
@@ -255,9 +263,9 @@ export function IssueWorkspaceCard({
                 <span>#{pr.number}</span>
               </a>
             ))
-          ) : (
+          ) : showNoPrText ? (
             <span className="text-xs text-low">{t('kanban.noPrCreated')}</span>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
