@@ -91,7 +91,14 @@ export function IssueWorkspaceCard({
         onClick && 'cursor-pointer',
         className
       )}
-      onClick={onClick}
+      onClick={
+        onClick
+          ? (e) => {
+              e.stopPropagation();
+              onClick();
+            }
+          : undefined
+      }
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={
@@ -99,6 +106,7 @@ export function IssueWorkspaceCard({
           ? (e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
+                e.stopPropagation();
                 onClick();
               }
             }

@@ -76,7 +76,7 @@ export function KanbanContainer() {
     membersWithProfilesById,
     isLoading: orgLoading,
   } = useOrgContext();
-  const { activeWorkspaces } = useWorkspaceContext();
+  const { activeWorkspaces, selectWorkspace } = useWorkspaceContext();
   const { userId } = useAuth();
 
   // Get project name by finding the project matching current projectId
@@ -684,6 +684,14 @@ export function KanbanContainer() {
                                   <IssueWorkspaceCard
                                     key={workspace.id}
                                     workspace={workspace}
+                                    onClick={
+                                      workspace.localWorkspaceId
+                                        ? () =>
+                                            selectWorkspace(
+                                              workspace.localWorkspaceId!
+                                            )
+                                        : undefined
+                                    }
                                     showOwner={false}
                                     showStatusBadge={false}
                                     showNoPrText={false}
