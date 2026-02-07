@@ -244,6 +244,7 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
           { type: 'action', action: Actions.ChangeNewIssueAssignees },
           { type: 'action', action: Actions.MakeSubIssueOf },
           { type: 'action', action: Actions.AddSubIssue },
+          { type: 'action', action: Actions.RemoveParentIssue },
           { type: 'action', action: Actions.LinkWorkspace },
           { type: 'action', action: Actions.MarkBlocking },
           { type: 'action', action: Actions.MarkBlockedBy },

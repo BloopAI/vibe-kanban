@@ -1,7 +1,11 @@
 'use client';
 
 import { Draggable } from '@hello-pangea/dnd';
-import { CircleDashedIcon, DotsSixVerticalIcon } from '@phosphor-icons/react';
+import {
+  CircleDashedIcon,
+  DotsSixVerticalIcon,
+  XIcon,
+} from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { IssuePriority } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
@@ -44,6 +48,7 @@ export interface SubIssueRowProps {
   onClick?: () => void;
   onPriorityClick?: (e: React.MouseEvent) => void;
   onAssigneeClick?: (e: React.MouseEvent) => void;
+  onUnlinkClick?: (e: React.MouseEvent) => void;
   className?: string;
 }
 
@@ -59,6 +64,7 @@ export function SubIssueRow({
   onClick,
   onPriorityClick,
   onAssigneeClick,
+  onUnlinkClick,
   className,
 }: SubIssueRowProps) {
   return (
@@ -123,6 +129,20 @@ export function SubIssueRow({
 
           {/* Right side: Assignee, Age */}
           <div className="flex items-center gap-half shrink-0">
+            {onUnlinkClick && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUnlinkClick(e);
+                }}
+                className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors"
+                aria-label="Remove sub-issue"
+                title="Remove sub-issue"
+              >
+                <XIcon className="size-icon-xs" weight="bold" />
+              </button>
+            )}
             {onAssigneeClick ? (
               <button
                 type="button"

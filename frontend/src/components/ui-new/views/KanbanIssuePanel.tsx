@@ -67,6 +67,7 @@ export interface KanbanIssuePanelProps {
   creatorUser?: OrganizationMemberWithProfile | null;
   parentIssue?: { id: string; simpleId: string } | null;
   onParentIssueClick?: () => void;
+  onRemoveParentIssue?: () => void;
   linkedPrs?: LinkedPullRequest[];
 
   // Actions
@@ -107,6 +108,7 @@ export function KanbanIssuePanel({
   creatorUser,
   parentIssue,
   onParentIssueClick,
+  onRemoveParentIssue,
   linkedPrs = [],
   onClose,
   onSubmit,
@@ -192,6 +194,7 @@ export function KanbanIssuePanel({
             creatorUser={showCreator ? creatorUser : undefined}
             parentIssue={parentIssue}
             onParentIssueClick={onParentIssueClick}
+            onRemoveParentIssue={onRemoveParentIssue}
             onStatusClick={() => onFormChange('statusId', formData.statusId)}
             onPriorityClick={() => onFormChange('priority', formData.priority)}
             onAssigneeClick={() =>

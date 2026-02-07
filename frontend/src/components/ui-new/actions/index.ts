@@ -15,6 +15,7 @@ import type { LogEntry } from '../containers/VirtualizedProcessLogs';
 import type { LayoutMode } from '@/stores/useUiPreferencesStore';
 import {
   CopyIcon,
+  XIcon,
   PushPinIcon,
   ArchiveIcon,
   TrashIcon,
@@ -62,6 +63,7 @@ import {
 } from '@/stores/useUiPreferencesStore';
 
 import { attemptsApi, tasksApi, repoApi } from '@/lib/api';
+import { bulkUpdateIssues } from '@/lib/remoteApi';
 import { attemptKeys } from '@/hooks/useAttempt';
 import { taskKeys } from '@/hooks/useTask';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
@@ -1363,6 +1365,27 @@ export const Actions = {
       if (issueIds.length === 1) {
         await ctx.openSubIssueSelection(projectId, issueIds[0], 'addChild');
       }
+    },
+  } satisfies IssueActionDefinition,
+
+  RemoveParentIssue: {
+    id: 'remove-parent-issue',
+    label: 'Remove Parent',
+    icon: XIcon,
+    shortcut: 'I U',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (_ctx, _projectId, issueIds) => {
+      await bulkUpdateIssues(
+        issueIds.map((issueId) => ({
+          id: issueId,
+          changes: {
+            parent_issue_id: null,
+            parent_issue_sort_order: null,
+          },
+        }))
+      );
     },
   } satisfies IssueActionDefinition,
 

@@ -35,6 +35,7 @@ export function IssueSubIssuesSectionContainer({
   const {
     issues,
     statuses,
+    updateIssue,
     getAssigneesForIssue,
     isLoading: projectLoading,
   } = useProjectContext();
@@ -167,6 +168,16 @@ export function IssueSubIssuesSectionContainer({
     [projectId, openAssigneeSelection]
   );
 
+  const handleSubIssueUnlink = useCallback(
+    (subIssueId: string) => {
+      updateIssue(subIssueId, {
+        parent_issue_id: null,
+        parent_issue_sort_order: null,
+      });
+    },
+    [updateIssue]
+  );
+
   // Actions for the section header
   const actions: SectionAction[] = useMemo(
     () => [
@@ -188,6 +199,7 @@ export function IssueSubIssuesSectionContainer({
         parentIssueId={issueId}
         subIssues={subIssues}
         onSubIssueClick={handleSubIssueClick}
+        onSubIssueUnlink={handleSubIssueUnlink}
         onSubIssuePriorityClick={handleSubIssuePriorityClick}
         onSubIssueAssigneeClick={handleSubIssueAssigneeClick}
         isLoading={isLoading}

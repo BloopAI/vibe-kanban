@@ -24,6 +24,7 @@ export interface IssueSubIssuesSectionProps {
   parentIssueId: string;
   subIssues: SubIssueData[];
   onSubIssueClick: (issueId: string) => void;
+  onSubIssueUnlink?: (subIssueId: string) => void;
   onSubIssuePriorityClick?: (subIssueId: string) => void;
   onSubIssueAssigneeClick?: (subIssueId: string) => void;
   isLoading?: boolean;
@@ -35,6 +36,7 @@ export function IssueSubIssuesSection({
   parentIssueId,
   subIssues,
   onSubIssueClick,
+  onSubIssueUnlink,
   onSubIssuePriorityClick,
   onSubIssueAssigneeClick,
   isLoading,
@@ -83,6 +85,14 @@ export function IssueSubIssuesSection({
                   assignees={subIssue.assignees}
                   createdAt={subIssue.createdAt}
                   onClick={() => onSubIssueClick(subIssue.id)}
+                  onUnlinkClick={
+                    onSubIssueUnlink
+                      ? (e) => {
+                          e.stopPropagation();
+                          onSubIssueUnlink(subIssue.id);
+                        }
+                      : undefined
+                  }
                   onPriorityClick={
                     onSubIssuePriorityClick
                       ? (e) => {

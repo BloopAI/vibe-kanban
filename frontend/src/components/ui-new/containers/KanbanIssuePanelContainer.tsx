@@ -139,6 +139,14 @@ export function KanbanIssuePanelContainer() {
     }
   }, [parentIssue, openIssue]);
 
+  const handleRemoveParentIssue = useCallback(() => {
+    if (!selectedKanbanIssueId || !selectedIssue?.parent_issue_id) return;
+    updateIssue(selectedKanbanIssueId, {
+      parent_issue_id: null,
+      parent_issue_sort_order: null,
+    });
+  }, [selectedKanbanIssueId, selectedIssue?.parent_issue_id, updateIssue]);
+
   // Get all current assignees from issue_assignees
   const currentAssigneeIds = useMemo(() => {
     if (!selectedKanbanIssueId) return [];
@@ -900,6 +908,7 @@ export function KanbanIssuePanelContainer() {
       creatorUser={issueCreator}
       parentIssue={parentIssue}
       onParentIssueClick={handleParentIssueClick}
+      onRemoveParentIssue={handleRemoveParentIssue}
       linkedPrs={linkedPrs}
       onClose={closeKanbanIssuePanel}
       onSubmit={handleSubmit}
