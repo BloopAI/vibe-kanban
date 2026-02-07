@@ -37,9 +37,17 @@ export function CreateChatBoxContainer() {
   const hasSelectedRepos = repos.length > 0;
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [saveAsDefault, setSaveAsDefault] = useState(false);
-  const [isEditingRepos, setIsEditingRepos] = useState(false);
-  const showRepoPickerStep = !hasSelectedRepos || isEditingRepos;
-  const showChatStep = hasSelectedRepos && !isEditingRepos;
+  const [hasInitializedStep, setHasInitializedStep] = useState(false);
+  const [isSelectingRepos, setIsSelectingRepos] = useState(true);
+
+  useEffect(() => {
+    if (!hasInitialValue || hasInitializedStep) return;
+    setIsSelectingRepos(!hasSelectedRepos);
+    setHasInitializedStep(true);
+  }, [hasInitialValue, hasInitializedStep, hasSelectedRepos]);
+
+  const showRepoPickerStep = !hasSelectedRepos || isSelectingRepos;
+  const showChatStep = hasSelectedRepos && !isSelectingRepos;
 
   // Attachment handling - insert markdown and track image IDs
   const handleInsertMarkdown = useCallback(
@@ -115,6 +123,27 @@ export function CreateChatBoxContainer() {
   const projectId = selectedProjectId;
 
   const repoId = repos.length === 1 ? repos[0]?.id : undefined;
+  const repoSummaryLabel = useMemo(() => {
+    if (repos.length === 1) {
+      const repo = repos[0];
+      if (!repo) return '0 repositories selected';
+      const branch = targetBranches[repo.id] ?? 'Select branch';
+      return `${getRepoDisplayName(repo)} · ${branch}`;
+    }
+
+    return `${repos.length} repositories selected`;
+  }, [repos, targetBranches]);
+
+  const repoSummaryTitle = useMemo(
+    () =>
+      repos
+        .map((repo) => {
+          const branch = targetBranches[repo.id] ?? 'Select branch';
+          return `${getRepoDisplayName(repo)} (${branch})`;
+        })
+        .join('\n'),
+    [repos, targetBranches]
+  );
 
   // Determine if we can submit
   const canSubmit =
@@ -270,60 +299,17 @@ export function CreateChatBoxContainer() {
               <h2 className="text-center text-xl font-medium text-high">
                 Select repositories for this workspace
               </h2>
-              <CreateModeRepoPickerBar />
-              {isEditingRepos && (
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    className="rounded-sm border border-border px-base py-half text-sm text-normal hover:bg-panel disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => setIsEditingRepos(false)}
-                    disabled={!hasSelectedRepos}
-                  >
-                    Continue to prompt
-                  </button>
-                </div>
-              )}
+              <CreateModeRepoPickerBar
+                onContinueToPrompt={() => setIsSelectingRepos(false)}
+              />
             </>
           )}
 
           {showChatStep && (
             <>
-              <h2 className="text-center text-xl font-medium text-high">
+              <h2 className="mb-double text-center text-4xl font-medium tracking-tight text-high">
                 What would you like to work on?
               </h2>
-
-              <div className="rounded-sm border border-border bg-secondary p-base">
-                <div className="flex items-center justify-between gap-base">
-                  <p className="text-sm font-medium text-high">
-                    Repositories ({repos.length})
-                  </p>
-                  <button
-                    type="button"
-                    className="text-xs text-low hover:text-high"
-                    onClick={() => setIsEditingRepos(true)}
-                  >
-                    Edit repos
-                  </button>
-                </div>
-                <div className="mt-half flex flex-wrap gap-half">
-                  {repos.map((repo) => {
-                    const branch = targetBranches[repo.id] ?? 'Select branch';
-                    const displayName = getRepoDisplayName(repo);
-                    return (
-                      <span
-                        key={repo.id}
-                        className="inline-flex max-w-full items-center gap-half rounded-sm border border-border bg-panel px-half py-[1px] text-xs text-low"
-                        title={`${displayName} (${branch})`}
-                      >
-                        <span className="truncate max-w-[220px]">
-                          {displayName}
-                        </span>
-                        <span>· {branch}</span>
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
 
               <div className="flex justify-center @container">
                 <CreateChatBox
@@ -362,6 +348,9 @@ export function CreateChatBoxContainer() {
                   onPasteFiles={uploadFiles}
                   localImages={localImages}
                   dropzone={{ getRootProps, getInputProps, isDragActive }}
+                  onEditRepos={() => setIsSelectingRepos(true)}
+                  repoSummaryLabel={repoSummaryLabel}
+                  repoSummaryTitle={repoSummaryTitle}
                   linkedIssue={
                     linkedIssue?.simpleId
                       ? {

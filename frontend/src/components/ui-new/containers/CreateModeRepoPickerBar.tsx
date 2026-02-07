@@ -59,7 +59,13 @@ const branchButtonClassName = cn(
   'max-w-[220px] shrink-0'
 );
 
-export function CreateModeRepoPickerBar() {
+interface CreateModeRepoPickerBarProps {
+  onContinueToPrompt: () => void;
+}
+
+export function CreateModeRepoPickerBar({
+  onContinueToPrompt,
+}: CreateModeRepoPickerBarProps) {
   const { t } = useTranslation('common');
   const { repos, targetBranches, addRepo, removeRepo, setTargetBranch } =
     useCreateMode();
@@ -273,7 +279,7 @@ export function CreateModeRepoPickerBar() {
 
         <div className="mt-base flex flex-wrap gap-half border-t border-border pt-base">
           <PrimaryButton
-            variant="default"
+            variant="tertiary"
             value="Add recent repo"
             actionIcon={pendingAction === 'choose' ? 'spinner' : PlusIcon}
             onClick={handleChooseRepo}
@@ -294,6 +300,14 @@ export function CreateModeRepoPickerBar() {
             actionIcon={pendingAction === 'create' ? 'spinner' : NoteBlankIcon}
             onClick={handleCreateRepo}
             disabled={isBusy}
+          />
+        </div>
+        <div className="mt-base flex justify-end">
+          <PrimaryButton
+            variant="default"
+            value="Continue to prompt"
+            onClick={onContinueToPrompt}
+            disabled={isBusy || repos.length === 0}
           />
         </div>
       </div>
