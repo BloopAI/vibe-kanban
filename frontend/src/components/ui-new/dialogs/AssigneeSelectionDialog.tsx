@@ -70,6 +70,13 @@ function AssigneeSelectionContent({
     createModeAssigneeIds ?? []
   );
 
+  // Keep local create-mode state aligned with incoming source-of-truth values.
+  // This avoids stale selections when the draft is reset outside the dialog.
+  useEffect(() => {
+    if (!hasCreateCallback) return;
+    setLocalCreateAssignees(createModeAssigneeIds ?? []);
+  }, [hasCreateCallback, createModeAssigneeIds, modal.visible]);
+
   // Fallback: Get/set create mode defaults from URL (for callers without callback)
   const [searchParams, setSearchParams] = useSearchParams();
   const kanbanCreateDefaultAssigneeIds = useMemo(() => {
