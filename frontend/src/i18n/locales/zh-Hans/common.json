@@ -389,6 +389,19 @@
       "action": "登录"
     }
   },
+  "createMode": {
+    "headings": {
+      "repoStep": "你想在哪些仓库上工作？",
+      "chatStep": "你想做什么工作？"
+    },
+    "repoPicker": {
+      "actions": {
+        "recent": "最近",
+        "browse": "浏览",
+        "create": "创建"
+      }
+    }
+  },
   "syncError": {
     "networkErrors": "网络错误",
     "streamsAffected": "{{count}} 个数据流受影响",

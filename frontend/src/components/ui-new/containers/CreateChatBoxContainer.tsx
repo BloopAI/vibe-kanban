@@ -297,7 +297,7 @@ export function CreateChatBoxContainer() {
           {showRepoPickerStep && (
             <>
               <h2 className="mb-double text-center text-4xl font-medium tracking-tight text-high">
-                Which repositories would you like to work on?
+                {t('createMode.headings.repoStep')}
               </h2>
               <CreateModeRepoPickerBar
                 onContinueToPrompt={() => setIsSelectingRepos(false)}
@@ -308,7 +308,7 @@ export function CreateChatBoxContainer() {
           {showChatStep && (
             <>
               <h2 className="mb-double text-center text-4xl font-medium tracking-tight text-high">
-                What would you like to work on?
+                {t('createMode.headings.chatStep')}
               </h2>
 
               <div className="flex justify-center @container">

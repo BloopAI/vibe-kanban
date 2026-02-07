@@ -389,6 +389,19 @@
       "action": "登入"
     }
   },
+  "createMode": {
+    "headings": {
+      "repoStep": "你想在哪些儲存庫上工作？",
+      "chatStep": "你想做什麼工作？"
+    },
+    "repoPicker": {
+      "actions": {
+        "recent": "最近",
+        "browse": "瀏覽",
+        "create": "建立"
+      }
+    }
+  },
   "syncError": {
     "networkErrors": "網路錯誤",
     "streamsAffected": "{{count}} 個資料流受影響",

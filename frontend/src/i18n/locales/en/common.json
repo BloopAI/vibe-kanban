@@ -389,6 +389,19 @@
       "action": "Sign in"
     }
   },
+  "createMode": {
+    "headings": {
+      "repoStep": "Which repositories would you like to work on?",
+      "chatStep": "What would you like to work on?"
+    },
+    "repoPicker": {
+      "actions": {
+        "recent": "Recent",
+        "browse": "Browse",
+        "create": "Create"
+      }
+    }
+  },
   "syncError": {
     "networkErrors": "Network Errors",
     "streamsAffected": "{{count}} stream affected",

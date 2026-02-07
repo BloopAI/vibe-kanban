@@ -293,7 +293,7 @@ export function CreateModeRepoPickerBar({
                 weight="bold"
               />
             )}
-            <span>Recent</span>
+            <span>{t('createMode.repoPicker.actions.recent')}</span>
           </button>
           <button
             type="button"
@@ -306,7 +306,7 @@ export function CreateModeRepoPickerBar({
             ) : (
               <MagnifyingGlassIcon className="size-icon-xs" weight="bold" />
             )}
-            <span>Browse</span>
+            <span>{t('createMode.repoPicker.actions.browse')}</span>
           </button>
           <button
             type="button"
@@ -319,7 +319,7 @@ export function CreateModeRepoPickerBar({
             ) : (
               <PlusIcon className="size-icon-xs" weight="bold" />
             )}
-            <span>Create</span>
+            <span>{t('createMode.repoPicker.actions.create')}</span>
           </button>
 
           <div className="ml-auto">

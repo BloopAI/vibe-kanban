@@ -389,6 +389,19 @@
       "action": "Se connecter"
     }
   },
+  "createMode": {
+    "headings": {
+      "repoStep": "Sur quels dépôts voulez-vous travailler ?",
+      "chatStep": "Sur quoi voulez-vous travailler ?"
+    },
+    "repoPicker": {
+      "actions": {
+        "recent": "Récents",
+        "browse": "Parcourir",
+        "create": "Créer"
+      }
+    }
+  },
   "syncError": {
     "networkErrors": "Erreurs réseau",
     "streamsAffected": "{{count}} flux affecté",

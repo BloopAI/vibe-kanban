@@ -389,6 +389,19 @@
       "action": "로그인"
     }
   },
+  "createMode": {
+    "headings": {
+      "repoStep": "어떤 리포지토리에서 작업하시겠어요?",
+      "chatStep": "무엇을 작업하시겠어요?"
+    },
+    "repoPicker": {
+      "actions": {
+        "recent": "최근",
+        "browse": "찾아보기",
+        "create": "생성"
+      }
+    }
+  },
   "syncError": {
     "networkErrors": "네트워크 오류",
     "streamsAffected": "{{count}}개 스트림이 영향을 받음",
