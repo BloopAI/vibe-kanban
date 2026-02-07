@@ -106,7 +106,7 @@ export function IssuePropertyRow({
         )}
 
       {parentIssue && (
-        <div className="flex items-center gap-half bg-panel rounded-sm">
+        <div className="flex items-center gap-half pr-half bg-panel rounded-sm">
           <button
             type="button"
             onClick={onParentIssueClick}

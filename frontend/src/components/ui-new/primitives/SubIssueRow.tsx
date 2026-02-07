@@ -4,7 +4,9 @@ import { Draggable } from '@hello-pangea/dnd';
 import {
   CircleDashedIcon,
   DotsSixVerticalIcon,
-  XIcon,
+  DotsThreeIcon,
+  LinkBreakIcon,
+  TrashIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { IssuePriority } from 'shared/remote-types';
@@ -12,6 +14,12 @@ import type { OrganizationMemberWithProfile } from 'shared/types';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
 import { StatusDot } from '@/components/ui-new/primitives/StatusDot';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 /**
  * Formats a date as a relative time string (e.g., "1d", "2h", "3m")
@@ -48,7 +56,8 @@ export interface SubIssueRowProps {
   onClick?: () => void;
   onPriorityClick?: (e: React.MouseEvent) => void;
   onAssigneeClick?: (e: React.MouseEvent) => void;
-  onUnlinkClick?: (e: React.MouseEvent) => void;
+  onMarkIndependentClick?: (e: React.MouseEvent) => void;
+  onDeleteClick?: (e: React.MouseEvent) => void;
   className?: string;
 }
 
@@ -64,7 +73,8 @@ export function SubIssueRow({
   onClick,
   onPriorityClick,
   onAssigneeClick,
-  onUnlinkClick,
+  onMarkIndependentClick,
+  onDeleteClick,
   className,
 }: SubIssueRowProps) {
   return (
@@ -129,19 +139,45 @@ export function SubIssueRow({
 
           {/* Right side: Assignee, Age */}
           <div className="flex items-center gap-half shrink-0">
-            {onUnlinkClick && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onUnlinkClick(e);
-                }}
-                className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors"
-                aria-label="Remove sub-issue"
-                title="Remove sub-issue"
-              >
-                <XIcon className="size-icon-xs" weight="bold" />
-              </button>
+            {(onMarkIndependentClick || onDeleteClick) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={(e) => e.stopPropagation()}
+                    className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors"
+                    aria-label="Sub-issue actions"
+                    title="Sub-issue actions"
+                  >
+                    <DotsThreeIcon className="size-icon-xs" weight="bold" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {onMarkIndependentClick && (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMarkIndependentClick(e);
+                      }}
+                    >
+                      <LinkBreakIcon className="size-icon-xs" />
+                      Mark as independent issue
+                    </DropdownMenuItem>
+                  )}
+                  {onDeleteClick && (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteClick(e);
+                      }}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <TrashIcon className="size-icon-xs" />
+                      Delete issue
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             {onAssigneeClick ? (
               <button
