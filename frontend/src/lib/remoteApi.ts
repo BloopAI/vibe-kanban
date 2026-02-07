@@ -3,14 +3,16 @@ import type {
   UpdateProjectStatusRequest,
 } from 'shared/remote-types';
 import { tokenManager } from './auth/tokenManager';
+import { getRemoteApiBaseUrl } from './runtimeConfig';
 
-export const REMOTE_API_URL = import.meta.env.VITE_VK_SHARED_API_BASE || '';
+export const getRemoteApiUrl = (): string => getRemoteApiBaseUrl();
 
 export const makeRequest = async (
   path: string,
   options: RequestInit = {},
   retryOn401 = true
 ): Promise<Response> => {
+  const remoteApiUrl = getRemoteApiUrl();
   const token = await tokenManager.getToken();
   if (!token) {
     throw new Error('Not authenticated');
@@ -24,7 +26,7 @@ export const makeRequest = async (
   headers.set('X-Client-Version', __APP_VERSION__);
   headers.set('X-Client-Type', 'frontend');
 
-  const response = await fetch(`${REMOTE_API_URL}${path}`, {
+  const response = await fetch(`${remoteApiUrl}${path}`, {
     ...options,
     headers,
     credentials: 'include',
@@ -36,7 +38,7 @@ export const makeRequest = async (
     if (newToken) {
       // Retry the request with the new token
       headers.set('Authorization', `Bearer ${newToken}`);
-      return fetch(`${REMOTE_API_URL}${path}`, {
+      return fetch(`${remoteApiUrl}${path}`, {
         ...options,
         headers,
         credentials: 'include',

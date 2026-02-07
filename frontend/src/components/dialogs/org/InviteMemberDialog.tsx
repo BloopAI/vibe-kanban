@@ -25,7 +25,7 @@ import { MemberRole } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 import { defineModal } from '@/lib/modals';
 import { ApiError } from '@/lib/api';
-import { REMOTE_API_URL } from '@/lib/remoteApi';
+import { getRemoteApiUrl } from '@/lib/remoteApi';
 import { ArrowSquareOut } from '@phosphor-icons/react';
 
 export type InviteMemberResult = {
@@ -41,6 +41,7 @@ const InviteMemberDialogImpl = NiceModal.create<InviteMemberDialogProps>(
     const modal = useModal();
     const { organizationId } = props;
     const { t } = useTranslation('organization');
+    const remoteApiUrl = getRemoteApiUrl();
     const [email, setEmail] = useState('');
     const [role, setRole] = useState<MemberRole>(MemberRole.MEMBER);
     const [error, setError] = useState<string | null>(null);
@@ -181,7 +182,7 @@ const InviteMemberDialogImpl = NiceModal.create<InviteMemberDialogProps>(
               >
                 <AlertDescription>
                   {error}
-                  {isSubscriptionRequired && REMOTE_API_URL && (
+                  {isSubscriptionRequired && remoteApiUrl && (
                     <div className="mt-2">
                       <p className="text-sm text-muted-foreground mb-2">
                         {t('inviteDialog.upgradePrompt')}
@@ -189,7 +190,7 @@ const InviteMemberDialogImpl = NiceModal.create<InviteMemberDialogProps>(
                       <PrimaryButton
                         onClick={() =>
                           window.open(
-                            `${REMOTE_API_URL}/upgrade?org_id=${organizationId}`,
+                            `${remoteApiUrl}/upgrade?org_id=${organizationId}`,
                             '_blank'
                           )
                         }
