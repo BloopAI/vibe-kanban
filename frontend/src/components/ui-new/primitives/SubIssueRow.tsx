@@ -14,6 +14,7 @@ import type { OrganizationMemberWithProfile } from 'shared/types';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
 import { StatusDot } from '@/components/ui-new/primitives/StatusDot';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
+import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,6 +78,8 @@ export function SubIssueRow({
   onDeleteClick,
   className,
 }: SubIssueRowProps) {
+  const { t } = useTranslation('common');
+
   return (
     <Draggable draggableId={id} index={index}>
       {(provided, snapshot) => (
@@ -175,7 +178,7 @@ export function SubIssueRow({
                       }}
                     >
                       <LinkBreakIcon className="size-icon-xs" />
-                      Mark as independent issue
+                      {t('workspaces.unlinkFromIssue')}
                     </DropdownMenuItem>
                   )}
                   {onDeleteClick && (
@@ -187,7 +190,7 @@ export function SubIssueRow({
                       className="text-destructive focus:text-destructive"
                     >
                       <TrashIcon className="size-icon-xs" />
-                      Delete issue
+                      {t('buttons.delete')}
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
