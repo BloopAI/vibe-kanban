@@ -112,7 +112,7 @@ export function IssuePropertyRow({
             variant="tertiary"
             onClick={onParentIssueClick}
             disabled={disabled}
-            className="whitespace-nowrap"
+            className="whitespace-nowrap text-sm"
           >
             <span className="text-low">
               {t('kanban.parentIssue', 'Parent')}:
