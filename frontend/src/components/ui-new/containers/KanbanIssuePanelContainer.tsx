@@ -881,11 +881,8 @@ export function KanbanIssuePanelContainer() {
       page: 'issueActions',
       projectId,
       issueIds: [selectedKanbanIssueId],
-      hiddenActionIds: selectedIssue?.parent_issue_id
-        ? []
-        : ['remove-parent-issue'],
     });
-  }, [selectedKanbanIssueId, projectId, selectedIssue?.parent_issue_id]);
+  }, [selectedKanbanIssueId, projectId]);
 
   // Loading state
   const isLoading = projectLoading || orgLoading;

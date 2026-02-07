@@ -24,7 +24,6 @@ export interface CommandBarDialogProps {
   page?: PageId;
   workspaceId?: string;
   repoId?: string;
-  hiddenActionIds?: string[];
   /** Issue context for kanban mode - projectId */
   projectId?: string;
   /** Issue context for kanban mode - selected issue IDs */
@@ -35,14 +34,12 @@ function CommandBarContent({
   page,
   workspaceId,
   initialRepoId,
-  hiddenActionIds,
   propProjectId,
   propIssueIds,
 }: {
   page: PageId;
   workspaceId?: string;
   initialRepoId?: string;
-  hiddenActionIds?: string[];
   propProjectId?: string;
   propIssueIds?: string[];
 }) {
@@ -89,8 +86,7 @@ function CommandBarContent({
     currentPage,
     state.search,
     visibilityContext,
-    workspace,
-    hiddenActionIds
+    workspace
   );
 
   // Handle item selection with side effects
@@ -183,7 +179,6 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
     page = 'root',
     workspaceId,
     repoId: initialRepoId,
-    hiddenActionIds,
     projectId: propProjectId,
     issueIds: propIssueIds,
   }) => {
@@ -192,7 +187,6 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
         page={page}
         workspaceId={workspaceId}
         initialRepoId={initialRepoId}
-        hiddenActionIds={hiddenActionIds}
         propProjectId={propProjectId}
         propIssueIds={propIssueIds}
       />

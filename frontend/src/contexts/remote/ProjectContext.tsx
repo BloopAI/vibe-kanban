@@ -455,3 +455,11 @@ export function useProjectContext(): ProjectContextValue {
   }
   return context;
 }
+
+/**
+ * Optional project context accessor.
+ * Returns null when not inside a ProjectProvider.
+ */
+export function useOptionalProjectContext(): ProjectContextValue | null {
+  return useContext(ProjectContext);
+}

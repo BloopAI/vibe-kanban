@@ -39,8 +39,7 @@ const PAGE_ICONS = {
 
 function expandGroupItems(
   items: CommandBarGroupItem[],
-  ctx: ActionVisibilityContext,
-  hiddenActionIds: ReadonlySet<string>
+  ctx: ActionVisibilityContext
 ): ResolvedGroupItem[] {
   return items.flatMap((item) => {
     if (item.type === 'childPages') {
@@ -56,7 +55,6 @@ function expandGroupItems(
       ];
     }
     if (item.type === 'action') {
-      if (hiddenActionIds.has(item.action.id)) return [];
       if (!isActionVisible(item.action, ctx)) return [];
     }
     return [item];
@@ -65,12 +63,11 @@ function expandGroupItems(
 
 function buildPageGroups(
   pageId: StaticPageId,
-  ctx: ActionVisibilityContext,
-  hiddenActionIds: ReadonlySet<string>
+  ctx: ActionVisibilityContext
 ): ResolvedGroup[] {
   return Pages[pageId].items
     .map((group) => {
-      const items = expandGroupItems(group.items, ctx, hiddenActionIds);
+      const items = expandGroupItems(group.items, ctx);
       return items.length ? { label: group.label, items } : null;
     })
     .filter((g): g is ResolvedGroup => g !== null);
@@ -80,12 +77,10 @@ export function useResolvedPage(
   pageId: PageId,
   search: string,
   ctx: ActionVisibilityContext,
-  workspace: Workspace | undefined,
-  hiddenActionIds: readonly string[] = []
+  workspace: Workspace | undefined
 ): ResolvedCommandBarPage {
   return useMemo(() => {
-    const hiddenActionIdSet = new Set(hiddenActionIds);
-    const groups = buildPageGroups(pageId, ctx, hiddenActionIdSet);
+    const groups = buildPageGroups(pageId, ctx);
     if (pageId === 'root' && search.trim()) {
       groups.push(...injectSearchMatches(search, ctx, workspace));
     }
@@ -95,5 +90,5 @@ export function useResolvedPage(
       title: Pages[pageId].title,
       groups,
     };
-  }, [pageId, search, ctx, workspace, hiddenActionIds]);
+  }, [pageId, search, ctx, workspace]);
 }

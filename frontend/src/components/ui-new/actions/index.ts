@@ -201,6 +201,7 @@ export interface ActionVisibilityContext {
 
   // Kanban state
   hasSelectedKanbanIssue: boolean;
+  hasSelectedKanbanIssueParent: boolean;
   isCreatingIssue: boolean;
 
   // Auth state
@@ -1375,7 +1376,9 @@ export const Actions = {
     shortcut: 'I U',
     requiresTarget: ActionTargetType.ISSUE,
     isVisible: (ctx) =>
-      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+      ctx.layoutMode === 'kanban' &&
+      ctx.hasSelectedKanbanIssue &&
+      ctx.hasSelectedKanbanIssueParent,
     execute: async (_ctx, _projectId, issueIds) => {
       await bulkUpdateIssues(
         issueIds.map((issueId) => ({
