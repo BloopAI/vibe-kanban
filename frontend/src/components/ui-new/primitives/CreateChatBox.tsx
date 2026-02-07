@@ -282,22 +282,30 @@ export function CreateChatBox({
           </button>
 
           {saveAsDefault?.visible && (
-            <div className="ml-half flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm text-low">
-              <Checkbox
-                checked={saveAsDefault.checked}
-                onCheckedChange={saveAsDefault.onChange}
-                className="h-4 w-4"
-                disabled={isDisabled}
+            <>
+              <span
+                className="mx-half h-3 w-px shrink-0 bg-border/70"
+                aria-hidden="true"
               />
-              <button
-                type="button"
-                className="text-sm text-low hover:text-high disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => saveAsDefault.onChange(!saveAsDefault.checked)}
-                disabled={isDisabled}
-              >
-                {t('tasks:conversation.saveAsDefault')}
-              </button>
-            </div>
+              <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm text-low">
+                <Checkbox
+                  checked={saveAsDefault.checked}
+                  onCheckedChange={saveAsDefault.onChange}
+                  className="h-4 w-4"
+                  disabled={isDisabled}
+                />
+                <button
+                  type="button"
+                  className="text-sm text-low hover:text-high disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() =>
+                    saveAsDefault.onChange(!saveAsDefault.checked)
+                  }
+                  disabled={isDisabled}
+                >
+                  {t('tasks:conversation.saveAsDefault')}
+                </button>
+              </div>
+            </>
           )}
 
           {linkedIssue && (
@@ -307,7 +315,7 @@ export function CreateChatBox({
                 aria-hidden="true"
               />
               <div
-                className="inline-flex shrink-0 items-center gap-half whitespace-nowrap text-sm text-low"
+                className="inline-flex shrink-0 items-center gap-half whitespace-nowrap px-half text-sm text-low"
                 title={linkedIssue.title}
               >
                 <span className="font-mono text-xs text-normal">
