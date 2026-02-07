@@ -190,7 +190,7 @@ export function CreateChatBox({
       </div>
 
       <div className="flex items-center justify-between gap-base">
-        <div className="flex min-w-0 items-center gap-half overflow-x-auto pr-half">
+        <div className="flex min-w-0 items-center gap-0 overflow-x-auto pr-half">
           <div className="inline-flex items-center gap-half">
             <DropdownMenu>
               <DropdownMenuTriggerButton
@@ -228,7 +228,7 @@ export function CreateChatBox({
           {variant && variantOptions.length > 0 && (
             <>
               <span
-                className="h-3 w-px shrink-0 bg-border/70"
+                className="mx-half h-3 w-px shrink-0 bg-border/70"
                 aria-hidden="true"
               />
               <ToolbarDropdown
@@ -263,7 +263,10 @@ export function CreateChatBox({
             </>
           )}
 
-          <span className="h-3 w-px shrink-0 bg-border/70" aria-hidden="true" />
+          <span
+            className="mx-half h-3 w-px shrink-0 bg-border/70"
+            aria-hidden="true"
+          />
 
           <button
             type="button"
