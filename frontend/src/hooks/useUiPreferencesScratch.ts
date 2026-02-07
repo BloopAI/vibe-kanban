@@ -93,8 +93,10 @@ function scratchDataToStore(data: UiPreferencesData): {
       (data.context_bar_position as ContextBarPosition) ?? 'middle-right',
     paneSizes: (data.pane_sizes ?? {}) as Record<string, number | string>,
     collapsedPaths: (data.collapsed_paths ?? {}) as Record<string, string[]>,
-    fileSearchRepoByProject: (data.file_search_repo_by_project ??
-      {}) as Record<string, string>,
+    fileSearchRepoByProject: (data.file_search_repo_by_project ?? {}) as Record<
+      string,
+      string
+    >,
     isLeftSidebarVisible: data.is_left_sidebar_visible ?? true,
     isRightSidebarVisible: data.is_right_sidebar_visible ?? true,
     isTerminalVisible: data.is_terminal_visible ?? true,
