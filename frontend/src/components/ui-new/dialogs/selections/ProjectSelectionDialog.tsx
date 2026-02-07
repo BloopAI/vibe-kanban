@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
@@ -46,6 +46,19 @@ interface ProjectSelectionDialogProps {
   selection: SelectionMode;
 }
 
+function getInitialPageId(selectionType: SelectionMode['type']): string {
+  switch (selectionType) {
+    case 'status':
+      return 'selectStatus';
+    case 'priority':
+      return 'selectPriority';
+    case 'subIssue':
+      return 'selectSubIssue';
+    case 'relationship':
+      return 'selectRelationshipIssue';
+  }
+}
+
 // Inner component that has access to ProjectContext
 function ProjectSelectionContent({ selection }: { selection: SelectionMode }) {
   const modal = useModal();
@@ -63,25 +76,25 @@ function ProjectSelectionContent({ selection }: { selection: SelectionMode }) {
   const listViewStatusFilter = useUiPreferencesStore(
     (s) => s.listViewStatusFilter
   );
+  const initialPageId = useMemo(
+    () => getInitialPageId(selection.type),
+    [selection.type]
+  );
   const [search, setSearch] = useState('');
-  const [currentPageId, setCurrentPageId] = useState(() => {
-    switch (selection.type) {
-      case 'status':
-        return 'selectStatus';
-      case 'priority':
-        return 'selectPriority';
-      case 'subIssue':
-        return 'selectSubIssue';
-      case 'relationship':
-        return 'selectRelationshipIssue';
-    }
-  });
+  const [currentPageId, setCurrentPageId] = useState(initialPageId);
   const [pageStack, setPageStack] = useState<string[]>([]);
 
   // Capture focus on mount
   if (!previousFocusRef.current && modal.visible) {
     previousFocusRef.current = document.activeElement as HTMLElement;
   }
+
+  // NiceModal reuses dialog instances; reset local navigation when mode changes.
+  useEffect(() => {
+    setCurrentPageId(initialPageId);
+    setPageStack([]);
+    setSearch('');
+  }, [initialPageId]);
 
   const sortedStatuses: StatusItem[] = useMemo(
     () =>
@@ -276,15 +289,19 @@ function ProjectSelectionContent({ selection }: { selection: SelectionMode }) {
     ]
   );
 
-  const currentPage = pages[currentPageId];
+  const fallbackPage = pages[initialPageId] ?? Object.values(pages)[0];
+  const currentPage = pages[currentPageId] ?? fallbackPage;
 
   const resolvedPage = useMemo(
-    () => ({
-      id: currentPage.id,
-      title: currentPage.title,
-      groups: currentPage.buildGroups(),
-    }),
-    [currentPage]
+    () =>
+      currentPage
+        ? {
+            id: currentPage.id,
+            title: currentPage.title,
+            groups: currentPage.buildGroups(),
+          }
+        : { id: initialPageId, title: '', groups: [] },
+    [currentPage, initialPageId]
   );
 
   const handleSelect = useCallback(
@@ -295,12 +312,12 @@ function ProjectSelectionContent({ selection }: { selection: SelectionMode }) {
         modal.resolve(result.data);
         modal.hide();
       } else if (result.type === 'navigate') {
-        setPageStack((prev) => [...prev, currentPageId]);
+        setPageStack((prev) => [...prev, currentPage.id]);
         setCurrentPageId(result.pageId);
         setSearch('');
       }
     },
-    [currentPage, currentPageId, modal, handleResult]
+    [currentPage, modal, handleResult]
   );
 
   const handleGoBack = useCallback(() => {
@@ -325,6 +342,10 @@ function ProjectSelectionContent({ selection }: { selection: SelectionMode }) {
       previousFocusRef.current?.focus();
     }
   }, []);
+
+  if (!currentPage) {
+    return null;
+  }
 
   return (
     <CommandDialog

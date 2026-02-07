@@ -564,7 +564,20 @@ export function KanbanIssuePanelContainer() {
             selection: { type: 'status', issueIds: [], isCreateMode: true },
           });
           if (result && typeof result === 'object' && 'statusId' in result) {
-            updateCreateDefaults({ statusId: result.statusId as string });
+            const statusId = result.statusId as string;
+            updateCreateDefaults({ statusId });
+            setCreateFormData((prev) => {
+              const base = prev ?? {
+                title: '',
+                description: null,
+                statusId: defaultStatusId,
+                priority: null,
+                assigneeIds: [],
+                tagIds: [],
+                createDraftWorkspace: false,
+              };
+              return { ...base, statusId };
+            });
           }
           return;
         }
@@ -579,8 +592,22 @@ export function KanbanIssuePanelContainer() {
             selection: { type: 'priority', issueIds: [], isCreateMode: true },
           });
           if (result && typeof result === 'object' && 'priority' in result) {
+            const priority = (result as { priority: IssuePriority | null })
+              .priority;
             updateCreateDefaults({
-              priority: (result as { priority: IssuePriority | null }).priority,
+              priority,
+            });
+            setCreateFormData((prev) => {
+              const base = prev ?? {
+                title: '',
+                description: null,
+                statusId: defaultStatusId,
+                priority: null,
+                assigneeIds: [],
+                tagIds: [],
+                createDraftWorkspace: false,
+              };
+              return { ...base, priority };
             });
           }
           return;
