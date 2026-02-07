@@ -160,7 +160,7 @@ export function CreateChatBox({
 
       <div className="rounded-sm border border-border bg-secondary p-base">
         <div className="flex items-center gap-base">
-          <div className="min-w-0 flex-1 rounded-sm border border-border px-base py-half">
+          <div className="min-w-0 flex-1 px-base py-half">
             <WYSIWYGEditor
               placeholder="Describe what you'd like the agent to work on..."
               value={editor.value}
@@ -195,7 +195,7 @@ export function CreateChatBox({
             <DropdownMenu>
               <DropdownMenuTriggerButton
                 disabled={isDisabled}
-                className="h-cta hover:bg-panel"
+                className="h-auto border-0 bg-transparent px-0 py-0 hover:bg-transparent focus-visible:ring-0"
                 aria-label={t('tasks:conversation.executors')}
               >
                 <div className="flex min-w-0 items-center gap-half">
@@ -226,36 +226,44 @@ export function CreateChatBox({
           </div>
 
           {variant && variantOptions.length > 0 && (
-            <ToolbarDropdown
-              label={variantLabel}
-              disabled={isDisabled}
-              className="h-cta hover:bg-panel"
-            >
-              <DropdownMenuLabel>{t('chatBox.variants')}</DropdownMenuLabel>
-              {variantOptions.map((variantName) => (
-                <DropdownMenuItem
-                  key={variantName}
-                  icon={
-                    variant.selected === variantName ? CheckIcon : undefined
-                  }
-                  onClick={() => variant.onChange(variantName)}
-                >
-                  {toPrettyCase(variantName)}
-                </DropdownMenuItem>
-              ))}
-              {variant.onCustomise && (
-                <>
-                  <DropdownMenuSeparator />
+            <>
+              <span
+                className="h-3 w-px shrink-0 bg-border/70"
+                aria-hidden="true"
+              />
+              <ToolbarDropdown
+                label={variantLabel}
+                disabled={isDisabled}
+                className="h-auto border-0 bg-transparent px-0 py-0 hover:bg-transparent focus-visible:ring-0"
+              >
+                <DropdownMenuLabel>{t('chatBox.variants')}</DropdownMenuLabel>
+                {variantOptions.map((variantName) => (
                   <DropdownMenuItem
-                    icon={GearIcon}
-                    onClick={variant.onCustomise}
+                    key={variantName}
+                    icon={
+                      variant.selected === variantName ? CheckIcon : undefined
+                    }
+                    onClick={() => variant.onChange(variantName)}
                   >
-                    {t('chatBox.customise')}
+                    {toPrettyCase(variantName)}
                   </DropdownMenuItem>
-                </>
-              )}
-            </ToolbarDropdown>
+                ))}
+                {variant.onCustomise && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      icon={GearIcon}
+                      onClick={variant.onCustomise}
+                    >
+                      {t('chatBox.customise')}
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </ToolbarDropdown>
+            </>
           )}
+
+          <span className="h-3 w-px shrink-0 bg-border/70" aria-hidden="true" />
 
           <button
             type="button"
@@ -263,7 +271,7 @@ export function CreateChatBox({
             title={repoSummaryTitle}
             disabled={isDisabled}
             className={cn(
-              'max-w-[320px] rounded-sm border border-border bg-secondary px-base py-half text-sm text-normal hover:bg-panel',
+              'max-w-[320px] bg-transparent px-0 py-0 text-sm text-normal hover:text-high',
               'disabled:cursor-not-allowed disabled:opacity-50'
             )}
           >
