@@ -11,8 +11,11 @@ import { useTranslation } from 'react-i18next';
 import type { Repo } from 'shared/types';
 import type { BranchItem, RepoItem } from '@/components/ui-new/actions/pages';
 import { repoApi } from '@/lib/api';
+import { cn } from '@/lib/utils';
 import { useCreateMode } from '@/contexts/CreateModeContext';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
+import { dropdownMenuTriggerButtonClassName } from '@/components/ui-new/primitives/Dropdown';
+import { IconButton } from '@/components/ui-new/primitives/IconButton';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { CreateRepoDialog } from '@/components/ui-new/dialogs/CreateRepoDialog';
 import {
@@ -50,6 +53,11 @@ function getRepoDisplayName(repo: Repo): string {
 }
 
 type PendingAction = 'choose' | 'browse' | 'create' | 'branch' | null;
+
+const branchButtonClassName = cn(
+  dropdownMenuTriggerButtonClassName,
+  'max-w-[220px] shrink-0'
+);
 
 export function CreateModeRepoPickerBar() {
   const { t } = useTranslation('common');
@@ -237,25 +245,24 @@ export function CreateModeRepoPickerBar() {
                     type="button"
                     onClick={() => handleChangeBranch(repo)}
                     disabled={isBusy}
-                    className="inline-flex items-center gap-half rounded-sm border border-border px-half py-[1px] text-xs text-low hover:text-normal disabled:cursor-not-allowed disabled:opacity-50"
+                    className={branchButtonClassName}
                     title="Change branch"
                   >
                     {isChangingBranch ? (
-                      <SpinnerIcon className="h-3 w-3 animate-spin" />
+                      <SpinnerIcon className="size-icon-xs animate-spin" />
                     ) : (
-                      <GitBranchIcon className="h-3 w-3" weight="bold" />
+                      <GitBranchIcon className="size-icon-xs" weight="bold" />
                     )}
-                    <span>{branch}</span>
+                    <span className="truncate text-sm text-normal">{branch}</span>
                   </button>
-                  <button
-                    type="button"
+                  <IconButton
+                    icon={XIcon}
                     onClick={() => removeRepo(repo.id)}
                     disabled={isBusy}
-                    className="text-low hover:text-normal disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label={`Remove ${repoDisplayName}`}
-                  >
-                    <XIcon className="h-3 w-3" weight="bold" />
-                  </button>
+                    title={`Remove ${repoDisplayName}`}
+                    iconClassName="size-icon-xs"
+                  />
                 </div>
               );
             })}
