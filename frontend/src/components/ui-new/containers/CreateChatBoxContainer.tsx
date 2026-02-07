@@ -297,7 +297,7 @@ export function CreateChatBoxContainer() {
           {showRepoPickerStep && (
             <>
               <h2 className="mb-double text-center text-4xl font-medium tracking-tight text-high">
-                Choose repositories to work on
+                Which repositories would you like to work on?
               </h2>
               <CreateModeRepoPickerBar
                 onContinueToPrompt={() => setIsSelectingRepos(false)}

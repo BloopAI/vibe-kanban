@@ -3,7 +3,7 @@ import {
   ClockCounterClockwiseIcon,
   GitBranchIcon,
   MagnifyingGlassIcon,
-  NoteBlankIcon,
+  PlusIcon,
   SpinnerIcon,
   XIcon,
 } from '@phosphor-icons/react';
@@ -53,8 +53,12 @@ function getRepoDisplayName(repo: Repo): string {
 type PendingAction = 'choose' | 'browse' | 'create' | 'branch' | null;
 
 const inlineControlButtonClassName =
-  'inline-flex items-center gap-half rounded-sm px-half py-half text-sm text-low ' +
+  'inline-flex items-center gap-half rounded-sm px-half py-half text-sm text-normal ' +
   'hover:text-high disabled:cursor-not-allowed disabled:opacity-50';
+
+const recentInlineControlButtonClassName =
+  'inline-flex items-center gap-half rounded-sm px-half py-half text-sm ' +
+  'disabled:cursor-not-allowed disabled:opacity-50';
 
 const repoRowButtonClassName =
   'inline-flex items-center gap-half text-sm text-low hover:text-high ' +
@@ -274,7 +278,12 @@ export function CreateModeRepoPickerBar({
             type="button"
             onClick={handleChooseRepo}
             disabled={isBusy}
-            className={inlineControlButtonClassName}
+            className={cn(
+              recentInlineControlButtonClassName,
+              repos.length > 0
+                ? 'text-normal hover:text-high'
+                : 'text-brand hover:text-brand-hover'
+            )}
           >
             {pendingAction === 'choose' ? (
               <SpinnerIcon className="size-icon-xs animate-spin" />
@@ -284,7 +293,7 @@ export function CreateModeRepoPickerBar({
                 weight="bold"
               />
             )}
-            <span>Add recent repo</span>
+            <span>Recent</span>
           </button>
           <button
             type="button"
@@ -297,7 +306,7 @@ export function CreateModeRepoPickerBar({
             ) : (
               <MagnifyingGlassIcon className="size-icon-xs" weight="bold" />
             )}
-            <span>Browse folder</span>
+            <span>Browse</span>
           </button>
           <button
             type="button"
@@ -308,9 +317,9 @@ export function CreateModeRepoPickerBar({
             {pendingAction === 'create' ? (
               <SpinnerIcon className="size-icon-xs animate-spin" />
             ) : (
-              <NoteBlankIcon className="size-icon-xs" weight="bold" />
+              <PlusIcon className="size-icon-xs" weight="bold" />
             )}
-            <span>Create repo</span>
+            <span>Create</span>
           </button>
 
           <div className="ml-auto">
