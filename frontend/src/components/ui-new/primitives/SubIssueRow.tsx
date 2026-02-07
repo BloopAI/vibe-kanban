@@ -139,6 +139,20 @@ export function SubIssueRow({
 
           {/* Right side: Assignee, Age */}
           <div className="flex items-center gap-half shrink-0">
+            {onAssigneeClick ? (
+              <button
+                type="button"
+                onClick={onAssigneeClick}
+                className="cursor-pointer hover:bg-secondary rounded-sm transition-colors"
+              >
+                <KanbanAssignee assignees={assignees} />
+              </button>
+            ) : (
+              <KanbanAssignee assignees={assignees} />
+            )}
+            <span className="text-sm text-low">
+              {formatRelativeTime(createdAt)}
+            </span>
             {(onMarkIndependentClick || onDeleteClick) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -179,20 +193,6 @@ export function SubIssueRow({
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            {onAssigneeClick ? (
-              <button
-                type="button"
-                onClick={onAssigneeClick}
-                className="cursor-pointer hover:bg-secondary rounded-sm transition-colors"
-              >
-                <KanbanAssignee assignees={assignees} />
-              </button>
-            ) : (
-              <KanbanAssignee assignees={assignees} />
-            )}
-            <span className="text-sm text-low">
-              {formatRelativeTime(createdAt)}
-            </span>
           </div>
         </div>
       )}
