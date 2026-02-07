@@ -39,6 +39,7 @@ interface CreateChatBoxProps {
   editor: EditorProps;
   onSend: () => void;
   isSending: boolean;
+  disabled?: boolean;
   executor: ExecutorProps;
   variant?: VariantProps;
   saveAsDefault?: SaveAsDefaultProps;
@@ -61,6 +62,7 @@ export function CreateChatBox({
   editor,
   onSend,
   isSending,
+  disabled = false,
   executor,
   variant,
   saveAsDefault,
@@ -76,7 +78,8 @@ export function CreateChatBox({
 }: CreateChatBoxProps) {
   const { t } = useTranslation('tasks');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const canSend = editor.value.trim().length > 0 && !isSending;
+  const isDisabled = disabled || isSending;
+  const canSend = editor.value.trim().length > 0 && !isDisabled;
 
   const handleCmdEnter = () => {
     if (canSend) {
@@ -107,7 +110,7 @@ export function CreateChatBox({
       editor={editor}
       placeholder="Describe the task..."
       onCmdEnter={handleCmdEnter}
-      disabled={isSending}
+      disabled={isDisabled}
       repoIds={repoIds}
       projectId={projectId}
       repoId={repoId}
@@ -122,7 +125,7 @@ export function CreateChatBox({
       headerLeft={
         <>
           <AgentIcon agent={agent} className="size-icon-xl" />
-          <ToolbarDropdown label={executorLabel}>
+          <ToolbarDropdown label={executorLabel} disabled={isDisabled}>
             <DropdownMenuLabel>{t('conversation.executors')}</DropdownMenuLabel>
             {executor.options.map((exec) => (
               <DropdownMenuItem
@@ -140,6 +143,7 @@ export function CreateChatBox({
                 checked={saveAsDefault.checked}
                 onCheckedChange={saveAsDefault.onChange}
                 className="h-3.5 w-3.5"
+                disabled={isDisabled}
               />
               <span>{t('conversation.saveAsDefault')}</span>
             </label>
@@ -157,7 +161,7 @@ export function CreateChatBox({
             <button
               type="button"
               onClick={linkedIssue.onRemove}
-              disabled={isSending}
+              disabled={isDisabled}
               className="ml-1 text-low hover:text-error transition-colors disabled:opacity-50"
               aria-label={`Remove link to ${linkedIssue.simpleId}`}
             >
@@ -173,7 +177,7 @@ export function CreateChatBox({
             aria-label={t('tasks:taskFormDialog.attachImage')}
             title={t('tasks:taskFormDialog.attachImage')}
             onClick={handleAttachClick}
-            disabled={isSending}
+            disabled={isDisabled}
           />
           <input
             ref={fileInputRef}

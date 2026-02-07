@@ -10,6 +10,7 @@ import { splitMessageToTitleDescription } from '@/utils/string';
 import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
 import { CreateChatBox } from '../primitives/CreateChatBox';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
+import { CreateModeRepoPickerBar } from './CreateModeRepoPickerBar';
 
 export function CreateChatBoxContainer() {
   const { t } = useTranslation('common');
@@ -29,6 +30,7 @@ export function CreateChatBoxContainer() {
   } = useCreateMode();
 
   const { createWorkspace } = useCreateWorkspace();
+  const hasSelectedRepos = repos.length > 0;
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [saveAsDefault, setSaveAsDefault] = useState(false);
 
@@ -61,7 +63,7 @@ export function CreateChatBoxContainer() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'image/*': [] },
-    disabled: createWorkspace.isPending,
+    disabled: createWorkspace.isPending || !hasSelectedRepos,
     noClick: true,
     noKeyboard: true,
   });
@@ -109,10 +111,10 @@ export function CreateChatBoxContainer() {
 
   // Determine if we can submit
   const canSubmit =
-    repos.length > 0 &&
+    hasSelectedRepos &&
     message.trim().length > 0 &&
     effectiveProfile !== null &&
-    projectId !== undefined;
+    projectId !== null;
 
   // Handle variant change
   const handleVariantChange = useCallback(
@@ -254,53 +256,63 @@ export function CreateChatBoxContainer() {
 
   return (
     <div className="relative flex flex-1 flex-col bg-primary h-full">
-      <div className="flex-1" />
-      <div className="flex justify-center @container">
-        <CreateChatBox
-          editor={{
-            value: message,
-            onChange: setMessage,
-          }}
-          onSend={handleSubmit}
-          isSending={createWorkspace.isPending}
-          executor={{
-            selected: effectiveProfile?.executor ?? null,
-            options: Object.keys(profiles ?? {}) as BaseCodingAgent[],
-            onChange: handleExecutorChange,
-          }}
-          variant={
-            effectiveProfile
-              ? {
-                  selected: effectiveProfile.variant ?? 'DEFAULT',
-                  options: variantOptions,
-                  onChange: handleVariantChange,
-                  onCustomise: handleCustomise,
-                }
-              : undefined
-          }
-          saveAsDefault={{
-            checked: saveAsDefault,
-            onChange: setSaveAsDefault,
-            visible: hasChangedFromDefault,
-          }}
-          error={displayError}
-          repoIds={repos.map((r) => r.id)}
-          projectId={projectId}
-          agent={effectiveProfile?.executor ?? null}
-          repoId={repoId}
-          onPasteFiles={uploadFiles}
-          localImages={localImages}
-          dropzone={{ getRootProps, getInputProps, isDragActive }}
-          linkedIssue={
-            linkedIssue?.simpleId
-              ? {
-                  simpleId: linkedIssue.simpleId,
-                  title: linkedIssue.title ?? '',
-                  onRemove: clearLinkedIssue,
-                }
-              : null
-          }
-        />
+      <div className="flex flex-1 items-center justify-center px-base">
+        <div className="flex w-chat max-w-full flex-col gap-base">
+          <h2 className="text-center text-xl font-medium text-high">
+            What would you like to work on?
+          </h2>
+
+          <CreateModeRepoPickerBar />
+
+          <div className="flex justify-center @container">
+            <CreateChatBox
+              editor={{
+                value: message,
+                onChange: setMessage,
+              }}
+              onSend={handleSubmit}
+              isSending={createWorkspace.isPending}
+              disabled={!hasSelectedRepos}
+              executor={{
+                selected: effectiveProfile?.executor ?? null,
+                options: Object.keys(profiles ?? {}) as BaseCodingAgent[],
+                onChange: handleExecutorChange,
+              }}
+              variant={
+                effectiveProfile
+                  ? {
+                      selected: effectiveProfile.variant ?? 'DEFAULT',
+                      options: variantOptions,
+                      onChange: handleVariantChange,
+                      onCustomise: handleCustomise,
+                    }
+                  : undefined
+              }
+              saveAsDefault={{
+                checked: saveAsDefault,
+                onChange: setSaveAsDefault,
+                visible: hasChangedFromDefault,
+              }}
+              error={displayError}
+              repoIds={repos.map((r) => r.id)}
+              projectId={projectId}
+              agent={effectiveProfile?.executor ?? null}
+              repoId={repoId}
+              onPasteFiles={uploadFiles}
+              localImages={localImages}
+              dropzone={{ getRootProps, getInputProps, isDragActive }}
+              linkedIssue={
+                linkedIssue?.simpleId
+                  ? {
+                      simpleId: linkedIssue.simpleId,
+                      title: linkedIssue.title ?? '',
+                      onRemove: clearLinkedIssue,
+                    }
+                  : null
+              }
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

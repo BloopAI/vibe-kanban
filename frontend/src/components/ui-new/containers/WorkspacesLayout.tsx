@@ -175,10 +175,9 @@ export function WorkspacesLayout() {
               )}
             </Group>
 
-            {isRightSidebarVisible && (
+            {isRightSidebarVisible && !isCreateMode && (
               <div className="w-[300px] shrink-0 h-full overflow-hidden">
                 <RightSidebar
-                  isCreateMode={isCreateMode}
                   rightMainPanelMode={rightMainPanelMode}
                   selectedWorkspace={selectedWorkspace}
                   repos={repos}
