@@ -7,10 +7,14 @@ import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
 import { getVariantOptions, areProfilesEqual } from '@/utils/executor';
 import { splitMessageToTitleDescription } from '@/utils/string';
-import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
+import type { ExecutorProfileId, BaseCodingAgent, Repo } from 'shared/types';
 import { CreateChatBox } from '../primitives/CreateChatBox';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
 import { CreateModeRepoPickerBar } from './CreateModeRepoPickerBar';
+
+function getRepoDisplayName(repo: Repo) {
+  return repo.display_name || repo.name;
+}
 
 export function CreateChatBoxContainer() {
   const { t } = useTranslation('common');
@@ -33,6 +37,9 @@ export function CreateChatBoxContainer() {
   const hasSelectedRepos = repos.length > 0;
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [saveAsDefault, setSaveAsDefault] = useState(false);
+  const [isEditingRepos, setIsEditingRepos] = useState(false);
+  const showRepoPickerStep = !hasSelectedRepos || isEditingRepos;
+  const showChatStep = hasSelectedRepos && !isEditingRepos;
 
   // Attachment handling - insert markdown and track image IDs
   const handleInsertMarkdown = useCallback(
@@ -258,60 +265,116 @@ export function CreateChatBoxContainer() {
     <div className="relative flex flex-1 flex-col bg-primary h-full">
       <div className="flex flex-1 items-center justify-center px-base">
         <div className="flex w-chat max-w-full flex-col gap-base">
-          <h2 className="text-center text-xl font-medium text-high">
-            What would you like to work on?
-          </h2>
+          {showRepoPickerStep && (
+            <>
+              <h2 className="text-center text-xl font-medium text-high">
+                Select repositories for this workspace
+              </h2>
+              <CreateModeRepoPickerBar />
+              {isEditingRepos && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    className="rounded-sm border border-border px-base py-half text-sm text-normal hover:bg-panel disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => setIsEditingRepos(false)}
+                    disabled={!hasSelectedRepos}
+                  >
+                    Continue to prompt
+                  </button>
+                </div>
+              )}
+            </>
+          )}
 
-          <CreateModeRepoPickerBar />
+          {showChatStep && (
+            <>
+              <h2 className="text-center text-xl font-medium text-high">
+                What would you like to work on?
+              </h2>
 
-          <div className="flex justify-center @container">
-            <CreateChatBox
-              editor={{
-                value: message,
-                onChange: setMessage,
-              }}
-              onSend={handleSubmit}
-              isSending={createWorkspace.isPending}
-              disabled={!hasSelectedRepos}
-              executor={{
-                selected: effectiveProfile?.executor ?? null,
-                options: Object.keys(profiles ?? {}) as BaseCodingAgent[],
-                onChange: handleExecutorChange,
-              }}
-              variant={
-                effectiveProfile
-                  ? {
-                      selected: effectiveProfile.variant ?? 'DEFAULT',
-                      options: variantOptions,
-                      onChange: handleVariantChange,
-                      onCustomise: handleCustomise,
-                    }
-                  : undefined
-              }
-              saveAsDefault={{
-                checked: saveAsDefault,
-                onChange: setSaveAsDefault,
-                visible: hasChangedFromDefault,
-              }}
-              error={displayError}
-              repoIds={repos.map((r) => r.id)}
-              projectId={projectId}
-              agent={effectiveProfile?.executor ?? null}
-              repoId={repoId}
-              onPasteFiles={uploadFiles}
-              localImages={localImages}
-              dropzone={{ getRootProps, getInputProps, isDragActive }}
-              linkedIssue={
-                linkedIssue?.simpleId
-                  ? {
-                      simpleId: linkedIssue.simpleId,
-                      title: linkedIssue.title ?? '',
-                      onRemove: clearLinkedIssue,
-                    }
-                  : null
-              }
-            />
-          </div>
+              <div className="rounded-sm border border-border bg-secondary p-base">
+                <div className="flex items-center justify-between gap-base">
+                  <p className="text-sm font-medium text-high">
+                    Repositories ({repos.length})
+                  </p>
+                  <button
+                    type="button"
+                    className="text-xs text-low hover:text-high"
+                    onClick={() => setIsEditingRepos(true)}
+                  >
+                    Edit repos
+                  </button>
+                </div>
+                <div className="mt-half flex flex-wrap gap-half">
+                  {repos.map((repo) => {
+                    const branch = targetBranches[repo.id] ?? 'Select branch';
+                    const displayName = getRepoDisplayName(repo);
+                    return (
+                      <span
+                        key={repo.id}
+                        className="inline-flex max-w-full items-center gap-half rounded-sm border border-border bg-panel px-half py-[1px] text-xs text-low"
+                        title={`${displayName} (${branch})`}
+                      >
+                        <span className="truncate max-w-[220px]">
+                          {displayName}
+                        </span>
+                        <span>· {branch}</span>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex justify-center @container">
+                <CreateChatBox
+                  editor={{
+                    value: message,
+                    onChange: setMessage,
+                  }}
+                  onSend={handleSubmit}
+                  isSending={createWorkspace.isPending}
+                  disabled={!hasSelectedRepos}
+                  executor={{
+                    selected: effectiveProfile?.executor ?? null,
+                    options: Object.keys(profiles ?? {}) as BaseCodingAgent[],
+                    onChange: handleExecutorChange,
+                  }}
+                  variant={
+                    effectiveProfile
+                      ? {
+                          selected: effectiveProfile.variant ?? 'DEFAULT',
+                          options: variantOptions,
+                          onChange: handleVariantChange,
+                          onCustomise: handleCustomise,
+                        }
+                      : undefined
+                  }
+                  saveAsDefault={{
+                    checked: saveAsDefault,
+                    onChange: setSaveAsDefault,
+                    visible: hasChangedFromDefault,
+                  }}
+                  error={displayError}
+                  repoIds={repos.map((r) => r.id)}
+                  projectId={projectId}
+                  agent={effectiveProfile?.executor ?? null}
+                  repoId={repoId}
+                  onPasteFiles={uploadFiles}
+                  localImages={localImages}
+                  dropzone={{ getRootProps, getInputProps, isDragActive }}
+                  linkedIssue={
+                    linkedIssue?.simpleId
+                      ? {
+                          simpleId: linkedIssue.simpleId,
+                          title: linkedIssue.title ?? '',
+                          onRemove: clearLinkedIssue,
+                        }
+                      : null
+                  }
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
