@@ -44,6 +44,18 @@ const SelectionDialogImpl = NiceModal.create<SelectionDialogProps>(
       setCurrentPageId(initialPageId);
     }, [modal.visible, initialPageId]);
 
+    // Ensure cmdk search input is focused when dialog opens or page changes.
+    useEffect(() => {
+      if (!modal.visible) return;
+      const rafId = requestAnimationFrame(() => {
+        const activeDialog = document.querySelector('[role="dialog"][data-state="open"]');
+        const input = activeDialog?.querySelector<HTMLInputElement>('[cmdk-input]');
+        input?.focus();
+      });
+
+      return () => cancelAnimationFrame(rafId);
+    }, [modal.visible, currentPageId]);
+
     // Guard against stale page IDs when opening with different page sets.
     useEffect(() => {
       if (pages[currentPageId]) return;

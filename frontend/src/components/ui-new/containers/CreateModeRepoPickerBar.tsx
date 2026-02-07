@@ -265,7 +265,7 @@ export function CreateModeRepoPickerBar() {
         <div className="mt-base flex flex-wrap gap-half border-t border-border pt-base">
           <PrimaryButton
             variant="default"
-            value="Add saved repo"
+            value="Add recent repo"
             actionIcon={pendingAction === 'choose' ? 'spinner' : PlusIcon}
             onClick={handleChooseRepo}
             disabled={isBusy}
