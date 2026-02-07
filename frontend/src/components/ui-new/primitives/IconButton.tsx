@@ -41,7 +41,10 @@ export function IconButton({
       aria-label={ariaLabel}
       title={title}
     >
-      <IconComponent className={cn('size-icon-sm', iconClassName)} weight="bold" />
+      <IconComponent
+        className={cn('size-icon-sm', iconClassName)}
+        weight="bold"
+      />
     </button>
   );
 }

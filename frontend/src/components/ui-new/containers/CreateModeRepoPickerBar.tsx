@@ -253,7 +253,9 @@ export function CreateModeRepoPickerBar() {
                     ) : (
                       <GitBranchIcon className="size-icon-xs" weight="bold" />
                     )}
-                    <span className="truncate text-sm text-normal">{branch}</span>
+                    <span className="truncate text-sm text-normal">
+                      {branch}
+                    </span>
                   </button>
                   <IconButton
                     icon={XIcon}
