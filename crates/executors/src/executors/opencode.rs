@@ -364,7 +364,11 @@ impl StandardCodingAgentExecutor for Opencode {
             .await
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) -> Vec<tokio::task::JoinHandle<()>> {
+    fn normalize_logs(
+        &self,
+        msg_store: Arc<MsgStore>,
+        worktree_path: &Path,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
         normalize_logs::normalize_logs(msg_store, worktree_path)
     }
 

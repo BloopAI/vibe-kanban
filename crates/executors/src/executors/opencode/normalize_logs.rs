@@ -32,7 +32,10 @@ fn system_message(content: String) -> NormalizedEntry {
     }
 }
 
-pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) -> Vec<tokio::task::JoinHandle<()>> {
+pub fn normalize_logs(
+    msg_store: Arc<MsgStore>,
+    worktree_path: &Path,
+) -> Vec<tokio::task::JoinHandle<()>> {
     let entry_index = EntryIndexProvider::start_from(&msg_store);
     let h1 = normalize_stderr_logs(msg_store.clone(), entry_index.clone());
 

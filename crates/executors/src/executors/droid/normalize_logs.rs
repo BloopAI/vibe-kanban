@@ -670,7 +670,10 @@ pub fn normalize_logs(
     vec![h1, h2]
 }
 
-fn normalize_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: EntryIndexProvider) -> tokio::task::JoinHandle<()> {
+fn normalize_stderr_logs(
+    msg_store: Arc<MsgStore>,
+    entry_index_provider: EntryIndexProvider,
+) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let mut stderr = msg_store.stderr_chunked_stream();
 
