@@ -817,11 +817,7 @@ export function KanbanIssuePanelContainer() {
     deleteDraftIssueScratch().catch((error) => {
       console.error('Failed to delete draft issue:', error);
     });
-  }, [
-    cancelDebouncedDraftIssue,
-    deleteDraftIssueScratch,
-    createModeDefaults,
-  ]);
+  }, [cancelDebouncedDraftIssue, deleteDraftIssueScratch, createModeDefaults]);
 
   // Tag create callback - returns the new tag ID so it can be auto-selected
   const handleCreateTag = useCallback(
@@ -889,9 +885,7 @@ export function KanbanIssuePanelContainer() {
       }
       titleRef={titleRefCallback}
       onDeleteDraft={
-        mode === 'create' && isCreateDraftDirty
-          ? handleDeleteDraft
-          : undefined
+        mode === 'create' && isCreateDraftDirty ? handleDeleteDraft : undefined
       }
       onCopyLink={mode === 'edit' ? handleCopyLink : undefined}
       onMoreActions={mode === 'edit' ? handleMoreActions : undefined}
