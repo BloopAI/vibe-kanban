@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { IssuePriority, ProjectStatus } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { IconButton } from '@/components/ui-new/primitives/IconButton';
 import { StatusDot } from '@/components/ui-new/primitives/StatusDot';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
@@ -106,11 +107,12 @@ export function IssuePropertyRow({
         )}
 
       {parentIssue && (
-        <div className="flex items-center gap-half pr-half bg-panel rounded-sm">
-          <button
-            type="button"
+        <div className="flex items-center gap-half">
+          <PrimaryButton
+            variant="tertiary"
             onClick={onParentIssueClick}
-            className="flex items-center gap-half px-base py-half text-sm hover:bg-secondary transition-colors whitespace-nowrap rounded-sm"
+            disabled={disabled}
+            className="whitespace-nowrap"
           >
             <span className="text-low">
               {t('kanban.parentIssue', 'Parent')}:
@@ -118,31 +120,27 @@ export function IssuePropertyRow({
             <span className="font-ibm-plex-mono text-normal">
               {parentIssue.simpleId}
             </span>
-          </button>
+          </PrimaryButton>
           {onRemoveParentIssue && (
-            <button
-              type="button"
+            <IconButton
+              icon={XIcon}
               onClick={onRemoveParentIssue}
               disabled={disabled}
-              className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors disabled:opacity-50"
               aria-label="Remove parent issue"
               title="Remove parent issue"
-            >
-              <XIcon className="size-icon-xs" weight="bold" />
-            </button>
+            />
           )}
         </div>
       )}
 
       {onAddClick && (
-        <button
-          type="button"
+        <IconButton
+          icon={PlusIcon}
           onClick={onAddClick}
           disabled={disabled}
-          className="flex items-center justify-center p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors disabled:opacity-50"
-        >
-          <PlusIcon className="size-icon-xs" weight="bold" />
-        </button>
+          aria-label="Add"
+          title="Add"
+        />
       )}
     </div>
   );
