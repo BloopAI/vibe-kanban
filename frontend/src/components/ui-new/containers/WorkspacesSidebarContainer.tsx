@@ -24,6 +24,7 @@ export type WorkspaceLayoutMode = 'flat' | 'accordion';
 const DRAFT_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
 
 const PAGE_SIZE = 50;
+const NO_PROJECT_ID = '__no_project__';
 
 interface WorkspacesSidebarContainerProps {
   onScrollToBottom: () => void;
@@ -118,8 +119,9 @@ export function WorkspacesSidebarContainer({
 
   // Build flat project options for MultiSelectDropdown
   const projectOptions = useMemo(
-    () =>
-      projectGroups.flatMap((g) =>
+    () => [
+      { value: NO_PROJECT_ID, label: 'No project' },
+      ...projectGroups.flatMap((g) =>
         g.projects.map((p) => ({
           value: p.id,
           label: p.name,
@@ -134,6 +136,7 @@ export function WorkspacesSidebarContainer({
           ),
         }))
       ),
+    ],
     [projectGroups]
   );
 
@@ -165,9 +168,15 @@ export function WorkspacesSidebarContainer({
 
     // Project filter
     if (workspaceFilters.projectIds.length > 0) {
+      const includeNoProject =
+        workspaceFilters.projectIds.includes(NO_PROJECT_ID);
+      const realProjectIds = workspaceFilters.projectIds.filter(
+        (id) => id !== NO_PROJECT_ID
+      );
       result = result.filter((ws) => {
         const projectId = remoteProjectByLocalId.get(ws.id);
-        return projectId && workspaceFilters.projectIds.includes(projectId);
+        if (!projectId) return includeNoProject;
+        return realProjectIds.includes(projectId);
       });
     }
 
@@ -194,9 +203,15 @@ export function WorkspacesSidebarContainer({
     let result = archivedWorkspaces;
 
     if (workspaceFilters.projectIds.length > 0) {
+      const includeNoProject =
+        workspaceFilters.projectIds.includes(NO_PROJECT_ID);
+      const realProjectIds = workspaceFilters.projectIds.filter(
+        (id) => id !== NO_PROJECT_ID
+      );
       result = result.filter((ws) => {
         const projectId = remoteProjectByLocalId.get(ws.id);
-        return projectId && workspaceFilters.projectIds.includes(projectId);
+        if (!projectId) return includeNoProject;
+        return realProjectIds.includes(projectId);
       });
     }
 
@@ -285,16 +300,14 @@ export function WorkspacesSidebarContainer({
 
   const filterBar = (
     <div className="flex items-stretch gap-half shrink-0">
-      {projectOptions.length > 0 && (
-        <MultiSelectDropdown
-          values={workspaceFilters.projectIds}
-          options={projectOptions}
-          onChange={setWorkspaceProjectFilter}
-          icon={FolderIcon}
-          label="Project"
-          iconOnly={compactFilters}
-        />
-      )}
+      <MultiSelectDropdown
+        values={workspaceFilters.projectIds}
+        options={projectOptions}
+        onChange={setWorkspaceProjectFilter}
+        icon={FolderIcon}
+        label="Project"
+        iconOnly={compactFilters}
+      />
       <PropertyDropdown
         value={workspaceFilters.prFilter}
         options={PR_FILTER_OPTIONS}
