@@ -7,6 +7,7 @@ import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
 import { getVariantOptions, areProfilesEqual } from '@/utils/executor';
 import { splitMessageToTitleDescription } from '@/utils/string';
+import { cn } from '@/lib/utils';
 import type { ExecutorProfileId, BaseCodingAgent, Repo } from 'shared/types';
 import { CreateChatBox } from '../primitives/CreateChatBox';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
@@ -48,6 +49,9 @@ export function CreateChatBoxContainer() {
 
   const showRepoPickerStep = !hasSelectedRepos || isSelectingRepos;
   const showChatStep = hasSelectedRepos && !isSelectingRepos;
+  const contentContainerClassName = showChatStep
+    ? 'items-end pb-double'
+    : 'items-center';
 
   // Attachment handling - insert markdown and track image IDs
   const handleInsertMarkdown = useCallback(
@@ -292,7 +296,12 @@ export function CreateChatBoxContainer() {
 
   return (
     <div className="relative flex flex-1 flex-col bg-primary h-full">
-      <div className="flex flex-1 items-center justify-center px-base">
+      <div
+        className={cn(
+          'flex flex-1 justify-center px-base',
+          contentContainerClassName
+        )}
+      >
         <div className="flex w-chat max-w-full flex-col gap-base">
           {showRepoPickerStep && (
             <>
