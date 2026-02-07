@@ -1041,28 +1041,26 @@ pub trait ContainerService {
             let deduped = futures::stream::unfold(
                 (stream.boxed(), None::<Patch>),
                 |(mut stream, buffered)| async move {
-                    loop {
-                        match stream.next().await {
-                            Some(PatchOrDone::Patch(patch)) => {
-                                let Some(prev) = buffered else {
-                                    // First patch — just buffer it
-                                    break Some((None, (stream, Some(patch))));
-                                };
-                                if patch_entry_path(&patch) == patch_entry_path(&prev) {
-                                    // Same path — replace buffer
-                                    break Some((None, (stream, Some(patch))));
-                                } else {
-                                    // Different path — emit prev, buffer new
-                                    break Some((Some(prev), (stream, Some(patch))));
-                                }
+                    match stream.next().await {
+                        Some(PatchOrDone::Patch(patch)) => {
+                            let Some(prev) = buffered else {
+                                // First patch — just buffer it
+                                return Some((None, (stream, Some(patch))));
+                            };
+                            if patch_entry_path(&patch) == patch_entry_path(&prev) {
+                                // Same path — replace buffer
+                                Some((None, (stream, Some(patch))))
+                            } else {
+                                // Different path — emit prev, buffer new
+                                Some((Some(prev), (stream, Some(patch))))
                             }
-                            Some(PatchOrDone::Done) | None => {
-                                // Sentinel or stream end: flush buffer and terminate
-                                if let Some(prev) = buffered {
-                                    break Some((Some(prev), (stream, None)));
-                                }
-                                break None;
+                        }
+                        Some(PatchOrDone::Done) | None => {
+                            // Sentinel or stream end: flush buffer and terminate
+                            if let Some(prev) = buffered {
+                                return Some((Some(prev), (stream, None)));
                             }
+                            None
                         }
                     }
                 },
