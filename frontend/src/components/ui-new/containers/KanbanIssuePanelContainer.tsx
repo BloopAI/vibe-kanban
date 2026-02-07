@@ -288,6 +288,7 @@ export function KanbanIssuePanelContainer() {
   }, [displayData.assigneeIds, membersWithProfilesById]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDraftAutosavePaused, setIsDraftAutosavePaused] = useState(false);
 
   // Save status for description (shown in WYSIWYG toolbar)
   const [descriptionSaveStatus, setDescriptionSaveStatus] = useState<
@@ -321,6 +322,14 @@ export function KanbanIssuePanelContainer() {
     deleteScratch: deleteDraftIssueScratch,
     isLoading: draftIssueLoading,
   } = useScratch(ScratchType.DRAFT_ISSUE, DRAFT_ISSUE_ID);
+
+  const hasDraftIssueScratch = useMemo(() => {
+    const scratchData =
+      draftIssueScratch?.payload?.type === 'DRAFT_ISSUE'
+        ? draftIssueScratch.payload.data
+        : undefined;
+    return Boolean(scratchData && scratchData.project_id === projectId);
+  }, [draftIssueScratch, projectId]);
 
   const {
     debounced: debouncedSaveDraftIssue,
@@ -381,6 +390,7 @@ export function KanbanIssuePanelContainer() {
 
     // Clear local text edits (they apply to the previous issue)
     setLocalTextEdits(null);
+    setIsDraftAutosavePaused(false);
 
     // Initialize create form data if in create mode
     if (mode === 'create') {
@@ -477,7 +487,14 @@ export function KanbanIssuePanelContainer() {
 
   // Auto-save draft issue to scratch when form data changes in create mode
   useEffect(() => {
-    if (mode !== 'create' || !createFormData || !projectId) return;
+    if (
+      mode !== 'create' ||
+      !createFormData ||
+      !projectId ||
+      isDraftAutosavePaused
+    ) {
+      return;
+    }
 
     debouncedSaveDraftIssue({
       title: createFormData.title,
@@ -496,6 +513,7 @@ export function KanbanIssuePanelContainer() {
     projectId,
     kanbanCreateDefaultParentIssueId,
     debouncedSaveDraftIssue,
+    isDraftAutosavePaused,
   ]);
 
   // Form change handler - persists changes immediately in edit mode
@@ -506,6 +524,10 @@ export function KanbanIssuePanelContainer() {
     ) => {
       // Create mode: update createFormData for all fields
       if (kanbanCreateMode || !selectedKanbanIssueId) {
+        if (isDraftAutosavePaused) {
+          setIsDraftAutosavePaused(false);
+        }
+
         // For statusId, open the status selection dialog with callback
         if (field === 'statusId') {
           const { ProjectSelectionDialog } = await import(
@@ -641,6 +663,7 @@ export function KanbanIssuePanelContainer() {
       issueTags,
       insertIssueTag,
       removeIssueTag,
+      isDraftAutosavePaused,
     ]
   );
 
@@ -763,10 +786,27 @@ export function KanbanIssuePanelContainer() {
 
   const handleDeleteDraft = useCallback(() => {
     cancelDebouncedDraftIssue();
+    setIsDraftAutosavePaused(true);
+    setCreateFormData({
+      title: '',
+      description: null,
+      statusId: kanbanCreateDefaultStatusId ?? defaultStatusId,
+      priority: kanbanCreateDefaultPriority ?? null,
+      assigneeIds: kanbanCreateDefaultAssigneeIds ?? [],
+      tagIds: [],
+      createDraftWorkspace: false,
+    });
     deleteDraftIssueScratch().catch((error) => {
       console.error('Failed to delete draft issue:', error);
     });
-  }, [cancelDebouncedDraftIssue, deleteDraftIssueScratch]);
+  }, [
+    cancelDebouncedDraftIssue,
+    deleteDraftIssueScratch,
+    kanbanCreateDefaultStatusId,
+    defaultStatusId,
+    kanbanCreateDefaultPriority,
+    kanbanCreateDefaultAssigneeIds,
+  ]);
 
   // Tag create callback - returns the new tag ID so it can be auto-selected
   const handleCreateTag = useCallback(
@@ -833,7 +873,9 @@ export function KanbanIssuePanelContainer() {
         mode === 'edit' ? descriptionSaveStatus : undefined
       }
       titleRef={titleRefCallback}
-      onDeleteDraft={mode === 'create' ? handleDeleteDraft : undefined}
+      onDeleteDraft={
+        mode === 'create' && hasDraftIssueScratch ? handleDeleteDraft : undefined
+      }
       onCopyLink={mode === 'edit' ? handleCopyLink : undefined}
       onMoreActions={mode === 'edit' ? handleMoreActions : undefined}
     />
