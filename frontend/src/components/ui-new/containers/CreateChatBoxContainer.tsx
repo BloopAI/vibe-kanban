@@ -296,8 +296,8 @@ export function CreateChatBoxContainer() {
         <div className="flex w-chat max-w-full flex-col gap-base">
           {showRepoPickerStep && (
             <>
-              <h2 className="text-center text-xl font-medium text-high">
-                Select repositories for this workspace
+              <h2 className="mb-double text-center text-4xl font-medium tracking-tight text-high">
+                Select which repositories you'd like to work on
               </h2>
               <CreateModeRepoPickerBar
                 onContinueToPrompt={() => setIsSelectingRepos(false)}
