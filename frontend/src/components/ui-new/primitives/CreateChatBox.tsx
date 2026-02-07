@@ -191,7 +191,9 @@ export function CreateChatBox({
           <div className="inline-flex items-center gap-half">
             <AgentIcon agent={agent} className="size-icon-xl" />
             <ToolbarDropdown label={executorLabel} disabled={isDisabled}>
-              <DropdownMenuLabel>{t('conversation.executors')}</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                {t('conversation.executors')}
+              </DropdownMenuLabel>
               {executor.options.map((exec) => (
                 <DropdownMenuItem
                   key={exec}
@@ -221,7 +223,10 @@ export function CreateChatBox({
               {variant.onCustomise && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem icon={GearIcon} onClick={variant.onCustomise}>
+                  <DropdownMenuItem
+                    icon={GearIcon}
+                    onClick={variant.onCustomise}
+                  >
                     {t('chatBox.customise')}
                   </DropdownMenuItem>
                 </>
