@@ -178,7 +178,7 @@ export function SubIssueRow({
                       }}
                     >
                       <LinkBreakIcon className="size-icon-xs" />
-                      {t('workspaces.unlinkFromIssue')}
+                      {t('kanban.markIndependentIssue')}
                     </DropdownMenuItem>
                   )}
                   {onDeleteClick && (

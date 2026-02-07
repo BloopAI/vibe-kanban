@@ -375,6 +375,7 @@
     "enterCommentPlaceholder": "Enter your comment here...",
     "subIssues": "Sub-issues",
     "noSubIssues": "No sub-issues",
+    "markIndependentIssue": "Mark as independent issue",
     "parentIssue": "Parent",
     "subIssueIndicator": "↳",
     "showSubIssues": "Show sub-issues",

@@ -375,6 +375,7 @@
     "enterCommentPlaceholder": "コメントを入力してください...",
     "subIssues": "サブ課題",
     "noSubIssues": "サブ課題なし",
+    "markIndependentIssue": "独立した課題としてマーク",
     "parentIssue": "親",
     "subIssueIndicator": "↳",
     "showSubIssues": "サブ課題を表示",

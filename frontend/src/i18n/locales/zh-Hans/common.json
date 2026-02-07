@@ -375,6 +375,7 @@
     "enterCommentPlaceholder": "在此输入评论...",
     "subIssues": "子任务",
     "noSubIssues": "无子任务",
+    "markIndependentIssue": "标记为独立问题",
     "parentIssue": "父级",
     "subIssueIndicator": "↳",
     "showSubIssues": "显示子任务",

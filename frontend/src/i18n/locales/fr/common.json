@@ -375,6 +375,7 @@
     "enterCommentPlaceholder": "Entrez votre commentaire ici...",
     "subIssues": "Sous-tâches",
     "noSubIssues": "Aucune sous-tâche",
+    "markIndependentIssue": "Marquer comme problème indépendant",
     "parentIssue": "Parent",
     "subIssueIndicator": "↳",
     "showSubIssues": "Afficher les sous-tâches",

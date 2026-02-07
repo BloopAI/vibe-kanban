@@ -375,6 +375,7 @@
     "enterCommentPlaceholder": "Ingresa tu comentario aquí...",
     "subIssues": "Subtareas",
     "noSubIssues": "Sin subtareas",
+    "markIndependentIssue": "Marcar como problema independiente",
     "parentIssue": "Padre",
     "subIssueIndicator": "↳",
     "showSubIssues": "Mostrar subtareas",

@@ -375,6 +375,7 @@
     "enterCommentPlaceholder": "댓글을 입력하세요...",
     "subIssues": "하위 이슈",
     "noSubIssues": "하위 이슈 없음",
+    "markIndependentIssue": "독립 이슈로 표시",
     "parentIssue": "상위",
     "subIssueIndicator": "↳",
     "showSubIssues": "하위 이슈 표시",
