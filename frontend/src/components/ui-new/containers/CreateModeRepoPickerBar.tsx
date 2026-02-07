@@ -216,23 +216,7 @@ export function CreateModeRepoPickerBar({
   return (
     <div className="w-chat max-w-full">
       <div className="px-plusfifty py-base">
-        <div className="flex items-start justify-between gap-base">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-high">
-              {t('sections.repositories')}
-            </p>
-            <p className="text-xs text-low">
-              Add repositories and choose branches for this workspace.
-            </p>
-          </div>
-          <span className="shrink-0 text-xs text-low">
-            {repos.length === 0
-              ? 'No repos selected'
-              : `${repos.length} selected`}
-          </span>
-        </div>
-
-        <div className="mt-base">
+        <div>
           {repos.length === 0 ? (
             <p className="text-sm text-low">No repositories selected yet.</p>
           ) : (
@@ -287,7 +271,7 @@ export function CreateModeRepoPickerBar({
           )}
         </div>
 
-        <div className="mt-base flex flex-wrap items-center gap-half border-t border-border/60 pt-base">
+        <div className="mt-base flex flex-wrap items-center gap-half">
           <button
             type="button"
             onClick={handleChooseRepo}
@@ -327,14 +311,15 @@ export function CreateModeRepoPickerBar({
             )}
             <span>Create repo</span>
           </button>
-        </div>
-        <div className="mt-base flex justify-end">
-          <PrimaryButton
-            variant="default"
-            value="Continue to prompt"
-            onClick={onContinueToPrompt}
-            disabled={isBusy || repos.length === 0}
-          />
+
+          <div className="ml-auto">
+            <PrimaryButton
+              variant="default"
+              value="Continue"
+              onClick={onContinueToPrompt}
+              disabled={isBusy || repos.length === 0}
+            />
+          </div>
         </div>
       </div>
       {pickerError && (
