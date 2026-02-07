@@ -215,7 +215,7 @@ export function CreateModeRepoPickerBar({
 
   return (
     <div className="w-chat max-w-full">
-      <div className="rounded-sm border border-border bg-secondary px-plusfifty py-base">
+      <div className="px-plusfifty py-base">
         <div className="flex items-start justify-between gap-base">
           <div className="min-w-0">
             <p className="text-sm font-medium text-high">
