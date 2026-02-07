@@ -301,22 +301,29 @@ export function CreateChatBox({
           )}
 
           {linkedIssue && (
-            <div
-              className="inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-sm border bg-panel px-2 text-sm font-medium text-normal"
-              title={linkedIssue.title}
-            >
-              <span className="text-low">#</span>
-              <span className="font-mono text-xs">{linkedIssue.simpleId}</span>
-              <button
-                type="button"
-                onClick={linkedIssue.onRemove}
-                disabled={isDisabled}
-                className="ml-1 text-low hover:text-error transition-colors disabled:opacity-50"
-                aria-label={`Remove link to ${linkedIssue.simpleId}`}
+            <>
+              <span
+                className="mx-half h-3 w-px shrink-0 bg-border/70"
+                aria-hidden="true"
+              />
+              <div
+                className="inline-flex shrink-0 items-center gap-half whitespace-nowrap text-sm text-low"
+                title={linkedIssue.title}
               >
-                <XIcon className="size-3" weight="bold" />
-              </button>
-            </div>
+                <span className="font-mono text-xs text-normal">
+                  {linkedIssue.simpleId}
+                </span>
+                <button
+                  type="button"
+                  onClick={linkedIssue.onRemove}
+                  disabled={isDisabled}
+                  className="inline-flex items-center text-low hover:text-error transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label={`Remove link to ${linkedIssue.simpleId}`}
+                >
+                  <XIcon className="size-icon-xs" weight="bold" />
+                </button>
+              </div>
+            </>
           )}
         </div>
 
