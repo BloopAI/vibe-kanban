@@ -226,7 +226,9 @@ export function CreateModeRepoPickerBar({
             </p>
           </div>
           <span className="shrink-0 text-xs text-low">
-            {repos.length === 0 ? 'No repos selected' : `${repos.length} selected`}
+            {repos.length === 0
+              ? 'No repos selected'
+              : `${repos.length} selected`}
           </span>
         </div>
 
