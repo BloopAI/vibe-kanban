@@ -856,6 +856,11 @@ export const repoApi = {
     return handleApiResponse<Repo[]>(response);
   },
 
+  listRecent: async (): Promise<Repo[]> => {
+    const response = await makeRequest('/api/repos/recent');
+    return handleApiResponse<Repo[]>(response);
+  },
+
   getById: async (repoId: string): Promise<Repo> => {
     const response = await makeRequest(`/api/repos/${repoId}`);
     return handleApiResponse<Repo>(response);

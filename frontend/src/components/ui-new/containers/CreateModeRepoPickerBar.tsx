@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
 import {
+  ClockCounterClockwiseIcon,
   GitBranchIcon,
   MagnifyingGlassIcon,
   NoteBlankIcon,
-  PlusIcon,
   SpinnerIcon,
   XIcon,
 } from '@phosphor-icons/react';
@@ -138,7 +138,7 @@ export function CreateModeRepoPickerBar({
     await runPickerAction(
       'choose',
       async () => {
-        const allRepos = await repoApi.list();
+        const allRepos = await repoApi.listRecent();
         const availableRepos = allRepos.filter(
           (repo) => !selectedRepoIds.has(repo.id)
         );
@@ -279,7 +279,10 @@ export function CreateModeRepoPickerBar({
             {pendingAction === 'choose' ? (
               <SpinnerIcon className="size-icon-xs animate-spin" />
             ) : (
-              <PlusIcon className="size-icon-xs" weight="bold" />
+              <ClockCounterClockwiseIcon
+                className="size-icon-xs"
+                weight="bold"
+              />
             )}
             <span>Add recent repo</span>
           </button>

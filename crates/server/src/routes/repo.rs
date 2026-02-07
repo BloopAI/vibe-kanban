@@ -120,6 +120,13 @@ pub async fn get_repos(
     Ok(ResponseJson(ApiResponse::success(repos)))
 }
 
+pub async fn get_recent_repos(
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<Repo>>>, ApiError> {
+    let repos = Repo::list_by_recent_workspace_usage(&deployment.db().pool).await?;
+    Ok(ResponseJson(ApiResponse::success(repos)))
+}
+
 pub async fn get_repo(
     State(deployment): State<DeploymentImpl>,
     Path(repo_id): Path<Uuid>,
@@ -289,6 +296,7 @@ pub async fn list_open_prs(
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/repos", get(get_repos).post(register_repo))
+        .route("/repos/recent", get(get_recent_repos))
         .route("/repos/init", post(init_repo))
         .route("/repos/batch", post(get_repos_batch))
         .route("/repos/{repo_id}", get(get_repo).put(update_repo))
