@@ -76,7 +76,7 @@ export function KanbanContainer() {
     membersWithProfilesById,
     isLoading: orgLoading,
   } = useOrgContext();
-  const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
+  const { activeWorkspaces } = useWorkspaceContext();
   const { userId } = useAuth();
 
   // Get project name by finding the project matching current projectId
@@ -290,12 +290,8 @@ export function KanbanContainer() {
       map.set(workspace.id, workspace);
     }
 
-    for (const workspace of archivedWorkspaces) {
-      map.set(workspace.id, workspace);
-    }
-
     return map;
-  }, [activeWorkspaces, archivedWorkspaces]);
+  }, [activeWorkspaces]);
 
   const prsByWorkspaceId = useMemo(() => {
     const map = new Map<string, WorkspacePr[]>();
@@ -320,11 +316,16 @@ export function KanbanContainer() {
 
     for (const issue of issues) {
       const nonArchivedWorkspaces = getWorkspacesForIssue(issue.id)
-        .filter((workspace) => !workspace.archived)
+        .filter(
+          (workspace) =>
+            !workspace.archived &&
+            !!workspace.local_workspace_id &&
+            localWorkspacesById.has(workspace.local_workspace_id)
+        )
         .map((workspace) => {
-          const localWorkspace = workspace.local_workspace_id
-            ? localWorkspacesById.get(workspace.local_workspace_id)
-            : undefined;
+          const localWorkspace = localWorkspacesById.get(
+            workspace.local_workspace_id!
+          );
 
           return {
             id: workspace.id,
