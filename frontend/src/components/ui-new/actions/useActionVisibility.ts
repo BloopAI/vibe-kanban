@@ -55,8 +55,11 @@ export function useActionVisibilityContext(
   const [searchParams] = useSearchParams();
   const kanbanCreateMode = searchParams.get('mode') === 'create';
   const effectiveProjectId = options?.projectId ?? routeProjectId;
-  const effectiveIssueIds =
-    options?.issueIds ?? (routeIssueId ? [routeIssueId] : []);
+  const optionIssueIds = options?.issueIds;
+  const effectiveIssueIds = useMemo(
+    () => optionIssueIds ?? (routeIssueId ? [routeIssueId] : []),
+    [optionIssueIds, routeIssueId]
+  );
   const hasSelectedKanbanIssue = effectiveIssueIds.length > 0;
   const shouldResolveSelectedIssueParent =
     !!effectiveProjectId && effectiveIssueIds.length === 1;
