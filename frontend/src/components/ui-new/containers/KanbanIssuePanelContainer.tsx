@@ -20,6 +20,15 @@ import { useScratch } from '@/hooks/useScratch';
 
 const DRAFT_ISSUE_ID = '00000000-0000-0000-0000-000000000002';
 
+function areStringSetsEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const aSet = new Set(a);
+  for (const item of b) {
+    if (!aSet.has(item)) return false;
+  }
+  return true;
+}
+
 /**
  * KanbanIssuePanelContainer manages the issue detail/create panel.
  * Uses ProjectContext and OrgContext for data and mutations.
@@ -169,6 +178,24 @@ export function KanbanIssuePanelContainer() {
   const defaultStatusId =
     kanbanCreateDefaultStatusId ?? sortedStatuses[0]?.id ?? '';
 
+  // Default create form values for the current URL defaults + project context
+  const createModeDefaults = useMemo<IssueFormData>(
+    () => ({
+      title: '',
+      description: null,
+      statusId: defaultStatusId,
+      priority: kanbanCreateDefaultPriority ?? null,
+      assigneeIds: [...(kanbanCreateDefaultAssigneeIds ?? [])],
+      tagIds: [],
+      createDraftWorkspace: false,
+    }),
+    [
+      defaultStatusId,
+      kanbanCreateDefaultPriority,
+      kanbanCreateDefaultAssigneeIds,
+    ]
+  );
+
   // Track previous issue ID to detect actual issue switches (not just data updates)
   const prevIssueIdRef = useRef<string | null>(null);
 
@@ -192,13 +219,12 @@ export function KanbanIssuePanelContainer() {
               : (selectedIssue?.title ?? '');
           node.textContent = title;
           lastTitleIssueIdRef.current = selectedKanbanIssueId;
-        } else if (
-          mode === 'create' &&
-          createFormData?.title &&
-          node.textContent !== createFormData.title
-        ) {
-          // Handle late scratch restore: title data changed but issue ID didn't
-          node.textContent = createFormData.title;
+        } else if (mode === 'create') {
+          const title = createFormData?.title ?? '';
+          if (node.textContent !== title) {
+            // Handle late scratch restore and explicit clear after draft delete
+            node.textContent = title;
+          }
         }
         // Auto-focus in create mode after any dialog close focus handling runs.
         if (mode === 'create') {
@@ -241,17 +267,7 @@ export function KanbanIssuePanelContainer() {
   // - Edit mode: text fields from localTextEdits (if editing) or server, dropdown fields always from server
   const displayData = useMemo((): IssueFormData => {
     if (mode === 'create') {
-      return (
-        createFormData ?? {
-          title: '',
-          description: null,
-          statusId: defaultStatusId,
-          priority: null,
-          assigneeIds: [],
-          tagIds: [],
-          createDraftWorkspace: false,
-        }
-      );
+      return createFormData ?? createModeDefaults;
     }
 
     // Edit mode: dropdown fields from server, text fields from local edits or server
@@ -275,10 +291,27 @@ export function KanbanIssuePanelContainer() {
     createFormData,
     localTextEdits,
     selectedIssue,
-    defaultStatusId,
+    createModeDefaults,
     currentAssigneeIds,
     currentTagIds,
   ]);
+
+  const isCreateDraftDirty = useMemo(() => {
+    if (mode !== 'create' || !createFormData) return false;
+    return (
+      createFormData.title !== createModeDefaults.title ||
+      (createFormData.description ?? null) !== createModeDefaults.description ||
+      createFormData.statusId !== createModeDefaults.statusId ||
+      createFormData.priority !== createModeDefaults.priority ||
+      !areStringSetsEqual(
+        createFormData.assigneeIds,
+        createModeDefaults.assigneeIds
+      ) ||
+      !areStringSetsEqual(createFormData.tagIds, createModeDefaults.tagIds) ||
+      createFormData.createDraftWorkspace !==
+        createModeDefaults.createDraftWorkspace
+    );
+  }, [mode, createFormData, createModeDefaults]);
 
   // Resolve assignee IDs to full profiles for avatar display
   const displayAssigneeUsers = useMemo(() => {
@@ -413,15 +446,7 @@ export function KanbanIssuePanelContainer() {
         setCreateFormData(restoreFromScratch(scratchData));
       } else {
         // Priority 2: Seed from URL defaults (read once), then empty form
-        setCreateFormData({
-          title: '',
-          description: null,
-          statusId: kanbanCreateDefaultStatusId ?? defaultStatusId,
-          priority: kanbanCreateDefaultPriority ?? null,
-          assigneeIds: kanbanCreateDefaultAssigneeIds ?? [],
-          tagIds: [],
-          createDraftWorkspace: false,
-        });
+        setCreateFormData(createModeDefaults);
       }
     } else {
       // Edit mode: clear createFormData, displayData will derive from selectedIssue
@@ -438,9 +463,7 @@ export function KanbanIssuePanelContainer() {
     draftIssueLoading,
     projectId,
     restoreFromScratch,
-    kanbanCreateDefaultStatusId,
-    kanbanCreateDefaultPriority,
-    kanbanCreateDefaultAssigneeIds,
+    createModeDefaults,
   ]);
 
   // Handle late scratch loading: if scratch arrives after initial create mode render
@@ -462,15 +485,7 @@ export function KanbanIssuePanelContainer() {
       setCreateFormData(restoreFromScratch(scratchData));
     } else if (createFormData === null) {
       // Scratch loaded but no data — seed from URL defaults
-      setCreateFormData({
-        title: '',
-        description: null,
-        statusId: kanbanCreateDefaultStatusId ?? defaultStatusId,
-        priority: kanbanCreateDefaultPriority ?? null,
-        assigneeIds: kanbanCreateDefaultAssigneeIds ?? [],
-        tagIds: [],
-        createDraftWorkspace: false,
-      });
+      setCreateFormData(createModeDefaults);
     }
   }, [
     mode,
@@ -479,10 +494,7 @@ export function KanbanIssuePanelContainer() {
     projectId,
     restoreFromScratch,
     createFormData,
-    kanbanCreateDefaultStatusId,
-    kanbanCreateDefaultPriority,
-    kanbanCreateDefaultAssigneeIds,
-    defaultStatusId,
+    createModeDefaults,
   ]);
 
   // Auto-save draft issue to scratch when form data changes in create mode
@@ -493,6 +505,16 @@ export function KanbanIssuePanelContainer() {
       !projectId ||
       isDraftAutosavePaused
     ) {
+      return;
+    }
+
+    if (!isCreateDraftDirty) {
+      cancelDebouncedDraftIssue();
+      if (hasDraftIssueScratch) {
+        deleteDraftIssueScratch().catch((error) => {
+          console.error('Failed to delete draft issue:', error);
+        });
+      }
       return;
     }
 
@@ -514,6 +536,10 @@ export function KanbanIssuePanelContainer() {
     kanbanCreateDefaultParentIssueId,
     debouncedSaveDraftIssue,
     isDraftAutosavePaused,
+    isCreateDraftDirty,
+    hasDraftIssueScratch,
+    cancelDebouncedDraftIssue,
+    deleteDraftIssueScratch,
   ]);
 
   // Form change handler - persists changes immediately in edit mode
@@ -787,25 +813,14 @@ export function KanbanIssuePanelContainer() {
   const handleDeleteDraft = useCallback(() => {
     cancelDebouncedDraftIssue();
     setIsDraftAutosavePaused(true);
-    setCreateFormData({
-      title: '',
-      description: null,
-      statusId: kanbanCreateDefaultStatusId ?? defaultStatusId,
-      priority: kanbanCreateDefaultPriority ?? null,
-      assigneeIds: kanbanCreateDefaultAssigneeIds ?? [],
-      tagIds: [],
-      createDraftWorkspace: false,
-    });
+    setCreateFormData(createModeDefaults);
     deleteDraftIssueScratch().catch((error) => {
       console.error('Failed to delete draft issue:', error);
     });
   }, [
     cancelDebouncedDraftIssue,
     deleteDraftIssueScratch,
-    kanbanCreateDefaultStatusId,
-    defaultStatusId,
-    kanbanCreateDefaultPriority,
-    kanbanCreateDefaultAssigneeIds,
+    createModeDefaults,
   ]);
 
   // Tag create callback - returns the new tag ID so it can be auto-selected
@@ -874,7 +889,7 @@ export function KanbanIssuePanelContainer() {
       }
       titleRef={titleRefCallback}
       onDeleteDraft={
-        mode === 'create' && hasDraftIssueScratch
+        mode === 'create' && isCreateDraftDirty
           ? handleDeleteDraft
           : undefined
       }
