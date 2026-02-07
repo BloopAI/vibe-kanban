@@ -55,7 +55,8 @@ export function useActionVisibilityContext(
   const [searchParams] = useSearchParams();
   const kanbanCreateMode = searchParams.get('mode') === 'create';
   const effectiveProjectId = options?.projectId ?? routeProjectId;
-  const effectiveIssueIds = options?.issueIds ?? (routeIssueId ? [routeIssueId] : []);
+  const effectiveIssueIds =
+    options?.issueIds ?? (routeIssueId ? [routeIssueId] : []);
   const hasSelectedKanbanIssue = effectiveIssueIds.length > 0;
   const shouldResolveSelectedIssueParent =
     !!effectiveProjectId && effectiveIssueIds.length === 1;
@@ -64,9 +65,13 @@ export function useActionVisibilityContext(
     () => ({ project_id: effectiveProjectId ?? '' }),
     [effectiveProjectId]
   );
-  const { data: projectIssues } = useShape(PROJECT_ISSUES_SHAPE, projectIssuesParams, {
-    enabled: shouldResolveSelectedIssueParent,
-  });
+  const { data: projectIssues } = useShape(
+    PROJECT_ISSUES_SHAPE,
+    projectIssuesParams,
+    {
+      enabled: shouldResolveSelectedIssueParent,
+    }
+  );
   const hasSelectedKanbanIssueParent = useMemo(() => {
     if (!shouldResolveSelectedIssueParent) return false;
     const selectedIssue = projectIssues.find(

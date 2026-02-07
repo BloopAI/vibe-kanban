@@ -185,14 +185,14 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
     projectId: propProjectId,
     issueIds: propIssueIds,
   }) => (
-      <CommandBarContent
-        page={page}
-        workspaceId={workspaceId}
-        initialRepoId={initialRepoId}
-        propProjectId={propProjectId}
-        propIssueIds={propIssueIds}
-      />
-    )
+    <CommandBarContent
+      page={page}
+      workspaceId={workspaceId}
+      initialRepoId={initialRepoId}
+      propProjectId={propProjectId}
+      propIssueIds={propIssueIds}
+    />
+  )
 );
 
 export const CommandBarDialog = defineModal<CommandBarDialogProps | void, void>(
