@@ -8,10 +8,6 @@ import { CommandDialog } from '@/components/ui-new/primitives/Command';
 import { CommandBar } from '@/components/ui-new/primitives/CommandBar';
 import { useActions } from '@/contexts/ActionsContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import {
-  ProjectProvider,
-  useProjectContext,
-} from '@/contexts/remote/ProjectContext';
 import { attemptKeys } from '@/hooks/useAttempt';
 import type {
   PageId,
@@ -38,14 +34,12 @@ function CommandBarContent({
   page,
   workspaceId,
   initialRepoId,
-  hasSelectedKanbanIssueParent = false,
   propProjectId,
   propIssueIds,
 }: {
   page: PageId;
   workspaceId?: string;
   initialRepoId?: string;
-  hasSelectedKanbanIssueParent?: boolean;
   propProjectId?: string;
   propIssueIds?: string[];
 }) {
@@ -54,7 +48,6 @@ function CommandBarContent({
   const queryClient = useQueryClient();
   const { executeAction, getLabel } = useActions();
   const { workspaceId: contextWorkspaceId, repos } = useWorkspaceContext();
-  const baseVisibilityContext = useActionVisibilityContext();
 
   // Get issue context from props or route params (URL is single source of truth)
   const { projectId: routeProjectId, issueId: routeIssueId } = useParams<{
@@ -68,13 +61,10 @@ function CommandBarContent({
     () => propIssueIds ?? (routeIssueId ? [routeIssueId] : []),
     [propIssueIds, routeIssueId]
   );
-  const visibilityContext = useMemo(
-    () => ({
-      ...baseVisibilityContext,
-      hasSelectedKanbanIssueParent,
-    }),
-    [baseVisibilityContext, hasSelectedKanbanIssueParent]
-  );
+  const visibilityContext = useActionVisibilityContext({
+    projectId: effectiveProjectId,
+    issueIds: effectiveIssueIds,
+  });
 
   const effectiveWorkspaceId = workspaceId ?? contextWorkspaceId;
   const workspace = effectiveWorkspaceId
@@ -187,44 +177,6 @@ function CommandBarContent({
   );
 }
 
-function ProjectBackedCommandBarContent({
-  page,
-  workspaceId,
-  initialRepoId,
-  propProjectId,
-  propIssueIds,
-}: {
-  page: PageId;
-  workspaceId?: string;
-  initialRepoId?: string;
-  propProjectId?: string;
-  propIssueIds?: string[];
-}) {
-  const { getIssue } = useProjectContext();
-  const { issueId: routeIssueId } = useParams<{ issueId?: string }>();
-
-  const effectiveIssueIds = useMemo(
-    () => propIssueIds ?? (routeIssueId ? [routeIssueId] : []),
-    [propIssueIds, routeIssueId]
-  );
-
-  const hasSelectedKanbanIssueParent = useMemo(() => {
-    if (effectiveIssueIds.length !== 1) return false;
-    return !!getIssue(effectiveIssueIds[0])?.parent_issue_id;
-  }, [effectiveIssueIds, getIssue]);
-
-  return (
-    <CommandBarContent
-      page={page}
-      workspaceId={workspaceId}
-      initialRepoId={initialRepoId}
-      hasSelectedKanbanIssueParent={hasSelectedKanbanIssueParent}
-      propProjectId={propProjectId}
-      propIssueIds={propIssueIds}
-    />
-  );
-}
-
 const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
   ({
     page = 'root',
@@ -232,34 +184,15 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
     repoId: initialRepoId,
     projectId: propProjectId,
     issueIds: propIssueIds,
-  }) => {
-    const { projectId: routeProjectId } = useParams<{ projectId?: string }>();
-    const effectiveProjectId = propProjectId ?? routeProjectId;
-
-    if (effectiveProjectId) {
-      return (
-        <ProjectProvider projectId={effectiveProjectId}>
-          <ProjectBackedCommandBarContent
-            page={page}
-            workspaceId={workspaceId}
-            initialRepoId={initialRepoId}
-            propProjectId={effectiveProjectId}
-            propIssueIds={propIssueIds}
-          />
-        </ProjectProvider>
-      );
-    }
-
-    return (
+  }) => (
       <CommandBarContent
         page={page}
         workspaceId={workspaceId}
         initialRepoId={initialRepoId}
-        propProjectId={effectiveProjectId}
+        propProjectId={propProjectId}
         propIssueIds={propIssueIds}
       />
-    );
-  }
+    )
 );
 
 export const CommandBarDialog = defineModal<CommandBarDialogProps | void, void>(
