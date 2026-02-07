@@ -8,6 +8,7 @@ import { CommandDialog } from '@/components/ui-new/primitives/Command';
 import { CommandBar } from '@/components/ui-new/primitives/CommandBar';
 import { useActions } from '@/contexts/ActionsContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { ProjectProvider } from '@/contexts/remote/ProjectContext';
 import { attemptKeys } from '@/hooks/useAttempt';
 import type {
   PageId,
@@ -182,15 +183,24 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
     projectId: propProjectId,
     issueIds: propIssueIds,
   }) => {
-    return (
+    const { projectId: routeProjectId } = useParams<{ projectId?: string }>();
+    const effectiveProjectId = propProjectId ?? routeProjectId;
+
+    const content = (
       <CommandBarContent
         page={page}
         workspaceId={workspaceId}
         initialRepoId={initialRepoId}
-        propProjectId={propProjectId}
+        propProjectId={effectiveProjectId}
         propIssueIds={propIssueIds}
       />
     );
+
+    if (effectiveProjectId) {
+      return <ProjectProvider projectId={effectiveProjectId}>{content}</ProjectProvider>;
+    }
+
+    return content;
   }
 );
 
