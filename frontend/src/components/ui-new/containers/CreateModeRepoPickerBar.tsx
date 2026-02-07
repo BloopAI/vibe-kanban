@@ -1,10 +1,19 @@
 import { useCallback, useMemo, useState } from 'react';
-import { GitBranchIcon, PlusIcon, XIcon } from '@phosphor-icons/react';
+import {
+  GitBranchIcon,
+  MagnifyingGlassIcon,
+  NoteBlankIcon,
+  PlusIcon,
+  XIcon,
+} from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import type { Repo } from 'shared/types';
 import type { BranchItem, RepoItem } from '@/components/ui-new/actions/pages';
 import { repoApi } from '@/lib/api';
 import { useCreateMode } from '@/contexts/CreateModeContext';
+import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { CreateRepoDialog } from '@/components/ui-new/dialogs/CreateRepoDialog';
 import {
   SelectionDialog,
   type SelectionPage,
@@ -36,6 +45,7 @@ function toBranchItem(branch: {
 }
 
 export function CreateModeRepoPickerBar() {
+  const { t } = useTranslation('common');
   const { repos, targetBranches, addRepo, removeRepo, setTargetBranch } =
     useCreateMode();
   const [isPicking, setIsPicking] = useState(false);
@@ -59,6 +69,22 @@ export function CreateModeRepoPickerBar() {
 
     return branchResult?.branch ?? null;
   }, []);
+
+  const addRepoWithBranchSelection = useCallback(
+    async (repo: Repo) => {
+      if (selectedRepoIds.has(repo.id)) {
+        setPickerError('Repository is already selected');
+        return;
+      }
+
+      const selectedBranch = await pickBranchForRepo(repo);
+      if (!selectedBranch) return;
+
+      addRepo(repo);
+      setTargetBranch(repo.id, selectedBranch);
+    },
+    [addRepo, pickBranchForRepo, selectedRepoIds, setTargetBranch]
+  );
 
   const handleChooseRepo = useCallback(async () => {
     setPickerError(null);
@@ -89,11 +115,7 @@ export function CreateModeRepoPickerBar() {
       );
       if (!selectedRepo) return;
 
-      const selectedBranch = await pickBranchForRepo(selectedRepo);
-      if (!selectedBranch) return;
-
-      addRepo(selectedRepo);
-      setTargetBranch(selectedRepo.id, selectedBranch);
+      await addRepoWithBranchSelection(selectedRepo);
     } catch (error) {
       setPickerError(
         error instanceof Error
@@ -103,7 +125,46 @@ export function CreateModeRepoPickerBar() {
     } finally {
       setIsPicking(false);
     }
-  }, [addRepo, pickBranchForRepo, selectedRepoIds, setTargetBranch]);
+  }, [addRepoWithBranchSelection, selectedRepoIds]);
+
+  const handleBrowseRepo = useCallback(async () => {
+    setPickerError(null);
+    setIsPicking(true);
+
+    try {
+      const selectedPath = await FolderPickerDialog.show({
+        title: t('dialogs.selectGitRepository'),
+        description: t('dialogs.chooseExistingRepo'),
+      });
+      if (!selectedPath) return;
+
+      const repo = await repoApi.register({ path: selectedPath });
+      await addRepoWithBranchSelection(repo);
+    } catch (error) {
+      setPickerError(
+        error instanceof Error ? error.message : 'Failed to register repository'
+      );
+    } finally {
+      setIsPicking(false);
+    }
+  }, [addRepoWithBranchSelection, t]);
+
+  const handleCreateRepo = useCallback(async () => {
+    setPickerError(null);
+    setIsPicking(true);
+
+    try {
+      const repo = await CreateRepoDialog.show();
+      if (!repo) return;
+      await addRepoWithBranchSelection(repo);
+    } catch (error) {
+      setPickerError(
+        error instanceof Error ? error.message : 'Failed to create repository'
+      );
+    } finally {
+      setIsPicking(false);
+    }
+  }, [addRepoWithBranchSelection]);
 
   const handleChangeBranch = useCallback(
     async (repo: Repo) => {
@@ -166,6 +227,20 @@ export function CreateModeRepoPickerBar() {
             value={repos.length === 0 ? 'Choose repo' : 'Add repo'}
             actionIcon={isPicking ? 'spinner' : PlusIcon}
             onClick={handleChooseRepo}
+            disabled={isPicking}
+          />
+          <PrimaryButton
+            variant="tertiary"
+            value={t('actions.browseRepos')}
+            actionIcon={isPicking ? 'spinner' : MagnifyingGlassIcon}
+            onClick={handleBrowseRepo}
+            disabled={isPicking}
+          />
+          <PrimaryButton
+            variant="tertiary"
+            value={t('actions.createNewRepo')}
+            actionIcon={isPicking ? 'spinner' : NoteBlankIcon}
+            onClick={handleCreateRepo}
             disabled={isPicking}
           />
         </div>
