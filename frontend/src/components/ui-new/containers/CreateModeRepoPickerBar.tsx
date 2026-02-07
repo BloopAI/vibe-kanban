@@ -216,10 +216,8 @@ export function CreateModeRepoPickerBar({
   return (
     <div className="w-chat max-w-full">
       <div className="px-plusfifty py-base">
-        <div>
-          {repos.length === 0 ? (
-            <p className="text-sm text-low">No repositories selected yet.</p>
-          ) : (
+        {repos.length > 0 && (
+          <div>
             <div className="rounded-sm border border-border/60">
               {repos.map((repo, index) => {
                 const branch = targetBranches[repo.id] ?? 'Select branch';
@@ -268,8 +266,8 @@ export function CreateModeRepoPickerBar({
                 );
               })}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="mt-base flex flex-wrap items-center gap-half">
           <button
