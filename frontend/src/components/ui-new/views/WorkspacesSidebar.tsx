@@ -135,8 +135,9 @@ export function WorkspacesSidebar({
           : Infinity;
         return aTime - bTime;
       };
+      // Running workspaces should stay in the "Running" section even if unseen.
       const needsAttention = (ws: Workspace) =>
-        ws.hasPendingApproval || ws.hasUnseenActivity;
+        ws.hasPendingApproval || (ws.hasUnseenActivity && !ws.isRunning);
 
       return {
         raisedHandWorkspaces: workspaces
