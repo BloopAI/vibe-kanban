@@ -14,8 +14,6 @@ import { repoApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useCreateMode } from '@/contexts/CreateModeContext';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
-import { dropdownMenuTriggerButtonClassName } from '@/components/ui-new/primitives/Dropdown';
-import { IconButton } from '@/components/ui-new/primitives/IconButton';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { CreateRepoDialog } from '@/components/ui-new/dialogs/CreateRepoDialog';
 import {
@@ -54,10 +52,13 @@ function getRepoDisplayName(repo: Repo): string {
 
 type PendingAction = 'choose' | 'browse' | 'create' | 'branch' | null;
 
-const branchButtonClassName = cn(
-  dropdownMenuTriggerButtonClassName,
-  'max-w-[220px] shrink-0'
-);
+const inlineControlButtonClassName =
+  'inline-flex items-center gap-half rounded-sm px-half py-half text-sm text-low ' +
+  'hover:text-high disabled:cursor-not-allowed disabled:opacity-50';
+
+const repoRowButtonClassName =
+  'inline-flex items-center gap-half text-sm text-low hover:text-high ' +
+  'disabled:cursor-not-allowed disabled:opacity-50';
 
 interface CreateModeRepoPickerBarProps {
   onContinueToPrompt: () => void;
@@ -214,7 +215,7 @@ export function CreateModeRepoPickerBar({
 
   return (
     <div className="w-chat max-w-full">
-      <div className="rounded-sm border border-border bg-secondary p-base">
+      <div className="rounded-sm border border-border bg-secondary px-plusfifty py-base">
         <div className="flex items-start justify-between gap-base">
           <div className="min-w-0">
             <p className="text-sm font-medium text-high">
@@ -224,83 +225,106 @@ export function CreateModeRepoPickerBar({
               Add repositories and choose branches for this workspace.
             </p>
           </div>
-          {repos.length > 0 && (
-            <span className="rounded-sm border border-border bg-panel px-half py-[1px] text-xs text-low shrink-0">
-              {repos.length} selected
-            </span>
+          <span className="shrink-0 text-xs text-low">
+            {repos.length === 0 ? 'No repos selected' : `${repos.length} selected`}
+          </span>
+        </div>
+
+        <div className="mt-base">
+          {repos.length === 0 ? (
+            <p className="text-sm text-low">No repositories selected yet.</p>
+          ) : (
+            <div className="rounded-sm border border-border/60">
+              {repos.map((repo, index) => {
+                const branch = targetBranches[repo.id] ?? 'Select branch';
+                const repoDisplayName = getRepoDisplayName(repo);
+                const isChangingBranch =
+                  pendingAction === 'branch' && branchRepoId === repo.id;
+
+                return (
+                  <div
+                    key={repo.id}
+                    className={cn(
+                      'flex min-w-0 items-center gap-half px-base py-half',
+                      index > 0 && 'border-t border-border/60'
+                    )}
+                  >
+                    <span className="min-w-0 flex-1 truncate text-sm text-normal">
+                      {repoDisplayName}
+                    </span>
+                    <span className="h-3 w-px shrink-0 bg-border/70" />
+                    <button
+                      type="button"
+                      onClick={() => handleChangeBranch(repo)}
+                      disabled={isBusy}
+                      className={repoRowButtonClassName}
+                      title="Change branch"
+                    >
+                      {isChangingBranch ? (
+                        <SpinnerIcon className="size-icon-xs animate-spin" />
+                      ) : (
+                        <GitBranchIcon className="size-icon-xs" weight="bold" />
+                      )}
+                      <span className="max-w-[200px] truncate">{branch}</span>
+                    </button>
+                    <span className="h-3 w-px shrink-0 bg-border/70" />
+                    <button
+                      type="button"
+                      onClick={() => removeRepo(repo.id)}
+                      disabled={isBusy}
+                      aria-label={`Remove ${repoDisplayName}`}
+                      title={`Remove ${repoDisplayName}`}
+                      className={cn(repoRowButtonClassName, 'hover:text-error')}
+                    >
+                      <XIcon className="size-icon-xs" weight="bold" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
 
-        {repos.length > 0 && (
-          <div className="mt-base flex flex-wrap gap-half">
-            {repos.map((repo) => {
-              const branch = targetBranches[repo.id] ?? 'Select branch';
-              const repoDisplayName = getRepoDisplayName(repo);
-              const isChangingBranch =
-                pendingAction === 'branch' && branchRepoId === repo.id;
-
-              return (
-                <div
-                  key={repo.id}
-                  className="inline-flex max-w-full items-center gap-half rounded-sm border border-border bg-panel px-base py-half text-sm"
-                >
-                  <span className="truncate max-w-[220px]" title={repo.path}>
-                    {repoDisplayName}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleChangeBranch(repo)}
-                    disabled={isBusy}
-                    className={branchButtonClassName}
-                    title="Change branch"
-                  >
-                    {isChangingBranch ? (
-                      <SpinnerIcon className="size-icon-xs animate-spin" />
-                    ) : (
-                      <GitBranchIcon className="size-icon-xs" weight="bold" />
-                    )}
-                    <span className="truncate text-sm text-normal">
-                      {branch}
-                    </span>
-                  </button>
-                  <IconButton
-                    icon={XIcon}
-                    onClick={() => removeRepo(repo.id)}
-                    disabled={isBusy}
-                    aria-label={`Remove ${repoDisplayName}`}
-                    title={`Remove ${repoDisplayName}`}
-                    iconClassName="size-icon-xs"
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="mt-base flex flex-wrap gap-half border-t border-border pt-base">
-          <PrimaryButton
-            variant="tertiary"
-            value="Add recent repo"
-            actionIcon={pendingAction === 'choose' ? 'spinner' : PlusIcon}
+        <div className="mt-base flex flex-wrap items-center gap-half border-t border-border/60 pt-base">
+          <button
+            type="button"
             onClick={handleChooseRepo}
             disabled={isBusy}
-          />
-          <PrimaryButton
-            variant="tertiary"
-            value="Browse folder"
-            actionIcon={
-              pendingAction === 'browse' ? 'spinner' : MagnifyingGlassIcon
-            }
+            className={inlineControlButtonClassName}
+          >
+            {pendingAction === 'choose' ? (
+              <SpinnerIcon className="size-icon-xs animate-spin" />
+            ) : (
+              <PlusIcon className="size-icon-xs" weight="bold" />
+            )}
+            <span>Add recent repo</span>
+          </button>
+          <button
+            type="button"
             onClick={handleBrowseRepo}
             disabled={isBusy}
-          />
-          <PrimaryButton
-            variant="tertiary"
-            value="Create repo"
-            actionIcon={pendingAction === 'create' ? 'spinner' : NoteBlankIcon}
+            className={inlineControlButtonClassName}
+          >
+            {pendingAction === 'browse' ? (
+              <SpinnerIcon className="size-icon-xs animate-spin" />
+            ) : (
+              <MagnifyingGlassIcon className="size-icon-xs" weight="bold" />
+            )}
+            <span>Browse folder</span>
+          </button>
+          <button
+            type="button"
             onClick={handleCreateRepo}
             disabled={isBusy}
-          />
+            className={inlineControlButtonClassName}
+          >
+            {pendingAction === 'create' ? (
+              <SpinnerIcon className="size-icon-xs animate-spin" />
+            ) : (
+              <NoteBlankIcon className="size-icon-xs" weight="bold" />
+            )}
+            <span>Create repo</span>
+          </button>
         </div>
         <div className="mt-base flex justify-end">
           <PrimaryButton
