@@ -160,7 +160,7 @@ export function CreateChatBox({
 
       <div className="rounded-sm border border-border bg-secondary px-plusfifty py-base">
         <div className="flex items-end gap-base">
-          <div className="min-w-0 flex-1 py-half">
+          <div className="min-w-0 flex-1 py-half overflow-hidden">
             <WYSIWYGEditor
               placeholder="Describe what you'd like the agent to work on..."
               value={editor.value}
@@ -189,9 +189,9 @@ export function CreateChatBox({
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-base">
-        <div className="flex min-w-0 items-center gap-0 overflow-x-auto pr-half">
-          <div className="inline-flex items-center gap-half">
+      <div className="flex items-start justify-between gap-base">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-0">
+          <div className="inline-flex shrink-0 items-center gap-half">
             <DropdownMenu>
               <DropdownMenuTriggerButton
                 disabled={isDisabled}
@@ -234,7 +234,7 @@ export function CreateChatBox({
               <ToolbarDropdown
                 label={variantLabel}
                 disabled={isDisabled}
-                className="h-auto border-0 bg-transparent px-0 py-0 hover:bg-transparent focus-visible:ring-0"
+                className="h-auto shrink-0 border-0 bg-transparent px-0 py-0 hover:bg-transparent focus-visible:ring-0"
               >
                 <DropdownMenuLabel>{t('chatBox.variants')}</DropdownMenuLabel>
                 {variantOptions.map((variantName) => (
@@ -274,7 +274,7 @@ export function CreateChatBox({
             title={repoSummaryTitle}
             disabled={isDisabled}
             className={cn(
-              'max-w-[320px] bg-transparent px-base py-0 text-sm text-normal hover:text-high',
+              'max-w-[320px] shrink-0 bg-transparent px-base py-0 text-sm text-normal hover:text-high',
               'disabled:cursor-not-allowed disabled:opacity-50'
             )}
           >
@@ -282,7 +282,7 @@ export function CreateChatBox({
           </button>
 
           {saveAsDefault?.visible && (
-            <label className="ml-half flex cursor-pointer items-center gap-1.5 text-sm text-low">
+            <label className="ml-half flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap text-sm text-low">
               <Checkbox
                 checked={saveAsDefault.checked}
                 onCheckedChange={saveAsDefault.onChange}
@@ -295,7 +295,7 @@ export function CreateChatBox({
 
           {linkedIssue && (
             <div
-              className="inline-flex items-center gap-1 h-6 px-2 bg-panel rounded-sm border text-sm text-normal font-medium whitespace-nowrap"
+              className="inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-sm border bg-panel px-2 text-sm font-medium text-normal"
               title={linkedIssue.title}
             >
               <span className="text-low">#</span>
@@ -313,16 +313,18 @@ export function CreateChatBox({
           )}
         </div>
 
-        <PrimaryButton
-          onClick={onSend}
-          disabled={!canSend}
-          actionIcon={isSending ? 'spinner' : undefined}
-          value={
-            isSending
-              ? t('tasks:conversation.workspace.creating')
-              : t('tasks:conversation.workspace.create')
-          }
-        />
+        <div className="shrink-0">
+          <PrimaryButton
+            onClick={onSend}
+            disabled={!canSend}
+            actionIcon={isSending ? 'spinner' : undefined}
+            value={
+              isSending
+                ? t('tasks:conversation.workspace.creating')
+                : t('tasks:conversation.workspace.create')
+            }
+          />
+        </div>
       </div>
 
       <input
