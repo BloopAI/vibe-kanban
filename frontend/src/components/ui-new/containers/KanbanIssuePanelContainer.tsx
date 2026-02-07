@@ -874,7 +874,9 @@ export function KanbanIssuePanelContainer() {
       }
       titleRef={titleRefCallback}
       onDeleteDraft={
-        mode === 'create' && hasDraftIssueScratch ? handleDeleteDraft : undefined
+        mode === 'create' && hasDraftIssueScratch
+          ? handleDeleteDraft
+          : undefined
       }
       onCopyLink={mode === 'edit' ? handleCopyLink : undefined}
       onMoreActions={mode === 'edit' ? handleMoreActions : undefined}
