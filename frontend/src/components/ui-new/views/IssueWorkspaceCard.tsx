@@ -89,7 +89,7 @@ export function IssueWorkspaceCard({
       className={cn(
         'flex flex-col gap-half p-base bg-panel rounded-sm transition-all duration-150',
         onClick &&
-          'cursor-pointer hover:bg-secondary/70 hover:shadow-sm hover:-translate-y-px active:translate-y-0',
+          'cursor-pointer hover:bg-secondary/70',
         className
       )}
       onClick={
