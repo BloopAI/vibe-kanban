@@ -135,16 +135,18 @@ export function WorkspacesSidebar({
           : Infinity;
         return aTime - bTime;
       };
+      const needsAttention = (ws: Workspace) =>
+        ws.hasPendingApproval || ws.hasUnseenActivity;
 
       return {
         raisedHandWorkspaces: workspaces
-          .filter((ws) => ws.hasPendingApproval)
+          .filter((ws) => needsAttention(ws))
           .sort(sortByCompletedAt),
         idleWorkspaces: workspaces
-          .filter((ws) => !ws.isRunning && !ws.hasPendingApproval)
+          .filter((ws) => !ws.isRunning && !needsAttention(ws))
           .sort(sortByCompletedAt),
         runningWorkspaces: workspaces
-          .filter((ws) => ws.isRunning && !ws.hasPendingApproval)
+          .filter((ws) => ws.isRunning && !needsAttention(ws))
           .sort(sortByCompletedAt),
       };
     }, [workspaces]);
