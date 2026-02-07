@@ -87,9 +87,9 @@ export function IssueWorkspaceCard({
   return (
     <div
       className={cn(
-        'flex flex-col gap-half p-base bg-panel rounded-sm border border-transparent transition-all duration-150',
+        'flex flex-col gap-half p-base bg-panel rounded-sm transition-all duration-150',
         onClick &&
-          'cursor-pointer hover:border-border hover:bg-secondary/70 hover:shadow-sm hover:-translate-y-px active:translate-y-0',
+          'cursor-pointer hover:bg-secondary/70 hover:shadow-sm hover:-translate-y-px active:translate-y-0',
         className
       )}
       onClick={
