@@ -199,7 +199,7 @@ export function CreateChatBox({
                 aria-label={t('tasks:conversation.executors')}
               >
                 <div className="flex min-w-0 items-center gap-half">
-                  <AgentIcon agent={agent} className="size-icon-sm shrink-0" />
+                  <AgentIcon agent={agent} className="size-icon-base shrink-0" />
                   <span className="max-w-[200px] truncate text-sm text-normal">
                     {executorLabel}
                   </span>
