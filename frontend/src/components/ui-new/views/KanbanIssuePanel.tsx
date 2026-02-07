@@ -67,6 +67,7 @@ export interface KanbanIssuePanelProps {
   onClose: () => void;
   onSubmit: () => void;
   onCmdEnterSubmit?: () => void;
+  onDeleteDraft?: () => void;
 
   // Tag create callback - returns the new tag ID
   onCreateTag?: (data: { name: string; color: string }) => string;
@@ -104,6 +105,7 @@ export function KanbanIssuePanel({
   onClose,
   onSubmit,
   onCmdEnterSubmit,
+  onDeleteDraft,
   onCreateTag,
   isSubmitting,
   descriptionSaveStatus,
@@ -272,7 +274,15 @@ export function KanbanIssuePanel({
 
         {/* Create Task Button (Create mode only) */}
         {isCreateMode && (
-          <div className="px-base pb-base">
+          <div className="px-base pb-base flex items-center gap-half">
+            {onDeleteDraft && (
+              <PrimaryButton
+                value="Delete Draft"
+                onClick={onDeleteDraft}
+                disabled={isSubmitting}
+                variant="tertiary"
+              />
+            )}
             <PrimaryButton
               value="Create Task"
               onClick={onSubmit}
