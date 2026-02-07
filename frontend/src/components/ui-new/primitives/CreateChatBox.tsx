@@ -23,9 +23,12 @@ import {
 import { PrimaryButton } from './PrimaryButton';
 import { ToolbarDropdown, ToolbarIconButton } from './Toolbar';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuTriggerButton,
 } from './Dropdown';
 
 export interface ExecutorProps {
@@ -156,8 +159,8 @@ export function CreateChatBox({
       )}
 
       <div className="rounded-sm border border-border bg-secondary p-base">
-        <div className="flex items-end gap-base">
-          <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-base">
+          <div className="min-w-0 flex-1 rounded-sm border border-border bg-primary px-base py-half">
             <WYSIWYGEditor
               placeholder="Describe what you'd like the agent to work on..."
               value={editor.value}
@@ -181,7 +184,7 @@ export function CreateChatBox({
             title={t('tasks:taskFormDialog.attachImage')}
             onClick={handleAttachClick}
             disabled={isDisabled}
-            className="mb-half rounded-sm border border-border bg-panel p-half hover:bg-primary"
+            className="shrink-0"
           />
         </div>
       </div>
@@ -189,25 +192,42 @@ export function CreateChatBox({
       <div className="flex items-center justify-between gap-base">
         <div className="flex min-w-0 items-center gap-half overflow-x-auto pr-half">
           <div className="inline-flex items-center gap-half">
-            <AgentIcon agent={agent} className="size-icon-xl" />
-            <ToolbarDropdown label={executorLabel} disabled={isDisabled}>
-              <DropdownMenuLabel>
-                {t('conversation.executors')}
-              </DropdownMenuLabel>
-              {executor.options.map((exec) => (
-                <DropdownMenuItem
-                  key={exec}
-                  icon={executor.selected === exec ? CheckIcon : undefined}
-                  onClick={() => executor.onChange(exec)}
-                >
-                  {toPrettyCase(exec)}
-                </DropdownMenuItem>
-              ))}
-            </ToolbarDropdown>
+            <DropdownMenu>
+              <DropdownMenuTriggerButton
+                disabled={isDisabled}
+                className="hover:bg-panel"
+                aria-label={t('tasks:conversation.executors')}
+              >
+                <div className="flex min-w-0 items-center gap-half">
+                  <AgentIcon agent={agent} className="size-icon-xl" />
+                  <span className="max-w-[200px] truncate text-sm text-normal">
+                    {executorLabel}
+                  </span>
+                </div>
+              </DropdownMenuTriggerButton>
+              <DropdownMenuContent>
+                <DropdownMenuLabel>
+                  {t('tasks:conversation.executors')}
+                </DropdownMenuLabel>
+                {executor.options.map((exec) => (
+                  <DropdownMenuItem
+                    key={exec}
+                    icon={executor.selected === exec ? CheckIcon : undefined}
+                    onClick={() => executor.onChange(exec)}
+                  >
+                    {toPrettyCase(exec)}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {variant && variantOptions.length > 0 && (
-            <ToolbarDropdown label={variantLabel} disabled={isDisabled}>
+            <ToolbarDropdown
+              label={variantLabel}
+              disabled={isDisabled}
+              className="hover:bg-panel"
+            >
               <DropdownMenuLabel>{t('chatBox.variants')}</DropdownMenuLabel>
               {variantOptions.map((variantName) => (
                 <DropdownMenuItem
@@ -255,7 +275,7 @@ export function CreateChatBox({
                 className="h-3.5 w-3.5"
                 disabled={isDisabled}
               />
-              <span>{t('conversation.saveAsDefault')}</span>
+              <span>{t('tasks:conversation.saveAsDefault')}</span>
             </label>
           )}
 
@@ -285,8 +305,8 @@ export function CreateChatBox({
           actionIcon={isSending ? 'spinner' : undefined}
           value={
             isSending
-              ? t('conversation.workspace.creating')
-              : t('conversation.workspace.create')
+              ? t('tasks:conversation.workspace.creating')
+              : t('tasks:conversation.workspace.create')
           }
         />
       </div>
