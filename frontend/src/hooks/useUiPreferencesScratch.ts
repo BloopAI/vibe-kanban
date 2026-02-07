@@ -30,6 +30,7 @@ function storeToScratchData(state: {
   contextBarPosition: ContextBarPosition;
   paneSizes: Record<string, number | string>;
   collapsedPaths: Record<string, string[]>;
+  fileSearchRepoByProject: Record<string, string>;
   isLeftSidebarVisible: boolean;
   isRightSidebarVisible: boolean;
   isTerminalVisible: boolean;
@@ -49,6 +50,7 @@ function storeToScratchData(state: {
     context_bar_position: state.contextBarPosition,
     pane_sizes: state.paneSizes as { [key: string]: JsonValue },
     collapsed_paths: state.collapsedPaths,
+    file_search_repo_by_project: state.fileSearchRepoByProject,
     is_left_sidebar_visible: state.isLeftSidebarVisible,
     is_right_sidebar_visible: state.isRightSidebarVisible,
     is_terminal_visible: state.isTerminalVisible,
@@ -65,6 +67,7 @@ function scratchDataToStore(data: UiPreferencesData): {
   contextBarPosition: ContextBarPosition;
   paneSizes: Record<string, number | string>;
   collapsedPaths: Record<string, string[]>;
+  fileSearchRepoByProject: Record<string, string>;
   isLeftSidebarVisible: boolean;
   isRightSidebarVisible: boolean;
   isTerminalVisible: boolean;
@@ -90,6 +93,8 @@ function scratchDataToStore(data: UiPreferencesData): {
       (data.context_bar_position as ContextBarPosition) ?? 'middle-right',
     paneSizes: (data.pane_sizes ?? {}) as Record<string, number | string>,
     collapsedPaths: (data.collapsed_paths ?? {}) as Record<string, string[]>,
+    fileSearchRepoByProject: (data.file_search_repo_by_project ??
+      {}) as Record<string, string>,
     isLeftSidebarVisible: data.is_left_sidebar_visible ?? true,
     isRightSidebarVisible: data.is_right_sidebar_visible ?? true,
     isTerminalVisible: data.is_terminal_visible ?? true,
@@ -119,6 +124,7 @@ export function useUiPreferencesScratch() {
     contextBarPosition: state.contextBarPosition,
     paneSizes: state.paneSizes,
     collapsedPaths: state.collapsedPaths,
+    fileSearchRepoByProject: state.fileSearchRepoByProject,
     isLeftSidebarVisible: state.isLeftSidebarVisible,
     isRightSidebarVisible: state.isRightSidebarVisible,
     isTerminalVisible: state.isTerminalVisible,
@@ -143,6 +149,7 @@ export function useUiPreferencesScratch() {
       contextBarPosition: currentState.contextBarPosition,
       paneSizes: currentState.paneSizes,
       collapsedPaths: currentState.collapsedPaths,
+      fileSearchRepoByProject: currentState.fileSearchRepoByProject,
       isLeftSidebarVisible: currentState.isLeftSidebarVisible,
       isRightSidebarVisible: currentState.isRightSidebarVisible,
       isTerminalVisible: currentState.isTerminalVisible,
@@ -183,6 +190,7 @@ export function useUiPreferencesScratch() {
         contextBarPosition: serverState.contextBarPosition,
         paneSizes: serverState.paneSizes,
         collapsedPaths: serverState.collapsedPaths,
+        fileSearchRepoByProject: serverState.fileSearchRepoByProject,
         isLeftSidebarVisible: serverState.isLeftSidebarVisible,
         isRightSidebarVisible: serverState.isRightSidebarVisible,
         isTerminalVisible: serverState.isTerminalVisible,

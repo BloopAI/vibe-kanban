@@ -352,6 +352,9 @@
     "tags": "Tags",
     "files": "Files",
     "commands": "Commands",
+    "chooseRepo": "Choose repo",
+    "selectedRepo": "Selected repo: {{repoName}}",
+    "missingRepo": "Selected repo is no longer available.",
     "noTagsOrFiles": "No tags or files found",
     "noCommands": "No commands available for this agent."
   },

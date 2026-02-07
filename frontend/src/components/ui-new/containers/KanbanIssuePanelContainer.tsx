@@ -899,6 +899,7 @@ export function KanbanIssuePanelContainer() {
     <KanbanIssuePanel
       mode={mode}
       displayId={displayId}
+      projectId={projectId}
       formData={displayData}
       assigneeUsers={displayAssigneeUsers}
       onFormChange={handlePropertyChange}
