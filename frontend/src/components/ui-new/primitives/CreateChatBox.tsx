@@ -297,9 +297,7 @@ export function CreateChatBox({
                 <button
                   type="button"
                   className="text-sm text-low hover:text-high disabled:cursor-not-allowed disabled:opacity-50"
-                  onClick={() =>
-                    saveAsDefault.onChange(!saveAsDefault.checked)
-                  }
+                  onClick={() => saveAsDefault.onChange(!saveAsDefault.checked)}
                   disabled={isDisabled}
                 >
                   {t('tasks:conversation.saveAsDefault')}
