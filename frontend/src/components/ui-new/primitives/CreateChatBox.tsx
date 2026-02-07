@@ -158,9 +158,9 @@ export function CreateChatBox({
         </div>
       )}
 
-      <div className="rounded-sm border border-border bg-secondary p-base">
-        <div className="flex items-center gap-base">
-          <div className="min-w-0 flex-1 px-base py-half">
+      <div className="rounded-sm border border-border bg-secondary px-plusfifty py-base">
+        <div className="flex items-end gap-base">
+          <div className="min-w-0 flex-1 py-half">
             <WYSIWYGEditor
               placeholder="Describe what you'd like the agent to work on..."
               value={editor.value}
@@ -184,7 +184,7 @@ export function CreateChatBox({
             title={t('tasks:taskFormDialog.attachImage')}
             onClick={handleAttachClick}
             disabled={isDisabled}
-            className="shrink-0"
+            className="shrink-0 py-half"
           />
         </div>
       </div>
@@ -274,7 +274,7 @@ export function CreateChatBox({
             title={repoSummaryTitle}
             disabled={isDisabled}
             className={cn(
-              'max-w-[320px] bg-transparent px-0 py-0 text-sm text-normal hover:text-high',
+              'max-w-[320px] bg-transparent px-base py-0 text-sm text-normal hover:text-high',
               'disabled:cursor-not-allowed disabled:opacity-50'
             )}
           >
