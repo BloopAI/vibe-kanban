@@ -7,7 +7,6 @@ import {
 } from '@/stores/useUiPreferencesStore';
 import { useDiffViewStore, useDiffViewMode } from '@/stores/useDiffViewStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useOptionalProjectContext } from '@/contexts/remote/ProjectContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useDevServer } from '@/hooks/useDevServer';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
@@ -43,7 +42,6 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
   const { issueId: selectedKanbanIssueId } = useParams<{ issueId?: string }>();
   const [searchParams] = useSearchParams();
   const kanbanCreateMode = searchParams.get('mode') === 'create';
-  const projectContext = useOptionalProjectContext();
 
   // Derive layoutMode from current route instead of persisted state
   const location = useLocation();
@@ -87,10 +85,6 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       branchStatus?.some((repo) => (repo.remote_commits_ahead ?? 0) > 0) ??
       false;
 
-    const hasSelectedKanbanIssueParent =
-      !!selectedKanbanIssueId &&
-      !!projectContext?.getIssue(selectedKanbanIssueId)?.parent_issue_id;
-
     return {
       layoutMode,
       rightMainPanelMode: panelState.rightMainPanelMode,
@@ -113,7 +107,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       isAttemptRunning: isAttemptRunningVisible,
       logsPanelContent,
       hasSelectedKanbanIssue: !!selectedKanbanIssueId,
-      hasSelectedKanbanIssueParent,
+      hasSelectedKanbanIssueParent: false,
       isCreatingIssue: kanbanCreateMode,
       isSignedIn,
     };
@@ -137,7 +131,6 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     isAttemptRunningVisible,
     logsPanelContent,
     selectedKanbanIssueId,
-    projectContext,
     kanbanCreateMode,
     isSignedIn,
   ]);
