@@ -5,6 +5,7 @@ import { PlusIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useActions } from '@/contexts/ActionsContext';
 import { attemptsApi } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
@@ -34,13 +35,32 @@ export function IssueWorkspacesSectionContainer({
     getWorkspacesForIssue,
     isLoading: projectLoading,
   } = useProjectContext();
+  const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
   const { membersWithProfilesById, isLoading: orgLoading } = useOrgContext();
+
+  const localWorkspacesById = useMemo(() => {
+    const map = new Map<string, (typeof activeWorkspaces)[number]>();
+
+    for (const workspace of activeWorkspaces) {
+      map.set(workspace.id, workspace);
+    }
+
+    for (const workspace of archivedWorkspaces) {
+      map.set(workspace.id, workspace);
+    }
+
+    return map;
+  }, [activeWorkspaces, archivedWorkspaces]);
 
   // Get workspaces for the issue, with PR info
   const workspacesWithStats: WorkspaceWithStats[] = useMemo(() => {
     const rawWorkspaces = getWorkspacesForIssue(issueId);
 
     return rawWorkspaces.map((workspace) => {
+      const localWorkspace = workspace.local_workspace_id
+        ? localWorkspacesById.get(workspace.local_workspace_id)
+        : undefined;
+
       // Find all linked PRs for this workspace
       const linkedPrs = pullRequests
         .filter((pr) => pr.workspace_id === workspace.id)
@@ -66,6 +86,12 @@ export function IssueWorkspacesSectionContainer({
         owner,
         updatedAt: workspace.updated_at,
         isOwnedByCurrentUser: workspace.owner_user_id === userId,
+        isRunning: localWorkspace?.isRunning,
+        hasPendingApproval: localWorkspace?.hasPendingApproval,
+        hasRunningDevServer: localWorkspace?.hasRunningDevServer,
+        hasUnseenActivity: localWorkspace?.hasUnseenActivity,
+        latestProcessCompletedAt: localWorkspace?.latestProcessCompletedAt,
+        latestProcessStatus: localWorkspace?.latestProcessStatus,
       };
     });
   }, [
@@ -74,6 +100,7 @@ export function IssueWorkspacesSectionContainer({
     pullRequests,
     membersWithProfilesById,
     userId,
+    localWorkspacesById,
   ]);
 
   const isLoading = projectLoading || orgLoading;

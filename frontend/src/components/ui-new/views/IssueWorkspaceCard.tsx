@@ -5,8 +5,13 @@ import {
   DotsThreeIcon,
   LinkBreakIcon,
   TrashIcon,
+  PlayIcon,
+  HandIcon,
+  TriangleIcon,
+  CircleIcon,
 } from '@phosphor-icons/react';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
+import { RunningDots } from '@/components/ui-new/primitives/RunningDots';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +38,12 @@ export interface WorkspaceWithStats {
   owner: OrganizationMemberWithProfile | null;
   updatedAt: string;
   isOwnedByCurrentUser: boolean;
+  isRunning?: boolean;
+  hasPendingApproval?: boolean;
+  hasRunningDevServer?: boolean;
+  hasUnseenActivity?: boolean;
+  latestProcessCompletedAt?: string;
+  latestProcessStatus?: 'running' | 'completed' | 'failed' | 'killed';
 }
 
 export interface IssueWorkspaceCardProps {
@@ -51,7 +62,21 @@ export function IssueWorkspaceCard({
   className,
 }: IssueWorkspaceCardProps) {
   const { t } = useTranslation('common');
-  const timeAgo = getTimeAgo(workspace.updatedAt);
+  const timeAgo = getTimeAgo(
+    workspace.latestProcessCompletedAt ?? workspace.updatedAt
+  );
+  const isRunning = workspace.isRunning ?? false;
+  const hasPendingApproval = workspace.hasPendingApproval ?? false;
+  const hasRunningDevServer = workspace.hasRunningDevServer ?? false;
+  const hasUnseenActivity = workspace.hasUnseenActivity ?? false;
+  const isFailed =
+    workspace.latestProcessStatus === 'failed' ||
+    workspace.latestProcessStatus === 'killed';
+  const hasLiveStatusIndicator =
+    hasRunningDevServer ||
+    isFailed ||
+    isRunning ||
+    (hasUnseenActivity && !isRunning);
 
   return (
     <div
@@ -145,9 +170,44 @@ export function IssueWorkspaceCard({
         </div>
       </div>
 
-      {/* Row 2: Stats (left), PR buttons (right) */}
+      {/* Row 2: Live status + stats (left), PR buttons (right) */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-half text-sm text-low">
+        <div className="flex items-center gap-half text-sm text-low min-w-0">
+          <div className="flex items-center gap-half shrink-0">
+            {hasRunningDevServer && (
+              <PlayIcon
+                className="size-icon-xs text-brand shrink-0"
+                weight="fill"
+              />
+            )}
+
+            {!isRunning && isFailed && (
+              <TriangleIcon
+                className="size-icon-xs text-error shrink-0"
+                weight="fill"
+              />
+            )}
+
+            {isRunning &&
+              (hasPendingApproval ? (
+                <HandIcon
+                  className="size-icon-xs text-brand shrink-0"
+                  weight="fill"
+                />
+              ) : (
+                <RunningDots />
+              ))}
+
+            {hasUnseenActivity && !isRunning && !isFailed && (
+              <CircleIcon
+                className="size-icon-xs text-brand shrink-0"
+                weight="fill"
+              />
+            )}
+          </div>
+
+          {hasLiveStatusIndicator && <span className="text-low/50">·</span>}
+
           <span>{timeAgo}</span>
           {workspace.filesChanged > 0 && (
             <>
