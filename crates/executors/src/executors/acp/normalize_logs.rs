@@ -22,15 +22,15 @@ use crate::{
     },
 };
 
-pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
+pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) -> Vec<tokio::task::JoinHandle<()>> {
     // stderr normalization
     let entry_index = EntryIndexProvider::start_from(&msg_store);
-    normalize_stderr_logs(msg_store.clone(), entry_index.clone());
+    let h1 = normalize_stderr_logs(msg_store.clone(), entry_index.clone());
 
     // stdout normalization (main loop)
     let worktree_path = worktree_path.to_path_buf();
     // Type aliases to simplify complex state types and appease clippy
-    tokio::spawn(async move {
+    let h2 = tokio::spawn(async move {
         type ToolStates = std::collections::HashMap<String, PartialToolCallData>;
 
         let mut stored_session_id = false;
@@ -604,6 +604,8 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
             }
         }
     });
+
+    vec![h1, h2]
 }
 
 struct PartialToolCallData {

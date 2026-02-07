@@ -25,11 +25,11 @@ pub fn normalize_logs(
     msg_store: Arc<MsgStore>,
     worktree_path: &Path,
     entry_index_provider: EntryIndexProvider,
-) {
-    normalize_stderr_logs(msg_store.clone(), entry_index_provider.clone());
+) -> Vec<tokio::task::JoinHandle<()>> {
+    let h1 = normalize_stderr_logs(msg_store.clone(), entry_index_provider.clone());
 
     let worktree_path = worktree_path.to_path_buf();
-    tokio::spawn(async move {
+    let h2 = tokio::spawn(async move {
         let mut state = ToolCallStates::new(entry_index_provider.clone());
         let mut session_id_extracted = false;
         let mut sent_completion = false;
@@ -666,9 +666,11 @@ pub fn normalize_logs(
             }
         }
     });
+
+    vec![h1, h2]
 }
 
-fn normalize_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: EntryIndexProvider) {
+fn normalize_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: EntryIndexProvider) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let mut stderr = msg_store.stderr_chunked_stream();
 
@@ -699,7 +701,7 @@ fn normalize_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: EntryIn
                 msg_store.push_patch(patch);
             }
         }
-    });
+    })
 }
 
 /// Extract path from ApplyPatch input format

@@ -157,11 +157,11 @@ impl StandardCodingAgentExecutor for Amp {
         Ok(child.into())
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
+    fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) -> Vec<tokio::task::JoinHandle<()>> {
         let entry_index_provider = EntryIndexProvider::start_from(&msg_store);
 
         // Process stdout logs (Amp's stream JSON output) using Claude's log processor
-        ClaudeLogProcessor::process_logs(
+        let h1 = ClaudeLogProcessor::process_logs(
             msg_store.clone(),
             current_dir,
             entry_index_provider.clone(),
@@ -169,7 +169,9 @@ impl StandardCodingAgentExecutor for Amp {
         );
 
         // Process stderr logs using the standard stderr processor
-        normalize_stderr_logs(msg_store, entry_index_provider);
+        let h2 = normalize_stderr_logs(msg_store, entry_index_provider);
+
+        vec![h1, h2]
     }
 
     // MCP configuration methods

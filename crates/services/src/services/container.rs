@@ -949,8 +949,8 @@ pub trait ContainerService {
                 return None;
             };
 
-            // Spawn normalizer on populated store
-            match executor_action.typ() {
+            // Spawn normalizer on populated store and collect JoinHandles
+            let handles = match executor_action.typ() {
                 ExecutorActionType::CodingAgentInitialRequest(request) => {
                     #[cfg(feature = "qa-mode")]
                     {
@@ -958,7 +958,7 @@ pub trait ContainerService {
                         executor.normalize_logs(
                             temp_store.clone(),
                             &request.effective_dir(&current_dir),
-                        );
+                        )
                     }
                     #[cfg(not(feature = "qa-mode"))]
                     {
@@ -967,7 +967,7 @@ pub trait ContainerService {
                         executor.normalize_logs(
                             temp_store.clone(),
                             &request.effective_dir(&current_dir),
-                        );
+                        )
                     }
                 }
                 ExecutorActionType::CodingAgentFollowUpRequest(request) => {
@@ -977,7 +977,7 @@ pub trait ContainerService {
                         executor.normalize_logs(
                             temp_store.clone(),
                             &request.effective_dir(&current_dir),
-                        );
+                        )
                     }
                     #[cfg(not(feature = "qa-mode"))]
                     {
@@ -986,19 +986,19 @@ pub trait ContainerService {
                         executor.normalize_logs(
                             temp_store.clone(),
                             &request.effective_dir(&current_dir),
-                        );
+                        )
                     }
                 }
                 #[cfg(feature = "qa-mode")]
                 ExecutorActionType::ReviewRequest(_request) => {
                     let executor = QaMockExecutor;
-                    executor.normalize_logs(temp_store.clone(), &current_dir);
+                    executor.normalize_logs(temp_store.clone(), &current_dir)
                 }
                 #[cfg(not(feature = "qa-mode"))]
                 ExecutorActionType::ReviewRequest(request) => {
                     let executor = ExecutorConfigs::get_cached()
                         .get_coding_agent_or_default(&request.executor_profile_id);
-                    executor.normalize_logs(temp_store.clone(), &current_dir);
+                    executor.normalize_logs(temp_store.clone(), &current_dir)
                 }
                 _ => {
                     tracing::debug!(
@@ -1007,14 +1007,15 @@ pub trait ContainerService {
                     );
                     return None;
                 }
-            }
-            // Spawn a sentinel task: yield to let the normalizer's spawned
-            // tasks finish processing the finite historical data, then push
-            // Ready so the dedup stream knows when to flush its buffer.
+            };
+            // Await all normalizer tasks, then push Ready so the dedup
+            // stream knows when to flush its buffer and terminate.
             {
                 let store = temp_store.clone();
                 tokio::spawn(async move {
-                    tokio::task::yield_now().await;
+                    for handle in handles {
+                        let _ = handle.await;
+                    }
                     store.push(LogMsg::Ready);
                 });
             }
@@ -1427,14 +1428,14 @@ pub trait ContainerService {
             #[cfg(feature = "qa-mode")]
             {
                 let executor = QaMockExecutor;
-                executor.normalize_logs(msg_store, &working_dir);
+                let _ = executor.normalize_logs(msg_store, &working_dir);
             }
             #[cfg(not(feature = "qa-mode"))]
             {
                 if let Some(executor) =
                     ExecutorConfigs::get_cached().get_coding_agent(executor_profile_id)
                 {
-                    executor.normalize_logs(msg_store, &working_dir);
+                    let _ = executor.normalize_logs(msg_store, &working_dir);
                 } else {
                     tracing::error!(
                         "Failed to resolve profile '{:?}' for normalization",

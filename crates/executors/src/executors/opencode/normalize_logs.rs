@@ -32,12 +32,12 @@ fn system_message(content: String) -> NormalizedEntry {
     }
 }
 
-pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
+pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) -> Vec<tokio::task::JoinHandle<()>> {
     let entry_index = EntryIndexProvider::start_from(&msg_store);
-    normalize_stderr_logs(msg_store.clone(), entry_index.clone());
+    let h1 = normalize_stderr_logs(msg_store.clone(), entry_index.clone());
 
     let worktree_path = worktree_path.to_path_buf();
-    tokio::spawn(async move {
+    let h2 = tokio::spawn(async move {
         let mut stored_session_id = false;
         let mut state = LogState::new(entry_index.clone(), msg_store.clone());
 
@@ -146,6 +146,8 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
             }
         }
     });
+
+    vec![h1, h2]
 }
 
 fn parse_event(line: &str) -> Option<OpencodeExecutorEvent> {
