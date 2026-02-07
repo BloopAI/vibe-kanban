@@ -160,7 +160,7 @@ export function CreateChatBox({
 
       <div className="rounded-sm border border-border bg-secondary p-base">
         <div className="flex items-center gap-base">
-          <div className="min-w-0 flex-1 rounded-sm border border-border bg-primary px-base py-half">
+          <div className="min-w-0 flex-1 rounded-sm border border-border px-base py-half">
             <WYSIWYGEditor
               placeholder="Describe what you'd like the agent to work on..."
               value={editor.value}
@@ -195,11 +195,11 @@ export function CreateChatBox({
             <DropdownMenu>
               <DropdownMenuTriggerButton
                 disabled={isDisabled}
-                className="hover:bg-panel"
+                className="h-cta hover:bg-panel"
                 aria-label={t('tasks:conversation.executors')}
               >
                 <div className="flex min-w-0 items-center gap-half">
-                  <AgentIcon agent={agent} className="size-icon-xl" />
+                  <AgentIcon agent={agent} className="size-icon-sm shrink-0" />
                   <span className="max-w-[200px] truncate text-sm text-normal">
                     {executorLabel}
                   </span>
@@ -226,7 +226,7 @@ export function CreateChatBox({
             <ToolbarDropdown
               label={variantLabel}
               disabled={isDisabled}
-              className="hover:bg-panel"
+              className="h-cta hover:bg-panel"
             >
               <DropdownMenuLabel>{t('chatBox.variants')}</DropdownMenuLabel>
               {variantOptions.map((variantName) => (
