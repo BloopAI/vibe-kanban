@@ -1008,42 +1008,71 @@ pub trait ContainerService {
                     return None;
                 }
             }
-            // Yield to let the normalizer's spawned tasks process the
-            // historical data and push JsonPatch messages into temp_store.
-            tokio::task::yield_now().await;
-
-            // Collect all JsonPatch messages from history, deduplicating
-            // consecutive patches that target the same path (only the final
-            // state matters for historical replay).
-            let history = temp_store.get_history();
-            let mut deduped: Vec<Patch> = Vec::new();
-            let mut last_path: Option<String> = None;
-
-            for msg in history {
-                if let LogMsg::JsonPatch(patch) = msg {
-                    let path = patch_entry_path(&patch);
-                    if path == last_path {
-                        // Same path as previous — replace (keep only final state)
-                        if let Some(last) = deduped.last_mut() {
-                            *last = patch;
-                        }
-                    } else {
-                        // Different path — push new entry
-                        last_path = path;
-                        deduped.push(patch);
-                    }
-                }
+            // Spawn a sentinel task: yield to let the normalizer's spawned
+            // tasks finish processing the finite historical data, then push
+            // Ready so the dedup stream knows when to flush its buffer.
+            {
+                let store = temp_store.clone();
+                tokio::spawn(async move {
+                    tokio::task::yield_now().await;
+                    store.push(LogMsg::Ready);
+                });
             }
 
-            Some(
-                futures::stream::iter(
-                    deduped
-                        .into_iter()
-                        .map(|p| Ok::<_, std::io::Error>(LogMsg::JsonPatch(p)))
-                        .chain(std::iter::once(Ok(LogMsg::Finished))),
-                )
-                .boxed(),
+            // Stream normalized patches, deduplicating consecutive patches
+            // that target the same path (only the final state matters for
+            // historical replay). The Ready sentinel flushes the buffer.
+            enum PatchOrDone {
+                Patch(Patch),
+                Done,
+            }
+
+            let stream = temp_store
+                .history_plus_stream()
+                .filter_map(|msg| async move {
+                    match msg {
+                        Ok(LogMsg::JsonPatch(patch)) => Some(PatchOrDone::Patch(patch)),
+                        Ok(LogMsg::Ready) => Some(PatchOrDone::Done),
+                        _ => None,
+                    }
+                });
+
+            let deduped = futures::stream::unfold(
+                (stream.boxed(), None::<Patch>),
+                |(mut stream, buffered)| async move {
+                    loop {
+                        match stream.next().await {
+                            Some(PatchOrDone::Patch(patch)) => {
+                                let Some(prev) = buffered else {
+                                    // First patch — just buffer it
+                                    break Some((None, (stream, Some(patch))));
+                                };
+                                if patch_entry_path(&patch) == patch_entry_path(&prev) {
+                                    // Same path — replace buffer
+                                    break Some((None, (stream, Some(patch))));
+                                } else {
+                                    // Different path — emit prev, buffer new
+                                    break Some((Some(prev), (stream, Some(patch))));
+                                }
+                            }
+                            Some(PatchOrDone::Done) | None => {
+                                // Sentinel or stream end: flush buffer and terminate
+                                if let Some(prev) = buffered {
+                                    break Some((Some(prev), (stream, None)));
+                                }
+                                break None;
+                            }
+                        }
+                    }
+                },
             )
+            .filter_map(|opt| async move { opt })
+            .map(|p| Ok::<_, std::io::Error>(LogMsg::JsonPatch(p)))
+            .chain(futures::stream::once(async {
+                Ok::<_, std::io::Error>(LogMsg::Finished)
+            }));
+
+            Some(deduped.boxed())
         }
     }
 
