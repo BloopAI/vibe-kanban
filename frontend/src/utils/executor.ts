@@ -1,10 +1,46 @@
 import type {
   BaseCodingAgent,
   ExecutorConfigs,
+  ExecutorConfig,
   ExecutorAction,
   ExecutorProfileId,
   ExecutionProcess,
 } from 'shared/types';
+
+const RESERVED_PROFILE_KEYS = new Set(['pinned_models', 'configurations']);
+
+type ExecutorConfigMap = Record<string, unknown>;
+
+function getExecutorConfigMap(
+  executorConfig: ExecutorConfig | Record<string, unknown> | null | undefined
+): ExecutorConfigMap {
+  if (!executorConfig) return {};
+  if (
+    'configurations' in executorConfig &&
+    executorConfig.configurations &&
+    typeof executorConfig.configurations === 'object'
+  ) {
+    return executorConfig.configurations as ExecutorConfigMap;
+  }
+  return executorConfig as ExecutorConfigMap;
+}
+
+export function getExecutorVariantKeys(
+  executorConfig: ExecutorConfig | Record<string, unknown> | null | undefined
+): string[] {
+  const configMap = getExecutorConfigMap(executorConfig);
+  return Object.keys(configMap).filter(
+    (key) => !RESERVED_PROFILE_KEYS.has(key)
+  );
+}
+
+export function getExecutorVariantConfig(
+  executorConfig: ExecutorConfig | Record<string, unknown> | null | undefined,
+  variant: string
+): ExecutorConfig[string] | null {
+  const configMap = getExecutorConfigMap(executorConfig);
+  return (configMap[variant] as ExecutorConfig[string] | undefined) ?? null;
+}
 
 /**
  * Compare two ExecutorProfileIds for equality.
@@ -34,7 +70,7 @@ export function getVariantOptions(
   const executorConfig = profiles[executor];
   if (!executorConfig) return [];
 
-  const variants = Object.keys(executorConfig);
+  const variants = getExecutorVariantKeys(executorConfig);
   return variants.sort((a, b) => {
     if (a === 'DEFAULT') return -1;
     if (b === 'DEFAULT') return 1;

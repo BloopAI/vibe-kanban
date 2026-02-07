@@ -7,7 +7,7 @@ use ts_rs::TS;
 #[cfg(not(feature = "qa-mode"))]
 use crate::profile::ExecutorConfigs;
 use crate::{
-    actions::Executable,
+    actions::{Executable, ExecutorSessionOverrides},
     approvals::ExecutorApprovalService,
     env::ExecutionEnv,
     executors::{BaseCodingAgent, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
@@ -28,6 +28,9 @@ pub struct CodingAgentFollowUpRequest {
     /// If None, uses the container_ref directory directly.
     #[serde(default)]
     pub working_dir: Option<String>,
+    /// Session-level overrides (selected model and agent mode)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_overrides: Option<ExecutorSessionOverrides>,
 }
 
 impl CodingAgentFollowUpRequest {
@@ -83,6 +86,9 @@ impl Executable for CodingAgentFollowUpRequest {
                     executor_profile_id.to_string(),
                 ))?;
 
+            if let Some(overrides) = self.session_overrides.as_ref() {
+                agent.apply_session_overrides(overrides);
+            }
             agent.use_approvals(approvals.clone());
 
             agent

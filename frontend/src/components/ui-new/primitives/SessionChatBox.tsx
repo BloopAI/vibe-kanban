@@ -28,7 +28,6 @@ import {
   VisualVariant,
   type DropzoneProps,
   type EditorProps,
-  type VariantProps,
 } from './ChatBoxBase';
 import { PrimaryButton } from './PrimaryButton';
 import { ToolbarIconButton, ToolbarDropdown } from './Toolbar';
@@ -50,9 +49,10 @@ import { type ExecutorProps } from './CreateChatBox';
 import { ContextUsageGauge } from './ContextUsageGauge';
 import { TodoProgressPopup } from './TodoProgressPopup';
 import { useUserSystem } from '@/components/ConfigProvider';
+import { ModelSelectorContainer } from '../containers/ModelSelectorContainer';
 
 // Re-export shared types
-export type { EditorProps, VariantProps } from './ChatBoxBase';
+export type { EditorProps } from './ChatBoxBase';
 
 // Status enum - single source of truth for execution state
 export type ExecutionStatus =
@@ -129,18 +129,31 @@ interface ReviewCommentsProps {
   onClear: () => void;
 }
 
+interface ModelSelectorProps {
+  enabled: boolean;
+  onAdvancedSettings: () => void;
+  isAttemptRunning: boolean;
+  presets: string[];
+  selectedPreset: string | null;
+  onPresetSelect: (presetId: string | null) => void;
+  onSessionOverridesChange: (
+    overrides: import('shared/types').ExecutorSessionOverrides | null
+  ) => void;
+}
+
 interface SessionChatBoxProps {
   status: ExecutionStatus;
   editor: EditorProps;
   actions: ActionsProps;
   session: SessionProps;
+  workspaceId?: string;
   stats?: StatsProps;
-  variant?: VariantProps;
   feedbackMode?: FeedbackModeProps;
   editMode?: EditModeProps;
   approvalMode?: ApprovalModeProps;
   reviewComments?: ReviewCommentsProps;
   toolbarActions?: ToolbarActionsProps;
+  modelSelector?: ModelSelectorProps;
   error?: string | null;
   repoIds?: string[];
   projectId?: string;
@@ -164,13 +177,14 @@ export function SessionChatBox({
   editor,
   actions,
   session,
+  workspaceId,
   stats,
-  variant,
   feedbackMode,
   editMode,
   approvalMode,
   reviewComments,
   toolbarActions,
+  modelSelector,
   error,
   repoIds,
   projectId,
@@ -522,7 +536,6 @@ export function SessionChatBox({
       executor={agent || executor?.selected}
       autoFocus={true}
       focusKey={focusKey}
-      variant={variant}
       error={displayError}
       banner={renderBanner()}
       visualVariant={getVisualVariant()}
@@ -530,6 +543,20 @@ export function SessionChatBox({
       onPasteFiles={actions.onPasteFiles}
       localImages={localImages}
       dropzone={dropzone}
+      preEditor={
+        modelSelector?.enabled ? (
+          <ModelSelectorContainer
+            agent={agent ?? null}
+            workspaceId={workspaceId}
+            onAdvancedSettings={modelSelector.onAdvancedSettings}
+            isAttemptRunning={modelSelector.isAttemptRunning}
+            presets={modelSelector.presets}
+            selectedPreset={modelSelector.selectedPreset}
+            onPresetSelect={modelSelector.onPresetSelect}
+            onSessionOverridesChange={modelSelector.onSessionOverridesChange}
+          />
+        ) : null
+      }
       headerLeft={
         <>
           {/* New session mode: agent icon + executor dropdown */}

@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
 import {
   type Session,
   type ToolStatus,
   type BaseCodingAgent,
+  type ExecutorSessionOverrides,
 } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
@@ -37,6 +37,7 @@ import {
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
 import { Actions, type ActionDefinition } from '../actions';
+import { SettingsDialog } from '../dialogs/SettingsDialog';
 import {
   isActionVisible,
   useActionVisibilityContext,
@@ -141,7 +142,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   const sessionId = session?.id;
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
+  const [sessionOverrides, setSessionOverrides] =
+    useState<ExecutorSessionOverrides | null>(null);
 
   const { executeAction } = useActions();
   const actionCtx = useActionVisibilityContext();
@@ -275,6 +277,10 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const needsExecutorSelection =
     isNewSessionMode || (!session?.executor && !latestProfileId?.executor);
 
+  // Effective agent for model selector (use latest executor from processes, or config preference)
+  const effectiveAgentForModelConfig =
+    latestProfileId?.executor ?? config?.executor_profile?.executor ?? null;
+
   // Message editor state
   const {
     localMessage,
@@ -336,7 +342,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     handleExecutorChange,
     selectedVariant,
     variantOptions,
-    setSelectedVariant: setVariantFromHook,
+    setSelectedVariant,
   } = useExecutorSelection({
     profiles,
     latestProfileId,
@@ -344,21 +350,12 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     configExecutorProfile: config?.executor_profile,
   });
 
-  // Wrap variant change to also save to scratch
-  const setSelectedVariant = useCallback(
-    (variant: string | null) => {
-      setVariantFromHook(variant);
-      if (effectiveExecutor) {
-        saveToScratch(localMessage, { executor: effectiveExecutor, variant });
-      }
-    },
-    [setVariantFromHook, saveToScratch, localMessage, effectiveExecutor]
-  );
+  const selectedPreset =
+    selectedVariant ?? (variantOptions.includes('DEFAULT') ? 'DEFAULT' : null);
 
-  // Navigate to agent settings to customise variants
-  const handleCustomise = useCallback(() => {
-    navigate('/settings/agents');
-  }, [navigate]);
+  const handleCustomise = () => {
+    void SettingsDialog.show({ initialSection: 'agents' });
+  };
 
   // Queue interaction
   const {
@@ -382,6 +379,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     isNewSessionMode,
     effectiveExecutor,
     onSelectSession,
+    sessionOverrides,
   });
 
   const handleSend = useCallback(async () => {
@@ -687,6 +685,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         status="idle"
         repoIds={repoIds}
         projectId={projectId}
+        workspaceId={workspaceId}
         tokenUsageInfo={tokenUsageInfo}
         editor={{
           value: '',
@@ -723,6 +722,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       onScrollToPreviousMessage={onScrollToPreviousMessage}
       repoIds={repoIds}
       projectId={projectId}
+      workspaceId={workspaceId}
       tokenUsageInfo={tokenUsageInfo}
       editor={{
         value: editorValue,
@@ -734,12 +734,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         onCancelQueue: handleCancelQueue,
         onStop: stopExecution,
         onPasteFiles: uploadFiles,
-      }}
-      variant={{
-        selected: selectedVariant,
-        options: variantOptions,
-        onChange: setSelectedVariant,
-        onCustomise: handleCustomise,
       }}
       session={{
         sessions,
@@ -814,6 +808,15 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       }
       localImages={localImages}
       dropzone={{ getRootProps, getInputProps, isDragActive }}
+      modelSelector={{
+        enabled: !!effectiveAgentForModelConfig,
+        onAdvancedSettings: handleCustomise,
+        isAttemptRunning,
+        presets: variantOptions,
+        selectedPreset,
+        onPresetSelect: setSelectedVariant,
+        onSessionOverridesChange: setSessionOverrides,
+      }}
     />
   );
 }

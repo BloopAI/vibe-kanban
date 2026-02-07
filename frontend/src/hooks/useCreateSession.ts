@@ -4,6 +4,7 @@ import type {
   Session,
   CreateFollowUpAttempt,
   BaseCodingAgent,
+  ExecutorSessionOverrides,
 } from 'shared/types';
 
 interface CreateSessionParams {
@@ -11,6 +12,7 @@ interface CreateSessionParams {
   prompt: string;
   variant: string | null;
   executor: BaseCodingAgent;
+  sessionOverrides?: ExecutorSessionOverrides | null;
 }
 
 /**
@@ -26,6 +28,7 @@ export function useCreateSession() {
       prompt,
       variant,
       executor,
+      sessionOverrides,
     }: CreateSessionParams): Promise<Session> => {
       const session = await sessionsApi.create({
         workspace_id: workspaceId,
@@ -37,6 +40,7 @@ export function useCreateSession() {
         retry_process_id: null,
         force_when_dirty: null,
         perform_git_reset: null,
+        ...(sessionOverrides ? { session_overrides: sessionOverrides } : {}),
       };
       await sessionsApi.followUp(session.id, body);
 

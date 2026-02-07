@@ -11,11 +11,13 @@ import {
   VisualVariant,
   type DropzoneProps,
   type EditorProps,
-  type VariantProps,
 } from './ChatBoxBase';
 import { PrimaryButton } from './PrimaryButton';
 import { ToolbarDropdown, ToolbarIconButton } from './Toolbar';
 import { DropdownMenuItem, DropdownMenuLabel } from './Dropdown';
+import { ModelSelectorContainer } from '../containers/ModelSelectorContainer';
+
+const noop = () => {};
 
 export interface ExecutorProps {
   selected: BaseCodingAgent | null;
@@ -40,13 +42,20 @@ interface CreateChatBoxProps {
   onSend: () => void;
   isSending: boolean;
   executor: ExecutorProps;
-  variant?: VariantProps;
   saveAsDefault?: SaveAsDefaultProps;
   error?: string | null;
   repoIds?: string[];
   projectId?: string;
   repoId?: string;
   agent?: BaseCodingAgent | null;
+  modelSelector?: {
+    enabled: boolean;
+    onAdvancedSettings: () => void;
+    isAttemptRunning: boolean;
+    presets: string[];
+    selectedPreset: string | null;
+    onPresetSelect: (presetId: string | null) => void;
+  };
   onPasteFiles?: (files: File[]) => void;
   localImages?: LocalImageMetadata[];
   dropzone?: DropzoneProps;
@@ -62,13 +71,13 @@ export function CreateChatBox({
   onSend,
   isSending,
   executor,
-  variant,
   saveAsDefault,
   error,
   repoIds,
   projectId,
   repoId,
   agent,
+  modelSelector,
   onPasteFiles,
   localImages,
   dropzone,
@@ -113,12 +122,25 @@ export function CreateChatBox({
       repoId={repoId}
       executor={executor.selected}
       autoFocus
-      variant={variant}
       error={error}
       visualVariant={VisualVariant.NORMAL}
       onPasteFiles={onPasteFiles}
       localImages={localImages}
       dropzone={dropzone}
+      preEditor={
+        modelSelector?.enabled ? (
+          <ModelSelectorContainer
+            agent={agent ?? null}
+            workspaceId={undefined}
+            onAdvancedSettings={modelSelector.onAdvancedSettings}
+            isAttemptRunning={modelSelector.isAttemptRunning}
+            presets={modelSelector.presets}
+            selectedPreset={modelSelector.selectedPreset}
+            onPresetSelect={modelSelector.onPresetSelect}
+            onSessionOverridesChange={noop}
+          />
+        ) : null
+      }
       headerLeft={
         <>
           <AgentIcon agent={agent} className="size-icon-xl" />

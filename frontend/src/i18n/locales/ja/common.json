@@ -389,6 +389,15 @@
       "action": "サインイン"
     }
   },
+  "modelSelector": {
+    "preset": "プリセット",
+    "custom": "カスタマイズ",
+    "permissions": "権限",
+    "agent": "エージェント",
+    "default": "デフォルト",
+    "model": "モデル",
+    "providers": "プロバイダー"
+  },
   "syncError": {
     "networkErrors": "ネットワークエラー",
     "streamsAffected": "{{count}}件のストリームが影響を受けています",

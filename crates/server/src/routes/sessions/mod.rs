@@ -19,7 +19,8 @@ use db::models::{
 use deployment::Deployment;
 use executors::{
     actions::{
-        ExecutorAction, ExecutorActionType, coding_agent_follow_up::CodingAgentFollowUpRequest,
+        ExecutorAction, ExecutorActionType, ExecutorSessionOverrides,
+        coding_agent_follow_up::CodingAgentFollowUpRequest,
     },
     profile::ExecutorProfileId,
 };
@@ -90,6 +91,8 @@ pub struct CreateFollowUpAttempt {
     pub retry_process_id: Option<Uuid>,
     pub force_when_dirty: Option<bool>,
     pub perform_git_reset: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_overrides: Option<ExecutorSessionOverrides>,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -174,6 +177,7 @@ pub async fn follow_up(
             reset_to_message_id: if is_reset { info.message_id } else { None },
             executor_profile_id: executor_profile_id.clone(),
             working_dir: working_dir.clone(),
+            session_overrides: payload.session_overrides.clone(),
         })
     } else {
         ExecutorActionType::CodingAgentInitialRequest(
@@ -181,6 +185,7 @@ pub async fn follow_up(
                 prompt,
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir,
+                session_overrides: payload.session_overrides.clone(),
             },
         )
     };

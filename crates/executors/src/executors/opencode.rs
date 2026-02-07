@@ -1,7 +1,13 @@
-use std::{path::Path, sync::Arc, time::Duration};
+use std::{
+    cmp::Ordering,
+    path::{Path, PathBuf},
+    sync::{Arc, OnceLock},
+    time::Duration,
+};
 
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use convert_case::{Case, Casing};
 use derivative::Derivative;
 use futures::StreamExt;
 use schemars::JsonSchema;
@@ -14,12 +20,21 @@ use workspace_utils::msg_store::MsgStore;
 use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
-    env::ExecutionEnv,
+    env::{ExecutionEnv, RepoContext},
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult, SpawnedChild,
-        StandardCodingAgentExecutor, opencode::types::OpencodeExecutorEvent,
+        AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult,
+        ExecutorSessionOverrides, SlashCommandDescription, SpawnedChild,
+        StandardCodingAgentExecutor,
+        opencode::types::OpencodeExecutorEvent,
+        utils::{
+            DEFAULT_CACHE_TTL, SLASH_COMMANDS_CACHE_CAPACITY, TtlCache, reorder_slash_commands,
+        },
     },
     logs::utils::patch,
+    model_selector::{
+        AgentInfo, ModelInfo, ModelProvider, ModelSelectorConfig, PermissionPolicy, PresetOptions,
+        ReasoningOption,
+    },
     stdout_dup::create_stdout_pipe_writer,
 };
 
@@ -29,8 +44,12 @@ mod sdk;
 mod slash_commands;
 mod types;
 
-use sdk::{LogWriter, RunConfig, generate_server_password, run_session, run_slash_command};
+use sdk::{
+    AgentInfo as SDKAgentInfo, LogWriter, RunConfig, build_authenticated_client,
+    generate_server_password, list_agents, list_commands, run_session, run_slash_command,
+};
 use slash_commands::{OpencodeSlashCommand, hardcoded_slash_commands};
+use types::{Config, ProviderListResponse, ProviderModelInfo};
 
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
@@ -77,6 +96,27 @@ impl Drop for OpencodeServer {
 }
 
 type ServerPassword = String;
+const DISCOVERY_CACHE_CAPACITY: usize = SLASH_COMMANDS_CACHE_CAPACITY;
+
+/// model list and slash commands retrieved and cached
+#[derive(Clone, Debug)]
+struct OpencodeDiscovery {
+    slash_commands: Vec<SlashCommandDescription>,
+    model_config: ModelSelectorConfig,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+struct OpencodeDiscoveryCacheKey {
+    path: PathBuf,
+    cmd_key: String,
+    auto_approve: bool,
+}
+
+fn discovery_cache() -> &'static TtlCache<OpencodeDiscoveryCacheKey, OpencodeDiscovery> {
+    static INSTANCE: OnceLock<TtlCache<OpencodeDiscoveryCacheKey, OpencodeDiscovery>> =
+        OnceLock::new();
+    INSTANCE.get_or_init(|| TtlCache::new(DISCOVERY_CACHE_CAPACITY, DEFAULT_CACHE_TTL))
+}
 
 impl Opencode {
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
@@ -244,6 +284,203 @@ impl Opencode {
             cancel: Some(cancel),
         })
     }
+
+    // Discover models, agents, and slash commands
+    async fn discover_config(
+        &self,
+        current_dir: &Path,
+    ) -> Result<OpencodeDiscovery, ExecutorError> {
+        let cache_key = OpencodeDiscoveryCacheKey {
+            path: current_dir.to_path_buf(),
+            cmd_key: self.compute_models_cache_key(),
+            auto_approve: self.auto_approve,
+        };
+        if let Some(cached) = discovery_cache().get(&cache_key) {
+            return Ok(cached.as_ref().clone());
+        }
+
+        let env = ExecutionEnv::new(RepoContext::default(), false, String::new());
+        let env = setup_permissions_env(self.auto_approve, &env);
+
+        // Spawn server and wait for URL
+        let server = self.spawn_server(current_dir, &env).await?;
+        let directory = current_dir.to_string_lossy();
+
+        // Build authenticated client (reusing SDK pattern - Basic Auth)
+        let client = build_authenticated_client(&directory, &server.server_password)?;
+
+        // Fetch slash commands
+        let raw_commands = list_commands(&client, &server.base_url, &directory).await?;
+        let defaults = hardcoded_slash_commands();
+        let mut seen: std::collections::HashSet<String> =
+            defaults.iter().map(|cmd| cmd.name.clone()).collect();
+        let discovered: Vec<SlashCommandDescription> = raw_commands
+            .into_iter()
+            .map(|cmd| {
+                let name = cmd.name.trim_start_matches('/').to_string();
+                SlashCommandDescription {
+                    name,
+                    description: cmd.description,
+                }
+            })
+            .filter(|cmd| seen.insert(cmd.name.clone()))
+            .chain(defaults)
+            .collect();
+        let slash_commands = reorder_slash_commands(discovered);
+
+        // Fetch /config endpoint for global model
+        let config_response = client
+            .get(format!("{}/config", server.base_url))
+            .query(&[("directory", directory.as_ref())])
+            .send()
+            .await
+            .map_err(|e| {
+                ExecutorError::Io(std::io::Error::other(format!("HTTP request failed: {e}")))
+            })?;
+
+        let config: Config = if config_response.status().is_success() {
+            config_response.json().await.map_err(|e| {
+                ExecutorError::Io(std::io::Error::other(format!(
+                    "Failed to parse config response: {e}"
+                )))
+            })?
+        } else {
+            Config { model: None }
+        };
+
+        // Fetch /provider endpoint
+        let response = client
+            .get(format!("{}/provider", server.base_url))
+            .query(&[("directory", directory.as_ref())])
+            .send()
+            .await
+            .map_err(|e| {
+                ExecutorError::Io(std::io::Error::other(format!("HTTP request failed: {e}")))
+            })?;
+
+        if !response.status().is_success() {
+            return Err(ExecutorError::Io(std::io::Error::other(format!(
+                "Provider API returned status {}",
+                response.status()
+            ))));
+        }
+
+        let data: ProviderListResponse = response.json().await.map_err(|e| {
+            ExecutorError::Io(std::io::Error::other(format!(
+                "Failed to parse provider response: {e}"
+            )))
+        })?;
+
+        let default_model = config.model;
+
+        let agents = match list_agents(&client, &server.base_url, &directory).await {
+            Ok(agents) => agents,
+            Err(err) => {
+                tracing::warn!("Failed to list OpenCode agents: {}", err);
+                Vec::new()
+            }
+        };
+
+        models::seed_context_windows_cache(
+            &self.compute_models_cache_key(),
+            models::extract_context_windows(&data),
+        );
+
+        let model_config = self.transform_provider_response(data, &agents, default_model)?;
+
+        let result = OpencodeDiscovery {
+            slash_commands,
+            model_config,
+        };
+
+        discovery_cache().put(cache_key, result.clone());
+
+        Ok(result)
+    }
+
+    /// Transform the raw provider response into a ModelSelectorConfig.
+    fn transform_provider_response(
+        &self,
+        data: ProviderListResponse,
+        agents: &[SDKAgentInfo],
+        default_model: Option<String>,
+    ) -> Result<ModelSelectorConfig, ExecutorError> {
+        // Build providers list - only include connected providers
+        let providers: Vec<ModelProvider> = data
+            .all
+            .iter()
+            .filter(|p| data.connected.contains(&p.id))
+            .map(|p| ModelProvider {
+                id: p.id.clone(),
+                name: p.name.clone(),
+            })
+            .collect();
+
+        // Gather models for all connected providers (UI filters by provider).
+        let models: Vec<ModelInfo> = data
+            .all
+            .iter()
+            .filter(|p| data.connected.contains(&p.id))
+            .flat_map(|p| self.transform_models(&p.models, &p.id))
+            .collect();
+
+        let agent_options = map_opencode_agents(agents);
+
+        Ok(ModelSelectorConfig {
+            providers,
+            models,
+            agents: agent_options,
+            permissions: vec![PermissionPolicy::Auto, PermissionPolicy::Supervised],
+            loading: false,
+            error: None,
+            default_model,
+        })
+    }
+
+    /// Transform raw model data into ModelInfo structs.
+    fn transform_models(
+        &self,
+        models: &std::collections::HashMap<String, ProviderModelInfo>,
+        provider_id: &str,
+    ) -> Vec<ModelInfo> {
+        let mut ordered = models.values().collect::<Vec<_>>();
+        ordered.sort_by(|a, b| match (&a.release_date, &b.release_date) {
+            (Some(a_date), Some(b_date)) => b_date.cmp(a_date),
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => a.name.cmp(&b.name),
+        });
+
+        ordered
+            .into_iter()
+            .map(|m| {
+                let reasoning_options = m
+                    .variants
+                    .as_ref()
+                    .map(|variants| ReasoningOption::from_names(variants.keys().cloned()))
+                    .unwrap_or_default();
+
+                ModelInfo {
+                    id: m.id.clone(),
+                    name: m.name.clone(),
+                    provider_id: Some(provider_id.to_string()),
+                    reasoning_options,
+                }
+            })
+            .collect()
+    }
+}
+
+fn map_opencode_agents(agents: &[SDKAgentInfo]) -> Vec<AgentInfo> {
+    agents
+        .iter()
+        .map(|agent| AgentInfo {
+            id: agent.name.clone(),
+            label: agent.name.to_case(Case::Title),
+            description: agent.description.clone(),
+            is_default: agent.name.to_lowercase() == "build",
+        })
+        .collect()
 }
 
 fn format_tail(captured: Vec<String>) -> String {
@@ -310,6 +547,24 @@ async fn wait_for_server_url(
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Opencode {
+    fn apply_session_overrides(&mut self, overrides: &ExecutorSessionOverrides) {
+        if let Some(model_id) = &overrides.model_id {
+            self.model = Some(model_id.clone());
+        }
+
+        if let Some(agent_id) = &overrides.agent_id {
+            self.agent = Some(agent_id.clone());
+        }
+
+        if let Some(permission_policy) = overrides.permission_policy.clone() {
+            self.auto_approve = matches!(permission_policy, PermissionPolicy::Auto);
+        }
+
+        if let Some(reasoning_id) = &overrides.reasoning_id {
+            self.variant = Some(reasoning_id.clone());
+        }
+    }
+
     fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
         self.approvals = Some(approvals);
     }
@@ -325,8 +580,8 @@ impl StandardCodingAgentExecutor for Opencode {
         let initial = patch::slash_commands(defaults.clone(), true, None);
 
         let discovery_stream = futures::stream::once(async move {
-            match this.discover_slash_commands(&current_dir).await {
-                Ok(commands) => patch::slash_commands(commands, false, None),
+            match this.discover_config(&current_dir).await {
+                Ok(discovery) => patch::slash_commands(discovery.slash_commands, false, None),
                 Err(e) => {
                     tracing::warn!("Failed to discover OpenCode slash commands: {}", e);
                     patch::slash_commands(defaults, false, Some(e.to_string()))
@@ -445,6 +700,63 @@ impl StandardCodingAgentExecutor for Opencode {
             AvailabilityInfo::InstallationFound
         } else {
             AvailabilityInfo::NotFound
+        }
+    }
+
+    async fn available_model_config(
+        &self,
+        workdir: &Path,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let cache_key = OpencodeDiscoveryCacheKey {
+            path: workdir.to_path_buf(),
+            cmd_key: self.compute_models_cache_key(),
+            auto_approve: self.auto_approve,
+        };
+        let cached_config = discovery_cache()
+            .get(&cache_key)
+            .map(|entry| entry.model_config.clone());
+
+        let initial_patch = if let Some(config) = cached_config.clone() {
+            patch::model_selector_config(config, false, None)
+        } else {
+            let initial_config = ModelSelectorConfig {
+                loading: true,
+                ..Default::default()
+            };
+            patch::model_selector_config(initial_config, true, None)
+        };
+
+        let this = self.clone();
+        let workdir = workdir.to_path_buf();
+
+        let fetch_stream = futures::stream::once(async move {
+            match this.discover_config(&workdir).await {
+                Ok(discovery) => patch::model_selector_config(discovery.model_config, false, None),
+                Err(e) => {
+                    tracing::warn!("Failed to fetch OpenCode model config: {}", e);
+                    let mut error_config = cached_config.unwrap_or_default();
+                    error_config.error = Some(e.to_string());
+                    error_config.loading = false;
+                    patch::model_selector_config(error_config, false, Some(e.to_string()))
+                }
+            }
+        });
+
+        Ok(Box::pin(
+            futures::stream::once(async move { initial_patch }).chain(fetch_stream),
+        ))
+    }
+
+    fn get_preset_options(&self) -> PresetOptions {
+        PresetOptions {
+            model_id: self.model.clone(),
+            agent_id: self.agent.clone(),
+            reasoning_id: self.variant.clone(),
+            permission_policy: if self.auto_approve {
+                PermissionPolicy::Auto
+            } else {
+                PermissionPolicy::Supervised
+            },
         }
     }
 }

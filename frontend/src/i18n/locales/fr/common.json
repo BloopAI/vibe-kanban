@@ -389,6 +389,15 @@
       "action": "Se connecter"
     }
   },
+  "modelSelector": {
+    "preset": "Préréglage",
+    "custom": "Personnaliser",
+    "permissions": "Permissions",
+    "agent": "Agent",
+    "default": "Par défaut",
+    "model": "Modèle",
+    "providers": "Fournisseurs"
+  },
   "syncError": {
     "networkErrors": "Erreurs réseau",
     "streamsAffected": "{{count}} flux affecté",

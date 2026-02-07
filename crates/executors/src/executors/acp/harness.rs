@@ -23,7 +23,9 @@ use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandParts},
     env::ExecutionEnv,
-    executors::{ExecutorError, ExecutorExitResult, SpawnedChild, acp::AcpEvent},
+    executors::{
+        ExecutorError, ExecutorExitResult, ExecutorSessionOverrides, SpawnedChild, acp::AcpEvent,
+    },
 };
 
 /// Reusable harness for ACP-based conns (Gemini, Qwen, etc.)
@@ -67,6 +69,16 @@ impl AcpAgentHarness {
     pub fn with_mode(mut self, mode: impl Into<String>) -> Self {
         self.mode = Some(mode.into());
         self
+    }
+
+    pub fn apply_session_overrides(&mut self, overrides: &ExecutorSessionOverrides) {
+        if let Some(model_id) = &overrides.model_id {
+            self.model = Some(model_id.clone());
+        }
+
+        if let Some(agent_id) = &overrides.agent_id {
+            self.mode = Some(agent_id.clone());
+        }
     }
 
     pub async fn spawn_with_command(

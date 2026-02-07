@@ -49,6 +49,8 @@ import {
   AvailabilityInfo,
   BaseCodingAgent,
   ExecutorProfileId,
+  AgentPresetOptionsQuery,
+  PresetOptions,
   RunAgentSetupRequest,
   RunAgentSetupResponse,
   GhCliSetupError,
@@ -1387,6 +1389,30 @@ export const agentsApi = {
     if (opts?.repoId) params.set('repo_id', opts.repoId);
 
     return `/api/agents/slash-commands/ws?${params.toString()}`;
+  },
+
+  getModelConfigStreamUrl: (
+    agent: BaseCodingAgent,
+    opts?: { workspaceId?: string; repoId?: string }
+  ): string => {
+    const params = new URLSearchParams();
+    params.set('executor', agent);
+    if (opts?.workspaceId) params.set('workspace_id', opts.workspaceId);
+    if (opts?.repoId) params.set('repo_id', opts.repoId);
+
+    return `/api/agents/model-config/ws?${params.toString()}`;
+  },
+
+  getPresetOptions: async (
+    query: AgentPresetOptionsQuery
+  ): Promise<PresetOptions> => {
+    const params = new URLSearchParams();
+    params.set('executor', query.executor);
+    if (query.variant) params.set('variant', query.variant);
+    const response = await makeRequest(
+      `/api/agents/preset-options?${params.toString()}`
+    );
+    return handleApiResponse<PresetOptions>(response);
   },
 };
 

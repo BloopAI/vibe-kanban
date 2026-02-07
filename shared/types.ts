@@ -272,9 +272,11 @@ export type CheckEditorAvailabilityResponse = { available: boolean, };
 
 export type CheckAgentAvailabilityQuery = { executor: BaseCodingAgent, };
 
+export type AgentPresetOptionsQuery = { executor: BaseCodingAgent, variant: string | null, };
+
 export type CurrentUserResponse = { user_id: string, };
 
-export type CreateFollowUpAttempt = { prompt: string, executor_profile_id: ExecutorProfileId, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
+export type CreateFollowUpAttempt = { prompt: string, executor_profile_id: ExecutorProfileId, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, session_overrides?: ExecutorSessionOverrides | null, };
 
 export type ResetProcessRequest = { process_id: string, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
@@ -290,7 +292,7 @@ export type RenameBranchRequest = { new_branch_name: string, };
 
 export type RenameBranchResponse = { branch: string, };
 
-export type StartReviewRequest = { executor_profile_id: ExecutorProfileId, additional_prompt: string | null, use_all_workspace_commits: boolean, };
+export type StartReviewRequest = { executor_profile_id: ExecutorProfileId, additional_prompt: string | null, use_all_workspace_commits: boolean, session_overrides?: ExecutorSessionOverrides | null, };
 
 export type ReviewError = { "type": "process_already_running" };
 
@@ -478,6 +480,8 @@ export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path
 
 export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest | { "type": "ReviewRequest" } & ReviewRequest;
 
+export type ExecutorSessionOverrides = { model_id?: string | null, agent_id?: string | null, reasoning_id?: string | null, permission_policy?: PermissionPolicy | null, };
+
 export type ScriptContext = "SetupScript" | "CleanupScript" | "ArchiveScript" | "DevServer" | "ToolInstallScript";
 
 export type ScriptRequest = { script: string, language: ScriptRequestLanguage, context: ScriptContext, 
@@ -521,13 +525,15 @@ executor: BaseCodingAgent,
  */
 variant: string | null, };
 
-export type ExecutorConfig = { [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } };
+export type ExecutorPinnedModels = { models?: Array<string>, };
+
+export type ExecutorConfig = { pinned_models?: ExecutorPinnedModels | null, } & ({ [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } });
 
 export type ExecutorConfigs = { executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
 
 export enum BaseAgentCapability { SESSION_FORK = "SESSION_FORK", SETUP_HELPER = "SETUP_HELPER", CONTEXT_USAGE = "CONTEXT_USAGE" }
 
-export type ClaudeCode = { append_prompt: AppendPrompt, claude_code_router?: boolean | null, plan?: boolean | null, approvals?: boolean | null, model?: string | null, dangerously_skip_permissions?: boolean | null, disable_api_key?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
+export type ClaudeCode = { append_prompt: AppendPrompt, claude_code_router?: boolean | null, plan?: boolean | null, approvals?: boolean | null, model?: string | null, agent?: string | null, dangerously_skip_permissions?: boolean | null, disable_api_key?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
 export type Gemini = { append_prompt: AppendPrompt, model?: string | null, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
@@ -559,7 +565,7 @@ auto_approve: boolean,
  */
 auto_compact: boolean, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
-export type QwenCode = { append_prompt: AppendPrompt, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
+export type QwenCode = { append_prompt: AppendPrompt, model?: string | null, agent?: string | null, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
 export type Droid = { append_prompt: AppendPrompt, autonomy: Autonomy, model?: string | null, reasoning_effort?: DroidReasoningEffort | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
@@ -578,7 +584,11 @@ executor_profile_id: ExecutorProfileId,
  * Optional relative path to execute the agent in (relative to container_ref).
  * If None, uses the container_ref directory directly.
  */
-working_dir: string | null, };
+working_dir: string | null, 
+/**
+ * Session-level overrides (selected model and agent mode)
+ */
+session_overrides?: ExecutorSessionOverrides | null, };
 
 export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, reset_to_message_id: string | null, 
 /**
@@ -589,7 +599,11 @@ executor_profile_id: ExecutorProfileId,
  * Optional relative path to execute the agent in (relative to container_ref).
  * If None, uses the container_ref directory directly.
  */
-working_dir: string | null, };
+working_dir: string | null, 
+/**
+ * Session-level overrides (selected model and agent mode)
+ */
+session_overrides?: ExecutorSessionOverrides | null, };
 
 export type ReviewRequest = { executor_profile_id: ExecutorProfileId, context: Array<RepoReviewContext> | null, prompt: string, 
 /**
@@ -599,7 +613,11 @@ session_id: string | null,
 /**
  * Optional relative path to execute the agent in (relative to container_ref).
  */
-working_dir: string | null, };
+working_dir: string | null, 
+/**
+ * Session-level overrides for this run (model, agent mode, reasoning).
+ */
+session_overrides?: ExecutorSessionOverrides | null, };
 
 export type RepoReviewContext = { repo_id: string, repo_name: string, base_commit: string, };
 
@@ -640,6 +658,72 @@ export type ToolResultValueType = { "type": "markdown" } | { "type": "json" };
 export type ToolStatus = { "status": "created" } | { "status": "success" } | { "status": "failed" } | { "status": "denied", reason: string | null, } | { "status": "pending_approval", approval_id: string, requested_at: string, timeout_at: string, } | { "status": "timed_out" };
 
 export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry } | { "type": "STDOUT", "content": string } | { "type": "STDERR", "content": string } | { "type": "DIFF", "content": Diff };
+
+export type ModelInfo = { 
+/**
+ * Model identifier
+ */
+id: string, 
+/**
+ * Display name
+ */
+name: string, 
+/**
+ * Provider this model belongs to
+ */
+provider_id?: string | null, 
+/**
+ * Configurable reasoning options if supported
+ */
+reasoning_options: Array<ReasoningOption>, };
+
+export type ReasoningOption = { id: string, label: string, is_default: boolean, };
+
+export type ModelProvider = { 
+/**
+ * Provider identifier
+ */
+id: string, 
+/**
+ * Display name
+ */
+name: string, };
+
+export type AgentInfo = { id: string, label: string, description?: string | null, is_default: boolean, };
+
+export enum PermissionPolicy { AUTO = "AUTO", SUPERVISED = "SUPERVISED", PLAN = "PLAN" }
+
+export type ModelSelectorConfig = { 
+/**
+ * Available providers
+ */
+providers: Array<ModelProvider>, 
+/**
+ * Available models
+ */
+models: Array<ModelInfo>, 
+/**
+ * Global default model (format: provider_id/model_id)
+ */
+default_model?: string | null, 
+/**
+ * Available agents
+ */
+agents: Array<AgentInfo>, 
+/**
+ * Supported permission policies
+ */
+permissions: Array<PermissionPolicy>, 
+/**
+ * Loading state
+ */
+loading: boolean, 
+/**
+ * Error message if any
+ */
+error?: string | null, };
+
+export type PresetOptions = { model_id?: string | null, agent_id?: string | null, reasoning_id?: string | null, permission_policy: PermissionPolicy, };
 
 export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;
 

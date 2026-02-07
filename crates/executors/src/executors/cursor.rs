@@ -19,13 +19,14 @@ use crate::{
     command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+        AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorSessionOverrides, SpawnedChild,
+        StandardCodingAgentExecutor,
     },
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
         TodoItem, ToolStatus,
         plain_text_processor::PlainTextLogProcessor,
-        utils::{ConversationPatch, EntryIndexProvider},
+        utils::{ConversationPatch, EntryIndexProvider, patch},
     },
 };
 
@@ -71,6 +72,18 @@ impl CursorAgent {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for CursorAgent {
+    fn apply_session_overrides(&mut self, overrides: &ExecutorSessionOverrides) {
+        if let Some(model_id) = &overrides.model_id {
+            self.model = Some(model_id.clone());
+        }
+        if let Some(permission_policy) = overrides.permission_policy.clone() {
+            self.force = Some(matches!(
+                permission_policy,
+                crate::model_selector::PermissionPolicy::Auto
+            ));
+        }
+    }
+
     async fn spawn(
         &self,
         current_dir: &Path,
@@ -508,6 +521,53 @@ impl StandardCodingAgentExecutor for CursorAgent {
             AvailabilityInfo::InstallationFound
         } else {
             AvailabilityInfo::NotFound
+        }
+    }
+
+    async fn available_model_config(
+        &self,
+        _workdir: &Path,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let config = crate::model_selector::ModelSelectorConfig {
+            models: [
+                ("auto", "Auto"),
+                ("composer-1", "Composer 1"),
+                ("gpt-5.1-codex-max", "GPT-5.1 Codex Max"),
+                ("gpt-5.1-codex-max-high", "GPT-5.1 Codex Max High"),
+                ("gpt-5.2", "GPT-5.2"),
+                ("opus-4.5-thinking", "Opus 4.5 Thinking"),
+                ("gpt-5.2-high", "GPT-5.2 High"),
+                ("gemini-3-pro", "Gemini 3 Pro"),
+                ("opus-4.5", "Opus 4.5"),
+                ("sonnet-4.5", "Sonnet 4.5"),
+                ("sonnet-4.5-thinking", "Sonnet 4.5 Thinking"),
+                ("gemini-3-flash", "Gemini 3 Flash"),
+                ("grok", "Grok"),
+            ]
+            .into_iter()
+            .map(|(id, name)| crate::model_selector::ModelInfo {
+                id: id.to_string(),
+                name: name.to_string(),
+                provider_id: None,
+                reasoning_options: vec![],
+            })
+            .collect(),
+            default_model: Some("auto".to_string()),
+            permissions: vec![],
+            ..Default::default()
+        };
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::model_selector_config(config, false, None)
+        })))
+    }
+
+    fn get_preset_options(&self) -> crate::model_selector::PresetOptions {
+        use crate::model_selector::*;
+        PresetOptions {
+            model_id: self.model.clone(),
+            agent_id: None,
+            reasoning_id: None,
+            permission_policy: PermissionPolicy::Auto,
         }
     }
 }

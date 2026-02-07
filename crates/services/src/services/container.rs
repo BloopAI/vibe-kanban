@@ -149,6 +149,59 @@ pub trait ContainerService {
         }
     }
 
+    async fn available_agent_model_config(
+        &self,
+        executor_profile_id: ExecutorProfileId,
+        workspace_id: Option<Uuid>,
+        repo_id: Option<Uuid>,
+    ) -> Result<Option<BoxStream<'static, Patch>>, ContainerError> {
+        let agent_workdir = if let Some(workspace_id) = workspace_id {
+            let workspace = Workspace::find_by_id(&self.db().pool, workspace_id)
+                .await?
+                .ok_or(SqlxError::RowNotFound)?;
+
+            let container_ref = match workspace.container_ref.as_deref() {
+                Some(container_ref) if !container_ref.is_empty() => container_ref,
+                _ => &self.ensure_container_exists(&workspace).await?,
+            };
+
+            if container_ref.is_empty() {
+                return Err(ContainerError::Other(anyhow!("Workspace path is empty")));
+            }
+
+            let workspace_path = PathBuf::from(container_ref);
+            match workspace.agent_working_dir.as_deref() {
+                Some(dir) if !dir.is_empty() => Some(workspace_path.join(dir)),
+                _ => Some(workspace_path),
+            }
+        } else if let Some(repo_id) = repo_id {
+            Repo::find_by_id(&self.db().pool, repo_id)
+                .await
+                .ok()
+                .flatten()
+                .map(|repo| repo.path)
+        } else {
+            None
+        }
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+
+        #[cfg(feature = "qa-mode")]
+        {
+            let _ = executor_profile_id;
+            let _ = agent_workdir;
+            // QA mode doesn't support model config streaming yet
+            return Ok(None);
+        }
+        #[cfg(not(feature = "qa-mode"))]
+        {
+            let executor =
+                ExecutorConfigs::get_cached().get_coding_agent_or_default(&executor_profile_id);
+
+            let stream = executor.available_model_config(&agent_workdir).await?;
+            Ok(Some(stream))
+        }
+    }
+
     async fn store_db_stream_handle(&self, id: Uuid, handle: JoinHandle<()>);
 
     async fn take_db_stream_handle(&self, id: &Uuid) -> Option<JoinHandle<()>>;
@@ -1157,6 +1210,7 @@ pub trait ContainerService {
                 prompt,
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir,
+                session_overrides: None,
             }),
             cleanup_action.map(Box::new),
         );

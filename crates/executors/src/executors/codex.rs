@@ -50,8 +50,9 @@ use crate::{
     command::{CmdOverrides, CommandBuildError, CommandBuilder, CommandParts, apply_overrides},
     env::ExecutionEnv,
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult, SlashCommandDescription,
-        SpawnedChild, StandardCodingAgentExecutor,
+        AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult,
+        ExecutorSessionOverrides, SlashCommandDescription, SpawnedChild,
+        StandardCodingAgentExecutor,
     },
     logs::utils::patch,
     stdout_dup::create_stdout_pipe_writer,
@@ -165,6 +166,30 @@ pub struct Codex {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Codex {
+    fn apply_session_overrides(&mut self, overrides: &ExecutorSessionOverrides) {
+        if let Some(model_id) = &overrides.model_id {
+            self.model = Some(model_id.clone());
+        }
+        if let Some(reasoning_id) = &overrides.reasoning_id
+            && let Ok(reasoning_effort) = serde_json::from_str::<ReasoningEffort>(reasoning_id)
+        {
+            self.model_reasoning_effort = Some(reasoning_effort)
+        }
+        if let Some(permission_policy) = &overrides.permission_policy {
+            match permission_policy {
+                crate::model_selector::PermissionPolicy::Auto => {
+                    self.ask_for_approval = Some(AskForApproval::Never);
+                }
+                crate::model_selector::PermissionPolicy::Supervised => {
+                    if matches!(self.ask_for_approval, None | Some(AskForApproval::Never)) {
+                        self.ask_for_approval = Some(AskForApproval::UnlessTrusted);
+                    }
+                }
+                crate::model_selector::PermissionPolicy::Plan => {}
+            }
+        }
+    }
+
     fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
         self.approvals = Some(approvals);
     }
@@ -255,6 +280,70 @@ impl StandardCodingAgentExecutor for Codex {
             AvailabilityInfo::InstallationFound
         } else {
             AvailabilityInfo::NotFound
+        }
+    }
+
+    async fn available_model_config(
+        &self,
+        _workdir: &Path,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        use crate::model_selector::*;
+
+        let xhigh_reasoning_options =
+            ReasoningOption::from_names(["low", "medium", "high", "xhigh"].map(String::from));
+
+        let config = ModelSelectorConfig {
+            models: vec![
+                ModelInfo {
+                    id: "gpt-5.3-codex".to_string(),
+                    name: "GPT-5.3 Codex".to_string(),
+                    provider_id: None,
+                    reasoning_options: xhigh_reasoning_options.clone(),
+                },
+                ModelInfo {
+                    id: "gpt-5.2-codex".to_string(),
+                    name: "GPT-5.2 Codex".to_string(),
+                    provider_id: None,
+                    reasoning_options: xhigh_reasoning_options.clone(),
+                },
+                ModelInfo {
+                    id: "gpt-5.2".to_string(),
+                    name: "GPT-5.2".to_string(),
+                    provider_id: None,
+                    reasoning_options: xhigh_reasoning_options.clone(),
+                },
+                ModelInfo {
+                    id: "gpt-5.1-codex-max".to_string(),
+                    name: "GPT-5.1 Codex Max".to_string(),
+                    provider_id: None,
+                    reasoning_options: xhigh_reasoning_options.clone(),
+                },
+            ],
+            permissions: vec![PermissionPolicy::Auto, PermissionPolicy::Supervised],
+            ..Default::default()
+        };
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::model_selector_config(config, false, None)
+        })))
+    }
+
+    fn get_preset_options(&self) -> crate::model_selector::PresetOptions {
+        use crate::model_selector::*;
+        let permission_policy =
+            if matches!(self.ask_for_approval, None | Some(AskForApproval::Never)) {
+                PermissionPolicy::Auto
+            } else {
+                PermissionPolicy::Supervised
+            };
+
+        PresetOptions {
+            model_id: self.model.clone(),
+            agent_id: None,
+            reasoning_id: self
+                .model_reasoning_effort
+                .as_ref()
+                .map(|e| e.as_ref().to_string()),
+            permission_policy,
         }
     }
 

@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import type { BaseCodingAgent } from 'shared/types';
+import type { BaseCodingAgent, ExecutorSessionOverrides } from 'shared/types';
 import { sessionsApi } from '@/lib/api';
 import { useCreateSession } from './useCreateSession';
 
@@ -14,6 +14,8 @@ interface UseSessionSendOptions {
   effectiveExecutor: BaseCodingAgent | null;
   /** Callback when session is selected (to exit new session mode) */
   onSelectSession?: (sessionId: string) => void;
+  /** Optional session-level overrides from the model selector */
+  sessionOverrides?: ExecutorSessionOverrides | null;
 }
 
 interface UseSessionSendResult {
@@ -42,6 +44,7 @@ export function useSessionSend({
   isNewSessionMode,
   effectiveExecutor,
   onSelectSession,
+  sessionOverrides,
 }: UseSessionSendOptions): UseSessionSendResult {
   const { mutateAsync: createSession, isPending: isCreatingSession } =
     useCreateSession();
@@ -67,6 +70,7 @@ export function useSessionSend({
             prompt: trimmed,
             variant,
             executor: effectiveExecutor,
+            sessionOverrides,
           });
           onSelectSession?.(session.id);
           return true;
@@ -88,6 +92,9 @@ export function useSessionSend({
             retry_process_id: null,
             force_when_dirty: null,
             perform_git_reset: null,
+            ...(sessionOverrides
+              ? { session_overrides: sessionOverrides }
+              : {}),
           });
           return true;
         } catch (e: unknown) {
@@ -106,6 +113,7 @@ export function useSessionSend({
       effectiveExecutor,
       createSession,
       onSelectSession,
+      sessionOverrides,
     ]
   );
 

@@ -5,7 +5,11 @@ import { useCreateMode } from '@/contexts/CreateModeContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
-import { getVariantOptions, areProfilesEqual } from '@/utils/executor';
+import {
+  areProfilesEqual,
+  getExecutorVariantKeys,
+  getVariantOptions,
+} from '@/utils/executor';
 import { splitMessageToTitleDescription } from '@/utils/string';
 import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
 import { CreateChatBox } from '../primitives/CreateChatBox';
@@ -73,7 +77,7 @@ export function CreateChatBoxContainer() {
     if (profiles) {
       const firstExecutor = Object.keys(profiles)[0] as BaseCodingAgent;
       if (firstExecutor) {
-        const variants = Object.keys(profiles[firstExecutor]);
+        const variants = getExecutorVariantKeys(profiles[firstExecutor]);
         return {
           executor: firstExecutor,
           variant: variants[0] ?? null,
@@ -82,12 +86,6 @@ export function CreateChatBoxContainer() {
     }
     return null;
   }, [selectedProfile, config?.executor_profile, profiles]);
-
-  // Get variant options for the current executor
-  const variantOptions = useMemo(
-    () => getVariantOptions(effectiveProfile?.executor, profiles),
-    [effectiveProfile?.executor, profiles]
-  );
 
   // Detect if user has changed from their saved default
   const hasChangedFromDefault = useMemo(() => {
@@ -106,6 +104,26 @@ export function CreateChatBoxContainer() {
   const projectId = selectedProjectId;
 
   const repoId = repos.length === 1 ? repos[0]?.id : undefined;
+  const variantOptions = getVariantOptions(
+    effectiveProfile?.executor ?? null,
+    profiles
+  );
+  const selectedPreset =
+    effectiveProfile?.variant ??
+    (variantOptions.includes('DEFAULT')
+      ? 'DEFAULT'
+      : (variantOptions[0] ?? null));
+  const handlePresetSelect = (presetId: string | null) => {
+    if (!effectiveProfile?.executor) return;
+    setSelectedProfile({
+      executor: effectiveProfile.executor,
+      variant: presetId,
+    });
+  };
+
+  const handleCustomise = () => {
+    void SettingsDialog.show({ initialSection: 'agents' });
+  };
 
   // Determine if we can submit
   const canSubmit =
@@ -113,23 +131,6 @@ export function CreateChatBoxContainer() {
     message.trim().length > 0 &&
     effectiveProfile !== null &&
     projectId !== undefined;
-
-  // Handle variant change
-  const handleVariantChange = useCallback(
-    (variant: string | null) => {
-      if (!effectiveProfile) return;
-      setSelectedProfile({
-        executor: effectiveProfile.executor,
-        variant,
-      });
-    },
-    [effectiveProfile, setSelectedProfile]
-  );
-
-  // Open settings modal to agent settings section
-  const handleCustomise = useCallback(() => {
-    SettingsDialog.show({ initialSection: 'agents' });
-  }, []);
 
   // Handle executor change - use saved variant if switching to default executor
   const handleExecutorChange = useCallback(
@@ -140,7 +141,7 @@ export function CreateChatBoxContainer() {
         return;
       }
 
-      const variants = Object.keys(executorConfig);
+      const variants = getExecutorVariantKeys(executorConfig);
       let targetVariant: string | null = null;
 
       // If switching to user's default executor, use their saved variant
@@ -268,16 +269,6 @@ export function CreateChatBoxContainer() {
             options: Object.keys(profiles ?? {}) as BaseCodingAgent[],
             onChange: handleExecutorChange,
           }}
-          variant={
-            effectiveProfile
-              ? {
-                  selected: effectiveProfile.variant ?? 'DEFAULT',
-                  options: variantOptions,
-                  onChange: handleVariantChange,
-                  onCustomise: handleCustomise,
-                }
-              : undefined
-          }
           saveAsDefault={{
             checked: saveAsDefault,
             onChange: setSaveAsDefault,
@@ -288,6 +279,14 @@ export function CreateChatBoxContainer() {
           projectId={projectId}
           agent={effectiveProfile?.executor ?? null}
           repoId={repoId}
+          modelSelector={{
+            enabled: !!effectiveProfile?.executor,
+            onAdvancedSettings: handleCustomise,
+            isAttemptRunning: false,
+            presets: variantOptions,
+            selectedPreset,
+            onPresetSelect: handlePresetSelect,
+          }}
           onPasteFiles={uploadFiles}
           localImages={localImages}
           dropzone={{ getRootProps, getInputProps, isDragActive }}

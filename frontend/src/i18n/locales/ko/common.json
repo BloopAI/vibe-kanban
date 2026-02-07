@@ -389,6 +389,15 @@
       "action": "로그인"
     }
   },
+  "modelSelector": {
+    "preset": "프리셋",
+    "custom": "사용자 정의",
+    "permissions": "권한",
+    "agent": "에이전트",
+    "default": "기본값",
+    "model": "모델",
+    "providers": "제공자"
+  },
   "syncError": {
     "networkErrors": "네트워크 오류",
     "streamsAffected": "{{count}}개 스트림이 영향을 받음",

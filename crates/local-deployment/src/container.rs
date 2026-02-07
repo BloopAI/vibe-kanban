@@ -935,12 +935,14 @@ impl LocalContainerService {
                 reset_to_message_id: None,
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir: working_dir.clone(),
+                session_overrides: None,
             })
         } else {
             ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                 prompt: queued_data.message.clone(),
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir,
+                session_overrides: None,
             })
         };
 

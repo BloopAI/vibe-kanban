@@ -118,6 +118,8 @@ impl std::fmt::Display for ExecutorProfileId {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ExecutorConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pinned_models: Option<ExecutorPinnedModels>,
     #[serde(flatten)]
     pub configurations: HashMap<String, CodingAgent>,
 }
@@ -137,7 +139,10 @@ impl ExecutorConfig {
     pub fn new_with_default(default_config: CodingAgent) -> Self {
         let mut configurations = HashMap::new();
         configurations.insert("DEFAULT".to_string(), default_config);
-        Self { configurations }
+        Self {
+            pinned_models: None,
+            configurations,
+        }
     }
 
     /// Add or update a variant configuration
@@ -168,6 +173,12 @@ impl ExecutorConfig {
             .filter(|k| *k != "DEFAULT")
             .collect()
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, Default)]
+pub struct ExecutorPinnedModels {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub models: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -274,6 +285,9 @@ impl ExecutorConfigs {
                     for (config_name, config) in override_profile.configurations {
                         default_profile.configurations.insert(config_name, config);
                     }
+                    if override_profile.pinned_models.is_some() {
+                        default_profile.pinned_models = override_profile.pinned_models;
+                    }
                 }
                 None => {
                     // New executor, add completely
@@ -281,6 +295,7 @@ impl ExecutorConfigs {
                 }
             }
         }
+
         defaults
     }
 
@@ -330,14 +345,22 @@ impl ExecutorConfigs {
                     }
                 }
 
-                // Only include executor if there are actual differences
-                if !override_configurations.is_empty() {
-                    overrides.executors.insert(
-                        *executor_key,
-                        ExecutorConfig {
-                            configurations: override_configurations,
-                        },
-                    );
+                let mut override_profile = ExecutorConfig {
+                    pinned_models: None,
+                    configurations: override_configurations,
+                };
+
+                if current_profile.pinned_models != default_profile.pinned_models {
+                    override_profile.pinned_models = current_profile
+                        .pinned_models
+                        .clone()
+                        .or_else(|| Some(ExecutorPinnedModels::default()));
+                }
+
+                if !override_profile.configurations.is_empty()
+                    || override_profile.pinned_models.is_some()
+                {
+                    overrides.executors.insert(*executor_key, override_profile);
                 }
             } else {
                 // New executor, include completely

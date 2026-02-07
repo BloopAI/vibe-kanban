@@ -191,3 +191,17 @@ pub fn slash_commands(
     ]))
     .unwrap_or_default()
 }
+
+/// Create a JSON patch for model selector configuration.
+pub fn model_selector_config(
+    config: crate::model_selector::ModelSelectorConfig,
+    loading: bool,
+    error: Option<String>,
+) -> Patch {
+    serde_json::from_value(json!([
+        {"op": "replace", "path": "/config", "value": config},
+        {"op": "replace", "path": "/loading", "value": loading},
+        {"op": "replace", "path": "/error", "value": error},
+    ]))
+    .unwrap_or_default()
+}

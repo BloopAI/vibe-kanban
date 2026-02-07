@@ -6,7 +6,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use crate::{
-    actions::Executable,
+    actions::{Executable, ExecutorSessionOverrides},
     approvals::ExecutorApprovalService,
     env::ExecutionEnv,
     executors::{BaseCodingAgent, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
@@ -31,6 +31,9 @@ pub struct ReviewRequest {
     /// Optional relative path to execute the agent in (relative to container_ref).
     #[serde(default)]
     pub working_dir: Option<String>,
+    /// Session-level overrides for this run (model, agent mode, reasoning).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_overrides: Option<ExecutorSessionOverrides>,
 }
 
 impl ReviewRequest {
@@ -67,6 +70,9 @@ impl Executable for ReviewRequest {
                 executor_profile_id.to_string(),
             ))?;
 
+        if let Some(overrides) = self.session_overrides.as_ref() {
+            agent.apply_session_overrides(overrides);
+        }
         agent.use_approvals(approvals.clone());
 
         agent

@@ -11,7 +11,7 @@ use db::models::{
 use deployment::Deployment;
 use executors::{
     actions::{
-        ExecutorAction, ExecutorActionType,
+        ExecutorAction, ExecutorActionType, ExecutorSessionOverrides,
         review::{RepoReviewContext as ExecutorRepoReviewContext, ReviewRequest as ReviewAction},
     },
     executors::build_review_prompt,
@@ -30,6 +30,8 @@ pub struct StartReviewRequest {
     pub additional_prompt: Option<String>,
     #[serde(default)]
     pub use_all_workspace_commits: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_overrides: Option<ExecutorSessionOverrides>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -109,6 +111,7 @@ pub async fn start_review(
             prompt,
             session_id: agent_session_id,
             working_dir: workspace.agent_working_dir.clone(),
+            session_overrides: payload.session_overrides.clone(),
         }),
         None,
     );

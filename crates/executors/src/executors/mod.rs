@@ -16,7 +16,7 @@ use workspace_utils::msg_store::MsgStore;
 #[cfg(feature = "qa-mode")]
 use crate::executors::qa_mock::QaMockExecutor;
 use crate::{
-    actions::{ExecutorAction, review::RepoReviewContext},
+    actions::{ExecutorAction, ExecutorSessionOverrides, review::RepoReviewContext},
     approvals::ExecutorApprovalService,
     command::CommandBuildError,
     env::ExecutionEnv,
@@ -26,6 +26,7 @@ use crate::{
     },
     logs::utils::patch,
     mcp_config::McpConfig,
+    model_selector::{ModelSelectorConfig, PresetOptions},
 };
 
 pub mod acp;
@@ -219,6 +220,8 @@ impl AvailabilityInfo {
 #[async_trait]
 #[enum_dispatch(CodingAgent)]
 pub trait StandardCodingAgentExecutor {
+    fn apply_session_overrides(&mut self, _overrides: &ExecutorSessionOverrides) {}
+
     fn use_approvals(&mut self, _approvals: Arc<dyn ExecutorApprovalService>) {}
 
     async fn available_slash_commands(
@@ -283,6 +286,22 @@ pub trait StandardCodingAgentExecutor {
         } else {
             AvailabilityInfo::NotFound
         }
+    }
+
+    /// Returns a stream of model selector configuration updates.
+    async fn available_model_config(
+        &self,
+        _workdir: &Path,
+    ) -> Result<BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let config = ModelSelectorConfig::default();
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::model_selector_config(config, false, None)
+        })))
+    }
+
+    /// Returns the model selector options defined by this preset.
+    fn get_preset_options(&self) -> PresetOptions {
+        PresetOptions::default()
     }
 }
 

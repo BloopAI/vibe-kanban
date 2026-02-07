@@ -14,6 +14,7 @@ use crate::{
     approvals::ExecutorApprovalService,
     env::ExecutionEnv,
     executors::{BaseCodingAgent, ExecutorError, SpawnedChild},
+    model_selector::PermissionPolicy,
 };
 pub mod coding_agent_follow_up;
 pub mod coding_agent_initial;
@@ -92,4 +93,17 @@ impl Executable for ExecutorAction {
     ) -> Result<SpawnedChild, ExecutorError> {
         self.typ.spawn(current_dir, approvals, env).await
     }
+}
+
+/// Executor session-level overrides (model, agent, reasoning, permission policy).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+pub struct ExecutorSessionOverrides {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permission_policy: Option<PermissionPolicy>,
 }

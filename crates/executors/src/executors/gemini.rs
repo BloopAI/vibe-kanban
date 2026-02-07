@@ -13,8 +13,10 @@ use crate::{
     command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+        AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorSessionOverrides, SpawnedChild,
+        StandardCodingAgentExecutor,
     },
+    logs::utils::patch,
 };
 
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
@@ -55,6 +57,18 @@ impl Gemini {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Gemini {
+    fn apply_session_overrides(&mut self, overrides: &ExecutorSessionOverrides) {
+        if let Some(model_id) = &overrides.model_id {
+            self.model = Some(model_id.clone());
+        }
+        if let Some(permission_policy) = overrides.permission_policy.clone() {
+            self.yolo = Some(matches!(
+                permission_policy,
+                crate::model_selector::PermissionPolicy::Auto
+            ));
+        }
+    }
+
     fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
         self.approvals = Some(approvals);
     }
@@ -65,7 +79,10 @@ impl StandardCodingAgentExecutor for Gemini {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let harness = AcpAgentHarness::new();
+        let mut harness = AcpAgentHarness::new();
+        if let Some(model) = &self.model {
+            harness = harness.with_model(model);
+        }
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let gemini_command = self.build_command_builder()?.build_initial()?;
         let approvals = if self.yolo.unwrap_or(false) {
@@ -93,7 +110,10 @@ impl StandardCodingAgentExecutor for Gemini {
         _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let harness = AcpAgentHarness::new();
+        let mut harness = AcpAgentHarness::new();
+        if let Some(model) = &self.model {
+            harness = harness.with_model(model);
+        }
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let gemini_command = self.build_command_builder()?.build_follow_up(&[])?;
         let approvals = if self.yolo.unwrap_or(false) {
@@ -147,6 +167,51 @@ impl StandardCodingAgentExecutor for Gemini {
             AvailabilityInfo::InstallationFound
         } else {
             AvailabilityInfo::NotFound
+        }
+    }
+
+    async fn available_model_config(
+        &self,
+        _workdir: &Path,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let config = crate::model_selector::ModelSelectorConfig {
+            models: vec![
+                crate::model_selector::ModelInfo {
+                    id: "gemini-3-pro-preview".to_string(),
+                    name: "Gemini 3 Pro".to_string(),
+                    provider_id: None,
+                    reasoning_options: vec![],
+                },
+                crate::model_selector::ModelInfo {
+                    id: "gemini-3-flash-preview".to_string(),
+                    name: "Gemini 3 Flash".to_string(),
+                    provider_id: None,
+                    reasoning_options: vec![],
+                },
+            ],
+            default_model: Some("gemini-3-pro-preview".to_string()),
+            permissions: vec![
+                crate::model_selector::PermissionPolicy::Auto,
+                crate::model_selector::PermissionPolicy::Supervised,
+            ],
+            ..Default::default()
+        };
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::model_selector_config(config, false, None)
+        })))
+    }
+
+    fn get_preset_options(&self) -> crate::model_selector::PresetOptions {
+        use crate::model_selector::*;
+        PresetOptions {
+            model_id: self.model.clone(),
+            agent_id: None,
+            reasoning_id: None,
+            permission_policy: if self.yolo.unwrap_or(false) {
+                PermissionPolicy::Auto
+            } else {
+                PermissionPolicy::Supervised
+            },
         }
     }
 }
