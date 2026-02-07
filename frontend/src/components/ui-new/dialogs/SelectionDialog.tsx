@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { CommandDialog } from '@/components/ui-new/primitives/Command';
@@ -35,12 +35,36 @@ const SelectionDialogImpl = NiceModal.create<SelectionDialogProps>(
     const [currentPageId, setCurrentPageId] = useState(initialPageId);
     const [pageStack, setPageStack] = useState<string[]>([]);
 
-    // Capture focus on mount
-    if (!previousFocusRef.current && modal.visible) {
+    // Reset transient state and capture focus each time dialog opens.
+    useEffect(() => {
+      if (!modal.visible) return;
       previousFocusRef.current = document.activeElement as HTMLElement;
-    }
+      setSearch('');
+      setPageStack([]);
+      setCurrentPageId(initialPageId);
+    }, [modal.visible, initialPageId]);
 
-    const currentPage = pages[currentPageId];
+    // Guard against stale page IDs when opening with different page sets.
+    useEffect(() => {
+      if (pages[currentPageId]) return;
+      if (pages[initialPageId]) {
+        setCurrentPageId(initialPageId);
+        return;
+      }
+      const fallbackPageId = Object.keys(pages)[0];
+      if (fallbackPageId) {
+        setCurrentPageId(fallbackPageId);
+      }
+    }, [currentPageId, initialPageId, pages]);
+
+    const currentPage =
+      pages[currentPageId] ??
+      pages[initialPageId] ??
+      pages[Object.keys(pages)[0] ?? ''];
+
+    if (!currentPage) {
+      return null;
+    }
 
     const resolvedPage = {
       id: currentPage.id,
@@ -55,12 +79,13 @@ const SelectionDialogImpl = NiceModal.create<SelectionDialogProps>(
           modal.resolve(result.data);
           modal.hide();
         } else if (result.type === 'navigate') {
+          if (!pages[result.pageId]) return;
           setPageStack((prev) => [...prev, currentPageId]);
           setCurrentPageId(result.pageId);
           setSearch('');
         }
       },
-      [currentPage, currentPageId, modal]
+      [currentPage, currentPageId, modal, pages]
     );
 
     const handleGoBack = useCallback(() => {
