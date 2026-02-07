@@ -263,31 +263,13 @@ export function CreateChatBox({
             </>
           )}
 
-          <span
-            className="mx-half h-3 w-px shrink-0 bg-border/70"
-            aria-hidden="true"
-          />
-
-          <button
-            type="button"
-            onClick={onEditRepos}
-            title={repoSummaryTitle}
-            disabled={isDisabled}
-            className={cn(
-              'max-w-[320px] shrink-0 bg-transparent px-base py-0 text-sm text-normal hover:text-high',
-              'disabled:cursor-not-allowed disabled:opacity-50'
-            )}
-          >
-            <span className="block truncate">{repoSummaryLabel}</span>
-          </button>
-
           {saveAsDefault?.visible && (
             <>
               <span
                 className="mx-half h-3 w-px shrink-0 bg-border/70"
                 aria-hidden="true"
               />
-              <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm text-low">
+              <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm text-low px-base">
                 <Checkbox
                   checked={saveAsDefault.checked}
                   onCheckedChange={saveAsDefault.onChange}
@@ -306,6 +288,24 @@ export function CreateChatBox({
             </>
           )}
 
+          <span
+            className="mx-half h-3 w-px shrink-0 bg-border/70"
+            aria-hidden="true"
+          />
+
+          <button
+            type="button"
+            onClick={onEditRepos}
+            title={repoSummaryTitle}
+            disabled={isDisabled}
+            className={cn(
+              'max-w-[320px] shrink-0 bg-transparent px-base py-0 text-sm text-normal hover:text-high',
+              'disabled:cursor-not-allowed disabled:opacity-50'
+            )}
+          >
+            <span className="block truncate">{repoSummaryLabel}</span>
+          </button>
+
           {linkedIssue && (
             <>
               <span
@@ -313,7 +313,7 @@ export function CreateChatBox({
                 aria-hidden="true"
               />
               <div
-                className="inline-flex shrink-0 items-center gap-half whitespace-nowrap px-half text-sm text-low"
+                className="inline-flex shrink-0 items-center gap-half whitespace-nowrap px-base text-sm text-low"
                 title={linkedIssue.title}
               >
                 <span className="font-mono text-xs text-normal">
