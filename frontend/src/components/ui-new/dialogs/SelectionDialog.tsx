@@ -48,8 +48,11 @@ const SelectionDialogImpl = NiceModal.create<SelectionDialogProps>(
     useEffect(() => {
       if (!modal.visible) return;
       const rafId = requestAnimationFrame(() => {
-        const activeDialog = document.querySelector('[role="dialog"][data-state="open"]');
-        const input = activeDialog?.querySelector<HTMLInputElement>('[cmdk-input]');
+        const activeDialog = document.querySelector(
+          '[role="dialog"][data-state="open"]'
+        );
+        const input =
+          activeDialog?.querySelector<HTMLInputElement>('[cmdk-input]');
         input?.focus();
       });
 
