@@ -197,7 +197,11 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
     );
 
     if (effectiveProjectId) {
-      return <ProjectProvider projectId={effectiveProjectId}>{content}</ProjectProvider>;
+      return (
+        <ProjectProvider projectId={effectiveProjectId}>
+          {content}
+        </ProjectProvider>
+      );
     }
 
     return content;
