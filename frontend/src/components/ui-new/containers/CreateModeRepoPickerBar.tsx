@@ -207,9 +207,7 @@ export function CreateModeRepoPickerBar() {
               {t('sections.repositories')}
             </p>
             <p className="text-xs text-low">
-              {repos.length === 0
-                ? 'Select at least one repository and branch to start.'
-                : 'Review repository and branch selections before creating.'}
+              Add repositories and choose branches for this workspace.
             </p>
           </div>
           {repos.length > 0 && (
@@ -267,14 +265,14 @@ export function CreateModeRepoPickerBar() {
         <div className="mt-base flex flex-wrap gap-half border-t border-border pt-base">
           <PrimaryButton
             variant="default"
-            value={repos.length === 0 ? 'Choose repo' : 'Add repo'}
+            value="Add saved repo"
             actionIcon={pendingAction === 'choose' ? 'spinner' : PlusIcon}
             onClick={handleChooseRepo}
             disabled={isBusy}
           />
           <PrimaryButton
             variant="tertiary"
-            value={t('actions.browseRepos')}
+            value="Browse folder"
             actionIcon={
               pendingAction === 'browse' ? 'spinner' : MagnifyingGlassIcon
             }
@@ -283,7 +281,7 @@ export function CreateModeRepoPickerBar() {
           />
           <PrimaryButton
             variant="tertiary"
-            value={t('actions.createNewRepo')}
+            value="Create repo"
             actionIcon={pendingAction === 'create' ? 'spinner' : NoteBlankIcon}
             onClick={handleCreateRepo}
             disabled={isBusy}
