@@ -80,6 +80,8 @@ interface SharedProps {
   onScrollToBottom: () => void;
   /** Disable the "view code" click handler (for VS Code extension) */
   disableViewCode: boolean;
+  /** Replace diff stats with an "Open Workspace" button in header */
+  showOpenWorkspaceButton: boolean;
 }
 
 /** Props for existing session mode */
@@ -123,6 +125,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     onScrollToPreviousMessage,
     onScrollToBottom,
     disableViewCode = false,
+    showOpenWorkspaceButton,
   } = props;
 
   // Extract mode-specific values
@@ -155,6 +158,11 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         : RIGHT_MAIN_PANEL_MODES.CHANGES
     );
   }, [rightMainPanelMode, setRightMainPanelMode]);
+
+  const handleOpenWorkspace = useCallback(() => {
+    if (!workspaceId) return;
+    navigate(`/workspaces/${workspaceId}`);
+  }, [navigate, workspaceId]);
 
   // Get entries early to extract pending approval for scratch key
   const { entries } = useEntries();
@@ -720,6 +728,11 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     <SessionChatBox
       status={status}
       onViewCode={disableViewCode ? undefined : handleViewCode}
+      onOpenWorkspace={
+        showOpenWorkspaceButton && workspaceId
+          ? handleOpenWorkspace
+          : undefined
+      }
       onScrollToPreviousMessage={onScrollToPreviousMessage}
       repoIds={repoIds}
       projectId={projectId}

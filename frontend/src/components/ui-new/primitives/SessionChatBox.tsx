@@ -10,6 +10,7 @@ import {
   TrashIcon,
   WarningIcon,
   ArrowUpIcon,
+  ArrowsOutIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -150,6 +151,7 @@ interface SessionChatBoxProps {
   inProgressTodo?: TodoItem | null;
   localImages?: LocalImageMetadata[];
   onViewCode?: () => void;
+  onOpenWorkspace?: () => void;
   onScrollToPreviousMessage?: () => void;
   tokenUsageInfo?: TokenUsageInfo | null;
   dropzone?: DropzoneProps;
@@ -180,6 +182,7 @@ export function SessionChatBox({
   inProgressTodo,
   localImages,
   onViewCode,
+  onOpenWorkspace,
   onScrollToPreviousMessage,
   tokenUsageInfo,
   dropzone,
@@ -581,7 +584,15 @@ export function SessionChatBox({
                       </span>
                     </span>
                   )}
-                  {onViewCode ? (
+                  {onOpenWorkspace ? (
+                    <PrimaryButton
+                      variant="secondary"
+                      onClick={onOpenWorkspace}
+                      value="Open Workspace"
+                      actionIcon={ArrowsOutIcon}
+                      className="min-w-0"
+                    />
+                  ) : onViewCode ? (
                     <PrimaryButton
                       variant="tertiary"
                       onClick={onViewCode}
