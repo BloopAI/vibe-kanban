@@ -110,7 +110,9 @@ export function FileTagTypeaheadPlugin({
 }) {
   const [editor] = useLexicalComposerContext();
   const [options, setOptions] = useState<FileTagOption[]>([]);
-  const [repoCatalog, setRepoCatalog] = useState<Repo[] | null>(null);
+  const [recentRepoCatalog, setRecentRepoCatalog] = useState<Repo[] | null>(
+    null
+  );
   const [preferredRepoName, setPreferredRepoName] = useState<string | null>(
     null
   );
@@ -144,16 +146,16 @@ export function FileTagTypeaheadPlugin({
 
   const canSearchFiles = Boolean(effectiveRepoIds && effectiveRepoIds.length);
 
-  const loadRepos = useCallback(
+  const loadRecentRepos = useCallback(
     async (force = false): Promise<Repo[]> => {
-      if (!force && repoCatalog !== null) {
-        return repoCatalog;
+      if (!force && recentRepoCatalog !== null) {
+        return recentRepoCatalog;
       }
-      const repos = await repoApi.list();
-      setRepoCatalog(repos);
+      const repos = await repoApi.listRecent();
+      setRecentRepoCatalog(repos);
       return repos;
     },
-    [repoCatalog]
+    [recentRepoCatalog]
   );
 
   const runSearch = useCallback(
@@ -221,24 +223,43 @@ export function FileTagTypeaheadPlugin({
     }
 
     let canceled = false;
-    void loadRepos()
-      .then((repos) => {
+    void loadRecentRepos()
+      .then(async (recentRepos) => {
         if (canceled) return;
-        const matchingRepo = repos.find((repo) => repo.id === preferredRepoId);
-        if (!matchingRepo) {
-          setPreferredRepoName(null);
-          setShowMissingRepoState(true);
-          setFileSearchRepoForProject(projectId, null);
 
-          const queryToRefresh = lastQueryRef.current;
-          if (queryToRefresh !== null) {
-            void runSearch(queryToRefresh, []);
-          }
+        const matchingRecentRepo = recentRepos.find(
+          (repo) => repo.id === preferredRepoId
+        );
+        if (matchingRecentRepo) {
+          setPreferredRepoName(getRepoDisplayName(matchingRecentRepo));
+          setShowMissingRepoState(false);
           return;
         }
 
-        setPreferredRepoName(getRepoDisplayName(matchingRepo));
-        setShowMissingRepoState(false);
+        // Not all valid repos are guaranteed to be in /repos/recent.
+        // Check repo existence directly before clearing the saved preference.
+        let existingRepo: Repo | null = null;
+        try {
+          existingRepo = await repoApi.getById(preferredRepoId);
+        } catch {
+          existingRepo = null;
+        }
+
+        if (canceled) return;
+        if (existingRepo) {
+          setPreferredRepoName(getRepoDisplayName(existingRepo));
+          setShowMissingRepoState(false);
+          return;
+        }
+
+        setPreferredRepoName(null);
+        setShowMissingRepoState(true);
+        setFileSearchRepoForProject(projectId, null);
+
+        const queryToRefresh = lastQueryRef.current;
+        if (queryToRefresh !== null) {
+          void runSearch(queryToRefresh, []);
+        }
       })
       .catch((err) => {
         console.error('Failed to load repos for file-search preference', err);
@@ -248,7 +269,7 @@ export function FileTagTypeaheadPlugin({
       canceled = true;
     };
   }, [
-    loadRepos,
+    loadRecentRepos,
     preferredRepoId,
     projectId,
     runSearch,
@@ -259,7 +280,7 @@ export function FileTagTypeaheadPlugin({
   useEffect(() => {
     setShowMissingRepoState(false);
     setPreferredRepoName(null);
-    setRepoCatalog(null);
+    setRecentRepoCatalog(null);
   }, [projectId]);
 
   const handleChooseRepo = useCallback(async () => {
@@ -267,7 +288,7 @@ export function FileTagTypeaheadPlugin({
 
     setIsChoosingRepo(true);
     try {
-      const repos = await loadRepos(true);
+      const repos = await loadRecentRepos(true);
       const repoResult = (await SelectionDialog.show({
         initialPageId: 'selectRepo',
         pages: buildRepoSelectionPages(repos.map(toRepoItem)) as Record<
@@ -298,7 +319,7 @@ export function FileTagTypeaheadPlugin({
     } finally {
       setIsChoosingRepo(false);
     }
-  }, [loadRepos, projectId, runSearch, setFileSearchRepoForProject]);
+  }, [loadRecentRepos, projectId, runSearch, setFileSearchRepoForProject]);
 
   const onQueryChange = useCallback(
     (query: string | null) => {
