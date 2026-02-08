@@ -265,12 +265,12 @@ export function KanbanIssuePanelContainer() {
   // For edit mode - only track text field edits (title, description).
   // Dropdown fields (status, priority, assignees, tags) derive from server state.
   const [localTextEdits, setLocalTextEdits] = useState<{
-    title: string | null;
+    title: string;
     hasLocalTitleEdit: boolean;
     description: string | null;
     hasLocalDescriptionEdit: boolean;
   }>({
-    title: null,
+    title: '',
     hasLocalTitleEdit: false,
     description: null,
     hasLocalDescriptionEdit: false,
@@ -435,7 +435,7 @@ export function KanbanIssuePanelContainer() {
 
     // Clear local text edits (they apply to the previous issue)
     setLocalTextEdits({
-      title: null,
+      title: '',
       hasLocalTitleEdit: false,
       description: null,
       hasLocalDescriptionEdit: false,
