@@ -53,7 +53,7 @@ class FileTagOption extends MenuOption {
 }
 
 const MAX_FILE_RESULTS = 10;
-const DEBUG_FILE_TAG_TYPEAHEAD = import.meta.env.DEV;
+const DEBUG_FILE_TAG_TYPEAHEAD = true;
 
 function debugFileTagTypeahead(
   message: string,
@@ -61,10 +61,10 @@ function debugFileTagTypeahead(
 ) {
   if (!DEBUG_FILE_TAG_TYPEAHEAD) return;
   if (data) {
-    console.debug(`[file-tag-typeahead] ${message}`, data);
+    console.log(`[file-tag-typeahead] ${message}`, data);
     return;
   }
-  console.debug(`[file-tag-typeahead] ${message}`);
+  console.log(`[file-tag-typeahead] ${message}`);
 }
 
 interface DiffFileResult {
