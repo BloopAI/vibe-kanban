@@ -47,7 +47,6 @@ export interface LinkedPullRequest {
 export interface KanbanIssuePanelProps {
   mode: IssuePanelMode;
   displayId: string;
-  projectId: string;
 
   // Form data
   formData: IssueFormData;
@@ -100,7 +99,6 @@ export interface KanbanIssuePanelProps {
 export function KanbanIssuePanel({
   mode,
   displayId,
-  projectId,
   formData,
   onFormChange,
   statuses,
@@ -262,7 +260,6 @@ export function KanbanIssuePanel({
               disabled={isSubmitting}
               autoFocus={false}
               className="min-h-[100px] px-base"
-              projectId={projectId}
               showStaticToolbar
               saveStatus={descriptionSaveStatus}
             />

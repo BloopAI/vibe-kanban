@@ -100,9 +100,9 @@ pane_sizes: { [key in string]?: JsonValue },
  */
 collapsed_paths: { [key in string]?: Array<string> }, 
 /**
- * Preferred file-search repo per project (project_id -> repo_id)
+ * Preferred file-search repo
  */
-file_search_repo_by_project: { [key in string]?: string }, 
+file_search_repo_id: string | null, 
 /**
  * Global left sidebar visibility
  */

@@ -103,10 +103,8 @@ function toRepoItem(repo: Repo): RepoItem {
 
 export function FileTagTypeaheadPlugin({
   repoIds,
-  projectId,
 }: {
   repoIds?: string[];
-  projectId?: string;
 }) {
   const [editor] = useLexicalComposerContext();
   const [options, setOptions] = useState<FileTagOption[]>([]);
@@ -129,11 +127,9 @@ export function FileTagTypeaheadPlugin({
     () => workspaceContext?.diffPaths ?? new Set<string>(),
     [workspaceContext?.diffPaths]
   );
-  const preferredRepoId = useUiPreferencesStore((state) =>
-    projectId ? state.fileSearchRepoByProject[projectId] : undefined
-  );
-  const setFileSearchRepoForProject = useUiPreferencesStore(
-    (state) => state.setFileSearchRepoForProject
+  const preferredRepoId = useUiPreferencesStore((state) => state.fileSearchRepoId);
+  const setFileSearchRepo = useUiPreferencesStore(
+    (state) => state.setFileSearchRepo
   );
   const usePreferenceRepoSelection = repoIds === undefined;
 
@@ -215,7 +211,7 @@ export function FileTagTypeaheadPlugin({
   );
 
   useEffect(() => {
-    if (!usePreferenceRepoSelection || !projectId || !preferredRepoId) {
+    if (!usePreferenceRepoSelection || !preferredRepoId) {
       if (!preferredRepoId) {
         setPreferredRepoName(null);
       }
@@ -254,7 +250,7 @@ export function FileTagTypeaheadPlugin({
 
         setPreferredRepoName(null);
         setShowMissingRepoState(true);
-        setFileSearchRepoForProject(projectId, null);
+        setFileSearchRepo(null);
 
         const queryToRefresh = lastQueryRef.current;
         if (queryToRefresh !== null) {
@@ -271,21 +267,12 @@ export function FileTagTypeaheadPlugin({
   }, [
     loadRecentRepos,
     preferredRepoId,
-    projectId,
     runSearch,
-    setFileSearchRepoForProject,
+    setFileSearchRepo,
     usePreferenceRepoSelection,
   ]);
 
-  useEffect(() => {
-    setShowMissingRepoState(false);
-    setPreferredRepoName(null);
-    setRecentRepoCatalog(null);
-  }, [projectId]);
-
   const handleChooseRepo = useCallback(async () => {
-    if (!projectId) return;
-
     setIsChoosingRepo(true);
     try {
       const repos = await loadRecentRepos(true);
@@ -306,7 +293,7 @@ export function FileTagTypeaheadPlugin({
         return;
       }
 
-      setFileSearchRepoForProject(projectId, selectedRepo.id);
+      setFileSearchRepo(selectedRepo.id);
       setPreferredRepoName(getRepoDisplayName(selectedRepo));
       setShowMissingRepoState(false);
 
@@ -319,7 +306,7 @@ export function FileTagTypeaheadPlugin({
     } finally {
       setIsChoosingRepo(false);
     }
-  }, [loadRecentRepos, projectId, runSearch, setFileSearchRepoForProject]);
+  }, [loadRecentRepos, runSearch, setFileSearchRepo]);
 
   const onQueryChange = useCallback(
     (query: string | null) => {
@@ -432,7 +419,7 @@ export function FileTagTypeaheadPlugin({
 
         const tagResults = options.filter((r) => r.item.type === 'tag');
         const fileResults = options.filter((r) => r.item.type === 'file');
-        const canShowRepoSelector = usePreferenceRepoSelection && !!projectId;
+        const canShowRepoSelector = usePreferenceRepoSelection;
         const showChooseRepoControl = canShowRepoSelector && !canSearchFiles;
         const showSelectedRepoState = canShowRepoSelector && canSearchFiles;
         const showFilesSection =

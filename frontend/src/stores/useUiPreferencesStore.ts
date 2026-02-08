@@ -156,7 +156,7 @@ type State = {
   contextBarPosition: ContextBarPosition;
   paneSizes: Record<string, number | string>;
   collapsedPaths: Record<string, string[]>;
-  fileSearchRepoByProject: Record<string, string>;
+  fileSearchRepoId: string | null;
 
   // Global layout state (applies across all workspaces)
   layoutMode: LayoutMode;
@@ -191,10 +191,7 @@ type State = {
   setContextBarPosition: (position: ContextBarPosition) => void;
   setPaneSize: (key: string, size: number | string) => void;
   setCollapsedPaths: (key: string, paths: string[]) => void;
-  setFileSearchRepoForProject: (
-    projectId: string,
-    repoId: string | null
-  ) => void;
+  setFileSearchRepo: (repoId: string | null) => void;
 
   // Layout actions
   setLayoutMode: (mode: LayoutMode) => void;
@@ -253,7 +250,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
   contextBarPosition: 'middle-right',
   paneSizes: {},
   collapsedPaths: {},
-  fileSearchRepoByProject: {},
+  fileSearchRepoId: null,
 
   // Global layout state
   layoutMode: 'workspaces' as LayoutMode,
@@ -302,16 +299,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
     set((s) => ({ paneSizes: { ...s.paneSizes, [key]: size } })),
   setCollapsedPaths: (key, paths) =>
     set((s) => ({ collapsedPaths: { ...s.collapsedPaths, [key]: paths } })),
-  setFileSearchRepoForProject: (projectId, repoId) =>
-    set((s) => {
-      const next = { ...s.fileSearchRepoByProject };
-      if (!repoId) {
-        delete next[projectId];
-      } else {
-        next[projectId] = repoId;
-      }
-      return { fileSearchRepoByProject: next };
-    }),
+  setFileSearchRepo: (repoId) => set({ fileSearchRepoId: repoId }),
 
   // Layout actions
   setLayoutMode: (mode) => set({ layoutMode: mode }),

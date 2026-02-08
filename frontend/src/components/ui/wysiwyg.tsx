@@ -135,7 +135,6 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       onPasteFiles,
       className,
       repoIds,
-      projectId,
       executor = null,
       onCmdEnter,
       onShiftCmdEnter,
@@ -332,10 +331,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                     />
                     <PasteMarkdownPlugin transformers={extendedTransformers} />
                     <TypeaheadOpenProvider>
-                      <FileTagTypeaheadPlugin
-                        repoIds={repoIds}
-                        projectId={projectId}
-                      />
+                      <FileTagTypeaheadPlugin repoIds={repoIds} />
                       {executor && (
                         <SlashCommandTypeaheadPlugin
                           agent={executor}
