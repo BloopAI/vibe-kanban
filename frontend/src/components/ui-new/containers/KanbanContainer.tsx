@@ -644,6 +644,20 @@ export function KanbanContainer() {
                         if (!issue) return null;
                         const issueWorkspaces =
                           workspacesByIssueId.get(issue.id) ?? [];
+                        const workspaceIdsShownOnCard = new Set(
+                          issueWorkspaces.map((workspace) => workspace.id)
+                        );
+                        const issueCardPullRequests = getPullRequestsForIssue(
+                          issue.id
+                        ).filter((pr) => {
+                          if (!pr.workspace_id) {
+                            return true;
+                          }
+
+                          // If this PR is already visible under a workspace card,
+                          // do not render it again at the issue level.
+                          return !workspaceIdsShownOnCard.has(pr.workspace_id);
+                        });
 
                         return (
                           <KanbanCard
@@ -661,7 +675,7 @@ export function KanbanContainer() {
                               priority={issue.priority}
                               tags={getTagObjectsForIssue(issue.id)}
                               assignees={issueAssigneesMap[issue.id] ?? []}
-                              pullRequests={getPullRequestsForIssue(issue.id)}
+                              pullRequests={issueCardPullRequests}
                               relationships={resolveRelationshipsForIssue(
                                 issue.id,
                                 getRelationshipsForIssue(issue.id),
