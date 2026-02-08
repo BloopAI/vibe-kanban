@@ -56,9 +56,6 @@ export function KanbanContainer() {
     tags,
     issueAssignees,
     issueTags,
-    insertStatus,
-    updateStatus,
-    removeStatus,
     getTagObjectsForIssue,
     getTagsForIssue,
     getPullRequestsForIssue,
@@ -198,17 +195,6 @@ export function KanbanContainer() {
     }
     return sortedStatuses;
   }, [sortedStatuses, listViewStatusFilter]);
-
-  // Compute issue count by status for display settings
-  const issueCountByStatus = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const status of statuses) {
-      counts[status.id] = issues.filter(
-        (i) => i.status_id === status.id
-      ).length;
-    }
-    return counts;
-  }, [statuses, issues]);
 
   // Track items as arrays of IDs grouped by status
   const [items, setItems] = useState<Record<string, string[]>>({});
@@ -609,12 +595,7 @@ export function KanbanContainer() {
           tags={tags}
           users={[...membersWithProfilesById.values()]}
           hasActiveFilters={hasActiveFilters}
-          statuses={sortedStatuses}
           projectId={projectId}
-          issueCountByStatus={issueCountByStatus}
-          onInsertStatus={insertStatus}
-          onUpdateStatus={updateStatus}
-          onRemoveStatus={removeStatus}
         />
       </div>
 

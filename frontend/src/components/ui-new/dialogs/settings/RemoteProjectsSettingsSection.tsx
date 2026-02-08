@@ -23,11 +23,15 @@ import { useShape } from '@/lib/electric/hooks';
 import {
   PROJECTS_SHAPE,
   PROJECT_MUTATION,
+  PROJECT_PROJECT_STATUSES_SHAPE,
+  PROJECT_STATUS_MUTATION,
+  PROJECT_ISSUES_SHAPE,
   type Project,
 } from 'shared/remote-types';
 import { PRESET_COLORS } from '@/lib/colors';
 import { InlineColorPicker } from '../../primitives/ColorPicker';
 import { cn } from '@/lib/utils';
+import { KanbanDisplaySettingsContainer } from '@/components/ui-new/containers/KanbanDisplaySettingsContainer';
 import {
   SettingsCard,
   SettingsField,
@@ -127,6 +131,40 @@ export function RemoteProjectsSettingsSection({
     () => projects.find((p) => p.id === selectedProjectId) ?? null,
     [projects, selectedProjectId]
   );
+
+  // Fetch statuses and issues for selected project (for status settings)
+  const projectParams = useMemo(
+    () => ({ project_id: selectedProjectId ?? '' }),
+    [selectedProjectId]
+  );
+
+  const {
+    data: projectStatuses,
+    insert: insertProjectStatus,
+    update: updateProjectStatus,
+    remove: removeProjectStatus,
+  } = useShape(PROJECT_PROJECT_STATUSES_SHAPE, projectParams, {
+    enabled: !!selectedProjectId,
+    mutation: PROJECT_STATUS_MUTATION,
+  });
+
+  const { data: projectIssues } = useShape(PROJECT_ISSUES_SHAPE, projectParams, {
+    enabled: !!selectedProjectId,
+  });
+
+  const issueCountByStatus = useMemo(() => {
+    const counts: Record<string, number> = {};
+
+    for (const status of projectStatuses) {
+      counts[status.id] = 0;
+    }
+
+    for (const issue of projectIssues) {
+      counts[issue.status_id] = (counts[issue.status_id] ?? 0) + 1;
+    }
+
+    return counts;
+  }, [projectStatuses, projectIssues]);
 
   // Calculate dirty state
   const isDirty = useMemo(() => {
@@ -478,6 +516,36 @@ export function RemoteProjectsSettingsSection({
                 disabled={isSaving}
               />
             </SettingsField>
+          </div>
+        )}
+
+        {/* Project status settings (kanban columns) */}
+        {selectedProjectId && (
+          <div className="bg-secondary/50 border border-border rounded-sm p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-normal">
+                  {t(
+                    'settings.remoteProjects.form.statuses.label',
+                    'Project Statuses'
+                  )}
+                </p>
+                <p className="text-sm text-low mt-1">
+                  {t(
+                    'settings.remoteProjects.form.statuses.description',
+                    'Manage kanban columns for this project.'
+                  )}
+                </p>
+              </div>
+              <KanbanDisplaySettingsContainer
+                statuses={projectStatuses}
+                projectId={selectedProjectId}
+                issueCountByStatus={issueCountByStatus}
+                onInsertStatus={insertProjectStatus}
+                onUpdateStatus={updateProjectStatus}
+                onRemoveStatus={removeProjectStatus}
+              />
+            </div>
           </div>
         )}
       </SettingsCard>
