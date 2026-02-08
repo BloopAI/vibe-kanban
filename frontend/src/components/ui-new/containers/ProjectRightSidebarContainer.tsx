@@ -225,7 +225,7 @@ export function ProjectRightSidebarContainer() {
     (createdWorkspaceId: string) => {
       const linkedIssueId =
         mode.type === 'workspace-create'
-          ? mode.initialState?.linkedIssue?.issueId ?? null
+          ? (mode.initialState?.linkedIssue?.issueId ?? null)
           : null;
       const targetIssueId = issueId ?? linkedIssueId;
       showIssuePanel();
