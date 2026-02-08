@@ -147,7 +147,7 @@ export function ChatSubagentEntry({
       {/* Expanded content - shows subagent output */}
       {expanded && hasContent && (
         <div className="border-t p-double bg-panel/50">
-          <div className="text-xs font-medium text-low mb-base uppercase tracking-wide">
+          <div className="text-xs font-medium text-low pb-base uppercase tracking-wide">
             {t('conversation.output')}
           </div>
           <div className="prose prose-sm dark:prose-invert max-w-none">

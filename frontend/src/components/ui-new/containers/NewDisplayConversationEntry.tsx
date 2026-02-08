@@ -1029,7 +1029,7 @@ const NewDisplayConversationEntrySpaced = (props: Props) => {
   return (
     <div
       className={cn(
-        'my-base px-double',
+        'py-base px-double',
         isGreyed && 'opacity-50 pointer-events-none'
       )}
     >

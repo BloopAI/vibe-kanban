@@ -51,7 +51,7 @@ export function ChatAggregatedToolEntries({
         onClick={onViewContent ? () => onViewContent(0) : undefined}
         role={onViewContent ? 'button' : undefined}
       >
-        <span className="relative shrink-0 mt-0.5">
+        <span className="relative shrink-0 pt-0.5">
           <Icon className="size-icon-base" />
           {entry.status && (
             <ToolStatusDot
@@ -100,7 +100,7 @@ export function ChatAggregatedToolEntries({
         role="button"
         aria-expanded={expanded}
       >
-        <span className="relative shrink-0 mt-0.5">
+        <span className="relative shrink-0 pt-0.5">
           {isHovered ? (
             <CaretRightIcon
               className={cn(
@@ -125,7 +125,7 @@ export function ChatAggregatedToolEntries({
 
       {/* Expanded content */}
       {expanded && (
-        <div className="ml-6 mt-1 flex flex-col gap-0.5">
+        <div className="ml-6 pt-1 flex flex-col gap-0.5">
           {entries.map((entry, index) => (
             <div
               key={entry.expansionKey}
@@ -136,7 +136,7 @@ export function ChatAggregatedToolEntries({
               onClick={onViewContent ? () => onViewContent(index) : undefined}
               role={onViewContent ? 'button' : undefined}
             >
-              <span className="relative shrink-0 mt-0.5">
+              <span className="relative shrink-0 pt-0.5">
                 <Icon className="size-icon-base" />
                 {entry.status && (
                   <ToolStatusDot

@@ -34,7 +34,7 @@ export function ChatScriptPlaceholder({
         className
       )}
     >
-      <span className="relative shrink-0 mt-0.5">
+      <span className="relative shrink-0 pt-0.5">
         <TerminalIcon className="size-icon-base text-lowest" />
       </span>
       <div className="flex flex-col min-w-0 flex-1 gap-0.5">

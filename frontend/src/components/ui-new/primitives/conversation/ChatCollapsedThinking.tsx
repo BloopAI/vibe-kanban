@@ -47,7 +47,7 @@ export function ChatCollapsedThinking({
         role="button"
         aria-expanded={expanded}
       >
-        <span className="shrink-0 mt-0.5">
+        <span className="shrink-0 pt-0.5">
           {isHovered ? (
             <CaretRightIcon
               className={cn(
@@ -64,7 +64,7 @@ export function ChatCollapsedThinking({
 
       {/* Expanded content */}
       {expanded && (
-        <div className="ml-6 mt-1 flex flex-col gap-base">
+        <div className="ml-6 pt-1 flex flex-col gap-base">
           {entries.map((entry) => (
             <div key={entry.expansionKey} className="text-sm text-low pl-base">
               <ChatMarkdown
