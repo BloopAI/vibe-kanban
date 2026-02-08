@@ -81,7 +81,7 @@ export function KanbanFilterBar({
               applyKanbanView(projectId, KANBAN_PROJECT_VIEW_IDS.PERSONAL)
             }
           >
-            PERSONAL
+            Personal
           </ButtonGroupItem>
           <ButtonGroupItem
             active={activeViewId === KANBAN_PROJECT_VIEW_IDS.TEAM}
@@ -89,12 +89,19 @@ export function KanbanFilterBar({
               applyKanbanView(projectId, KANBAN_PROJECT_VIEW_IDS.TEAM)
             }
           >
-            TEAM
-          </ButtonGroupItem>
-          <ButtonGroupItem onClick={() => onFiltersDialogOpenChange(true)}>
-            EDIT
+            Team
           </ButtonGroupItem>
         </ButtonGroup>
+
+        <InputField
+          value={kanbanFilters.searchQuery}
+          onChange={setKanbanSearchQuery}
+          placeholder={t('kanban.searchPlaceholder', 'Search issues...')}
+          variant="search"
+          actionIcon={kanbanFilters.searchQuery ? XIcon : undefined}
+          onAction={() => setKanbanSearchQuery('')}
+          className="min-w-[160px] w-[220px] max-w-full"
+        />
 
         <button
           type="button"
@@ -110,16 +117,6 @@ export function KanbanFilterBar({
         >
           <FunnelIcon className="size-icon-sm" weight="bold" />
         </button>
-
-        <InputField
-          value={kanbanFilters.searchQuery}
-          onChange={setKanbanSearchQuery}
-          placeholder={t('kanban.searchPlaceholder', 'Search issues...')}
-          variant="search"
-          actionIcon={kanbanFilters.searchQuery ? XIcon : undefined}
-          onAction={() => setKanbanSearchQuery('')}
-          className="min-w-[220px] w-[280px] max-w-full"
-        />
       </div>
 
       <KanbanFiltersDialog
