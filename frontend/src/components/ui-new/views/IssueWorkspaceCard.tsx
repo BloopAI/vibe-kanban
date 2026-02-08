@@ -211,7 +211,7 @@ export function IssueWorkspaceCard({
 
       {/* Row 2: Live status + stats (left), PR buttons (right) */}
       <div className="flex items-center justify-between gap-half min-w-0">
-        <div className="flex items-center gap-half text-sm text-low min-w-0 flex-1">
+        <div className="flex items-center flex-wrap sm:flex-nowrap gap-half text-sm text-low min-w-0 flex-1 overflow-hidden">
           <div className="flex items-center gap-half shrink-0">
             {hasRunningDevServer && (
               <PlayIcon
@@ -245,13 +245,15 @@ export function IssueWorkspaceCard({
             )}
           </div>
 
-          {hasLiveStatusIndicator && <span className="text-low/50">·</span>}
+          {hasLiveStatusIndicator && (
+            <span className="text-low/50 shrink-0">·</span>
+          )}
 
-          <span className="whitespace-nowrap">{timeAgo}</span>
+          <span className="whitespace-nowrap shrink-0">{timeAgo}</span>
           {workspace.filesChanged > 0 && (
             <>
-              <span className="text-low/50">·</span>
-              <span className="whitespace-nowrap">
+              <span className="text-low/50 shrink-0">·</span>
+              <span className="whitespace-nowrap shrink-0">
                 {t('workspaces.filesChanged', {
                   count: workspace.filesChanged,
                 })}
@@ -260,19 +262,23 @@ export function IssueWorkspaceCard({
           )}
           {workspace.linesAdded > 0 && (
             <>
-              <span className="text-low/50">·</span>
-              <span className="text-success">+{workspace.linesAdded}</span>
+              <span className="text-low/50 shrink-0">·</span>
+              <span className="text-success whitespace-nowrap shrink-0">
+                +{workspace.linesAdded}
+              </span>
             </>
           )}
           {workspace.linesRemoved > 0 && (
             <>
-              <span className="text-low/50">·</span>
-              <span className="text-error">-{workspace.linesRemoved}</span>
+              <span className="text-low/50 shrink-0">·</span>
+              <span className="text-error whitespace-nowrap shrink-0">
+                -{workspace.linesRemoved}
+              </span>
             </>
           )}
         </div>
 
-        <div className="flex items-center gap-half shrink-0">
+        <div className="hidden sm:flex items-center gap-half shrink-0">
           {workspace.prs.length > 0 ? (
             workspace.prs.map((pr) => (
               <a
