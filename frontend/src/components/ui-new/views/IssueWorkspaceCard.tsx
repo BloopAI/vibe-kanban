@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import {
   GitPullRequestIcon,
   DotsThreeIcon,
-  PlusIcon,
   LinkBreakIcon,
   TrashIcon,
   PlayIcon,
@@ -312,12 +311,7 @@ export function IssueWorkspaceCreateCard({
 
   return (
     <IssueWorkspaceCardContainer
-      onClick={onClick}
-      className={cn(
-        'border border-dashed border-border',
-        onClick && 'hover:border-brand/40',
-        className
-      )}
+      className={cn('border border-dashed border-border', className)}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-half min-w-0">
@@ -328,16 +322,20 @@ export function IssueWorkspaceCreateCard({
             {t('kanban.createNewWorkspace', 'Create new workspace')}
           </span>
         </div>
-        <PlusIcon className="size-icon-xs text-brand shrink-0" weight="bold" />
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-base">
         <span className="text-sm text-low truncate">
           {t('workspaces.noWorkspaces')}
         </span>
-        <span className="text-xs text-brand font-medium">
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={!onClick}
+          className="shrink-0 rounded-sm px-base py-half text-cta h-cta flex items-center bg-brand text-on-brand hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
           {t('create', 'Create')}
-        </span>
+        </button>
       </div>
     </IssueWorkspaceCardContainer>
   );
