@@ -253,10 +253,7 @@ export function ProjectRightSidebarContainer() {
 
   if (workspaceId) {
     return (
-      <WorkspaceSessionPanel
-        workspaceId={workspaceId}
-        onClose={closePanel}
-      />
+      <WorkspaceSessionPanel workspaceId={workspaceId} onClose={closePanel} />
     );
   }
 

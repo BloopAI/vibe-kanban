@@ -149,9 +149,7 @@ export function KanbanIssuePanel({
       {/* Header */}
       <div className="flex items-center justify-between px-base py-half border-b shrink-0">
         <div className="flex items-center gap-half min-w-0 font-ibm-plex-mono">
-          <span className={`${breadcrumbTextClass} shrink-0`}>
-            {displayId}
-          </span>
+          <span className={`${breadcrumbTextClass} shrink-0`}>{displayId}</span>
           {!isCreateMode && onCopyLink && (
             <CopyButton
               iconSize="size-icon-sm"
