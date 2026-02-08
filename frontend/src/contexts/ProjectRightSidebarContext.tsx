@@ -11,7 +11,6 @@ import type { CreateModeInitialState } from '@/hooks/useCreateModeState';
 
 export type ProjectRightSidebarMode =
   | { type: 'issue' }
-  | { type: 'workspace-session'; workspaceId: string }
   | {
       type: 'workspace-create';
       initialState: CreateModeInitialState | null;
@@ -21,7 +20,6 @@ export type ProjectRightSidebarMode =
 interface ProjectRightSidebarContextValue {
   mode: ProjectRightSidebarMode;
   showIssuePanel: () => void;
-  openWorkspaceSession: (workspaceId: string) => void;
   openWorkspaceCreate: (initialState?: CreateModeInitialState | null) => void;
 }
 
@@ -40,10 +38,6 @@ export function ProjectRightSidebarProvider({
     setMode({ type: 'issue' });
   }, []);
 
-  const openWorkspaceSession = useCallback((workspaceId: string) => {
-    setMode({ type: 'workspace-session', workspaceId });
-  }, []);
-
   const openWorkspaceCreate = useCallback(
     (initialState: CreateModeInitialState | null = null) => {
       createInstanceRef.current += 1;
@@ -60,10 +54,9 @@ export function ProjectRightSidebarProvider({
     () => ({
       mode,
       showIssuePanel,
-      openWorkspaceSession,
       openWorkspaceCreate,
     }),
-    [mode, showIssuePanel, openWorkspaceSession, openWorkspaceCreate]
+    [mode, showIssuePanel, openWorkspaceCreate]
   );
 
   return (

@@ -46,10 +46,10 @@ export function useKanbanNavigation() {
 
   // Navigate to view a workspace in issue context
   const openIssueWorkspace = useCallback(
-    (id: string, workspaceId: string) => {
+    (id: string, workspaceAttemptId: string) => {
       if (projectId) {
         navigate(
-          `/projects/${projectId}/issues/${id}/workspaces/${workspaceId}`
+          `/projects/${projectId}/issues/${id}/workspaces/${workspaceAttemptId}`
         );
       }
     },

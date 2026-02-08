@@ -33,7 +33,7 @@ function WorkspaceSessionPanel({
   onClose,
 }: WorkspaceSessionPanelProps) {
   const navigate = useNavigate();
-  const { openIssue } = useKanbanNavigation();
+  const { issueId: routeIssueId, openIssue } = useKanbanNavigation();
   const { projectId, getIssue } = useProjectContext();
   const { workspaces: remoteWorkspaces } = useUserContext();
   const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
@@ -70,21 +70,22 @@ function WorkspaceSessionPanel({
   );
 
   const linkedIssueId = linkedWorkspace?.issue_id ?? null;
+  const breadcrumbIssueId = routeIssueId ?? linkedIssueId;
 
   const issueSimpleId = useMemo(() => {
-    if (!linkedIssueId) return null;
-    return getIssue(linkedIssueId)?.simple_id ?? null;
-  }, [linkedIssueId, getIssue]);
+    if (!breadcrumbIssueId) return null;
+    return getIssue(breadcrumbIssueId)?.simple_id ?? null;
+  }, [breadcrumbIssueId, getIssue]);
 
   const workspaceBranch = workspace?.branch ?? workspaceSummary?.branch ?? null;
 
   const handleOpenIssuePanel = useCallback(() => {
-    if (linkedIssueId) {
-      openIssue(linkedIssueId);
+    if (breadcrumbIssueId) {
+      openIssue(breadcrumbIssueId);
       return;
     }
     onClose();
-  }, [linkedIssueId, openIssue, onClose]);
+  }, [breadcrumbIssueId, openIssue, onClose]);
 
   const handleOpenWorkspaceView = useCallback(() => {
     navigate(`/workspaces/${workspaceId}`);
@@ -215,8 +216,29 @@ function WorkspaceSessionPanel({
 }
 
 export function ProjectRightSidebarContainer() {
-  const { mode, openWorkspaceSession, showIssuePanel } =
-    useProjectRightSidebar();
+  const navigate = useNavigate();
+  const { mode, showIssuePanel } = useProjectRightSidebar();
+  const { issueId, workspaceId, openIssueWorkspace, closeWorkspace } =
+    useKanbanNavigation();
+
+  const handleWorkspaceCreated = useCallback(
+    (createdWorkspaceId: string) => {
+      const linkedIssueId =
+        mode.type === 'workspace-create'
+          ? mode.initialState?.linkedIssue?.issueId ?? null
+          : null;
+      const targetIssueId = issueId ?? linkedIssueId;
+      showIssuePanel();
+
+      if (targetIssueId) {
+        openIssueWorkspace(targetIssueId, createdWorkspaceId);
+        return;
+      }
+
+      navigate(`/workspaces/${createdWorkspaceId}`);
+    },
+    [mode, issueId, openIssueWorkspace, navigate, showIssuePanel]
+  );
 
   if (mode.type === 'workspace-create') {
     return (
@@ -224,16 +246,16 @@ export function ProjectRightSidebarContainer() {
         key={mode.instanceId}
         initialState={mode.initialState}
       >
-        <CreateChatBoxContainer onWorkspaceCreated={openWorkspaceSession} />
+        <CreateChatBoxContainer onWorkspaceCreated={handleWorkspaceCreated} />
       </CreateModeProvider>
     );
   }
 
-  if (mode.type === 'workspace-session') {
+  if (workspaceId) {
     return (
       <WorkspaceSessionPanel
-        workspaceId={mode.workspaceId}
-        onClose={showIssuePanel}
+        workspaceId={workspaceId}
+        onClose={closeWorkspace}
       />
     );
   }

@@ -229,6 +229,10 @@ function AppContent() {
                 path="/projects/:projectId/issues/:issueId"
                 element={<ProjectKanban />}
               />
+              <Route
+                path="/projects/:projectId/issues/:issueId/workspaces/:workspaceId"
+                element={<ProjectKanban />}
+              />
 
               {/* Migration route */}
               <Route path="/migrate" element={<MigratePage />} />

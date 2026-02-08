@@ -8,6 +8,7 @@ import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useProjectRightSidebar } from '@/contexts/ProjectRightSidebarContext';
+import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
 import { attemptsApi } from '@/lib/api';
 import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
@@ -28,8 +29,8 @@ export function IssueWorkspacesSectionContainer({
 }: IssueWorkspacesSectionContainerProps) {
   const { t } = useTranslation('common');
   const { projectId } = useParams<{ projectId: string }>();
-  const { openWorkspaceSession, openWorkspaceCreate } =
-    useProjectRightSidebar();
+  const { openWorkspaceCreate } = useProjectRightSidebar();
+  const { openIssueWorkspace } = useKanbanNavigation();
   const { userId } = useAuth();
   const { workspaces } = useUserContext();
 
@@ -156,10 +157,10 @@ export function IssueWorkspacesSectionContainer({
   const handleWorkspaceClick = useCallback(
     (localWorkspaceId: string | null) => {
       if (localWorkspaceId) {
-        openWorkspaceSession(localWorkspaceId);
+        openIssueWorkspace(issueId, localWorkspaceId);
       }
     },
-    [openWorkspaceSession]
+    [openIssueWorkspace, issueId]
   );
 
   // Handle unlinking a workspace from the issue

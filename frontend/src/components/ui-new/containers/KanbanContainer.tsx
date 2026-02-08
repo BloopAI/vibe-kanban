@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useProjectRightSidebar } from '@/contexts/ProjectRightSidebarContext';
 import { useActions } from '@/contexts/ActionsContext';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
@@ -85,7 +84,6 @@ export function KanbanContainer() {
     isLoading: orgLoading,
   } = useOrgContext();
   const { activeWorkspaces } = useWorkspaceContext();
-  const { openWorkspaceSession } = useProjectRightSidebar();
   const { userId } = useAuth();
 
   // Get project name by finding the project matching current projectId
@@ -104,6 +102,7 @@ export function KanbanContainer() {
   const {
     issueId: selectedKanbanIssueId,
     openIssue,
+    openIssueWorkspace,
     startCreate,
   } = useKanbanNavigation();
 
@@ -740,7 +739,8 @@ export function KanbanContainer() {
                                     onClick={
                                       workspace.localWorkspaceId
                                         ? () =>
-                                            openWorkspaceSession(
+                                            openIssueWorkspace(
+                                              issue.id,
                                               workspace.localWorkspaceId!
                                             )
                                         : undefined

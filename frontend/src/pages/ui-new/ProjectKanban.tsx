@@ -88,7 +88,7 @@ function ProjectKanbanLayout() {
     75
   );
 
-  const isRightPanelOpen = isPanelOpen || mode.type !== 'issue';
+  const isRightPanelOpen = isPanelOpen || mode.type === 'workspace-create';
 
   const kanbanDefaultLayout: Layout =
     typeof kanbanLeftPanelSize === 'number'
@@ -210,13 +210,14 @@ function useFindProjectById(projectId: string | undefined) {
  * URL patterns:
  * - /projects/:projectId - Kanban board with no issue selected
  * - /projects/:projectId/issues/:issueId - Kanban with issue panel open
+ * - /projects/:projectId/issues/:issueId/workspaces/:workspaceId - Kanban with workspace session panel open
  * - /projects/:projectId?mode=create - Kanban with create issue panel
  *
  * Note: This component is rendered inside SharedAppLayout which provides
  * NavbarContainer, AppBar, and SyncErrorProvider.
  */
 export function ProjectKanban() {
-  const { projectId, issueId } = useKanbanNavigation();
+  const { projectId, issueId, workspaceId } = useKanbanNavigation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { t } = useTranslation('common');
@@ -229,12 +230,22 @@ export function ProjectKanban() {
     if (orgIdFromUrl && projectId) {
       setSelectedOrgId(orgIdFromUrl);
       // Preserve issueId if present
-      const targetUrl = issueId
-        ? `/projects/${projectId}/issues/${issueId}`
-        : `/projects/${projectId}`;
+      const targetUrl =
+        issueId && workspaceId
+          ? `/projects/${projectId}/issues/${issueId}/workspaces/${workspaceId}`
+          : issueId
+            ? `/projects/${projectId}/issues/${issueId}`
+            : `/projects/${projectId}`;
       navigate(targetUrl, { replace: true });
     }
-  }, [searchParams, projectId, issueId, setSelectedOrgId, navigate]);
+  }, [
+    searchParams,
+    projectId,
+    issueId,
+    workspaceId,
+    setSelectedOrgId,
+    navigate,
+  ]);
 
   // Find the project and get its organization
   const { organizationId, isLoading } = useFindProjectById(
