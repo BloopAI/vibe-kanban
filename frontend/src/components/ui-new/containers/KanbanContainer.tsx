@@ -9,7 +9,7 @@ import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useKanbanFilters, PRIORITY_ORDER } from '@/hooks/useKanbanFilters';
 import { bulkUpdateIssues, type BulkUpdateIssueItem } from '@/lib/remoteApi';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
-import { PlusIcon, GearIcon } from '@phosphor-icons/react';
+import { PlusIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import { Actions } from '@/components/ui-new/actions';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import {
@@ -31,6 +31,12 @@ import { KanbanFilterBar } from '@/components/ui-new/views/KanbanFilterBar';
 import { ViewNavTabs } from '@/components/ui-new/primitives/ViewNavTabs';
 import { IssueListView } from '@/components/ui-new/views/IssueListView';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui-new/primitives/Dropdown';
 
 function LoadingState() {
   const { t } = useTranslation('common');
@@ -56,6 +62,9 @@ export function KanbanContainer() {
     tags,
     issueAssignees,
     issueTags,
+    insertStatus,
+    updateStatus,
+    removeStatus,
     getTagObjectsForIssue,
     getTagsForIssue,
     getPullRequestsForIssue,
@@ -212,8 +221,20 @@ export function KanbanContainer() {
     return sortedStatuses;
   }, [sortedStatuses, listViewStatusFilter]);
 
+  // Compute issue count by status for display settings
+  const issueCountByStatus = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const status of statuses) {
+      counts[status.id] = issues.filter(
+        (i) => i.status_id === status.id
+      ).length;
+    }
+    return counts;
+  }, [statuses, issues]);
+
   // Track items as arrays of IDs grouped by status
   const [items, setItems] = useState<Record<string, string[]>>({});
+  const [isFiltersDialogOpen, setIsFiltersDialogOpen] = useState(false);
 
   // Sync items from filtered issues when they change
   useEffect(() => {
@@ -554,31 +575,6 @@ export function KanbanContainer() {
     [insertTag, projectId]
   );
 
-  // Handler for create issue button in ViewNavTabs
-  // Determines default status based on current view/tab
-  const handleCreateIssueFromNav = useCallback(() => {
-    let defaultStatusId: string | undefined;
-
-    if (kanbanViewMode === 'kanban') {
-      // "Active" tab: first non-hidden status by sort order
-      defaultStatusId = visibleStatuses[0]?.id;
-    } else if (listViewStatusFilter) {
-      // Hidden status tab: use that specific status
-      defaultStatusId = listViewStatusFilter;
-    } else {
-      // "All" tab: first status by sort order
-      defaultStatusId = sortedStatuses[0]?.id;
-    }
-
-    startCreate({ statusId: defaultStatusId });
-  }, [
-    kanbanViewMode,
-    listViewStatusFilter,
-    visibleStatuses,
-    sortedStatuses,
-    startCreate,
-  ]);
-
   const isLoading = projectLoading || orgLoading;
 
   if (isLoading) {
@@ -588,31 +584,51 @@ export function KanbanContainer() {
   return (
     <div className="flex flex-col h-full space-y-base">
       <div className="px-double pt-double space-y-base">
-        <div className="flex items-center gap-double">
+        <div className="flex items-center justify-between gap-base">
           <h2 className="text-2xl font-medium">{projectName}</h2>
-          <button
-            type="button"
-            onClick={() => executeAction(Actions.ProjectSettings)}
-            className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors"
-            aria-label="Project settings"
-          >
-            <GearIcon className="size-icon-xs" weight="bold" />
-          </button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors"
+                aria-label="Project menu"
+              >
+                <DotsThreeIcon className="size-icon-xs" weight="bold" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => executeAction(Actions.ProjectSettings)}
+              >
+                Edit project settings
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="flex items-center gap-base flex-wrap">
           <ViewNavTabs
             activeView={kanbanViewMode}
             onViewChange={setKanbanViewMode}
             hiddenStatuses={hiddenStatuses}
             selectedStatusId={listViewStatusFilter}
             onStatusSelect={setListViewStatusFilter}
-            onCreateIssue={handleCreateIssueFromNav}
+          />
+          <KanbanFilterBar
+            isFiltersDialogOpen={isFiltersDialogOpen}
+            onFiltersDialogOpenChange={setIsFiltersDialogOpen}
+            tags={tags}
+            users={[...membersWithProfilesById.values()]}
+            hasActiveFilters={hasActiveFilters}
+            statuses={sortedStatuses}
+            projectId={projectId}
+            issueCountByStatus={issueCountByStatus}
+            onInsertStatus={insertStatus}
+            onUpdateStatus={updateStatus}
+            onRemoveStatus={removeStatus}
           />
         </div>
-        <KanbanFilterBar
-          tags={tags}
-          users={[...membersWithProfilesById.values()]}
-          hasActiveFilters={hasActiveFilters}
-          projectId={projectId}
-        />
       </div>
 
       {kanbanViewMode === 'kanban' ? (
