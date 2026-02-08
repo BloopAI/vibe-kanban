@@ -1,5 +1,8 @@
 import { useCallback, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowsOutSimpleIcon, XIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
+import { useUserContext } from '@/contexts/remote/UserContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
@@ -21,10 +24,13 @@ import { createWorkspaceWithSession } from '@/types/attempt';
 
 interface WorkspaceSessionPanelProps {
   workspaceId: string;
+  onClose: () => void;
 }
 
-function WorkspaceSessionPanel({ workspaceId }: WorkspaceSessionPanelProps) {
-  const { projectId } = useProjectContext();
+function WorkspaceSessionPanel({ workspaceId, onClose }: WorkspaceSessionPanelProps) {
+  const navigate = useNavigate();
+  const { projectId, getIssue } = useProjectContext();
+  const { workspaces: remoteWorkspaces } = useUserContext();
   const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
   const conversationListRef = useRef<ConversationListHandle>(null);
   const { data: workspace, isLoading: isWorkspaceLoading } = useAttempt(
@@ -49,6 +55,16 @@ function WorkspaceSessionPanel({ workspaceId }: WorkspaceSessionPanelProps) {
     [activeWorkspaces, archivedWorkspaces, workspaceId]
   );
 
+  const issueSimpleId = useMemo(() => {
+    const linkedWorkspace = remoteWorkspaces.find(
+      (ws) => ws.local_workspace_id === workspaceId && ws.project_id === projectId
+    );
+    if (!linkedWorkspace?.issue_id) return null;
+    return getIssue(linkedWorkspace.issue_id)?.simple_id ?? null;
+  }, [remoteWorkspaces, workspaceId, projectId, getIssue]);
+
+  const workspaceBranch = workspace?.branch ?? workspaceSummary?.branch ?? null;
+
   const workspaceWithSession = useMemo(() => {
     if (!workspace) return undefined;
     return createWorkspaceWithSession(workspace, selectedSession);
@@ -62,6 +78,10 @@ function WorkspaceSessionPanel({ workspaceId }: WorkspaceSessionPanelProps) {
     conversationListRef.current?.scrollToBottom();
   }, []);
 
+  const handleOpenWorkspaceView = useCallback(() => {
+    navigate(`/workspaces/${workspaceId}`);
+  }, [navigate, workspaceId]);
+
   return (
     <ExecutionProcessesProvider
       attemptId={workspaceId}
@@ -71,6 +91,37 @@ function WorkspaceSessionPanel({ workspaceId }: WorkspaceSessionPanelProps) {
         <EntriesProvider key={`${workspaceId}-${selectedSessionId ?? 'new'}`}>
           <MessageEditProvider>
             <div className="relative flex h-full flex-1 flex-col bg-primary">
+              <div className="flex items-center justify-between px-base py-half border-b shrink-0">
+                <div className="flex items-center gap-half min-w-0">
+                  <span className="font-ibm-plex-mono text-base text-normal shrink-0">
+                    {issueSimpleId ?? 'Issue'}
+                  </span>
+                  <span className="text-low shrink-0">/</span>
+                  <span className="text-base text-normal truncate">
+                    {workspaceBranch ?? 'Workspace'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-half">
+                  <button
+                    type="button"
+                    onClick={handleOpenWorkspaceView}
+                    className="p-half rounded-sm text-low hover:text-normal hover:bg-panel transition-colors"
+                    aria-label="Open in workspace view"
+                  >
+                    <ArrowsOutSimpleIcon className="size-icon-sm" weight="bold" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="p-half rounded-sm text-low hover:text-normal hover:bg-panel transition-colors"
+                    aria-label="Close conversation view"
+                  >
+                    <XIcon className="size-icon-sm" weight="bold" />
+                  </button>
+                </div>
+              </div>
+
               {workspaceWithSession ? (
                 <div className="flex flex-1 min-h-0 overflow-hidden justify-center">
                   <div className="w-chat max-w-full h-full">
@@ -127,7 +178,7 @@ function WorkspaceSessionPanel({ workspaceId }: WorkspaceSessionPanelProps) {
 }
 
 export function ProjectRightSidebarContainer() {
-  const { mode, openWorkspaceSession } = useProjectRightSidebar();
+  const { mode, openWorkspaceSession, showIssuePanel } = useProjectRightSidebar();
 
   if (mode.type === 'workspace-create') {
     return (
@@ -141,7 +192,12 @@ export function ProjectRightSidebarContainer() {
   }
 
   if (mode.type === 'workspace-session') {
-    return <WorkspaceSessionPanel workspaceId={mode.workspaceId} />;
+    return (
+      <WorkspaceSessionPanel
+        workspaceId={mode.workspaceId}
+        onClose={showIssuePanel}
+      />
+    );
   }
 
   return <KanbanIssuePanelContainer />;

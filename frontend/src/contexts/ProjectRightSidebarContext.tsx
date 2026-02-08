@@ -20,6 +20,7 @@ export type ProjectRightSidebarMode =
 
 interface ProjectRightSidebarContextValue {
   mode: ProjectRightSidebarMode;
+  showIssuePanel: () => void;
   openWorkspaceSession: (workspaceId: string) => void;
   openWorkspaceCreate: (initialState?: CreateModeInitialState | null) => void;
 }
@@ -34,6 +35,10 @@ export function ProjectRightSidebarProvider({
 }) {
   const [mode, setMode] = useState<ProjectRightSidebarMode>({ type: 'issue' });
   const createInstanceRef = useRef(0);
+
+  const showIssuePanel = useCallback(() => {
+    setMode({ type: 'issue' });
+  }, []);
 
   const openWorkspaceSession = useCallback((workspaceId: string) => {
     setMode({ type: 'workspace-session', workspaceId });
@@ -54,10 +59,11 @@ export function ProjectRightSidebarProvider({
   const value = useMemo(
     () => ({
       mode,
+      showIssuePanel,
       openWorkspaceSession,
       openWorkspaceCreate,
     }),
-    [mode, openWorkspaceSession, openWorkspaceCreate]
+    [mode, showIssuePanel, openWorkspaceSession, openWorkspaceCreate]
   );
 
   return (
