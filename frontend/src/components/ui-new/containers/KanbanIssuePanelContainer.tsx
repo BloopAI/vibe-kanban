@@ -262,13 +262,13 @@ export function KanbanIssuePanelContainer() {
     return 'New Issue';
   }, [mode, selectedIssue]);
 
-  // For edit mode - only track text field edits (title, description)
-  // Dropdown fields (status, priority, assignees, tags) derive from server state
-  // When null, no local edits exist; values are read from server state
+  // For edit mode - only track text field edits (title, description).
+  // Dropdown fields (status, priority, assignees, tags) derive from server state.
+  // undefined means "not locally edited yet"; null is a valid saved description value.
   const [localTextEdits, setLocalTextEdits] = useState<{
-    title: string | null;
-    description: string | null;
-  } | null>(null);
+    title?: string;
+    description?: string | null;
+  }>({});
 
   // Compute display values based on mode
   // - Create mode: createFormData is the single source of truth
@@ -281,11 +281,11 @@ export function KanbanIssuePanelContainer() {
     // Edit mode: dropdown fields from server, text fields from local edits or server
     return {
       title:
-        localTextEdits && localTextEdits.title !== null
+        localTextEdits.title !== undefined
           ? localTextEdits.title
           : (selectedIssue?.title ?? ''),
       description:
-        localTextEdits && localTextEdits.description !== null
+        localTextEdits.description !== undefined
           ? localTextEdits.description
           : (selectedIssue?.description ?? null),
       statusId: selectedIssue?.status_id ?? '', // Always from server
@@ -430,7 +430,7 @@ export function KanbanIssuePanelContainer() {
     cancelDebouncedDraftIssue();
 
     // Clear local text edits (they apply to the previous issue)
-    setLocalTextEdits(null);
+    setLocalTextEdits({});
     setIsDraftAutosavePaused(false);
 
     // Initialize create form data if in create mode
@@ -660,14 +660,14 @@ export function KanbanIssuePanelContainer() {
       if (field === 'title') {
         // Text field: update local state, then debounced save
         setLocalTextEdits((prev) => ({
+          ...prev,
           title: value as string,
-          description: prev?.description ?? null,
         }));
         debouncedSaveTitle(value as string);
       } else if (field === 'description') {
         // Text field: update local state, then debounced save
         setLocalTextEdits((prev) => ({
-          title: prev?.title ?? null,
+          ...prev,
           description: value as string | null,
         }));
         debouncedSaveDescription(value as string | null);
