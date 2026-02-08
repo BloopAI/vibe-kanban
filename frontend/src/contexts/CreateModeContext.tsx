@@ -1,6 +1,9 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { Repo, ExecutorProfileId } from 'shared/types';
-import { useCreateModeState } from '@/hooks/useCreateModeState';
+import {
+  useCreateModeState,
+  type CreateModeInitialState,
+} from '@/hooks/useCreateModeState';
 import { useWorkspaces } from '@/components/ui-new/hooks/useWorkspaces';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
@@ -38,9 +41,13 @@ const CreateModeContext = createContext<CreateModeContextValue | null>(null);
 
 interface CreateModeProviderProps {
   children: ReactNode;
+  initialState?: CreateModeInitialState | null;
 }
 
-export function CreateModeProvider({ children }: CreateModeProviderProps) {
+export function CreateModeProvider({
+  children,
+  initialState,
+}: CreateModeProviderProps) {
   // Fetch most recent workspace to use as initial values
   const { workspaces: activeWorkspaces, archivedWorkspaces } = useWorkspaces();
   const mostRecentWorkspace = activeWorkspaces[0] ?? archivedWorkspaces[0];
@@ -60,6 +67,7 @@ export function CreateModeProvider({ children }: CreateModeProviderProps) {
     initialProjectId: lastWorkspaceTask?.project_id,
     // Pass undefined while loading to prevent premature initialization
     initialRepos: reposLoading ? undefined : lastWorkspaceRepos,
+    initialState,
   });
 
   const value = useMemo<CreateModeContextValue>(

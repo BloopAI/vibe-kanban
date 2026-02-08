@@ -7,9 +7,13 @@ import {
   ProjectProvider,
   useProjectContext,
 } from '@/contexts/remote/ProjectContext';
+import {
+  ProjectRightSidebarProvider,
+  useProjectRightSidebar,
+} from '@/contexts/ProjectRightSidebarContext';
 import { useActions } from '@/contexts/ActionsContext';
 import { KanbanContainer } from '@/components/ui-new/containers/KanbanContainer';
-import { KanbanIssuePanelContainer } from '@/components/ui-new/containers/KanbanIssuePanelContainer';
+import { ProjectRightSidebarContainer } from '@/components/ui-new/containers/ProjectRightSidebarContainer';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 import { PERSIST_KEYS, usePaneSize } from '@/stores/useUiPreferencesStore';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
@@ -76,20 +80,15 @@ function ProjectMutationsRegistration({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-/**
- * Inner component that renders the Kanban board once we have the org context
- */
-function ProjectKanbanInner({ projectId }: { projectId: string }) {
-  const { t } = useTranslation('common');
-  const { projects, isLoading } = useOrgContext();
-
-  // Panel visibility derived from URL
+function ProjectKanbanLayout() {
   const { isPanelOpen } = useKanbanNavigation();
-
+  const { mode } = useProjectRightSidebar();
   const [kanbanLeftPanelSize, setKanbanLeftPanelSize] = usePaneSize(
     PERSIST_KEYS.kanbanLeftPanel,
     75
   );
+
+  const isRightPanelOpen = isPanelOpen || mode.type !== 'issue';
 
   const kanbanDefaultLayout: Layout =
     typeof kanbanLeftPanelSize === 'number'
@@ -100,10 +99,53 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
       : { 'kanban-left': 75, 'kanban-right': 25 };
 
   const onKanbanLayoutChange = (layout: Layout) => {
-    if (isPanelOpen) {
+    if (isRightPanelOpen) {
       setKanbanLeftPanelSize(layout['kanban-left']);
     }
   };
+
+  return (
+    <Group
+      orientation="horizontal"
+      className="flex-1 min-w-0 h-full"
+      defaultLayout={kanbanDefaultLayout}
+      onLayoutChange={onKanbanLayoutChange}
+    >
+      <Panel
+        id="kanban-left"
+        minSize="20%"
+        className="min-w-0 h-full overflow-hidden bg-primary"
+      >
+        <KanbanContainer />
+      </Panel>
+
+      {isRightPanelOpen && (
+        <Separator
+          id="kanban-separator"
+          className="w-1 bg-panel outline-none hover:bg-brand/50 transition-colors cursor-col-resize"
+        />
+      )}
+
+      {isRightPanelOpen && (
+        <Panel
+          id="kanban-right"
+          minSize="400px"
+          maxSize="800px"
+          className="min-w-0 h-full overflow-hidden bg-secondary"
+        >
+          <ProjectRightSidebarContainer />
+        </Panel>
+      )}
+    </Group>
+  );
+}
+
+/**
+ * Inner component that renders the Kanban board once we have the org context
+ */
+function ProjectKanbanInner({ projectId }: { projectId: string }) {
+  const { t } = useTranslation('common');
+  const { projects, isLoading } = useOrgContext();
 
   const project = projects.find((p) => p.id === projectId);
 
@@ -125,40 +167,11 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
 
   return (
     <ProjectProvider projectId={projectId}>
-      <ProjectMutationsRegistration>
-        <Group
-          orientation="horizontal"
-          className="flex-1 min-w-0 h-full"
-          defaultLayout={kanbanDefaultLayout}
-          onLayoutChange={onKanbanLayoutChange}
-        >
-          <Panel
-            id="kanban-left"
-            minSize="20%"
-            className="min-w-0 h-full overflow-hidden bg-primary"
-          >
-            <KanbanContainer />
-          </Panel>
-
-          {isPanelOpen && (
-            <Separator
-              id="kanban-separator"
-              className="w-1 bg-panel outline-none hover:bg-brand/50 transition-colors cursor-col-resize"
-            />
-          )}
-
-          {isPanelOpen && (
-            <Panel
-              id="kanban-right"
-              minSize="400px"
-              maxSize="800px"
-              className="min-w-0 h-full overflow-hidden bg-secondary"
-            >
-              <KanbanIssuePanelContainer />
-            </Panel>
-          )}
-        </Group>
-      </ProjectMutationsRegistration>
+      <ProjectRightSidebarProvider key={projectId}>
+        <ProjectMutationsRegistration>
+          <ProjectKanbanLayout />
+        </ProjectMutationsRegistration>
+      </ProjectRightSidebarProvider>
     </ProjectProvider>
   );
 }

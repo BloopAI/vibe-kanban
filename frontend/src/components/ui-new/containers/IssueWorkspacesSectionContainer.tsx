@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PlusIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/auth/useAuth';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useProjectRightSidebar } from '@/contexts/ProjectRightSidebarContext';
 import { attemptsApi } from '@/lib/api';
 import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
@@ -27,7 +28,8 @@ export function IssueWorkspacesSectionContainer({
 }: IssueWorkspacesSectionContainerProps) {
   const { t } = useTranslation('common');
   const { projectId } = useParams<{ projectId: string }>();
-  const navigate = useNavigate();
+  const { openWorkspaceSession, openWorkspaceCreate } =
+    useProjectRightSidebar();
   const { userId } = useAuth();
   const { workspaces } = useUserContext();
 
@@ -110,7 +112,6 @@ export function IssueWorkspacesSectionContainer({
   // Handle clicking '+' to create and link a new workspace directly
   const handleAddWorkspace = useCallback(async () => {
     if (!projectId) {
-      navigate('/workspaces/create');
       return;
     }
 
@@ -128,24 +129,22 @@ export function IssueWorkspacesSectionContainer({
 
     const defaults = await getWorkspaceDefaults(workspaces, localWorkspaceIds);
 
-    navigate('/workspaces/create', {
-      state: {
-        initialPrompt,
-        preferredRepos: defaults?.preferredRepos ?? null,
-        project_id: defaults?.project_id ?? null,
-        linkedIssue: issue
-          ? {
-              issueId: issue.id,
-              simpleId: issue.simple_id,
-              title: issue.title,
-              remoteProjectId: projectId,
-            }
-          : null,
-      },
+    openWorkspaceCreate({
+      initialPrompt,
+      preferredRepos: defaults?.preferredRepos ?? null,
+      project_id: defaults?.project_id ?? null,
+      linkedIssue: issue
+        ? {
+            issueId: issue.id,
+            simpleId: issue.simple_id,
+            title: issue.title,
+            remoteProjectId: projectId,
+          }
+        : null,
     });
   }, [
     projectId,
-    navigate,
+    openWorkspaceCreate,
     getIssue,
     issueId,
     activeWorkspaces,
@@ -157,10 +156,10 @@ export function IssueWorkspacesSectionContainer({
   const handleWorkspaceClick = useCallback(
     (localWorkspaceId: string | null) => {
       if (localWorkspaceId) {
-        navigate(`/workspaces/${localWorkspaceId}`);
+        openWorkspaceSession(localWorkspaceId);
       }
     },
-    [navigate]
+    [openWorkspaceSession]
   );
 
   // Handle unlinking a workspace from the issue

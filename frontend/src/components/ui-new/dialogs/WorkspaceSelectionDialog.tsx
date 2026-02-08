@@ -16,6 +16,7 @@ import {
   CommandItem,
 } from '@/components/ui-new/primitives/Command';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useProjectRightSidebarOptional } from '@/contexts/ProjectRightSidebarContext';
 import {
   ProjectProvider,
   useProjectContext,
@@ -40,6 +41,7 @@ function WorkspaceSelectionContent({
   const { t } = useTranslation('common');
   const modal = useModal();
   const navigate = useNavigate();
+  const projectRightSidebar = useProjectRightSidebarOptional();
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
   // Get local workspaces from WorkspaceContext (both active and archived)
@@ -154,28 +156,35 @@ function WorkspaceSelectionContent({
       );
 
       // Navigate and close dialog
+      const createState = {
+        initialPrompt,
+        preferredRepos: defaults?.preferredRepos,
+        project_id: defaults?.project_id,
+        linkedIssue: issue
+          ? {
+              issueId: issue.id,
+              simpleId: issue.simple_id,
+              title: issue.title,
+              remoteProjectId: projectId,
+            }
+          : null,
+      };
+
       modal.hide();
-      navigate('/workspaces/create', {
-        state: {
-          initialPrompt,
-          preferredRepos: defaults?.preferredRepos,
-          project_id: defaults?.project_id,
-          linkedIssue: issue
-            ? {
-                issueId: issue.id,
-                simpleId: issue.simple_id,
-                title: issue.title,
-                remoteProjectId: projectId,
-              }
-            : null,
-        },
-      });
+      if (projectRightSidebar) {
+        projectRightSidebar.openWorkspaceCreate(createState);
+      } else {
+        navigate('/workspaces/create', {
+          state: createState,
+        });
+      }
     } finally {
       setIsLinking(false);
     }
   }, [
     modal,
     navigate,
+    projectRightSidebar,
     getIssue,
     issueId,
     projectId,
