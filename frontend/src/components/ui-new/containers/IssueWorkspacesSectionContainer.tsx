@@ -200,6 +200,7 @@ export function IssueWorkspacesSectionContainer({
       isLoading={isLoading}
       actions={actions}
       onWorkspaceClick={handleWorkspaceClick}
+      onCreateWorkspace={handleAddWorkspace}
       onUnlinkWorkspace={handleUnlinkWorkspace}
       onDeleteWorkspace={handleDeleteWorkspace}
     />
