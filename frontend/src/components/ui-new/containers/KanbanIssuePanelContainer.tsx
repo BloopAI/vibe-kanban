@@ -264,11 +264,17 @@ export function KanbanIssuePanelContainer() {
 
   // For edit mode - only track text field edits (title, description).
   // Dropdown fields (status, priority, assignees, tags) derive from server state.
-  // undefined means "not locally edited yet"; null is a valid saved description value.
   const [localTextEdits, setLocalTextEdits] = useState<{
-    title?: string;
-    description?: string | null;
-  }>({});
+    title: string | null;
+    hasLocalTitleEdit: boolean;
+    description: string | null;
+    hasLocalDescriptionEdit: boolean;
+  }>({
+    title: null,
+    hasLocalTitleEdit: false,
+    description: null,
+    hasLocalDescriptionEdit: false,
+  });
 
   // Compute display values based on mode
   // - Create mode: createFormData is the single source of truth
@@ -279,15 +285,15 @@ export function KanbanIssuePanelContainer() {
     }
 
     // Edit mode: dropdown fields from server, text fields from local edits or server
-    return {
-      title:
-        localTextEdits.title !== undefined
-          ? localTextEdits.title
-          : (selectedIssue?.title ?? ''),
-      description:
-        localTextEdits.description !== undefined
-          ? localTextEdits.description
-          : (selectedIssue?.description ?? null),
+      return {
+        title:
+          localTextEdits.hasLocalTitleEdit
+            ? localTextEdits.title
+            : (selectedIssue?.title ?? ''),
+        description:
+          localTextEdits.hasLocalDescriptionEdit
+            ? localTextEdits.description
+            : (selectedIssue?.description ?? null),
       statusId: selectedIssue?.status_id ?? '', // Always from server
       priority: selectedIssue?.priority ?? null, // Always from server
       assigneeIds: currentAssigneeIds, // Always from server
@@ -430,7 +436,12 @@ export function KanbanIssuePanelContainer() {
     cancelDebouncedDraftIssue();
 
     // Clear local text edits (they apply to the previous issue)
-    setLocalTextEdits({});
+    setLocalTextEdits({
+      title: null,
+      hasLocalTitleEdit: false,
+      description: null,
+      hasLocalDescriptionEdit: false,
+    });
     setIsDraftAutosavePaused(false);
 
     // Initialize create form data if in create mode
@@ -662,6 +673,7 @@ export function KanbanIssuePanelContainer() {
         setLocalTextEdits((prev) => ({
           ...prev,
           title: value as string,
+          hasLocalTitleEdit: true,
         }));
         debouncedSaveTitle(value as string);
       } else if (field === 'description') {
@@ -669,6 +681,7 @@ export function KanbanIssuePanelContainer() {
         setLocalTextEdits((prev) => ({
           ...prev,
           description: value as string | null,
+          hasLocalDescriptionEdit: true,
         }));
         debouncedSaveDescription(value as string | null);
       } else if (field === 'statusId') {
