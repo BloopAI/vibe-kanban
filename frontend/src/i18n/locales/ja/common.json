@@ -352,6 +352,9 @@
     "tags": "タグ",
     "files": "ファイル",
     "commands": "コマンド",
+    "chooseRepo": "リポジトリを選択",
+    "selectedRepo": "選択中のリポジトリ: {{repoName}}",
+    "missingRepo": "選択したリポジトリは利用できなくなりました。",
     "noTagsOrFiles": "タグまたはファイルが見つかりません",
     "noCommands": "このエージェントで利用可能なコマンドはありません。"
   },

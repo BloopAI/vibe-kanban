@@ -352,6 +352,9 @@
     "tags": "Etiquetas",
     "files": "Archivos",
     "commands": "Comandos",
+    "chooseRepo": "Elegir repositorio",
+    "selectedRepo": "Repositorio seleccionado: {{repoName}}",
+    "missingRepo": "El repositorio seleccionado ya no está disponible.",
     "noTagsOrFiles": "No se encontraron etiquetas ni archivos",
     "noCommands": "No hay comandos disponibles para este agente."
   },
