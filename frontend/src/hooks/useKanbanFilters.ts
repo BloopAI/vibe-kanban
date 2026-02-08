@@ -36,7 +36,7 @@ export function useKanbanFilters({
   const showSubIssuesByProject = useUiPreferencesStore(
     (s) => s.showSubIssuesByProject
   );
-  const showSubIssues = showSubIssuesByProject[projectId] ?? false;
+  const showSubIssues = showSubIssuesByProject[projectId] ?? true;
 
   // Create lookup maps for efficient filtering
   const assigneesByIssue = useMemo(() => {

@@ -115,7 +115,7 @@ export function KanbanFilterBar({
   const setKanbanSort = useUiPreferencesStore((s) => s.setKanbanSort);
   const clearKanbanFilters = useUiPreferencesStore((s) => s.clearKanbanFilters);
   const showSubIssues = useUiPreferencesStore(
-    (s) => s.showSubIssuesByProject[projectId] ?? false
+    (s) => s.showSubIssuesByProject[projectId] ?? true
   );
   const setShowSubIssues = useUiPreferencesStore((s) => s.setShowSubIssues);
   const showWorkspaces = useUiPreferencesStore(
@@ -292,7 +292,7 @@ export function KanbanFilterBar({
       {/* Sub-Issues Visibility */}
       <div className="flex items-center gap-half px-base py-half bg-panel rounded-sm">
         <span className="text-sm text-normal whitespace-nowrap">
-          {t('kanban.showSubIssues', 'Show sub-issues')}
+          {t('kanban.subIssuesFilterLabel', 'sub-issues')}
         </span>
         <Switch
           checked={showSubIssues}
@@ -303,7 +303,7 @@ export function KanbanFilterBar({
       {/* Workspaces Visibility */}
       <div className="flex items-center gap-half px-base py-half bg-panel rounded-sm">
         <span className="text-sm text-normal whitespace-nowrap">
-          {t('kanban.showWorkspaces', 'Show workspaces')}
+          {t('kanban.workspacesFilterLabel', 'workspaces')}
         </span>
         <Switch
           checked={showWorkspaces}

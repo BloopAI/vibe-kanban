@@ -273,7 +273,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
   kanbanViewMode: 'kanban' as KanbanViewMode,
   listViewStatusFilter: null,
 
-  // Per-project sub-issues visibility (default to hidden)
+  // Per-project sub-issues visibility (default to shown)
   showSubIssuesByProject: {},
   // Per-project workspaces visibility (default to shown)
   showWorkspacesByProject: {},
