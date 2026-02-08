@@ -285,15 +285,13 @@ export function KanbanIssuePanelContainer() {
     }
 
     // Edit mode: dropdown fields from server, text fields from local edits or server
-      return {
-        title:
-          localTextEdits.hasLocalTitleEdit
-            ? localTextEdits.title
-            : (selectedIssue?.title ?? ''),
-        description:
-          localTextEdits.hasLocalDescriptionEdit
-            ? localTextEdits.description
-            : (selectedIssue?.description ?? null),
+    return {
+      title: localTextEdits.hasLocalTitleEdit
+        ? localTextEdits.title
+        : (selectedIssue?.title ?? ''),
+      description: localTextEdits.hasLocalDescriptionEdit
+        ? localTextEdits.description
+        : (selectedIssue?.description ?? null),
       statusId: selectedIssue?.status_id ?? '', // Always from server
       priority: selectedIssue?.priority ?? null, // Always from server
       assigneeIds: currentAssigneeIds, // Always from server
