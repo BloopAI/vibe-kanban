@@ -27,7 +27,10 @@ interface WorkspaceSessionPanelProps {
   onClose: () => void;
 }
 
-function WorkspaceSessionPanel({ workspaceId, onClose }: WorkspaceSessionPanelProps) {
+function WorkspaceSessionPanel({
+  workspaceId,
+  onClose,
+}: WorkspaceSessionPanelProps) {
   const navigate = useNavigate();
   const { projectId, getIssue } = useProjectContext();
   const { workspaces: remoteWorkspaces } = useUserContext();
@@ -57,7 +60,8 @@ function WorkspaceSessionPanel({ workspaceId, onClose }: WorkspaceSessionPanelPr
 
   const issueSimpleId = useMemo(() => {
     const linkedWorkspace = remoteWorkspaces.find(
-      (ws) => ws.local_workspace_id === workspaceId && ws.project_id === projectId
+      (ws) =>
+        ws.local_workspace_id === workspaceId && ws.project_id === projectId
     );
     if (!linkedWorkspace?.issue_id) return null;
     return getIssue(linkedWorkspace.issue_id)?.simple_id ?? null;
@@ -109,7 +113,10 @@ function WorkspaceSessionPanel({ workspaceId, onClose }: WorkspaceSessionPanelPr
                     className="p-half rounded-sm text-low hover:text-normal hover:bg-panel transition-colors"
                     aria-label="Open in workspace view"
                   >
-                    <ArrowsOutSimpleIcon className="size-icon-sm" weight="bold" />
+                    <ArrowsOutSimpleIcon
+                      className="size-icon-sm"
+                      weight="bold"
+                    />
                   </button>
                   <button
                     type="button"
@@ -178,7 +185,8 @@ function WorkspaceSessionPanel({ workspaceId, onClose }: WorkspaceSessionPanelPr
 }
 
 export function ProjectRightSidebarContainer() {
-  const { mode, openWorkspaceSession, showIssuePanel } = useProjectRightSidebar();
+  const { mode, openWorkspaceSession, showIssuePanel } =
+    useProjectRightSidebar();
 
   if (mode.type === 'workspace-create') {
     return (
