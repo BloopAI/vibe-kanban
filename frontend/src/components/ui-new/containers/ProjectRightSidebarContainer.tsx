@@ -12,6 +12,7 @@ import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { useWorkspaceSessions } from '@/hooks/useWorkspaceSessions';
 import { useAttempt } from '@/hooks/useAttempt';
 import { useProjectRightSidebar } from '@/contexts/ProjectRightSidebarContext';
+import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
 import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionChatBoxContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
 import { KanbanIssuePanelContainer } from '@/components/ui-new/containers/KanbanIssuePanelContainer';
@@ -32,6 +33,7 @@ function WorkspaceSessionPanel({
   onClose,
 }: WorkspaceSessionPanelProps) {
   const navigate = useNavigate();
+  const { openIssue } = useKanbanNavigation();
   const { projectId, getIssue } = useProjectContext();
   const { workspaces: remoteWorkspaces } = useUserContext();
   const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
@@ -58,16 +60,38 @@ function WorkspaceSessionPanel({
     [activeWorkspaces, archivedWorkspaces, workspaceId]
   );
 
+  const linkedWorkspace = useMemo(
+    () =>
+      remoteWorkspaces.find(
+        (ws) =>
+          ws.local_workspace_id === workspaceId && ws.project_id === projectId
+      ) ?? null,
+    [remoteWorkspaces, workspaceId, projectId]
+  );
+
+  const linkedIssueId = linkedWorkspace?.issue_id ?? null;
+
   const issueSimpleId = useMemo(() => {
-    const linkedWorkspace = remoteWorkspaces.find(
-      (ws) =>
-        ws.local_workspace_id === workspaceId && ws.project_id === projectId
-    );
-    if (!linkedWorkspace?.issue_id) return null;
-    return getIssue(linkedWorkspace.issue_id)?.simple_id ?? null;
-  }, [remoteWorkspaces, workspaceId, projectId, getIssue]);
+    if (!linkedIssueId) return null;
+    return getIssue(linkedIssueId)?.simple_id ?? null;
+  }, [linkedIssueId, getIssue]);
 
   const workspaceBranch = workspace?.branch ?? workspaceSummary?.branch ?? null;
+
+  const handleOpenIssuePanel = useCallback(() => {
+    if (linkedIssueId) {
+      openIssue(linkedIssueId);
+      return;
+    }
+    onClose();
+  }, [linkedIssueId, openIssue, onClose]);
+
+  const handleOpenWorkspaceView = useCallback(() => {
+    navigate(`/workspaces/${workspaceId}`);
+  }, [navigate, workspaceId]);
+
+  const breadcrumbButtonClass =
+    'min-w-0 text-sm text-normal truncate rounded-sm px-1 py-0.5 hover:bg-panel hover:text-high transition-colors';
 
   const workspaceWithSession = useMemo(() => {
     if (!workspace) return undefined;
@@ -82,10 +106,6 @@ function WorkspaceSessionPanel({
     conversationListRef.current?.scrollToBottom();
   }, []);
 
-  const handleOpenWorkspaceView = useCallback(() => {
-    navigate(`/workspaces/${workspaceId}`);
-  }, [navigate, workspaceId]);
-
   return (
     <ExecutionProcessesProvider
       attemptId={workspaceId}
@@ -96,14 +116,24 @@ function WorkspaceSessionPanel({
           <MessageEditProvider>
             <div className="relative flex h-full flex-1 flex-col bg-primary">
               <div className="flex items-center justify-between px-base py-half border-b shrink-0">
-                <div className="flex items-center gap-half min-w-0">
-                  <span className="font-ibm-plex-mono text-base text-normal shrink-0">
+                <div className="flex items-center gap-half min-w-0 font-ibm-plex-mono">
+                  <button
+                    type="button"
+                    onClick={handleOpenIssuePanel}
+                    className={`${breadcrumbButtonClass} shrink-0`}
+                    aria-label="Open linked issue"
+                  >
                     {issueSimpleId ?? 'Issue'}
-                  </span>
-                  <span className="text-low shrink-0">/</span>
-                  <span className="text-base text-normal truncate">
+                  </button>
+                  <span className="text-low text-sm shrink-0">/</span>
+                  <button
+                    type="button"
+                    onClick={handleOpenWorkspaceView}
+                    className={breadcrumbButtonClass}
+                    aria-label="Open workspace"
+                  >
                     {workspaceBranch ?? 'Workspace'}
-                  </span>
+                  </button>
                 </div>
 
                 <div className="flex items-center gap-half">
