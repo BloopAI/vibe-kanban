@@ -601,7 +601,7 @@ export function KanbanContainer() {
               <DropdownMenuItem
                 onClick={() => executeAction(Actions.ProjectSettings)}
               >
-                Edit project settings
+                {t('kanban.editProjectSettings', 'Edit project settings')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

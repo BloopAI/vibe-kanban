@@ -81,7 +81,7 @@ export function KanbanFilterBar({
               applyKanbanView(projectId, KANBAN_PROJECT_VIEW_IDS.TEAM)
             }
           >
-            Team
+            {t('kanban.team', 'Team')}
           </ButtonGroupItem>
           <ButtonGroupItem
             active={activeViewId === KANBAN_PROJECT_VIEW_IDS.PERSONAL}
@@ -89,7 +89,7 @@ export function KanbanFilterBar({
               applyKanbanView(projectId, KANBAN_PROJECT_VIEW_IDS.PERSONAL)
             }
           >
-            Personal
+            {t('kanban.personal', 'Personal')}
           </ButtonGroupItem>
         </ButtonGroup>
 
