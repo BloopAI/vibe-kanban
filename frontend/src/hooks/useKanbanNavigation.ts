@@ -8,14 +8,16 @@ import type { IssuePriority } from 'shared/remote-types';
  *
  * URL patterns:
  * - View issue: /projects/:projectId/issues/:issueId
+ * - View issue workspace: /projects/:projectId/issues/:issueId/workspaces/:workspaceId
  * - Create issue: /projects/:projectId?mode=create&statusId=xxx&priority=high
  * - No issue: /projects/:projectId
  */
 export function useKanbanNavigation() {
   const navigate = useNavigate();
-  const { projectId, issueId } = useParams<{
+  const { projectId, issueId, workspaceId } = useParams<{
     projectId: string;
     issueId?: string;
+    workspaceId?: string;
   }>();
   const [searchParams] = useSearchParams();
 
@@ -29,8 +31,8 @@ export function useKanbanNavigation() {
     searchParams.get('assignees')?.split(',').filter(Boolean) ?? null;
   const createDefaultParentIssueId = searchParams.get('parentIssueId');
 
-  // Panel is visible if viewing an issue or creating one
-  const isPanelOpen = !!issueId || isCreateMode;
+  // Panel is visible if viewing an issue, workspace, or creating one
+  const isPanelOpen = !!issueId || !!workspaceId || isCreateMode;
 
   // Navigate to view an issue
   const openIssue = useCallback(
@@ -42,12 +44,35 @@ export function useKanbanNavigation() {
     [navigate, projectId]
   );
 
+  // Navigate to view a workspace in issue context
+  const openIssueWorkspace = useCallback(
+    (id: string, workspaceId: string) => {
+      if (projectId) {
+        navigate(
+          `/projects/${projectId}/issues/${id}/workspaces/${workspaceId}`
+        );
+      }
+    },
+    [navigate, projectId]
+  );
+
   // Navigate to close the panel
   const closePanel = useCallback(() => {
     if (projectId) {
       navigate(`/projects/${projectId}`);
     }
   }, [navigate, projectId]);
+
+  // Navigate from workspace view back to issue view
+  const closeWorkspace = useCallback(() => {
+    if (projectId && issueId) {
+      navigate(`/projects/${projectId}/issues/${issueId}`);
+      return;
+    }
+    if (projectId) {
+      navigate(`/projects/${projectId}`);
+    }
+  }, [navigate, projectId, issueId]);
 
   // Navigate to create mode with optional defaults
   const startCreate = useCallback(
@@ -106,6 +131,7 @@ export function useKanbanNavigation() {
     // URL state
     projectId: projectId ?? null,
     issueId: issueId ?? null,
+    workspaceId: workspaceId ?? null,
     isCreateMode,
     isPanelOpen,
 
@@ -117,7 +143,9 @@ export function useKanbanNavigation() {
 
     // Navigation actions
     openIssue,
+    openIssueWorkspace,
     closePanel,
+    closeWorkspace,
     startCreate,
     updateCreateDefaults,
   };
