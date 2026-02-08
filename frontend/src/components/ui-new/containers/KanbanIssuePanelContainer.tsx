@@ -894,7 +894,6 @@ export function KanbanIssuePanelContainer() {
       linkedPrs={linkedPrs}
       onClose={closeKanbanIssuePanel}
       onSubmit={handleSubmit}
-      onCmdEnterSubmit={handleSubmit}
       onCreateTag={handleCreateTag}
       isSubmitting={isSubmitting}
       isLoading={isLoading}
