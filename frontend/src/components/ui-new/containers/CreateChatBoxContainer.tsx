@@ -17,12 +17,12 @@ function getRepoDisplayName(repo: Repo) {
 }
 
 interface CreateChatBoxContainerProps {
-  onWorkspaceCreated?: (workspaceId: string) => void;
+  onWorkspaceCreated: ((workspaceId: string) => void) | null;
 }
 
 export function CreateChatBoxContainer({
   onWorkspaceCreated,
-}: CreateChatBoxContainerProps = {}) {
+}: CreateChatBoxContainerProps) {
   const { t } = useTranslation('common');
   const { profiles, config, updateAndSaveConfig } = useUserSystem();
   const {
@@ -40,7 +40,7 @@ export function CreateChatBoxContainer({
   } = useCreateMode();
 
   const { createWorkspace } = useCreateWorkspace({
-    onWorkspaceCreated,
+    onWorkspaceCreated: onWorkspaceCreated ?? undefined,
   });
   const hasSelectedRepos = repos.length > 0;
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
