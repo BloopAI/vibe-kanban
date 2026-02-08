@@ -148,9 +148,13 @@ export function RemoteProjectsSettingsSection({
     mutation: PROJECT_STATUS_MUTATION,
   });
 
-  const { data: projectIssues } = useShape(PROJECT_ISSUES_SHAPE, projectParams, {
-    enabled: !!selectedProjectId,
-  });
+  const { data: projectIssues } = useShape(
+    PROJECT_ISSUES_SHAPE,
+    projectParams,
+    {
+      enabled: !!selectedProjectId,
+    }
+  );
 
   const issueCountByStatus = useMemo(() => {
     const counts: Record<string, number> = {};
