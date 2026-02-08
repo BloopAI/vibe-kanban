@@ -352,6 +352,9 @@
     "tags": "標籤",
     "files": "檔案",
     "commands": "指令",
+    "chooseRepo": "選擇儲存庫",
+    "selectedRepo": "已選擇儲存庫：{{repoName}}",
+    "missingRepo": "所選儲存庫已無法使用。",
     "noTagsOrFiles": "找不到標籤或檔案",
     "noCommands": "此代理沒有可用的指令。"
   },

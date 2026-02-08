@@ -201,6 +201,30 @@ function TypeaheadMenuEmpty({ children }: { children: ReactNode }) {
   );
 }
 
+interface TypeaheadMenuActionProps {
+  onClick: () => void;
+  disabled?: boolean;
+  children: ReactNode;
+}
+
+function TypeaheadMenuAction({
+  onClick,
+  disabled = false,
+  children,
+}: TypeaheadMenuActionProps) {
+  return (
+    <button
+      type="button"
+      className="w-full px-3 py-2 text-left text-sm border-l-2 border-l-transparent text-muted-foreground hover:bg-muted hover:text-high disabled:opacity-50 disabled:cursor-not-allowed"
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {children}
+    </button>
+  );
+}
+
 interface TypeaheadMenuItemProps {
   isSelected: boolean;
   index: number;
@@ -256,5 +280,6 @@ export const TypeaheadMenu = Object.assign(TypeaheadMenuRoot, {
   SectionHeader: TypeaheadMenuSectionHeader,
   Divider: TypeaheadMenuDivider,
   Empty: TypeaheadMenuEmpty,
+  Action: TypeaheadMenuAction,
   Item: TypeaheadMenuItemComponent,
 });

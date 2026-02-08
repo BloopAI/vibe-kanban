@@ -30,6 +30,7 @@ function storeToScratchData(state: {
   contextBarPosition: ContextBarPosition;
   paneSizes: Record<string, number | string>;
   collapsedPaths: Record<string, string[]>;
+  fileSearchRepoId: string | null;
   isLeftSidebarVisible: boolean;
   isRightSidebarVisible: boolean;
   isTerminalVisible: boolean;
@@ -49,6 +50,7 @@ function storeToScratchData(state: {
     context_bar_position: state.contextBarPosition,
     pane_sizes: state.paneSizes as { [key: string]: JsonValue },
     collapsed_paths: state.collapsedPaths,
+    file_search_repo_id: state.fileSearchRepoId,
     is_left_sidebar_visible: state.isLeftSidebarVisible,
     is_right_sidebar_visible: state.isRightSidebarVisible,
     is_terminal_visible: state.isTerminalVisible,
@@ -65,6 +67,7 @@ function scratchDataToStore(data: UiPreferencesData): {
   contextBarPosition: ContextBarPosition;
   paneSizes: Record<string, number | string>;
   collapsedPaths: Record<string, string[]>;
+  fileSearchRepoId: string | null;
   isLeftSidebarVisible: boolean;
   isRightSidebarVisible: boolean;
   isTerminalVisible: boolean;
@@ -83,6 +86,19 @@ function scratchDataToStore(data: UiPreferencesData): {
     }
   }
 
+  // Backwards compatibility with older payloads that used
+  // file_search_repo_by_project (project_id -> repo_id).
+  const legacyFileSearchRepoByProject = (
+    data as UiPreferencesData & {
+      file_search_repo_by_project?: Record<string, string>;
+    }
+  ).file_search_repo_by_project;
+  const legacyFileSearchRepoId =
+    legacyFileSearchRepoByProject &&
+    Object.values(legacyFileSearchRepoByProject)[0]
+      ? Object.values(legacyFileSearchRepoByProject)[0]
+      : null;
+
   return {
     repoActions: (data.repo_actions ?? {}) as Record<string, RepoAction>,
     expanded: (data.expanded ?? {}) as Record<string, boolean>,
@@ -90,6 +106,7 @@ function scratchDataToStore(data: UiPreferencesData): {
       (data.context_bar_position as ContextBarPosition) ?? 'middle-right',
     paneSizes: (data.pane_sizes ?? {}) as Record<string, number | string>,
     collapsedPaths: (data.collapsed_paths ?? {}) as Record<string, string[]>,
+    fileSearchRepoId: data.file_search_repo_id ?? legacyFileSearchRepoId,
     isLeftSidebarVisible: data.is_left_sidebar_visible ?? true,
     isRightSidebarVisible: data.is_right_sidebar_visible ?? true,
     isTerminalVisible: data.is_terminal_visible ?? true,
@@ -119,6 +136,7 @@ export function useUiPreferencesScratch() {
     contextBarPosition: state.contextBarPosition,
     paneSizes: state.paneSizes,
     collapsedPaths: state.collapsedPaths,
+    fileSearchRepoId: state.fileSearchRepoId,
     isLeftSidebarVisible: state.isLeftSidebarVisible,
     isRightSidebarVisible: state.isRightSidebarVisible,
     isTerminalVisible: state.isTerminalVisible,
@@ -143,6 +161,7 @@ export function useUiPreferencesScratch() {
       contextBarPosition: currentState.contextBarPosition,
       paneSizes: currentState.paneSizes,
       collapsedPaths: currentState.collapsedPaths,
+      fileSearchRepoId: currentState.fileSearchRepoId,
       isLeftSidebarVisible: currentState.isLeftSidebarVisible,
       isRightSidebarVisible: currentState.isRightSidebarVisible,
       isTerminalVisible: currentState.isTerminalVisible,
@@ -183,6 +202,7 @@ export function useUiPreferencesScratch() {
         contextBarPosition: serverState.contextBarPosition,
         paneSizes: serverState.paneSizes,
         collapsedPaths: serverState.collapsedPaths,
+        fileSearchRepoId: serverState.fileSearchRepoId,
         isLeftSidebarVisible: serverState.isLeftSidebarVisible,
         isRightSidebarVisible: serverState.isRightSidebarVisible,
         isTerminalVisible: serverState.isTerminalVisible,

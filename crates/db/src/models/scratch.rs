@@ -67,6 +67,9 @@ pub struct UiPreferencesData {
     /// Collapsed paths per workspace in file tree
     #[serde(default)]
     pub collapsed_paths: std::collections::HashMap<String, Vec<String>>,
+    /// Preferred file-search repo
+    #[serde(default)]
+    pub file_search_repo_id: Option<String>,
     /// Global left sidebar visibility
     #[serde(default)]
     pub is_left_sidebar_visible: Option<bool>,

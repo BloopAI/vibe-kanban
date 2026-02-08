@@ -352,6 +352,9 @@
     "tags": "标签",
     "files": "文件",
     "commands": "命令",
+    "chooseRepo": "选择仓库",
+    "selectedRepo": "已选择仓库：{{repoName}}",
+    "missingRepo": "所选仓库已不可用。",
     "noTagsOrFiles": "未找到标签或文件",
     "noCommands": "此代理没有可用的命令。"
   },

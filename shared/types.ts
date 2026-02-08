@@ -100,6 +100,10 @@ pane_sizes: { [key in string]?: JsonValue },
  */
 collapsed_paths: { [key in string]?: Array<string> }, 
 /**
+ * Preferred file-search repo
+ */
+file_search_repo_id: string | null, 
+/**
  * Global left sidebar visibility
  */
 is_left_sidebar_visible: boolean | null, 

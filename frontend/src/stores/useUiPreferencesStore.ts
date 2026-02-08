@@ -156,6 +156,7 @@ type State = {
   contextBarPosition: ContextBarPosition;
   paneSizes: Record<string, number | string>;
   collapsedPaths: Record<string, string[]>;
+  fileSearchRepoId: string | null;
 
   // Global layout state (applies across all workspaces)
   layoutMode: LayoutMode;
@@ -190,6 +191,7 @@ type State = {
   setContextBarPosition: (position: ContextBarPosition) => void;
   setPaneSize: (key: string, size: number | string) => void;
   setCollapsedPaths: (key: string, paths: string[]) => void;
+  setFileSearchRepo: (repoId: string | null) => void;
 
   // Layout actions
   setLayoutMode: (mode: LayoutMode) => void;
@@ -248,6 +250,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
   contextBarPosition: 'middle-right',
   paneSizes: {},
   collapsedPaths: {},
+  fileSearchRepoId: null,
 
   // Global layout state
   layoutMode: 'workspaces' as LayoutMode,
@@ -296,6 +299,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
     set((s) => ({ paneSizes: { ...s.paneSizes, [key]: size } })),
   setCollapsedPaths: (key, paths) =>
     set((s) => ({ collapsedPaths: { ...s.collapsedPaths, [key]: paths } })),
+  setFileSearchRepo: (repoId) => set({ fileSearchRepoId: repoId }),
 
   // Layout actions
   setLayoutMode: (mode) => set({ layoutMode: mode }),

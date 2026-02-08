@@ -352,6 +352,9 @@
     "tags": "Tags",
     "files": "Fichiers",
     "commands": "Commandes",
+    "chooseRepo": "Choisir un dépôt",
+    "selectedRepo": "Dépôt sélectionné : {{repoName}}",
+    "missingRepo": "Le dépôt sélectionné n'est plus disponible.",
     "noTagsOrFiles": "Aucun tag ou fichier trouvé",
     "noCommands": "Aucune commande disponible pour cet agent."
   },

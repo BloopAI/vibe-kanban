@@ -352,6 +352,9 @@
     "tags": "태그",
     "files": "파일",
     "commands": "명령어",
+    "chooseRepo": "저장소 선택",
+    "selectedRepo": "선택된 저장소: {{repoName}}",
+    "missingRepo": "선택한 저장소를 더 이상 사용할 수 없습니다.",
     "noTagsOrFiles": "태그 또는 파일을 찾을 수 없습니다",
     "noCommands": "이 에이전트에 사용 가능한 명령어가 없습니다."
   },
