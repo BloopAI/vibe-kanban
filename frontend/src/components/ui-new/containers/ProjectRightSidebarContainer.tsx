@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowsOutIcon, XIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
@@ -26,6 +26,63 @@ import { createWorkspaceWithSession } from '@/types/attempt';
 interface WorkspaceSessionPanelProps {
   workspaceId: string;
   onClose: () => void;
+}
+
+interface WorkspaceCreatePanelProps {
+  linkedIssueId: string | null;
+  linkedIssueSimpleId: string | null;
+  onOpenIssue: (issueId: string) => void;
+  onClose: () => void;
+  children: ReactNode;
+}
+
+function WorkspaceCreatePanel({
+  linkedIssueId,
+  linkedIssueSimpleId,
+  onOpenIssue,
+  onClose,
+  children,
+}: WorkspaceCreatePanelProps) {
+  const breadcrumbButtonClass =
+    'min-w-0 text-sm text-normal truncate rounded-sm px-1 py-0.5 hover:bg-panel hover:text-high transition-colors';
+
+  const handleOpenIssue = useCallback(() => {
+    if (linkedIssueId) {
+      onOpenIssue(linkedIssueId);
+      return;
+    }
+    onClose();
+  }, [linkedIssueId, onOpenIssue, onClose]);
+
+  return (
+    <div className="relative flex h-full flex-1 flex-col bg-primary">
+      <div className="flex items-center justify-between px-base py-half border-b shrink-0">
+        <div className="flex items-center gap-half min-w-0 font-ibm-plex-mono">
+          <button
+            type="button"
+            onClick={handleOpenIssue}
+            className={`${breadcrumbButtonClass} shrink-0`}
+            aria-label="Open linked issue"
+          >
+            {linkedIssueSimpleId ?? 'Issue'}
+          </button>
+          <span className="text-low text-sm shrink-0">/</span>
+          <span className={breadcrumbButtonClass}>Create Workspace</span>
+        </div>
+        <div className="flex items-center gap-half">
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-half rounded-sm text-low hover:text-normal hover:bg-panel transition-colors"
+            aria-label="Close create workspace view"
+          >
+            <XIcon className="size-icon-sm" weight="bold" />
+          </button>
+        </div>
+      </div>
+      <div className="flex-1 min-h-0">{children}</div>
+    </div>
+  );
 }
 
 function WorkspaceSessionPanel({
@@ -216,7 +273,7 @@ function WorkspaceSessionPanel({
 export function ProjectRightSidebarContainer() {
   const navigate = useNavigate();
   const { mode, showIssuePanel } = useProjectRightSidebar();
-  const { issueId, workspaceId, openIssueWorkspace, closePanel } =
+  const { issueId, workspaceId, openIssue, openIssueWorkspace, closePanel } =
     useKanbanNavigation();
 
   const handleWorkspaceCreated = useCallback(
@@ -239,13 +296,23 @@ export function ProjectRightSidebarContainer() {
   );
 
   if (mode.type === 'workspace-create') {
+    const linkedIssueId = mode.initialState?.linkedIssue?.issueId ?? issueId;
+    const linkedIssueSimpleId = mode.initialState?.linkedIssue?.simpleId ?? null;
+
     return (
-      <CreateModeProvider
-        key={mode.instanceId}
-        initialState={mode.initialState}
+      <WorkspaceCreatePanel
+        linkedIssueId={linkedIssueId}
+        linkedIssueSimpleId={linkedIssueSimpleId}
+        onOpenIssue={openIssue}
+        onClose={closePanel}
       >
-        <CreateChatBoxContainer onWorkspaceCreated={handleWorkspaceCreated} />
-      </CreateModeProvider>
+        <CreateModeProvider
+          key={mode.instanceId}
+          initialState={mode.initialState}
+        >
+          <CreateChatBoxContainer onWorkspaceCreated={handleWorkspaceCreated} />
+        </CreateModeProvider>
+      </WorkspaceCreatePanel>
     );
   }
 
