@@ -63,6 +63,9 @@ export function GeneralSettings() {
   const [branchPrefixError, setBranchPrefixError] = useState<string | null>(
     null
   );
+  const [customSoundPathError, setCustomSoundPathError] = useState<
+    string | null
+  >(null);
   const { setTheme } = useTheme();
 
   // Check editor availability when draft editor changes
@@ -134,8 +137,12 @@ export function GeneralSettings() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [hasUnsavedChanges]);
 
-  const playSound = async (soundFile: SoundFile) => {
-    const audio = new Audio(`/api/sounds/${soundFile}`);
+  const playSound = async (soundFile: SoundFile, customPath?: string) => {
+    let url = `/api/sounds/${soundFile}`;
+    if (soundFile === SoundFile.CUSTOM && customPath) {
+      url += `?path=${encodeURIComponent(customPath)}`;
+    }
+    const audio = new Audio(url);
     try {
       await audio.play();
     } catch (err) {
@@ -145,6 +152,24 @@ export function GeneralSettings() {
 
   const handleSave = async () => {
     if (!draft) return;
+
+    // Validate custom sound path
+    if (
+      draft.notifications.sound_enabled &&
+      draft.notifications.sound_file === SoundFile.CUSTOM &&
+      !draft.notifications.custom_sound_path?.trim()
+    ) {
+      setCustomSoundPathError(
+        t('settings.general.notifications.sound.customPathError')
+      );
+      setError(t('settings.general.save.error'));
+      return;
+    }
+
+    if (branchPrefixError) {
+      setError(t('settings.general.save.error'));
+      return;
+    }
 
     setSaving(true);
     setError(null);
@@ -590,14 +615,17 @@ export function GeneralSettings() {
             <Checkbox
               id="sound-enabled"
               checked={draft?.notifications.sound_enabled}
-              onCheckedChange={(checked: boolean) =>
+              onCheckedChange={(checked: boolean) => {
+                if (!checked && customSoundPathError) {
+                  setCustomSoundPathError(null);
+                }
                 updateDraft({
                   notifications: {
                     ...draft!.notifications,
                     sound_enabled: checked,
                   },
-                })
-              }
+                });
+              }}
             />
             <div className="space-y-0.5">
               <Label htmlFor="sound-enabled" className="cursor-pointer">
@@ -616,14 +644,17 @@ export function GeneralSettings() {
               <div className="flex gap-2">
                 <Select
                   value={draft.notifications.sound_file}
-                  onValueChange={(value: SoundFile) =>
+                  onValueChange={(value: SoundFile) => {
+                    if (value !== SoundFile.CUSTOM && customSoundPathError) {
+                      setCustomSoundPathError(null);
+                    }
                     updateDraft({
                       notifications: {
                         ...draft.notifications,
                         sound_file: value,
                       },
-                    })
-                  }
+                    });
+                  }}
                 >
                   <SelectTrigger id="sound-file" className="flex-1">
                     <SelectValue
@@ -643,12 +674,59 @@ export function GeneralSettings() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => playSound(draft.notifications.sound_file)}
+                  onClick={() =>
+                    playSound(
+                      draft.notifications.sound_file,
+                      draft.notifications.custom_sound_path || undefined
+                    )
+                  }
                   className="px-3"
+                  disabled={
+                    !draft.notifications.sound_enabled ||
+                    (draft.notifications.sound_file === SoundFile.CUSTOM &&
+                      !draft.notifications.custom_sound_path)
+                  }
                 >
                   <Volume2 className="h-4 w-4" />
                 </Button>
               </div>
+              {draft.notifications.sound_file === SoundFile.CUSTOM && (
+                <div className="space-y-2 pt-2">
+                  <Label htmlFor="custom-sound-path">
+                    {t('settings.general.notifications.sound.customPathLabel')}
+                  </Label>
+                  <Input
+                    id="custom-sound-path"
+                    value={draft.notifications.custom_sound_path ?? ''}
+                    placeholder={t(
+                      'settings.general.notifications.sound.customPathPlaceholder'
+                    )}
+                    className={customSoundPathError ? 'border-destructive' : ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      if (customSoundPathError) {
+                        setCustomSoundPathError(null);
+                      }
+                      updateDraft({
+                        notifications: {
+                          ...draft!.notifications,
+                          custom_sound_path: e.target.value,
+                        },
+                      });
+                    }}
+                  />
+                  {customSoundPathError ? (
+                    <p className="text-xs text-destructive">
+                      {customSoundPathError}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {t(
+                        'settings.general.notifications.sound.customPathHelper'
+                      )}
+                    </p>
+                  )}
+                </div>
+              )}
               <p className="text-sm text-muted-foreground">
                 {t('settings.general.notifications.sound.fileHelper')}
               </p>
