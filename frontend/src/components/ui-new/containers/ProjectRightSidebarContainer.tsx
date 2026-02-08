@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowsOutSimpleIcon, XIcon } from '@phosphor-icons/react';
+import { ArrowsOutIcon, XIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
@@ -144,10 +144,7 @@ function WorkspaceSessionPanel({
                     className="p-half rounded-sm text-low hover:text-normal hover:bg-panel transition-colors"
                     aria-label="Open in workspace view"
                   >
-                    <ArrowsOutSimpleIcon
-                      className="size-icon-sm"
-                      weight="bold"
-                    />
+                    <ArrowsOutIcon className="size-icon-sm" weight="bold" />
                   </button>
                   <button
                     type="button"
