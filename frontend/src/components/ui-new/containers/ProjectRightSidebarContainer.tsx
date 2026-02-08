@@ -276,6 +276,15 @@ export function ProjectRightSidebarContainer() {
   const { issueId, workspaceId, openIssue, openIssueWorkspace, closePanel } =
     useKanbanNavigation();
 
+  const handleOpenIssueFromCreate = useCallback(
+    (targetIssueId: string) => {
+      showIssuePanel();
+      if (issueId === targetIssueId) return;
+      openIssue(targetIssueId);
+    },
+    [showIssuePanel, issueId, openIssue]
+  );
+
   const handleWorkspaceCreated = useCallback(
     (createdWorkspaceId: string) => {
       const linkedIssueId =
@@ -304,7 +313,7 @@ export function ProjectRightSidebarContainer() {
       <WorkspaceCreatePanel
         linkedIssueId={linkedIssueId}
         linkedIssueSimpleId={linkedIssueSimpleId}
-        onOpenIssue={openIssue}
+        onOpenIssue={handleOpenIssueFromCreate}
         onClose={closePanel}
       >
         <CreateModeProvider
