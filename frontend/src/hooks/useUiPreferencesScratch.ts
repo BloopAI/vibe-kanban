@@ -10,6 +10,7 @@ import {
 } from 'shared/types';
 import {
   useUiPreferencesStore,
+  KANBAN_PROJECT_VIEW_IDS,
   type RightMainPanelMode,
   type ContextBarPosition,
   type WorkspacePanelState,
@@ -162,6 +163,12 @@ function scratchDataToStore(data: UiPreferencesData): {
         filters && isSortDirection(filters.sort_direction)
           ? filters.sort_direction
           : 'asc';
+      const normalizedSortDirection =
+        view.id === KANBAN_PROJECT_VIEW_IDS.PERSONAL &&
+        sortField === 'priority' &&
+        sortDirection === 'desc'
+          ? 'asc'
+          : sortDirection;
 
       return {
         id: view.id,
@@ -172,7 +179,7 @@ function scratchDataToStore(data: UiPreferencesData): {
           assigneeIds: filters?.assignee_ids ?? [],
           tagIds: filters?.tag_ids ?? [],
           sortField,
-          sortDirection,
+          sortDirection: normalizedSortDirection,
         },
         showSubIssues: view.show_sub_issues ?? true,
         showWorkspaces: view.show_workspaces ?? true,

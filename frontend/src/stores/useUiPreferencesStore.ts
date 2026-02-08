@@ -112,7 +112,7 @@ const createDefaultKanbanProjectViewsState = (): KanbanProjectViewsState => ({
         ...cloneKanbanFilters(DEFAULT_KANBAN_FILTER_STATE),
         assigneeIds: [KANBAN_ASSIGNEE_FILTER_VALUES.SELF],
         sortField: 'priority',
-        sortDirection: 'desc',
+        sortDirection: 'asc',
       },
       showSubIssues: true,
       showWorkspaces: true,
