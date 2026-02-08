@@ -243,7 +243,8 @@ export function KanbanIssuePanelContainer() {
           }
         }
         // Auto-focus in create mode after any dialog close focus handling runs.
-        if (mode === 'create') {
+        // Avoid resetting caret while the user is actively editing the title.
+        if (mode === 'create' && document.activeElement !== node) {
           requestAnimationFrame(() => {
             node.focus();
             // Place cursor at end of content (not start)
@@ -821,6 +822,11 @@ export function KanbanIssuePanelContainer() {
     deleteDraftIssueScratch,
   ]);
 
+  const handleCmdEnterSubmit = useCallback(() => {
+    if (mode !== 'create') return;
+    void handleSubmit();
+  }, [mode, handleSubmit]);
+
   const handleDeleteDraft = useCallback(() => {
     cancelDebouncedDraftIssue();
     dispatchFormState({
@@ -894,6 +900,7 @@ export function KanbanIssuePanelContainer() {
       linkedPrs={linkedPrs}
       onClose={closeKanbanIssuePanel}
       onSubmit={handleSubmit}
+      onCmdEnterSubmit={handleCmdEnterSubmit}
       onCreateTag={handleCreateTag}
       isSubmitting={isSubmitting}
       isLoading={isLoading}
