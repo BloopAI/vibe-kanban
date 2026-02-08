@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { PlusIcon } from '@phosphor-icons/react';
 import {
   IssueWorkspaceCard,
+  IssueWorkspaceCreateCard,
   type WorkspaceWithStats,
 } from '@/components/ui-new/views/IssueWorkspaceCard';
 import {
@@ -46,31 +46,7 @@ export function IssueWorkspacesSection({
         {isLoading ? (
           <p className="text-low py-half">{t('workspaces.loading')}</p>
         ) : workspaces.length === 0 ? (
-          <div className="flex flex-col gap-half p-base bg-panel rounded-sm border border-dashed border-border">
-            <div className="flex items-center justify-between">
-              <div className="h-4 w-24 rounded-sm bg-secondary animate-pulse" />
-              <div className="h-5 w-5 rounded-full bg-secondary animate-pulse" />
-            </div>
-            <div className="flex items-center gap-half">
-              <div className="h-3 w-20 rounded-sm bg-secondary animate-pulse" />
-              <span className="text-low/50">·</span>
-              <div className="h-3 w-12 rounded-sm bg-secondary animate-pulse" />
-            </div>
-            <p className="text-xs text-low py-half">
-              {t('workspaces.noWorkspaces')}
-            </p>
-            <button
-              type="button"
-              onClick={onCreateWorkspace}
-              disabled={!onCreateWorkspace}
-              className="self-start flex items-center gap-half rounded-sm px-base py-half bg-brand text-on-brand hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <PlusIcon className="size-icon-xs" weight="bold" />
-              <span>
-                {t('kanban.createNewWorkspace', 'Create new workspace')}
-              </span>
-            </button>
-          </div>
+          <IssueWorkspaceCreateCard onClick={onCreateWorkspace} />
         ) : (
           workspaces.map((workspace) => {
             const { localWorkspaceId } = workspace;
