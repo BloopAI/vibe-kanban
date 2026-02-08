@@ -86,6 +86,7 @@ export function KanbanContainer() {
     issueAssignees,
     issueTags,
     projectId,
+    currentUserId: userId,
   });
 
   // Navigation hook for opening issues and create mode
@@ -104,6 +105,9 @@ export function KanbanContainer() {
   } = useActions();
 
   const kanbanFilters = useUiPreferencesStore((s) => s.kanbanFilters);
+  const activeKanbanViewId = useUiPreferencesStore(
+    (s) => s.kanbanProjectViewsByProject[projectId]?.activeViewId
+  );
   const kanbanViewMode = useUiPreferencesStore((s) => s.kanbanViewMode);
   const showWorkspaces = useUiPreferencesStore(
     (s) => s.showWorkspacesByProject[projectId] ?? true
@@ -115,9 +119,12 @@ export function KanbanContainer() {
   const setListViewStatusFilter = useUiPreferencesStore(
     (s) => s.setListViewStatusFilter
   );
-  const clearKanbanFilters = useUiPreferencesStore((s) => s.clearKanbanFilters);
+  const ensureKanbanProjectViews = useUiPreferencesStore(
+    (s) => s.ensureKanbanProjectViews
+  );
+  const applyKanbanView = useUiPreferencesStore((s) => s.applyKanbanView);
 
-  // Reset view mode and filters when navigating between projects
+  // Reset view mode and ensure project-specific views when navigating projects
   const prevProjectIdRef = useRef<string | null>(null);
 
   // Track when drag-drop sync is in progress to prevent flicker
@@ -130,15 +137,24 @@ export function KanbanContainer() {
     ) {
       setKanbanViewMode('kanban');
       setListViewStatusFilter(null);
-      clearKanbanFilters();
     }
+
     prevProjectIdRef.current = projectId;
+    ensureKanbanProjectViews(projectId);
   }, [
     projectId,
     setKanbanViewMode,
     setListViewStatusFilter,
-    clearKanbanFilters,
+    ensureKanbanProjectViews,
   ]);
+
+  // Always apply the active project view after initialization or sync restore.
+  useEffect(() => {
+    if (!activeKanbanViewId) {
+      return;
+    }
+    applyKanbanView(projectId, activeKanbanViewId);
+  }, [projectId, activeKanbanViewId, applyKanbanView]);
 
   // Sort all statuses for display settings
   const sortedStatuses = useMemo(

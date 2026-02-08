@@ -10,10 +10,14 @@ import {
 import { cn } from '@/lib/utils';
 import {
   useUiPreferencesStore,
+  KANBAN_ASSIGNEE_FILTER_VALUES,
+  DEFAULT_KANBAN_PROJECT_VIEW_ID,
+  KANBAN_PROJECT_VIEW_IDS,
   type KanbanSortField,
 } from '@/stores/useUiPreferencesStore';
 import type { Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +32,12 @@ import {
   MultiSelectDropdown,
   type MultiSelectDropdownOption,
 } from '@/components/ui-new/primitives/MultiSelectDropdown';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui-new/primitives/Dropdown';
 import { PriorityFilterDropdown } from '@/components/ui-new/views/PriorityFilterDropdown';
 
 // =============================================================================
@@ -53,6 +63,11 @@ const SORT_OPTIONS: PropertyDropdownOption<KanbanSortField>[] = [
   { value: 'title', label: 'Title' },
 ];
 
+const DEFAULT_VIEW_OPTIONS: PropertyDropdownOption<string>[] = [
+  { value: KANBAN_PROJECT_VIEW_IDS.TEAM, label: 'Team' },
+  { value: KANBAN_PROJECT_VIEW_IDS.PERSONAL, label: 'Personal' },
+];
+
 // =============================================================================
 // Helper to get user display name
 // =============================================================================
@@ -76,8 +91,12 @@ export function KanbanFilterBar({
   projectId,
 }: KanbanFilterBarProps) {
   const { t } = useTranslation('common');
+  const { userId } = useAuth();
 
   const kanbanFilters = useUiPreferencesStore((s) => s.kanbanFilters);
+  const projectViewState = useUiPreferencesStore(
+    (s) => s.kanbanProjectViewsByProject[projectId]
+  );
   const setKanbanSearchQuery = useUiPreferencesStore(
     (s) => s.setKanbanSearchQuery
   );
@@ -88,6 +107,13 @@ export function KanbanFilterBar({
   const setKanbanTags = useUiPreferencesStore((s) => s.setKanbanTags);
   const setKanbanSort = useUiPreferencesStore((s) => s.setKanbanSort);
   const clearKanbanFilters = useUiPreferencesStore((s) => s.clearKanbanFilters);
+  const applyKanbanView = useUiPreferencesStore((s) => s.applyKanbanView);
+  const saveCurrentKanbanViewAsNew = useUiPreferencesStore(
+    (s) => s.saveCurrentKanbanViewAsNew
+  );
+  const overwriteKanbanView = useUiPreferencesStore(
+    (s) => s.overwriteKanbanView
+  );
   const showSubIssues = useUiPreferencesStore(
     (s) => s.showSubIssuesByProject[projectId] ?? true
   );
@@ -96,17 +122,68 @@ export function KanbanFilterBar({
     (s) => s.showWorkspacesByProject[projectId] ?? true
   );
   const setShowWorkspaces = useUiPreferencesStore((s) => s.setShowWorkspaces);
+  const activeViewId =
+    projectViewState?.activeViewId ?? DEFAULT_KANBAN_PROJECT_VIEW_ID;
+
+  const viewOptions: PropertyDropdownOption<string>[] = useMemo(() => {
+    if (!projectViewState || projectViewState.views.length === 0) {
+      return DEFAULT_VIEW_OPTIONS;
+    }
+
+    return projectViewState.views.map((view) => ({
+      value: view.id,
+      label: view.name,
+    }));
+  }, [projectViewState]);
+
+  const handleSaveAsNewView = () => {
+    const name = window.prompt(
+      t('kanban.saveViewPrompt', 'Enter a name for this view'),
+      t('kanban.newView', 'New view')
+    );
+    if (!name) {
+      return;
+    }
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      return;
+    }
+    saveCurrentKanbanViewAsNew(projectId, trimmedName);
+  };
+
+  const handleOverwriteView = () => {
+    overwriteKanbanView(projectId, activeViewId);
+  };
+
+  const currentUser = useMemo(
+    () => users.find((user) => user.user_id === userId) ?? null,
+    [users, userId]
+  );
 
   // Build assignee options for MultiSelectDropdown
   const assigneeOptions: MultiSelectDropdownOption<string>[] = useMemo(
     () => [
       {
-        value: 'unassigned',
+        value: KANBAN_ASSIGNEE_FILTER_VALUES.UNASSIGNED,
         label: t('kanban.unassigned', 'Unassigned'),
         renderOption: () => (
           <div className="flex items-center gap-base">
             <UsersIcon className="size-icon-xs text-low" weight="bold" />
             {t('kanban.unassigned', 'Unassigned')}
+          </div>
+        ),
+      },
+      {
+        value: KANBAN_ASSIGNEE_FILTER_VALUES.SELF,
+        label: t('kanban.self', 'Me'),
+        renderOption: () => (
+          <div className="flex items-center gap-base">
+            {currentUser ? (
+              <UserAvatar user={currentUser} className="h-4 w-4 text-[8px]" />
+            ) : (
+              <UsersIcon className="size-icon-xs text-low" weight="bold" />
+            )}
+            {t('kanban.self', 'Me')}
           </div>
         ),
       },
@@ -121,7 +198,7 @@ export function KanbanFilterBar({
         ),
       })),
     ],
-    [users, t]
+    [users, t, currentUser]
   );
 
   // Build tag options for MultiSelectDropdown
@@ -155,8 +232,13 @@ export function KanbanFilterBar({
   const renderAssigneeBadge = useMemo(
     () => (selectedIds: string[]) => {
       const resolved = selectedIds
-        .filter((id) => id !== 'unassigned')
-        .map((id) => usersById.get(id))
+        .filter((id) => id !== KANBAN_ASSIGNEE_FILTER_VALUES.UNASSIGNED)
+        .map((id) => {
+          if (id === KANBAN_ASSIGNEE_FILTER_VALUES.SELF) {
+            return currentUser;
+          }
+          return usersById.get(id);
+        })
         .filter((m): m is OrganizationMemberWithProfile => m != null);
 
       if (resolved.length === 0) {
@@ -172,11 +254,45 @@ export function KanbanFilterBar({
 
       return <KanbanAssignee assignees={resolved} />;
     },
-    [usersById]
+    [usersById, currentUser]
   );
 
   return (
     <div className="flex items-center gap-base flex-wrap">
+      {/* Saved Views */}
+      <PropertyDropdown
+        value={activeViewId}
+        options={viewOptions}
+        onChange={(viewId) => applyKanbanView(projectId, viewId)}
+        label={t('kanban.view', 'View')}
+      />
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              'flex items-center gap-half bg-panel rounded-sm',
+              'text-sm text-normal hover:bg-secondary transition-colors',
+              'py-half px-base'
+            )}
+          >
+            {t('kanban.saveView', 'Save view')}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem onClick={handleSaveAsNewView}>
+            {t('kanban.saveAsNewView', 'Save as new view')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleOverwriteView}>
+            {t('kanban.overwriteCurrentView', 'Overwrite current view')}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Separator */}
+      <div className="h-4 w-px bg-border" />
+
       {/* Search Input */}
       <InputField
         value={kanbanFilters.searchQuery}

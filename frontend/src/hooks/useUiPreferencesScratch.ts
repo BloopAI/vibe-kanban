@@ -13,13 +13,30 @@ import {
   type RightMainPanelMode,
   type ContextBarPosition,
   type WorkspacePanelState,
+  type KanbanSortField,
+  type KanbanProjectViewsState,
 } from '@/stores/useUiPreferencesStore';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
+import type { IssuePriority } from 'shared/remote-types';
 
 // Stable UUID for global UI preferences (not tied to a workspace/user)
 // This is a deterministic UUID v5 generated from the namespace "ui-preferences"
 // Using a fixed UUID ensures all users/sessions share the same preferences record
 const UI_PREFERENCES_ID = '00000000-0000-0000-0000-000000000001';
+
+const KANBAN_SORT_FIELDS: KanbanSortField[] = [
+  'sort_order',
+  'priority',
+  'created_at',
+  'updated_at',
+  'title',
+];
+
+const isKanbanSortField = (value: string): value is KanbanSortField =>
+  KANBAN_SORT_FIELDS.includes(value as KanbanSortField);
+
+const isSortDirection = (value: string): value is 'asc' | 'desc' =>
+  value === 'asc' || value === 'desc';
 
 /**
  * Converts store state to scratch data format (camelCase to snake_case)
@@ -35,12 +52,37 @@ function storeToScratchData(state: {
   isRightSidebarVisible: boolean;
   isTerminalVisible: boolean;
   workspacePanelStates: Record<string, WorkspacePanelState>;
+  kanbanProjectViewsByProject: Record<string, KanbanProjectViewsState>;
 }): UiPreferencesData {
   const workspacePanelStates: { [key: string]: WorkspacePanelStateData } = {};
   for (const [key, value] of Object.entries(state.workspacePanelStates)) {
     workspacePanelStates[key] = {
       right_main_panel_mode: value.rightMainPanelMode,
       is_left_main_panel_visible: value.isLeftMainPanelVisible,
+    };
+  }
+
+  const kanbanProjectViewsByProject: UiPreferencesData['kanban_project_views_by_project'] =
+    {};
+  for (const [projectId, viewState] of Object.entries(
+    state.kanbanProjectViewsByProject
+  )) {
+    kanbanProjectViewsByProject[projectId] = {
+      active_view_id: viewState.activeViewId,
+      views: viewState.views.map((view) => ({
+        id: view.id,
+        name: view.name,
+        filters: {
+          search_query: view.filters.searchQuery,
+          priorities: [...view.filters.priorities],
+          assignee_ids: [...view.filters.assigneeIds],
+          tag_ids: [...view.filters.tagIds],
+          sort_field: view.filters.sortField,
+          sort_direction: view.filters.sortDirection,
+        },
+        show_sub_issues: view.showSubIssues,
+        show_workspaces: view.showWorkspaces,
+      })),
     };
   }
 
@@ -55,6 +97,7 @@ function storeToScratchData(state: {
     is_right_sidebar_visible: state.isRightSidebarVisible,
     is_terminal_visible: state.isTerminalVisible,
     workspace_panel_states: workspacePanelStates,
+    kanban_project_views_by_project: kanbanProjectViewsByProject,
   };
 }
 
@@ -72,6 +115,7 @@ function scratchDataToStore(data: UiPreferencesData): {
   isRightSidebarVisible: boolean;
   isTerminalVisible: boolean;
   workspacePanelStates: Record<string, WorkspacePanelState>;
+  kanbanProjectViewsByProject: Record<string, KanbanProjectViewsState>;
 } {
   const workspacePanelStates: Record<string, WorkspacePanelState> = {};
   if (data.workspace_panel_states) {
@@ -99,6 +143,50 @@ function scratchDataToStore(data: UiPreferencesData): {
       ? Object.values(legacyFileSearchRepoByProject)[0]
       : null;
 
+  const kanbanProjectViewsByProject: Record<string, KanbanProjectViewsState> =
+    {};
+  for (const [projectId, value] of Object.entries(
+    data.kanban_project_views_by_project ?? {}
+  )) {
+    if (!value) {
+      continue;
+    }
+
+    const views = (value.views ?? []).map((view) => {
+      const filters = view.filters;
+      const sortField = filters && isKanbanSortField(filters.sort_field)
+        ? filters.sort_field
+        : 'sort_order';
+      const sortDirection = filters && isSortDirection(filters.sort_direction)
+        ? filters.sort_direction
+        : 'asc';
+
+      return {
+        id: view.id,
+        name: view.name,
+        filters: {
+          searchQuery: filters?.search_query ?? '',
+          priorities: (filters?.priorities ?? []) as IssuePriority[],
+          assigneeIds: filters?.assignee_ids ?? [],
+          tagIds: filters?.tag_ids ?? [],
+          sortField,
+          sortDirection,
+        },
+        showSubIssues: view.show_sub_issues ?? true,
+        showWorkspaces: view.show_workspaces ?? true,
+      };
+    });
+
+    if (!value.active_view_id || views.length === 0) {
+      continue;
+    }
+
+    kanbanProjectViewsByProject[projectId] = {
+      activeViewId: value.active_view_id,
+      views,
+    };
+  }
+
   return {
     repoActions: (data.repo_actions ?? {}) as Record<string, RepoAction>,
     expanded: (data.expanded ?? {}) as Record<string, boolean>,
@@ -111,6 +199,7 @@ function scratchDataToStore(data: UiPreferencesData): {
     isRightSidebarVisible: data.is_right_sidebar_visible ?? true,
     isTerminalVisible: data.is_terminal_visible ?? true,
     workspacePanelStates,
+    kanbanProjectViewsByProject,
   };
 }
 
@@ -141,6 +230,7 @@ export function useUiPreferencesScratch() {
     isRightSidebarVisible: state.isRightSidebarVisible,
     isTerminalVisible: state.isTerminalVisible,
     workspacePanelStates: state.workspacePanelStates,
+    kanbanProjectViewsByProject: state.kanbanProjectViewsByProject,
   }));
 
   // Extract scratch data
@@ -166,6 +256,7 @@ export function useUiPreferencesScratch() {
       isRightSidebarVisible: currentState.isRightSidebarVisible,
       isTerminalVisible: currentState.isTerminalVisible,
       workspacePanelStates: currentState.workspacePanelStates,
+      kanbanProjectViewsByProject: currentState.kanbanProjectViewsByProject,
     });
 
     try {
@@ -207,6 +298,7 @@ export function useUiPreferencesScratch() {
         isRightSidebarVisible: serverState.isRightSidebarVisible,
         isTerminalVisible: serverState.isTerminalVisible,
         workspacePanelStates: serverState.workspacePanelStates,
+        kanbanProjectViewsByProject: serverState.kanbanProjectViewsByProject,
       });
 
       // Allow a brief delay for state to settle

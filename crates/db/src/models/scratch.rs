@@ -49,6 +49,41 @@ pub struct WorkspacePanelStateData {
     pub is_left_main_panel_visible: bool,
 }
 
+/// Kanban filters stored in UI preferences scratch
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct KanbanFiltersData {
+    #[serde(default)]
+    pub search_query: String,
+    #[serde(default)]
+    pub priorities: Vec<String>,
+    #[serde(default)]
+    pub assignee_ids: Vec<String>,
+    #[serde(default)]
+    pub tag_ids: Vec<String>,
+    #[serde(default)]
+    pub sort_field: String,
+    #[serde(default)]
+    pub sort_direction: String,
+}
+
+/// A saved kanban project view stored in UI preferences scratch
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct KanbanProjectViewData {
+    pub id: String,
+    pub name: String,
+    pub filters: KanbanFiltersData,
+    pub show_sub_issues: bool,
+    pub show_workspaces: bool,
+}
+
+/// Per-project kanban views state stored in UI preferences scratch
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct KanbanProjectViewsStateData {
+    pub active_view_id: String,
+    #[serde(default)]
+    pub views: Vec<KanbanProjectViewData>,
+}
+
 /// Data for UI preferences scratch (global preferences stored per-user or per-device)
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct UiPreferencesData {
@@ -82,6 +117,10 @@ pub struct UiPreferencesData {
     /// Workspace-specific panel states
     #[serde(default)]
     pub workspace_panel_states: std::collections::HashMap<String, WorkspacePanelStateData>,
+    /// Saved kanban views per project
+    #[serde(default)]
+    pub kanban_project_views_by_project:
+        std::collections::HashMap<String, KanbanProjectViewsStateData>,
 }
 
 /// Linked issue data for draft workspace scratch

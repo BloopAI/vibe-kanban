@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
+import {
+  useUiPreferencesStore,
+  KANBAN_ASSIGNEE_FILTER_VALUES,
+} from '@/stores/useUiPreferencesStore';
 import type {
   Issue,
   IssueAssignee,
@@ -12,6 +15,7 @@ type UseKanbanFiltersParams = {
   issueAssignees: IssueAssignee[];
   issueTags: IssueTag[];
   projectId: string;
+  currentUserId: string | null;
 };
 
 type UseKanbanFiltersResult = {
@@ -31,6 +35,7 @@ export function useKanbanFilters({
   issueAssignees,
   issueTags,
   projectId,
+  currentUserId,
 }: UseKanbanFiltersParams): UseKanbanFiltersResult {
   const kanbanFilters = useUiPreferencesStore((s) => s.kanbanFilters);
   const showSubIssuesByProject = useUiPreferencesStore(
@@ -99,17 +104,32 @@ export function useKanbanFilters({
 
     // Assignee filter (OR within)
     if (kanbanFilters.assigneeIds.length > 0) {
+      const includeUnassigned = kanbanFilters.assigneeIds.includes(
+        KANBAN_ASSIGNEE_FILTER_VALUES.UNASSIGNED
+      );
+      const selectedAssigneeIds = new Set(
+        kanbanFilters.assigneeIds.flatMap((assigneeId) => {
+          if (assigneeId === KANBAN_ASSIGNEE_FILTER_VALUES.SELF) {
+            return currentUserId ? [currentUserId] : [];
+          }
+          if (assigneeId === KANBAN_ASSIGNEE_FILTER_VALUES.UNASSIGNED) {
+            return [];
+          }
+          return [assigneeId];
+        })
+      );
+
       result = result.filter((issue) => {
         const issueAssigneeIds = assigneesByIssue[issue.id] ?? [];
 
         // Check for 'unassigned' special case
-        if (kanbanFilters.assigneeIds.includes('unassigned')) {
+        if (includeUnassigned) {
           if (issueAssigneeIds.length === 0) return true;
         }
 
         // Check if any of the issue's assignees match the filter
         return issueAssigneeIds.some((assigneeId) =>
-          kanbanFilters.assigneeIds.includes(assigneeId)
+          selectedAssigneeIds.has(assigneeId)
         );
       });
     }
@@ -128,7 +148,14 @@ export function useKanbanFilters({
     // so that sort order is applied within each column
 
     return result;
-  }, [issues, kanbanFilters, assigneesByIssue, tagsByIssue, showSubIssues]);
+  }, [
+    issues,
+    kanbanFilters,
+    assigneesByIssue,
+    tagsByIssue,
+    showSubIssues,
+    currentUserId,
+  ]);
 
   return {
     filteredIssues,
