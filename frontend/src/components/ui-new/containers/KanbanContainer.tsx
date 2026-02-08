@@ -107,6 +107,9 @@ export function KanbanContainer() {
 
   const kanbanFilters = useUiPreferencesStore((s) => s.kanbanFilters);
   const kanbanViewMode = useUiPreferencesStore((s) => s.kanbanViewMode);
+  const showWorkspaces = useUiPreferencesStore(
+    (s) => s.showWorkspacesByProject[projectId] ?? true
+  );
   const listViewStatusFilter = useUiPreferencesStore(
     (s) => s.listViewStatusFilter
   );
@@ -312,6 +315,10 @@ export function KanbanContainer() {
   }, [pullRequests]);
 
   const workspacesByIssueId = useMemo(() => {
+    if (!showWorkspaces) {
+      return new Map<string, WorkspaceWithStats[]>();
+    }
+
     const map = new Map<string, WorkspaceWithStats[]>();
 
     for (const issue of issues) {
@@ -355,6 +362,7 @@ export function KanbanContainer() {
 
     return map;
   }, [
+    showWorkspaces,
     issues,
     getWorkspacesForIssue,
     localWorkspacesById,

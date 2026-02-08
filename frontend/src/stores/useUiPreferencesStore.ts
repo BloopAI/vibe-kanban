@@ -181,6 +181,8 @@ type State = {
 
   // Per-project sub-issues visibility
   showSubIssuesByProject: Record<string, boolean>;
+  // Per-project workspaces visibility on kanban cards
+  showWorkspacesByProject: Record<string, boolean>;
 
   // UI preferences actions
   setRepoAction: (repoId: string, action: RepoAction) => void;
@@ -239,6 +241,8 @@ type State = {
 
   // Per-project sub-issues visibility action
   setShowSubIssues: (projectId: string, show: boolean) => void;
+  // Per-project workspaces visibility action
+  setShowWorkspaces: (projectId: string, show: boolean) => void;
 };
 
 export const useUiPreferencesStore = create<State>()((set, get) => ({
@@ -271,6 +275,8 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
 
   // Per-project sub-issues visibility (default to hidden)
   showSubIssuesByProject: {},
+  // Per-project workspaces visibility (default to shown)
+  showWorkspacesByProject: {},
 
   // UI preferences actions
   setRepoAction: (repoId, action) =>
@@ -477,6 +483,15 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
     set((s) => ({
       showSubIssuesByProject: {
         ...s.showSubIssuesByProject,
+        [projectId]: show,
+      },
+    })),
+
+  // Per-project workspaces visibility action
+  setShowWorkspaces: (projectId, show) =>
+    set((s) => ({
+      showWorkspacesByProject: {
+        ...s.showWorkspacesByProject,
         [projectId]: show,
       },
     })),

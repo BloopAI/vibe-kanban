@@ -17,6 +17,7 @@ import type { OrganizationMemberWithProfile } from 'shared/types';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { InputField } from '@/components/ui-new/primitives/InputField';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import {
@@ -113,6 +114,14 @@ export function KanbanFilterBar({
   const setKanbanTags = useUiPreferencesStore((s) => s.setKanbanTags);
   const setKanbanSort = useUiPreferencesStore((s) => s.setKanbanSort);
   const clearKanbanFilters = useUiPreferencesStore((s) => s.clearKanbanFilters);
+  const showSubIssues = useUiPreferencesStore(
+    (s) => s.showSubIssuesByProject[projectId] ?? false
+  );
+  const setShowSubIssues = useUiPreferencesStore((s) => s.setShowSubIssues);
+  const showWorkspaces = useUiPreferencesStore(
+    (s) => s.showWorkspacesByProject[projectId] ?? true
+  );
+  const setShowWorkspaces = useUiPreferencesStore((s) => s.setShowWorkspaces);
 
   // Build assignee options for MultiSelectDropdown
   const assigneeOptions: MultiSelectDropdownOption<string>[] = useMemo(
@@ -276,6 +285,31 @@ export function KanbanFilterBar({
           <SortDescendingIcon className="size-icon-base" />
         )}
       </button>
+
+      {/* Separator */}
+      <div className="h-4 w-px bg-border" />
+
+      {/* Sub-Issues Visibility */}
+      <div className="flex items-center gap-half px-base py-half bg-panel rounded-sm">
+        <span className="text-sm text-normal whitespace-nowrap">
+          {t('kanban.showSubIssues', 'Show sub-issues')}
+        </span>
+        <Switch
+          checked={showSubIssues}
+          onCheckedChange={(checked) => setShowSubIssues(projectId, checked)}
+        />
+      </div>
+
+      {/* Workspaces Visibility */}
+      <div className="flex items-center gap-half px-base py-half bg-panel rounded-sm">
+        <span className="text-sm text-normal whitespace-nowrap">
+          {t('kanban.showWorkspaces', 'Show workspaces')}
+        </span>
+        <Switch
+          checked={showWorkspaces}
+          onCheckedChange={(checked) => setShowWorkspaces(projectId, checked)}
+        />
+      </div>
 
       {/* Separator */}
       <div className="h-4 w-px bg-border" />
