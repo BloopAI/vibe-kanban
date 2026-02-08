@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowsOutIcon, XIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
@@ -43,6 +44,7 @@ function WorkspaceCreatePanel({
   onClose,
   children,
 }: WorkspaceCreatePanelProps) {
+  const { t } = useTranslation('tasks');
   const breadcrumbButtonClass =
     'min-w-0 text-sm text-normal truncate rounded-sm px-1 py-0.5 hover:bg-panel hover:text-high transition-colors';
 
@@ -67,7 +69,9 @@ function WorkspaceCreatePanel({
             {linkedIssueSimpleId ?? 'Issue'}
           </button>
           <span className="text-low text-sm shrink-0">/</span>
-          <span className={breadcrumbButtonClass}>Create Workspace</span>
+          <span className={breadcrumbButtonClass}>
+            {t('createWorkspaceFromPr.createWorkspace')}
+          </span>
         </div>
         <div className="flex items-center gap-half">
           <button
