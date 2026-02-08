@@ -218,7 +218,7 @@ function WorkspaceSessionPanel({
 export function ProjectRightSidebarContainer() {
   const navigate = useNavigate();
   const { mode, showIssuePanel } = useProjectRightSidebar();
-  const { issueId, workspaceId, openIssueWorkspace, closeWorkspace } =
+  const { issueId, workspaceId, openIssueWorkspace, closePanel } =
     useKanbanNavigation();
 
   const handleWorkspaceCreated = useCallback(
@@ -255,7 +255,7 @@ export function ProjectRightSidebarContainer() {
     return (
       <WorkspaceSessionPanel
         workspaceId={workspaceId}
-        onClose={closeWorkspace}
+        onClose={closePanel}
       />
     );
   }

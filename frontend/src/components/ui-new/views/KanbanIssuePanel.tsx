@@ -122,6 +122,8 @@ export function KanbanIssuePanel({
   onMoreActions,
 }: KanbanIssuePanelProps) {
   const isCreateMode = mode === 'create';
+  const breadcrumbTextClass =
+    'min-w-0 text-sm text-normal truncate rounded-sm px-1 py-0.5 hover:bg-panel hover:text-high transition-colors';
   const creatorName =
     creatorUser?.first_name?.trim() || creatorUser?.username?.trim() || null;
   const showCreator = !isCreateMode && Boolean(creatorName);
@@ -146,8 +148,8 @@ export function KanbanIssuePanel({
     >
       {/* Header */}
       <div className="flex items-center justify-between px-base py-half border-b shrink-0">
-        <div className="flex items-center gap-half">
-          <span className="font-ibm-plex-mono text-base text-normal">
+        <div className="flex items-center gap-half min-w-0 font-ibm-plex-mono">
+          <span className={`${breadcrumbTextClass} shrink-0`}>
             {displayId}
           </span>
           {!isCreateMode && onCopyLink && (
