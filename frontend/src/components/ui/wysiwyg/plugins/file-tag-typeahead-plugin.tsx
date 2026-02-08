@@ -101,11 +101,7 @@ function toRepoItem(repo: Repo): RepoItem {
   };
 }
 
-export function FileTagTypeaheadPlugin({
-  repoIds,
-}: {
-  repoIds?: string[];
-}) {
+export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
   const [editor] = useLexicalComposerContext();
   const [options, setOptions] = useState<FileTagOption[]>([]);
   const [recentRepoCatalog, setRecentRepoCatalog] = useState<Repo[] | null>(
@@ -127,7 +123,9 @@ export function FileTagTypeaheadPlugin({
     () => workspaceContext?.diffPaths ?? new Set<string>(),
     [workspaceContext?.diffPaths]
   );
-  const preferredRepoId = useUiPreferencesStore((state) => state.fileSearchRepoId);
+  const preferredRepoId = useUiPreferencesStore(
+    (state) => state.fileSearchRepoId
+  );
   const setFileSearchRepo = useUiPreferencesStore(
     (state) => state.setFileSearchRepo
   );
