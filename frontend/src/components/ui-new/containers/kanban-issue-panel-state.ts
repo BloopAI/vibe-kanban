@@ -54,7 +54,9 @@ const EMPTY_EDIT_TEXT_STATE: EditTextState = {
   hasLocalDescriptionEdit: false,
 };
 
-export function createBlankCreateFormData(defaultStatusId: string): IssueFormData {
+export function createBlankCreateFormData(
+  defaultStatusId: string
+): IssueFormData {
   return {
     title: '',
     description: null,
@@ -212,7 +214,10 @@ export function selectIsCreateDraftDirty({
       state.createFormData.assigneeIds,
       createModeDefaults.assigneeIds
     ) ||
-    !areStringSetsEqual(state.createFormData.tagIds, createModeDefaults.tagIds) ||
+    !areStringSetsEqual(
+      state.createFormData.tagIds,
+      createModeDefaults.tagIds
+    ) ||
     state.createFormData.createDraftWorkspace !==
       createModeDefaults.createDraftWorkspace
   );
