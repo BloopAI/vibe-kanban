@@ -210,8 +210,8 @@ export function IssueWorkspaceCard({
       </div>
 
       {/* Row 2: Live status + stats (left), PR buttons (right) */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-half text-sm text-low min-w-0">
+      <div className="flex items-center justify-between gap-half min-w-0">
+        <div className="flex items-center gap-half text-sm text-low min-w-0 flex-1">
           <div className="flex items-center gap-half shrink-0">
             {hasRunningDevServer && (
               <PlayIcon
@@ -247,11 +247,11 @@ export function IssueWorkspaceCard({
 
           {hasLiveStatusIndicator && <span className="text-low/50">·</span>}
 
-          <span>{timeAgo}</span>
+          <span className="whitespace-nowrap">{timeAgo}</span>
           {workspace.filesChanged > 0 && (
             <>
               <span className="text-low/50">·</span>
-              <span>
+              <span className="whitespace-nowrap">
                 {t('workspaces.filesChanged', {
                   count: workspace.filesChanged,
                 })}
@@ -272,7 +272,7 @@ export function IssueWorkspaceCard({
           )}
         </div>
 
-        <div className="flex items-center gap-half">
+        <div className="flex items-center gap-half shrink-0">
           {workspace.prs.length > 0 ? (
             workspace.prs.map((pr) => (
               <a
@@ -295,7 +295,9 @@ export function IssueWorkspaceCard({
               </a>
             ))
           ) : showNoPrText ? (
-            <span className="text-xs text-low">{t('kanban.noPrCreated')}</span>
+            <span className="text-xs text-low whitespace-nowrap">
+              {t('kanban.noPrCreated')}
+            </span>
           ) : null}
         </div>
       </div>
