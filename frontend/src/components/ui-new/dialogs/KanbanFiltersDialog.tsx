@@ -277,7 +277,9 @@ export function KanbanFiltersDialog({
       <DialogContent className="max-w-[920px] p-0">
         <div className="border-b border-border px-double py-base">
           <DialogHeader className="space-y-half">
-            <DialogTitle>{t('kanban.filtersAndViews', 'Filters & Views')}</DialogTitle>
+            <DialogTitle>
+              {t('kanban.filtersAndViews', 'Filters & Views')}
+            </DialogTitle>
             <DialogDescription>
               {t(
                 'kanban.filtersAndViewsDescription',
@@ -319,7 +321,10 @@ export function KanbanFiltersDialog({
                       {t('kanban.saveAsNewView', 'Save as new view')}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleOverwriteView}>
-                      {t('kanban.overwriteCurrentView', 'Overwrite current view')}
+                      {t(
+                        'kanban.overwriteCurrentView',
+                        'Overwrite current view'
+                      )}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

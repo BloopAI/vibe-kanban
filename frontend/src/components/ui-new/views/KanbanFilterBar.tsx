@@ -85,7 +85,9 @@ export function KanbanFilterBar({
           </ButtonGroupItem>
           <ButtonGroupItem
             active={activeViewId === KANBAN_PROJECT_VIEW_IDS.TEAM}
-            onClick={() => applyKanbanView(projectId, KANBAN_PROJECT_VIEW_IDS.TEAM)}
+            onClick={() =>
+              applyKanbanView(projectId, KANBAN_PROJECT_VIEW_IDS.TEAM)
+            }
           >
             TEAM
           </ButtonGroupItem>
