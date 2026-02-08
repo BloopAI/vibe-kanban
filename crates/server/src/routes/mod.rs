@@ -59,6 +59,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
 
     Router::new()
         .route("/", get(frontend::serve_frontend_root))
+        .route("/runtime-config.js", get(frontend::serve_runtime_config))
         .route("/{*path}", get(frontend::serve_frontend))
         .nest("/api", base_routes)
         .into_make_service()
