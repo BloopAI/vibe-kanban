@@ -318,16 +318,11 @@ export function IssueWorkspaceCreateCard({
           <span className="px-1.5 py-0.5 rounded text-xs font-medium shrink-0 bg-secondary text-low">
             {t('workspaces.draft')}
           </span>
-          <span className="text-sm text-high truncate">
-            {t('kanban.createNewWorkspace', 'Create new workspace')}
-          </span>
         </div>
       </div>
 
       <div className="flex items-center justify-between gap-base">
-        <span className="text-sm text-low truncate">
-          {t('workspaces.noWorkspaces')}
-        </span>
+        <span className="text-sm text-low truncate">New workspace</span>
         <button
           type="button"
           onClick={onClick}
