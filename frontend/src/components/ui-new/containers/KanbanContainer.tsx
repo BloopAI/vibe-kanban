@@ -663,6 +663,7 @@ export function KanbanContainer() {
                             id={issue.id}
                             name={issue.title}
                             index={index}
+                            className="group"
                             onClick={() => handleCardClick(issue.id)}
                             isOpen={selectedKanbanIssueId === issue.id}
                           >

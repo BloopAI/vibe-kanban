@@ -98,7 +98,11 @@ export const KanbanCardContent = ({
               e.stopPropagation();
               onMoreActionsClick();
             }}
-            className="p-half -m-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors shrink-0"
+            className={cn(
+              'p-half -m-half rounded-sm text-low hover:text-normal hover:bg-secondary shrink-0',
+              'invisible opacity-0 group-hover:visible group-hover:opacity-100',
+              'transition-[opacity,color,background-color]'
+            )}
             aria-label="More actions"
             title="More actions"
           >
