@@ -322,7 +322,9 @@ export function IssueWorkspaceCreateCard({
       </div>
 
       <div className="flex items-center justify-between gap-base">
-        <span className="text-sm text-low truncate">New workspace</span>
+        <span className="text-sm text-low truncate">
+          {t('workspaces.newWorkspace')}
+        </span>
         <button
           type="button"
           onClick={onClick}

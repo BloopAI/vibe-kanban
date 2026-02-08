@@ -154,6 +154,7 @@
     "backToActive": "アクティブに戻る",
     "noArchived": "アーカイブされたワークスペースはありません",
     "noWorkspaces": "ワークスペースがありません",
+    "newWorkspace": "新しいワークスペース",
     "needsAttention": "対応が必要",
     "idle": "待機中",
     "running": "実行中",
