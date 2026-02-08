@@ -76,20 +76,20 @@ export function KanbanFilterBar({
       <div className="flex items-center gap-base flex-wrap flex-1 min-w-0">
         <ButtonGroup>
           <ButtonGroupItem
-            active={activeViewId === KANBAN_PROJECT_VIEW_IDS.PERSONAL}
-            onClick={() =>
-              applyKanbanView(projectId, KANBAN_PROJECT_VIEW_IDS.PERSONAL)
-            }
-          >
-            Personal
-          </ButtonGroupItem>
-          <ButtonGroupItem
             active={activeViewId === KANBAN_PROJECT_VIEW_IDS.TEAM}
             onClick={() =>
               applyKanbanView(projectId, KANBAN_PROJECT_VIEW_IDS.TEAM)
             }
           >
             Team
+          </ButtonGroupItem>
+          <ButtonGroupItem
+            active={activeViewId === KANBAN_PROJECT_VIEW_IDS.PERSONAL}
+            onClick={() =>
+              applyKanbanView(projectId, KANBAN_PROJECT_VIEW_IDS.PERSONAL)
+            }
+          >
+            Personal
           </ButtonGroupItem>
         </ButtonGroup>
 
@@ -109,7 +109,7 @@ export function KanbanFilterBar({
           className={cn(
             'flex items-center justify-center p-half rounded-sm transition-colors',
             hasActiveFilters
-              ? 'text-brand bg-secondary hover:bg-tertiary'
+              ? 'text-brand hover:text-brand'
               : 'text-low hover:text-normal hover:bg-secondary'
           )}
           aria-label={t('kanban.filters', 'Open filters')}
