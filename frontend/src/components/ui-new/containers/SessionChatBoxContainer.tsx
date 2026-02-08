@@ -729,9 +729,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       status={status}
       onViewCode={disableViewCode ? undefined : handleViewCode}
       onOpenWorkspace={
-        showOpenWorkspaceButton && workspaceId
-          ? handleOpenWorkspace
-          : undefined
+        showOpenWorkspaceButton && workspaceId ? handleOpenWorkspace : undefined
       }
       onScrollToPreviousMessage={onScrollToPreviousMessage}
       repoIds={repoIds}
