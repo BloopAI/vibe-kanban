@@ -292,7 +292,7 @@ export function KanbanFilterBar({
       {/* Sub-Issues Visibility */}
       <div className="flex items-center gap-half px-base py-half bg-panel rounded-sm">
         <span className="text-sm text-normal whitespace-nowrap">
-          {t('kanban.subIssuesFilterLabel', 'sub-issues')}
+          {t('kanban.subIssuesFilterLabel', 'Sub-issues')}
         </span>
         <Switch
           checked={showSubIssues}
@@ -303,7 +303,7 @@ export function KanbanFilterBar({
       {/* Workspaces Visibility */}
       <div className="flex items-center gap-half px-base py-half bg-panel rounded-sm">
         <span className="text-sm text-normal whitespace-nowrap">
-          {t('kanban.workspacesFilterLabel', 'workspaces')}
+          {t('kanban.workspacesFilterLabel', 'Workspaces')}
         </span>
         <Switch
           checked={showWorkspaces}
