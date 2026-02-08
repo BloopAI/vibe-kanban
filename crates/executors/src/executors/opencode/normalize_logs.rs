@@ -649,6 +649,8 @@ enum ToolData {
     },
     Task {
         description: Option<String>,
+        subagent_type: Option<String>,
+        output: Option<String>,
     },
     Other {
         input: Option<Value>,
@@ -864,13 +866,29 @@ impl ToolCallState {
                     *todos = v.todos;
                 }
             }
-            ToolData::Task { description } => {
-                if let Some(d) = input.and_then(|v| {
-                    v.get("description")
+            ToolData::Task {
+                description,
+                subagent_type,
+                output: task_output,
+            } => {
+                if let Some(inp) = input {
+                    if let Some(d) = inp
+                        .get("description")
                         .and_then(Value::as_str)
                         .map(str::to_string)
-                }) {
-                    *description = Some(d);
+                    {
+                        *description = Some(d);
+                    }
+                    if let Some(s) = inp
+                        .get("subagent_type")
+                        .and_then(Value::as_str)
+                        .map(str::to_string)
+                    {
+                        *subagent_type = Some(s);
+                    }
+                }
+                if let Some(o) = output {
+                    *task_output = Some(o);
                 }
             }
             ToolData::Unknown => {
@@ -952,7 +970,11 @@ impl ToolCallState {
                 },
                 todos: vec![],
             },
-            "task" => ToolData::Task { description: None },
+            "task" => ToolData::Task {
+                description: None,
+                subagent_type: None,
+                output: None,
+            },
             _ => return,
         };
 
@@ -1042,10 +1064,16 @@ impl ToolCallState {
                 }
                 .to_string(),
             },
-            ToolData::Task { description } => ActionType::TaskCreate {
+            ToolData::Task {
+                description,
+                subagent_type,
+                output,
+            } => ActionType::TaskCreate {
                 description: description.clone().unwrap_or_default(),
-                subagent_type: None,
-                result: None,
+                subagent_type: subagent_type.clone(),
+                result: output
+                    .as_deref()
+                    .map(|o| ToolResult::markdown(o.to_string())),
             },
             ToolData::Unknown => ActionType::Tool {
                 tool_name: self.tool_name.clone(),
@@ -1078,6 +1106,13 @@ impl ToolCallState {
             ActionType::Search { query } => query.clone(),
             ActionType::WebFetch { url } => url.clone(),
             ActionType::TodoManagement { .. } => "TODO list updated".to_string(),
+            ActionType::TaskCreate { description, .. } => {
+                if description.is_empty() {
+                    "Task".to_string()
+                } else {
+                    format!("Task: `{description}`")
+                }
+            }
             _ => String::new(),
         }
         .trim()
