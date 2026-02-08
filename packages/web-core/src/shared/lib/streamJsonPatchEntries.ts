@@ -1,4 +1,5 @@
 // streamJsonPatchEntries.ts - WebSocket JSON patch streaming utility
+import { produce } from 'immer';
 import type { Operation } from 'rfc6902';
 import { applyUpsertPatch } from '@/shared/lib/jsonPatch';
 import { openLocalApiWebSocket } from '@/shared/lib/localApiTransport';
@@ -34,6 +35,9 @@ interface StreamController<E = unknown> {
  *   {"Finished": ""}
  *
  * Maintains an in-memory { entries: [] } snapshot and returns a controller.
+ *
+ * Messages are batched per animation frame and applied using immer for
+ * structural sharing, avoiding a full deep clone on every message.
  */
 export function streamJsonPatchEntries<E = unknown>(
   url: string,
@@ -49,6 +53,10 @@ export function streamJsonPatchEntries<E = unknown>(
   const subscribers = new Set<(entries: E[]) => void>();
   if (opts.onEntries) subscribers.add(opts.onEntries);
 
+  // --- rAF batching state ---
+  let pendingOps: Operation[] = [];
+  let rafId: number | null = null;
+
   const notify = () => {
     for (const cb of subscribers) {
       try {
@@ -59,25 +67,38 @@ export function streamJsonPatchEntries<E = unknown>(
     }
   };
 
+  const flush = () => {
+    rafId = null;
+    if (pendingOps.length === 0) return;
+
+    const ops = dedupeOps(pendingOps);
+    pendingOps = [];
+
+    snapshot = produce(snapshot, (draft) => {
+      applyUpsertPatch(draft, ops);
+    });
+    notify();
+  };
+
   const handleMessage = (event: MessageEvent) => {
     try {
       const msg = JSON.parse(event.data);
 
-      // Handle JsonPatch messages (from LogMsg::to_ws_message)
+      // Handle JsonPatch messages — accumulate ops for next rAF flush
       if (msg.JsonPatch) {
         const raw = msg.JsonPatch as Operation[];
-        const ops = dedupeOps(raw);
-
-        // Apply to a working copy (applyPatch mutates)
-        const next = structuredClone(snapshot);
-        applyUpsertPatch(next, ops);
-
-        snapshot = next;
-        notify();
+        pendingOps.push(...raw);
+        if (rafId === null) {
+          rafId = requestAnimationFrame(flush);
+        }
       }
 
-      // Handle Finished messages
+      // Handle Finished messages — flush synchronously before closing
       if (msg.finished !== undefined) {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+        }
+        flush();
         opts.onFinished?.(snapshot.entries);
         ws?.close();
       }
@@ -110,6 +131,10 @@ export function streamJsonPatchEntries<E = unknown>(
 
       ws.addEventListener('close', () => {
         connected = false;
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
       });
     } catch (error) {
       if (!closed) {
@@ -136,6 +161,10 @@ export function streamJsonPatchEntries<E = unknown>(
     },
     close(): void {
       closed = true;
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       ws?.close();
       subscribers.clear();
       connected = false;
@@ -144,7 +173,7 @@ export function streamJsonPatchEntries<E = unknown>(
 }
 
 /**
- * Dedupe multiple ops that touch the same path within a single event.
+ * Dedupe multiple ops that touch the same path within a batch.
  * Last write for a path wins, while preserving the overall left-to-right
  * order of the *kept* final operations.
  *
