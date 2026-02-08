@@ -489,12 +489,17 @@ export function RemoteProjectsSettingsSection({
     return () => setContextDirty('remote-projects', false);
   }, [isDirty, setContextDirty]);
 
-  const handleStatusToggleHidden = useCallback((id: string, hidden: boolean) => {
-    setLocalStatuses((prev) =>
-      prev.map((status) => (status.id === id ? { ...status, hidden } : status))
-    );
-    setHasStatusChanges(true);
-  }, []);
+  const handleStatusToggleHidden = useCallback(
+    (id: string, hidden: boolean) => {
+      setLocalStatuses((prev) =>
+        prev.map((status) =>
+          status.id === id ? { ...status, hidden } : status
+        )
+      );
+      setHasStatusChanges(true);
+    },
+    []
+  );
 
   const handleStatusNameChange = useCallback((id: string, name: string) => {
     setLocalStatuses((prev) =>
@@ -554,7 +559,9 @@ export function RemoteProjectsSettingsSection({
   }, []);
 
   const persistStatusChanges = useCallback(async () => {
-    const originalById = new Map(projectStatuses.map((status) => [status.id, status]));
+    const originalById = new Map(
+      projectStatuses.map((status) => [status.id, status])
+    );
     const mutationPromises: Promise<unknown>[] = [];
     const localIds = new Set(localStatuses.map((status) => status.id));
 
@@ -610,7 +617,10 @@ export function RemoteProjectsSettingsSection({
     if (bulkUpdates.length > 1) {
       await bulkUpdateProjectStatuses(bulkUpdates);
     } else if (bulkUpdates.length === 1) {
-      const result = updateProjectStatus(bulkUpdates[0].id, bulkUpdates[0].changes);
+      const result = updateProjectStatus(
+        bulkUpdates[0].id,
+        bulkUpdates[0].changes
+      );
       mutationPromises.push(result.persisted);
     }
 
