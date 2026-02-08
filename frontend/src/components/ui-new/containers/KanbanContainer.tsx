@@ -30,6 +30,7 @@ import { resolveRelationshipsForIssue } from '@/lib/resolveRelationships';
 import { KanbanFilterBar } from '@/components/ui-new/views/KanbanFilterBar';
 import { ViewNavTabs } from '@/components/ui-new/primitives/ViewNavTabs';
 import { IssueListView } from '@/components/ui-new/views/IssueListView';
+import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 
 function LoadingState() {
   const { t } = useTranslation('common');
@@ -505,6 +506,17 @@ export function KanbanContainer() {
     [projectId, openAssigneeSelection]
   );
 
+  const handleCardMoreActionsClick = useCallback(
+    (issueId: string) => {
+      CommandBarDialog.show({
+        page: 'issueActions',
+        projectId,
+        issueIds: [issueId],
+      });
+    },
+    [projectId]
+  );
+
   const handleCardTagToggle = useCallback(
     (issueId: string, tagId: string) => {
       const currentIssueTags = getTagsForIssue(issueId);
@@ -676,6 +688,9 @@ export function KanbanContainer() {
                                 e.stopPropagation();
                                 handleCardAssigneeClick(issue.id);
                               }}
+                              onMoreActionsClick={() =>
+                                handleCardMoreActionsClick(issue.id)
+                              }
                               tagEditProps={{
                                 allTags: tags,
                                 selectedTagIds: getTagsForIssue(issue.id).map(

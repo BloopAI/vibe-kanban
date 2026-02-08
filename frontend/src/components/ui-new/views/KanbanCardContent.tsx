@@ -1,7 +1,11 @@
 'use client';
 
 import { useTranslation } from 'react-i18next';
-import { CircleDashedIcon, PlusIcon } from '@phosphor-icons/react';
+import {
+  CircleDashedIcon,
+  DotsThreeIcon,
+  PlusIcon,
+} from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { IssuePriority, PullRequest, Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
@@ -35,6 +39,7 @@ export type KanbanCardContentProps = {
   className?: string;
   onPriorityClick?: (e: React.MouseEvent) => void;
   onAssigneeClick?: (e: React.MouseEvent) => void;
+  onMoreActionsClick?: () => void;
   tagEditProps?: TagEditProps;
 };
 
@@ -52,6 +57,7 @@ export const KanbanCardContent = ({
   className,
   onPriorityClick,
   onAssigneeClick,
+  onMoreActionsClick,
   tagEditProps,
 }: KanbanCardContentProps) => {
   const { t } = useTranslation('common');
@@ -72,17 +78,33 @@ export const KanbanCardContent = ({
 
   return (
     <div className={cn('flex flex-col gap-half min-w-0', className)}>
-      {/* Row 1: Task ID + sub-issue indicator + loading dots */}
-      <div className="flex items-center gap-half">
-        {isSubIssue && (
-          <span className="text-sm text-low">
-            {t('kanban.subIssueIndicator')}
+      {/* Row 1: Task ID + sub-issue indicator + loading dots + more actions */}
+      <div className="flex items-center justify-between gap-half">
+        <div className="flex items-center gap-half min-w-0">
+          {isSubIssue && (
+            <span className="text-sm text-low">
+              {t('kanban.subIssueIndicator')}
+            </span>
+          )}
+          <span className="font-ibm-plex-mono text-sm text-low truncate">
+            {displayId}
           </span>
+          {isLoading && <RunningDots />}
+        </div>
+        {onMoreActionsClick && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onMoreActionsClick();
+            }}
+            className="p-half -m-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors shrink-0"
+            aria-label="More actions"
+            title="More actions"
+          >
+            <DotsThreeIcon className="size-icon-xs" weight="bold" />
+          </button>
         )}
-        <span className="font-ibm-plex-mono text-sm text-low truncate">
-          {displayId}
-        </span>
-        {isLoading && <RunningDots />}
       </div>
 
       {/* Row 2: Title */}
