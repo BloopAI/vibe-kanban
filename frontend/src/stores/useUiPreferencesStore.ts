@@ -616,7 +616,9 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
       const projectViews =
         s.kanbanProjectViewsByProject[projectId] ??
         createDefaultKanbanProjectViewsState();
-      const hasTargetView = projectViews.views.some((view) => view.id === viewId);
+      const hasTargetView = projectViews.views.some(
+        (view) => view.id === viewId
+      );
 
       if (!hasTargetView) {
         return {

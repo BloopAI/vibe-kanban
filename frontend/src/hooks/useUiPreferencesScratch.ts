@@ -154,12 +154,14 @@ function scratchDataToStore(data: UiPreferencesData): {
 
     const views = (value.views ?? []).map((view) => {
       const filters = view.filters;
-      const sortField = filters && isKanbanSortField(filters.sort_field)
-        ? filters.sort_field
-        : 'sort_order';
-      const sortDirection = filters && isSortDirection(filters.sort_direction)
-        ? filters.sort_direction
-        : 'asc';
+      const sortField =
+        filters && isKanbanSortField(filters.sort_field)
+          ? filters.sort_field
+          : 'sort_order';
+      const sortDirection =
+        filters && isSortDirection(filters.sort_direction)
+          ? filters.sort_direction
+          : 'asc';
 
       return {
         id: view.id,
