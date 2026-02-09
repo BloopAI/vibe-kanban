@@ -67,7 +67,9 @@ export function KanbanFilterBar({
     (s) => s.kanbanProjectViewsByProject[projectId]
   );
   const applyKanbanView = useUiPreferencesStore((s) => s.applyKanbanView);
-  const overwriteKanbanView = useUiPreferencesStore((s) => s.overwriteKanbanView);
+  const overwriteKanbanView = useUiPreferencesStore(
+    (s) => s.overwriteKanbanView
+  );
   const setKanbanSearchQuery = useUiPreferencesStore(
     (s) => s.setKanbanSearchQuery
   );
