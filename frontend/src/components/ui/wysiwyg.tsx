@@ -199,6 +199,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
             ol: 'my-1 list-decimal list-inside',
             listitem: '',
             nested: {
+              // Hide the structural wrapper marker Lexical adds for nested items.
               listitem: 'list-none pl-4',
             },
           },

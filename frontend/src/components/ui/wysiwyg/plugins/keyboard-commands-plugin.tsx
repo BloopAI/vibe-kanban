@@ -18,17 +18,6 @@ import { $isListItemNode } from '@lexical/list';
 import type { SendMessageShortcut } from 'shared/types';
 import { useTypeaheadOpen } from '@/components/ui/wysiwyg/context/typeahead-open-context';
 
-const DEBUG_PREFIX = '[WYSIWYG_DEBUG]';
-
-function debugLog(message: string, payload?: unknown) {
-  if (!import.meta.env.DEV) return;
-  if (payload === undefined) {
-    console.log(DEBUG_PREFIX, message);
-    return;
-  }
-  console.log(DEBUG_PREFIX, message, payload);
-}
-
 type Props = {
   onCmdEnter?: () => void;
   onShiftCmdEnter?: () => void;
@@ -48,40 +37,6 @@ export function KeyboardCommandsPlugin({
   const { isOpen: isTypeaheadOpen } = useTypeaheadOpen();
 
   useEffect(() => {
-    const getSelectionDebug = () => {
-      const selection = $getSelection();
-      if (!$isRangeSelection(selection)) {
-        return { selectionType: 'non-range' };
-      }
-
-      const anchorNode = selection.anchor.getNode();
-      const focusNode = selection.focus.getNode();
-
-      return {
-        selectionType: 'range',
-        isCollapsed: selection.isCollapsed(),
-        anchor: {
-          key: selection.anchor.key,
-          offset: selection.anchor.offset,
-          type: selection.anchor.type,
-          nodeType: anchorNode.getType(),
-          textPreview: anchorNode.getTextContent().slice(0, 80),
-        },
-        focus: {
-          key: selection.focus.key,
-          offset: selection.focus.offset,
-          type: selection.focus.type,
-          nodeType: focusNode.getType(),
-          textPreview: focusNode.getTextContent().slice(0, 80),
-        },
-        nodes: selection.getNodes().map((node) => ({
-          key: node.getKey(),
-          type: node.getType(),
-          textPreview: node.getTextContent().slice(0, 60),
-        })),
-      };
-    };
-
     const isNodeInsideListItem = (node: LexicalNode): boolean => {
       if ($isListItemNode(node)) {
         return true;
@@ -131,83 +86,47 @@ export function KeyboardCommandsPlugin({
     const unregisterTab = editor.registerCommand(
       KEY_TAB_COMMAND,
       (event: KeyboardEvent) => {
-        debugLog('tab: command received', {
-          shiftKey: event.shiftKey,
-          isTypeaheadOpen,
-          selection: getSelectionDebug(),
-        });
-
         // Let typeahead use Tab for option selection.
         if (isTypeaheadOpen) {
-          debugLog('tab: skipped because typeahead is open');
           return false;
         }
 
         if (!isSelectionInsideListItem()) {
-          debugLog('tab: skipped because selection is not in a list item');
           return false;
         }
 
         event.preventDefault();
         const selection = $getSelection();
         if (!$isRangeSelection(selection)) {
-          debugLog('tab: no-op because selection is not a range selection');
           return false;
         }
 
         if (!selection.isCollapsed()) {
-          const handled = editor.dispatchCommand(
+          return editor.dispatchCommand(
             event.shiftKey ? OUTDENT_CONTENT_COMMAND : INDENT_CONTENT_COMMAND,
             undefined
           );
-          debugLog('tab: handled multi-node selection via indent command', {
-            command: event.shiftKey
-              ? 'OUTDENT_CONTENT_COMMAND'
-              : 'INDENT_CONTENT_COMMAND',
-            handled,
-          });
-          return handled;
         }
 
         const listItem = getSelectedListItem();
         if (!$isListItemNode(listItem)) {
-          debugLog('tab: no-op because list item could not be resolved', {
-            selection: getSelectionDebug(),
-          });
           return false;
         }
 
         if (event.shiftKey) {
-          const beforeIndent = listItem.getIndent();
-          if (beforeIndent > 0) {
-            listItem.setIndent(beforeIndent - 1);
+          const indent = listItem.getIndent();
+          if (indent > 0) {
+            listItem.setIndent(indent - 1);
           }
-          debugLog('tab: outdented list item', {
-            listItemKey: listItem.getKey(),
-            beforeIndent,
-            afterIndent: listItem.getIndent(),
-          });
           return true;
         }
 
         // Match Google Docs behavior: first sibling cannot be indented further.
         if (!$isListItemNode(listItem.getPreviousSibling())) {
-          debugLog(
-            'tab: skipped indent because no previous list-item sibling',
-            {
-              listItemKey: listItem.getKey(),
-            }
-          );
           return true;
         }
 
-        const beforeIndent = listItem.getIndent();
-        listItem.setIndent(beforeIndent + 1);
-        debugLog('tab: indented list item', {
-          listItemKey: listItem.getKey(),
-          beforeIndent,
-          afterIndent: listItem.getIndent(),
-        });
+        listItem.setIndent(listItem.getIndent() + 1);
         return true;
       },
       COMMAND_PRIORITY_NORMAL
