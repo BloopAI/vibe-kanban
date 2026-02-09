@@ -1,5 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDropzone } from 'react-dropzone';
+import { useTranslation } from 'react-i18next';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
@@ -13,6 +15,8 @@ import { useUserContext } from '@/contexts/remote/UserContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
+import { useAzureAttachments } from '@/hooks/useAzureAttachments';
+import { commitIssueAttachments } from '@/lib/remoteApi';
 
 /**
  * KanbanIssuePanelContainer manages the issue detail/create panel.
@@ -20,6 +24,7 @@ import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
  * Must be rendered within both OrgProvider and ProjectProvider.
  */
 export function KanbanIssuePanelContainer() {
+  const { t } = useTranslation('common');
   // Navigation hook - URL is single source of truth
   const {
     issueId: selectedKanbanIssueId,
@@ -188,8 +193,8 @@ export function KanbanIssuePanelContainer() {
     if (mode === 'edit' && selectedIssue) {
       return selectedIssue.simple_id;
     }
-    return 'New Issue';
-  }, [mode, selectedIssue]);
+    return t('kanban.newIssue');
+  }, [mode, selectedIssue, t]);
 
   // For create mode - full local state needed
   const [createFormData, setCreateFormData] = useState<IssueFormData | null>(
@@ -288,6 +293,94 @@ export function KanbanIssuePanelContainer() {
   useEffect(() => {
     setDescriptionSaveStatus('idle');
   }, [selectedKanbanIssueId, kanbanCreateMode]);
+
+  // --- Image attachment upload integration ---
+
+  // Callback to insert markdown into the description field
+  const handleDescriptionInsert = useCallback(
+    (markdown: string) => {
+      if (kanbanCreateMode || !selectedKanbanIssueId) {
+        // Create mode: append to local form data
+        setCreateFormData((prev) => {
+          const base = prev ?? {
+            title: '',
+            description: null,
+            statusId: defaultStatusId,
+            priority: null,
+            assigneeIds: [],
+            tagIds: [],
+            createDraftWorkspace: false,
+          };
+          const current = base.description ?? '';
+          const separator = current.length > 0 ? '\n' : '';
+          return { ...base, description: current + separator + markdown };
+        });
+      } else {
+        // Edit mode: append to local text edits, then debounced save
+        setLocalTextEdits((prev) => {
+          const currentDesc =
+            prev?.description ?? selectedIssue?.description ?? '';
+          const separator = currentDesc.length > 0 ? '\n' : '';
+          const newDesc = currentDesc + separator + markdown;
+          return {
+            title: prev?.title ?? null,
+            description: newDesc,
+          };
+        });
+        // Trigger debounced save with the updated description
+        const currentDesc =
+          localTextEdits?.description ?? selectedIssue?.description ?? '';
+        const separator = currentDesc.length > 0 ? '\n' : '';
+        debouncedSaveDescription(currentDesc + separator + markdown);
+      }
+    },
+    [
+      kanbanCreateMode,
+      selectedKanbanIssueId,
+      defaultStatusId,
+      selectedIssue?.description,
+      localTextEdits?.description,
+      debouncedSaveDescription,
+    ]
+  );
+
+  // Azure attachment upload hook
+  const { uploadFiles, getAttachmentIds, clearAttachments, isUploading } =
+    useAzureAttachments({
+      projectId,
+      issueId: kanbanCreateMode
+        ? undefined
+        : (selectedKanbanIssueId ?? undefined),
+      onMarkdownInsert: handleDescriptionInsert,
+      onError: (msg) => console.error('[attachment]', msg),
+    });
+
+  // Dropzone for drag-drop image upload on description area
+  const {
+    getRootProps,
+    getInputProps,
+    isDragActive,
+    open: openFilePicker,
+  } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      const imageFiles = acceptedFiles.filter((f) =>
+        f.type.startsWith('image/')
+      );
+      if (imageFiles.length > 0) uploadFiles(imageFiles);
+    },
+    accept: { 'image/*': [] },
+    noClick: true,
+    noKeyboard: true,
+  });
+
+  // Paste handler for images
+  const onPasteFiles = useCallback(
+    (files: File[]) => {
+      const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+      if (imageFiles.length > 0) uploadFiles(imageFiles);
+    },
+    [uploadFiles]
+  );
 
   // Reset local state when switching issues or modes
   useEffect(() => {
@@ -496,6 +589,13 @@ export function KanbanIssuePanelContainer() {
         // Wait for the issue to be confirmed by the backend and get the synced entity
         const syncedIssue = await persisted;
 
+        // Commit any staged image attachments to the newly created issue
+        const attachmentIds = getAttachmentIds();
+        if (attachmentIds.length > 0) {
+          await commitIssueAttachments(syncedIssue.id, attachmentIds);
+          clearAttachments();
+        }
+
         // Create assignee records for all selected assignees
         displayData.assigneeIds.forEach((userId) => {
           insertIssueAssignee({
@@ -567,6 +667,8 @@ export function KanbanIssuePanelContainer() {
     workspaces,
     localWorkspaceIds,
     closeKanbanIssuePanel,
+    getAttachmentIds,
+    clearAttachments,
   ]);
 
   // Tag create callback - returns the new tag ID so it can be auto-selected
@@ -605,7 +707,7 @@ export function KanbanIssuePanelContainer() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full bg-secondary">
-        <p className="text-low">Loading...</p>
+        <p className="text-low">{t('states.loading')}</p>
       </div>
     );
   }
@@ -634,6 +736,10 @@ export function KanbanIssuePanelContainer() {
       titleRef={titleRefCallback}
       onCopyLink={mode === 'edit' ? handleCopyLink : undefined}
       onMoreActions={mode === 'edit' ? handleMoreActions : undefined}
+      onPasteFiles={onPasteFiles}
+      dropzoneProps={{ getRootProps, getInputProps, isDragActive }}
+      onBrowseAttachment={openFilePicker}
+      isUploading={isUploading}
     />
   );
 }

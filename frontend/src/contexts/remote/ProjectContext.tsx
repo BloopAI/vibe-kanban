@@ -19,6 +19,8 @@ import {
   ISSUE_TAG_ENTITY,
   ISSUE_RELATIONSHIP_ENTITY,
   PULL_REQUEST_ENTITY,
+  BLOB_ENTITY,
+  ATTACHMENT_ENTITY,
   type Issue,
   type ProjectStatus,
   type Tag,
@@ -27,6 +29,8 @@ import {
   type IssueTag,
   type IssueRelationship,
   type PullRequest,
+  type Blob as RemoteBlob,
+  type Attachment,
   type CreateIssueRequest,
   type UpdateIssueRequest,
   type CreateProjectStatusRequest,
@@ -52,6 +56,8 @@ import type { SyncError } from '@/lib/electric/types';
  * - IssueTags (data + mutations)
  * - IssueRelationships (data + mutations)
  * - PullRequests (data only)
+ * - Blobs (data only)
+ * - Attachments (data only)
  *
  * Note: Workspaces are user-scoped and provided by UserContext.
  */
@@ -67,6 +73,8 @@ export interface ProjectContextValue {
   issueTags: IssueTag[];
   issueRelationships: IssueRelationship[];
   pullRequests: PullRequest[];
+  blobs: RemoteBlob[];
+  attachments: Attachment[];
 
   // Loading/error state
   isLoading: boolean;
@@ -129,6 +137,9 @@ export interface ProjectContextValue {
   getStatus: (statusId: string) => ProjectStatus | undefined;
   getTag: (tagId: string) => Tag | undefined;
   getPullRequestsForIssue: (issueId: string) => PullRequest[];
+  getAttachmentsForIssue: (issueId: string) => Attachment[];
+  getAttachmentsForComment: (commentId: string) => Attachment[];
+  getBlobForAttachment: (attachment: Attachment) => RemoteBlob | undefined;
 
   // Computed aggregations (Maps for O(1) lookup)
   issuesById: Map<string, Issue>;
@@ -166,6 +177,8 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
   const pullRequestsResult = useEntity(PULL_REQUEST_ENTITY, params, {
     enabled,
   });
+  const blobsResult = useEntity(BLOB_ENTITY, params, { enabled });
+  const attachmentsResult = useEntity(ATTACHMENT_ENTITY, params, { enabled });
 
   // Combined loading state
   const isLoading =
@@ -176,7 +189,9 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueFollowersResult.isLoading ||
     issueTagsResult.isLoading ||
     issueRelationshipsResult.isLoading ||
-    pullRequestsResult.isLoading;
+    pullRequestsResult.isLoading ||
+    blobsResult.isLoading ||
+    attachmentsResult.isLoading;
 
   // First error found
   const error =
@@ -188,6 +203,8 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueTagsResult.error ||
     issueRelationshipsResult.error ||
     pullRequestsResult.error ||
+    blobsResult.error ||
+    attachmentsResult.error ||
     null;
 
   // Combined retry
@@ -200,6 +217,8 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueTagsResult.retry();
     issueRelationshipsResult.retry();
     pullRequestsResult.retry();
+    blobsResult.retry();
+    attachmentsResult.retry();
   }, [
     issuesResult,
     statusesResult,
@@ -209,6 +228,8 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueTagsResult,
     issueRelationshipsResult,
     pullRequestsResult,
+    blobsResult,
+    attachmentsResult,
   ]);
 
   // Computed Maps for O(1) lookup
@@ -300,6 +321,31 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     [pullRequestsResult.data]
   );
 
+  const blobsById = useMemo(() => {
+    const map = new Map<string, RemoteBlob>();
+    for (const blob of blobsResult.data) {
+      map.set(blob.id, blob);
+    }
+    return map;
+  }, [blobsResult.data]);
+
+  const getAttachmentsForIssue = useCallback(
+    (issueId: string) =>
+      attachmentsResult.data.filter((a) => a.issue_id === issueId),
+    [attachmentsResult.data]
+  );
+
+  const getAttachmentsForComment = useCallback(
+    (commentId: string) =>
+      attachmentsResult.data.filter((a) => a.comment_id === commentId),
+    [attachmentsResult.data]
+  );
+
+  const getBlobForAttachment = useCallback(
+    (attachment: Attachment) => blobsById.get(attachment.blob_id),
+    [blobsById]
+  );
+
   const value = useMemo<ProjectContextValue>(
     () => ({
       projectId,
@@ -313,6 +359,8 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       issueTags: issueTagsResult.data,
       issueRelationships: issueRelationshipsResult.data,
       pullRequests: pullRequestsResult.data,
+      blobs: blobsResult.data,
+      attachments: attachmentsResult.data,
 
       // Loading/error
       isLoading,
@@ -361,6 +409,9 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       getStatus,
       getTag,
       getPullRequestsForIssue,
+      getAttachmentsForIssue,
+      getAttachmentsForComment,
+      getBlobForAttachment,
 
       // Computed aggregations
       issuesById,
@@ -377,6 +428,8 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       issueTagsResult,
       issueRelationshipsResult,
       pullRequestsResult,
+      blobsResult,
+      attachmentsResult,
       isLoading,
       error,
       retry,
@@ -390,6 +443,9 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       getStatus,
       getTag,
       getPullRequestsForIssue,
+      getAttachmentsForIssue,
+      getAttachmentsForComment,
+      getBlobForAttachment,
       issuesById,
       statusesById,
       tagsById,
