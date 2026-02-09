@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CircleDashedIcon,
@@ -24,6 +25,36 @@ export type TagEditProps = {
   onTagToggle: (tagId: string) => void;
   onCreateTag: (data: { name: string; color: string }) => string;
 };
+
+function formatKanbanDescriptionPreview(
+  markdown: string,
+  options: {
+    codeBlockLabel: string;
+    imageLabel: string;
+    imageWithNameLabel: (name: string) => string;
+  }
+): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, options.codeBlockLabel)
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_match, altText: string) => {
+      const normalizedAlt = altText.trim();
+      return normalizedAlt
+        ? options.imageWithNameLabel(normalizedAlt)
+        : options.imageLabel;
+    })
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^\s*>\s?/gm, '')
+    .replace(/^\s*([-*+]|\d+\.)\s+/gm, '')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 export type KanbanCardContentProps = {
   displayId: string;
@@ -61,6 +92,19 @@ export const KanbanCardContent = ({
   tagEditProps,
 }: KanbanCardContentProps) => {
   const { t } = useTranslation('common');
+  const previewDescription = useMemo(() => {
+    if (!description) {
+      return null;
+    }
+
+    const formatted = formatKanbanDescriptionPreview(description, {
+      codeBlockLabel: t('kanban.previewCodeBlock'),
+      imageLabel: t('kanban.previewImage'),
+      imageWithNameLabel: (name: string) =>
+        t('kanban.previewImageWithName', { name }),
+    });
+    return formatted.length > 0 ? formatted : null;
+  }, [description, t]);
 
   const tagsDisplay = (
     <>
@@ -115,9 +159,9 @@ export const KanbanCardContent = ({
       <span className="text-base text-normal truncate">{title}</span>
 
       {/* Row 3: Description (optional, truncated) */}
-      {description && (
+      {previewDescription && (
         <p className="text-sm text-low m-0 leading-relaxed line-clamp-4">
-          {description}
+          {previewDescription}
         </p>
       )}
 

@@ -1,4 +1,5 @@
 import type {
+  AttachmentWithBlob,
   UpdateIssueRequest,
   UpdateProjectStatusRequest,
 } from 'shared/remote-types';
@@ -87,4 +88,278 @@ export async function bulkUpdateProjectStatuses(
     const error = await response.json();
     throw new Error(error.message || 'Failed to bulk update project statuses');
   }
+}
+
+// ---------------------------------------------------------------------------
+// Attachment API types
+// ---------------------------------------------------------------------------
+
+export interface InitUploadRequest {
+  project_id: string;
+  filename: string;
+  size_bytes: number;
+  hash: string;
+}
+
+export interface InitUploadResponse {
+  upload_url: string;
+  blob_path: string;
+  expires_at: string;
+  skip_upload: boolean;
+  existing_blob_id: string | null;
+}
+
+export interface ConfirmUploadRequest {
+  project_id: string;
+  blob_path: string;
+  filename: string;
+  content_type?: string;
+  size_bytes: number;
+  hash: string;
+  issue_id?: string;
+  comment_id?: string;
+}
+
+export type ConfirmUploadResponse = AttachmentWithBlob;
+
+export interface CommitAttachmentsRequest {
+  attachment_ids: string[];
+}
+
+export interface CommitAttachmentsResponse {
+  attachments: AttachmentWithBlob[];
+}
+
+export interface AttachmentWithUrl extends AttachmentWithBlob {
+  file_url: string | null;
+}
+
+export interface ListAttachmentsResponse {
+  attachments: AttachmentWithUrl[];
+}
+
+// ---------------------------------------------------------------------------
+// Blob URL cache — prevents re-fetching the same attachment blob
+// ---------------------------------------------------------------------------
+
+const blobUrlCache = new Map<string, string>();
+
+// ---------------------------------------------------------------------------
+// Utility: SHA-256 file hash
+// ---------------------------------------------------------------------------
+
+export async function computeFileHash(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const hash = await crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+// ---------------------------------------------------------------------------
+// Utility: Upload to Azure Blob Storage with progress
+// ---------------------------------------------------------------------------
+
+export function uploadToAzure(
+  uploadUrl: string,
+  file: File,
+  onProgress?: (pct: number) => void
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl, true);
+    xhr.setRequestHeader('x-ms-blob-type', 'BlockBlob');
+    xhr.setRequestHeader('Content-Type', file.type);
+
+    if (onProgress) {
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      });
+    }
+
+    xhr.onload = () => {
+      if (xhr.status === 201) {
+        resolve();
+      } else {
+        reject(
+          new Error(
+            `Azure upload failed with status ${xhr.status}: ${xhr.statusText}`
+          )
+        );
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error('Azure upload failed: network error'));
+    };
+
+    xhr.send(file);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Utility: safe error response parsing (handles non-JSON error bodies)
+// ---------------------------------------------------------------------------
+
+async function parseErrorResponse(
+  response: Response,
+  fallbackMessage: string
+): Promise<Error> {
+  try {
+    const body = await response.json();
+    const message = body.error || body.message || fallbackMessage;
+    return new Error(`${message} (${response.status} ${response.statusText})`);
+  } catch {
+    return new Error(
+      `${fallbackMessage} (${response.status} ${response.statusText})`
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Attachment API functions
+// ---------------------------------------------------------------------------
+
+export async function initAttachmentUpload(
+  params: InitUploadRequest
+): Promise<InitUploadResponse> {
+  const response = await makeRequest('/v1/attachments/init', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  if (!response.ok) {
+    throw await parseErrorResponse(
+      response,
+      'Failed to init attachment upload'
+    );
+  }
+  return response.json();
+}
+
+export async function confirmAttachmentUpload(
+  params: ConfirmUploadRequest
+): Promise<ConfirmUploadResponse> {
+  const response = await makeRequest('/v1/attachments/confirm', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  if (!response.ok) {
+    throw await parseErrorResponse(
+      response,
+      'Failed to confirm attachment upload'
+    );
+  }
+  return response.json();
+}
+
+export async function listIssueAttachments(
+  issueId: string
+): Promise<ListAttachmentsResponse> {
+  const response = await makeRequest(`/v1/issues/${issueId}/attachments`, {
+    method: 'GET',
+  });
+  if (!response.ok) {
+    throw await parseErrorResponse(
+      response,
+      'Failed to list issue attachments'
+    );
+  }
+  return response.json();
+}
+
+export async function listCommentAttachments(
+  commentId: string
+): Promise<ListAttachmentsResponse> {
+  const response = await makeRequest(`/v1/comments/${commentId}/attachments`, {
+    method: 'GET',
+  });
+  if (!response.ok) {
+    throw await parseErrorResponse(
+      response,
+      'Failed to list comment attachments'
+    );
+  }
+  return response.json();
+}
+
+export async function commitIssueAttachments(
+  issueId: string,
+  attachmentIds: string[]
+): Promise<CommitAttachmentsResponse> {
+  const response = await makeRequest(
+    `/v1/issues/${issueId}/attachments/commit`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ attachment_ids: attachmentIds }),
+    }
+  );
+  if (!response.ok) {
+    throw await parseErrorResponse(
+      response,
+      'Failed to commit issue attachments'
+    );
+  }
+  return response.json();
+}
+
+export async function commitCommentAttachments(
+  commentId: string,
+  attachmentIds: string[]
+): Promise<CommitAttachmentsResponse> {
+  const response = await makeRequest(
+    `/v1/comments/${commentId}/attachments/commit`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ attachment_ids: attachmentIds }),
+    }
+  );
+  if (!response.ok) {
+    throw await parseErrorResponse(
+      response,
+      'Failed to commit comment attachments'
+    );
+  }
+  return response.json();
+}
+
+export function getAttachmentFileUrl(attachmentId: string): string {
+  return `${REMOTE_API_URL}/v1/attachments/${attachmentId}/file`;
+}
+
+export function getAttachmentThumbnailUrl(attachmentId: string): string {
+  return `${REMOTE_API_URL}/v1/attachments/${attachmentId}/thumbnail`;
+}
+
+export async function deleteAttachment(attachmentId: string): Promise<void> {
+  const response = await makeRequest(`/v1/attachments/${attachmentId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw await parseErrorResponse(response, 'Failed to delete attachment');
+  }
+}
+
+export async function fetchAttachmentBlobUrl(
+  attachmentId: string,
+  type: 'file' | 'thumbnail'
+): Promise<string> {
+  const cacheKey = `${attachmentId}:${type}`;
+  const cached = blobUrlCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const response = await makeRequest(`/v1/attachments/${attachmentId}/${type}`);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch attachment ${type}: ${response.statusText}`
+    );
+  }
+
+  const blob = await response.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  blobUrlCache.set(cacheKey, blobUrl);
+  return blobUrl;
 }
