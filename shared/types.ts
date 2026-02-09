@@ -80,9 +80,11 @@ export type WorkspacePanelStateData = { right_main_panel_mode: string | null, is
 
 export type KanbanFiltersData = { search_query: string, priorities: Array<string>, assignee_ids: Array<string>, tag_ids: Array<string>, sort_field: string, sort_direction: string, };
 
+export type KanbanProjectDraftData = { filters: KanbanFiltersData, show_sub_issues: boolean, show_workspaces: boolean, };
+
 export type KanbanProjectViewData = { id: string, name: string, filters: KanbanFiltersData, show_sub_issues: boolean, show_workspaces: boolean, };
 
-export type KanbanProjectViewsStateData = { active_view_id: string, views: Array<KanbanProjectViewData>, };
+export type KanbanProjectViewsStateData = { active_view_id: string, views: Array<KanbanProjectViewData>, draft: KanbanProjectDraftData | null, };
 
 export type UiPreferencesData = { 
 /**

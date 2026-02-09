@@ -5,7 +5,11 @@ import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useActions } from '@/contexts/ActionsContext';
 import { useAuth } from '@/hooks/auth/useAuth';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
+import {
+  useUiPreferencesStore,
+  DEFAULT_KANBAN_FILTER_STATE,
+  DEFAULT_KANBAN_PROJECT_VIEW_ID,
+} from '@/stores/useUiPreferencesStore';
 import { useKanbanFilters, PRIORITY_ORDER } from '@/hooks/useKanbanFilters';
 import { bulkUpdateIssues, type BulkUpdateIssueItem } from '@/lib/remoteApi';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
@@ -114,14 +118,26 @@ export function KanbanContainer() {
     openAssigneeSelection,
   } = useActions();
 
-  const kanbanFilters = useUiPreferencesStore((s) => s.kanbanFilters);
-  const activeKanbanViewId = useUiPreferencesStore(
-    (s) => s.kanbanProjectViewsByProject[projectId]?.activeViewId
+  const projectViewState = useUiPreferencesStore(
+    (s) => s.kanbanProjectViewsByProject[projectId]
   );
+  const activeKanbanViewId =
+    projectViewState?.activeViewId ?? DEFAULT_KANBAN_PROJECT_VIEW_ID;
+  const activeKanbanView = useMemo(
+    () =>
+      projectViewState?.views.find((view) => view.id === activeKanbanViewId) ??
+      null,
+    [projectViewState, activeKanbanViewId]
+  );
+  const kanbanFilters =
+    projectViewState?.draft.filters ??
+    activeKanbanView?.filters ??
+    DEFAULT_KANBAN_FILTER_STATE;
   const kanbanViewMode = useUiPreferencesStore((s) => s.kanbanViewMode);
-  const showWorkspaces = useUiPreferencesStore(
-    (s) => s.showWorkspacesByProject[projectId] ?? true
-  );
+  const showWorkspaces =
+    projectViewState?.draft.showWorkspaces ??
+    activeKanbanView?.showWorkspaces ??
+    true;
   const listViewStatusFilter = useUiPreferencesStore(
     (s) => s.listViewStatusFilter
   );
@@ -133,6 +149,24 @@ export function KanbanContainer() {
     (s) => s.ensureKanbanProjectViews
   );
   const applyKanbanView = useUiPreferencesStore((s) => s.applyKanbanView);
+
+  // Ensure project-specific views/draft state when entering a project.
+  useEffect(() => {
+    ensureKanbanProjectViews(projectId);
+  }, [projectId, ensureKanbanProjectViews]);
+
+  useEffect(() => {
+    if (!projectViewState) {
+      return;
+    }
+
+    const activeViewExists = projectViewState.views.some(
+      (view) => view.id === projectViewState.activeViewId
+    );
+    if (!activeViewExists && projectViewState.views.length > 0) {
+      applyKanbanView(projectId, projectViewState.views[0].id);
+    }
+  }, [projectId, projectViewState, applyKanbanView]);
 
   // Reset view mode and ensure project-specific views when navigating projects
   const prevProjectIdRef = useRef<string | null>(null);
@@ -150,36 +184,7 @@ export function KanbanContainer() {
     }
 
     prevProjectIdRef.current = projectId;
-    ensureKanbanProjectViews(projectId);
-  }, [
-    projectId,
-    setKanbanViewMode,
-    setListViewStatusFilter,
-    ensureKanbanProjectViews,
-  ]);
-
-  // Persist the active view state before switching projects or leaving kanban.
-  useEffect(() => {
-    return () => {
-      const state = useUiPreferencesStore.getState();
-      const activeViewId =
-        state.kanbanProjectViewsByProject[projectId]?.activeViewId;
-
-      if (!activeViewId) {
-        return;
-      }
-
-      state.overwriteKanbanView(projectId, activeViewId);
-    };
-  }, [projectId]);
-
-  // Always apply the active project view after initialization or sync restore.
-  useEffect(() => {
-    if (!activeKanbanViewId) {
-      return;
-    }
-    applyKanbanView(projectId, activeKanbanViewId);
-  }, [projectId, activeKanbanViewId, applyKanbanView]);
+  }, [projectId, setKanbanViewMode, setListViewStatusFilter]);
 
   // Sort all statuses for display settings
   const sortedStatuses = useMemo(

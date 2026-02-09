@@ -5,6 +5,7 @@ import type { OrganizationMemberWithProfile } from 'shared/types';
 import { cn } from '@/lib/utils';
 import {
   useUiPreferencesStore,
+  DEFAULT_KANBAN_FILTER_STATE,
   DEFAULT_KANBAN_PROJECT_VIEW_ID,
   KANBAN_PROJECT_VIEW_IDS,
 } from '@/stores/useUiPreferencesStore';
@@ -62,14 +63,10 @@ export function KanbanFilterBar({
 }: KanbanFilterBarProps) {
   const { t } = useTranslation('common');
 
-  const kanbanFilters = useUiPreferencesStore((s) => s.kanbanFilters);
   const projectViewState = useUiPreferencesStore(
     (s) => s.kanbanProjectViewsByProject[projectId]
   );
   const applyKanbanView = useUiPreferencesStore((s) => s.applyKanbanView);
-  const overwriteKanbanView = useUiPreferencesStore(
-    (s) => s.overwriteKanbanView
-  );
   const setKanbanSearchQuery = useUiPreferencesStore(
     (s) => s.setKanbanSearchQuery
   );
@@ -77,8 +74,10 @@ export function KanbanFilterBar({
   const activeViewId =
     projectViewState?.activeViewId ?? DEFAULT_KANBAN_PROJECT_VIEW_ID;
 
+  const kanbanFilters =
+    projectViewState?.draft.filters ?? DEFAULT_KANBAN_FILTER_STATE;
+
   const handleViewChange = (viewId: string) => {
-    overwriteKanbanView(projectId, activeViewId);
     applyKanbanView(projectId, viewId);
   };
 
@@ -102,11 +101,11 @@ export function KanbanFilterBar({
 
         <InputField
           value={kanbanFilters.searchQuery}
-          onChange={setKanbanSearchQuery}
+          onChange={(query) => setKanbanSearchQuery(projectId, query)}
           placeholder={t('kanban.searchPlaceholder', 'Search issues...')}
           variant="search"
           actionIcon={kanbanFilters.searchQuery ? XIcon : undefined}
-          onAction={() => setKanbanSearchQuery('')}
+          onAction={() => setKanbanSearchQuery(projectId, '')}
           className="min-w-[160px] w-[220px] max-w-full"
         />
 

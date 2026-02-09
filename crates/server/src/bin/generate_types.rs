@@ -41,6 +41,7 @@ fn generate_types_content() -> String {
         db::models::scratch::WorkspaceNotesData::decl(),
         db::models::scratch::WorkspacePanelStateData::decl(),
         db::models::scratch::KanbanFiltersData::decl(),
+        db::models::scratch::KanbanProjectDraftData::decl(),
         db::models::scratch::KanbanProjectViewData::decl(),
         db::models::scratch::KanbanProjectViewsStateData::decl(),
         db::models::scratch::UiPreferencesData::decl(),

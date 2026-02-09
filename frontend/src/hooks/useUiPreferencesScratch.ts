@@ -10,6 +10,7 @@ import {
 } from 'shared/types';
 import {
   useUiPreferencesStore,
+  DEFAULT_KANBAN_FILTER_STATE,
   KANBAN_PROJECT_VIEW_IDS,
   type RightMainPanelMode,
   type ContextBarPosition,
@@ -84,6 +85,18 @@ function storeToScratchData(state: {
         show_sub_issues: view.showSubIssues,
         show_workspaces: view.showWorkspaces,
       })),
+      draft: {
+        filters: {
+          search_query: viewState.draft.filters.searchQuery,
+          priorities: [...viewState.draft.filters.priorities],
+          assignee_ids: [...viewState.draft.filters.assigneeIds],
+          tag_ids: [...viewState.draft.filters.tagIds],
+          sort_field: viewState.draft.filters.sortField,
+          sort_direction: viewState.draft.filters.sortDirection,
+        },
+        show_sub_issues: viewState.draft.showSubIssues,
+        show_workspaces: viewState.draft.showWorkspaces,
+      },
     };
   }
 
@@ -190,9 +203,48 @@ function scratchDataToStore(data: UiPreferencesData): {
       continue;
     }
 
+    const activeView =
+      views.find((view) => view.id === value.active_view_id) ?? views[0];
+    const draftFilters = value.draft?.filters;
+    const draftSortField =
+      draftFilters && isKanbanSortField(draftFilters.sort_field)
+        ? draftFilters.sort_field
+        : activeView?.filters.sortField ?? DEFAULT_KANBAN_FILTER_STATE.sortField;
+    const draftSortDirection =
+      draftFilters && isSortDirection(draftFilters.sort_direction)
+        ? draftFilters.sort_direction
+        : activeView?.filters.sortDirection ??
+          DEFAULT_KANBAN_FILTER_STATE.sortDirection;
+
     kanbanProjectViewsByProject[projectId] = {
       activeViewId: value.active_view_id,
       views,
+      draft: {
+        filters: {
+          searchQuery:
+            draftFilters?.search_query ??
+            activeView?.filters.searchQuery ??
+            DEFAULT_KANBAN_FILTER_STATE.searchQuery,
+          priorities:
+            (draftFilters?.priorities as IssuePriority[] | undefined) ??
+            activeView?.filters.priorities ??
+            DEFAULT_KANBAN_FILTER_STATE.priorities,
+          assigneeIds:
+            draftFilters?.assignee_ids ??
+            activeView?.filters.assigneeIds ??
+            DEFAULT_KANBAN_FILTER_STATE.assigneeIds,
+          tagIds:
+            draftFilters?.tag_ids ??
+            activeView?.filters.tagIds ??
+            DEFAULT_KANBAN_FILTER_STATE.tagIds,
+          sortField: draftSortField,
+          sortDirection: draftSortDirection,
+        },
+        showSubIssues:
+          value.draft?.show_sub_issues ?? activeView?.showSubIssues ?? false,
+        showWorkspaces:
+          value.draft?.show_workspaces ?? activeView?.showWorkspaces ?? true,
+      },
     };
   }
 

@@ -12,6 +12,7 @@ import type { OrganizationMemberWithProfile } from 'shared/types';
 import { cn } from '@/lib/utils';
 import {
   useUiPreferencesStore,
+  DEFAULT_KANBAN_FILTER_STATE,
   KANBAN_ASSIGNEE_FILTER_VALUES,
   DEFAULT_KANBAN_PROJECT_VIEW_ID,
   KANBAN_PROJECT_VIEW_IDS,
@@ -106,7 +107,6 @@ export function KanbanFiltersDialog({
   const { t } = useTranslation('common');
   const { userId } = useAuth();
 
-  const kanbanFilters = useUiPreferencesStore((s) => s.kanbanFilters);
   const projectViewState = useUiPreferencesStore(
     (s) => s.kanbanProjectViewsByProject[projectId]
   );
@@ -124,17 +124,23 @@ export function KanbanFiltersDialog({
   const overwriteKanbanView = useUiPreferencesStore(
     (s) => s.overwriteKanbanView
   );
-  const showSubIssues = useUiPreferencesStore(
-    (s) => s.showSubIssuesByProject[projectId] ?? true
-  );
   const setShowSubIssues = useUiPreferencesStore((s) => s.setShowSubIssues);
-  const showWorkspaces = useUiPreferencesStore(
-    (s) => s.showWorkspacesByProject[projectId] ?? true
-  );
   const setShowWorkspaces = useUiPreferencesStore((s) => s.setShowWorkspaces);
 
   const activeViewId =
     projectViewState?.activeViewId ?? DEFAULT_KANBAN_PROJECT_VIEW_ID;
+  const activeView = useMemo(
+    () => projectViewState?.views.find((view) => view.id === activeViewId) ?? null,
+    [projectViewState, activeViewId]
+  );
+  const kanbanFilters =
+    projectViewState?.draft.filters ??
+    activeView?.filters ??
+    DEFAULT_KANBAN_FILTER_STATE;
+  const showSubIssues =
+    projectViewState?.draft.showSubIssues ?? activeView?.showSubIssues ?? false;
+  const showWorkspaces =
+    projectViewState?.draft.showWorkspaces ?? activeView?.showWorkspaces ?? true;
 
   const viewOptions: PropertyDropdownOption<string>[] = useMemo(() => {
     if (!projectViewState || projectViewState.views.length === 0) {
@@ -168,10 +174,9 @@ export function KanbanFiltersDialog({
 
   const handleApplyView = useCallback(
     (viewId: string) => {
-      overwriteKanbanView(projectId, activeViewId);
       applyKanbanView(projectId, viewId);
     },
-    [projectId, activeViewId, overwriteKanbanView, applyKanbanView]
+    [projectId, applyKanbanView]
   );
 
   const currentUser = useMemo(
@@ -269,7 +274,8 @@ export function KanbanFiltersDialog({
       issueIds: [],
       isCreateMode: true,
       createModeAssigneeIds: kanbanFilters.assigneeIds,
-      onCreateModeAssigneesChange: setKanbanAssignees,
+      onCreateModeAssigneesChange: (assigneeIds: string[]) =>
+        setKanbanAssignees(projectId, assigneeIds),
       additionalOptions: assigneeDialogOptions,
     });
   }, [
@@ -347,7 +353,9 @@ export function KanbanFiltersDialog({
               <div className="flex items-center gap-base flex-wrap">
                 <PriorityFilterDropdown
                   values={kanbanFilters.priorities}
-                  onChange={setKanbanPriorities}
+                  onChange={(priorities) =>
+                    setKanbanPriorities(projectId, priorities)
+                  }
                 />
 
                 <button
@@ -369,7 +377,7 @@ export function KanbanFiltersDialog({
                   <MultiSelectDropdown
                     values={kanbanFilters.tagIds}
                     options={tagOptions}
-                    onChange={setKanbanTags}
+                    onChange={(tagIds) => setKanbanTags(projectId, tagIds)}
                     icon={TagIcon}
                     label={t('kanban.tags', 'Tags')}
                     menuLabel={t('kanban.filterByTag', 'Filter by tag')}
@@ -380,7 +388,7 @@ export function KanbanFiltersDialog({
                   value={kanbanFilters.sortField}
                   options={SORT_OPTIONS}
                   onChange={(field: KanbanSortField) =>
-                    setKanbanSort(field, kanbanFilters.sortDirection)
+                    setKanbanSort(projectId, field, kanbanFilters.sortDirection)
                   }
                   icon={
                     kanbanFilters.sortDirection === 'asc'
@@ -395,7 +403,7 @@ export function KanbanFiltersDialog({
                   onClick={() => {
                     const newDirection =
                       kanbanFilters.sortDirection === 'asc' ? 'desc' : 'asc';
-                    setKanbanSort(kanbanFilters.sortField, newDirection);
+                    setKanbanSort(projectId, kanbanFilters.sortField, newDirection);
                   }}
                   className={cn(
                     'flex items-center justify-center p-half rounded-sm',
@@ -459,7 +467,7 @@ export function KanbanFiltersDialog({
                     variant="tertiary"
                     value={t('kanban.clearFilters', 'Clear all')}
                     actionIcon={XIcon}
-                    onClick={clearKanbanFilters}
+                    onClick={() => clearKanbanFilters(projectId)}
                   />
                 )}
               </div>
