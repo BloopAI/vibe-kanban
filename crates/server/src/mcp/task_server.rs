@@ -728,11 +728,11 @@ impl TaskServer {
     #[tool(description = "List all the available organizations")]
     async fn list_organizations(&self) -> Result<CallToolResult, ErrorData> {
         let url = self.url("/api/organizations");
-        let response: ListOrganizationsResponse =
-            match self.send_json(self.client.get(&url)).await {
-                Ok(r) => r,
-                Err(e) => return Ok(e),
-            };
+        let response: ListOrganizationsResponse = match self.send_json(self.client.get(&url)).await
+        {
+            Ok(r) => r,
+            Err(e) => return Ok(e),
+        };
 
         let org_summaries: Vec<OrganizationSummary> = response
             .organizations
