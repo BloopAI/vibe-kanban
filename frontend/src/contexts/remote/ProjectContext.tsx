@@ -194,17 +194,11 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     enabled,
   });
 
-  // Combined loading state
+  // Board readiness depends on core kanban data only.
+  // Other project-scoped shapes hydrate opportunistically after render.
   const isLoading =
     issuesResult.isLoading ||
-    statusesResult.isLoading ||
-    tagsResult.isLoading ||
-    issueAssigneesResult.isLoading ||
-    issueFollowersResult.isLoading ||
-    issueTagsResult.isLoading ||
-    issueRelationshipsResult.isLoading ||
-    pullRequestsResult.isLoading ||
-    workspacesResult.isLoading;
+    statusesResult.isLoading;
 
   // First error found
   const error =
