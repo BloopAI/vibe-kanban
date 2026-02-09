@@ -17,10 +17,6 @@ pub enum ScratchError {
     TypeMismatch { expected: String, actual: String },
 }
 
-const fn default_true() -> bool {
-    true
-}
-
 /// Data for a draft follow-up scratch
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct DraftFollowUpData {
@@ -77,7 +73,7 @@ pub struct KanbanProjectDraftData {
     pub filters: KanbanFiltersData,
     #[serde(default)]
     pub show_sub_issues: bool,
-    #[serde(default = "default_true")]
+    #[serde(default)]
     pub show_workspaces: bool,
 }
 
