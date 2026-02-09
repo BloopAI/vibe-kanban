@@ -16,7 +16,7 @@
     "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export VK_ALLOWED_ORIGINS=\"http://localhost:${FRONTEND_PORT}\" && export VITE_VK_SHARED_API_BASE=${VK_SHARED_API_BASE:-} && concurrently \"pnpm run backend:dev:watch\" \"pnpm run frontend:dev\"",
     "test:npm": "./test-npm-package.sh",
     "frontend:lint": "cd frontend && pnpm run lint",
-    "frontend:dev": "cd frontend && pnpm run dev -- --port ${FRONTEND_PORT:-3000} --host",
+    "frontend:dev": "cd frontend && pnpm run dev -- --port ${FRONTEND_PORT:-3000}",
     "frontend:check": "cd frontend && pnpm run check",
     "backend:lint": "cargo clippy --workspace --all-targets --features qa-mode -- -D warnings",
     "backend:dev": "BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) pnpm run backend:dev:watch",
