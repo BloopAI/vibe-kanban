@@ -103,7 +103,7 @@ const createDefaultKanbanProjectViewsState = (): KanbanProjectViewsState => ({
       name: 'Team',
       filters: cloneKanbanFilters(DEFAULT_KANBAN_FILTER_STATE),
       showSubIssues: false,
-      showWorkspaces: false,
+      showWorkspaces: true,
     },
     {
       id: KANBAN_PROJECT_VIEW_IDS.PERSONAL,

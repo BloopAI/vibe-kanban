@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { FunnelIcon, XIcon } from '@phosphor-icons/react';
+import { FunnelIcon, PlusIcon, XIcon } from '@phosphor-icons/react';
 import type { Tag, ProjectStatus } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { cn } from '@/lib/utils';
@@ -9,6 +9,7 @@ import {
   KANBAN_PROJECT_VIEW_IDS,
 } from '@/stores/useUiPreferencesStore';
 import { InputField } from '@/components/ui-new/primitives/InputField';
+import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import {
   ButtonGroup,
   ButtonGroupItem,
@@ -42,6 +43,7 @@ interface KanbanFilterBarProps {
     }
   ) => void;
   onRemoveStatus: (id: string) => void;
+  onCreateIssue: () => void;
 }
 
 export function KanbanFilterBar({
@@ -56,6 +58,7 @@ export function KanbanFilterBar({
   onInsertStatus,
   onUpdateStatus,
   onRemoveStatus,
+  onCreateIssue,
 }: KanbanFilterBarProps) {
   const { t } = useTranslation('common');
 
@@ -64,6 +67,7 @@ export function KanbanFilterBar({
     (s) => s.kanbanProjectViewsByProject[projectId]
   );
   const applyKanbanView = useUiPreferencesStore((s) => s.applyKanbanView);
+  const overwriteKanbanView = useUiPreferencesStore((s) => s.overwriteKanbanView);
   const setKanbanSearchQuery = useUiPreferencesStore(
     (s) => s.setKanbanSearchQuery
   );
@@ -71,23 +75,24 @@ export function KanbanFilterBar({
   const activeViewId =
     projectViewState?.activeViewId ?? DEFAULT_KANBAN_PROJECT_VIEW_ID;
 
+  const handleViewChange = (viewId: string) => {
+    overwriteKanbanView(projectId, activeViewId);
+    applyKanbanView(projectId, viewId);
+  };
+
   return (
     <>
       <div className="flex min-w-0 flex-wrap items-center gap-base">
         <ButtonGroup className="flex-wrap">
           <ButtonGroupItem
             active={activeViewId === KANBAN_PROJECT_VIEW_IDS.TEAM}
-            onClick={() =>
-              applyKanbanView(projectId, KANBAN_PROJECT_VIEW_IDS.TEAM)
-            }
+            onClick={() => handleViewChange(KANBAN_PROJECT_VIEW_IDS.TEAM)}
           >
             {t('kanban.team', 'Team')}
           </ButtonGroupItem>
           <ButtonGroupItem
             active={activeViewId === KANBAN_PROJECT_VIEW_IDS.PERSONAL}
-            onClick={() =>
-              applyKanbanView(projectId, KANBAN_PROJECT_VIEW_IDS.PERSONAL)
-            }
+            onClick={() => handleViewChange(KANBAN_PROJECT_VIEW_IDS.PERSONAL)}
           >
             {t('kanban.personal', 'Personal')}
           </ButtonGroupItem>
@@ -117,6 +122,13 @@ export function KanbanFilterBar({
         >
           <FunnelIcon className="size-icon-sm" weight="bold" />
         </button>
+
+        <PrimaryButton
+          variant="secondary"
+          value={t('kanban.newIssue', 'New issue')}
+          actionIcon={PlusIcon}
+          onClick={onCreateIssue}
+        />
       </div>
 
       <KanbanFiltersDialog

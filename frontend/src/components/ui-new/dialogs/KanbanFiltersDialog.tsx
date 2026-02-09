@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   UsersIcon,
@@ -44,6 +44,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui-new/primitives/Dialog';
+import { AssigneeSelectionDialog } from '@/components/ui-new/dialogs/AssigneeSelectionDialog';
 import { PriorityFilterDropdown } from '@/components/ui-new/views/PriorityFilterDropdown';
 import { KanbanDisplaySettingsContainer } from '@/components/ui-new/containers/KanbanDisplaySettingsContainer';
 
@@ -88,14 +89,6 @@ const DEFAULT_VIEW_OPTIONS: PropertyDropdownOption<string>[] = [
   { value: KANBAN_PROJECT_VIEW_IDS.TEAM, label: 'Team' },
   { value: KANBAN_PROJECT_VIEW_IDS.PERSONAL, label: 'Personal' },
 ];
-
-const getUserDisplayName = (user: OrganizationMemberWithProfile): string => {
-  return (
-    [user.first_name, user.last_name].filter(Boolean).join(' ') ||
-    user.username ||
-    'User'
-  );
-};
 
 export function KanbanFiltersDialog({
   open,
@@ -173,12 +166,20 @@ export function KanbanFiltersDialog({
     overwriteKanbanView(projectId, activeViewId);
   };
 
+  const handleApplyView = useCallback(
+    (viewId: string) => {
+      overwriteKanbanView(projectId, activeViewId);
+      applyKanbanView(projectId, viewId);
+    },
+    [projectId, activeViewId, overwriteKanbanView, applyKanbanView]
+  );
+
   const currentUser = useMemo(
     () => users.find((user) => user.user_id === userId) ?? null,
     [users, userId]
   );
 
-  const assigneeOptions: MultiSelectDropdownOption<string>[] = useMemo(
+  const assigneeDialogOptions = useMemo(
     () => [
       {
         value: KANBAN_ASSIGNEE_FILTER_VALUES.UNASSIGNED,
@@ -204,18 +205,8 @@ export function KanbanFiltersDialog({
           </div>
         ),
       },
-      ...users.map((user) => ({
-        value: user.user_id,
-        label: getUserDisplayName(user),
-        renderOption: () => (
-          <div className="flex items-center gap-base">
-            <UserAvatar user={user} className="h-4 w-4 text-[8px]" />
-            {getUserDisplayName(user)}
-          </div>
-        ),
-      })),
     ],
-    [users, t, currentUser]
+    [t, currentUser]
   );
 
   const tagOptions: MultiSelectDropdownOption<string>[] = useMemo(
@@ -272,6 +263,22 @@ export function KanbanFiltersDialog({
     [usersById, currentUser]
   );
 
+  const handleOpenAssigneeDialog = useCallback(() => {
+    void AssigneeSelectionDialog.show({
+      projectId,
+      issueIds: [],
+      isCreateMode: true,
+      createModeAssigneeIds: kanbanFilters.assigneeIds,
+      onCreateModeAssigneesChange: setKanbanAssignees,
+      additionalOptions: assigneeDialogOptions,
+    });
+  }, [
+    projectId,
+    kanbanFilters.assigneeIds,
+    setKanbanAssignees,
+    assigneeDialogOptions,
+  ]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[920px] p-0">
@@ -299,7 +306,7 @@ export function KanbanFiltersDialog({
                 <PropertyDropdown
                   value={activeViewId}
                   options={viewOptions}
-                  onChange={(viewId) => applyKanbanView(projectId, viewId)}
+                  onChange={handleApplyView}
                   label={t('kanban.view', 'View')}
                 />
 
@@ -343,15 +350,20 @@ export function KanbanFiltersDialog({
                   onChange={setKanbanPriorities}
                 />
 
-                <MultiSelectDropdown
-                  values={kanbanFilters.assigneeIds}
-                  options={assigneeOptions}
-                  onChange={setKanbanAssignees}
-                  icon={UsersIcon}
-                  label={t('kanban.assignee', 'Assignee')}
-                  menuLabel={t('kanban.filterByAssignee', 'Filter by assignee')}
-                  renderBadge={renderAssigneeBadge}
-                />
+                <button
+                  type="button"
+                  onClick={handleOpenAssigneeDialog}
+                  className={cn(
+                    'flex items-center gap-half bg-panel rounded-sm',
+                    'text-sm text-normal hover:bg-secondary transition-colors',
+                    'py-half px-base'
+                  )}
+                >
+                  <UsersIcon className="size-icon-xs" weight="bold" />
+                  <span>{t('kanban.assignee', 'Assignee')}</span>
+                  {kanbanFilters.assigneeIds.length > 0 &&
+                    renderAssigneeBadge(kanbanFilters.assigneeIds)}
+                </button>
 
                 {tags.length > 0 && (
                   <MultiSelectDropdown

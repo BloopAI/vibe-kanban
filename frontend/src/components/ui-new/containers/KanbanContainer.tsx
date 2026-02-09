@@ -158,6 +158,21 @@ export function KanbanContainer() {
     ensureKanbanProjectViews,
   ]);
 
+  // Persist the active view state before switching projects or leaving kanban.
+  useEffect(() => {
+    return () => {
+      const state = useUiPreferencesStore.getState();
+      const activeViewId =
+        state.kanbanProjectViewsByProject[projectId]?.activeViewId;
+
+      if (!activeViewId) {
+        return;
+      }
+
+      state.overwriteKanbanView(projectId, activeViewId);
+    };
+  }, [projectId]);
+
   // Always apply the active project view after initialization or sync restore.
   useEffect(() => {
     if (!activeKanbanViewId) {
@@ -628,6 +643,7 @@ export function KanbanContainer() {
             onInsertStatus={insertStatus}
             onUpdateStatus={updateStatus}
             onRemoveStatus={removeStatus}
+            onCreateIssue={handleAddTask}
           />
         </div>
       </div>
