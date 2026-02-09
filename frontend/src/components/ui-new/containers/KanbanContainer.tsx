@@ -608,7 +608,7 @@ export function KanbanContainer() {
           </DropdownMenu>
         </div>
 
-        <div className="flex items-center gap-base flex-wrap">
+        <div className="flex flex-wrap items-start gap-base">
           <ViewNavTabs
             activeView={kanbanViewMode}
             onViewChange={setKanbanViewMode}

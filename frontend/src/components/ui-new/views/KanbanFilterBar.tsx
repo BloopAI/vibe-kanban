@@ -73,8 +73,8 @@ export function KanbanFilterBar({
 
   return (
     <>
-      <div className="flex items-center gap-base flex-wrap flex-1 min-w-0">
-        <ButtonGroup>
+      <div className="flex min-w-0 flex-wrap items-center gap-base">
+        <ButtonGroup className="flex-wrap">
           <ButtonGroupItem
             active={activeViewId === KANBAN_PROJECT_VIEW_IDS.TEAM}
             onClick={() =>

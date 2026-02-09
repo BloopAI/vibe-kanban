@@ -3,6 +3,7 @@
 import { useTranslation } from 'react-i18next';
 import type { ProjectStatus } from 'shared/remote-types';
 import type { KanbanViewMode } from '@/stores/useUiPreferencesStore';
+import { cn } from '@/lib/utils';
 import {
   ButtonGroup,
   ButtonGroupItem,
@@ -30,8 +31,8 @@ export function ViewNavTabs({
   const isAllTab = activeView === 'list' && selectedStatusId === null;
 
   return (
-    <div className="flex items-center gap-base">
-      <ButtonGroup className={className}>
+    <div className="flex min-w-0 flex-wrap items-center gap-base">
+      <ButtonGroup className={cn('flex-wrap', className)}>
         {/* Active (Kanban) tab */}
         <ButtonGroupItem
           active={isActiveTab}
