@@ -1,6 +1,7 @@
 //! All shape constant instances for realtime streaming.
 
 use crate::shape_definition::{ShapeDefinition, ShapeExport};
+use crate::db::{attachments::Attachment, blobs::Blob};
 use api_types::{
     Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssueRelationship,
     IssueTag, Notification, OrganizationMember, Project, ProjectStatus, PullRequest, Tag, User,
@@ -117,6 +118,20 @@ pub const PROJECT_PULL_REQUESTS_SHAPE: ShapeDefinition<PullRequest> = crate::def
     params: ["project_id"],
 );
 
+pub const PROJECT_BLOBS_SHAPE: ShapeDefinition<Blob> = crate::define_shape!(
+    table: "blobs",
+    where_clause: r#""project_id" = $1"#,
+    url: "/shape/project/{project_id}/blobs",
+    params: ["project_id"],
+);
+
+pub const PROJECT_ATTACHMENTS_SHAPE: ShapeDefinition<Attachment> = crate::define_shape!(
+    table: "attachments",
+    where_clause: r#""blob_id" IN (SELECT id FROM blobs WHERE "project_id" = $1)"#,
+    url: "/shape/project/{project_id}/attachments",
+    params: ["project_id"],
+);
+
 // =============================================================================
 // Issue-scoped shapes
 // =============================================================================
@@ -161,6 +176,8 @@ pub fn all_shapes() -> Vec<(&'static str, &'static dyn ShapeExport)> {
         PROJECT_ISSUE_TAGS_SHAPE,
         PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
         PROJECT_PULL_REQUESTS_SHAPE,
+        PROJECT_BLOBS_SHAPE,
+        PROJECT_ATTACHMENTS_SHAPE,
         ISSUE_COMMENTS_SHAPE,
         ISSUE_REACTIONS_SHAPE,
     ]
