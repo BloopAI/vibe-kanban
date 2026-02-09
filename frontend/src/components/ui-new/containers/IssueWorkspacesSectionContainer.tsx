@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { PlusIcon } from '@phosphor-icons/react';
+import { LinkIcon, PlusIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
@@ -153,6 +153,18 @@ export function IssueWorkspacesSectionContainer({
     workspaces,
   ]);
 
+  // Handle clicking link action to link an existing workspace
+  const handleLinkWorkspace = useCallback(async () => {
+    if (!projectId) {
+      return;
+    }
+
+    const { WorkspaceSelectionDialog } = await import(
+      '@/components/ui-new/dialogs/WorkspaceSelectionDialog'
+    );
+    await WorkspaceSelectionDialog.show({ projectId, issueId });
+  }, [projectId, issueId]);
+
   // Handle clicking a workspace card to open it
   const handleWorkspaceClick = useCallback(
     (localWorkspaceId: string | null) => {
@@ -231,8 +243,12 @@ export function IssueWorkspacesSectionContainer({
         icon: PlusIcon,
         onClick: handleAddWorkspace,
       },
+      {
+        icon: LinkIcon,
+        onClick: handleLinkWorkspace,
+      },
     ],
-    [handleAddWorkspace]
+    [handleAddWorkspace, handleLinkWorkspace]
   );
 
   return (

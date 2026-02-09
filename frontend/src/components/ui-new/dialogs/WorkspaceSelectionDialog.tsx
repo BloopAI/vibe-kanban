@@ -4,8 +4,9 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
 import { defineModal } from '@/lib/modals';
-import { attemptsApi } from '@/lib/api';
+import { ApiError, attemptsApi } from '@/lib/api';
 import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
+import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import {
   Command,
   CommandDialog,
@@ -29,6 +30,25 @@ export interface WorkspaceSelectionDialogProps {
 }
 
 const PAGE_SIZE = 50;
+
+function getLinkWorkspaceErrorMessage(error: unknown): string | null {
+  if (error instanceof ApiError && error.status === 409) {
+    return 'This workspace is already linked to an issue.';
+  }
+
+  if (error instanceof Error) {
+    const normalizedMessage = error.message.toLowerCase();
+    if (
+      normalizedMessage.includes('already exists') ||
+      normalizedMessage.includes('already linked')
+    ) {
+      return 'This workspace is already linked to an issue.';
+    }
+    return error.message;
+  }
+
+  return null;
+}
 
 /** Inner component that uses contexts to render the selection UI */
 function WorkspaceSelectionContent({
@@ -121,13 +141,21 @@ function WorkspaceSelectionContent({
         // Success - close dialog. UI will auto-update via Electric sync.
         modal.hide();
       } catch (err) {
-        console.error('Error linking workspace:', err);
-        // TODO: Show error toast
+        const errorMessage =
+          getLinkWorkspaceErrorMessage(err) ??
+          t('workspaces.linkError', 'Failed to link workspace');
+
+        await ConfirmDialog.show({
+          title: t('common:error'),
+          message: errorMessage,
+          confirmText: t('common:ok'),
+          showCancelButton: false,
+        });
       } finally {
         setIsLinking(false);
       }
     },
-    [projectId, issueId, isLinking, modal]
+    [projectId, issueId, isLinking, modal, t]
   );
 
   const handleCreateNewWorkspace = useCallback(async () => {
