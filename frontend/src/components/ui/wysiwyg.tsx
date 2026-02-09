@@ -199,7 +199,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
             ol: 'my-1 list-decimal list-inside',
             listitem: '',
             nested: {
-              listitem: 'pl-4',
+              listitem: 'list-none pl-4',
             },
           },
           link: 'text-blue-600 dark:text-blue-400 underline underline-offset-2 cursor-pointer hover:text-blue-800 dark:hover:text-blue-300',
