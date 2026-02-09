@@ -22,6 +22,7 @@ pub mod projects;
 pub mod remote_issues;
 pub mod remote_project_statuses;
 pub mod remote_projects;
+pub mod remote_workspaces;
 pub mod repo;
 pub mod scratch;
 pub mod search;
@@ -56,6 +57,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(remote_issues::router())
         .merge(remote_projects::router())
         .merge(remote_project_statuses::router())
+        .merge(remote_workspaces::router())
         .nest("/images", images::routes())
         .layer(ValidateRequestHeaderLayer::custom(
             middleware::validate_origin,

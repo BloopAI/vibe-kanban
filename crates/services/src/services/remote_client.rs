@@ -11,7 +11,7 @@ use api_types::{
     ListProjectStatusesResponse, ListProjectsResponse, Organization, ProfileResponse,
     RevokeInvitationRequest, TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest,
     UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
-    UpdateWorkspaceRequest, UpsertPullRequestRequest,
+    UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
@@ -568,6 +568,17 @@ impl RemoteClient {
             "/v1/workspaces",
             &DeleteWorkspaceRequest { local_workspace_id },
         )
+        .await
+    }
+
+    /// Gets a workspace from the remote server by its local workspace ID.
+    pub async fn get_workspace_by_local_id(
+        &self,
+        local_workspace_id: Uuid,
+    ) -> Result<Workspace, RemoteClientError> {
+        self.get_authed(&format!(
+            "/v1/workspaces/by-local-id/{local_workspace_id}"
+        ))
         .await
     }
 

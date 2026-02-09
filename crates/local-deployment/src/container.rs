@@ -1189,42 +1189,44 @@ impl ContainerService for LocalContainerService {
             commit_reminder_prompt,
         );
 
-        // Load task and project context for environment variables
-        let task = workspace
-            .parent_task(&self.db.pool)
-            .await?
-            .ok_or(ContainerError::Other(anyhow!(
-                "Task not found for workspace"
-            )))?;
-        let project = task
-            .parent_project(&self.db.pool)
-            .await?
-            .ok_or(ContainerError::Other(anyhow!("Project not found for task")))?;
-
-        env.insert("VK_PROJECT_NAME", &project.name);
-        env.insert("VK_PROJECT_ID", project.id.to_string());
-        env.insert("VK_TASK_ID", task.id.to_string());
+        // Always inject workspace/session context
         env.insert("VK_WORKSPACE_ID", workspace.id.to_string());
         env.insert("VK_WORKSPACE_BRANCH", &workspace.branch);
         env.insert("VK_SESSION_ID", execution_process.session_id.to_string());
 
-        // Inject organization ID from remote project if available
-        if let Some(remote_project_id) = project.remote_project_id {
-            if let Some(client) = &self.remote_client {
-                match client.get_remote_project(remote_project_id).await {
-                    Ok(remote_project) => {
-                        env.insert(
-                            "VK_ORGANIZATION_ID",
-                            remote_project.organization_id.to_string(),
-                        );
+        // Inject remote project/issue/org context if workspace is linked to remote
+        if let Some(client) = &self.remote_client {
+            match client.get_workspace_by_local_id(workspace.id).await {
+                Ok(remote_workspace) => {
+                    env.insert("VK_PROJECT_ID", remote_workspace.project_id.to_string());
+                    if let Some(issue_id) = remote_workspace.issue_id {
+                        env.insert("VK_ISSUE_ID", issue_id.to_string());
                     }
-                    Err(e) => {
-                        tracing::warn!(
-                            "Failed to fetch remote project {} for org ID injection: {}",
-                            remote_project_id,
-                            e
-                        );
+                    match client
+                        .get_remote_project(remote_workspace.project_id)
+                        .await
+                    {
+                        Ok(remote_project) => {
+                            env.insert(
+                                "VK_ORGANIZATION_ID",
+                                remote_project.organization_id.to_string(),
+                            );
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                "Failed to fetch remote project {} for org ID: {}",
+                                remote_workspace.project_id,
+                                e
+                            );
+                        }
                     }
+                }
+                Err(e) => {
+                    tracing::debug!(
+                        "Workspace {} not linked to remote: {}",
+                        workspace.id,
+                        e
+                    );
                 }
             }
         }

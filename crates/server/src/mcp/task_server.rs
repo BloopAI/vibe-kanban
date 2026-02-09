@@ -33,8 +33,10 @@ use crate::routes::{
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct McpCreateIssueRequest {
-    #[schemars(description = "The ID of the project to create the issue in. This is required!")]
-    pub project_id: Uuid,
+    #[schemars(
+        description = "The ID of the project to create the issue in. Optional if running inside a workspace linked to a remote project."
+    )]
+    pub project_id: Option<Uuid>,
     #[schemars(description = "The title of the issue")]
     pub title: String,
     #[schemars(description = "Optional description of the issue")]
@@ -178,8 +180,10 @@ pub struct McpListOrganizationsResponse {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct McpListIssuesRequest {
-    #[schemars(description = "The ID of the project to list issues from")]
-    pub project_id: Uuid,
+    #[schemars(
+        description = "The ID of the project to list issues from. Optional if running inside a workspace linked to a remote project."
+    )]
+    pub project_id: Option<Uuid>,
     #[schemars(description = "Maximum number of issues to return (default: 50)")]
     pub limit: Option<i32>,
 }
@@ -312,9 +316,10 @@ pub struct McpRepoContext {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
 pub struct McpContext {
-    pub project_id: Uuid,
-    pub issue_id: Uuid,
-    pub issue_title: String,
+    #[schemars(description = "The remote project ID (if workspace is linked to remote)")]
+    pub project_id: Option<Uuid>,
+    #[schemars(description = "The remote issue ID (if workspace is linked to a remote issue)")]
+    pub issue_id: Option<Uuid>,
     pub workspace_id: Uuid,
     pub workspace_branch: String,
     #[schemars(
@@ -387,14 +392,54 @@ impl TaskServer {
             })
             .collect();
 
+        let workspace_id = ctx.workspace.id;
+        let workspace_branch = ctx.workspace.branch.clone();
+
+        // Look up remote workspace to get remote project_id and issue_id
+        let (project_id, issue_id) = self
+            .fetch_remote_workspace_context(workspace_id)
+            .await
+            .unwrap_or((None, None));
+
         Some(McpContext {
-            project_id: ctx.project.id,
-            issue_id: ctx.task.id,
-            issue_title: ctx.task.title,
-            workspace_id: ctx.workspace.id,
-            workspace_branch: ctx.workspace.branch,
+            project_id,
+            issue_id,
+            workspace_id,
+            workspace_branch,
             workspace_repos,
         })
+    }
+
+    async fn fetch_remote_workspace_context(
+        &self,
+        local_workspace_id: Uuid,
+    ) -> Option<(Option<Uuid>, Option<Uuid>)> {
+        let url = self.url(&format!(
+            "/api/remote/workspaces/by-local-id/{}",
+            local_workspace_id
+        ));
+
+        let response = tokio::time::timeout(
+            std::time::Duration::from_millis(2000),
+            self.client.get(&url).send(),
+        )
+        .await
+        .ok()?
+        .ok()?;
+
+        if !response.status().is_success() {
+            return None;
+        }
+
+        let api_response: ApiResponseEnvelope<api_types::Workspace> =
+            response.json().await.ok()?;
+
+        if !api_response.success {
+            return None;
+        }
+
+        let remote_ws = api_response.data?;
+        Some((Some(remote_ws.project_id), remote_ws.issue_id))
     }
 }
 
@@ -544,6 +589,23 @@ impl TaskServer {
         result.into_owned()
     }
 
+    /// Resolves a project_id from an explicit parameter or falls back to context.
+    fn resolve_project_id(&self, explicit: Option<Uuid>) -> Result<Uuid, CallToolResult> {
+        if let Some(id) = explicit {
+            return Ok(id);
+        }
+        if let Some(ctx) = &self.context {
+            if let Some(id) = ctx.project_id {
+                return Ok(id);
+            }
+        }
+        Err(Self::err(
+            "project_id is required (not available from workspace context)",
+            None::<&str>,
+        )
+        .unwrap())
+    }
+
     /// Fetches project statuses for a project, returning a map of status name → status.
     async fn fetch_project_statuses(
         &self,
@@ -650,7 +712,7 @@ impl TaskServer {
     }
 
     #[tool(
-        description = "Create a new issue in a project. Always pass the `project_id` of the project you want to create the issue in - it is required!"
+        description = "Create a new issue in a project. `project_id` is optional if running inside a workspace linked to a remote project."
     )]
     async fn create_issue(
         &self,
@@ -660,6 +722,11 @@ impl TaskServer {
             description,
         }): Parameters<McpCreateIssueRequest>,
     ) -> Result<CallToolResult, ErrorData> {
+        let project_id = match self.resolve_project_id(project_id) {
+            Ok(id) => id,
+            Err(e) => return Ok(e),
+        };
+
         let expanded_description = match description {
             Some(desc) => Some(self.expand_tags(&desc).await),
             None => None,
@@ -888,11 +955,18 @@ impl TaskServer {
         })
     }
 
-    #[tool(description = "List all the issues in a project. `project_id` is required!")]
+    #[tool(
+        description = "List all the issues in a project. `project_id` is optional if running inside a workspace linked to a remote project."
+    )]
     async fn list_issues(
         &self,
         Parameters(McpListIssuesRequest { project_id, limit }): Parameters<McpListIssuesRequest>,
     ) -> Result<CallToolResult, ErrorData> {
+        let project_id = match self.resolve_project_id(project_id) {
+            Ok(id) => id,
+            Err(e) => return Ok(e),
+        };
+
         let url = self.url(&format!("/api/remote/issues?project_id={}", project_id));
         let response: ListIssuesResponse = match self.send_json(self.client.get(&url)).await {
             Ok(r) => r,

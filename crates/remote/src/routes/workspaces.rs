@@ -2,7 +2,7 @@ use axum::{
     Json, Router,
     extract::{Extension, Path, State},
     http::StatusCode,
-    routing::{delete, head, post},
+    routing::{delete, get, head, post},
 };
 use serde::Deserialize;
 use tracing::instrument;
@@ -40,6 +40,10 @@ pub fn router() -> Router<AppState> {
                 .delete(delete_workspace),
         )
         .route("/workspaces/{workspace_id}", delete(unlink_workspace))
+        .route(
+            "/workspaces/by-local-id/{local_workspace_id}",
+            get(get_workspace_by_local_id),
+        )
         .route(
             "/workspaces/exists/{local_workspace_id}",
             head(workspace_exists),
@@ -216,6 +220,27 @@ async fn unlink_workspace(
         })?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[instrument(
+    name = "workspaces.get_workspace_by_local_id",
+    skip(state, _ctx),
+    fields(local_workspace_id = %local_workspace_id)
+)]
+async fn get_workspace_by_local_id(
+    State(state): State<AppState>,
+    Extension(_ctx): Extension<RequestContext>,
+    Path(local_workspace_id): Path<Uuid>,
+) -> Result<Json<Workspace>, ErrorResponse> {
+    let workspace = WorkspaceRepository::find_by_local_id(state.pool(), local_workspace_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to find workspace");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to find workspace")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "workspace not found"))?;
+
+    Ok(Json(workspace))
 }
 
 #[instrument(
