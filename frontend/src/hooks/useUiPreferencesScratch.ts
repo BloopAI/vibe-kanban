@@ -10,8 +10,10 @@ import {
 } from 'shared/types';
 import {
   useUiPreferencesStore,
+  DEFAULT_KANBAN_SHOW_WORKSPACES,
   DEFAULT_KANBAN_FILTER_STATE,
   KANBAN_PROJECT_VIEW_IDS,
+  getDefaultShowSubIssuesForView,
   type RightMainPanelMode,
   type ContextBarPosition,
   type WorkspacePanelState,
@@ -194,8 +196,10 @@ function scratchDataToStore(data: UiPreferencesData): {
           sortField,
           sortDirection: normalizedSortDirection,
         },
-        showSubIssues: view.show_sub_issues ?? true,
-        showWorkspaces: view.show_workspaces ?? true,
+        showSubIssues:
+          view.show_sub_issues ?? getDefaultShowSubIssuesForView(view.id),
+        showWorkspaces:
+          view.show_workspaces ?? DEFAULT_KANBAN_SHOW_WORKSPACES,
       };
     });
 
@@ -242,9 +246,13 @@ function scratchDataToStore(data: UiPreferencesData): {
           sortDirection: draftSortDirection,
         },
         showSubIssues:
-          value.draft?.show_sub_issues ?? activeView?.showSubIssues ?? false,
+          value.draft?.show_sub_issues ??
+          activeView?.showSubIssues ??
+          getDefaultShowSubIssuesForView(value.active_view_id),
         showWorkspaces:
-          value.draft?.show_workspaces ?? activeView?.showWorkspaces ?? true,
+          value.draft?.show_workspaces ??
+          activeView?.showWorkspaces ??
+          DEFAULT_KANBAN_SHOW_WORKSPACES,
       },
     };
   }

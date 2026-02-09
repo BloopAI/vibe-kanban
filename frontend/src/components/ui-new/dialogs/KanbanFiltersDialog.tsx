@@ -12,10 +12,9 @@ import type { OrganizationMemberWithProfile } from 'shared/types';
 import { cn } from '@/lib/utils';
 import {
   useUiPreferencesStore,
-  DEFAULT_KANBAN_FILTER_STATE,
   KANBAN_ASSIGNEE_FILTER_VALUES,
-  DEFAULT_KANBAN_PROJECT_VIEW_ID,
   KANBAN_PROJECT_VIEW_IDS,
+  resolveKanbanProjectState,
   type KanbanSortField,
 } from '@/stores/useUiPreferencesStore';
 import { useAuth } from '@/hooks/auth/useAuth';
@@ -127,23 +126,11 @@ export function KanbanFiltersDialog({
   const setShowSubIssues = useUiPreferencesStore((s) => s.setShowSubIssues);
   const setShowWorkspaces = useUiPreferencesStore((s) => s.setShowWorkspaces);
 
-  const activeViewId =
-    projectViewState?.activeViewId ?? DEFAULT_KANBAN_PROJECT_VIEW_ID;
-  const activeView = useMemo(
-    () =>
-      projectViewState?.views.find((view) => view.id === activeViewId) ?? null,
-    [projectViewState, activeViewId]
-  );
-  const kanbanFilters =
-    projectViewState?.draft.filters ??
-    activeView?.filters ??
-    DEFAULT_KANBAN_FILTER_STATE;
-  const showSubIssues =
-    projectViewState?.draft.showSubIssues ?? activeView?.showSubIssues ?? false;
-  const showWorkspaces =
-    projectViewState?.draft.showWorkspaces ??
-    activeView?.showWorkspaces ??
-    true;
+  const { activeViewId, filters: kanbanFilters, showSubIssues, showWorkspaces } =
+    useMemo(
+      () => resolveKanbanProjectState(projectViewState),
+      [projectViewState]
+    );
 
   const viewOptions: PropertyDropdownOption<string>[] = useMemo(() => {
     if (!projectViewState || projectViewState.views.length === 0) {

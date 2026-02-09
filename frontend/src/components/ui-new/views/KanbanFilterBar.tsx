@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FunnelIcon, PlusIcon, XIcon } from '@phosphor-icons/react';
 import type { Tag, ProjectStatus } from 'shared/remote-types';
@@ -5,9 +6,8 @@ import type { OrganizationMemberWithProfile } from 'shared/types';
 import { cn } from '@/lib/utils';
 import {
   useUiPreferencesStore,
-  DEFAULT_KANBAN_FILTER_STATE,
-  DEFAULT_KANBAN_PROJECT_VIEW_ID,
   KANBAN_PROJECT_VIEW_IDS,
+  resolveKanbanProjectState,
 } from '@/stores/useUiPreferencesStore';
 import { InputField } from '@/components/ui-new/primitives/InputField';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
@@ -71,11 +71,10 @@ export function KanbanFilterBar({
     (s) => s.setKanbanSearchQuery
   );
 
-  const activeViewId =
-    projectViewState?.activeViewId ?? DEFAULT_KANBAN_PROJECT_VIEW_ID;
-
-  const kanbanFilters =
-    projectViewState?.draft.filters ?? DEFAULT_KANBAN_FILTER_STATE;
+  const { activeViewId, filters: kanbanFilters } = useMemo(
+    () => resolveKanbanProjectState(projectViewState),
+    [projectViewState]
+  );
 
   const handleViewChange = (viewId: string) => {
     applyKanbanView(projectId, viewId);

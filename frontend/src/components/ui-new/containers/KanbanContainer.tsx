@@ -7,8 +7,7 @@ import { useActions } from '@/contexts/ActionsContext';
 import { useAuth } from '@/hooks/auth/useAuth';
 import {
   useUiPreferencesStore,
-  DEFAULT_KANBAN_FILTER_STATE,
-  DEFAULT_KANBAN_PROJECT_VIEW_ID,
+  resolveKanbanProjectState,
 } from '@/stores/useUiPreferencesStore';
 import { useKanbanFilters, PRIORITY_ORDER } from '@/hooks/useKanbanFilters';
 import { bulkUpdateIssues, type BulkUpdateIssueItem } from '@/lib/remoteApi';
@@ -121,23 +120,11 @@ export function KanbanContainer() {
   const projectViewState = useUiPreferencesStore(
     (s) => s.kanbanProjectViewsByProject[projectId]
   );
-  const activeKanbanViewId =
-    projectViewState?.activeViewId ?? DEFAULT_KANBAN_PROJECT_VIEW_ID;
-  const activeKanbanView = useMemo(
-    () =>
-      projectViewState?.views.find((view) => view.id === activeKanbanViewId) ??
-      null,
-    [projectViewState, activeKanbanViewId]
+  const { filters: kanbanFilters, showWorkspaces } = useMemo(
+    () => resolveKanbanProjectState(projectViewState),
+    [projectViewState]
   );
-  const kanbanFilters =
-    projectViewState?.draft.filters ??
-    activeKanbanView?.filters ??
-    DEFAULT_KANBAN_FILTER_STATE;
   const kanbanViewMode = useUiPreferencesStore((s) => s.kanbanViewMode);
-  const showWorkspaces =
-    projectViewState?.draft.showWorkspaces ??
-    activeKanbanView?.showWorkspaces ??
-    true;
   const listViewStatusFilter = useUiPreferencesStore(
     (s) => s.listViewStatusFilter
   );
