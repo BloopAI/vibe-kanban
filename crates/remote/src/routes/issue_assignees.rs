@@ -14,21 +14,19 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::issue_assignees::IssueAssigneeRepository,
-    mutation_definition::MutationBuilder,
+    mutation_definition::{MutationBuilder, NoUpdate},
     response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
     CreateIssueAssigneeRequest, IssueAssignee, ListIssueAssigneesQuery, ListIssueAssigneesResponse,
-    UpdateIssueAssigneeRequest,
 };
 
 /// Mutation definition for IssueAssignee - provides both router and TypeScript metadata.
-pub fn mutation() -> MutationBuilder<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest> {
+pub fn mutation() -> MutationBuilder<IssueAssignee, CreateIssueAssigneeRequest, NoUpdate> {
     MutationBuilder::new("issue_assignees")
         .list(list_issue_assignees)
         .get(get_issue_assignee)
         .create(create_issue_assignee)
-        .update(update_issue_assignee)
         .delete(delete_issue_assignee)
 }
 
@@ -112,23 +110,6 @@ async fn create_issue_assignee(
     })?;
 
     Ok(Json(response))
-}
-
-#[instrument(
-    name = "issue_assignees.update_issue_assignee",
-    skip(_state, _ctx, _payload),
-    fields(issue_assignee_id = %_issue_assignee_id)
-)]
-async fn update_issue_assignee(
-    State(_state): State<AppState>,
-    Extension(_ctx): Extension<RequestContext>,
-    Path(_issue_assignee_id): Path<Uuid>,
-    Json(_payload): Json<UpdateIssueAssigneeRequest>,
-) -> Result<Json<MutationResponse<IssueAssignee>>, ErrorResponse> {
-    Err(ErrorResponse::new(
-        StatusCode::METHOD_NOT_ALLOWED,
-        "issue assignees cannot be updated, only created or deleted",
-    ))
 }
 
 #[instrument(

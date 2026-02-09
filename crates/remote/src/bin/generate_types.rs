@@ -12,11 +12,9 @@ use api_types::{
     CreateProjectStatusRequest, CreateTagRequest, Issue, IssueAssignee, IssueComment,
     IssueCommentReaction, IssueFollower, IssueRelationship, IssueRelationshipType, IssueTag,
     IssuePriority, MemberRole, Notification, NotificationType, OrganizationMember, Project,
-    ProjectStatus, PullRequest, PullRequestStatus, Tag, UpdateIssueAssigneeRequest,
-    UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueFollowerRequest,
-    UpdateIssueRelationshipRequest, UpdateIssueRequest, UpdateIssueTagRequest,
-    UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest, UpdateTagRequest,
-    User, UserData, Workspace,
+    ProjectStatus, PullRequest, PullRequestStatus, Tag, UpdateIssueCommentReactionRequest,
+    UpdateIssueCommentRequest, UpdateIssueRequest, UpdateNotificationRequest, UpdateProjectRequest,
+    UpdateProjectStatusRequest, UpdateTagRequest, User, UserData, Workspace,
 };
 
 fn main() {
@@ -99,13 +97,9 @@ fn export_shapes() -> String {
         CreateIssueRequest::decl(),
         UpdateIssueRequest::decl(),
         CreateIssueAssigneeRequest::decl(),
-        UpdateIssueAssigneeRequest::decl(),
         CreateIssueFollowerRequest::decl(),
-        UpdateIssueFollowerRequest::decl(),
         CreateIssueTagRequest::decl(),
-        UpdateIssueTagRequest::decl(),
         CreateIssueRelationshipRequest::decl(),
-        UpdateIssueRelationshipRequest::decl(),
         CreateIssueCommentRequest::decl(),
         UpdateIssueCommentRequest::decl(),
         CreateIssueCommentReactionRequest::decl(),

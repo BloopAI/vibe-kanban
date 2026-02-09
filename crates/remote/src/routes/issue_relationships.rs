@@ -14,22 +14,21 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::issue_relationships::IssueRelationshipRepository,
-    mutation_definition::MutationBuilder,
+    mutation_definition::{MutationBuilder, NoUpdate},
     response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
     CreateIssueRelationshipRequest, IssueRelationship, ListIssueRelationshipsQuery,
-    ListIssueRelationshipsResponse, UpdateIssueRelationshipRequest,
+    ListIssueRelationshipsResponse,
 };
 
 /// Mutation definition for IssueRelationship - provides both router and TypeScript metadata.
 pub fn mutation(
-) -> MutationBuilder<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest> {
+) -> MutationBuilder<IssueRelationship, CreateIssueRelationshipRequest, NoUpdate> {
     MutationBuilder::new("issue_relationships")
         .list(list_issue_relationships)
         .get(get_issue_relationship)
         .create(create_issue_relationship)
-        .update(update_issue_relationship)
         .delete(delete_issue_relationship)
 }
 
@@ -119,23 +118,6 @@ async fn create_issue_relationship(
     })?;
 
     Ok(Json(response))
-}
-
-#[instrument(
-    name = "issue_relationships.update_issue_relationship",
-    skip(_state, _ctx, _payload),
-    fields(issue_relationship_id = %_issue_relationship_id)
-)]
-async fn update_issue_relationship(
-    State(_state): State<AppState>,
-    Extension(_ctx): Extension<RequestContext>,
-    Path(_issue_relationship_id): Path<Uuid>,
-    Json(_payload): Json<UpdateIssueRelationshipRequest>,
-) -> Result<Json<MutationResponse<IssueRelationship>>, ErrorResponse> {
-    Err(ErrorResponse::new(
-        StatusCode::METHOD_NOT_ALLOWED,
-        "issue relationships cannot be updated, only created or deleted",
-    ))
 }
 
 #[instrument(

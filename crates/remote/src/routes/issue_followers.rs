@@ -14,21 +14,19 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::issue_followers::IssueFollowerRepository,
-    mutation_definition::MutationBuilder,
+    mutation_definition::{MutationBuilder, NoUpdate},
     response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
     CreateIssueFollowerRequest, IssueFollower, ListIssueFollowersQuery, ListIssueFollowersResponse,
-    UpdateIssueFollowerRequest,
 };
 
 /// Mutation definition for IssueFollower - provides both router and TypeScript metadata.
-pub fn mutation() -> MutationBuilder<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest> {
+pub fn mutation() -> MutationBuilder<IssueFollower, CreateIssueFollowerRequest, NoUpdate> {
     MutationBuilder::new("issue_followers")
         .list(list_issue_followers)
         .get(get_issue_follower)
         .create(create_issue_follower)
-        .update(update_issue_follower)
         .delete(delete_issue_follower)
 }
 
@@ -112,23 +110,6 @@ async fn create_issue_follower(
     })?;
 
     Ok(Json(response))
-}
-
-#[instrument(
-    name = "issue_followers.update_issue_follower",
-    skip(_state, _ctx, _payload),
-    fields(issue_follower_id = %_issue_follower_id)
-)]
-async fn update_issue_follower(
-    State(_state): State<AppState>,
-    Extension(_ctx): Extension<RequestContext>,
-    Path(_issue_follower_id): Path<Uuid>,
-    Json(_payload): Json<UpdateIssueFollowerRequest>,
-) -> Result<Json<MutationResponse<IssueFollower>>, ErrorResponse> {
-    Err(ErrorResponse::new(
-        StatusCode::METHOD_NOT_ALLOWED,
-        "issue followers cannot be updated, only created or deleted",
-    ))
 }
 
 #[instrument(
