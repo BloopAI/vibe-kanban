@@ -53,19 +53,6 @@ class FileTagOption extends MenuOption {
 }
 
 const MAX_FILE_RESULTS = 10;
-const DEBUG_FILE_TAG_TYPEAHEAD = true;
-
-function debugFileTagTypeahead(
-  message: string,
-  data?: Record<string, unknown>
-) {
-  if (!DEBUG_FILE_TAG_TYPEAHEAD) return;
-  if (data) {
-    console.log(`[file-tag-typeahead] ${message}`, data);
-    return;
-  }
-  console.log(`[file-tag-typeahead] ${message}`);
-}
 
 interface DiffFileResult {
   path: string;
@@ -172,12 +159,6 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
       const fileSearchEnabled = Boolean(
         scopedRepoIds && scopedRepoIds.length > 0
       );
-      debugFileTagTypeahead('runSearch:start', {
-        requestId,
-        query,
-        scopedRepoIds: scopedRepoIds ?? null,
-        fileSearchEnabled,
-      });
 
       // Get local diff files first (files from current workspace changes)
       const localFiles = fileSearchEnabled
@@ -190,18 +171,8 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
         const serverResults = await searchTagsAndFiles(query, {
           repoIds: scopedRepoIds,
         });
-        debugFileTagTypeahead('runSearch:results-received', {
-          requestId,
-          query,
-          serverResultCount: serverResults.length,
-          latestRequestId: searchRequestRef.current,
-        });
 
         if (requestId !== searchRequestRef.current) {
-          debugFileTagTypeahead('runSearch:stale-result-ignored', {
-            requestId,
-            latestRequestId: searchRequestRef.current,
-          });
           return;
         }
 
@@ -226,21 +197,9 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
           ...limitedServerFiles,
         ];
 
-        debugFileTagTypeahead('runSearch:apply-results', {
-          requestId,
-          query,
-          tagCount: tagResults.length,
-          localFileCount: limitedLocalFiles.length,
-          serverFileCount: limitedServerFiles.length,
-          mergedCount: mergedResults.length,
-        });
         setOptions(mergedResults.map((r) => new FileTagOption(r)));
       } catch (err) {
         if (requestId === searchRequestRef.current) {
-          debugFileTagTypeahead('runSearch:clear-options-on-error', {
-            requestId,
-            query,
-          });
           setOptions([]);
         }
         console.error('Failed to search tags/files', {
@@ -353,13 +312,8 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
 
   const onQueryChange = useCallback(
     (query: string | null) => {
-      debugFileTagTypeahead('onQueryChange', {
-        query,
-        currentRequestId: searchRequestRef.current,
-      });
       // Lexical uses null to indicate "no active query / close menu"
       if (query === null) {
-        debugFileTagTypeahead('onQueryChange:clear-options-null-query');
         setOptions([]);
         return;
       }
