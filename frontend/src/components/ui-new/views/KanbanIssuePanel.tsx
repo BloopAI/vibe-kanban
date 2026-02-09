@@ -1,10 +1,13 @@
 import type { RefObject } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import {
   XIcon,
   LinkIcon,
   DotsThreeIcon,
   TrashIcon,
+  PaperclipIcon,
+  ImageIcon,
 } from '@phosphor-icons/react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type {
@@ -24,6 +27,7 @@ import { AutoResizeTextarea } from '@/components/ui-new/primitives/AutoResizeTex
 import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/IssueCommentsSectionContainer';
 import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/IssueSubIssuesSectionContainer';
 import { IssueRelationshipsSectionContainer } from '@/components/ui-new/containers/IssueRelationshipsSectionContainer';
+import { IssueAttachmentsSectionContainer } from '@/components/ui-new/containers/IssueAttachmentsSectionContainer';
 import { IssueWorkspacesSectionContainer } from '@/components/ui-new/containers/IssueWorkspacesSectionContainer';
 
 export type IssuePanelMode = 'create' | 'edit';
@@ -95,6 +99,16 @@ export interface KanbanIssuePanelProps {
 
   // More actions callback (edit mode only) - opens command bar with issue actions
   onMoreActions?: () => void;
+
+  // Image attachment upload
+  onPasteFiles?: (files: File[]) => void;
+  dropzoneProps?: {
+    getRootProps: () => Record<string, unknown>;
+    getInputProps: () => Record<string, unknown>;
+    isDragActive: boolean;
+  };
+  onBrowseAttachment?: () => void;
+  isUploading?: boolean;
 }
 
 export function KanbanIssuePanel({
@@ -121,7 +135,12 @@ export function KanbanIssuePanel({
   titleInputRef,
   onCopyLink,
   onMoreActions,
+  onPasteFiles,
+  dropzoneProps,
+  onBrowseAttachment,
+  isUploading,
 }: KanbanIssuePanelProps) {
+  const { t } = useTranslation('common');
   const isCreateMode = mode === 'create';
   const breadcrumbTextClass =
     'min-w-0 text-sm text-normal truncate rounded-sm px-1 py-0.5 hover:bg-panel hover:text-high transition-colors';
@@ -166,7 +185,7 @@ export function KanbanIssuePanel({
               type="button"
               onClick={onMoreActions}
               className="p-half rounded-sm text-low hover:text-normal hover:bg-panel transition-colors"
-              aria-label="More actions"
+              aria-label={t('kanban.moreActions')}
             >
               <DotsThreeIcon className="size-icon-sm" weight="bold" />
             </button>
@@ -175,7 +194,7 @@ export function KanbanIssuePanel({
             type="button"
             onClick={onClose}
             className="p-half rounded-sm text-low hover:text-normal hover:bg-panel transition-colors"
-            aria-label="Close panel"
+            aria-label={t('kanban.closePanel')}
           >
             <XIcon className="size-icon-sm" weight="bold" />
           </button>
@@ -236,21 +255,66 @@ export function KanbanIssuePanel({
                 isSubmitting && 'opacity-50 pointer-events-none'
               )}
             />
+
+            <div
+              className={cn(
+                'pointer-events-none absolute inset-0 px-base',
+                'text-high/50 font-medium text-lg',
+                'hidden',
+                "[[data-empty='true']_+_&]:block" // show placeholder when previous sibling data-empty=true
+              )}
+            >
+              {t('kanban.issueTitlePlaceholder')}
+            </div>
           </div>
 
-          {/* Description WYSIWYG Editor */}
-          <div className="mt-base">
+          {/* Description WYSIWYG Editor with image dropzone */}
+          <div {...dropzoneProps?.getRootProps()} className="relative mt-base">
+            <input
+              {...(dropzoneProps?.getInputProps() as React.InputHTMLAttributes<HTMLInputElement>)}
+              data-dropzone-input
+            />
             <WYSIWYGEditor
-              placeholder="Enter issue description here..."
+              placeholder={t('kanban.issueDescriptionPlaceholder')}
               value={formData.description ?? ''}
               onChange={(value) => onFormChange('description', value || null)}
               onCmdEnter={onCmdEnterSubmit}
+              onPasteFiles={onPasteFiles}
               disabled={isSubmitting}
               autoFocus={false}
               className="min-h-[100px] px-base"
               showStaticToolbar
               saveStatus={descriptionSaveStatus}
             />
+            {onBrowseAttachment && (
+              <div className="flex items-center px-base pb-half">
+                <button
+                  type="button"
+                  onClick={onBrowseAttachment}
+                  disabled={isSubmitting || isUploading}
+                  className="flex items-center gap-1 text-low hover:text-normal transition-colors disabled:opacity-50"
+                  title={t('kanban.attachImage')}
+                >
+                  <PaperclipIcon className="size-icon-sm" />
+                  <span className="text-sm">{t('kanban.attach')}</span>
+                </button>
+              </div>
+            )}
+            {dropzoneProps?.isDragActive && (
+              <div className="absolute inset-0 z-50 bg-primary/80 backdrop-blur-sm border-2 border-dashed border-brand rounded flex items-center justify-center pointer-events-none animate-in fade-in-0 duration-150">
+                <div className="text-center">
+                  <div className="mx-auto mb-2 w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center">
+                    <ImageIcon className="h-5 w-5 text-brand" />
+                  </div>
+                  <p className="text-sm font-medium text-high">
+                    {t('kanban.dropImagesHere')}
+                  </p>
+                  <p className="text-xs text-low mt-0.5">
+                    {t('kanban.imageDropHint')}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -262,8 +326,8 @@ export function KanbanIssuePanel({
               onCheckedChange={(checked) =>
                 onFormChange('createDraftWorkspace', checked)
               }
-              label="Create draft workspace immediately"
-              description="Tick to automatically create a workspace"
+              label={t('kanban.createDraftWorkspaceImmediately')}
+              description={t('kanban.createDraftWorkspaceDescription')}
               disabled={isSubmitting}
             />
           </div>
@@ -273,7 +337,7 @@ export function KanbanIssuePanel({
         {isCreateMode && (
           <div className="px-base pb-base flex items-center gap-half">
             <PrimaryButton
-              value="Create Task"
+              value={t('kanban.createTask')}
               onClick={onSubmit}
               disabled={isSubmitting || !formData.title.trim()}
               actionIcon={isSubmitting ? 'spinner' : undefined}
@@ -303,6 +367,13 @@ export function KanbanIssuePanel({
         {!isCreateMode && issueId && (
           <div className="border-t">
             <IssueRelationshipsSectionContainer issueId={issueId} />
+          </div>
+        )}
+
+        {/* Attachments Section (Edit mode only) */}
+        {!isCreateMode && issueId && (
+          <div className="border-t">
+            <IssueAttachmentsSectionContainer issueId={issueId} />
           </div>
         )}
 

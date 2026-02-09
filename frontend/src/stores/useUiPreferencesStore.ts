@@ -218,6 +218,7 @@ export const PERSIST_KEYS = {
   // Kanban issue panel sections
   kanbanIssueSubIssues: 'kanban-issue-sub-issues',
   kanbanIssueRelationships: 'kanban-issue-relationships',
+  kanbanIssueAttachments: 'kanban-issue-attachments',
   // Dynamic keys (use helper functions)
   repoCard: (repoId: string) => `repo-card-${repoId}` as const,
 } as const;
@@ -247,6 +248,7 @@ export type PersistKey =
   | typeof PERSIST_KEYS.kanbanLeftPanel
   | typeof PERSIST_KEYS.kanbanIssueSubIssues
   | typeof PERSIST_KEYS.kanbanIssueRelationships
+  | typeof PERSIST_KEYS.kanbanIssueAttachments
   | `repo-card-${string}`
   | `diff:${string}`
   | `edit:${string}`
