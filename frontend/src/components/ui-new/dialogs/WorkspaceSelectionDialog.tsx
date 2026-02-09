@@ -6,7 +6,7 @@ import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
 import { defineModal } from '@/lib/modals';
 import { ApiError, attemptsApi } from '@/lib/api';
 import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
-import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
+import { ErrorDialog } from '@/components/ui-new/dialogs/ErrorDialog';
 import {
   Command,
   CommandDialog,
@@ -145,11 +145,10 @@ function WorkspaceSelectionContent({
           getLinkWorkspaceErrorMessage(err) ??
           t('workspaces.linkError', 'Failed to link workspace');
 
-        await ConfirmDialog.show({
+        await ErrorDialog.show({
           title: t('common:error'),
           message: errorMessage,
-          confirmText: t('common:ok'),
-          showCancelButton: false,
+          buttonText: t('common:ok'),
         });
       } finally {
         setIsLinking(false);
