@@ -130,19 +130,18 @@ export interface CommitAttachmentsResponse {
   attachments: AttachmentWithBlob[];
 }
 
-export interface AttachmentWithUrl extends AttachmentWithBlob {
-  file_url: string | null;
-}
-
-export interface ListAttachmentsResponse {
-  attachments: AttachmentWithUrl[];
-}
-
 // ---------------------------------------------------------------------------
-// Blob URL cache — prevents re-fetching the same attachment blob
+// SAS URL cache with TTL — SAS URLs expire after 5 minutes, cache for 4
 // ---------------------------------------------------------------------------
 
-const blobUrlCache = new Map<string, string>();
+const SAS_URL_TTL_MS = 4 * 60 * 1000;
+
+interface CachedSasUrl {
+  url: string;
+  expiresAt: number;
+}
+
+const sasUrlCache = new Map<string, CachedSasUrl>();
 
 // ---------------------------------------------------------------------------
 // Utility: SHA-256 file hash
@@ -254,36 +253,6 @@ export async function confirmAttachmentUpload(
   return response.json();
 }
 
-export async function listIssueAttachments(
-  issueId: string
-): Promise<ListAttachmentsResponse> {
-  const response = await makeRequest(`/v1/issues/${issueId}/attachments`, {
-    method: 'GET',
-  });
-  if (!response.ok) {
-    throw await parseErrorResponse(
-      response,
-      'Failed to list issue attachments'
-    );
-  }
-  return response.json();
-}
-
-export async function listCommentAttachments(
-  commentId: string
-): Promise<ListAttachmentsResponse> {
-  const response = await makeRequest(`/v1/comments/${commentId}/attachments`, {
-    method: 'GET',
-  });
-  if (!response.ok) {
-    throw await parseErrorResponse(
-      response,
-      'Failed to list comment attachments'
-    );
-  }
-  return response.json();
-}
-
 export async function commitIssueAttachments(
   issueId: string,
   attachmentIds: string[]
@@ -324,14 +293,6 @@ export async function commitCommentAttachments(
   return response.json();
 }
 
-export function getAttachmentFileUrl(attachmentId: string): string {
-  return `${REMOTE_API_URL}/v1/attachments/${attachmentId}/file`;
-}
-
-export function getAttachmentThumbnailUrl(attachmentId: string): string {
-  return `${REMOTE_API_URL}/v1/attachments/${attachmentId}/thumbnail`;
-}
-
 export async function deleteAttachment(attachmentId: string): Promise<void> {
   const response = await makeRequest(`/v1/attachments/${attachmentId}`, {
     method: 'DELETE',
@@ -341,14 +302,14 @@ export async function deleteAttachment(attachmentId: string): Promise<void> {
   }
 }
 
-export async function fetchAttachmentBlobUrl(
+export async function fetchAttachmentSasUrl(
   attachmentId: string,
   type: 'file' | 'thumbnail'
 ): Promise<string> {
   const cacheKey = `${attachmentId}:${type}`;
-  const cached = blobUrlCache.get(cacheKey);
-  if (cached) {
-    return cached;
+  const cached = sasUrlCache.get(cacheKey);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.url;
   }
 
   const response = await makeRequest(`/v1/attachments/${attachmentId}/${type}`);
@@ -358,8 +319,10 @@ export async function fetchAttachmentBlobUrl(
     );
   }
 
-  const blob = await response.blob();
-  const blobUrl = URL.createObjectURL(blob);
-  blobUrlCache.set(cacheKey, blobUrl);
-  return blobUrl;
+  const data: { url: string } = await response.json();
+  sasUrlCache.set(cacheKey, {
+    url: data.url,
+    expiresAt: Date.now() + SAS_URL_TTL_MS,
+  });
+  return data.url;
 }
