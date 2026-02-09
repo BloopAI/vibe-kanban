@@ -1,0 +1,350 @@
+---
+title: "Deploy to Fly.io"
+description: "Deploy Vibe Kanban Cloud to Fly.io for a scalable, global deployment"
+---
+
+[Fly.io](https://fly.io) is a platform for running applications close to users worldwide. This guide walks you through deploying Vibe Kanban Cloud on Fly.io.
+
+## Why Fly.io?
+
+- **Global edge deployment** - Run your instance close to your users
+- **Simple scaling** - Scale up or down with a single command
+- **Managed Postgres** - Built-in PostgreSQL with automatic backups
+- **Free tier** - Generous free tier for small teams
+
+## Prerequisites
+
+- [Fly.io account](https://fly.io/app/sign-up)
+- [flyctl CLI](https://fly.io/docs/hands-on/install-flyctl/) installed
+- OAuth credentials from [GitHub](https://github.com/settings/developers) or [Google](https://console.cloud.google.com/apis/credentials)
+
+## Step 1: Authenticate with Fly.io
+
+```bash
+flyctl auth login
+```
+
+## Step 2: Clone the Repository
+
+```bash
+git clone https://github.com/BloopAI/vibe-kanban.git
+cd vibe-kanban/crates/remote
+```
+
+## Step 3: Create Fly.io App
+
+```bash
+flyctl launch --no-deploy
+```
+
+When prompted:
+- Choose a unique app name (e.g., `vibe-kanban-yourname`)
+- Select a region close to your users
+- Don't set up a Postgres database yet (we'll do this manually)
+- Don't deploy yet
+
+## Step 4: Create PostgreSQL Database
+
+```bash
+flyctl postgres create --name vibe-kanban-db
+```
+
+Choose the same region as your app. For development, the "Development" plan is sufficient.
+
+Attach the database to your app:
+
+```bash
+flyctl postgres attach vibe-kanban-db --app your-app-name
+```
+
+This automatically sets the `DATABASE_URL` secret.
+
+<Warning>
+Fly.io managed Postgres may need `wal_level=logical` enabled for ElectricSQL to work. You can check and set this via:
+
+```bash
+flyctl postgres connect vibe-kanban-db
+# Then run: ALTER SYSTEM SET wal_level = 'logical';
+# Restart the database after
+```
+</Warning>
+
+## Step 5: Configure OAuth
+
+Get your Fly.io app URL:
+
+```bash
+flyctl info
+```
+
+Your app URL will be `https://your-app-name.fly.dev`.
+
+Update your OAuth application:
+
+<Tabs>
+<Tab title="GitHub">
+- **Authorization callback URL**: `https://your-app-name.fly.dev/api/auth/github/callback`
+</Tab>
+
+<Tab title="Google">
+- **Authorized redirect URI**: `https://your-app-name.fly.dev/api/auth/google/callback`
+</Tab>
+</Tabs>
+
+## Step 6: Set Secrets
+
+Generate a JWT secret:
+
+```bash
+openssl rand -base64 48
+```
+
+Set all required secrets:
+
+```bash
+# Required secrets
+flyctl secrets set VIBEKANBAN_REMOTE_JWT_SECRET="<your_generated_secret>"
+flyctl secrets set ELECTRIC_ROLE_PASSWORD="<secure_password>"
+
+# OAuth (at least one required)
+flyctl secrets set GITHUB_OAUTH_CLIENT_ID="your_client_id"
+flyctl secrets set GITHUB_OAUTH_CLIENT_SECRET="your_client_secret"
+flyctl secrets set GOOGLE_OAUTH_CLIENT_ID="your_client_id"
+flyctl secrets set GOOGLE_OAUTH_CLIENT_SECRET="your_client_secret"
+
+# Database (the attach command sets DATABASE_URL, but the server needs SERVER_DATABASE_URL)
+# Get the DATABASE_URL value from: flyctl secrets list
+flyctl secrets set SERVER_DATABASE_URL="<paste_DATABASE_URL_value_here>"
+
+# Public URL
+flyctl secrets set SERVER_PUBLIC_BASE_URL="https://your-app-name.fly.dev"
+flyctl secrets set VITE_APP_BASE_URL="https://your-app-name.fly.dev"
+flyctl secrets set VITE_API_BASE_URL="https://your-app-name.fly.dev"
+
+# Email (optional - leave empty to disable)
+flyctl secrets set LOOPS_EMAIL_API_KEY=""
+```
+
+## Step 7: Create fly.toml
+
+Create `fly.toml` in the `crates/remote` directory:
+
+```toml fly.toml
+app = "your-app-name"
+primary_region = "lhr"  # Change to your preferred region
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  RUST_LOG = "info"
+  SERVER_LISTEN_ADDR = "0.0.0.0:8081"
+
+[http_service]
+  internal_port = 8081
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+[[http_service.checks]]
+  interval = "10s"
+  grace_period = "10s"
+  method = "get"
+  path = "/health"
+  protocol = "http"
+  timeout = "2s"
+
+[[vm]]
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1
+```
+
+## Step 8: Deploy Main Application First
+
+Deploy the main application first so it can create the `electric_sync` database user:
+
+```bash
+flyctl deploy
+```
+
+<Info>
+The first deployment takes 10-15 minutes as it builds the Rust backend. Wait until the health checks pass before proceeding.
+</Info>
+
+## Step 9: Deploy ElectricSQL
+
+ElectricSQL needs to be deployed separately. Create a new app for it:
+
+```bash
+flyctl apps create vibe-kanban-electric
+```
+
+Create `fly.electric.toml`:
+
+```toml fly.electric.toml
+app = "vibe-kanban-electric"
+primary_region = "lhr"
+
+[build]
+  image = "electricsql/electric:1.3.3"
+
+[env]
+  PG_PROXY_PORT = "65432"
+  AUTH_MODE = "insecure"
+  ELECTRIC_INSECURE = "true"
+  ELECTRIC_MANUAL_TABLE_PUBLISHING = "true"
+  ELECTRIC_USAGE_REPORTING = "false"
+  ELECTRIC_FEATURE_FLAGS = "allow_subqueries,tagged_subqueries"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+```
+
+Set ElectricSQL secrets. Note that ElectricSQL needs to connect using the `electric_sync` database user:
+
+```bash
+# Get your postgres connection string
+flyctl postgres connect vibe-kanban-db --app your-app-name
+
+# The DATABASE_URL for Electric must use the electric_sync user (created by the remote server on first startup)
+# Format: postgresql://electric_sync:<ELECTRIC_ROLE_PASSWORD>@<postgres-host>:5432/remote?sslmode=disable
+flyctl secrets set DATABASE_URL="postgresql://electric_sync:<your_electric_password>@<postgres-internal-host>:5432/remote?sslmode=disable" --app vibe-kanban-electric
+flyctl secrets set ELECTRIC_ROLE_PASSWORD="<same_password_as_main_app>" --app vibe-kanban-electric
+```
+
+<Warning>
+ElectricSQL requires the `electric_sync` database user, which is created automatically by the remote server on first startup. You must deploy the main application first before ElectricSQL can connect successfully.
+</Warning>
+
+Deploy ElectricSQL:
+
+```bash
+flyctl deploy --config fly.electric.toml
+```
+
+Update main app with ElectricSQL URL:
+
+```bash
+flyctl secrets set ELECTRIC_URL="https://vibe-kanban-electric.fly.dev"
+```
+
+## Step 10: Verify Deployment
+
+```bash
+flyctl open
+```
+
+This opens your deployed app in the browser. Sign in with your OAuth provider and create your first organisation.
+
+## Connecting Your Client
+
+Configure the Vibe Kanban desktop client:
+
+```bash
+export VK_SHARED_API_BASE=https://your-app-name.fly.dev
+```
+
+## Scaling
+
+### Scale Memory/CPU
+
+```bash
+flyctl scale memory 2048  # 2GB RAM
+flyctl scale vm shared-cpu-2x  # More CPU
+```
+
+### Scale Instances
+
+```bash
+flyctl scale count 2  # Run 2 instances
+```
+
+## Monitoring
+
+### View Logs
+
+```bash
+flyctl logs
+```
+
+### Check Status
+
+```bash
+flyctl status
+```
+
+### SSH into Container
+
+```bash
+flyctl ssh console
+```
+
+## Custom Domain
+
+To use a custom domain:
+
+```bash
+flyctl certs create your-domain.com
+```
+
+Then add a CNAME record pointing to `your-app-name.fly.dev`.
+
+Update your secrets:
+
+```bash
+flyctl secrets set SERVER_PUBLIC_BASE_URL="https://your-domain.com"
+flyctl secrets set VITE_APP_BASE_URL="https://your-domain.com"
+```
+
+Don't forget to update your OAuth callback URLs too.
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="Deployment fails with out of memory">
+The Rust build requires significant memory. Temporarily scale up during build:
+
+```bash
+flyctl scale memory 4096
+flyctl deploy
+flyctl scale memory 1024  # Scale back down
+```
+</Accordion>
+
+<Accordion title="Database connection errors">
+Verify database attachment:
+
+```bash
+flyctl postgres list
+flyctl secrets list
+```
+
+Ensure `DATABASE_URL` is set correctly.
+</Accordion>
+
+<Accordion title="Health checks failing">
+Check application logs:
+
+```bash
+flyctl logs
+```
+
+Ensure the app is listening on the correct port (8081 as configured in fly.toml).
+</Accordion>
+</AccordionGroup>

@@ -127,6 +127,17 @@
         ]
       },
       {
+        "group": "Self-Hosting",
+        "pages": [
+          "self-hosting/index",
+          "self-hosting/local-development",
+          "self-hosting/deploy-docker",
+          "self-hosting/deploy-cloudflare",
+          "self-hosting/deploy-flyio",
+          "self-hosting/deploy-railway"
+        ]
+      },
+      {
         "group": "Integrations",
         "pages": [
           "integrations/github-integration",
