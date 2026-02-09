@@ -44,11 +44,21 @@ COPY assets assets
 
 RUN mkdir -p /app/bin
 
+# When building without FEATURES (self-hosted), strip the private billing dependency
+# and its feature flag from Cargo.toml so cargo doesn't try to fetch the private git repo.
+# Also remove the Cargo.lock which references the private repo.
+RUN if [ -z "${FEATURES}" ]; then \
+      sed -i '/^billing = {.*vibe-kanban-private.*/d' crates/remote/Cargo.toml; \
+      sed -i '/^# private crate for billing/d' crates/remote/Cargo.toml; \
+      sed -i '/^vk-billing = \["dep:billing"\]/d' crates/remote/Cargo.toml; \
+      rm -f crates/remote/Cargo.lock; \
+    fi
+
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/app/target \
     --mount=type=ssh \
-    cargo build --locked --release --manifest-path crates/remote/Cargo.toml ${FEATURES:+--features ${FEATURES}} \
+    cargo build ${FEATURES:+--locked} --release --manifest-path crates/remote/Cargo.toml ${FEATURES:+--features ${FEATURES}} \
  && cp crates/remote/target/release/${APP_NAME} /app/bin/${APP_NAME}
 
 FROM debian:bookworm-slim AS runtime
