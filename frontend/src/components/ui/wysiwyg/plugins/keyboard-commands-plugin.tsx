@@ -2,12 +2,19 @@ import { useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
+  $getSelection,
+  $isRangeSelection,
+  INDENT_CONTENT_COMMAND,
+  KEY_TAB_COMMAND,
   KEY_MODIFIER_COMMAND,
   KEY_ENTER_COMMAND,
+  OUTDENT_CONTENT_COMMAND,
   COMMAND_PRIORITY_NORMAL,
   COMMAND_PRIORITY_HIGH,
+  type LexicalNode,
 } from 'lexical';
 import { $convertToMarkdownString, type Transformer } from '@lexical/markdown';
+import { $isListItemNode } from '@lexical/list';
 import type { SendMessageShortcut } from 'shared/types';
 import { useTypeaheadOpen } from '@/components/ui/wysiwyg/context/typeahead-open-context';
 
@@ -30,7 +37,49 @@ export function KeyboardCommandsPlugin({
   const { isOpen: isTypeaheadOpen } = useTypeaheadOpen();
 
   useEffect(() => {
-    if (!onCmdEnter && !onShiftCmdEnter) return;
+    const isNodeInsideListItem = (node: LexicalNode): boolean => {
+      if ($isListItemNode(node)) {
+        return true;
+      }
+      return node.getParents().some($isListItemNode);
+    };
+
+    const isSelectionInsideListItem = (): boolean => {
+      const selection = $getSelection();
+      if (!$isRangeSelection(selection)) {
+        return false;
+      }
+
+      return (
+        isNodeInsideListItem(selection.anchor.getNode()) ||
+        isNodeInsideListItem(selection.focus.getNode())
+      );
+    };
+
+    const unregisterTab = editor.registerCommand(
+      KEY_TAB_COMMAND,
+      (event: KeyboardEvent) => {
+        // Let typeahead use Tab for option selection.
+        if (isTypeaheadOpen) {
+          return false;
+        }
+
+        if (!isSelectionInsideListItem()) {
+          return false;
+        }
+
+        event.preventDefault();
+        return editor.dispatchCommand(
+          event.shiftKey ? OUTDENT_CONTENT_COMMAND : INDENT_CONTENT_COMMAND,
+          undefined
+        );
+      },
+      COMMAND_PRIORITY_NORMAL
+    );
+
+    if (!onCmdEnter && !onShiftCmdEnter) {
+      return unregisterTab;
+    }
 
     const flushAndSubmit = () => {
       if (onChange && transformers) {
@@ -98,6 +147,7 @@ export function KeyboardCommandsPlugin({
     );
 
     return () => {
+      unregisterTab();
       unregisterModifier();
       unregisterEnter();
     };
