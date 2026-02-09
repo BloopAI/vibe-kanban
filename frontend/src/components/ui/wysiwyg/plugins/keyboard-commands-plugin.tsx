@@ -56,6 +56,33 @@ export function KeyboardCommandsPlugin({
       );
     };
 
+    const getSelectedListItem = (): LexicalNode | null => {
+      const selection = $getSelection();
+      if (!$isRangeSelection(selection)) {
+        return null;
+      }
+
+      // On empty list items Lexical can include adjacent nodes in getNodes().
+      // Prefer the last node so Tab applies to the cursor list item.
+      const nodes = selection.getNodes();
+      for (let i = nodes.length - 1; i >= 0; i--) {
+        const node = nodes[i];
+        if ($isListItemNode(node)) {
+          return node;
+        }
+        const parentListItem = node.getParents().find($isListItemNode);
+        if (parentListItem) {
+          return parentListItem;
+        }
+      }
+
+      const anchorNode = selection.anchor.getNode();
+      if ($isListItemNode(anchorNode)) {
+        return anchorNode;
+      }
+      return anchorNode.getParents().find($isListItemNode) ?? null;
+    };
+
     const unregisterTab = editor.registerCommand(
       KEY_TAB_COMMAND,
       (event: KeyboardEvent) => {
@@ -69,10 +96,38 @@ export function KeyboardCommandsPlugin({
         }
 
         event.preventDefault();
-        return editor.dispatchCommand(
-          event.shiftKey ? OUTDENT_CONTENT_COMMAND : INDENT_CONTENT_COMMAND,
-          undefined
-        );
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection)) {
+          return false;
+        }
+
+        if (!selection.isCollapsed()) {
+          return editor.dispatchCommand(
+            event.shiftKey ? OUTDENT_CONTENT_COMMAND : INDENT_CONTENT_COMMAND,
+            undefined
+          );
+        }
+
+        const listItem = getSelectedListItem();
+        if (!$isListItemNode(listItem)) {
+          return false;
+        }
+
+        if (event.shiftKey) {
+          const indent = listItem.getIndent();
+          if (indent > 0) {
+            listItem.setIndent(indent - 1);
+          }
+          return true;
+        }
+
+        // Match Google Docs behavior: first sibling cannot be indented further.
+        if (!$isListItemNode(listItem.getPreviousSibling())) {
+          return true;
+        }
+
+        listItem.setIndent(listItem.getIndent() + 1);
+        return true;
       },
       COMMAND_PRIORITY_NORMAL
     );
