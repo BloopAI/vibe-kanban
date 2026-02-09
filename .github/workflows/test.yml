@@ -92,6 +92,11 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.VK_PRIVATE_DEPLOY_KEY }}
 
+      - name: Check remote Cargo.lock is up to date
+        run: |
+          cargo generate-lockfile --manifest-path crates/remote/Cargo.toml
+          git diff --exit-code crates/remote/Cargo.lock || (echo "::error::crates/remote/Cargo.lock is out of date. Run 'cargo generate-lockfile --manifest-path crates/remote/Cargo.toml' and commit the result." && exit 1)
+
       - name: Check generated types
         run: npm run remote:generate-types:check
 
