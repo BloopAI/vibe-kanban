@@ -93,8 +93,12 @@ const ConfirmDialogImpl = NiceModal.create<ConfirmDialogProps>((props) => {
             </Button>
           </DialogFooter>
         ) : (
-          <div className="flex justify-end">
-            <Button variant={getConfirmButtonVariant()} onClick={handleConfirm}>
+          <div className="flex w-full">
+            <Button
+              className="ml-auto"
+              variant={getConfirmButtonVariant()}
+              onClick={handleConfirm}
+            >
               {confirmText}
             </Button>
           </div>
