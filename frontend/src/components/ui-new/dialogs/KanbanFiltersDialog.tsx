@@ -126,11 +126,15 @@ export function KanbanFiltersDialog({
   const setShowSubIssues = useUiPreferencesStore((s) => s.setShowSubIssues);
   const setShowWorkspaces = useUiPreferencesStore((s) => s.setShowWorkspaces);
 
-  const { activeViewId, filters: kanbanFilters, showSubIssues, showWorkspaces } =
-    useMemo(
-      () => resolveKanbanProjectState(projectViewState),
-      [projectViewState]
-    );
+  const {
+    activeViewId,
+    filters: kanbanFilters,
+    showSubIssues,
+    showWorkspaces,
+  } = useMemo(
+    () => resolveKanbanProjectState(projectViewState),
+    [projectViewState]
+  );
 
   const viewOptions: PropertyDropdownOption<string>[] = useMemo(() => {
     if (!projectViewState || projectViewState.views.length === 0) {

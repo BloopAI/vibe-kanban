@@ -181,7 +181,9 @@ export const resolveKanbanProjectState = (
 ): ResolvedKanbanProjectState => {
   const defaultState = createDefaultKanbanProjectViewsState();
   const activeViewId = projectState?.activeViewId ?? defaultState.activeViewId;
-  const views = projectState?.views.length ? projectState.views : defaultState.views;
+  const views = projectState?.views.length
+    ? projectState.views
+    : defaultState.views;
   const activeView =
     views.find((view) => view.id === activeViewId) ??
     defaultState.views.find((view) => view.id === activeViewId) ??
@@ -191,7 +193,8 @@ export const resolveKanbanProjectState = (
     activeViewId,
     activeView,
     filters: projectState?.draft.filters ?? activeView.filters,
-    showSubIssues: projectState?.draft.showSubIssues ?? activeView.showSubIssues,
+    showSubIssues:
+      projectState?.draft.showSubIssues ?? activeView.showSubIssues,
     showWorkspaces:
       projectState?.draft.showWorkspaces ?? activeView.showWorkspaces,
   };

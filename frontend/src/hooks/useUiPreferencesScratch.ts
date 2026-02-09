@@ -198,8 +198,7 @@ function scratchDataToStore(data: UiPreferencesData): {
         },
         showSubIssues:
           view.show_sub_issues ?? getDefaultShowSubIssuesForView(view.id),
-        showWorkspaces:
-          view.show_workspaces ?? DEFAULT_KANBAN_SHOW_WORKSPACES,
+        showWorkspaces: view.show_workspaces ?? DEFAULT_KANBAN_SHOW_WORKSPACES,
       };
     });
 
