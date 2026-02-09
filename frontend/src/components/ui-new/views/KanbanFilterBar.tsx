@@ -67,6 +67,7 @@ export function KanbanFilterBar({
     (s) => s.kanbanProjectViewsByProject[projectId]
   );
   const applyKanbanView = useUiPreferencesStore((s) => s.applyKanbanView);
+  const clearKanbanFilters = useUiPreferencesStore((s) => s.clearKanbanFilters);
   const setKanbanSearchQuery = useUiPreferencesStore(
     (s) => s.setKanbanSearchQuery
   );
@@ -122,6 +123,15 @@ export function KanbanFilterBar({
         >
           <FunnelIcon className="size-icon-sm" weight="bold" />
         </button>
+
+        {hasActiveFilters && (
+          <PrimaryButton
+            variant="tertiary"
+            value={t('kanban.clearFilters', 'Clear filters')}
+            actionIcon={XIcon}
+            onClick={() => clearKanbanFilters(projectId)}
+          />
+        )}
 
         <PrimaryButton
           variant="secondary"
