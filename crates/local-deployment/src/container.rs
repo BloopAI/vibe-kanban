@@ -1208,6 +1208,27 @@ impl ContainerService for LocalContainerService {
         env.insert("VK_WORKSPACE_BRANCH", &workspace.branch);
         env.insert("VK_SESSION_ID", execution_process.session_id.to_string());
 
+        // Inject organization ID from remote project if available
+        if let Some(remote_project_id) = project.remote_project_id {
+            if let Some(client) = &self.remote_client {
+                match client.get_remote_project(remote_project_id).await {
+                    Ok(remote_project) => {
+                        env.insert(
+                            "VK_ORGANIZATION_ID",
+                            remote_project.organization_id.to_string(),
+                        );
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "Failed to fetch remote project {} for org ID injection: {}",
+                            remote_project_id,
+                            e
+                        );
+                    }
+                }
+            }
+        }
+
         // Create the child and stream, add to execution tracker with timeout
         let mut spawned = tokio::time::timeout(
             Duration::from_secs(30),

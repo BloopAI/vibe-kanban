@@ -5,7 +5,6 @@ use utils::{
     port_file::read_port_file,
     sentry::{self as sentry_utils, SentrySource, sentry_layer},
 };
-use uuid::Uuid;
 
 fn main() -> anyhow::Result<()> {
     // Install rustls crypto provider before any TLS operations
@@ -63,25 +62,7 @@ fn main() -> anyhow::Result<()> {
                 url
             };
 
-            let organization_id = std::env::var("VK_ORGANIZATION_ID").ok().and_then(|s| {
-                s.parse::<Uuid>().ok().or_else(|| {
-                    tracing::warn!(
-                        "[MCP] VK_ORGANIZATION_ID '{}' is not a valid UUID, ignoring",
-                        s
-                    );
-                    None
-                })
-            });
-
-            if let Some(org_id) = &organization_id {
-                tracing::info!("[MCP] Using organization ID: {}", org_id);
-            } else {
-                tracing::debug!(
-                    "[MCP] No VK_ORGANIZATION_ID set, list_projects will not be available"
-                );
-            }
-
-            let service = TaskServer::new(&base_url, organization_id)
+            let service = TaskServer::new(&base_url)
                 .init()
                 .await
                 .serve(stdio())

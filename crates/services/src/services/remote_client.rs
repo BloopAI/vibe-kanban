@@ -687,6 +687,14 @@ impl RemoteClient {
 
     // ── Remote Projects ─────────────────────────────────────────────────
 
+    /// Gets a single remote project by ID.
+    pub async fn get_remote_project(
+        &self,
+        project_id: Uuid,
+    ) -> Result<api_types::Project, RemoteClientError> {
+        self.get_authed(&format!("/v1/projects/{project_id}")).await
+    }
+
     /// Lists projects for an organization.
     pub async fn list_remote_projects(
         &self,

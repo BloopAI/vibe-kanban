@@ -1,6 +1,9 @@
 use std::str::FromStr;
 
-use api_types::{Issue, ListIssuesResponse, ListProjectStatusesResponse, ProjectStatus};
+use api_types::{
+    Issue, ListIssuesResponse, ListOrganizationsResponse, ListProjectStatusesResponse,
+    ProjectStatus,
+};
 use db::models::{
     repo::Repo,
     tag::Tag,
@@ -143,9 +146,33 @@ pub struct ListReposResponse {
     pub project_id: String,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct McpListProjectsRequest {
+    #[schemars(description = "The ID of the organization to list projects from")]
+    pub organization_id: Uuid,
+}
+
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct McpListProjectsResponse {
     pub projects: Vec<ProjectSummary>,
+    pub count: usize,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct OrganizationSummary {
+    #[schemars(description = "The unique identifier of the organization")]
+    pub id: String,
+    #[schemars(description = "The name of the organization")]
+    pub name: String,
+    #[schemars(description = "The slug of the organization")]
+    pub slug: String,
+    #[schemars(description = "Whether this is a personal organization")]
+    pub is_personal: bool,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct McpListOrganizationsResponse {
+    pub organizations: Vec<OrganizationSummary>,
     pub count: usize,
 }
 
@@ -271,7 +298,6 @@ pub struct TaskServer {
     base_url: String,
     tool_router: ToolRouter<TaskServer>,
     context: Option<McpContext>,
-    organization_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
@@ -298,13 +324,12 @@ pub struct McpContext {
 }
 
 impl TaskServer {
-    pub fn new(base_url: &str, organization_id: Option<Uuid>) -> Self {
+    pub fn new(base_url: &str) -> Self {
         Self {
             client: reqwest::Client::new(),
             base_url: base_url.to_string(),
             tool_router: Self::tool_router(),
             context: None,
-            organization_id,
         }
     }
 
@@ -674,18 +699,14 @@ impl TaskServer {
     }
 
     #[tool(description = "List all the available projects")]
-    async fn list_projects(&self) -> Result<CallToolResult, ErrorData> {
-        let org_id = match self.organization_id {
-            Some(id) => id,
-            None => {
-                return Self::err(
-                    "Organization ID not configured. Set VK_ORGANIZATION_ID environment variable.",
-                    None::<&str>,
-                );
-            }
-        };
-
-        let url = self.url(&format!("/api/remote/projects?organization_id={}", org_id));
+    async fn list_projects(
+        &self,
+        Parameters(McpListProjectsRequest { organization_id }): Parameters<McpListProjectsRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!(
+            "/api/remote/projects?organization_id={}",
+            organization_id
+        ));
         let response: api_types::ListProjectsResponse =
             match self.send_json(self.client.get(&url)).await {
                 Ok(r) => r,
@@ -701,6 +722,32 @@ impl TaskServer {
         TaskServer::success(&McpListProjectsResponse {
             count: project_summaries.len(),
             projects: project_summaries,
+        })
+    }
+
+    #[tool(description = "List all the available organizations")]
+    async fn list_organizations(&self) -> Result<CallToolResult, ErrorData> {
+        let url = self.url("/api/organizations");
+        let response: ListOrganizationsResponse =
+            match self.send_json(self.client.get(&url)).await {
+                Ok(r) => r,
+                Err(e) => return Ok(e),
+            };
+
+        let org_summaries: Vec<OrganizationSummary> = response
+            .organizations
+            .into_iter()
+            .map(|o| OrganizationSummary {
+                id: o.id.to_string(),
+                name: o.name,
+                slug: o.slug,
+                is_personal: o.is_personal,
+            })
+            .collect();
+
+        TaskServer::success(&McpListOrganizationsResponse {
+            count: org_summaries.len(),
+            organizations: org_summaries,
         })
     }
 
@@ -1041,7 +1088,7 @@ impl TaskServer {
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
-        let mut instruction = "A task and project management server. If you need to create or update tickets or issues then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list_projects`. Call `list_issues` to fetch the issue IDs of all issues in a project. TOOLS: 'list_projects', 'list_issues', 'create_issue', 'start_workspace_session', 'get_issue', 'update_issue', 'delete_issue', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script'. Make sure to pass `project_id`, `issue_id`, or `repo_id` where required. You can use list tools to get the available ids.".to_string();
+        let mut instruction = "A task and project management server. If you need to create or update tickets or issues then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_issues` to fetch the `issue_ids` of all the issues in a project. TOOLS: 'list_organizations', 'list_projects', 'list_issues', 'create_issue', 'start_workspace_session', 'get_issue', 'update_issue', 'delete_issue', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script'. Make sure to pass `project_id`, `issue_id`, or `repo_id` where required. You can use list tools to get the available ids.".to_string();
         if self.context.is_some() {
             let context_instruction = "Use 'get_context' to fetch project/issue/workspace metadata for the active Vibe Kanban workspace session when available.";
             instruction = format!("{} {}", context_instruction, instruction);
