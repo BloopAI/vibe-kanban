@@ -259,8 +259,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const repoWithConflicts = useMemo(
     () =>
       branchStatus?.find(
-        (r) =>
-          r.is_rebase_in_progress || (r.conflicted_files?.length ?? 0) > 0
+        (r) => r.is_rebase_in_progress || (r.conflicted_files?.length ?? 0) > 0
       ),
     [branchStatus]
   );

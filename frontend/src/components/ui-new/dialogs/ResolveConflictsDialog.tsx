@@ -64,7 +64,9 @@ const ResolveConflictsDialogImpl =
       // Auto-dismiss when the user switches to a different workspace
       useEffect(() => {
         if (activeWorkspaceId && activeWorkspaceId !== workspaceId) {
-          modal.resolve({ action: 'cancelled' } as ResolveConflictsDialogResult);
+          modal.resolve({
+            action: 'cancelled',
+          } as ResolveConflictsDialogResult);
           modal.hide();
         }
       }, [activeWorkspaceId, workspaceId, modal]);
