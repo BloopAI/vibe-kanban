@@ -1,4 +1,4 @@
-import type { RefCallback } from 'react';
+import type { RefObject } from 'react';
 import { cn } from '@/lib/utils';
 import {
   XIcon,
@@ -20,6 +20,7 @@ import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { Toggle } from '@/components/ui-new/primitives/Toggle';
 import { CopyButton } from '@/components/ui-new/containers/CopyButton';
 import { IconButton } from '@/components/ui-new/primitives/IconButton';
+import { AutoResizeTextarea } from '@/components/ui-new/primitives/AutoResizeTextarea';
 import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/IssueCommentsSectionContainer';
 import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/IssueSubIssuesSectionContainer';
 import { IssueRelationshipsSectionContainer } from '@/components/ui-new/containers/IssueRelationshipsSectionContainer';
@@ -86,8 +87,8 @@ export interface KanbanIssuePanelProps {
   // Save status for description field
   descriptionSaveStatus?: 'idle' | 'saved';
 
-  // Callback ref for title input (created in container)
-  titleRef: RefCallback<HTMLDivElement>;
+  // Ref for title input (created in container)
+  titleInputRef: RefObject<HTMLTextAreaElement>;
 
   // Copy link callback (edit mode only)
   onCopyLink?: () => void;
@@ -117,7 +118,7 @@ export function KanbanIssuePanel({
   onCreateTag,
   isSubmitting,
   descriptionSaveStatus,
-  titleRef,
+  titleInputRef,
   onCopyLink,
   onMoreActions,
 }: KanbanIssuePanelProps) {
@@ -134,7 +135,7 @@ export function KanbanIssuePanel({
     }
   };
 
-  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
       onCmdEnterSubmit?.();
@@ -219,35 +220,22 @@ export function KanbanIssuePanel({
         {/* Title and Description */}
         <div className="rounded-sm">
           {/* Title Input */}
-          <div className="relative w-full mt-base">
-            <div
-              ref={titleRef}
-              role="textbox"
-              contentEditable={!isSubmitting}
-              suppressContentEditableWarning
-              data-empty={!formData.title ? 'true' : 'false'}
-              onInput={(e) => {
-                const v = e.currentTarget.textContent ?? '';
-                onFormChange('title', v);
-              }}
+          <div className="w-full mt-base">
+            <AutoResizeTextarea
+              ref={titleInputRef}
+              value={formData.title}
+              onChange={(value) => onFormChange('title', value)}
               onKeyDown={handleTitleKeyDown}
+              placeholder="Issue Title..."
+              autoFocus={isCreateMode}
+              aria-label="Issue title"
+              disabled={isSubmitting}
               className={cn(
-                'w-full bg-transparent text-high font-medium text-lg px-base',
-                'focus:outline-none',
+                'px-base text-lg font-medium text-high',
+                'placeholder:text-high/50',
                 isSubmitting && 'opacity-50 pointer-events-none'
               )}
             />
-
-            <div
-              className={cn(
-                'pointer-events-none absolute inset-0 px-base',
-                'text-high/50 font-medium text-lg',
-                'hidden',
-                "[[data-empty='true']_+_&]:block" // show placeholder when previous sibling data-empty=true
-              )}
-            >
-              Issue Title...
-            </div>
           </div>
 
           {/* Description WYSIWYG Editor */}

@@ -211,9 +211,7 @@ export function KanbanIssuePanelContainer() {
 
   // Track previous issue ID to detect actual issue switches (not just data updates)
   const prevIssueIdRef = useRef<string | null>(null);
-
-  // Track previous issue ID for title content sync
-  const lastTitleIssueIdRef = useRef<string | null | undefined>(null);
+  const titleInputRef = useRef<HTMLTextAreaElement>(null);
 
   const [formState, dispatchFormState] = useReducer(
     kanbanIssuePanelFormReducer,
@@ -223,45 +221,23 @@ export function KanbanIssuePanelContainer() {
   const createFormData = formState.createFormData;
   const isDraftAutosavePaused = formState.isDraftAutosavePaused;
 
-  // Callback ref that handles title content sync and auto-focus
-  const titleRefCallback = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (node) {
-        // Set title content when issue changes
-        if (selectedKanbanIssueId !== lastTitleIssueIdRef.current) {
-          const title =
-            mode === 'create'
-              ? (createFormData?.title ?? '')
-              : (selectedIssue?.title ?? '');
-          node.textContent = title;
-          lastTitleIssueIdRef.current = selectedKanbanIssueId;
-        } else if (mode === 'create') {
-          const title = createFormData?.title ?? '';
-          if (node.textContent !== title) {
-            // Handle late scratch restore and explicit clear after draft delete
-            node.textContent = title;
-          }
-        }
-        // Auto-focus in create mode after any dialog close focus handling runs.
-        // Avoid resetting caret while the user is actively editing the title.
-        if (mode === 'create' && document.activeElement !== node) {
-          requestAnimationFrame(() => {
-            node.focus();
-            // Place cursor at end of content (not start)
-            if (node.textContent) {
-              const selection = window.getSelection();
-              const range = document.createRange();
-              range.selectNodeContents(node);
-              range.collapse(false);
-              selection?.removeAllRanges();
-              selection?.addRange(range);
-            }
-          });
-        }
-      }
-    },
-    [selectedKanbanIssueId, selectedIssue?.title, mode, createFormData?.title]
-  );
+  useEffect(() => {
+    if (mode !== 'create') return;
+
+    const titleInput = titleInputRef.current;
+    if (!titleInput || document.activeElement === titleInput) return;
+
+    const frameId = requestAnimationFrame(() => {
+      const node = titleInputRef.current;
+      if (!node || document.activeElement === node) return;
+
+      node.focus();
+      const caretIndex = node.value.length;
+      node.setSelectionRange(caretIndex, caretIndex);
+    });
+
+    return () => cancelAnimationFrame(frameId);
+  }, [mode, selectedKanbanIssueId, createFormData?.title]);
 
   // Display ID: use real simple_id in edit mode, placeholder for create mode
   const displayId = useMemo(() => {
@@ -905,7 +881,7 @@ export function KanbanIssuePanelContainer() {
       descriptionSaveStatus={
         mode === 'edit' ? descriptionSaveStatus : undefined
       }
-      titleRef={titleRefCallback}
+      titleInputRef={titleInputRef}
       onDeleteDraft={
         mode === 'create' && isCreateDraftDirty ? handleDeleteDraft : undefined
       }
