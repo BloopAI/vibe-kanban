@@ -28,7 +28,10 @@ const ErrorDialogImpl = NiceModal.create<ErrorDialogProps>((props) => {
   };
 
   return (
-    <Dialog open={modal.visible} onOpenChange={(open) => !open && handleDismiss()}>
+    <Dialog
+      open={modal.visible}
+      onOpenChange={(open) => !open && handleDismiss()}
+    >
       <DialogContent className="sm:max-w-[425px]" style={{ zIndex: 10001 }}>
         <DialogHeader>
           <div className="flex items-center gap-3">
