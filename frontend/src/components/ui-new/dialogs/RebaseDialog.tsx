@@ -20,6 +20,7 @@ import { useAttempt } from '@/hooks/useAttempt';
 import { useRepoBranches } from '@/hooks/useRepoBranches';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import type { Result } from '@/lib/api';
 import { ResolveConflictsDialog } from './ResolveConflictsDialog';
 import { RebaseInProgressDialog } from './RebaseInProgressDialog';
@@ -45,6 +46,7 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
 
   const git = useGitOperations(attemptId, repoId);
   const { data: workspace } = useAttempt(attemptId);
+  const { workspaceId: activeWorkspaceId } = useWorkspaceContext();
 
   // Load branches and repo data internally
   const { data: branches = [], isLoading: branchesLoading } =
@@ -65,6 +67,7 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
   const hasConflictedFiles = (repoStatus?.conflicted_files?.length ?? 0) > 0;
 
   // If rebase is in progress, redirect to the appropriate dialog
+  // Only show if the user is still viewing this workspace
   useEffect(() => {
     if (
       !isInitialLoading &&
@@ -72,6 +75,8 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
       repoStatus
     ) {
       modal.hide();
+
+      if (activeWorkspaceId !== attemptId) return;
 
       if (hasConflictedFiles) {
         // Rebase in progress WITH conflicts -> show resolve conflicts dialog
@@ -101,6 +106,7 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
     repoId,
     workspace?.branch,
     modal,
+    activeWorkspaceId,
   ]);
 
   // Reset initialization flag when attemptId or repoId changes
@@ -136,16 +142,18 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
 
       if (errorData?.type === 'merge_conflicts') {
         // Hide this dialog and show the resolve conflicts dialog
-        // Use conflict details directly from the error response (no extra API call needed)
+        // Only show if the user is still viewing this workspace
         modal.hide();
-        await ResolveConflictsDialog.show({
-          workspaceId: attemptId,
-          conflictOp: errorData.op,
-          sourceBranch: workspace?.branch ?? null,
-          targetBranch: errorData.target_branch,
-          conflictedFiles: errorData.conflicted_files,
-          repoName: undefined,
-        });
+        if (activeWorkspaceId === attemptId) {
+          await ResolveConflictsDialog.show({
+            workspaceId: attemptId,
+            conflictOp: errorData.op,
+            sourceBranch: workspace?.branch ?? null,
+            targetBranch: errorData.target_branch,
+            conflictedFiles: errorData.conflicted_files,
+            repoName: undefined,
+          });
+        }
         return;
       }
 

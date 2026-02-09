@@ -94,6 +94,7 @@ interface StatsProps {
   linesRemoved?: number;
   hasConflicts?: boolean;
   conflictedFilesCount?: number;
+  onResolveConflicts?: () => void;
 }
 
 interface FeedbackModeProps {
@@ -572,9 +573,11 @@ export function SessionChatBox({
               ) : (
                 <>
                   {stats?.hasConflicts && (
-                    <span
-                      className="flex items-center gap-1 text-warning text-sm min-w-0"
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-warning text-sm min-w-0 cursor-pointer hover:underline"
                       title={t('conversation.approval.conflictWarning')}
+                      onClick={stats.onResolveConflicts}
                     >
                       <WarningIcon className="size-icon-sm flex-shrink-0" />
                       <span className="truncate">
@@ -582,7 +585,7 @@ export function SessionChatBox({
                           count: stats.conflictedFilesCount,
                         })}
                       </span>
-                    </span>
+                    </button>
                   )}
                   {onOpenWorkspace ? (
                     <PrimaryButton
