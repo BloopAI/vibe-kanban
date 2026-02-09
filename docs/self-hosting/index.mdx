@@ -92,11 +92,18 @@ The `electric_sync` database user is created automatically by the Remote Server 
 You need to configure at least one OAuth provider (GitHub or Google). You can configure both for user choice.
 </Info>
 
+### Server URLs
+
+| Variable | Description |
+|----------|-------------|
+| `SERVER_PUBLIC_BASE_URL` | **Required.** Public URL of your deployment (e.g., `https://vk.example.com`). The server will fail to start without this. |
+| `VITE_APP_BASE_URL` | Public URL used by the frontend (typically same as `SERVER_PUBLIC_BASE_URL`) |
+| `VITE_API_BASE_URL` | API URL used by the frontend (typically same as `SERVER_PUBLIC_BASE_URL`) |
+
 ### Optional
 
 | Variable | Description |
 |----------|-------------|
-| `SERVER_PUBLIC_BASE_URL` | Public URL of your deployment (e.g., `https://vk.example.com`) |
 | `STRIPE_SECRET_KEY` | Stripe API key for billing (leave empty to disable billing) |
 | `R2_ACCESS_KEY_ID` | Cloudflare R2 access key for code review storage |
 | `GITHUB_APP_ID` | GitHub App ID for deeper GitHub integration |

@@ -33,7 +33,7 @@ You need at least one OAuth provider. Choose GitHub, Google, or both.
 3. Fill in the details:
    - **Application name**: Vibe Kanban Local
    - **Homepage URL**: `http://localhost:3000`
-   - **Authorization callback URL**: `http://localhost:3000/api/auth/github/callback`
+   - **Authorization callback URL**: `http://localhost:3000/v1/oauth/github/callback`
 4. Click **Register application**
 5. Copy the **Client ID**
 6. Click **Generate a new client secret** and copy it
@@ -46,7 +46,7 @@ You need at least one OAuth provider. Choose GitHub, Google, or both.
 2. Create a new project or select an existing one
 3. Click **Create Credentials** → **OAuth client ID**
 4. Select **Web application**
-5. Add authorized redirect URI: `http://localhost:3000/api/auth/google/callback`
+5. Add authorized redirect URI: `http://localhost:3000/v1/oauth/google/callback`
 6. Click **Create**
 7. Copy the **Client ID** and **Client Secret**
 
@@ -183,8 +183,8 @@ docker compose logs remote-db
 
 <Accordion title="OAuth callback errors">
 Verify your OAuth callback URLs match exactly:
-- GitHub: `http://localhost:3000/api/auth/github/callback`
-- Google: `http://localhost:3000/api/auth/google/callback`
+- GitHub: `http://localhost:3000/v1/oauth/github/callback`
+- Google: `http://localhost:3000/v1/oauth/google/callback`
 </Accordion>
 
 <Accordion title="Port already in use">
