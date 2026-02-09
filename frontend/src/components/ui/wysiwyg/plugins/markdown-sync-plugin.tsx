@@ -7,6 +7,17 @@ import {
 } from '@lexical/markdown';
 import { $getRoot, type EditorState } from 'lexical';
 
+const DEBUG_PREFIX = '[WYSIWYG_DEBUG]';
+
+function debugLog(message: string, payload?: unknown) {
+  if (!import.meta.env.DEV) return;
+  if (payload === undefined) {
+    console.log(DEBUG_PREFIX, message);
+    return;
+  }
+  console.log(DEBUG_PREFIX, message, payload);
+}
+
 type MarkdownSyncPluginProps = {
   value: string;
   onChange?: (markdown: string) => void;
@@ -37,7 +48,17 @@ export function MarkdownSyncPlugin({
 
   // Handle controlled value changes (external → editor)
   useEffect(() => {
-    if (value === lastSerializedRef.current) return;
+    if (value === lastSerializedRef.current) {
+      debugLog('markdown-sync: skip external->editor (value unchanged)', {
+        valueLength: value.length,
+      });
+      return;
+    }
+
+    debugLog('markdown-sync: begin external->editor', {
+      valueLength: value.length,
+      valuePreview: value.slice(0, 120),
+    });
 
     try {
       editor.update(() => {
@@ -57,9 +78,21 @@ export function MarkdownSyncPlugin({
             lastNode.selectEnd();
           }
         }
+
+        const root = $getRoot();
+        debugLog('markdown-sync: applied external->editor update', {
+          rootChildren: root.getChildren().map((node) => ({
+            key: node.getKey(),
+            type: node.getType(),
+            textPreview: node.getTextContent().slice(0, 60),
+          })),
+        });
       });
       lastSerializedRef.current = value;
     } catch (err) {
+      debugLog('markdown-sync: external->editor failed', {
+        error: err instanceof Error ? err.message : String(err),
+      });
       console.error('Failed to parse markdown', err);
     }
   }, [editor, value, transformers]);
@@ -73,8 +106,17 @@ export function MarkdownSyncPlugin({
       const markdown = editorState.read(() =>
         $convertToMarkdownString(transformers)
       );
-      if (markdown === lastSerializedRef.current) return;
+      if (markdown === lastSerializedRef.current) {
+        debugLog('markdown-sync: skip editor->external (markdown unchanged)', {
+          markdownLength: markdown.length,
+        });
+        return;
+      }
 
+      debugLog('markdown-sync: emit editor->external update', {
+        markdownLength: markdown.length,
+        markdownPreview: markdown.slice(0, 120),
+      });
       lastSerializedRef.current = markdown;
       onChange(markdown);
     });
