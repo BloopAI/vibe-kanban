@@ -156,7 +156,8 @@ pub struct CreateAndStartTaskRequest {
 
 struct ImportedImage {
     image_id: Uuid,
-    markdown: String,
+    attachment_id: Uuid,
+    vibe_path: String,
 }
 
 /// Downloads attachments from a remote issue and stores them in the local cache.
@@ -209,18 +210,12 @@ async fn import_issue_attachments(
             }
         };
 
-        // Associate with the task (will be done in bulk by caller via image_ids,
-        // but we still need the IDs)
-        let markdown = format!(
-            "![{}]({}/{})",
-            attachment.original_name,
-            utils::path::VIBE_IMAGES_DIR,
-            image.file_path
-        );
+        let vibe_path = format!("{}/{}", utils::path::VIBE_IMAGES_DIR, image.file_path);
 
         imported.push(ImportedImage {
             image_id: image.id,
-            markdown,
+            attachment_id: attachment.id,
+            vibe_path,
         });
     }
 
@@ -246,15 +241,13 @@ pub async fn create_task_and_start(
     {
         match import_issue_attachments(&client, deployment.image(), linked_issue.issue_id).await {
             Ok(imported) if !imported.is_empty() => {
-                let image_section = imported
-                    .iter()
-                    .map(|i| i.markdown.as_str())
-                    .collect::<Vec<_>>()
-                    .join("\n\n");
-                payload.task.description = Some(match &payload.task.description {
-                    Some(desc) => format!("{}\n\n{}", desc, image_section),
-                    None => image_section,
-                });
+                // Replace attachment:// references with local .vibe-images/ paths
+                if let Some(desc) = &mut payload.task.description {
+                    for img in &imported {
+                        let placeholder = format!("attachment://{}", img.attachment_id);
+                        *desc = desc.replace(&placeholder, &img.vibe_path);
+                    }
+                }
 
                 let imported_ids: Vec<Uuid> = imported.iter().map(|i| i.image_id).collect();
                 match &mut payload.task.image_ids {

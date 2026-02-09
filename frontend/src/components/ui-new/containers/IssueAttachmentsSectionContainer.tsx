@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
-import { deleteAttachment, fetchAttachmentBlobUrl } from '@/lib/remoteApi';
+import { deleteAttachment, fetchAttachmentSasUrl } from '@/lib/remoteApi';
 import { ImagePreviewDialog } from '@/components/dialogs/wysiwyg/ImagePreviewDialog';
 import {
   IssueAttachmentsSection,
@@ -43,10 +43,10 @@ export function IssueAttachmentsSectionContainer({
       const attachment = attachments.find((a) => a.id === attachmentId);
       if (!attachment) return;
 
-      fetchAttachmentBlobUrl(attachmentId, 'file')
-        .then((blobUrl) => {
+      fetchAttachmentSasUrl(attachmentId, 'file')
+        .then((sasUrl) => {
           ImagePreviewDialog.show({
-            imageUrl: blobUrl,
+            imageUrl: sasUrl,
             altText: attachment.filename,
             fileName: attachment.filename,
             format: attachment.mime_type?.split('/')[1],

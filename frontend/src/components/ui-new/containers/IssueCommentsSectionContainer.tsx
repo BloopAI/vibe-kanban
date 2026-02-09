@@ -6,7 +6,8 @@ import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useCurrentUser } from '@/hooks/auth/useCurrentUser';
 import { useAzureAttachments } from '@/hooks/useAzureAttachments';
-import { commitCommentAttachments } from '@/lib/remoteApi';
+import { commitCommentAttachments, deleteAttachment } from '@/lib/remoteApi';
+import { extractAttachmentIds } from '@/lib/attachmentUtils';
 import {
   IssueCommentsSection,
   type IssueCommentData,
@@ -189,20 +190,32 @@ function IssueCommentsSectionContent() {
 
   const handleSubmitComment = useCallback(async () => {
     if (!commentInput.trim()) return;
+    const message = commentInput.trim();
     const { persisted } = issueContext.insertComment({
       issue_id: issueContext.issueId,
-      message: commentInput.trim(),
+      message,
       parent_id: null,
     });
     setCommentInput('');
 
-    const attachmentIds = getAttachmentIds();
-    if (attachmentIds.length > 0) {
-      try {
-        const confirmedComment = await persisted;
-        await commitCommentAttachments(confirmedComment.id, attachmentIds);
-      } catch (err) {
-        console.error('Failed to commit comment attachments:', err);
+    const allUploadedIds = getAttachmentIds();
+    if (allUploadedIds.length > 0) {
+      const referencedIds = extractAttachmentIds(message);
+      const idsToCommit = allUploadedIds.filter((id) => referencedIds.has(id));
+      const idsToDelete = allUploadedIds.filter((id) => !referencedIds.has(id));
+
+      if (idsToCommit.length > 0) {
+        try {
+          const confirmedComment = await persisted;
+          await commitCommentAttachments(confirmedComment.id, idsToCommit);
+        } catch (err) {
+          console.error('Failed to commit comment attachments:', err);
+        }
+      }
+      for (const id of idsToDelete) {
+        deleteAttachment(id).catch((err) =>
+          console.error('Failed to delete abandoned attachment:', err)
+        );
       }
     }
     clearAttachments();
