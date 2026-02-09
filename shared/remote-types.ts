@@ -98,16 +98,12 @@ export type CreateIssueAssigneeRequest = {
  */
 id?: string, issue_id: string, user_id: string, };
 
-export type UpdateIssueAssigneeRequest = { user_id: string | null, };
-
 export type CreateIssueFollowerRequest = { 
 /**
  * Optional client-generated ID. If not provided, server generates one.
  * Using client-generated IDs enables stable optimistic updates.
  */
 id?: string, issue_id: string, user_id: string, };
-
-export type UpdateIssueFollowerRequest = { user_id: string | null, };
 
 export type CreateIssueTagRequest = { 
 /**
@@ -116,16 +112,12 @@ export type CreateIssueTagRequest = {
  */
 id?: string, issue_id: string, tag_id: string, };
 
-export type UpdateIssueTagRequest = { tag_id: string | null, };
-
 export type CreateIssueRelationshipRequest = { 
 /**
  * Optional client-generated ID. If not provided, server generates one.
  * Using client-generated IDs enables stable optimistic updates.
  */
 id?: string, issue_id: string, related_issue_id: string, relationship_type: IssueRelationshipType, };
-
-export type UpdateIssueRelationshipRequest = { related_issue_id: string | null, relationship_type: IssueRelationshipType | null, };
 
 export type CreateIssueCommentRequest = { 
 /**
@@ -306,22 +298,22 @@ export const ISSUE_MUTATION = defineMutation<Issue, CreateIssueRequest, UpdateIs
   '/v1/issues'
 );
 
-export const ISSUE_ASSIGNEE_MUTATION = defineMutation<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest>(
+export const ISSUE_ASSIGNEE_MUTATION = defineMutation<IssueAssignee, CreateIssueAssigneeRequest, unknown>(
   'IssueAssignee',
   '/v1/issue_assignees'
 );
 
-export const ISSUE_FOLLOWER_MUTATION = defineMutation<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest>(
+export const ISSUE_FOLLOWER_MUTATION = defineMutation<IssueFollower, CreateIssueFollowerRequest, unknown>(
   'IssueFollower',
   '/v1/issue_followers'
 );
 
-export const ISSUE_TAG_MUTATION = defineMutation<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest>(
+export const ISSUE_TAG_MUTATION = defineMutation<IssueTag, CreateIssueTagRequest, unknown>(
   'IssueTag',
   '/v1/issue_tags'
 );
 
-export const ISSUE_RELATIONSHIP_MUTATION = defineMutation<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest>(
+export const ISSUE_RELATIONSHIP_MUTATION = defineMutation<IssueRelationship, CreateIssueRelationshipRequest, unknown>(
   'IssueRelationship',
   '/v1/issue_relationships'
 );
