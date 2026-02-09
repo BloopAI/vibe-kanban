@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchAttachmentBlobUrl } from '@/lib/remoteApi';
+import { fetchAttachmentSasUrl } from '@/lib/remoteApi';
 
 interface AttachmentUrlResult {
   url: string | null;
@@ -27,10 +27,10 @@ export function useAttachmentUrl(
     setLoading(true);
     setError(null);
 
-    fetchAttachmentBlobUrl(attachmentId, type)
-      .then((blobUrl) => {
+    fetchAttachmentSasUrl(attachmentId, type)
+      .then((sasUrl) => {
         if (!cancelled) {
-          setUrl(blobUrl);
+          setUrl(sasUrl);
           setLoading(false);
         }
       })

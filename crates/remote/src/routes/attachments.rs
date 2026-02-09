@@ -2,7 +2,7 @@ use axum::{
     Json, Router,
     extract::{Extension, Path, State},
     http::StatusCode,
-    response::{IntoResponse, Redirect, Response},
+    response::{IntoResponse, Response},
     routing::{delete, get, post},
 };
 use chrono::{DateTime, Utc};
@@ -82,6 +82,11 @@ pub(crate) struct AttachmentWithUrl {
 #[derive(Debug, Serialize)]
 pub struct ListAttachmentsResponse {
     pub attachments: Vec<AttachmentWithUrl>,
+}
+
+#[derive(Debug, Serialize)]
+struct AttachmentUrlResponse {
+    url: String,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -348,7 +353,7 @@ async fn get_attachment_file(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(id): Path<Uuid>,
-) -> Result<Redirect, RouteError> {
+) -> Result<Json<AttachmentUrlResponse>, RouteError> {
     let attachment = AttachmentRepository::find_by_id_with_blob(state.pool(), id)
         .await?
         .ok_or(RouteError::NotFound)?;
@@ -357,7 +362,7 @@ async fn get_attachment_file(
 
     let azure = state.azure_blob().ok_or(RouteError::NotConfigured)?;
     let url = azure.create_read_url(&attachment.blob_path)?;
-    Ok(Redirect::temporary(&url))
+    Ok(Json(AttachmentUrlResponse { url }))
 }
 
 #[instrument(name = "attachments.get_thumbnail", skip(state, ctx), fields(attachment_id = %id, user_id = %ctx.user.id))]
@@ -365,7 +370,7 @@ async fn get_attachment_thumbnail(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(id): Path<Uuid>,
-) -> Result<Redirect, RouteError> {
+) -> Result<Json<AttachmentUrlResponse>, RouteError> {
     let attachment = AttachmentRepository::find_by_id_with_blob(state.pool(), id)
         .await?
         .ok_or(RouteError::NotFound)?;
@@ -375,7 +380,7 @@ async fn get_attachment_thumbnail(
     let thumbnail_path = attachment.thumbnail_blob_path.ok_or(RouteError::NoThumbnail)?;
     let azure = state.azure_blob().ok_or(RouteError::NotConfigured)?;
     let url = azure.create_read_url(&thumbnail_path)?;
-    Ok(Redirect::temporary(&url))
+    Ok(Json(AttachmentUrlResponse { url }))
 }
 
 #[instrument(name = "attachments.delete", skip(state, ctx), fields(attachment_id = %id, user_id = %ctx.user.id))]

@@ -39,7 +39,8 @@ import {
   selectIsCreateDraftDirty,
 } from './kanban-issue-panel-state';
 import { useAzureAttachments } from '@/hooks/useAzureAttachments';
-import { commitIssueAttachments } from '@/lib/remoteApi';
+import { commitIssueAttachments, deleteAttachment } from '@/lib/remoteApi';
+import { extractAttachmentIds } from '@/lib/attachmentUtils';
 
 const DRAFT_ISSUE_ID = '00000000-0000-0000-0000-000000000002';
 
@@ -797,10 +798,27 @@ export function KanbanIssuePanelContainer() {
         // Wait for the issue to be confirmed by the backend and get the synced entity
         const syncedIssue = await persisted;
 
-        // Commit any staged image attachments to the newly created issue
-        const attachmentIds = getAttachmentIds();
-        if (attachmentIds.length > 0) {
-          await commitIssueAttachments(syncedIssue.id, attachmentIds);
+        // Commit only attachments still referenced in the description
+        const allUploadedIds = getAttachmentIds();
+        if (allUploadedIds.length > 0) {
+          const referencedIds = extractAttachmentIds(
+            displayData.description ?? ''
+          );
+          const idsToCommit = allUploadedIds.filter((id) =>
+            referencedIds.has(id)
+          );
+          const idsToDelete = allUploadedIds.filter(
+            (id) => !referencedIds.has(id)
+          );
+
+          if (idsToCommit.length > 0) {
+            await commitIssueAttachments(syncedIssue.id, idsToCommit);
+          }
+          for (const id of idsToDelete) {
+            deleteAttachment(id).catch((err) =>
+              console.error('Failed to delete abandoned attachment:', err)
+            );
+          }
           clearAttachments();
         }
 
