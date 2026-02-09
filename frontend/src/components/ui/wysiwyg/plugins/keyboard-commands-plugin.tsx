@@ -161,7 +161,9 @@ export function KeyboardCommandsPlugin({
             undefined
           );
           debugLog('tab: handled multi-node selection via indent command', {
-            command: event.shiftKey ? 'OUTDENT_CONTENT_COMMAND' : 'INDENT_CONTENT_COMMAND',
+            command: event.shiftKey
+              ? 'OUTDENT_CONTENT_COMMAND'
+              : 'INDENT_CONTENT_COMMAND',
             handled,
           });
           return handled;
@@ -190,9 +192,12 @@ export function KeyboardCommandsPlugin({
 
         // Match Google Docs behavior: first sibling cannot be indented further.
         if (!$isListItemNode(listItem.getPreviousSibling())) {
-          debugLog('tab: skipped indent because no previous list-item sibling', {
-            listItemKey: listItem.getKey(),
-          });
+          debugLog(
+            'tab: skipped indent because no previous list-item sibling',
+            {
+              listItemKey: listItem.getKey(),
+            }
+          );
           return true;
         }
 
