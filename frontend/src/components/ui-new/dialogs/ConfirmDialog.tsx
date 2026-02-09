@@ -16,7 +16,6 @@ import {
   XCircleIcon,
 } from '@phosphor-icons/react';
 import { defineModal, type ConfirmResult } from '@/lib/modals';
-import { cn } from '@/lib/utils';
 
 export interface ConfirmDialogProps {
   title: string;
@@ -84,7 +83,9 @@ const ConfirmDialogImpl = NiceModal.create<ConfirmDialogProps>((props) => {
             {message}
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className={cn('gap-2', !showCancelButton && 'items-end')}>
+        <DialogFooter
+          className={showCancelButton ? 'gap-2' : 'flex-row justify-end'}
+        >
           {showCancelButton && (
             <Button variant="outline" onClick={handleCancel}>
               {cancelText}
