@@ -130,7 +130,8 @@ export function KanbanFiltersDialog({
   const activeViewId =
     projectViewState?.activeViewId ?? DEFAULT_KANBAN_PROJECT_VIEW_ID;
   const activeView = useMemo(
-    () => projectViewState?.views.find((view) => view.id === activeViewId) ?? null,
+    () =>
+      projectViewState?.views.find((view) => view.id === activeViewId) ?? null,
     [projectViewState, activeViewId]
   );
   const kanbanFilters =
@@ -140,7 +141,9 @@ export function KanbanFiltersDialog({
   const showSubIssues =
     projectViewState?.draft.showSubIssues ?? activeView?.showSubIssues ?? false;
   const showWorkspaces =
-    projectViewState?.draft.showWorkspaces ?? activeView?.showWorkspaces ?? true;
+    projectViewState?.draft.showWorkspaces ??
+    activeView?.showWorkspaces ??
+    true;
 
   const viewOptions: PropertyDropdownOption<string>[] = useMemo(() => {
     if (!projectViewState || projectViewState.views.length === 0) {
@@ -403,7 +406,11 @@ export function KanbanFiltersDialog({
                   onClick={() => {
                     const newDirection =
                       kanbanFilters.sortDirection === 'asc' ? 'desc' : 'asc';
-                    setKanbanSort(projectId, kanbanFilters.sortField, newDirection);
+                    setKanbanSort(
+                      projectId,
+                      kanbanFilters.sortField,
+                      newDirection
+                    );
                   }}
                   className={cn(
                     'flex items-center justify-center p-half rounded-sm',

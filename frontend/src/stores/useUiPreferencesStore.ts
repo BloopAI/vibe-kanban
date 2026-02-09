@@ -102,7 +102,9 @@ const cloneKanbanFilters = (filters: KanbanFilterState): KanbanFilterState => ({
   sortDirection: filters.sortDirection,
 });
 
-const createDraftFromView = (view: KanbanProjectView): KanbanProjectDraftState => ({
+const createDraftFromView = (
+  view: KanbanProjectView
+): KanbanProjectDraftState => ({
   filters: cloneKanbanFilters(view.filters),
   showSubIssues: view.showSubIssues,
   showWorkspaces: view.showWorkspaces,
@@ -140,7 +142,8 @@ const createDefaultKanbanProjectViewsState = (): KanbanProjectViewsState => {
   ];
 
   const activeView =
-    views.find((view) => view.id === DEFAULT_KANBAN_PROJECT_VIEW_ID) ?? views[0];
+    views.find((view) => view.id === DEFAULT_KANBAN_PROJECT_VIEW_ID) ??
+    views[0];
 
   return {
     activeViewId: DEFAULT_KANBAN_PROJECT_VIEW_ID,
@@ -740,7 +743,9 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
       const projectState =
         s.kanbanProjectViewsByProject[projectId] ??
         createDefaultKanbanProjectViewsState();
-      const hasTargetView = projectState.views.some((view) => view.id === viewId);
+      const hasTargetView = projectState.views.some(
+        (view) => view.id === viewId
+      );
 
       if (!hasTargetView) {
         return {

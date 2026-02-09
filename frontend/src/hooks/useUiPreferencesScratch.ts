@@ -209,12 +209,13 @@ function scratchDataToStore(data: UiPreferencesData): {
     const draftSortField =
       draftFilters && isKanbanSortField(draftFilters.sort_field)
         ? draftFilters.sort_field
-        : activeView?.filters.sortField ?? DEFAULT_KANBAN_FILTER_STATE.sortField;
+        : (activeView?.filters.sortField ??
+          DEFAULT_KANBAN_FILTER_STATE.sortField);
     const draftSortDirection =
       draftFilters && isSortDirection(draftFilters.sort_direction)
         ? draftFilters.sort_direction
-        : activeView?.filters.sortDirection ??
-          DEFAULT_KANBAN_FILTER_STATE.sortDirection;
+        : (activeView?.filters.sortDirection ??
+          DEFAULT_KANBAN_FILTER_STATE.sortDirection);
 
     kanbanProjectViewsByProject[projectId] = {
       activeViewId: value.active_view_id,
