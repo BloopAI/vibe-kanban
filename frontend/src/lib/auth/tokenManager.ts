@@ -32,7 +32,11 @@ class TokenManager {
         queryFn: () => oauthApi.getToken(),
         staleTime: TOKEN_STALE_TIME,
       });
-      return data?.access_token ?? null;
+      const token = data?.access_token ?? null;
+      if (!token) {
+        await this.handleUnauthorized();
+      }
+      return token;
     } catch {
       return null;
     }
@@ -109,6 +113,8 @@ class TokenManager {
       const token = data?.access_token ?? null;
       if (token) {
         this.resumeShapes();
+      } else {
+        await this.handleUnauthorized();
       }
       return token;
     } catch {
@@ -117,6 +123,18 @@ class TokenManager {
       this.refreshPromise = null;
       this.setRefreshing(false);
     }
+  }
+
+  private async handleUnauthorized(): Promise<void> {
+    // Reload system state so the UI transitions to logged-out
+    const { queryClient } = await import('../../main');
+    await queryClient.invalidateQueries({ queryKey: ['user-system'] });
+
+    // Show the login dialog so the user can re-authenticate
+    const { OAuthDialog } = await import(
+      '../../components/dialogs/global/OAuthDialog'
+    );
+    void OAuthDialog.show();
   }
 
   private setRefreshing(value: boolean): void {
