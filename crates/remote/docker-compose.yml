@@ -42,20 +42,7 @@ services:
       - |
         set -e
         az storage container create --name issue-attachments 2>/dev/null || true
-        az storage cors clear --services b
-        az storage cors add --services b \
-          --methods GET PUT POST DELETE OPTIONS \
-          --origins \
-            http://localhost:3000 \
-            http://localhost:3001 \
-            http://localhost:3002 \
-            http://localhost:3003 \
-            http://localhost:3004 \
-            http://localhost:3005 \
-            http://localhost:10000 \
-          --allowed-headers '*' \
-          --exposed-headers '*' \
-          --max-age 3600
+        az storage cors add --services b --methods GET PUT POST DELETE OPTIONS --origins '*' --allowed-headers '*' --exposed-headers '*' --max-age 3600
         echo "Azurite CORS configured"
 
   electric:
