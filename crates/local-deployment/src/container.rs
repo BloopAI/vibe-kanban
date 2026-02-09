@@ -1202,10 +1202,7 @@ impl ContainerService for LocalContainerService {
                     if let Some(issue_id) = remote_workspace.issue_id {
                         env.insert("VK_ISSUE_ID", issue_id.to_string());
                     }
-                    match client
-                        .get_remote_project(remote_workspace.project_id)
-                        .await
-                    {
+                    match client.get_remote_project(remote_workspace.project_id).await {
                         Ok(remote_project) => {
                             env.insert(
                                 "VK_ORGANIZATION_ID",
@@ -1222,11 +1219,7 @@ impl ContainerService for LocalContainerService {
                     }
                 }
                 Err(e) => {
-                    tracing::debug!(
-                        "Workspace {} not linked to remote: {}",
-                        workspace.id,
-                        e
-                    );
+                    tracing::debug!("Workspace {} not linked to remote: {}", workspace.id, e);
                 }
             }
         }

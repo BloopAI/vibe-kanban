@@ -431,8 +431,7 @@ impl TaskServer {
             return None;
         }
 
-        let api_response: ApiResponseEnvelope<api_types::Workspace> =
-            response.json().await.ok()?;
+        let api_response: ApiResponseEnvelope<api_types::Workspace> = response.json().await.ok()?;
 
         if !api_response.success {
             return None;

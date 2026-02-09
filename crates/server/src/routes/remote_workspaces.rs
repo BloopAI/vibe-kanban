@@ -22,8 +22,6 @@ async fn get_workspace_by_local_id(
     Path(local_workspace_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
     let client = deployment.remote_client()?;
-    let workspace = client
-        .get_workspace_by_local_id(local_workspace_id)
-        .await?;
+    let workspace = client.get_workspace_by_local_id(local_workspace_id).await?;
     Ok(ResponseJson(ApiResponse::success(workspace)))
 }

@@ -576,10 +576,8 @@ impl RemoteClient {
         &self,
         local_workspace_id: Uuid,
     ) -> Result<Workspace, RemoteClientError> {
-        self.get_authed(&format!(
-            "/v1/workspaces/by-local-id/{local_workspace_id}"
-        ))
-        .await
+        self.get_authed(&format!("/v1/workspaces/by-local-id/{local_workspace_id}"))
+            .await
     }
 
     /// Checks if a workspace exists on the remote server.
