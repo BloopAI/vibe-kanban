@@ -114,6 +114,81 @@ export interface WYSIWYGEditorRef {
   focus: () => void;
 }
 
+const GENERIC_CLIPBOARD_IMAGE_BASE_NAMES = new Set([
+  'image',
+  'output',
+  'clipboard',
+  'pasted-image',
+  'screenshot',
+]);
+
+function getImageMimePriority(mimeType: string): number {
+  if (mimeType === 'image/png') return 5;
+  if (mimeType === 'image/webp') return 4;
+  if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') return 3;
+  if (mimeType === 'image/gif') return 2;
+  return 1;
+}
+
+function isGenericClipboardImageName(fileName: string): boolean {
+  const baseName = fileName
+    .replace(/\.[^.]+$/, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-');
+  return GENERIC_CLIPBOARD_IMAGE_BASE_NAMES.has(baseName);
+}
+
+function dedupeClipboardFiles(files: File[]): File[] {
+  if (files.length <= 1) {
+    return files;
+  }
+
+  const uniqueByMetadata: File[] = [];
+  const seen = new Set<string>();
+  for (const file of files) {
+    const key = `${file.name}:${file.type}:${file.size}:${file.lastModified}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniqueByMetadata.push(file);
+  }
+
+  if (uniqueByMetadata.length <= 1) {
+    return uniqueByMetadata;
+  }
+
+  const imageFiles = uniqueByMetadata.filter((f) =>
+    f.type.startsWith('image/')
+  );
+  const nonImageFiles = uniqueByMetadata.filter(
+    (f) => !f.type.startsWith('image/')
+  );
+
+  if (nonImageFiles.length > 0 || imageFiles.length <= 1) {
+    return uniqueByMetadata;
+  }
+
+  const nonGenericImageFiles = imageFiles.filter(
+    (f) => !isGenericClipboardImageName(f.name)
+  );
+  if (nonGenericImageFiles.length > 1) {
+    return uniqueByMetadata;
+  }
+
+  if (nonGenericImageFiles.length === 1) {
+    return [nonGenericImageFiles[0]];
+  }
+
+  const [preferredImage] = [...imageFiles].sort((a, b) => {
+    const priorityDiff =
+      getImageMimePriority(b.type) - getImageMimePriority(a.type);
+    if (priorityDiff !== 0) return priorityDiff;
+    return b.size - a.size;
+  });
+
+  return preferredImage ? [preferredImage] : uniqueByMetadata;
+}
+
 /** Plugin to capture the Lexical editor instance into a ref */
 function EditorRefPlugin({
   editorRef,
@@ -262,7 +337,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         const dt = event.clipboardData;
         if (!dt) return;
 
-        const files: File[] = Array.from(dt.files || []);
+        const files: File[] = dedupeClipboardFiles(Array.from(dt.files || []));
 
         if (files.length > 0) {
           onPasteFiles(files);
