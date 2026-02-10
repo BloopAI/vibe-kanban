@@ -606,7 +606,7 @@ export function KanbanContainer() {
                 className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors"
                 aria-label="Project menu"
               >
-                <DotsThreeIcon className="size-icon-xs" weight="bold" />
+                <DotsThreeIcon className="size-icon-sm" weight="bold" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
