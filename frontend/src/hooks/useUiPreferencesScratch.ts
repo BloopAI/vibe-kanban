@@ -10,37 +10,21 @@ import {
 } from 'shared/types';
 import {
   useUiPreferencesStore,
-  DEFAULT_KANBAN_SHOW_WORKSPACES,
-  DEFAULT_KANBAN_FILTER_STATE,
-  KANBAN_PROJECT_VIEW_IDS,
-  getDefaultShowSubIssuesForView,
   type RightMainPanelMode,
   type ContextBarPosition,
   type WorkspacePanelState,
-  type KanbanSortField,
   type KanbanProjectViewsState,
 } from '@/stores/useUiPreferencesStore';
+import {
+  fromScratchKanbanProjectViews,
+  toScratchKanbanProjectViews,
+} from '@/stores/kanbanProjectViewsPersistence';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
-import type { IssuePriority } from 'shared/remote-types';
 
 // Stable UUID for global UI preferences (not tied to a workspace/user)
 // This is a deterministic UUID v5 generated from the namespace "ui-preferences"
 // Using a fixed UUID ensures all users/sessions share the same preferences record
 const UI_PREFERENCES_ID = '00000000-0000-0000-0000-000000000001';
-
-const KANBAN_SORT_FIELDS: KanbanSortField[] = [
-  'sort_order',
-  'priority',
-  'created_at',
-  'updated_at',
-  'title',
-];
-
-const isKanbanSortField = (value: string): value is KanbanSortField =>
-  KANBAN_SORT_FIELDS.includes(value as KanbanSortField);
-
-const isSortDirection = (value: string): value is 'asc' | 'desc' =>
-  value === 'asc' || value === 'desc';
 
 /**
  * Converts store state to scratch data format (camelCase to snake_case)
@@ -66,41 +50,9 @@ function storeToScratchData(state: {
     };
   }
 
-  const kanbanProjectViewsByProject: UiPreferencesData['kanban_project_views_by_project'] =
-    {};
-  for (const [projectId, viewState] of Object.entries(
+  const kanbanProjectViewsByProject = toScratchKanbanProjectViews(
     state.kanbanProjectViewsByProject
-  )) {
-    kanbanProjectViewsByProject[projectId] = {
-      active_view_id: viewState.activeViewId,
-      views: viewState.views.map((view) => ({
-        id: view.id,
-        name: view.name,
-        filters: {
-          search_query: view.filters.searchQuery,
-          priorities: [...view.filters.priorities],
-          assignee_ids: [...view.filters.assigneeIds],
-          tag_ids: [...view.filters.tagIds],
-          sort_field: view.filters.sortField,
-          sort_direction: view.filters.sortDirection,
-        },
-        show_sub_issues: view.showSubIssues,
-        show_workspaces: view.showWorkspaces,
-      })),
-      draft: {
-        filters: {
-          search_query: viewState.draft.filters.searchQuery,
-          priorities: [...viewState.draft.filters.priorities],
-          assignee_ids: [...viewState.draft.filters.assigneeIds],
-          tag_ids: [...viewState.draft.filters.tagIds],
-          sort_field: viewState.draft.filters.sortField,
-          sort_direction: viewState.draft.filters.sortDirection,
-        },
-        show_sub_issues: viewState.draft.showSubIssues,
-        show_workspaces: viewState.draft.showWorkspaces,
-      },
-    };
-  }
+  );
 
   return {
     repo_actions: state.repoActions as { [key: string]: string },
@@ -159,102 +111,9 @@ function scratchDataToStore(data: UiPreferencesData): {
       ? Object.values(legacyFileSearchRepoByProject)[0]
       : null;
 
-  const kanbanProjectViewsByProject: Record<string, KanbanProjectViewsState> =
-    {};
-  for (const [projectId, value] of Object.entries(
-    data.kanban_project_views_by_project ?? {}
-  )) {
-    if (!value) {
-      continue;
-    }
-
-    const views = (value.views ?? []).map((view) => {
-      const filters = view.filters;
-      const sortField =
-        filters && isKanbanSortField(filters.sort_field)
-          ? filters.sort_field
-          : 'sort_order';
-      const sortDirection =
-        filters && isSortDirection(filters.sort_direction)
-          ? filters.sort_direction
-          : 'asc';
-      const normalizedSortDirection =
-        view.id === KANBAN_PROJECT_VIEW_IDS.PERSONAL &&
-        sortField === 'priority' &&
-        sortDirection === 'desc'
-          ? 'asc'
-          : sortDirection;
-
-      return {
-        id: view.id,
-        name: view.name,
-        filters: {
-          searchQuery: filters?.search_query ?? '',
-          priorities: (filters?.priorities ?? []) as IssuePriority[],
-          assigneeIds: filters?.assignee_ids ?? [],
-          tagIds: filters?.tag_ids ?? [],
-          sortField,
-          sortDirection: normalizedSortDirection,
-        },
-        showSubIssues:
-          view.show_sub_issues ?? getDefaultShowSubIssuesForView(view.id),
-        showWorkspaces: view.show_workspaces ?? DEFAULT_KANBAN_SHOW_WORKSPACES,
-      };
-    });
-
-    if (!value.active_view_id || views.length === 0) {
-      continue;
-    }
-
-    const activeView =
-      views.find((view) => view.id === value.active_view_id) ?? views[0];
-    const draftFilters = value.draft?.filters;
-    const draftSortField =
-      draftFilters && isKanbanSortField(draftFilters.sort_field)
-        ? draftFilters.sort_field
-        : (activeView?.filters.sortField ??
-          DEFAULT_KANBAN_FILTER_STATE.sortField);
-    const draftSortDirection =
-      draftFilters && isSortDirection(draftFilters.sort_direction)
-        ? draftFilters.sort_direction
-        : (activeView?.filters.sortDirection ??
-          DEFAULT_KANBAN_FILTER_STATE.sortDirection);
-
-    kanbanProjectViewsByProject[projectId] = {
-      activeViewId: value.active_view_id,
-      views,
-      draft: {
-        filters: {
-          searchQuery:
-            draftFilters?.search_query ??
-            activeView?.filters.searchQuery ??
-            DEFAULT_KANBAN_FILTER_STATE.searchQuery,
-          priorities:
-            (draftFilters?.priorities as IssuePriority[] | undefined) ??
-            activeView?.filters.priorities ??
-            DEFAULT_KANBAN_FILTER_STATE.priorities,
-          assigneeIds:
-            draftFilters?.assignee_ids ??
-            activeView?.filters.assigneeIds ??
-            DEFAULT_KANBAN_FILTER_STATE.assigneeIds,
-          tagIds:
-            draftFilters?.tag_ids ??
-            activeView?.filters.tagIds ??
-            DEFAULT_KANBAN_FILTER_STATE.tagIds,
-          sortField: draftSortField,
-          sortDirection: draftSortDirection,
-        },
-        showSubIssues:
-          value.draft?.show_sub_issues ??
-          activeView?.showSubIssues ??
-          getDefaultShowSubIssuesForView(value.active_view_id),
-        showWorkspaces:
-          value.draft?.show_workspaces ??
-          activeView?.showWorkspaces ??
-          DEFAULT_KANBAN_SHOW_WORKSPACES,
-      },
-    };
-  }
+  const kanbanProjectViewsByProject = fromScratchKanbanProjectViews(
+    data.kanban_project_views_by_project
+  );
 
   return {
     repoActions: (data.repo_actions ?? {}) as Record<string, RepoAction>,
