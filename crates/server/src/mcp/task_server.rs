@@ -297,6 +297,24 @@ pub struct StartWorkspaceSessionResponse {
     pub workspace_id: String,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct McpLinkWorkspaceRequest {
+    #[schemars(description = "The workspace ID to link")]
+    pub workspace_id: Uuid,
+    #[schemars(description = "The issue ID to link the workspace to")]
+    pub issue_id: Uuid,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct McpLinkWorkspaceResponse {
+    #[schemars(description = "Whether the linking was successful")]
+    pub success: bool,
+    #[schemars(description = "The workspace ID that was linked")]
+    pub workspace_id: String,
+    #[schemars(description = "The issue ID it was linked to")]
+    pub issue_id: String,
+}
+
 // ── Server struct ───────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
@@ -712,6 +730,25 @@ impl TaskServer {
         }
     }
 
+    /// Links a workspace to a remote issue by fetching the issue's project_id
+    /// and calling the link endpoint.
+    async fn link_workspace_to_issue(
+        &self,
+        workspace_id: Uuid,
+        issue_id: Uuid,
+    ) -> Result<(), CallToolResult> {
+        let issue_url = self.url(&format!("/api/remote/issues/{}", issue_id));
+        let issue: Issue = self.send_json(self.client.get(&issue_url)).await?;
+
+        let link_url = self.url(&format!("/api/task-attempts/{}/link", workspace_id));
+        let link_payload = serde_json::json!({
+            "project_id": issue.project_id,
+            "issue_id": issue_id,
+        });
+        self.send_empty_json(self.client.post(&link_url).json(&link_payload))
+            .await
+    }
+
     /// Converts an Issue to IssueDetails, resolving status_id to name.
     async fn issue_to_details(&self, issue: &Issue) -> IssueDetails {
         let status = self
@@ -1118,19 +1155,8 @@ impl TaskServer {
 
         // Link workspace to remote issue if issue_id is provided
         if let Some(issue_id) = issue_id {
-            let issue_url = self.url(&format!("/api/remote/issues/{}", issue_id));
-            let issue: Issue = match self.send_json(self.client.get(&issue_url)).await {
-                Ok(i) => i,
-                Err(e) => return Ok(e),
-            };
-
-            let link_url = self.url(&format!("/api/task-attempts/{}/link", workspace.id));
-            let link_payload = serde_json::json!({
-                "project_id": issue.project_id,
-                "issue_id": issue_id,
-            });
             if let Err(e) = self
-                .send_empty_json(self.client.post(&link_url).json(&link_payload))
+                .link_workspace_to_issue(workspace.id, issue_id)
                 .await
             {
                 return Ok(e);
@@ -1142,6 +1168,27 @@ impl TaskServer {
         };
 
         TaskServer::success(&response)
+    }
+
+    #[tool(
+        description = "Link an existing workspace to a remote issue. This associates the workspace with the issue for tracking."
+    )]
+    async fn link_workspace(
+        &self,
+        Parameters(McpLinkWorkspaceRequest {
+            workspace_id,
+            issue_id,
+        }): Parameters<McpLinkWorkspaceRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        if let Err(e) = self.link_workspace_to_issue(workspace_id, issue_id).await {
+            return Ok(e);
+        }
+
+        TaskServer::success(&McpLinkWorkspaceResponse {
+            success: true,
+            workspace_id: workspace_id.to_string(),
+            issue_id: issue_id.to_string(),
+        })
     }
 
     #[tool(
