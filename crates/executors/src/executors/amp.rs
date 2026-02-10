@@ -92,7 +92,7 @@ impl StandardCodingAgentExecutor for Amp {
         let builder = self.build_command_builder()?;
         let continue_line = builder.build_follow_up(&[
             "threads".to_string(),
-            "--continue".to_string(),
+            "continue".to_string(),
             session_id.to_string(),
         ])?;
         let (continue_program, continue_args) = continue_line.into_resolved().await?;
