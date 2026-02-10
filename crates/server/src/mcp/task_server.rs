@@ -316,6 +316,8 @@ pub struct McpRepoContext {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
 pub struct McpContext {
+    #[schemars(description = "The organization ID (if workspace is linked to remote)")]
+    pub organization_id: Option<Uuid>,
     #[schemars(description = "The remote project ID (if workspace is linked to remote)")]
     pub project_id: Option<Uuid>,
     #[schemars(description = "The remote issue ID (if workspace is linked to a remote issue)")]
@@ -395,13 +397,14 @@ impl TaskServer {
         let workspace_id = ctx.workspace.id;
         let workspace_branch = ctx.workspace.branch.clone();
 
-        // Look up remote workspace to get remote project_id and issue_id
-        let (project_id, issue_id) = self
+        // Look up remote workspace to get remote project_id, issue_id, and organization_id
+        let (project_id, issue_id, organization_id) = self
             .fetch_remote_workspace_context(workspace_id)
             .await
-            .unwrap_or((None, None));
+            .unwrap_or((None, None, None));
 
         Some(McpContext {
+            organization_id,
             project_id,
             issue_id,
             workspace_id,
@@ -413,7 +416,7 @@ impl TaskServer {
     async fn fetch_remote_workspace_context(
         &self,
         local_workspace_id: Uuid,
-    ) -> Option<(Option<Uuid>, Option<Uuid>)> {
+    ) -> Option<(Option<Uuid>, Option<Uuid>, Option<Uuid>)> {
         let url = self.url(&format!(
             "/api/remote/workspaces/by-local-id/{}",
             local_workspace_id
@@ -438,7 +441,32 @@ impl TaskServer {
         }
 
         let remote_ws = api_response.data?;
-        Some((Some(remote_ws.project_id), remote_ws.issue_id))
+        let project_id = remote_ws.project_id;
+
+        // Fetch the project to get organization_id
+        let org_id = self.fetch_remote_organization_id(project_id).await;
+
+        Some((Some(project_id), remote_ws.issue_id, org_id))
+    }
+
+    async fn fetch_remote_organization_id(&self, project_id: Uuid) -> Option<Uuid> {
+        let url = self.url(&format!("/api/remote/projects/{}", project_id));
+
+        let response = tokio::time::timeout(
+            std::time::Duration::from_millis(2000),
+            self.client.get(&url).send(),
+        )
+        .await
+        .ok()?
+        .ok()?;
+
+        if !response.status().is_success() {
+            return None;
+        }
+
+        let api_response: ApiResponseEnvelope<api_types::Project> = response.json().await.ok()?;
+        let project = api_response.data?;
+        Some(project.organization_id)
     }
 }
 
