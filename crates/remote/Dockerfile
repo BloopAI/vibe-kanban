@@ -16,6 +16,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --filter ./remote-frontend --frozen-lockfile
 
 COPY remote-frontend/ remote-frontend/
+COPY shared/ shared/
 
 RUN pnpm -C remote-frontend build
 

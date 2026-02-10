@@ -38,6 +38,7 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
+    "jwt-decode": "^4.0.0",
     "vite": "^6.3.5"
   },
   "engines": {
