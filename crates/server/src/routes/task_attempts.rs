@@ -784,6 +784,7 @@ pub async fn get_task_attempt_branch_status(
             });
 
     let mut results = Vec::with_capacity(repositories.len());
+    let mut detected_head_branch: Option<String> = None;
 
     for repo in repositories {
         let Some(target_branch) = target_branches.get(&repo.id).cloned() else {
@@ -794,11 +795,14 @@ pub async fn get_task_attempt_branch_status(
 
         let worktree_path = workspace_dir.join(&repo.name);
 
-        let head_oid = deployment
+        let head_info = deployment
             .git()
             .get_head_info(&worktree_path)
-            .ok()
-            .map(|h| h.oid);
+            .ok();
+        let head_oid = head_info.as_ref().map(|h| h.oid.clone());
+        if detected_head_branch.is_none() {
+            detected_head_branch = head_info.as_ref().map(|h| h.branch.clone());
+        }
 
         let (is_rebase_in_progress, conflicted_files, conflict_op) = {
             let in_rebase = deployment
@@ -832,11 +836,16 @@ pub async fn get_task_attempt_branch_status(
             .git()
             .find_branch_type(&repo.path, &target_branch)?;
 
+        // Use the actual HEAD branch if detected, otherwise fall back to DB value
+        let effective_branch = detected_head_branch
+            .as_deref()
+            .unwrap_or(&workspace.branch);
+
         let (commits_ahead, commits_behind) = match target_branch_type {
             BranchType::Local => {
                 let (a, b) = deployment.git().get_branch_status(
                     &repo.path,
-                    &workspace.branch,
+                    effective_branch,
                     &target_branch,
                 )?;
                 (Some(a), Some(b))
@@ -844,7 +853,7 @@ pub async fn get_task_attempt_branch_status(
             BranchType::Remote => {
                 let (ahead, behind) = deployment.git().get_remote_branch_status(
                     &repo.path,
-                    &workspace.branch,
+                    effective_branch,
                     Some(&target_branch),
                 )?;
                 (Some(ahead), Some(behind))
@@ -862,7 +871,7 @@ pub async fn get_task_attempt_branch_status(
         {
             match deployment
                 .git()
-                .get_remote_branch_status(&repo.path, &workspace.branch, None)
+                .get_remote_branch_status(&repo.path, effective_branch, None)
             {
                 Ok((ahead, behind)) => (Some(ahead), Some(behind)),
                 Err(_) => (None, None),
@@ -891,6 +900,33 @@ pub async fn get_task_attempt_branch_status(
                 is_target_remote: target_branch_type == BranchType::Remote,
             },
         });
+    }
+
+    // Auto-sync workspace.branch if the actual worktree HEAD branch has changed
+    // (e.g. user ran `git checkout` manually). Skip detached HEAD ("HEAD").
+    if let Some(ref actual_branch) = detected_head_branch {
+        if actual_branch != "HEAD" && *actual_branch != workspace.branch {
+            tracing::info!(
+                "Detected branch change in workspace {}: '{}' -> '{}' (auto-syncing)",
+                workspace.id,
+                workspace.branch,
+                actual_branch
+            );
+            if let Err(e) =
+                Workspace::update_branch_name(pool, workspace.id, actual_branch).await
+            {
+                tracing::error!("Failed to auto-sync workspace branch: {}", e);
+            } else {
+                // Cascade to child workspaces that target the old branch
+                let _ = WorkspaceRepo::update_target_branch_for_children_of_workspace(
+                    pool,
+                    workspace.id,
+                    &workspace.branch,
+                    actual_branch,
+                )
+                .await;
+            }
+        }
     }
 
     Ok(ResponseJson(ApiResponse::success(results)))

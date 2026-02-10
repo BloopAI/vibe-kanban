@@ -182,6 +182,7 @@ struct DiffStreamManager {
     full_sent: Arc<std::sync::RwLock<HashSet<String>>>,
     current_base_commit: Commit,
     current_target_branch: String,
+    current_branch: String,
 }
 
 enum DiffEvent {
@@ -213,6 +214,7 @@ impl DiffStreamManager {
         Self {
             current_base_commit: args.base_commit.clone(),
             current_target_branch: args.target_branch.clone(),
+            current_branch: args.branch.clone(),
             args,
             tx,
             cumulative: Arc::new(AtomicUsize::new(0)),
@@ -404,6 +406,32 @@ impl DiffStreamManager {
     }
 
     async fn handle_git_state_change(&mut self) -> Result<(), DiffStreamError> {
+        // Check if the HEAD branch has changed (e.g. manual git checkout)
+        let git = self.args.git_service.clone();
+        let worktree_path = self.args.worktree_path.clone();
+        let branch_changed = if let Some(actual_branch) =
+            tokio::task::spawn_blocking(move || {
+                git.get_head_info(&worktree_path).ok().map(|h| h.branch)
+            })
+            .await
+            .ok()
+            .flatten()
+        {
+            if actual_branch != "HEAD" && actual_branch != self.current_branch {
+                tracing::info!(
+                    "Diff stream detected branch change: '{}' -> '{}'",
+                    self.current_branch,
+                    actual_branch
+                );
+                self.current_branch = actual_branch;
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
         let Some(new_base) = self
             .recompute_base_commit(&self.current_target_branch)
             .await
@@ -411,7 +439,7 @@ impl DiffStreamManager {
             return Ok(());
         };
 
-        if new_base.as_oid() != self.current_base_commit.as_oid() {
+        if branch_changed || new_base.as_oid() != self.current_base_commit.as_oid() {
             self.current_base_commit = new_base;
             self.reset_stream().await?;
         }
@@ -442,7 +470,7 @@ impl DiffStreamManager {
     async fn recompute_base_commit(&self, target_branch: &str) -> Option<Commit> {
         let git = self.args.git_service.clone();
         let repo_path = self.args.repo_path.clone();
-        let branch = self.args.branch.clone();
+        let branch = self.current_branch.clone();
         let target = target_branch.to_string();
 
         tokio::task::spawn_blocking(move || git.get_base_commit(&repo_path, &branch, &target).ok())

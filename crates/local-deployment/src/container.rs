@@ -1348,7 +1348,11 @@ impl ContainerService for LocalContainerService {
 
         for repo in repositories {
             let worktree_path = workspace_root.join(&repo.name);
-            let branch = &workspace.branch;
+            let branch = self
+                .git()
+                .get_head_info(&worktree_path)
+                .map(|h| h.branch)
+                .unwrap_or_else(|_| workspace.branch.clone());
 
             let Some(target_branch) = target_branches.get(&repo.id) else {
                 tracing::warn!(
@@ -1360,7 +1364,7 @@ impl ContainerService for LocalContainerService {
 
             let base_commit = match self
                 .git()
-                .get_base_commit(&repo.path, branch, target_branch)
+                .get_base_commit(&repo.path, &branch, target_branch)
             {
                 Ok(c) => c,
                 Err(e) => {
