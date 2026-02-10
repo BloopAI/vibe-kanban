@@ -41,6 +41,8 @@ os_info = "3.12.0"
 futures-util = "0.3"
 base64 = "0.22"
 git2 = { workspace = true }
+mime_guess = "2.0"
+rust-embed = "8.2"
 url = "2.5"
 rand = { version = "0.8", features = ["std"] }
 sha2 = "0.10"
