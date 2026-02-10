@@ -1050,8 +1050,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             let mut sections = Vec::new();
                             sections.push(format!(
                                 "[{}] [{}]",
-                                output.overall_correctness,
-                                output.overall_confidence_score,
+                                output.overall_correctness, output.overall_confidence_score,
                             ));
                             let explanation = output.overall_explanation.trim();
                             if !explanation.is_empty() {
@@ -1060,15 +1059,12 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             if !output.findings.is_empty() {
                                 let mut lines = Vec::new();
                                 for finding in &output.findings {
-                                    let path =
-                                        finding.code_location.absolute_file_path.display();
+                                    let path = finding.code_location.absolute_file_path.display();
                                     let start = finding.code_location.line_range.start;
                                     let end = finding.code_location.line_range.end;
                                     lines.push(format!(
                                         "- [P{}] [{}] {} — {path}:{start}-{end}",
-                                        finding.priority,
-                                        finding.confidence_score,
-                                        finding.title,
+                                        finding.priority, finding.confidence_score, finding.title,
                                     ));
                                     for body_line in finding.body.lines() {
                                         lines.push(format!("  {body_line}"));
