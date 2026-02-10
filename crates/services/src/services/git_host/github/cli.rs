@@ -202,6 +202,15 @@ impl GhCli {
         Self::parse_repo_info_response(&raw)
     }
 
+    /// Get repo info using the git remote of the given directory.
+    pub fn get_repo_info_from_dir(&self, repo_path: &Path) -> Result<GitHubRepoInfo, GhCliError> {
+        let raw = self.run(
+            ["repo", "view", "--json", "owner,name,url"],
+            Some(repo_path),
+        )?;
+        Self::parse_repo_info_response(&raw)
+    }
+
     fn parse_repo_info_response(raw: &str) -> Result<GitHubRepoInfo, GhCliError> {
         let resp: GhRepoViewResponse = serde_json::from_str(raw).map_err(|e| {
             GhCliError::UnexpectedOutput(format!("Failed to parse gh repo view response: {e}"))
@@ -293,6 +302,32 @@ impl GhCli {
                 "all",
                 "--head",
                 branch,
+                "--json",
+                "number,url,state,mergedAt,mergeCommit",
+            ],
+            None,
+        )?;
+        Self::parse_pr_list(&raw)
+    }
+
+    /// List recent PRs for a repo (all states), returning status info for each.
+    pub fn list_prs_for_repo(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        limit: usize,
+    ) -> Result<Vec<PullRequestInfo>, GhCliError> {
+        let repo_spec = repo_info.repo_spec();
+        let limit_str = limit.to_string();
+        let raw = self.run(
+            [
+                "pr",
+                "list",
+                "--repo",
+                &repo_spec,
+                "--state",
+                "all",
+                "--limit",
+                &limit_str,
                 "--json",
                 "number,url,state,mergedAt,mergeCommit",
             ],

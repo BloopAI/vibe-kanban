@@ -2,12 +2,13 @@
 
 mod cli;
 
-use std::{path::Path, time::Duration};
+use std::{collections::HashMap, path::Path, time::Duration};
 
 use async_trait::async_trait;
 use backon::{ExponentialBuilder, Retryable};
 pub use cli::GhCli;
-use cli::{GhCliError, GitHubRepoInfo};
+pub use cli::GitHubRepoInfo;
+use cli::GhCliError;
 use db::models::merge::PullRequestInfo;
 use tokio::task;
 use tracing::info;
@@ -29,7 +30,7 @@ impl GitHubProvider {
         })
     }
 
-    async fn get_repo_info(
+    pub async fn get_repo_info(
         &self,
         remote_url: &str,
         repo_path: &Path,
@@ -41,6 +42,23 @@ impl GitHubProvider {
             .await
             .map_err(|err| {
                 GitHostError::Repository(format!("Failed to get repo info from URL: {err}"))
+            })?
+            .map_err(Into::into)
+    }
+
+    /// Get repo info using the git remote of the given directory.
+    pub async fn get_repo_info_from_dir(
+        &self,
+        repo_path: &Path,
+    ) -> Result<GitHubRepoInfo, GitHostError> {
+        let cli = self.gh_cli.clone();
+        let path = repo_path.to_path_buf();
+        task::spawn_blocking(move || cli.get_repo_info_from_dir(&path))
+            .await
+            .map_err(|err| {
+                GitHostError::Repository(format!(
+                    "Failed to get repo info from directory: {err}"
+                ))
             })?
             .map_err(Into::into)
     }
@@ -107,6 +125,56 @@ impl GitHubProvider {
                         ))
                     })?;
             comments.map_err(GitHostError::from)
+        })
+        .retry(
+            &ExponentialBuilder::default()
+                .with_min_delay(Duration::from_secs(1))
+                .with_max_delay(Duration::from_secs(30))
+                .with_max_times(3)
+                .with_jitter(),
+        )
+        .when(|e: &GitHostError| e.should_retry())
+        .notify(|err: &GitHostError, dur: Duration| {
+            tracing::warn!(
+                "GitHub API call failed, retrying after {:.2}s: {}",
+                dur.as_secs_f64(),
+                err
+            );
+        })
+        .await
+    }
+
+    /// Bulk-fetch PR statuses for a set of PR numbers in a single repo.
+    /// Returns a map from PR number to PullRequestInfo.
+    pub async fn get_pr_statuses_for_repo(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        pr_numbers: &std::collections::HashSet<i64>,
+    ) -> Result<HashMap<i64, PullRequestInfo>, GitHostError> {
+        let cli = self.gh_cli.clone();
+        let repo_info = repo_info.clone();
+        let pr_numbers = pr_numbers.clone();
+        let limit = pr_numbers.len().max(30);
+
+        (|| async {
+            let cli = cli.clone();
+            let repo_info = repo_info.clone();
+            let pr_numbers = pr_numbers.clone();
+
+            let prs = task::spawn_blocking(move || cli.list_prs_for_repo(&repo_info, limit))
+                .await
+                .map_err(|err| {
+                    GitHostError::PullRequest(format!(
+                        "Failed to execute GitHub CLI for listing PRs: {err}"
+                    ))
+                })?
+                .map_err(GitHostError::from)?;
+
+            Ok(prs
+                .into_iter()
+                .filter(|pr| pr_numbers.contains(&pr.number))
+                .map(|pr| (pr.number, pr))
+                .collect())
         })
         .retry(
             &ExponentialBuilder::default()
