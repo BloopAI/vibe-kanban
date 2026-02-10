@@ -1155,10 +1155,7 @@ impl TaskServer {
 
         // Link workspace to remote issue if issue_id is provided
         if let Some(issue_id) = issue_id {
-            if let Err(e) = self
-                .link_workspace_to_issue(workspace.id, issue_id)
-                .await
-            {
+            if let Err(e) = self.link_workspace_to_issue(workspace.id, issue_id).await {
                 return Ok(e);
             }
         }
