@@ -149,7 +149,7 @@ export function CreateModeRepoPickerBar({
 
         if (availableRepos.length === 0) {
           setPickerError(
-            'No recently used repositories found, please browse repositories instead',
+            'No recently used repositories found, please browse repositories instead'
           );
           return;
         }
