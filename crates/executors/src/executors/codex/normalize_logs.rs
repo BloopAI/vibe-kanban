@@ -14,10 +14,10 @@ use codex_protocol::{
         AgentMessageDeltaEvent, AgentMessageEvent, AgentReasoningDeltaEvent, AgentReasoningEvent,
         AgentReasoningSectionBreakEvent, ApplyPatchApprovalRequestEvent, BackgroundEventEvent,
         ErrorEvent, EventMsg, ExecApprovalRequestEvent, ExecCommandBeginEvent, ExecCommandEndEvent,
-        ExecCommandOutputDeltaEvent, ExecOutputStream, FileChange as CodexProtoFileChange,
-        McpInvocation, McpToolCallBeginEvent, McpToolCallEndEvent, PatchApplyBeginEvent,
-        PatchApplyEndEvent, StreamErrorEvent, ViewImageToolCallEvent, WarningEvent,
-        WebSearchBeginEvent, WebSearchEndEvent,
+        ExecCommandOutputDeltaEvent, ExecOutputStream, ExitedReviewModeEvent,
+        FileChange as CodexProtoFileChange, McpInvocation, McpToolCallBeginEvent,
+        McpToolCallEndEvent, PatchApplyBeginEvent, PatchApplyEndEvent, StreamErrorEvent,
+        ViewImageToolCallEvent, WarningEvent, WebSearchBeginEvent, WebSearchEndEvent,
     },
 };
 use futures::StreamExt;
@@ -174,6 +174,48 @@ struct ReviewState {
     description: String,
     status: ToolStatus,
     result: Option<ToolResult>,
+}
+
+impl ReviewState {
+    fn complete(&mut self, review_event: &ExitedReviewModeEvent) {
+        let result_text = match &review_event.review_output {
+            Some(output) => {
+                let mut sections = Vec::new();
+                sections.push(format!(
+                    "[{}] [{}]",
+                    output.overall_correctness, output.overall_confidence_score,
+                ));
+                let explanation = output.overall_explanation.trim();
+                if !explanation.is_empty() {
+                    sections.push(explanation.to_string());
+                }
+                if !output.findings.is_empty() {
+                    let mut lines = Vec::new();
+                    for finding in &output.findings {
+                        let path = finding.code_location.absolute_file_path.display();
+                        let start = finding.code_location.line_range.start;
+                        let end = finding.code_location.line_range.end;
+                        lines.push(format!(
+                            "- [P{}] [{}] {} — {path}:{start}-{end}",
+                            finding.priority, finding.confidence_score, finding.title,
+                        ));
+                        for body_line in finding.body.lines() {
+                            lines.push(format!("  {body_line}"));
+                        }
+                    }
+                    sections.push(lines.join("\n"));
+                }
+                if sections.is_empty() {
+                    "Review completed".to_string()
+                } else {
+                    sections.join("\n\n")
+                }
+            }
+            None => "Review completed".to_string(),
+        };
+        self.status = ToolStatus::Success;
+        self.result = Some(ToolResult::markdown(result_text));
+    }
 }
 
 impl ToNormalizedEntry for ReviewState {
@@ -1065,46 +1107,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 }
                 EventMsg::ExitedReviewMode(review_event) => {
                     if let Some(mut review_state) = state.review.take() {
-                        let result_text = match &review_event.review_output {
-                            Some(output) => {
-                                let mut sections = Vec::new();
-                                sections.push(format!(
-                                    "[{}] [{}]",
-                                    output.overall_correctness, output.overall_confidence_score,
-                                ));
-                                let explanation = output.overall_explanation.trim();
-                                if !explanation.is_empty() {
-                                    sections.push(explanation.to_string());
-                                }
-                                if !output.findings.is_empty() {
-                                    let mut lines = Vec::new();
-                                    for finding in &output.findings {
-                                        let path =
-                                            finding.code_location.absolute_file_path.display();
-                                        let start = finding.code_location.line_range.start;
-                                        let end = finding.code_location.line_range.end;
-                                        lines.push(format!(
-                                            "- [P{}] [{}] {} — {path}:{start}-{end}",
-                                            finding.priority,
-                                            finding.confidence_score,
-                                            finding.title,
-                                        ));
-                                        for body_line in finding.body.lines() {
-                                            lines.push(format!("  {body_line}"));
-                                        }
-                                    }
-                                    sections.push(lines.join("\n"));
-                                }
-                                if sections.is_empty() {
-                                    "Review completed".to_string()
-                                } else {
-                                    sections.join("\n\n")
-                                }
-                            }
-                            None => "Review completed".to_string(),
-                        };
-                        review_state.status = ToolStatus::Success;
-                        review_state.result = Some(ToolResult::markdown(result_text));
+                        review_state.complete(&review_event);
                         if let Some(index) = review_state.index {
                             replace_normalized_entry(
                                 &msg_store,
