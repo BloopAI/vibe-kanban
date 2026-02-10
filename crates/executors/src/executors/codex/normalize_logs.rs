@@ -1070,8 +1070,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 let mut sections = Vec::new();
                                 sections.push(format!(
                                     "[{}] [{}]",
-                                    output.overall_correctness,
-                                    output.overall_confidence_score,
+                                    output.overall_correctness, output.overall_confidence_score,
                                 ));
                                 let explanation = output.overall_explanation.trim();
                                 if !explanation.is_empty() {
