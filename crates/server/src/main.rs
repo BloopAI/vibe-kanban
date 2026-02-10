@@ -109,16 +109,24 @@ async fn main() -> Result<(), VibeKanbanError> {
         if let Err(e) = write_port_file(actual_port).await {
             tracing::warn!("Failed to write port file: {}", e);
         }
-        tracing::info!("Opening browser...");
-        tokio::spawn(async move {
-            if let Err(e) = open_browser(&format!("http://127.0.0.1:{actual_port}")).await {
-                tracing::warn!(
-                    "Failed to open browser automatically: {}. Please open http://127.0.0.1:{} manually.",
-                    e,
-                    actual_port
-                );
-            }
-        });
+        let skip_browser = std::env::var("SKIP_BROWSER_OPEN")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+
+        if !skip_browser {
+            tracing::info!("Opening browser...");
+            tokio::spawn(async move {
+                if let Err(e) = open_browser(&format!("http://127.0.0.1:{actual_port}")).await {
+                    tracing::warn!(
+                        "Failed to open browser automatically: {}. Please open http://127.0.0.1:{} manually.",
+                        e,
+                        actual_port
+                    );
+                }
+            });
+        } else {
+            tracing::info!("SKIP_BROWSER_OPEN is set, skipping browser launch");
+        }
     }
 
     axum::serve(listener, app_router)

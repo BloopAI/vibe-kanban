@@ -86,3 +86,8 @@ vibe-kanban-cloud/
 
 .jj
 .sisyphus/
+
+# Electron
+electron/dist/
+electron/out/
+electron/resources/bin/

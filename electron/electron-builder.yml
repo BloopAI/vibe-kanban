@@ -1,0 +1,34 @@
+appId: com.bloop.vibe-kanban
+productName: Vibe Kanban
+copyright: Copyright (c) 2025 Bloop AI
+
+asar: true
+
+files:
+  - main.js
+  - preload.js
+  - package.json
+
+directories:
+  output: dist
+
+mac:
+  target: [dmg, zip]
+  hardenedRuntime: true
+  entitlements: entitlements.mac.plist
+  entitlementsInherit: entitlements.mac.plist
+  extraResources:
+    - from: "resources/bin/macos-${arch}/"
+      to: "bin/"
+
+win:
+  target: [nsis]
+  extraResources:
+    - from: "resources/bin/windows-${arch}/"
+      to: "bin/"
+
+linux:
+  target: [AppImage, deb]
+  extraResources:
+    - from: "resources/bin/linux-${arch}/"
+      to: "bin/"

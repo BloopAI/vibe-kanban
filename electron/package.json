@@ -1,0 +1,20 @@
+{
+  "name": "vibe-kanban-desktop",
+  "version": "0.1.7",
+  "description": "Vibe Kanban desktop application — orchestrate AI coding agents from a native app",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.2"
+  },
+  "devDependencies": {
+    "electron": "40.2.1",
+    "electron-builder": "26.4.0"
+  }
+}
