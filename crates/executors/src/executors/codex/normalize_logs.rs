@@ -214,6 +214,7 @@ struct LogState {
     mcp_tools: HashMap<String, McpToolState>,
     patches: HashMap<String, PatchState>,
     web_searches: HashMap<String, WebSearchState>,
+    review_entry_index: Option<usize>,
 }
 
 enum StreamingTextKind {
@@ -231,6 +232,7 @@ impl LogState {
             mcp_tools: HashMap::new(),
             patches: HashMap::new(),
             web_searches: HashMap::new(),
+            review_entry_index: None,
         }
     }
 
@@ -1018,6 +1020,94 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         );
                     }
                 }
+                EventMsg::EnteredReviewMode(review_request) => {
+                    let description = review_request
+                        .user_facing_hint
+                        .unwrap_or_else(|| "Reviewing code...".to_string());
+                    let index = add_normalized_entry(
+                        &msg_store,
+                        &entry_index,
+                        NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::ToolUse {
+                                tool_name: "Review".to_string(),
+                                action_type: ActionType::TaskCreate {
+                                    description,
+                                    subagent_type: Some("review".to_string()),
+                                    result: None,
+                                },
+                                status: ToolStatus::Created,
+                            },
+                            content: String::new(),
+                            metadata: None,
+                        },
+                    );
+                    state.review_entry_index = Some(index);
+                }
+                EventMsg::ExitedReviewMode(review_event) => {
+                    let result_text = match &review_event.review_output {
+                        Some(output) => {
+                            let mut sections = Vec::new();
+                            let explanation = output.overall_explanation.trim();
+                            if !explanation.is_empty() {
+                                sections.push(explanation.to_string());
+                            }
+                            if !output.findings.is_empty() {
+                                let header = if output.findings.len() > 1 {
+                                    "Full review comments:"
+                                } else {
+                                    "Review comment:"
+                                };
+                                let mut lines = vec![String::new(), header.to_string()];
+                                for finding in &output.findings {
+                                    lines.push(String::new());
+                                    let path =
+                                        finding.code_location.absolute_file_path.display();
+                                    let start = finding.code_location.line_range.start;
+                                    let end = finding.code_location.line_range.end;
+                                    lines.push(format!(
+                                        "- {} — {path}:{start}-{end}",
+                                        finding.title
+                                    ));
+                                    for body_line in finding.body.lines() {
+                                        lines.push(format!("  {body_line}"));
+                                    }
+                                }
+                                let findings_block = lines.join("\n");
+                                let trimmed = findings_block.trim();
+                                if !trimmed.is_empty() {
+                                    sections.push(trimmed.to_string());
+                                }
+                            }
+                            if sections.is_empty() {
+                                "Review completed".to_string()
+                            } else {
+                                sections.join("\n\n")
+                            }
+                        }
+                        None => "Review completed".to_string(),
+                    };
+                    if let Some(index) = state.review_entry_index.take() {
+                        replace_normalized_entry(
+                            &msg_store,
+                            index,
+                            NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::ToolUse {
+                                    tool_name: "Review".to_string(),
+                                    action_type: ActionType::TaskCreate {
+                                        description: "Code review".to_string(),
+                                        subagent_type: Some("review".to_string()),
+                                        result: Some(ToolResult::markdown(result_text)),
+                                    },
+                                    status: ToolStatus::Success,
+                                },
+                                content: String::new(),
+                                metadata: None,
+                            },
+                        );
+                    }
+                }
                 EventMsg::ContextCompacted(..) => {
                     add_normalized_entry(
                         &msg_store,
@@ -1054,8 +1144,6 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 | EventMsg::SkillsUpdateAvailable
                 | EventMsg::TurnAborted(..)
                 | EventMsg::ShutdownComplete
-                | EventMsg::EnteredReviewMode(..)
-                | EventMsg::ExitedReviewMode(..)
                 | EventMsg::TerminalInteraction(..)
                 | EventMsg::ElicitationRequest(..)
                 | EventMsg::TurnComplete(..)
