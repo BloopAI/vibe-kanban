@@ -89,7 +89,7 @@ export type CreateIssueRequest = {
  */
 id?: string, project_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority | null, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, parent_issue_sort_order: number | null, extension_metadata: JsonValue, };
 
-export type UpdateIssueRequest = { status_id: string | null, title: string | null, description: string | null | null, priority: IssuePriority | null | null, start_date: string | null | null, target_date: string | null | null, completed_at: string | null | null, sort_order: number | null, parent_issue_id: string | null | null, parent_issue_sort_order: number | null | null, extension_metadata: JsonValue | null, };
+export type UpdateIssueRequest = { status_id?: string | null, title?: string | null, description?: string | null | null, priority?: IssuePriority | null | null, start_date?: string | null | null, target_date?: string | null | null, completed_at?: string | null | null, sort_order?: number | null, parent_issue_id?: string | null | null, parent_issue_sort_order?: number | null | null, extension_metadata?: JsonValue | null, };
 
 export type CreateIssueAssigneeRequest = { 
 /**
