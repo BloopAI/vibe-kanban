@@ -3,6 +3,11 @@ productName: Vibe Kanban
 copyright: Copyright (c) 2025 Bloop AI
 
 asar: true
+compression: maximum
+npmRebuild: false
+
+electronLanguages:
+  - en
 
 files:
   - main.js

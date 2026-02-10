@@ -9,6 +9,13 @@ const fs = require('fs');
 const os = require('os');
 const http = require('http');
 
+const CONTENT_SECURITY_POLICY =
+  "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://127.0.0.1:* ws://127.0.0.1:*; " +
+  "style-src 'self' 'unsafe-inline' http://127.0.0.1:* https://fonts.googleapis.com; " +
+  "font-src 'self' data: http://127.0.0.1:* https://fonts.gstatic.com; " +
+  "img-src 'self' data: blob: http://127.0.0.1:*; " +
+  "connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*";
+
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
@@ -19,6 +26,7 @@ let backendPort = null;
 let isShuttingDown = false;
 let backendLogStream = null;
 let electronLogStream = null;
+let autoUpdateInitialized = false;
 
 // ---------------------------------------------------------------------------
 // (k) Logging infrastructure
@@ -48,8 +56,9 @@ function logElectron(message) {
   if (electronLogStream) {
     electronLogStream.write(line);
   }
-  // Also log to console for dev convenience
-  console.log(`[electron] ${message}`);
+  if (!app.isPackaged) {
+    console.log(`[electron] ${message}`);
+  }
 }
 
 function logBackend(data) {
@@ -104,30 +113,31 @@ function getPortFilePath() {
   return path.join(os.tmpdir(), 'vibe-kanban', 'vibe-kanban.port');
 }
 
-function checkForOrphanProcess() {
+async function checkForOrphanProcess() {
   const portFilePath = getPortFilePath();
 
   if (!fs.existsSync(portFilePath)) {
-    return Promise.resolve(false);
+    return false;
   }
 
   let port;
   try {
-    const content = fs.readFileSync(portFilePath, 'utf-8').trim();
+    const content = (await fs.promises.readFile(portFilePath, 'utf-8')).trim();
     port = parseInt(content, 10);
     if (isNaN(port) || port <= 0 || port > 65535) {
       // Invalid port file — remove it and continue
       fs.unlinkSync(portFilePath);
-      return Promise.resolve(false);
+      return false;
     }
   } catch {
-    return Promise.resolve(false);
+    return false;
   }
 
   // Check if something is actually listening on that port
   return new Promise((resolve) => {
     const req = http.get(`http://127.0.0.1:${port}/api/health`, (res) => {
       req.destroy();
+      res.resume();
       if (res.statusCode === 200) {
         resolve(port);
       } else {
@@ -141,7 +151,7 @@ function checkForOrphanProcess() {
       try { fs.unlinkSync(portFilePath); } catch { /* ignore */ }
       resolve(false);
     });
-    req.setTimeout(1000, () => {
+    req.setTimeout(300, () => {
       req.destroy();
       try { fs.unlinkSync(portFilePath); } catch { /* ignore */ }
       resolve(false);
@@ -153,7 +163,7 @@ function checkForOrphanProcess() {
 // (d) Health check readiness polling
 // ---------------------------------------------------------------------------
 
-function waitForHealth(port, retries = 30, interval = 100) {
+function waitForHealth(port, retries = 30, interval = 100, requestTimeout = 300) {
   return new Promise((resolve, reject) => {
     let attempts = 0;
 
@@ -177,7 +187,7 @@ function waitForHealth(port, retries = 30, interval = 100) {
           reject(new Error(`Health check failed after ${retries} attempts`));
         }
       });
-      req.setTimeout(1000, () => {
+      req.setTimeout(requestTimeout, () => {
         req.destroy();
         if (attempts < retries) {
           setTimeout(poll, interval);
@@ -234,9 +244,11 @@ function startBackend() {
   const portRegex = /Server running on http:\/\/127\.0\.0\.1:(\d+)/;
   let portDiscovered = false;
 
-  backendProcess.stdout.on('data', (data) => {
-    const text = data.toString();
-    logBackend(data);
+  backendProcess.stdout.setEncoding('utf8');
+  backendProcess.stderr.setEncoding('utf8');
+
+  backendProcess.stdout.on('data', (text) => {
+    logBackend(text);
 
     if (!portDiscovered) {
       const match = text.match(portRegex);
@@ -249,8 +261,8 @@ function startBackend() {
     }
   });
 
-  backendProcess.stderr.on('data', (data) => {
-    logBackend(data);
+  backendProcess.stderr.on('data', (text) => {
+    logBackend(text);
   });
 
   // (g) Backend crash monitoring
@@ -274,18 +286,18 @@ function startBackend() {
     app.quit();
   });
 
-  // Timeout for port discovery (10 seconds)
+  // Timeout for port discovery (7 seconds)
   setTimeout(() => {
     if (!portDiscovered) {
-      logElectron('Port discovery timed out after 10 seconds');
+      logElectron('Port discovery timed out after 7 seconds');
       dialog.showErrorBox(
         'Startup Timeout',
-        'The backend did not report its port within 10 seconds.\nPlease check the logs and restart.'
+        'The backend did not report its port within 7 seconds.\nPlease check the logs and restart.'
       );
       shutdownBackend();
       app.quit();
     }
-  }, 10000);
+  }, 7000);
 }
 
 async function onPortDiscovered(port) {
@@ -316,11 +328,15 @@ function createWindow(port) {
     minHeight: 600,
     title: 'Vibe Kanban',
     backgroundColor: '#1f1f1f',
+    show: false,
+    paintWhenInitiallyHidden: false,
     webPreferences: {
       contextIsolation: true,
       sandbox: true,
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
+      backgroundThrottling: true,
+      spellcheck: false,
     },
   };
 
@@ -332,6 +348,14 @@ function createWindow(port) {
   mainWindow = new BrowserWindow(windowOptions);
 
   mainWindow.loadURL(`http://127.0.0.1:${port}`);
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow?.show();
+  });
+
+  mainWindow.webContents.once('did-finish-load', () => {
+    setupAutoUpdate();
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -401,13 +425,7 @@ function setupContentSecurityPolicy() {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': [
-          "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://127.0.0.1:* ws://127.0.0.1:*; " +
-          "style-src 'self' 'unsafe-inline' http://127.0.0.1:* https://fonts.googleapis.com; " +
-          "font-src 'self' data: http://127.0.0.1:* https://fonts.gstatic.com; " +
-          "img-src 'self' data: blob: http://127.0.0.1:*; " +
-          "connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*",
-        ],
+        'Content-Security-Policy': [CONTENT_SECURITY_POLICY],
       },
     });
   });
@@ -467,9 +485,21 @@ function setupMenu() {
 // ---------------------------------------------------------------------------
 
 function setupAutoUpdate() {
+  if (autoUpdateInitialized) {
+    return;
+  }
+  autoUpdateInitialized = true;
+
+  if (!app.isPackaged) {
+    logElectron('Skipping auto-update in development mode');
+    return;
+  }
+
+  setTimeout(() => {
   autoUpdater.checkForUpdatesAndNotify().catch((err) => {
     logElectron(`Auto-update check failed: ${err.message}`);
   });
+  }, 15000);
 
   autoUpdater.on('update-downloaded', () => {
     logElectron('Update downloaded, prompting user');
@@ -516,7 +546,6 @@ if (!gotTheLock) {
     initLogging();
     setupMenu();
     setupContentSecurityPolicy();
-    setupAutoUpdate();
 
     // (o) Orphan detection — check if a backend is already running
     const orphanPort = await checkForOrphanProcess();

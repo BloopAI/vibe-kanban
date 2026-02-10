@@ -113,7 +113,11 @@ echo "   ✓ vibe-kanban-review${BIN_EXT}"
 
 echo ""
 echo "📦 Installing Electron dependencies..."
-(cd electron && pnpm install)
+if [ ! -d "electron/node_modules" ]; then
+  (cd electron && pnpm install --prefer-offline)
+else
+  echo "   ✓ electron/node_modules already present, skipping install"
+fi
 
 # ─── Run electron-builder ───────────────────────────────────────────────────
 

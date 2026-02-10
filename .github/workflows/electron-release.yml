@@ -78,9 +78,6 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
-    env:
-      CARGO_INCREMENTAL: "0"
-
     steps:
       # ─── Checkout ─────────────────────────────────────────────────────
       - name: Checkout
@@ -98,18 +95,25 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            electron/package.json
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
 
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+
       # ─── Install dependencies ─────────────────────────────────────────
       - name: Install root dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile --prefer-offline
 
       - name: Install Electron dependencies
-        run: pnpm install
+        run: pnpm install --prefer-offline
         working-directory: electron
 
       # ─── Linux-specific dependencies ──────────────────────────────────
@@ -137,6 +141,15 @@ jobs:
       - name: Install cargo-xwin
         if: runner.os == 'Linux' && contains(matrix.rust_target, 'windows')
         run: cargo install --locked cargo-xwin --version 0.20.2
+
+      - name: Cache xwin SDK/cache
+        if: runner.os == 'Linux' && contains(matrix.rust_target, 'windows')
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.xwin
+            ~/.cache/xwin
+          key: xwin-${{ runner.os }}-${{ matrix.rust_target }}-v1
 
       # ─── Windows arm64 RING_CC workaround ─────────────────────────────
       # ring crate requires clang (not clang-cl) for arm64 Windows builds.
