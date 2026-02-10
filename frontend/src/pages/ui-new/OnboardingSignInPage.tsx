@@ -70,7 +70,7 @@ function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
 async function hasActiveWorkspaceAttempts(): Promise<boolean> {
   try {
     const workspaces = await attemptsApi.getAllWorkspaces();
-    return workspaces.some((workspace) => !workspace.archived);
+    return workspaces.length > 0;
   } catch (error) {
     console.error('Failed to load workspaces for onboarding redirect:', error);
     return false;

@@ -116,7 +116,16 @@ export function MigrateChooseProjects({
           Local Projects
         </label>
         {projects.length === 0 ? (
-          <p className="text-sm text-low">No local projects found.</p>
+          <div className="space-y-base">
+            <p className="text-sm text-low">No local projects found.</p>
+            <Link
+              to="/workspaces/create"
+              className="inline-flex items-center gap-half text-sm text-brand hover:underline"
+            >
+              Skip to create a workspace
+              <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
+            </Link>
+          </div>
         ) : (
           <div className="bg-secondary border rounded">
             {/* Select all - only for migrateable projects */}
