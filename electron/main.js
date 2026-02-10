@@ -9,6 +9,8 @@ const fs = require('fs');
 const os = require('os');
 const http = require('http');
 
+app.setName('Vibe Kanban');
+
 const CONTENT_SECURITY_POLICY =
   "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://127.0.0.1:* ws://127.0.0.1:*; " +
   "style-src 'self' 'unsafe-inline' http://127.0.0.1:* https://fonts.googleapis.com; " +
@@ -329,7 +331,6 @@ function createWindow(port) {
     title: 'Vibe Kanban',
     backgroundColor: '#1f1f1f',
     show: false,
-    paintWhenInitiallyHidden: false,
     webPreferences: {
       contextIsolation: true,
       sandbox: true,

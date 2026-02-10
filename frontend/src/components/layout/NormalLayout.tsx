@@ -15,8 +15,9 @@ export function NormalLayout() {
       <div
         className="relative flex flex-col"
         style={{
-          height: electronTopInset ? `calc(100vh - ${electronTopInset}px)` : '100vh',
+          height: '100vh',
           paddingTop: electronTopInset || undefined,
+          boxSizing: 'border-box',
         }}
       >
         {isElectronDesktop ? (

@@ -52,8 +52,9 @@ export function VSCodeWorkspacePage() {
       <div
         className="relative flex flex-col bg-primary"
         style={{
-          height: electronTopInset ? `calc(100vh - ${electronTopInset}px)` : '100vh',
+          height: '100vh',
           paddingTop: electronTopInset || undefined,
+          boxSizing: 'border-box',
         }}
       >
         {isElectronDesktop ? (

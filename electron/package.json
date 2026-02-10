@@ -1,5 +1,6 @@
 {
   "name": "vibe-kanban-desktop",
+  "productName": "Vibe Kanban",
   "version": "0.1.7",
   "description": "Vibe Kanban desktop application — orchestrate AI coding agents from a native app",
   "main": "main.js",
