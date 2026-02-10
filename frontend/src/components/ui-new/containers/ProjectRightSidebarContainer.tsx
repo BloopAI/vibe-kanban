@@ -284,7 +284,6 @@ export function ProjectRightSidebarContainer() {
     openIssue,
     openIssueWorkspace,
     closePanel,
-    closeWorkspaceCreate,
   } = useKanbanNavigation();
 
   const handleOpenIssueFromCreate = useCallback(
@@ -318,7 +317,7 @@ export function ProjectRightSidebarContainer() {
         linkedIssueId={linkedIssueId}
         linkedIssueSimpleId={linkedIssueSimpleId}
         onOpenIssue={handleOpenIssueFromCreate}
-        onClose={closeWorkspaceCreate}
+        onClose={closePanel}
       >
         <CreateModeProvider key={draftId} draftId={draftId}>
           <CreateChatBoxContainer onWorkspaceCreated={handleWorkspaceCreated} />

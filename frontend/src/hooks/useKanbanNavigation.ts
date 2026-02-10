@@ -95,24 +95,6 @@ export function useKanbanNavigation() {
     navigate(buildProjectRootPath(projectId));
   }, [navigate, projectId]);
 
-  const closeWorkspace = useCallback(() => {
-    if (!projectId) return;
-    if (issueId) {
-      navigate(buildIssuePath(projectId, issueId));
-      return;
-    }
-    navigate(buildProjectRootPath(projectId));
-  }, [navigate, projectId, issueId]);
-
-  const closeWorkspaceCreate = useCallback(() => {
-    if (!projectId) return;
-    if (routeState?.type === 'workspace-create' && routeState.issueId) {
-      navigate(buildIssuePath(projectId, routeState.issueId));
-      return;
-    }
-    navigate(buildProjectRootPath(projectId));
-  }, [navigate, projectId, routeState]);
-
   const startCreate = useCallback(
     (options?: {
       statusId?: string;
@@ -175,8 +157,6 @@ export function useKanbanNavigation() {
     openIssueWorkspace,
     openWorkspaceCreate,
     closePanel,
-    closeWorkspace,
-    closeWorkspaceCreate,
     startCreate,
     updateCreateDefaults,
   };
