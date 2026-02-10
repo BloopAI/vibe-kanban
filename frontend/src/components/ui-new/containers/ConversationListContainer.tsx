@@ -276,8 +276,12 @@ export const ConversationList = forwardRef<
     }, 100);
   };
 
-  const { hasSetupScriptRun, hasCleanupScriptRun, hasRunningProcess, isFirstTurn } =
-    useConversationHistory({ attempt, onEntriesUpdated });
+  const {
+    hasSetupScriptRun,
+    hasCleanupScriptRun,
+    hasRunningProcess,
+    isFirstTurn,
+  } = useConversationHistory({ attempt, onEntriesUpdated });
 
   // Determine if there are entries to show placeholders
   const entries = channelData?.data ?? [];
