@@ -27,6 +27,8 @@ export interface UseConversationHistoryResult {
   hasCleanupScriptRun: boolean;
   /** Whether there is currently a running process */
   hasRunningProcess: boolean;
+  /** Whether the conversation only has a single coding agent turn (no follow-ups) */
+  isFirstTurn: boolean;
 }
 import {
   makeLoadingPatch,
@@ -74,6 +76,16 @@ export const useConversationHistory = ({
   const [hasSetupScriptRun, setHasSetupScriptRun] = useState(false);
   const [hasCleanupScriptRun, setHasCleanupScriptRun] = useState(false);
   const [hasRunningProcess, setHasRunningProcess] = useState(false);
+
+  // Derive whether this is the first turn (no follow-up processes exist)
+  const isFirstTurn = useMemo(() => {
+    const codingAgentProcessCount = executionProcessesRaw.filter(
+      (ep) =>
+        ep.executor_action.typ.type === 'CodingAgentInitialRequest' ||
+        ep.executor_action.typ.type === 'CodingAgentFollowUpRequest'
+    ).length;
+    return codingAgentProcessCount <= 1;
+  }, [executionProcessesRaw]);
 
   const mergeIntoDisplayed = (
     mutator: (state: ExecutionProcessStateStore) => void
@@ -780,5 +792,6 @@ export const useConversationHistory = ({
     hasSetupScriptRun,
     hasCleanupScriptRun,
     hasRunningProcess,
+    isFirstTurn,
   };
 };
