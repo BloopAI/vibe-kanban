@@ -137,7 +137,7 @@ pub async fn create_task(
     Ok(ResponseJson(ApiResponse::success(task)))
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 pub struct CreateAndStartTaskRequest {
     pub task: CreateTask,
     pub executor_profile_id: ExecutorProfileId,

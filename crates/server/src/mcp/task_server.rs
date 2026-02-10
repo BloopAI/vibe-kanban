@@ -5,8 +5,10 @@ use api_types::{
     ProjectStatus,
 };
 use db::models::{
+    project::Project,
     repo::Repo,
     tag::Tag,
+    task::{CreateTask, TaskWithAttemptStatus},
     workspace::{Workspace, WorkspaceContext},
 };
 use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
@@ -26,7 +28,8 @@ use uuid::Uuid;
 
 use crate::routes::{
     containers::ContainerQuery,
-    task_attempts::{CreateTaskAttemptBody, WorkspaceRepoInput},
+    task_attempts::WorkspaceRepoInput,
+    tasks::CreateAndStartTaskRequest,
 };
 
 // ── MCP request/response types ──────────────────────────────────────────────
@@ -276,8 +279,8 @@ pub struct McpWorkspaceRepoInput {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct StartWorkspaceSessionRequest {
-    #[schemars(description = "The ID of the task to start")]
-    pub task_id: Uuid,
+    #[schemars(description = "A title for the workspace (used as the task name)")]
+    pub title: String,
     #[schemars(
         description = "The coding agent executor to run ('CLAUDE_CODE', 'AMP', 'GEMINI', 'CODEX', 'OPENCODE', 'CURSOR_AGENT', 'QWEN_CODE', 'COPILOT', 'DROID')"
     )]
@@ -290,7 +293,6 @@ pub struct StartWorkspaceSessionRequest {
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct StartWorkspaceSessionResponse {
-    pub task_id: String,
     pub workspace_id: String,
 }
 
@@ -988,12 +990,12 @@ impl TaskServer {
     }
 
     #[tool(
-        description = "Start working on a task by creating and launching a new workspace session."
+        description = "Start a new workspace session. A local task is auto-created under the first available project."
     )]
     async fn start_workspace_session(
         &self,
         Parameters(StartWorkspaceSessionRequest {
-            task_id,
+            title,
             executor,
             variant,
             repos,
@@ -1033,6 +1035,19 @@ impl TaskServer {
             variant,
         };
 
+        // Derive project_id from first available project
+        let projects: Vec<Project> =
+            match self.send_json(self.client.get(&self.url("/api/projects"))).await {
+                Ok(projects) => projects,
+                Err(e) => return Ok(e),
+            };
+        let project = match projects.first() {
+            Some(p) => p,
+            None => {
+                return Self::err("No projects found. Create a project first.", None::<&str>);
+            }
+        };
+
         let workspace_repos: Vec<WorkspaceRepoInput> = repos
             .into_iter()
             .map(|r| WorkspaceRepoInput {
@@ -1041,21 +1056,35 @@ impl TaskServer {
             })
             .collect();
 
-        let payload = CreateTaskAttemptBody {
-            task_id,
+        let payload = CreateAndStartTaskRequest {
+            task: CreateTask::from_title_description(project.id, title, None),
             executor_profile_id,
             repos: workspace_repos,
         };
 
-        let url = self.url("/api/task-attempts");
-        let workspace: Workspace = match self.send_json(self.client.post(&url).json(&payload)).await
-        {
-            Ok(workspace) => workspace,
+        // create-and-start returns the task; we need to fetch the workspace it created
+        let url = self.url("/api/tasks/create-and-start");
+        let task: TaskWithAttemptStatus =
+            match self.send_json(self.client.post(&url).json(&payload)).await {
+                Ok(task) => task,
+                Err(e) => return Ok(e),
+            };
+
+        // Fetch workspaces for this task to get the workspace ID
+        let url = self.url(&format!("/api/task-attempts?task_id={}", task.task.id));
+        let workspaces: Vec<Workspace> = match self.send_json(self.client.get(&url)).await {
+            Ok(workspaces) => workspaces,
             Err(e) => return Ok(e),
         };
 
+        let workspace = match workspaces.first() {
+            Some(w) => w,
+            None => {
+                return Self::err("Workspace was not created.", None::<&str>);
+            }
+        };
+
         let response = StartWorkspaceSessionResponse {
-            task_id: workspace.task_id.to_string(),
             workspace_id: workspace.id.to_string(),
         };
 
