@@ -18,6 +18,7 @@ import {
   buildWorkspaceCreatePrompt,
 } from '@/lib/workspaceCreateState';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
+import { DeleteWorkspaceDialog } from '@/components/ui-new/dialogs/DeleteWorkspaceDialog';
 import type { WorkspaceWithStats } from '@/components/ui-new/views/IssueWorkspaceCard';
 import { IssueWorkspacesSection } from '@/components/ui-new/views/IssueWorkspacesSection';
 import type { SectionAction } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
@@ -213,33 +214,44 @@ export function IssueWorkspacesSectionContainer({
   // Handle deleting a workspace (unlinks first, then deletes local)
   const handleDeleteWorkspace = useCallback(
     async (localWorkspaceId: string) => {
-      const result = await ConfirmDialog.show({
-        title: t('workspaces.deleteWorkspace'),
-        message: t('workspaces.deleteConfirmMessage'),
-        confirmText: t('workspaces.delete'),
-        variant: 'destructive',
+      const localWorkspace = localWorkspacesById.get(localWorkspaceId);
+      if (!localWorkspace) {
+        ConfirmDialog.show({
+          title: t('common:error'),
+          message: t('workspaces.deleteError'),
+          confirmText: t('common:ok'),
+          showCancelButton: false,
+        });
+        return;
+      }
+
+      const result = await DeleteWorkspaceDialog.show({
+        workspaceId: localWorkspaceId,
+        branchName: localWorkspace.branch,
       });
 
-      if (result === 'confirmed') {
-        try {
-          // First unlink from remote
-          await attemptsApi.unlinkFromIssue(localWorkspaceId);
-          // Then delete local workspace
-          await attemptsApi.delete(localWorkspaceId);
-        } catch (error) {
-          ConfirmDialog.show({
-            title: t('common:error'),
-            message:
-              error instanceof Error
-                ? error.message
-                : t('workspaces.deleteError'),
-            confirmText: t('common:ok'),
-            showCancelButton: false,
-          });
-        }
+      if (result.action !== 'confirmed') {
+        return;
+      }
+
+      try {
+        // First unlink from remote
+        await attemptsApi.unlinkFromIssue(localWorkspaceId);
+        // Then delete local workspace
+        await attemptsApi.delete(localWorkspaceId, result.deleteBranches);
+      } catch (error) {
+        ConfirmDialog.show({
+          title: t('common:error'),
+          message:
+            error instanceof Error
+              ? error.message
+              : t('workspaces.deleteError'),
+          confirmText: t('common:ok'),
+          showCancelButton: false,
+        });
       }
     },
-    [t]
+    [localWorkspacesById, t]
   );
 
   // Actions for the section header
