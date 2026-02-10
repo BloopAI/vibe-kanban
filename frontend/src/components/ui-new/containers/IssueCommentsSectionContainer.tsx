@@ -60,28 +60,29 @@ function IssueCommentsSectionContent() {
     );
   }, []);
 
-  const { uploadFiles, getAttachmentIds, clearAttachments, isUploading } =
-    useAzureAttachments({
-      projectId,
-      onMarkdownInsert: handleCommentMarkdownInsert,
-    });
+  const {
+    uploadFiles,
+    getAttachmentIds,
+    clearAttachments,
+    isUploading,
+    uploadError,
+    clearUploadError,
+  } = useAzureAttachments({
+    projectId,
+    onMarkdownInsert: handleCommentMarkdownInsert,
+  });
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop: (acceptedFiles) => {
-      const imageFiles = acceptedFiles.filter((f) =>
-        f.type.startsWith('image/')
-      );
-      if (imageFiles.length > 0) uploadFiles(imageFiles);
+      if (acceptedFiles.length > 0) uploadFiles(acceptedFiles);
     },
-    accept: { 'image/*': [] },
     noClick: true,
     noKeyboard: true,
   });
 
   const onPasteFiles = useCallback(
     (files: File[]) => {
-      const imageFiles = files.filter((f) => f.type.startsWith('image/'));
-      if (imageFiles.length > 0) uploadFiles(imageFiles);
+      if (files.length > 0) uploadFiles(files);
     },
     [uploadFiles]
   );
@@ -313,6 +314,8 @@ function IssueCommentsSectionContent() {
       dropzoneProps={{ getRootProps, getInputProps, isDragActive }}
       onBrowseAttachment={open}
       isUploading={isUploading}
+      attachmentError={uploadError}
+      onDismissAttachmentError={clearUploadError}
     />
   );
 }

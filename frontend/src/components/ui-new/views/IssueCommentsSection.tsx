@@ -15,6 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { ErrorAlert } from '@/components/ui-new/primitives/ErrorAlert';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 import { CollapsibleSectionHeader } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
 import {
@@ -74,6 +75,8 @@ interface IssueCommentsSectionProps {
   dropzoneProps?: DropzoneProps;
   onBrowseAttachment?: () => void;
   isUploading?: boolean;
+  attachmentError?: string | null;
+  onDismissAttachmentError?: () => void;
 }
 
 export function IssueCommentsSection({
@@ -97,6 +100,8 @@ export function IssueCommentsSection({
   dropzoneProps,
   onBrowseAttachment,
   isUploading,
+  attachmentError,
+  onDismissAttachmentError,
 }: IssueCommentsSectionProps) {
   const { t } = useTranslation('common');
 
@@ -151,20 +156,37 @@ export function IssueCommentsSection({
             onPasteFiles={onPasteFiles}
             autoFocus={false}
           />
+          {attachmentError && (
+            <div className="mb-half">
+              <ErrorAlert
+                message={attachmentError}
+                onDismiss={onDismissAttachmentError}
+                dismissLabel={t('buttons.close')}
+              />
+            </div>
+          )}
           <div className="flex items-center justify-end gap-half">
             {onBrowseAttachment && (
-              <button
-                type="button"
-                onClick={onBrowseAttachment}
-                title={t('kanban.attachImage')}
-                className={cn(
-                  'size-[22px] rounded-full bg-panel border border-border',
-                  'flex items-center justify-center',
-                  'text-low hover:text-normal transition-colors'
-                )}
-              >
-                <PaperclipIcon size={12} />
-              </button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={onBrowseAttachment}
+                      title={t('kanban.attachFile')}
+                      className={cn(
+                        'size-[22px] rounded-full bg-panel border border-border',
+                        'flex items-center justify-center',
+                        'text-low hover:text-normal transition-colors'
+                      )}
+                      aria-label={t('kanban.attachFile')}
+                    >
+                      <PaperclipIcon size={12} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('kanban.attachFileHint')}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
             <button
               type="button"
@@ -183,7 +205,7 @@ export function IssueCommentsSection({
           {dropzoneProps?.isDragActive && (
             <div className="absolute inset-0 z-50 bg-primary/80 backdrop-blur-sm border-2 border-dashed border-brand rounded flex items-center justify-center">
               <p className="text-sm font-medium text-high">
-                {t('kanban.dropImagesHere')}
+                {t('kanban.dropFilesHere')}
               </p>
             </div>
           )}

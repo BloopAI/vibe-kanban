@@ -1,4 +1,10 @@
-import { XIcon, SpinnerIcon, ImageIcon } from '@phosphor-icons/react';
+import {
+  XIcon,
+  SpinnerIcon,
+  ImageIcon,
+  DownloadSimpleIcon,
+  FileIcon,
+} from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { useAttachmentUrl } from '@/hooks/useAttachmentUrl';
 import { formatFileSize } from '@/lib/utils';
@@ -17,16 +23,19 @@ export interface IssueAttachmentsSectionProps {
   attachments: AttachmentData[];
   onDelete: (attachmentId: string) => void;
   onPreview: (attachmentId: string) => void;
+  onDownload: (attachmentId: string) => void;
 }
 
 function AttachmentThumbnail({
   attachment,
   onDelete,
   onPreview,
+  onDownload,
 }: {
   attachment: AttachmentData;
   onDelete: (attachmentId: string) => void;
   onPreview: (attachmentId: string) => void;
+  onDownload: (attachmentId: string) => void;
 }) {
   const { t } = useTranslation('common');
   const { url: thumbnailUrl, loading } = useAttachmentUrl(
@@ -58,8 +67,10 @@ function AttachmentThumbnail({
             alt={attachment.filename}
             className="w-full h-full object-cover"
           />
-        ) : (
+        ) : isImage ? (
           <ImageIcon className="size-icon-lg text-low" />
+        ) : (
+          <FileIcon className="size-icon-lg text-low" />
         )}
       </div>
 
@@ -82,6 +93,20 @@ function AttachmentThumbnail({
         type="button"
         onClick={(e) => {
           e.stopPropagation();
+          onDownload(attachment.id);
+        }}
+        className="absolute top-0.5 left-0.5 p-0.5 rounded bg-primary/80 text-low hover:text-normal opacity-0 group-hover:opacity-100 transition-opacity"
+        aria-label={t('kanban.downloadAttachmentAria', {
+          filename: attachment.filename,
+        })}
+      >
+        <DownloadSimpleIcon className="size-icon-xs" weight="bold" />
+      </button>
+
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
           onDelete(attachment.id);
         }}
         className="absolute top-0.5 right-0.5 p-0.5 rounded bg-primary/80 text-low hover:text-error opacity-0 group-hover:opacity-100 transition-opacity"
@@ -99,6 +124,7 @@ export function IssueAttachmentsSection({
   attachments,
   onDelete,
   onPreview,
+  onDownload,
 }: IssueAttachmentsSectionProps) {
   const { t } = useTranslation('common');
 
@@ -119,6 +145,7 @@ export function IssueAttachmentsSection({
             attachment={attachment}
             onDelete={onDelete}
             onPreview={onPreview}
+            onDownload={onDownload}
           />
         ))}
       </div>

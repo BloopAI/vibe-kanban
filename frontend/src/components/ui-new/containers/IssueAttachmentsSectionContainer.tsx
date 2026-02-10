@@ -32,6 +32,38 @@ export function IssueAttachmentsSectionContainer({
     });
   }, [issueId, getAttachmentsForIssue, getBlobForAttachment, t]);
 
+  const openAttachmentInNewTab = useCallback(async (attachmentId: string) => {
+    const sasUrl = await fetchAttachmentSasUrl(attachmentId, 'file');
+    window.open(sasUrl, '_blank', 'noopener,noreferrer');
+  }, []);
+
+  const downloadAttachment = useCallback(async (attachment: AttachmentData) => {
+    const sasUrl = await fetchAttachmentSasUrl(attachment.id, 'file');
+    const response = await fetch(sasUrl, {
+      method: 'GET',
+      mode: 'cors',
+      credentials: 'omit',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to download attachment file');
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    try {
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = attachment.filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  }, []);
+
   const handleDelete = useCallback((attachmentId: string) => {
     deleteAttachment(attachmentId).catch((err) => {
       console.error('Failed to delete attachment:', err);
@@ -42,6 +74,14 @@ export function IssueAttachmentsSectionContainer({
     (attachmentId: string) => {
       const attachment = attachments.find((a) => a.id === attachmentId);
       if (!attachment) return;
+
+      const isImage = attachment.mime_type?.startsWith('image/');
+      if (!isImage) {
+        openAttachmentInNewTab(attachmentId).catch((err) => {
+          console.error('Failed to open attachment preview:', err);
+        });
+        return;
+      }
 
       fetchAttachmentSasUrl(attachmentId, 'file')
         .then((sasUrl) => {
@@ -61,7 +101,19 @@ export function IssueAttachmentsSectionContainer({
           console.error('Failed to load attachment preview:', err);
         });
     },
-    [attachments]
+    [attachments, openAttachmentInNewTab]
+  );
+
+  const handleDownload = useCallback(
+    (attachmentId: string) => {
+      const attachment = attachments.find((a) => a.id === attachmentId);
+      if (!attachment) return;
+
+      downloadAttachment(attachment).catch((err) => {
+        console.error('Failed to download attachment:', err);
+      });
+    },
+    [attachments, downloadAttachment]
   );
 
   return (
@@ -69,6 +121,7 @@ export function IssueAttachmentsSectionContainer({
       attachments={attachments}
       onDelete={handleDelete}
       onPreview={handlePreview}
+      onDownload={handleDownload}
     />
   );
 }

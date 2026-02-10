@@ -29,6 +29,13 @@ import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/I
 import { IssueRelationshipsSectionContainer } from '@/components/ui-new/containers/IssueRelationshipsSectionContainer';
 import { IssueAttachmentsSectionContainer } from '@/components/ui-new/containers/IssueAttachmentsSectionContainer';
 import { IssueWorkspacesSectionContainer } from '@/components/ui-new/containers/IssueWorkspacesSectionContainer';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { ErrorAlert } from '@/components/ui-new/primitives/ErrorAlert';
 
 export type IssuePanelMode = 'create' | 'edit';
 
@@ -109,6 +116,8 @@ export interface KanbanIssuePanelProps {
   };
   onBrowseAttachment?: () => void;
   isUploading?: boolean;
+  attachmentError?: string | null;
+  onDismissAttachmentError?: () => void;
 }
 
 export function KanbanIssuePanel({
@@ -139,6 +148,8 @@ export function KanbanIssuePanel({
   dropzoneProps,
   onBrowseAttachment,
   isUploading,
+  attachmentError,
+  onDismissAttachmentError,
 }: KanbanIssuePanelProps) {
   const { t } = useTranslation('common');
   const isCreateMode = mode === 'create';
@@ -285,19 +296,47 @@ export function KanbanIssuePanel({
               className="min-h-[100px] px-base"
               showStaticToolbar
               saveStatus={descriptionSaveStatus}
+              staticToolbarActions={
+                onBrowseAttachment ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            if (!isSubmitting && !isUploading) {
+                              onBrowseAttachment();
+                            }
+                          }}
+                          disabled={isSubmitting || isUploading}
+                          className={cn(
+                            'p-half rounded-sm transition-colors',
+                            'text-low hover:text-normal hover:bg-panel/50',
+                            'disabled:opacity-50 disabled:cursor-not-allowed'
+                          )}
+                          title={t('kanban.attachFile')}
+                          aria-label={t('kanban.attachFile')}
+                        >
+                          <PaperclipIcon className="size-icon-sm" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {t('kanban.attachFileHint')}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : null
+              }
             />
-            {onBrowseAttachment && (
-              <div className="flex items-center px-base pb-half">
-                <button
-                  type="button"
-                  onClick={onBrowseAttachment}
-                  disabled={isSubmitting || isUploading}
-                  className="flex items-center gap-1 text-low hover:text-normal transition-colors disabled:opacity-50"
-                  title={t('kanban.attachImage')}
-                >
-                  <PaperclipIcon className="size-icon-sm" />
-                  <span className="text-sm">{t('kanban.attach')}</span>
-                </button>
+            {attachmentError && (
+              <div className="px-base">
+                <ErrorAlert
+                  message={attachmentError}
+                  className="mt-half mb-half"
+                  onDismiss={onDismissAttachmentError}
+                  dismissLabel={t('buttons.close')}
+                />
               </div>
             )}
             {dropzoneProps?.isDragActive && (
@@ -307,10 +346,10 @@ export function KanbanIssuePanel({
                     <ImageIcon className="h-5 w-5 text-brand" />
                   </div>
                   <p className="text-sm font-medium text-high">
-                    {t('kanban.dropImagesHere')}
+                    {t('kanban.dropFilesHere')}
                   </p>
                   <p className="text-xs text-low mt-0.5">
-                    {t('kanban.imageDropHint')}
+                    {t('kanban.fileDropHint')}
                   </p>
                 </div>
               </div>

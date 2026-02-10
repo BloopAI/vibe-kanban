@@ -412,15 +412,21 @@ export function KanbanIssuePanelContainer() {
   );
 
   // Azure attachment upload hook
-  const { uploadFiles, getAttachmentIds, clearAttachments, isUploading } =
-    useAzureAttachments({
-      projectId,
-      issueId: kanbanCreateMode
-        ? undefined
-        : (selectedKanbanIssueId ?? undefined),
-      onMarkdownInsert: handleDescriptionInsert,
-      onError: (msg) => console.error('[attachment]', msg),
-    });
+  const {
+    uploadFiles,
+    getAttachmentIds,
+    clearAttachments,
+    isUploading,
+    uploadError,
+    clearUploadError,
+  } = useAzureAttachments({
+    projectId,
+    issueId: kanbanCreateMode
+      ? undefined
+      : (selectedKanbanIssueId ?? undefined),
+    onMarkdownInsert: handleDescriptionInsert,
+    onError: (msg) => console.error('[attachment]', msg),
+  });
 
   // Dropzone for drag-drop image upload on description area
   const {
@@ -430,12 +436,8 @@ export function KanbanIssuePanelContainer() {
     open: openFilePicker,
   } = useDropzone({
     onDrop: (acceptedFiles) => {
-      const imageFiles = acceptedFiles.filter((f) =>
-        f.type.startsWith('image/')
-      );
-      if (imageFiles.length > 0) uploadFiles(imageFiles);
+      if (acceptedFiles.length > 0) uploadFiles(acceptedFiles);
     },
-    accept: { 'image/*': [] },
     noClick: true,
     noKeyboard: true,
   });
@@ -443,8 +445,7 @@ export function KanbanIssuePanelContainer() {
   // Paste handler for images
   const onPasteFiles = useCallback(
     (files: File[]) => {
-      const imageFiles = files.filter((f) => f.type.startsWith('image/'));
-      if (imageFiles.length > 0) uploadFiles(imageFiles);
+      if (files.length > 0) uploadFiles(files);
     },
     [uploadFiles]
   );
@@ -1000,6 +1001,8 @@ export function KanbanIssuePanelContainer() {
       dropzoneProps={{ getRootProps, getInputProps, isDragActive }}
       onBrowseAttachment={openFilePicker}
       isUploading={isUploading}
+      attachmentError={uploadError}
+      onDismissAttachmentError={clearUploadError}
     />
   );
 }

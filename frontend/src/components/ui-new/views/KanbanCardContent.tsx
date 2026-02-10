@@ -26,22 +26,50 @@ export type TagEditProps = {
   onCreateTag: (data: { name: string; color: string }) => string;
 };
 
+const IMAGE_FILE_EXTENSION_REGEX =
+  /\.(png|jpe?g|gif|webp|bmp|svg|avif|heic|heif)$/i;
+
+function isImageLikeAttachmentName(name: string): boolean {
+  const normalized = name.trim();
+  if (!normalized) {
+    return false;
+  }
+
+  return IMAGE_FILE_EXTENSION_REGEX.test(normalized);
+}
+
 function formatKanbanDescriptionPreview(
   markdown: string,
   options: {
     codeBlockLabel: string;
     imageLabel: string;
     imageWithNameLabel: (name: string) => string;
+    fileLabel: string;
+    fileWithNameLabel: (name: string) => string;
   }
 ): string {
   return markdown
     .replace(/```[\s\S]*?```/g, options.codeBlockLabel)
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_match, altText: string) => {
-      const normalizedAlt = altText.trim();
-      return normalizedAlt
-        ? options.imageWithNameLabel(normalizedAlt)
-        : options.imageLabel;
-    })
+    .replace(
+      /!\[([^\]]*)\]\(([^)]+)\)/g,
+      (_match, altText: string, url: string) => {
+        const normalizedAlt = altText.trim();
+        const normalizedUrl = url.trim();
+        const isImageAttachment =
+          normalizedUrl.startsWith('attachment://') &&
+          isImageLikeAttachmentName(normalizedAlt);
+
+        if (isImageAttachment) {
+          return normalizedAlt
+            ? options.imageWithNameLabel(normalizedAlt)
+            : options.imageLabel;
+        }
+
+        return normalizedAlt
+          ? options.fileWithNameLabel(normalizedAlt)
+          : options.fileLabel;
+      }
+    )
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
     .replace(/^#{1,6}\s+/gm, '')
     .replace(/^\s*>\s?/gm, '')
@@ -102,6 +130,9 @@ export const KanbanCardContent = ({
       imageLabel: t('kanban.previewImage'),
       imageWithNameLabel: (name: string) =>
         t('kanban.previewImageWithName', { name }),
+      fileLabel: t('kanban.previewFile'),
+      fileWithNameLabel: (name: string) =>
+        t('kanban.previewFileWithName', { name }),
     });
     return formatted.length > 0 ? formatted : null;
   }, [description, t]);

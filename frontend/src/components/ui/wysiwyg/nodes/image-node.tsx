@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NodeKey, SerializedLexicalNode, Spread, $getNodeByKey } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { HelpCircle, Loader2, X } from 'lucide-react';
+import { Download, File, HelpCircle, Loader2, X } from 'lucide-react';
 import {
   useTaskAttemptId,
   useTaskId,
@@ -80,11 +80,15 @@ function ImageComponent({
       event.stopPropagation();
 
       if (isAttachment && fullSizeUrl) {
-        ImagePreviewDialog.show({
-          imageUrl: fullSizeUrl,
-          altText,
-          fileName: altText || undefined,
-        });
+        if (thumbnailUrl) {
+          ImagePreviewDialog.show({
+            imageUrl: fullSizeUrl,
+            altText,
+            fileName: altText || undefined,
+          });
+        } else {
+          window.open(fullSizeUrl, '_blank', 'noopener,noreferrer');
+        }
       } else if (metadata?.exists && metadata.proxy_url) {
         ImagePreviewDialog.show({
           imageUrl: metadata.proxy_url,
@@ -95,7 +99,40 @@ function ImageComponent({
         });
       }
     },
-    [isAttachment, fullSizeUrl, metadata, altText]
+    [isAttachment, fullSizeUrl, thumbnailUrl, metadata, altText]
+  );
+
+  const handleDownload = useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (!fullSizeUrl) return;
+
+      fetch(fullSizeUrl, { method: 'GET', mode: 'cors', credentials: 'omit' })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error('Failed to download attachment file');
+          }
+
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          try {
+            const anchor = document.createElement('a');
+            anchor.href = objectUrl;
+            anchor.download = altText || 'attachment';
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+          } finally {
+            URL.revokeObjectURL(objectUrl);
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to download attachment:', error);
+        });
+    },
+    [fullSizeUrl, altText]
   );
 
   const handleDelete = useCallback(
@@ -144,7 +181,7 @@ function ImageComponent({
     } else {
       thumbnailContent = (
         <div className="w-10 h-10 flex items-center justify-center bg-muted rounded flex-shrink-0">
-          <HelpCircle className="w-5 h-5 text-muted-foreground" />
+          <File className="w-5 h-5 text-muted-foreground" />
         </div>
       );
     }
@@ -235,6 +272,20 @@ function ImageComponent({
           type="button"
         >
           <X className="w-2.5 h-2.5 text-background" />
+        </button>
+      )}
+      {isAttachment && fullSizeUrl && (
+        <button
+          onClick={handleDownload}
+          className={
+            editor.isEditable()
+              ? 'absolute top-1 right-6 w-4 h-4 rounded-full bg-foreground/70 hover:bg-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'
+              : 'absolute top-1 right-1 w-4 h-4 rounded-full bg-foreground/70 hover:bg-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'
+          }
+          aria-label={t('kanban.downloadAttachment')}
+          type="button"
+        >
+          <Download className="w-2.5 h-2.5 text-background" />
         </button>
       )}
     </span>
