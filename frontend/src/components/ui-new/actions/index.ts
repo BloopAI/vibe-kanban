@@ -565,7 +565,7 @@ export const Actions = {
       const { OAuthDialog } = await import(
         '@/components/dialogs/global/OAuthDialog'
       );
-      await OAuthDialog.show();
+      await OAuthDialog.show({});
     },
   } satisfies GlobalActionDefinition,
 

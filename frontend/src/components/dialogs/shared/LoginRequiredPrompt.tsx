@@ -37,7 +37,7 @@ export function LoginRequiredPrompt({
       onAction();
       return;
     }
-    void OAuthDialog.show();
+    void OAuthDialog.show({});
   }, [onAction]);
 
   const Icon = icon ?? LogIn;

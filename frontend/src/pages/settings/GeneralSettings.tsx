@@ -181,14 +181,12 @@ export function GeneralSettings() {
     }
   };
 
-  const resetDisclaimer = async () => {
-    if (!config) return;
-    updateAndSaveConfig({ disclaimer_acknowledged: false });
-  };
-
   const resetOnboarding = async () => {
     if (!config) return;
-    updateAndSaveConfig({ onboarding_acknowledged: false });
+    updateAndSaveConfig({
+      onboarding_acknowledged: false,
+      remote_onboarding_acknowledged: false,
+    });
   };
 
   if (loading) {
@@ -727,19 +725,6 @@ export function GeneralSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">
-                {t('settings.general.safety.disclaimer.title')}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {t('settings.general.safety.disclaimer.description')}
-              </p>
-            </div>
-            <Button variant="outline" onClick={resetDisclaimer}>
-              {t('settings.general.safety.disclaimer.button')}
-            </Button>
-          </div>
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">

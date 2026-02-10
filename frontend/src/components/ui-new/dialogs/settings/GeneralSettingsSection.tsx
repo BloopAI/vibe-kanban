@@ -191,14 +191,12 @@ export function GeneralSettingsSection() {
     setDirty(false);
   };
 
-  const resetDisclaimer = async () => {
-    if (!config) return;
-    updateAndSaveConfig({ disclaimer_acknowledged: false });
-  };
-
   const resetOnboarding = async () => {
     if (!config) return;
-    updateAndSaveConfig({ onboarding_acknowledged: false });
+    updateAndSaveConfig({
+      onboarding_acknowledged: false,
+      remote_onboarding_acknowledged: false,
+    });
   };
 
   if (loading) {
@@ -765,21 +763,6 @@ export function GeneralSettingsSection() {
         title={t('settings.general.safety.title')}
         description={t('settings.general.safety.description')}
       >
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-normal">
-              {t('settings.general.safety.disclaimer.title')}
-            </p>
-            <p className="text-sm text-low">
-              {t('settings.general.safety.disclaimer.description')}
-            </p>
-          </div>
-          <PrimaryButton
-            variant="tertiary"
-            value={t('settings.general.safety.disclaimer.button')}
-            onClick={resetDisclaimer}
-          />
-        </div>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-normal">

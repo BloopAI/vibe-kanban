@@ -826,7 +826,7 @@ export function RemoteProjectsSettingsSection({
         <PrimaryButton
           variant="secondary"
           value={t('settings.remoteProjects.loginRequired.action', 'Sign In')}
-          onClick={() => void OAuthDialog.show()}
+          onClick={() => void OAuthDialog.show({})}
         >
           <SignInIcon className="size-icon-xs mr-1" weight="bold" />
         </PrimaryButton>

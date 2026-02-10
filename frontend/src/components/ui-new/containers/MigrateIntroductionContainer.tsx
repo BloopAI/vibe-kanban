@@ -15,7 +15,7 @@ export function MigrateIntroductionContainer({
     if (isSignedIn) {
       onContinue();
     } else {
-      const profile = await OAuthDialog.show();
+      const profile = await OAuthDialog.show({});
       if (profile) {
         onContinue();
       }
