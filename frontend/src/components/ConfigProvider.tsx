@@ -54,9 +54,17 @@ interface UserSystemContextType {
   loading: boolean;
 }
 
-const UserSystemContext = createContext<UserSystemContextType | undefined>(
-  undefined
-);
+// Preserve context identity across HMR to prevent "must be used within Provider" errors.
+// Without this, hot-reloading this module creates a new context object while mounted
+// providers still hold the old one, causing a mismatch.
+const UserSystemContext =
+  (import.meta.hot?.data?.UserSystemContext as React.Context<
+    UserSystemContextType | undefined
+  >) ?? createContext<UserSystemContextType | undefined>(undefined);
+
+if (import.meta.hot) {
+  import.meta.hot.data.UserSystemContext = UserSystemContext;
+}
 
 interface UserSystemProviderProps {
   children: ReactNode;
