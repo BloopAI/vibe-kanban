@@ -26,6 +26,8 @@ interface KanbanFilterBarProps {
   projectId: string;
   currentUserId: string | null;
   filters: KanbanFilterState;
+  showSubIssues: boolean;
+  showWorkspaces: boolean;
   hasActiveFilters: boolean;
   onSearchQueryChange: (searchQuery: string) => void;
   onPrioritiesChange: (priorities: IssuePriority[]) => void;
@@ -35,6 +37,8 @@ interface KanbanFilterBarProps {
     sortField: KanbanSortField,
     sortDirection: 'asc' | 'desc'
   ) => void;
+  onShowSubIssuesChange: (show: boolean) => void;
+  onShowWorkspacesChange: (show: boolean) => void;
   onClearFilters: () => void;
   onCreateIssue: () => void;
 }
@@ -49,12 +53,16 @@ export function KanbanFilterBar({
   projectId,
   currentUserId,
   filters,
+  showSubIssues,
+  showWorkspaces,
   hasActiveFilters,
   onSearchQueryChange,
   onPrioritiesChange,
   onAssigneesChange,
   onTagsChange,
   onSortChange,
+  onShowSubIssuesChange,
+  onShowWorkspacesChange,
   onClearFilters,
   onCreateIssue,
 }: KanbanFilterBarProps) {
@@ -132,10 +140,14 @@ export function KanbanFilterBar({
         tags={tags}
         users={users}
         filters={filters}
+        showSubIssues={showSubIssues}
+        showWorkspaces={showWorkspaces}
         onPrioritiesChange={onPrioritiesChange}
         onAssigneesChange={onAssigneesChange}
         onTagsChange={onTagsChange}
         onSortChange={onSortChange}
+        onShowSubIssuesChange={onShowSubIssuesChange}
+        onShowWorkspacesChange={onShowWorkspacesChange}
       />
     </>
   );

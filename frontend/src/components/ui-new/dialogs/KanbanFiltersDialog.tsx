@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui-new/primitives/Dialog';
+import { Switch } from '@/components/ui/switch';
 import { AssigneeSelectionDialog } from '@/components/ui-new/dialogs/AssigneeSelectionDialog';
 import { PriorityFilterDropdown } from '@/components/ui-new/views/PriorityFilterDropdown';
 import {
@@ -51,6 +52,8 @@ interface KanbanFiltersDialogProps {
   tags: Tag[];
   users: OrganizationMemberWithProfile[];
   filters: KanbanFilterState;
+  showSubIssues: boolean;
+  showWorkspaces: boolean;
   onPrioritiesChange: (priorities: IssuePriority[]) => void;
   onAssigneesChange: (assigneeIds: string[]) => void;
   onTagsChange: (tagIds: string[]) => void;
@@ -58,6 +61,8 @@ interface KanbanFiltersDialogProps {
     sortField: KanbanSortField,
     sortDirection: 'asc' | 'desc'
   ) => void;
+  onShowSubIssuesChange: (show: boolean) => void;
+  onShowWorkspacesChange: (show: boolean) => void;
 }
 
 export function KanbanFiltersDialog({
@@ -68,10 +73,14 @@ export function KanbanFiltersDialog({
   tags,
   users,
   filters,
+  showSubIssues,
+  showWorkspaces,
   onPrioritiesChange,
   onAssigneesChange,
   onTagsChange,
   onSortChange,
+  onShowSubIssuesChange,
+  onShowWorkspacesChange,
 }: KanbanFiltersDialogProps) {
   const { t } = useTranslation('common');
 
@@ -266,6 +275,26 @@ export function KanbanFiltersDialog({
                 <SortDescendingIcon className="size-icon-base" />
               )}
             </button>
+
+            <div className="flex items-center gap-half rounded-sm bg-panel px-base py-half">
+              <span className="whitespace-nowrap text-sm text-normal">
+                {t('kanban.subIssuesFilterLabel', 'Sub-issues')}
+              </span>
+              <Switch
+                checked={showSubIssues}
+                onCheckedChange={onShowSubIssuesChange}
+              />
+            </div>
+
+            <div className="flex items-center gap-half rounded-sm bg-panel px-base py-half">
+              <span className="whitespace-nowrap text-sm text-normal">
+                {t('kanban.workspacesFilterLabel', 'Workspaces')}
+              </span>
+              <Switch
+                checked={showWorkspaces}
+                onCheckedChange={onShowWorkspacesChange}
+              />
+            </div>
           </div>
         </div>
       </DialogContent>

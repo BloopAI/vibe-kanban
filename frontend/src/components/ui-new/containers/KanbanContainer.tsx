@@ -157,19 +157,41 @@ export function KanbanContainer() {
   const {
     activeViewId,
     filters: defaultKanbanFilters,
-    showSubIssues,
-    showWorkspaces,
+    showSubIssues: defaultShowSubIssues,
+    showWorkspaces: defaultShowWorkspaces,
   } = resolvedProjectState;
   const [kanbanFilters, setKanbanFilters] =
     useState<KanbanFilterState>(defaultKanbanFilters);
+  const [showSubIssues, setShowSubIssues] =
+    useState<boolean>(defaultShowSubIssues);
+  const [showWorkspaces, setShowWorkspaces] =
+    useState<boolean>(defaultShowWorkspaces);
 
   useEffect(() => {
     setKanbanFilters(defaultKanbanFilters);
-  }, [projectId, resolvedProjectState.activeViewId, defaultKanbanFilters]);
+    setShowSubIssues(defaultShowSubIssues);
+    setShowWorkspaces(defaultShowWorkspaces);
+  }, [
+    projectId,
+    resolvedProjectState.activeViewId,
+    defaultKanbanFilters,
+    defaultShowSubIssues,
+    defaultShowWorkspaces,
+  ]);
 
   const hasActiveFilters = useMemo(
-    () => !areKanbanFiltersEqual(kanbanFilters, defaultKanbanFilters),
-    [kanbanFilters, defaultKanbanFilters]
+    () =>
+      !areKanbanFiltersEqual(kanbanFilters, defaultKanbanFilters) ||
+      showSubIssues !== defaultShowSubIssues ||
+      showWorkspaces !== defaultShowWorkspaces,
+    [
+      kanbanFilters,
+      defaultKanbanFilters,
+      showSubIssues,
+      defaultShowSubIssues,
+      showWorkspaces,
+      defaultShowWorkspaces,
+    ]
   );
 
   const { filteredIssues } = useKanbanFilters({
@@ -210,7 +232,9 @@ export function KanbanContainer() {
 
   const clearKanbanFilters = useCallback(() => {
     setKanbanFilters(defaultKanbanFilters);
-  }, [defaultKanbanFilters]);
+    setShowSubIssues(defaultShowSubIssues);
+    setShowWorkspaces(defaultShowWorkspaces);
+  }, [defaultKanbanFilters, defaultShowSubIssues, defaultShowWorkspaces]);
 
   const handleKanbanProjectViewChange = useCallback(
     (viewId: string) => {
@@ -702,12 +726,16 @@ export function KanbanContainer() {
             projectId={projectId}
             currentUserId={userId}
             filters={kanbanFilters}
+            showSubIssues={showSubIssues}
+            showWorkspaces={showWorkspaces}
             hasActiveFilters={hasActiveFilters}
             onSearchQueryChange={setKanbanSearchQuery}
             onPrioritiesChange={setKanbanPriorities}
             onAssigneesChange={setKanbanAssignees}
             onTagsChange={setKanbanTags}
             onSortChange={setKanbanSort}
+            onShowSubIssuesChange={setShowSubIssues}
+            onShowWorkspacesChange={setShowWorkspaces}
             onClearFilters={clearKanbanFilters}
             onCreateIssue={handleAddTask}
           />
