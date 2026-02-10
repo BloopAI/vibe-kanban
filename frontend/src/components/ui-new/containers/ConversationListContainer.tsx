@@ -163,6 +163,11 @@ const computeItemKey: VirtuosoMessageListProps<
   MessageListContext
 >['computeItemKey'] = ({ data }) => `conv-${data.patchKey}`;
 
+const itemIdentity: VirtuosoMessageListProps<
+  DisplayEntry,
+  MessageListContext
+>['itemIdentity'] = (item) => item.patchKey;
+
 export const ConversationList = forwardRef<
   ConversationListHandle,
   ConversationListProps
@@ -257,12 +262,18 @@ export const ConversationList = forwardRef<
       const pending = pendingUpdateRef.current;
       if (!pending) return;
 
-      let scrollModifier: ScrollModifier = InitialDataScrollModifier;
+      let scrollModifier: ScrollModifier;
 
-      if (pending.addType === 'plan' && !loading) {
+      if (loading || pending.addType === 'initial') {
+        // Initial data load - scroll to bottom and purge sizes
+        scrollModifier = InitialDataScrollModifier;
+      } else if (pending.addType === 'plan') {
         scrollModifier = ScrollToTopOfLastItem;
-      } else if (pending.addType === 'running' && !loading) {
+      } else if (pending.addType === 'running') {
         scrollModifier = AutoScrollToBottom;
+      } else {
+        // 'historic' - keep current scroll position, don't purge sizes
+        scrollModifier = null;
       }
 
       const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
@@ -393,6 +404,7 @@ export const ConversationList = forwardRef<
             initialLocation={INITIAL_TOP_ITEM}
             context={messageListContext}
             computeItemKey={computeItemKey}
+            itemIdentity={itemIdentity}
             ItemContent={ItemContent}
             Header={({ context }) => (
               <div className="pt-2">
