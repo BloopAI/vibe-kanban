@@ -1,10 +1,5 @@
 use api_types::Workspace;
-use axum::{
-    Router,
-    extract::State,
-    response::Json as ResponseJson,
-    routing::get,
-};
+use axum::{Router, extract::State, response::Json as ResponseJson, routing::get};
 use utils::response::ApiResponse;
 
 use crate::{DeploymentImpl, error::ApiError};
