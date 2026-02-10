@@ -11,6 +11,9 @@
 - `scripts/`: Dev helpers (ports, DB preparation).
 - `docs/`: Documentation files.
 
+### Crate-specific guides
+- [`crates/remote/AGENTS.md`](crates/remote/AGENTS.md) — Remote server architecture, ElectricSQL integration, mutation patterns, environment variables.
+
 ## Managing Shared Types Between Rust and TypeScript
 
 ts-rs allows you to derive TypeScript types from Rust structs/enums. By annotating your Rust types with #[derive(TS)] and related macros, ts-rs will generate .ts declaration files for those types.
