@@ -343,9 +343,9 @@ impl IntoResponse for ApiError {
                     ),
                 )
             }
-            ApiError::GitService(git::GitServiceError::GitCLI(
-                git::GitCliError::AuthFailed(msg),
-            )) => ErrorInfo::with_status(
+            ApiError::GitService(git::GitServiceError::GitCLI(git::GitCliError::AuthFailed(
+                msg,
+            ))) => ErrorInfo::with_status(
                 StatusCode::UNAUTHORIZED,
                 "GitServiceError",
                 format!(
