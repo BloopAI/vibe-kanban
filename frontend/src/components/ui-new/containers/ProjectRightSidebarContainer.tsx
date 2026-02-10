@@ -288,10 +288,9 @@ export function ProjectRightSidebarContainer() {
 
   const handleOpenIssueFromCreate = useCallback(
     (targetIssueId: string) => {
-      if (issueId === targetIssueId) return;
       openIssue(targetIssueId);
     },
-    [issueId, openIssue]
+    [openIssue]
   );
 
   const handleWorkspaceCreated = useCallback(
