@@ -195,7 +195,7 @@ checksum = "5f0e0fee31ef5ed1ba1316088939cea399010ed7731dba877ed44aeb407a75ea"
 
 [[package]]
 name = "api-types"
-version = "0.1.0"
+version = "0.1.8"
 dependencies = [
  "chrono",
  "serde",
@@ -1670,7 +1670,7 @@ checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
 name = "db"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1746,7 +1746,7 @@ checksum = "26bf8fc351c5ed29b5c2f0cbbac1b209b74f60ecd62e675a998df72c49af5204"
 
 [[package]]
 name = "deployment"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2283,7 +2283,7 @@ dependencies = [
 
 [[package]]
 name = "executors"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "agent-client-protocol",
  "async-trait",
@@ -2714,7 +2714,7 @@ checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
 
 [[package]]
 name = "git"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "chrono",
  "dirs 5.0.1",
@@ -3776,7 +3776,7 @@ checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
 
 [[package]]
 name = "local-deployment"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "anyhow",
  "api-types",
@@ -5532,7 +5532,7 @@ dependencies = [
 
 [[package]]
 name = "review"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "anyhow",
  "clap",
@@ -6358,7 +6358,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "anyhow",
  "api-types",
@@ -6404,7 +6404,7 @@ dependencies = [
 
 [[package]]
 name = "services"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "anyhow",
  "api-types",
@@ -7979,7 +7979,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "api-types",
  "axum",
