@@ -137,7 +137,7 @@ export function KanbanFilterBar({
           variant="secondary"
           value={t('kanban.newIssue', 'New issue')}
           actionIcon={PlusIcon}
-          onClick={onCreateIssue}
+          onClick={() => onCreateIssue()}
         />
       </div>
 
