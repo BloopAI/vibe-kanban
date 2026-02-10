@@ -7,7 +7,11 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { useAuth } from '@/hooks';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
 import { useUiPreferencesScratch } from '@/hooks/useUiPreferencesScratch';
-import { DisclaimerDialog, OnboardingDialog, ReleaseNotesDialog, } from '@/components/dialogs';
+import {
+  DisclaimerDialog,
+  OnboardingDialog,
+  ReleaseNotesDialog,
+} from '@/components/dialogs';
 import i18n from '@/i18n';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ThemeMode } from 'shared/types';
