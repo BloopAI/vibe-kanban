@@ -77,7 +77,8 @@ export function buildIssueCreatePath(
   if (options?.assigneeIds?.length) {
     params.set('assignees', options.assigneeIds.join(','));
   }
-  if (options?.parentIssueId) params.set('parentIssueId', options.parentIssueId);
+  if (options?.parentIssueId)
+    params.set('parentIssueId', options.parentIssueId);
   return withSearch(`/projects/${projectId}/issues/new`, params);
 }
 
@@ -134,7 +135,10 @@ export function parseProjectSidebarRoute(
     };
   }
 
-  const issueCreateMatch = matchPath('/projects/:projectId/issues/new', pathname);
+  const issueCreateMatch = matchPath(
+    '/projects/:projectId/issues/new',
+    pathname
+  );
   if (issueCreateMatch?.params.projectId) {
     return {
       type: 'issue-create',
@@ -142,7 +146,10 @@ export function parseProjectSidebarRoute(
     };
   }
 
-  const issueMatch = matchPath('/projects/:projectId/issues/:issueId', pathname);
+  const issueMatch = matchPath(
+    '/projects/:projectId/issues/:issueId',
+    pathname
+  );
   if (issueMatch?.params.projectId && issueMatch.params.issueId) {
     return {
       type: 'issue',

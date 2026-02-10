@@ -49,7 +49,8 @@ export function useKanbanNavigation() {
 
   const isLegacyCreateMode =
     routeState?.type === 'closed' && searchParams.get('mode') === 'create';
-  const isCreateMode = routeState?.type === 'issue-create' || isLegacyCreateMode;
+  const isCreateMode =
+    routeState?.type === 'issue-create' || isLegacyCreateMode;
   const isWorkspaceCreateMode = routeState?.type === 'workspace-create';
   const isPanelOpen =
     !!routeState && (routeState.type !== 'closed' || isLegacyCreateMode);
@@ -82,7 +83,9 @@ export function useKanbanNavigation() {
     (workspaceDraftId: string, options?: { issueId?: string | null }) => {
       if (!projectId) return;
       const targetIssueId = options?.issueId ?? issueId;
-      navigate(buildWorkspaceCreatePath(projectId, workspaceDraftId, targetIssueId));
+      navigate(
+        buildWorkspaceCreatePath(projectId, workspaceDraftId, targetIssueId)
+      );
     },
     [navigate, projectId, issueId]
   );
