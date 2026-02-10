@@ -716,11 +716,15 @@ impl TaskServer {
         }
     }
 
-    /// Converts an Issue to IssueSummary, resolving status_id to name.
-    async fn issue_to_summary(&self, issue: &Issue) -> IssueSummary {
-        let status = self
-            .resolve_status_name(issue.project_id, issue.status_id)
-            .await;
+    /// Converts an Issue to IssueSummary using a pre-fetched status map when available.
+    fn issue_to_summary(
+        &self,
+        issue: &Issue,
+        status_names_by_id: Option<&std::collections::HashMap<Uuid, String>>,
+    ) -> IssueSummary {
+        let status = status_names_by_id
+            .and_then(|status_map| status_map.get(&issue.status_id).cloned())
+            .unwrap_or_else(|| issue.status_id.to_string());
         IssueSummary {
             id: issue.id.to_string(),
             title: issue.title.clone(),
@@ -1042,10 +1046,20 @@ impl TaskServer {
 
         let issue_limit = limit.unwrap_or(50).max(0) as usize;
         let limited: Vec<&Issue> = response.issues.iter().take(issue_limit).collect();
+        let status_names_by_id =
+            self.fetch_project_statuses(project_id)
+                .await
+                .ok()
+                .map(|statuses| {
+                    statuses
+                        .into_iter()
+                        .map(|status| (status.id, status.name))
+                        .collect::<std::collections::HashMap<_, _>>()
+                });
 
         let mut summaries = Vec::with_capacity(limited.len());
         for issue in &limited {
-            summaries.push(self.issue_to_summary(issue).await);
+            summaries.push(self.issue_to_summary(issue, status_names_by_id.as_ref()));
         }
 
         TaskServer::success(&McpListIssuesResponse {

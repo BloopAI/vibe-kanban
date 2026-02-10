@@ -224,12 +224,12 @@ async fn unlink_workspace(
 
 #[instrument(
     name = "workspaces.get_workspace_by_local_id",
-    skip(state, _ctx),
-    fields(local_workspace_id = %local_workspace_id)
+    skip(state, ctx),
+    fields(local_workspace_id = %local_workspace_id, user_id = %ctx.user.id)
 )]
 async fn get_workspace_by_local_id(
     State(state): State<AppState>,
-    Extension(_ctx): Extension<RequestContext>,
+    Extension(ctx): Extension<RequestContext>,
     Path(local_workspace_id): Path<Uuid>,
 ) -> Result<Json<Workspace>, ErrorResponse> {
     let workspace = WorkspaceRepository::find_by_local_id(state.pool(), local_workspace_id)
@@ -239,6 +239,8 @@ async fn get_workspace_by_local_id(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to find workspace")
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "workspace not found"))?;
+
+    ensure_project_access(state.pool(), ctx.user.id, workspace.project_id).await?;
 
     Ok(Json(workspace))
 }
