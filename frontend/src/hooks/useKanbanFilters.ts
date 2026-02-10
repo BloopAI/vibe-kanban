@@ -21,7 +21,6 @@ type UseKanbanFiltersParams = {
 
 type UseKanbanFiltersResult = {
   filteredIssues: Issue[];
-  hasActiveFilters: boolean;
 };
 
 export const PRIORITY_ORDER: Record<IssuePriority, number> = {
@@ -38,12 +37,12 @@ export function useKanbanFilters({
   projectId,
   currentUserId,
 }: UseKanbanFiltersParams): UseKanbanFiltersResult {
-  const projectViewState = useUiPreferencesStore(
-    (s) => s.kanbanProjectViewsByProject[projectId]
+  const projectViewSelection = useUiPreferencesStore(
+    (s) => s.kanbanProjectViewSelections[projectId]
   );
   const { filters: kanbanFilters, showSubIssues } = useMemo(
-    () => resolveKanbanProjectState(projectViewState),
-    [projectViewState]
+    () => resolveKanbanProjectState(projectViewSelection),
+    [projectViewSelection]
   );
 
   // Create lookup maps for efficient filtering
@@ -68,16 +67,6 @@ export function useKanbanFilters({
     }
     return map;
   }, [issueTags]);
-
-  // Calculate whether any filters are active
-  const hasActiveFilters = useMemo(() => {
-    return (
-      kanbanFilters.searchQuery.trim() !== '' ||
-      kanbanFilters.priorities.length > 0 ||
-      kanbanFilters.assigneeIds.length > 0 ||
-      kanbanFilters.tagIds.length > 0
-    );
-  }, [kanbanFilters]);
 
   // Filter issues
   const filteredIssues = useMemo(() => {
@@ -162,6 +151,5 @@ export function useKanbanFilters({
 
   return {
     filteredIssues,
-    hasActiveFilters,
   };
 }

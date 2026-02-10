@@ -49,90 +49,6 @@ pub struct WorkspacePanelStateData {
     pub is_left_main_panel_visible: bool,
 }
 
-/// Kanban filters stored in UI preferences scratch
-#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
-pub struct KanbanFiltersData {
-    #[serde(default)]
-    pub search_query: String,
-    #[serde(default)]
-    pub priorities: Vec<String>,
-    #[serde(default)]
-    pub assignee_ids: Vec<String>,
-    #[serde(default)]
-    pub tag_ids: Vec<String>,
-    #[serde(default)]
-    pub sort_field: String,
-    #[serde(default)]
-    pub sort_direction: String,
-}
-
-/// Sparse overrides for kanban filters (only changed fields are persisted)
-#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
-pub struct KanbanFiltersOverridesData {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub search_query: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub priorities: Option<Vec<String>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub assignee_ids: Option<Vec<String>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub tag_ids: Option<Vec<String>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub sort_field: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub sort_direction: Option<String>,
-}
-
-/// Sparse overrides for a kanban view (team/personal defaults + draft base view)
-#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
-pub struct KanbanProjectViewOverridesData {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub filters: Option<KanbanFiltersOverridesData>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub show_sub_issues: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub show_workspaces: Option<bool>,
-}
-
-/// Working kanban draft state stored in UI preferences scratch
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct KanbanProjectDraftData {
-    pub view_id: String,
-    #[serde(default)]
-    pub overrides: KanbanProjectViewOverridesData,
-}
-
-/// A saved kanban project view stored in UI preferences scratch
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct KanbanProjectViewData {
-    pub id: String,
-    pub name: String,
-    pub filters: KanbanFiltersData,
-    pub show_sub_issues: bool,
-    pub show_workspaces: bool,
-}
-
-/// Per-project kanban views state stored in UI preferences scratch
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct KanbanProjectViewsStateData {
-    pub active_view_id: String,
-    #[serde(default)]
-    pub custom_views: Vec<KanbanProjectViewData>,
-    #[serde(default)]
-    pub built_in_view_overrides: std::collections::HashMap<String, KanbanProjectViewOverridesData>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub draft: Option<KanbanProjectDraftData>,
-}
-
 /// Data for UI preferences scratch (global preferences stored per-user or per-device)
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct UiPreferencesData {
@@ -166,10 +82,6 @@ pub struct UiPreferencesData {
     /// Workspace-specific panel states
     #[serde(default)]
     pub workspace_panel_states: std::collections::HashMap<String, WorkspacePanelStateData>,
-    /// Saved kanban views per project
-    #[serde(default)]
-    pub kanban_project_views_by_project:
-        std::collections::HashMap<String, KanbanProjectViewsStateData>,
 }
 
 /// Linked issue data for draft workspace scratch

@@ -13,12 +13,7 @@ import {
   type RightMainPanelMode,
   type ContextBarPosition,
   type WorkspacePanelState,
-  type KanbanProjectViewsState,
 } from '@/stores/useUiPreferencesStore';
-import {
-  fromScratchKanbanProjectViews,
-  toScratchKanbanProjectViews,
-} from '@/stores/kanbanProjectViewsPersistence';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
 
 // Stable UUID for global UI preferences (not tied to a workspace/user)
@@ -40,7 +35,6 @@ function storeToScratchData(state: {
   isRightSidebarVisible: boolean;
   isTerminalVisible: boolean;
   workspacePanelStates: Record<string, WorkspacePanelState>;
-  kanbanProjectViewsByProject: Record<string, KanbanProjectViewsState>;
 }): UiPreferencesData {
   const workspacePanelStates: { [key: string]: WorkspacePanelStateData } = {};
   for (const [key, value] of Object.entries(state.workspacePanelStates)) {
@@ -49,10 +43,6 @@ function storeToScratchData(state: {
       is_left_main_panel_visible: value.isLeftMainPanelVisible,
     };
   }
-
-  const kanbanProjectViewsByProject = toScratchKanbanProjectViews(
-    state.kanbanProjectViewsByProject
-  );
 
   return {
     repo_actions: state.repoActions as { [key: string]: string },
@@ -65,7 +55,6 @@ function storeToScratchData(state: {
     is_right_sidebar_visible: state.isRightSidebarVisible,
     is_terminal_visible: state.isTerminalVisible,
     workspace_panel_states: workspacePanelStates,
-    kanban_project_views_by_project: kanbanProjectViewsByProject,
   };
 }
 
@@ -83,7 +72,6 @@ function scratchDataToStore(data: UiPreferencesData): {
   isRightSidebarVisible: boolean;
   isTerminalVisible: boolean;
   workspacePanelStates: Record<string, WorkspacePanelState>;
-  kanbanProjectViewsByProject: Record<string, KanbanProjectViewsState>;
 } {
   const workspacePanelStates: Record<string, WorkspacePanelState> = {};
   if (data.workspace_panel_states) {
@@ -111,10 +99,6 @@ function scratchDataToStore(data: UiPreferencesData): {
       ? Object.values(legacyFileSearchRepoByProject)[0]
       : null;
 
-  const kanbanProjectViewsByProject = fromScratchKanbanProjectViews(
-    data.kanban_project_views_by_project
-  );
-
   return {
     repoActions: (data.repo_actions ?? {}) as Record<string, RepoAction>,
     expanded: (data.expanded ?? {}) as Record<string, boolean>,
@@ -127,7 +111,6 @@ function scratchDataToStore(data: UiPreferencesData): {
     isRightSidebarVisible: data.is_right_sidebar_visible ?? true,
     isTerminalVisible: data.is_terminal_visible ?? true,
     workspacePanelStates,
-    kanbanProjectViewsByProject,
   };
 }
 
@@ -158,7 +141,6 @@ export function useUiPreferencesScratch() {
     isRightSidebarVisible: state.isRightSidebarVisible,
     isTerminalVisible: state.isTerminalVisible,
     workspacePanelStates: state.workspacePanelStates,
-    kanbanProjectViewsByProject: state.kanbanProjectViewsByProject,
   }));
 
   // Extract scratch data
@@ -184,7 +166,6 @@ export function useUiPreferencesScratch() {
       isRightSidebarVisible: currentState.isRightSidebarVisible,
       isTerminalVisible: currentState.isTerminalVisible,
       workspacePanelStates: currentState.workspacePanelStates,
-      kanbanProjectViewsByProject: currentState.kanbanProjectViewsByProject,
     });
 
     try {
@@ -226,7 +207,6 @@ export function useUiPreferencesScratch() {
         isRightSidebarVisible: serverState.isRightSidebarVisible,
         isTerminalVisible: serverState.isTerminalVisible,
         workspacePanelStates: serverState.workspacePanelStates,
-        kanbanProjectViewsByProject: serverState.kanbanProjectViewsByProject,
       });
 
       // Allow a brief delay for state to settle
