@@ -828,27 +828,65 @@ pub async fn get_task_attempt_branch_status(
 
         let has_uncommitted_changes = uncommitted_count.map(|c| c > 0);
 
-        let target_branch_type = deployment
+        let target_branch_type = match deployment
             .git()
-            .find_branch_type(&repo.path, &target_branch)?;
+            .find_branch_type(&repo.path, &target_branch)
+        {
+            Ok(branch_type) => Some(branch_type),
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to determine target branch type for workspace {} repo {} (target={}): {}",
+                    workspace.id,
+                    repo.name,
+                    target_branch,
+                    e
+                );
+                None
+            }
+        };
 
         let (commits_ahead, commits_behind) = match target_branch_type {
-            BranchType::Local => {
-                let (a, b) = deployment.git().get_branch_status(
+            Some(BranchType::Local) => {
+                match deployment.git().get_branch_status(
                     &repo.path,
                     &workspace.branch,
                     &target_branch,
-                )?;
-                (Some(a), Some(b))
+                ) {
+                    Ok((ahead, behind)) => (Some(ahead), Some(behind)),
+                    Err(e) => {
+                        tracing::warn!(
+                            "Failed to get local branch status for workspace {} repo {} (workspace_branch={}, target={}): {}",
+                            workspace.id,
+                            repo.name,
+                            workspace.branch,
+                            target_branch,
+                            e
+                        );
+                        (None, None)
+                    }
+                }
             }
-            BranchType::Remote => {
-                let (ahead, behind) = deployment.git().get_remote_branch_status(
+            Some(BranchType::Remote) => {
+                match deployment.git().get_remote_branch_status(
                     &repo.path,
                     &workspace.branch,
                     Some(&target_branch),
-                )?;
-                (Some(ahead), Some(behind))
+                ) {
+                    Ok((ahead, behind)) => (Some(ahead), Some(behind)),
+                    Err(e) => {
+                        tracing::warn!(
+                            "Failed to get remote branch status for workspace {} repo {} (workspace_branch={}, target={}): {}",
+                            workspace.id,
+                            repo.name,
+                            workspace.branch,
+                            target_branch,
+                            e
+                        );
+                        (None, None)
+                    }
+                }
             }
+            None => (None, None),
         };
 
         let (remote_ahead, remote_behind) = if let Some(Merge::Pr(PrMerge {
@@ -888,7 +926,7 @@ pub async fn get_task_attempt_branch_status(
                 is_rebase_in_progress,
                 conflict_op,
                 conflicted_files,
-                is_target_remote: target_branch_type == BranchType::Remote,
+                is_target_remote: target_branch_type == Some(BranchType::Remote),
             },
         });
     }

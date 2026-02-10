@@ -8,6 +8,7 @@ import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useAuth } from '@/hooks/auth/useAuth';
+import { isElectronDesktopApp } from '@/utils/runtime';
 import {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
@@ -88,6 +89,8 @@ export function SharedAppLayout() {
   const activeProjectId = location.pathname.startsWith('/projects/')
     ? location.pathname.split('/')[2]
     : null;
+  const isElectronDesktop = isElectronDesktopApp();
+  const electronTopInset = isElectronDesktop ? 40 : 0;
 
   const handleWorkspacesClick = useCallback(() => {
     navigate('/workspaces');
@@ -130,7 +133,16 @@ export function SharedAppLayout() {
 
   return (
     <SyncErrorProvider>
-      <div className="flex h-screen bg-primary">
+      <div
+        className="relative flex bg-primary"
+        style={{
+          height: electronTopInset ? `calc(100vh - ${electronTopInset}px)` : '100vh',
+          paddingTop: electronTopInset || undefined,
+        }}
+      >
+        {isElectronDesktop ? (
+          <div className="electron-drag-region absolute top-0 left-0 right-0 h-10" />
+        ) : null}
         <AppBar
           projects={orgProjects}
           organizations={organizations}

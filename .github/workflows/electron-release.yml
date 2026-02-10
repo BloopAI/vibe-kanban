@@ -295,7 +295,7 @@ jobs:
           npx electron-builder --config electron-builder.yml ${{ matrix.electron_args }} --publish never
         env:
           # macOS signing: electron-builder uses CSC_LINK for the app itself
-          CSC_LINK: ${{ runner.os == 'macOS' && 'certificate.p12' || '' }}
+          CSC_LINK: ${{ runner.os == 'macOS' && format('{0}/certificate.p12', github.workspace) || '' }}
           CSC_KEY_PASSWORD: ${{ runner.os == 'macOS' && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
           # Windows signing
           WIN_CSC_LINK: ${{ env.WIN_CSC_LINK || '' }}

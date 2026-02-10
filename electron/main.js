@@ -309,19 +309,27 @@ async function onPortDiscovered(port) {
 // ---------------------------------------------------------------------------
 
 function createWindow(port) {
-  mainWindow = new BrowserWindow({
+  const windowOptions = {
     width: 1400,
     height: 900,
     minWidth: 900,
     minHeight: 600,
     title: 'Vibe Kanban',
+    backgroundColor: '#1f1f1f',
     webPreferences: {
       contextIsolation: true,
       sandbox: true,
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
     },
-  });
+  };
+
+  if (process.platform === 'darwin') {
+    windowOptions.titleBarStyle = 'hiddenInset';
+    windowOptions.trafficLightPosition = { x: 14, y: 14 };
+  }
+
+  mainWindow = new BrowserWindow(windowOptions);
 
   mainWindow.loadURL(`http://127.0.0.1:${port}`);
 
@@ -395,7 +403,9 @@ function setupContentSecurityPolicy() {
         ...details.responseHeaders,
         'Content-Security-Policy': [
           "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://127.0.0.1:* ws://127.0.0.1:*; " +
-          "img-src 'self' data: http://127.0.0.1:*; " +
+          "style-src 'self' 'unsafe-inline' http://127.0.0.1:* https://fonts.googleapis.com; " +
+          "font-src 'self' data: http://127.0.0.1:* https://fonts.gstatic.com; " +
+          "img-src 'self' data: blob: http://127.0.0.1:*; " +
           "connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*",
         ],
       },

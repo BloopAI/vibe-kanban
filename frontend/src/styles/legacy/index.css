@@ -220,6 +220,11 @@
   .legacy-design .logo {
     @apply fill-foreground;
   }
+
+  .legacy-design.electron-desktop .electron-drag-region {
+    -webkit-app-region: drag;
+    user-select: none;
+  }
 }
 
 /* ANSI color classes for fancy-ansi */

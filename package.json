@@ -36,7 +36,8 @@
     "remote:prepare-db": "cd crates/remote && bash scripts/prepare-db.sh",
     "remote:prepare-db:check": "cd crates/remote && bash scripts/prepare-db.sh --check",
     "electron:dev": "cd electron && npm start",
-    "electron:build": "cd electron && npm run build:mac"
+    "electron:dev:full": "bash ./scripts/electron-dev.sh",
+    "electron:build": "cd electron && npx electron-builder --config electron-builder.yml"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

@@ -16,6 +16,7 @@ import { MessageEditProvider } from '@/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
 import { createWorkspaceWithSession } from '@/types/attempt';
+import { isElectronDesktopApp } from '@/utils/runtime';
 
 export function VSCodeWorkspacePage() {
   const { t } = useTranslation('common');
@@ -35,6 +36,8 @@ export function VSCodeWorkspacePage() {
   const workspaceWithSession = workspace
     ? createWorkspaceWithSession(workspace, selectedSession)
     : undefined;
+  const isElectronDesktop = isElectronDesktopApp();
+  const electronTopInset = isElectronDesktop ? 40 : 0;
 
   const handleScrollToPreviousMessage = () => {
     conversationListRef.current?.scrollToPreviousUserMessage();
@@ -46,7 +49,16 @@ export function VSCodeWorkspacePage() {
 
   return (
     <AppWithStyleOverride>
-      <div className="h-screen flex flex-col bg-primary">
+      <div
+        className="relative flex flex-col bg-primary"
+        style={{
+          height: electronTopInset ? `calc(100vh - ${electronTopInset}px)` : '100vh',
+          paddingTop: electronTopInset || undefined,
+        }}
+      >
+        {isElectronDesktop ? (
+          <div className="electron-drag-region absolute top-0 left-0 right-0 h-10" />
+        ) : null}
         <WebviewContextMenu />
 
         <main className="relative flex flex-1 flex-col h-full min-h-0">

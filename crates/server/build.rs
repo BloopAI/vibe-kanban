@@ -3,6 +3,10 @@ use std::{fs, path::Path};
 fn main() {
     dotenv::dotenv().ok();
 
+    // Frontend assets are embedded via rust-embed from ../../frontend/dist.
+    // Rebuild server binary whenever these assets change.
+    println!("cargo:rerun-if-changed=../../frontend/dist");
+
     if let Ok(api_key) = std::env::var("POSTHOG_API_KEY") {
         println!("cargo:rustc-env=POSTHOG_API_KEY={}", api_key);
     }

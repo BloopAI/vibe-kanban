@@ -281,6 +281,11 @@
     @apply fill-foreground;
   }
 
+  .new-design.electron-desktop .electron-drag-region {
+    -webkit-app-region: drag;
+    user-select: none;
+  }
+
   .new-design a,
   .new-design button,
   .new-design button * {

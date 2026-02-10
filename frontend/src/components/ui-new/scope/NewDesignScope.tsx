@@ -15,6 +15,7 @@ import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import NiceModal from '@ebay/nice-modal-react';
 import { useKeyShowHelp, Scope } from '@/keyboard';
 import { KeyboardShortcutsDialog } from '@/components/ui-new/dialogs/KeyboardShortcutsDialog';
+import { isElectronDesktopApp } from '@/utils/runtime';
 import '@/styles/new/index.css';
 
 interface NewDesignScopeProps {
@@ -53,6 +54,7 @@ export function NewDesignScope({ children }: NewDesignScopeProps) {
   const [container, setContainer] = useState<HTMLElement | null>(null);
   const posthog = usePostHog();
   const hasTracked = useRef(false);
+  const isElectronDesktop = isElectronDesktopApp();
 
   useEffect(() => {
     if (!hasTracked.current) {
@@ -62,7 +64,10 @@ export function NewDesignScope({ children }: NewDesignScopeProps) {
   }, [posthog]);
 
   return (
-    <div ref={setContainer} className="new-design h-full">
+    <div
+      ref={setContainer}
+      className={`new-design h-full ${isElectronDesktop ? 'electron-desktop' : ''}`}
+    >
       {container && (
         <PortalContainerContext.Provider value={container}>
           <WorkspaceProvider>

@@ -10,6 +10,7 @@ import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
+import { isElectronDesktopApp } from '@/utils/runtime';
 
 export function FullAttemptLogsPage() {
   const {
@@ -25,10 +26,21 @@ export function FullAttemptLogsPage() {
   const { data: attempt } = useTaskAttemptWithSession(attemptId);
   const { tasksById } = useProjectTasks(projectId);
   const task = taskId ? (tasksById[taskId] ?? null) : null;
+  const isElectronDesktop = isElectronDesktopApp();
+  const electronTopInset = isElectronDesktop ? 40 : 0;
 
   return (
     <AppWithStyleOverride>
-      <div className="h-screen flex flex-col bg-muted">
+      <div
+        className="relative flex flex-col bg-muted"
+        style={{
+          height: electronTopInset ? `calc(100vh - ${electronTopInset}px)` : '100vh',
+          paddingTop: electronTopInset || undefined,
+        }}
+      >
+        {isElectronDesktop ? (
+          <div className="electron-drag-region absolute top-0 left-0 right-0 h-10" />
+        ) : null}
         <WebviewContextMenu />
 
         <main className="flex-1 min-h-0">
