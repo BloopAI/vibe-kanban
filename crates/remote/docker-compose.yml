@@ -22,7 +22,7 @@ services:
     working_dir: /app
     restart: on-failure
     environment:
-      DATABASE_URL: postgresql://electric_sync:${ELECTRIC_ROLE_PASSWORD:?set in .env.remote}@remote-db:5432/remote?sslmode=disable
+      DATABASE_URL: postgresql://electric_sync:${ELECTRIC_ROLE_PASSWORD:-remote}@remote-db:5432/remote?sslmode=disable
       PG_PROXY_PORT: 65432
       LOGICAL_PUBLISHER_HOST: electric
       AUTH_MODE: insecure
@@ -68,7 +68,7 @@ services:
       SERVER_PUBLIC_BASE_URL: http://localhost:3000
       VITE_APP_BASE_URL: http://localhost:3000
       VITE_API_BASE_URL: http://localhost:3000
-      ELECTRIC_ROLE_PASSWORD: ${ELECTRIC_ROLE_PASSWORD:?set in .env.remote}
+      ELECTRIC_ROLE_PASSWORD: ${ELECTRIC_ROLE_PASSWORD:-remote}
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
       R2_REVIEW_ENDPOINT: ${R2_REVIEW_ENDPOINT:-}
