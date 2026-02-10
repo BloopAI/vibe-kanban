@@ -10,12 +10,12 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_issue_access,
 };
+use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
     db::issue_relationships::IssueRelationshipRepository,
     mutation_definition::{MutationBuilder, NoUpdate},
-    response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
     CreateIssueRelationshipRequest, IssueRelationship, ListIssueRelationshipsQuery,

@@ -9,7 +9,7 @@ use super::{
     get_txid, issue_assignees::IssueAssigneeRepository, project_statuses::ProjectStatusRepository,
     pull_requests::PullRequestRepository, workspaces::WorkspaceRepository,
 };
-use crate::response::{DeleteResponse, MutationResponse};
+use api_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum IssueError {

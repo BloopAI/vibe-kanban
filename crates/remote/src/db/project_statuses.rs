@@ -5,7 +5,7 @@ use api_types::ProjectStatus;
 use uuid::Uuid;
 
 use super::get_txid;
-use crate::response::{DeleteResponse, MutationResponse};
+use api_types::{DeleteResponse, MutationResponse};
 
 /// Default statuses that are created for each new project (name, color, sort_order, hidden)
 /// Colors are in HSL format: "H S% L%"
