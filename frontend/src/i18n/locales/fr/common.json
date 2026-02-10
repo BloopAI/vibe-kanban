@@ -412,5 +412,15 @@
     "streamsAffected_other": "{{count}} flux affectés",
     "status": "(statut {{status}})",
     "refreshPage": "Actualiser la page"
+  },
+  "onboardingSignIn": {
+    "subtitle": "Sign in to continue",
+    "signedInAs": "Signed in as {{name}}.",
+    "moreOptions": "More options",
+    "featureHeader": "Feature",
+    "signedInHeader": "Signed in",
+    "skipSignInHeader": "Don't sign in",
+    "yes": "Yes",
+    "no": "No"
   }
 }

@@ -128,6 +128,16 @@
     "errorDescription": "There was a problem authenticating your account",
     "tryAgain": "Try Again"
   },
+  "onboardingSignIn": {
+    "subtitle": "Sign in to continue",
+    "signedInAs": "Signed in as {{name}}.",
+    "moreOptions": "More options",
+    "featureHeader": "Feature",
+    "signedInHeader": "Signed in",
+    "skipSignInHeader": "Don't sign in",
+    "yes": "Yes",
+    "no": "No"
+  },
   "toolbar": {
     "sortBy": "Sort by",
     "groupBy": "Group by"

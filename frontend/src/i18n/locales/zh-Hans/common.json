@@ -412,5 +412,15 @@
     "streamsAffected_other": "{{count}} 个数据流受影响",
     "status": "(状态 {{status}})",
     "refreshPage": "刷新页面"
+  },
+  "onboardingSignIn": {
+    "subtitle": "Sign in to continue",
+    "signedInAs": "Signed in as {{name}}.",
+    "moreOptions": "More options",
+    "featureHeader": "Feature",
+    "signedInHeader": "Signed in",
+    "skipSignInHeader": "Don't sign in",
+    "yes": "Yes",
+    "no": "No"
   }
 }

@@ -5,6 +5,7 @@ import {
   GoogleLogoIcon,
   XIcon,
 } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { PROJECTS_SHAPE, type Project } from 'shared/remote-types';
 import { ThemeMode, type OrganizationWithRole } from 'shared/types';
@@ -143,6 +144,7 @@ async function getFirstProjectInOrganization(
 
 export function OnboardingSignInPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation('common');
   const { theme } = useTheme();
   const { config, loginStatus, loading, updateAndSaveConfig } = useUserSystem();
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
@@ -259,17 +261,16 @@ export function OnboardingSignInPage() {
                 className="h-8 w-auto logo"
               />
             </div>
-            <p className="text-sm text-low">Sign in to continue</p>
+            <p className="text-sm text-low">{t('onboardingSignIn.subtitle')}</p>
           </header>
 
           {isLoggedIn ? (
             <section className="space-y-base">
               <p className="text-sm text-normal text-center">
-                Signed in as{' '}
-                <span className="font-medium">
-                  {loginStatus.profile.username || loginStatus.profile.email}
-                </span>
-                .
+                {t('onboardingSignIn.signedInAs', {
+                  name:
+                    loginStatus.profile.username || loginStatus.profile.email,
+                })}
               </p>
               <div className="flex justify-end">
                 <PrimaryButton
@@ -313,7 +314,7 @@ export function OnboardingSignInPage() {
                   onClick={() => setShowComparison(true)}
                   disabled={saving || pendingProvider !== null}
                 >
-                  More options
+                  {t('onboardingSignIn.moreOptions')}
                 </button>
               </div>
             </>
@@ -325,12 +326,14 @@ export function OnboardingSignInPage() {
                 <table className="w-full border-collapse">
                   <thead className="bg-secondary text-xs font-medium text-low">
                     <tr>
-                      <th className="px-base py-half text-left">Feature</th>
-                      <th className="px-base py-half text-left border-l border-border">
-                        Signed in
+                      <th className="px-base py-half text-left">
+                        {t('onboardingSignIn.featureHeader')}
                       </th>
                       <th className="px-base py-half text-left border-l border-border">
-                        Don&apos;t sign in
+                        {t('onboardingSignIn.signedInHeader')}
+                      </th>
+                      <th className="px-base py-half text-left border-l border-border">
+                        {t('onboardingSignIn.skipSignInHeader')}
                       </th>
                     </tr>
                   </thead>
@@ -350,7 +353,9 @@ export function OnboardingSignInPage() {
                                 className="size-icon-xs text-success inline"
                                 weight="bold"
                               />
-                              <span className="sr-only">Yes</span>
+                              <span className="sr-only">
+                                {t('onboardingSignIn.yes')}
+                              </span>
                             </>
                           ) : (
                             <>
@@ -358,7 +363,9 @@ export function OnboardingSignInPage() {
                                 className="size-icon-xs text-warning inline"
                                 weight="bold"
                               />
-                              <span className="sr-only">No</span>
+                              <span className="sr-only">
+                                {t('onboardingSignIn.no')}
+                              </span>
                             </>
                           )}
                         </td>
@@ -369,7 +376,9 @@ export function OnboardingSignInPage() {
                                 className="size-icon-xs text-success inline"
                                 weight="bold"
                               />
-                              <span className="sr-only">Yes</span>
+                              <span className="sr-only">
+                                {t('onboardingSignIn.yes')}
+                              </span>
                             </>
                           ) : (
                             <>
@@ -377,7 +386,9 @@ export function OnboardingSignInPage() {
                                 className="size-icon-xs text-warning inline"
                                 weight="bold"
                               />
-                              <span className="sr-only">No</span>
+                              <span className="sr-only">
+                                {t('onboardingSignIn.no')}
+                              </span>
                             </>
                           )}
                         </td>
