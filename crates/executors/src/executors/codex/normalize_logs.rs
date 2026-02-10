@@ -1061,8 +1061,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 let mut lines = vec![String::new(), header.to_string()];
                                 for finding in &output.findings {
                                     lines.push(String::new());
-                                    let path =
-                                        finding.code_location.absolute_file_path.display();
+                                    let path = finding.code_location.absolute_file_path.display();
                                     let start = finding.code_location.line_range.start;
                                     let end = finding.code_location.line_range.end;
                                     lines.push(format!(
