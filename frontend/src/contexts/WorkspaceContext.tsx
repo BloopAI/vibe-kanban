@@ -16,6 +16,7 @@ import {
 import { useAttempt } from '@/hooks/useAttempt';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useWorkspaceSessions } from '@/hooks/useWorkspaceSessions';
+import { useTask } from '@/hooks/useTask';
 import {
   useGitHubComments,
   type NormalizedGitHubComment,
@@ -75,6 +76,8 @@ interface WorkspaceContextValue {
   diffPaths: Set<string>;
   /** Aggregate diff statistics */
   diffStats: DiffStats;
+  /** Project ID for the current workspace */
+  projectId: string | undefined;
 }
 
 // Exported for optional usage outside WorkspaceProvider (e.g., old UI)
@@ -107,6 +110,11 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     workspaceId,
     { enabled: !!workspaceId && !isCreateMode }
   );
+
+  // Fetch task data for the current workspace to get project_id
+  const { data: task } = useTask(workspace?.task_id, {
+    enabled: !!workspace?.task_id && !isCreateMode,
+  });
 
   // Fetch sessions for the current workspace
   const {
@@ -233,6 +241,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       diffs,
       diffPaths,
       diffStats,
+      projectId: task?.project_id,
     }),
     [
       workspaceId,
@@ -264,6 +273,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       diffs,
       diffPaths,
       diffStats,
+      task?.project_id,
     ]
   );
 

@@ -1,4 +1,5 @@
 import {
+  KanbanIcon,
   LayoutIcon,
   PlusIcon,
   SpinnerIcon,
@@ -14,6 +15,9 @@ import { AppBarUserPopoverContainer } from '../containers/AppBarUserPopoverConta
 import { Tooltip } from './Tooltip';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/hooks/useGitHubStars';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useNavigate } from 'react-router-dom';
+import { useCallback } from 'react';
 
 function formatStarCount(count: number): string {
   if (count < 1000) return String(count);
@@ -61,8 +65,16 @@ export function AppBar({
   isSignedIn,
   isLoadingProjects,
 }: AppBarProps) {
+  const navigate = useNavigate();
   const { data: onlineCount } = useDiscordOnlineCount();
   const { data: starCount } = useGitHubStars();
+  const { projectId } = useWorkspaceContext();
+
+  const handleGoToKanban = useCallback(() => {
+    if (projectId) {
+        navigate(`/local-projects/${projectId}/tasks`);
+    }
+  }, [navigate, projectId]);
 
   return (
     <div
@@ -73,6 +85,24 @@ export function AppBar({
     >
       {/* Top section: Workspaces button */}
       <div className="flex flex-col items-center gap-1">
+        {/* Show "Go to Kanban Board" button when on a workspace page */}
+        {projectId && (
+          <Tooltip content="Back to Kanban Board" side="right">
+            <button
+              type="button"
+              onClick={handleGoToKanban}
+              className={cn(
+                'flex items-center justify-center w-10 h-10 rounded-lg',
+                'text-sm font-medium transition-colors cursor-pointer',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                'bg-primary text-muted hover:text-normal hover:bg-tertiary'
+              )}
+              aria-label="Back to Kanban Board"
+            >
+              <KanbanIcon size={20} />
+            </button>
+          </Tooltip>
+        )}
         <AppBarButton
           icon={LayoutIcon}
           label="Workspaces"
