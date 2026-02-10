@@ -7,12 +7,11 @@ use api_types::{
     CreateIssueRequest, CreateOrganizationRequest, CreateOrganizationResponse,
     CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest, GetInvitationResponse,
     GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
-    HandoffRedeemResponse, Issue, ListInvitationsResponse, ListIssuesResponse,
-    ListMembersResponse, ListOrganizationsResponse, ListProjectStatusesResponse,
-    ListProjectsResponse, MutationResponse, Organization, ProfileResponse,
-    RevokeInvitationRequest, TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest,
-    UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
-    UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
+    HandoffRedeemResponse, Issue, ListInvitationsResponse, ListIssuesResponse, ListMembersResponse,
+    ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse, MutationResponse,
+    Organization, ProfileResponse, RevokeInvitationRequest, TokenRefreshRequest,
+    TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
+    UpdateOrganizationRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
@@ -665,10 +664,7 @@ impl RemoteClient {
     }
 
     /// Deletes an issue.
-    pub async fn delete_issue(
-        &self,
-        issue_id: Uuid,
-    ) -> Result<DeleteResponse, RemoteClientError> {
+    pub async fn delete_issue(&self, issue_id: Uuid) -> Result<DeleteResponse, RemoteClientError> {
         let res = self
             .send(
                 reqwest::Method::DELETE,
