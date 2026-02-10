@@ -353,7 +353,10 @@ type State = {
     viewId: string,
     show: boolean
   ) => void;
-  clearKanbanProjectViewPreferences: (projectId: string, viewId: string) => void;
+  clearKanbanProjectViewPreferences: (
+    projectId: string,
+    viewId: string
+  ) => void;
 
   // Workspace sidebar filter actions
   setWorkspaceProjectFilter: (projectIds: string[]) => void;
@@ -564,7 +567,8 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
     }
 
     set((s) => {
-      const projectPreferences = s.kanbanProjectViewPreferences[projectId] ?? {};
+      const projectPreferences =
+        s.kanbanProjectViewPreferences[projectId] ?? {};
       const existingPreferences =
         projectPreferences[viewId] ??
         createDefaultKanbanProjectViewPreferences(viewId);
@@ -590,7 +594,8 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
     }
 
     set((s) => {
-      const projectPreferences = s.kanbanProjectViewPreferences[projectId] ?? {};
+      const projectPreferences =
+        s.kanbanProjectViewPreferences[projectId] ?? {};
       const existingPreferences =
         projectPreferences[viewId] ??
         createDefaultKanbanProjectViewPreferences(viewId);
@@ -616,7 +621,8 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
     }
 
     set((s) => {
-      const projectPreferences = s.kanbanProjectViewPreferences[projectId] ?? {};
+      const projectPreferences =
+        s.kanbanProjectViewPreferences[projectId] ?? {};
       const existingPreferences =
         projectPreferences[viewId] ??
         createDefaultKanbanProjectViewPreferences(viewId);

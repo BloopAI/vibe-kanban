@@ -177,8 +177,10 @@ export function KanbanContainer() {
   } = resolvedProjectState;
   const projectViewPreferences = projectViewPreferencesById?.[activeViewId];
   const kanbanFilters = projectViewPreferences?.filters ?? defaultKanbanFilters;
-  const showSubIssues = projectViewPreferences?.showSubIssues ?? defaultShowSubIssues;
-  const showWorkspaces = projectViewPreferences?.showWorkspaces ?? defaultShowWorkspaces;
+  const showSubIssues =
+    projectViewPreferences?.showSubIssues ?? defaultShowSubIssues;
+  const showWorkspaces =
+    projectViewPreferences?.showWorkspaces ?? defaultShowWorkspaces;
 
   const hasActiveFilters = useMemo(
     () =>
@@ -204,33 +206,45 @@ export function KanbanContainer() {
     currentUserId: userId,
   });
 
-  const setKanbanSearchQuery = useCallback((searchQuery: string) => {
-    setKanbanProjectViewFilters(projectId, activeViewId, {
-      ...kanbanFilters,
-      searchQuery,
-    });
-  }, [activeViewId, kanbanFilters, projectId, setKanbanProjectViewFilters]);
+  const setKanbanSearchQuery = useCallback(
+    (searchQuery: string) => {
+      setKanbanProjectViewFilters(projectId, activeViewId, {
+        ...kanbanFilters,
+        searchQuery,
+      });
+    },
+    [activeViewId, kanbanFilters, projectId, setKanbanProjectViewFilters]
+  );
 
-  const setKanbanPriorities = useCallback((priorities: IssuePriority[]) => {
-    setKanbanProjectViewFilters(projectId, activeViewId, {
-      ...kanbanFilters,
-      priorities,
-    });
-  }, [activeViewId, kanbanFilters, projectId, setKanbanProjectViewFilters]);
+  const setKanbanPriorities = useCallback(
+    (priorities: IssuePriority[]) => {
+      setKanbanProjectViewFilters(projectId, activeViewId, {
+        ...kanbanFilters,
+        priorities,
+      });
+    },
+    [activeViewId, kanbanFilters, projectId, setKanbanProjectViewFilters]
+  );
 
-  const setKanbanAssignees = useCallback((assigneeIds: string[]) => {
-    setKanbanProjectViewFilters(projectId, activeViewId, {
-      ...kanbanFilters,
-      assigneeIds,
-    });
-  }, [activeViewId, kanbanFilters, projectId, setKanbanProjectViewFilters]);
+  const setKanbanAssignees = useCallback(
+    (assigneeIds: string[]) => {
+      setKanbanProjectViewFilters(projectId, activeViewId, {
+        ...kanbanFilters,
+        assigneeIds,
+      });
+    },
+    [activeViewId, kanbanFilters, projectId, setKanbanProjectViewFilters]
+  );
 
-  const setKanbanTags = useCallback((tagIds: string[]) => {
-    setKanbanProjectViewFilters(projectId, activeViewId, {
-      ...kanbanFilters,
-      tagIds,
-    });
-  }, [activeViewId, kanbanFilters, projectId, setKanbanProjectViewFilters]);
+  const setKanbanTags = useCallback(
+    (tagIds: string[]) => {
+      setKanbanProjectViewFilters(projectId, activeViewId, {
+        ...kanbanFilters,
+        tagIds,
+      });
+    },
+    [activeViewId, kanbanFilters, projectId, setKanbanProjectViewFilters]
+  );
 
   const setKanbanSort = useCallback(
     (sortField: KanbanSortField, sortDirection: 'asc' | 'desc') => {
@@ -240,12 +254,7 @@ export function KanbanContainer() {
         sortDirection,
       });
     },
-    [
-      activeViewId,
-      kanbanFilters,
-      projectId,
-      setKanbanProjectViewFilters,
-    ]
+    [activeViewId, kanbanFilters, projectId, setKanbanProjectViewFilters]
   );
 
   const setShowSubIssues = useCallback(
