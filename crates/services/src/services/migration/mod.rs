@@ -23,6 +23,8 @@ use uuid::Uuid;
 use crate::services::remote_client::RemoteClient;
 
 const BATCH_SIZE: usize = 100;
+/// Maximum length for issue titles in the remote database (VARCHAR(255)).
+const MAX_ISSUE_TITLE_LENGTH: usize = 255;
 
 pub struct MigrationService {
     sqlite_pool: SqlitePool,
@@ -261,10 +263,21 @@ impl MigrationService {
 
             match remote_project_id {
                 Some(project_id) => {
+                    let mut title = task.title.clone();
+                    if title.len() > MAX_ISSUE_TITLE_LENGTH {
+                        report.warnings.push(format!(
+                            "Task {}: title truncated from {} to {} characters",
+                            task.id,
+                            title.len(),
+                            MAX_ISSUE_TITLE_LENGTH
+                        ));
+                        title = title.chars().take(MAX_ISSUE_TITLE_LENGTH).collect();
+                    }
+
                     requests.push(MigrateIssueRequest {
                         project_id,
                         status_name: map_task_status(&task.status),
-                        title: task.title.clone(),
+                        title,
                         description: task.description.clone(),
                         created_at: task.created_at,
                     });
