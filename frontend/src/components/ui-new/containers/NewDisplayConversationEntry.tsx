@@ -577,7 +577,8 @@ function UserMessageEntry({
   };
 
   // Only show actions when we have a process ID and not already in edit mode
-  const canShowActions = !!executionProcessId && !isInEditMode && !isResetPending;
+  const canShowActions =
+    !!executionProcessId && !isInEditMode && !isResetPending;
   // Edit/retry is capability-gated (e.g. Amp has no retry)
   const canEdit = canShowActions && canRetry;
   // Only show reset if we have a process ID, not in edit mode, not pending, and not first process

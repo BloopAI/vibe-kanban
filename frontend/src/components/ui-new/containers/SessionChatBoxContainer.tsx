@@ -354,7 +354,9 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   });
   const supportsEditRetry = !!(
     effectiveExecutor &&
-    capabilities?.[effectiveExecutor]?.includes(BaseAgentCapability.SESSION_FORK)
+    capabilities?.[effectiveExecutor]?.includes(
+      BaseAgentCapability.SESSION_FORK
+    )
   );
   const isInEditMode = isInEditModeRaw && supportsEditRetry;
 
