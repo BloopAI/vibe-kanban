@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FunnelIcon, PlusIcon, XIcon } from '@phosphor-icons/react';
-import type { IssuePriority, ProjectStatus, Tag } from 'shared/remote-types';
+import type { IssuePriority, Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { cn } from '@/lib/utils';
 import {
@@ -17,7 +17,6 @@ import {
   ButtonGroup,
   ButtonGroupItem,
 } from '@/components/ui-new/primitives/IconButtonGroup';
-import { KanbanDisplaySettingsContainer } from '@/components/ui-new/containers/KanbanDisplaySettingsContainer';
 import { KanbanFiltersDialog } from '@/components/ui-new/dialogs/KanbanFiltersDialog';
 
 interface KanbanFilterBarProps {
@@ -25,7 +24,6 @@ interface KanbanFilterBarProps {
   onFiltersDialogOpenChange: (open: boolean) => void;
   tags: Tag[];
   users: OrganizationMemberWithProfile[];
-  statuses: ProjectStatus[];
   projectId: string;
   currentUserId: string | null;
   filters: KanbanFilterState;
@@ -39,25 +37,6 @@ interface KanbanFilterBarProps {
     sortDirection: 'asc' | 'desc'
   ) => void;
   onClearFilters: () => void;
-  issueCountByStatus: Record<string, number>;
-  onInsertStatus: (data: {
-    id: string;
-    project_id: string;
-    name: string;
-    color: string;
-    sort_order: number;
-    hidden: boolean;
-  }) => void;
-  onUpdateStatus: (
-    id: string,
-    changes: {
-      name?: string;
-      color?: string;
-      sort_order?: number;
-      hidden?: boolean;
-    }
-  ) => void;
-  onRemoveStatus: (id: string) => void;
   onCreateIssue: () => void;
 }
 
@@ -66,7 +45,6 @@ export function KanbanFilterBar({
   onFiltersDialogOpenChange,
   tags,
   users,
-  statuses,
   projectId,
   currentUserId,
   filters,
@@ -77,10 +55,6 @@ export function KanbanFilterBar({
   onTagsChange,
   onSortChange,
   onClearFilters,
-  issueCountByStatus,
-  onInsertStatus,
-  onUpdateStatus,
-  onRemoveStatus,
   onCreateIssue,
 }: KanbanFilterBarProps) {
   const { t } = useTranslation('common');
@@ -156,15 +130,6 @@ export function KanbanFilterBar({
             onClick={onClearFilters}
           />
         )}
-
-        <KanbanDisplaySettingsContainer
-          statuses={statuses}
-          projectId={projectId}
-          issueCountByStatus={issueCountByStatus}
-          onInsertStatus={onInsertStatus}
-          onUpdateStatus={onUpdateStatus}
-          onRemoveStatus={onRemoveStatus}
-        />
 
         <PrimaryButton
           variant="secondary"
