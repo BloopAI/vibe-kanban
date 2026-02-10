@@ -1196,35 +1196,30 @@ impl ContainerService for LocalContainerService {
 
         // Inject remote project/issue/org context if workspace is linked to remote
         if let Some(client) = &self.remote_client {
-            match client.list_workspaces().await {
-                Ok(remote_workspaces) => {
-                    if let Some(remote_workspace) = remote_workspaces
-                        .iter()
-                        .find(|w| w.local_workspace_id == Some(workspace.id))
-                    {
-                        env.insert("VK_PROJECT_ID", remote_workspace.project_id.to_string());
-                        if let Some(issue_id) = remote_workspace.issue_id {
-                            env.insert("VK_ISSUE_ID", issue_id.to_string());
+            match client.get_workspace_by_local_id(workspace.id).await {
+                Ok(remote_workspace) => {
+                    env.insert("VK_PROJECT_ID", remote_workspace.project_id.to_string());
+                    if let Some(issue_id) = remote_workspace.issue_id {
+                        env.insert("VK_ISSUE_ID", issue_id.to_string());
+                    }
+                    match client.get_remote_project(remote_workspace.project_id).await {
+                        Ok(remote_project) => {
+                            env.insert(
+                                "VK_ORGANIZATION_ID",
+                                remote_project.organization_id.to_string(),
+                            );
                         }
-                        match client.get_remote_project(remote_workspace.project_id).await {
-                            Ok(remote_project) => {
-                                env.insert(
-                                    "VK_ORGANIZATION_ID",
-                                    remote_project.organization_id.to_string(),
-                                );
-                            }
-                            Err(e) => {
-                                tracing::warn!(
-                                    "Failed to fetch remote project {} for org ID: {}",
-                                    remote_workspace.project_id,
-                                    e
-                                );
-                            }
+                        Err(e) => {
+                            tracing::warn!(
+                                "Failed to fetch remote project {} for org ID: {}",
+                                remote_workspace.project_id,
+                                e
+                            );
                         }
                     }
                 }
                 Err(e) => {
-                    tracing::debug!("Failed to list remote workspaces: {}", e);
+                    tracing::debug!("Workspace {} not linked to remote: {}", workspace.id, e);
                 }
             }
         }

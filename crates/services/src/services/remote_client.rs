@@ -571,9 +571,13 @@ impl RemoteClient {
         .await
     }
 
-    /// Lists all workspaces for the authenticated user from the remote server.
-    pub async fn list_workspaces(&self) -> Result<Vec<Workspace>, RemoteClientError> {
-        self.get_authed("/v1/workspaces/list").await
+    /// Gets a workspace from the remote server by its local workspace ID.
+    pub async fn get_workspace_by_local_id(
+        &self,
+        local_workspace_id: Uuid,
+    ) -> Result<Workspace, RemoteClientError> {
+        self.get_authed(&format!("/v1/workspaces/by-local-id/{local_workspace_id}"))
+            .await
     }
 
     /// Checks if a workspace exists on the remote server.

@@ -1,17 +1,27 @@
 use api_types::Workspace;
-use axum::{Router, extract::State, response::Json as ResponseJson, routing::get};
+use axum::{
+    Router,
+    extract::{Path, State},
+    response::Json as ResponseJson,
+    routing::get,
+};
 use utils::response::ApiResponse;
+use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
 pub fn router() -> Router<DeploymentImpl> {
-    Router::new().route("/remote/workspaces", get(list_workspaces))
+    Router::new().route(
+        "/remote/workspaces/by-local-id/{local_workspace_id}",
+        get(get_workspace_by_local_id),
+    )
 }
 
-async fn list_workspaces(
+async fn get_workspace_by_local_id(
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Vec<Workspace>>>, ApiError> {
+    Path(local_workspace_id): Path<Uuid>,
+) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
     let client = deployment.remote_client()?;
-    let workspaces = client.list_workspaces().await?;
-    Ok(ResponseJson(ApiResponse::success(workspaces)))
+    let workspace = client.get_workspace_by_local_id(local_workspace_id).await?;
+    Ok(ResponseJson(ApiResponse::success(workspace)))
 }
