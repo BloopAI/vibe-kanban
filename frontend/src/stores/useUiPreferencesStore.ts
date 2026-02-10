@@ -89,6 +89,12 @@ export type KanbanProjectViewSelection = {
   activeViewId: string;
 };
 
+export type KanbanProjectViewPreferences = {
+  filters: KanbanFilterState;
+  showSubIssues: boolean;
+  showWorkspaces: boolean;
+};
+
 export type ResolvedKanbanProjectState = {
   activeViewId: string;
   filters: KanbanFilterState;
@@ -135,6 +141,17 @@ const getKanbanDefaultView = (viewId: string): KanbanProjectView => {
     filters: cloneKanbanFilters(DEFAULT_KANBAN_FILTER_STATE),
     showSubIssues: getDefaultShowSubIssuesForView(KANBAN_PROJECT_VIEW_IDS.TEAM),
     showWorkspaces: DEFAULT_KANBAN_SHOW_WORKSPACES,
+  };
+};
+
+const createDefaultKanbanProjectViewPreferences = (
+  viewId: string
+): KanbanProjectViewPreferences => {
+  const view = getKanbanDefaultView(viewId);
+  return {
+    filters: cloneKanbanFilters(view.filters),
+    showSubIssues: view.showSubIssues,
+    showWorkspaces: view.showWorkspaces,
   };
 };
 
@@ -267,6 +284,12 @@ type State = {
   // Selected built-in kanban view per project
   kanbanProjectViewSelections: Record<string, KanbanProjectViewSelection>;
 
+  // In-memory kanban runtime preferences per project and view
+  kanbanProjectViewPreferences: Record<
+    string,
+    Record<string, KanbanProjectViewPreferences>
+  >;
+
   // Workspace sidebar filter state
   workspaceFilters: WorkspaceFilterState;
 
@@ -315,6 +338,22 @@ type State = {
 
   // Kanban view selection actions
   setKanbanProjectView: (projectId: string, viewId: string) => void;
+  setKanbanProjectViewFilters: (
+    projectId: string,
+    viewId: string,
+    filters: KanbanFilterState
+  ) => void;
+  setKanbanProjectViewShowSubIssues: (
+    projectId: string,
+    viewId: string,
+    show: boolean
+  ) => void;
+  setKanbanProjectViewShowWorkspaces: (
+    projectId: string,
+    viewId: string,
+    show: boolean
+  ) => void;
+  clearKanbanProjectViewPreferences: (projectId: string, viewId: string) => void;
 
   // Workspace sidebar filter actions
   setWorkspaceProjectFilter: (projectIds: string[]) => void;
@@ -347,6 +386,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
 
   // Kanban per-project view selection
   kanbanProjectViewSelections: {},
+  kanbanProjectViewPreferences: {},
 
   // Workspace sidebar filter state
   workspaceFilters: DEFAULT_WORKSPACE_FILTER_STATE,
@@ -516,6 +556,111 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
         [projectId]: { activeViewId: viewId },
       },
     }));
+  },
+
+  setKanbanProjectViewFilters: (projectId, viewId, filters) => {
+    if (!isKanbanProjectViewId(viewId)) {
+      return;
+    }
+
+    set((s) => {
+      const projectPreferences = s.kanbanProjectViewPreferences[projectId] ?? {};
+      const existingPreferences =
+        projectPreferences[viewId] ??
+        createDefaultKanbanProjectViewPreferences(viewId);
+
+      return {
+        kanbanProjectViewPreferences: {
+          ...s.kanbanProjectViewPreferences,
+          [projectId]: {
+            ...projectPreferences,
+            [viewId]: {
+              ...existingPreferences,
+              filters: cloneKanbanFilters(filters),
+            },
+          },
+        },
+      };
+    });
+  },
+
+  setKanbanProjectViewShowSubIssues: (projectId, viewId, show) => {
+    if (!isKanbanProjectViewId(viewId)) {
+      return;
+    }
+
+    set((s) => {
+      const projectPreferences = s.kanbanProjectViewPreferences[projectId] ?? {};
+      const existingPreferences =
+        projectPreferences[viewId] ??
+        createDefaultKanbanProjectViewPreferences(viewId);
+
+      return {
+        kanbanProjectViewPreferences: {
+          ...s.kanbanProjectViewPreferences,
+          [projectId]: {
+            ...projectPreferences,
+            [viewId]: {
+              ...existingPreferences,
+              showSubIssues: show,
+            },
+          },
+        },
+      };
+    });
+  },
+
+  setKanbanProjectViewShowWorkspaces: (projectId, viewId, show) => {
+    if (!isKanbanProjectViewId(viewId)) {
+      return;
+    }
+
+    set((s) => {
+      const projectPreferences = s.kanbanProjectViewPreferences[projectId] ?? {};
+      const existingPreferences =
+        projectPreferences[viewId] ??
+        createDefaultKanbanProjectViewPreferences(viewId);
+
+      return {
+        kanbanProjectViewPreferences: {
+          ...s.kanbanProjectViewPreferences,
+          [projectId]: {
+            ...projectPreferences,
+            [viewId]: {
+              ...existingPreferences,
+              showWorkspaces: show,
+            },
+          },
+        },
+      };
+    });
+  },
+
+  clearKanbanProjectViewPreferences: (projectId, viewId) => {
+    if (!isKanbanProjectViewId(viewId)) {
+      return;
+    }
+
+    set((s) => {
+      const projectPreferences = s.kanbanProjectViewPreferences[projectId];
+      if (!projectPreferences || !projectPreferences[viewId]) {
+        return {};
+      }
+
+      const nextProjectPreferences = { ...projectPreferences };
+      delete nextProjectPreferences[viewId];
+
+      const nextAllPreferences = { ...s.kanbanProjectViewPreferences };
+      if (Object.keys(nextProjectPreferences).length === 0) {
+        delete nextAllPreferences[projectId];
+      } else {
+        nextAllPreferences[projectId] = nextProjectPreferences;
+      }
+
+      return {
+        kanbanProjectViewPreferences: nextAllPreferences,
+      };
+    });
   },
 
   // Workspace sidebar filter actions

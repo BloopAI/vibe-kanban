@@ -147,8 +147,23 @@ export function KanbanContainer() {
   const projectViewSelection = useUiPreferencesStore(
     (s) => s.kanbanProjectViewSelections[projectId]
   );
+  const projectViewPreferencesById = useUiPreferencesStore(
+    (s) => s.kanbanProjectViewPreferences[projectId]
+  );
   const setKanbanProjectView = useUiPreferencesStore(
     (s) => s.setKanbanProjectView
+  );
+  const setKanbanProjectViewFilters = useUiPreferencesStore(
+    (s) => s.setKanbanProjectViewFilters
+  );
+  const setKanbanProjectViewShowSubIssues = useUiPreferencesStore(
+    (s) => s.setKanbanProjectViewShowSubIssues
+  );
+  const setKanbanProjectViewShowWorkspaces = useUiPreferencesStore(
+    (s) => s.setKanbanProjectViewShowWorkspaces
+  );
+  const clearKanbanProjectViewPreferences = useUiPreferencesStore(
+    (s) => s.clearKanbanProjectViewPreferences
   );
   const resolvedProjectState = useMemo(
     () => resolveKanbanProjectState(projectViewSelection),
@@ -160,25 +175,10 @@ export function KanbanContainer() {
     showSubIssues: defaultShowSubIssues,
     showWorkspaces: defaultShowWorkspaces,
   } = resolvedProjectState;
-  const [kanbanFilters, setKanbanFilters] =
-    useState<KanbanFilterState>(defaultKanbanFilters);
-  const [showSubIssues, setShowSubIssues] =
-    useState<boolean>(defaultShowSubIssues);
-  const [showWorkspaces, setShowWorkspaces] = useState<boolean>(
-    defaultShowWorkspaces
-  );
-
-  useEffect(() => {
-    setKanbanFilters(defaultKanbanFilters);
-    setShowSubIssues(defaultShowSubIssues);
-    setShowWorkspaces(defaultShowWorkspaces);
-  }, [
-    projectId,
-    resolvedProjectState.activeViewId,
-    defaultKanbanFilters,
-    defaultShowSubIssues,
-    defaultShowWorkspaces,
-  ]);
+  const projectViewPreferences = projectViewPreferencesById?.[activeViewId];
+  const kanbanFilters = projectViewPreferences?.filters ?? defaultKanbanFilters;
+  const showSubIssues = projectViewPreferences?.showSubIssues ?? defaultShowSubIssues;
+  const showWorkspaces = projectViewPreferences?.showWorkspaces ?? defaultShowWorkspaces;
 
   const hasActiveFilters = useMemo(
     () =>
@@ -205,37 +205,66 @@ export function KanbanContainer() {
   });
 
   const setKanbanSearchQuery = useCallback((searchQuery: string) => {
-    setKanbanFilters((prev) => ({ ...prev, searchQuery }));
-  }, []);
+    setKanbanProjectViewFilters(projectId, activeViewId, {
+      ...kanbanFilters,
+      searchQuery,
+    });
+  }, [activeViewId, kanbanFilters, projectId, setKanbanProjectViewFilters]);
 
   const setKanbanPriorities = useCallback((priorities: IssuePriority[]) => {
-    setKanbanFilters((prev) => ({ ...prev, priorities }));
-  }, []);
+    setKanbanProjectViewFilters(projectId, activeViewId, {
+      ...kanbanFilters,
+      priorities,
+    });
+  }, [activeViewId, kanbanFilters, projectId, setKanbanProjectViewFilters]);
 
   const setKanbanAssignees = useCallback((assigneeIds: string[]) => {
-    setKanbanFilters((prev) => ({ ...prev, assigneeIds }));
-  }, []);
+    setKanbanProjectViewFilters(projectId, activeViewId, {
+      ...kanbanFilters,
+      assigneeIds,
+    });
+  }, [activeViewId, kanbanFilters, projectId, setKanbanProjectViewFilters]);
 
   const setKanbanTags = useCallback((tagIds: string[]) => {
-    setKanbanFilters((prev) => ({ ...prev, tagIds }));
-  }, []);
+    setKanbanProjectViewFilters(projectId, activeViewId, {
+      ...kanbanFilters,
+      tagIds,
+    });
+  }, [activeViewId, kanbanFilters, projectId, setKanbanProjectViewFilters]);
 
   const setKanbanSort = useCallback(
     (sortField: KanbanSortField, sortDirection: 'asc' | 'desc') => {
-      setKanbanFilters((prev) => ({
-        ...prev,
+      setKanbanProjectViewFilters(projectId, activeViewId, {
+        ...kanbanFilters,
         sortField,
         sortDirection,
-      }));
+      });
     },
-    []
+    [
+      activeViewId,
+      kanbanFilters,
+      projectId,
+      setKanbanProjectViewFilters,
+    ]
+  );
+
+  const setShowSubIssues = useCallback(
+    (show: boolean) => {
+      setKanbanProjectViewShowSubIssues(projectId, activeViewId, show);
+    },
+    [activeViewId, projectId, setKanbanProjectViewShowSubIssues]
+  );
+
+  const setShowWorkspaces = useCallback(
+    (show: boolean) => {
+      setKanbanProjectViewShowWorkspaces(projectId, activeViewId, show);
+    },
+    [activeViewId, projectId, setKanbanProjectViewShowWorkspaces]
   );
 
   const clearKanbanFilters = useCallback(() => {
-    setKanbanFilters(defaultKanbanFilters);
-    setShowSubIssues(defaultShowSubIssues);
-    setShowWorkspaces(defaultShowWorkspaces);
-  }, [defaultKanbanFilters, defaultShowSubIssues, defaultShowWorkspaces]);
+    clearKanbanProjectViewPreferences(projectId, activeViewId);
+  }, [activeViewId, clearKanbanProjectViewPreferences, projectId]);
 
   const handleKanbanProjectViewChange = useCallback(
     (viewId: string) => {
