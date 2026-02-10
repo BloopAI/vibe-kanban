@@ -54,6 +54,7 @@ aws-sdk-s3 = { version = "1.65", default-features = false, features = ["behavior
 aws-credential-types = "1.2"
 azure_core = "0.31"
 azure_storage_blob = "0.8"
+azure_identity = "0.31"
 time = "0.3"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
 tempfile = "3"

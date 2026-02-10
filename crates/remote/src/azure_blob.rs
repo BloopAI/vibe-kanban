@@ -22,7 +22,9 @@ use sha2::Sha256;
 use time::OffsetDateTime;
 use url::form_urlencoded;
 
-use crate::config::AzureBlobConfig;
+use azure_identity::{ManagedIdentityCredential, ManagedIdentityCredentialOptions, UserAssignedId};
+
+use crate::config::{AzureAuthMode, AzureBlobConfig};
 use crate::shared_key_auth::SharedKeyAuthorizationPolicy;
 
 #[derive(Clone)]
@@ -72,25 +74,43 @@ impl AzureBlobService {
             None => format!("https://{}.blob.core.windows.net", account_name),
         };
 
-        let policy = Arc::new(SharedKeyAuthorizationPolicy {
-            account: account_name.clone(),
-            key: Secret::new(account_key.clone()),
-        });
-
-        let service_client = Arc::new(
-            BlobServiceClient::new(
-                &endpoint,
-                None,
-                Some(BlobServiceClientOptions {
-                    client_options: ClientOptions {
-                        per_try_policies: vec![policy],
+        let service_client = match &config.auth_mode {
+            AzureAuthMode::EntraId { client_id } => {
+                let credential = ManagedIdentityCredential::new(Some(
+                    ManagedIdentityCredentialOptions {
+                        user_assigned_id: Some(UserAssignedId::ClientId(client_id.clone())),
                         ..Default::default()
                     },
-                    ..Default::default()
-                }),
-            )
-            .expect("failed to create BlobServiceClient"),
-        );
+                ))
+                .expect("failed to create ManagedIdentityCredential");
+
+                Arc::new(
+                    BlobServiceClient::new(&endpoint, Some(credential), None)
+                        .expect("failed to create BlobServiceClient with managed identity"),
+                )
+            }
+            AzureAuthMode::SharedKey => {
+                let policy = Arc::new(SharedKeyAuthorizationPolicy {
+                    account: account_name.clone(),
+                    key: Secret::new(account_key.clone()),
+                });
+
+                Arc::new(
+                    BlobServiceClient::new(
+                        &endpoint,
+                        None,
+                        Some(BlobServiceClientOptions {
+                            client_options: ClientOptions {
+                                per_try_policies: vec![policy],
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        }),
+                    )
+                    .expect("failed to create BlobServiceClient with shared key"),
+                )
+            }
+        };
 
         Self {
             service_client,

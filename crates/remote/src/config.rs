@@ -68,13 +68,23 @@ impl R2Config {
 }
 
 #[derive(Debug, Clone)]
+pub enum AzureAuthMode {
+    /// Entra ID via user-assigned managed identity (production).
+    EntraId { client_id: String },
+    /// Shared Key via custom HMAC policy (local Azurite).
+    SharedKey,
+}
+
+#[derive(Debug, Clone)]
 pub struct AzureBlobConfig {
     pub account_name: String,
+    /// Account key is always required for SAS token generation.
     pub account_key: SecretString,
     pub container_name: String,
     pub endpoint_url: Option<String>,
     pub public_endpoint_url: Option<String>,
     pub presign_expiry_secs: u64,
+    pub auth_mode: AzureAuthMode,
 }
 
 impl AzureBlobConfig {
@@ -98,6 +108,11 @@ impl AzureBlobConfig {
         let endpoint_url = env::var("AZURE_STORAGE_ENDPOINT_URL").ok();
         let public_endpoint_url = env::var("AZURE_STORAGE_PUBLIC_ENDPOINT_URL").ok();
 
+        let auth_mode = match env::var("AZURE_MANAGED_IDENTITY_CLIENT_ID") {
+            Ok(client_id) => AzureAuthMode::EntraId { client_id },
+            Err(_) => AzureAuthMode::SharedKey,
+        };
+
         let presign_expiry_secs = env::var("AZURE_BLOB_PRESIGN_EXPIRY_SECS")
             .ok()
             .and_then(|v| v.parse().ok())
@@ -107,6 +122,7 @@ impl AzureBlobConfig {
             account_name = %account_name,
             container_name = %container_name,
             endpoint_url = ?endpoint_url,
+            auth_mode = ?auth_mode,
             "Azure Blob config loaded successfully"
         );
 
@@ -117,6 +133,7 @@ impl AzureBlobConfig {
             endpoint_url,
             public_endpoint_url,
             presign_expiry_secs,
+            auth_mode,
         }))
     }
 }
