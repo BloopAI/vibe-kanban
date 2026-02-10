@@ -1,13 +1,10 @@
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FunnelIcon, PlusIcon, XIcon } from '@phosphor-icons/react';
 import type { IssuePriority, Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { cn } from '@/lib/utils';
 import {
-  useUiPreferencesStore,
   KANBAN_PROJECT_VIEW_IDS,
-  resolveKanbanProjectState,
   type KanbanFilterState,
   type KanbanSortField,
 } from '@/stores/useUiPreferencesStore';
@@ -24,6 +21,8 @@ interface KanbanFilterBarProps {
   onFiltersDialogOpenChange: (open: boolean) => void;
   tags: Tag[];
   users: OrganizationMemberWithProfile[];
+  activeViewId: string;
+  onViewChange: (viewId: string) => void;
   projectId: string;
   currentUserId: string | null;
   filters: KanbanFilterState;
@@ -45,6 +44,8 @@ export function KanbanFilterBar({
   onFiltersDialogOpenChange,
   tags,
   users,
+  activeViewId,
+  onViewChange,
   projectId,
   currentUserId,
   filters,
@@ -59,22 +60,6 @@ export function KanbanFilterBar({
 }: KanbanFilterBarProps) {
   const { t } = useTranslation('common');
 
-  const projectViewSelection = useUiPreferencesStore(
-    (s) => s.kanbanProjectViewSelections[projectId]
-  );
-  const setKanbanProjectView = useUiPreferencesStore(
-    (s) => s.setKanbanProjectView
-  );
-
-  const { activeViewId } = useMemo(
-    () => resolveKanbanProjectState(projectViewSelection),
-    [projectViewSelection]
-  );
-
-  const handleViewChange = (viewId: string) => {
-    setKanbanProjectView(projectId, viewId);
-  };
-
   const handleClearSearch = () => {
     onSearchQueryChange('');
   };
@@ -85,13 +70,13 @@ export function KanbanFilterBar({
         <ButtonGroup className="flex-wrap">
           <ButtonGroupItem
             active={activeViewId === KANBAN_PROJECT_VIEW_IDS.TEAM}
-            onClick={() => handleViewChange(KANBAN_PROJECT_VIEW_IDS.TEAM)}
+            onClick={() => onViewChange(KANBAN_PROJECT_VIEW_IDS.TEAM)}
           >
             {t('kanban.team', 'Team')}
           </ButtonGroupItem>
           <ButtonGroupItem
             active={activeViewId === KANBAN_PROJECT_VIEW_IDS.PERSONAL}
-            onClick={() => handleViewChange(KANBAN_PROJECT_VIEW_IDS.PERSONAL)}
+            onClick={() => onViewChange(KANBAN_PROJECT_VIEW_IDS.PERSONAL)}
           >
             {t('kanban.personal', 'Personal')}
           </ButtonGroupItem>

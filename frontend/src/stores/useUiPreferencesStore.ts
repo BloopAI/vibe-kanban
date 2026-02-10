@@ -91,7 +91,6 @@ export type KanbanProjectViewSelection = {
 
 export type ResolvedKanbanProjectState = {
   activeViewId: string;
-  activeView: KanbanProjectView;
   filters: KanbanFilterState;
   showSubIssues: boolean;
   showWorkspaces: boolean;
@@ -150,7 +149,6 @@ export const resolveKanbanProjectState = (
 
   return {
     activeViewId,
-    activeView,
     filters: cloneKanbanFilters(activeView.filters),
     showSubIssues: activeView.showSubIssues,
     showWorkspaces: activeView.showWorkspaces,

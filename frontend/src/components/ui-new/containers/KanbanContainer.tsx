@@ -147,11 +147,15 @@ export function KanbanContainer() {
   const projectViewSelection = useUiPreferencesStore(
     (s) => s.kanbanProjectViewSelections[projectId]
   );
+  const setKanbanProjectView = useUiPreferencesStore(
+    (s) => s.setKanbanProjectView
+  );
   const resolvedProjectState = useMemo(
     () => resolveKanbanProjectState(projectViewSelection),
     [projectViewSelection]
   );
   const {
+    activeViewId,
     filters: defaultKanbanFilters,
     showSubIssues,
     showWorkspaces,
@@ -207,6 +211,13 @@ export function KanbanContainer() {
   const clearKanbanFilters = useCallback(() => {
     setKanbanFilters(defaultKanbanFilters);
   }, [defaultKanbanFilters]);
+
+  const handleKanbanProjectViewChange = useCallback(
+    (viewId: string) => {
+      setKanbanProjectView(projectId, viewId);
+    },
+    [projectId, setKanbanProjectView]
+  );
   const kanbanViewMode = useUiPreferencesStore((s) => s.kanbanViewMode);
   const listViewStatusFilter = useUiPreferencesStore(
     (s) => s.listViewStatusFilter
@@ -686,6 +697,8 @@ export function KanbanContainer() {
             onFiltersDialogOpenChange={setIsFiltersDialogOpen}
             tags={tags}
             users={membersWithProfiles}
+            activeViewId={activeViewId}
+            onViewChange={handleKanbanProjectViewChange}
             projectId={projectId}
             currentUserId={userId}
             filters={kanbanFilters}
