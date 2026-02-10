@@ -52,6 +52,7 @@ export const AutoResizeTextarea = React.forwardRef<
   const resizeToContent = React.useCallback(() => {
     const textarea = internalRef.current;
     if (!textarea) return;
+    if (textarea.clientWidth <= 1) return;
 
     textarea.style.height = 'auto';
     textarea.style.height = `${textarea.scrollHeight}px`;
@@ -64,6 +65,21 @@ export const AutoResizeTextarea = React.forwardRef<
   React.useLayoutEffect(() => {
     resizeToContent();
   }, [normalizedValue, resizeToContent]);
+
+  React.useLayoutEffect(() => {
+    const textarea = internalRef.current;
+    if (!textarea) return;
+
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(() => {
+      resizeToContent();
+    });
+
+    observer.observe(textarea);
+
+    return () => observer.disconnect();
+  }, [resizeToContent]);
 
   const handleInput = React.useCallback(
     (event: React.FormEvent<HTMLTextAreaElement>) => {
