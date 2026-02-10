@@ -286,6 +286,10 @@ pub struct StartWorkspaceSessionRequest {
     pub variant: Option<String>,
     #[schemars(description = "Base branch for each repository in the project")]
     pub repos: Vec<McpWorkspaceRepoInput>,
+    #[schemars(
+        description = "Optional issue ID to link the workspace to. When provided, the workspace will be associated with this remote issue."
+    )]
+    pub issue_id: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -1024,6 +1028,7 @@ impl TaskServer {
             executor,
             variant,
             repos,
+            issue_id,
         }): Parameters<StartWorkspaceSessionRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         if repos.is_empty() {
@@ -1110,6 +1115,30 @@ impl TaskServer {
                 return Self::err("Workspace was not created.", None::<&str>);
             }
         };
+
+        // Link workspace to remote issue if issue_id is provided
+        if let Some(issue_id) = issue_id {
+            let issue_url = self.url(&format!("/api/remote/issues/{}", issue_id));
+            let issue: Issue = match self.send_json(self.client.get(&issue_url)).await {
+                Ok(i) => i,
+                Err(e) => return Ok(e),
+            };
+
+            let link_url = self.url(&format!(
+                "/api/task-attempts/{}/link",
+                workspace.id
+            ));
+            let link_payload = serde_json::json!({
+                "project_id": issue.project_id,
+                "issue_id": issue_id,
+            });
+            if let Err(e) = self
+                .send_empty_json(self.client.post(&link_url).json(&link_payload))
+                .await
+            {
+                return Ok(e);
+            }
+        }
 
         let response = StartWorkspaceSessionResponse {
             workspace_id: workspace.id.to_string(),
