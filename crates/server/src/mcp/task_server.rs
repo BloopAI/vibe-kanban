@@ -1124,10 +1124,7 @@ impl TaskServer {
                 Err(e) => return Ok(e),
             };
 
-            let link_url = self.url(&format!(
-                "/api/task-attempts/{}/link",
-                workspace.id
-            ));
+            let link_url = self.url(&format!("/api/task-attempts/{}/link", workspace.id));
             let link_payload = serde_json::json!({
                 "project_id": issue.project_id,
                 "issue_id": issue_id,
