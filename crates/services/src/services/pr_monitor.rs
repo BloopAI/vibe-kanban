@@ -133,11 +133,7 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
     }
 
     /// Bulk-fetch PR statuses for multiple PRs in a single repo.
-    async fn bulk_check_prs(
-        &self,
-        repo_id: Uuid,
-        prs: &[&PrMerge],
-    ) -> Result<(), PrMonitorError> {
+    async fn bulk_check_prs(&self, repo_id: Uuid, prs: &[&PrMerge]) -> Result<(), PrMonitorError> {
         let repo = Repo::find_by_id(&self.db.pool, repo_id)
             .await?
             .ok_or_else(|| {
@@ -240,8 +236,7 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
 
                 // Track analytics event
                 if let Some(analytics) = &self.analytics
-                    && let Ok(Some(task)) =
-                        Task::find_by_id(&self.db.pool, workspace.task_id).await
+                    && let Ok(Some(task)) = Task::find_by_id(&self.db.pool, workspace.task_id).await
                 {
                     analytics.analytics_service.track_event(
                         &analytics.user_id,

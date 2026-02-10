@@ -6,9 +6,8 @@ use std::{collections::HashMap, path::Path, time::Duration};
 
 use async_trait::async_trait;
 use backon::{ExponentialBuilder, Retryable};
-pub use cli::GhCli;
-pub use cli::GitHubRepoInfo;
 use cli::GhCliError;
+pub use cli::{GhCli, GitHubRepoInfo};
 use db::models::merge::PullRequestInfo;
 use tokio::task;
 use tracing::info;
@@ -56,9 +55,7 @@ impl GitHubProvider {
         task::spawn_blocking(move || cli.get_repo_info_from_dir(&path))
             .await
             .map_err(|err| {
-                GitHostError::Repository(format!(
-                    "Failed to get repo info from directory: {err}"
-                ))
+                GitHostError::Repository(format!("Failed to get repo info from directory: {err}"))
             })?
             .map_err(Into::into)
     }
