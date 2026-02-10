@@ -53,7 +53,10 @@ const defaultValue: ChangesViewContextValue = {
   registerScrollToFile: () => {},
 };
 
-const ChangesViewContext = createHmrContext<ChangesViewContextValue>('ChangesViewContext', defaultValue);
+const ChangesViewContext = createHmrContext<ChangesViewContextValue>(
+  'ChangesViewContext',
+  defaultValue
+);
 
 interface ChangesViewProviderProps {
   children: React.ReactNode;

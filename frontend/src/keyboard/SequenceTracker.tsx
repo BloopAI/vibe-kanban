@@ -1,10 +1,4 @@
-import {
-  useContext,
-  useState,
-  useEffect,
-  useRef,
-  ReactNode,
-} from 'react';
+import { useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { createHmrContext } from '@/lib/hmr-context';
 import { SEQUENCE_FIRST_KEYS, sequentialBindings } from './registry';
 
@@ -14,11 +8,14 @@ interface SequenceTrackerContextValue {
   isInvalid: boolean;
 }
 
-const SequenceTrackerContext = createHmrContext<SequenceTrackerContextValue>('SequenceTrackerContext', {
-  buffer: [],
-  isActive: false,
-  isInvalid: false,
-});
+const SequenceTrackerContext = createHmrContext<SequenceTrackerContextValue>(
+  'SequenceTrackerContext',
+  {
+    buffer: [],
+    isActive: false,
+    isInvalid: false,
+  }
+);
 
 export const useSequenceTracker = () => useContext(SequenceTrackerContext);
 

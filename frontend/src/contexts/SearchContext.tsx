@@ -18,7 +18,10 @@ interface SearchState {
   registerInputRef: (ref: HTMLInputElement | null) => void;
 }
 
-const SearchContext = createHmrContext<SearchState | null>('SearchContext', null);
+const SearchContext = createHmrContext<SearchState | null>(
+  'SearchContext',
+  null
+);
 
 interface SearchProviderProps {
   children: ReactNode;

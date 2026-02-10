@@ -40,7 +40,10 @@ export interface SyncErrorContextValue {
   retryAll: () => void;
 }
 
-const SyncErrorContext = createHmrContext<SyncErrorContextValue | null>('SyncErrorContext', null);
+const SyncErrorContext = createHmrContext<SyncErrorContextValue | null>(
+  'SyncErrorContext',
+  null
+);
 
 interface SyncErrorProviderProps {
   children: ReactNode;

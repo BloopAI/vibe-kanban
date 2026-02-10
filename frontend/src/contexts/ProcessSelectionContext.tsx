@@ -7,7 +7,10 @@ interface ProcessSelectionContextType {
 }
 
 const ProcessSelectionContext =
-  createHmrContext<ProcessSelectionContextType | null>('ProcessSelectionContext', null);
+  createHmrContext<ProcessSelectionContextType | null>(
+    'ProcessSelectionContext',
+    null
+  );
 
 interface ProcessSelectionProviderProps {
   children: ReactNode;

@@ -50,7 +50,10 @@ const defaultValue: LogsPanelContextValue = {
   isTerminalExpanded: false,
 };
 
-const LogsPanelContext = createHmrContext<LogsPanelContextValue>('LogsPanelContext', defaultValue);
+const LogsPanelContext = createHmrContext<LogsPanelContextValue>(
+  'LogsPanelContext',
+  defaultValue
+);
 
 interface LogsPanelProviderProps {
   children: ReactNode;

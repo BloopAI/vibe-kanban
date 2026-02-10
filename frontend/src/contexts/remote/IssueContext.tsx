@@ -1,9 +1,4 @@
-import {
-  useContext,
-  useMemo,
-  useCallback,
-  type ReactNode,
-} from 'react';
+import { useContext, useMemo, useCallback, type ReactNode } from 'react';
 import { createHmrContext } from '@/lib/hmr-context';
 import {
   useShape,
@@ -86,7 +81,10 @@ export interface IssueContextValue {
   reactionsByComment: Map<string, IssueCommentReaction[]>;
 }
 
-const IssueContext = createHmrContext<IssueContextValue | null>('IssueContext', null);
+const IssueContext = createHmrContext<IssueContextValue | null>(
+  'IssueContext',
+  null
+);
 
 interface IssueProviderProps {
   issueId: string;

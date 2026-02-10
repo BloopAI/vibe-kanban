@@ -1,9 +1,4 @@
-import React, {
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useContext, useMemo, useState } from 'react';
 import { createHmrContext } from '@/lib/hmr-context';
 import { useEntries } from './EntriesContext';
 
@@ -25,7 +20,10 @@ interface MessageEditContextType {
   isInEditMode: boolean;
 }
 
-const MessageEditContext = createHmrContext<MessageEditContextType | null>('MessageEditContext', null);
+const MessageEditContext = createHmrContext<MessageEditContextType | null>(
+  'MessageEditContext',
+  null
+);
 
 export function MessageEditProvider({
   children,

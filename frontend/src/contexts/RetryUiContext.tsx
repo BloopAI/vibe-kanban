@@ -1,9 +1,4 @@
-import React, {
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useContext, useMemo, useState } from 'react';
 import { createHmrContext } from '@/lib/hmr-context';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 
@@ -14,7 +9,10 @@ type RetryUiContextType = {
   isProcessGreyed: (processId?: string) => boolean;
 };
 
-const RetryUiContext = createHmrContext<RetryUiContextType | null>('RetryUiContext', null);
+const RetryUiContext = createHmrContext<RetryUiContextType | null>(
+  'RetryUiContext',
+  null
+);
 
 export function RetryUiProvider({
   children,

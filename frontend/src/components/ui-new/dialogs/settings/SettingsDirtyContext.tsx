@@ -8,7 +8,10 @@ interface SettingsDirtyContextValue {
   clearAll: () => void;
 }
 
-const SettingsDirtyContext = createHmrContext<SettingsDirtyContextValue | null>('SettingsDirtyContext', null);
+const SettingsDirtyContext = createHmrContext<SettingsDirtyContextValue | null>(
+  'SettingsDirtyContext',
+  null
+);
 
 export function SettingsDirtyProvider({ children }: { children: ReactNode }) {
   const [dirtySections, setDirtySections] = useState<Set<string>>(new Set());

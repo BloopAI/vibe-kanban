@@ -38,7 +38,10 @@ interface CreateModeContextValue {
   clearLinkedIssue: () => void;
 }
 
-const CreateModeContext = createHmrContext<CreateModeContextValue | null>('CreateModeContext', null);
+const CreateModeContext = createHmrContext<CreateModeContextValue | null>(
+  'CreateModeContext',
+  null
+);
 
 interface CreateModeProviderProps {
   children: ReactNode;

@@ -6,4 +6,7 @@ interface TabNavContextType {
   setActiveTab: (tab: TabType) => void;
 }
 
-export const TabNavContext = createHmrContext<TabNavContextType | null>('TabNavContext', null);
+export const TabNavContext = createHmrContext<TabNavContextType | null>(
+  'TabNavContext',
+  null
+);

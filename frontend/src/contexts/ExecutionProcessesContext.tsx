@@ -18,7 +18,10 @@ type ExecutionProcessesContextType = {
 };
 
 const ExecutionProcessesContext =
-  createHmrContext<ExecutionProcessesContextType | null>('ExecutionProcessesContext', null);
+  createHmrContext<ExecutionProcessesContextType | null>(
+    'ExecutionProcessesContext',
+    null
+  );
 
 export const ExecutionProcessesProvider: React.FC<{
   attemptId: string | undefined;

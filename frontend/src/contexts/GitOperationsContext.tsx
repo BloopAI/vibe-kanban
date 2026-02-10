@@ -6,7 +6,10 @@ type GitOperationsContextType = {
   setError: (error: string | null) => void;
 };
 
-const GitOperationsContext = createHmrContext<GitOperationsContextType | null>('GitOperationsContext', null);
+const GitOperationsContext = createHmrContext<GitOperationsContextType | null>(
+  'GitOperationsContext',
+  null
+);
 
 export const GitOperationsProvider: React.FC<{
   attemptId: string | undefined;

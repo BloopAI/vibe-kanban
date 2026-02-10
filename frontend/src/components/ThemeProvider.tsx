@@ -17,7 +17,10 @@ const initialState: ThemeProviderState = {
   setTheme: () => null,
 };
 
-const ThemeProviderContext = createHmrContext<ThemeProviderState>('ThemeProviderContext', initialState);
+const ThemeProviderContext = createHmrContext<ThemeProviderState>(
+  'ThemeProviderContext',
+  initialState
+);
 
 export function ThemeProvider({
   children,

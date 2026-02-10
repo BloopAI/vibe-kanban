@@ -89,7 +89,10 @@ interface ActionsContextValue {
   executorContext: ActionExecutorContext;
 }
 
-const ActionsContext = createHmrContext<ActionsContextValue | null>('ActionsContext', null);
+const ActionsContext = createHmrContext<ActionsContextValue | null>(
+  'ActionsContext',
+  null
+);
 
 interface ActionsProviderProps {
   children: ReactNode;

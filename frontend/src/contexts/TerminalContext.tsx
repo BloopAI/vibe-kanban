@@ -193,7 +193,10 @@ interface TerminalContextType {
   getTerminalConnection: (tabId: string) => TerminalConnection | null;
 }
 
-const TerminalContext = createHmrContext<TerminalContextType | null>('TerminalContext', null);
+const TerminalContext = createHmrContext<TerminalContextType | null>(
+  'TerminalContext',
+  null
+);
 
 interface TerminalProviderProps {
   children: ReactNode;

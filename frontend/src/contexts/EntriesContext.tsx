@@ -1,10 +1,4 @@
-import {
-  useContext,
-  useState,
-  useMemo,
-  useCallback,
-  ReactNode,
-} from 'react';
+import { useContext, useState, useMemo, useCallback, ReactNode } from 'react';
 import { createHmrContext } from '@/lib/hmr-context';
 import type { PatchTypeWithKey } from '@/hooks/useConversationHistory';
 import { TokenUsageInfo } from 'shared/types';
@@ -17,7 +11,10 @@ interface EntriesContextType {
   tokenUsageInfo: TokenUsageInfo | null;
 }
 
-const EntriesContext = createHmrContext<EntriesContextType | null>('EntriesContext', null);
+const EntriesContext = createHmrContext<EntriesContextType | null>(
+  'EntriesContext',
+  null
+);
 
 interface EntriesProviderProps {
   children: ReactNode;
