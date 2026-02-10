@@ -1,5 +1,5 @@
 import { useContext, useState, ReactNode, useEffect, useCallback } from 'react';
-import { createHmrContext } from '@/lib/hmr-context';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { genId } from '@/utils/id';
 import { DiffSide } from '@/types/diff';
 

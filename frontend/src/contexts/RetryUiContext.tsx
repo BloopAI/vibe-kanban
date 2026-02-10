@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useMemo, useState } from 'react';
-import { createHmrContext } from '@/lib/hmr-context';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 
 type RetryUiContextType = {

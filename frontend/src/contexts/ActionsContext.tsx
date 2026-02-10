@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { createHmrContext } from '@/lib/hmr-context';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';

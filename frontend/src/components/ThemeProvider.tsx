@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { createHmrContext } from '@/lib/hmr-context';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { ThemeMode } from 'shared/types';
 
 type ThemeProviderProps = {

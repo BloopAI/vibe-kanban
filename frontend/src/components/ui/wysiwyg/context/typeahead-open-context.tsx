@@ -1,5 +1,5 @@
 import { useContext, useState, ReactNode } from 'react';
-import { createHmrContext } from '@/lib/hmr-context';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 
 export type TypeaheadOpenContextType = {
   isOpen: boolean;

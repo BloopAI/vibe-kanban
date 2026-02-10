@@ -6,7 +6,7 @@ import {
   useCallback,
   ReactNode,
 } from 'react';
-import { createHmrContext } from '@/lib/hmr-context';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { useLocation, useParams } from 'react-router-dom';
 
 interface SearchState {

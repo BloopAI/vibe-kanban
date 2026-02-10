@@ -1,5 +1,5 @@
 import { useContext, useState, useMemo, ReactNode } from 'react';
-import { createHmrContext } from '@/lib/hmr-context';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 
 interface ProcessSelectionContextType {
   selectedProcessId: string | null;

@@ -6,7 +6,7 @@ import {
   useEffect,
   type ReactNode,
 } from 'react';
-import { createHmrContext } from '@/lib/hmr-context';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import type { SyncError } from '@/lib/electric/types';
 
 /**

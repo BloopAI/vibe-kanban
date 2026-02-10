@@ -1,5 +1,5 @@
 import React, { useContext, useMemo } from 'react';
-import { createHmrContext } from '@/lib/hmr-context';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import type { ExecutionProcess } from 'shared/types';
 

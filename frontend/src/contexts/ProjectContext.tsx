@@ -1,5 +1,5 @@
 import { useContext, ReactNode, useMemo, useEffect } from 'react';
-import { createHmrContext } from '@/lib/hmr-context';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { useLocation } from 'react-router-dom';
 import type { Project } from 'shared/types';
 import { useProjects } from '@/hooks/useProjects';

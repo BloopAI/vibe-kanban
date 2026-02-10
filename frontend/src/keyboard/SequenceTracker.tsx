@@ -1,5 +1,5 @@
 import { useContext, useState, useEffect, useRef, ReactNode } from 'react';
-import { createHmrContext } from '@/lib/hmr-context';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { SEQUENCE_FIRST_KEYS, sequentialBindings } from './registry';
 
 interface SequenceTrackerContextValue {
