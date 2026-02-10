@@ -262,9 +262,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         const dt = event.clipboardData;
         if (!dt) return;
 
-        const files: File[] = Array.from(dt.files || []).filter((f) =>
-          f.type.startsWith('image/')
-        );
+        const files: File[] = Array.from(dt.files || []);
 
         if (files.length > 0) {
           onPasteFiles(files);
