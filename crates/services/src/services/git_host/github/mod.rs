@@ -6,8 +6,8 @@ use std::{collections::HashMap, path::Path, time::Duration};
 
 use async_trait::async_trait;
 use backon::{ExponentialBuilder, Retryable};
-use cli::GhCliError;
-pub use cli::{GhCli, GitHubRepoInfo};
+pub use cli::GhCli;
+use cli::{GhCliError, GitHubRepoInfo};
 use db::models::merge::PullRequestInfo;
 use tokio::task;
 use tracing::info;
@@ -29,7 +29,7 @@ impl GitHubProvider {
         })
     }
 
-    pub async fn get_repo_info(
+    async fn get_repo_info(
         &self,
         remote_url: &str,
         repo_path: &Path,
@@ -126,55 +126,6 @@ impl GitHubProvider {
         .await
     }
 
-    /// Bulk-fetch PR statuses for a set of PR numbers in a single repo.
-    /// Returns a map from PR number to PullRequestInfo.
-    pub async fn get_pr_statuses_for_repo(
-        &self,
-        repo_info: &GitHubRepoInfo,
-        pr_numbers: &std::collections::HashSet<i64>,
-    ) -> Result<HashMap<i64, PullRequestInfo>, GitHostError> {
-        let cli = self.gh_cli.clone();
-        let repo_info = repo_info.clone();
-        let pr_numbers = pr_numbers.clone();
-        let limit = pr_numbers.len().max(30);
-
-        (|| async {
-            let cli = cli.clone();
-            let repo_info = repo_info.clone();
-            let pr_numbers = pr_numbers.clone();
-
-            let prs = task::spawn_blocking(move || cli.list_prs_for_repo(&repo_info, limit))
-                .await
-                .map_err(|err| {
-                    GitHostError::PullRequest(format!(
-                        "Failed to execute GitHub CLI for listing PRs: {err}"
-                    ))
-                })?
-                .map_err(GitHostError::from)?;
-
-            Ok(prs
-                .into_iter()
-                .filter(|pr| pr_numbers.contains(&pr.number))
-                .map(|pr| (pr.number, pr))
-                .collect())
-        })
-        .retry(
-            &ExponentialBuilder::default()
-                .with_min_delay(Duration::from_secs(1))
-                .with_max_delay(Duration::from_secs(30))
-                .with_max_times(3)
-                .with_jitter(),
-        )
-        .when(|e: &GitHostError| e.should_retry())
-        .notify(|err: &GitHostError, dur: Duration| {
-            tracing::warn!(
-                "GitHub API call failed, retrying after {:.2}s: {}",
-                dur.as_secs_f64(),
-                err
-            );
-        })
-        .await
-    }
 }
 
 impl From<GhCliError> for GitHostError {
@@ -437,6 +388,60 @@ impl GitHostProvider for GitHubProvider {
             );
         })
         .await
+    }
+
+    async fn get_pr_statuses(
+        &self,
+        repo_path: &Path,
+        remote_url: &str,
+        pr_urls: &[String],
+    ) -> Result<HashMap<String, PullRequestInfo>, GitHostError> {
+        let repo_info = self.get_repo_info(remote_url, repo_path).await?;
+
+        let cli = self.gh_cli.clone();
+        let repo_info_clone = repo_info.clone();
+        let limit = pr_urls.len().max(30);
+        let url_set: std::collections::HashSet<&str> =
+            pr_urls.iter().map(|u| u.as_str()).collect();
+
+        let all_prs = (|| async {
+            let cli = cli.clone();
+            let repo_info = repo_info_clone.clone();
+
+            let prs = task::spawn_blocking(move || cli.list_prs_for_repo(&repo_info, limit))
+                .await
+                .map_err(|err| {
+                    GitHostError::PullRequest(format!(
+                        "Failed to execute GitHub CLI for listing PRs: {err}"
+                    ))
+                })?
+                .map_err(GitHostError::from)?;
+
+            Ok(prs)
+        })
+        .retry(
+            &ExponentialBuilder::default()
+                .with_min_delay(Duration::from_secs(1))
+                .with_max_delay(Duration::from_secs(30))
+                .with_max_times(3)
+                .with_jitter(),
+        )
+        .when(|e: &GitHostError| e.should_retry())
+        .notify(|err: &GitHostError, dur: Duration| {
+            tracing::warn!(
+                "GitHub API call failed, retrying after {:.2}s: {}",
+                dur.as_secs_f64(),
+                err
+            );
+        })
+        .await?;
+
+        // Filter to only the PR URLs we care about
+        Ok(all_prs
+            .into_iter()
+            .filter(|pr| url_set.contains(pr.url.as_str()))
+            .map(|pr| (pr.url.clone(), pr))
+            .collect())
     }
 
     fn provider_kind(&self) -> ProviderKind {

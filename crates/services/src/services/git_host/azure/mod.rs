@@ -2,7 +2,7 @@
 
 mod cli;
 
-use std::{path::Path, time::Duration};
+use std::{collections::HashMap, path::Path, time::Duration};
 
 use async_trait::async_trait;
 use backon::{ExponentialBuilder, Retryable};
@@ -253,6 +253,26 @@ impl GitHostProvider for AzureDevOpsProvider {
     ) -> Result<Vec<OpenPrInfo>, GitHostError> {
         // TODO: Implement list_open_prs for Azure DevOps
         Err(GitHostError::UnsupportedProvider)
+    }
+
+    async fn get_pr_statuses(
+        &self,
+        _repo_path: &Path,
+        _remote_url: &str,
+        pr_urls: &[String],
+    ) -> Result<HashMap<String, PullRequestInfo>, GitHostError> {
+        let mut results = HashMap::new();
+        for pr_url in pr_urls {
+            match self.get_pr_status(pr_url).await {
+                Ok(info) => {
+                    results.insert(pr_url.clone(), info);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to get PR status for {}: {}", pr_url, e);
+                }
+            }
+        }
+        Ok(results)
     }
 
     fn provider_kind(&self) -> ProviderKind {

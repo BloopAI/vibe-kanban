@@ -22,7 +22,7 @@ use uuid::Uuid;
 use crate::services::{
     analytics::AnalyticsContext,
     container::ContainerService,
-    git_host::{self, GitHostError, GitHostProvider, github::GitHubProvider},
+    git_host::{self, GitHostError, GitHostProvider},
     remote_client::RemoteClient,
     remote_sync,
 };
@@ -149,14 +149,11 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
         let git = GitService::new();
         let remote = git.resolve_remote_for_branch(&repo.path, &prs[0].target_branch_name)?;
 
-        let provider = GitHubProvider::new()?;
-        let repo_info = provider.get_repo_info(&remote.url, &repo.path).await?;
+        let git_host = git_host::GitHostService::from_url(&prs[0].pr_info.url)?;
+        let pr_urls: Vec<String> = prs.iter().map(|p| p.pr_info.url.clone()).collect();
 
-        let pr_numbers: std::collections::HashSet<i64> =
-            prs.iter().map(|p| p.pr_info.number).collect();
-
-        let statuses = provider
-            .get_pr_statuses_for_repo(&repo_info, &pr_numbers)
+        let statuses = git_host
+            .get_pr_statuses(&repo.path, &remote.url, &pr_urls)
             .await?;
 
         info!(
@@ -166,7 +163,7 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
         );
 
         for pr_merge in prs {
-            if let Some(pr_status) = statuses.get(&pr_merge.pr_info.number) {
+            if let Some(pr_status) = statuses.get(&pr_merge.pr_info.url) {
                 if let Err(e) = self.handle_pr_status_update(pr_merge, pr_status).await {
                     error!(
                         "Error handling PR #{} for workspace {}: {}",

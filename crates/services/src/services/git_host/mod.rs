@@ -4,7 +4,7 @@ mod types;
 pub mod azure;
 pub mod github;
 
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use async_trait::async_trait;
 use db::models::merge::PullRequestInfo;
@@ -48,6 +48,15 @@ pub trait GitHostProvider: Send + Sync {
         repo_path: &Path,
         remote_url: &str,
     ) -> Result<Vec<OpenPrInfo>, GitHostError>;
+
+    /// Bulk-fetch PR statuses for multiple PRs.
+    /// Returns a map from PR URL to PullRequestInfo.
+    async fn get_pr_statuses(
+        &self,
+        repo_path: &Path,
+        remote_url: &str,
+        pr_urls: &[String],
+    ) -> Result<HashMap<String, PullRequestInfo>, GitHostError>;
 
     fn provider_kind(&self) -> ProviderKind;
 }
