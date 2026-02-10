@@ -445,8 +445,7 @@ impl TaskServer {
     }
 
     async fn fetch_context_from_env_vars(&self) -> Option<McpContext> {
-        let workspace_id =
-            Uuid::from_str(&std::env::var("VK_WORKSPACE_ID").ok()?).ok()?;
+        let workspace_id = Uuid::from_str(&std::env::var("VK_WORKSPACE_ID").ok()?).ok()?;
         let workspace_branch = std::env::var("VK_WORKSPACE_BRANCH").ok()?;
 
         // Fetch workspace repos via local API
