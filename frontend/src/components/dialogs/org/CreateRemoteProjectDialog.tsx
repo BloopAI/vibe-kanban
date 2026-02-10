@@ -77,7 +77,7 @@ const CreateRemoteProjectDialogImpl =
       return null;
     };
 
-    const handleCreate = () => {
+    const handleCreate = async () => {
       const nameError = validateName(name);
       if (nameError) {
         setError(nameError);
@@ -88,15 +88,17 @@ const CreateRemoteProjectDialogImpl =
       setIsCreating(true);
 
       try {
-        const { data: project } = insert({
+        const { data: project, persisted } = insert({
           organization_id: organizationId,
           name: name.trim(),
           color: color,
         });
 
+        const persistedProject = await persisted;
+
         modal.resolve({
           action: 'created',
-          project,
+          project: persistedProject ?? project,
         } as CreateRemoteProjectResult);
         modal.hide();
       } catch (err) {
@@ -113,6 +115,8 @@ const CreateRemoteProjectDialogImpl =
     };
 
     const handleOpenChange = (open: boolean) => {
+      if (isCreating) return;
+
       if (!open) {
         handleCancel();
       }
@@ -121,7 +125,7 @@ const CreateRemoteProjectDialogImpl =
     const handleKeyDown = (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' && name.trim() && !isCreating) {
         e.preventDefault();
-        handleCreate();
+        void handleCreate();
       }
     };
 
