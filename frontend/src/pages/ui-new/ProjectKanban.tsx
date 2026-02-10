@@ -17,7 +17,10 @@ import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
 import { useAuth } from '@/hooks/auth/useAuth';
-import { buildIssueCreatePath } from '@/lib/routes/projectSidebarRoutes';
+import {
+  buildIssueCreatePath,
+  buildProjectRootPath,
+} from '@/lib/routes/projectSidebarRoutes';
 
 /**
  * Component that registers project mutations with ActionsContext.
@@ -212,7 +215,7 @@ function useFindProjectById(projectId: string | undefined) {
  * NavbarContainer, AppBar, and SyncErrorProvider.
  */
 export function ProjectKanban() {
-  const { projectId } = useKanbanNavigation();
+  const { projectId, hasInvalidWorkspaceCreateDraftId } = useKanbanNavigation();
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -225,6 +228,11 @@ export function ProjectKanban() {
   // - strip orgId after storing it
   useEffect(() => {
     if (!projectId) return;
+
+    if (hasInvalidWorkspaceCreateDraftId) {
+      navigate(buildProjectRootPath(projectId), { replace: true });
+      return;
+    }
 
     const orgIdFromUrl = searchParams.get('orgId');
     if (orgIdFromUrl) {
@@ -253,7 +261,14 @@ export function ProjectKanban() {
         { replace: true }
       );
     }
-  }, [searchParams, projectId, setSelectedOrgId, navigate, location.pathname]);
+  }, [
+    searchParams,
+    projectId,
+    hasInvalidWorkspaceCreateDraftId,
+    setSelectedOrgId,
+    navigate,
+    location.pathname,
+  ]);
 
   // Find the project and get its organization
   const { organizationId, isLoading } = useFindProjectById(

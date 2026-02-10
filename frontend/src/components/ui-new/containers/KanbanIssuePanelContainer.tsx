@@ -22,6 +22,11 @@ import { useUserContext } from '@/contexts/remote/UserContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
+import {
+  buildLinkedIssueCreateState,
+  buildWorkspaceCreateInitialState,
+  buildWorkspaceCreatePrompt,
+} from '@/lib/workspaceCreateState';
 import { ScratchType, type DraftIssueData } from 'shared/types';
 import { useScratch } from '@/hooks/useScratch';
 import {
@@ -733,10 +738,10 @@ export function KanbanIssuePanelContainer() {
 
         // Navigate to workspace creation if requested
         if (displayData.createDraftWorkspace) {
-          // Build initial prompt from issue title and description
-          const initialPrompt = displayData.description
-            ? `${displayData.title}\n\n${displayData.description}`
-            : displayData.title;
+          const initialPrompt = buildWorkspaceCreatePrompt(
+            displayData.title,
+            displayData.description
+          );
 
           // Get defaults from most recent workspace
           const defaults = await getWorkspaceDefaults(
@@ -748,20 +753,14 @@ export function KanbanIssuePanelContainer() {
           cancelDebouncedDraftIssue();
           deleteDraftIssueScratch().catch(console.error);
 
-          const draftId = await openWorkspaceCreateFromState(
-            {
-              initialPrompt,
-              preferredRepos: defaults?.preferredRepos ?? null,
-              project_id: defaults?.project_id ?? null,
-              linkedIssue: {
-                issueId: syncedIssue.id,
-                simpleId: syncedIssue.simple_id,
-                title: displayData.title,
-                remoteProjectId: projectId,
-              },
-            },
-            { issueId: syncedIssue.id }
-          );
+          const createState = buildWorkspaceCreateInitialState({
+            prompt: initialPrompt,
+            defaults,
+            linkedIssue: buildLinkedIssueCreateState(syncedIssue, projectId),
+          });
+          const draftId = await openWorkspaceCreateFromState(createState, {
+            issueId: syncedIssue.id,
+          });
           if (!draftId) {
             openIssue(syncedIssue.id);
           }

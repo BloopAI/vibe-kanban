@@ -10,6 +10,12 @@ import {
   parseProjectSidebarRoute,
 } from '@/lib/routes/projectSidebarRoutes';
 
+function isValidUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
 /**
  * Hook for project-kanban right sidebar navigation.
  * URL is the single source of truth for sidebar mode.
@@ -44,11 +50,15 @@ export function useKanbanNavigation() {
 
   const workspaceId =
     routeState?.type === 'issue-workspace' ? routeState.workspaceId : null;
-  const draftId =
+  const rawDraftId =
     routeState?.type === 'workspace-create' ? routeState.draftId : null;
+  const draftId = rawDraftId && isValidUuid(rawDraftId) ? rawDraftId : null;
+  const hasInvalidWorkspaceCreateDraftId =
+    routeState?.type === 'workspace-create' && rawDraftId !== null && !draftId;
 
   const isCreateMode = routeState?.type === 'issue-create';
-  const isWorkspaceCreateMode = routeState?.type === 'workspace-create';
+  const isWorkspaceCreateMode =
+    routeState?.type === 'workspace-create' && draftId !== null;
   const isPanelOpen = !!routeState && routeState.type !== 'closed';
 
   const createDefaultStatusId = searchParams.get('statusId');
@@ -143,6 +153,7 @@ export function useKanbanNavigation() {
     sidebarMode: routeState?.type ?? null,
     isCreateMode,
     isWorkspaceCreateMode,
+    hasInvalidWorkspaceCreateDraftId,
     isPanelOpen,
     createDefaultStatusId,
     createDefaultPriority,
