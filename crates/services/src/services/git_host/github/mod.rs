@@ -125,7 +125,6 @@ impl GitHubProvider {
         })
         .await
     }
-
 }
 
 impl From<GhCliError> for GitHostError {
@@ -401,8 +400,7 @@ impl GitHostProvider for GitHubProvider {
         let cli = self.gh_cli.clone();
         let repo_info_clone = repo_info.clone();
         let limit = pr_urls.len().max(30);
-        let url_set: std::collections::HashSet<&str> =
-            pr_urls.iter().map(|u| u.as_str()).collect();
+        let url_set: std::collections::HashSet<&str> = pr_urls.iter().map(|u| u.as_str()).collect();
 
         let all_prs = (|| async {
             let cli = cli.clone();
