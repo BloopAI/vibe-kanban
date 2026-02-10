@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   CheckIcon,
   GithubLogoIcon,
@@ -13,6 +13,7 @@ import {
   OAuthDialog,
   type OAuthProvider,
 } from '@/components/dialogs/global/OAuthDialog';
+import { usePostHog } from 'posthog-js/react';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useTheme } from '@/components/ThemeProvider';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
@@ -44,6 +45,22 @@ const COMPARISON_ROWS = [
 ];
 
 const FIRST_PROJECT_LOOKUP_TIMEOUT_MS = 3000;
+
+const REMOTE_ONBOARDING_EVENTS = {
+  STAGE_VIEWED: 'remote_onboarding_ui_stage_viewed',
+  STAGE_SUBMITTED: 'remote_onboarding_ui_stage_submitted',
+  STAGE_COMPLETED: 'remote_onboarding_ui_stage_completed',
+  STAGE_FAILED: 'remote_onboarding_ui_stage_failed',
+  PROVIDER_CLICKED: 'remote_onboarding_ui_sign_in_provider_clicked',
+  PROVIDER_RESULT: 'remote_onboarding_ui_sign_in_provider_result',
+  MORE_OPTIONS_OPENED: 'remote_onboarding_ui_sign_in_more_options_opened',
+} as const;
+
+type SignInCompletionMethod =
+  | 'continue_logged_in'
+  | 'skip_sign_in'
+  | 'oauth_github'
+  | 'oauth_google';
 
 function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
   if (theme === ThemeMode.SYSTEM) {
@@ -156,14 +173,27 @@ export function OnboardingSignInPage() {
   const navigate = useNavigate();
   const { t } = useTranslation('common');
   const { theme } = useTheme();
+  const posthog = usePostHog();
   const { config, loginStatus, loading, updateAndSaveConfig } = useUserSystem();
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
 
   const [showComparison, setShowComparison] = useState(false);
   const [saving, setSaving] = useState(false);
   const isCompletingOnboardingRef = useRef(false);
+  const hasTrackedStageViewRef = useRef(false);
   const [pendingProvider, setPendingProvider] = useState<OAuthProvider | null>(
     null
+  );
+
+  const trackRemoteOnboardingEvent = useCallback(
+    (eventName: string, properties: Record<string, unknown> = {}) => {
+      posthog?.capture(eventName, {
+        ...properties,
+        flow: 'remote_onboarding_ui',
+        source: 'frontend',
+      });
+    },
+    [posthog]
   );
 
   const logoSrc =
@@ -172,6 +202,16 @@ export function OnboardingSignInPage() {
       : '/vibe-kanban-logo.svg';
 
   const isLoggedIn = loginStatus?.status === 'loggedin';
+
+  useEffect(() => {
+    if (loading || !config || hasTrackedStageViewRef.current) return;
+
+    trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.STAGE_VIEWED, {
+      stage: 'sign_in',
+      is_logged_in: isLoggedIn,
+    });
+    hasTrackedStageViewRef.current = true;
+  }, [config, isLoggedIn, loading, trackRemoteOnboardingEvent]);
 
   const getOnboardingDestination = async (
     preferProjectRedirect: boolean
@@ -206,17 +246,29 @@ export function OnboardingSignInPage() {
 
       return `/projects/${firstProject.id}`;
     } catch (error) {
+      trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.STAGE_FAILED, {
+        stage: 'sign_in',
+        reason: 'destination_lookup_failed',
+        prefer_project_redirect: preferProjectRedirect,
+      });
       console.error('Failed to resolve onboarding destination:', error);
       return '/workspaces';
     }
   };
 
-  const finishOnboarding = async (
-    options: { preferProjectRedirect?: boolean } = {}
-  ) => {
+  const finishOnboarding = async (options: {
+    method: SignInCompletionMethod;
+    preferProjectRedirect?: boolean;
+  }) => {
     if (!config || saving || isCompletingOnboardingRef.current) return;
 
     const preferProjectRedirect = options.preferProjectRedirect ?? isLoggedIn;
+    trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.STAGE_SUBMITTED, {
+      stage: 'sign_in',
+      method: options.method,
+      is_logged_in: isLoggedIn,
+      prefer_project_redirect: preferProjectRedirect,
+    });
 
     isCompletingOnboardingRef.current = true;
     setSaving(true);
@@ -227,24 +279,48 @@ export function OnboardingSignInPage() {
     });
 
     if (!success) {
+      trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.STAGE_FAILED, {
+        stage: 'sign_in',
+        method: options.method,
+        reason: 'config_save_failed',
+      });
       isCompletingOnboardingRef.current = false;
       setSaving(false);
       return;
     }
 
     const destination = await getOnboardingDestination(preferProjectRedirect);
+    trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.STAGE_COMPLETED, {
+      stage: 'sign_in',
+      method: options.method,
+      destination,
+    });
     navigate(destination, { replace: true });
   };
 
   const handleProviderSignIn = async (provider: OAuthProvider) => {
     if (saving || pendingProvider) return;
 
+    trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.PROVIDER_CLICKED, {
+      stage: 'sign_in',
+      provider,
+    });
+
     setPendingProvider(provider);
     const profile = await OAuthDialog.show({ initialProvider: provider });
     setPendingProvider(null);
 
+    trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.PROVIDER_RESULT, {
+      stage: 'sign_in',
+      provider,
+      result: profile ? 'success' : 'cancelled',
+    });
+
     if (profile) {
-      await finishOnboarding({ preferProjectRedirect: true });
+      await finishOnboarding({
+        preferProjectRedirect: true,
+        method: provider === 'github' ? 'oauth_github' : 'oauth_google',
+      });
     }
   };
 
@@ -289,7 +365,9 @@ export function OnboardingSignInPage() {
               <div className="flex justify-end">
                 <PrimaryButton
                   value={saving ? 'Continuing...' : 'Continue'}
-                  onClick={() => void finishOnboarding()}
+                  onClick={() =>
+                    void finishOnboarding({ method: 'continue_logged_in' })
+                  }
                   disabled={saving}
                 />
               </div>
@@ -325,7 +403,17 @@ export function OnboardingSignInPage() {
                 <button
                   type="button"
                   className="text-sm text-low hover:text-normal underline underline-offset-2"
-                  onClick={() => setShowComparison(true)}
+                  onClick={() => {
+                    if (!showComparison) {
+                      trackRemoteOnboardingEvent(
+                        REMOTE_ONBOARDING_EVENTS.MORE_OPTIONS_OPENED,
+                        {
+                          stage: 'sign_in',
+                        }
+                      );
+                    }
+                    setShowComparison(true);
+                  }}
                   disabled={saving || pendingProvider !== null}
                 >
                   {t('onboardingSignIn.moreOptions')}
@@ -419,7 +507,9 @@ export function OnboardingSignInPage() {
                       : 'I understand, continue without signing in'
                   }
                   variant="tertiary"
-                  onClick={() => void finishOnboarding()}
+                  onClick={() =>
+                    void finishOnboarding({ method: 'skip_sign_in' })
+                  }
                   disabled={saving || pendingProvider !== null}
                 />
               </div>

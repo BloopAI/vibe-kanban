@@ -1,6 +1,12 @@
+import { useCallback, useEffect, useRef } from 'react';
+import { usePostHog } from 'posthog-js/react';
 import { ThemeMode } from 'shared/types';
 import { useTheme } from '@/components/ThemeProvider';
 import { MigrateLayout } from '@/components/ui-new/containers/MigrateLayout';
+
+const REMOTE_ONBOARDING_EVENTS = {
+  STAGE_VIEWED: 'remote_onboarding_ui_stage_viewed',
+} as const;
 
 function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
   if (theme === ThemeMode.SYSTEM) {
@@ -13,6 +19,30 @@ function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
 
 export function MigratePage() {
   const { theme } = useTheme();
+  const posthog = usePostHog();
+  const hasTrackedStageViewRef = useRef(false);
+
+  const trackRemoteOnboardingEvent = useCallback(
+    (eventName: string, properties: Record<string, unknown> = {}) => {
+      posthog?.capture(eventName, {
+        ...properties,
+        flow: 'remote_onboarding_ui',
+        source: 'frontend',
+      });
+    },
+    [posthog]
+  );
+
+  useEffect(() => {
+    if (hasTrackedStageViewRef.current) {
+      return;
+    }
+
+    trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.STAGE_VIEWED, {
+      stage: 'migrate',
+    });
+    hasTrackedStageViewRef.current = true;
+  }, [trackRemoteOnboardingEvent]);
 
   const logoSrc =
     resolveTheme(theme) === 'dark'

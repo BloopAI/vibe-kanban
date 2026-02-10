@@ -1,8 +1,17 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { usePostHog } from 'posthog-js/react';
 import { migrationApi } from '@/lib/api';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { MigrateMigrate } from '@/components/ui-new/views/MigrateMigrate';
 import type { MigrationReport } from 'shared/types';
+
+const REMOTE_ONBOARDING_EVENTS = {
+  STAGE_SUBMITTED: 'remote_onboarding_ui_stage_submitted',
+  STAGE_COMPLETED: 'remote_onboarding_ui_stage_completed',
+  STAGE_FAILED: 'remote_onboarding_ui_stage_failed',
+} as const;
+
+type MigrationStartMethod = 'initial' | 'retry';
 
 interface MigrateMigrateContainerProps {
   orgId: string;
@@ -15,6 +24,7 @@ export function MigrateMigrateContainer({
   projectIds,
   onContinue,
 }: MigrateMigrateContainerProps) {
+  const posthog = usePostHog();
   const { data: orgsData } = useUserOrganizations();
   const organizations = useMemo(
     () => orgsData?.organizations ?? [],
@@ -29,23 +39,62 @@ export function MigrateMigrateContainer({
   const orgName =
     organizations.find((org) => org.id === orgId)?.name ?? 'Unknown';
 
-  const startMigration = useCallback(async () => {
-    setIsMigrating(true);
-    setError(null);
-    setReport(null);
-
-    try {
-      const response = await migrationApi.start({
-        organization_id: orgId,
-        project_ids: projectIds,
+  const trackRemoteOnboardingEvent = useCallback(
+    (eventName: string, properties: Record<string, unknown> = {}) => {
+      posthog?.capture(eventName, {
+        ...properties,
+        flow: 'remote_onboarding_ui',
+        source: 'frontend',
       });
-      setReport(response.report);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Migration failed');
-    } finally {
-      setIsMigrating(false);
-    }
-  }, [orgId, projectIds]);
+    },
+    [posthog]
+  );
+
+  const startMigration = useCallback(
+    async (method: MigrationStartMethod) => {
+      trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.STAGE_SUBMITTED, {
+        stage: 'migrate',
+        method,
+        organization_id: orgId,
+        project_count: projectIds.length,
+      });
+
+      setIsMigrating(true);
+      setError(null);
+      setReport(null);
+
+      try {
+        const response = await migrationApi.start({
+          organization_id: orgId,
+          project_ids: projectIds,
+        });
+        setReport(response.report);
+
+        trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.STAGE_COMPLETED, {
+          stage: 'migrate',
+          method,
+          organization_id: orgId,
+          project_count: projectIds.length,
+          migrated_projects: response.report.projects.migrated,
+          skipped_projects: response.report.projects.skipped,
+          warnings_count: response.report.warnings.length,
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Migration failed');
+
+        trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.STAGE_FAILED, {
+          stage: 'migrate',
+          method,
+          organization_id: orgId,
+          project_count: projectIds.length,
+          reason: 'migration_start_failed',
+        });
+      } finally {
+        setIsMigrating(false);
+      }
+    },
+    [orgId, projectIds, trackRemoteOnboardingEvent]
+  );
 
   // Start migration on mount (only once)
   useEffect(() => {
@@ -53,11 +102,11 @@ export function MigrateMigrateContainer({
       return;
     }
     hasStartedRef.current = true;
-    void startMigration();
+    void startMigration('initial');
   }, [startMigration]);
 
   const handleRetry = () => {
-    void startMigration();
+    void startMigration('retry');
   };
 
   return (
