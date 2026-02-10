@@ -42,11 +42,13 @@ const CreateModeContext = createContext<CreateModeContextValue | null>(null);
 interface CreateModeProviderProps {
   children: ReactNode;
   initialState?: CreateModeInitialState | null;
+  draftId?: string | null;
 }
 
 export function CreateModeProvider({
   children,
   initialState,
+  draftId,
 }: CreateModeProviderProps) {
   // Fetch most recent workspace to use as initial values
   const { workspaces: activeWorkspaces, archivedWorkspaces } = useWorkspaces();
@@ -68,6 +70,7 @@ export function CreateModeProvider({
     // Pass undefined while loading to prevent premature initialization
     initialRepos: reposLoading ? undefined : lastWorkspaceRepos,
     initialState,
+    draftId,
   });
 
   const value = useMemo<CreateModeContextValue>(

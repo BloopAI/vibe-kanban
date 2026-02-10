@@ -1,28 +1,59 @@
-import { useCallback } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useCallback, useMemo } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import type { IssuePriority } from 'shared/remote-types';
+import {
+  buildIssueCreatePath,
+  buildIssuePath,
+  buildIssueWorkspacePath,
+  buildProjectRootPath,
+  buildWorkspaceCreatePath,
+  parseProjectSidebarRoute,
+} from '@/lib/routes/projectSidebarRoutes';
 
 /**
- * Hook for kanban issue navigation.
- * URL is the single source of truth for which issue is open.
+ * Hook for project-kanban right sidebar navigation.
+ * URL is the single source of truth for sidebar mode.
  *
  * URL patterns:
  * - View issue: /projects/:projectId/issues/:issueId
  * - View issue workspace: /projects/:projectId/issues/:issueId/workspaces/:workspaceId
- * - Create issue: /projects/:projectId?mode=create&statusId=xxx&priority=high
+ * - Create issue: /projects/:projectId/issues/new?statusId=xxx&priority=high
+ * - Create workspace (linked): /projects/:projectId/issues/:issueId/workspaces/create/:draftId
+ * - Create workspace (standalone): /projects/:projectId/workspaces/create/:draftId
  * - No issue: /projects/:projectId
  */
 export function useKanbanNavigation() {
   const navigate = useNavigate();
-  const { projectId, issueId, workspaceId } = useParams<{
-    projectId: string;
-    issueId?: string;
-    workspaceId?: string;
-  }>();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  // Derive create mode state from URL
-  const isCreateMode = searchParams.get('mode') === 'create';
+  const routeState = useMemo(
+    () => parseProjectSidebarRoute(location.pathname),
+    [location.pathname]
+  );
+
+  const projectId = routeState?.projectId ?? null;
+
+  const issueId = useMemo(() => {
+    if (!routeState) return null;
+    if (routeState.type === 'issue') return routeState.issueId;
+    if (routeState.type === 'issue-workspace') return routeState.issueId;
+    if (routeState.type === 'workspace-create') return routeState.issueId;
+    return null;
+  }, [routeState]);
+
+  const workspaceId =
+    routeState?.type === 'issue-workspace' ? routeState.workspaceId : null;
+  const draftId =
+    routeState?.type === 'workspace-create' ? routeState.draftId : null;
+
+  const isLegacyCreateMode =
+    routeState?.type === 'closed' && searchParams.get('mode') === 'create';
+  const isCreateMode = routeState?.type === 'issue-create' || isLegacyCreateMode;
+  const isWorkspaceCreateMode = routeState?.type === 'workspace-create';
+  const isPanelOpen =
+    !!routeState && (routeState.type !== 'closed' || isLegacyCreateMode);
+
   const createDefaultStatusId = searchParams.get('statusId');
   const createDefaultPriority = searchParams.get(
     'priority'
@@ -31,50 +62,54 @@ export function useKanbanNavigation() {
     searchParams.get('assignees')?.split(',').filter(Boolean) ?? null;
   const createDefaultParentIssueId = searchParams.get('parentIssueId');
 
-  // Panel is visible if viewing an issue, workspace, or creating one
-  const isPanelOpen = !!issueId || !!workspaceId || isCreateMode;
-
-  // Navigate to view an issue
   const openIssue = useCallback(
     (id: string) => {
-      if (projectId) {
-        navigate(`/projects/${projectId}/issues/${id}`);
-      }
+      if (!projectId) return;
+      navigate(buildIssuePath(projectId, id));
     },
     [navigate, projectId]
   );
 
-  // Navigate to view a workspace in issue context
   const openIssueWorkspace = useCallback(
     (id: string, workspaceAttemptId: string) => {
-      if (projectId) {
-        navigate(
-          `/projects/${projectId}/issues/${id}/workspaces/${workspaceAttemptId}`
-        );
-      }
+      if (!projectId) return;
+      navigate(buildIssueWorkspacePath(projectId, id, workspaceAttemptId));
     },
     [navigate, projectId]
   );
 
-  // Navigate to close the panel
+  const openWorkspaceCreate = useCallback(
+    (workspaceDraftId: string, options?: { issueId?: string | null }) => {
+      if (!projectId) return;
+      const targetIssueId = options?.issueId ?? issueId;
+      navigate(buildWorkspaceCreatePath(projectId, workspaceDraftId, targetIssueId));
+    },
+    [navigate, projectId, issueId]
+  );
+
   const closePanel = useCallback(() => {
-    if (projectId) {
-      navigate(`/projects/${projectId}`);
-    }
+    if (!projectId) return;
+    navigate(buildProjectRootPath(projectId));
   }, [navigate, projectId]);
 
-  // Navigate from workspace view back to issue view
   const closeWorkspace = useCallback(() => {
-    if (projectId && issueId) {
-      navigate(`/projects/${projectId}/issues/${issueId}`);
+    if (!projectId) return;
+    if (issueId) {
+      navigate(buildIssuePath(projectId, issueId));
       return;
     }
-    if (projectId) {
-      navigate(`/projects/${projectId}`);
-    }
+    navigate(buildProjectRootPath(projectId));
   }, [navigate, projectId, issueId]);
 
-  // Navigate to create mode with optional defaults
+  const closeWorkspaceCreate = useCallback(() => {
+    if (!projectId) return;
+    if (routeState?.type === 'workspace-create' && routeState.issueId) {
+      navigate(buildIssuePath(projectId, routeState.issueId));
+      return;
+    }
+    navigate(buildProjectRootPath(projectId));
+  }, [navigate, projectId, routeState]);
+
   const startCreate = useCallback(
     (options?: {
       statusId?: string;
@@ -83,21 +118,11 @@ export function useKanbanNavigation() {
       parentIssueId?: string;
     }) => {
       if (!projectId) return;
-
-      const params = new URLSearchParams({ mode: 'create' });
-      if (options?.statusId) params.set('statusId', options.statusId);
-      if (options?.priority) params.set('priority', options.priority);
-      if (options?.assigneeIds?.length) {
-        params.set('assignees', options.assigneeIds.join(','));
-      }
-      if (options?.parentIssueId)
-        params.set('parentIssueId', options.parentIssueId);
-      navigate(`/projects/${projectId}?${params.toString()}`);
+      navigate(buildIssueCreatePath(projectId, options));
     },
     [navigate, projectId]
   );
 
-  // Update create defaults (for command bar selections during create)
   const updateCreateDefaults = useCallback(
     (options: {
       statusId?: string;
@@ -107,6 +132,8 @@ export function useKanbanNavigation() {
       if (!projectId || !isCreateMode) return;
 
       const params = new URLSearchParams(searchParams);
+      params.delete('mode');
+      params.delete('orgId');
       if (options.statusId !== undefined) {
         params.set('statusId', options.statusId);
       }
@@ -120,32 +147,33 @@ export function useKanbanNavigation() {
       if (options.assigneeIds !== undefined) {
         params.set('assignees', options.assigneeIds.join(','));
       }
-      navigate(`/projects/${projectId}?${params.toString()}`, {
-        replace: true,
-      });
+
+      const path = buildIssueCreatePath(projectId);
+      const query = params.toString();
+      navigate(query ? `${path}?${query}` : path, { replace: true });
     },
     [navigate, projectId, isCreateMode, searchParams]
   );
 
   return {
-    // URL state
-    projectId: projectId ?? null,
-    issueId: issueId ?? null,
-    workspaceId: workspaceId ?? null,
+    projectId,
+    issueId,
+    workspaceId,
+    draftId,
+    sidebarMode: routeState?.type ?? null,
     isCreateMode,
+    isWorkspaceCreateMode,
     isPanelOpen,
-
-    // Create mode defaults from URL
     createDefaultStatusId,
     createDefaultPriority,
     createDefaultAssigneeIds,
     createDefaultParentIssueId,
-
-    // Navigation actions
     openIssue,
     openIssueWorkspace,
+    openWorkspaceCreate,
     closePanel,
     closeWorkspace,
+    closeWorkspaceCreate,
     startCreate,
     updateCreateDefaults,
   };

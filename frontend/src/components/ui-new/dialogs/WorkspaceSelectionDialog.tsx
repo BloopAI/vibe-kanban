@@ -7,6 +7,7 @@ import { defineModal } from '@/lib/modals';
 import { ApiError, attemptsApi } from '@/lib/api';
 import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
 import { ErrorDialog } from '@/components/ui-new/dialogs/ErrorDialog';
+import { useProjectWorkspaceCreateDraft } from '@/hooks/useProjectWorkspaceCreateDraft';
 import {
   Command,
   CommandDialog,
@@ -17,7 +18,6 @@ import {
   CommandItem,
 } from '@/components/ui-new/primitives/Command';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useProjectRightSidebarOptional } from '@/contexts/ProjectRightSidebarContext';
 import {
   ProjectProvider,
   useProjectContext,
@@ -61,7 +61,7 @@ function WorkspaceSelectionContent({
   const { t } = useTranslation('common');
   const modal = useModal();
   const navigate = useNavigate();
-  const projectRightSidebar = useProjectRightSidebarOptional();
+  const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
   // Get local workspaces from WorkspaceContext (both active and archived)
@@ -198,9 +198,10 @@ function WorkspaceSelectionContent({
       };
 
       modal.hide();
-      if (projectRightSidebar) {
-        projectRightSidebar.openWorkspaceCreate(createState);
-      } else {
+      const draftId = await openWorkspaceCreateFromState(createState, {
+        issueId,
+      });
+      if (!draftId) {
         navigate('/workspaces/create', {
           state: createState,
         });
@@ -211,7 +212,7 @@ function WorkspaceSelectionContent({
   }, [
     modal,
     navigate,
-    projectRightSidebar,
+    openWorkspaceCreateFromState,
     getIssue,
     issueId,
     projectId,

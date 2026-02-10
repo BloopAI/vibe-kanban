@@ -180,6 +180,7 @@ interface UseCreateModeStateParams {
   initialProjectId?: string;
   initialRepos?: RepoWithTargetBranch[];
   initialState?: CreateModeInitialState | null;
+  draftId?: string | null;
 }
 
 interface UseCreateModeStateResult {
@@ -209,26 +210,30 @@ export function useCreateModeState({
   initialProjectId,
   initialRepos,
   initialState,
+  draftId,
 }: UseCreateModeStateParams): UseCreateModeStateResult {
   const location = useLocation();
   const navigate = useNavigate();
   const { projectsById, isLoading: projectsLoading } = useProjects();
   const { profiles } = useUserSystem();
+  const scratchId = draftId ?? DRAFT_WORKSPACE_ID;
 
   const {
     scratch,
     updateScratch,
     deleteScratch,
     isLoading: scratchLoading,
-  } = useScratch(ScratchType.DRAFT_WORKSPACE, DRAFT_WORKSPACE_ID);
+  } = useScratch(ScratchType.DRAFT_WORKSPACE, scratchId);
 
   const [state, dispatch] = useReducer(draftReducer, draftInitialState);
 
   // Capture navigation state once on mount
   const navStateRef = useRef<CreateModeInitialState | null>(
-    initialState === undefined
-      ? (location.state as CreateModeInitialState | null)
-      : initialState
+    initialState !== undefined
+      ? initialState
+      : draftId
+        ? null
+        : ((location.state as CreateModeInitialState | null) ?? null)
   );
   const hasInitialized = useRef(false);
 
@@ -260,6 +265,7 @@ export function useCreateModeState({
     // Clear navigation state immediately to prevent re-initialization
     if (
       initialState === undefined &&
+      !draftId &&
       (navState?.preferredRepos ||
         navState?.initialPrompt ||
         navState?.linkedIssue)
@@ -290,6 +296,7 @@ export function useCreateModeState({
     profiles,
     initialRepos,
     initialState,
+    draftId,
     initialProjectId,
     scratch,
     isValidProfile,

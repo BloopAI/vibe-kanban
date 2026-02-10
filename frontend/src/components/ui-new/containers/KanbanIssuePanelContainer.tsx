@@ -12,7 +12,7 @@ import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
-import { useProjectRightSidebar } from '@/contexts/ProjectRightSidebarContext';
+import { useProjectWorkspaceCreateDraft } from '@/hooks/useProjectWorkspaceCreateDraft';
 import {
   KanbanIssuePanel,
   type IssueFormData,
@@ -53,7 +53,7 @@ export function KanbanIssuePanelContainer() {
     updateCreateDefaults,
   } = useKanbanNavigation();
 
-  const { openWorkspaceCreate } = useProjectRightSidebar();
+  const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
   const { workspaces } = useUserContext();
   const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
 
@@ -748,17 +748,20 @@ export function KanbanIssuePanelContainer() {
           cancelDebouncedDraftIssue();
           deleteDraftIssueScratch().catch(console.error);
 
-          openWorkspaceCreate({
-            initialPrompt,
-            preferredRepos: defaults?.preferredRepos ?? null,
-            project_id: defaults?.project_id ?? null,
-            linkedIssue: {
-              issueId: syncedIssue.id,
-              simpleId: syncedIssue.simple_id,
-              title: displayData.title,
-              remoteProjectId: projectId,
+          await openWorkspaceCreateFromState(
+            {
+              initialPrompt,
+              preferredRepos: defaults?.preferredRepos ?? null,
+              project_id: defaults?.project_id ?? null,
+              linkedIssue: {
+                issueId: syncedIssue.id,
+                simpleId: syncedIssue.simple_id,
+                title: displayData.title,
+                remoteProjectId: projectId,
+              },
             },
-          });
+            { issueId: syncedIssue.id }
+          );
           return; // Don't open issue panel since we're navigating away
         }
 
@@ -788,7 +791,7 @@ export function KanbanIssuePanelContainer() {
     insertIssueTag,
     openIssue,
     kanbanCreateDefaultParentIssueId,
-    openWorkspaceCreate,
+    openWorkspaceCreateFromState,
     workspaces,
     localWorkspaceIds,
     closeKanbanIssuePanel,

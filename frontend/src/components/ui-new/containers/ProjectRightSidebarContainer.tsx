@@ -12,7 +12,6 @@ import { MessageEditProvider } from '@/contexts/MessageEditContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { useWorkspaceSessions } from '@/hooks/useWorkspaceSessions';
 import { useAttempt } from '@/hooks/useAttempt';
-import { useProjectRightSidebar } from '@/contexts/ProjectRightSidebarContext';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
 import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionChatBoxContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
@@ -276,59 +275,51 @@ function WorkspaceSessionPanel({
 
 export function ProjectRightSidebarContainer() {
   const navigate = useNavigate();
-  const { mode, showIssuePanel } = useProjectRightSidebar();
-  const { issueId, workspaceId, openIssue, openIssueWorkspace, closePanel } =
-    useKanbanNavigation();
-
-  const handleCloseCreatePanel = useCallback(() => {
-    showIssuePanel();
-    closePanel();
-  }, [showIssuePanel, closePanel]);
+  const { getIssue } = useProjectContext();
+  const {
+    issueId,
+    workspaceId,
+    draftId,
+    isWorkspaceCreateMode,
+    openIssue,
+    openIssueWorkspace,
+    closePanel,
+    closeWorkspaceCreate,
+  } = useKanbanNavigation();
 
   const handleOpenIssueFromCreate = useCallback(
     (targetIssueId: string) => {
-      showIssuePanel();
       if (issueId === targetIssueId) return;
       openIssue(targetIssueId);
     },
-    [showIssuePanel, issueId, openIssue]
+    [issueId, openIssue]
   );
 
   const handleWorkspaceCreated = useCallback(
     (createdWorkspaceId: string) => {
-      const linkedIssueId =
-        mode.type === 'workspace-create'
-          ? (mode.initialState?.linkedIssue?.issueId ?? null)
-          : null;
-      const targetIssueId = issueId ?? linkedIssueId;
-      showIssuePanel();
-
-      if (targetIssueId) {
-        openIssueWorkspace(targetIssueId, createdWorkspaceId);
+      if (issueId) {
+        openIssueWorkspace(issueId, createdWorkspaceId);
         return;
       }
 
       navigate(`/workspaces/${createdWorkspaceId}`);
     },
-    [mode, issueId, openIssueWorkspace, navigate, showIssuePanel]
+    [issueId, openIssueWorkspace, navigate]
   );
 
-  if (mode.type === 'workspace-create') {
-    const linkedIssueId = mode.initialState?.linkedIssue?.issueId ?? issueId;
+  if (isWorkspaceCreateMode && draftId) {
+    const linkedIssueId = issueId;
     const linkedIssueSimpleId =
-      mode.initialState?.linkedIssue?.simpleId ?? null;
+      linkedIssueId ? (getIssue(linkedIssueId)?.simple_id ?? null) : null;
 
     return (
       <WorkspaceCreatePanel
         linkedIssueId={linkedIssueId}
         linkedIssueSimpleId={linkedIssueSimpleId}
         onOpenIssue={handleOpenIssueFromCreate}
-        onClose={handleCloseCreatePanel}
+        onClose={closeWorkspaceCreate}
       >
-        <CreateModeProvider
-          key={mode.instanceId}
-          initialState={mode.initialState}
-        >
+        <CreateModeProvider key={draftId} draftId={draftId}>
           <CreateChatBoxContainer onWorkspaceCreated={handleWorkspaceCreated} />
         </CreateModeProvider>
       </WorkspaceCreatePanel>

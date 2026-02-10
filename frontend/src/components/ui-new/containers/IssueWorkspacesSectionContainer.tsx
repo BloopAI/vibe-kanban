@@ -7,8 +7,8 @@ import { useAuth } from '@/hooks/auth/useAuth';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useProjectRightSidebar } from '@/contexts/ProjectRightSidebarContext';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
+import { useProjectWorkspaceCreateDraft } from '@/hooks/useProjectWorkspaceCreateDraft';
 import { attemptsApi } from '@/lib/api';
 import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
@@ -29,8 +29,8 @@ export function IssueWorkspacesSectionContainer({
 }: IssueWorkspacesSectionContainerProps) {
   const { t } = useTranslation('common');
   const { projectId } = useParams<{ projectId: string }>();
-  const { openWorkspaceCreate } = useProjectRightSidebar();
   const { openIssueWorkspace } = useKanbanNavigation();
+  const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
   const { userId } = useAuth();
   const { workspaces } = useUserContext();
 
@@ -130,22 +130,25 @@ export function IssueWorkspacesSectionContainer({
 
     const defaults = await getWorkspaceDefaults(workspaces, localWorkspaceIds);
 
-    openWorkspaceCreate({
-      initialPrompt,
-      preferredRepos: defaults?.preferredRepos ?? null,
-      project_id: defaults?.project_id ?? null,
-      linkedIssue: issue
-        ? {
-            issueId: issue.id,
-            simpleId: issue.simple_id,
-            title: issue.title,
-            remoteProjectId: projectId,
-          }
-        : null,
-    });
+    await openWorkspaceCreateFromState(
+      {
+        initialPrompt,
+        preferredRepos: defaults?.preferredRepos ?? null,
+        project_id: defaults?.project_id ?? null,
+        linkedIssue: issue
+          ? {
+              issueId: issue.id,
+              simpleId: issue.simple_id,
+              title: issue.title,
+              remoteProjectId: projectId,
+            }
+          : null,
+      },
+      { issueId }
+    );
   }, [
     projectId,
-    openWorkspaceCreate,
+    openWorkspaceCreateFromState,
     getIssue,
     issueId,
     activeWorkspaces,

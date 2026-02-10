@@ -226,11 +226,23 @@ function AppContent() {
               {/* Projects routes */}
               <Route path="/projects/:projectId" element={<ProjectKanban />} />
               <Route
+                path="/projects/:projectId/issues/new"
+                element={<ProjectKanban />}
+              />
+              <Route
                 path="/projects/:projectId/issues/:issueId"
                 element={<ProjectKanban />}
               />
               <Route
                 path="/projects/:projectId/issues/:issueId/workspaces/:workspaceId"
+                element={<ProjectKanban />}
+              />
+              <Route
+                path="/projects/:projectId/issues/:issueId/workspaces/create/:draftId"
+                element={<ProjectKanban />}
+              />
+              <Route
+                path="/projects/:projectId/workspaces/create/:draftId"
                 element={<ProjectKanban />}
               />
 
