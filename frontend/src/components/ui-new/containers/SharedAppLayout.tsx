@@ -20,6 +20,7 @@ import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 export function SharedAppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const isMigrateRoute = location.pathname.startsWith('/migrate');
   const { isSignedIn } = useAuth();
 
   // Register CMD+K shortcut globally for all routes under SharedAppLayout
@@ -57,7 +58,7 @@ export function SharedAppLayout() {
   // Navigate to latest project when org changes
   useEffect(() => {
     // Skip auto-navigation when on migration flow
-    if (location.pathname.startsWith('/migrate')) {
+    if (isMigrateRoute) {
       prevOrgIdRef.current = selectedOrgId;
       return;
     }
@@ -81,7 +82,7 @@ export function SharedAppLayout() {
     } else if (prevOrgIdRef.current === null && selectedOrgId) {
       prevOrgIdRef.current = selectedOrgId;
     }
-  }, [selectedOrgId, orgProjects, isLoading, navigate, location.pathname]);
+  }, [selectedOrgId, orgProjects, isLoading, navigate, isMigrateRoute]);
 
   // Navigation state for AppBar active indicators
   const isWorkspacesActive = location.pathname.startsWith('/workspaces');
@@ -131,20 +132,22 @@ export function SharedAppLayout() {
   return (
     <SyncErrorProvider>
       <div className="flex h-screen bg-primary">
-        <AppBar
-          projects={orgProjects}
-          organizations={organizations}
-          selectedOrgId={selectedOrgId ?? ''}
-          onOrgSelect={setSelectedOrgId}
-          onCreateOrg={handleCreateOrg}
-          onCreateProject={handleCreateProject}
-          onWorkspacesClick={handleWorkspacesClick}
-          onProjectClick={handleProjectClick}
-          isWorkspacesActive={isWorkspacesActive}
-          activeProjectId={activeProjectId}
-          isSignedIn={isSignedIn}
-          isLoadingProjects={isLoading}
-        />
+        {!isMigrateRoute && (
+          <AppBar
+            projects={orgProjects}
+            organizations={organizations}
+            selectedOrgId={selectedOrgId ?? ''}
+            onOrgSelect={setSelectedOrgId}
+            onCreateOrg={handleCreateOrg}
+            onCreateProject={handleCreateProject}
+            onWorkspacesClick={handleWorkspacesClick}
+            onProjectClick={handleProjectClick}
+            isWorkspacesActive={isWorkspacesActive}
+            activeProjectId={activeProjectId}
+            isSignedIn={isSignedIn}
+            isLoadingProjects={isLoading}
+          />
+        )}
         <div className="flex flex-col flex-1 min-w-0">
           <NavbarContainer />
           <div className="flex-1 min-h-0">

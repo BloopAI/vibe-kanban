@@ -35,53 +35,44 @@ export function MigrateSidebar({
   const currentIndex = steps.findIndex((s) => s.id === currentStep);
 
   return (
-    <div className="w-64 bg-secondary shrink-0 h-full flex flex-col border-r">
-      {/* Header */}
-      <div className="p-base border-b">
-        <h2 className="text-lg font-medium text-high">Migration</h2>
-        <p className="text-sm text-low">Upgrade to cloud projects</p>
-      </div>
+    <nav className="grid gap-half sm:grid-cols-2 lg:grid-cols-4">
+      {steps.map((step, index) => {
+        const Icon = step.icon;
+        const isActive = currentStep === step.id;
+        const isPast = currentIndex > index;
+        const isDisabled = !isActive && !isPast;
 
-      {/* Navigation steps */}
-      <nav className="flex-1 py-base">
-        {steps.map((step, index) => {
-          const Icon = step.icon;
-          const isActive = currentStep === step.id;
-          const isPast = currentIndex > index;
-          const isDisabled = !isActive && !isPast;
-
-          return (
-            <button
-              key={step.id}
-              onClick={() => !isDisabled && onStepChange(step.id)}
-              disabled={isDisabled}
+        return (
+          <button
+            key={step.id}
+            onClick={() => !isDisabled && onStepChange(step.id)}
+            disabled={isDisabled}
+            className={cn(
+              'w-full flex items-center gap-half rounded-sm border px-base py-half text-sm text-left transition-colors',
+              isActive
+                ? 'border-brand bg-brand/10 text-high'
+                : isPast
+                  ? 'border-border bg-secondary text-normal hover:bg-primary hover:text-high cursor-pointer'
+                  : 'border-border bg-secondary text-low cursor-not-allowed opacity-50'
+            )}
+          >
+            <Icon
               className={cn(
-                'w-full flex items-center gap-base px-base py-half text-sm transition-colors',
-                isActive
-                  ? 'text-high bg-panel border-l-2 border-brand'
-                  : isPast
-                    ? 'text-normal hover:text-high hover:bg-panel/50 cursor-pointer border-l-2 border-transparent'
-                    : 'text-low cursor-not-allowed opacity-50 border-l-2 border-transparent'
+                'size-icon-sm shrink-0',
+                isActive ? 'text-brand' : isPast ? 'text-success' : 'text-low'
               )}
-            >
-              <Icon
-                className={cn(
-                  'size-icon-sm shrink-0',
-                  isActive ? 'text-brand' : isPast ? 'text-success' : ''
-                )}
-                weight={isActive ? 'fill' : 'regular'}
+              weight={isActive ? 'fill' : 'regular'}
+            />
+            <span className="truncate">{step.label}</span>
+            {isPast && (
+              <CheckCircleIcon
+                className="ml-auto size-icon-xs text-success"
+                weight="fill"
               />
-              <span>{step.label}</span>
-              {isPast && (
-                <CheckCircleIcon
-                  className="ml-auto size-icon-xs text-success"
-                  weight="fill"
-                />
-              )}
-            </button>
-          );
-        })}
-      </nav>
-    </div>
+            )}
+          </button>
+        );
+      })}
+    </nav>
   );
 }

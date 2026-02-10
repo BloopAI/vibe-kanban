@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useProjects } from '@/hooks/useProjects';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { MigrateChooseProjects } from '@/components/ui-new/views/MigrateChooseProjects';
@@ -21,6 +21,7 @@ export function MigrateChooseProjectsContainer({
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(
     new Set()
   );
+  const hasInitializedSelectionRef = useRef(false);
 
   // Filter out already-migrated projects for selection purposes
   const migrateableProjects = useMemo(
@@ -34,6 +35,16 @@ export function MigrateChooseProjectsContainer({
       setSelectedOrgId(organizations[0].id);
     }
   }, [organizations, selectedOrgId]);
+
+  // Default to all migratable projects selected on first data load.
+  useEffect(() => {
+    if (projectsLoading || hasInitializedSelectionRef.current) {
+      return;
+    }
+
+    setSelectedProjectIds(new Set(migrateableProjects.map((p) => p.id)));
+    hasInitializedSelectionRef.current = true;
+  }, [projectsLoading, migrateableProjects]);
 
   const handleOrgChange = (orgId: string) => {
     setSelectedOrgId(orgId);

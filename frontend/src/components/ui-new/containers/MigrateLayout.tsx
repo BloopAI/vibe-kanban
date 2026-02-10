@@ -69,12 +69,9 @@ export function MigrateLayout() {
   };
 
   return (
-    <div className="flex h-full">
-      {/* Left sidebar navigation */}
+    <div className="space-y-double">
       <MigrateSidebar currentStep={currentStep} onStepChange={setCurrentStep} />
-
-      {/* Main content area */}
-      <div className="flex-1 min-w-0 overflow-y-auto bg-primary">
+      <div className="rounded-sm border border-border bg-panel">
         {renderContent()}
       </div>
     </div>

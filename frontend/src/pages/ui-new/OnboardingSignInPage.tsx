@@ -17,7 +17,7 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { useTheme } from '@/components/ThemeProvider';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { createShapeCollection } from '@/lib/electric/collections';
-import { organizationsApi } from '@/lib/api';
+import { attemptsApi, organizationsApi } from '@/lib/api';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 
 const COMPARISON_ROWS = [
@@ -142,6 +142,16 @@ async function getFirstProjectInOrganization(
   });
 }
 
+async function hasActiveWorkspaceAttempts(): Promise<boolean> {
+  try {
+    const workspaces = await attemptsApi.getAllWorkspaces();
+    return workspaces.some((workspace) => !workspace.archived);
+  } catch (error) {
+    console.error('Failed to load workspaces for onboarding redirect:', error);
+    return false;
+  }
+}
+
 export function OnboardingSignInPage() {
   const navigate = useNavigate();
   const { t } = useTranslation('common');
@@ -168,6 +178,10 @@ export function OnboardingSignInPage() {
   ): Promise<string> => {
     if (!preferProjectRedirect) {
       return '/workspaces';
+    }
+
+    if (await hasActiveWorkspaceAttempts()) {
+      return '/migrate';
     }
 
     try {

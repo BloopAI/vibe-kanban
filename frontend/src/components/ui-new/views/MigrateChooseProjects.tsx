@@ -4,7 +4,6 @@ import {
   BuildingsIcon,
   CaretDownIcon,
   CloudArrowUpIcon,
-  InfoIcon,
 } from '@phosphor-icons/react';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import {
@@ -193,17 +192,17 @@ export function MigrateChooseProjects({
       </div>
 
       {/* Info box */}
-      <div className="mb-double p-base bg-secondary border rounded flex gap-base">
-        <InfoIcon className="size-icon-sm text-brand shrink-0" weight="fill" />
-        <div className="text-sm text-normal">
-          <p className="mb-half">
-            Your local projects will be copied to the cloud as new projects in
-            the selected organization. All tasks and data will be migrated.
-          </p>
-          <p className="text-low">
-            You can return here later to migrate additional projects.
-          </p>
-        </div>
+      <div className="mb-double p-base bg-secondary border rounded">
+        <ul className="text-sm text-normal list-disc pl-double space-y-half">
+          <li>
+            Information about tasks, such as titles and descriptions, will be
+            migrated to equivalent projects in the cloud
+          </li>
+          <li>
+            Your code and agent logs will not be migrated to the cloud and will
+            continue to live entirely locally
+          </li>
+        </ul>
       </div>
 
       {/* CTA */}
