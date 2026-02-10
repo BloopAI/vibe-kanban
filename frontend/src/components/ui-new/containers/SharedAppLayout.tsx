@@ -8,6 +8,7 @@ import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useAuth } from '@/hooks/auth/useAuth';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
@@ -21,6 +22,7 @@ export function SharedAppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isSignedIn } = useAuth();
+  const { projectId } = useWorkspaceContext();
 
   // Register CMD+K shortcut globally for all routes under SharedAppLayout
   useCommandBarShortcut(() => CommandBarDialog.show());
@@ -128,6 +130,12 @@ export function SharedAppLayout() {
     }
   }, [navigate, selectedOrgId]);
 
+  const handleGoToKanban = useCallback(() => {
+    if (projectId) {
+      navigate(`/local-projects/${projectId}/tasks`);
+    }
+  }, [navigate, projectId]);
+
   return (
     <SyncErrorProvider>
       <div className="flex h-screen bg-primary">
@@ -140,6 +148,7 @@ export function SharedAppLayout() {
           onCreateProject={handleCreateProject}
           onWorkspacesClick={handleWorkspacesClick}
           onProjectClick={handleProjectClick}
+          onGoToKanban={handleGoToKanban}
           isWorkspacesActive={isWorkspacesActive}
           activeProjectId={activeProjectId}
           isSignedIn={isSignedIn}

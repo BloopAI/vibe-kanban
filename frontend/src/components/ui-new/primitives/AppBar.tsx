@@ -16,8 +16,6 @@ import { Tooltip } from './Tooltip';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/hooks/useGitHubStars';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useNavigate } from 'react-router-dom';
-import { useCallback } from 'react';
 
 function formatStarCount(count: number): string {
   if (count < 1000) return String(count);
@@ -45,6 +43,7 @@ interface AppBarProps {
   onCreateProject: () => void;
   onWorkspacesClick: () => void;
   onProjectClick: (projectId: string) => void;
+  onGoToKanban: () => void;
   isWorkspacesActive: boolean;
   activeProjectId: string | null;
   isSignedIn?: boolean;
@@ -60,21 +59,15 @@ export function AppBar({
   onCreateProject,
   onWorkspacesClick,
   onProjectClick,
+  onGoToKanban,
   isWorkspacesActive,
   activeProjectId,
   isSignedIn,
   isLoadingProjects,
 }: AppBarProps) {
-  const navigate = useNavigate();
   const { data: onlineCount } = useDiscordOnlineCount();
   const { data: starCount } = useGitHubStars();
   const { projectId } = useWorkspaceContext();
-
-  const handleGoToKanban = useCallback(() => {
-    if (projectId) {
-        navigate(`/local-projects/${projectId}/tasks`);
-    }
-  }, [navigate, projectId]);
 
   return (
     <div
@@ -90,7 +83,7 @@ export function AppBar({
           <Tooltip content="Back to Kanban Board" side="right">
             <button
               type="button"
-              onClick={handleGoToKanban}
+              onClick={onGoToKanban}
               className={cn(
                 'flex items-center justify-center w-10 h-10 rounded-lg',
                 'text-sm font-medium transition-colors cursor-pointer',
