@@ -82,7 +82,7 @@ pub struct McpRepoSummary {
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct ListReposRequest {
     #[schemars(description = "The ID of the project to list repositories from")]
-    pub project_id: Uuid,
+    pub project_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -849,7 +849,7 @@ impl TaskServer {
         &self,
         Parameters(ListReposRequest { project_id }): Parameters<ListReposRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let url = self.url(&format!("/api/projects/{}/repositories", project_id));
+        let url = self.url("/api/repos");
         let repos: Vec<Repo> = match self.send_json(self.client.get(&url)).await {
             Ok(rs) => rs,
             Err(e) => return Ok(e),
@@ -866,7 +866,7 @@ impl TaskServer {
         let response = ListReposResponse {
             count: repo_summaries.len(),
             repos: repo_summaries,
-            project_id: project_id.to_string(),
+            project_id: project_id.map(|id| id.to_string()).unwrap_or_default(),
         };
 
         TaskServer::success(&response)
