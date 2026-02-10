@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
   ActionType,
+  BaseAgentCapability,
   NormalizedEntry,
   ToolStatus,
   ToolResult,
@@ -15,6 +16,7 @@ import {
   usePersistedExpanded,
   type PersistKey,
 } from '@/stores/useUiPreferencesStore';
+import { useUserSystem } from '@/components/ConfigProvider';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
 import type { UseResetProcessResult } from '@/components/ui-new/hooks/useResetProcess';
@@ -265,6 +267,7 @@ function renderToolUseEntry(
 
 function NewDisplayConversationEntry(props: Props) {
   const { t } = useTranslation('common');
+  const { capabilities } = useUserSystem();
   const {
     entry,
     aggregatedGroup,
@@ -275,6 +278,12 @@ function NewDisplayConversationEntry(props: Props) {
     taskAttempt,
     resetAction,
   } = props;
+  const canRetry = !!(
+    taskAttempt?.session?.executor &&
+    capabilities?.[taskAttempt.session.executor]?.includes(
+      BaseAgentCapability.SESSION_FORK
+    )
+  );
 
   // Handle aggregated groups (consecutive file_read or search entries)
   if (aggregatedGroup) {
@@ -314,6 +323,7 @@ function NewDisplayConversationEntry(props: Props) {
           expansionKey={expansionKey}
           workspaceId={taskAttempt?.id}
           executionProcessId={executionProcessId}
+          canRetry={canRetry}
           resetAction={resetAction}
         />
       );
@@ -538,12 +548,14 @@ function UserMessageEntry({
   expansionKey,
   workspaceId,
   executionProcessId,
+  canRetry,
   resetAction,
 }: {
   content: string;
   expansionKey: string;
   workspaceId: string | undefined;
   executionProcessId: string | undefined;
+  canRetry: boolean;
   resetAction: UseResetProcessResult;
 }) {
   const [expanded, toggle] = usePersistedExpanded(`user:${expansionKey}`, true);
@@ -564,10 +576,12 @@ function UserMessageEntry({
     }
   };
 
-  // Only show edit button if we have a process ID and not already in edit mode
-  const canEdit = !!executionProcessId && !isInEditMode && !isResetPending;
+  // Only show actions when we have a process ID and not already in edit mode
+  const canShowActions = !!executionProcessId && !isInEditMode && !isResetPending;
+  // Edit/retry is capability-gated (e.g. Amp has no retry)
+  const canEdit = canShowActions && canRetry;
   // Only show reset if we have a process ID, not in edit mode, not pending, and not first process
-  const canReset = canEdit && canResetProcess(executionProcessId);
+  const canReset = canShowActions && canResetProcess(executionProcessId);
 
   return (
     <ChatUserMessage
