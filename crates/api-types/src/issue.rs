@@ -62,27 +62,71 @@ pub struct CreateIssueRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct UpdateIssueRequest {
-    #[serde(default, deserialize_with = "some_if_present", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub status_id: Option<Uuid>,
-    #[serde(default, deserialize_with = "some_if_present", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub title: Option<String>,
-    #[serde(default, deserialize_with = "some_if_present", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub description: Option<Option<String>>,
-    #[serde(default, deserialize_with = "some_if_present", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub priority: Option<Option<IssuePriority>>,
-    #[serde(default, deserialize_with = "some_if_present", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub start_date: Option<Option<DateTime<Utc>>>,
-    #[serde(default, deserialize_with = "some_if_present", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub target_date: Option<Option<DateTime<Utc>>>,
-    #[serde(default, deserialize_with = "some_if_present", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub completed_at: Option<Option<DateTime<Utc>>>,
-    #[serde(default, deserialize_with = "some_if_present", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub sort_order: Option<f64>,
-    #[serde(default, deserialize_with = "some_if_present", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub parent_issue_id: Option<Option<Uuid>>,
-    #[serde(default, deserialize_with = "some_if_present", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub parent_issue_sort_order: Option<Option<f64>>,
-    #[serde(default, deserialize_with = "some_if_present", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub extension_metadata: Option<Value>,
 }
 
