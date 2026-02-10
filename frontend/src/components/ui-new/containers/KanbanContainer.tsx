@@ -8,6 +8,8 @@ import { useAuth } from '@/hooks/auth/useAuth';
 import {
   useUiPreferencesStore,
   resolveKanbanProjectState,
+  type KanbanFilterState,
+  type KanbanSortField,
 } from '@/stores/useUiPreferencesStore';
 import { useKanbanFilters, PRIORITY_ORDER } from '@/hooks/useKanbanFilters';
 import { bulkUpdateIssues, type BulkUpdateIssueItem } from '@/lib/remoteApi';
@@ -40,6 +42,42 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui-new/primitives/Dropdown';
+import type { IssuePriority } from 'shared/remote-types';
+
+const areStringSetsEqual = (left: string[], right: string[]): boolean => {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  const rightSet = new Set(right);
+  return left.every((value) => rightSet.has(value));
+};
+
+const areKanbanFiltersEqual = (
+  left: KanbanFilterState,
+  right: KanbanFilterState
+): boolean => {
+  if (left.searchQuery.trim() !== right.searchQuery.trim()) {
+    return false;
+  }
+
+  if (!areStringSetsEqual(left.priorities, right.priorities)) {
+    return false;
+  }
+
+  if (!areStringSetsEqual(left.assigneeIds, right.assigneeIds)) {
+    return false;
+  }
+
+  if (!areStringSetsEqual(left.tagIds, right.tagIds)) {
+    return false;
+  }
+
+  return (
+    left.sortField === right.sortField &&
+    left.sortDirection === right.sortDirection
+  );
+};
 
 function LoadingState() {
   const { t } = useTranslation('common');
@@ -93,14 +131,6 @@ export function KanbanContainer() {
   const projectName = projects.find((p) => p.id === projectId)?.name ?? '';
 
   // Apply filters
-  const { filteredIssues } = useKanbanFilters({
-    issues,
-    issueAssignees,
-    issueTags,
-    projectId,
-    currentUserId: userId,
-  });
-
   // Navigation hook for opening issues and create mode
   const {
     issueId: selectedKanbanIssueId,
@@ -120,10 +150,63 @@ export function KanbanContainer() {
   const projectViewSelection = useUiPreferencesStore(
     (s) => s.kanbanProjectViewSelections[projectId]
   );
-  const { filters: kanbanFilters, showWorkspaces } = useMemo(
+  const resolvedProjectState = useMemo(
     () => resolveKanbanProjectState(projectViewSelection),
     [projectViewSelection]
   );
+  const { filters: defaultKanbanFilters, showSubIssues, showWorkspaces } =
+    resolvedProjectState;
+  const [kanbanFilters, setKanbanFilters] =
+    useState<KanbanFilterState>(defaultKanbanFilters);
+
+  useEffect(() => {
+    setKanbanFilters(defaultKanbanFilters);
+  }, [projectId, resolvedProjectState.activeViewId, defaultKanbanFilters]);
+
+  const hasActiveFilters = useMemo(
+    () => !areKanbanFiltersEqual(kanbanFilters, defaultKanbanFilters),
+    [kanbanFilters, defaultKanbanFilters]
+  );
+
+  const { filteredIssues } = useKanbanFilters({
+    issues,
+    issueAssignees,
+    issueTags,
+    filters: kanbanFilters,
+    showSubIssues,
+    currentUserId: userId,
+  });
+
+  const setKanbanSearchQuery = useCallback((searchQuery: string) => {
+    setKanbanFilters((prev) => ({ ...prev, searchQuery }));
+  }, []);
+
+  const setKanbanPriorities = useCallback((priorities: IssuePriority[]) => {
+    setKanbanFilters((prev) => ({ ...prev, priorities }));
+  }, []);
+
+  const setKanbanAssignees = useCallback((assigneeIds: string[]) => {
+    setKanbanFilters((prev) => ({ ...prev, assigneeIds }));
+  }, []);
+
+  const setKanbanTags = useCallback((tagIds: string[]) => {
+    setKanbanFilters((prev) => ({ ...prev, tagIds }));
+  }, []);
+
+  const setKanbanSort = useCallback(
+    (sortField: KanbanSortField, sortDirection: 'asc' | 'desc') => {
+      setKanbanFilters((prev) => ({
+        ...prev,
+        sortField,
+        sortDirection,
+      }));
+    },
+    []
+  );
+
+  const clearKanbanFilters = useCallback(() => {
+    setKanbanFilters(defaultKanbanFilters);
+  }, [defaultKanbanFilters]);
   const kanbanViewMode = useUiPreferencesStore((s) => s.kanbanViewMode);
   const listViewStatusFilter = useUiPreferencesStore(
     (s) => s.listViewStatusFilter
@@ -219,6 +302,7 @@ export function KanbanContainer() {
 
   // Track items as arrays of IDs grouped by status
   const [items, setItems] = useState<Record<string, string[]>>({});
+  const [isFiltersDialogOpen, setIsFiltersDialogOpen] = useState(false);
 
   // Sync items from filtered issues when they change
   useEffect(() => {
@@ -293,6 +377,11 @@ export function KanbanContainer() {
     }
     return map;
   }, [issueAssignees, membersWithProfilesById]);
+
+  const membersWithProfiles = useMemo(
+    () => [...membersWithProfilesById.values()],
+    [membersWithProfilesById]
+  );
 
   const localWorkspacesById = useMemo(() => {
     const map = new Map<string, (typeof activeWorkspaces)[number]>();
@@ -604,8 +693,21 @@ export function KanbanContainer() {
             onStatusSelect={setListViewStatusFilter}
           />
           <KanbanFilterBar
+            isFiltersDialogOpen={isFiltersDialogOpen}
+            onFiltersDialogOpenChange={setIsFiltersDialogOpen}
+            tags={tags}
+            users={membersWithProfiles}
             statuses={sortedStatuses}
             projectId={projectId}
+            currentUserId={userId}
+            filters={kanbanFilters}
+            hasActiveFilters={hasActiveFilters}
+            onSearchQueryChange={setKanbanSearchQuery}
+            onPrioritiesChange={setKanbanPriorities}
+            onAssigneesChange={setKanbanAssignees}
+            onTagsChange={setKanbanTags}
+            onSortChange={setKanbanSort}
+            onClearFilters={clearKanbanFilters}
             issueCountByStatus={issueCountByStatus}
             onInsertStatus={insertStatus}
             onUpdateStatus={updateStatus}

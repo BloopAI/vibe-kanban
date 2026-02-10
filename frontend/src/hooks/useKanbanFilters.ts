@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import {
-  useUiPreferencesStore,
   KANBAN_ASSIGNEE_FILTER_VALUES,
-  resolveKanbanProjectState,
+  type KanbanFilterState,
 } from '@/stores/useUiPreferencesStore';
 import type {
   Issue,
@@ -15,7 +14,8 @@ type UseKanbanFiltersParams = {
   issues: Issue[];
   issueAssignees: IssueAssignee[];
   issueTags: IssueTag[];
-  projectId: string;
+  filters: KanbanFilterState;
+  showSubIssues: boolean;
   currentUserId: string | null;
 };
 
@@ -34,17 +34,10 @@ export function useKanbanFilters({
   issues,
   issueAssignees,
   issueTags,
-  projectId,
+  filters,
+  showSubIssues,
   currentUserId,
 }: UseKanbanFiltersParams): UseKanbanFiltersResult {
-  const projectViewSelection = useUiPreferencesStore(
-    (s) => s.kanbanProjectViewSelections[projectId]
-  );
-  const { filters: kanbanFilters, showSubIssues } = useMemo(
-    () => resolveKanbanProjectState(projectViewSelection),
-    [projectViewSelection]
-  );
-
   // Create lookup maps for efficient filtering
   const assigneesByIssue = useMemo(() => {
     const map: Record<string, string[]> = {};
@@ -78,7 +71,7 @@ export function useKanbanFilters({
     }
 
     // Text search (title)
-    const query = kanbanFilters.searchQuery.trim().toLowerCase();
+    const query = filters.searchQuery.trim().toLowerCase();
     if (query) {
       result = result.filter((issue) =>
         issue.title.toLowerCase().includes(query)
@@ -86,21 +79,21 @@ export function useKanbanFilters({
     }
 
     // Priority filter (OR within)
-    if (kanbanFilters.priorities.length > 0) {
+    if (filters.priorities.length > 0) {
       result = result.filter(
         (issue) =>
           issue.priority !== null &&
-          kanbanFilters.priorities.includes(issue.priority)
+          filters.priorities.includes(issue.priority)
       );
     }
 
     // Assignee filter (OR within)
-    if (kanbanFilters.assigneeIds.length > 0) {
-      const includeUnassigned = kanbanFilters.assigneeIds.includes(
+    if (filters.assigneeIds.length > 0) {
+      const includeUnassigned = filters.assigneeIds.includes(
         KANBAN_ASSIGNEE_FILTER_VALUES.UNASSIGNED
       );
       const selectedAssigneeIds = new Set(
-        kanbanFilters.assigneeIds.flatMap((assigneeId) => {
+        filters.assigneeIds.flatMap((assigneeId) => {
           if (assigneeId === KANBAN_ASSIGNEE_FILTER_VALUES.SELF) {
             return currentUserId ? [currentUserId] : [];
           }
@@ -127,12 +120,10 @@ export function useKanbanFilters({
     }
 
     // Tags filter (OR within)
-    if (kanbanFilters.tagIds.length > 0) {
+    if (filters.tagIds.length > 0) {
       result = result.filter((issue) => {
         const issueTagIds = tagsByIssue[issue.id] ?? [];
-        return issueTagIds.some((tagId) =>
-          kanbanFilters.tagIds.includes(tagId)
-        );
+        return issueTagIds.some((tagId) => filters.tagIds.includes(tagId));
       });
     }
 
@@ -142,7 +133,7 @@ export function useKanbanFilters({
     return result;
   }, [
     issues,
-    kanbanFilters,
+    filters,
     assigneesByIssue,
     tagsByIssue,
     showSubIssues,
