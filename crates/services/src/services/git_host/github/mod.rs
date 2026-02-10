@@ -45,21 +45,6 @@ impl GitHubProvider {
             .map_err(Into::into)
     }
 
-    /// Get repo info using the git remote of the given directory.
-    pub async fn get_repo_info_from_dir(
-        &self,
-        repo_path: &Path,
-    ) -> Result<GitHubRepoInfo, GitHostError> {
-        let cli = self.gh_cli.clone();
-        let path = repo_path.to_path_buf();
-        task::spawn_blocking(move || cli.get_repo_info_from_dir(&path))
-            .await
-            .map_err(|err| {
-                GitHostError::Repository(format!("Failed to get repo info from directory: {err}"))
-            })?
-            .map_err(Into::into)
-    }
-
     async fn fetch_general_comments(
         &self,
         cli: &GhCli,

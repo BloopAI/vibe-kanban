@@ -11,6 +11,7 @@ use db::{
         workspace::{Workspace, WorkspaceError},
     },
 };
+use git::{GitService, GitServiceError};
 use serde_json::json;
 use sqlx::error::Error as SqlxError;
 use thiserror::Error;
@@ -34,6 +35,8 @@ enum PrMonitorError {
     WorkspaceError(#[from] WorkspaceError),
     #[error(transparent)]
     Sqlx(#[from] SqlxError),
+    #[error(transparent)]
+    Git(#[from] GitServiceError),
 }
 
 /// Service to monitor PRs and update task status when they are merged
@@ -143,8 +146,11 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
                 )))
             })?;
 
+        let git = GitService::new();
+        let remote = git.resolve_remote_for_branch(&repo.path, &prs[0].target_branch_name)?;
+
         let provider = GitHubProvider::new()?;
-        let repo_info = provider.get_repo_info_from_dir(&repo.path).await?;
+        let repo_info = provider.get_repo_info(&remote.url, &repo.path).await?;
 
         let pr_numbers: std::collections::HashSet<i64> =
             prs.iter().map(|p| p.pr_info.number).collect();

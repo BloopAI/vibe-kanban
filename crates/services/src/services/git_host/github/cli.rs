@@ -202,15 +202,6 @@ impl GhCli {
         Self::parse_repo_info_response(&raw)
     }
 
-    /// Get repo info using the git remote of the given directory.
-    pub fn get_repo_info_from_dir(&self, repo_path: &Path) -> Result<GitHubRepoInfo, GhCliError> {
-        let raw = self.run(
-            ["repo", "view", "--json", "owner,name,url"],
-            Some(repo_path),
-        )?;
-        Self::parse_repo_info_response(&raw)
-    }
-
     fn parse_repo_info_response(raw: &str) -> Result<GitHubRepoInfo, GhCliError> {
         let resp: GhRepoViewResponse = serde_json::from_str(raw).map_err(|e| {
             GhCliError::UnexpectedOutput(format!("Failed to parse gh repo view response: {e}"))
