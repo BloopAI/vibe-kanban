@@ -18,8 +18,8 @@ pub struct ListRemoteProjectsQuery {
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
-        .route("/remote/projects", get(list_remote_projects))
-        .route("/remote/projects/{project_id}", get(get_remote_project))
+        .route("/projects", get(list_remote_projects))
+        .route("/projects/{project_id}", get(get_remote_project))
 }
 
 async fn list_remote_projects(

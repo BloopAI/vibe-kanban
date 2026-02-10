@@ -17,7 +17,7 @@ pub struct ListProjectStatusesQuery {
 }
 
 pub fn router() -> Router<DeploymentImpl> {
-    Router::new().route("/remote/project-statuses", get(list_project_statuses))
+    Router::new().route("/project-statuses", get(list_project_statuses))
 }
 
 async fn list_project_statuses(

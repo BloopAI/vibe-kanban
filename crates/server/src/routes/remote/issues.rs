@@ -19,9 +19,9 @@ pub struct ListIssuesQuery {
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
-        .route("/remote/issues", get(list_issues).post(create_issue))
+        .route("/issues", get(list_issues).post(create_issue))
         .route(
-            "/remote/issues/{issue_id}",
+            "/issues/{issue_id}",
             get(get_issue).patch(update_issue).delete(delete_issue),
         )
 }

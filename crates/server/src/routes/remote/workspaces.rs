@@ -12,7 +12,7 @@ use crate::{DeploymentImpl, error::ApiError};
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new().route(
-        "/remote/workspaces/by-local-id/{local_workspace_id}",
+        "/workspaces/by-local-id/{local_workspace_id}",
         get(get_workspace_by_local_id),
     )
 }
