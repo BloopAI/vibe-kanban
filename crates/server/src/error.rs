@@ -329,14 +329,11 @@ impl IntoResponse for ApiError {
                 )
             }
             ApiError::GitService(git::GitServiceError::InvalidRepository(msg)) => {
-                ErrorInfo::bad_request(
-                    "GitServiceError",
-                    format!("Invalid repository: {}", msg),
-                )
+                ErrorInfo::bad_request("GitServiceError", format!("Invalid repository: {}", msg))
             }
-            ApiError::GitService(git::GitServiceError::GitCLI(
-                git::GitCliError::AuthFailed(msg),
-            )) => ErrorInfo::with_status(
+            ApiError::GitService(git::GitServiceError::GitCLI(git::GitCliError::AuthFailed(
+                msg,
+            ))) => ErrorInfo::with_status(
                 StatusCode::UNAUTHORIZED,
                 "GitServiceError",
                 format!("Git authentication failed: {}", msg),
@@ -348,9 +345,9 @@ impl IntoResponse for ApiError {
                     "Git is not installed or not available on PATH.".to_string(),
                 )
             }
-            ApiError::GitService(git::GitServiceError::GitCLI(
-                git::GitCliError::PushRejected(msg),
-            )) => ErrorInfo::conflict("GitServiceError", format!("Push rejected: {}", msg)),
+            ApiError::GitService(git::GitServiceError::GitCLI(git::GitCliError::PushRejected(
+                msg,
+            ))) => ErrorInfo::conflict("GitServiceError", format!("Push rejected: {}", msg)),
             ApiError::GitService(git::GitServiceError::GitCLI(
                 git::GitCliError::RebaseInProgress,
             )) => ErrorInfo::conflict(
