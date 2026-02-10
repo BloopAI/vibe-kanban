@@ -584,6 +584,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "azure_identity"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7c0c8cb8886f2bdabb3501476fa53f87fa9efea9d457ff991c5ce80052c4774"
+dependencies = [
+ "async-lock",
+ "async-trait",
+ "azure_core",
+ "futures",
+ "pin-project",
+ "serde",
+ "serde_json",
+ "time",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "azure_storage_blob"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2907,6 +2925,7 @@ dependencies = [
  "axum",
  "axum-extra",
  "azure_core",
+ "azure_identity",
  "azure_storage_blob",
  "base64",
  "billing",
