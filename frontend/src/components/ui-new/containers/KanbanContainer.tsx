@@ -596,7 +596,7 @@ export function KanbanContainer() {
   return (
     <div className="flex flex-col h-full space-y-base">
       <div className="px-double pt-double space-y-base">
-        <div className="flex items-center justify-between gap-base">
+        <div className="flex items-center gap-half">
           <h2 className="text-2xl font-medium">{projectName}</h2>
 
           <DropdownMenu>
