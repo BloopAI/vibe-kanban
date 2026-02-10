@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useScratch } from '@/hooks/useScratch';
@@ -144,10 +145,10 @@ export function WorkspacesSidebarContainer({
     value: WorkspacePrFilter;
     label: string;
   }[] = [
-    { value: 'all', label: 'All' },
-    { value: 'has_pr', label: 'Has PR' },
-    { value: 'no_pr', label: 'No PR' },
-  ];
+      { value: 'all', label: 'All' },
+      { value: 'has_pr', label: 'Has PR' },
+      { value: 'no_pr', label: 'No PR' },
+    ];
 
   // Pagination state for infinite scroll
   const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
@@ -319,6 +320,26 @@ export function WorkspacesSidebarContainer({
     </div>
   );
 
+  // Back navigation logic
+  const backLinkData = useMemo(() => {
+    // 1. Single project selected
+    if (workspaceFilters.projectIds.length === 1) {
+      const projectId = workspaceFilters.projectIds[0];
+      if (projectId === NO_PROJECT_ID) {
+        return { link: '/', label: 'Back to projects' };
+      }
+      const project = allRemoteProjects.find((p) => p.id === projectId);
+      return {
+        link: `/projects/${projectId}`,
+        label: project ? `Back to ${project.name}` : 'Back to project',
+      };
+    }
+    // 2. Default fallback
+    return { link: '/', label: 'Back to projects' };
+  }, [workspaceFilters.projectIds, allRemoteProjects]);
+
+  const navigate = useNavigate();
+
   return (
     <WorkspacesSidebar
       workspaces={paginatedActiveWorkspaces}
@@ -340,6 +361,9 @@ export function WorkspacesSidebarContainer({
       hasMoreWorkspaces={hasMoreWorkspaces && !isSearching}
       filterBar={filterBar}
       onSearchFocusChange={setIsSearchFocused}
+      backLink={backLinkData.link}
+      backLabel={backLinkData.label}
+      onBack={() => navigate(backLinkData.link)}
     />
   );
 }
