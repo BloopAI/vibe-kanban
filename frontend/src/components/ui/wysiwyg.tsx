@@ -121,6 +121,7 @@ const GENERIC_CLIPBOARD_IMAGE_BASE_NAMES = new Set([
   'pasted-image',
   'screenshot',
 ]);
+const MAX_CLIPBOARD_PASTED_FILES = 10;
 
 function getImageMimePriority(mimeType: string): number {
   if (mimeType === 'image/png') return 5;
@@ -165,28 +166,29 @@ function dedupeClipboardFiles(files: File[]): File[] {
   );
 
   if (nonImageFiles.length > 0 || imageFiles.length <= 1) {
-    return uniqueByMetadata;
+    return uniqueByMetadata.slice(0, MAX_CLIPBOARD_PASTED_FILES);
   }
 
   const nonGenericImageFiles = imageFiles.filter(
     (f) => !isGenericClipboardImageName(f.name)
   );
-  if (nonGenericImageFiles.length > 1) {
-    return uniqueByMetadata;
-  }
 
-  if (nonGenericImageFiles.length === 1) {
+  if (imageFiles.length >= 3 && nonGenericImageFiles.length === 1) {
     return [nonGenericImageFiles[0]];
   }
 
-  const [preferredImage] = [...imageFiles].sort((a, b) => {
-    const priorityDiff =
-      getImageMimePriority(b.type) - getImageMimePriority(a.type);
-    if (priorityDiff !== 0) return priorityDiff;
-    return b.size - a.size;
-  });
+  if (imageFiles.length >= 3 && nonGenericImageFiles.length === 0) {
+    const [preferredImage] = [...imageFiles].sort((a, b) => {
+      const priorityDiff =
+        getImageMimePriority(b.type) - getImageMimePriority(a.type);
+      if (priorityDiff !== 0) return priorityDiff;
+      return b.size - a.size;
+    });
 
-  return preferredImage ? [preferredImage] : uniqueByMetadata;
+    return preferredImage ? [preferredImage] : uniqueByMetadata;
+  }
+
+  return uniqueByMetadata.slice(0, MAX_CLIPBOARD_PASTED_FILES);
 }
 
 /** Plugin to capture the Lexical editor instance into a ref */
@@ -337,9 +339,21 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         const dt = event.clipboardData;
         if (!dt) return;
 
-        const files: File[] = dedupeClipboardFiles(Array.from(dt.files || []));
+        const filesFromItems = Array.from(dt.items || [])
+          .filter((item) => item.kind === 'file')
+          .map((item) => item.getAsFile())
+          .filter((file): file is File => file !== null);
+
+        const clipboardFiles =
+          filesFromItems.length > 0
+            ? filesFromItems
+            : Array.from(dt.files || []);
+
+        const files: File[] = dedupeClipboardFiles(clipboardFiles);
 
         if (files.length > 0) {
+          event.preventDefault();
+          event.stopPropagation();
           onPasteFiles(files);
         }
       },
@@ -384,7 +398,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                         aria-label={
                           disabled ? 'Markdown content' : 'Markdown editor'
                         }
-                        onPaste={handlePaste}
+                        onPasteCapture={handlePaste}
                       />
                     }
                     placeholder={placeholderElement}
