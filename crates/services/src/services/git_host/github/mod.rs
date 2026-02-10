@@ -397,14 +397,12 @@ impl GitHostProvider for GitHubProvider {
     ) -> Result<HashMap<String, PullRequestInfo>, GitHostError> {
         let repo_info = self.get_repo_info(remote_url, repo_path).await?;
 
-        let cli = self.gh_cli.clone();
-        let repo_info_clone = repo_info.clone();
         let limit = pr_urls.len().max(30);
         let url_set: std::collections::HashSet<&str> = pr_urls.iter().map(|u| u.as_str()).collect();
 
         let all_prs = (|| async {
-            let cli = cli.clone();
-            let repo_info = repo_info_clone.clone();
+            let cli = self.gh_cli.clone();
+            let repo_info = repo_info.clone();
 
             let prs = task::spawn_blocking(move || cli.list_prs_for_repo(&repo_info, limit))
                 .await
