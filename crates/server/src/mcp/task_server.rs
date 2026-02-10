@@ -80,10 +80,7 @@ pub struct McpRepoSummary {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct ListReposRequest {
-    #[schemars(description = "The ID of the project to list repositories from")]
-    pub project_id: Option<Uuid>,
-}
+pub struct ListReposRequest {}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct GetRepoRequest {
@@ -145,7 +142,6 @@ pub struct UpdateRepoScriptResponse {
 pub struct ListReposResponse {
     pub repos: Vec<McpRepoSummary>,
     pub count: usize,
-    pub project_id: String,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -642,10 +638,10 @@ impl TaskServer {
         if let Some(id) = explicit {
             return Ok(id);
         }
-        if let Some(ctx) = &self.context {
-            if let Some(id) = ctx.project_id {
-                return Ok(id);
-            }
+        if let Some(ctx) = &self.context
+            && let Some(id) = ctx.project_id
+        {
+            return Ok(id);
         }
         Err(Self::err(
             "project_id is required (not available from workspace context)",
@@ -889,10 +885,10 @@ impl TaskServer {
         })
     }
 
-    #[tool(description = "List all repositories for a project. `project_id` is required!")]
+    #[tool(description = "List all repositories.")]
     async fn list_repos(
         &self,
-        Parameters(ListReposRequest { project_id }): Parameters<ListReposRequest>,
+        Parameters(_): Parameters<ListReposRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url("/api/repos");
         let repos: Vec<Repo> = match self.send_json(self.client.get(&url)).await {
@@ -911,7 +907,6 @@ impl TaskServer {
         let response = ListReposResponse {
             count: repo_summaries.len(),
             repos: repo_summaries,
-            project_id: project_id.map(|id| id.to_string()).unwrap_or_default(),
         };
 
         TaskServer::success(&response)
@@ -1118,7 +1113,7 @@ impl TaskServer {
 
         // Derive project_id from first available project
         let projects: Vec<Project> = match self
-            .send_json(self.client.get(&self.url("/api/projects")))
+            .send_json(self.client.get(self.url("/api/projects")))
             .await
         {
             Ok(projects) => projects,
@@ -1168,10 +1163,10 @@ impl TaskServer {
         };
 
         // Link workspace to remote issue if issue_id is provided
-        if let Some(issue_id) = issue_id {
-            if let Err(e) = self.link_workspace_to_issue(workspace.id, issue_id).await {
-                return Ok(e);
-            }
+        if let Some(issue_id) = issue_id
+            && let Err(e) = self.link_workspace_to_issue(workspace.id, issue_id).await
+        {
+            return Ok(e);
         }
 
         let response = StartWorkspaceSessionResponse {
