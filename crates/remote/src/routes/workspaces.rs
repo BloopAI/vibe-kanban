@@ -80,11 +80,12 @@ async fn create_workspace(
 
     if let Some(issue_id) = payload.issue_id {
         if let Err(error) =
-            IssueRepository::sync_status_from_workspace_created(state.pool(), issue_id).await
+            IssueRepository::sync_issue_from_workspace_created(state.pool(), issue_id, ctx.user.id)
+                .await
         {
             tracing::warn!(
                 ?error,
-                "failed to sync issue status from workspace creation"
+                "failed to sync issue from workspace creation"
             );
         }
 
