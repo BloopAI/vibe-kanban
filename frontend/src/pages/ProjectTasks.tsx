@@ -223,7 +223,7 @@ export function ProjectTasks() {
     BetaWorkspacesDialog.show().then((shouldMigrate) => {
       BetaWorkspacesDialog.hide();
       if (shouldMigrate === true) {
-        navigate('/workspaces');
+        navigate('/migrate');
       }
     });
   }, [isLoaded, navigate]);
