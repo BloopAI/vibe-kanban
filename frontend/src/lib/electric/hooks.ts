@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useLiveQuery } from '@tanstack/react-db';
 import { createShapeCollection } from './collections';
 import { useSyncErrorContext } from '@/contexts/SyncErrorContext';
+import { generateUuid } from '@/lib/uuid';
 import type { MutationDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { SyncError } from './types';
 
@@ -189,7 +190,7 @@ export function useShape<
   const insert = useCallback(
     (insertData: unknown): InsertResult<T> => {
       const dataWithId = {
-        id: crypto.randomUUID(),
+        id: generateUuid(),
         ...(insertData as Record<string, unknown>),
       };
       if (!typedCollection) {
