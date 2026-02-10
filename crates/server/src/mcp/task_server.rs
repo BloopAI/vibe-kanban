@@ -27,9 +27,7 @@ use services::services::remote_client::RemoteMutationResponse;
 use uuid::Uuid;
 
 use crate::routes::{
-    containers::ContainerQuery,
-    task_attempts::WorkspaceRepoInput,
-    tasks::CreateAndStartTaskRequest,
+    containers::ContainerQuery, task_attempts::WorkspaceRepoInput, tasks::CreateAndStartTaskRequest,
 };
 
 // ── MCP request/response types ──────────────────────────────────────────────
@@ -1036,11 +1034,13 @@ impl TaskServer {
         };
 
         // Derive project_id from first available project
-        let projects: Vec<Project> =
-            match self.send_json(self.client.get(&self.url("/api/projects"))).await {
-                Ok(projects) => projects,
-                Err(e) => return Ok(e),
-            };
+        let projects: Vec<Project> = match self
+            .send_json(self.client.get(&self.url("/api/projects")))
+            .await
+        {
+            Ok(projects) => projects,
+            Err(e) => return Ok(e),
+        };
         let project = match projects.first() {
             Some(p) => p,
             None => {
