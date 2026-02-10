@@ -10,6 +10,7 @@ use db::models::{
     tag::Tag,
     task::{CreateTask, TaskWithAttemptStatus},
     workspace::{Workspace, WorkspaceContext},
+    workspace_repo::RepoWithTargetBranch,
 };
 use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use regex::Regex;
@@ -376,6 +377,15 @@ impl TaskServer {
     }
 
     async fn fetch_context_at_startup(&self) -> Option<McpContext> {
+        // Try container_ref lookup first, then fall back to env vars
+        if let Some(ctx) = self.fetch_context_from_container_ref().await {
+            return Some(ctx);
+        }
+
+        self.fetch_context_from_env_vars().await
+    }
+
+    async fn fetch_context_from_container_ref(&self) -> Option<McpContext> {
         let current_dir = std::env::current_dir().ok()?;
         let canonical_path = current_dir.canonicalize().unwrap_or(current_dir);
         let normalized_path = utils::path::normalize_macos_private_alias(&canonical_path);
@@ -417,6 +427,51 @@ impl TaskServer {
 
         let workspace_id = ctx.workspace.id;
         let workspace_branch = ctx.workspace.branch.clone();
+
+        // Look up remote workspace to get remote project_id, issue_id, and organization_id
+        let (project_id, issue_id, organization_id) = self
+            .fetch_remote_workspace_context(workspace_id)
+            .await
+            .unwrap_or((None, None, None));
+
+        Some(McpContext {
+            organization_id,
+            project_id,
+            issue_id,
+            workspace_id,
+            workspace_branch,
+            workspace_repos,
+        })
+    }
+
+    async fn fetch_context_from_env_vars(&self) -> Option<McpContext> {
+        let workspace_id =
+            Uuid::from_str(&std::env::var("VK_WORKSPACE_ID").ok()?).ok()?;
+        let workspace_branch = std::env::var("VK_WORKSPACE_BRANCH").ok()?;
+
+        // Fetch workspace repos via local API
+        let url = self.url(&format!("/api/task-attempts/{}/repos", workspace_id));
+        let workspace_repos: Vec<McpRepoContext> = match tokio::time::timeout(
+            std::time::Duration::from_millis(2000),
+            self.client.get(&url).send(),
+        )
+        .await
+        {
+            Ok(Ok(response)) if response.status().is_success() => {
+                let api_response: ApiResponseEnvelope<Vec<RepoWithTargetBranch>> =
+                    response.json().await.ok()?;
+                api_response
+                    .data?
+                    .into_iter()
+                    .map(|rwb| McpRepoContext {
+                        repo_id: rwb.repo.id,
+                        repo_name: rwb.repo.name,
+                        target_branch: rwb.target_branch,
+                    })
+                    .collect()
+            }
+            _ => Vec::new(),
+        };
 
         // Look up remote workspace to get remote project_id, issue_id, and organization_id
         let (project_id, issue_id, organization_id) = self
