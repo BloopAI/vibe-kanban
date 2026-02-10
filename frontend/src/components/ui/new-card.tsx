@@ -22,7 +22,7 @@ const NewCardHeader = React.forwardRef<HTMLDivElement, NewCardHeaderProps>(
         'relative bg-background text-foreground text-base flex items-center gap-2 px-3 border-b border-dashed',
         // add a solid top line via ::before, except on the first header
         'before:content-[""] before:absolute before:top-0 before:left-0 before:right-0 ' +
-          'before:h-px before:bg-border first:before:hidden',
+        'before:h-px before:bg-border first:before:hidden',
         actions && 'justify-between',
         className
       )}
@@ -47,7 +47,7 @@ const NewCardContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('flex-1 bg-muted text-foreground gap-2', className)}
+    className={cn('flex-1 bg-muted text-foreground gap-2 flex flex-col min-h-0', className)}
     {...props}
   />
 ));
