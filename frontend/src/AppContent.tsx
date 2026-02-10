@@ -3,24 +3,20 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import { I18nextProvider } from 'react-i18next';
 import { usePostHog } from 'posthog-js/react';
-import { useUserSystem } from '@/components/ConfigProvider.tsx';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { useAuth } from '@/hooks';
-import { usePreviousPath } from '@/hooks/usePreviousPath.ts';
-import { useUiPreferencesScratch } from '@/hooks/useUiPreferencesScratch.ts';
-import {
-  DisclaimerDialog,
-  OnboardingDialog,
-  ReleaseNotesDialog,
-} from '@/components/dialogs';
+import { usePreviousPath } from '@/hooks/usePreviousPath';
+import { useUiPreferencesScratch } from '@/hooks/useUiPreferencesScratch';
+import { DisclaimerDialog, OnboardingDialog, ReleaseNotesDialog, } from '@/components/dialogs';
 import i18n from '@/i18n';
-import { ThemeProvider } from '@/components/ThemeProvider.tsx';
-import { ThemeMode } from 'shared/types.ts';
-import { SearchProvider } from '@/contexts/SearchContext.tsx';
-import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs.tsx';
-import { NormalLayout } from '@/components/layout/NormalLayout.tsx';
-import { Projects } from '@/pages/Projects.tsx';
-import { Migration } from '@/pages/Migration.tsx';
-import { ProjectTasks } from '@/pages/ProjectTasks.tsx';
+import { ThemeProvider } from '@/components/ThemeProvider';
+import { ThemeMode } from 'shared/types';
+import { SearchProvider } from '@/contexts/SearchContext';
+import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
+import { NormalLayout } from '@/components/layout/NormalLayout';
+import { Projects } from '@/pages/Projects';
+import { Migration } from '@/pages/Migration';
+import { ProjectTasks } from '@/pages/ProjectTasks';
 import {
   AgentSettings,
   GeneralSettings,
@@ -30,7 +26,7 @@ import {
   ReposSettings,
   SettingsLayout,
 } from '@/pages/settings';
-import { SharedAppLayout } from '@/components/ui-new/containers/SharedAppLayout.tsx';
+import { SharedAppLayout } from '@/components/ui-new/containers/SharedAppLayout';
 
 // Design scope components
 import { LegacyDesignScope } from '@/components/legacy-design/LegacyDesignScope';
