@@ -7,6 +7,7 @@ import {
   useImperativeHandle,
   useRef,
   useEffect,
+  type ReactNode,
 } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
@@ -103,6 +104,8 @@ type WysiwygProps = {
   showStaticToolbar?: boolean;
   /** Save status indicator for static toolbar */
   saveStatus?: 'idle' | 'saved';
+  /** Additional actions to render in static toolbar */
+  staticToolbarActions?: ReactNode;
 };
 
 /** Ref interface for WYSIWYGEditor, exposing imperative methods */
@@ -150,6 +153,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       onCodeClick,
       showStaticToolbar = false,
       saveStatus,
+      staticToolbarActions,
     }: WysiwygProps,
     ref: React.ForwardedRef<WYSIWYGEditorRef>
   ) {
@@ -316,7 +320,10 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 </div>
 
                 {!disabled && showStaticToolbar && (
-                  <StaticToolbarPlugin saveStatus={saveStatus} />
+                  <StaticToolbarPlugin
+                    saveStatus={saveStatus}
+                    extraActions={staticToolbarActions}
+                  />
                 )}
 
                 <ListPlugin />

@@ -38,6 +38,8 @@ interface UseAzureAttachmentsReturn {
   getAttachmentIds: () => string[];
   clearAttachments: () => void;
   isUploading: boolean;
+  uploadError: string | null;
+  clearUploadError: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -66,6 +68,7 @@ export function useAzureAttachments({
     CompletedAttachment[]
   >([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Avoid stale closures — these may change during async upload
   const issueIdRef = useRef(issueId);
@@ -78,20 +81,26 @@ export function useAzureAttachments({
   const uploadFiles = useCallback(
     async (files: File[]) => {
       const reportError = onErrorRef.current ?? console.error;
+      const reportErrorMessage = (message: string) => {
+        setUploadError(message);
+        reportError(message);
+      };
+
+      setUploadError(null);
 
       if (files.length > MAX_BATCH_SIZE) {
-        reportError(t('kanban.maxImagesAtOnce', { count: MAX_BATCH_SIZE }));
+        reportErrorMessage(
+          t('kanban.maxFilesAtOnce', { count: MAX_BATCH_SIZE })
+        );
         return;
       }
 
       const validFiles: File[] = [];
       for (const file of files) {
-        if (!file.type.startsWith('image/')) {
-          reportError(t('kanban.fileNotImage', { filename: file.name }));
-          continue;
-        }
         if (file.size > MAX_FILE_SIZE) {
-          reportError(t('kanban.fileExceedsLimit', { filename: file.name }));
+          reportErrorMessage(
+            t('kanban.fileExceedsLimit', { filename: file.name })
+          );
           continue;
         }
         validFiles.push(file);
@@ -161,7 +170,7 @@ export function useAzureAttachments({
         } catch (error) {
           const message =
             error instanceof Error ? error.message : t('kanban.unknownError');
-          reportError(
+          reportErrorMessage(
             t('kanban.failedToUploadFile', {
               filename: file.name,
               message,
@@ -186,6 +195,10 @@ export function useAzureAttachments({
     setCompletedAttachments([]);
   }, []);
 
+  const clearUploadError = useCallback(() => {
+    setUploadError(null);
+  }, []);
+
   return {
     uploadFiles,
     pendingAttachments,
@@ -193,5 +206,7 @@ export function useAzureAttachments({
     getAttachmentIds,
     clearAttachments,
     isUploading,
+    uploadError,
+    clearUploadError,
   };
 }
