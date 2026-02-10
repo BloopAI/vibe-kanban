@@ -148,7 +148,9 @@ export function CreateModeRepoPickerBar({
         );
 
         if (availableRepos.length === 0) {
-          setPickerError('All repositories have already been added');
+          setPickerError(
+            'No recently used repositories found, please browse repositories instead',
+          );
           return;
         }
 
