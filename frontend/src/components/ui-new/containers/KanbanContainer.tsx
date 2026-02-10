@@ -4,6 +4,7 @@ import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useActions } from '@/contexts/ActionsContext';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { useAuth } from '@/hooks/auth/useAuth';
 import {
   useUiPreferencesStore,
@@ -36,6 +37,7 @@ import { KanbanFilterBar } from '@/components/ui-new/views/KanbanFilterBar';
 import { ViewNavTabs } from '@/components/ui-new/primitives/ViewNavTabs';
 import { IssueListView } from '@/components/ui-new/views/IssueListView';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
+import { ProjectsGuideDialog } from '@/components/ui-new/dialogs/ProjectsGuideDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,6 +80,8 @@ const areKanbanFiltersEqual = (
     left.sortDirection === right.sortDirection
   );
 };
+
+const PROJECTS_GUIDE_ID = 'projects-guide';
 
 function LoadingState() {
   const { t } = useTranslation('common');
@@ -123,6 +127,12 @@ export function KanbanContainer() {
   } = useOrgContext();
   const { activeWorkspaces } = useWorkspaceContext();
   const { userId } = useAuth();
+  const {
+    config,
+    updateAndSaveConfig,
+    loading: configLoading,
+  } = useUserSystem();
+  const hasAutoShownProjectsGuide = useRef(false);
 
   // Get project name by finding the project matching current projectId
   const projectName = projects.find((p) => p.id === projectId)?.name ?? '';
@@ -143,6 +153,9 @@ export function KanbanContainer() {
     openPrioritySelection,
     openAssigneeSelection,
   } = useActions();
+  const openProjectsGuide = useCallback(() => {
+    ProjectsGuideDialog.show().finally(() => ProjectsGuideDialog.hide());
+  }, []);
 
   const projectViewSelection = useUiPreferencesStore(
     (s) => s.kanbanProjectViewSelections[projectId]
@@ -295,6 +308,28 @@ export function KanbanContainer() {
 
   // Track when drag-drop sync is in progress to prevent flicker
   const isSyncingRef = useRef(false);
+
+  useEffect(() => {
+    if (hasAutoShownProjectsGuide.current) return;
+    if (configLoading || !config || projectLoading || orgLoading) return;
+
+    const seenFeatures = config.showcases?.seen_features ?? [];
+    if (seenFeatures.includes(PROJECTS_GUIDE_ID)) return;
+
+    hasAutoShownProjectsGuide.current = true;
+
+    void updateAndSaveConfig({
+      showcases: { seen_features: [...seenFeatures, PROJECTS_GUIDE_ID] },
+    });
+    openProjectsGuide();
+  }, [
+    config,
+    configLoading,
+    openProjectsGuide,
+    orgLoading,
+    projectLoading,
+    updateAndSaveConfig,
+  ]);
 
   useEffect(() => {
     if (
@@ -739,6 +774,9 @@ export function KanbanContainer() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={openProjectsGuide}>
+                {t('kanban.openProjectsGuide', 'Projects guide')}
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => executeAction(Actions.ProjectSettings)}
               >

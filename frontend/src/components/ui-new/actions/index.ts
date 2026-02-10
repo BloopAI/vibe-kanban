@@ -79,6 +79,7 @@ import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectio
 import { StartReviewDialog } from '@/components/dialogs/tasks/StartReviewDialog';
 import posthog from 'posthog-js';
 import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
+import { ProjectsGuideDialog } from '@/components/ui-new/dialogs/ProjectsGuideDialog';
 import { SettingsDialog } from '@/components/ui-new/dialogs/SettingsDialog';
 import { CreateWorkspaceFromPrDialog } from '@/components/dialogs/CreateWorkspaceFromPrDialog';
 
@@ -606,10 +607,22 @@ export const Actions = {
     label: 'Workspaces Guide',
     icon: QuestionIcon,
     requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
     execute: async () => {
       await WorkspacesGuideDialog.show();
     },
   },
+
+  ProjectsGuide: {
+    id: 'projects-guide',
+    label: 'Projects Guide',
+    icon: QuestionIcon,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban',
+    execute: async () => {
+      await ProjectsGuideDialog.show();
+    },
+  } satisfies GlobalActionDefinition,
 
   OpenCommandBar: {
     id: 'open-command-bar',
@@ -1560,6 +1573,7 @@ export const NavbarActionGroups = {
     Actions.OpenCommandBar,
     Actions.Feedback,
     Actions.WorkspacesGuide,
+    Actions.ProjectsGuide,
     Actions.Settings,
   ] as NavbarItem[],
 };
