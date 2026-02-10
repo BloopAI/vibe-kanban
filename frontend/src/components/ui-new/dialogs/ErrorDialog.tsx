@@ -32,7 +32,10 @@ const ErrorDialogImpl = NiceModal.create<ErrorDialogProps>((props) => {
       open={modal.visible}
       onOpenChange={(open) => !open && handleDismiss()}
     >
-      <DialogContent className="sm:max-w-[425px]" style={{ zIndex: 10001 }}>
+      <DialogContent
+        className="sm:max-w-[425px] p-double"
+        style={{ zIndex: 10001 }}
+      >
         <DialogHeader>
           <div className="flex items-center gap-3">
             <WarningIcon className="h-6 w-6 text-destructive" />
