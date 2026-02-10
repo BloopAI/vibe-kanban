@@ -17,6 +17,7 @@ mac:
   hardenedRuntime: true
   entitlements: entitlements.mac.plist
   entitlementsInherit: entitlements.mac.plist
+  afterSign: notarize.js
   extraResources:
     - from: "resources/bin/macos-${arch}/"
       to: "bin/"

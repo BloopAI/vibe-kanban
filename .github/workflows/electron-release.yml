@@ -1,0 +1,351 @@
+# Build and release the Electron desktop app for all 6 platform targets.
+#
+# Trigger: manual dispatch OR tag push matching v*-electron
+#
+# Expected secrets:
+#   - APPLE_CERTIFICATE_P12_BASE64  — Base64-encoded .p12 Developer ID certificate
+#   - APPLE_CERTIFICATE_PASSWORD    — Password for the .p12 certificate
+#   - APP_STORE_API_KEY             — App Store Connect API key JSON for notarization
+#   - WIN_CERT_BASE64               — Base64-encoded Windows code signing certificate
+#   - POSTHOG_API_KEY               — PostHog analytics API key (build-time)
+#   - POSTHOG_API_ENDPOINT          — PostHog analytics endpoint (build-time)
+#   - VK_SHARED_API_BASE            — Shared API base URL (build-time)
+#   - PUBLIC_REACT_VIRTUOSO_LICENSE_KEY — React Virtuoso license key
+#   - VK_SHARED_API_BASE            — Shared API base URL
+#   - SENTRY_AUTH_TOKEN             — Sentry auth token for source maps
+
+name: Build Electron Desktop App
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*-electron"
+
+concurrency:
+  group: electron-release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  NODE_VERSION: 24
+  PNPM_VERSION: 10.13.1
+  RUST_TOOLCHAIN: nightly-2025-12-04
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS arm64 (Apple Silicon)
+          - os: macos-15-xlarge
+            platform: macos-arm64
+            rust_target: aarch64-apple-darwin
+            electron_args: --mac --arm64
+
+          # macOS x64 (Intel)
+          - os: macos-15-xlarge
+            platform: macos-x64
+            rust_target: x86_64-apple-darwin
+            electron_args: --mac --x64
+
+          # Linux x64
+          - os: ubuntu-latest
+            platform: linux-x64
+            rust_target: x86_64-unknown-linux-gnu
+            electron_args: --linux --x64
+
+          # Linux arm64
+          - os: ubuntu-latest
+            platform: linux-arm64
+            rust_target: aarch64-unknown-linux-gnu
+            electron_args: --linux --arm64
+
+          # Windows x64 (cross-compiled on Linux via cargo-xwin)
+          - os: ubuntu-latest
+            platform: windows-x64
+            rust_target: x86_64-pc-windows-msvc
+            electron_args: --win --x64
+
+          # Windows arm64 (cross-compiled on Linux via cargo-xwin, needs RING_CC workaround)
+          - os: ubuntu-latest
+            platform: windows-arm64
+            rust_target: aarch64-pc-windows-msvc
+            electron_args: --win --arm64
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      CARGO_INCREMENTAL: "0"
+
+    steps:
+      # ─── Checkout ─────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # ─── Rust toolchain ───────────────────────────────────────────────
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: ${{ matrix.rust_target }}
+
+      # ─── Node.js + pnpm ───────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      # ─── Install dependencies ─────────────────────────────────────────
+      - name: Install root dependencies
+        run: pnpm install
+
+      - name: Install Electron dependencies
+        run: pnpm install
+        working-directory: electron
+
+      # ─── Linux-specific dependencies ──────────────────────────────────
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
+            clang libclang-dev lld llvm nasm cmake ninja-build
+
+          # Windows cross-compilation targets need clang-19
+          if [[ "${{ matrix.rust_target }}" == *"windows"* ]]; then
+            DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
+              clang-19 clang-tools-19 llvm-19 lld-19
+            echo "/usr/lib/llvm-19/bin" >> $GITHUB_PATH
+          fi
+
+      # ─── Linux arm64 cross-compilation (native builds) ────────────────
+      - name: Install arm64 cross-compilation tools (Linux)
+        if: matrix.platform == 'linux-arm64'
+        run: |
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      # ─── Windows cross-compilation (cargo-xwin) ───────────────────────
+      - name: Install cargo-xwin
+        if: runner.os == 'Linux' && contains(matrix.rust_target, 'windows')
+        run: cargo install --locked cargo-xwin --version 0.20.2
+
+      # ─── Windows arm64 RING_CC workaround ─────────────────────────────
+      # ring crate requires clang (not clang-cl) for arm64 Windows builds.
+      # See https://github.com/briansmith/ring/issues/2117
+      # Copied from pre-release.yml lines ~346-363
+      - name: Setup ring CC wrapper (Windows arm64)
+        if: matrix.platform == 'windows-arm64'
+        run: |
+          chmod +x scripts/ring-cc-wrapper.sh scripts/clang
+
+      # ─── Build frontend ───────────────────────────────────────────────
+      - name: Build frontend
+        run: pnpm build
+        working-directory: frontend
+        env:
+          VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY: ${{ secrets.PUBLIC_REACT_VIRTUOSO_LICENSE_KEY }}
+          VITE_VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          VITE_POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          VITE_POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
+
+      # ─── Build Rust binaries ──────────────────────────────────────────
+      - name: Build Rust binaries (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          if [[ "${{ matrix.rust_target }}" == "x86_64-apple-darwin" ]]; then
+            export MACOSX_DEPLOYMENT_TARGET=10.12
+          elif [[ "${{ matrix.rust_target }}" == "aarch64-apple-darwin" ]]; then
+            export MACOSX_DEPLOYMENT_TARGET=11.0
+          fi
+          cargo build --release --target ${{ matrix.rust_target }} \
+            -p server -p review --bin server --bin mcp_task_server --bin review
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
+          VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
+
+      - name: Build Rust binaries (Linux)
+        if: runner.os == 'Linux' && !contains(matrix.rust_target, 'windows')
+        run: |
+          cargo build --release --target ${{ matrix.rust_target }} \
+            -p server -p review --bin server --bin mcp_task_server --bin review
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
+          VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
+
+      - name: Build Rust binaries (Windows cross-compile)
+        if: runner.os == 'Linux' && contains(matrix.rust_target, 'windows')
+        run: |
+          if [[ "${{ matrix.rust_target }}" == "aarch64-pc-windows-msvc" ]]; then
+            # ring requires clang on arm64 windows. See https://github.com/briansmith/ring/issues/2117
+            chmod +x scripts/ring-cc-wrapper.sh scripts/clang
+            export PATH="${{ github.workspace }}/scripts:$PATH"
+            export RING_CC=/usr/lib/llvm-19/bin/clang
+            export DEFAULT_CC=clang-cl
+            export CC_aarch64_pc_windows_msvc="${{ github.workspace }}/scripts/ring-cc-wrapper.sh"
+          fi
+          cargo xwin build --cross-compiler clang-cl --release --target ${{ matrix.rust_target }} \
+            -p server -p review --bin server --bin mcp_task_server --bin review
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
+          VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
+          CARGO_PROFILE_RELEASE_DEBUG: 0
+
+      # ─── Copy binaries to Electron resources ──────────────────────────
+      - name: Copy binaries to Electron resources
+        shell: bash
+        run: |
+          RESOURCE_DIR="electron/resources/bin/${{ matrix.platform }}"
+          mkdir -p "$RESOURCE_DIR"
+
+          BIN_EXT=""
+          if [[ "${{ matrix.platform }}" == windows-* ]]; then
+            BIN_EXT=".exe"
+          fi
+
+          cp "target/${{ matrix.rust_target }}/release/server${BIN_EXT}" \
+             "$RESOURCE_DIR/vibe-kanban${BIN_EXT}"
+          cp "target/${{ matrix.rust_target }}/release/mcp_task_server${BIN_EXT}" \
+             "$RESOURCE_DIR/vibe-kanban-mcp${BIN_EXT}"
+          cp "target/${{ matrix.rust_target }}/release/review${BIN_EXT}" \
+             "$RESOURCE_DIR/vibe-kanban-review${BIN_EXT}"
+
+          # Ensure executable on Unix
+          if [[ "${{ matrix.platform }}" != windows-* ]]; then
+            chmod +x "$RESOURCE_DIR/vibe-kanban${BIN_EXT}"
+            chmod +x "$RESOURCE_DIR/vibe-kanban-mcp${BIN_EXT}"
+            chmod +x "$RESOURCE_DIR/vibe-kanban-review${BIN_EXT}"
+          fi
+
+          echo "Copied binaries to $RESOURCE_DIR:"
+          ls -la "$RESOURCE_DIR/"
+
+      # ─── macOS code signing (sidecar binaries) ────────────────────────
+      # Sign each sidecar binary individually BEFORE electron-builder packages them.
+      # electron-builder won't sign extraResources binaries automatically.
+      - name: Prepare Apple certificate (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          echo "${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}" | base64 --decode > certificate.p12
+
+      - name: Write App Store API Key (macOS)
+        if: runner.os == 'macOS'
+        env:
+          API_KEY: ${{ secrets.APP_STORE_API_KEY }}
+        run: echo "$API_KEY" > app_store_key.json
+
+      - name: Sign sidecar binary — vibe-kanban (macOS)
+        if: runner.os == 'macOS'
+        uses: BloopAI/apple-code-sign-action@v1
+        with:
+          input_path: electron/resources/bin/${{ matrix.platform }}/vibe-kanban
+          output_path: electron/resources/bin/${{ matrix.platform }}/vibe-kanban
+          p12_file: certificate.p12
+          p12_password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          sign: true
+          sign_args: "--code-signature-flags=runtime"
+
+      - name: Sign sidecar binary — vibe-kanban-mcp (macOS)
+        if: runner.os == 'macOS'
+        uses: BloopAI/apple-code-sign-action@v1
+        with:
+          input_path: electron/resources/bin/${{ matrix.platform }}/vibe-kanban-mcp
+          output_path: electron/resources/bin/${{ matrix.platform }}/vibe-kanban-mcp
+          p12_file: certificate.p12
+          p12_password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          sign: true
+          sign_args: "--code-signature-flags=runtime"
+
+      - name: Sign sidecar binary — vibe-kanban-review (macOS)
+        if: runner.os == 'macOS'
+        uses: BloopAI/apple-code-sign-action@v1
+        with:
+          input_path: electron/resources/bin/${{ matrix.platform }}/vibe-kanban-review
+          output_path: electron/resources/bin/${{ matrix.platform }}/vibe-kanban-review
+          p12_file: certificate.p12
+          p12_password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          sign: true
+          sign_args: "--code-signature-flags=runtime"
+
+      # ─── Windows code signing setup ───────────────────────────────────
+      - name: Prepare Windows certificate
+        if: contains(matrix.platform, 'windows')
+        shell: bash
+        run: |
+          echo "${{ secrets.WIN_CERT_BASE64 }}" | base64 --decode > win-certificate.pfx
+          echo "WIN_CSC_LINK=$(pwd)/win-certificate.pfx" >> $GITHUB_ENV
+
+      # ─── Run electron-builder ─────────────────────────────────────────
+      - name: Build Electron app
+        working-directory: electron
+        shell: bash
+        run: |
+          npx electron-builder --config electron-builder.yml ${{ matrix.electron_args }} --publish never
+        env:
+          # macOS signing: electron-builder uses CSC_LINK for the app itself
+          CSC_LINK: ${{ runner.os == 'macOS' && 'certificate.p12' || '' }}
+          CSC_KEY_PASSWORD: ${{ runner.os == 'macOS' && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
+          # Windows signing
+          WIN_CSC_LINK: ${{ env.WIN_CSC_LINK || '' }}
+
+      # ─── macOS notarization ───────────────────────────────────────────
+      # Notarize the .dmg and .zip after electron-builder produces them
+      - name: Notarize macOS app
+        if: runner.os == 'macOS'
+        uses: BloopAI/apple-code-sign-action@main
+        continue-on-error: true
+        with:
+          input_path: |
+            electron/dist/*.dmg
+            electron/dist/*.zip
+          sign: false
+          notarize: true
+          app_store_connect_api_key_json_file: app_store_key.json
+
+      # ─── Clean up certificates ────────────────────────────────────────
+      - name: Clean up certificates
+        if: always()
+        shell: bash
+        run: |
+          rm -f certificate.p12 app_store_key.json win-certificate.pfx
+
+      # ─── Upload artifacts to GitHub Release ───────────────────────────
+      - name: Upload artifacts to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Electron ${{ github.ref_name }}
+          draft: true
+          files: |
+            electron/dist/*.dmg
+            electron/dist/*.zip
+            electron/dist/*.exe
+            electron/dist/*.AppImage
+            electron/dist/*.deb
+
+      # ─── Upload build artifacts (for manual dispatch) ─────────────────
+      - name: Upload build artifacts
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        uses: actions/upload-artifact@v6
+        with:
+          name: electron-${{ matrix.platform }}
+          path: |
+            electron/dist/*.dmg
+            electron/dist/*.zip
+            electron/dist/*.exe
+            electron/dist/*.AppImage
+            electron/dist/*.deb
+          retention-days: 7
