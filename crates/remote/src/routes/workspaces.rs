@@ -40,10 +40,7 @@ pub fn router() -> Router<AppState> {
                 .delete(delete_workspace),
         )
         .route("/workspaces/{workspace_id}", delete(unlink_workspace))
-        .route(
-            "/workspaces/by-local-id/{local_workspace_id}",
-            get(get_workspace_by_local_id),
-        )
+        .route("/workspaces/list", get(list_workspaces))
         .route(
             "/workspaces/exists/{local_workspace_id}",
             head(workspace_exists),
@@ -223,24 +220,22 @@ async fn unlink_workspace(
 }
 
 #[instrument(
-    name = "workspaces.get_workspace_by_local_id",
-    skip(state, _ctx),
-    fields(local_workspace_id = %local_workspace_id)
+    name = "workspaces.list_workspaces",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id)
 )]
-async fn get_workspace_by_local_id(
+async fn list_workspaces(
     State(state): State<AppState>,
-    Extension(_ctx): Extension<RequestContext>,
-    Path(local_workspace_id): Path<Uuid>,
-) -> Result<Json<Workspace>, ErrorResponse> {
-    let workspace = WorkspaceRepository::find_by_local_id(state.pool(), local_workspace_id)
+    Extension(ctx): Extension<RequestContext>,
+) -> Result<Json<Vec<Workspace>>, ErrorResponse> {
+    let workspaces = WorkspaceRepository::find_by_owner(state.pool(), ctx.user.id)
         .await
         .map_err(|error| {
-            tracing::error!(?error, "failed to find workspace");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to find workspace")
-        })?
-        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "workspace not found"))?;
+            tracing::error!(?error, "failed to list workspaces");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list workspaces")
+        })?;
 
-    Ok(Json(workspace))
+    Ok(Json(workspaces))
 }
 
 #[instrument(

@@ -414,10 +414,7 @@ impl TaskServer {
         &self,
         local_workspace_id: Uuid,
     ) -> Option<(Option<Uuid>, Option<Uuid>)> {
-        let url = self.url(&format!(
-            "/api/remote/workspaces/by-local-id/{}",
-            local_workspace_id
-        ));
+        let url = self.url("/api/remote/workspaces");
 
         let response = tokio::time::timeout(
             std::time::Duration::from_millis(2000),
@@ -431,13 +428,17 @@ impl TaskServer {
             return None;
         }
 
-        let api_response: ApiResponseEnvelope<api_types::Workspace> = response.json().await.ok()?;
+        let api_response: ApiResponseEnvelope<Vec<api_types::Workspace>> =
+            response.json().await.ok()?;
 
         if !api_response.success {
             return None;
         }
 
-        let remote_ws = api_response.data?;
+        let remote_workspaces = api_response.data?;
+        let remote_ws = remote_workspaces
+            .iter()
+            .find(|w| w.local_workspace_id == Some(local_workspace_id))?;
         Some((Some(remote_ws.project_id), remote_ws.issue_id))
     }
 }

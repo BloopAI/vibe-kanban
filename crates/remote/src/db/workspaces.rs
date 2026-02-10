@@ -103,6 +103,38 @@ impl WorkspaceRepository {
         Ok(record)
     }
 
+    pub async fn find_by_owner(
+        pool: &PgPool,
+        owner_user_id: Uuid,
+    ) -> Result<Vec<Workspace>, WorkspaceError> {
+        let records = sqlx::query_as!(
+            Workspace,
+            r#"
+            SELECT
+                id                  AS "id!: Uuid",
+                project_id          AS "project_id!: Uuid",
+                owner_user_id       AS "owner_user_id!: Uuid",
+                issue_id            AS "issue_id: Uuid",
+                local_workspace_id  AS "local_workspace_id: Uuid",
+                name                AS "name: String",
+                archived            AS "archived!: bool",
+                files_changed       AS "files_changed: i32",
+                lines_added         AS "lines_added: i32",
+                lines_removed       AS "lines_removed: i32",
+                created_at          AS "created_at!: DateTime<Utc>",
+                updated_at          AS "updated_at!: DateTime<Utc>"
+            FROM workspaces
+            WHERE owner_user_id = $1
+            ORDER BY updated_at DESC
+            "#,
+            owner_user_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(records)
+    }
+
     pub async fn find_by_local_id(
         pool: &PgPool,
         local_workspace_id: Uuid,
