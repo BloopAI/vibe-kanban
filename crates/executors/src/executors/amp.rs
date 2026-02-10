@@ -89,45 +89,9 @@ impl StandardCodingAgentExecutor for Amp {
         _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        // 1) Fork the thread synchronously to obtain new thread id
         let builder = self.build_command_builder()?;
-        let fork_line = builder.build_follow_up(&[
-            "threads".to_string(),
-            "fork".to_string(),
-            session_id.to_string(),
-        ])?;
-        let (fork_program, fork_args) = fork_line.into_resolved().await?;
-        let fork_output = Command::new(fork_program)
-            .kill_on_drop(true)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(current_dir)
-            .env("NPM_CONFIG_LOGLEVEL", "error")
-            .args(&fork_args)
-            .output()
-            .await?;
-        let stdout_str = String::from_utf8_lossy(&fork_output.stdout);
-        let new_thread_id = stdout_str
-            .lines()
-            .rev()
-            .find(|l| !l.trim().is_empty())
-            .unwrap_or("")
-            .trim()
-            .to_string();
-        if new_thread_id.is_empty() {
-            return Err(ExecutorError::Io(std::io::Error::other(
-                "AMP threads fork did not return a thread id",
-            )));
-        }
-
-        tracing::debug!("AMP threads fork -> new thread id: {}", new_thread_id);
-
-        // 2) Continue using the new thread id
-        let continue_line = builder.build_follow_up(&[
-            "threads".to_string(),
-            "continue".to_string(),
-            new_thread_id.clone(),
-        ])?;
+        let continue_line =
+            builder.build_follow_up(&["--continue".to_string(), session_id.to_string()])?;
         let (continue_program, continue_args) = continue_line.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
