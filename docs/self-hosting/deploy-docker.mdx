@@ -67,13 +67,13 @@ DB_PASSWORD=<secure_database_password>
 # Your domain
 DOMAIN=your-domain.com
 
-# OAuth - configure at least one
+# OAuth — configure at least one provider. Leave the other empty or remove it.
 GITHUB_OAUTH_CLIENT_ID=your_github_client_id
 GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
-GOOGLE_OAUTH_CLIENT_ID=your_google_client_id
-GOOGLE_OAUTH_CLIENT_SECRET=your_google_client_secret
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
 
-# Email (leave empty to disable invitation emails)
+# Email (optional — leave empty to disable invitation emails)
 LOOPS_EMAIL_API_KEY=
 ```
 
@@ -150,10 +150,10 @@ services:
       SERVER_PUBLIC_BASE_URL: https://${DOMAIN}
       VITE_APP_BASE_URL: https://${DOMAIN}
       VITE_API_BASE_URL: https://${DOMAIN}
-      GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID}
-      GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET}
-      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID}
-      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET}
+      GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:-}
+      GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:-}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
       VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET}
       ELECTRIC_ROLE_PASSWORD: ${ELECTRIC_ROLE_PASSWORD}
       LOOPS_EMAIL_API_KEY: ${LOOPS_EMAIL_API_KEY:-}
@@ -266,6 +266,18 @@ The server may start before the database is ready. Check:
 ```bash
 docker compose -f docker-compose.prod.yml logs remote-db
 docker compose -f docker-compose.prod.yml restart remote-server
+```
+</Accordion>
+
+<Accordion title="ElectricSQL fails to connect">
+ElectricSQL requires the `electric_sync` database user, which the Remote Server creates automatically on first startup. If ElectricSQL cannot connect:
+
+1. Check that the Remote Server started successfully and ran its migrations
+2. Verify `ELECTRIC_ROLE_PASSWORD` matches in both your `.env.remote` and the Electric service config
+3. Restart ElectricSQL after the Remote Server is healthy:
+
+```bash
+docker compose -f docker-compose.prod.yml restart electric
 ```
 </Accordion>
 

@@ -106,11 +106,11 @@ Set all required secrets:
 flyctl secrets set VIBEKANBAN_REMOTE_JWT_SECRET="<your_generated_secret>"
 flyctl secrets set ELECTRIC_ROLE_PASSWORD="<secure_password>"
 
-# OAuth (at least one required)
+# OAuth — configure at least one provider (skip the other)
 flyctl secrets set GITHUB_OAUTH_CLIENT_ID="your_client_id"
 flyctl secrets set GITHUB_OAUTH_CLIENT_SECRET="your_client_secret"
-flyctl secrets set GOOGLE_OAUTH_CLIENT_ID="your_client_id"
-flyctl secrets set GOOGLE_OAUTH_CLIENT_SECRET="your_client_secret"
+# flyctl secrets set GOOGLE_OAUTH_CLIENT_ID="your_client_id"
+# flyctl secrets set GOOGLE_OAUTH_CLIENT_SECRET="your_client_secret"
 
 # Database (the attach command sets DATABASE_URL, but the server needs SERVER_DATABASE_URL)
 # Get the DATABASE_URL value from: flyctl secrets list
@@ -121,7 +121,7 @@ flyctl secrets set SERVER_PUBLIC_BASE_URL="https://your-app-name.fly.dev"
 flyctl secrets set VITE_APP_BASE_URL="https://your-app-name.fly.dev"
 flyctl secrets set VITE_API_BASE_URL="https://your-app-name.fly.dev"
 
-# Email (optional - leave empty to disable)
+# Email (optional — leave empty to disable)
 flyctl secrets set LOOPS_EMAIL_API_KEY=""
 ```
 

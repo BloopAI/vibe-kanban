@@ -55,11 +55,11 @@ Go to the **Variables** tab and add:
 VIBEKANBAN_REMOTE_JWT_SECRET=<generate with: openssl rand -base64 48>
 ELECTRIC_ROLE_PASSWORD=<secure_password>
 
-# OAuth (at least one required)
+# OAuth — configure at least one provider. Leave the other empty or remove it.
 GITHUB_OAUTH_CLIENT_ID=your_github_client_id
 GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
-GOOGLE_OAUTH_CLIENT_ID=your_google_client_id
-GOOGLE_OAUTH_CLIENT_SECRET=your_google_client_secret
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
 
 # URLs (Railway provides these via ${{RAILWAY_PUBLIC_DOMAIN}})
 SERVER_PUBLIC_BASE_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}
@@ -69,7 +69,7 @@ VITE_API_BASE_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}
 # Database (Railway auto-provides DATABASE_URL, but we need this format)
 SERVER_DATABASE_URL=${{DATABASE_URL}}
 
-# Email (optional)
+# Email (optional — leave empty to disable)
 LOOPS_EMAIL_API_KEY=
 
 # Server config

@@ -25,6 +25,10 @@ Self-hosting Vibe Kanban Cloud gives you complete control over your data while p
 </Card>
 </CardGroup>
 
+## Billing
+
+The self-hosted build does **not** include any billing or payment functionality. The billing crate is a private dependency that is automatically stripped during the Docker build process. All features work without restrictions — there are no seat limits, usage caps, or feature gates.
+
 ## Architecture Overview
 
 The self-hosted Vibe Kanban Cloud stack consists of three main components:
@@ -73,7 +77,6 @@ All deployments require these environment variables:
 |----------|-------------|
 | `VIBEKANBAN_REMOTE_JWT_SECRET` | Secret for signing JWT tokens. Generate with `openssl rand -base64 48` |
 | `ELECTRIC_ROLE_PASSWORD` | Password for the `electric_sync` database role used by ElectricSQL |
-| `LOOPS_EMAIL_API_KEY` | API key for sending invitation emails (set to empty string to disable) |
 
 <Info>
 The `electric_sync` database user is created automatically by the Remote Server on first startup. This means you must deploy and start the Remote Server before ElectricSQL can connect to the database.
@@ -104,7 +107,7 @@ You need to configure at least one OAuth provider (GitHub or Google). You can co
 
 | Variable | Description |
 |----------|-------------|
-| `STRIPE_SECRET_KEY` | Stripe API key for billing (leave empty to disable billing) |
+| `LOOPS_EMAIL_API_KEY` | API key for sending invitation emails. Leave empty to disable. |
 | `R2_ACCESS_KEY_ID` | Cloudflare R2 access key for code review storage |
 | `GITHUB_APP_ID` | GitHub App ID for deeper GitHub integration |
 

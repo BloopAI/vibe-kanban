@@ -71,15 +71,15 @@ VIBEKANBAN_REMOTE_JWT_SECRET=<paste_your_generated_secret_here>
 # Required - Password for ElectricSQL database role (electric_sync user)
 ELECTRIC_ROLE_PASSWORD=your_secure_password_here
 
-# GitHub OAuth (required if using GitHub login)
+# OAuth — configure at least one provider. Leave the other empty or remove it.
 GITHUB_OAUTH_CLIENT_ID=your_github_client_id
 GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
 
-# Google OAuth (required if using Google login)
-GOOGLE_OAUTH_CLIENT_ID=your_google_client_id
-GOOGLE_OAUTH_CLIENT_SECRET=your_google_client_secret
+# Google OAuth (leave empty if not using Google login)
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
 
-# Email invitations (required but can be empty to disable)
+# Email invitations (optional — leave empty to disable)
 LOOPS_EMAIL_API_KEY=
 ```
 
@@ -156,19 +156,6 @@ docker compose down -v
 ## Troubleshooting
 
 <AccordionGroup>
-<Accordion title="Build fails with SSH errors">
-The Dockerfile uses SSH for accessing private dependencies during build. If you see SSH errors:
-
-```bash
-# Start SSH agent
-eval $(ssh-agent)
-ssh-add
-
-# Then run docker compose with SSH forwarding
-DOCKER_BUILDKIT=1 docker compose --env-file ../../.env.remote up --build
-```
-</Accordion>
-
 <Accordion title="Database connection errors">
 Ensure the database is healthy before the server starts:
 
@@ -185,6 +172,18 @@ docker compose logs remote-db
 Verify your OAuth callback URLs match exactly:
 - GitHub: `http://localhost:3000/v1/oauth/github/callback`
 - Google: `http://localhost:3000/v1/oauth/google/callback`
+</Accordion>
+
+<Accordion title="ElectricSQL fails to connect">
+ElectricSQL requires the `electric_sync` database user, which is created automatically by the Remote Server on first startup. If ElectricSQL fails to connect:
+
+1. Ensure the Remote Server has started successfully and run its migrations
+2. Check that `ELECTRIC_ROLE_PASSWORD` is set in your `.env.remote`
+3. Restart the stack — ElectricSQL will retry the connection
+
+```bash
+docker compose --env-file ../../.env.remote -f docker-compose.yml restart electric
+```
 </Accordion>
 
 <Accordion title="Port already in use">
