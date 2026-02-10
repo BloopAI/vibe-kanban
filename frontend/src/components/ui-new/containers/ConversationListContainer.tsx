@@ -285,7 +285,7 @@ export const ConversationList = forwardRef<
 
   // Show placeholders only if script not configured AND not already run AND first turn
   const showSetupPlaceholder =
-    !hasSetupScript && !hasSetupScriptRun && hasEntries && isFirstTurn;
+    !hasSetupScript && !hasSetupScriptRun && hasEntries;
   const showCleanupPlaceholder =
     !hasCleanupScript &&
     !hasCleanupScriptRun &&
