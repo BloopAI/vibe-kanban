@@ -36,6 +36,7 @@ use executors::{
     env::{ExecutionEnv, RepoContext},
     executors::{BaseCodingAgent, CancellationToken, ExecutorExitResult, ExecutorExitSignal},
     logs::{NormalizedEntryType, utils::patch::extract_normalized_entry_from_patch},
+    stdout_dup::utf8_safe_stream,
 };
 use futures::{FutureExt, TryStreamExt, stream::select};
 use git::GitService;
@@ -54,7 +55,6 @@ use services::services::{
     workspace_manager::{RepoWorkspaceInput, WorkspaceManager},
 };
 use tokio::{sync::RwLock, task::JoinHandle};
-use tokio_util::io::ReaderStream;
 use utils::{
     log_msg::LogMsg,
     msg_store::MsgStore,
@@ -706,13 +706,11 @@ impl LocalContainerService {
         let out = child.inner().stdout.take().expect("no stdout");
         let err = child.inner().stderr.take().expect("no stderr");
 
-        // Map stdout bytes -> LogMsg::Stdout
-        let out = ReaderStream::new(out)
-            .map_ok(|chunk| LogMsg::Stdout(String::from_utf8_lossy(&chunk).into_owned()));
+        // Map stdout bytes -> LogMsg::Stdout (UTF-8 safe)
+        let out = utf8_safe_stream(out).map_ok(LogMsg::Stdout);
 
-        // Map stderr bytes -> LogMsg::Stderr
-        let err = ReaderStream::new(err)
-            .map_ok(|chunk| LogMsg::Stderr(String::from_utf8_lossy(&chunk).into_owned()));
+        // Map stderr bytes -> LogMsg::Stderr (UTF-8 safe)
+        let err = utf8_safe_stream(err).map_ok(LogMsg::Stderr);
 
         // If you have a JSON Patch source, map it to LogMsg::JsonPatch too, then select all three.
 
