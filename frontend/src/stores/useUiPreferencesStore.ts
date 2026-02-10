@@ -77,6 +77,9 @@ export const DEFAULT_KANBAN_SHOW_WORKSPACES = true;
 export const getDefaultShowSubIssuesForView = (viewId: string): boolean =>
   viewId === KANBAN_PROJECT_VIEW_IDS.PERSONAL;
 
+const resolveShowWorkspaces = (value: unknown): boolean =>
+  typeof value === 'boolean' ? value : DEFAULT_KANBAN_SHOW_WORKSPACES;
+
 export type KanbanProjectView = {
   id: string;
   name: string;
@@ -119,7 +122,7 @@ const createDraftFromView = (
 ): KanbanProjectDraftState => ({
   filters: cloneKanbanFilters(view.filters),
   showSubIssues: view.showSubIssues,
-  showWorkspaces: view.showWorkspaces,
+  showWorkspaces: resolveShowWorkspaces(view.showWorkspaces),
 });
 
 const cloneKanbanProjectDraft = (
@@ -127,7 +130,7 @@ const cloneKanbanProjectDraft = (
 ): KanbanProjectDraftState => ({
   filters: cloneKanbanFilters(draft.filters),
   showSubIssues: draft.showSubIssues,
-  showWorkspaces: draft.showWorkspaces,
+  showWorkspaces: resolveShowWorkspaces(draft.showWorkspaces),
 });
 
 const getDefaultKanbanProjectViews = (): KanbanProjectView[] => [
@@ -195,8 +198,9 @@ export const resolveKanbanProjectState = (
     filters: projectState?.draft.filters ?? activeView.filters,
     showSubIssues:
       projectState?.draft.showSubIssues ?? activeView.showSubIssues,
-    showWorkspaces:
-      projectState?.draft.showWorkspaces ?? activeView.showWorkspaces,
+    showWorkspaces: resolveShowWorkspaces(
+      projectState?.draft.showWorkspaces ?? activeView.showWorkspaces
+    ),
   };
 };
 
@@ -747,7 +751,9 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
         name: trimmedName,
         filters: cloneKanbanFilters(projectState.draft.filters),
         showSubIssues: projectState.draft.showSubIssues,
-        showWorkspaces: projectState.draft.showWorkspaces,
+        showWorkspaces: resolveShowWorkspaces(
+          projectState.draft.showWorkspaces
+        ),
       };
 
       return {
@@ -790,7 +796,9 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
           ...view,
           filters: cloneKanbanFilters(projectState.draft.filters),
           showSubIssues: projectState.draft.showSubIssues,
-          showWorkspaces: projectState.draft.showWorkspaces,
+          showWorkspaces: resolveShowWorkspaces(
+            projectState.draft.showWorkspaces
+          ),
         };
       });
 
