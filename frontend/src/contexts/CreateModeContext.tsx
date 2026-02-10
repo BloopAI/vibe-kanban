@@ -1,4 +1,5 @@
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { useContext, useMemo, type ReactNode } from 'react';
+import { createHmrContext } from '@/lib/hmr-context';
 import type { Repo, ExecutorProfileId } from 'shared/types';
 import {
   useCreateModeState,
@@ -37,7 +38,7 @@ interface CreateModeContextValue {
   clearLinkedIssue: () => void;
 }
 
-const CreateModeContext = createContext<CreateModeContextValue | null>(null);
+const CreateModeContext = createHmrContext<CreateModeContextValue | null>('CreateModeContext', null);
 
 interface CreateModeProviderProps {
   children: ReactNode;

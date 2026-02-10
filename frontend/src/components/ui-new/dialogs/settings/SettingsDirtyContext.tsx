@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { useContext, useState, useCallback } from 'react';
+import { createHmrContext } from '@/lib/hmr-context';
 import type { ReactNode } from 'react';
 
 interface SettingsDirtyContextValue {
@@ -7,9 +8,7 @@ interface SettingsDirtyContextValue {
   clearAll: () => void;
 }
 
-const SettingsDirtyContext = createContext<SettingsDirtyContextValue | null>(
-  null
-);
+const SettingsDirtyContext = createHmrContext<SettingsDirtyContextValue | null>('SettingsDirtyContext', null);
 
 export function SettingsDirtyProvider({ children }: { children: ReactNode }) {
   const [dirtySections, setDirtySections] = useState<Set<string>>(new Set());

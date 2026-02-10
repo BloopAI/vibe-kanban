@@ -1,11 +1,11 @@
 import {
-  createContext,
   useContext,
   useState,
   ReactNode,
   useEffect,
   useCallback,
 } from 'react';
+import { createHmrContext } from '@/lib/hmr-context';
 import type {
   OpenInEditorPayload,
   ComponentInfo,
@@ -31,9 +31,7 @@ interface ClickedElementsContextType {
   generateMarkdown: () => string;
 }
 
-const ClickedElementsContext = createContext<ClickedElementsContextType | null>(
-  null
-);
+const ClickedElementsContext = createHmrContext<ClickedElementsContextType | null>('ClickedElementsContext', null);
 
 export function useClickedElements() {
   const context = useContext(ClickedElementsContext);

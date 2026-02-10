@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
+import { createHmrContext } from '@/lib/hmr-context';
 import { ThemeMode } from 'shared/types';
 
 type ThemeProviderProps = {
@@ -16,7 +17,7 @@ const initialState: ThemeProviderState = {
   setTheme: () => null,
 };
 
-const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
+const ThemeProviderContext = createHmrContext<ThemeProviderState>('ThemeProviderContext', initialState);
 
 export function ThemeProvider({
   children,

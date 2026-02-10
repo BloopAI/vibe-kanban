@@ -1,10 +1,10 @@
 import {
-  createContext,
   useContext,
   useMemo,
   useCallback,
   type ReactNode,
 } from 'react';
+import { createHmrContext } from '@/lib/hmr-context';
 import { useQuery } from '@tanstack/react-query';
 import {
   useShape,
@@ -70,7 +70,7 @@ export interface OrgContextValue {
   membersWithProfilesById: Map<string, OrganizationMemberWithProfile>;
 }
 
-const OrgContext = createContext<OrgContextValue | null>(null);
+const OrgContext = createHmrContext<OrgContextValue | null>('OrgContext', null);
 
 interface OrgProviderProps {
   organizationId: string;

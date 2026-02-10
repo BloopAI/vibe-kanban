@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { createHmrContext } from '@/lib/hmr-context';
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
 } from 'embla-carousel-react';
@@ -28,7 +29,7 @@ type CarouselContextProps = {
   canScrollNext: boolean;
 } & CarouselProps;
 
-const CarouselContext = React.createContext<CarouselContextProps | null>(null);
+const CarouselContext = createHmrContext<CarouselContextProps | null>('CarouselContext', null);
 
 function useCarousel() {
   const context = React.useContext(CarouselContext);

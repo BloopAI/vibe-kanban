@@ -1,11 +1,11 @@
 import {
-  createContext,
   ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
 } from 'react';
+import { createHmrContext } from '@/lib/hmr-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   type Config,
@@ -54,17 +54,10 @@ interface UserSystemContextType {
   loading: boolean;
 }
 
-// Preserve context identity across HMR to prevent "must be used within Provider" errors.
-// Without this, hot-reloading this module creates a new context object while mounted
-// providers still hold the old one, causing a mismatch.
-const UserSystemContext =
-  (import.meta.hot?.data?.UserSystemContext as React.Context<
-    UserSystemContextType | undefined
-  >) ?? createContext<UserSystemContextType | undefined>(undefined);
-
-if (import.meta.hot) {
-  import.meta.hot.data.UserSystemContext = UserSystemContext;
-}
+const UserSystemContext = createHmrContext<UserSystemContextType | undefined>(
+  'UserSystemContext',
+  undefined
+);
 
 interface UserSystemProviderProps {
   children: ReactNode;

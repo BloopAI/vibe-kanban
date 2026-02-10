@@ -1,10 +1,10 @@
 import {
-  createContext,
   useContext,
   useMemo,
   useCallback,
   type ReactNode,
 } from 'react';
+import { createHmrContext } from '@/lib/hmr-context';
 import { useShape } from '@/lib/electric/hooks';
 import { USER_WORKSPACES_SHAPE, type Workspace } from 'shared/remote-types';
 import type { SyncError } from '@/lib/electric/types';
@@ -29,7 +29,7 @@ export interface UserContextValue {
   getWorkspacesForIssue: (issueId: string) => Workspace[];
 }
 
-export const UserContext = createContext<UserContextValue | null>(null);
+export const UserContext = createHmrContext<UserContextValue | null>('UserContext', null);
 
 interface UserProviderProps {
   children: ReactNode;

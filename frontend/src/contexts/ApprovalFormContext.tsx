@@ -1,10 +1,10 @@
 import {
-  createContext,
   useContext,
   useState,
   ReactNode,
   useCallback,
 } from 'react';
+import { createHmrContext } from '@/lib/hmr-context';
 
 interface ApprovalFormState {
   isEnteringReason: boolean;
@@ -21,7 +21,7 @@ interface ApprovalFormContextType {
   clear: (approvalId: string) => void;
 }
 
-const ApprovalFormContext = createContext<ApprovalFormContextType | null>(null);
+const ApprovalFormContext = createHmrContext<ApprovalFormContextType | null>('ApprovalFormContext', null);
 
 const defaultState: ApprovalFormState = {
   isEnteringReason: false,
