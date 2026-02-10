@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   CheckIcon,
   GithubLogoIcon,
@@ -149,6 +149,7 @@ export function OnboardingSignInPage() {
 
   const [showComparison, setShowComparison] = useState(false);
   const [saving, setSaving] = useState(false);
+  const isCompletingOnboardingRef = useRef(false);
   const [pendingProvider, setPendingProvider] = useState<OAuthProvider | null>(
     null
   );
@@ -197,10 +198,11 @@ export function OnboardingSignInPage() {
   const finishOnboarding = async (
     options: { preferProjectRedirect?: boolean } = {}
   ) => {
-    if (!config || saving) return;
+    if (!config || saving || isCompletingOnboardingRef.current) return;
 
     const preferProjectRedirect = options.preferProjectRedirect ?? isLoggedIn;
 
+    isCompletingOnboardingRef.current = true;
     setSaving(true);
     const success = await updateAndSaveConfig({
       remote_onboarding_acknowledged: true,
@@ -209,12 +211,12 @@ export function OnboardingSignInPage() {
     });
 
     if (!success) {
+      isCompletingOnboardingRef.current = false;
       setSaving(false);
       return;
     }
 
     const destination = await getOnboardingDestination(preferProjectRedirect);
-    setSaving(false);
     navigate(destination, { replace: true });
   };
 
@@ -238,7 +240,10 @@ export function OnboardingSignInPage() {
     );
   }
 
-  if (config.remote_onboarding_acknowledged) {
+  if (
+    config.remote_onboarding_acknowledged &&
+    !isCompletingOnboardingRef.current
+  ) {
     return <Navigate to="/workspaces" replace />;
   }
 

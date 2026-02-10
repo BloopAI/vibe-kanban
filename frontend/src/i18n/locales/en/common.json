@@ -290,7 +290,7 @@
   "workspacesGuide": {
     "welcome": {
       "title": "Welcome",
-      "content": "Welcome to Workspaces, a redesigned UI for Vibe Kanban. We're rolling this out to select users for early feedback. Share your thoughts anytime using the feedback icon in the navbar."
+      "content": "Welcome to the Workspaces page. One view of the workspaces across all of your projects, and the fastest way to review work from your agents. Share feedback anytime via the navbar icon."
     },
     "commandBar": {
       "title": "Command Bar",

@@ -16,7 +16,6 @@ const TOPIC_IDS = [
   'sessions',
   'preview',
   'diffs',
-  'classicUi',
 ] as const;
 
 const TOPIC_IMAGES: Record<(typeof TOPIC_IDS)[number], string> = {
@@ -28,7 +27,6 @@ const TOPIC_IMAGES: Record<(typeof TOPIC_IDS)[number], string> = {
   sessions: '/guide-images/sessions.png',
   preview: '/guide-images/preview.png',
   diffs: '/guide-images/diffs.png',
-  classicUi: '/guide-images/classic-ui.png',
 };
 
 const WorkspacesGuideDialogImpl = NiceModal.create<NoProps>(() => {
