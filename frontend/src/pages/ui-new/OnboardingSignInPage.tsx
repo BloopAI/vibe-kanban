@@ -7,8 +7,7 @@ import {
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { PROJECTS_SHAPE, type Project } from 'shared/remote-types';
-import { ThemeMode, type OrganizationWithRole } from 'shared/types';
+import { ThemeMode } from 'shared/types';
 import {
   OAuthDialog,
   type OAuthProvider,
@@ -17,8 +16,8 @@ import { usePostHog } from 'posthog-js/react';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useTheme } from '@/components/ThemeProvider';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
-import { createShapeCollection } from '@/lib/electric/collections';
-import { attemptsApi, organizationsApi } from '@/lib/api';
+import { attemptsApi } from '@/lib/api';
+import { getFirstProjectDestination } from '@/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 
 const COMPARISON_ROWS = [
@@ -44,8 +43,6 @@ const COMPARISON_ROWS = [
   },
 ];
 
-const FIRST_PROJECT_LOOKUP_TIMEOUT_MS = 3000;
-
 const REMOTE_ONBOARDING_EVENTS = {
   STAGE_VIEWED: 'remote_onboarding_ui_stage_viewed',
   STAGE_SUBMITTED: 'remote_onboarding_ui_stage_submitted',
@@ -61,7 +58,6 @@ type SignInCompletionMethod =
   | 'skip_sign_in'
   | 'oauth_github'
   | 'oauth_google';
-
 function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
   if (theme === ThemeMode.SYSTEM) {
     return window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -69,94 +65,6 @@ function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
       : 'light';
   }
   return theme === ThemeMode.DARK ? 'dark' : 'light';
-}
-
-function getFirstOrganization(
-  organizations: OrganizationWithRole[]
-): OrganizationWithRole | null {
-  if (organizations.length === 0) {
-    return null;
-  }
-
-  const firstNonPersonal = organizations.find(
-    (organization) => !organization.is_personal
-  );
-  return firstNonPersonal ?? organizations[0];
-}
-
-function getFirstProject(projects: Project[]): Project | null {
-  if (projects.length === 0) {
-    return null;
-  }
-
-  const sortedProjects = [...projects].sort((a, b) => {
-    const aCreatedAt = new Date(a.created_at).getTime();
-    const bCreatedAt = new Date(b.created_at).getTime();
-    if (aCreatedAt !== bCreatedAt) {
-      return aCreatedAt - bCreatedAt;
-    }
-
-    const nameCompare = a.name.localeCompare(b.name);
-    if (nameCompare !== 0) {
-      return nameCompare;
-    }
-
-    return a.id.localeCompare(b.id);
-  });
-
-  return sortedProjects[0];
-}
-
-async function getFirstProjectInOrganization(
-  organizationId: string
-): Promise<Project | null> {
-  const collection = createShapeCollection(PROJECTS_SHAPE, {
-    organization_id: organizationId,
-  });
-
-  if (collection.isReady()) {
-    return getFirstProject(collection.toArray as unknown as Project[]);
-  }
-
-  return new Promise<Project | null>((resolve) => {
-    let settled = false;
-    let timeoutId: number | undefined;
-    let subscription: { unsubscribe: () => void } | undefined;
-
-    const settle = (project: Project | null) => {
-      if (settled) return;
-      settled = true;
-
-      if (timeoutId !== undefined) {
-        window.clearTimeout(timeoutId);
-        timeoutId = undefined;
-      }
-      if (subscription) {
-        subscription.unsubscribe();
-        subscription = undefined;
-      }
-
-      resolve(project);
-    };
-
-    const tryResolve = () => {
-      if (!collection.isReady()) {
-        return;
-      }
-
-      settle(getFirstProject(collection.toArray as unknown as Project[]));
-    };
-
-    subscription = collection.subscribeChanges(tryResolve, {
-      includeInitialState: true,
-    });
-
-    timeoutId = window.setTimeout(() => {
-      settle(null);
-    }, FIRST_PROJECT_LOOKUP_TIMEOUT_MS);
-
-    tryResolve();
-  });
 }
 
 async function hasActiveWorkspaceAttempts(): Promise<boolean> {
@@ -217,43 +125,25 @@ export function OnboardingSignInPage() {
     preferProjectRedirect: boolean
   ): Promise<string> => {
     if (!preferProjectRedirect) {
-      return '/workspaces';
+      return '/workspaces/create';
     }
 
     if (await hasActiveWorkspaceAttempts()) {
       return '/migrate';
     }
 
-    try {
-      const organizationsResponse =
-        await organizationsApi.getUserOrganizations();
-      const firstOrganization = getFirstOrganization(
-        organizationsResponse.organizations ?? []
-      );
-
-      if (!firstOrganization) {
-        return '/workspaces';
-      }
-
-      setSelectedOrgId(firstOrganization.id);
-
-      const firstProject = await getFirstProjectInOrganization(
-        firstOrganization.id
-      );
-      if (!firstProject) {
-        return '/workspaces';
-      }
-
-      return `/projects/${firstProject.id}`;
-    } catch (error) {
+    const firstProjectDestination =
+      await getFirstProjectDestination(setSelectedOrgId);
+    if (!firstProjectDestination) {
       trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.STAGE_FAILED, {
         stage: 'sign_in',
         reason: 'destination_lookup_failed',
         prefer_project_redirect: preferProjectRedirect,
       });
-      console.error('Failed to resolve onboarding destination:', error);
-      return '/workspaces';
+      return '/workspaces/create';
     }
+
+    return firstProjectDestination;
   };
 
   const finishOnboarding = async (options: {
@@ -336,7 +226,7 @@ export function OnboardingSignInPage() {
     config.remote_onboarding_acknowledged &&
     !isCompletingOnboardingRef.current
   ) {
-    return <Navigate to="/workspaces" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return (

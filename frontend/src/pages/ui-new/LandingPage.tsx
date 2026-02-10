@@ -305,7 +305,7 @@ export function LandingPage() {
   }
 
   if (config.remote_onboarding_acknowledged) {
-    return <Navigate to="/workspaces" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return (
