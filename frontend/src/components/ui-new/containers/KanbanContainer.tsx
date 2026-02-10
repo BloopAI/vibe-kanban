@@ -154,8 +154,11 @@ export function KanbanContainer() {
     () => resolveKanbanProjectState(projectViewSelection),
     [projectViewSelection]
   );
-  const { filters: defaultKanbanFilters, showSubIssues, showWorkspaces } =
-    resolvedProjectState;
+  const {
+    filters: defaultKanbanFilters,
+    showSubIssues,
+    showWorkspaces,
+  } = resolvedProjectState;
   const [kanbanFilters, setKanbanFilters] =
     useState<KanbanFilterState>(defaultKanbanFilters);
 

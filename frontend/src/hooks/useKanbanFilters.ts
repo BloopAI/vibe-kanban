@@ -82,8 +82,7 @@ export function useKanbanFilters({
     if (filters.priorities.length > 0) {
       result = result.filter(
         (issue) =>
-          issue.priority !== null &&
-          filters.priorities.includes(issue.priority)
+          issue.priority !== null && filters.priorities.includes(issue.priority)
       );
     }
 
