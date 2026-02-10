@@ -145,7 +145,9 @@ export function IssueWorkspacesSectionContainer({
         : null,
     };
 
-    const draftId = await openWorkspaceCreateFromState(createState, { issueId });
+    const draftId = await openWorkspaceCreateFromState(createState, {
+      issueId,
+    });
     if (!draftId) {
       navigate('/workspaces/create', {
         state: createState,

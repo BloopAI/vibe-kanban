@@ -238,10 +238,9 @@ export function ProjectKanban() {
       nextParams.delete('orgId');
       const nextQuery = nextParams.toString();
       const createPath = buildIssueCreatePath(projectId);
-      navigate(
-        nextQuery ? `${createPath}?${nextQuery}` : createPath,
-        { replace: true }
-      );
+      navigate(nextQuery ? `${createPath}?${nextQuery}` : createPath, {
+        replace: true,
+      });
       return;
     }
 
@@ -254,13 +253,7 @@ export function ProjectKanban() {
         { replace: true }
       );
     }
-  }, [
-    searchParams,
-    projectId,
-    setSelectedOrgId,
-    navigate,
-    location.pathname,
-  ]);
+  }, [searchParams, projectId, setSelectedOrgId, navigate, location.pathname]);
 
   // Find the project and get its organization
   const { organizationId, isLoading } = useFindProjectById(
