@@ -17,6 +17,7 @@ import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
 import { useAuth } from '@/hooks/auth/useAuth';
+import { buildIssueCreatePath } from '@/lib/routes/projectSidebarRoutes';
 
 /**
  * Component that registers project mutations with ActionsContext.
@@ -219,11 +220,32 @@ export function ProjectKanban() {
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
 
-  // One-time migration: if orgId is in URL, save to store and clean URL
+  // One-time URL migrations:
+  // - /projects/:projectId?mode=create -> /projects/:projectId/issues/new
+  // - strip orgId after storing it
   useEffect(() => {
+    if (!projectId) return;
+
     const orgIdFromUrl = searchParams.get('orgId');
-    if (orgIdFromUrl && projectId) {
+    if (orgIdFromUrl) {
       setSelectedOrgId(orgIdFromUrl);
+    }
+
+    const isLegacyCreateMode = searchParams.get('mode') === 'create';
+    if (isLegacyCreateMode) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('mode');
+      nextParams.delete('orgId');
+      const nextQuery = nextParams.toString();
+      const createPath = buildIssueCreatePath(projectId);
+      navigate(
+        nextQuery ? `${createPath}?${nextQuery}` : createPath,
+        { replace: true }
+      );
+      return;
+    }
+
+    if (orgIdFromUrl) {
       const nextParams = new URLSearchParams(searchParams);
       nextParams.delete('orgId');
       const nextQuery = nextParams.toString();
@@ -232,7 +254,13 @@ export function ProjectKanban() {
         { replace: true }
       );
     }
-  }, [searchParams, projectId, setSelectedOrgId, navigate, location.pathname]);
+  }, [
+    searchParams,
+    projectId,
+    setSelectedOrgId,
+    navigate,
+    location.pathname,
+  ]);
 
   // Find the project and get its organization
   const { organizationId, isLoading } = useFindProjectById(

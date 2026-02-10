@@ -35,12 +35,17 @@ export function useProjectWorkspaceCreateDraft() {
           : null,
       };
 
-      await scratchApi.update(ScratchType.DRAFT_WORKSPACE, draftId, {
-        payload: {
-          type: 'DRAFT_WORKSPACE',
-          data: draftData,
-        },
-      });
+      try {
+        await scratchApi.update(ScratchType.DRAFT_WORKSPACE, draftId, {
+          payload: {
+            type: 'DRAFT_WORKSPACE',
+            data: draftData,
+          },
+        });
+      } catch (error) {
+        console.error('Failed to persist create-workspace draft:', error);
+        return null;
+      }
 
       openWorkspaceCreate(draftId, {
         issueId: options?.issueId ?? initialState.linkedIssue?.issueId ?? null,

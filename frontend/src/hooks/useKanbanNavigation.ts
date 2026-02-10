@@ -47,13 +47,9 @@ export function useKanbanNavigation() {
   const draftId =
     routeState?.type === 'workspace-create' ? routeState.draftId : null;
 
-  const isLegacyCreateMode =
-    routeState?.type === 'closed' && searchParams.get('mode') === 'create';
-  const isCreateMode =
-    routeState?.type === 'issue-create' || isLegacyCreateMode;
+  const isCreateMode = routeState?.type === 'issue-create';
   const isWorkspaceCreateMode = routeState?.type === 'workspace-create';
-  const isPanelOpen =
-    !!routeState && (routeState.type !== 'closed' || isLegacyCreateMode);
+  const isPanelOpen = !!routeState && routeState.type !== 'closed';
 
   const createDefaultStatusId = searchParams.get('statusId');
   const createDefaultPriority = searchParams.get(
@@ -117,7 +113,6 @@ export function useKanbanNavigation() {
       if (!projectId || !isCreateMode) return;
 
       const params = new URLSearchParams(searchParams);
-      params.delete('mode');
       params.delete('orgId');
       if (options.statusId !== undefined) {
         params.set('statusId', options.statusId);

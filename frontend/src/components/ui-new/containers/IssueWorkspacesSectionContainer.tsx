@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LinkIcon, PlusIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
@@ -28,6 +28,7 @@ export function IssueWorkspacesSectionContainer({
   issueId,
 }: IssueWorkspacesSectionContainerProps) {
   const { t } = useTranslation('common');
+  const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
   const { openIssueWorkspace } = useKanbanNavigation();
   const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
@@ -130,23 +131,28 @@ export function IssueWorkspacesSectionContainer({
 
     const defaults = await getWorkspaceDefaults(workspaces, localWorkspaceIds);
 
-    await openWorkspaceCreateFromState(
-      {
-        initialPrompt,
-        preferredRepos: defaults?.preferredRepos ?? null,
-        project_id: defaults?.project_id ?? null,
-        linkedIssue: issue
-          ? {
-              issueId: issue.id,
-              simpleId: issue.simple_id,
-              title: issue.title,
-              remoteProjectId: projectId,
-            }
-          : null,
-      },
-      { issueId }
-    );
+    const createState = {
+      initialPrompt,
+      preferredRepos: defaults?.preferredRepos ?? null,
+      project_id: defaults?.project_id ?? null,
+      linkedIssue: issue
+        ? {
+            issueId: issue.id,
+            simpleId: issue.simple_id,
+            title: issue.title,
+            remoteProjectId: projectId,
+          }
+        : null,
+    };
+
+    const draftId = await openWorkspaceCreateFromState(createState, { issueId });
+    if (!draftId) {
+      navigate('/workspaces/create', {
+        state: createState,
+      });
+    }
   }, [
+    navigate,
     projectId,
     openWorkspaceCreateFromState,
     getIssue,

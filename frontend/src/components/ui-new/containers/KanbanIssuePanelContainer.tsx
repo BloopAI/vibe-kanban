@@ -748,7 +748,7 @@ export function KanbanIssuePanelContainer() {
           cancelDebouncedDraftIssue();
           deleteDraftIssueScratch().catch(console.error);
 
-          await openWorkspaceCreateFromState(
+          const draftId = await openWorkspaceCreateFromState(
             {
               initialPrompt,
               preferredRepos: defaults?.preferredRepos ?? null,
@@ -762,6 +762,9 @@ export function KanbanIssuePanelContainer() {
             },
             { issueId: syncedIssue.id }
           );
+          if (!draftId) {
+            openIssue(syncedIssue.id);
+          }
           return; // Don't open issue panel since we're navigating away
         }
 
