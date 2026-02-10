@@ -164,8 +164,9 @@ export function KanbanContainer() {
     useState<KanbanFilterState>(defaultKanbanFilters);
   const [showSubIssues, setShowSubIssues] =
     useState<boolean>(defaultShowSubIssues);
-  const [showWorkspaces, setShowWorkspaces] =
-    useState<boolean>(defaultShowWorkspaces);
+  const [showWorkspaces, setShowWorkspaces] = useState<boolean>(
+    defaultShowWorkspaces
+  );
 
   useEffect(() => {
     setKanbanFilters(defaultKanbanFilters);
