@@ -344,12 +344,14 @@ impl IntoResponse for ApiError {
                 )
             }
             ApiError::GitService(git::GitServiceError::GitCLI(
-                git::GitCliError::AuthFailed(_),
+                git::GitCliError::AuthFailed(msg),
             )) => ErrorInfo::with_status(
                 StatusCode::UNAUTHORIZED,
                 "GitServiceError",
-                "Git authentication failed. Check your git credentials or SSH keys and try again."
-                    .to_string(),
+                format!(
+                    "{}. Check your git credentials or SSH keys and try again.",
+                    msg
+                ),
             ),
             ApiError::GitService(e) => ErrorInfo::with_status(
                 StatusCode::INTERNAL_SERVER_ERROR,
