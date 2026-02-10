@@ -1,4 +1,6 @@
-use api_types::{CreateIssueRequest, Issue, ListIssuesResponse, UpdateIssueRequest};
+use api_types::{
+    CreateIssueRequest, Issue, ListIssuesResponse, MutationResponse, UpdateIssueRequest,
+};
 use axum::{
     Router,
     extract::{Json, Path, Query, State},
@@ -6,7 +8,6 @@ use axum::{
     routing::get,
 };
 use serde::Deserialize;
-use services::services::remote_client::RemoteMutationResponse;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -47,7 +48,7 @@ async fn get_issue(
 async fn create_issue(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreateIssueRequest>,
-) -> Result<ResponseJson<ApiResponse<RemoteMutationResponse<Issue>>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<MutationResponse<Issue>>>, ApiError> {
     let client = deployment.remote_client()?;
     let response = client.create_issue(&request).await?;
     Ok(ResponseJson(ApiResponse::success(response)))
@@ -57,7 +58,7 @@ async fn update_issue(
     State(deployment): State<DeploymentImpl>,
     Path(issue_id): Path<Uuid>,
     Json(request): Json<UpdateIssueRequest>,
-) -> Result<ResponseJson<ApiResponse<RemoteMutationResponse<Issue>>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<MutationResponse<Issue>>>, ApiError> {
     let client = deployment.remote_client()?;
     let response = client.update_issue(issue_id, &request).await?;
     Ok(ResponseJson(ApiResponse::success(response)))

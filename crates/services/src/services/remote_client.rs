@@ -5,10 +5,11 @@ use std::time::Duration;
 use api_types::{
     AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
     CreateIssueRequest, CreateOrganizationRequest, CreateOrganizationResponse,
-    CreateWorkspaceRequest, DeleteWorkspaceRequest, GetInvitationResponse, GetOrganizationResponse,
-    HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest, HandoffRedeemResponse, Issue,
-    ListInvitationsResponse, ListIssuesResponse, ListMembersResponse, ListOrganizationsResponse,
-    ListProjectStatusesResponse, ListProjectsResponse, Organization, ProfileResponse,
+    CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest, GetInvitationResponse,
+    GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
+    HandoffRedeemResponse, Issue, ListInvitationsResponse, ListIssuesResponse,
+    ListMembersResponse, ListOrganizationsResponse, ListProjectStatusesResponse,
+    ListProjectsResponse, MutationResponse, Organization, ProfileResponse,
     RevokeInvitationRequest, TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest,
     UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
     UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
@@ -24,19 +25,6 @@ use utils::jwt::extract_expiration;
 use uuid::Uuid;
 
 use super::{auth::AuthContext, oauth_credentials::Credentials};
-
-/// Response wrapper for remote mutation endpoints (create/update).
-#[derive(Debug, Serialize, Deserialize)]
-pub struct RemoteMutationResponse<T> {
-    pub data: T,
-    pub txid: i64,
-}
-
-/// Response wrapper for remote delete endpoints.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct RemoteDeleteResponse {
-    pub txid: i64,
-}
 
 #[derive(Debug, Clone, Error)]
 pub enum RemoteClientError {
@@ -662,7 +650,7 @@ impl RemoteClient {
     pub async fn create_issue(
         &self,
         request: &CreateIssueRequest,
-    ) -> Result<RemoteMutationResponse<Issue>, RemoteClientError> {
+    ) -> Result<MutationResponse<Issue>, RemoteClientError> {
         self.post_authed("/v1/issues", Some(request)).await
     }
 
@@ -671,7 +659,7 @@ impl RemoteClient {
         &self,
         issue_id: Uuid,
         request: &UpdateIssueRequest,
-    ) -> Result<RemoteMutationResponse<Issue>, RemoteClientError> {
+    ) -> Result<MutationResponse<Issue>, RemoteClientError> {
         self.patch_authed(&format!("/v1/issues/{issue_id}"), request)
             .await
     }
@@ -680,7 +668,7 @@ impl RemoteClient {
     pub async fn delete_issue(
         &self,
         issue_id: Uuid,
-    ) -> Result<RemoteDeleteResponse, RemoteClientError> {
+    ) -> Result<DeleteResponse, RemoteClientError> {
         let res = self
             .send(
                 reqwest::Method::DELETE,
@@ -689,7 +677,7 @@ impl RemoteClient {
                 None::<&()>,
             )
             .await?;
-        res.json::<RemoteDeleteResponse>()
+        res.json::<DeleteResponse>()
             .await
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
     }

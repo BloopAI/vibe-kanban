@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use api_types::{
     Issue, ListIssuesResponse, ListOrganizationsResponse, ListProjectStatusesResponse,
-    ProjectStatus,
+    MutationResponse, ProjectStatus,
 };
 use db::models::{
     project::Project,
@@ -23,7 +23,6 @@ use rmcp::{
 };
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json;
-use services::services::remote_client::RemoteMutationResponse;
 use uuid::Uuid;
 
 use crate::routes::{
@@ -781,7 +780,7 @@ impl TaskServer {
         };
 
         let url = self.url("/api/remote/issues");
-        let response: RemoteMutationResponse<Issue> =
+        let response: MutationResponse<Issue> =
             match self.send_json(self.client.post(&url).json(&payload)).await {
                 Ok(r) => r,
                 Err(e) => return Ok(e),
@@ -1172,7 +1171,7 @@ impl TaskServer {
         };
 
         let url = self.url(&format!("/api/remote/issues/{}", issue_id));
-        let response: RemoteMutationResponse<Issue> =
+        let response: MutationResponse<Issue> =
             match self.send_json(self.client.patch(&url).json(&payload)).await {
                 Ok(r) => r,
                 Err(e) => return Ok(e),

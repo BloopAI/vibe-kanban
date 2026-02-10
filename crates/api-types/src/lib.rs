@@ -9,6 +9,7 @@ use serde::{Deserialize, Deserializer};
 
 pub mod issue;
 pub mod issue_assignee;
+pub mod response;
 pub mod issue_comment;
 pub mod issue_comment_reaction;
 pub mod issue_follower;
@@ -29,6 +30,7 @@ pub mod workspace;
 pub mod workspaces;
 
 pub use issue::*;
+pub use response::*;
 pub use issue_assignee::*;
 pub use issue_comment::*;
 pub use issue_comment_reaction::*;
