@@ -517,9 +517,13 @@ export function KanbanContainer() {
 
   const handleAddTask = useCallback(
     (statusId?: string) => {
-      startCreate({ statusId });
+      if (statusId) {
+        startCreate({ statusId });
+        return;
+      }
+      void executeAction(Actions.CreateIssue);
     },
-    [startCreate]
+    [startCreate, executeAction]
   );
 
   // Inline editing callbacks for kanban cards
