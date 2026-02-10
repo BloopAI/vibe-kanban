@@ -704,7 +704,7 @@ impl RemoteClient {
         &self,
         project_id: Uuid,
     ) -> Result<ListProjectStatusesResponse, RemoteClientError> {
-        self.get_authed(&format!("/v1/project-statuses?project_id={project_id}"))
+        self.get_authed(&format!("/v1/project_statuses?project_id={project_id}"))
             .await
     }
 
