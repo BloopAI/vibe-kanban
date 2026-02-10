@@ -60,6 +60,7 @@ export interface IssueWorkspaceCardProps {
 export interface IssueWorkspaceCreateCardProps {
   onClick?: () => void;
   className?: string;
+  shouldAnimateCreateButton?: boolean;
 }
 
 interface IssueWorkspaceCardContainerProps {
@@ -314,6 +315,7 @@ export function IssueWorkspaceCard({
 export function IssueWorkspaceCreateCard({
   onClick,
   className,
+  shouldAnimateCreateButton = false,
 }: IssueWorkspaceCreateCardProps) {
   const { t } = useTranslation('common');
 
@@ -337,7 +339,10 @@ export function IssueWorkspaceCreateCard({
           type="button"
           onClick={onClick}
           disabled={!onClick}
-          className="shrink-0 rounded-sm px-base py-half text-cta h-cta flex items-center bg-brand text-on-brand hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className={cn(
+            'shrink-0 rounded-sm px-base py-half text-cta h-cta flex items-center bg-brand-secondary text-on-brand hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+            shouldAnimateCreateButton && 'create-issue-attention'
+          )}
         >
           {t('create', 'Create')}
         </button>

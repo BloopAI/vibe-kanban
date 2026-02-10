@@ -46,6 +46,7 @@ export function IssueWorkspacesSectionContainer({
     pullRequests,
     getIssue,
     getWorkspacesForIssue,
+    issues,
     isLoading: projectLoading,
   } = useProjectContext();
   const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
@@ -117,6 +118,15 @@ export function IssueWorkspacesSectionContainer({
   ]);
 
   const isLoading = projectLoading || orgLoading;
+  const shouldAnimateCreateButton = useMemo(() => {
+    if (issues.length !== 1) {
+      return false;
+    }
+
+    return issues.every(
+      (issue) => getWorkspacesForIssue(issue.id).length === 0
+    );
+  }, [issues, getWorkspacesForIssue]);
 
   // Handle clicking '+' to create and link a new workspace directly
   const handleAddWorkspace = useCallback(async () => {
@@ -278,6 +288,7 @@ export function IssueWorkspacesSectionContainer({
       onCreateWorkspace={handleAddWorkspace}
       onUnlinkWorkspace={handleUnlinkWorkspace}
       onDeleteWorkspace={handleDeleteWorkspace}
+      shouldAnimateCreateButton={shouldAnimateCreateButton}
     />
   );
 }

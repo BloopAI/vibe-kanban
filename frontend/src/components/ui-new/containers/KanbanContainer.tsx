@@ -196,6 +196,7 @@ export function KanbanContainer() {
       defaultShowWorkspaces,
     ]
   );
+  const shouldAnimateCreateButton = issues.length === 0;
 
   const { filteredIssues } = useKanbanFilters({
     issues,
@@ -777,6 +778,7 @@ export function KanbanContainer() {
             onShowWorkspacesChange={setShowWorkspaces}
             onClearFilters={clearKanbanFilters}
             onCreateIssue={handleAddTask}
+            shouldAnimateCreateButton={shouldAnimateCreateButton}
           />
         </div>
       </div>

@@ -41,6 +41,7 @@ interface KanbanFilterBarProps {
   onShowWorkspacesChange: (show: boolean) => void;
   onClearFilters: () => void;
   onCreateIssue: () => void;
+  shouldAnimateCreateButton: boolean;
 }
 
 export function KanbanFilterBar({
@@ -65,6 +66,7 @@ export function KanbanFilterBar({
   onShowWorkspacesChange,
   onClearFilters,
   onCreateIssue,
+  shouldAnimateCreateButton,
 }: KanbanFilterBarProps) {
   const { t } = useTranslation('common');
 
@@ -129,6 +131,7 @@ export function KanbanFilterBar({
           value={t('kanban.newIssue', 'New issue')}
           actionIcon={PlusIcon}
           onClick={() => onCreateIssue()}
+          className={cn(shouldAnimateCreateButton && 'create-issue-attention')}
         />
       </div>
 

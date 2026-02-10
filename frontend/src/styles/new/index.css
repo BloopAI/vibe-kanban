@@ -407,6 +407,38 @@
     -webkit-mask-composite: xor;
     mask-composite: exclude;
   }
+
+  .new-design .create-issue-attention {
+    @apply relative;
+  }
+
+  .new-design .create-issue-attention::before {
+    content: '';
+    @apply absolute inset-0 pointer-events-none rounded-sm;
+    padding: 1px;
+    background: linear-gradient(
+      120deg,
+      transparent,
+      hsl(var(--brand)),
+      transparent
+    );
+    background-size: 220% 100%;
+    animation: border-flash 1.2s linear infinite;
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .new-design .create-issue-attention::before {
+      animation: none;
+    }
+  }
 }
 
 /* Color emoji utility - uses system color emoji fonts for reactions */

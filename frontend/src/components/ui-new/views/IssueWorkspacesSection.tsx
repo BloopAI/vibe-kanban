@@ -18,6 +18,7 @@ export interface IssueWorkspacesSectionProps {
   onCreateWorkspace?: () => void;
   onUnlinkWorkspace?: (localWorkspaceId: string) => void;
   onDeleteWorkspace?: (localWorkspaceId: string) => void;
+  shouldAnimateCreateButton?: boolean;
 }
 
 /**
@@ -32,6 +33,7 @@ export function IssueWorkspacesSection({
   onCreateWorkspace,
   onUnlinkWorkspace,
   onDeleteWorkspace,
+  shouldAnimateCreateButton = false,
 }: IssueWorkspacesSectionProps) {
   const { t } = useTranslation('common');
 
@@ -46,7 +48,10 @@ export function IssueWorkspacesSection({
         {isLoading ? (
           <p className="text-low py-half">{t('workspaces.loading')}</p>
         ) : workspaces.length === 0 ? (
-          <IssueWorkspaceCreateCard onClick={onCreateWorkspace} />
+          <IssueWorkspaceCreateCard
+            onClick={onCreateWorkspace}
+            shouldAnimateCreateButton={shouldAnimateCreateButton}
+          />
         ) : (
           workspaces.map((workspace) => {
             const { localWorkspaceId } = workspace;
