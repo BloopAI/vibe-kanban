@@ -90,8 +90,11 @@ impl StandardCodingAgentExecutor for Amp {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let builder = self.build_command_builder()?;
-        let continue_line =
-            builder.build_follow_up(&["--continue".to_string(), session_id.to_string()])?;
+        let continue_line = builder.build_follow_up(&[
+            "threads".to_string(),
+            "--continue".to_string(),
+            session_id.to_string(),
+        ])?;
         let (continue_program, continue_args) = continue_line.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
