@@ -450,12 +450,6 @@ export const attemptsApi = {
     return handleApiResponse<Workspace[]>(response);
   },
 
-  /** Get total count of workspaces */
-  getCount: async (): Promise<number> => {
-    const response = await makeRequest('/api/task-attempts/count');
-    return handleApiResponse<number>(response);
-  },
-
   get: async (attemptId: string): Promise<Workspace> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}`);
     return handleApiResponse<Workspace>(response);

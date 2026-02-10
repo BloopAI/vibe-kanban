@@ -780,20 +780,6 @@ export function GeneralSettingsSection() {
         </div>
       </SettingsCard>
 
-      {/* Beta Features */}
-      <SettingsCard
-        title={t('settings.general.beta.title')}
-        description={t('settings.general.beta.description')}
-      >
-        <SettingsCheckbox
-          id="beta-workspaces"
-          label={t('settings.general.beta.workspaces.label')}
-          description={t('settings.general.beta.workspaces.helper')}
-          checked={draft?.beta_workspaces ?? false}
-          onChange={(checked) => updateDraft({ beta_workspaces: checked })}
-        />
-      </SettingsCard>
-
       <SettingsSaveBar
         show={hasUnsavedChanges}
         saving={saving}

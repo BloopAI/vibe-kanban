@@ -14,7 +14,7 @@ const BetaWorkspacesDialogImpl = NiceModal.create<NoProps>(() => {
   const modal = useModal();
   const { t } = useTranslation('common');
 
-  const handleJoinBeta = () => {
+  const handleMigrate = () => {
     modal.resolve(true);
   };
 
@@ -56,9 +56,7 @@ const BetaWorkspacesDialogImpl = NiceModal.create<NoProps>(() => {
           <Button variant="outline" onClick={handleMaybeLater}>
             {t('betaWorkspaces.maybeLater')}
           </Button>
-          <Button onClick={handleJoinBeta}>
-            {t('betaWorkspaces.joinBeta')}
-          </Button>
+          <Button onClick={handleMigrate}>{t('orgSwitcher.migrate')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
