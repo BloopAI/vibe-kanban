@@ -241,7 +241,7 @@ export function KanbanIssuePanel({
           {/* Description WYSIWYG Editor */}
           <div className="mt-base">
             <WYSIWYGEditor
-              placeholder="Enter task description here..."
+              placeholder="Enter issue description here..."
               value={formData.description ?? ''}
               onChange={(value) => onFormChange('description', value || null)}
               onCmdEnter={onCmdEnterSubmit}
