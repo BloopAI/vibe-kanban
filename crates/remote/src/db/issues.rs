@@ -371,9 +371,46 @@ impl IssueRepository {
         Ok(())
     }
 
+    /// Moves an issue to the given target status if its current status is "Backlog" or "To do".
+    async fn move_to_status_if_pending(
+        pool: &PgPool,
+        issue_id: Uuid,
+        current_status_id: Uuid,
+        target_status_id: Uuid,
+    ) -> Result<(), IssueError> {
+        let Some(current_status) =
+            ProjectStatusRepository::find_by_id(pool, current_status_id).await?
+        else {
+            return Ok(());
+        };
+
+        let name = current_status.name.to_lowercase();
+        if name == "backlog" || name == "to do" {
+            Self::update(
+                pool,
+                issue_id,
+                Some(target_status_id),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .await?;
+        }
+
+        Ok(())
+    }
+
     /// Syncs issue status when a workspace is created.
     /// If this is the first workspace for the issue and the issue is in "Backlog" or "To do",
-    /// moves the issue to "In progress".
+    /// moves the issue to "In progress". If the issue is a sub-issue, also moves the parent
+    /// issue to "In progress" if it's in "Backlog" or "To do".
     pub async fn sync_status_from_workspace_created(
         pool: &PgPool,
         issue_id: Uuid,
@@ -387,39 +424,32 @@ impl IssueRepository {
             return Ok(());
         };
 
-        let Some(current_status) =
-            ProjectStatusRepository::find_by_id(pool, issue.status_id).await?
-        else {
-            return Ok(());
-        };
-
-        let current_name_lower = current_status.name.to_lowercase();
-        if current_name_lower != "backlog" && current_name_lower != "to do" {
-            return Ok(());
-        }
-
         let Some(in_progress_status) =
             ProjectStatusRepository::find_by_name(pool, issue.project_id, "In progress").await?
         else {
             return Ok(());
         };
 
-        Self::update(
+        Self::move_to_status_if_pending(
             pool,
             issue_id,
-            Some(in_progress_status.id),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
+            issue.status_id,
+            in_progress_status.id,
         )
         .await?;
+
+        // If sub-issue, also move parent issue to "In progress"
+        if let Some(parent_issue_id) = issue.parent_issue_id {
+            if let Some(parent_issue) = Self::find_by_id(pool, parent_issue_id).await? {
+                Self::move_to_status_if_pending(
+                    pool,
+                    parent_issue_id,
+                    parent_issue.status_id,
+                    in_progress_status.id,
+                )
+                .await?;
+            }
+        }
 
         Ok(())
     }
