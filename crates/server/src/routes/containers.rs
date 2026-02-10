@@ -46,7 +46,8 @@ pub async fn get_context(
     Query(payload): Query<ContainerQuery>,
 ) -> Result<ResponseJson<ApiResponse<WorkspaceContext>>, ApiError> {
     let result =
-        Workspace::resolve_container_ref(&deployment.db().pool, &payload.container_ref).await;
+        Workspace::resolve_container_ref_by_prefix(&deployment.db().pool, &payload.container_ref)
+            .await;
 
     match result {
         Ok(info) => {
