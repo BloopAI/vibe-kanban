@@ -93,7 +93,7 @@ export function KanbanContainer() {
   const projectName = projects.find((p) => p.id === projectId)?.name ?? '';
 
   // Apply filters
-  const { filteredIssues, hasActiveFilters } = useKanbanFilters({
+  const { filteredIssues } = useKanbanFilters({
     issues,
     issueAssignees,
     issueTags,
@@ -117,12 +117,12 @@ export function KanbanContainer() {
     openAssigneeSelection,
   } = useActions();
 
-  const projectViewState = useUiPreferencesStore(
-    (s) => s.kanbanProjectViewsByProject[projectId]
+  const projectViewSelection = useUiPreferencesStore(
+    (s) => s.kanbanProjectViewSelections[projectId]
   );
   const { filters: kanbanFilters, showWorkspaces } = useMemo(
-    () => resolveKanbanProjectState(projectViewState),
-    [projectViewState]
+    () => resolveKanbanProjectState(projectViewSelection),
+    [projectViewSelection]
   );
   const kanbanViewMode = useUiPreferencesStore((s) => s.kanbanViewMode);
   const listViewStatusFilter = useUiPreferencesStore(
@@ -132,30 +132,7 @@ export function KanbanContainer() {
   const setListViewStatusFilter = useUiPreferencesStore(
     (s) => s.setListViewStatusFilter
   );
-  const ensureKanbanProjectViews = useUiPreferencesStore(
-    (s) => s.ensureKanbanProjectViews
-  );
-  const applyKanbanView = useUiPreferencesStore((s) => s.applyKanbanView);
-
-  // Ensure project-specific views/draft state when entering a project.
-  useEffect(() => {
-    ensureKanbanProjectViews(projectId);
-  }, [projectId, ensureKanbanProjectViews]);
-
-  useEffect(() => {
-    if (!projectViewState) {
-      return;
-    }
-
-    const activeViewExists = projectViewState.views.some(
-      (view) => view.id === projectViewState.activeViewId
-    );
-    if (!activeViewExists && projectViewState.views.length > 0) {
-      applyKanbanView(projectId, projectViewState.views[0].id);
-    }
-  }, [projectId, projectViewState, applyKanbanView]);
-
-  // Reset view mode and ensure project-specific views when navigating projects
+  // Reset view mode when navigating projects
   const prevProjectIdRef = useRef<string | null>(null);
 
   // Track when drag-drop sync is in progress to prevent flicker
@@ -242,7 +219,6 @@ export function KanbanContainer() {
 
   // Track items as arrays of IDs grouped by status
   const [items, setItems] = useState<Record<string, string[]>>({});
-  const [isFiltersDialogOpen, setIsFiltersDialogOpen] = useState(false);
 
   // Sync items from filtered issues when they change
   useEffect(() => {
@@ -624,11 +600,6 @@ export function KanbanContainer() {
             onStatusSelect={setListViewStatusFilter}
           />
           <KanbanFilterBar
-            isFiltersDialogOpen={isFiltersDialogOpen}
-            onFiltersDialogOpenChange={setIsFiltersDialogOpen}
-            tags={tags}
-            users={[...membersWithProfilesById.values()]}
-            hasActiveFilters={hasActiveFilters}
             statuses={sortedStatuses}
             projectId={projectId}
             issueCountByStatus={issueCountByStatus}
