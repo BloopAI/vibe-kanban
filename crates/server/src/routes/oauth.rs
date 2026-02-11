@@ -204,10 +204,12 @@ async fn handoff_complete(
 
         // Merge the local machine-based ID with the remote user UUID so all
         // events (local frontend, local backend, remote backend) resolve to
-        // the same PostHog person.
+        // the same PostHog person. Uses $merge_dangerously because
+        // $create_alias is blocked by PostHog's safeguard when the machine
+        // ID was already used as a distinct_id in a prior identify call.
         analytics.track_event(
             &profile.user_id.to_string(),
-            "$create_alias",
+            "$merge_dangerously",
             Some(serde_json::json!({
                 "alias": deployment.user_id(),
             })),
