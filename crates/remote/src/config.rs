@@ -15,6 +15,7 @@ pub struct RemoteServerConfig {
     pub electric_role_password: Option<SecretString>,
     pub r2: Option<R2Config>,
     pub review_worker_base_url: Option<String>,
+    pub review_disabled: bool,
     pub github_app: Option<GitHubAppConfig>,
 }
 
@@ -152,6 +153,10 @@ impl RemoteServerConfig {
 
         let review_worker_base_url = env::var("REVIEW_WORKER_BASE_URL").ok();
 
+        let review_disabled = env::var("REVIEW_DISABLED")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+
         let github_app = GitHubAppConfig::from_env()?;
 
         Ok(Self {
@@ -164,6 +169,7 @@ impl RemoteServerConfig {
             electric_role_password,
             r2,
             review_worker_base_url,
+            review_disabled,
             github_app,
         })
     }

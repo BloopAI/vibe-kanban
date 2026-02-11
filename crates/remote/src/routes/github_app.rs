@@ -824,6 +824,10 @@ async fn try_trigger_pr_review(
     ctx: TriggerReviewContext<'_>,
     check_pending: bool,
 ) -> Result<(), &'static str> {
+    if state.config.review_disabled {
+        return Err("Review feature is disabled");
+    }
+
     // Check if we have this installation
     let gh_repo = GitHubAppRepository2::new(state.pool());
     let installation = gh_repo
@@ -1076,6 +1080,13 @@ pub async fn trigger_pr_review(
     State(state): State<AppState>,
     Json(payload): Json<TriggerPrReviewRequest>,
 ) -> Result<Json<TriggerPrReviewResponse>, ErrorResponse> {
+    if state.config.review_disabled {
+        return Err(ErrorResponse::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "Review feature is disabled",
+        ));
+    }
+
     // 1. Parse PR URL
     let (owner, repo, pr_number) = parse_pr_url(&payload.pr_url)
         .ok_or_else(|| ErrorResponse::new(StatusCode::BAD_REQUEST, "Invalid PR URL format"))?;
