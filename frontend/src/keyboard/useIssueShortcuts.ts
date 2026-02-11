@@ -42,10 +42,7 @@ export function useIssueShortcuts() {
     isCreatingIssueRef.current = isCreatingIssue;
   });
 
-  const issueIds = useMemo(
-    () => (issueId ? [issueId] : []),
-    [issueId]
-  );
+  const issueIds = useMemo(() => (issueId ? [issueId] : []), [issueId]);
   const issueIdsRef = useRef(issueIds);
   useEffect(() => {
     issueIdsRef.current = issueIds;
@@ -70,11 +67,10 @@ export function useIssueShortcuts() {
 
   const enabled = isKanban;
 
-  useHotkeys(
-    'i>c',
-    () => executeIssueAction(Actions.CreateIssue),
-    { ...OPTIONS, enabled }
-  );
+  useHotkeys('i>c', () => executeIssueAction(Actions.CreateIssue), {
+    ...OPTIONS,
+    enabled,
+  });
   useHotkeys(
     'i>s',
     () => {
@@ -108,34 +104,28 @@ export function useIssueShortcuts() {
     },
     { ...OPTIONS, enabled }
   );
-  useHotkeys(
-    'i>m',
-    () => executeIssueAction(Actions.MakeSubIssueOf),
-    { ...OPTIONS, enabled }
-  );
-  useHotkeys(
-    'i>b',
-    () => executeIssueAction(Actions.AddSubIssue),
-    { ...OPTIONS, enabled }
-  );
-  useHotkeys(
-    'i>u',
-    () => executeIssueAction(Actions.RemoveParentIssue),
-    { ...OPTIONS, enabled }
-  );
-  useHotkeys(
-    'i>w',
-    () => executeIssueAction(Actions.LinkWorkspace),
-    { ...OPTIONS, enabled }
-  );
-  useHotkeys(
-    'i>d',
-    () => executeIssueAction(Actions.DuplicateIssue),
-    { ...OPTIONS, enabled }
-  );
-  useHotkeys(
-    'i>x',
-    () => executeIssueAction(Actions.DeleteIssue),
-    { ...OPTIONS, enabled }
-  );
+  useHotkeys('i>m', () => executeIssueAction(Actions.MakeSubIssueOf), {
+    ...OPTIONS,
+    enabled,
+  });
+  useHotkeys('i>b', () => executeIssueAction(Actions.AddSubIssue), {
+    ...OPTIONS,
+    enabled,
+  });
+  useHotkeys('i>u', () => executeIssueAction(Actions.RemoveParentIssue), {
+    ...OPTIONS,
+    enabled,
+  });
+  useHotkeys('i>w', () => executeIssueAction(Actions.LinkWorkspace), {
+    ...OPTIONS,
+    enabled,
+  });
+  useHotkeys('i>d', () => executeIssueAction(Actions.DuplicateIssue), {
+    ...OPTIONS,
+    enabled,
+  });
+  useHotkeys('i>x', () => executeIssueAction(Actions.DeleteIssue), {
+    ...OPTIONS,
+    enabled,
+  });
 }
