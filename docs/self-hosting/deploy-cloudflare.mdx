@@ -1,17 +1,9 @@
 ---
 title: "Deploy with Cloudflare Tunnel"
-description: "Securely expose your self-hosted Vibe Kanban using Cloudflare Tunnel"
+description: "Deploy Vibe Kanban Cloud with Cloudflare Tunnel"
 ---
 
-[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) provides a secure way to expose your self-hosted Vibe Kanban instance to the internet without opening ports on your firewall. This guide shows how to deploy Vibe Kanban on any server and expose it through Cloudflare.
-
-## Why Cloudflare Tunnel?
-
-- **No open ports** - Your server doesn't need any inbound ports open
-- **Automatic HTTPS** - Cloudflare handles SSL certificates
-- **DDoS protection** - Cloudflare's network protects your origin
-- **Global CDN** - Static assets served from Cloudflare's edge
-- **Zero Trust ready** - Integrate with Cloudflare Access for additional security
+This guide shows how to deploy Vibe Kanban on any server and expose it through [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/).
 
 ## Prerequisites
 
@@ -253,22 +245,6 @@ git pull origin main
 
 cd crates/remote
 docker compose --env-file ../../.env.remote -f docker-compose.cloudflare.yml up -d --build
-```
-
-## Backup
-
-### Database Backup
-
-```bash
-docker compose -f docker-compose.cloudflare.yml exec remote-db \
-  pg_dump -U remote remote > backup_$(date +%Y%m%d).sql
-```
-
-### Restore
-
-```bash
-docker compose -f docker-compose.cloudflare.yml exec -T remote-db \
-  psql -U remote remote < backup.sql
 ```
 
 ## Monitoring

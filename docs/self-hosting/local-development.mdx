@@ -1,6 +1,6 @@
 ---
 title: "Local Development"
-description: "Run Vibe Kanban Cloud locally for development and testing"
+description: "Run Vibe Kanban Cloud locally"
 ---
 
 This guide walks you through setting up a local Vibe Kanban Cloud instance for development and testing.
@@ -68,8 +68,8 @@ Copy the output and create your `.env.remote`:
 # Required - JWT secret for authentication
 VIBEKANBAN_REMOTE_JWT_SECRET=<paste_your_generated_secret_here>
 
-# Required - Password for ElectricSQL database role (electric_sync user)
-ELECTRIC_ROLE_PASSWORD=your_secure_password_here
+# Optional - Password for ElectricSQL database role (electric_sync user)
+ELECTRIC_ROLE_PASSWORD=
 
 # OAuth — configure at least one provider. Leave the other empty or remove it.
 GITHUB_OAUTH_CLIENT_ID=your_github_client_id
@@ -82,10 +82,6 @@ GOOGLE_OAUTH_CLIENT_SECRET=
 # Email invitations (optional — leave empty to disable)
 LOOPS_EMAIL_API_KEY=
 ```
-
-<Info>
-The `ELECTRIC_ROLE_PASSWORD` is used to create a database role called `electric_sync` that ElectricSQL uses for real-time replication. The remote server creates this role automatically on startup.
-</Info>
 
 <Warning>
 Never commit `.env.remote` to version control. It's already in `.gitignore`.
@@ -108,11 +104,6 @@ This starts:
 <Warning>
 The remote server binds to `127.0.0.1:3000` only - it's not accessible from other machines. For production, use a reverse proxy.
 </Warning>
-
-<Info>
-The first build takes several minutes as it compiles the Rust backend. Subsequent starts are much faster.
-</Info>
-
 Wait until you see health checks passing:
 
 ```

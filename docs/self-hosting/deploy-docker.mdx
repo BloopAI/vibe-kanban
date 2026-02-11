@@ -1,6 +1,6 @@
 ---
 title: "Deploy with Docker Compose"
-description: "Deploy Vibe Kanban Cloud on any server using Docker Compose"
+description: "Deploy Vibe Kanban Cloud using Docker Compose"
 ---
 
 This guide covers deploying Vibe Kanban Cloud on any Linux server using Docker Compose. This approach works with any cloud provider (AWS, DigitalOcean, Hetzner, etc.) or on-premises server.
@@ -214,22 +214,6 @@ git pull origin main
 
 cd crates/remote
 docker compose --env-file ../../.env.remote -f docker-compose.prod.yml up -d --build
-```
-
-## Backup and Restore
-
-### Backup Database
-
-```bash
-docker compose -f docker-compose.prod.yml exec remote-db \
-  pg_dump -U remote remote > backup_$(date +%Y%m%d).sql
-```
-
-### Restore Database
-
-```bash
-docker compose -f docker-compose.prod.yml exec -T remote-db \
-  psql -U remote remote < backup_20240101.sql
 ```
 
 ## Monitoring

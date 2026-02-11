@@ -3,32 +3,6 @@ title: "Self-Hosting"
 description: "Host your own Vibe Kanban Cloud instance for full control and privacy"
 ---
 
-Self-hosting Vibe Kanban Cloud gives you complete control over your data while providing the same real-time collaboration features as the hosted version.
-
-## Why Self-Host?
-
-<CardGroup cols={2}>
-<Card title="Data Privacy" icon="shield-halved">
-  Keep all your project data on your own infrastructure. No data leaves your servers.
-</Card>
-
-<Card title="Full Control" icon="sliders">
-  Customise the deployment to your needs. No usage limits or restrictions.
-</Card>
-
-<Card title="Compliance" icon="clipboard-check">
-  Meet internal security and compliance requirements by hosting within your own environment.
-</Card>
-
-<Card title="Cost Control" icon="coins">
-  For larger teams, self-hosting can be more cost-effective than per-seat pricing.
-</Card>
-</CardGroup>
-
-## Billing
-
-The self-hosted build does **not** include any billing or payment functionality. The billing crate is a private dependency that is automatically stripped during the Docker build process. All features work without restrictions — there are no seat limits, usage caps, or feature gates.
-
 ## Architecture Overview
 
 The self-hosted Vibe Kanban Cloud stack consists of three main components:
@@ -76,7 +50,6 @@ All deployments require these environment variables:
 | Variable | Description |
 |----------|-------------|
 | `VIBEKANBAN_REMOTE_JWT_SECRET` | Secret for signing JWT tokens. Generate with `openssl rand -base64 48` |
-| `ELECTRIC_ROLE_PASSWORD` | Password for the `electric_sync` database role used by ElectricSQL |
 
 <Info>
 The `electric_sync` database user is created automatically by the Remote Server on first startup. This means you must deploy and start the Remote Server before ElectricSQL can connect to the database.
@@ -108,8 +81,7 @@ You need to configure at least one OAuth provider (GitHub or Google). You can co
 | Variable | Description |
 |----------|-------------|
 | `LOOPS_EMAIL_API_KEY` | API key for sending invitation emails. Leave empty to disable. |
-| `R2_ACCESS_KEY_ID` | Cloudflare R2 access key for code review storage |
-| `GITHUB_APP_ID` | GitHub App ID for deeper GitHub integration |
+| `ELECTRIC_ROLE_PASSWORD` | Password for the `electric_sync` database role used by ElectricSQL |
 
 ## Connecting Your Client
 

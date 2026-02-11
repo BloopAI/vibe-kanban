@@ -1,16 +1,9 @@
 ---
 title: "Deploy to Fly.io"
-description: "Deploy Vibe Kanban Cloud to Fly.io for a scalable, global deployment"
+description: "Deploy Vibe Kanban Cloud to Fly.io"
 ---
 
-[Fly.io](https://fly.io) is a platform for running applications close to users worldwide. This guide walks you through deploying Vibe Kanban Cloud on Fly.io.
-
-## Why Fly.io?
-
-- **Global edge deployment** - Run your instance close to your users
-- **Simple scaling** - Scale up or down with a single command
-- **Managed Postgres** - Built-in PostgreSQL with automatic backups
-- **Free tier** - Generous free tier for small teams
+This guide walks you through deploying Vibe Kanban Cloud on [Fly.io](https://fly.io).
 
 ## Prerequisites
 
@@ -173,10 +166,6 @@ Deploy the main application first so it can create the `electric_sync` database 
 ```bash
 flyctl deploy
 ```
-
-<Info>
-The first deployment takes 10-15 minutes as it builds the Rust backend. Wait until the health checks pass before proceeding.
-</Info>
 
 ## Step 9: Deploy ElectricSQL
 
