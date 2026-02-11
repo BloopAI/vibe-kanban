@@ -3,8 +3,8 @@ use std::{str::FromStr, sync::Arc};
 use db::{
     DBService,
     models::{
-        execution_process::ExecutionProcess, project::Project, scratch::Scratch, task::Task,
-        workspace::Workspace,
+        execution_process::ExecutionProcess, project::Project, scratch::Scratch, session::Session,
+        task::Task, workspace::Workspace,
     },
 };
 use serde_json::json;
@@ -67,7 +67,6 @@ impl EventService {
         msg_store: Arc<MsgStore>,
         session_id: Uuid,
     ) -> Result<(), SqlxError> {
-        use db::models::session::Session;
         if let Some(session) = Session::find_by_id(pool, session_id).await?
             && let Some(workspace) = Workspace::find_by_id(pool, session.workspace_id).await?
         {
@@ -82,7 +81,6 @@ impl EventService {
         msg_store: Arc<MsgStore>,
         session_id: Uuid,
     ) -> Result<(), SqlxError> {
-        use db::models::session::Session;
         if let Some(session) = Session::find_by_id(pool, session_id).await?
             && let Some(workspace_with_status) =
                 Workspace::find_by_id_with_status(pool, session.workspace_id).await?

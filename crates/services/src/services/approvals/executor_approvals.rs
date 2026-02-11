@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use db::{self, DBService};
+use db::{self, DBService, models::execution_process::ExecutionProcess};
 use executors::approvals::{ExecutorApprovalError, ExecutorApprovalService};
 use serde_json::Value;
+use tokio_util::sync::CancellationToken;
 use utils::approvals::{ApprovalRequest, ApprovalStatus, CreateApprovalRequest};
 use uuid::Uuid;
 
@@ -39,6 +40,7 @@ impl ExecutorApprovalService for ExecutorApprovalBridge {
         tool_name: &str,
         tool_input: Value,
         tool_call_id: &str,
+        cancel: CancellationToken,
     ) -> Result<ApprovalStatus, ExecutorApprovalError> {
         super::ensure_task_in_review(&self.db.pool, self.execution_process_id).await;
 
@@ -51,21 +53,34 @@ impl ExecutorApprovalService for ExecutorApprovalBridge {
             self.execution_process_id,
         );
 
-        let (_, waiter) = self
+        let (request, waiter) = self
             .approvals
             .create_with_waiter(request)
             .await
             .map_err(ExecutorApprovalError::request_failed)?;
 
-        // Play notification sound when approval is needed
+        let approval_id = request.id.clone();
+
+        let task_name = ExecutionProcess::load_context(&self.db.pool, self.execution_process_id)
+            .await
+            .map(|ctx| ctx.task.title)
+            .unwrap_or_else(|_| "Unknown task".to_string());
+
         self.notification_service
             .notify(
-                "Approval Needed",
+                &format!("Approval Needed: {}", task_name),
                 &format!("Tool '{}' requires approval", tool_name),
             )
             .await;
 
-        let status = waiter.clone().await;
+        let status = tokio::select! {
+            _ = cancel.cancelled() => {
+                tracing::info!("Approval request cancelled for tool_call_id={}", tool_call_id);
+                self.approvals.cancel(&approval_id).await;
+                return Err(ExecutorApprovalError::Cancelled);
+            }
+            status = waiter.clone() => status,
+        };
 
         if matches!(status, ApprovalStatus::Pending) {
             return Err(ExecutorApprovalError::request_failed(

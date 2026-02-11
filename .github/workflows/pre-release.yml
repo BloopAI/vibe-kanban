@@ -38,7 +38,7 @@ jobs:
       branch_suffix: ${{ steps.branch.outputs.suffix }}
     steps:
       - name: Cache cargo-edit
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         id: cache-cargo-edit
         with:
           path: ~/.cargo/bin/cargo-set-version
@@ -48,13 +48,20 @@ jobs:
         if: steps.cache-cargo-edit.outputs.cache-hit != 'true'
         run: cargo install cargo-edit
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           ssh-key: ${{ secrets.DEPLOY_KEY }}
 
       - name: setup node
         uses: ./.github/actions/setup-node
+
+      - name: Setup SSH Agent for private dependencies
+        id: ssh-setup
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VK_PRIVATE_DEPLOY_KEY }}
 
       - name: Generate branch suffix
         id: branch
@@ -69,14 +76,43 @@ jobs:
       - name: Determine and update versions
         id: version
         run: |
+          # Get the latest version from npm registry
+          latest_npm_version=$(npm view vibe-kanban version 2>/dev/null || echo "0.0.0")
+          echo "Latest npm version: $latest_npm_version"
+
+          # Get current repo version
+          current_repo_version=$(node -p "require('./package.json').version")
+          echo "Current repo version: $current_repo_version"
+
+          # Use the higher of the two versions as the base (prevents downgrade errors with cargo set-version)
+          base_version=$(node -e "
+            const npm = '$latest_npm_version'.split('.').map(Number);
+            const repo = '$current_repo_version'.split('.').map(Number);
+            for (let i = 0; i < 3; i++) {
+              if ((npm[i] || 0) > (repo[i] || 0)) { console.log('$latest_npm_version'); process.exit(); }
+              if ((npm[i] || 0) < (repo[i] || 0)) { console.log('$current_repo_version'); process.exit(); }
+            }
+            console.log('$current_repo_version');
+          ")
+          echo "Base version for bump: $base_version"
+
           timestamp=$(date +%Y%m%d%H%M%S)
 
-          # Hardcoded version
-          new_version="0.0.146"
-          new_tag="v${new_version}-${timestamp}"
+          # Update root package.json based on base version
+          if [[ "${{ github.event.inputs.version_type }}" == "prerelease" ]]; then
+            # For prerelease, use current package.json version and add branch suffix
+            npm version prerelease --preid="${{ steps.branch.outputs.suffix }}" --no-git-tag-version
 
-          # Update root package.json
-          npm version $new_version --no-git-tag-version --allow-same-version
+            new_version=$(node -p "require('./package.json').version")
+            new_tag="v${new_version}.${timestamp}"
+          else
+            # For regular releases, use base version and bump it
+            npm version $base_version --no-git-tag-version --allow-same-version
+            npm version ${{ github.event.inputs.version_type }} --no-git-tag-version
+
+            new_version=$(node -p "require('./package.json').version")
+            new_tag="v${new_version}-${timestamp}"
+          fi
 
           # Update npx-cli package.json to match
           cd npx-cli
@@ -94,12 +130,21 @@ jobs:
           echo "new_version=$new_version" >> $GITHUB_OUTPUT
           echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
 
+      - name: Update remote crate lockfile
+        if: ${{ steps.ssh-setup.outcome == 'success' }}
+        run: cargo generate-lockfile --manifest-path crates/remote/Cargo.toml
+
+      - name: Stop SSH agent
+        if: ${{ steps.ssh-setup.outcome == 'success' }}
+        run: ssh-agent -k
+
       - name: Commit changes and create tag
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add package.json pnpm-lock.yaml npx-cli/package.json frontend/package.json Cargo.lock
           git add $(find . -name Cargo.toml)
+          [ -f crates/remote/Cargo.lock ] && git add crates/remote/Cargo.lock || true
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
           git tag -a ${{ steps.version.outputs.new_tag }} -m "Release ${{ steps.version.outputs.new_tag }}"
           git push
@@ -112,7 +157,7 @@ jobs:
       VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY: ${{ secrets.PUBLIC_REACT_VIRTUOSO_LICENSE_KEY }}
       VITE_VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
 
@@ -148,7 +193,7 @@ jobs:
           ignore_missing: true
 
       - name: Upload frontend artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: frontend-dist
           path: frontend/dist/
@@ -188,7 +233,7 @@ jobs:
       RUSTUP_HOME: ${{ github.workspace }}/.rustup
       XWIN_CACHE_DIR: ${{ github.workspace }}/.xwin-cache
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
 
@@ -196,7 +241,7 @@ jobs:
         uses: BloopAI/sccache-action@main
 
       - name: Cache Rust toolchain
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .rustup/toolchains
           key: rust-toolchain-${{ runner.os }}-${{ matrix.target }}-${{ env.RUST_TOOLCHAIN }}
@@ -269,7 +314,7 @@ jobs:
           cargo install --locked cargo-sweep --version 0.8.0
 
       - name: Download frontend artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: frontend-dist
           path: frontend/dist/
@@ -300,7 +345,15 @@ jobs:
       - name: Build backend (Windows)
         if: runner.os == 'Linux' && contains(matrix.target, 'windows')
         run: |
-          cargo xwin build --release --target ${{ matrix.target }} -p server -p review --bin server --bin mcp_task_server --bin review
+          if [[ "${{ matrix.target }}" == "aarch64-pc-windows-msvc" ]]; then
+            # ring requires clang on arm64 windows. See https://github.com/briansmith/ring/issues/2117
+            chmod +x scripts/ring-cc-wrapper.sh scripts/clang
+            export PATH="${{ github.workspace }}/scripts:$PATH"
+            export RING_CC=/usr/lib/llvm-19/bin/clang
+            export DEFAULT_CC=clang-cl
+            export CC_aarch64_pc_windows_msvc="${{ github.workspace }}/scripts/ring-cc-wrapper.sh"
+          fi
+          cargo xwin build --cross-compiler clang-cl --release --target ${{ matrix.target }} -p server -p review --bin server --bin mcp_task_server --bin review
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
@@ -420,7 +473,7 @@ jobs:
           rm -rf private_keys/
 
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: backend-binary-${{ matrix.name }}
           path: dist/
@@ -472,18 +525,18 @@ jobs:
             mcp_binary: vibe-kanban-mcp
             review_binary: vibe-kanban-review
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
 
       - name: Download frontend artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: frontend-dist
           path: frontend/dist/
 
       - name: Download backend binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: backend-binary-${{ matrix.name }}
           path: dist/
@@ -519,7 +572,7 @@ jobs:
           cp dist/vibe-kanban-review-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/vibe-kanban-review.zip
 
       - name: Upload platform package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: npx-platform-${{ matrix.name }}
           path: npx-cli/dist/
@@ -529,12 +582,12 @@ jobs:
     needs: [bump-version, package-npx-cli]
     runs-on: ubuntu-latest-m
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
 
       - name: Download all platform packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: npx-platform-*
           path: binaries/
@@ -623,12 +676,12 @@ jobs:
     needs: [bump-version, build-frontend, upload-to-r2]
     runs-on: ubuntu-latest-m
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
 
       - name: Download frontend artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: frontend-dist
           path: frontend/dist/

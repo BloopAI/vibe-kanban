@@ -139,7 +139,7 @@ impl PlainTextBuffer {
         self.total_len = self.lines.iter().map(|s| s.len()).sum();
     }
 
-    /// Get the current parial line.
+    /// Get the current partial line.
     pub fn partial_line(&self) -> Option<&str> {
         if let Some(last) = self.lines.last()
             && !last.ends_with('\n')

@@ -109,6 +109,7 @@ module.exports = {
         'brand-secondary': "hsl(var(--brand-secondary))",
         error: "hsl(var(--error))",
         success: "hsl(var(--success))",
+        merged: "hsl(var(--merged))",
         // Text on accent
         'on-brand': "hsl(var(--text-on-brand))",
         // shadcn-style colors (used by @apply in CSS base layer)
@@ -130,8 +131,8 @@ module.exports = {
         half: getSize('base', 0.5),
       },
       fontFamily: {
-        'ibm-plex-sans': ['IBM Plex Sans', 'Noto Emoji', 'sans-serif'],
-        'ibm-plex-mono': ['IBM Plex Mono', 'Noto Emoji', 'monospace'],
+        'ibm-plex-sans': ['"IBM Plex Sans"', '"Noto Emoji"', 'sans-serif'],
+        'ibm-plex-mono': ['"IBM Plex Mono"', 'monospace'],
       },
       keyframes: {
         "accordion-down": {
@@ -156,6 +157,11 @@ module.exports = {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
         },
+        shake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-2px)' },
+          '20%, 40%, 60%, 80%': { transform: 'translateX(2px)' },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -165,6 +171,7 @@ module.exports = {
         'running-dot-2': 'running-dot 1.4s ease-in-out 0.2s infinite',
         'running-dot-3': 'running-dot 1.4s ease-in-out 0.4s infinite',
         'border-flash': 'border-flash 2s linear infinite',
+        shake: 'shake 0.3s ease-in-out',
       },
     },
   },

@@ -1,7 +1,12 @@
 import { useMemo, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useUserContext } from '@/contexts/remote/UserContext';
 import { useActions } from '@/contexts/ActionsContext';
+import { useUserOrganizations } from '@/hooks/useUserOrganizations';
+import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { Navbar } from '../views/Navbar';
+import { RemoteIssueLink } from './RemoteIssueLink';
 import {
   NavbarActionGroups,
   NavbarDivider,
@@ -59,6 +64,23 @@ function filterNavbarItems(
 export function NavbarContainer() {
   const { executeAction } = useActions();
   const { workspace: selectedWorkspace, isCreateMode } = useWorkspaceContext();
+  const { workspaces } = useUserContext();
+  const location = useLocation();
+  const isOnProjectPage = location.pathname.startsWith('/projects/');
+
+  // Find remote workspace linked to current local workspace
+  const linkedRemoteWorkspace = useMemo(() => {
+    if (!selectedWorkspace?.id) return null;
+    return (
+      workspaces.find((w) => w.local_workspace_id === selectedWorkspace.id) ??
+      null
+    );
+  }, [workspaces, selectedWorkspace?.id]);
+
+  const { data: orgsData } = useUserOrganizations();
+  const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
+  const orgName =
+    orgsData?.organizations.find((o) => o.id === selectedOrgId)?.name ?? '';
 
   // Get action visibility context (includes all state for visibility/active/enabled)
   const actionCtx = useActionVisibilityContext();
@@ -75,26 +97,46 @@ export function NavbarContainer() {
     [executeAction, selectedWorkspace?.id]
   );
 
-  // Filter visible actions for each section
+  const isMigratePage = actionCtx.layoutMode === 'migrate';
+
+  // Filter visible actions for each section (empty on migrate page)
   const leftItems = useMemo(
-    () => filterNavbarItems(NavbarActionGroups.left, actionCtx),
-    [actionCtx]
+    () =>
+      isMigratePage
+        ? []
+        : filterNavbarItems(NavbarActionGroups.left, actionCtx),
+    [actionCtx, isMigratePage]
   );
 
   const rightItems = useMemo(
-    () => filterNavbarItems(NavbarActionGroups.right, actionCtx),
-    [actionCtx]
+    () =>
+      isMigratePage
+        ? []
+        : filterNavbarItems(NavbarActionGroups.right, actionCtx),
+    [actionCtx, isMigratePage]
   );
 
   const navbarTitle = isCreateMode
     ? 'Create Workspace'
-    : selectedWorkspace?.branch;
+    : isMigratePage
+      ? 'Migrate'
+      : isOnProjectPage
+        ? orgName
+        : selectedWorkspace?.branch;
 
   return (
     <Navbar
       workspaceTitle={navbarTitle}
       leftItems={leftItems}
       rightItems={rightItems}
+      leftSlot={
+        linkedRemoteWorkspace?.issue_id ? (
+          <RemoteIssueLink
+            projectId={linkedRemoteWorkspace.project_id}
+            issueId={linkedRemoteWorkspace.issue_id}
+          />
+        ) : null
+      }
       actionContext={actionCtx}
       onExecuteAction={handleExecuteAction}
     />

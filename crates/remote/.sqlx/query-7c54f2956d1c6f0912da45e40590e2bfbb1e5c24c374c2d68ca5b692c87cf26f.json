@@ -1,0 +1,93 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id                  AS \"id!: Uuid\",\n                url                 AS \"url!: String\",\n                number              AS \"number!: i32\",\n                status              AS \"status!: PullRequestStatus\",\n                merged_at           AS \"merged_at: DateTime<Utc>\",\n                merge_commit_sha    AS \"merge_commit_sha: String\",\n                target_branch_name  AS \"target_branch_name!: String\",\n                issue_id            AS \"issue_id!: Uuid\",\n                workspace_id        AS \"workspace_id: Uuid\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\"\n            FROM pull_requests\n            WHERE issue_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "url!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "number!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "status!: PullRequestStatus",
+        "type_info": {
+          "Custom": {
+            "name": "pull_request_status",
+            "kind": {
+              "Enum": [
+                "open",
+                "merged",
+                "closed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "merged_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "merge_commit_sha: String",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "target_branch_name!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "issue_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "workspace_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "7c54f2956d1c6f0912da45e40590e2bfbb1e5c24c374c2d68ca5b692c87cf26f"
+}

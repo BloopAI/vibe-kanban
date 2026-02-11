@@ -46,10 +46,12 @@ export function RepoCardSimple({
       {branches && onBranchChange && (
         <SearchableDropdownContainer
           items={branches}
-          selectedValue={selectedBranch}
+          selectedValue={selectedBranch ?? null}
           getItemKey={(b) => b.name}
           getItemLabel={(b) => b.name}
+          filterItem={null}
           getItemBadge={(b) => (b.is_current ? 'Current' : undefined)}
+          getItemIcon={null}
           onSelect={(b) => onBranchChange(b.name)}
           placeholder="Search"
           emptyMessage="No branches found"

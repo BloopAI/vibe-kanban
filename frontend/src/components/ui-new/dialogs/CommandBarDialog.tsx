@@ -1,12 +1,7 @@
-import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import { useRef, useEffect, useCallback, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  StackIcon,
-  SlidersIcon,
-  SquaresFourIcon,
-  GitBranchIcon,
-} from '@phosphor-icons/react';
 import type { Workspace } from 'shared/types';
 import { defineModal } from '@/lib/modals';
 import { CommandDialog } from '@/components/ui-new/primitives/Command';
@@ -14,317 +9,190 @@ import { CommandBar } from '@/components/ui-new/primitives/CommandBar';
 import { useActions } from '@/contexts/ActionsContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { attemptKeys } from '@/hooks/useAttempt';
-import { type ActionDefinition } from '@/components/ui-new/actions';
-import {
-  Pages,
-  getPageActions,
-  type PageId,
-  type CommandBarGroup,
-  type CommandBarGroupItem,
-  type ResolvedGroup,
-  type ResolvedGroupItem,
+import type {
+  PageId,
+  ResolvedGroupItem,
 } from '@/components/ui-new/actions/pages';
-import { resolveLabel } from '@/components/ui-new/actions';
-import {
-  useActionVisibilityContext,
-  isActionVisible,
-  isPageVisible,
-} from '@/components/ui-new/actions/useActionVisibility';
-
-// Resolved page structure passed to CommandBar
-interface ResolvedCommandBarPage {
-  id: string;
-  title?: string;
-  groups: ResolvedGroup[];
-}
+import { ActionTargetType } from '@/components/ui-new/actions';
+import { useActionVisibilityContext } from '@/components/ui-new/actions/useActionVisibility';
+import type { SelectionPage } from './SelectionDialog';
+import type { RepoSelectionResult } from './selections/repoSelection';
+import { useCommandBarState } from './commandBar/useCommandBarState';
+import { useResolvedPage } from './commandBar/useResolvedPage';
 
 export interface CommandBarDialogProps {
-  // Page to show (defaults to 'root')
   page?: PageId;
-  // Optional workspaceId for workspace actions
   workspaceId?: string;
+  repoId?: string;
+  /** Issue context for kanban mode - projectId */
+  projectId?: string;
+  /** Issue context for kanban mode - selected issue IDs */
+  issueIds?: string[];
+}
+
+function CommandBarContent({
+  page,
+  workspaceId,
+  initialRepoId,
+  propProjectId,
+  propIssueIds,
+}: {
+  page: PageId;
+  workspaceId?: string;
+  initialRepoId?: string;
+  propProjectId?: string;
+  propIssueIds?: string[];
+}) {
+  const modal = useModal();
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const queryClient = useQueryClient();
+  const { executeAction, getLabel } = useActions();
+  const { workspaceId: contextWorkspaceId, repos } = useWorkspaceContext();
+
+  // Get issue context from props or route params (URL is single source of truth)
+  const { projectId: routeProjectId, issueId: routeIssueId } = useParams<{
+    projectId: string;
+    issueId?: string;
+  }>();
+
+  // Effective issue context
+  const effectiveProjectId = propProjectId ?? routeProjectId;
+  const effectiveIssueIds = useMemo(
+    () => propIssueIds ?? (routeIssueId ? [routeIssueId] : []),
+    [propIssueIds, routeIssueId]
+  );
+  const visibilityContext = useActionVisibilityContext({
+    projectId: effectiveProjectId,
+    issueIds: effectiveIssueIds,
+  });
+
+  const effectiveWorkspaceId = workspaceId ?? contextWorkspaceId;
+  const workspace = effectiveWorkspaceId
+    ? queryClient.getQueryData<Workspace>(
+        attemptKeys.byId(effectiveWorkspaceId)
+      )
+    : undefined;
+
+  // State machine
+  const { state, currentPage, canGoBack, dispatch } = useCommandBarState(page);
+
+  // Reset state and capture focus when dialog opens
+  useEffect(() => {
+    if (modal.visible) {
+      dispatch({ type: 'RESET', page });
+      previousFocusRef.current = document.activeElement as HTMLElement;
+    }
+  }, [modal.visible, page, dispatch]);
+
+  // Resolve current page to renderable data
+  const resolvedPage = useResolvedPage(
+    currentPage,
+    state.search,
+    visibilityContext,
+    workspace
+  );
+
+  // Handle item selection with side effects
+  const handleSelect = useCallback(
+    async (item: ResolvedGroupItem) => {
+      const effect = dispatch({ type: 'SELECT_ITEM', item });
+      if (effect.type !== 'execute') return;
+
+      modal.hide();
+
+      if (effect.action.requiresTarget === ActionTargetType.ISSUE) {
+        executeAction(
+          effect.action,
+          undefined,
+          effectiveProjectId,
+          effectiveIssueIds
+        );
+      } else if (effect.action.requiresTarget === ActionTargetType.GIT) {
+        // Resolve repoId: use initialRepoId, single repo, or show selection dialog
+        let repoId: string | undefined = initialRepoId;
+        if (!repoId && repos.length === 1) {
+          repoId = repos[0].id;
+        } else if (!repoId && repos.length > 1) {
+          const { SelectionDialog } = await import('./SelectionDialog');
+          const { buildRepoSelectionPages } = await import(
+            './selections/repoSelection'
+          );
+          const result = await SelectionDialog.show({
+            initialPageId: 'selectRepo',
+            pages: buildRepoSelectionPages(repos) as Record<
+              string,
+              SelectionPage
+            >,
+          });
+          if (result && typeof result === 'object' && 'repoId' in result) {
+            repoId = (result as RepoSelectionResult).repoId;
+          }
+        }
+        if (repoId) {
+          executeAction(effect.action, effectiveWorkspaceId, repoId);
+        }
+      } else {
+        executeAction(effect.action, effectiveWorkspaceId);
+      }
+    },
+    [
+      dispatch,
+      modal,
+      executeAction,
+      effectiveWorkspaceId,
+      effectiveProjectId,
+      effectiveIssueIds,
+      repos,
+      initialRepoId,
+    ]
+  );
+
+  // Restore focus when dialog closes (unless another dialog has taken focus)
+  const handleCloseAutoFocus = useCallback((event: Event) => {
+    event.preventDefault();
+    // Don't restore focus if another dialog has taken over (e.g., action opened a new dialog)
+    const activeElement = document.activeElement;
+    const isInDialog = activeElement?.closest('[role="dialog"]');
+    if (!isInDialog) {
+      previousFocusRef.current?.focus();
+    }
+  }, []);
+
+  return (
+    <CommandDialog
+      open={modal.visible}
+      onOpenChange={(open) => !open && modal.hide()}
+      onCloseAutoFocus={handleCloseAutoFocus}
+    >
+      <CommandBar
+        page={resolvedPage}
+        canGoBack={canGoBack}
+        onGoBack={() => dispatch({ type: 'GO_BACK' })}
+        onSelect={handleSelect}
+        getLabel={(action) => getLabel(action, workspace, visibilityContext)}
+        search={state.search}
+        onSearchChange={(query) => dispatch({ type: 'SEARCH_CHANGE', query })}
+      />
+    </CommandDialog>
+  );
 }
 
 const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
-  ({ page = 'root', workspaceId }) => {
-    const modal = useModal();
-    const previousFocusRef = useRef<HTMLElement | null>(null);
-    const queryClient = useQueryClient();
-    const { executeAction, getLabel } = useActions();
-    const { workspaceId: contextWorkspaceId } = useWorkspaceContext();
-
-    // Use prop workspaceId if provided, otherwise fall back to context
-    const effectiveWorkspaceId = workspaceId ?? contextWorkspaceId;
-
-    // Get visibility context for filtering actions
-    const visibilityContext = useActionVisibilityContext();
-
-    // Page navigation state (lifted from CommandBar)
-    const [currentPage, setCurrentPage] = useState<PageId>(page);
-    const [pageStack, setPageStack] = useState<PageId[]>([]);
-    // Search state - cleared when page changes
-    const [search, setSearch] = useState('');
-
-    // Reset page state when dialog opens
-    useEffect(() => {
-      if (modal.visible) {
-        setCurrentPage(page);
-        setPageStack([]);
-        setSearch('');
-      }
-    }, [modal.visible, page]);
-
-    // Clear search when navigating to a new page
-    useEffect(() => {
-      setSearch('');
-    }, [currentPage]);
-
-    // Get workspace from cache for label resolution
-    const workspace = effectiveWorkspaceId
-      ? queryClient.getQueryData<Workspace>(
-          attemptKeys.byId(effectiveWorkspaceId)
-        )
-      : undefined;
-
-    // Build resolved page by processing childPages markers within groups
-    // When searching on root page, also include actions from nested pages
-    const getPageWithItems = useMemo(() => {
-      return (pageId: PageId, searchQuery: string): ResolvedCommandBarPage => {
-        const basePage = Pages[pageId];
-
-        // Process each group, expanding childPages markers within
-        const resolvedGroups: ResolvedGroup[] = basePage.items
-          .map((group: CommandBarGroup): ResolvedGroup | null => {
-            const resolvedItems = group.items.flatMap(
-              (item: CommandBarGroupItem): ResolvedGroupItem[] => {
-                if (item.type === 'childPages') {
-                  const childPage = Pages[item.id];
-                  // Check page visibility condition
-                  if (!isPageVisible(childPage, visibilityContext)) {
-                    return [];
-                  }
-                  // Get icon based on page type
-                  const pageIcons: Record<PageId, typeof StackIcon> = {
-                    root: SquaresFourIcon,
-                    workspaceActions: StackIcon,
-                    diffOptions: SlidersIcon,
-                    viewOptions: SquaresFourIcon,
-                    gitActions: GitBranchIcon,
-                  };
-                  return [
-                    {
-                      type: 'page' as const,
-                      pageId: item.id,
-                      label: childPage.title ?? item.id,
-                      icon: pageIcons[item.id],
-                    },
-                  ];
-                }
-                // For action items, filter by visibility condition
-                if (item.type === 'action') {
-                  if (!isActionVisible(item.action, visibilityContext)) {
-                    return [];
-                  }
-                }
-                // action or page items pass through
-                return [item];
-              }
-            );
-
-            // Return null for empty groups (will be filtered out)
-            if (resolvedItems.length === 0) {
-              return null;
-            }
-
-            return {
-              label: group.label,
-              items: resolvedItems,
-            };
-          })
-          .filter((group): group is ResolvedGroup => group !== null);
-
-        // When searching on root page, inject matching actions from nested pages
-        if (pageId === 'root' && searchQuery.trim()) {
-          const searchLower = searchQuery.toLowerCase();
-
-          // Inject workspace actions if workspace is available
-          if (visibilityContext.hasWorkspace) {
-            const workspaceActions = getPageActions('workspaceActions');
-            const matchingWorkspaceActions = workspaceActions
-              .filter((action) => isActionVisible(action, visibilityContext))
-              .filter((action) => {
-                const label = resolveLabel(action, workspace);
-                return (
-                  label.toLowerCase().includes(searchLower) ||
-                  action.id.toLowerCase().includes(searchLower)
-                );
-              });
-
-            if (matchingWorkspaceActions.length > 0) {
-              resolvedGroups.push({
-                label: Pages.workspaceActions.title || 'Workspace Actions',
-                items: matchingWorkspaceActions.map((action) => ({
-                  type: 'action' as const,
-                  action,
-                })),
-              });
-            }
-          }
-
-          // Inject diff options (filtered by visibility)
-          const diffActions = getPageActions('diffOptions');
-          const matchingDiffActions = diffActions
-            .filter((action) => isActionVisible(action, visibilityContext))
-            .filter((action) => {
-              const label = resolveLabel(action, workspace);
-              return (
-                label.toLowerCase().includes(searchLower) ||
-                action.id.toLowerCase().includes(searchLower)
-              );
-            });
-
-          if (matchingDiffActions.length > 0) {
-            resolvedGroups.push({
-              label: Pages.diffOptions.title || 'Diff Options',
-              items: matchingDiffActions.map((action) => ({
-                type: 'action' as const,
-                action,
-              })),
-            });
-          }
-
-          // Inject view options (filtered by visibility)
-          const viewActions = getPageActions('viewOptions');
-          const matchingViewActions = viewActions
-            .filter((action) => isActionVisible(action, visibilityContext))
-            .filter((action) => {
-              const label = resolveLabel(action, workspace);
-              return (
-                label.toLowerCase().includes(searchLower) ||
-                action.id.toLowerCase().includes(searchLower)
-              );
-            });
-
-          if (matchingViewActions.length > 0) {
-            resolvedGroups.push({
-              label: Pages.viewOptions.title || 'View Options',
-              items: matchingViewActions.map((action) => ({
-                type: 'action' as const,
-                action,
-              })),
-            });
-          }
-
-          // Inject git actions if workspace has git repos
-          if (visibilityContext.hasGitRepos) {
-            const gitActions = getPageActions('gitActions');
-            const matchingGitActions = gitActions
-              .filter((action) => isActionVisible(action, visibilityContext))
-              .filter((action) => {
-                const label = resolveLabel(action, workspace);
-                return (
-                  label.toLowerCase().includes(searchLower) ||
-                  action.id.toLowerCase().includes(searchLower)
-                );
-              });
-
-            if (matchingGitActions.length > 0) {
-              resolvedGroups.push({
-                label: Pages.gitActions.title || 'Git Actions',
-                items: matchingGitActions.map((action) => ({
-                  type: 'action' as const,
-                  action,
-                })),
-              });
-            }
-          }
-        }
-
-        return {
-          id: basePage.id,
-          title: basePage.title,
-          groups: resolvedGroups,
-        };
-      };
-    }, [visibilityContext, workspace]);
-
-    // Store the previously focused element when dialog opens
-    useEffect(() => {
-      if (modal.visible) {
-        previousFocusRef.current = document.activeElement as HTMLElement;
-      }
-    }, [modal.visible]);
-
-    // Navigate to another page
-    const navigateToPage = useCallback(
-      (pageId: PageId) => {
-        setPageStack((prev) => [...prev, currentPage]);
-        setCurrentPage(pageId);
-      },
-      [currentPage]
-    );
-
-    // Go back to previous page
-    const goBack = useCallback(() => {
-      const prevPage = pageStack[pageStack.length - 1];
-      if (prevPage) {
-        setPageStack((prev) => prev.slice(0, -1));
-        setCurrentPage(prevPage);
-      }
-    }, [pageStack]);
-
-    // Handle item selection
-    const handleSelect = useCallback(
-      async (item: ResolvedGroupItem) => {
-        if (item.type === 'page') {
-          navigateToPage(item.pageId);
-        } else if (item.type === 'action') {
-          modal.hide();
-          await executeAction(item.action, effectiveWorkspaceId);
-        }
-      },
-      [navigateToPage, modal, executeAction, effectiveWorkspaceId]
-    );
-
-    // Get label for an action (with visibility context for dynamic labels)
-    const getLabelForAction = useCallback(
-      (action: ActionDefinition) =>
-        getLabel(action, workspace, visibilityContext),
-      [getLabel, workspace, visibilityContext]
-    );
-
-    const handleOpenChange = (open: boolean) => {
-      if (!open) {
-        modal.hide();
-      }
-    };
-
-    // Restore focus to previously focused element when dialog closes
-    const handleCloseAutoFocus = (event: Event) => {
-      event.preventDefault();
-      previousFocusRef.current?.focus();
-    };
-
-    const canGoBack = pageStack.length > 0;
-
-    return (
-      <CommandDialog
-        open={modal.visible}
-        onOpenChange={handleOpenChange}
-        onCloseAutoFocus={handleCloseAutoFocus}
-      >
-        <CommandBar
-          page={getPageWithItems(currentPage, search)}
-          canGoBack={canGoBack}
-          onGoBack={goBack}
-          onSelect={handleSelect}
-          getLabel={getLabelForAction}
-          search={search}
-          onSearchChange={setSearch}
-        />
-      </CommandDialog>
-    );
-  }
+  ({
+    page = 'root',
+    workspaceId,
+    repoId: initialRepoId,
+    projectId: propProjectId,
+    issueIds: propIssueIds,
+  }) => (
+    <CommandBarContent
+      page={page}
+      workspaceId={workspaceId}
+      initialRepoId={initialRepoId}
+      propProjectId={propProjectId}
+      propIssueIds={propIssueIds}
+    />
+  )
 );
 
 export const CommandBarDialog = defineModal<CommandBarDialogProps | void, void>(

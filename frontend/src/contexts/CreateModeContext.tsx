@@ -1,10 +1,19 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import type {
-  Repo,
-  ExecutorProfileId,
-  RepoWithTargetBranch,
-} from 'shared/types';
-import { useCreateModeState } from '@/hooks/useCreateModeState';
+import type { Repo, ExecutorProfileId } from 'shared/types';
+import {
+  useCreateModeState,
+  type CreateModeInitialState,
+} from '@/hooks/useCreateModeState';
+import { useWorkspaces } from '@/components/ui-new/hooks/useWorkspaces';
+import { useTask } from '@/hooks/useTask';
+import { useAttemptRepo } from '@/hooks/useAttemptRepo';
+
+interface LinkedIssue {
+  issueId: string;
+  simpleId?: string;
+  title?: string;
+  remoteProjectId: string;
+}
 
 interface CreateModeContextValue {
   selectedProjectId: string | null;
@@ -13,7 +22,7 @@ interface CreateModeContextValue {
   addRepo: (repo: Repo) => void;
   removeRepo: (repoId: string) => void;
   clearRepos: () => void;
-  targetBranches: Record<string, string>;
+  targetBranches: Record<string, string | null>;
   setTargetBranch: (repoId: string, branch: string) => void;
   selectedProfile: ExecutorProfileId | null;
   setSelectedProfile: (profile: ExecutorProfileId | null) => void;
@@ -22,22 +31,47 @@ interface CreateModeContextValue {
   clearDraft: () => Promise<void>;
   /** Whether the initial value has been applied from scratch */
   hasInitialValue: boolean;
+  /** Issue to link the workspace to when created */
+  linkedIssue: LinkedIssue | null;
+  /** Clear the linked issue */
+  clearLinkedIssue: () => void;
 }
 
 const CreateModeContext = createContext<CreateModeContextValue | null>(null);
 
 interface CreateModeProviderProps {
   children: ReactNode;
-  initialProjectId?: string;
-  initialRepos?: RepoWithTargetBranch[];
+  initialState?: CreateModeInitialState | null;
+  draftId?: string | null;
 }
 
 export function CreateModeProvider({
   children,
-  initialProjectId,
-  initialRepos,
+  initialState,
+  draftId,
 }: CreateModeProviderProps) {
-  const state = useCreateModeState({ initialProjectId, initialRepos });
+  // Fetch most recent workspace to use as initial values
+  const { workspaces: activeWorkspaces, archivedWorkspaces } = useWorkspaces();
+  const mostRecentWorkspace = activeWorkspaces[0] ?? archivedWorkspaces[0];
+
+  const { data: lastWorkspaceTask } = useTask(mostRecentWorkspace?.taskId, {
+    enabled: !!mostRecentWorkspace?.taskId,
+  });
+
+  const { repos: lastWorkspaceRepos, isLoading: reposLoading } = useAttemptRepo(
+    mostRecentWorkspace?.id,
+    {
+      enabled: !!mostRecentWorkspace?.id,
+    }
+  );
+
+  const state = useCreateModeState({
+    initialProjectId: lastWorkspaceTask?.project_id,
+    // Pass undefined while loading to prevent premature initialization
+    initialRepos: reposLoading ? undefined : lastWorkspaceRepos,
+    initialState,
+    draftId,
+  });
 
   const value = useMemo<CreateModeContextValue>(
     () => ({
@@ -55,6 +89,8 @@ export function CreateModeProvider({
       setMessage: state.setMessage,
       clearDraft: state.clearDraft,
       hasInitialValue: state.hasInitialValue,
+      linkedIssue: state.linkedIssue,
+      clearLinkedIssue: state.clearLinkedIssue,
     }),
     [
       state.selectedProjectId,
@@ -71,6 +107,8 @@ export function CreateModeProvider({
       state.setMessage,
       state.clearDraft,
       state.hasInitialValue,
+      state.linkedIssue,
+      state.clearLinkedIssue,
     ]
   );
 

@@ -1,18 +1,13 @@
-use std::{str::FromStr, sync::Arc, time::Duration};
+use std::{str::FromStr, sync::Arc};
 
 use sqlx::{
     Error, Pool, Sqlite, SqlitePool,
     migrate::MigrateError,
-    sqlite::{
-        SqliteConnectOptions, SqliteConnection, SqliteJournalMode, SqlitePoolOptions,
-        SqliteSynchronous,
-    },
+    sqlite::{SqliteConnectOptions, SqliteConnection, SqliteJournalMode, SqlitePoolOptions},
 };
 use utils::assets::asset_dir;
 
 pub mod models;
-
-const SQLITE_BUSY_TIMEOUT: Duration = Duration::from_secs(120);
 
 async fn run_migrations(pool: &Pool<Sqlite>) -> Result<(), Error> {
     use std::collections::HashSet;
@@ -85,10 +80,8 @@ impl DBService {
         );
         let options = SqliteConnectOptions::from_str(&database_url)?
             .create_if_missing(true)
-            .journal_mode(SqliteJournalMode::Wal)
-            .synchronous(SqliteSynchronous::Normal)
-            .busy_timeout(SQLITE_BUSY_TIMEOUT);
-        let pool = SqlitePoolOptions::new().connect_with(options).await?;
+            .journal_mode(SqliteJournalMode::Delete);
+        let pool = SqlitePool::connect_with(options).await?;
         run_migrations(&pool).await?;
         Ok(DBService { pool })
     }
@@ -123,9 +116,7 @@ impl DBService {
         );
         let options = SqliteConnectOptions::from_str(&database_url)?
             .create_if_missing(true)
-            .journal_mode(SqliteJournalMode::Wal)
-            .synchronous(SqliteSynchronous::Normal)
-            .busy_timeout(SQLITE_BUSY_TIMEOUT);
+            .journal_mode(SqliteJournalMode::Delete);
 
         let pool = if let Some(hook) = after_connect {
             SqlitePoolOptions::new()

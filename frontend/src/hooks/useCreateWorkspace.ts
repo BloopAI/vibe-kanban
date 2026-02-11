@@ -6,15 +6,39 @@ import { taskRelationshipsKeys } from './useTaskRelationships';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import type { CreateAndStartTaskRequest } from 'shared/types';
 
-export function useCreateWorkspace() {
+interface CreateWorkspaceParams {
+  data: CreateAndStartTaskRequest;
+  linkToIssue?: {
+    remoteProjectId: string;
+    issueId: string;
+  };
+}
+
+interface UseCreateWorkspaceOptions {
+  onWorkspaceCreated?: (workspaceId: string) => void;
+}
+
+export function useCreateWorkspace(options: UseCreateWorkspaceOptions = {}) {
+  const { onWorkspaceCreated } = options;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const createWorkspace = useMutation({
-    mutationFn: async (data: CreateAndStartTaskRequest) => {
+    mutationFn: async ({ data, linkToIssue }: CreateWorkspaceParams) => {
       const task = await tasksApi.createAndStart(data);
       const workspaces = await attemptsApi.getAll(task.id);
-      return { task, workspaceId: workspaces[0]?.id };
+      const workspaceId = workspaces[0]?.id;
+
+      // Link to issue if requested
+      if (linkToIssue && workspaceId) {
+        await attemptsApi.linkToIssue(
+          workspaceId,
+          linkToIssue.remoteProjectId,
+          linkToIssue.issueId
+        );
+      }
+
+      return { task, workspaceId };
     },
     onSuccess: ({ task, workspaceId }) => {
       // Invalidate task queries
@@ -30,9 +54,13 @@ export function useCreateWorkspace() {
         });
       }
 
-      // Navigate to the new workspace
+      // Navigate to the new workspace (or let caller handle in project sidebar)
       if (workspaceId) {
-        navigate(`/workspaces/${workspaceId}`);
+        if (onWorkspaceCreated) {
+          onWorkspaceCreated(workspaceId);
+        } else {
+          navigate(`/workspaces/${workspaceId}`);
+        }
       }
     },
     onError: (err) => {

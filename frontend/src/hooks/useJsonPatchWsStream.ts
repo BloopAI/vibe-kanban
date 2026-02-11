@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { produce } from 'immer';
-import { applyPatch } from 'rfc6902';
 import type { Operation } from 'rfc6902';
+import { applyUpsertPatch } from '@/utils/jsonPatch';
 
 type WsJsonPatchMsg = { JsonPatch: Operation[] };
 type WsReadyMsg = { Ready: true };
@@ -127,7 +127,7 @@ export const useJsonPatchWsStream = <T extends object>(
 
             // Use Immer for structural sharing - only modified parts get new references
             const next = produce(current, (draft) => {
-              applyPatch(draft, filtered);
+              applyUpsertPatch(draft, filtered);
             });
 
             dataRef.current = next;

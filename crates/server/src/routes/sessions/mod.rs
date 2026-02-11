@@ -1,6 +1,5 @@
 pub mod queue;
-
-use std::str::FromStr;
+pub mod review;
 
 use axum::{
     Extension, Json, Router,
@@ -10,31 +9,27 @@ use axum::{
     routing::{get, post},
 };
 use db::models::{
+    coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
-    project_repo::ProjectRepo,
     scratch::{Scratch, ScratchType},
-    session::{CreateSession, Session},
+    session::{CreateSession, Session, SessionError},
     workspace::{Workspace, WorkspaceError},
+    workspace_repo::WorkspaceRepo,
 };
 use deployment::Deployment;
 use executors::{
     actions::{
         ExecutorAction, ExecutorActionType, coding_agent_follow_up::CodingAgentFollowUpRequest,
     },
-    executors::BaseCodingAgent,
     profile::ExecutorProfileId,
 };
 use serde::Deserialize;
 use services::services::container::ContainerService;
-use sqlx::Error as SqlxError;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{
-    DeploymentImpl, error::ApiError, middleware::load_session_middleware,
-    routes::task_attempts::util::restore_worktrees_to_process,
-};
+use crate::{DeploymentImpl, error::ApiError, middleware::load_session_middleware};
 
 #[derive(Debug, Deserialize)]
 pub struct SessionQuery {
@@ -91,8 +86,15 @@ pub async fn create_session(
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateFollowUpAttempt {
     pub prompt: String,
-    pub variant: Option<String>,
+    pub executor_profile_id: ExecutorProfileId,
     pub retry_process_id: Option<Uuid>,
+    pub force_when_dirty: Option<bool>,
+    pub perform_git_reset: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, TS)]
+pub struct ResetProcessRequest {
+    pub process_id: Uuid,
     pub force_when_dirty: Option<bool>,
     pub perform_git_reset: Option<bool>,
 }
@@ -118,88 +120,45 @@ pub async fn follow_up(
         .ensure_container_exists(&workspace)
         .await?;
 
-    // Get executor from the latest CodingAgent process, or fall back to session's executor
-    let base_executor =
-        match ExecutionProcess::latest_executor_profile_for_session(pool, session.id).await? {
-            Some(profile) => profile.executor,
-            None => {
-                // No prior execution - use session's executor field
-                let executor_str = session.executor.as_ref().ok_or_else(|| {
-                    ApiError::Workspace(WorkspaceError::ValidationError(
-                        "No prior execution and no executor configured on session".to_string(),
-                    ))
-                })?;
-                BaseCodingAgent::from_str(&executor_str.replace('-', "_").to_ascii_uppercase())
-                    .map_err(|_| {
-                        ApiError::Workspace(WorkspaceError::ValidationError(format!(
-                            "Invalid executor: {}",
-                            executor_str
-                        )))
-                    })?
-            }
-        };
+    let executor_profile_id = payload.executor_profile_id;
 
-    let executor_profile_id = ExecutorProfileId {
-        executor: base_executor,
-        variant: payload.variant,
-    };
+    // Validate executor matches session if session has prior executions
+    let expected_executor: Option<String> =
+        ExecutionProcess::latest_executor_profile_for_session(pool, session.id)
+            .await?
+            .map(|profile| profile.executor.to_string())
+            .or_else(|| session.executor.clone());
 
-    // Get parent task
-    let task = workspace
-        .parent_task(pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    // Get parent project
-    let project = task
-        .parent_project(pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    // If retry settings provided, perform replace-logic before proceeding
-    if let Some(proc_id) = payload.retry_process_id {
-        // Validate process belongs to this session
-        let process =
-            ExecutionProcess::find_by_id(pool, proc_id)
-                .await?
-                .ok_or(ApiError::Workspace(WorkspaceError::ValidationError(
-                    "Process not found".to_string(),
-                )))?;
-        if process.session_id != session.id {
-            return Err(ApiError::Workspace(WorkspaceError::ValidationError(
-                "Process does not belong to this session".to_string(),
-            )));
+    if let Some(expected) = expected_executor {
+        let actual = executor_profile_id.executor.to_string();
+        if expected != actual {
+            return Err(ApiError::Session(SessionError::ExecutorMismatch {
+                expected,
+                actual,
+            }));
         }
-
-        // Reset all repository worktrees to the state before the target process
-        let force_when_dirty = payload.force_when_dirty.unwrap_or(false);
-        let perform_git_reset = payload.perform_git_reset.unwrap_or(true);
-        restore_worktrees_to_process(
-            &deployment,
-            pool,
-            &workspace,
-            proc_id,
-            perform_git_reset,
-            force_when_dirty,
-        )
-        .await?;
-
-        // Stop any running processes for this workspace (except dev server)
-        deployment.container().try_stop(&workspace, false).await;
-
-        // Soft-drop the target process and all later processes in that session
-        let _ = ExecutionProcess::drop_at_and_after(pool, process.session_id, proc_id).await?;
     }
 
-    let latest_agent_session_id =
-        ExecutionProcess::find_latest_coding_agent_turn_session_id(pool, session.id).await?;
+    if session.executor.is_none() {
+        Session::update_executor(pool, session.id, &executor_profile_id.executor.to_string())
+            .await?;
+    }
+
+    if let Some(proc_id) = payload.retry_process_id {
+        let force_when_dirty = payload.force_when_dirty.unwrap_or(false);
+        let perform_git_reset = payload.perform_git_reset.unwrap_or(true);
+        deployment
+            .container()
+            .reset_session_to_process(session.id, proc_id, perform_git_reset, force_when_dirty)
+            .await?;
+    }
+
+    let latest_session_info = CodingAgentTurn::find_latest_session_info(pool, session.id).await?;
 
     let prompt = payload.prompt;
 
-    let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
-    let cleanup_action = deployment
-        .container()
-        .cleanup_actions_for_repos(&project_repos);
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let cleanup_action = deployment.container().cleanup_actions_for_repos(&repos);
 
     let working_dir = workspace
         .agent_working_dir
@@ -207,10 +166,12 @@ pub async fn follow_up(
         .filter(|dir| !dir.is_empty())
         .cloned();
 
-    let action_type = if let Some(agent_session_id) = latest_agent_session_id {
+    let action_type = if let Some(info) = latest_session_info {
+        let is_reset = payload.retry_process_id.is_some();
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt: prompt.clone(),
-            session_id: agent_session_id,
+            session_id: info.session_id,
+            reset_to_message_id: if is_reset { info.message_id } else { None },
             executor_profile_id: executor_profile_id.clone(),
             working_dir: working_dir.clone(),
         })
@@ -250,10 +211,33 @@ pub async fn follow_up(
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
+pub async fn reset_process(
+    Extension(session): Extension<Session>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<ResetProcessRequest>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let force_when_dirty = payload.force_when_dirty.unwrap_or(false);
+    let perform_git_reset = payload.perform_git_reset.unwrap_or(true);
+
+    deployment
+        .container()
+        .reset_session_to_process(
+            session.id,
+            payload.process_id,
+            perform_git_reset,
+            force_when_dirty,
+        )
+        .await?;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let session_id_router = Router::new()
         .route("/", get(get_session))
         .route("/follow-up", post(follow_up))
+        .route("/reset", post(reset_process))
+        .route("/review", post(review::start_review))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_session_middleware,

@@ -30,8 +30,8 @@ pub struct R2Config {
 impl R2Config {
     pub fn from_env() -> Result<Option<Self>, ConfigError> {
         let access_key_id = match env::var("R2_ACCESS_KEY_ID") {
-            Ok(v) => v,
-            Err(_) => {
+            Ok(v) if !v.is_empty() => v,
+            _ => {
                 tracing::info!("R2_ACCESS_KEY_ID not set, R2 storage disabled");
                 return Ok(None);
             }
@@ -76,8 +76,8 @@ pub struct GitHubAppConfig {
 impl GitHubAppConfig {
     pub fn from_env() -> Result<Option<Self>, ConfigError> {
         let app_id = match env::var("GITHUB_APP_ID") {
-            Ok(v) => v,
-            Err(_) => {
+            Ok(v) if !v.is_empty() => v,
+            _ => {
                 tracing::info!("GITHUB_APP_ID not set, GitHub App integration disabled");
                 return Ok(None);
             }
@@ -208,7 +208,7 @@ impl AuthConfig {
         let jwt_secret = SecretString::new(jwt_secret.into());
 
         let github = match env::var("GITHUB_OAUTH_CLIENT_ID") {
-            Ok(client_id) => {
+            Ok(client_id) if !client_id.is_empty() => {
                 let client_secret = env::var("GITHUB_OAUTH_CLIENT_SECRET")
                     .map_err(|_| ConfigError::MissingVar("GITHUB_OAUTH_CLIENT_SECRET"))?;
                 Some(OAuthProviderConfig::new(
@@ -216,11 +216,11 @@ impl AuthConfig {
                     SecretString::new(client_secret.into()),
                 ))
             }
-            Err(_) => None,
+            _ => None,
         };
 
         let google = match env::var("GOOGLE_OAUTH_CLIENT_ID") {
-            Ok(client_id) => {
+            Ok(client_id) if !client_id.is_empty() => {
                 let client_secret = env::var("GOOGLE_OAUTH_CLIENT_SECRET")
                     .map_err(|_| ConfigError::MissingVar("GOOGLE_OAUTH_CLIENT_SECRET"))?;
                 Some(OAuthProviderConfig::new(
@@ -228,7 +228,7 @@ impl AuthConfig {
                     SecretString::new(client_secret.into()),
                 ))
             }
-            Err(_) => None,
+            _ => None,
         };
 
         if github.is_none() && google.is_none() {

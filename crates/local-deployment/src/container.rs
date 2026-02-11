@@ -2,7 +2,6 @@ use std::{
     collections::HashMap,
     io,
     path::{Path, PathBuf},
-    str::FromStr,
     sync::Arc,
     time::Duration,
 };
@@ -18,15 +17,15 @@ use db::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         execution_process_repo_state::ExecutionProcessRepoState,
-        project_repo::ProjectRepo,
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
+        session::{Session, SessionError},
         task::{Task, TaskStatus},
         workspace::Workspace,
         workspace_repo::WorkspaceRepo,
     },
 };
-use deployment::{DeploymentError, RemoteClientNotConfigured};
+use deployment::DeploymentError;
 use executors::{
     actions::{
         Executable, ExecutorAction, ExecutorActionType,
@@ -34,24 +33,24 @@ use executors::{
         coding_agent_initial::CodingAgentInitialRequest,
     },
     approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
-    env::ExecutionEnv,
-    executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal, InterruptSender},
+    env::{ExecutionEnv, RepoContext},
+    executors::{BaseCodingAgent, CancellationToken, ExecutorExitResult, ExecutorExitSignal},
     logs::{NormalizedEntryType, utils::patch::extract_normalized_entry_from_patch},
-    profile::ExecutorProfileId,
 };
 use futures::{FutureExt, TryStreamExt, stream::select};
+use git::GitService;
 use serde_json::json;
 use services::services::{
     analytics::AnalyticsContext,
     approvals::{Approvals, executor_approvals::ExecutorApprovalBridge},
-    config::Config,
+    config::{Config, DEFAULT_COMMIT_REMINDER_PROMPT},
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
-    git::{GitCli, GitService},
     image::ImageService,
     notification::NotificationService,
     queued_message::QueuedMessageService,
-    share::SharePublisher,
+    remote_client::RemoteClient,
+    remote_sync,
     workspace_manager::{RepoWorkspaceInput, WorkspaceManager},
 };
 use tokio::{sync::RwLock, task::JoinHandle};
@@ -69,16 +68,20 @@ use crate::{command, copy};
 pub struct LocalContainerService {
     db: DBService,
     child_store: Arc<RwLock<HashMap<Uuid, Arc<RwLock<AsyncGroupChild>>>>>,
-    interrupt_senders: Arc<RwLock<HashMap<Uuid, InterruptSender>>>,
+    cancellation_tokens: Arc<RwLock<HashMap<Uuid, CancellationToken>>>,
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
+    /// Tracks background tasks that stream logs to the database.
+    /// When stopping execution, we await these to ensure logs are fully persisted.
+    db_stream_handles: Arc<RwLock<HashMap<Uuid, JoinHandle<()>>>>,
+    exit_monitor_handles: Arc<RwLock<HashMap<Uuid, JoinHandle<()>>>>,
     config: Arc<RwLock<Config>>,
     git: GitService,
     image_service: ImageService,
     analytics: Option<AnalyticsContext>,
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
-    publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     notification_service: NotificationService,
+    remote_client: Option<RemoteClient>,
 }
 
 impl LocalContainerService {
@@ -92,25 +95,29 @@ impl LocalContainerService {
         analytics: Option<AnalyticsContext>,
         approvals: Approvals,
         queued_message_service: QueuedMessageService,
-        publisher: Result<SharePublisher, RemoteClientNotConfigured>,
+        remote_client: Option<RemoteClient>,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
-        let interrupt_senders = Arc::new(RwLock::new(HashMap::new()));
+        let cancellation_tokens = Arc::new(RwLock::new(HashMap::new()));
+        let db_stream_handles = Arc::new(RwLock::new(HashMap::new()));
+        let exit_monitor_handles = Arc::new(RwLock::new(HashMap::new()));
         let notification_service = NotificationService::new(config.clone());
 
         let container = LocalContainerService {
             db,
             child_store,
-            interrupt_senders,
+            cancellation_tokens,
             msg_stores,
+            db_stream_handles,
+            exit_monitor_handles,
             config,
             git,
             image_service,
             analytics,
             approvals,
             queued_message_service,
-            publisher,
             notification_service,
+            remote_client,
         };
 
         container.spawn_workspace_cleanup();
@@ -133,13 +140,33 @@ impl LocalContainerService {
         map.remove(id);
     }
 
-    async fn add_interrupt_sender(&self, id: Uuid, sender: InterruptSender) {
-        let mut map = self.interrupt_senders.write().await;
-        map.insert(id, sender);
+    async fn add_cancellation_token(&self, id: Uuid, token: CancellationToken) {
+        let mut map = self.cancellation_tokens.write().await;
+        map.insert(id, token);
     }
 
-    async fn take_interrupt_sender(&self, id: &Uuid) -> Option<InterruptSender> {
-        let mut map = self.interrupt_senders.write().await;
+    async fn take_cancellation_token(&self, id: &Uuid) -> Option<CancellationToken> {
+        let mut map = self.cancellation_tokens.write().await;
+        map.remove(id)
+    }
+
+    async fn add_db_stream_handle(&self, id: Uuid, handle: JoinHandle<()>) {
+        let mut map = self.db_stream_handles.write().await;
+        map.insert(id, handle);
+    }
+
+    async fn take_db_stream_handle(&self, id: &Uuid) -> Option<JoinHandle<()>> {
+        let mut map = self.db_stream_handles.write().await;
+        map.remove(id)
+    }
+
+    async fn add_exit_monitor_handle(&self, id: Uuid, handle: JoinHandle<()>) {
+        let mut map = self.exit_monitor_handles.write().await;
+        map.insert(id, handle);
+    }
+
+    async fn take_exit_monitor_handle(&self, id: &Uuid) -> Option<JoinHandle<()>> {
+        let mut map = self.exit_monitor_handles.write().await;
         map.remove(id)
     }
 
@@ -180,6 +207,13 @@ impl LocalContainerService {
     }
 
     pub async fn cleanup_expired_workspaces(db: &DBService) -> Result<(), DeploymentError> {
+        if std::env::var("DISABLE_WORKTREE_CLEANUP").is_ok() {
+            tracing::info!(
+                "Expired workspace cleanup is disabled via DISABLE_WORKTREE_CLEANUP environment variable"
+            );
+            return Ok(());
+        }
+
         let expired_workspaces = Workspace::find_expired_for_cleanup(&db.pool).await?;
         if expired_workspaces.is_empty() {
             tracing::debug!("No expired workspaces found");
@@ -286,17 +320,17 @@ impl LocalContainerService {
         workspace_root: &Path,
         repos: &[Repo],
     ) -> Result<Vec<(Repo, PathBuf)>, ContainerError> {
-        let git = GitCli::new();
+        let git = GitService::new();
         let mut repos_with_changes = Vec::new();
 
         for repo in repos {
             let worktree_path = workspace_root.join(&repo.name);
 
-            match git.has_changes(&worktree_path) {
-                Ok(true) => {
+            match git.get_worktree_status(&worktree_path) {
+                Ok(ws) if !ws.entries.is_empty() => {
                     repos_with_changes.push((repo.clone(), worktree_path));
                 }
-                Ok(false) => {
+                Ok(_) => {
                     tracing::debug!("No changes in repo '{}'", repo.name);
                 }
                 Err(e) => {
@@ -310,6 +344,35 @@ impl LocalContainerService {
         }
 
         Ok(repos_with_changes)
+    }
+
+    async fn has_commits_from_execution(
+        &self,
+        ctx: &ExecutionContext,
+    ) -> Result<bool, ContainerError> {
+        let workspace_root = self.workspace_to_current_dir(&ctx.workspace);
+
+        let repo_states = ExecutionProcessRepoState::find_by_execution_process_id(
+            &self.db.pool,
+            ctx.execution_process.id,
+        )
+        .await?;
+
+        for repo in &ctx.repos {
+            let repo_path = workspace_root.join(&repo.name);
+            let current_head = self.git().get_head_info(&repo_path).ok().map(|h| h.oid);
+
+            let before_head = repo_states
+                .iter()
+                .find(|s| s.repo_id == repo.id)
+                .and_then(|s| s.before_head_commit.clone());
+
+            if current_head != before_head {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
     }
 
     /// Commit changes to each repo. Logs failures but continues with other repos.
@@ -354,7 +417,6 @@ impl LocalContainerService {
         let config = self.config.clone();
         let container = self.clone();
         let analytics = self.analytics.clone();
-        let publisher = self.publisher.clone();
 
         let mut process_exit_rx = self.spawn_os_exit_watcher(exec_id);
 
@@ -446,7 +508,12 @@ impl LocalContainerService {
                         ctx.execution_process.run_reason,
                         ExecutionProcessRunReason::CodingAgent
                     ) {
+                        // Check if agent made commits OR if we just committed uncommitted changes
                         changes_committed
+                            || container
+                                .has_commits_from_execution(&ctx)
+                                .await
+                                .unwrap_or(false)
                     } else {
                         true
                     };
@@ -463,7 +530,7 @@ impl LocalContainerService {
                         );
 
                         // Manually finalize task since we're bypassing normal execution flow
-                        container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                        container.finalize_task(&ctx).await;
                     }
                 }
 
@@ -505,7 +572,7 @@ impl LocalContainerService {
                             {
                                 tracing::error!("Failed to start queued follow-up: {}", e);
                                 // Fall back to finalization if follow-up fails
-                                container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                                container.finalize_task(&ctx).await;
                             }
                         } else {
                             // Execution failed or was killed - discard the queued message and finalize
@@ -514,10 +581,10 @@ impl LocalContainerService {
                                 ctx.session.id,
                                 ctx.execution_process.status
                             );
-                            container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                            container.finalize_task(&ctx).await;
                         }
                     } else {
-                        container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                        container.finalize_task(&ctx).await;
                     }
                 }
 
@@ -538,24 +605,52 @@ impl LocalContainerService {
                         "exit_code": ctx.execution_process.exit_code,
                     })));
                 }
+
+                // Sync workspace to remote after CodingAgent execution
+                if matches!(
+                    &ctx.execution_process.run_reason,
+                    ExecutionProcessRunReason::CodingAgent
+                ) && let Some(client) = &container.remote_client
+                {
+                    let stats = diff_stream::compute_diff_stats(
+                        &container.db.pool,
+                        &container.git,
+                        &ctx.workspace,
+                    )
+                    .await;
+                    let workspace_name =
+                        Workspace::find_by_id_with_status(&container.db.pool, ctx.workspace.id)
+                            .await
+                            .ok()
+                            .flatten()
+                            .and_then(|ws| ws.workspace.name);
+                    let client = client.clone();
+                    let workspace_id = ctx.workspace.id;
+                    let archived = ctx.workspace.archived;
+                    tokio::spawn(async move {
+                        remote_sync::sync_workspace_to_remote(
+                            &client,
+                            workspace_id,
+                            workspace_name.map(Some),
+                            Some(archived),
+                            stats.as_ref(),
+                        )
+                        .await;
+                    });
+                }
             }
 
             // Now that commit/next-action/finalization steps for this process are complete,
             // capture the HEAD OID as the definitive "after" state (best-effort).
             container.update_after_head_commits(exec_id).await;
 
-            // Cleanup msg store
+            // Wait for DB persistence to complete before cleaning up MsgStore
+            let db_stream_handle = container.take_db_stream_handle(&exec_id).await;
             if let Some(msg_arc) = msg_stores.write().await.remove(&exec_id) {
                 msg_arc.push_finished();
-                tokio::time::sleep(Duration::from_millis(50)).await; // Wait for the finish message to propogate
-                match Arc::try_unwrap(msg_arc) {
-                    Ok(inner) => drop(inner),
-                    Err(arc) => tracing::error!(
-                        "There are still {} strong Arcs to MsgStore for {}",
-                        Arc::strong_count(&arc),
-                        exec_id
-                    ),
-                }
+            }
+            if let Some(handle) = db_stream_handle {
+                let _ = tokio::time::timeout(Duration::from_secs(5), handle).await;
             }
 
             // Cleanup child handle
@@ -744,7 +839,7 @@ impl LocalContainerService {
             let workspace_config_path = workspace_dir.join(config_file);
 
             if workspace_config_path.exists() {
-                tracing::debug!(
+                tracing::trace!(
                     "Workspace config file {} already exists, skipping",
                     config_file
                 );
@@ -760,7 +855,7 @@ impl LocalContainerService {
             }
 
             if import_lines.is_empty() {
-                tracing::debug!(
+                tracing::trace!(
                     "No repos have {}, skipping workspace config creation",
                     config_file
                 );
@@ -793,44 +888,38 @@ impl LocalContainerService {
         ctx: &ExecutionContext,
         queued_data: &DraftFollowUpData,
     ) -> Result<ExecutionProcess, ContainerError> {
-        // Get executor from the latest CodingAgent process, or fall back to session's executor
-        let base_executor = match ExecutionProcess::latest_executor_profile_for_session(
-            &self.db.pool,
-            ctx.session.id,
-        )
-        .await
-        .map_err(|e| ContainerError::Other(anyhow!("Failed to get executor profile: {e}")))?
-        {
-            Some(profile) => profile.executor,
-            None => {
-                // No prior execution - use session's executor field
-                let executor_str = ctx.session.executor.as_ref().ok_or_else(|| {
-                    ContainerError::Other(anyhow!(
-                        "No prior execution and no executor configured on session"
-                    ))
-                })?;
-                BaseCodingAgent::from_str(&executor_str.replace('-', "_").to_ascii_uppercase())
-                    .map_err(|_| {
-                        ContainerError::Other(anyhow!("Invalid executor: {}", executor_str))
-                    })?
+        let executor_profile_id = queued_data.executor_profile_id.clone();
+
+        // Validate executor matches session if session has prior executions
+        let expected_executor: Option<String> =
+            ExecutionProcess::latest_executor_profile_for_session(&self.db.pool, ctx.session.id)
+                .await?
+                .map(|profile| profile.executor.to_string())
+                .or_else(|| ctx.session.executor.clone());
+
+        if let Some(expected) = expected_executor {
+            let actual = executor_profile_id.executor.to_string();
+            if expected != actual {
+                return Err(SessionError::ExecutorMismatch { expected, actual }.into());
             }
-        };
+        }
 
-        let executor_profile_id = ExecutorProfileId {
-            executor: base_executor,
-            variant: queued_data.variant.clone(),
-        };
+        if ctx.session.executor.is_none() {
+            Session::update_executor(
+                &self.db.pool,
+                ctx.session.id,
+                &executor_profile_id.executor.to_string(),
+            )
+            .await?;
+        }
 
-        // Get latest agent session ID for session continuity (from coding agent turns)
-        let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(
-            &self.db.pool,
-            ctx.session.id,
-        )
-        .await?;
+        // Get latest agent turn for session continuity (from coding agent turns)
+        let latest_session_info =
+            CodingAgentTurn::find_latest_session_info(&self.db.pool, ctx.session.id).await?;
 
-        let project_repos =
-            ProjectRepo::find_by_project_id_with_names(&self.db.pool, ctx.project.id).await?;
-        let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
+        let repos =
+            WorkspaceRepo::find_repos_for_workspace(&self.db.pool, ctx.workspace.id).await?;
+        let cleanup_action = self.cleanup_actions_for_repos(&repos);
 
         let working_dir = ctx
             .workspace
@@ -839,10 +928,11 @@ impl LocalContainerService {
             .filter(|dir| !dir.is_empty())
             .cloned();
 
-        let action_type = if let Some(agent_session_id) = latest_agent_session_id {
+        let action_type = if let Some(info) = latest_session_info {
             ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
                 prompt: queued_data.message.clone(),
-                session_id: agent_session_id,
+                session_id: info.session_id,
+                reset_to_message_id: None,
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir: working_dir.clone(),
             })
@@ -893,12 +983,16 @@ impl ContainerService for LocalContainerService {
         &self.git
     }
 
-    fn share_publisher(&self) -> Option<&SharePublisher> {
-        self.publisher.as_ref().ok()
-    }
-
     fn notification_service(&self) -> &NotificationService {
         &self.notification_service
+    }
+
+    async fn store_db_stream_handle(&self, id: Uuid, handle: JoinHandle<()>) {
+        self.add_db_stream_handle(id, handle).await;
+    }
+
+    async fn take_db_stream_handle(&self, id: &Uuid) -> Option<JoinHandle<()>> {
+        LocalContainerService::take_db_stream_handle(self, id).await
     }
 
     async fn git_branch_prefix(&self) -> String {
@@ -1078,8 +1172,22 @@ impl ContainerService for LocalContainerService {
                 _ => Arc::new(NoopExecutorApprovalService {}),
             };
 
-        // Build ExecutionEnv with VK_* variables
-        let mut env = ExecutionEnv::new();
+        let repos = WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
+        let repo_names: Vec<String> = repos.iter().map(|r| r.name.clone()).collect();
+        let repo_context = RepoContext::new(current_dir.clone(), repo_names);
+
+        let config = self.config.read().await;
+        let commit_reminder_enabled = config.commit_reminder_enabled;
+        let commit_reminder_prompt = config
+            .commit_reminder_prompt
+            .clone()
+            .unwrap_or_else(|| DEFAULT_COMMIT_REMINDER_PROMPT.to_string());
+        drop(config);
+        let mut env = ExecutionEnv::new(
+            repo_context,
+            commit_reminder_enabled,
+            commit_reminder_prompt,
+        );
 
         // Load task and project context for environment variables
         let task = workspace
@@ -1098,6 +1206,7 @@ impl ContainerService for LocalContainerService {
         env.insert("VK_TASK_ID", task.id.to_string());
         env.insert("VK_WORKSPACE_ID", workspace.id.to_string());
         env.insert("VK_WORKSPACE_BRANCH", &workspace.branch);
+        env.insert("VK_SESSION_ID", execution_process.session_id.to_string());
 
         // Create the child and stream, add to execution tracker with timeout
         let mut spawned = tokio::time::timeout(
@@ -1117,14 +1226,15 @@ impl ContainerService for LocalContainerService {
         self.add_child_to_store(execution_process.id, spawned.child)
             .await;
 
-        // Store interrupt sender for graceful shutdown
-        if let Some(interrupt_sender) = spawned.interrupt_sender {
-            self.add_interrupt_sender(execution_process.id, interrupt_sender)
+        // Store cancellation token for graceful shutdown
+        if let Some(cancel) = spawned.cancel {
+            self.add_cancellation_token(execution_process.id, cancel)
                 .await;
         }
 
         // Spawn unified exit monitor: watches OS exit and optional executor signal
-        let _hn = self.spawn_exit_monitor(&execution_process.id, spawned.exit_signal);
+        let hn = self.spawn_exit_monitor(&execution_process.id, spawned.exit_signal);
+        self.add_exit_monitor_handle(execution_process.id, hn).await;
 
         Ok(())
     }
@@ -1149,37 +1259,27 @@ impl ContainerService for LocalContainerService {
         ExecutionProcess::update_completion(&self.db.pool, execution_process.id, status, exit_code)
             .await?;
 
-        // Try graceful interrupt first, then force kill
-        if let Some(interrupt_sender) = self.take_interrupt_sender(&execution_process.id).await {
-            // Send interrupt signal (ignore error if receiver dropped)
-            let _ = interrupt_sender.send(());
+        // Try graceful cancellation first, then force kill
+        if let Some(cancel) = self.take_cancellation_token(&execution_process.id).await {
+            cancel.cancel();
 
-            // Wait for graceful exit with timeout
-            let graceful_exit = {
-                let mut child_guard = child.write().await;
-                tokio::time::timeout(Duration::from_secs(5), child_guard.wait()).await
-            };
-
-            match graceful_exit {
-                Ok(Ok(_)) => {
-                    tracing::debug!(
-                        "Process {} exited gracefully after interrupt",
-                        execution_process.id
-                    );
-                }
-                Ok(Err(e)) => {
-                    tracing::info!("Error waiting for process {}: {}", execution_process.id, e);
-                }
-                Err(_) => {
-                    tracing::debug!(
-                        "Graceful shutdown timed out for process {}, force killing",
-                        execution_process.id
-                    );
+            // Wait for exit monitor to finish gracefully
+            if let Some(monitor_handle) = self.take_exit_monitor_handle(&execution_process.id).await
+            {
+                match tokio::time::timeout(Duration::from_secs(5), monitor_handle).await {
+                    Ok(_) => {
+                        tracing::debug!("Process {} exited gracefully", execution_process.id);
+                    }
+                    Err(_) => {
+                        tracing::debug!(
+                            "Graceful shutdown timed out for process {}, force killing",
+                            execution_process.id
+                        );
+                    }
                 }
             }
         }
 
-        // Kill the child process and remove from the store
         {
             let mut child_guard = child.write().await;
             if let Err(e) = command::kill_process_group(&mut child_guard).await {
@@ -1193,9 +1293,13 @@ impl ContainerService for LocalContainerService {
         }
         self.remove_child_from_store(&execution_process.id).await;
 
-        // Mark the process finished in the MsgStore
+        // Mark the process finished in the MsgStore and wait for DB persistence
+        let db_stream_handle = self.take_db_stream_handle(&execution_process.id).await;
         if let Some(msg) = self.msg_stores.write().await.remove(&execution_process.id) {
             msg.push_finished();
+        }
+        if let Some(handle) = db_stream_handle {
+            let _ = tokio::time::timeout(Duration::from_secs(5), handle).await;
         }
 
         // Update task status to InReview when execution is stopped
@@ -1204,23 +1308,10 @@ impl ContainerService for LocalContainerService {
                 ctx.execution_process.run_reason,
                 ExecutionProcessRunReason::DevServer
             )
+            && let Err(e) =
+                Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await
         {
-            match Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await {
-                Ok(_) => {
-                    if let Some(publisher) = self.share_publisher()
-                        && let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await
-                    {
-                        tracing::warn!(
-                            ?err,
-                            "Failed to propagate shared task update for {}",
-                            ctx.task.id
-                        );
-                    }
-                }
-                Err(e) => {
-                    tracing::error!("Failed to update task status to InReview: {e}");
-                }
-            }
+            tracing::error!("Failed to update task status to InReview: {e}");
         }
 
         tracing::debug!(
@@ -1362,7 +1453,17 @@ impl ContainerService for LocalContainerService {
         tracing::info!("Killing all running processes");
         let running_processes = ExecutionProcess::find_running(&self.db.pool).await?;
 
+        tracing::info!(
+            "Found {} running processes to kill",
+            running_processes.len()
+        );
+
         for process in running_processes {
+            tracing::info!(
+                "Killing process: id={}, run_reason={:?}",
+                process.id,
+                process.run_reason
+            );
             if let Err(error) = self
                 .stop_execution(&process, ExecutionProcessStatus::Killed)
                 .await
@@ -1372,6 +1473,8 @@ impl ContainerService for LocalContainerService {
                     process,
                     error
                 );
+            } else {
+                tracing::info!("Successfully killed process: id={}", process.id);
             }
         }
 

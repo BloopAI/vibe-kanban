@@ -5,11 +5,12 @@ import i18n from '@/i18n';
 import { Projects } from '@/pages/Projects';
 import { ProjectTasks } from '@/pages/ProjectTasks';
 import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
+import { Migration } from '@/pages/Migration';
 import { NormalLayout } from '@/components/layout/NormalLayout';
-import { NewDesignLayout } from '@/components/layout/NewDesignLayout';
+import { SharedAppLayout } from '@/components/ui-new/containers/SharedAppLayout';
 import { usePostHog } from 'posthog-js/react';
-import { useAuth } from '@/hooks';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
+import { useUiPreferencesScratch } from '@/hooks/useUiPreferencesScratch';
 
 import {
   AgentSettings,
@@ -17,6 +18,7 @@ import {
   McpSettings,
   OrganizationSettings,
   ProjectSettings,
+  ReposSettings,
   SettingsLayout,
 } from '@/pages/settings/';
 import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
@@ -29,28 +31,37 @@ import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ThemeMode } from 'shared/types';
 import * as Sentry from '@sentry/react';
 
-import { DisclaimerDialog } from '@/components/dialogs/global/DisclaimerDialog';
-import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
 import { ReleaseNotesDialog } from '@/components/dialogs/global/ReleaseNotesDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 
 // Design scope components
 import { LegacyDesignScope } from '@/components/legacy-design/LegacyDesignScope';
 import { NewDesignScope } from '@/components/ui-new/scope/NewDesignScope';
+import { VSCodeScope } from '@/components/ui-new/scope/VSCodeScope';
+import { TerminalProvider } from '@/contexts/TerminalContext';
 
 // New design pages
 import { Workspaces } from '@/pages/ui-new/Workspaces';
+import { VSCodeWorkspacePage } from '@/pages/ui-new/VSCodeWorkspacePage';
 import { WorkspacesLanding } from '@/pages/ui-new/WorkspacesLanding';
+import { ElectricTestPage } from '@/pages/ui-new/ElectricTestPage';
+import { ProjectKanban } from '@/pages/ui-new/ProjectKanban';
+import { MigratePage } from '@/pages/ui-new/MigratePage';
+import { LandingPage } from '@/pages/ui-new/LandingPage';
+import { OnboardingSignInPage } from '@/pages/ui-new/OnboardingSignInPage';
+import { RootRedirectPage } from '@/pages/ui-new/RootRedirectPage';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
   const { config, analyticsUserId, updateAndSaveConfig } = useUserSystem();
   const posthog = usePostHog();
-  const { isSignedIn } = useAuth();
 
   // Track previous path for back navigation
   usePreviousPath();
+
+  // Sync UI preferences with server scratch storage
+  useUiPreferencesScratch();
 
   // Handle opt-in/opt-out and user identification when config loads
   useEffect(() => {
@@ -67,51 +78,25 @@ function AppContent() {
   }, [config?.analytics_enabled, analyticsUserId, posthog]);
 
   useEffect(() => {
-    if (!config) return;
+    if (!config || !config.remote_onboarding_acknowledged) return;
     let cancelled = false;
 
-    const showNextStep = async () => {
-      // 1) Disclaimer - first step
-      if (!config.disclaimer_acknowledged) {
-        await DisclaimerDialog.show();
-        if (!cancelled) {
-          await updateAndSaveConfig({ disclaimer_acknowledged: true });
-        }
-        DisclaimerDialog.hide();
-        return;
-      }
-
-      // 2) Onboarding - configure executor and editor
-      if (!config.onboarding_acknowledged) {
-        const result = await OnboardingDialog.show();
-        if (!cancelled) {
-          await updateAndSaveConfig({
-            onboarding_acknowledged: true,
-            executor_profile: result.profile,
-            editor: result.editor,
-          });
-        }
-        OnboardingDialog.hide();
-        return;
-      }
-
-      // 3) Release notes - last step
+    const showReleaseNotes = async () => {
       if (config.show_release_notes) {
         await ReleaseNotesDialog.show();
         if (!cancelled) {
           await updateAndSaveConfig({ show_release_notes: false });
         }
         ReleaseNotesDialog.hide();
-        return;
       }
     };
 
-    showNextStep();
+    showReleaseNotes();
 
     return () => {
       cancelled = true;
     };
-  }, [config, isSignedIn, updateAndSaveConfig]);
+  }, [config, updateAndSaveConfig]);
 
   // TODO: Disabled while developing FE only
   // if (loading) {
@@ -127,10 +112,35 @@ function AppContent() {
       <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
         <SearchProvider>
           <SentryRoutes>
+            <Route
+              path="/"
+              element={
+                <NewDesignScope>
+                  <RootRedirectPage />
+                </NewDesignScope>
+              }
+            />
+            <Route
+              path="/onboarding"
+              element={
+                <NewDesignScope>
+                  <LandingPage />
+                </NewDesignScope>
+              }
+            />
+            <Route
+              path="/onboarding/sign-in"
+              element={
+                <NewDesignScope>
+                  <OnboardingSignInPage />
+                </NewDesignScope>
+              }
+            />
+
             {/* ========== LEGACY DESIGN ROUTES ========== */}
             {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
             <Route
-              path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
+              path="/local-projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
               element={
                 <LegacyDesignScope>
                   <FullAttemptLogsPage />
@@ -145,17 +155,18 @@ function AppContent() {
                 </LegacyDesignScope>
               }
             >
-              <Route path="/" element={<Projects />} />
-              <Route path="/projects" element={<Projects />} />
-              <Route path="/projects/:projectId" element={<Projects />} />
+              <Route path="/local-projects" element={<Projects />} />
+              <Route path="/local-projects/:projectId" element={<Projects />} />
+              <Route path="/migration" element={<Migration />} />
               <Route
-                path="/projects/:projectId/tasks"
+                path="/local-projects/:projectId/tasks"
                 element={<ProjectTasks />}
               />
               <Route path="/settings/*" element={<SettingsLayout />}>
                 <Route index element={<Navigate to="general" replace />} />
                 <Route path="general" element={<GeneralSettings />} />
                 <Route path="projects" element={<ProjectSettings />} />
+                <Route path="repos" element={<ReposSettings />} />
                 <Route
                   path="organizations"
                   element={<OrganizationSettings />}
@@ -168,27 +179,72 @@ function AppContent() {
                 element={<Navigate to="/settings/mcp" replace />}
               />
               <Route
-                path="/projects/:projectId/tasks/:taskId"
+                path="/local-projects/:projectId/tasks/:taskId"
                 element={<ProjectTasks />}
               />
               <Route
-                path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
+                path="/local-projects/:projectId/tasks/:taskId/attempts/:attemptId"
                 element={<ProjectTasks />}
               />
             </Route>
 
             {/* ========== NEW DESIGN ROUTES ========== */}
+            {/* VS Code workspace route (standalone, no layout, no keyboard shortcuts) */}
             <Route
-              path="/workspaces"
+              path="/workspaces/:workspaceId/vscode"
+              element={
+                <VSCodeScope>
+                  <TerminalProvider>
+                    <VSCodeWorkspacePage />
+                  </TerminalProvider>
+                </VSCodeScope>
+              }
+            />
+
+            {/* Unified layout for workspaces and projects - AppBar/Navbar rendered once */}
+            <Route
               element={
                 <NewDesignScope>
-                  <NewDesignLayout />
+                  <TerminalProvider>
+                    <SharedAppLayout />
+                  </TerminalProvider>
                 </NewDesignScope>
               }
             >
-              <Route index element={<WorkspacesLanding />} />
-              <Route path="create" element={<Workspaces />} />
-              <Route path=":workspaceId" element={<Workspaces />} />
+              {/* Workspaces routes */}
+              <Route path="/workspaces" element={<WorkspacesLanding />} />
+              <Route path="/workspaces/create" element={<Workspaces />} />
+              <Route
+                path="/workspaces/electric-test"
+                element={<ElectricTestPage />}
+              />
+              <Route path="/workspaces/:workspaceId" element={<Workspaces />} />
+
+              {/* Projects routes */}
+              <Route path="/projects/:projectId" element={<ProjectKanban />} />
+              <Route
+                path="/projects/:projectId/issues/new"
+                element={<ProjectKanban />}
+              />
+              <Route
+                path="/projects/:projectId/issues/:issueId"
+                element={<ProjectKanban />}
+              />
+              <Route
+                path="/projects/:projectId/issues/:issueId/workspaces/:workspaceId"
+                element={<ProjectKanban />}
+              />
+              <Route
+                path="/projects/:projectId/issues/:issueId/workspaces/create/:draftId"
+                element={<ProjectKanban />}
+              />
+              <Route
+                path="/projects/:projectId/workspaces/create/:draftId"
+                element={<ProjectKanban />}
+              />
+
+              {/* Migration route */}
+              <Route path="/migrate" element={<MigratePage />} />
             </Route>
           </SentryRoutes>
         </SearchProvider>
@@ -203,7 +259,14 @@ function App() {
       <UserSystemProvider>
         <ClickedElementsProvider>
           <ProjectProvider>
-            <HotkeysProvider initiallyActiveScopes={['*', 'global', 'kanban']}>
+            <HotkeysProvider
+              initiallyActiveScopes={[
+                'global',
+                'workspace',
+                'kanban',
+                'projects',
+              ]}
+            >
               <AppContent />
             </HotkeysProvider>
           </ProjectProvider>

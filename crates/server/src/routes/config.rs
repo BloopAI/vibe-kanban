@@ -1,11 +1,15 @@
 use std::collections::HashMap;
 
+use api_types::LoginStatus;
 use axum::{
     Json, Router,
     body::Body,
-    extract::{Path, Query, State},
+    extract::{
+        Path, Query, State,
+        ws::{WebSocket, WebSocketUpgrade},
+    },
     http,
-    response::{Json as ResponseJson, Response},
+    response::{IntoResponse, Json as ResponseJson, Response},
     routing::{get, put},
 };
 use deployment::{Deployment, DeploymentError};
@@ -18,14 +22,18 @@ use executors::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use services::services::config::{
-    Config, ConfigError, SoundFile,
-    editor::{EditorConfig, EditorType},
-    save_config_to_file,
+use services::services::{
+    config::{
+        Config, ConfigError, SoundFile,
+        editor::{EditorConfig, EditorType},
+        save_config_to_file,
+    },
+    container::ContainerService,
 };
 use tokio::fs;
 use ts_rs::TS;
-use utils::{api::oauth::LoginStatus, assets::config_path, response::ApiResponse};
+use utils::{assets::config_path, log_msg::LogMsg, response::ApiResponse};
+use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
@@ -41,6 +49,10 @@ pub fn router() -> Router<DeploymentImpl> {
             get(check_editor_availability),
         )
         .route("/agents/check-availability", get(check_agent_availability))
+        .route(
+            "/agents/slash-commands/ws",
+            get(stream_agent_slash_commands_ws),
+        )
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -87,7 +99,12 @@ async fn get_user_system_info(
     State(deployment): State<DeploymentImpl>,
 ) -> ResponseJson<ApiResponse<UserSystemInfo>> {
     let config = deployment.config().read().await;
-    let login_status = deployment.get_login_status().await;
+    let login_status = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        deployment.get_login_status(),
+    )
+    .await
+    .unwrap_or(LoginStatus::LoggedOut);
 
     let user_system_info = UserSystemInfo {
         config: config.clone(),
@@ -117,7 +134,7 @@ async fn update_config(
     let config_path = config_path();
 
     // Validate git branch prefix
-    if !utils::git::is_valid_branch_prefix(&new_config.git_branch_prefix) {
+    if !git::is_valid_branch_prefix(&new_config.git_branch_prefix) {
         return ResponseJson(ApiResponse::error(
             "Invalid git branch prefix. Must be a valid git branch name component without slashes.",
         ));
@@ -484,4 +501,78 @@ async fn check_agent_availability(
     };
 
     ResponseJson(ApiResponse::success(info))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AgentSlashCommandsStreamQuery {
+    executor: BaseCodingAgent,
+    #[serde(default)]
+    workspace_id: Option<Uuid>,
+    #[serde(default)]
+    repo_id: Option<Uuid>,
+}
+
+pub async fn stream_agent_slash_commands_ws(
+    ws: WebSocketUpgrade,
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<AgentSlashCommandsStreamQuery>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| async move {
+        if let Err(e) = handle_agent_slash_commands_ws(socket, deployment, query).await {
+            tracing::warn!("slash commands WS closed: {}", e);
+        }
+    })
+}
+
+async fn handle_agent_slash_commands_ws(
+    socket: WebSocket,
+    deployment: DeploymentImpl,
+    query: AgentSlashCommandsStreamQuery,
+) -> anyhow::Result<()> {
+    use futures_util::{SinkExt, StreamExt};
+
+    let (mut sender, mut receiver) = socket.split();
+
+    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
+
+    match deployment
+        .container()
+        .available_agent_slash_commands(
+            ExecutorProfileId::new(query.executor),
+            query.workspace_id,
+            query.repo_id,
+        )
+        .await
+    {
+        Ok(Some(mut stream)) => {
+            if let Some(patch) = stream.next().await {
+                let _ = sender
+                    .send(LogMsg::JsonPatch(patch).to_ws_message_unchecked())
+                    .await;
+            }
+
+            let _ = sender.send(LogMsg::Ready.to_ws_message_unchecked()).await;
+
+            while let Some(patch) = stream.next().await {
+                if sender
+                    .send(LogMsg::JsonPatch(patch).to_ws_message_unchecked())
+                    .await
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        }
+        Ok(None) => {
+            let _ = sender.send(LogMsg::Ready.to_ws_message_unchecked()).await;
+        }
+        Err(e) => {
+            tracing::warn!("Failed to start slash command stream: {}", e);
+        }
+    }
+
+    let _ = sender
+        .send(LogMsg::Finished.to_ws_message_unchecked())
+        .await;
+    Ok(())
 }

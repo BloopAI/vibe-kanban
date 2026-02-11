@@ -177,19 +177,25 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
 
       if (result.error) {
         if (
-          result.error.type === 'github_cli_not_installed' ||
-          result.error.type === 'github_cli_not_logged_in'
+          result.error.type === 'cli_not_installed' ||
+          result.error.type === 'cli_not_logged_in'
         ) {
-          if (isMacEnvironment) {
+          // Only show setup dialog for GitHub CLI on Mac
+          if (result.error.provider === 'git_hub' && isMacEnvironment) {
             await showGhCliSetupDialog();
           } else {
-            const ui = mapGhCliErrorToUi(
-              'SETUP_HELPER_NOT_SUPPORTED',
-              defaultGhCliErrorMessage,
-              t
-            );
-            setGhCliHelp(ui.variant ? ui : null);
-            setError(ui.variant ? null : ui.message);
+            const providerName =
+              result.error.provider === 'git_hub'
+                ? 'GitHub'
+                : result.error.provider === 'azure_dev_ops'
+                  ? 'Azure DevOps'
+                  : 'Git host';
+            const action =
+              result.error.type === 'cli_not_installed'
+                ? 'not installed'
+                : 'not logged in';
+            setError(`${providerName} CLI is ${action}`);
+            setGhCliHelp(null);
           }
           return;
         } else if (

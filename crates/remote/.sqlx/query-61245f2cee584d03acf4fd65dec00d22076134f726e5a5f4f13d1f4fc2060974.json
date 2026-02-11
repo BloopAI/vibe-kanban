@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id              AS \"id!: Uuid\",\n                project_id      AS \"project_id!: Uuid\",\n                name            AS \"name!\",\n                color           AS \"color!\",\n                sort_order      AS \"sort_order!\",\n                hidden          AS \"hidden!\",\n                created_at      AS \"created_at!: DateTime<Utc>\"\n            FROM project_statuses\n            WHERE project_id = $1 AND LOWER(name) = LOWER($2)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "color!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "sort_order!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "hidden!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "61245f2cee584d03acf4fd65dec00d22076134f726e5a5f4f13d1f4fc2060974"
+}

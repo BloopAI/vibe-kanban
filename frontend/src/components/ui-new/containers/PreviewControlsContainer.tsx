@@ -1,84 +1,78 @@
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { PreviewControls } from '../views/PreviewControls';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
-import { usePreviewUrl } from '../hooks/usePreviewUrl';
 import { useLogStream } from '@/hooks/useLogStream';
-import { useLayoutStore } from '@/stores/useLayoutStore';
+import {
+  useUiPreferencesStore,
+  RIGHT_MAIN_PANEL_MODES,
+} from '@/stores/useUiPreferencesStore';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useLogsPanel } from '@/contexts/LogsPanelContext';
 
 interface PreviewControlsContainerProps {
-  attemptId?: string;
-  onViewProcessInPanel?: (processId: string) => void;
-  className?: string;
+  attemptId: string;
+  className: string;
 }
 
 export function PreviewControlsContainer({
   attemptId,
-  onViewProcessInPanel,
   className,
 }: PreviewControlsContainerProps) {
-  const setLogsMode = useLayoutStore((s) => s.setLogsMode);
-  const triggerPreviewRefresh = useLayoutStore((s) => s.triggerPreviewRefresh);
+  const { repos } = useWorkspaceContext();
+  const { viewProcessInPanel } = useLogsPanel();
+  const setRightMainPanelMode = useUiPreferencesStore(
+    (s) => s.setRightMainPanelMode
+  );
 
-  const {
-    start,
-    stop,
-    isStarting,
-    isStopping,
-    runningDevServer,
-    latestDevServerProcess,
-  } = usePreviewDevServer(attemptId);
+  const { isStarting, runningDevServers, devServerProcesses } =
+    usePreviewDevServer(attemptId);
 
-  const { logs } = useLogStream(latestDevServerProcess?.id ?? '');
-  const urlInfo = usePreviewUrl(logs);
+  const [activeProcessId, setActiveProcessId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (devServerProcesses.length > 0 && !activeProcessId) {
+      setActiveProcessId(devServerProcesses[0].id);
+    }
+  }, [devServerProcesses, activeProcessId]);
+
+  const activeProcess =
+    devServerProcesses.find((p) => p.id === activeProcessId) ??
+    devServerProcesses[0];
+
+  const { logs, error: logsError } = useLogStream(activeProcess?.id ?? '');
 
   const handleViewFullLogs = useCallback(() => {
-    if (latestDevServerProcess?.id && onViewProcessInPanel) {
-      // Switch to logs mode and select the dev server process
-      onViewProcessInPanel(latestDevServerProcess.id);
+    const targetId = activeProcess?.id;
+    if (targetId) {
+      viewProcessInPanel(targetId);
     } else {
-      // Just switch to logs mode if no process to select
-      setLogsMode(true);
+      setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
     }
-  }, [latestDevServerProcess?.id, onViewProcessInPanel, setLogsMode]);
+  }, [activeProcess?.id, viewProcessInPanel, setRightMainPanelMode]);
 
-  const handleStart = useCallback(() => {
-    start();
-  }, [start]);
+  const handleTabChange = useCallback((processId: string) => {
+    setActiveProcessId(processId);
+  }, []);
 
-  const handleStop = useCallback(() => {
-    stop();
-  }, [stop]);
+  const hasDevScript = repos.some(
+    (repo) => repo.dev_server_script && repo.dev_server_script.trim() !== ''
+  );
 
-  const handleRefresh = useCallback(() => {
-    triggerPreviewRefresh();
-  }, [triggerPreviewRefresh]);
-
-  const handleCopyUrl = useCallback(async () => {
-    if (urlInfo?.url) {
-      await navigator.clipboard.writeText(urlInfo.url);
-    }
-  }, [urlInfo?.url]);
-
-  const handleOpenInNewTab = useCallback(() => {
-    if (urlInfo?.url) {
-      window.open(urlInfo.url, '_blank');
-    }
-  }, [urlInfo?.url]);
+  // Don't render if no repos have dev server scripts configured
+  if (!hasDevScript) {
+    return null;
+  }
 
   return (
     <PreviewControls
+      devServerProcesses={devServerProcesses}
+      activeProcessId={activeProcess?.id ?? null}
       logs={logs}
-      url={urlInfo?.url}
+      logsError={logsError}
       onViewFullLogs={handleViewFullLogs}
-      onStart={handleStart}
-      onStop={handleStop}
-      onRefresh={handleRefresh}
-      onCopyUrl={handleCopyUrl}
-      onOpenInNewTab={handleOpenInNewTab}
+      onTabChange={handleTabChange}
       isStarting={isStarting}
-      isStopping={isStopping}
-      hasDevScript={true}
-      isServerRunning={Boolean(runningDevServer)}
+      isServerRunning={runningDevServers.length > 0}
       className={className}
     />
   );

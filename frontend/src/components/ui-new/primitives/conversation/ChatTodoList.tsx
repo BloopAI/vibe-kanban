@@ -41,13 +41,13 @@ export function ChatTodoList({ todos, expanded, onToggle }: ChatTodoListProps) {
         />
       </div>
       {expanded && todos.length > 0 && (
-        <ul className="mt-base ml-6 space-y-1">
+        <ul className="pt-base ml-6 [&>li+li]:pt-1">
           {todos.map((todo, index) => (
             <li
               key={`${todo.content}-${index}`}
               className="flex items-start gap-2"
             >
-              <span className="mt-0.5 h-4 w-4 flex items-center justify-center shrink-0">
+              <span className="pt-0.5 h-4 w-4 flex items-center justify-center shrink-0">
                 {getStatusIcon(todo.status)}
               </span>
               <span className="leading-5 break-words">

@@ -1,12 +1,11 @@
 use std::path::{Path, PathBuf};
 
 use db::models::repo::Repo as RepoModel;
+use git::{GitService, GitServiceError};
 use sqlx::SqlitePool;
 use thiserror::Error;
 use utils::path::expand_tilde;
 use uuid::Uuid;
-
-use super::git::{GitService, GitServiceError};
 
 #[derive(Debug, Error)]
 pub enum RepoError {

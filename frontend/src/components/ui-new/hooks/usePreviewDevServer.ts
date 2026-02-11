@@ -3,7 +3,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi, executionProcessesApi } from '@/lib/api';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
-import type { ExecutionProcess } from 'shared/types';
+import {
+  filterRunningDevServers,
+  filterDevServerProcesses,
+  deduplicateDevServersByWorkingDir,
+} from '@/lib/devServerUtils';
 
 interface UsePreviewDevServerOptions {
   onStartSuccess?: () => void;
@@ -19,25 +23,19 @@ export function usePreviewDevServer(
   const queryClient = useQueryClient();
   const { attemptData } = useAttemptExecution(attemptId);
 
-  // Find running dev server process
-  const runningDevServer = useMemo<ExecutionProcess | undefined>(() => {
-    return attemptData.processes.find(
-      (process) =>
-        process.run_reason === 'devserver' && process.status === 'running'
-    );
-  }, [attemptData.processes]);
+  const runningDevServers = useMemo(
+    () => filterRunningDevServers(attemptData.processes),
+    [attemptData.processes]
+  );
 
-  // Find latest dev server process (for logs viewing)
-  const latestDevServerProcess = useMemo<ExecutionProcess | undefined>(() => {
-    return [...attemptData.processes]
-      .filter((process) => process.run_reason === 'devserver')
-      .sort(
-        (a, b) =>
-          new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
-      )[0];
-  }, [attemptData.processes]);
+  const devServerProcesses = useMemo(
+    () =>
+      deduplicateDevServersByWorkingDir(
+        filterDevServerProcesses(attemptData.processes)
+      ),
+    [attemptData.processes]
+  );
 
-  // Start mutation
   const startMutation = useMutation({
     mutationKey: ['startDevServer', attemptId],
     mutationFn: async () => {
@@ -57,24 +55,25 @@ export function usePreviewDevServer(
     },
   });
 
-  // Stop mutation
   const stopMutation = useMutation({
-    mutationKey: ['stopDevServer', runningDevServer?.id],
+    mutationKey: ['stopDevServer', attemptId],
     mutationFn: async () => {
-      if (!runningDevServer) return;
-      await executionProcessesApi.stopExecutionProcess(runningDevServer.id);
+      if (runningDevServers.length === 0) return;
+      await Promise.all(
+        runningDevServers.map((ds) =>
+          executionProcessesApi.stopExecutionProcess(ds.id)
+        )
+      );
     },
     onSuccess: async () => {
-      await Promise.all([
+      await queryClient.invalidateQueries({
+        queryKey: ['executionProcesses', attemptId],
+      });
+      for (const ds of runningDevServers) {
         queryClient.invalidateQueries({
-          queryKey: ['executionProcesses', attemptId],
-        }),
-        runningDevServer
-          ? queryClient.invalidateQueries({
-              queryKey: ['processDetails', runningDevServer.id],
-            })
-          : Promise.resolve(),
-      ]);
+          queryKey: ['processDetails', ds.id],
+        });
+      }
       queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
       options?.onStopSuccess?.();
     },
@@ -89,7 +88,7 @@ export function usePreviewDevServer(
     stop: stopMutation.mutate,
     isStarting: startMutation.isPending,
     isStopping: stopMutation.isPending,
-    runningDevServer,
-    latestDevServerProcess,
+    runningDevServers,
+    devServerProcesses,
   };
 }

@@ -1,13 +1,21 @@
-import { useRef, useMemo } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+} from 'react';
 import type { Workspace, Session } from 'shared/types';
 import { createWorkspaceWithSession } from '@/types/attempt';
-import { WorkspacesMain } from '@/components/ui-new/views/WorkspacesMain';
+import {
+  WorkspacesMain,
+  type ConversationListHandle,
+} from '@/components/ui-new/views/WorkspacesMain';
 import { useTask } from '@/hooks/useTask';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
-interface DiffStats {
-  filesChanged: number;
-  linesAdded: number;
-  linesRemoved: number;
+export interface WorkspacesMainContainerHandle {
+  scrollToBottom: () => void;
 }
 
 interface WorkspacesMainContainerProps {
@@ -17,27 +25,29 @@ interface WorkspacesMainContainerProps {
   onSelectSession: (sessionId: string) => void;
   isLoading: boolean;
   /** Whether user is creating a new session */
-  isNewSessionMode?: boolean;
+  isNewSessionMode: boolean;
   /** Callback to start new session mode */
-  onStartNewSession?: () => void;
-  /** Callback to toggle changes panel */
-  onViewCode?: () => void;
-  /** Diff statistics from the workspace */
-  diffStats?: DiffStats;
+  onStartNewSession: () => void;
 }
 
-export function WorkspacesMainContainer({
-  selectedWorkspace,
-  selectedSession,
-  sessions,
-  onSelectSession,
-  isLoading,
-  isNewSessionMode,
-  onStartNewSession,
-  onViewCode,
-  diffStats,
-}: WorkspacesMainContainerProps) {
+export const WorkspacesMainContainer = forwardRef<
+  WorkspacesMainContainerHandle,
+  WorkspacesMainContainerProps
+>(function WorkspacesMainContainer(
+  {
+    selectedWorkspace,
+    selectedSession,
+    sessions,
+    onSelectSession,
+    isLoading,
+    isNewSessionMode,
+    onStartNewSession,
+  },
+  ref
+) {
+  const { diffStats } = useWorkspaceContext();
   const containerRef = useRef<HTMLElement>(null);
+  const conversationListRef = useRef<ConversationListHandle>(null);
 
   // Fetch task to get project_id for file search
   const { data: task } = useTask(selectedWorkspace?.task_id, {
@@ -50,18 +60,42 @@ export function WorkspacesMainContainer({
     return createWorkspaceWithSession(selectedWorkspace, selectedSession);
   }, [selectedWorkspace, selectedSession]);
 
+  const handleScrollToPreviousMessage = useCallback(() => {
+    conversationListRef.current?.scrollToPreviousUserMessage();
+  }, []);
+
+  const handleScrollToBottom = useCallback(() => {
+    conversationListRef.current?.scrollToBottom();
+  }, []);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      scrollToBottom: () => {
+        conversationListRef.current?.scrollToBottom();
+      },
+    }),
+    []
+  );
+
   return (
     <WorkspacesMain
+      conversationListRef={conversationListRef}
       workspaceWithSession={workspaceWithSession}
       sessions={sessions}
       onSelectSession={onSelectSession}
       isLoading={isLoading}
       containerRef={containerRef}
       projectId={task?.project_id}
-      onViewCode={onViewCode}
       isNewSessionMode={isNewSessionMode}
       onStartNewSession={onStartNewSession}
-      diffStats={diffStats}
+      diffStats={{
+        filesChanged: diffStats.files_changed,
+        linesAdded: diffStats.lines_added,
+        linesRemoved: diffStats.lines_removed,
+      }}
+      onScrollToPreviousMessage={handleScrollToPreviousMessage}
+      onScrollToBottom={handleScrollToBottom}
     />
   );
-}
+});

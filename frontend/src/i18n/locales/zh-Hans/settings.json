@@ -1,18 +1,31 @@
 {
   "settings": {
+    "common": {
+      "unsavedChanges": "• 您有未保存的更改"
+    },
+    "unsavedChanges": {
+      "title": "未保存的更改",
+      "message": "您有未保存的更改。确定要关闭而不保存吗？",
+      "discard": "放弃更改",
+      "cancel": "继续编辑"
+    },
     "layout": {
       "nav": {
         "title": "设置",
         "general": "常规",
         "generalDesc": "主题、通知和偏好设置",
         "projects": "项目",
-        "projectsDesc": "项目脚本和配置",
+        "projectsDesc": "项目仓库和配置",
+        "repos": "仓库",
+        "reposDesc": "仓库脚本和配置",
         "agents": "代理",
         "agentsDesc": "编码代理配置",
         "mcp": "MCP 服务器",
         "mcpDesc": "模型上下文协议服务器",
         "organizations": "组织设置",
-        "organizationsDesc": "管理组织成员和权限"
+        "organizationsDesc": "管理组织成员和权限",
+        "remote-projects": "项目",
+        "remote-projectsDesc": "管理项目"
       }
     },
     "general": {
@@ -133,6 +146,14 @@
             "invalidChars": "包含无效字符。",
             "controlChars": "包含控制字符。"
           }
+        },
+        "workspaceDir": {
+          "label": "工作区目录",
+          "placeholder": "~/",
+          "helper": "工作区将在此路径内的 .vibe-kanban-workspaces 子目录中创建。留空以使用系统默认值。更改需要重启应用程序。",
+          "browse": "浏览",
+          "dialogTitle": "选择工作区目录",
+          "dialogDescription": "选择一个目录。工作区将在其中的 .vibe-kanban-workspaces 子目录中创建。"
         }
       },
       "pullRequests": {
@@ -145,6 +166,18 @@
         "customPrompt": {
           "useCustom": "使用自定义提示",
           "helper": "生成PR描述时AI代理使用的自定义提示。使用{pr_number}和{pr_url}作为占位符。"
+        }
+      },
+      "commits": {
+        "title": "提交",
+        "description": "配置任务尝试的提交行为",
+        "reminder": {
+          "label": "提交提醒",
+          "helper": "提示支持的代理在停止前提交更改。"
+        },
+        "customPrompt": {
+          "useCustom": "使用自定义提示",
+          "helper": "提交提醒的自定义提示。git 状态将自动追加。"
         }
       },
       "notifications": {
@@ -160,6 +193,15 @@
         "push": {
           "label": "推送通知",
           "helper": "任务尝试完成运行时显示系统通知。"
+        }
+      },
+      "messageInput": {
+        "title": "消息输入",
+        "description": "配置在聊天输入中发送消息的方式。",
+        "shortcut": {
+          "label": "发送消息快捷键",
+          "helper": "选择发送消息的键盘快捷键。",
+          "enterLabel": "Enter（Shift+Enter 换行）"
         }
       },
       "privacy": {
@@ -230,24 +272,35 @@
           "description": "重置入门流程。",
           "button": "重置"
         }
+      },
+      "beta": {
+        "title": "Beta 功能",
+        "description": "在正式发布前试用实验性功能。",
+        "workspaces": {
+          "label": "启用工作区 Beta",
+          "helper": "查看任务尝试时使用新的工作区界面。任务将首先在任务视图中打开，尝试将在新的工作区视图中打开。"
+        }
       }
     },
     "agents": {
       "title": "编码代理配置",
       "description": "使用不同的配置自定义编码代理的行为。",
       "loading": "加载代理配置中...",
+      "selectAgent": "选择代理",
       "save": {
         "button": "保存代理配置",
-        "success": "✓ 执行器配置保存成功！"
+        "success": "✓ 执行器配置保存成功！",
+        "unsavedChanges": "• 您有未保存的更改"
       },
       "availability": {
         "checking": "检查中...",
+        "checkingAvailability": "正在检查可用性...",
+        "available": "代理可用",
+        "notFoundSimple": "未找到代理",
         "loginDetected": "检测到最近使用",
         "loginDetectedTooltip": "找到此代理的最近身份验证凭据",
         "installationFound": "检测到以前使用",
-        "installationFoundTooltip": "找到代理配置。您可能需要登录才能使用它。",
-        "notFound": "未找到",
-        "notFoundTooltip": "未检测到以前的使用。代理可能需要安装和/或登录。"
+        "installationFoundTooltip": "找到代理配置。您可能需要登录才能使用它。"
       },
       "editor": {
         "formLabel": "编辑 JSON",
@@ -259,6 +312,8 @@
         "deleteTitle": "无法删除最后一个配置",
         "deleteButton": "删除 {{name}}",
         "deleteText": "删除",
+        "makeDefault": "设为默认",
+        "isDefault": "默认",
         "jsonLabel": "代理配置（JSON）",
         "jsonPlaceholder": "加载配置文件中...",
         "jsonLoading": "加载中...",
@@ -267,7 +322,20 @@
       "errors": {
         "deleteFailed": "删除配置失败。请重试。",
         "saveFailed": "保存代理配置失败。请重试。",
-        "saveConfigFailed": "保存配置失败。请重试。"
+        "saveConfigFailed": "保存配置失败。请重试。",
+        "schemaNotFound": "未找到执行器类型 {{executor}} 的架构"
+      },
+      "tree": {
+        "search": "搜索配置...",
+        "expandAll": "全部展开",
+        "collapseAll": "全部折叠",
+        "noResults": "没有匹配的配置",
+        "noConfigs": "没有可用的配置",
+        "selectConfig": "从侧边栏选择一个配置来查看和编辑其设置。"
+      },
+      "deleteConfigDialog": {
+        "title": "删除配置？",
+        "description": "这将从 {{executorType}} 执行器中永久删除\"{{configName}}\"。此操作无法撤销。"
       }
     },
     "mcp": {
@@ -303,7 +371,8 @@
         "button": "保存 MCP 配置",
         "success": "设置已保存！",
         "successMessage": "✓ MCP 配置保存成功！",
-        "loading": "加载当前 MCP 服务器配置..."
+        "loading": "加载当前 MCP 服务器配置...",
+        "unsavedChanges": "• 您有未保存的更改"
       }
     },
     "projects": {
@@ -331,38 +400,6 @@
           "helper": "磁盘上 git 仓库的绝对路径。"
         }
       },
-      "scripts": {
-        "title": "脚本和配置",
-        "description": "为此项目配置设置脚本、清理脚本和要复制的文件。",
-        "setup": {
-          "label": "设置脚本",
-          "helper": "此脚本从工作树内部运行，在创建后、编码代理启动前执行。用于设置任务，如安装依赖项或准备环境。",
-          "parallelLabel": "与编码代理并行运行设置脚本",
-          "parallelHelper": "启用后，设置脚本将与编码代理同时运行，而不是等待设置完成后再启动。"
-        },
-        "dev": {
-          "label": "开发服务器脚本",
-          "helper": "从任务尝试中启动开发服务器。脚本从工作区目录（每个仓库工作树的上一级）执行，除非在下方指定了工作目录。"
-        },
-        "devWorkingDir": {
-          "label": "开发服务器工作目录",
-          "placeholder": "例如：my-repo",
-          "helper": "运行开发服务器脚本的目录，相对于工作区根目录。留空则从工作区根目录运行。"
-        },
-        "agentWorkingDir": {
-          "label": "代理工作目录",
-          "placeholder": "例如：my-repo",
-          "helper": "新工作区运行编码代理的默认目录，相对于工作区根目录。此值在创建工作区时保存，不会影响现有工作区。对于单仓库项目，默认为仓库名称。留空则从工作区根目录运行。"
-        },
-        "cleanup": {
-          "label": "清理脚本",
-          "helper": "此脚本从工作树内部运行，在编码代理执行后执行（仅在进行了更改时）。用于质量保证任务，如运行 linter、格式化程序、测试或其他验证步骤。如果没有进行更改，则跳过此脚本。"
-        },
-        "copyFiles": {
-          "label": "复制文件",
-          "helper": "要从原始项目目录复制到工作树的文件的逗号分隔列表。这些文件将在创建工作树后但在运行设置脚本之前复制。对环境特定文件（如 .env、配置文件和本地设置）很有用。确保这些文件被 gitignore，否则它们可能会被提交！"
-        }
-      },
       "save": {
         "button": "保存项目设置",
         "success": "✓ 项目设置保存成功！",
@@ -370,6 +407,85 @@
         "unsavedChanges": "• 您有未保存的更改",
         "discard": "放弃",
         "confirmSwitch": "您有未保存的更改。您确定要切换项目吗？您的更改将丢失。"
+      },
+      "repositories": {
+        "title": "仓库",
+        "description": "管理此项目中的 Git 仓库",
+        "noRepositories": "未配置仓库",
+        "addRepository": "添加仓库"
+      }
+    },
+    "repos": {
+      "title": "仓库配置",
+      "description": "配置此仓库在工作区中使用时运行的脚本。",
+      "loading": "加载仓库中...",
+      "loadError": "加载仓库失败。",
+      "selector": {
+        "label": "选择仓库",
+        "placeholder": "选择要配置的仓库",
+        "helper": "选择仓库以查看和编辑其配置。",
+        "noRepos": "没有可用的仓库"
+      },
+      "general": {
+        "title": "常规设置",
+        "description": "配置仓库基本信息。",
+        "displayName": {
+          "label": "显示名称",
+          "placeholder": "输入显示名称",
+          "helper": "此仓库的友好名称。"
+        },
+        "path": {
+          "label": "仓库路径"
+        },
+        "defaultWorkingDir": {
+          "label": "默认工作目录",
+          "placeholder": "例如：packages/frontend",
+          "helper": "单仓库工作区中编码代理运行的子目录。在创建工作区时设置。留空则使用仓库根目录。"
+        },
+        "defaultTargetBranch": {
+          "label": "默认目标分支",
+          "placeholder": "选择分支",
+          "helper": "新工作区的默认基础分支。工作树从此分支创建，PR 将以此分支为目标。",
+          "search": "搜索分支",
+          "noBranches": "未找到分支",
+          "loading": "正在加载分支...",
+          "useCurrent": "使用当前分支"
+        }
+      },
+      "scripts": {
+        "title": "脚本和配置",
+        "description": "配置此仓库的设置脚本、清理脚本和要复制的文件。这些脚本在仓库用于任何工作区时都会运行。",
+        "setup": {
+          "label": "设置脚本",
+          "helper": "此脚本从工作树内部运行，在创建后、编码代理启动前执行。用于设置任务，如安装依赖项或准备环境。",
+          "parallelLabel": "与编码代理并行运行设置脚本",
+          "parallelHelper": "启用后，设置脚本将与编码代理同时运行，而不是等待设置完成后再启动。"
+        },
+        "cleanup": {
+          "label": "清理脚本",
+          "helper": "此脚本从工作树内部运行，在编码代理执行后执行（仅在进行了更改时）。用于质量保证任务，如运行 linter、格式化程序、测试或其他验证步骤。"
+        },
+        "archive": {
+          "label": "归档脚本",
+          "helper": "当工作区被归档时，此脚本从工作树内部运行。用于清理任务，如停止服务、释放资源或保存状态。"
+        },
+        "copyFiles": {
+          "label": "复制文件",
+          "helper": "要从原始仓库目录复制到工作树的文件的逗号分隔列表。对 .env 等环境文件很有用。确保这些文件被 gitignore！",
+          "placeholder": "文件路径或 glob 模式（例如：.env、config/*.json）"
+        },
+        "devServer": {
+          "label": "开发服务器脚本",
+          "helper": "为此仓库启动开发服务器。脚本从仓库的工作树目录执行。"
+        }
+      },
+      "save": {
+        "button": "保存仓库设置",
+        "success": "仓库设置保存成功！",
+        "error": "保存仓库设置失败",
+        "unsavedChanges": "您有未保存的更改",
+        "discard": "放弃",
+        "confirmSwitch": "您有未保存的更改。您确定要切换仓库吗？您的更改将丢失。"
       }
     }
   },

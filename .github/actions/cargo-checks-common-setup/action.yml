@@ -1,0 +1,64 @@
+name: 'Cargo checks common setup'
+description: 'Common setup for cargo checks in CI'
+
+inputs:
+  toolchain:
+    description: 'Rust toolchain version'
+    required: true
+  components:
+    description: 'Comma-separated rustup components'
+    required: false
+    default: ''
+  cache-key:
+    description: 'Shared key for rust-cache'
+    required: true
+  setup-node:
+    description: 'Whether to install Node.js and pnpm'
+    required: false
+    default: 'false'
+  setup-sqlx-cli:
+    description: 'Whether to install sqlx-cli'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node
+      if: ${{ inputs.setup-node == 'true' }}
+      uses: ./.github/actions/setup-node
+
+    - name: Setup sccache
+      uses: BloopAI/sccache-action@main
+
+    - name: Install Rust toolchain
+      if: ${{ inputs.components == '' }}
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: ${{ inputs.toolchain }}
+
+    - name: Install Rust toolchain with components
+      if: ${{ inputs.components != '' }}
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        components: ${{ inputs.components }}
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      env:
+        RUST_CACHE_DEBUG: true
+      with:
+        workspaces: "."
+        cache-provider: "github"
+        cache-on-failure: true
+        shared-key: ${{ inputs.cache-key }}
+        cache-all-crates: true
+
+    - name: Install sqlx-cli
+      if: ${{ inputs.setup-sqlx-cli == 'true' }}
+      uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+      with:
+        tool: sqlx-cli
+        no-default-features: true
+        features: sqlite,postgres

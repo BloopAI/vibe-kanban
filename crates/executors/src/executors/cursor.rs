@@ -16,7 +16,7 @@ use workspace_utils::{
 };
 
 use crate::{
-    command::{CmdOverrides, CommandBuilder, apply_overrides},
+    command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
@@ -41,7 +41,7 @@ pub struct CursorAgent {
     pub force: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(
-        description = "auto, sonnet-4.5, sonnet-4.5-thinking, gpt-5, opus-4.1, grok, composer-1"
+        description = "auto, sonnet-4.5, sonnet-4.5-thinking, gpt-5, opus-4.1, grok, composer-1, composer-1.5"
     )]
     pub model: Option<String>,
     #[serde(flatten)]
@@ -53,7 +53,7 @@ impl CursorAgent {
         "cursor-agent"
     }
 
-    fn build_command_builder(&self) -> CommandBuilder {
+    fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
         let mut builder =
             CommandBuilder::new(Self::base_command()).params(["-p", "--output-format=stream-json"]);
 
@@ -79,7 +79,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
     ) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
-        let command_parts = self.build_command_builder().build_initial()?;
+        let command_parts = self.build_command_builder()?.build_initial()?;
 
         let (executable_path, args) = command_parts.into_resolved().await?;
 
@@ -92,6 +92,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
+            .env("NPM_CONFIG_LOGLEVEL", "error")
             .args(&args);
 
         env.clone()
@@ -113,12 +114,13 @@ impl StandardCodingAgentExecutor for CursorAgent {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
         let command_parts = self
-            .build_command_builder()
+            .build_command_builder()?
             .build_follow_up(&["--resume".to_string(), session_id.to_string()])?;
         let (executable_path, args) = command_parts.into_resolved().await?;
 
@@ -131,6 +133,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
+            .env("NPM_CONFIG_LOGLEVEL", "error")
             .args(&args);
 
         env.clone()

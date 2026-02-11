@@ -7,7 +7,24 @@ import type {
 } from 'shared/types';
 
 /**
+ * Compare two ExecutorProfileIds for equality.
+ * Treats null/undefined variant as equivalent to "DEFAULT".
+ */
+export function areProfilesEqual(
+  a: ExecutorProfileId | null | undefined,
+  b: ExecutorProfileId | null | undefined
+): boolean {
+  if (!a || !b) return a === b;
+  if (a.executor !== b.executor) return false;
+  // Normalize variants: null/undefined -> 'DEFAULT'
+  const variantA = a.variant ?? 'DEFAULT';
+  const variantB = b.variant ?? 'DEFAULT';
+  return variantA === variantB;
+}
+
+/**
  * Get variant options for a given executor from profiles.
+ * Returns variants sorted: DEFAULT first, then alphabetically.
  */
 export function getVariantOptions(
   executor: BaseCodingAgent | null | undefined,
@@ -15,7 +32,14 @@ export function getVariantOptions(
 ): string[] {
   if (!executor || !profiles) return [];
   const executorConfig = profiles[executor];
-  return executorConfig ? Object.keys(executorConfig) : [];
+  if (!executorConfig) return [];
+
+  const variants = Object.keys(executorConfig);
+  return variants.sort((a, b) => {
+    if (a === 'DEFAULT') return -1;
+    if (b === 'DEFAULT') return 1;
+    return a.localeCompare(b);
+  });
 }
 
 /**
@@ -31,8 +55,10 @@ export function extractProfileFromAction(
     switch (typ.type) {
       case 'CodingAgentInitialRequest':
       case 'CodingAgentFollowUpRequest':
+      case 'ReviewRequest':
         return typ.executor_profile_id;
       case 'ScriptRequest':
+      default:
         curr = curr.next_action;
         continue;
     }

@@ -2,35 +2,24 @@
 
 use std::time::Duration;
 
+use api_types::{
+    AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
+    CreateOrganizationRequest, CreateOrganizationResponse, CreateWorkspaceRequest,
+    DeleteWorkspaceRequest, GetInvitationResponse, GetOrganizationResponse, HandoffInitRequest,
+    HandoffInitResponse, HandoffRedeemRequest, HandoffRedeemResponse, ListInvitationsResponse,
+    ListMembersResponse, ListOrganizationsResponse, Organization, ProfileResponse,
+    RevokeInvitationRequest, TokenRefreshRequest, TokenRefreshResponse, UpdateMemberRoleRequest,
+    UpdateMemberRoleResponse, UpdateOrganizationRequest, UpdateWorkspaceRequest,
+    UpsertPullRequestRequest,
+};
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
-use remote::routes::tasks::{
-    AssignSharedTaskRequest, CheckTasksRequest, CreateSharedTaskRequest, SharedTaskResponse,
-    UpdateSharedTaskRequest,
-};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use thiserror::Error;
 use tracing::warn;
 use url::Url;
-use utils::{
-    api::{
-        oauth::{
-            HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest, HandoffRedeemResponse,
-            ProfileResponse, TokenRefreshRequest, TokenRefreshResponse,
-        },
-        organizations::{
-            AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
-            CreateOrganizationRequest, CreateOrganizationResponse, GetInvitationResponse,
-            GetOrganizationResponse, ListInvitationsResponse, ListMembersResponse,
-            ListOrganizationsResponse, Organization, RevokeInvitationRequest,
-            UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
-        },
-        projects::{ListProjectsResponse, RemoteProject},
-    },
-    jwt::extract_expiration,
-};
+use utils::jwt::extract_expiration;
 use uuid::Uuid;
 
 use super::{auth::AuthContext, oauth_credentials::Credentials};
@@ -133,9 +122,16 @@ impl RemoteClient {
 
     pub fn new(base_url: &str, auth_context: AuthContext) -> Result<Self, RemoteClientError> {
         let base = Url::parse(base_url).map_err(|e| RemoteClientError::Url(e.to_string()))?;
-        let http = Client::builder()
+        let mut builder = Client::builder()
             .timeout(Self::REQUEST_TIMEOUT)
-            .user_agent(concat!("remote-client/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!("remote-client/", env!("CARGO_PKG_VERSION")));
+
+        #[cfg(debug_assertions)]
+        {
+            builder = builder.danger_accept_invalid_certs(true);
+        }
+
+        let http = builder
             .build()
             .map_err(|e| RemoteClientError::Transport(e.to_string()))?;
         Ok(Self {
@@ -280,7 +276,11 @@ impl RemoteClient {
             .map_err(|e| RemoteClientError::Url(e.to_string()))?;
 
         (|| async {
-            let mut req = self.http.request(method.clone(), url.clone());
+            let mut req = self
+                .http
+                .request(method.clone(), url.clone())
+                .header("X-Client-Version", env!("CARGO_PKG_VERSION"))
+                .header("X-Client-Type", "local-backend");
 
             if requires_auth {
                 let token = self.require_token().await?;
@@ -305,9 +305,9 @@ impl RemoteClient {
         })
         .retry(
             &ExponentialBuilder::default()
-                .with_min_delay(Duration::from_secs(1))
-                .with_max_delay(Duration::from_secs(30))
-                .with_max_times(3)
+                .with_min_delay(Duration::from_millis(500))
+                .with_max_delay(Duration::from_secs(2))
+                .with_max_times(2)
                 .with_jitter(),
         )
         .when(|e: &RemoteClientError| e.should_retry())
@@ -358,7 +358,11 @@ impl RemoteClient {
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
     }
 
-    async fn post_authed<T, B>(&self, path: &str, body: Option<&B>) -> Result<T, RemoteClientError>
+    pub async fn post_authed<T, B>(
+        &self,
+        path: &str,
+        body: Option<&B>,
+    ) -> Result<T, RemoteClientError>
     where
         T: for<'de> Deserialize<'de>,
         B: Serialize,
@@ -388,6 +392,19 @@ impl RemoteClient {
         Ok(())
     }
 
+    async fn delete_authed_with_body<B>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<(), RemoteClientError>
+    where
+        B: Serialize,
+    {
+        self.send(reqwest::Method::DELETE, path, true, Some(body))
+            .await?;
+        Ok(())
+    }
+
     fn map_api_error(&self, err: RemoteClientError) -> RemoteClientError {
         if let RemoteClientError::Http { body, .. } = &err
             && let Ok(api_err) = serde_json::from_str::<ApiErrorResponse>(body)
@@ -410,26 +427,6 @@ impl RemoteClient {
     /// Lists organizations for the authenticated user.
     pub async fn list_organizations(&self) -> Result<ListOrganizationsResponse, RemoteClientError> {
         self.get_authed("/v1/organizations").await
-    }
-
-    /// Lists projects for a given organization.
-    pub async fn list_projects(
-        &self,
-        organization_id: Uuid,
-    ) -> Result<ListProjectsResponse, RemoteClientError> {
-        self.get_authed(&format!("/v1/projects?organization_id={organization_id}"))
-            .await
-    }
-
-    pub async fn get_project(&self, project_id: Uuid) -> Result<RemoteProject, RemoteClientError> {
-        self.get_authed(&format!("/v1/projects/{project_id}")).await
-    }
-
-    pub async fn create_project(
-        &self,
-        request: &CreateRemoteProjectPayload,
-    ) -> Result<RemoteProject, RemoteClientError> {
-        self.post_authed("/v1/projects", Some(request)).await
     }
 
     /// Gets a specific organization by ID.
@@ -493,11 +490,14 @@ impl RemoteClient {
         invitation_id: Uuid,
     ) -> Result<(), RemoteClientError> {
         let body = RevokeInvitationRequest { invitation_id };
-        self.post_authed(
+        self.send(
+            reqwest::Method::POST,
             &format!("/v1/organizations/{org_id}/invitations/revoke"),
+            true,
             Some(&body),
         )
-        .await
+        .await?;
+        Ok(())
     }
 
     /// Accepts an invitation.
@@ -545,65 +545,95 @@ impl RemoteClient {
         .await
     }
 
-    /// Creates a shared task.
-    pub async fn create_shared_task(
+    /// Deletes a workspace on the remote server by its local workspace ID.
+    pub async fn delete_workspace(
         &self,
-        request: &CreateSharedTaskRequest,
-    ) -> Result<SharedTaskResponse, RemoteClientError> {
-        self.post_authed("/v1/tasks", Some(request)).await
+        local_workspace_id: Uuid,
+    ) -> Result<(), RemoteClientError> {
+        self.delete_authed_with_body(
+            "/v1/workspaces",
+            &DeleteWorkspaceRequest { local_workspace_id },
+        )
+        .await
     }
 
-    /// Updates a shared task.
-    pub async fn update_shared_task(
+    /// Checks if a workspace exists on the remote server.
+    pub async fn workspace_exists(
         &self,
-        task_id: Uuid,
-        request: &UpdateSharedTaskRequest,
-    ) -> Result<SharedTaskResponse, RemoteClientError> {
-        self.patch_authed(&format!("/v1/tasks/{task_id}"), request)
-            .await
-    }
-
-    /// Assigns a shared task to a user.
-    pub async fn assign_shared_task(
-        &self,
-        task_id: Uuid,
-        request: &AssignSharedTaskRequest,
-    ) -> Result<SharedTaskResponse, RemoteClientError> {
-        self.post_authed(&format!("/v1/tasks/{task_id}/assign"), Some(request))
-            .await
-    }
-
-    /// Deletes a shared task.
-    pub async fn delete_shared_task(
-        &self,
-        task_id: Uuid,
-    ) -> Result<SharedTaskResponse, RemoteClientError> {
-        let res = self
+        local_workspace_id: Uuid,
+    ) -> Result<bool, RemoteClientError> {
+        match self
             .send(
-                reqwest::Method::DELETE,
-                &format!("/v1/tasks/{task_id}"),
+                reqwest::Method::HEAD,
+                &format!("/v1/workspaces/exists/{local_workspace_id}"),
                 true,
                 None::<&()>,
             )
-            .await?;
-        res.json::<SharedTaskResponse>()
             .await
-            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+        {
+            Ok(_) => Ok(true),
+            Err(RemoteClientError::Http { status: 404, .. }) => Ok(false),
+            Err(e) => Err(e),
+        }
     }
 
-    /// Checks if shared tasks exist.
-    pub async fn check_tasks(&self, task_ids: Vec<Uuid>) -> Result<Vec<Uuid>, RemoteClientError> {
-        let request = CheckTasksRequest { task_ids };
-        self.post_authed("/v1/tasks/check", Some(&request)).await
+    /// Updates a workspace on the remote server.
+    pub async fn update_workspace(
+        &self,
+        local_workspace_id: Uuid,
+        name: Option<Option<String>>,
+        archived: Option<bool>,
+        files_changed: Option<i32>,
+        lines_added: Option<i32>,
+        lines_removed: Option<i32>,
+    ) -> Result<(), RemoteClientError> {
+        self.send(
+            reqwest::Method::PATCH,
+            "/v1/workspaces",
+            true,
+            Some(&UpdateWorkspaceRequest {
+                local_workspace_id,
+                name,
+                archived,
+                files_changed: files_changed.map(Some),
+                lines_added: lines_added.map(Some),
+                lines_removed: lines_removed.map(Some),
+            }),
+        )
+        .await?;
+        Ok(())
     }
-}
 
-#[derive(Debug, Serialize)]
-pub struct CreateRemoteProjectPayload {
-    pub organization_id: Uuid,
-    pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<Value>,
+    /// Creates a workspace on the remote server, linking it to a local workspace and an issue.
+    pub async fn create_workspace(
+        &self,
+        request: CreateWorkspaceRequest,
+    ) -> Result<(), RemoteClientError> {
+        self.send(
+            reqwest::Method::POST,
+            "/v1/workspaces",
+            true,
+            Some(&request),
+        )
+        .await?;
+        Ok(())
+    }
+
+    /// Upserts a pull request on the remote server.
+    /// Creates if not exists, updates if exists.
+    pub async fn upsert_pull_request(
+        &self,
+        request: UpsertPullRequestRequest,
+    ) -> Result<(), RemoteClientError> {
+        self.send(
+            reqwest::Method::PUT,
+            "/v1/pull_requests",
+            true,
+            Some(&request),
+        )
+        .await?;
+        Ok(())
+    }
 }
 
 fn map_reqwest_error(e: reqwest::Error) -> RemoteClientError {

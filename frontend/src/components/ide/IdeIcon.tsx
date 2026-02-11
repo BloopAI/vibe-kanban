@@ -21,6 +21,8 @@ export function getIdeName(editorType: EditorType | undefined | null): string {
   switch (editorType) {
     case EditorType.VS_CODE:
       return 'VS Code';
+    case EditorType.VS_CODE_INSIDERS:
+      return 'VS Code Insiders';
     case EditorType.CURSOR:
       return 'Cursor';
     case EditorType.WINDSURF:
@@ -33,6 +35,8 @@ export function getIdeName(editorType: EditorType | undefined | null): string {
       return 'Xcode';
     case EditorType.CUSTOM:
       return 'IDE';
+    case EditorType.GOOGLE_ANTIGRAVITY:
+      return 'Antigravity';
   }
 }
 
@@ -53,6 +57,9 @@ export function IdeIcon({ editorType, className = 'h-4 w-4' }: IdeIconProps) {
     case EditorType.VS_CODE:
       ideIconPath = isDark ? '/ide/vscode-dark.svg' : '/ide/vscode-light.svg';
       break;
+    case EditorType.VS_CODE_INSIDERS:
+      ideIconPath = '/ide/vscode-insiders.svg';
+      break;
     case EditorType.CURSOR:
       ideIconPath = isDark ? '/ide/cursor-dark.svg' : '/ide/cursor-light.svg';
       break;
@@ -69,6 +76,11 @@ export function IdeIcon({ editorType, className = 'h-4 w-4' }: IdeIconProps) {
       break;
     case EditorType.XCODE:
       ideIconPath = '/ide/xcode.svg';
+      break;
+    case EditorType.GOOGLE_ANTIGRAVITY:
+      ideIconPath = isDark
+        ? '/ide/antigravity-dark.svg'
+        : '/ide/antigravity-light.svg';
       break;
   }
 

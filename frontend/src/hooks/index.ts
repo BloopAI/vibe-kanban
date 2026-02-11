@@ -18,6 +18,7 @@ export { useTask } from './useTask';
 export { useAttempt } from './useAttempt';
 export { useRepoBranches } from './useRepoBranches';
 export { useProjectRepos } from './useProjectRepos';
+export { useHasDevServerScript } from './useHasDevServerScript';
 export { useRepoBranchSelection } from './useRepoBranchSelection';
 export type { RepoBranchConfig } from './useRepoBranchSelection';
 export { useTaskAttempts } from './useTaskAttempts';

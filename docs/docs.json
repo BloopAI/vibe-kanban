@@ -64,6 +64,42 @@
         ]
       },
       {
+        "group": "Workspaces (Beta)",
+        "pages": [
+          "workspaces/index",
+          "workspaces/creating-workspaces",
+          "workspaces/managing-workspaces",
+          "workspaces/repositories",
+          "workspaces/sessions",
+          "workspaces/chat-interface",
+          "workspaces/slash-commands",
+          "workspaces/interface",
+          "workspaces/command-bar",
+          "workspaces/multi-repo-sessions",
+          "workspaces/preview",
+          "workspaces/changes",
+          "workspaces/git-operations"
+        ]
+      },
+      {
+        "group": "Cloud (Beta)",
+        "pages": [
+          "cloud/index",
+          "cloud/getting-started",
+          "cloud/migration",
+          "cloud/authentication",
+          "cloud/organizations",
+          "cloud/team-members",
+          "cloud/projects",
+          "cloud/issues",
+          "cloud/kanban-board",
+          "cloud/list-view",
+          "cloud/filtering",
+          "cloud/customisation",
+          "cloud/troubleshooting"
+        ]
+      },
+      {
         "group": "Configuration & Customisation",
         "pages": [
           "configuration-customisation/global-settings",
@@ -73,9 +109,28 @@
         ]
       },
       {
+        "group": "Settings (Beta)",
+        "pages": [
+          "settings-beta/index",
+          {
+            "group": "General",
+            "pages": [
+              "settings-beta/general",
+              "settings-beta/creating-task-tags"
+            ]
+          },
+          "settings-beta/projects-repositories",
+          "settings-beta/organization-settings",
+          "settings-beta/remote-projects",
+          "settings-beta/agent-configurations",
+          "settings-beta/mcp-servers"
+        ]
+      },
+      {
         "group": "Integrations",
         "pages": [
           "integrations/github-integration",
+          "integrations/azure-repos-integration",
           "integrations/vscode-extension",
           "integrations/mcp-server-configuration",
           "integrations/vibe-kanban-mcp-server"

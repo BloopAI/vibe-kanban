@@ -113,8 +113,11 @@ impl PrReviewService {
         debug!(review_id = %review_id, base_commit = %base_commit, "Merge-base calculated");
 
         // 3. Create tarball
-        let tarball =
-            create_tarball(temp_dir.path()).map_err(|e| PrReviewError::Archive(e.to_string()))?;
+        let source_dir = temp_dir.path().to_path_buf();
+        let tarball = tokio::task::spawn_blocking(move || create_tarball(&source_dir))
+            .await
+            .map_err(|e| PrReviewError::Archive(format!("Tarball task failed: {e}")))?
+            .map_err(|e| PrReviewError::Archive(e.to_string()))?;
 
         let tarball_size_mb = tarball.len() as f64 / 1_048_576.0;
         debug!(review_id = %review_id, size_mb = tarball_size_mb, "Tarball created");

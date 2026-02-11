@@ -34,7 +34,7 @@ pub struct RepoWithTargetBranch {
     pub target_branch: String,
 }
 
-/// Repo info with copy_files configuration from project_repos.
+/// Repo info with copy_files configuration.
 #[derive(Debug, Clone)]
 pub struct RepoWithCopyFiles {
     pub id: Uuid,
@@ -49,6 +49,14 @@ impl WorkspaceRepo {
         workspace_id: Uuid,
         repos: &[CreateWorkspaceRepo],
     ) -> Result<Vec<Self>, sqlx::Error> {
+        if repos.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Build bulk insert query with VALUES for each repo
+        // SQLite doesn't have great support for bulk inserts with RETURNING,
+        // so we'll use a transaction to batch the inserts efficiently
+        let mut tx = pool.begin().await?;
         let mut results = Vec::with_capacity(repos.len());
 
         for repo in repos {
@@ -68,11 +76,12 @@ impl WorkspaceRepo {
                 repo.repo_id,
                 repo.target_branch
             )
-            .fetch_one(pool)
+            .fetch_one(&mut *tx)
             .await?;
             results.push(workspace_repo);
         }
 
+        tx.commit().await?;
         Ok(results)
     }
 
@@ -106,6 +115,14 @@ impl WorkspaceRepo {
                       r.path,
                       r.name,
                       r.display_name,
+                      r.setup_script,
+                      r.cleanup_script,
+                      r.archive_script,
+                      r.copy_files,
+                      r.parallel_setup_script as "parallel_setup_script!: bool",
+                      r.dev_server_script,
+                      r.default_target_branch,
+                      r.default_working_dir,
                       r.created_at as "created_at!: DateTime<Utc>",
                       r.updated_at as "updated_at!: DateTime<Utc>"
                FROM repos r
@@ -127,6 +144,14 @@ impl WorkspaceRepo {
                       r.path,
                       r.name,
                       r.display_name,
+                      r.setup_script,
+                      r.cleanup_script,
+                      r.archive_script,
+                      r.copy_files,
+                      r.parallel_setup_script as "parallel_setup_script!: bool",
+                      r.dev_server_script,
+                      r.default_target_branch,
+                      r.default_working_dir,
                       r.created_at as "created_at!: DateTime<Utc>",
                       r.updated_at as "updated_at!: DateTime<Utc>",
                       wr.target_branch
@@ -147,6 +172,14 @@ impl WorkspaceRepo {
                     path: PathBuf::from(row.path),
                     name: row.name,
                     display_name: row.display_name,
+                    setup_script: row.setup_script,
+                    cleanup_script: row.cleanup_script,
+                    archive_script: row.archive_script,
+                    copy_files: row.copy_files,
+                    parallel_setup_script: row.parallel_setup_script,
+                    dev_server_script: row.dev_server_script,
+                    default_target_branch: row.default_target_branch,
+                    default_working_dir: row.default_working_dir,
                     created_at: row.created_at,
                     updated_at: row.updated_at,
                 },
@@ -228,6 +261,14 @@ impl WorkspaceRepo {
                       r.path,
                       r.name,
                       r.display_name,
+                      r.setup_script,
+                      r.cleanup_script,
+                      r.archive_script,
+                      r.copy_files,
+                      r.parallel_setup_script as "parallel_setup_script!: bool",
+                      r.dev_server_script,
+                      r.default_target_branch,
+                      r.default_working_dir,
                       r.created_at as "created_at!: DateTime<Utc>",
                       r.updated_at as "updated_at!: DateTime<Utc>"
                FROM repos r
@@ -242,18 +283,14 @@ impl WorkspaceRepo {
     }
 
     /// Find repos for a workspace with their copy_files configuration.
-    /// Uses LEFT JOIN so repos without project_repo entries still appear (with NULL copy_files).
     pub async fn find_repos_with_copy_files(
         pool: &SqlitePool,
         workspace_id: Uuid,
     ) -> Result<Vec<RepoWithCopyFiles>, sqlx::Error> {
         let rows = sqlx::query!(
-            r#"SELECT r.id as "id!: Uuid", r.path, r.name, pr.copy_files
+            r#"SELECT r.id as "id!: Uuid", r.path, r.name, r.copy_files
                FROM repos r
                JOIN workspace_repos wr ON r.id = wr.repo_id
-               JOIN workspaces w ON w.id = wr.workspace_id
-               JOIN tasks t ON t.id = w.task_id
-               LEFT JOIN project_repos pr ON pr.project_id = t.project_id AND pr.repo_id = r.id
                WHERE wr.workspace_id = $1"#,
             workspace_id
         )

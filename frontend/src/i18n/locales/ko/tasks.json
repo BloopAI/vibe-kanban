@@ -1,4 +1,8 @@
 {
+  "dropzone": {
+    "dropImagesHere": "여기에 이미지를 드롭하세요",
+    "supportedFormats": "PNG, JPG, GIF, WebP, SVG 지원"
+  },
   "gitPanel": {
     "create": {
       "warnings": {
@@ -21,16 +25,15 @@
     "attempt": "Attempt",
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
-    "share": "작업 공유",
-    "reassign": "재할당",
-    "stopShare": "공유 중지",
     "duplicate": "Duplicate",
     "editBranchName": "브랜치 이름 편집",
     "gitActions": "Git 작업",
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes",
-    "viewRelatedTasks": "View related tasks"
+    "viewRelatedTasks": "View related tasks",
+    "startReview": "리뷰 시작",
+    "startingReview": "리뷰 시작 중..."
   },
   "editBranchName": {
     "dialog": {
@@ -41,6 +44,15 @@
       "renaming": "이름 변경 중...",
       "action": "브랜치 이름 변경"
     }
+  },
+  "startReviewDialog": {
+    "title": "리뷰 시작",
+    "description": "코딩 에이전트에게 변경 사항을 검토하고 피드백을 제공하도록 요청합니다.",
+    "additionalInstructions": "추가 지침 (선택 사항)",
+    "reviewComments": "리뷰 댓글 ({{count}})",
+    "includeGitContext": "Git 컨텍스트 포함",
+    "includeGitContextDescription": "이 브랜치에서 수행된 모든 변경 사항을 확인하는 방법을 에이전트에게 알려줍니다",
+    "newSession": "새 세션"
   },
   "attempt": {
     "actions": {
@@ -78,44 +90,36 @@
     "setupHelpText": "{{agent}}이(가) 올바르게 설정되지 않았습니다. '설정 실행'을 클릭하여 설치하고 로그인하세요.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
-  "stopShareDialog": {
-    "title": "작업 공유 중지",
-    "description": "\"{{title}}\" 작업의 공유를 조직에서 중지하시겠습니까?",
-    "warning": "작업 공유는 중지되지만 로컬 작업은 유지됩니다.",
-    "confirm": "작업 공유 중지",
-    "inProgress": "공유 중지 중…",
-    "genericError": "작업 공유를 중지하지 못했습니다. 다시 시도해 주세요."
+  "resolveConflicts": {
+    "dialog": {
+      "title": "충돌 해결",
+      "description": "충돌이 감지되었습니다. 에이전트가 어떻게 해결하기를 원하는지 선택하세요.",
+      "sessionLabel": "세션",
+      "existingSession": "현재 세션에서 계속",
+      "newSession": "새 세션",
+      "resolve": "충돌 해결",
+      "resolving": "시작 중...",
+      "filesWithConflicts_one": "{{count}}개 파일에 충돌이 있습니다",
+      "filesWithConflicts_other": "{{count}}개 파일에 충돌이 있습니다",
+      "andMore": "...외 {{count}}개"
+    }
   },
-  "shareDialog": {
-    "title": "작업 공유",
-    "description": "\"{{title}}\" 작업을 조직과 공유하시겠습니까?",
-    "success": "작업이 성공적으로 공유되었습니다.",
-    "genericError": "작업을 공유하지 못했습니다. 다시 시도해 주세요.",
-    "loadingSystem": "계정 상태를 불러오는 중…",
-    "loginRequired": {
-      "title": "계속하려면 로그인하세요",
-      "description": "작업을 공유하려면 로그인해야 합니다. 로그인 페이지로 이동합니다.",
-      "action": "로그인으로 이동"
-    },
-    "githubRequired": {
-      "title": "GitHub 연결",
-      "description": "공유 작업을 게시하려면 GitHub 계정을 연결하세요.",
-      "action": "GitHub 연결"
-    },
-    "linkProjectRequired": {
-      "description": "작업을 공유하기 전에 이 프로젝트를 조직에 연결하세요.",
-      "action": "프로젝트 연결"
-    },
-    "confirmationTitle": "공유 확인",
-    "confirmationBody": "작업을 공유하면 공유 작업 공간에 게시됩니다.",
-    "cancel": "취소",
-    "confirm": "작업 공유",
-    "inProgress": "공유 중…",
-    "closeButton": "닫기"
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "리베이스 진행 중",
+      "description": "{{targetBranch}}으로의 리베이스가 충돌 없이 진행 중입니다. 진행 방법을 선택하세요.",
+      "hint": "리베이스를 계속하여 완료하거나, 중단하여 이전 상태로 돌아갈 수 있습니다.",
+      "continue": "리베이스 계속",
+      "continuing": "계속 중...",
+      "abort": "리베이스 중단",
+      "aborting": "중단 중...",
+      "continueError": "리베이스를 계속할 수 없습니다. 해결되지 않은 충돌이 있을 수 있습니다.",
+      "abortError": "리베이스 중단에 실패했습니다. 다시 시도해 주세요."
+    }
   },
   "createPrDialog": {
-    "title": "GitHub Pull Request 생성",
-    "description": "이 작업 시도에 대한 Pull Request를 GitHub에서 생성합니다.",
+    "title": "Pull Request 생성",
+    "description": "이 작업 시도에 대한 Pull Request를 생성합니다.",
     "titleLabel": "제목",
     "titlePlaceholder": "PR 제목 입력",
     "descriptionLabel": "설명 (선택사항)",
@@ -128,9 +132,9 @@
     "creating": "생성 중...",
     "createButton": "PR 생성",
     "errors": {
-      "insufficientPermissions": "권한이 부족합니다. GitHub CLI에 필요한 권한이 있는지 확인하세요.",
+      "insufficientPermissions": "권한이 부족합니다. CLI에 필요한 권한이 있는지 확인하세요.",
       "repoNotFoundOrNoAccess": "저장소를 찾을 수 없거나 액세스 권한이 없습니다. 저장소 액세스를 확인하고 인증되었는지 확인하세요.",
-      "failedToCreate": "GitHub PR 생성에 실패했습니다",
+      "failedToCreate": "PR 생성에 실패했습니다",
       "gitCliNotLoggedIn": "Git이 인증되지 않았습니다. \"gh auth login\"을 실행하거나 Git 자격 증명을 설정한 후 다시 시도하세요.",
       "gitCliNotInstalled": "Git CLI가 설치되어 있지 않습니다. PR을 생성하려면 Git을 설치하세요.",
       "targetBranchNotFound": "대상 브랜치 '{{branch}}'이(가) 원격에 존재하지 않습니다. 풀 리퀘스트를 생성하기 전에 브랜치가 존재하는지 확인하세요."
@@ -207,6 +211,12 @@
     "viewModes": {
       "inline": "Inline view",
       "split": "Split view"
+    },
+    "largeDiff": {
+      "title": "큰 파일",
+      "linesChanged": "{{count}} 줄 변경됨",
+      "loadAnyway": "그래도 diff 로드",
+      "warning": "큰 diff는 브라우저를 느리게 할 수 있습니다."
     }
   },
   "empty": {
@@ -228,8 +238,10 @@
     "queuedMessage": "메시지가 대기열에 추가됨 - 현재 실행이 완료되면 실행됩니다",
     "runSetupScript": "설정 스크립트 실행",
     "runCleanupScript": "정리 스크립트 실행",
+    "runArchiveScript": "아카이브 스크립트 실행",
     "noSetupScript": "이 프로젝트에 설정 스크립트가 구성되어 있지 않습니다",
     "noCleanupScript": "이 프로젝트에 정리 스크립트가 구성되어 있지 않습니다",
+    "noArchiveScript": "이 프로젝트에 아카이브 스크립트가 구성되어 있지 않습니다",
     "scriptsDisabledWhileRunning": "프로세스가 실행 중일 때는 스크립트를 실행할 수 없습니다"
   },
   "git": {
@@ -263,6 +275,7 @@
       "pushed": "푸시됨!",
       "pushing": "푸시 중...",
       "push": "푸시",
+      "pushFailed": "실패",
       "forcePush": "강제 푸시",
       "forcePushing": "강제 푸시 중...",
       "creating": "생성 중...",
@@ -346,12 +359,16 @@
     "noServer": {
       "companionLink": "설치 가이드 보기",
       "companionPrompt": "클릭하여 편집 기능을 사용하려면 프로젝트에 브라우저 컴패니언을 추가하세요.",
-      "editButton": "개발 스크립트 편집",
+      "configureButton": "구성",
+      "setupTitle": "미리보기 기능을 사용하려면 개발 서버 스크립트를 설정해야 합니다",
       "setupPrompt": "라이브 미리보기 및 클릭하여 편집을 사용하려면 이 프로젝트에 개발 서버 스크립트를 추가하세요.",
       "startButton": "개발 서버 시작",
       "startPrompt": "미리보기를 보려면 개발 서버를 시작하세요",
       "stopAndEditButton": "개발 서버 중지 및 문제 해결",
-      "title": "실행 중인 개발 서버 없음"
+      "title": "실행 중인 개발 서버 없음",
+      "fixScript": "개발 스크립트 수정",
+      "editDevScript": "개발 서버 스크립트 편집",
+      "learnMore": "애플리케이션 테스트에 대해 자세히 알아보기"
     },
     "selectAttempt": "Select an attempt to see preview",
     "title": "Preview",
@@ -361,7 +378,19 @@
       "refresh": "미리보기 새로고침",
       "stopDevServer": "개발 서버 중지",
       "clickToEdit": "URL 편집하려면 클릭",
-      "resetUrl": "감지된 URL로 재설정"
+      "resetUrl": "감지된 URL로 재설정",
+      "clearUrlOverride": "URL 오버라이드 지우기",
+      "desktopView": "데스크탑 보기",
+      "mobileView": "모바일 보기 (390x844)",
+      "responsiveView": "반응형 보기 (크기 조절 가능)",
+      "startDevServer": "개발 서버 시작",
+      "submitUrl": "URL 제출"
+    },
+    "loading": {
+      "startingServer": "개발 서버 시작 중...",
+      "waitingForServer": "서버 대기 중...",
+      "loadingPreview": "미리보기 로딩 중...",
+      "manualUrlHint": "아직 URL이 감지되지 않았습니다. 위의 도구 모음에서 URL을 수동으로 입력할 수 있습니다."
     },
     "troubleAlert": {
       "item1": "개발 서버가 성공적으로 시작되었나요? 해결해야 할 버그가 있거나 종속성을 설치해야 할 수 있습니다.",
@@ -369,13 +398,15 @@
       "item2Suffix": "? (이것이 실행 중임을 아는 방법입니다)",
       "item3": "Web Companion(클릭하여 편집에 필요)을 설치했나요? 설치하지 않았다면",
       "item3Link": "여기의 설치 지침을 따르세요",
-      "title": "애플리케이션 미리보기에 문제가 발생했습니다:"
+      "title": "애플리케이션 미리보기에 문제가 발생했습니다:",
+      "fixScript": "개발 스크립트 수정"
     },
     "browser": {
       "title": "개발 서버 미리보기",
-      "startButton": "개발 서버 시작",
-      "stopButton": "중지",
-      "startingButton": "시작"
+      "devServerFallback": "개발 서버"
+    },
+    "urlInput": {
+      "placeholder": "URL 입력..."
     },
     "noDevScript": "개발 스크립트가 설정되지 않았습니다",
     "noDevScriptHint": "미리보기를 활성화하려면 프로젝트 설정에서 개발 스크립트를 추가하세요."
@@ -438,6 +469,11 @@
   "todos": {
     "title_one": "Todos ({{count}})",
     "title_other": "Todos ({{count}})"
+  },
+  "todoPopup": {
+    "title": "작업",
+    "progress": "{{completed}}/{{total}} 완료",
+    "noTasks": "작업 없음"
   },
   "toolbar": {
     "actions": "Actions",
@@ -503,9 +539,9 @@
       "finish": "완료"
     }
   },
-  "githubComments": {
+  "prComments": {
     "dialog": {
-      "title": "GitHub 댓글 선택",
+      "title": "PR 댓글 선택",
       "noComments": "이 PR에 댓글이 없습니다",
       "selectAll": "모두 선택",
       "deselectAll": "모두 선택 해제",
@@ -514,7 +550,7 @@
     },
     "card": {
       "review": "리뷰",
-      "tooltip": "클릭하여 GitHub에서 보기, 더블 클릭하여 편집"
+      "tooltip": "클릭하여 보기, 더블 클릭하여 편집"
     }
   },
   "taskFormDialog": {
@@ -545,11 +581,17 @@
       "discardChanges": "변경사항 버리기"
     }
   },
+  "terminal": {
+    "selectWorkspace": "터미널을 열려면 작업 공간을 선택하세요"
+  },
   "restoreLogsDialog": {
     "title": "재시도 확인",
+    "titleReset": "초기화 확인",
     "historyChange": {
       "title": "히스토리 변경",
       "willDelete": "이 프로세스를 삭제합니다",
+      "willDeleteProcesses_one": "{{count}}개 프로세스를 삭제합니다",
+      "willDeleteProcesses_other": "{{count}}개 프로세스를 삭제합니다",
       "andLaterProcesses_one": "및 이후 {{count}}개 프로세스",
       "andLaterProcesses_other": "및 이후 {{count}}개 프로세스",
       "fromHistory": "를 히스토리에서 삭제합니다.",
@@ -585,7 +627,8 @@
       "uncommittedPresentHint": "커밋되지 않은 변경사항이 있습니다. 강제 초기화를 켜거나 커밋/스태시한 후 진행하세요."
     },
     "buttons": {
-      "retry": "재시도"
+      "retry": "재시도",
+      "reset": "초기화"
     }
   },
   "conversation": {
@@ -615,7 +658,10 @@
       "requestChanges": "변경 요청",
       "approve": "승인",
       "clearReviewComments": "리뷰 댓글 지우기",
-      "edit": "메시지 편집"
+      "edit": "메시지 편집",
+      "scrollToPreviousMessage": "Go to previous message",
+      "reset": "초기화",
+      "resetTooltip": "이 시점으로 초기화"
     },
     "approval": {
       "conflictWarning": "충돌하는 파일은 수동으로 해결해야 합니다",
@@ -623,11 +669,19 @@
       "conflicts_other": "{{count}}개의 충돌 파일을 수동으로 해결해야 합니다"
     },
     "executors": "실행기",
+    "saveAsDefault": "기본값으로 저장",
     "script": {
       "clickToViewLogs": "로그를 보려면 클릭하세요",
       "completedSuccessfully": "성공적으로 완료됨",
       "exitCode": "종료 코드: {{code}}",
       "running": "실행 중..."
+    },
+    "scriptPlaceholder": {
+      "setupTitle": "설정 스크립트",
+      "setupDescription": "설정 스크립트가 구성되지 않았습니다. 설정 스크립트는 코딩 에이전트가 시작되기 전에 실행됩니다.",
+      "cleanupTitle": "정리 스크립트",
+      "cleanupDescription": "정리 스크립트가 구성되지 않았습니다. 정리 스크립트는 코딩 에이전트가 완료된 후에 실행됩니다.",
+      "configure": "구성"
     },
     "unableToRenderDiff": "차이를 표시할 수 없습니다.",
     "updatedTodos": "업데이트된 할 일",
@@ -652,6 +706,57 @@
       "modified": "수정됨",
       "deleted": "삭제됨",
       "renamed": "이름 변경됨"
+    }
+  },
+  "scriptFixer": {
+    "title": "스크립트 수정",
+    "setupScriptTitle": "설정 스크립트 수정",
+    "cleanupScriptTitle": "정리 스크립트 수정",
+    "archiveScriptTitle": "아카이브 스크립트 수정",
+    "devServerTitle": "개발 서버 스크립트 수정",
+    "scriptLabel": "스크립트 (편집)",
+    "logsLabel": "마지막 실행 로그",
+    "saveButton": "저장",
+    "saveAndTestButton": "저장 및 테스트",
+    "saving": "저장 중...",
+    "testing": "테스트 중...",
+    "noLogs": "실행 로그가 없습니다",
+    "selectRepo": "저장소",
+    "fixScript": "스크립트 수정",
+    "statusRunning": "실행 중...",
+    "statusSuccess": "성공적으로 완료됨",
+    "statusFailed": "종료 코드 {{exitCode}}(으)로 실패함",
+    "statusKilled": "프로세스가 종료되었습니다"
+  },
+  "createWorkspaceFromPr": {
+    "title": "PR에서 워크스페이스 만들기",
+    "description": "열린 풀 리퀘스트를 선택하여 워크스페이스를 만듭니다. PR 제목을 사용하여 태스크가 자동으로 생성됩니다.",
+    "repositoryLabel": "저장소",
+    "remoteLabel": "리모트",
+    "pullRequestLabel": "풀 리퀘스트",
+    "loadingRepositories": "저장소 로드 중...",
+    "loadingRemotes": "리모트 로드 중...",
+    "noRepositoriesFound": "저장소를 찾을 수 없습니다",
+    "loadingPullRequests": "풀 리퀘스트 로드 중...",
+    "selectRepositoryFirst": "먼저 저장소를 선택하세요",
+    "noPullRequestsFound": "열린 풀 리퀘스트가 없습니다",
+    "runSetupScript": "설정 스크립트 실행",
+    "creating": "만드는 중...",
+    "createWorkspace": "워크스페이스 만들기",
+    "selectRepository": "저장소 선택",
+    "selectRemote": "리모트 선택",
+    "selectPullRequest": "풀 리퀘스트 선택",
+    "searchPrsPlaceholder": "번호 또는 제목으로 PR 검색...",
+    "noMatchingPrs": "일치하는 풀 리퀘스트가 없습니다",
+    "default": "기본값",
+    "openPrInBrowser": "브라우저에서 PR 열기",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLI가 설치되어 있지 않습니다",
+      "unsupportedProvider": "Git 공급자가 지원되지 않습니다",
+      "failedToLoadPrs": "풀 리퀘스트 로드 실패",
+      "prNotFound": "풀 리퀘스트를 찾을 수 없습니다",
+      "repoNotInProject": "저장소가 어떤 프로젝트에도 없습니다",
+      "failedToCreateWorkspace": "워크스페이스 만들기 실패"
     }
   }
 }

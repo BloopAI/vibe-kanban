@@ -9,6 +9,11 @@ import enSettings from './locales/en/settings.json';
 import enProjects from './locales/en/projects.json';
 import enTasks from './locales/en/tasks.json';
 import enOrganization from './locales/en/organization.json';
+import frCommon from './locales/fr/common.json';
+import frSettings from './locales/fr/settings.json';
+import frProjects from './locales/fr/projects.json';
+import frTasks from './locales/fr/tasks.json';
+import frOrganization from './locales/fr/organization.json';
 import jaCommon from './locales/ja/common.json';
 import jaSettings from './locales/ja/settings.json';
 import jaProjects from './locales/ja/projects.json';
@@ -42,6 +47,13 @@ const resources = {
     projects: enProjects,
     tasks: enTasks,
     organization: enOrganization,
+  },
+  fr: {
+    common: frCommon,
+    settings: frSettings,
+    projects: frProjects,
+    tasks: frTasks,
+    organization: frOrganization,
   },
   ja: {
     common: jaCommon,

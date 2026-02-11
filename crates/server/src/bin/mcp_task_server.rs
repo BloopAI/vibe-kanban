@@ -35,10 +35,15 @@ fn main() -> anyhow::Result<()> {
                 tracing::info!("[MCP] Using backend URL from VIBE_BACKEND_URL: {}", url);
                 url
             } else {
-                let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+                let host = std::env::var("MCP_HOST")
+                    .or_else(|_| std::env::var("HOST"))
+                    .unwrap_or_else(|_| "127.0.0.1".to_string());
 
                 // Get port from environment variables or fall back to port file
-                let port = match std::env::var("BACKEND_PORT").or_else(|_| std::env::var("PORT")) {
+                let port = match std::env::var("MCP_PORT")
+                    .or_else(|_| std::env::var("BACKEND_PORT"))
+                    .or_else(|_| std::env::var("PORT"))
+                {
                     Ok(port_str) => {
                         tracing::info!("[MCP] Using port from environment: {}", port_str);
                         port_str.parse::<u16>().map_err(|e| {

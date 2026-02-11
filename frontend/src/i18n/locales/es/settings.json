@@ -1,18 +1,31 @@
 {
   "settings": {
+    "common": {
+      "unsavedChanges": "• Tienes cambios sin guardar"
+    },
+    "unsavedChanges": {
+      "title": "Cambios sin guardar",
+      "message": "Tienes cambios sin guardar. ¿Estás seguro de que deseas cerrar sin guardar?",
+      "discard": "Descartar cambios",
+      "cancel": "Seguir editando"
+    },
     "layout": {
       "nav": {
         "title": "Configuración",
         "general": "General",
         "generalDesc": "Tema, notificaciones y preferencias",
         "projects": "Proyectos",
-        "projectsDesc": "Scripts y configuración de proyectos",
+        "projectsDesc": "Repositorios de proyectos y configuración",
+        "repos": "Repositorios",
+        "reposDesc": "Scripts y configuración de repositorios",
         "agents": "Agentes",
         "agentsDesc": "Configuraciones de agentes",
         "mcp": "Servidores MCP",
         "mcpDesc": "Servidores de Protocolo de Contexto de Modelo (MCP)",
         "organizations": "Organization Settings",
-        "organizationsDesc": "Manage organization members and permissions"
+        "organizationsDesc": "Manage organization members and permissions",
+        "remote-projects": "Proyectos",
+        "remote-projectsDesc": "Gestionar proyectos"
       }
     },
     "general": {
@@ -133,6 +146,14 @@
             "invalidChars": "Contiene caracteres no válidos.",
             "controlChars": "Contiene caracteres de control."
           }
+        },
+        "workspaceDir": {
+          "label": "Directorio de Espacios de Trabajo",
+          "placeholder": "~/",
+          "helper": "Los espacios de trabajo se crearán en un subdirectorio .vibe-kanban-workspaces dentro de esta ruta. Dejar vacío para usar el valor predeterminado del sistema. Los cambios requieren reiniciar la aplicación.",
+          "browse": "Explorar",
+          "dialogTitle": "Seleccionar Directorio de Espacios de Trabajo",
+          "dialogDescription": "Elija un directorio. Los espacios de trabajo se crearán en un subdirectorio .vibe-kanban-workspaces dentro de él."
         }
       },
       "pullRequests": {
@@ -145,6 +166,18 @@
         "customPrompt": {
           "useCustom": "Usar prompt personalizado",
           "helper": "Prompt personalizado para el agente de IA al generar descripciones de PR. Usa {pr_number} y {pr_url} como marcadores de posición."
+        }
+      },
+      "commits": {
+        "title": "Commits",
+        "description": "Configura el comportamiento de commits para los intentos de tareas",
+        "reminder": {
+          "label": "Recordatorio de commit",
+          "helper": "Solicitar a los agentes compatibles que confirmen los cambios antes de detenerse."
+        },
+        "customPrompt": {
+          "useCustom": "Usar prompt personalizado",
+          "helper": "Prompt personalizado para el recordatorio de commit. El estado de git se añadirá automáticamente."
         }
       },
       "notifications": {
@@ -160,6 +193,15 @@
         "push": {
           "label": "Notificaciones Push",
           "helper": "Muestra notificaciones del sistema cuando las tareas terminan de ejecutarse."
+        }
+      },
+      "messageInput": {
+        "title": "Entrada de mensajes",
+        "description": "Configura cómo se envían los mensajes en el chat.",
+        "shortcut": {
+          "label": "Enviar mensaje con",
+          "helper": "Elige el atajo de teclado para enviar mensajes.",
+          "enterLabel": "Enter (Shift+Enter para nueva línea)"
         }
       },
       "privacy": {
@@ -230,24 +272,35 @@
           "description": "Restablece el flujo de Introducción.",
           "button": "Restablecer"
         }
+      },
+      "beta": {
+        "title": "Funciones Beta",
+        "description": "Prueba funciones experimentales antes de su lanzamiento.",
+        "workspaces": {
+          "label": "Habilitar Beta de Workspaces",
+          "helper": "Usa la nueva interfaz de workspaces al ver intentos de tareas. Las tareas se abrirán primero en la vista de tareas, y los intentos se abrirán en la nueva vista de workspaces."
+        }
       }
     },
     "agents": {
       "title": "Configuraciones de Agentes de Código",
       "description": "Personaliza el comportamiento de los agentes con diferentes configuraciones.",
       "loading": "Cargando configuraciones de agentes...",
+      "selectAgent": "Seleccionar agente",
       "save": {
         "button": "Guardar Configuraciones de Agentes",
-        "success": "✓ ¡Configuración guardada con éxito!"
+        "success": "✓ ¡Configuración guardada con éxito!",
+        "unsavedChanges": "• Tienes cambios sin guardar"
       },
       "availability": {
         "checking": "Comprobando...",
+        "checkingAvailability": "Comprobando disponibilidad...",
+        "available": "Agente disponible",
+        "notFoundSimple": "Agente no encontrado",
         "loginDetected": "Uso reciente detectado",
         "loginDetectedTooltip": "Se encontraron credenciales de autenticación recientes para este agente",
         "installationFound": "Uso previo detectado",
-        "installationFoundTooltip": "Se encontró la configuración del agente. Es posible que debas iniciar sesión para usarlo.",
-        "notFound": "No encontrado",
-        "notFoundTooltip": "No se detectó uso previo. El agente puede requerir instalación y/o inicio de sesión."
+        "installationFoundTooltip": "Se encontró la configuración del agente. Es posible que debas iniciar sesión para usarlo."
       },
       "editor": {
         "formLabel": "Editar JSON",
@@ -259,6 +312,8 @@
         "deleteTitle": "No se puede eliminar la última configuración",
         "deleteButton": "Eliminar {{name}}",
         "deleteText": "Eliminar",
+        "makeDefault": "Establecer por defecto",
+        "isDefault": "Por defecto",
         "jsonLabel": "Configuración de Agente (JSON)",
         "jsonPlaceholder": "Cargando perfiles...",
         "jsonLoading": "Cargando...",
@@ -267,7 +322,20 @@
       "errors": {
         "deleteFailed": "Error al eliminar la configuración. Por favor, inténtalo de nuevo.",
         "saveFailed": "Error al guardar la configuración de los agentes. Por favor, inténtalo de nuevo.",
-        "saveConfigFailed": "Error al guardar la configuración. Por favor, inténtalo de nuevo."
+        "saveConfigFailed": "Error al guardar la configuración. Por favor, inténtalo de nuevo.",
+        "schemaNotFound": "Esquema no encontrado para el tipo de ejecutor: {{executor}}"
+      },
+      "tree": {
+        "search": "Buscar configuraciones...",
+        "expandAll": "Expandir todo",
+        "collapseAll": "Contraer todo",
+        "noResults": "No se encontraron configuraciones",
+        "noConfigs": "No hay configuraciones disponibles",
+        "selectConfig": "Selecciona una configuración de la barra lateral para ver y editar sus ajustes."
+      },
+      "deleteConfigDialog": {
+        "title": "¿Eliminar configuración?",
+        "description": "Esto eliminará permanentemente \"{{configName}}\" del ejecutor {{executorType}}. Esta acción no se puede deshacer."
       }
     },
     "mcp": {
@@ -303,7 +371,8 @@
         "button": "Guardar Configuración MCP",
         "success": "¡Configuración Guardada!",
         "successMessage": "✓ ¡Configuración MCP guardada exitosamente!",
-        "loading": "Cargando configuración actual del servidor MCP..."
+        "loading": "Cargando configuración actual del servidor MCP...",
+        "unsavedChanges": "• Tienes cambios sin guardar"
       }
     },
     "projects": {
@@ -331,38 +400,6 @@
           "helper": "La ruta absoluta a tu repositorio git en disco."
         }
       },
-      "scripts": {
-        "title": "Scripts y Configuración",
-        "description": "Configura los scripts de instalación, limpieza y archivos a copiar para este proyecto.",
-        "setup": {
-          "label": "Script de Instalación",
-          "helper": "Este script se ejecuta desde dentro del worktree después de crearse y antes de que comience el agente de codificación. Úsalo para tareas de configuración como instalar dependencias o preparar el entorno.",
-          "parallelLabel": "Ejecutar script de instalación en paralelo con el agente de codificación",
-          "parallelHelper": "Cuando está habilitado, el script de instalación se ejecuta simultáneamente con el agente de codificación en lugar de esperar a que se complete la configuración primero."
-        },
-        "dev": {
-          "label": "Script del Servidor de Desarrollo",
-          "helper": "Inicia un servidor de desarrollo desde los intentos de tarea. Los scripts se ejecutan desde el directorio del workspace (un nivel arriba del worktree de cada repositorio) a menos que se especifique un directorio de trabajo abajo."
-        },
-        "devWorkingDir": {
-          "label": "Directorio de Trabajo del Servidor de Desarrollo",
-          "placeholder": "ej., mi-repo",
-          "helper": "El directorio desde el cual ejecutar el script del servidor de desarrollo, relativo a la raíz del workspace. Déjalo vacío para ejecutar desde la raíz del workspace."
-        },
-        "agentWorkingDir": {
-          "label": "Directorio de Trabajo del Agente",
-          "placeholder": "ej., mi-repo",
-          "helper": "Directorio predeterminado para nuevos workspaces donde ejecutar el agente de codificación, relativo a la raíz del workspace. Este valor se captura cuando se crea un workspace y no afectará a los workspaces existentes. Para proyectos de un solo repositorio, esto se establece por defecto al nombre del repositorio. Déjalo vacío para ejecutar desde la raíz del workspace."
-        },
-        "cleanup": {
-          "label": "Script de Limpieza",
-          "helper": "Este script se ejecuta desde dentro del worktree después de la ejecución del agente de codificación, solo si se realizaron cambios. Úsalo para tareas de garantía de calidad como ejecutar linters, formateadores, pruebas u otros pasos de validación. Si no se realizan cambios, se omite este script."
-        },
-        "copyFiles": {
-          "label": "Copiar Archivos",
-          "helper": "Lista separada por comas de archivos para copiar del directorio del proyecto original al worktree. Estos archivos se copiarán después de que se cree el worktree pero antes de que se ejecute el script de configuración. Útil para archivos específicos del entorno como .env, archivos de configuración y ajustes locales. ¡Asegúrate de que estén en gitignore o podrían ser confirmados!"
-        }
-      },
       "save": {
         "button": "Guardar Configuración del Proyecto",
         "success": "✓ ¡Configuración del proyecto guardada exitosamente!",
@@ -370,6 +407,85 @@
         "unsavedChanges": "• Tienes cambios sin guardar",
         "discard": "Descartar",
         "confirmSwitch": "Tienes cambios sin guardar. ¿Estás seguro de que quieres cambiar de proyecto? Tus cambios se perderán."
+      },
+      "repositories": {
+        "title": "Repositorios",
+        "description": "Administra los repositorios git en este proyecto",
+        "noRepositories": "No hay repositorios configurados",
+        "addRepository": "Agregar Repositorio"
+      }
+    },
+    "repos": {
+      "title": "Configuración del Repositorio",
+      "description": "Configura los scripts que se ejecutan cuando este repositorio se usa en workspaces.",
+      "loading": "Cargando repositorios...",
+      "loadError": "Error al cargar repositorios.",
+      "selector": {
+        "label": "Seleccionar Repositorio",
+        "placeholder": "Elige un repositorio para configurar",
+        "helper": "Selecciona un repositorio para ver y editar su configuración.",
+        "noRepos": "No hay repositorios disponibles"
+      },
+      "general": {
+        "title": "Configuración General",
+        "description": "Configura la información básica del repositorio.",
+        "displayName": {
+          "label": "Nombre para Mostrar",
+          "placeholder": "Ingresa el nombre para mostrar",
+          "helper": "Un nombre amigable para este repositorio."
+        },
+        "path": {
+          "label": "Ruta del Repositorio"
+        },
+        "defaultWorkingDir": {
+          "label": "Directorio de Trabajo Predeterminado",
+          "placeholder": "ej., packages/frontend",
+          "helper": "Subdirectorio relativo a la raíz del repositorio donde se ejecuta el agente de codificación para espacios de trabajo de un solo repositorio. Se establece al crear el espacio de trabajo. Déjelo vacío para usar la raíz del repositorio."
+        },
+        "defaultTargetBranch": {
+          "label": "Rama Objetivo Predeterminada",
+          "placeholder": "Seleccionar una rama",
+          "helper": "La rama base predeterminada para nuevos workspaces. Los worktrees se ramifican desde esta rama y los PRs la tendrán como objetivo.",
+          "search": "Buscar ramas",
+          "noBranches": "No se encontraron ramas",
+          "loading": "Cargando ramas...",
+          "useCurrent": "Usar rama actual"
+        }
+      },
+      "scripts": {
+        "title": "Scripts y Configuración",
+        "description": "Configura los scripts de instalación, limpieza y archivos a copiar para este repositorio. Estos scripts se ejecutan cada vez que el repositorio se usa en cualquier workspace.",
+        "setup": {
+          "label": "Script de Instalación",
+          "helper": "Este script se ejecuta desde dentro del worktree después de crearse y antes de que comience el agente de codificación. Úsalo para tareas de configuración como instalar dependencias o preparar el entorno.",
+          "parallelLabel": "Ejecutar script de instalación en paralelo con el agente de codificación",
+          "parallelHelper": "Cuando está habilitado, el script de instalación se ejecuta simultáneamente con el agente de codificación en lugar de esperar a que se complete la configuración primero."
+        },
+        "cleanup": {
+          "label": "Script de Limpieza",
+          "helper": "Este script se ejecuta desde dentro del worktree después de la ejecución del agente de codificación, solo si se realizaron cambios. Úsalo para tareas de garantía de calidad como ejecutar linters, formateadores, pruebas u otros pasos de validación."
+        },
+        "archive": {
+          "label": "Script de Archivo",
+          "helper": "Este script se ejecuta desde dentro del worktree cuando se archiva el espacio de trabajo. Úsalo para tareas de limpieza como detener servicios, liberar recursos o guardar estado."
+        },
+        "copyFiles": {
+          "label": "Copiar Archivos",
+          "helper": "Lista separada por comas de archivos para copiar del directorio del repositorio original al worktree. Útil para archivos de entorno como .env. ¡Asegúrate de que estén en gitignore!",
+          "placeholder": "Rutas de archivos o patrones glob (ej., .env, config/*.json)"
+        },
+        "devServer": {
+          "label": "Script del Servidor de Desarrollo",
+          "helper": "Inicia un servidor de desarrollo para este repositorio. Los scripts se ejecutan desde el directorio worktree del repositorio."
+        }
+      },
+      "save": {
+        "button": "Guardar Configuración del Repositorio",
+        "success": "¡Configuración del repositorio guardada exitosamente!",
+        "error": "Error al guardar la configuración del repositorio",
+        "unsavedChanges": "Tienes cambios sin guardar",
+        "discard": "Descartar",
+        "confirmSwitch": "Tienes cambios sin guardar. ¿Estás seguro de que quieres cambiar de repositorio? Tus cambios se perderán."
       }
     }
   },

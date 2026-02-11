@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react';
 import type { Icon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '../primitives/Tooltip';
+import { SyncErrorIndicator } from '../primitives/SyncErrorIndicator';
 import {
   type ActionDefinition,
   type ActionVisibilityContext,
@@ -27,12 +29,14 @@ interface NavbarIconButtonProps
   icon: Icon;
   isActive?: boolean;
   tooltip?: string;
+  shortcut?: string;
 }
 
 function NavbarIconButton({
   icon: IconComponent,
   isActive = false,
   tooltip,
+  shortcut,
   className,
   ...props
 }: NavbarIconButtonProps) {
@@ -54,7 +58,13 @@ function NavbarIconButton({
     </button>
   );
 
-  return tooltip ? <Tooltip content={tooltip}>{button}</Tooltip> : button;
+  return tooltip ? (
+    <Tooltip content={tooltip} shortcut={shortcut}>
+      {button}
+    </Tooltip>
+  ) : (
+    button
+  );
 }
 
 export interface NavbarProps {
@@ -63,6 +73,8 @@ export interface NavbarProps {
   leftItems?: NavbarItem[];
   // Items for right side of navbar (with dividers inline)
   rightItems?: NavbarItem[];
+  // Optional additional content for left side (after leftItems)
+  leftSlot?: ReactNode;
   // Context for deriving action state
   actionContext: ActionVisibilityContext;
   // Handler to execute an action
@@ -74,6 +86,7 @@ export function Navbar({
   workspaceTitle = 'Workspace Title',
   leftItems = [],
   rightItems = [],
+  leftSlot,
   actionContext,
   onExecuteAction,
   className,
@@ -105,6 +118,7 @@ export function Navbar({
         onClick={() => onExecuteAction(action)}
         aria-label={tooltip}
         tooltip={tooltip}
+        shortcut={action.shortcut}
         disabled={isDisabled}
         className={isDisabled ? 'opacity-40 cursor-not-allowed' : ''}
       />
@@ -114,11 +128,11 @@ export function Navbar({
   return (
     <nav
       className={cn(
-        'flex items-center justify-between px-double py-half bg-secondary border-b shrink-0',
+        'flex items-center justify-between px-base py-half bg-secondary border-b shrink-0',
         className
       )}
     >
-      {/* Left - Archive & Old UI Link */}
+      {/* Left - Archive & Old UI Link + optional slot */}
       <div className="flex-1 flex items-center gap-base">
         {leftItems.map((item, index) =>
           renderItem(
@@ -126,6 +140,7 @@ export function Navbar({
             `left-${isDivider(item) ? 'divider' : item.id}-${index}`
           )
         )}
+        {leftSlot}
       </div>
 
       {/* Center - Workspace Title */}
@@ -133,8 +148,9 @@ export function Navbar({
         <p className="text-base text-low truncate">{workspaceTitle}</p>
       </div>
 
-      {/* Right - Diff Controls + Panel Toggles (dividers inline) */}
+      {/* Right - Sync Error Indicator + Diff Controls + Panel Toggles (dividers inline) */}
       <div className="flex-1 flex items-center justify-end gap-base">
+        <SyncErrorIndicator />
         {rightItems.map((item, index) =>
           renderItem(
             item,

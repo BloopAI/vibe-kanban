@@ -1,0 +1,247 @@
+---
+title: "Customising Your Board"
+description: "Configure columns, colours, and display settings"
+---
+
+Every team works differently. Customise your kanban board to match your workflow by adding columns, changing colours, renaming statuses, and controlling what's visible.
+
+## Display Settings
+
+Access display settings to customise your board columns:
+
+1. Click the **Display Settings** button (<Icon icon="sliders" />) in the filter bar
+2. The settings panel opens showing all your columns
+
+<Frame>
+  <img style={{maxHeight: "400px"}} src="/images/cloud/display-settings.png" alt="Display Settings panel showing visible columns with toggles" />
+</Frame>
+
+## Managing Columns
+
+### Adding a New Column
+
+<Steps>
+<Step title="Open Display Settings">
+  Click the **Display Settings** button (<Icon icon="sliders" />) in the filter bar.
+</Step>
+
+<Step title="Click Add column">
+  Click the **+ Add column** button at the bottom of the list.
+</Step>
+
+<Step title="Enter the status name">
+  Type a name for your new status (e.g., "In Review", "Blocked", "Testing").
+</Step>
+
+<Step title="Save changes">
+  Click **Save** to apply your changes. The new column appears on your board.
+</Step>
+</Steps>
+
+New columns are assigned a random colour. You can change it after creation.
+
+### Renaming a Column
+
+<Steps>
+<Step title="Open Display Settings">
+  Click the **Display Settings** button (<Icon icon="sliders" />) in the filter bar.
+</Step>
+
+<Step title="Click the column name">
+  Click on the name of the column you want to rename.
+</Step>
+
+<Step title="Type the new name">
+  Enter the new name and click outside the field or press Enter.
+</Step>
+
+<Step title="Save changes">
+  Click **Save** to apply your changes.
+</Step>
+</Steps>
+
+<Info>
+Renaming a column doesn't affect the issues in it. All issues keep their current status - only the display name changes.
+</Info>
+
+### Changing Column Colours
+
+Each column has a colour that appears in the column header and on issue cards.
+
+<Steps>
+<Step title="Open Display Settings">
+  Click the **Display Settings** button (<Icon icon="sliders" />) in the filter bar.
+</Step>
+
+<Step title="Click the colour dot">
+  Click the coloured circle next to the column name.
+
+</Step>
+
+<Step title="Select a colour">
+  Choose from the preset colours.
+</Step>
+
+<Step title="Save changes">
+  Click **Save** to apply the new colour.
+</Step>
+</Steps>
+
+### Reordering Columns
+
+Change the order columns appear on your board:
+
+<Steps>
+<Step title="Open Display Settings">
+  Click the **Display Settings** button (<Icon icon="sliders" />) in the filter bar.
+</Step>
+
+<Step title="Drag the column">
+  Click and hold the drag handle (<Icon icon="grip-vertical" />) next to a column.
+</Step>
+
+<Step title="Move to new position">
+  Drag the column up or down to its new position.
+</Step>
+
+<Step title="Save changes">
+  Click **Save** to apply the new order.
+</Step>
+</Steps>
+
+<Tip>
+Arrange columns to match your workflow from left to right - typically starting with "To Do" on the left and ending with "Done" on the right.
+</Tip>
+
+### Hiding Columns
+
+Hide columns you don't use regularly to keep your board clean:
+
+<Steps>
+<Step title="Open Display Settings">
+  Click the **Display Settings** button (<Icon icon="sliders" />) in the filter bar.
+</Step>
+
+<Step title="Toggle visibility">
+  Click the toggle switch next to the column you want to hide. When the toggle is off, the column is hidden.
+</Step>
+
+<Step title="Save changes">
+  Click **Save** to hide the column.
+</Step>
+</Steps>
+
+**Hidden columns:**
+- Don't appear on the board
+- Still exist - issues in them are preserved
+- Can be viewed using the "All" status tab
+- Can be unhidden at any time
+
+<Info>
+Hiding a column is useful for "Done" statuses. You can hide completed work to focus on active issues, but still access them when needed via the status tabs.
+</Info>
+
+### Deleting Columns
+
+Remove columns you no longer need:
+
+<Steps>
+<Step title="Open Display Settings">
+  Click the **Display Settings** button (<Icon icon="sliders" />) in the filter bar.
+</Step>
+
+<Step title="Click the delete button">
+  Click the **×** button next to the column you want to delete.
+</Step>
+
+<Step title="Save changes">
+  Click **Save** to remove the column.
+</Step>
+</Steps>
+
+<Warning>
+**You cannot delete a column that contains issues.** Move all issues to another column first, then delete the empty column.
+</Warning>
+
+## Managing Tags
+
+Tags help categorise and filter issues. Tags are created inline when you add them to issues.
+
+### Creating Tags
+
+To create a new tag:
+
+1. Open any issue
+2. Click the **Tags** field (or the **+** button next to existing tags)
+3. Type the name of your new tag
+4. If the tag doesn't exist, you'll see a **Create** option
+5. Select a colour for the tag
+6. Click to create and apply the tag
+
+<Frame>
+  <img style={{maxHeight: "120px"}} src="/images/cloud/tags-field.png" alt="Tags field showing a bug tag with + button to add more tags" />
+</Frame>
+
+<Info>
+Tags are shared across all issues in the project. Once created, a tag can be added to any issue.
+</Info>
+
+### Using Tags
+
+- Click the **Tags** field on any issue to add or remove tags
+- Use the tag filter in the filter bar to find issues with specific tags
+- Tags appear as coloured labels on issue cards
+
+**To remove a tag from an issue**, click the tag - it will show a strikethrough indicating it will be removed.
+
+<Frame>
+  <img style={{maxHeight: "120px"}} src="/images/cloud/tag-removal.png" alt="Tag with strikethrough indicating removal" />
+</Frame>
+
+## Best Practices
+
+<CardGroup cols={2}>
+<Card title="Keep it simple" icon="circle-check">
+  Start with fewer columns. You can always add more later. Too many columns creates confusion about where issues should go.
+</Card>
+
+<Card title="Use clear names" icon="tag">
+  Column names should be obvious to everyone on the team. "In Progress" is clearer than "WIP" or "Active".
+</Card>
+
+<Card title="Hide, don't delete" icon="eye-slash">
+  If you're not sure about a column, hide it instead of deleting. You can unhide it if you need it later.
+</Card>
+
+<Card title="Consistent colours" icon="palette">
+  Use consistent colour meanings across projects. For example, always use red for blocked/urgent statuses.
+</Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="Can't delete a column">
+The column probably has issues in it. You must move all issues to another column before deleting. Check:
+1. Open Display Settings - it shows the issue count next to each status
+2. Use the "All" status tab to see all issues including hidden ones
+</Accordion>
+
+<Accordion title="Changes didn't save">
+Make sure you clicked **Save** after making changes in Display Settings. Changes aren't applied until you save.
+</Accordion>
+
+<Accordion title="Column order is wrong">
+Open Display Settings and drag columns to reorder them. Remember to click **Save** after reordering.
+</Accordion>
+
+<Accordion title="Can't find a column">
+It might be hidden. Open Display Settings and check the visibility toggle for each column. Or use the "All" status tab to see issues in hidden columns.
+</Accordion>
+</AccordionGroup>
+
+## Related Documentation
+
+- [Kanban Board](/cloud/kanban-board) - Using the board interface
+- [Issues](/cloud/issues) - Creating and managing issues
+- [Filtering & Sorting](/cloud/filtering) - Finding issues with tags and filters

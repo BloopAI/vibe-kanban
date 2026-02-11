@@ -1,10 +1,21 @@
-import type { Icon } from '@phosphor-icons/react';
+import { forwardRef, createElement } from 'react';
+import type { Icon, IconProps } from '@phosphor-icons/react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { QueryClient } from '@tanstack/react-query';
-import type { EditorType, Workspace } from 'shared/types';
+import type {
+  EditorType,
+  ExecutionProcess,
+  Merge,
+  Workspace,
+} from 'shared/types';
+import type { Workspace as RemoteWorkspace } from 'shared/remote-types';
 import type { DiffViewMode } from '@/stores/useDiffViewStore';
+import type { LogsPanelContent } from '../containers/LogsContentContainer';
+import type { LogEntry } from '../containers/VirtualizedProcessLogs';
+import type { LayoutMode } from '@/stores/useUiPreferencesStore';
 import {
   CopyIcon,
+  XIcon,
   PushPinIcon,
   ArchiveIcon,
   TrashIcon,
@@ -18,6 +29,7 @@ import {
   ChatsTeardropIcon,
   GitDiffIcon,
   TerminalIcon,
+  SignInIcon,
   SignOutIcon,
   CaretDoubleUpIcon,
   CaretDoubleDownIcon,
@@ -26,23 +38,61 @@ import {
   SpinnerIcon,
   GitPullRequestIcon,
   GitMergeIcon,
+  GitForkIcon,
   ArrowsClockwiseIcon,
   CrosshairIcon,
   DesktopIcon,
+  PencilSimpleIcon,
+  ArrowUpIcon,
+  HighlighterIcon,
+  ListIcon,
+  MegaphoneIcon,
+  QuestionIcon,
+  ArrowsLeftRightIcon,
+  ArrowFatLineUpIcon,
+  UsersIcon,
+  TreeStructureIcon,
+  LinkIcon,
+  ArrowBendUpRightIcon,
+  ProhibitIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
-import { useLayoutStore } from '@/stores/useLayoutStore';
+import {
+  useUiPreferencesStore,
+  RIGHT_MAIN_PANEL_MODES,
+} from '@/stores/useUiPreferencesStore';
+
 import { attemptsApi, tasksApi, repoApi } from '@/lib/api';
+import { bulkUpdateIssues } from '@/lib/remoteApi';
 import { attemptKeys } from '@/hooks/useAttempt';
 import { taskKeys } from '@/hooks/useTask';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { ChangeTargetDialog } from '@/components/ui-new/dialogs/ChangeTargetDialog';
+import { DeleteWorkspaceDialog } from '@/components/ui-new/dialogs/DeleteWorkspaceDialog';
 import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
+import { ResolveConflictsDialog } from '@/components/ui-new/dialogs/ResolveConflictsDialog';
+import { RenameWorkspaceDialog } from '@/components/ui-new/dialogs/RenameWorkspaceDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { getIdeName } from '@/components/ide/IdeIcon';
 import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
+import { StartReviewDialog } from '@/components/dialogs/tasks/StartReviewDialog';
+import posthog from 'posthog-js';
+import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
+import { ProjectsGuideDialog } from '@/components/ui-new/dialogs/ProjectsGuideDialog';
+import { SettingsDialog } from '@/components/ui-new/dialogs/SettingsDialog';
+import { CreateWorkspaceFromPrDialog } from '@/components/dialogs/CreateWorkspaceFromPrDialog';
+
+// Mirrored sidebar icon for right sidebar toggle
+const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
+  (props, ref) =>
+    createElement(SidebarSimpleIcon, {
+      ref,
+      ...props,
+      style: { transform: 'scaleX(-1)', ...props.style },
+    })
+);
+RightSidebarIcon.displayName = 'RightSidebarIcon';
 
 // Special icon types for ContextBar
 export type SpecialIconType = 'ide-icon' | 'copy-icon';
@@ -56,35 +106,72 @@ interface SidebarWorkspace {
 // Dev server state type for visibility context
 export type DevServerState = 'stopped' | 'starting' | 'running' | 'stopping';
 
+// Project mutations interface (registered by ProjectProvider consumers)
+export interface ProjectMutations {
+  removeIssue: (id: string) => void;
+  duplicateIssue: (issueId: string) => void;
+}
+
 // Context provided to action executors (from React hooks)
 export interface ActionExecutorContext {
   navigate: NavigateFunction;
   queryClient: QueryClient;
-  // Optional workspace selection context (for archive action)
-  selectWorkspace?: (workspaceId: string) => void;
-  activeWorkspaces?: SidebarWorkspace[];
-  // Current workspace ID (for actions that optionally use workspace context)
-  currentWorkspaceId?: string;
-
-  // ContextBar-specific state (optional, only set in ContextBar context)
-  containerRef?: string; // For copy path (workspace.container_ref)
-  runningDevServerId?: string; // For stopping dev server
-  startDevServer?: () => void; // For starting dev server with mutation tracking
-  stopDevServer?: () => void; // For stopping dev server with mutation tracking
-
-  // Git-specific state (optional, only set when clicking from a specific RepoCard)
-  gitRepoId?: string;
+  selectWorkspace: (workspaceId: string) => void;
+  activeWorkspaces: SidebarWorkspace[];
+  currentWorkspaceId: string | null;
+  containerRef: string | null;
+  runningDevServers: ExecutionProcess[];
+  startDevServer: () => void;
+  stopDevServer: () => void;
+  // Logs panel state
+  currentLogs: LogEntry[] | null;
+  logsPanelContent: LogsPanelContent | null;
+  // Command bar navigation
+  openStatusSelection: (projectId: string, issueIds: string[]) => Promise<void>;
+  openPrioritySelection: (
+    projectId: string,
+    issueIds: string[]
+  ) => Promise<void>;
+  openAssigneeSelection: (
+    projectId: string,
+    issueIds: string[],
+    isCreateMode?: boolean
+  ) => Promise<void>;
+  openSubIssueSelection: (
+    projectId: string,
+    issueId: string,
+    mode?: 'addChild' | 'setParent'
+  ) => Promise<void>;
+  openWorkspaceSelection: (projectId: string, issueId: string) => Promise<void>;
+  openRelationshipSelection: (
+    projectId: string,
+    issueId: string,
+    relationshipType: 'blocking' | 'related' | 'has_duplicate',
+    direction: 'forward' | 'reverse'
+  ) => Promise<void>;
+  // Kanban navigation (URL-based)
+  navigateToCreateIssue: (options?: { statusId?: string }) => void;
+  // Default status for issue creation based on current kanban tab
+  defaultCreateStatusId?: string;
+  // Current kanban context (for project settings action)
+  kanbanOrgId?: string;
+  kanbanProjectId?: string;
+  // Project mutations (registered when inside ProjectProvider)
+  projectMutations?: ProjectMutations;
+  // Remote workspaces (from Electric sync via UserContext)
+  remoteWorkspaces: RemoteWorkspace[];
 }
 
 // Context for evaluating action visibility and state conditions
 export interface ActionVisibilityContext {
   // Layout state
-  isChangesMode: boolean;
-  isLogsMode: boolean;
-  isPreviewMode: boolean;
-  isSidebarVisible: boolean;
-  isMainPanelVisible: boolean;
-  isGitPanelVisible: boolean;
+  layoutMode: LayoutMode;
+  rightMainPanelMode:
+    | (typeof RIGHT_MAIN_PANEL_MODES)[keyof typeof RIGHT_MAIN_PANEL_MODES]
+    | null;
+  isLeftSidebarVisible: boolean;
+  isLeftMainPanelVisible: boolean;
+  isRightSidebarVisible: boolean;
   isCreateMode: boolean;
 
   // Workspace state
@@ -96,14 +183,30 @@ export interface ActionVisibilityContext {
   diffViewMode: DiffViewMode;
   isAllDiffsExpanded: boolean;
 
-  // ContextBar-specific state (optional)
-  editorType?: EditorType | null;
-  devServerState?: DevServerState;
-  runningDevServerId?: string;
+  // Dev server state
+  editorType: EditorType | null;
+  devServerState: DevServerState;
+  runningDevServers: ExecutionProcess[];
 
   // Git panel state
   hasGitRepos: boolean;
   hasMultipleRepos: boolean;
+  hasOpenPR: boolean;
+  hasUnpushedCommits: boolean;
+
+  // Execution state
+  isAttemptRunning: boolean;
+
+  // Logs panel state
+  logsPanelContent: LogsPanelContent | null;
+
+  // Kanban state
+  hasSelectedKanbanIssue: boolean;
+  hasSelectedKanbanIssueParent: boolean;
+  isCreatingIssue: boolean;
+
+  // Auth state
+  isSignedIn: boolean;
 }
 
 // Base properties shared by all actions
@@ -127,38 +230,69 @@ interface ActionBase {
   getLabel?: (ctx: ActionVisibilityContext) => string;
 }
 
+// Enum discriminant for action target types
+export enum ActionTargetType {
+  NONE = 'none',
+  WORKSPACE = 'workspace',
+  GIT = 'git',
+  ISSUE = 'issue',
+}
+
 // Global action (no target needed)
 export interface GlobalActionDefinition extends ActionBase {
-  requiresTarget: false;
+  requiresTarget: ActionTargetType.NONE;
   execute: (ctx: ActionExecutorContext) => Promise<void> | void;
 }
 
 // Workspace action (target required - validated by ActionsContext)
 export interface WorkspaceActionDefinition extends ActionBase {
-  requiresTarget: true;
+  requiresTarget: ActionTargetType.WORKSPACE;
   execute: (
     ctx: ActionExecutorContext,
     workspaceId: string
   ) => Promise<void> | void;
 }
 
+// Git action (requires workspace + repoId)
+export interface GitActionDefinition extends ActionBase {
+  requiresTarget: ActionTargetType.GIT;
+  execute: (
+    ctx: ActionExecutorContext,
+    workspaceId: string,
+    repoId: string
+  ) => Promise<void> | void;
+}
+
+// Issue action (requires projectId + issueIds)
+export interface IssueActionDefinition extends ActionBase {
+  requiresTarget: ActionTargetType.ISSUE;
+  execute: (
+    ctx: ActionExecutorContext,
+    projectId: string,
+    issueIds: string[]
+  ) => Promise<void> | void;
+}
+
 // Discriminated union
 export type ActionDefinition =
   | GlobalActionDefinition
-  | WorkspaceActionDefinition;
+  | WorkspaceActionDefinition
+  | GitActionDefinition
+  | IssueActionDefinition;
 
-// Helper to get workspace from query cache
-function getWorkspaceFromCache(
+// Helper to get workspace from query cache or fetch from API
+async function getWorkspace(
   queryClient: QueryClient,
   workspaceId: string
-): Workspace {
-  const workspace = queryClient.getQueryData<Workspace>(
+): Promise<Workspace> {
+  const cached = queryClient.getQueryData<Workspace>(
     attemptKeys.byId(workspaceId)
   );
-  if (!workspace) {
-    throw new Error('Workspace not found');
+  if (cached) {
+    return cached;
   }
-  return workspace;
+  // Fetch from API if not in cache
+  return attemptsApi.get(workspaceId);
 }
 
 // Helper to invalidate workspace-related queries
@@ -170,6 +304,22 @@ function invalidateWorkspaceQueries(
   queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
 }
 
+// Helper to find the next workspace to navigate to when removing current workspace
+function getNextWorkspaceId(
+  activeWorkspaces: SidebarWorkspace[],
+  removingWorkspaceId: string
+): string | null {
+  const currentIndex = activeWorkspaces.findIndex(
+    (ws) => ws.id === removingWorkspaceId
+  );
+  if (currentIndex >= 0 && activeWorkspaces.length > 1) {
+    const nextWorkspace =
+      activeWorkspaces[currentIndex + 1] || activeWorkspaces[currentIndex - 1];
+    return nextWorkspace?.id ?? null;
+  }
+  return null;
+}
+
 // All application actions
 export const Actions = {
   // === Workspace Actions ===
@@ -177,17 +327,58 @@ export const Actions = {
     id: 'duplicate-workspace',
     label: 'Duplicate',
     icon: CopyIcon,
-    requiresTarget: true,
+    shortcut: 'W D',
+    requiresTarget: ActionTargetType.WORKSPACE,
     execute: async (ctx, workspaceId) => {
       try {
-        const firstMessage = await attemptsApi.getFirstUserMessage(workspaceId);
+        const [workspace, firstMessage, repos] = await Promise.all([
+          getWorkspace(ctx.queryClient, workspaceId),
+          attemptsApi.getFirstUserMessage(workspaceId),
+          attemptsApi.getRepos(workspaceId),
+        ]);
+        const task = await tasksApi.getById(workspace.task_id);
+
+        // Find linked issue from remote workspace (synced via Electric)
+        const remoteWs = ctx.remoteWorkspaces.find(
+          (w) => w.local_workspace_id === workspaceId
+        );
+        const linkedIssue = remoteWs?.issue_id
+          ? {
+              issueId: remoteWs.issue_id,
+              remoteProjectId: remoteWs.project_id,
+            }
+          : undefined;
+
         ctx.navigate('/workspaces/create', {
-          state: { duplicatePrompt: firstMessage },
+          state: {
+            initialPrompt: firstMessage,
+            preferredRepos: repos.map((r) => ({
+              repo_id: r.id,
+              target_branch: r.target_branch,
+            })),
+            project_id: task.project_id,
+            linkedIssue,
+          },
         });
       } catch {
-        // Fallback to creating without the prompt
+        // Fallback to creating without the prompt/repos
         ctx.navigate('/workspaces/create');
       }
+    },
+  },
+
+  RenameWorkspace: {
+    id: 'rename-workspace',
+    label: 'Rename',
+    icon: PencilSimpleIcon,
+    shortcut: 'W R',
+    requiresTarget: ActionTargetType.WORKSPACE,
+    execute: async (ctx, workspaceId) => {
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
+      await RenameWorkspaceDialog.show({
+        workspaceId,
+        currentName: workspace.name || workspace.branch,
+      });
     },
   },
 
@@ -195,9 +386,10 @@ export const Actions = {
     id: 'pin-workspace',
     label: (workspace?: Workspace) => (workspace?.pinned ? 'Unpin' : 'Pin'),
     icon: PushPinIcon,
-    requiresTarget: true,
+    shortcut: 'W P',
+    requiresTarget: ActionTargetType.WORKSPACE,
     execute: async (ctx, workspaceId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       await attemptsApi.update(workspaceId, {
         pinned: !workspace.pinned,
       });
@@ -210,33 +402,25 @@ export const Actions = {
     label: (workspace?: Workspace) =>
       workspace?.archived ? 'Unarchive' : 'Archive',
     icon: ArchiveIcon,
-    requiresTarget: true,
-    isVisible: (ctx) => ctx.hasWorkspace,
+    shortcut: 'W A',
+    requiresTarget: ActionTargetType.WORKSPACE,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.layoutMode === 'workspaces',
     isActive: (ctx) => ctx.workspaceArchived,
     execute: async (ctx, workspaceId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       const wasArchived = workspace.archived;
 
-      // Calculate next workspace before archiving (if we have the context)
-      let nextWorkspaceId: string | null = null;
-      if (!wasArchived && ctx.selectWorkspace && ctx.activeWorkspaces) {
-        const currentIndex = ctx.activeWorkspaces.findIndex(
-          (ws) => ws.id === workspaceId
-        );
-        if (currentIndex >= 0 && ctx.activeWorkspaces.length > 1) {
-          const nextWorkspace =
-            ctx.activeWorkspaces[currentIndex + 1] ||
-            ctx.activeWorkspaces[currentIndex - 1];
-          nextWorkspaceId = nextWorkspace?.id ?? null;
-        }
-      }
+      // Calculate next workspace before archiving
+      const nextWorkspaceId = !wasArchived
+        ? getNextWorkspaceId(ctx.activeWorkspaces, workspaceId)
+        : null;
 
       // Perform the archive/unarchive
       await attemptsApi.update(workspaceId, { archived: !wasArchived });
       invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
 
       // Select next workspace after successful archive
-      if (!wasArchived && nextWorkspaceId && ctx.selectWorkspace) {
+      if (!wasArchived && nextWorkspaceId) {
         ctx.selectWorkspace(nextWorkspaceId);
       }
     },
@@ -246,24 +430,78 @@ export const Actions = {
     id: 'delete-workspace',
     label: 'Delete',
     icon: TrashIcon,
+    shortcut: 'W X',
     variant: 'destructive',
-    requiresTarget: true,
+    requiresTarget: ActionTargetType.WORKSPACE,
     execute: async (ctx, workspaceId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
-      const result = await ConfirmDialog.show({
-        title: 'Delete Workspace',
-        message:
-          'Are you sure you want to delete this workspace? This action cannot be undone.',
-        confirmText: 'Delete',
-        cancelText: 'Cancel',
-        variant: 'destructive',
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
+      const result = await DeleteWorkspaceDialog.show({
+        workspaceId,
+        branchName: workspace.branch,
       });
-      if (result === 'confirmed') {
-        await tasksApi.delete(workspace.task_id);
+      if (result.action === 'confirmed') {
+        // Calculate next workspace before deleting (only if deleting current)
+        const isCurrentWorkspace = ctx.currentWorkspaceId === workspaceId;
+        const nextWorkspaceId = isCurrentWorkspace
+          ? getNextWorkspaceId(ctx.activeWorkspaces, workspaceId)
+          : null;
+
+        await attemptsApi.delete(workspaceId, result.deleteBranches);
         ctx.queryClient.invalidateQueries({ queryKey: taskKeys.all });
         ctx.queryClient.invalidateQueries({
           queryKey: workspaceSummaryKeys.all,
         });
+
+        // Navigate away if we deleted the current workspace
+        if (isCurrentWorkspace) {
+          if (nextWorkspaceId) {
+            ctx.selectWorkspace(nextWorkspaceId);
+          } else {
+            ctx.navigate('/workspaces/create');
+          }
+        }
+      }
+    },
+  },
+
+  StartReview: {
+    id: 'start-review',
+    label: 'Start Review',
+    icon: HighlighterIcon,
+    requiresTarget: ActionTargetType.WORKSPACE,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    getTooltip: () => 'Review changes with agent',
+    execute: async (_ctx, workspaceId) => {
+      await StartReviewDialog.show({
+        workspaceId,
+      });
+    },
+  },
+
+  SpinOffWorkspace: {
+    id: 'spin-off-workspace',
+    label: 'Spin off workspace',
+    icon: GitForkIcon,
+    requiresTarget: ActionTargetType.WORKSPACE,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    execute: async (ctx, workspaceId) => {
+      try {
+        const [workspace, repos] = await Promise.all([
+          getWorkspace(ctx.queryClient, workspaceId),
+          attemptsApi.getRepos(workspaceId),
+        ]);
+        const task = await tasksApi.getById(workspace.task_id);
+        ctx.navigate('/workspaces/create', {
+          state: {
+            preferredRepos: repos.map((r) => ({
+              repo_id: r.id,
+              target_branch: workspace.branch,
+            })),
+            project_id: task.project_id,
+          },
+        });
+      } catch {
+        ctx.navigate('/workspaces/create');
       }
     },
   },
@@ -273,21 +511,131 @@ export const Actions = {
     id: 'new-workspace',
     label: 'New Workspace',
     icon: PlusIcon,
-    shortcut: 'N',
-    requiresTarget: false,
+    shortcut: 'G N',
+    requiresTarget: ActionTargetType.NONE,
     execute: (ctx) => {
       ctx.navigate('/workspaces/create');
     },
   },
 
+  CreateWorkspaceFromPR: {
+    id: 'create-workspace-from-pr',
+    label: 'Create Workspace from PR',
+    icon: GitPullRequestIcon,
+    requiresTarget: ActionTargetType.NONE,
+    execute: async () => {
+      await CreateWorkspaceFromPrDialog.show({});
+    },
+  } satisfies GlobalActionDefinition,
+
   Settings: {
     id: 'settings',
     label: 'Settings',
     icon: GearIcon,
-    shortcut: ',',
-    requiresTarget: false,
-    execute: (ctx) => {
-      ctx.navigate('/settings');
+    shortcut: 'G S',
+    requiresTarget: ActionTargetType.NONE,
+    execute: async () => {
+      await SettingsDialog.show();
+    },
+  },
+
+  ProjectSettings: {
+    id: 'project-settings',
+    label: 'Project Settings',
+    icon: GearIcon,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban',
+    execute: async (ctx) => {
+      await SettingsDialog.show({
+        initialSection: 'remote-projects',
+        initialState: {
+          organizationId: ctx.kanbanOrgId,
+          projectId: ctx.kanbanProjectId,
+        },
+      });
+    },
+  } satisfies GlobalActionDefinition,
+
+  SignIn: {
+    id: 'sign-in',
+    label: 'Sign In',
+    icon: SignInIcon,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => !ctx.isSignedIn,
+    execute: async () => {
+      const { OAuthDialog } = await import(
+        '@/components/dialogs/global/OAuthDialog'
+      );
+      await OAuthDialog.show({});
+    },
+  } satisfies GlobalActionDefinition,
+
+  SignOut: {
+    id: 'sign-out',
+    label: 'Sign Out',
+    icon: SignOutIcon,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.isSignedIn,
+    execute: async (ctx) => {
+      const { oauthApi } = await import('@/lib/api');
+      const { useOrganizationStore } = await import(
+        '@/stores/useOrganizationStore'
+      );
+      const { organizationKeys } = await import('@/hooks/organizationKeys');
+
+      await oauthApi.logout();
+      useOrganizationStore.getState().clearSelectedOrgId();
+      ctx.queryClient.removeQueries({ queryKey: organizationKeys.all });
+      // Invalidate user-system query to update loginStatus/useAuth state
+      await ctx.queryClient.invalidateQueries({ queryKey: ['user-system'] });
+      ctx.navigate('/workspaces');
+    },
+  } satisfies GlobalActionDefinition,
+
+  Feedback: {
+    id: 'feedback',
+    label: 'Give Feedback',
+    icon: MegaphoneIcon,
+    requiresTarget: ActionTargetType.NONE,
+    execute: () => {
+      posthog.displaySurvey('019bb6e8-3d36-0000-1806-7330cd3c727e');
+    },
+  },
+
+  WorkspacesGuide: {
+    id: 'workspaces-guide',
+    label: 'Workspaces Guide',
+    icon: QuestionIcon,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
+    execute: async () => {
+      await WorkspacesGuideDialog.show();
+    },
+  },
+
+  ProjectsGuide: {
+    id: 'projects-guide',
+    label: 'Projects Guide',
+    icon: QuestionIcon,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban',
+    execute: async () => {
+      await ProjectsGuideDialog.show();
+    },
+  } satisfies GlobalActionDefinition,
+
+  OpenCommandBar: {
+    id: 'open-command-bar',
+    label: 'Open Command Bar',
+    icon: ListIcon,
+    shortcut: '{mod} K',
+    requiresTarget: ActionTargetType.NONE,
+    execute: async () => {
+      // Dynamic import to avoid circular dependency (pages.ts imports Actions)
+      const { CommandBarDialog } = await import(
+        '@/components/ui-new/dialogs/CommandBarDialog'
+      );
+      CommandBarDialog.show();
     },
   },
 
@@ -299,8 +647,10 @@ export const Actions = {
         ? 'Switch to Side-by-Side View'
         : 'Switch to Inline View',
     icon: ColumnsIcon,
-    requiresTarget: false,
-    isVisible: (ctx) => ctx.isChangesMode,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES &&
+      ctx.layoutMode === 'workspaces',
     isActive: (ctx) => ctx.diffViewMode === 'split',
     getIcon: (ctx) => (ctx.diffViewMode === 'split' ? ColumnsIcon : RowsIcon),
     getTooltip: (ctx) =>
@@ -317,8 +667,10 @@ export const Actions = {
         ? 'Show Whitespace Changes'
         : 'Ignore Whitespace Changes',
     icon: EyeSlashIcon,
-    requiresTarget: false,
-    isVisible: (ctx) => ctx.isChangesMode,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES &&
+      ctx.layoutMode === 'workspaces',
     execute: () => {
       const store = useDiffViewStore.getState();
       store.setIgnoreWhitespace(!store.ignoreWhitespace);
@@ -332,8 +684,11 @@ export const Actions = {
         ? 'Disable Line Wrapping'
         : 'Enable Line Wrapping',
     icon: TextAlignLeftIcon,
-    requiresTarget: false,
-    isVisible: (ctx) => ctx.isChangesMode,
+    shortcut: 'T W',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES &&
+      ctx.layoutMode === 'workspaces',
     execute: () => {
       const store = useDiffViewStore.getState();
       store.setWrapText(!store.wrapText);
@@ -341,133 +696,124 @@ export const Actions = {
   },
 
   // === Layout Panel Actions ===
-  ToggleSidebar: {
-    id: 'toggle-sidebar',
+  ToggleLeftSidebar: {
+    id: 'toggle-left-sidebar',
     label: () =>
-      useLayoutStore.getState().isSidebarVisible
-        ? 'Hide Sidebar'
-        : 'Show Sidebar',
+      useUiPreferencesStore.getState().isLeftSidebarVisible
+        ? 'Hide Left Sidebar'
+        : 'Show Left Sidebar',
     icon: SidebarSimpleIcon,
-    shortcut: '[',
-    requiresTarget: false,
-    isActive: (ctx) => ctx.isSidebarVisible,
+    shortcut: 'V S',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
+    isActive: (ctx) => ctx.isLeftSidebarVisible,
     execute: () => {
-      useLayoutStore.getState().toggleSidebar();
+      useUiPreferencesStore.getState().toggleLeftSidebar();
     },
   },
 
-  ToggleMainPanel: {
-    id: 'toggle-main-panel',
-    label: () =>
-      useLayoutStore.getState().isMainPanelVisible
-        ? 'Hide Chat Panel'
-        : 'Show Chat Panel',
+  ToggleLeftMainPanel: {
+    id: 'toggle-left-main-panel',
+    label: 'Toggle Chat Panel',
     icon: ChatsTeardropIcon,
-    requiresTarget: false,
-    isActive: (ctx) => ctx.isMainPanelVisible,
-    isEnabled: (ctx) => !(ctx.isMainPanelVisible && !ctx.isChangesMode),
-    execute: () => {
-      useLayoutStore.getState().toggleMainPanel();
+    shortcut: 'V H',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
+    isActive: (ctx) => ctx.isLeftMainPanelVisible,
+    isEnabled: (ctx) =>
+      !(ctx.isLeftMainPanelVisible && ctx.rightMainPanelMode === null),
+    getLabel: (ctx) =>
+      ctx.isLeftMainPanelVisible ? 'Hide Chat Panel' : 'Show Chat Panel',
+    execute: (ctx) => {
+      useUiPreferencesStore
+        .getState()
+        .toggleLeftMainPanel(ctx.currentWorkspaceId ?? undefined);
     },
   },
 
-  ToggleGitPanel: {
-    id: 'toggle-git-panel',
+  ToggleRightSidebar: {
+    id: 'toggle-right-sidebar',
     label: () =>
-      useLayoutStore.getState().isGitPanelVisible
-        ? 'Hide Git Panel'
-        : 'Show Git Panel',
-    icon: SidebarSimpleIcon,
-    shortcut: ']',
-    requiresTarget: false,
-    isActive: (ctx) => ctx.isGitPanelVisible,
+      useUiPreferencesStore.getState().isRightSidebarVisible
+        ? 'Hide Right Sidebar'
+        : 'Show Right Sidebar',
+    icon: RightSidebarIcon,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
+    isActive: (ctx) => ctx.isRightSidebarVisible,
     execute: () => {
-      useLayoutStore.getState().toggleGitPanel();
+      useUiPreferencesStore.getState().toggleRightSidebar();
     },
   },
 
   ToggleChangesMode: {
     id: 'toggle-changes-mode',
-    label: () =>
-      useLayoutStore.getState().isChangesMode
+    label: 'Toggle Changes Panel',
+    icon: GitDiffIcon,
+    shortcut: 'V C',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => !ctx.isCreateMode && ctx.layoutMode === 'workspaces',
+    isActive: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
+    isEnabled: (ctx) => !ctx.isCreateMode,
+    getLabel: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES
         ? 'Hide Changes Panel'
         : 'Show Changes Panel',
-    icon: GitDiffIcon,
-    shortcut: 'C',
-    requiresTarget: false,
-    isVisible: (ctx) => !ctx.isCreateMode,
-    isActive: (ctx) => ctx.isChangesMode,
-    isEnabled: (ctx) => !ctx.isCreateMode,
-    execute: () => {
-      useLayoutStore.getState().toggleChangesMode();
+    execute: (ctx) => {
+      useUiPreferencesStore
+        .getState()
+        .toggleRightMainPanelMode(
+          RIGHT_MAIN_PANEL_MODES.CHANGES,
+          ctx.currentWorkspaceId ?? undefined
+        );
     },
   },
 
   ToggleLogsMode: {
     id: 'toggle-logs-mode',
-    label: () =>
-      useLayoutStore.getState().isLogsMode
+    label: 'Toggle Logs Panel',
+    icon: TerminalIcon,
+    shortcut: 'V L',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => !ctx.isCreateMode && ctx.layoutMode === 'workspaces',
+    isActive: (ctx) => ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS,
+    isEnabled: (ctx) => !ctx.isCreateMode,
+    getLabel: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS
         ? 'Hide Logs Panel'
         : 'Show Logs Panel',
-    icon: TerminalIcon,
-    shortcut: 'L',
-    requiresTarget: false,
-    isVisible: (ctx) => !ctx.isCreateMode,
-    isActive: (ctx) => ctx.isLogsMode,
-    isEnabled: (ctx) => !ctx.isCreateMode,
-    execute: () => {
-      useLayoutStore.getState().toggleLogsMode();
+    execute: (ctx) => {
+      useUiPreferencesStore
+        .getState()
+        .toggleRightMainPanelMode(
+          RIGHT_MAIN_PANEL_MODES.LOGS,
+          ctx.currentWorkspaceId ?? undefined
+        );
     },
   },
 
   TogglePreviewMode: {
     id: 'toggle-preview-mode',
-    label: () =>
-      useLayoutStore.getState().isPreviewMode
+    label: 'Toggle Preview Panel',
+    icon: DesktopIcon,
+    shortcut: 'V P',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => !ctx.isCreateMode && ctx.layoutMode === 'workspaces',
+    isActive: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW,
+    isEnabled: (ctx) => !ctx.isCreateMode,
+    getLabel: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW
         ? 'Hide Preview Panel'
         : 'Show Preview Panel',
-    icon: DesktopIcon,
-    shortcut: 'P',
-    requiresTarget: false,
-    isVisible: (ctx) => !ctx.isCreateMode,
-    isActive: (ctx) => ctx.isPreviewMode,
-    isEnabled: (ctx) => !ctx.isCreateMode,
-    execute: () => {
-      useLayoutStore.getState().togglePreviewMode();
-    },
-  },
-
-  // === Navigation Actions ===
-  OpenInOldUI: {
-    id: 'open-in-old-ui',
-    label: 'Open in Old UI',
-    icon: SignOutIcon,
-    requiresTarget: false,
-    execute: async (ctx) => {
-      // If no workspace is selected, navigate to root
-      if (!ctx.currentWorkspaceId) {
-        ctx.navigate('/');
-        return;
-      }
-
-      const workspace = getWorkspaceFromCache(
-        ctx.queryClient,
-        ctx.currentWorkspaceId
-      );
-      if (!workspace?.task_id) {
-        ctx.navigate('/');
-        return;
-      }
-
-      // Fetch task lazily to get project_id
-      const task = await tasksApi.getById(workspace.task_id);
-      if (task?.project_id) {
-        ctx.navigate(
-          `/projects/${task.project_id}/tasks/${workspace.task_id}/attempts/${workspace.id}`
+    execute: (ctx) => {
+      useUiPreferencesStore
+        .getState()
+        .toggleRightMainPanelMode(
+          RIGHT_MAIN_PANEL_MODES.PREVIEW,
+          ctx.currentWorkspaceId ?? undefined
         );
-      } else {
-        ctx.navigate('/');
-      }
     },
   },
 
@@ -483,8 +829,10 @@ export const Actions = {
       return isAllExpanded ? 'Collapse All Diffs' : 'Expand All Diffs';
     },
     icon: CaretDoubleUpIcon,
-    requiresTarget: false,
-    isVisible: (ctx) => ctx.isChangesMode,
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES &&
+      ctx.layoutMode === 'workspaces',
     getIcon: (ctx) =>
       ctx.isAllDiffsExpanded ? CaretDoubleUpIcon : CaretDoubleDownIcon,
     getTooltip: (ctx) =>
@@ -504,7 +852,7 @@ export const Actions = {
     id: 'open-in-ide',
     label: 'Open in IDE',
     icon: 'ide-icon' as const,
-    requiresTarget: false,
+    requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => ctx.hasWorkspace,
     getTooltip: (ctx) => `Open in ${getIdeName(ctx.editorType)}`,
     execute: async (ctx) => {
@@ -526,11 +874,12 @@ export const Actions = {
     },
   },
 
-  CopyPath: {
-    id: 'copy-path',
-    label: 'Copy path',
+  CopyWorkspacePath: {
+    id: 'copy-workspace-path',
+    label: 'Copy Workspace Path',
     icon: 'copy-icon' as const,
-    requiresTarget: false,
+    shortcut: 'Y P',
+    requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => ctx.hasWorkspace,
     execute: async (ctx) => {
       if (!ctx.containerRef) return;
@@ -538,11 +887,28 @@ export const Actions = {
     },
   },
 
+  CopyRawLogs: {
+    id: 'copy-raw-logs',
+    label: 'Copy Raw Logs',
+    icon: CopyIcon,
+    shortcut: 'Y L',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS &&
+      ctx.logsPanelContent?.type !== 'terminal',
+    execute: async (ctx) => {
+      if (!ctx.currentLogs || ctx.currentLogs.length === 0) return;
+      const rawText = ctx.currentLogs.map((log) => log.content).join('\n');
+      await navigator.clipboard.writeText(rawText);
+    },
+  },
+
   ToggleDevServer: {
     id: 'toggle-dev-server',
     label: 'Dev Server',
     icon: PlayIcon,
-    requiresTarget: false,
+    shortcut: 'T D',
+    requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => ctx.hasWorkspace,
     isEnabled: (ctx) =>
       ctx.devServerState !== 'starting' && ctx.devServerState !== 'stopping',
@@ -573,10 +939,17 @@ export const Actions = {
     getLabel: (ctx) =>
       ctx.devServerState === 'running' ? 'Stop Dev Server' : 'Start Dev Server',
     execute: (ctx) => {
-      if (ctx.runningDevServerId && ctx.stopDevServer) {
+      if (ctx.runningDevServers.length > 0) {
         ctx.stopDevServer();
-      } else if (ctx.startDevServer) {
+      } else {
         ctx.startDevServer();
+        // Auto-open preview mode when starting dev server
+        useUiPreferencesStore
+          .getState()
+          .setRightMainPanelMode(
+            RIGHT_MAIN_PANEL_MODES.PREVIEW,
+            ctx.currentWorkspaceId ?? undefined
+          );
       }
     },
   },
@@ -586,20 +959,15 @@ export const Actions = {
     id: 'git-create-pr',
     label: 'Create Pull Request',
     icon: GitPullRequestIcon,
-    requiresTarget: true,
+    shortcut: 'X P',
+    requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    execute: async (ctx, workspaceId) => {
-      // Get repoId - either from context (RepoCard click) or fetch repos
-      let repoId = ctx.gitRepoId;
-      if (!repoId) {
-        const repos = await attemptsApi.getRepos(workspaceId);
-        if (repos.length === 0) throw new Error('No repositories found');
-        if (repos.length > 1) throw new Error('Please select a repository');
-        repoId = repos[0].id;
-      }
-
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+    execute: async (ctx, workspaceId, repoId) => {
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       const task = await tasksApi.getById(workspace.task_id);
+
+      const repos = await attemptsApi.getRepos(workspaceId);
+      const repo = repos.find((r) => r.id === repoId);
 
       const result = await CreatePRDialog.show({
         attempt: workspace,
@@ -610,6 +978,7 @@ export const Actions = {
           executor: '',
         },
         repoId,
+        targetBranch: repo?.target_branch,
       });
 
       if (!result.success && result.error) {
@@ -622,16 +991,70 @@ export const Actions = {
     id: 'git-merge',
     label: 'Merge',
     icon: GitMergeIcon,
-    requiresTarget: true,
+    shortcut: 'X M',
+    requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    execute: async (ctx, workspaceId) => {
-      // Get repoId - either from context (RepoCard click) or fetch repos
-      let repoId = ctx.gitRepoId;
-      if (!repoId) {
-        const repos = await attemptsApi.getRepos(workspaceId);
-        if (repos.length === 0) throw new Error('No repositories found');
-        if (repos.length > 1) throw new Error('Please select a repository');
-        repoId = repos[0].id;
+    execute: async (ctx, workspaceId, repoId) => {
+      // Check for existing conflicts first
+      const branchStatus = await attemptsApi.getBranchStatus(workspaceId);
+      const repoStatus = branchStatus?.find((s) => s.repo_id === repoId);
+
+      // Check if repo has an open PR - cannot merge directly
+      const hasOpenPR = repoStatus?.merges?.some(
+        (m: Merge) => m.type === 'pr' && m.pr_info.status === 'open'
+      );
+      if (hasOpenPR) {
+        await ConfirmDialog.show({
+          title: 'Cannot Merge',
+          message:
+            'This repository has an open pull request. Please close or merge the PR before merging directly.',
+          confirmText: 'OK',
+          showCancelButton: false,
+        });
+        return;
+      }
+
+      const hasConflicts =
+        repoStatus?.is_rebase_in_progress ||
+        (repoStatus?.conflicted_files?.length ?? 0) > 0;
+
+      if (hasConflicts && repoStatus) {
+        // Show resolve conflicts dialog
+        const workspace = await getWorkspace(ctx.queryClient, workspaceId);
+        const result = await ResolveConflictsDialog.show({
+          workspaceId,
+          conflictOp: repoStatus.conflict_op ?? 'merge',
+          sourceBranch: workspace.branch,
+          targetBranch: repoStatus.target_branch_name,
+          conflictedFiles: repoStatus.conflicted_files ?? [],
+          repoName: repoStatus.repo_name,
+        });
+
+        if (result.action === 'resolved') {
+          invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+        }
+        return;
+      }
+
+      // Check if branch is behind - need to rebase first
+      const commitsBehind = repoStatus?.commits_behind ?? 0;
+      if (commitsBehind > 0) {
+        // Prompt user to rebase first
+        const confirmRebase = await ConfirmDialog.show({
+          title: 'Rebase Required',
+          message: `Your branch is ${commitsBehind} commit${commitsBehind === 1 ? '' : 's'} behind the target branch. Would you like to rebase first?`,
+          confirmText: 'Rebase',
+          cancelText: 'Cancel',
+        });
+
+        if (confirmRebase === 'confirmed') {
+          // Open rebase dialog - it loads branches/status internally
+          await RebaseDialog.show({
+            attemptId: workspaceId,
+            repoId,
+          });
+        }
+        return;
       }
 
       const confirmResult = await ConfirmDialog.show({
@@ -653,29 +1076,14 @@ export const Actions = {
     id: 'git-rebase',
     label: 'Rebase',
     icon: ArrowsClockwiseIcon,
-    requiresTarget: true,
+    shortcut: 'X R',
+    requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    execute: async (ctx, workspaceId) => {
-      // Fetch repos to get target_branch info
-      const repos = await attemptsApi.getRepos(workspaceId);
-      if (repos.length === 0) throw new Error('No repositories found');
-
-      // Get repo - either from context (RepoCard click) or use first repo
-      let repo = ctx.gitRepoId
-        ? repos.find((r) => r.id === ctx.gitRepoId)
-        : repos[0];
-
-      if (!repo) {
-        if (repos.length > 1) throw new Error('Please select a repository');
-        repo = repos[0];
-      }
-
-      const branches = await repoApi.getBranches(repo.id);
+    execute: async (_ctx, workspaceId, repoId) => {
+      // Open rebase dialog - it loads branches/status internally and handles conflicts
       await RebaseDialog.show({
         attemptId: workspaceId,
-        repoId: repo.id,
-        branches,
-        initialTargetBranch: repo.target_branch,
+        repoId,
       });
     },
   },
@@ -684,26 +1092,454 @@ export const Actions = {
     id: 'git-change-target',
     label: 'Change Target Branch',
     icon: CrosshairIcon,
-    requiresTarget: true,
+    requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    execute: async (ctx, workspaceId) => {
-      // Get repoId - either from context (RepoCard click) or fetch repos
-      let repoId = ctx.gitRepoId;
-      if (!repoId) {
-        const repos = await attemptsApi.getRepos(workspaceId);
-        if (repos.length === 0) throw new Error('No repositories found');
-        if (repos.length > 1) throw new Error('Please select a repository');
-        repoId = repos[0].id;
-      }
-
-      const branches = await repoApi.getBranches(repoId);
+    execute: async (_ctx, workspaceId, repoId) => {
+      // Open dialog - it loads branches internally
       await ChangeTargetDialog.show({
         attemptId: workspaceId,
         repoId,
-        branches,
       });
     },
   },
+
+  GitPush: {
+    id: 'git-push',
+    label: 'Push',
+    icon: ArrowUpIcon,
+    shortcut: 'X U',
+    requiresTarget: ActionTargetType.GIT,
+    isVisible: (ctx) =>
+      ctx.hasWorkspace &&
+      ctx.hasGitRepos &&
+      ctx.hasOpenPR &&
+      ctx.hasUnpushedCommits,
+    execute: async (ctx, workspaceId, repoId) => {
+      const result = await attemptsApi.push(workspaceId, { repo_id: repoId });
+      if (!result.success) {
+        if (result.error?.type === 'force_push_required') {
+          throw new Error(
+            'Force push required. The remote branch has diverged.'
+          );
+        }
+        throw new Error('Failed to push changes');
+      }
+      invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+    },
+  },
+
+  // === Repo-specific Actions (for command bar when selecting a repo) ===
+  RepoCopyPath: {
+    id: 'repo-copy-path',
+    label: 'Copy Repo Path',
+    icon: CopyIcon,
+    requiresTarget: ActionTargetType.GIT,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: async (_ctx, _workspaceId, repoId) => {
+      try {
+        const repo = await repoApi.getById(repoId);
+        if (repo?.path) {
+          await navigator.clipboard.writeText(repo.path);
+        }
+      } catch (err) {
+        console.error('Failed to copy repo path:', err);
+        throw new Error('Failed to copy repository path');
+      }
+    },
+  },
+
+  RepoOpenInIDE: {
+    id: 'repo-open-in-ide',
+    label: 'Open Repo in IDE',
+    icon: DesktopIcon,
+    requiresTarget: ActionTargetType.GIT,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: async (_ctx, _workspaceId, repoId) => {
+      try {
+        const response = await repoApi.openEditor(repoId, {
+          editor_type: null,
+          file_path: null,
+        });
+        if (response.url) {
+          window.open(response.url, '_blank');
+        }
+      } catch (err) {
+        console.error('Failed to open repo in editor:', err);
+        throw new Error('Failed to open repository in IDE');
+      }
+    },
+  },
+
+  RepoSettings: {
+    id: 'repo-settings',
+    label: 'Repository Settings',
+    icon: GearIcon,
+    requiresTarget: ActionTargetType.GIT,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: (ctx, _workspaceId, repoId) => {
+      ctx.navigate(`/settings/repos?repoId=${repoId}`);
+    },
+  },
+
+  // === Script Actions ===
+  RunSetupScript: {
+    id: 'run-setup-script',
+    label: 'Run Setup Script',
+    icon: TerminalIcon,
+    shortcut: 'R S',
+    requiresTarget: ActionTargetType.WORKSPACE,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    isEnabled: (ctx) => !ctx.isAttemptRunning,
+    execute: async (_ctx, workspaceId) => {
+      const result = await attemptsApi.runSetupScript(workspaceId);
+      if (!result.success) {
+        if (result.error?.type === 'no_script_configured') {
+          throw new Error('No setup script configured for this project');
+        }
+        if (result.error?.type === 'process_already_running') {
+          throw new Error('Cannot run script while another process is running');
+        }
+        throw new Error('Failed to run setup script');
+      }
+    },
+  },
+
+  RunCleanupScript: {
+    id: 'run-cleanup-script',
+    label: 'Run Cleanup Script',
+    icon: TerminalIcon,
+    shortcut: 'R C',
+    requiresTarget: ActionTargetType.WORKSPACE,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    isEnabled: (ctx) => !ctx.isAttemptRunning,
+    execute: async (_ctx, workspaceId) => {
+      const result = await attemptsApi.runCleanupScript(workspaceId);
+      if (!result.success) {
+        if (result.error?.type === 'no_script_configured') {
+          throw new Error('No cleanup script configured for this project');
+        }
+        if (result.error?.type === 'process_already_running') {
+          throw new Error('Cannot run script while another process is running');
+        }
+        throw new Error('Failed to run cleanup script');
+      }
+    },
+  },
+
+  RunArchiveScript: {
+    id: 'run-archive-script',
+    label: 'Run Archive Script',
+    icon: TerminalIcon,
+    shortcut: 'R A',
+    requiresTarget: ActionTargetType.WORKSPACE,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    isEnabled: (ctx) => !ctx.isAttemptRunning,
+    execute: async (_ctx, workspaceId) => {
+      const result = await attemptsApi.runArchiveScript(workspaceId);
+      if (!result.success) {
+        if (result.error?.type === 'no_script_configured') {
+          throw new Error('No archive script configured for this project');
+        }
+        if (result.error?.type === 'process_already_running') {
+          throw new Error('Cannot run script while another process is running');
+        }
+        throw new Error('Failed to run archive script');
+      }
+    },
+  } satisfies WorkspaceActionDefinition,
+
+  // === Issue Actions ===
+  CreateIssue: {
+    id: 'create-issue',
+    label: 'Create Issue',
+    icon: PlusIcon,
+    shortcut: 'I C',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban' && !ctx.isCreatingIssue,
+    execute: (ctx) => {
+      ctx.navigateToCreateIssue({ statusId: ctx.defaultCreateStatusId });
+    },
+  } satisfies GlobalActionDefinition,
+
+  ChangeIssueStatus: {
+    id: 'change-issue-status',
+    label: 'Change Status',
+    icon: ArrowsLeftRightIcon,
+    shortcut: 'I S',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      await ctx.openStatusSelection(projectId, issueIds);
+    },
+  } satisfies IssueActionDefinition,
+
+  ChangeNewIssueStatus: {
+    id: 'change-new-issue-status',
+    label: 'Change Status',
+    icon: ArrowsLeftRightIcon,
+    shortcut: 'I S',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban' && ctx.isCreatingIssue,
+    execute: async (ctx) => {
+      if (!ctx.kanbanProjectId) return;
+      const { ProjectSelectionDialog } = await import(
+        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+      );
+      await ProjectSelectionDialog.show({
+        projectId: ctx.kanbanProjectId,
+        selection: { type: 'status', issueIds: [], isCreateMode: true },
+      });
+    },
+  } satisfies GlobalActionDefinition,
+
+  ChangePriority: {
+    id: 'change-issue-priority',
+    label: 'Change Priority',
+    icon: ArrowFatLineUpIcon,
+    shortcut: 'I P',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      await ctx.openPrioritySelection(projectId, issueIds);
+    },
+  } satisfies IssueActionDefinition,
+
+  ChangeNewIssuePriority: {
+    id: 'change-new-issue-priority',
+    label: 'Change Priority',
+    icon: ArrowFatLineUpIcon,
+    shortcut: 'I P',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban' && ctx.isCreatingIssue,
+    execute: async (ctx) => {
+      if (!ctx.kanbanProjectId) return;
+      const { ProjectSelectionDialog } = await import(
+        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+      );
+      await ProjectSelectionDialog.show({
+        projectId: ctx.kanbanProjectId,
+        selection: { type: 'priority', issueIds: [], isCreateMode: true },
+      });
+    },
+  } satisfies GlobalActionDefinition,
+
+  ChangeAssignees: {
+    id: 'change-assignees',
+    label: 'Change Assignees',
+    icon: UsersIcon,
+    shortcut: 'I A',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      await ctx.openAssigneeSelection(projectId, issueIds, false);
+    },
+  } satisfies IssueActionDefinition,
+
+  ChangeNewIssueAssignees: {
+    id: 'change-new-issue-assignees',
+    label: 'Change Assignees',
+    icon: UsersIcon,
+    shortcut: 'I A',
+    requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'kanban' && ctx.isCreatingIssue,
+    execute: async (ctx) => {
+      // Opens assignee selection for the issue being created
+      // ProjectId will be resolved from route params inside the dialog
+      await ctx.openAssigneeSelection('', [], true);
+    },
+  } satisfies GlobalActionDefinition,
+
+  MakeSubIssueOf: {
+    id: 'make-sub-issue-of',
+    label: 'Make Sub-issue of',
+    icon: TreeStructureIcon,
+    shortcut: 'I M',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openSubIssueSelection(projectId, issueIds[0], 'setParent');
+      }
+    },
+  } satisfies IssueActionDefinition,
+
+  AddSubIssue: {
+    id: 'add-sub-issue',
+    label: 'Add Sub-issue',
+    icon: PlusIcon,
+    shortcut: 'I B',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openSubIssueSelection(projectId, issueIds[0], 'addChild');
+      }
+    },
+  } satisfies IssueActionDefinition,
+
+  RemoveParentIssue: {
+    id: 'remove-parent-issue',
+    label: 'Remove Parent',
+    icon: XIcon,
+    shortcut: 'I U',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' &&
+      ctx.hasSelectedKanbanIssue &&
+      ctx.hasSelectedKanbanIssueParent,
+    execute: async (_ctx, _projectId, issueIds) => {
+      await bulkUpdateIssues(
+        issueIds.map((issueId) => ({
+          id: issueId,
+          changes: {
+            parent_issue_id: null,
+            parent_issue_sort_order: null,
+          },
+        }))
+      );
+    },
+  } satisfies IssueActionDefinition,
+
+  LinkWorkspace: {
+    id: 'link-workspace',
+    label: 'Link Workspace',
+    icon: LinkIcon,
+    shortcut: 'I W',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openWorkspaceSelection(projectId, issueIds[0]);
+      }
+    },
+  } satisfies IssueActionDefinition,
+
+  DeleteIssue: {
+    id: 'delete-issue',
+    label: 'Delete Issue',
+    icon: TrashIcon,
+    shortcut: 'I X',
+    variant: 'destructive',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, _projectId, issueIds) => {
+      const count = issueIds.length;
+      const result = await ConfirmDialog.show({
+        title: count === 1 ? 'Delete Issue' : `Delete ${count} Issues`,
+        message:
+          count === 1
+            ? 'Are you sure you want to delete this issue? This action cannot be undone.'
+            : `Are you sure you want to delete these ${count} issues? This action cannot be undone.`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        variant: 'destructive',
+      });
+      if (result === 'confirmed' && ctx.projectMutations?.removeIssue) {
+        for (const issueId of issueIds) {
+          ctx.projectMutations.removeIssue(issueId);
+        }
+      }
+    },
+  } satisfies IssueActionDefinition,
+
+  DuplicateIssue: {
+    id: 'duplicate-issue',
+    label: 'Duplicate Issue',
+    icon: CopyIcon,
+    shortcut: 'I D',
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, _projectId, issueIds) => {
+      if (issueIds.length !== 1) {
+        throw new Error('Can only duplicate one issue at a time');
+      }
+      ctx.projectMutations?.duplicateIssue(issueIds[0]);
+    },
+  } satisfies IssueActionDefinition,
+
+  MarkBlocking: {
+    id: 'mark-blocking',
+    label: 'Mark Blocking',
+    icon: ArrowBendUpRightIcon,
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openRelationshipSelection(
+          projectId,
+          issueIds[0],
+          'blocking',
+          'forward'
+        );
+      }
+    },
+  } satisfies IssueActionDefinition,
+
+  MarkBlockedBy: {
+    id: 'mark-blocked-by',
+    label: 'Mark Blocked By',
+    icon: ProhibitIcon,
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openRelationshipSelection(
+          projectId,
+          issueIds[0],
+          'blocking',
+          'reverse'
+        );
+      }
+    },
+  } satisfies IssueActionDefinition,
+
+  MarkRelated: {
+    id: 'mark-related',
+    label: 'Mark Related',
+    icon: ArrowsLeftRightIcon,
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openRelationshipSelection(
+          projectId,
+          issueIds[0],
+          'related',
+          'forward'
+        );
+      }
+    },
+  } satisfies IssueActionDefinition,
+
+  MarkDuplicateOf: {
+    id: 'mark-duplicate-of',
+    label: 'Mark Duplicate Of',
+    icon: CopyIcon,
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, projectId, issueIds) => {
+      if (issueIds.length === 1) {
+        await ctx.openRelationshipSelection(
+          projectId,
+          issueIds[0],
+          'has_duplicate',
+          'forward'
+        );
+      }
+    },
+  } satisfies IssueActionDefinition,
 } as const satisfies Record<string, ActionDefinition>;
 
 // Helper to resolve dynamic label
@@ -722,17 +1558,23 @@ export type NavbarItem = ActionDefinition | typeof NavbarDivider;
 
 // Navbar action groups define which actions appear in each section
 export const NavbarActionGroups = {
-  left: [Actions.ArchiveWorkspace, Actions.OpenInOldUI] as ActionDefinition[],
+  left: [Actions.ArchiveWorkspace] as NavbarItem[],
   right: [
     Actions.ToggleDiffViewMode,
     Actions.ToggleAllDiffs,
     NavbarDivider,
-    Actions.ToggleSidebar,
-    Actions.ToggleMainPanel,
+    Actions.ToggleLeftSidebar,
+    Actions.ToggleLeftMainPanel,
     Actions.ToggleChangesMode,
     Actions.ToggleLogsMode,
     Actions.TogglePreviewMode,
-    Actions.ToggleGitPanel,
+    Actions.ToggleRightSidebar,
+    NavbarDivider,
+    Actions.OpenCommandBar,
+    Actions.Feedback,
+    Actions.WorkspacesGuide,
+    Actions.ProjectsGuide,
+    Actions.Settings,
   ] as NavbarItem[],
 };
 
@@ -742,7 +1584,7 @@ export type ContextBarItem = ActionDefinition | typeof ContextBarDivider;
 
 // ContextBar action groups define which actions appear in each section
 export const ContextBarActionGroups = {
-  primary: [Actions.OpenInIDE, Actions.CopyPath] as ActionDefinition[],
+  primary: [Actions.OpenInIDE, Actions.CopyWorkspacePath] as ActionDefinition[],
   secondary: [
     Actions.ToggleDevServer,
     Actions.TogglePreviewMode,

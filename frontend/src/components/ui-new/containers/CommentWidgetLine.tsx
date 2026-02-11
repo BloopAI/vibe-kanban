@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PrimaryButton } from '../primitives/PrimaryButton';
+import { CommentCard } from '../primitives/CommentCard';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
 
@@ -9,10 +10,10 @@ interface CommentWidgetLineProps {
   widgetKey: string;
   onSave: () => void;
   onCancel: () => void;
-  projectId?: string;
+  projectId: string;
 }
 
-export function CommentWidgetLine({
+export const CommentWidgetLine = memo(function CommentWidgetLine({
   draft,
   widgetKey,
   onSave,
@@ -43,7 +44,23 @@ export function CommentWidgetLine({
   }, [value, draft, setDraft, widgetKey, onSave, addComment]);
 
   return (
-    <div className="p-base rounded-sm border border-brand bg-brand/10 font-sans">
+    <CommentCard
+      variant="input"
+      actions={
+        <>
+          <PrimaryButton
+            variant="default"
+            onClick={handleSave}
+            disabled={!value.trim()}
+          >
+            {t('comments.addReviewComment')}
+          </PrimaryButton>
+          <PrimaryButton variant="secondary" onClick={handleCancel}>
+            {t('actions.cancel')}
+          </PrimaryButton>
+        </>
+      }
+    >
       <WYSIWYGEditor
         value={value}
         onChange={setValue}
@@ -53,18 +70,6 @@ export function CommentWidgetLine({
         onCmdEnter={handleSave}
         autoFocus
       />
-      <div className="mt-half flex gap-half">
-        <PrimaryButton
-          variant="default"
-          onClick={handleSave}
-          disabled={!value.trim()}
-        >
-          {t('comments.addReviewComment')}
-        </PrimaryButton>
-        <PrimaryButton variant="secondary" onClick={handleCancel}>
-          {t('actions.cancel')}
-        </PrimaryButton>
-      </div>
-    </div>
+    </CommentCard>
   );
-}
+});

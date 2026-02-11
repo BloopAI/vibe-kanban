@@ -1,0 +1,74 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                o.id           AS \"id!: Uuid\",\n                o.name         AS \"name!\",\n                o.slug         AS \"slug!\",\n                o.is_personal  AS \"is_personal!\",\n                o.issue_prefix AS \"issue_prefix!\",\n                o.created_at   AS \"created_at!\",\n                o.updated_at   AS \"updated_at!\",\n                m.role         AS \"user_role!: MemberRole\"\n            FROM organizations o\n            JOIN organization_member_metadata m ON m.organization_id = o.id\n            WHERE m.user_id = $1\n            ORDER BY o.created_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "slug!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_personal!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "issue_prefix!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "user_role!: MemberRole",
+        "type_info": {
+          "Custom": {
+            "name": "member_role",
+            "kind": {
+              "Enum": [
+                "admin",
+                "member"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "66eefd452f6ccbd5bc757154a1da211c8134075b7c9f42dacc4fecaedd1c8737"
+}

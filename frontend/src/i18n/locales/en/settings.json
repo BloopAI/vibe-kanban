@@ -1,18 +1,31 @@
 {
   "settings": {
+    "common": {
+      "unsavedChanges": "• You have unsaved changes"
+    },
+    "unsavedChanges": {
+      "title": "Unsaved Changes",
+      "message": "You have unsaved changes. Are you sure you want to close without saving?",
+      "discard": "Discard Changes",
+      "cancel": "Keep Editing"
+    },
     "layout": {
       "nav": {
         "title": "Settings",
         "general": "General",
         "generalDesc": "Theme, notifications, and preferences",
         "projects": "Projects",
-        "projectsDesc": "Project scripts and configuration",
+        "projectsDesc": "Project repositories and configuration",
+        "repos": "Repositories",
+        "reposDesc": "Repository scripts and configuration",
         "agents": "Agents",
         "agentsDesc": "Coding agent configurations",
         "mcp": "MCP Servers",
         "mcpDesc": "Model Context Protocol servers",
         "organizations": "Organization Settings",
-        "organizationsDesc": "Manage organization members and permissions"
+        "organizationsDesc": "Manage organization members and permissions",
+        "remote-projects": "Projects",
+        "remote-projectsDesc": "Manage projects"
       }
     },
     "general": {
@@ -133,6 +146,14 @@
             "invalidChars": "Contains invalid characters.",
             "controlChars": "Contains control characters."
           }
+        },
+        "workspaceDir": {
+          "label": "Workspace Directory",
+          "placeholder": "~/",
+          "helper": "Workspaces will be created in a .vibe-kanban-workspaces subdirectory within this path. Leave empty to use the system default. Changes require an app restart.",
+          "browse": "Browse",
+          "dialogTitle": "Select Workspace Directory",
+          "dialogDescription": "Choose a directory. Workspaces will be created in a .vibe-kanban-workspaces subdirectory within it."
         }
       },
       "pullRequests": {
@@ -145,6 +166,18 @@
         "customPrompt": {
           "useCustom": "Use custom prompt",
           "helper": "Custom prompt for the AI agent when generating PR descriptions. Use {pr_number} and {pr_url} as placeholders."
+        }
+      },
+      "commits": {
+        "title": "Commits",
+        "description": "Configure commit behavior for task attempts",
+        "reminder": {
+          "label": "Commit reminder",
+          "helper": "Prompt supported agents to commit changes before stopping."
+        },
+        "customPrompt": {
+          "useCustom": "Use custom prompt",
+          "helper": "Custom prompt for the commit reminder. The git status will be appended automatically."
         }
       },
       "notifications": {
@@ -160,6 +193,15 @@
         "push": {
           "label": "Push Notifications",
           "helper": "Show system notifications when task attempts finish running."
+        }
+      },
+      "messageInput": {
+        "title": "Message Input",
+        "description": "Configure how messages are sent in the chat input.",
+        "shortcut": {
+          "label": "Send message with",
+          "helper": "Choose the keyboard shortcut to send messages.",
+          "enterLabel": "Enter (Shift+Enter for new line)"
         }
       },
       "privacy": {
@@ -230,24 +272,35 @@
           "description": "Reset the onboarding flow.",
           "button": "Reset"
         }
+      },
+      "beta": {
+        "title": "Beta Features",
+        "description": "Try out experimental features before they're released.",
+        "workspaces": {
+          "label": "Enable Workspaces Beta",
+          "helper": "Use the new workspaces interface when viewing task attempts. Tasks will open in task view first, and attempts will open in the new workspaces view."
+        }
       }
     },
     "agents": {
       "title": "Coding Agent Configurations",
       "description": "Customize the behavior of coding agents with different configurations.",
       "loading": "Loading agent configurations...",
+      "selectAgent": "Select agent",
       "save": {
         "button": "Save Agent Configurations",
-        "success": "✓ Executor configurations saved successfully!"
+        "success": "✓ Executor configurations saved successfully!",
+        "unsavedChanges": "• You have unsaved changes"
       },
       "availability": {
         "checking": "Checking...",
+        "checkingAvailability": "Checking availability...",
+        "available": "Agent available",
+        "notFoundSimple": "Agent not found",
         "loginDetected": "Recent Usage Detected",
         "loginDetectedTooltip": "Recent authentication credentials found for this agent",
         "installationFound": "Previous Usage Detected",
-        "installationFoundTooltip": "Agent configuration found. You may need to log in to use it.",
-        "notFound": "Not Found",
-        "notFoundTooltip": "No previous usage detected. Agent may require installation and/or login."
+        "installationFoundTooltip": "Agent configuration found. You may need to log in to use it."
       },
       "editor": {
         "formLabel": "Edit JSON",
@@ -259,6 +312,8 @@
         "deleteTitle": "Cannot delete the last configuration",
         "deleteButton": "Delete {{name}}",
         "deleteText": "Delete",
+        "makeDefault": "Make Default",
+        "isDefault": "Default",
         "jsonLabel": "Agent Configuration (JSON)",
         "jsonPlaceholder": "Loading profiles...",
         "jsonLoading": "Loading...",
@@ -267,7 +322,20 @@
       "errors": {
         "deleteFailed": "Failed to delete configuration. Please try again.",
         "saveFailed": "Failed to save agent configurations. Please try again.",
-        "saveConfigFailed": "Failed to save configuration. Please try again."
+        "saveConfigFailed": "Failed to save configuration. Please try again.",
+        "schemaNotFound": "Schema not found for executor type: {{executor}}"
+      },
+      "tree": {
+        "search": "Search configurations...",
+        "expandAll": "Expand All",
+        "collapseAll": "Collapse All",
+        "noResults": "No matching configurations",
+        "noConfigs": "No configurations available",
+        "selectConfig": "Select a configuration from the sidebar to view and edit its settings."
+      },
+      "deleteConfigDialog": {
+        "title": "Delete Configuration?",
+        "description": "This will permanently remove \"{{configName}}\" from the {{executorType}} executor. You can't undo this action."
       }
     },
     "mcp": {
@@ -303,7 +371,8 @@
         "button": "Save MCP Configuration",
         "success": "Settings Saved!",
         "successMessage": "✓ MCP configuration saved successfully!",
-        "loading": "Loading current MCP server configuration..."
+        "loading": "Loading current MCP server configuration...",
+        "unsavedChanges": "• You have unsaved changes"
       }
     },
     "projects": {
@@ -331,38 +400,6 @@
           "helper": "The absolute path to your git repository on disk."
         }
       },
-      "scripts": {
-        "title": "Scripts & Configuration",
-        "description": "Configure setup, cleanup, and copy files for this project.",
-        "setup": {
-          "label": "Setup Script",
-          "helper": "This script runs from within the worktree after it's created and before the coding agent starts. Use it for setup tasks like installing dependencies or preparing the environment.",
-          "parallelLabel": "Run setup script in parallel with coding agent",
-          "parallelHelper": "When enabled, the setup script runs simultaneously with the coding agent instead of waiting for setup to complete first."
-        },
-        "dev": {
-          "label": "Dev Server Script",
-          "helper": "Starts a development server from task attempts. Scripts execute from the workspace directory (one level above each repo's worktree) unless a working directory is specified below."
-        },
-        "devWorkingDir": {
-          "label": "Dev Server Working Directory",
-          "placeholder": "e.g., my-repo",
-          "helper": "The directory to run the dev server script from, relative to the workspace root. Leave empty to run from the workspace root."
-        },
-        "agentWorkingDir": {
-          "label": "Agent Working Directory",
-          "placeholder": "e.g., my-repo",
-          "helper": "Default directory for new workspaces to run the coding agent from, relative to the workspace root. This value is captured when a workspace is created and won't affect existing workspaces. For single-repo projects, this defaults to the repo name. Leave empty to run from the workspace root."
-        },
-        "cleanup": {
-          "label": "Cleanup Script",
-          "helper": "This script runs from within the worktree after coding agent execution, only if changes were made. Use it for quality assurance tasks like running linters, formatters, tests, or other validation steps. If no changes are made, this script is skipped."
-        },
-        "copyFiles": {
-          "label": "Copy Files",
-          "helper": "Comma-separated list of files to copy from the original project directory to the worktree. These files will be copied after the worktree is created but before the setup script runs. Useful for environment-specific files like .env, configuration files, and local settings. Make sure these are gitignored or they could get committed!"
-        }
-      },
       "save": {
         "button": "Save Project Settings",
         "success": "✓ Project settings saved successfully!",
@@ -370,6 +407,85 @@
         "unsavedChanges": "• You have unsaved changes",
         "discard": "Discard",
         "confirmSwitch": "You have unsaved changes. Are you sure you want to switch projects? Your changes will be lost."
+      },
+      "repositories": {
+        "title": "Repositories",
+        "description": "Manage the git repositories in this project",
+        "noRepositories": "No repositories configured",
+        "addRepository": "Add Repository"
+      }
+    },
+    "repos": {
+      "title": "Repository Configuration",
+      "description": "Configure scripts that run when this repository is used in workspaces.",
+      "loading": "Loading repositories...",
+      "loadError": "Failed to load repositories.",
+      "selector": {
+        "label": "Select Repository",
+        "placeholder": "Choose a repository to configure",
+        "helper": "Select a repository to view and edit its configuration.",
+        "noRepos": "No repositories available"
+      },
+      "general": {
+        "title": "General Settings",
+        "description": "Configure basic repository information.",
+        "displayName": {
+          "label": "Display Name",
+          "placeholder": "Enter display name",
+          "helper": "A friendly name for this repository."
+        },
+        "path": {
+          "label": "Repository Path"
+        },
+        "defaultWorkingDir": {
+          "label": "Default Working Directory",
+          "placeholder": "e.g., packages/frontend",
+          "helper": "Subdirectory relative to the repository root where the coding agent runs for single-repo workspaces. Set when the workspace is created. Leave empty to use the repository root."
+        },
+        "defaultTargetBranch": {
+          "label": "Default Target Branch",
+          "placeholder": "Select a branch",
+          "helper": "The default base branch for new workspaces. Worktrees branch off from this branch and PRs will target it.",
+          "search": "Search branches",
+          "noBranches": "No branches found",
+          "loading": "Loading branches...",
+          "useCurrent": "Use current branch"
+        }
+      },
+      "scripts": {
+        "title": "Scripts & Configuration",
+        "description": "Configure dev server, setup, cleanup, and copy files for this repository. These scripts run whenever the repository is used in any workspace.",
+        "setup": {
+          "label": "Setup Script",
+          "helper": "This script runs from within the worktree after it's created and before the coding agent starts. Use it for setup tasks like installing dependencies or preparing the environment.",
+          "parallelLabel": "Run setup script in parallel with coding agent",
+          "parallelHelper": "When enabled, the setup script runs simultaneously with the coding agent instead of waiting for setup to complete first."
+        },
+        "cleanup": {
+          "label": "Cleanup Script",
+          "helper": "This script runs from within the worktree after coding agent execution, only if changes were made. Use it for quality assurance tasks like running linters, formatters, tests, or other validation steps."
+        },
+        "archive": {
+          "label": "Archive Script",
+          "helper": "This script runs from within the worktree when the workspace is archived. Use it for cleanup tasks like stopping services, releasing resources, or saving state."
+        },
+        "copyFiles": {
+          "label": "Copy Files",
+          "helper": "Comma-separated list of files to copy from the original repository directory to the worktree. Useful for environment files like .env. Make sure these are gitignored!",
+          "placeholder": "File paths or glob patterns (e.g., .env, config/*.json)"
+        },
+        "devServer": {
+          "label": "Dev Server Script",
+          "helper": "Starts a development server for this repository. Scripts execute from within the repository's worktree directory."
+        }
+      },
+      "save": {
+        "button": "Save Repository Settings",
+        "success": "Repository settings saved successfully!",
+        "error": "Failed to save repository settings",
+        "unsavedChanges": "You have unsaved changes",
+        "discard": "Discard",
+        "confirmSwitch": "You have unsaved changes. Are you sure you want to switch repositories? Your changes will be lost."
       }
     }
   },

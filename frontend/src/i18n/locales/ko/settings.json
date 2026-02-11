@@ -1,18 +1,31 @@
 {
   "settings": {
+    "common": {
+      "unsavedChanges": "• 저장되지 않은 변경 사항이 있습니다"
+    },
+    "unsavedChanges": {
+      "title": "저장되지 않은 변경 사항",
+      "message": "저장되지 않은 변경 사항이 있습니다. 저장하지 않고 닫으시겠습니까?",
+      "discard": "변경 사항 삭제",
+      "cancel": "계속 편집"
+    },
     "layout": {
       "nav": {
         "title": "설정",
         "general": "일반",
         "generalDesc": "테마, 알림 및 환경설정",
         "projects": "프로젝트",
-        "projectsDesc": "프로젝트 스크립트 및 구성",
+        "projectsDesc": "프로젝트 저장소 및 구성",
+        "repos": "저장소",
+        "reposDesc": "저장소 스크립트 및 구성",
         "agents": "에이전트",
         "agentsDesc": "코딩 에이전트 구성",
         "mcp": "MCP 서버",
         "mcpDesc": "Model Context Protocol 서버",
         "organizations": "Organization Settings",
-        "organizationsDesc": "Manage organization members and permissions"
+        "organizationsDesc": "Manage organization members and permissions",
+        "remote-projects": "프로젝트",
+        "remote-projectsDesc": "프로젝트 관리"
       }
     },
     "general": {
@@ -133,6 +146,14 @@
             "invalidChars": "유효하지 않은 문자가 포함되어 있습니다.",
             "controlChars": "제어 문자가 포함되어 있습니다."
           }
+        },
+        "workspaceDir": {
+          "label": "워크스페이스 디렉토리",
+          "placeholder": "~/",
+          "helper": "이 경로 내의 .vibe-kanban-workspaces 하위 디렉토리에 워크스페이스가 생성됩니다. 시스템 기본값을 사용하려면 비워두세요. 변경 사항은 앱을 다시 시작해야 적용됩니다.",
+          "browse": "찾아보기",
+          "dialogTitle": "워크스페이스 디렉토리 선택",
+          "dialogDescription": "디렉토리를 선택하세요. 워크스페이스는 해당 디렉토리 내의 .vibe-kanban-workspaces 하위 디렉토리에 생성됩니다."
         }
       },
       "pullRequests": {
@@ -145,6 +166,18 @@
         "customPrompt": {
           "useCustom": "사용자 정의 프롬프트 사용",
           "helper": "PR 설명 생성 시 AI 에이전트용 사용자 정의 프롬프트. {pr_number}와 {pr_url}을 플레이스홀더로 사용하세요."
+        }
+      },
+      "commits": {
+        "title": "커밋",
+        "description": "작업 시도의 커밋 동작 구성",
+        "reminder": {
+          "label": "커밋 알림",
+          "helper": "지원되는 에이전트에게 중지 전 변경사항 커밋을 요청합니다."
+        },
+        "customPrompt": {
+          "useCustom": "사용자 정의 프롬프트 사용",
+          "helper": "커밋 알림용 사용자 정의 프롬프트. git 상태가 자동으로 추가됩니다."
         }
       },
       "notifications": {
@@ -160,6 +193,15 @@
         "push": {
           "label": "푸시 알림",
           "helper": "작업 시도가 완료되면 시스템 알림을 표시합니다."
+        }
+      },
+      "messageInput": {
+        "title": "메시지 입력",
+        "description": "채팅 입력에서 메시지를 보내는 방법을 구성합니다.",
+        "shortcut": {
+          "label": "메시지 보내기 키",
+          "helper": "메시지를 보내는 키보드 단축키를 선택하세요.",
+          "enterLabel": "Enter (Shift+Enter로 새 줄)"
         }
       },
       "privacy": {
@@ -230,24 +272,35 @@
           "description": "온보딩 흐름을 재설정합니다.",
           "button": "초기화"
         }
+      },
+      "beta": {
+        "title": "베타 기능",
+        "description": "출시 전 실험적인 기능을 체험해보세요.",
+        "workspaces": {
+          "label": "워크스페이스 베타 활성화",
+          "helper": "작업 시도를 볼 때 새로운 워크스페이스 인터페이스를 사용합니다. 작업은 먼저 작업 보기에서 열리고, 시도는 새로운 워크스페이스 보기에서 열립니다."
+        }
       }
     },
     "agents": {
       "title": "코딩 에이전트 구성",
       "description": "다양한 구성으로 코딩 에이전트의 동작을 사용자 정의하세요.",
       "loading": "에이전트 구성 로딩 중...",
+      "selectAgent": "에이전트 선택",
       "save": {
         "button": "에이전트 구성 저장",
-        "success": "✓ 실행자 구성이 성공적으로 저장되었습니다!"
+        "success": "✓ 실행자 구성이 성공적으로 저장되었습니다!",
+        "unsavedChanges": "• 저장되지 않은 변경 사항이 있습니다"
       },
       "availability": {
         "checking": "확인 중...",
+        "checkingAvailability": "가용성 확인 중...",
+        "available": "에이전트 사용 가능",
+        "notFoundSimple": "에이전트를 찾을 수 없음",
         "loginDetected": "최근 사용 감지됨",
         "loginDetectedTooltip": "이 에이전트에 대한 최근 인증 자격 증명이 발견되었습니다",
         "installationFound": "이전 사용 감지됨",
-        "installationFoundTooltip": "에이전트 구성이 발견되었습니다. 사용하려면 로그인해야 할 수 있습니다.",
-        "notFound": "찾을 수 없음",
-        "notFoundTooltip": "이전 사용이 감지되지 않았습니다. 에이전트에 설치 및/또는 로그인이 필요할 수 있습니다."
+        "installationFoundTooltip": "에이전트 구성이 발견되었습니다. 사용하려면 로그인해야 할 수 있습니다."
       },
       "editor": {
         "formLabel": "JSON 편집",
@@ -259,6 +312,8 @@
         "deleteTitle": "마지막 구성은 삭제할 수 없습니다",
         "deleteButton": "{{name}} 삭제",
         "deleteText": "삭제",
+        "makeDefault": "기본값으로 설정",
+        "isDefault": "기본값",
         "jsonLabel": "에이전트 구성 (JSON)",
         "jsonPlaceholder": "프로필 로딩 중...",
         "jsonLoading": "로딩 중...",
@@ -267,7 +322,20 @@
       "errors": {
         "deleteFailed": "구성을 삭제하지 못했습니다. 다시 시도해 주세요.",
         "saveFailed": "에이전트 구성을 저장하지 못했습니다. 다시 시도해 주세요.",
-        "saveConfigFailed": "구성을 저장하지 못했습니다. 다시 시도해 주세요."
+        "saveConfigFailed": "구성을 저장하지 못했습니다. 다시 시도해 주세요.",
+        "schemaNotFound": "실행자 유형 {{executor}}에 대한 스키마를 찾을 수 없습니다"
+      },
+      "tree": {
+        "search": "구성 검색...",
+        "expandAll": "모두 펼치기",
+        "collapseAll": "모두 접기",
+        "noResults": "일치하는 구성 없음",
+        "noConfigs": "사용 가능한 구성 없음",
+        "selectConfig": "사이드바에서 구성을 선택하여 설정을 보고 편집하세요."
+      },
+      "deleteConfigDialog": {
+        "title": "구성을 삭제하시겠습니까?",
+        "description": "{{executorType}} 실행자에서 \"{{configName}}\"을(를) 영구적으로 삭제합니다. 이 작업은 되돌릴 수 없습니다."
       }
     },
     "mcp": {
@@ -303,7 +371,8 @@
         "button": "MCP 구성 저장",
         "success": "설정 저장됨!",
         "successMessage": "✓ MCP 구성이 성공적으로 저장되었습니다!",
-        "loading": "현재 MCP 서버 구성 로딩 중..."
+        "loading": "현재 MCP 서버 구성 로딩 중...",
+        "unsavedChanges": "• 저장되지 않은 변경 사항이 있습니다"
       }
     },
     "projects": {
@@ -331,38 +400,6 @@
           "helper": "디스크에 있는 git 저장소의 절대 경로입니다."
         }
       },
-      "scripts": {
-        "title": "스크립트 및 구성",
-        "description": "이 프로젝트의 설정, 정리 스크립트 및 복사할 파일을 구성하세요.",
-        "setup": {
-          "label": "설정 스크립트",
-          "helper": "이 스크립트는 워크트리 내부에서 생성 후 코딩 에이전트가 시작되기 전에 실행됩니다. 종속성 설치 또는 환경 준비와 같은 설정 작업에 사용하세요.",
-          "parallelLabel": "설정 스크립트를 코딩 에이전트와 병렬로 실행",
-          "parallelHelper": "활성화되면 설정 스크립트가 설정 완료를 기다리지 않고 코딩 에이전트와 동시에 실행됩니다."
-        },
-        "dev": {
-          "label": "개발 서버 스크립트",
-          "helper": "작업 시도에서 개발 서버를 시작합니다. 스크립트는 아래에서 작업 디렉토리를 지정하지 않는 한 워크스페이스 디렉토리(각 저장소의 워크트리보다 한 단계 위)에서 실행됩니다."
-        },
-        "devWorkingDir": {
-          "label": "개발 서버 작업 디렉토리",
-          "placeholder": "예: my-repo",
-          "helper": "개발 서버 스크립트를 실행할 디렉토리로, 워크스페이스 루트 기준 상대 경로입니다. 비워두면 워크스페이스 루트에서 실행됩니다."
-        },
-        "agentWorkingDir": {
-          "label": "에이전트 작업 디렉토리",
-          "placeholder": "예: my-repo",
-          "helper": "새 워크스페이스에서 코딩 에이전트를 실행할 기본 디렉토리로, 워크스페이스 루트 기준 상대 경로입니다. 이 값은 워크스페이스 생성 시 저장되며 기존 워크스페이스에는 영향을 주지 않습니다. 단일 저장소 프로젝트의 경우 저장소 이름이 기본값입니다. 비워두면 워크스페이스 루트에서 실행됩니다."
-        },
-        "cleanup": {
-          "label": "정리 스크립트",
-          "helper": "이 스크립트는 워크트리 내부에서 코딩 에이전트 실행 후에 실행됩니다(변경 사항이 있는 경우에만). 린터, 포맷터, 테스트 또는 기타 검증 단계 실행과 같은 품질 보증 작업에 사용하세요. 변경 사항이 없으면 이 스크립트를 건너뜁니다."
-        },
-        "copyFiles": {
-          "label": "파일 복사",
-          "helper": "원래 프로젝트 디렉토리에서 워크트리로 복사할 파일의 쉼표로 구분된 목록입니다. 이러한 파일은 워크트리가 생성된 후 설정 스크립트가 실행되기 전에 복사됩니다. .env, 구성 파일 및 로컬 설정과 같은 환경별 파일에 유용합니다. gitignore되었는지 확인하세요. 그렇지 않으면 커밋될 수 있습니다!"
-        }
-      },
       "save": {
         "button": "프로젝트 설정 저장",
         "success": "✓ 프로젝트 설정이 성공적으로 저장되었습니다!",
@@ -370,6 +407,85 @@
         "unsavedChanges": "• 저장되지 않은 변경사항이 있습니다",
         "discard": "취소",
         "confirmSwitch": "저장되지 않은 변경사항이 있습니다. 정말 프로젝트를 전환하시겠습니까? 변경사항이 손실됩니다."
+      },
+      "repositories": {
+        "title": "저장소",
+        "description": "이 프로젝트의 Git 저장소 관리",
+        "noRepositories": "구성된 저장소가 없습니다",
+        "addRepository": "저장소 추가"
+      }
+    },
+    "repos": {
+      "title": "저장소 구성",
+      "description": "이 저장소가 워크스페이스에서 사용될 때 실행되는 스크립트를 구성합니다.",
+      "loading": "저장소 로딩 중...",
+      "loadError": "저장소를 불러오지 못했습니다.",
+      "selector": {
+        "label": "저장소 선택",
+        "placeholder": "구성할 저장소를 선택하세요",
+        "helper": "저장소를 선택하여 구성을 보고 편집하세요.",
+        "noRepos": "사용 가능한 저장소가 없습니다"
+      },
+      "general": {
+        "title": "일반 설정",
+        "description": "저장소 기본 정보를 구성합니다.",
+        "displayName": {
+          "label": "표시 이름",
+          "placeholder": "표시 이름 입력",
+          "helper": "이 저장소의 친숙한 이름입니다."
+        },
+        "path": {
+          "label": "저장소 경로"
+        },
+        "defaultWorkingDir": {
+          "label": "기본 작업 디렉터리",
+          "placeholder": "예: packages/frontend",
+          "helper": "단일 저장소 워크스페이스에서 코딩 에이전트가 실행되는 하위 디렉터리입니다. 워크스페이스 생성 시 설정됩니다. 저장소 루트를 사용하려면 비워 두세요."
+        },
+        "defaultTargetBranch": {
+          "label": "기본 대상 브랜치",
+          "placeholder": "브랜치 선택",
+          "helper": "새 워크스페이스의 기본 베이스 브랜치입니다. 워크트리는 이 브랜치에서 분기하고 PR은 이 브랜치를 대상으로 합니다.",
+          "search": "브랜치 검색",
+          "noBranches": "브랜치를 찾을 수 없습니다",
+          "loading": "브랜치 로딩 중...",
+          "useCurrent": "현재 브랜치 사용"
+        }
+      },
+      "scripts": {
+        "title": "스크립트 및 구성",
+        "description": "이 저장소의 설정, 정리 스크립트 및 복사할 파일을 구성합니다. 이러한 스크립트는 저장소가 모든 워크스페이스에서 사용될 때마다 실행됩니다.",
+        "setup": {
+          "label": "설정 스크립트",
+          "helper": "이 스크립트는 워크트리 내부에서 생성 후 코딩 에이전트가 시작되기 전에 실행됩니다. 종속성 설치 또는 환경 준비와 같은 설정 작업에 사용하세요.",
+          "parallelLabel": "설정 스크립트를 코딩 에이전트와 병렬로 실행",
+          "parallelHelper": "활성화되면 설정 스크립트가 설정 완료를 기다리지 않고 코딩 에이전트와 동시에 실행됩니다."
+        },
+        "cleanup": {
+          "label": "정리 스크립트",
+          "helper": "이 스크립트는 워크트리 내부에서 코딩 에이전트 실행 후에 실행됩니다(변경 사항이 있는 경우에만). 린터, 포맷터, 테스트 또는 기타 검증 단계 실행과 같은 품질 보증 작업에 사용하세요."
+        },
+        "archive": {
+          "label": "아카이브 스크립트",
+          "helper": "이 스크립트는 워크스페이스가 아카이브될 때 워크트리 내부에서 실행됩니다. 서비스 중지, 리소스 해제 또는 상태 저장과 같은 정리 작업에 사용하세요."
+        },
+        "copyFiles": {
+          "label": "파일 복사",
+          "helper": "원래 저장소 디렉토리에서 워크트리로 복사할 파일의 쉼표로 구분된 목록입니다. .env와 같은 환경 파일에 유용합니다. gitignore되었는지 확인하세요!",
+          "placeholder": "파일 경로 또는 glob 패턴 (예: .env, config/*.json)"
+        },
+        "devServer": {
+          "label": "개발 서버 스크립트",
+          "helper": "이 저장소의 개발 서버를 시작합니다. 스크립트는 저장소의 워크트리 디렉토리에서 실행됩니다."
+        }
+      },
+      "save": {
+        "button": "저장소 설정 저장",
+        "success": "저장소 설정이 성공적으로 저장되었습니다!",
+        "error": "저장소 설정을 저장하지 못했습니다",
+        "unsavedChanges": "저장되지 않은 변경사항이 있습니다",
+        "discard": "취소",
+        "confirmSwitch": "저장되지 않은 변경사항이 있습니다. 정말 저장소를 전환하시겠습니까? 변경사항이 손실됩니다."
       }
     }
   },

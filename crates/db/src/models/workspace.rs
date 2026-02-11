@@ -1,9 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool, Type};
+use sqlx::{FromRow, SqlitePool};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
+
+/// Maximum length for auto-generated workspace names (derived from first user prompt)
+const WORKSPACE_NAME_MAX_LEN: usize = 60;
 
 use super::{
     project::Project,
@@ -30,18 +33,6 @@ pub struct ContainerInfo {
     pub workspace_id: Uuid,
     pub task_id: Uuid,
     pub project_id: Uuid,
-}
-
-#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
-#[sqlx(type_name = "workspace_status", rename_all = "lowercase")]
-#[serde(rename_all = "lowercase")]
-pub enum WorkspaceStatus {
-    SetupRunning,
-    SetupComplete,
-    SetupFailed,
-    ExecutorRunning,
-    ExecutorComplete,
-    ExecutorFailed,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
@@ -321,7 +312,9 @@ impl Workspace {
         Ok(result.exists)
     }
 
-    /// Find workspaces that are expired (72+ hours since last activity) and eligible for cleanup
+    /// Find workspaces that are expired and eligible for cleanup.
+    /// Uses accelerated cleanup (1 hour) for archived workspaces OR tasks not in progress/review.
+    /// Uses standard cleanup (72 hours) only for non-archived workspaces on active tasks.
     pub async fn find_expired_for_cleanup(
         pool: &SqlitePool,
     ) -> Result<Vec<Workspace>, sqlx::Error> {
@@ -341,6 +334,7 @@ impl Workspace {
                 w.pinned as "pinned!: bool",
                 w.name
             FROM workspaces w
+            JOIN tasks t ON w.task_id = t.id
             LEFT JOIN sessions s ON w.id = s.workspace_id
             LEFT JOIN execution_processes ep ON s.id = ep.session_id AND ep.completed_at IS NOT NULL
             WHERE w.container_ref IS NOT NULL
@@ -351,12 +345,18 @@ impl Workspace {
                     WHERE ep2.completed_at IS NULL
                 )
             GROUP BY w.id, w.container_ref, w.updated_at
-            HAVING datetime('now', '-72 hours') > datetime(
+            HAVING datetime('now', 'localtime',
+                CASE
+                    WHEN w.archived = 1 OR t.status NOT IN ('inprogress', 'inreview')
+                    THEN '-1 hours'
+                    ELSE '-72 hours'
+                END
+            ) > datetime(
                 MAX(
-                    CASE
-                        WHEN ep.completed_at IS NOT NULL THEN ep.completed_at
-                        ELSE w.updated_at
-                    END
+                    max(
+                        datetime(w.updated_at),
+                        datetime(ep.completed_at)
+                    )
                 )
             )
             ORDER BY MAX(
@@ -431,6 +431,28 @@ impl Workspace {
             task_id: result.task_id,
             project_id: result.project_id,
         })
+    }
+
+    /// Find workspace by path, also trying the parent directory.
+    /// Used by VSCode extension which may open a repo subfolder (single-repo case)
+    /// rather than the workspace root directory (multi-repo case).
+    pub async fn resolve_container_ref_by_prefix(
+        pool: &SqlitePool,
+        path: &str,
+    ) -> Result<ContainerInfo, sqlx::Error> {
+        // First try exact match
+        if let Ok(info) = Self::resolve_container_ref(pool, path).await {
+            return Ok(info);
+        }
+
+        if let Some(parent) = std::path::Path::new(path).parent()
+            && let Some(parent_str) = parent.to_str()
+            && let Ok(info) = Self::resolve_container_ref(pool, parent_str).await
+        {
+            return Ok(info);
+        }
+
+        Err(sqlx::Error::RowNotFound)
     }
 
     pub async fn set_archived(
@@ -592,7 +614,7 @@ impl Workspace {
             if ws.workspace.name.is_none()
                 && let Some(prompt) = Self::get_first_user_message(pool, ws.workspace.id).await?
             {
-                let name = Self::truncate_to_name(&prompt, 35);
+                let name = Self::truncate_to_name(&prompt, WORKSPACE_NAME_MAX_LEN);
                 Self::update(pool, ws.workspace.id, None, None, Some(&name)).await?;
                 ws.workspace.name = Some(name);
             }
@@ -607,6 +629,14 @@ impl Workspace {
             .execute(pool)
             .await?;
         Ok(result.rows_affected())
+    }
+
+    /// Count total workspaces across all projects
+    pub async fn count_all(pool: &SqlitePool) -> Result<i64, WorkspaceError> {
+        sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM workspaces"#)
+            .fetch_one(pool)
+            .await
+            .map_err(WorkspaceError::Database)
     }
 
     pub async fn find_by_id_with_status(
@@ -679,7 +709,7 @@ impl Workspace {
         if ws.workspace.name.is_none()
             && let Some(prompt) = Self::get_first_user_message(pool, ws.workspace.id).await?
         {
-            let name = Self::truncate_to_name(&prompt, 35);
+            let name = Self::truncate_to_name(&prompt, WORKSPACE_NAME_MAX_LEN);
             Self::update(pool, ws.workspace.id, None, None, Some(&name)).await?;
             ws.workspace.name = Some(name);
         }

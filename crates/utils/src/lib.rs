@@ -2,17 +2,16 @@ use std::{env, sync::OnceLock};
 
 use directories::ProjectDirs;
 
-pub mod api;
 pub mod approvals;
 pub mod assets;
 pub mod browser;
 pub mod diff;
-pub mod git;
 pub mod jwt;
 pub mod log_msg;
 pub mod msg_store;
 pub mod path;
 pub mod port_file;
+pub mod process;
 pub mod response;
 pub mod sentry;
 pub mod shell;

@@ -17,7 +17,13 @@
         "null"
       ]
     },
-    "mode": {
+    "variant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "agent": {
       "type": [
         "string",
         "null"
@@ -25,6 +31,11 @@
     },
     "auto_approve": {
       "description": "Auto-approve agent actions",
+      "type": "boolean",
+      "default": true
+    },
+    "auto_compact": {
+      "description": "Enable auto-compaction when the context length approaches the model's context window limit",
       "type": "boolean",
       "default": true
     },

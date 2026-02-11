@@ -16,10 +16,8 @@ use sha2::{Digest, Sha256};
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::{
-    auth::provider::ProviderTokenDetails,
-    db::{auth::AuthSession, users::User},
-};
+use api_types::User;
+use crate::{auth::provider::ProviderTokenDetails, db::auth::AuthSession};
 
 pub const ACCESS_TOKEN_TTL_SECONDS: i64 = 120;
 pub const REFRESH_TOKEN_TTL_DAYS: i64 = 365;

@@ -8,6 +8,7 @@ export type { UiLanguage } from '../../../shared/types';
 
 export const UI_TO_I18N = {
   EN: 'en',
+  FR: 'fr',
   JA: 'ja',
   ES: 'es',
   KO: 'ko',
@@ -18,6 +19,7 @@ export const UI_TO_I18N = {
 const SUPPORTED_UI_LANGUAGES = [
   'BROWSER',
   'EN',
+  'FR',
   'JA',
   'ES',
   'KO',
@@ -28,6 +30,7 @@ export const SUPPORTED_I18N_CODES = Object.values(UI_TO_I18N);
 
 const FALLBACK_ENDONYMS = {
   en: 'English',
+  fr: 'Français',
   ja: '日本語',
   es: 'Español',
   ko: '한국어',

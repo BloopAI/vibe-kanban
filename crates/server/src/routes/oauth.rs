@@ -1,3 +1,4 @@
+use api_types::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse};
 use axum::{
     Router,
     extract::{Json, Query, State},
@@ -11,14 +12,8 @@ use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
 use services::services::{config::save_config_to_file, oauth_credentials::Credentials};
 use sha2::{Digest, Sha256};
-use tokio;
 use ts_rs::TS;
-use utils::{
-    api::oauth::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse},
-    assets::config_path,
-    jwt::extract_expiration,
-    response::ApiResponse,
-};
+use utils::{assets::config_path, jwt::extract_expiration, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
@@ -208,15 +203,6 @@ async fn handoff_complete(
         );
     }
 
-    // Trigger shared task cleanup in background
-    if let Ok(publisher) = deployment.share_publisher() {
-        tokio::spawn(async move {
-            if let Err(e) = publisher.cleanup_shared_tasks().await {
-                tracing::error!("Failed to cleanup shared tasks on login: {}", e);
-            }
-        });
-    }
-
     Ok(close_window_response(format!(
         "Signed in with {provider}. You can return to the app."
     )))
@@ -242,7 +228,7 @@ async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, 
 async fn status(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<StatusResponse>>, ApiError> {
-    use utils::api::oauth::LoginStatus;
+    use api_types::LoginStatus;
 
     match deployment.get_login_status().await {
         LoginStatus::LoggedOut => Ok(ResponseJson(ApiResponse::success(StatusResponse {

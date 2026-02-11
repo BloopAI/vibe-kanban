@@ -1,0 +1,90 @@
+---
+title: "Slash Commands"
+description: "Use slash commands to run agent commands directly from the chat input"
+---
+
+<Frame>
+<img src="/images/workspaces-slash-commands.png" alt="Slash command typeahead showing available commands when typing a forward slash" />
+</Frame>
+
+Slash commands are shortcuts for common actions within your coding agent. Type `/` followed by a command name to run operations like compacting conversation history, initializing project documentation, or reviewing code changes.
+
+## Using Slash Commands
+
+To use a slash command:
+
+1. Type `/` at the beginning of a new line in the chat input
+2. A typeahead menu appears showing available commands
+3. Continue typing to filter the list, or use arrow keys to navigate
+4. Press **Enter** or click to select a command
+5. Add any arguments after the command name (some commands accept optional parameters)
+6. Send the message as normal
+
+<Tip>
+Some commands accept optional arguments. For example, with Claude Code or Codex, `/compact focus on the authentication changes` will compact the conversation while emphasising the authentication work in the summary.
+</Tip>
+
+## Available Commands by Agent
+
+The available slash commands depend on which coding agent you're using. Vibe Kanban discovers and exposes the same commands you'd have in the agent's native CLI, so the experience matches what you're used to.
+
+<Note>
+Some built-in commands that require TUI interaction (such as `/model` or `/theme`) are not currently supported in Vibe Kanban. Only non-interactive commands are available.
+</Note>
+
+### Claude Code
+
+Claude Code provides built-in commands, user-defined commands, and skills. For full details, see the [built-in commands](https://code.claude.com/docs/en/interactive-mode#built-in-commands) and [skills](https://code.claude.com/docs/en/skills) documentation.
+
+| Command | Description |
+|---------|-------------|
+| `/compact` | Clear conversation history but keep a summary in context |
+| `/review` | Review a pull request |
+| `/security-review` | Complete a security review of pending changes |
+| `/init` | Initialize a new CLAUDE.md file with codebase documentation |
+| `/pr-comments` | Get comments from a GitHub pull request |
+| `/context` | Visualize current context usage |
+| `/cost` | Show the total cost and duration of the current session |
+| `/release-notes` | View release notes |
+
+Any custom commands or skills you've installed will also appear in the typeahead.
+
+### OpenAI Codex
+
+Codex provides built-in commands. For full details, see the [Codex slash commands documentation](https://developers.openai.com/codex/cli/slash-commands/).
+
+| Command | Description |
+|---------|-------------|
+| `/compact` | Summarize the conversation to free tokens |
+| `/init` | Generate an AGENTS.md scaffold in the current directory |
+| `/status` | Display session configuration and token usage |
+| `/mcp` | List configured MCP tools |
+
+### OpenCode
+
+OpenCode provides built-in commands and custom commands. For full details, see the [built-in commands](https://opencode.ai/docs/tui/#commands) and [custom commands](https://opencode.ai/docs/commands) documentation.
+
+| Command | Description |
+|---------|-------------|
+| `/compact` | Compact the session |
+| `/commands` | Show all available commands |
+| `/models` | List available models |
+| `/agents` | List available agents |
+| `/status` | Show status information |
+| `/mcp` | Show MCP server status |
+
+## Command Discovery
+
+When you select an agent, Vibe Kanban automatically discovers the available slash commands. You'll see "Discovering commands..." in the typeahead while this happens.
+
+Commands are cached per workspace and agent, so subsequent uses are instant.
+
+<Info>
+If you add new custom commands to your agent's configuration, switch to a different agent and back, or create a new session to refresh the command list.
+</Info>
+
+## Related Documentation
+
+- [Chat Interface](/workspaces/chat-interface) - Complete guide to the conversation panel
+- [Sessions](/workspaces/sessions) - Managing conversation sessions
+- [Supported Coding Agents](/supported-coding-agents) - Agent setup and configuration

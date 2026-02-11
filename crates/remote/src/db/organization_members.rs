@@ -1,5 +1,5 @@
+use api_types::MemberRole;
 use sqlx::{Executor, PgPool, Postgres};
-pub use utils::api::organizations::MemberRole;
 use uuid::Uuid;
 
 use super::identity_errors::IdentityError;
@@ -30,7 +30,7 @@ where
     Ok(())
 }
 
-pub(super) async fn check_user_role(
+pub(crate) async fn check_user_role(
     pool: &PgPool,
     organization_id: Uuid,
     user_id: Uuid,
@@ -87,6 +87,43 @@ pub(crate) async fn assert_membership(
     } else {
         Err(IdentityError::NotFound)
     }
+}
+
+pub(crate) async fn assert_issue_access(
+    pool: &PgPool,
+    issue_id: Uuid,
+    user_id: Uuid,
+) -> Result<(), IdentityError> {
+    let org_id = sqlx::query_scalar!(
+        r#"
+        SELECT p.organization_id
+        FROM issues i
+        JOIN projects p ON i.project_id = p.id
+        WHERE i.id = $1
+        "#,
+        issue_id
+    )
+    .fetch_optional(pool)
+    .await?
+    .ok_or(IdentityError::NotFound)?;
+
+    assert_membership(pool, org_id, user_id).await
+}
+
+pub(crate) async fn assert_project_access(
+    pool: &PgPool,
+    project_id: Uuid,
+    user_id: Uuid,
+) -> Result<(), IdentityError> {
+    let org_id = sqlx::query_scalar!(
+        r#"SELECT organization_id FROM projects WHERE id = $1"#,
+        project_id
+    )
+    .fetch_optional(pool)
+    .await?
+    .ok_or(IdentityError::NotFound)?;
+
+    assert_membership(pool, org_id, user_id).await
 }
 
 pub(super) async fn assert_admin(

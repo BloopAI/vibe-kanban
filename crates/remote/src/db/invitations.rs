@@ -1,15 +1,16 @@
+use api_types::MemberRole;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-pub use utils::api::organizations::InvitationStatus;
+pub use api_types::InvitationStatus;
 use uuid::Uuid;
 
 use super::{
     identity_errors::IdentityError,
-    organization_members::{MemberRole, add_member, assert_admin},
-    organizations::{Organization, OrganizationRepository},
+    organization_members::{add_member, assert_admin},
+    organizations::{Organization, OrganizationRepository, is_personal_org},
 };
-use crate::db::organization_members::is_member;
+use crate::{billing::BillingService, db::organization_members::is_member};
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Invitation {
@@ -193,6 +194,7 @@ impl<'a> InvitationRepository<'a> {
         &self,
         token: &str,
         user_id: Uuid,
+        billing: &BillingService,
     ) -> Result<(Organization, MemberRole), IdentityError> {
         let mut tx = self.pool.begin().await?;
 
@@ -222,10 +224,7 @@ impl<'a> InvitationRepository<'a> {
             IdentityError::InvitationError("Invitation not found or already used".to_string())
         })?;
 
-        if OrganizationRepository::new(self.pool)
-            .is_personal(invitation.organization_id)
-            .await?
-        {
+        if is_personal_org(&mut *tx, invitation.organization_id).await? {
             tx.rollback().await?;
             return Err(IdentityError::InvitationError(
                 "Cannot accept invitations for a personal organization".to_string(),
@@ -257,6 +256,8 @@ impl<'a> InvitationRepository<'a> {
             ));
         }
 
+        billing.can_add_member(invitation.organization_id).await?;
+
         add_member(
             &mut *tx,
             invitation.organization_id,
@@ -277,6 +278,10 @@ impl<'a> InvitationRepository<'a> {
         .await?;
 
         tx.commit().await?;
+
+        billing
+            .on_member_count_changed(invitation.organization_id)
+            .await;
 
         let organization = OrganizationRepository::new(self.pool)
             .fetch_organization(invitation.organization_id)

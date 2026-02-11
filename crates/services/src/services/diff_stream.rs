@@ -9,13 +9,18 @@ use std::{
     time::Duration,
 };
 
-use db::{DBService, models::workspace_repo::WorkspaceRepo};
+use db::{
+    DBService,
+    models::{workspace::Workspace, workspace_repo::WorkspaceRepo},
+};
 use executors::logs::utils::{ConversationPatch, patch::escape_json_pointer_segment};
 use futures::StreamExt;
+use git::{Commit, DiffTarget, GitService, GitServiceError};
 use notify::{RecommendedWatcher, RecursiveMode};
 use notify_debouncer_full::{
     DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache, new_debouncer,
 };
+use sqlx::SqlitePool;
 use thiserror::Error;
 use tokio::{sync::mpsc, task::JoinHandle};
 use tokio_stream::wrappers::{IntervalStream, ReceiverStream};
@@ -25,10 +30,74 @@ use utils::{
 };
 use uuid::Uuid;
 
-use crate::services::{
-    filesystem_watcher::{self, FilesystemWatcherError},
-    git::{Commit, DiffTarget, GitService, GitServiceError},
-};
+use crate::services::filesystem_watcher::{self, FilesystemWatcherError};
+
+#[derive(Debug, Clone, Default)]
+pub struct DiffStats {
+    pub files_changed: usize,
+    pub lines_added: usize,
+    pub lines_removed: usize,
+}
+
+/// Computes diff stats for a workspace by comparing against target branches.
+pub async fn compute_diff_stats(
+    pool: &SqlitePool,
+    git: &GitService,
+    workspace: &Workspace,
+) -> Option<DiffStats> {
+    let container_ref = workspace.container_ref.as_ref()?;
+
+    let workspace_repos =
+        WorkspaceRepo::find_repos_with_target_branch_for_workspace(pool, workspace.id)
+            .await
+            .ok()?;
+
+    let mut stats = DiffStats::default();
+
+    for repo_with_branch in workspace_repos {
+        let worktree_path = PathBuf::from(container_ref).join(&repo_with_branch.repo.name);
+        let repo_path = repo_with_branch.repo.path.clone();
+
+        let base_commit_result = tokio::task::spawn_blocking({
+            let git = git.clone();
+            let repo_path = repo_path.clone();
+            let workspace_branch = workspace.branch.clone();
+            let target_branch = repo_with_branch.target_branch.clone();
+            move || git.get_base_commit(&repo_path, &workspace_branch, &target_branch)
+        })
+        .await;
+
+        let base_commit = match base_commit_result {
+            Ok(Ok(commit)) => commit,
+            _ => continue,
+        };
+
+        let diffs_result = tokio::task::spawn_blocking({
+            let git = git.clone();
+            let worktree = worktree_path.clone();
+            move || {
+                git.get_diffs(
+                    DiffTarget::Worktree {
+                        worktree_path: &worktree,
+                        base_commit: &base_commit,
+                    },
+                    None,
+                )
+            }
+        })
+        .await;
+
+        if let Ok(Ok(diffs)) = diffs_result {
+            for diff in diffs {
+                stats.files_changed += 1;
+                stats.lines_added += diff.additions.unwrap_or(0);
+                stats.lines_removed += diff.deletions.unwrap_or(0);
+            }
+        }
+    }
+
+    Some(stats)
+}
 
 /// Maximum cumulative diff bytes to stream before omitting content (200MB)
 pub const MAX_CUMULATIVE_DIFF_BYTES: usize = 200 * 1024 * 1024;
@@ -277,6 +346,7 @@ impl DiffStreamManager {
             if let Some(new) = diff.new_path {
                 diff.new_path = Some(prefix_path(new, self.args.path_prefix.as_deref()));
             }
+            diff.repo_id = Some(self.args.repo_id);
 
             let patch =
                 ConversationPatch::add_diff(escape_json_pointer_segment(&prefixed_entry), diff);
@@ -307,6 +377,7 @@ impl DiffStreamManager {
         let known_paths = self.known_paths.clone();
         let stats_only = self.args.stats_only;
         let prefix = self.args.path_prefix.clone();
+        let repo_id = self.args.repo_id;
 
         let messages = tokio::task::spawn_blocking(move || {
             process_file_changes(
@@ -319,6 +390,7 @@ impl DiffStreamManager {
                 &known_paths,
                 stats_only,
                 prefix.as_deref(),
+                repo_id,
             )
         })
         .await??;
@@ -459,6 +531,7 @@ fn process_file_changes(
     known_paths: &Arc<std::sync::RwLock<HashSet<String>>>,
     stats_only: bool,
     path_prefix: Option<&str>,
+    repo_id: Uuid,
 ) -> Result<Vec<LogMsg>, DiffStreamError> {
     let path_filter: Vec<&str> = changed_paths.iter().map(|s| s.as_str()).collect();
 
@@ -499,6 +572,7 @@ fn process_file_changes(
         if let Some(new) = diff.new_path {
             diff.new_path = Some(prefix_path(new, path_prefix));
         }
+        diff.repo_id = Some(repo_id);
 
         let patch =
             ConversationPatch::add_diff(escape_json_pointer_segment(&prefixed_entry_index), diff);

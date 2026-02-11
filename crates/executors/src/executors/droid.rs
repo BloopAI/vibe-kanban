@@ -10,18 +10,15 @@ use ts_rs::TS;
 use workspace_utils::msg_store::MsgStore;
 
 use crate::{
-    command::CommandParts,
+    command::{CommandBuildError, CommandBuilder, CommandParts},
     env::ExecutionEnv,
     executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
     logs::utils::EntryIndexProvider,
 };
 
 pub mod normalize_logs;
-pub mod session;
 
 use normalize_logs::normalize_logs;
-
-use self::session::fork_session;
 
 // Configuration types for Droid executor
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
@@ -83,7 +80,7 @@ pub struct Droid {
 }
 
 impl Droid {
-    pub fn build_command_builder(&self) -> crate::command::CommandBuilder {
+    pub fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
         use crate::command::{CommandBuilder, apply_overrides};
         let mut builder =
             CommandBuilder::new("droid exec").params(["--output-format", "stream-json"]);
@@ -121,6 +118,7 @@ async fn spawn_droid(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .current_dir(current_dir)
+        .env("NPM_CONFIG_LOGLEVEL", "error")
         .args(args);
 
     env.clone()
@@ -145,7 +143,7 @@ impl StandardCodingAgentExecutor for Droid {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let droid_command = self.build_command_builder().build_initial()?;
+        let droid_command = self.build_command_builder()?.build_initial()?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
         spawn_droid(droid_command, &combined_prompt, current_dir, env, &self.cmd).await
@@ -156,16 +154,12 @@ impl StandardCodingAgentExecutor for Droid {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let forked_session_id = fork_session(session_id).map_err(|e| {
-            ExecutorError::FollowUpNotSupported(format!(
-                "Failed to fork Droid session {session_id}: {e}"
-            ))
-        })?;
         let continue_cmd = self
-            .build_command_builder()
-            .build_follow_up(&["--session-id".to_string(), forked_session_id.clone()])?;
+            .build_command_builder()?
+            .build_follow_up(&["--session-id".to_string(), session_id.to_string()])?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
         spawn_droid(continue_cmd, &combined_prompt, current_dir, env, &self.cmd).await

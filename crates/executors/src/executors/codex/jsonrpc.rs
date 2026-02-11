@@ -26,6 +26,7 @@ use tokio::{
     process::{ChildStdin, ChildStdout},
     sync::{Mutex, oneshot},
 };
+use tokio_util::sync::CancellationToken;
 
 use crate::executors::{ExecutorError, ExecutorExitResult};
 
@@ -68,6 +69,7 @@ impl JsonRpcPeer {
         stdout: ChildStdout,
         callbacks: Arc<dyn JsonRpcCallbacks>,
         exit_tx: ExitSignalSender,
+        cancel: CancellationToken,
     ) -> Self {
         let peer = Self {
             stdin: Arc::new(Mutex::new(stdin)),
@@ -84,74 +86,82 @@ impl JsonRpcPeer {
 
             loop {
                 buffer.clear();
-                match reader.read_line(&mut buffer).await {
-                    Ok(0) => break,
-                    Ok(_) => {
-                        let line = buffer.trim_end_matches(['\n', '\r']);
-                        if line.is_empty() {
-                            continue;
-                        }
+                tokio::select! {
+                    _ = cancel.cancelled() => {
+                        tracing::debug!("Codex executor cancelled");
+                        break;
+                    }
+                    read_result = reader.read_line(&mut buffer) => {
+                        match read_result {
+                            Ok(0) => break,
+                            Ok(_) => {
+                                let line = buffer.trim_end_matches(['\n', '\r']);
+                                if line.is_empty() {
+                                    continue;
+                                }
 
-                        match serde_json::from_str::<JSONRPCMessage>(line) {
-                            Ok(JSONRPCMessage::Response(response)) => {
-                                let request_id = response.id.clone();
-                                let result = response.result.clone();
-                                if callbacks
-                                    .on_response(&reader_peer, line, &response)
-                                    .await
-                                    .is_err()
-                                {
-                                    break;
-                                }
-                                reader_peer
-                                    .resolve(request_id, PendingResponse::Result(result))
-                                    .await;
-                            }
-                            Ok(JSONRPCMessage::Error(error)) => {
-                                let request_id = error.id.clone();
-                                if callbacks
-                                    .on_error(&reader_peer, line, &error)
-                                    .await
-                                    .is_err()
-                                {
-                                    break;
-                                }
-                                reader_peer
-                                    .resolve(request_id, PendingResponse::Error(error))
-                                    .await;
-                            }
-                            Ok(JSONRPCMessage::Request(request)) => {
-                                if callbacks
-                                    .on_request(&reader_peer, line, request)
-                                    .await
-                                    .is_err()
-                                {
-                                    break;
-                                }
-                            }
-                            Ok(JSONRPCMessage::Notification(notification)) => {
-                                match callbacks
-                                    .on_notification(&reader_peer, line, notification)
-                                    .await
-                                {
-                                    // finished
-                                    Ok(true) => break,
-                                    Ok(false) => {}
+                                match serde_json::from_str::<JSONRPCMessage>(line) {
+                                    Ok(JSONRPCMessage::Response(response)) => {
+                                        let request_id = response.id.clone();
+                                        let result = response.result.clone();
+                                        if callbacks
+                                            .on_response(&reader_peer, line, &response)
+                                            .await
+                                            .is_err()
+                                        {
+                                            break;
+                                        }
+                                        reader_peer
+                                            .resolve(request_id, PendingResponse::Result(result))
+                                            .await;
+                                    }
+                                    Ok(JSONRPCMessage::Error(error)) => {
+                                        let request_id = error.id.clone();
+                                        if callbacks
+                                            .on_error(&reader_peer, line, &error)
+                                            .await
+                                            .is_err()
+                                        {
+                                            break;
+                                        }
+                                        reader_peer
+                                            .resolve(request_id, PendingResponse::Error(error))
+                                            .await;
+                                    }
+                                    Ok(JSONRPCMessage::Request(request)) => {
+                                        if callbacks
+                                            .on_request(&reader_peer, line, request)
+                                            .await
+                                            .is_err()
+                                        {
+                                            break;
+                                        }
+                                    }
+                                    Ok(JSONRPCMessage::Notification(notification)) => {
+                                        match callbacks
+                                            .on_notification(&reader_peer, line, notification)
+                                            .await
+                                        {
+                                            // finished
+                                            Ok(true) => break,
+                                            Ok(false) => {}
+                                            Err(_) => {
+                                                break;
+                                            }
+                                        }
+                                    }
                                     Err(_) => {
-                                        break;
+                                        if callbacks.on_non_json(line).await.is_err() {
+                                            break;
+                                        }
                                     }
                                 }
                             }
-                            Err(_) => {
-                                if callbacks.on_non_json(line).await.is_err() {
-                                    break;
-                                }
+                            Err(err) => {
+                                tracing::warn!("Error reading Codex output: {err}");
+                                break;
                             }
                         }
-                    }
-                    Err(err) => {
-                        tracing::warn!("Error reading Codex output: {err}");
-                        break;
                     }
                 }
             }
@@ -201,6 +211,7 @@ impl JsonRpcPeer {
         request_id: RequestId,
         message: &T,
         label: &str,
+        cancel: CancellationToken,
     ) -> Result<R, ExecutorError>
     where
         R: DeserializeOwned + Debug,
@@ -208,7 +219,7 @@ impl JsonRpcPeer {
     {
         let receiver = self.register(request_id).await;
         self.send(message).await?;
-        await_response(receiver, label).await
+        await_response(receiver, label, cancel).await
     }
 
     async fn send_raw(&self, payload: &str) -> Result<(), ExecutorError> {
@@ -225,11 +236,24 @@ impl JsonRpcPeer {
 
 pub type PendingReceiver = oneshot::Receiver<PendingResponse>;
 
-pub async fn await_response<R>(receiver: PendingReceiver, label: &str) -> Result<R, ExecutorError>
+pub async fn await_response<R>(
+    receiver: PendingReceiver,
+    label: &str,
+    cancel: CancellationToken,
+) -> Result<R, ExecutorError>
 where
     R: DeserializeOwned + Debug,
 {
-    match receiver.await {
+    let response = tokio::select! {
+        _ = cancel.cancelled() => {
+            return Err(ExecutorError::Io(io::Error::other(format!(
+                "{label} request cancelled",
+            ))));
+        }
+        result = receiver => result,
+    };
+
+    match response {
         Ok(PendingResponse::Result(value)) => serde_json::from_value(value).map_err(|err| {
             ExecutorError::Io(io::Error::other(format!(
                 "failed to decode {label} response: {err}",

@@ -21,8 +21,76 @@ pub enum ScratchError {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct DraftFollowUpData {
     pub message: String,
+    pub executor_profile_id: ExecutorProfileId,
+}
+
+/// Data for preview settings scratch (URL override and screen size)
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct PreviewSettingsData {
+    pub url: String,
     #[serde(default)]
-    pub variant: Option<String>,
+    pub screen_size: Option<String>,
+    #[serde(default)]
+    pub responsive_width: Option<i32>,
+    #[serde(default)]
+    pub responsive_height: Option<i32>,
+}
+
+/// Data for workspace notes scratch
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct WorkspaceNotesData {
+    pub content: String,
+}
+
+/// Workspace-specific panel state
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct WorkspacePanelStateData {
+    pub right_main_panel_mode: Option<String>,
+    pub is_left_main_panel_visible: bool,
+}
+
+/// Data for UI preferences scratch (global preferences stored per-user or per-device)
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct UiPreferencesData {
+    /// Preferred repo actions per repo
+    #[serde(default)]
+    pub repo_actions: std::collections::HashMap<String, String>,
+    /// Expanded/collapsed state for UI sections
+    #[serde(default)]
+    pub expanded: std::collections::HashMap<String, bool>,
+    /// Context bar position
+    #[serde(default)]
+    pub context_bar_position: Option<String>,
+    /// Pane sizes
+    #[serde(default)]
+    pub pane_sizes: std::collections::HashMap<String, serde_json::Value>,
+    /// Collapsed paths per workspace in file tree
+    #[serde(default)]
+    pub collapsed_paths: std::collections::HashMap<String, Vec<String>>,
+    /// Preferred file-search repo
+    #[serde(default)]
+    pub file_search_repo_id: Option<String>,
+    /// Global left sidebar visibility
+    #[serde(default)]
+    pub is_left_sidebar_visible: Option<bool>,
+    /// Global right sidebar visibility
+    #[serde(default)]
+    pub is_right_sidebar_visible: Option<bool>,
+    /// Global terminal visibility
+    #[serde(default)]
+    pub is_terminal_visible: Option<bool>,
+    /// Workspace-specific panel states
+    #[serde(default)]
+    pub workspace_panel_states: std::collections::HashMap<String, WorkspacePanelStateData>,
+}
+
+/// Linked issue data for draft workspace scratch
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct DraftWorkspaceLinkedIssue {
+    pub issue_id: String,
+    pub simple_id: String,
+    pub title: String,
+    pub remote_project_id: String,
 }
 
 /// Data for a draft workspace scratch (new workspace creation)
@@ -35,6 +103,8 @@ pub struct DraftWorkspaceData {
     pub repos: Vec<DraftWorkspaceRepo>,
     #[serde(default)]
     pub selected_profile: Option<ExecutorProfileId>,
+    #[serde(default)]
+    pub linked_issue: Option<DraftWorkspaceLinkedIssue>,
 }
 
 /// Repository entry in a draft workspace
@@ -42,6 +112,30 @@ pub struct DraftWorkspaceData {
 pub struct DraftWorkspaceRepo {
     pub repo_id: Uuid,
     pub target_branch: String,
+}
+
+/// Data for a draft issue scratch (issue creation on kanban board)
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct DraftIssueData {
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    pub status_id: String,
+    /// Stored as the string value of IssuePriority (e.g. "urgent", "high", "medium", "low")
+    #[serde(default)]
+    pub priority: Option<String>,
+    #[serde(default)]
+    pub assignee_ids: Vec<String>,
+    #[serde(default)]
+    pub tag_ids: Vec<String>,
+    #[serde(default)]
+    pub create_draft_workspace: bool,
+    /// The project this draft belongs to
+    pub project_id: String,
+    /// Parent issue ID if creating a sub-issue
+    #[serde(default)]
+    pub parent_issue_id: Option<String>,
 }
 
 /// The payload of a scratch, tagged by type. The type is part of the composite primary key.
@@ -57,6 +151,10 @@ pub enum ScratchPayload {
     DraftTask(String),
     DraftFollowUp(DraftFollowUpData),
     DraftWorkspace(DraftWorkspaceData),
+    DraftIssue(DraftIssueData),
+    PreviewSettings(PreviewSettingsData),
+    WorkspaceNotes(WorkspaceNotesData),
+    UiPreferences(UiPreferencesData),
 }
 
 impl ScratchPayload {

@@ -7,7 +7,7 @@ interface SelectedReposListProps {
   repos: Repo[];
   onRemove: (repoId: string) => void;
   branchesByRepo?: Record<string, GitBranch[]>;
-  selectedBranches?: Record<string, string>;
+  selectedBranches?: Record<string, string | null>;
   onBranchChange?: (repoId: string, branch: string) => void;
 }
 
@@ -22,7 +22,7 @@ export function SelectedReposList({
 
   if (repos.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-double text-center">
+      <div className="flex flex-col items-center justify-center p-base text-center">
         <FolderSimpleIcon
           className="size-icon-xl text-low mb-base"
           weight="duotone"
@@ -36,7 +36,7 @@ export function SelectedReposList({
   }
 
   return (
-    <div className="flex flex-col gap-double">
+    <div className="flex flex-col gap-double p-base w-full overflow-x-hidden">
       {repos.map((repo) => (
         <RepoCardSimple
           key={repo.id}

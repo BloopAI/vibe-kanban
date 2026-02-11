@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO coding_agent_turns (\n                id, execution_process_id, agent_session_id, agent_message_id, prompt, summary, seen,\n                created_at, updated_at\n               )\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n               RETURNING\n                id as \"id!: Uuid\",\n                execution_process_id as \"execution_process_id!: Uuid\",\n                agent_session_id,\n                agent_message_id,\n                prompt,\n                summary,\n                seen as \"seen!: bool\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "execution_process_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "agent_session_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "agent_message_id",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "prompt",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "summary",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "seen!: bool",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "db1b29e1ea843ee4024c914820978a558f0ac4cc65da76645ccff4748240e565"
+}

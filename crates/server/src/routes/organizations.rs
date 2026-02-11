@@ -1,3 +1,10 @@
+use api_types::{
+    AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
+    CreateOrganizationRequest, CreateOrganizationResponse, GetInvitationResponse,
+    GetOrganizationResponse, ListInvitationsResponse, ListMembersResponse,
+    ListOrganizationsResponse, Organization, RevokeInvitationRequest, UpdateMemberRoleRequest,
+    UpdateMemberRoleResponse, UpdateOrganizationRequest,
+};
 use axum::{
     Router,
     extract::{Json, Path, State},
@@ -6,19 +13,7 @@ use axum::{
     routing::{delete, get, patch, post},
 };
 use deployment::Deployment;
-use utils::{
-    api::{
-        organizations::{
-            AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
-            CreateOrganizationRequest, CreateOrganizationResponse, GetInvitationResponse,
-            GetOrganizationResponse, ListInvitationsResponse, ListMembersResponse,
-            ListOrganizationsResponse, Organization, RevokeInvitationRequest,
-            UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
-        },
-        projects::RemoteProject,
-    },
-    response::ApiResponse,
-};
+use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
@@ -30,10 +25,6 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/organizations/{id}", get(get_organization))
         .route("/organizations/{id}", patch(update_organization))
         .route("/organizations/{id}", delete(delete_organization))
-        .route(
-            "/organizations/{org_id}/projects",
-            get(list_organization_projects),
-        )
         .route(
             "/organizations/{org_id}/invitations",
             post(create_invitation),
@@ -54,17 +45,6 @@ pub fn router() -> Router<DeploymentImpl> {
             "/organizations/{org_id}/members/{user_id}/role",
             patch(update_member_role),
         )
-}
-
-async fn list_organization_projects(
-    State(deployment): State<DeploymentImpl>,
-    Path(org_id): Path<Uuid>,
-) -> Result<ResponseJson<ApiResponse<Vec<RemoteProject>>>, ApiError> {
-    let client = deployment.remote_client()?;
-
-    let response = client.list_projects(org_id).await?;
-
-    Ok(ResponseJson(ApiResponse::success(response.projects)))
 }
 
 async fn list_organizations(

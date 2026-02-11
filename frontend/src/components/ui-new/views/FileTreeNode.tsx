@@ -3,6 +3,7 @@ import {
   CaretDownIcon,
   CaretRightIcon,
   FolderSimpleIcon,
+  GithubLogoIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { getFileIcon } from '@/utils/fileTypeIcon';
@@ -17,11 +18,24 @@ interface FileTreeNodeProps {
   isSelected?: boolean;
   onToggle?: () => void;
   onSelect?: () => void;
+  /** GitHub comment count for this file */
+  commentCount?: number;
+  /** Whether to show the comment badge */
+  showCommentBadge?: boolean;
 }
 
 export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
   function FileTreeNode(
-    { node, depth, isExpanded = false, isSelected = false, onToggle, onSelect },
+    {
+      node,
+      depth,
+      isExpanded = false,
+      isSelected = false,
+      onToggle,
+      onSelect,
+      commentCount,
+      showCommentBadge,
+    },
     ref
   ) {
     const { theme } = useTheme();
@@ -128,6 +142,17 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
               )}
             </span>
           )}
+
+          {/* GitHub comment badge */}
+          {showCommentBadge &&
+            node.type === 'file' &&
+            commentCount != null &&
+            commentCount > 0 && (
+              <span className="inline-flex items-center gap-0.5 text-xs text-low shrink-0 ml-half">
+                <GithubLogoIcon className="size-icon-xs" weight="fill" />
+                {commentCount}
+              </span>
+            )}
         </div>
       </div>
     );

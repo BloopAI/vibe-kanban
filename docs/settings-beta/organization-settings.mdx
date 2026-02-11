@@ -1,0 +1,182 @@
+---
+title: "Organisation Settings"
+description: "Manage your organisation, members, and invitations"
+---
+
+The Organisation Settings page lets you manage your Cloud organisations, invite team members, and configure organisation-level settings.
+
+<Frame>
+  <img src="/images/cloud/organization-settings-page.png" alt="Organization Settings page showing members and settings" />
+</Frame>
+
+## Accessing Organisation Settings
+
+To open Organisation Settings:
+
+1. Click your **profile icon** in the bottom of the left sidebar
+2. Click the **settings icon** (<Icon icon="gear" />) next to your organisation name
+
+<Frame>
+  <img src="/images/cloud/user-menu-settings.png" alt="User menu showing settings icon next to organisation" />
+</Frame>
+
+## Organisation Selection
+
+At the top of the settings page, you can:
+
+- **Switch organisations** - Use the dropdown to select a different organisation
+- **Create organisation** - Click **Create Organization +** to create a new organisation
+
+<Frame>
+  <img src="/images/cloud/organization-switcher.png" alt="Organization switcher dropdown showing multiple organisations" />
+</Frame>
+
+<Info>
+If you're a member of multiple organisations, switching here changes which organisation's settings you're viewing and editing.
+</Info>
+
+### Personal Organisations
+
+When you first sign up, a personal organisation is created for you with an **Initial Project**. Personal organisations have some restrictions:
+
+- Cannot invite additional members
+- Cannot be deleted
+- Are only accessible by you
+
+To collaborate with others, create a new organisation using the **Create Organization +** button:
+
+<Frame>
+  <img src="/images/cloud/create-organization-dialog.png" alt="Create New Organization dialog" />
+</Frame>
+
+Enter your organisation name and slug (URL-friendly identifier), then click **Create Organization**. An **Initial Project** is automatically created in your new organisation.
+
+## Pending Invitations
+
+<Note>
+This section is only visible to **Admins** and only for non-personal organisations.
+</Note>
+
+The Pending Invitations section shows all invitations that have been sent but not yet accepted:
+
+- **Email address** - Who was invited
+- **Status** - Pending acceptance
+- **Expiry** - Invitations expire after 7 days
+- **Revoke** - Cancel the invitation if needed
+
+### Revoking an Invitation
+
+To revoke a pending invitation:
+
+1. Find the invitation in the list
+2. Click the **Revoke** button
+3. The invitation link will no longer work
+
+## Members
+
+The Members section shows everyone who has access to the organisation:
+
+<Frame>
+  <img src="/images/cloud/members-section.png" alt="Members section showing member list with Invite Member button" />
+</Frame>
+
+| Column | Description |
+|--------|-------------|
+| **Name** | Member's display name and avatar |
+| **Role** | Admin or Member |
+| **Actions** | Role change, remove (Admin only) |
+
+### Member Roles
+
+| Role | Permissions |
+|------|-------------|
+| **Admin** | Full access - manage members, invitations, settings, delete organisation |
+| **Member** | Access projects and issues, cannot manage organisation settings |
+
+### Changing a Member's Role
+
+<Note>
+Only Admins can change member roles.
+</Note>
+
+1. Find the member in the list
+2. Click the role dropdown next to their name
+3. Select the new role (Admin or Member)
+4. The change takes effect immediately
+
+### Removing a Member
+
+<Warning>
+Removing a member revokes their access to all projects in the organisation immediately.
+</Warning>
+
+1. Find the member in the list
+2. Click the **Remove** button
+3. Confirm the removal when prompted
+
+### Inviting New Members
+
+To invite someone to your organisation:
+
+1. Click the **Invite Member** button
+2. Enter their email address
+3. Select their role (Admin or Member)
+4. Click **Send Invitation**
+
+<Frame>
+  <img src="/images/cloud/invite-member-dialog.png" alt="Invite Member dialog with email and role fields" />
+</Frame>
+
+They'll receive an email with a link to join. The invitation expires after 7 days.
+
+## Billing
+
+<Note>
+This section is only visible to **Admins** of non-personal organisations.
+</Note>
+
+The Billing section provides a link to manage your organisation's billing and subscription in the Vibe Kanban account portal.
+
+Click **Manage Billing** to open the billing portal in a new tab where you can:
+- View your current plan
+- Update payment methods
+- View invoices and billing history
+
+## Danger Zone
+
+<Warning>
+Actions in the Danger Zone are destructive and cannot be undone.
+</Warning>
+
+<Frame>
+  <img src="/images/cloud/danger-zone.png" alt="Danger Zone section with Delete Organization button" />
+</Frame>
+
+### Deleting an Organisation
+
+<Note>
+Only Admins can delete organisations. Personal organisations cannot be deleted.
+</Note>
+
+To delete an organisation:
+
+1. Scroll to the **Danger Zone** section
+2. Click **Delete**
+3. Confirm the deletion when prompted
+4. All projects, issues, and data will be permanently deleted
+
+<Warning>
+Deleting an organisation removes:
+- All projects in the organisation
+- All issues and their history
+- All team member access
+- All pending invitations
+
+This action cannot be undone.
+</Warning>
+
+## Related Documentation
+
+- [Organisations](/cloud/organizations) - Creating and understanding organisations
+- [Team Members](/cloud/team-members) - Inviting and managing team members
+- [Projects](/cloud/projects) - Managing projects within organisations

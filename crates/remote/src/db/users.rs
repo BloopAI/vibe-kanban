@@ -1,30 +1,8 @@
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use api_types::{User, UserData};
 use sqlx::{PgPool, query_as};
-use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{Tx, identity_errors::IdentityError};
-
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct User {
-    pub id: Uuid,
-    pub email: String,
-    pub first_name: Option<String>,
-    pub last_name: Option<String>,
-    pub username: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
-#[ts(export)]
-pub struct UserData {
-    pub user_id: Uuid,
-    pub first_name: Option<String>,
-    pub last_name: Option<String>,
-    pub username: Option<String>,
-}
 
 #[derive(Debug, Clone)]
 pub struct UpsertUser<'a> {
@@ -70,34 +48,6 @@ impl<'a> UserRepository<'a> {
         .fetch_optional(self.pool)
         .await?
         .ok_or(IdentityError::NotFound)
-    }
-
-    /// Fetch all assignees for a given project id.
-    /// Returns Vec<UserData> containing all unique users assigned to tasks in the project.
-    pub async fn fetch_assignees_by_project(
-        &self,
-        project_id: Uuid,
-    ) -> Result<Vec<UserData>, IdentityError> {
-        let rows = sqlx::query_as!(
-            UserData,
-            r#"
-            SELECT DISTINCT
-                u.id         as "user_id",
-                u.first_name as "first_name",
-                u.last_name  as "last_name",
-                u.username   as "username"
-            FROM shared_tasks st
-            INNER JOIN users u ON u.id = st.assignee_user_id
-            WHERE st.project_id = $1
-            AND st.assignee_user_id IS NOT NULL
-            "#,
-            project_id
-        )
-        .fetch_all(self.pool)
-        .await
-        .map_err(IdentityError::from)?;
-
-        Ok(rows)
     }
 }
 

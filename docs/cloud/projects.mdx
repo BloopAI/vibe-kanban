@@ -1,0 +1,209 @@
+---
+title: "Projects"
+description: "Create and manage projects to organise your work"
+---
+
+Projects are where your work lives. Each project contains a kanban board with issues, statuses, and tags that help you organise and track progress.
+
+<Frame>
+  <img src="/images/cloud/project-kanban-board.png" alt="Project kanban board showing columns and issues" />
+</Frame>
+
+## What is a Project?
+
+A **project** is a container for related work within your organisation. Think of it as a dedicated space for a specific initiative, product, or team goal.
+
+Each project has:
+- **Issues** - Individual work items (bugs, features, tasks)
+- **Statuses** - Columns on your kanban board (To Do, In Progress, Done, etc.)
+- **Tags** - Labels for categorising issues
+- **Team access** - All organisation members can view and work on project issues
+
+## Project Sidebar
+
+The left sidebar provides quick access to your projects and workspaces.
+
+<Frame>
+  <img style={{maxHeight: "350px"}} src="/images/cloud/sidebar-workspaces.png" alt="Project sidebar showing Workspaces icon, project icons, and add button" />
+</Frame>
+
+### Sidebar Elements
+
+| Element | Description |
+|---------|-------------|
+| **Workspaces icon** | Top icon - opens the Workspaces view for coding agents |
+| **Project icons** | Square buttons showing project abbreviations (e.g., "VI" for vibe-kanban) |
+| **+ button** | Create a new project |
+
+### Project Icons
+
+Each project appears as a square button with a two-letter abbreviation of the project name. The currently selected project is highlighted.
+
+<Frame>
+  <img style={{maxHeight: "350px"}} src="/images/cloud/sidebar-project-tooltip.png" alt="Hovering over project icon shows full project name" />
+</Frame>
+
+Hover over any project icon to see the full project name in a tooltip.
+
+## Creating a Project
+
+<Steps>
+<Step title="Open your organisation">
+  Sign in and select your organisation from the sidebar or organisation switcher.
+</Step>
+
+<Step title="Click Create Project">
+  Click the **+ New Project** button in the sidebar or on the projects page.
+
+</Step>
+
+<Step title="Enter project details">
+  Fill in the project information:
+
+  <Frame>
+    <img style={{maxHeight: "300px"}} src="/images/cloud/create-project-dialog.png" alt="Create Project dialog with name and colour fields" />
+  </Frame>
+
+  | Field | Description |
+  |-------|-------------|
+  | **Name** | A clear name for your project (e.g., "Mobile App", "Q1 Marketing") |
+  | **Colour** | Click the colour swatch to choose a colour for this project |
+</Step>
+
+<Step title="Click Create">
+  Click **Create Project** to create your project. You'll be taken to your new project's kanban board.
+</Step>
+</Steps>
+
+## Default Statuses
+
+New projects come with six default status columns:
+
+| Status | Purpose | Visible by Default |
+|--------|---------|-------------------|
+| **Backlog** | Ideas and future work | Hidden |
+| **To do** | Issues ready to start | ✓ |
+| **In progress** | Issues currently being worked on | ✓ |
+| **In review** | Waiting for code review | ✓ |
+| **Done** | Completed issues | ✓ |
+| **Cancelled** | Issues that won't be done | Hidden |
+
+<Info>
+Hidden statuses don't appear as columns on the board, but you can still access issues in them via the status tabs (e.g., "Backlog" or "Cancelled" tabs).
+</Info>
+
+<Frame>
+  <img src="/images/cloud/project-kanban-board.png" alt="Project kanban board showing columns and issues" />
+</Frame>
+
+You can customise these statuses - rename them, change colours, add new ones, or hide ones you don't use. See [Customising Your Board](/cloud/customisation) for details.
+
+## Project Settings
+
+Access project settings by clicking the gear icon (<Icon icon="gear" />) next to the project name.
+
+<Frame>
+  <img style={{maxHeight: "250px"}} src="/images/cloud/project-settings-icon.png" alt="Project header showing settings gear icon" />
+</Frame>
+
+### Renaming a Project
+
+1. Open project settings
+2. Edit the **Project name** field
+3. Click **Save**
+
+### Changing Project Colour
+
+1. Open project settings
+2. Click the colour selector
+3. Choose a new colour
+4. Click **Save**
+
+<Frame>
+  <img style={{maxHeight: "200px"}} src="/images/cloud/edit-project-form.png" alt="Edit project form with name and colour picker" />
+</Frame>
+
+The colour appears in the sidebar and helps you quickly identify projects.
+
+<Tip>
+You can also manage projects from **Settings** → **Remote Projects**. See [Remote Projects Settings](/settings-beta/remote-projects) for more details.
+</Tip>
+
+## Switching Between Projects
+
+You have several ways to switch projects:
+
+**From the sidebar:**
+- Click any project name in the sidebar to open it
+
+**From the project dropdown:**
+- Click the current project name in the header
+- Select a different project from the dropdown
+
+
+## Deleting a Project
+
+<Warning>
+Deleting a project is permanent and cannot be undone. All issues, comments, and data within the project will be deleted.
+</Warning>
+
+To delete a project, go to **Settings** → **Remote Projects**:
+
+<Steps>
+<Step title="Open Remote Projects settings">
+  Go to **Settings** and select **Remote Projects** from the sidebar.
+</Step>
+
+<Step title="Find the project">
+  Select the organisation and locate the project you want to delete.
+</Step>
+
+<Step title="Open the menu">
+  Hover over the project and click the **⋯** (three dots) menu.
+
+  <Frame>
+    <img style={{maxHeight: "150px"}} src="/images/cloud/project-menu-button.png" alt="Project row showing three-dots menu button" />
+  </Frame>
+</Step>
+
+<Step title="Click Delete">
+  Select **Delete** from the menu and confirm when prompted.
+
+  <Frame>
+    <img style={{maxHeight: "150px"}} src="/images/cloud/project-delete-menu.png" alt="Dropdown menu with Delete option" />
+  </Frame>
+</Step>
+</Steps>
+
+<Info>
+Before deleting, consider whether you might need any of the issues or their history. There's no way to recover a deleted project.
+</Info>
+
+For more details on managing projects, see [Remote Projects Settings](/settings-beta/remote-projects).
+
+## Best Practices
+
+<CardGroup cols={2}>
+<Card title="One project per initiative" icon="folder">
+  Create separate projects for distinct initiatives rather than putting everything in one project. This keeps your boards focused and manageable.
+</Card>
+
+<Card title="Use descriptive names" icon="tag">
+  Choose project names that clearly describe what the project is about. "Mobile App v2" is better than "Project A".
+</Card>
+
+<Card title="Consistent status columns" icon="columns">
+  Try to use similar status columns across projects so team members can switch between projects without confusion.
+</Card>
+
+<Card title="Archive completed work" icon="box-archive">
+  Once issues are done, you can hide the Done column or create an Archive status to keep your board clean.
+</Card>
+</CardGroup>
+
+## Related Documentation
+
+- [Issues](/cloud/issues) - Creating and managing issues
+- [Kanban Board](/cloud/kanban-board) - Using the board interface
+- [Customising Your Board](/cloud/customisation) - Configuring columns and display settings
+- [Remote Projects Settings](/settings-beta/remote-projects) - Managing projects from Settings

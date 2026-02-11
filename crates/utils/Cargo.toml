@@ -1,9 +1,10 @@
 [package]
 name = "utils"
-version = "0.0.146"
+version = "0.1.9"
 edition = "2024"
 
 [dependencies]
+api-types = { path = "../api-types" }
 tokio-util = { version = "0.7", features = ["io", "codec"] }
 bytes = "1.0"
 shlex = "1.3.0"
@@ -21,7 +22,6 @@ open = "5.3.2"
 regex = "1.11.1"
 sentry = { version = "0.41.0", default-features = false, features = ["anyhow", "backtrace", "panic", "debug-images", "reqwest"] }
 sentry-tracing = { version = "0.41.0", default-features = false, features = ["backtrace"] }
-futures-util = "0.3"
 json-patch = "2.0"
 jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"] }
 tokio = { workspace = true }
@@ -33,9 +33,11 @@ similar = "2"
 git2 = { workspace = true }
 dirs = "5.0"
 thiserror = { workspace = true }
-url = "2.5"
-reqwest = { workspace = true }
-sqlx = { version = "0.8.6", default-features = false, features = ["postgres", "uuid", "chrono"] }
+command-group = { version = "5.0", features = ["with-tokio"] }
+sqlx = { version = "0.8.6", default-features = false, features = ["postgres", "uuid", "chrono", "derive"] }
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.29", features = ["signal", "process"] }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"

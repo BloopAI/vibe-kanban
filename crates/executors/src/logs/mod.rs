@@ -95,6 +95,13 @@ pub enum NormalizedEntryType {
         execution_processes: usize,
         needs_setup: bool,
     },
+    TokenUsageInfo(TokenUsageInfo),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct TokenUsageInfo {
+    pub total_tokens: u32,
+    pub model_context_window: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -202,6 +209,10 @@ pub enum ActionType {
     },
     TaskCreate {
         description: String,
+        #[serde(default)]
+        subagent_type: Option<String>,
+        #[serde(default)]
+        result: Option<ToolResult>,
     },
     PlanPresentation {
         plan: String,

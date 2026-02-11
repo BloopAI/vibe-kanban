@@ -1,11 +1,12 @@
 [package]
 name = "deployment"
-version = "0.0.146"
+version = "0.1.9"
 edition = "2024"
 
 [dependencies]
 db = { path = "../db" }
 utils = { path = "../utils" }
+git = { path = "../git" }
 services = { path = "../services" }
 executors = { path = "../executors" }
 async-trait = { workspace = true } 

@@ -1,3 +1,5 @@
+const path = require('path');
+
 const i18nCheck = process.env.LINT_I18N === 'true';
 
 // Presentational components - these must be stateless and receive all data via props
@@ -26,7 +28,7 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
-    project: './tsconfig.json',
+    project: path.join(__dirname, 'tsconfig.json'),
   },
   rules: {
     'eslint-comments/no-use': ['error', { allow: [] }],
@@ -158,7 +160,14 @@ module.exports = {
       },
     },
     {
-      files: ['**/*.test.{ts,tsx}', '**/*.stories.{ts,tsx}'],
+      files: [
+        '**/*.test.{ts,tsx}',
+        '**/*.stories.{ts,tsx}',
+        'src/pages/ui-new/ElectricTestPage.tsx',
+        'src/pages/Migration.tsx',
+        'src/components/ui-new/views/Migrate*.tsx',
+        'src/components/ui-new/containers/Migrate*.tsx',
+      ],
       rules: {
         'i18next/no-literal-string': 'off',
       },
@@ -221,6 +230,37 @@ module.exports = {
             selector: 'Literal[value=/(?<!icon-)(?<!-)size-[0-9]/]',
             message:
               'Use design system sizes (size-icon-xs, size-icon-sm, size-icon-base, size-icon-lg, size-icon-xl, size-dot) instead of generic Tailwind sizes.',
+          },
+        ],
+      },
+    },
+    {
+      // Ban re-exports (barrel exports) in ui-new index files
+      files: ['src/components/ui-new/**/index.ts'],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: 'ExportNamedDeclaration[source]',
+            message: 'Re-exports are not allowed in ui-new. Export directly from source files.',
+          },
+          {
+            selector: 'ExportAllDeclaration',
+            message: 'Wildcard re-exports (export *) are not allowed in ui-new.',
+          },
+        ],
+      },
+    },
+    {
+      // Container components should not have optional props
+      files: ['src/components/ui-new/containers/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: 'TSPropertySignature[optional=true]',
+            message:
+              'Optional props are not allowed in container components. Make the prop required or provide a default value.',
           },
         ],
       },

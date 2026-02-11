@@ -9,7 +9,7 @@ use workspace_utils::msg_store::MsgStore;
 
 use crate::{
     approvals::ExecutorApprovalService,
-    command::{CmdOverrides, CommandBuilder, apply_overrides},
+    command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
@@ -33,13 +33,13 @@ pub struct QwenCode {
 }
 
 impl QwenCode {
-    fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("npx -y @qwen-code/qwen-code@0.2.1");
+    fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
+        let mut builder = CommandBuilder::new("npx -y @qwen-code/qwen-code@0.9.1");
 
         if self.yolo.unwrap_or(false) {
             builder = builder.extend_params(["--yolo"]);
         }
-        builder = builder.extend_params(["--experimental-acp"]);
+        builder = builder.extend_params(["--acp"]);
         apply_overrides(builder, &self.cmd)
     }
 }
@@ -56,7 +56,7 @@ impl StandardCodingAgentExecutor for QwenCode {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let qwen_command = self.build_command_builder().build_initial()?;
+        let qwen_command = self.build_command_builder()?.build_initial()?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let harness = AcpAgentHarness::with_session_namespace("qwen_sessions");
         let approvals = if self.yolo.unwrap_or(false) {
@@ -81,9 +81,10 @@ impl StandardCodingAgentExecutor for QwenCode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let qwen_command = self.build_command_builder().build_follow_up(&[])?;
+        let qwen_command = self.build_command_builder()?.build_follow_up(&[])?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let harness = AcpAgentHarness::with_session_namespace("qwen_sessions");
         let approvals = if self.yolo.unwrap_or(false) {

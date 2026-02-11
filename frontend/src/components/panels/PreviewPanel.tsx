@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDevserverPreview } from '@/hooks/useDevserverPreview';
 import { useDevServer } from '@/hooks/useDevServer';
+import { useHasDevServerScript } from '@/hooks/useHasDevServerScript';
 import { useLogStream } from '@/hooks/useLogStream';
 import { useDevserverUrlFromLogs } from '@/hooks/useDevserverUrl';
 import { ClickToComponentListener } from '@/utils/previewBridge';
@@ -15,6 +16,8 @@ import { DevServerLogsView } from '@/components/tasks/TaskDetails/preview/DevSer
 import { PreviewToolbar } from '@/components/tasks/TaskDetails/preview/PreviewToolbar';
 import { NoServerContent } from '@/components/tasks/TaskDetails/preview/NoServerContent';
 import { ReadyContent } from '@/components/tasks/TaskDetails/preview/ReadyContent';
+import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialog';
+import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 
 export function PreviewPanel() {
   const [iframeError, setIframeError] = useState(false);
@@ -32,18 +35,21 @@ export function PreviewPanel() {
 
   const attemptId =
     rawAttemptId && rawAttemptId !== 'latest' ? rawAttemptId : undefined;
-  const projectHasDevScript = Boolean(project?.dev_script);
+  const { data: projectHasDevScript = false } =
+    useHasDevServerScript(projectId);
+  const { repos } = useAttemptRepo(attemptId);
 
   const {
     start: startDevServer,
     stop: stopDevServer,
     isStarting: isStartingDevServer,
     isStopping: isStoppingDevServer,
-    runningDevServer,
-    latestDevServerProcess,
+    runningDevServers,
+    devServerProcesses,
   } = useDevServer(attemptId);
 
-  const logStream = useLogStream(latestDevServerProcess?.id ?? '');
+  const primaryDevServer = runningDevServers[0];
+  const logStream = useLogStream(primaryDevServer?.id ?? '');
   const lastKnownUrl = useDevserverUrlFromLogs(logStream.logs);
 
   const previewState = useDevserverPreview(attemptId, {
@@ -107,28 +113,43 @@ export function PreviewPanel() {
     startTimer();
   }, []);
 
+  const hasRunningDevServer = runningDevServers.length > 0;
+
+  // Detect failed dev server process (failed status or completed with non-zero exit code)
+  const failedDevServerProcess = devServerProcesses.find(
+    (p) =>
+      p.status === 'failed' ||
+      (p.status === 'completed' && p.exit_code !== null && p.exit_code !== 0n)
+  );
+  const hasFailedDevServer = Boolean(failedDevServerProcess);
+
   useEffect(() => {
     if (
       loadingTimeFinished &&
       !isReady &&
-      latestDevServerProcess &&
-      runningDevServer
+      devServerProcesses.length > 0 &&
+      hasRunningDevServer
     ) {
       setShowHelp(true);
       setShowLogs(true);
       setLoadingTimeFinished(false);
     }
-  }, [loadingTimeFinished, isReady, latestDevServerProcess, runningDevServer]);
+  }, [
+    loadingTimeFinished,
+    isReady,
+    devServerProcesses.length,
+    hasRunningDevServer,
+  ]);
 
   const isPreviewReady =
     (previewState.status === 'ready' && Boolean(previewState.url)) ||
-    (customUrl !== null && runningDevServer);
+    (customUrl !== null && hasRunningDevServer);
   const isPreviewReadyWithoutError = isPreviewReady && !iframeError;
   const mode = iframeError
     ? 'error'
     : isPreviewReadyWithoutError
       ? 'ready'
-      : runningDevServer
+      : hasRunningDevServer
         ? 'searching'
         : 'noServer';
   const toggleLogs = () => {
@@ -150,6 +171,22 @@ export function PreviewPanel() {
       },
     });
   };
+
+  const handleFixDevScript = () => {
+    if (!attemptId || repos.length === 0) return;
+
+    const sessionId = devServerProcesses[0]?.session_id;
+
+    ScriptFixerDialog.show({
+      scriptType: 'dev_server',
+      repos,
+      workspaceId: attemptId,
+      sessionId,
+      initialRepoId: repos.length === 1 ? repos[0].id : undefined,
+    });
+  };
+
+  const canFixDevScript = attemptId && repos.length > 0;
 
   if (!attemptId) {
     return (
@@ -187,11 +224,13 @@ export function PreviewPanel() {
         ) : (
           <NoServerContent
             projectHasDevScript={projectHasDevScript}
-            runningDevServer={runningDevServer}
+            runningDevServer={hasRunningDevServer}
             isStartingDevServer={isStartingDevServer}
             startDevServer={handleStartDevServer}
             stopDevServer={stopDevServer}
             project={project}
+            hasFailedDevServer={hasFailedDevServer}
+            onFixDevScript={canFixDevScript ? handleFixDevScript : undefined}
           />
         )}
 
@@ -219,16 +258,28 @@ export function PreviewPanel() {
                     .
                   </li>
                 </ol>
-                <Button
-                  variant="destructive"
-                  onClick={handleStopAndEdit}
-                  disabled={isStoppingDevServer}
-                >
-                  {isStoppingDevServer && (
-                    <Loader2 className="mr-2 animate-spin" />
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    onClick={handleStopAndEdit}
+                    disabled={isStoppingDevServer}
+                  >
+                    {isStoppingDevServer && (
+                      <Loader2 className="mr-2 animate-spin" />
+                    )}
+                    {t('preview.noServer.stopAndEditButton')}
+                  </Button>
+                  {canFixDevScript && (
+                    <Button
+                      variant="outline"
+                      onClick={handleFixDevScript}
+                      className="gap-1"
+                    >
+                      <Wrench className="h-4 w-4" />
+                      {t('preview.troubleAlert.fixScript')}
+                    </Button>
                   )}
-                  {t('preview.noServer.stopAndEditButton')}
-                </Button>
+                </div>
               </div>
               <Button
                 variant="ghost"
@@ -242,12 +293,10 @@ export function PreviewPanel() {
           </Alert>
         )}
         <DevServerLogsView
-          latestDevServerProcess={latestDevServerProcess}
+          devServerProcesses={devServerProcesses}
           showLogs={showLogs}
           onToggle={toggleLogs}
           showToggleText
-          logs={logStream.logs}
-          error={logStream.error}
         />
       </div>
     </div>

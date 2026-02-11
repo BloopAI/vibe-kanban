@@ -1,4 +1,8 @@
 {
+  "dropzone": {
+    "dropImagesHere": "Drop images here",
+    "supportedFormats": "PNG, JPG, GIF, WebP, SVG supported"
+  },
   "gitPanel": {
     "create": {
       "warnings": {
@@ -79,17 +83,22 @@
       "item2": "Did your dev server print the URL and port to the terminal in the format",
       "item2Suffix": "? (this is how we know it's running)",
       "item3": "Have you installed the Web Companion (required for click-to-edit)? If not, please",
-      "item3Link": "follow the installation instructions here"
+      "item3Link": "follow the installation instructions here",
+      "fixScript": "Fix Dev Script"
     },
     "noServer": {
       "title": "No dev server running",
       "startPrompt": "Please start a dev server to see the preview",
+      "setupTitle": "You must set up a dev server script to use the preview feature",
       "setupPrompt": "To use the live preview and click-to-edit, please add a dev server script to this project.",
       "companionPrompt": "For click-to-edit functionality, add the browser companion to your project.",
       "companionLink": "View installation guide",
       "startButton": "Start Dev Server",
-      "editButton": "Edit Dev Script",
-      "stopAndEditButton": "Stop Dev Server & Resolve Issues"
+      "configureButton": "Configure",
+      "stopAndEditButton": "Stop Dev Server & Resolve Issues",
+      "fixScript": "Fix Dev Script",
+      "editDevScript": "Edit Dev Server Script",
+      "learnMore": "Learn more about testing applications"
     },
     "devScript": {
       "saveAndStart": "Save & Start",
@@ -119,13 +128,26 @@
       "openInTab": "Open in new tab",
       "stopDevServer": "Stop dev server",
       "clickToEdit": "Click to edit URL",
-      "resetUrl": "Reset to detected URL"
+      "resetUrl": "Reset to detected URL",
+      "clearUrlOverride": "Clear URL override",
+      "desktopView": "Desktop view",
+      "mobileView": "Mobile view (390x844)",
+      "responsiveView": "Responsive view (resizable)",
+      "startDevServer": "Start dev server",
+      "submitUrl": "Submit URL"
+    },
+    "loading": {
+      "startingServer": "Starting dev server...",
+      "waitingForServer": "Waiting for server...",
+      "loadingPreview": "Loading preview...",
+      "manualUrlHint": "No URL detected yet. You can manually enter a URL in the toolbar above."
     },
     "browser": {
       "title": "Dev Server Preview",
-      "startButton": "Start Dev Server",
-      "stopButton": "Stop",
-      "startingButton": "Start"
+      "devServerFallback": "Dev Server"
+    },
+    "urlInput": {
+      "placeholder": "Enter URL..."
     }
   },
   "diff": {
@@ -139,7 +161,13 @@
     "collapseAll": "Collapse all diffs",
     "filesChanged_one": "{{count}} file changed",
     "filesChanged_other": "{{count}} files changed",
-    "noChanges": "No changes have been made yet"
+    "noChanges": "No changes have been made yet",
+    "largeDiff": {
+      "title": "Large file",
+      "linesChanged": "{{count}} lines changed",
+      "loadAnyway": "Load diff anyway",
+      "warning": "Large diffs may slow down your browser."
+    }
   },
   "taskPanel": {
     "noTaskSelected": "No task selected",
@@ -195,13 +223,20 @@
     "queuedMessage": "Message queued - will execute when current run finishes",
     "runSetupScript": "Run setup script",
     "runCleanupScript": "Run cleanup script",
+    "runArchiveScript": "Run archive script",
     "noSetupScript": "No setup script configured for this project",
     "noCleanupScript": "No cleanup script configured for this project",
+    "noArchiveScript": "No archive script configured for this project",
     "scriptsDisabledWhileRunning": "Cannot run scripts while a process is running"
   },
   "todos": {
     "title_one": "Todos ({{count}})",
     "title_other": "Todos ({{count}})"
+  },
+  "todoPopup": {
+    "title": "Tasks",
+    "progress": "{{completed}}/{{total}} completed",
+    "noTasks": "No tasks"
   },
   "projects": {
     "create": {
@@ -220,6 +255,7 @@
   },
   "conversation": {
     "executors": "Executors",
+    "saveAsDefault": "Save as default",
     "you": "You",
     "thinking": "Thinking",
     "todo": "Todo",
@@ -246,7 +282,10 @@
       "requestChanges": "Request Changes",
       "approve": "Approve",
       "clearReviewComments": "Clear review comments",
-      "edit": "Edit message"
+      "edit": "Edit message",
+      "scrollToPreviousMessage": "Go to previous message",
+      "reset": "Reset",
+      "resetTooltip": "Reset to this point"
     },
     "approval": {
       "conflictWarning": "Conflicted files need manual resolution",
@@ -279,6 +318,13 @@
       "exitCode": "Exit code: {{code}}",
       "completedSuccessfully": "Completed successfully",
       "clickToViewLogs": "Click to view logs"
+    },
+    "scriptPlaceholder": {
+      "setupTitle": "Setup Script",
+      "setupDescription": "No setup script configured. Setup scripts run before the coding agent starts.",
+      "cleanupTitle": "Cleanup Script",
+      "cleanupDescription": "No cleanup script configured. Cleanup scripts run after the coding agent finishes.",
+      "configure": "Configure"
     },
     "updatedTodos": "Updated Todos",
     "viewInChangesPanel": "View in changes panel",
@@ -351,6 +397,7 @@
       "pushed": "Pushed!",
       "pushing": "Pushing...",
       "push": "Push",
+      "pushFailed": "Failed",
       "forcePush": "Force Push",
       "forcePushing": "Force Pushing...",
       "creating": "Creating...",
@@ -461,10 +508,9 @@
     "createSubtask": "Create subtask",
     "gitActions": "Git actions",
     "editBranchName": "Edit branch name",
+    "startReview": "Start Review",
+    "startingReview": "Starting Review...",
     "task": "Task",
-    "share": "Share",
-    "reassign": "Reassign",
-    "stopShare": "Stop share",
     "duplicate": "Duplicate"
   },
   "editBranchName": {
@@ -477,44 +523,45 @@
       "action": "Rename Branch"
     }
   },
-  "stopShareDialog": {
-    "title": "Stop Sharing Task",
-    "description": "Stop sharing \"{{title}}\" with your organization?",
-    "warning": "Stops sharing the task with your organization, but keeps your local task.",
-    "confirm": "Stop share task",
-    "inProgress": "Stop sharing...",
-    "genericError": "Failed to stop sharing task. Please try again."
+  "startReviewDialog": {
+    "title": "Start Review",
+    "description": "Ask the coding agent to review your changes and provide feedback.",
+    "additionalInstructions": "Additional Instructions (optional)",
+    "reviewComments": "Review Comments ({{count}})",
+    "includeGitContext": "Include git context",
+    "includeGitContextDescription": "Tells the agent how to view all changes made on this branch",
+    "newSession": "New Session"
   },
-  "shareDialog": {
-    "title": "Share Task",
-    "description": "Share \"{{title}}\" with your organization?",
-    "success": "Task shared successfully.",
-    "genericError": "Failed to share task. Please try again.",
-    "loadingSystem": "Loading account status...",
-    "loginRequired": {
-      "title": "Sign in to continue",
-      "description": "You need to sign in before you can share tasks. We will redirect you to the sign-in page.",
-      "action": "Go to sign in"
-    },
-    "githubRequired": {
-      "title": "Connect GitHub",
-      "description": "Connect your GitHub account to share tasks. This project must have a remote repository on GitHub.",
-      "action": "Connect GitHub"
-    },
-    "linkProjectRequired": {
-      "description": "Link this project to an organization before sharing tasks.",
-      "action": "Link Project"
-    },
-    "confirmationTitle": "Confirm sharing",
-    "confirmationBody": "Sharing will publish this task to your shared workspace.",
-    "cancel": "Cancel",
-    "confirm": "Share task",
-    "inProgress": "Sharing...",
-    "closeButton": "Close"
+  "resolveConflicts": {
+    "dialog": {
+      "title": "Resolve Conflicts",
+      "description": "Conflicts were detected. Choose how you want the agent to resolve them.",
+      "sessionLabel": "Session",
+      "existingSession": "Continue in current session",
+      "newSession": "Start a new session",
+      "resolve": "Resolve Conflicts",
+      "resolving": "Starting...",
+      "filesWithConflicts_one": "{{count}} file has conflicts",
+      "filesWithConflicts_other": "{{count}} files have conflicts",
+      "andMore": "...and {{count}} more"
+    }
+  },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "Rebase In Progress",
+      "description": "A rebase onto {{targetBranch}} is in progress with no conflicts. Choose how to proceed.",
+      "hint": "You can continue the rebase to complete it, or abort to return to your previous state.",
+      "continue": "Continue Rebase",
+      "continuing": "Continuing...",
+      "abort": "Abort Rebase",
+      "aborting": "Aborting...",
+      "continueError": "Failed to continue rebase. There may be unresolved conflicts.",
+      "abortError": "Failed to abort rebase. Please try again."
+    }
   },
   "createPrDialog": {
-    "title": "Create GitHub Pull Request",
-    "description": "Create a pull request for this task attempt on GitHub.",
+    "title": "Create Pull Request",
+    "description": "Create a pull request for this task attempt.",
     "titleLabel": "Title",
     "titlePlaceholder": "Enter PR title",
     "descriptionLabel": "Description (optional)",
@@ -527,9 +574,9 @@
     "creating": "Creating...",
     "createButton": "Create PR",
     "errors": {
-      "insufficientPermissions": "Insufficient permissions. Please ensure the GitHub CLI has the necessary permissions.",
+      "insufficientPermissions": "Insufficient permissions. Please ensure the CLI has the necessary permissions.",
       "repoNotFoundOrNoAccess": "Repository not found or no access. Please check your repository access and ensure you are authenticated.",
-      "failedToCreate": "Failed to create GitHub PR",
+      "failedToCreate": "Failed to create PR",
       "gitCliNotLoggedIn": "Git is not authenticated. Run \"gh auth login\" (or configure Git credentials) and try again.",
       "gitCliNotInstalled": "Git CLI is not installed. Install Git to create a PR.",
       "targetBranchNotFound": "Target branch '{{branch}}' does not exist on remote. Please ensure the branch exists before creating a pull request."
@@ -569,9 +616,9 @@
       "finish": "Finish"
     }
   },
-  "githubComments": {
+  "prComments": {
     "dialog": {
-      "title": "Select GitHub Comments",
+      "title": "Select PR Comments",
       "noComments": "No comments found on this PR",
       "selectAll": "Select All",
       "deselectAll": "Deselect All",
@@ -580,7 +627,7 @@
     },
     "card": {
       "review": "Review",
-      "tooltip": "Click to view on GitHub, double-click to edit"
+      "tooltip": "Click to view, double-click to edit"
     }
   },
   "taskFormDialog": {
@@ -611,11 +658,17 @@
       "discardChanges": "Discard Changes"
     }
   },
+  "terminal": {
+    "selectWorkspace": "Select a workspace to open terminal"
+  },
   "restoreLogsDialog": {
     "title": "Confirm Retry",
+    "titleReset": "Confirm Reset",
     "historyChange": {
       "title": "History change",
       "willDelete": "Will delete this process",
+      "willDeleteProcesses_one": "Will delete {{count}} process",
+      "willDeleteProcesses_other": "Will delete {{count}} processes",
       "andLaterProcesses_one": "and {{count}} later process",
       "andLaterProcesses_other": "and {{count}} later processes",
       "fromHistory": "from history.",
@@ -651,7 +704,59 @@
       "uncommittedPresentHint": "Uncommitted changes present. Turn on Force reset or commit/stash to proceed."
     },
     "buttons": {
-      "retry": "Retry"
+      "retry": "Retry",
+      "reset": "Reset"
+    }
+  },
+  "scriptFixer": {
+    "title": "Fix Script",
+    "setupScriptTitle": "Fix Setup Script",
+    "cleanupScriptTitle": "Fix Cleanup Script",
+    "archiveScriptTitle": "Fix Archive Script",
+    "devServerTitle": "Fix Dev Server Script",
+    "scriptLabel": "Script (edit)",
+    "logsLabel": "Last Execution Logs",
+    "saveButton": "Save",
+    "saveAndTestButton": "Save and Test",
+    "saving": "Saving...",
+    "testing": "Testing...",
+    "noLogs": "No execution logs available",
+    "selectRepo": "Repository",
+    "fixScript": "Fix Script",
+    "statusRunning": "Running...",
+    "statusSuccess": "Completed successfully",
+    "statusFailed": "Failed with exit code {{exitCode}}",
+    "statusKilled": "Process was killed"
+  },
+  "createWorkspaceFromPr": {
+    "title": "Create Workspace from PR",
+    "description": "Select an open pull request to create a workspace from. A task will be created automatically using the PR title.",
+    "repositoryLabel": "Repository",
+    "remoteLabel": "Remote",
+    "pullRequestLabel": "Pull Request",
+    "loadingRepositories": "Loading repositories...",
+    "loadingRemotes": "Loading remotes...",
+    "noRepositoriesFound": "No repositories found",
+    "loadingPullRequests": "Loading pull requests...",
+    "selectRepositoryFirst": "Select a repository first",
+    "noPullRequestsFound": "No open pull requests found",
+    "runSetupScript": "Run setup script",
+    "creating": "Creating...",
+    "createWorkspace": "Create Workspace",
+    "selectRepository": "Select a repository",
+    "selectRemote": "Select a remote",
+    "selectPullRequest": "Select a pull request",
+    "searchPrsPlaceholder": "Search PRs by number or title...",
+    "noMatchingPrs": "No matching pull requests",
+    "default": "default",
+    "openPrInBrowser": "Open PR in browser",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLI is not installed",
+      "unsupportedProvider": "Git provider not supported",
+      "failedToLoadPrs": "Failed to load pull requests",
+      "prNotFound": "Pull request not found",
+      "repoNotInProject": "Repository is not in any project",
+      "failedToCreateWorkspace": "Failed to create workspace"
     }
   }
 }

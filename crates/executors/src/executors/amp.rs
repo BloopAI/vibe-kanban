@@ -9,7 +9,7 @@ use ts_rs::TS;
 use workspace_utils::msg_store::MsgStore;
 
 use crate::{
-    command::{CmdOverrides, CommandBuilder, apply_overrides},
+    command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
         AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
@@ -33,8 +33,8 @@ pub struct Amp {
 }
 
 impl Amp {
-    fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("npx -y @sourcegraph/amp@0.0.1764777697-g907e30")
+    fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
+        let mut builder = CommandBuilder::new("npx -y @sourcegraph/amp@latest")
             .params(["--execute", "--stream-json"]);
         if self.dangerously_allow_all.unwrap_or(false) {
             builder = builder.extend_params(["--dangerously-allow-all"]);
@@ -51,7 +51,7 @@ impl StandardCodingAgentExecutor for Amp {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let command_parts = self.build_command_builder().build_initial()?;
+        let command_parts = self.build_command_builder()?.build_initial()?;
         let (executable_path, args) = command_parts.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
@@ -63,6 +63,7 @@ impl StandardCodingAgentExecutor for Amp {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
+            .env("NPM_CONFIG_LOGLEVEL", "error")
             .args(&args);
 
         env.clone()
@@ -85,10 +86,11 @@ impl StandardCodingAgentExecutor for Amp {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         // 1) Fork the thread synchronously to obtain new thread id
-        let builder = self.build_command_builder();
+        let builder = self.build_command_builder()?;
         let fork_line = builder.build_follow_up(&[
             "threads".to_string(),
             "fork".to_string(),
@@ -100,6 +102,7 @@ impl StandardCodingAgentExecutor for Amp {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
+            .env("NPM_CONFIG_LOGLEVEL", "error")
             .args(&fork_args)
             .output()
             .await?;
@@ -136,6 +139,7 @@ impl StandardCodingAgentExecutor for Amp {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
+            .env("NPM_CONFIG_LOGLEVEL", "error")
             .args(&continue_args);
 
         env.clone()

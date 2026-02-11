@@ -1,6 +1,8 @@
 import type { Icon } from '@phosphor-icons/react';
+import type { Issue, IssuePriority } from 'shared/remote-types';
 import { type ActionDefinition, type ActionVisibilityContext } from './index';
 import { Actions } from './index';
+import { RIGHT_MAIN_PANEL_MODES } from '@/stores/useUiPreferencesStore';
 
 // Define page IDs first to avoid circular reference
 export type PageId =
@@ -8,7 +10,8 @@ export type PageId =
   | 'workspaceActions'
   | 'diffOptions'
   | 'viewOptions'
-  | 'gitActions';
+  | 'repoActions' // Page for repo-specific actions (opened from repo card or CMD+K)
+  | 'issueActions'; // Page for issue-specific actions (kanban mode)
 
 // Items that can appear inside a group
 export type CommandBarGroupItem =
@@ -26,10 +29,41 @@ export interface CommandBarGroup {
 // Top-level items in a page are groups
 export type CommandBarItem = CommandBarGroup;
 
+// Repo item for dynamic repo selection page
+export interface RepoItem {
+  id: string;
+  display_name: string;
+}
+
+// Status item for dynamic status selection page
+export interface StatusItem {
+  id: string;
+  name: string;
+  color: string;
+}
+
+// Priority item for dynamic priority selection page
+export interface PriorityItem {
+  id: IssuePriority | null;
+  name: string;
+}
+
+// Branch item for dynamic branch selection page
+export interface BranchItem {
+  name: string;
+  isCurrent: boolean;
+}
+
 // Resolved types (after childPages expansion)
 export type ResolvedGroupItem =
   | { type: 'action'; action: ActionDefinition }
-  | { type: 'page'; pageId: PageId; label: string; icon: Icon };
+  | { type: 'page'; pageId: PageId; label: string; icon: Icon }
+  | { type: 'repo'; repo: RepoItem }
+  | { type: 'status'; status: StatusItem }
+  | { type: 'priority'; priority: PriorityItem }
+  | { type: 'issue'; issue: Issue }
+  | { type: 'createSubIssue' }
+  | { type: 'branch'; branch: BranchItem };
 
 export interface ResolvedGroup {
   label: string;
@@ -46,7 +80,9 @@ export interface CommandBarPage {
   isVisible?: (ctx: ActionVisibilityContext) => boolean;
 }
 
-export const Pages: Record<PageId, CommandBarPage> = {
+export type StaticPageId = PageId;
+
+export const Pages: Record<StaticPageId, CommandBarPage> = {
   // Root page - shown when opening via CMD+K
   root: {
     id: 'root',
@@ -56,12 +92,15 @@ export const Pages: Record<PageId, CommandBarPage> = {
         label: 'Actions',
         items: [
           { type: 'action', action: Actions.NewWorkspace },
+          { type: 'action', action: Actions.CreateWorkspaceFromPR },
           { type: 'action', action: Actions.OpenInIDE },
-          { type: 'action', action: Actions.CopyPath },
-          // { type: 'action', action: Actions.ToggleDevServer },
-          { type: 'action', action: Actions.OpenInOldUI },
+          { type: 'action', action: Actions.CopyWorkspacePath },
+          { type: 'action', action: Actions.CopyRawLogs },
+          { type: 'action', action: Actions.ToggleDevServer },
+
           { type: 'childPages', id: 'workspaceActions' },
-          { type: 'childPages', id: 'gitActions' },
+          { type: 'childPages', id: 'repoActions' },
+          { type: 'childPages', id: 'issueActions' },
         ],
       },
       {
@@ -75,7 +114,15 @@ export const Pages: Record<PageId, CommandBarPage> = {
       {
         type: 'group',
         label: 'General',
-        items: [{ type: 'action', action: Actions.Settings }],
+        items: [
+          { type: 'action', action: Actions.SignIn },
+          { type: 'action', action: Actions.SignOut },
+          { type: 'action', action: Actions.Feedback },
+          { type: 'action', action: Actions.WorkspacesGuide },
+          { type: 'action', action: Actions.ProjectsGuide },
+          { type: 'action', action: Actions.ProjectSettings },
+          { type: 'action', action: Actions.Settings },
+        ],
       },
     ],
   },
@@ -91,10 +138,22 @@ export const Pages: Record<PageId, CommandBarPage> = {
         type: 'group',
         label: 'Workspace',
         items: [
+          { type: 'action', action: Actions.StartReview },
+          { type: 'action', action: Actions.RenameWorkspace },
           { type: 'action', action: Actions.DuplicateWorkspace },
+          { type: 'action', action: Actions.SpinOffWorkspace },
           { type: 'action', action: Actions.PinWorkspace },
           { type: 'action', action: Actions.ArchiveWorkspace },
           { type: 'action', action: Actions.DeleteWorkspace },
+        ],
+      },
+      {
+        type: 'group',
+        label: 'Scripts',
+        items: [
+          { type: 'action', action: Actions.RunSetupScript },
+          { type: 'action', action: Actions.RunCleanupScript },
+          { type: 'action', action: Actions.RunArchiveScript },
         ],
       },
     ],
@@ -105,7 +164,8 @@ export const Pages: Record<PageId, CommandBarPage> = {
     id: 'diff-options',
     title: 'Diff Options',
     parent: 'root',
-    isVisible: (ctx) => ctx.isChangesMode,
+    isVisible: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
     items: [
       {
         type: 'group',
@@ -130,9 +190,9 @@ export const Pages: Record<PageId, CommandBarPage> = {
         type: 'group',
         label: 'Panels',
         items: [
-          { type: 'action', action: Actions.ToggleSidebar },
-          { type: 'action', action: Actions.ToggleMainPanel },
-          { type: 'action', action: Actions.ToggleGitPanel },
+          { type: 'action', action: Actions.ToggleLeftSidebar },
+          { type: 'action', action: Actions.ToggleLeftMainPanel },
+          { type: 'action', action: Actions.ToggleRightSidebar },
           { type: 'action', action: Actions.ToggleChangesMode },
           { type: 'action', action: Actions.ToggleLogsMode },
           { type: 'action', action: Actions.TogglePreviewMode },
@@ -141,21 +201,58 @@ export const Pages: Record<PageId, CommandBarPage> = {
     ],
   },
 
-  // Git actions page - git operations
-  gitActions: {
-    id: 'git-actions',
-    title: 'Git Actions',
+  // Repository actions page - shown when clicking "..." on a repo card or via CMD+K
+  repoActions: {
+    id: 'repo-actions',
+    title: 'Repository Actions',
     parent: 'root',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     items: [
       {
         type: 'group',
-        label: 'Git',
+        label: 'Actions',
         items: [
+          { type: 'action', action: Actions.RepoCopyPath },
+          { type: 'action', action: Actions.RepoOpenInIDE },
+          { type: 'action', action: Actions.RepoSettings },
           { type: 'action', action: Actions.GitCreatePR },
           { type: 'action', action: Actions.GitMerge },
+          { type: 'action', action: Actions.GitPush },
           { type: 'action', action: Actions.GitRebase },
           { type: 'action', action: Actions.GitChangeTarget },
+        ],
+      },
+    ],
+  },
+
+  // Issue actions page - shown in kanban mode
+  issueActions: {
+    id: 'issue-actions',
+    title: 'Issue Actions',
+    parent: 'root',
+    isVisible: (ctx) => ctx.layoutMode === 'kanban',
+    items: [
+      {
+        type: 'group',
+        label: 'Actions',
+        items: [
+          { type: 'action', action: Actions.CreateIssue },
+          { type: 'action', action: Actions.ChangeIssueStatus },
+          { type: 'action', action: Actions.ChangeNewIssueStatus },
+          { type: 'action', action: Actions.ChangePriority },
+          { type: 'action', action: Actions.ChangeNewIssuePriority },
+          { type: 'action', action: Actions.ChangeAssignees },
+          { type: 'action', action: Actions.ChangeNewIssueAssignees },
+          { type: 'action', action: Actions.MakeSubIssueOf },
+          { type: 'action', action: Actions.AddSubIssue },
+          { type: 'action', action: Actions.RemoveParentIssue },
+          { type: 'action', action: Actions.LinkWorkspace },
+          { type: 'action', action: Actions.MarkBlocking },
+          { type: 'action', action: Actions.MarkBlockedBy },
+          { type: 'action', action: Actions.MarkRelated },
+          { type: 'action', action: Actions.MarkDuplicateOf },
+          { type: 'action', action: Actions.DuplicateIssue },
+          { type: 'action', action: Actions.DeleteIssue },
         ],
       },
     ],
@@ -163,7 +260,7 @@ export const Pages: Record<PageId, CommandBarPage> = {
 };
 
 // Get all actions from a specific page
-export function getPageActions(pageId: PageId): ActionDefinition[] {
+export function getPageActions(pageId: StaticPageId): ActionDefinition[] {
   const page = Pages[pageId];
   const actions: ActionDefinition[] = [];
 

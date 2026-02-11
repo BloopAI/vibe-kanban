@@ -1,9 +1,9 @@
 import * as React from 'react';
 import {
-  PencilSimpleLineIcon,
-  CheckIcon,
   ArrowCounterClockwiseIcon,
+  CheckIcon,
   type Icon,
+  PencilSimpleLineIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
@@ -16,6 +16,7 @@ interface InputFieldProps {
   actionIcon?: Icon;
   onAction?: () => void;
   disabled?: boolean;
+  onFocusChange?: (focused: boolean) => void;
 }
 
 export function InputField({
@@ -27,6 +28,7 @@ export function InputField({
   actionIcon: ActionIcon,
   onAction,
   disabled,
+  onFocusChange,
 }: InputFieldProps) {
   const [isEditing, setIsEditing] = React.useState(false);
   const [editValue, setEditValue] = React.useState(value);
@@ -115,14 +117,20 @@ export function InputField({
               : onChange(e.target.value)
           }
           onKeyDown={handleKeyDown}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onFocus={() => {
+            setIsFocused(true);
+            onFocusChange?.(true);
+          }}
+          onBlur={() => {
+            setIsFocused(false);
+            onFocusChange?.(false);
+          }}
           placeholder={placeholder}
           disabled={disabled}
-          className="flex-1 text-base text-high bg-transparent placeholder:text-low placeholder:opacity-80 focus:outline-none min-w-0"
+          className="flex-1 text-sm text-high bg-transparent placeholder:text-low placeholder:opacity-80 focus:outline-none min-w-0"
         />
       ) : (
-        <span className="flex-1 text-base text-normal truncate min-w-0">
+        <span className="flex-1 text-sm text-normal truncate min-w-0">
           {value || <span className="text-low opacity-80">{placeholder}</span>}
         </span>
       )}

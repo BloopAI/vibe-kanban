@@ -1,17 +1,30 @@
-import { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDropzone } from 'react-dropzone';
 import { useCreateMode } from '@/contexts/CreateModeContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
-import { getVariantOptions } from '@/utils/executor';
+import { getVariantOptions, areProfilesEqual } from '@/utils/executor';
 import { splitMessageToTitleDescription } from '@/utils/string';
-import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
+import type { ExecutorProfileId, BaseCodingAgent, Repo } from 'shared/types';
 import { CreateChatBox } from '../primitives/CreateChatBox';
+import { SettingsDialog } from '../dialogs/SettingsDialog';
+import { CreateModeRepoPickerBar } from './CreateModeRepoPickerBar';
 
-export function CreateChatBoxContainer() {
+function getRepoDisplayName(repo: Repo) {
+  return repo.display_name || repo.name;
+}
+
+interface CreateChatBoxContainerProps {
+  onWorkspaceCreated: ((workspaceId: string) => void) | null;
+}
+
+export function CreateChatBoxContainer({
+  onWorkspaceCreated,
+}: CreateChatBoxContainerProps) {
   const { t } = useTranslation('common');
-  const { profiles, config } = useUserSystem();
+  const { profiles, config, updateAndSaveConfig } = useUserSystem();
   const {
     repos,
     targetBranches,
@@ -22,10 +35,27 @@ export function CreateChatBoxContainer() {
     selectedProjectId,
     clearDraft,
     hasInitialValue,
+    linkedIssue,
+    clearLinkedIssue,
   } = useCreateMode();
 
-  const { createWorkspace } = useCreateWorkspace();
+  const { createWorkspace } = useCreateWorkspace({
+    onWorkspaceCreated: onWorkspaceCreated ?? undefined,
+  });
+  const hasSelectedRepos = repos.length > 0;
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
+  const [hasInitializedStep, setHasInitializedStep] = useState(false);
+  const [isSelectingRepos, setIsSelectingRepos] = useState(true);
+
+  useEffect(() => {
+    if (!hasInitialValue || hasInitializedStep) return;
+    setIsSelectingRepos(!hasSelectedRepos);
+    setHasInitializedStep(true);
+  }, [hasInitialValue, hasInitializedStep, hasSelectedRepos]);
+
+  const showRepoPickerStep = !hasSelectedRepos || isSelectingRepos;
+  const showChatStep = hasSelectedRepos && !isSelectingRepos;
 
   // Attachment handling - insert markdown and track image IDs
   const handleInsertMarkdown = useCallback(
@@ -40,6 +70,26 @@ export function CreateChatBoxContainer() {
 
   const { uploadFiles, getImageIds, clearAttachments, localImages } =
     useCreateAttachments(handleInsertMarkdown);
+
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const imageFiles = acceptedFiles.filter((f) =>
+        f.type.startsWith('image/')
+      );
+      if (imageFiles.length > 0) {
+        uploadFiles(imageFiles);
+      }
+    },
+    [uploadFiles]
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { 'image/*': [] },
+    disabled: createWorkspace.isPending || !hasSelectedRepos,
+    noClick: true,
+    noKeyboard: true,
+  });
 
   // Default to user's config profile or first available executor
   const effectiveProfile = useMemo<ExecutorProfileId | null>(() => {
@@ -64,15 +114,51 @@ export function CreateChatBoxContainer() {
     [effectiveProfile?.executor, profiles]
   );
 
+  // Detect if user has changed from their saved default
+  const hasChangedFromDefault = useMemo(() => {
+    if (!config?.executor_profile || !effectiveProfile) return false;
+    return !areProfilesEqual(effectiveProfile, config.executor_profile);
+  }, [effectiveProfile, config?.executor_profile]);
+
+  // Reset toggle when profile matches default again
+  useEffect(() => {
+    if (!hasChangedFromDefault) {
+      setSaveAsDefault(false);
+    }
+  }, [hasChangedFromDefault]);
+
   // Get project ID from context
   const projectId = selectedProjectId;
 
+  const repoId = repos.length === 1 ? repos[0]?.id : undefined;
+  const repoSummaryLabel = useMemo(() => {
+    if (repos.length === 1) {
+      const repo = repos[0];
+      if (!repo) return '0 repositories selected';
+      const branch = targetBranches[repo.id] ?? 'Select branch';
+      return `${getRepoDisplayName(repo)} · ${branch}`;
+    }
+
+    return `${repos.length} repositories selected`;
+  }, [repos, targetBranches]);
+
+  const repoSummaryTitle = useMemo(
+    () =>
+      repos
+        .map((repo) => {
+          const branch = targetBranches[repo.id] ?? 'Select branch';
+          return `${getRepoDisplayName(repo)} (${branch})`;
+        })
+        .join('\n'),
+    [repos, targetBranches]
+  );
+
   // Determine if we can submit
   const canSubmit =
-    repos.length > 0 &&
+    hasSelectedRepos &&
     message.trim().length > 0 &&
     effectiveProfile !== null &&
-    projectId !== undefined;
+    projectId !== null;
 
   // Handle variant change
   const handleVariantChange = useCallback(
@@ -86,17 +172,44 @@ export function CreateChatBoxContainer() {
     [effectiveProfile, setSelectedProfile]
   );
 
-  // Handle executor change - reset variant to first available
+  // Open settings modal to agent settings section
+  const handleCustomise = useCallback(() => {
+    SettingsDialog.show({ initialSection: 'agents' });
+  }, []);
+
+  // Handle executor change - use saved variant if switching to default executor
   const handleExecutorChange = useCallback(
     (executor: BaseCodingAgent) => {
       const executorConfig = profiles?.[executor];
-      const variants = executorConfig ? Object.keys(executorConfig) : [];
-      setSelectedProfile({
-        executor,
-        variant: variants[0] ?? null,
-      });
+      if (!executorConfig) {
+        setSelectedProfile({ executor, variant: null });
+        return;
+      }
+
+      const variants = Object.keys(executorConfig);
+      let targetVariant: string | null = null;
+
+      // If switching to user's default executor, use their saved variant
+      if (
+        config?.executor_profile?.executor === executor &&
+        config?.executor_profile?.variant
+      ) {
+        const savedVariant = config.executor_profile.variant;
+        if (variants.includes(savedVariant)) {
+          targetVariant = savedVariant;
+        }
+      }
+
+      // Fallback to DEFAULT or first available
+      if (!targetVariant) {
+        targetVariant = variants.includes('DEFAULT')
+          ? 'DEFAULT'
+          : (variants[0] ?? null);
+      }
+
+      setSelectedProfile({ executor, variant: targetVariant });
     },
-    [profiles, setSelectedProfile]
+    [profiles, setSelectedProfile, config?.executor_profile]
   );
 
   // Handle submit
@@ -104,23 +217,35 @@ export function CreateChatBoxContainer() {
     setHasAttemptedSubmit(true);
     if (!canSubmit || !effectiveProfile || !projectId) return;
 
+    // Save profile as default if toggle is checked
+    if (saveAsDefault && hasChangedFromDefault) {
+      await updateAndSaveConfig({ executor_profile: effectiveProfile });
+    }
+
     const { title, description } = splitMessageToTitleDescription(message);
 
     await createWorkspace.mutateAsync({
-      task: {
-        project_id: projectId,
-        title,
-        description,
-        status: null,
-        parent_workspace_id: null,
-        image_ids: getImageIds(),
-        shared_task_id: null,
+      data: {
+        task: {
+          project_id: projectId,
+          title,
+          description,
+          status: null,
+          parent_workspace_id: null,
+          image_ids: getImageIds(),
+        },
+        executor_profile_id: effectiveProfile,
+        repos: repos.map((r) => ({
+          repo_id: r.id,
+          target_branch: targetBranches[r.id] ?? 'main',
+        })),
       },
-      executor_profile_id: effectiveProfile,
-      repos: repos.map((r) => ({
-        repo_id: r.id,
-        target_branch: targetBranches[r.id] ?? 'main',
-      })),
+      linkToIssue: linkedIssue
+        ? {
+            remoteProjectId: linkedIssue.remoteProjectId,
+            issueId: linkedIssue.issueId,
+          }
+        : undefined,
     });
 
     // Clear attachments and draft after successful creation
@@ -137,6 +262,10 @@ export function CreateChatBoxContainer() {
     getImageIds,
     clearAttachments,
     clearDraft,
+    saveAsDefault,
+    hasChangedFromDefault,
+    updateAndSaveConfig,
+    linkedIssue,
   ]);
 
   // Determine error to display
@@ -171,35 +300,79 @@ export function CreateChatBoxContainer() {
 
   return (
     <div className="relative flex flex-1 flex-col bg-primary h-full">
-      <div className="flex-1" />
-      <div className="flex justify-center @container">
-        <CreateChatBox
-          editor={{
-            value: message,
-            onChange: setMessage,
-          }}
-          onSend={handleSubmit}
-          isSending={createWorkspace.isPending}
-          executor={{
-            selected: effectiveProfile?.executor ?? null,
-            options: Object.keys(profiles ?? {}) as BaseCodingAgent[],
-            onChange: handleExecutorChange,
-          }}
-          variant={
-            effectiveProfile
-              ? {
-                  selected: effectiveProfile.variant ?? 'DEFAULT',
-                  options: variantOptions,
-                  onChange: handleVariantChange,
-                }
-              : undefined
-          }
-          error={displayError}
-          projectId={projectId}
-          agent={effectiveProfile?.executor ?? null}
-          onPasteFiles={uploadFiles}
-          localImages={localImages}
-        />
+      <div className="flex flex-1 items-center justify-center px-base">
+        <div className="flex w-chat max-w-full flex-col gap-base">
+          {showRepoPickerStep && (
+            <>
+              <h2 className="mb-double text-center text-4xl font-medium tracking-tight text-high">
+                {t('createMode.headings.repoStep')}
+              </h2>
+              <CreateModeRepoPickerBar
+                onContinueToPrompt={() => setIsSelectingRepos(false)}
+              />
+            </>
+          )}
+
+          {showChatStep && (
+            <>
+              <h2 className="mb-double text-center text-4xl font-medium tracking-tight text-high">
+                {t('createMode.headings.chatStep')}
+              </h2>
+
+              <div className="flex justify-center @container">
+                <CreateChatBox
+                  editor={{
+                    value: message,
+                    onChange: setMessage,
+                  }}
+                  onSend={handleSubmit}
+                  isSending={createWorkspace.isPending}
+                  disabled={!hasSelectedRepos}
+                  executor={{
+                    selected: effectiveProfile?.executor ?? null,
+                    options: Object.keys(profiles ?? {}) as BaseCodingAgent[],
+                    onChange: handleExecutorChange,
+                  }}
+                  variant={
+                    effectiveProfile
+                      ? {
+                          selected: effectiveProfile.variant ?? 'DEFAULT',
+                          options: variantOptions,
+                          onChange: handleVariantChange,
+                          onCustomise: handleCustomise,
+                        }
+                      : undefined
+                  }
+                  saveAsDefault={{
+                    checked: saveAsDefault,
+                    onChange: setSaveAsDefault,
+                    visible: hasChangedFromDefault,
+                  }}
+                  error={displayError}
+                  repoIds={repos.map((r) => r.id)}
+                  projectId={projectId}
+                  agent={effectiveProfile?.executor ?? null}
+                  repoId={repoId}
+                  onPasteFiles={uploadFiles}
+                  localImages={localImages}
+                  dropzone={{ getRootProps, getInputProps, isDragActive }}
+                  onEditRepos={() => setIsSelectingRepos(true)}
+                  repoSummaryLabel={repoSummaryLabel}
+                  repoSummaryTitle={repoSummaryTitle}
+                  linkedIssue={
+                    linkedIssue?.simpleId
+                      ? {
+                          simpleId: linkedIssue.simpleId,
+                          title: linkedIssue.title ?? '',
+                          onRemove: clearLinkedIssue,
+                        }
+                      : null
+                  }
+                />
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

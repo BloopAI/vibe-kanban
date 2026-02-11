@@ -1,0 +1,292 @@
+---
+title: "Interface Guide"
+description: "Understanding the Workspaces four-panel layout and navigation"
+---
+
+<Frame>
+<img style={{maxHeight: "400px"}} src="/images/workspaces-interface-overview.png" alt="Workspaces interface showing the four-panel layout with labels for each section" />
+</Frame>
+
+The Workspaces UI uses a flexible four-panel layout designed for efficient AI-assisted development workflows.
+
+## Panel Overview
+
+| Panel | Position | Purpose |
+|-------|----------|---------|
+| **Workspace Sidebar** | Left edge | List of all workspaces with status indicators |
+| **Conversation Panel** | Left main | Chat with coding agents, session management |
+| **Context Panel** | Right main | Changes, logs, or preview (toggleable) |
+| **Details Sidebar** | Right edge | Git status, terminal, notes |
+
+## Navbar
+
+The navbar at the top of the workspace provides quick access to common actions.
+
+### Left Section
+
+| Icon | Action | Description |
+|:----:|--------|-------------|
+| <Icon icon="box-archive" /> | Archive Workspace | Move workspace to/from archive |
+| <Icon icon="arrow-right-from-bracket" /> | Open in Old UI | Switch to the classic interface |
+
+### Right Section - Panel Controls
+
+| Icon | Action | Description |
+|:----:|--------|-------------|
+| <Icon icon="sidebar" /> | Toggle Left Sidebar | Show/hide the workspace list |
+| <Icon icon="comments" /> | Toggle Chat Panel | Show/hide the conversation panel |
+| <Icon icon="code-compare" /> | Toggle Changes | Show/hide the changes panel |
+| <Icon icon="terminal" /> | Toggle Logs | Show/hide the logs panel |
+| <Icon icon="desktop" /> | Toggle Preview | Show/hide the preview panel |
+| <Icon icon="sidebar-flip" /> | Toggle Right Sidebar | Show/hide the details sidebar |
+
+### Right Section - Utilities
+
+| Icon | Action | Description |
+|:----:|--------|-------------|
+| <Icon icon="list" /> | Command Bar | Open the command bar |
+| <Icon icon="bullhorn" /> | Feedback | Send feedback about Workspaces |
+| <Icon icon="circle-question" /> | Workspaces Guide | Open the onboarding guide |
+| <Icon icon="gear" /> | Settings | Open application settings |
+
+<Tip>
+When the Changes panel is open, additional diff controls appear for toggling between side-by-side and inline views.
+</Tip>
+
+## Workspace Sidebar
+
+<Frame>
+<img style={{maxHeight: "350px"}} src="/images/workspaces-sidebar.png" alt="Workspace sidebar in flat list layout showing workspaces with timestamps and change counts" />
+</Frame>
+
+The left sidebar displays all your workspaces at a glance.
+
+Switch to accordion layout to group workspaces by status:
+
+<Frame>
+<img style={{maxHeight: "350px"}} src="/images/workspaces-sidebar-accordion.png" alt="Workspace sidebar in accordion layout grouped by Needs Attention, Idle, and Running" />
+</Frame>
+
+### Status Indicators
+
+Each workspace shows its current state:
+
+| Indicator | Meaning |
+|-----------|---------|
+| **Running** | Agent is actively processing |
+| **Idle** | Waiting for input |
+| **Needs Attention** | Pending approval required (raised hand icon) |
+| **Pinned** | Workspace pinned to top of list |
+| **Dev Server** | Blue indicator when dev server is running |
+| **PR Status** | Badge showing linked pull request status |
+
+### Workspace Actions
+
+- **Search**: Filter workspaces by name or branch
+- **Pin**: Keep important workspaces at the top
+- **Archive**: Move completed workspaces out of the main list
+- **Layout toggle**: Switch between flat list and accordion (grouped by status)
+
+### Creating a New Workspace
+
+<Frame>
+<img style={{maxHeight: "400px"}} src="/images/workspaces-create-new.png" alt="Create Workspace view showing project selection, repositories panel, and task description input" />
+</Frame>
+
+Click the **+** button at the top of the sidebar to create a new workspace. The interface switches to create mode:
+
+1. **Select a project** from the Project dropdown in the right sidebar
+2. **Add repositories** - click repos from the "Add Repositories" list or browse for repos on disk
+3. **Set target branch** - each selected repo shows its target branch (click to change)
+4. **Describe your task** in the chat input at the bottom
+5. **Select an agent** (e.g., Claude Code) and variant
+6. Click **Create** to start the workspace
+
+<Note>
+For detailed instructions, see [Creating Workspaces](/workspaces/creating-workspaces) and [Repositories](/workspaces/repositories).
+</Note>
+
+## Conversation Panel
+
+<Frame>
+<img style={{maxHeight: "400px"}} src="/images/workspaces-conversation.png" alt="Conversation panel showing chat history with coding agent and session switcher" />
+</Frame>
+
+The left main panel is where you interact with coding agents.
+
+### Chat Interface
+
+- View the full conversation history with the agent
+- Send messages and follow-up instructions
+- Rich text support for formatting
+- Approval workflows for reviewing agent plans
+- Agent and variant selection
+
+See [Chat Interface](/workspaces/chat-interface) for the complete guide.
+
+### Session Dropdown
+
+The chat box toolbar includes a session dropdown that lets you:
+
+- View all sessions in the workspace
+- Switch between sessions (shows "Latest" or timestamp)
+- Create a new session by selecting "New Session"
+
+<Tip>
+Create multiple sessions to work around conversation token limits or to run different agents in parallel.
+</Tip>
+
+See [Sessions](/workspaces/sessions) for more details on managing multiple sessions.
+
+### Chat Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Cmd/Ctrl + Enter` | Send message |
+| `Shift + Cmd/Ctrl + Enter` | Alternative send mode |
+| `Cmd/Ctrl + B` | Bold text |
+| `Cmd/Ctrl + I` | Italic text |
+| `Cmd/Ctrl + U` | Underline text |
+
+## Context Panel
+
+The right main panel toggles between three views:
+
+### Changes View
+
+<Frame>
+<img style={{maxHeight: "400px"}} src="/images/workspaces-changes-panel.png" alt="Changes panel showing file tree and diff viewer with code changes" />
+</Frame>
+
+Displays all modified files with inline diffs:
+
+- **File tree**: Hierarchical view of changed files
+- **Search**: Filter files by name
+- **Diff viewer**: See code changes with syntax highlighting
+- **Comments**: Add inline comments for agent feedback
+
+### Logs View
+
+<Frame>
+<img style={{maxHeight: "350px"}} src="/images/workspaces-logs-panel.png" alt="Logs panel showing process output with tabs for different processes" />
+</Frame>
+
+Shows process execution logs:
+
+- **Process tabs**: Switch between different running processes
+- **Log output**: View stdout/stderr in real-time
+- **Search logs**: Filter log content
+
+### Preview View
+
+<Frame>
+<img style={{maxHeight: "400px"}} src="/images/workspaces-preview-panel.png" alt="Preview panel showing built-in browser with dev server output" />
+</Frame>
+
+Built-in browser for testing your application:
+
+- **Dev server tabs**: Multiple dev servers supported
+- **Device modes**: Desktop, mobile, custom viewport
+- **Process logs**: View dev server output
+
+Toggle between views using the navbar buttons or the [command bar](/workspaces/command-bar).
+
+## Details Sidebar
+
+The right sidebar provides quick access to workspace details.
+
+### Git Section
+
+<Frame>
+<img style={{maxHeight: "300px"}} src="/images/workspaces-git-panel.png" alt="Git section showing repository, branch, and pull request options" />
+</Frame>
+
+Always visible, showing:
+
+- Current repository and branch
+- Target branch for merging
+- Uncommitted changes count
+- Commits ahead/behind target
+- Quick access to [git operations](/workspaces/git-operations)
+
+See [Repositories](/workspaces/repositories) for details on managing repositories and branches.
+
+### Terminal Section
+
+<Frame>
+<img style={{maxHeight: "300px"}} src="/images/workspaces-terminal.png" alt="Integrated terminal in the details sidebar showing command output" />
+</Frame>
+
+<Note>
+The integrated terminal is a new feature exclusive to the Workspaces UI and is not available in the classic interface.
+</Note>
+
+The expandable terminal lets you run commands directly in your workspace:
+
+- **Full terminal emulation** powered by xterm.js
+- **Run any command** - git, npm, build scripts, etc.
+- **Persistent state** - terminal persists across panel toggles
+- **Expandable** - collapse when not needed, expand when you need it
+
+### Notes Section
+
+<Frame>
+<img style={{maxHeight: "250px"}} src="/images/workspaces-notes.png" alt="Notes section in the details sidebar showing rich text editor with workspace notes" />
+</Frame>
+
+<Note>
+Workspace notes are a new feature exclusive to the Workspaces UI and are not available in the classic interface.
+</Note>
+
+The expandable notes section lets you document important information:
+
+- **Auto-save** - Notes save automatically as you type
+- **Per-workspace** - Each workspace has its own notes
+- **Persistent** - Notes are preserved across sessions
+
+## Context Bar
+
+<Frame>
+<img style={{maxHeight: "150px"}} src="/images/workspaces-context-bar.png" alt="Context bar floating toolbar showing quick action buttons" />
+</Frame>
+
+A floating toolbar that provides quick access to common actions:
+
+| Icon | Action | Description |
+|:----:|--------|-------------|
+| *IDE logo* | Open in IDE | Launch workspace in your configured editor (icon shows your IDE) |
+| <Icon icon="copy" /> | Copy Path | Copy the workspace path to clipboard |
+| <Icon icon="play" /> | Toggle Dev Server | Start or stop the development server |
+| <Icon icon="desktop" /> | Toggle Preview | Show or hide the preview panel |
+| <Icon icon="code-branch" /> | Toggle Changes | Show or hide the changes panel |
+
+<Tip>
+The context bar is draggable - position it wherever works best for your workflow.
+</Tip>
+
+## Resizing Panels
+
+Drag the separators between panels to adjust their proportions. Your layout preferences are saved per workspace.
+
+## Toggling Panels
+
+Show or hide panels to focus on what matters:
+
+- Use the navbar toggle buttons
+- Use the [command bar](/workspaces/command-bar) with `Cmd/Ctrl + K`
+- View Options commands let you toggle any panel
+
+<Info>
+Panel states are remembered, so your preferred layout is restored when you return to a workspace.
+</Info>
+
+## Related Documentation
+
+- [Creating Workspaces](/workspaces/creating-workspaces) - Step-by-step guide to creating workspaces
+- [Repositories](/workspaces/repositories) - Managing repositories and branches
+- [Sessions](/workspaces/sessions) - Working with multiple conversation sessions
+- [Chat Interface](/workspaces/chat-interface) - Complete guide to the conversation panel
+- [Command Bar](/workspaces/command-bar) - Master keyboard shortcuts and quick actions
+- [Preview](/workspaces/preview) - Built-in browser for testing your application
+- [Changes Panel](/workspaces/changes) - Review code modifications and provide feedback
+- [Git Operations](/workspaces/git-operations) - Create PRs, merge, rebase, and manage branches

@@ -9,9 +9,17 @@ import {
   ChatCircleIcon,
   TrashIcon,
   WarningIcon,
+  ArrowUpIcon,
+  ArrowsOutIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import type { Session, BaseCodingAgent, TodoItem } from 'shared/types';
+import {
+  BaseAgentCapability,
+  type BaseCodingAgent,
+  type Session,
+  type TodoItem,
+  type TokenUsageInfo,
+} from 'shared/types';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { formatDateShortWithTime } from '@/utils/date';
 import { toPrettyCase } from '@/utils/string';
@@ -19,17 +27,30 @@ import { AgentIcon } from '@/components/agents/AgentIcon';
 import {
   ChatBoxBase,
   VisualVariant,
+  type DropzoneProps,
   type EditorProps,
   type VariantProps,
 } from './ChatBoxBase';
 import { PrimaryButton } from './PrimaryButton';
 import { ToolbarIconButton, ToolbarDropdown } from './Toolbar';
 import {
+  type ActionDefinition,
+  type ActionVisibilityContext,
+  isSpecialIcon,
+} from '../actions';
+import {
+  isActionEnabled,
+  getActionTooltip,
+} from '../actions/useActionVisibility';
+import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from './Dropdown';
 import { type ExecutorProps } from './CreateChatBox';
+import { ContextUsageGauge } from './ContextUsageGauge';
+import { TodoProgressPopup } from './TodoProgressPopup';
+import { useUserSystem } from '@/components/ConfigProvider';
 
 // Re-export shared types
 export type { EditorProps, VariantProps } from './ChatBoxBase';
@@ -57,17 +78,20 @@ interface SessionProps {
   sessions: Session[];
   selectedSessionId?: string;
   onSelectSession: (sessionId: string) => void;
-  /** Whether user is creating a new session */
   isNewSessionMode?: boolean;
-  /** Callback to start new session mode */
   onNewSession?: () => void;
+}
+
+interface ToolbarActionsProps {
+  actions: ActionDefinition[];
+  context: ActionVisibilityContext;
+  onExecuteAction: (action: ActionDefinition) => void;
 }
 
 interface StatsProps {
   filesChanged?: number;
   linesAdded?: number;
   linesRemoved?: number;
-  onViewCode?: () => void;
   hasConflicts?: boolean;
   conflictedFilesCount?: number;
 }
@@ -115,19 +139,22 @@ interface SessionChatBoxProps {
   variant?: VariantProps;
   feedbackMode?: FeedbackModeProps;
   editMode?: EditModeProps;
-  /** Approval mode for pending plan approvals */
   approvalMode?: ApprovalModeProps;
-  /** Review comments from diff viewer */
   reviewComments?: ReviewCommentsProps;
+  toolbarActions?: ToolbarActionsProps;
   error?: string | null;
+  repoIds?: string[];
   projectId?: string;
   agent?: BaseCodingAgent | null;
-  /** Executor selection for new session mode */
   executor?: ExecutorProps;
-  /** Currently in-progress todo item (shown when agent is running) */
+  todos?: TodoItem[];
   inProgressTodo?: TodoItem | null;
-  /** Local images for immediate preview (before saved to server) */
   localImages?: LocalImageMetadata[];
+  onViewCode?: () => void;
+  onOpenWorkspace?: () => void;
+  onScrollToPreviousMessage?: () => void;
+  tokenUsageInfo?: TokenUsageInfo | null;
+  dropzone?: DropzoneProps;
 }
 
 /**
@@ -145,15 +172,27 @@ export function SessionChatBox({
   editMode,
   approvalMode,
   reviewComments,
+  toolbarActions,
   error,
+  repoIds,
   projectId,
   agent,
   executor,
+  todos,
   inProgressTodo,
   localImages,
+  onViewCode,
+  onOpenWorkspace,
+  onScrollToPreviousMessage,
+  tokenUsageInfo,
+  dropzone,
 }: SessionChatBoxProps) {
   const { t } = useTranslation('tasks');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { capabilities } = useUserSystem();
+
+  const supportsContextUsage =
+    agent && capabilities?.[agent]?.includes(BaseAgentCapability.CONTEXT_USAGE);
 
   // Determine if in feedback mode, edit mode, or approval mode
   const isInFeedbackMode = feedbackMode?.isActive ?? false;
@@ -187,7 +226,6 @@ export function SessionChatBox({
     !isInApprovalMode &&
     editor.value.trim().length === 0;
 
-  // Placeholder
   const placeholder = isInFeedbackMode
     ? 'Provide feedback for the plan...'
     : isInEditMode
@@ -235,7 +273,6 @@ export function SessionChatBox({
     fileInputRef.current?.click();
   };
 
-  // Session dropdown
   const {
     sessions,
     selectedSessionId,
@@ -483,7 +520,9 @@ export function SessionChatBox({
       placeholder={placeholder}
       onCmdEnter={handleCmdEnter}
       disabled={isDisabled}
+      repoIds={repoIds}
       projectId={projectId}
+      executor={agent || executor?.selected}
       autoFocus={true}
       focusKey={focusKey}
       variant={variant}
@@ -493,6 +532,7 @@ export function SessionChatBox({
       isRunning={showRunningAnimation}
       onPasteFiles={actions.onPasteFiles}
       localImages={localImages}
+      dropzone={dropzone}
       headerLeft={
         <>
           {/* New session mode: agent icon + executor dropdown */}
@@ -525,29 +565,62 @@ export function SessionChatBox({
           {!isNewSessionMode && (
             <>
               {isRunning && inProgressTodo ? (
-                <span className="text-sm flex items-center gap-1">
+                <span className="text-sm flex items-center gap-1 min-w-0">
                   <SpinnerIcon className="size-icon-sm animate-spin flex-shrink-0" />
-                  <span className="truncate max-w-[200px]">
-                    {inProgressTodo.content}
-                  </span>
+                  <span className="truncate">{inProgressTodo.content}</span>
                 </span>
               ) : (
                 <>
                   {stats?.hasConflicts && (
                     <span
-                      className="flex items-center gap-1 text-warning text-sm"
+                      className="flex items-center gap-1 text-warning text-sm min-w-0"
                       title={t('conversation.approval.conflictWarning')}
                     >
-                      <WarningIcon className="size-icon-sm" />
-                      <span>
+                      <WarningIcon className="size-icon-sm flex-shrink-0" />
+                      <span className="truncate">
                         {t('conversation.approval.conflicts', {
                           count: stats.conflictedFilesCount,
                         })}
                       </span>
                     </span>
                   )}
-                  <PrimaryButton variant="tertiary" onClick={stats?.onViewCode}>
-                    <span className="text-sm space-x-half">
+                  {onOpenWorkspace ? (
+                    <PrimaryButton
+                      variant="secondary"
+                      onClick={onOpenWorkspace}
+                      value="Open Workspace"
+                      actionIcon={ArrowsOutIcon}
+                      className="min-w-0"
+                    />
+                  ) : onViewCode ? (
+                    <PrimaryButton
+                      variant="tertiary"
+                      onClick={onViewCode}
+                      className="min-w-0"
+                    >
+                      <span className="text-sm space-x-half whitespace-nowrap truncate">
+                        <span>
+                          {t('diff.filesChanged', { count: filesChanged })}
+                        </span>
+                        {(linesAdded !== undefined ||
+                          linesRemoved !== undefined) && (
+                          <span className="space-x-half">
+                            {linesAdded !== undefined && (
+                              <span className="text-success">
+                                +{linesAdded}
+                              </span>
+                            )}
+                            {linesRemoved !== undefined && (
+                              <span className="text-error">
+                                -{linesRemoved}
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </span>
+                    </PrimaryButton>
+                  ) : (
+                    <span className="text-sm text-low space-x-half whitespace-nowrap truncate min-w-0">
                       <span>
                         {t('diff.filesChanged', { count: filesChanged })}
                       </span>
@@ -563,7 +636,7 @@ export function SessionChatBox({
                         </span>
                       )}
                     </span>
-                  </PrimaryButton>
+                  )}
                 </>
               )}
             </>
@@ -572,13 +645,29 @@ export function SessionChatBox({
       }
       headerRight={
         <>
-          {/* Agent icon for existing session mode */}
+          {/* Scroll to previous user message button + Agent icon for existing session mode */}
           {!isNewSessionMode && (
-            <AgentIcon agent={agent} className="size-icon-xl" />
+            <>
+              {onScrollToPreviousMessage && (
+                <ToolbarIconButton
+                  icon={ArrowUpIcon}
+                  title={t('conversation.actions.scrollToPreviousMessage')}
+                  aria-label={t('conversation.actions.scrollToPreviousMessage')}
+                  onClick={onScrollToPreviousMessage}
+                />
+              )}
+              <AgentIcon agent={agent} className="size-icon-xl" />
+            </>
+          )}
+          {/* Todo progress popup - always rendered, disabled when no todos */}
+          <TodoProgressPopup todos={todos ?? []} />
+          {supportsContextUsage && (
+            <ContextUsageGauge tokenUsageInfo={tokenUsageInfo} />
           )}
           <ToolbarDropdown
             label={sessionLabel}
             disabled={isInFeedbackMode || isInEditMode || isInApprovalMode}
+            className="min-w-0 max-w-[120px]"
           >
             {/* New Session option */}
             <DropdownMenuItem
@@ -603,9 +692,15 @@ export function SessionChatBox({
                     }
                     onClick={() => onSelectSession(s.id)}
                   >
-                    {index === 0
-                      ? t('conversation.sessions.latest')
-                      : formatDateShortWithTime(s.created_at)}
+                    <span className="flex items-center gap-1.5">
+                      <AgentIcon
+                        agent={s.executor as BaseCodingAgent}
+                        className="size-icon shrink-0"
+                      />
+                      {index === 0
+                        ? t('conversation.sessions.latest')
+                        : formatDateShortWithTime(s.created_at)}
+                    </span>
                   </DropdownMenuItem>
                 ))}
               </>
@@ -621,7 +716,8 @@ export function SessionChatBox({
         <>
           <ToolbarIconButton
             icon={PaperclipIcon}
-            aria-label="Attach file"
+            aria-label={t('tasks:taskFormDialog.attachImage')}
+            title={t('tasks:taskFormDialog.attachImage')}
             onClick={handleAttachClick}
             disabled={isDisabled || isRunning}
           />
@@ -633,6 +729,31 @@ export function SessionChatBox({
             className="hidden"
             onChange={handleFileInputChange}
           />
+          {toolbarActions?.actions.map((action) => {
+            const icon = action.icon;
+            // Skip special icons in toolbar (only standard phosphor icons)
+            if (isSpecialIcon(icon)) return null;
+            const actionEnabled = isActionEnabled(
+              action,
+              toolbarActions.context
+            );
+            const isButtonDisabled = isDisabled || isRunning || !actionEnabled;
+            const label =
+              typeof action.label === 'function'
+                ? action.label()
+                : action.label;
+            const tooltip = getActionTooltip(action, toolbarActions.context);
+            return (
+              <ToolbarIconButton
+                key={action.id}
+                icon={icon}
+                aria-label={label}
+                title={tooltip}
+                onClick={() => toolbarActions.onExecuteAction(action)}
+                disabled={isButtonDisabled}
+              />
+            );
+          })}
         </>
       }
       footerRight={renderActionButtons()}

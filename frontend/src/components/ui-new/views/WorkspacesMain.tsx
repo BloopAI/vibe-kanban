@@ -4,11 +4,16 @@ import type { Session } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionChatBoxContainer';
 import { ContextBarContainer } from '@/components/ui-new/containers/ContextBarContainer';
-import { ConversationList } from '../ConversationList';
+import {
+  ConversationList,
+  type ConversationListHandle,
+} from '../containers/ConversationListContainer';
 import { EntriesProvider } from '@/contexts/EntriesContext';
 import { MessageEditProvider } from '@/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
+
+export type { ConversationListHandle };
 
 interface DiffStats {
   filesChanged: number;
@@ -22,14 +27,18 @@ interface WorkspacesMainProps {
   onSelectSession: (sessionId: string) => void;
   isLoading: boolean;
   containerRef: RefObject<HTMLElement | null>;
+  conversationListRef: RefObject<ConversationListHandle>;
   projectId?: string;
-  onViewCode?: () => void;
   /** Whether user is creating a new session */
   isNewSessionMode?: boolean;
   /** Callback to start new session mode */
   onStartNewSession?: () => void;
   /** Diff statistics from the workspace */
   diffStats?: DiffStats;
+  /** Callback to scroll to previous user message */
+  onScrollToPreviousMessage: () => void;
+  /** Callback to scroll to bottom of conversation */
+  onScrollToBottom: () => void;
 }
 
 export function WorkspacesMain({
@@ -38,11 +47,13 @@ export function WorkspacesMain({
   onSelectSession,
   isLoading,
   containerRef,
+  conversationListRef,
   projectId,
-  onViewCode,
   isNewSessionMode,
   onStartNewSession,
   diffStats,
+  onScrollToPreviousMessage,
+  onScrollToBottom,
 }: WorkspacesMainProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const { session } = workspaceWithSession ?? {};
@@ -77,7 +88,10 @@ export function WorkspacesMain({
               <div className="flex-1 min-h-0 overflow-hidden flex justify-center">
                 <div className="w-chat max-w-full h-full">
                   <RetryUiProvider attemptId={workspaceWithSession.id}>
-                    <ConversationList attempt={workspaceWithSession} />
+                    <ConversationList
+                      ref={conversationListRef}
+                      attempt={workspaceWithSession}
+                    />
                   </RetryUiProvider>
                 </div>
               </div>
@@ -85,17 +99,31 @@ export function WorkspacesMain({
             {/* Chat box - always rendered to prevent flash during workspace switch */}
             <div className="flex justify-center @container pl-px">
               <SessionChatBoxContainer
-                session={session}
+                {...(isNewSessionMode && workspaceWithSession
+                  ? {
+                      mode: 'new-session',
+                      workspaceId: workspaceWithSession.id,
+                      onSelectSession,
+                    }
+                  : session
+                    ? {
+                        mode: 'existing-session',
+                        session,
+                        onSelectSession,
+                        onStartNewSession,
+                      }
+                    : {
+                        mode: 'placeholder',
+                      })}
                 sessions={sessions}
-                onSelectSession={onSelectSession}
-                filesChanged={diffStats?.filesChanged}
-                linesAdded={diffStats?.linesAdded}
-                linesRemoved={diffStats?.linesRemoved}
-                onViewCode={onViewCode}
                 projectId={projectId}
-                isNewSessionMode={isNewSessionMode}
-                onStartNewSession={onStartNewSession}
-                workspaceId={workspaceWithSession?.id}
+                filesChanged={diffStats?.filesChanged ?? 0}
+                linesAdded={diffStats?.linesAdded ?? 0}
+                linesRemoved={diffStats?.linesRemoved ?? 0}
+                disableViewCode={false}
+                showOpenWorkspaceButton={false}
+                onScrollToPreviousMessage={onScrollToPreviousMessage}
+                onScrollToBottom={onScrollToBottom}
               />
             </div>
           </MessageEditProvider>
@@ -103,10 +131,7 @@ export function WorkspacesMain({
       </ApprovalFeedbackProvider>
       {/* Context Bar - floating toolbar */}
       {workspaceWithSession && (
-        <ContextBarContainer
-          containerRef={containerRef}
-          containerPath={workspaceWithSession.container_ref ?? undefined}
-        />
+        <ContextBarContainer containerRef={containerRef} />
       )}
     </main>
   );

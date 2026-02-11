@@ -10,6 +10,8 @@ use regex::Regex;
 use serde_json::{Map, Value};
 use thiserror::Error;
 
+use super::codex_home;
+
 const FILENAME_TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H-%M-%S";
 
 #[derive(Debug, Error)]
@@ -172,9 +174,10 @@ impl SessionHandler {
     }
 
     fn sessions_root() -> Result<PathBuf, SessionError> {
-        let home_dir = dirs::home_dir()
-            .ok_or_else(|| SessionError::Io("Could not determine home directory".to_string()))?;
-        Ok(home_dir.join(".codex").join("sessions"))
+        let codex_dir = codex_home().ok_or_else(|| {
+            SessionError::Io("Could not determine Codex home directory".to_string())
+        })?;
+        Ok(codex_dir.join("sessions"))
     }
 
     fn scan_directory(dir: &Path, session_id: &str) -> Result<PathBuf, SessionError> {

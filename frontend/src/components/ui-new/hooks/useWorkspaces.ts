@@ -13,6 +13,7 @@ export interface SidebarWorkspace {
   id: string;
   taskId: string;
   name: string;
+  branch: string;
   description: string;
   filesChanged?: number;
   linesAdded?: number;
@@ -25,6 +26,7 @@ export interface SidebarWorkspace {
   hasUnseenActivity?: boolean;
   latestProcessCompletedAt?: string;
   latestProcessStatus?: 'running' | 'completed' | 'failed' | 'killed';
+  prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
 }
 
 // Keep the old export name for backwards compatibility
@@ -52,6 +54,7 @@ function toSidebarWorkspace(
     id: ws.id,
     taskId: ws.task_id,
     name: ws.name ?? ws.branch, // Use name if available, fallback to branch
+    branch: ws.branch,
     description: '',
     // Use real stats from summary if available
     filesChanged: summary?.files_changed ?? undefined,
@@ -67,6 +70,7 @@ function toSidebarWorkspace(
     hasUnseenActivity: summary?.has_unseen_turns,
     latestProcessCompletedAt: summary?.latest_process_completed_at ?? undefined,
     latestProcessStatus: summary?.latest_process_status ?? undefined,
+    prStatus: summary?.pr_status ?? undefined,
   };
 }
 

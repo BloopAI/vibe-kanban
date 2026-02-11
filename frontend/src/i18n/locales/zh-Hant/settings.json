@@ -1,18 +1,31 @@
 {
   "settings": {
+    "common": {
+      "unsavedChanges": "• 您有未儲存的變更"
+    },
+    "unsavedChanges": {
+      "title": "未儲存的變更",
+      "message": "您有未儲存的變更。確定要關閉而不儲存嗎？",
+      "discard": "放棄變更",
+      "cancel": "繼續編輯"
+    },
     "layout": {
       "nav": {
         "title": "設定",
         "general": "一般",
         "generalDesc": "主題、通知與偏好設定",
         "projects": "專案",
-        "projectsDesc": "專案腳本與設定",
+        "projectsDesc": "專案儲存庫與設定",
+        "repos": "儲存庫",
+        "reposDesc": "儲存庫腳本與設定",
         "agents": "代理",
         "agentsDesc": "編碼代理設定",
         "mcp": "MCP 伺服器",
         "mcpDesc": "模型上下文協議伺服器",
         "organizations": "組織設定",
-        "organizationsDesc": "管理組織成員與權限"
+        "organizationsDesc": "管理組織成員與權限",
+        "remote-projects": "專案",
+        "remote-projectsDesc": "管理專案"
       }
     },
     "general": {
@@ -133,6 +146,14 @@
             "invalidChars": "包含無效字元。",
             "controlChars": "包含控制字元。"
           }
+        },
+        "workspaceDir": {
+          "label": "工作區目錄",
+          "placeholder": "~/",
+          "helper": "工作區將在此路徑內的 .vibe-kanban-workspaces 子目錄中建立。留空以使用系統預設值。變更需要重新啟動應用程式。",
+          "browse": "瀏覽",
+          "dialogTitle": "選擇工作區目錄",
+          "dialogDescription": "選擇一個目錄。工作區將在其中的 .vibe-kanban-workspaces 子目錄中建立。"
         }
       },
       "pullRequests": {
@@ -145,6 +166,18 @@
         "customPrompt": {
           "useCustom": "使用自訂提示",
           "helper": "產生 PR 描述時 AI 代理使用的自訂提示。使用 {pr_number} 與 {pr_url} 作為佔位符。"
+        }
+      },
+      "commits": {
+        "title": "提交",
+        "description": "設定任務嘗試的提交行為",
+        "reminder": {
+          "label": "提交提醒",
+          "helper": "提示支援的代理在停止前提交變更。"
+        },
+        "customPrompt": {
+          "useCustom": "使用自訂提示",
+          "helper": "提交提醒的自訂提示。git 狀態將自動追加。"
         }
       },
       "notifications": {
@@ -160,6 +193,15 @@
         "push": {
           "label": "推播通知",
           "helper": "任務嘗試完成執行時顯示系統通知。"
+        }
+      },
+      "messageInput": {
+        "title": "訊息輸入",
+        "description": "設定在聊天輸入中傳送訊息的方式。",
+        "shortcut": {
+          "label": "傳送訊息快捷鍵",
+          "helper": "選擇傳送訊息的鍵盤快捷鍵。",
+          "enterLabel": "Enter（Shift+Enter 換行）"
         }
       },
       "privacy": {
@@ -230,24 +272,35 @@
           "description": "重設入門流程。",
           "button": "重設"
         }
+      },
+      "beta": {
+        "title": "Beta 功能",
+        "description": "在正式發布前試用實驗性功能。",
+        "workspaces": {
+          "label": "啟用工作區 Beta",
+          "helper": "查看任務嘗試時使用新的工作區介面。任務將首先在任務檢視中開啟，嘗試將在新的工作區檢視中開啟。"
+        }
       }
     },
     "agents": {
       "title": "編碼代理設定",
       "description": "使用不同設定自訂編碼代理的行為。",
       "loading": "載入代理設定中...",
+      "selectAgent": "選擇代理",
       "save": {
         "button": "儲存代理設定",
-        "success": "✓ 執行器設定儲存成功！"
+        "success": "✓ 執行器設定儲存成功！",
+        "unsavedChanges": "• 您有未儲存的變更"
       },
       "availability": {
         "checking": "檢查中...",
+        "checkingAvailability": "正在檢查可用性...",
+        "available": "代理可用",
+        "notFoundSimple": "找不到代理",
         "loginDetected": "偵測到最近使用",
         "loginDetectedTooltip": "找到此代理的最近驗證憑證",
         "installationFound": "偵測到曾使用",
-        "installationFoundTooltip": "找到代理設定。您可能需要登入才能使用。",
-        "notFound": "未找到",
-        "notFoundTooltip": "未偵測到曾使用。代理可能需要安裝和/或登入。"
+        "installationFoundTooltip": "找到代理設定。您可能需要登入才能使用。"
       },
       "editor": {
         "formLabel": "編輯 JSON",
@@ -259,6 +312,8 @@
         "deleteTitle": "無法刪除最後一個設定",
         "deleteButton": "刪除 {{name}}",
         "deleteText": "刪除",
+        "makeDefault": "設為預設",
+        "isDefault": "預設",
         "jsonLabel": "代理設定（JSON）",
         "jsonPlaceholder": "載入設定檔中...",
         "jsonLoading": "載入中...",
@@ -267,7 +322,20 @@
       "errors": {
         "deleteFailed": "刪除設定失敗。請重試。",
         "saveFailed": "儲存代理設定失敗。請重試。",
-        "saveConfigFailed": "儲存設定失敗。請重試。"
+        "saveConfigFailed": "儲存設定失敗。請重試。",
+        "schemaNotFound": "找不到執行器類型 {{executor}} 的結構描述"
+      },
+      "tree": {
+        "search": "搜尋設定...",
+        "expandAll": "全部展開",
+        "collapseAll": "全部收合",
+        "noResults": "沒有符合的設定",
+        "noConfigs": "沒有可用的設定",
+        "selectConfig": "從側邊欄選擇一個設定來查看和編輯其設定。"
+      },
+      "deleteConfigDialog": {
+        "title": "刪除設定？",
+        "description": "這將從 {{executorType}} 執行器中永久刪除「{{configName}}」。此操作無法復原。"
       }
     },
     "mcp": {
@@ -303,7 +371,8 @@
         "button": "儲存 MCP 設定",
         "success": "設定已儲存！",
         "successMessage": "✓ MCP 設定儲存成功！",
-        "loading": "載入目前 MCP 伺服器設定..."
+        "loading": "載入目前 MCP 伺服器設定...",
+        "unsavedChanges": "• 您有未儲存的變更"
       }
     },
     "projects": {
@@ -331,38 +400,6 @@
           "helper": "磁碟上的 Git 儲存庫絕對路徑。"
         }
       },
-      "scripts": {
-        "title": "腳本與設定",
-        "description": "為此專案設定設定腳本、清理腳本與要複製的檔案。",
-        "setup": {
-          "label": "設定腳本",
-          "helper": "此腳本在工作樹內執行，於建立後、編碼代理啟動前執行。用於安裝相依套件或準備環境等設定工作。",
-          "parallelLabel": "與編碼代理平行執行設定腳本",
-          "parallelHelper": "啟用後，設定腳本將與編碼代理同時執行，而不是等待設定完成後再啟動。"
-        },
-        "dev": {
-          "label": "開發伺服器腳本",
-          "helper": "從任務嘗試中啟動開發伺服器。腳本會從工作區目錄（每個儲存庫工作樹的上一層）執行，除非在下方指定工作目錄。"
-        },
-        "devWorkingDir": {
-          "label": "開發伺服器工作目錄",
-          "placeholder": "例如：my-repo",
-          "helper": "執行開發伺服器腳本的目錄，相對於工作區根目錄。留空則從工作區根目錄執行。"
-        },
-        "agentWorkingDir": {
-          "label": "代理工作目錄",
-          "placeholder": "例如：my-repo",
-          "helper": "新工作區執行編碼代理的預設目錄，相對於工作區根目錄。此值在建立工作區時保存，不會影響現有工作區。單一儲存庫專案預設為儲存庫名稱。留空則從工作區根目錄執行。"
-        },
-        "cleanup": {
-          "label": "清理腳本",
-          "helper": "此腳本在工作樹內執行，於編碼代理執行後（僅在有變更時）執行。用於品質保證工作，如執行 linter、格式化工具、測試或其他驗證步驟。若無變更將略過此腳本。"
-        },
-        "copyFiles": {
-          "label": "複製檔案",
-          "helper": "要從原始專案目錄複製到工作樹的檔案清單（以逗號分隔）。這些檔案會在建立工作樹後但在執行設定腳本前複製。適合用於 .env、設定檔與本機設定等環境特定檔案。請確保這些檔案已加入 gitignore，否則可能會被提交！"
-        }
-      },
       "save": {
         "button": "儲存專案設定",
         "success": "✓ 專案設定儲存成功！",
@@ -370,6 +407,85 @@
         "unsavedChanges": "• 您有未儲存的變更",
         "discard": "放棄",
         "confirmSwitch": "您有未儲存的變更。確定要切換專案嗎？您的變更將會遺失。"
+      },
+      "repositories": {
+        "title": "儲存庫",
+        "description": "管理此專案中的 Git 儲存庫",
+        "noRepositories": "未設定儲存庫",
+        "addRepository": "新增儲存庫"
+      }
+    },
+    "repos": {
+      "title": "儲存庫設定",
+      "description": "設定此儲存庫在工作區中使用時執行的腳本。",
+      "loading": "載入儲存庫中...",
+      "loadError": "載入儲存庫失敗。",
+      "selector": {
+        "label": "選擇儲存庫",
+        "placeholder": "選擇要設定的儲存庫",
+        "helper": "選擇儲存庫以查看與編輯其設定。",
+        "noRepos": "沒有可用的儲存庫"
+      },
+      "general": {
+        "title": "一般設定",
+        "description": "設定基本儲存庫資訊。",
+        "displayName": {
+          "label": "顯示名稱",
+          "placeholder": "輸入顯示名稱",
+          "helper": "此儲存庫的易讀名稱。"
+        },
+        "path": {
+          "label": "儲存庫路徑"
+        },
+        "defaultWorkingDir": {
+          "label": "預設工作目錄",
+          "placeholder": "例如：packages/frontend",
+          "helper": "單儲存庫工作區中程式碼代理執行的子目錄。在建立工作區時設定。留空則使用儲存庫根目錄。"
+        },
+        "defaultTargetBranch": {
+          "label": "預設目標分支",
+          "placeholder": "選擇分支",
+          "helper": "新工作區的預設基礎分支。工作樹從此分支建立，PR 將以此分支為目標。",
+          "search": "搜尋分支",
+          "noBranches": "找不到分支",
+          "loading": "正在載入分支...",
+          "useCurrent": "使用目前分支"
+        }
+      },
+      "scripts": {
+        "title": "腳本與設定",
+        "description": "設定此儲存庫的設定腳本、清理腳本與要複製的檔案。這些腳本在儲存庫用於任何工作區時執行。",
+        "setup": {
+          "label": "設定腳本",
+          "helper": "此腳本在工作樹內執行，於建立後、編碼代理啟動前執行。用於安裝相依套件或準備環境等設定工作。",
+          "parallelLabel": "與編碼代理平行執行設定腳本",
+          "parallelHelper": "啟用後，設定腳本將與編碼代理同時執行，而不是等待設定完成後再啟動。"
+        },
+        "cleanup": {
+          "label": "清理腳本",
+          "helper": "此腳本在工作樹內執行，於編碼代理執行後（僅在有變更時）執行。用於品質保證工作，如執行 linter、格式化工具、測試或其他驗證步驟。"
+        },
+        "archive": {
+          "label": "歸檔腳本",
+          "helper": "當工作區被歸檔時，此腳本在工作樹內執行。用於清理工作，如停止服務、釋放資源或儲存狀態。"
+        },
+        "copyFiles": {
+          "label": "複製檔案",
+          "helper": "要從原始儲存庫目錄複製到工作樹的檔案清單（以逗號分隔）。適合用於 .env 等環境檔案。請確保這些檔案已加入 gitignore！",
+          "placeholder": "檔案路徑或 glob 模式（例如：.env、config/*.json）"
+        },
+        "devServer": {
+          "label": "開發伺服器腳本",
+          "helper": "啟動此儲存庫的開發伺服器。腳本會從儲存庫的工作樹目錄執行。"
+        }
+      },
+      "save": {
+        "button": "儲存儲存庫設定",
+        "success": "儲存庫設定儲存成功！",
+        "error": "儲存儲存庫設定失敗",
+        "unsavedChanges": "您有未儲存的變更",
+        "discard": "放棄",
+        "confirmSwitch": "您有未儲存的變更。確定要切換儲存庫嗎？您的變更將會遺失。"
       }
     }
   },

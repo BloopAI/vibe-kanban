@@ -37,6 +37,13 @@
       "chrome-devtools-mcp@latest"
     ]
   },
+  "dev_manager": {
+    "command": "npx",
+    "args": [
+      "dev-manager-mcp",
+      "stdio"
+    ]
+  },
   "meta": {
     "vibe_kanban": {
       "name": "Vibe Kanban",
@@ -67,6 +74,12 @@
       "description": "Browser automation, debugging and performance analysis with Chrome DevTools",
       "url": "https://github.com/ChromeDevTools/chrome-devtools-mcp",
       "icon": "mcp/chrome_devtools_logo.svg"
+    },
+    "dev_manager": {
+      "name": "Dev Manager",
+      "description": "Launch and manage multiple dev servers in parallel with automatic port allocation",
+      "url": "https://github.com/BloopAI/dev-manager-mcp",
+      "icon": "mcp/dev_manager_logo.svg"
     }
   }
 }

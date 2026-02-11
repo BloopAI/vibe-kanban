@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -15,14 +15,14 @@ import { useKeySubmitTask } from '@/keyboard/hooks';
 import { Scope } from '@/keyboard/registry';
 import { executionProcessesApi } from '@/lib/api';
 import {
-  shouldShowInLogs,
   isCodingAgent,
   PROCESS_RUN_REASONS,
+  shouldShowInLogs,
 } from '@/constants/processes';
 import type {
-  RepoBranchStatus,
   ExecutionProcess,
   ExecutionProcessRepoState,
+  RepoBranchStatus,
 } from 'shared/types';
 
 export interface RestoreLogsDialogProps {
@@ -31,6 +31,7 @@ export interface RestoreLogsDialogProps {
   processes: ExecutionProcess[] | undefined;
   initialWorktreeResetOn?: boolean;
   initialForceReset?: boolean;
+  mode?: 'retry' | 'reset';
 }
 
 export type RestoreLogsDialogResult = {
@@ -46,6 +47,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
     processes,
     initialWorktreeResetOn = false,
     initialForceReset = false,
+    mode = 'retry',
   }) => {
     const modal = useModal();
     const { t } = useTranslation(['tasks', 'common']);
@@ -83,25 +85,30 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
       };
     }, [executionProcessId]);
 
-    // Compute later processes from props
-    const { laterCount, laterCoding, laterSetup, laterCleanup } =
+    // Compute processes to be deleted
+    // For retry mode: only processes AFTER target (target itself will be retried)
+    // For reset mode: target process AND all processes after it
+    const { deletedCount, deletedCoding, deletedSetup, deletedCleanup } =
       useMemo(() => {
         const procs = (processes || []).filter(
           (p) => !p.dropped && shouldShowInLogs(p.run_reason)
         );
         const idx = procs.findIndex((p) => p.id === executionProcessId);
-        const later = idx >= 0 ? procs.slice(idx + 1) : [];
+        // For reset mode, include the target process; for retry, only later processes
+        const startIdx = mode === 'reset' ? idx : idx + 1;
+        const toDelete = idx >= 0 ? procs.slice(startIdx) : [];
         return {
-          laterCount: later.length,
-          laterCoding: later.filter((p) => isCodingAgent(p.run_reason)).length,
-          laterSetup: later.filter(
+          deletedCount: toDelete.length,
+          deletedCoding: toDelete.filter((p) => isCodingAgent(p.run_reason))
+            .length,
+          deletedSetup: toDelete.filter(
             (p) => p.run_reason === PROCESS_RUN_REASONS.SETUP_SCRIPT
           ).length,
-          laterCleanup: later.filter(
+          deletedCleanup: toDelete.filter(
             (p) => p.run_reason === PROCESS_RUN_REASONS.CLEANUP_SCRIPT
           ).length,
         };
-      }, [processes, executionProcessId]);
+      }, [processes, executionProcessId, mode]);
 
     // Join repo states with branch status to get repo names and compute aggregated values
     const repoInfo = useMemo(() => {
@@ -136,7 +143,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
     const canGitReset = needGitReset && !anyDirty;
     const hasRisk = anyDirty;
 
-    const hasLater = laterCount > 0;
+    const hasProcessesToDelete = deletedCount > 0;
     const repoCount = repoInfo.length;
 
     const isConfirmDisabled =
@@ -184,7 +191,9 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 mb-3 md:mb-4">
               <AlertTriangle className="h-4 w-4 text-destructive" />{' '}
-              {t('restoreLogsDialog.title')}
+              {mode === 'reset'
+                ? t('restoreLogsDialog.titleReset')
+                : t('restoreLogsDialog.title')}
             </DialogTitle>
             <div className="mt-6 break-words text-sm text-muted-foreground">
               {isLoading ? (
@@ -193,7 +202,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {hasLater && (
+                  {hasProcessesToDelete && (
                     <div className="flex items-start gap-3 rounded-md border border-destructive/30 bg-destructive/10 p-3">
                       <AlertTriangle className="h-4 w-4 text-destructive mt-0.5" />
                       <div className="text-sm min-w-0 w-full break-words">
@@ -202,41 +211,54 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                         </p>
                         <>
                           <p className="mt-0.5">
-                            {t('restoreLogsDialog.historyChange.willDelete')}
-                            {laterCount > 0 && (
+                            {mode === 'reset' ? (
+                              t(
+                                'restoreLogsDialog.historyChange.willDeleteProcesses',
+                                {
+                                  count: deletedCount,
+                                }
+                              )
+                            ) : (
                               <>
-                                {' '}
                                 {t(
-                                  'restoreLogsDialog.historyChange.andLaterProcesses',
-                                  { count: laterCount }
+                                  'restoreLogsDialog.historyChange.willDelete'
+                                )}
+                                {deletedCount > 0 && (
+                                  <>
+                                    {' '}
+                                    {t(
+                                      'restoreLogsDialog.historyChange.andLaterProcesses',
+                                      { count: deletedCount }
+                                    )}
+                                  </>
                                 )}
                               </>
                             )}{' '}
                             {t('restoreLogsDialog.historyChange.fromHistory')}
                           </p>
                           <ul className="mt-1 text-xs text-muted-foreground list-disc pl-5">
-                            {laterCoding > 0 && (
+                            {deletedCoding > 0 && (
                               <li>
                                 {t(
                                   'restoreLogsDialog.historyChange.codingAgentRuns',
-                                  { count: laterCoding }
+                                  { count: deletedCoding }
                                 )}
                               </li>
                             )}
-                            {laterSetup + laterCleanup > 0 && (
+                            {deletedSetup + deletedCleanup > 0 && (
                               <li>
                                 {t(
                                   'restoreLogsDialog.historyChange.scriptProcesses',
-                                  { count: laterSetup + laterCleanup }
+                                  { count: deletedSetup + deletedCleanup }
                                 )}
-                                {laterSetup > 0 && laterCleanup > 0 && (
+                                {deletedSetup > 0 && deletedCleanup > 0 && (
                                   <>
                                     {' '}
                                     {t(
                                       'restoreLogsDialog.historyChange.setupCleanupBreakdown',
                                       {
-                                        setup: laterSetup,
-                                        cleanup: laterCleanup,
+                                        setup: deletedSetup,
+                                        cleanup: deletedCleanup,
                                       }
                                     )}
                                   </>
@@ -293,7 +315,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                               className={
                                 (acknowledgeUncommitted
                                   ? 'bg-amber-500'
-                                  : 'bg-muted-foreground/30') +
+                                  : 'bg-panel') +
                                 ' absolute inset-0 rounded-full transition-colors'
                               }
                             />
@@ -351,7 +373,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                               className={
                                 (worktreeResetOn
                                   ? 'bg-emerald-500'
-                                  : 'bg-muted-foreground/30') +
+                                  : 'bg-panel') +
                                 ' absolute inset-0 rounded-full transition-colors'
                               }
                             />
@@ -457,7 +479,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                               className={
                                 (worktreeResetOn && forceReset
                                   ? 'bg-emerald-500'
-                                  : 'bg-muted-foreground/30') +
+                                  : 'bg-panel') +
                                 ' absolute inset-0 rounded-full transition-colors'
                               }
                             />
@@ -488,9 +510,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                           <div className="ml-auto relative inline-flex h-5 w-9 items-center rounded-full">
                             <span
                               className={
-                                (forceReset
-                                  ? 'bg-destructive'
-                                  : 'bg-muted-foreground/30') +
+                                (forceReset ? 'bg-destructive' : 'bg-panel') +
                                 ' absolute inset-0 rounded-full transition-colors'
                               }
                             />
@@ -558,7 +578,9 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
               disabled={isConfirmDisabled}
               onClick={handleConfirm}
             >
-              {t('restoreLogsDialog.buttons.retry')}
+              {mode === 'reset'
+                ? t('restoreLogsDialog.buttons.reset')
+                : t('restoreLogsDialog.buttons.retry')}
             </Button>
           </DialogFooter>
         </DialogContent>

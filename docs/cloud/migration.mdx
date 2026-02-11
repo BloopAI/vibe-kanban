@@ -1,0 +1,262 @@
+---
+title: "Migration from Legacy Local Projects"
+description: "Upgrade your local projects to Cloud for team collaboration"
+---
+
+If you've been using Vibe Kanban locally, you can migrate your existing projects to Cloud to unlock team collaboration, real-time sync, and access from any device.
+
+## Why Migrate?
+
+Moving your projects to Cloud gives you:
+
+<CardGroup cols={2}>
+<Card title="Cloud Storage" icon="cloud">
+  Access your projects from anywhere. Your data syncs automatically across devices.
+</Card>
+
+<Card title="Team Collaboration" icon="users">
+  Invite teammates to your organisation and assign work to team members.
+</Card>
+
+<Card title="Comments" icon="message">
+  Add comments to issues to keep discussions in context with the work.
+</Card>
+
+<Card title="Sub-Issues" icon="sitemap">
+  Break down complex work into smaller, manageable pieces.
+</Card>
+
+<Card title="GitHub Integration" icon="github">
+  Link pull requests directly to issues for seamless code tracking.
+</Card>
+
+<Card title="Tags & Priorities" icon="tags">
+  Organise work with custom tags and priority levels.
+</Card>
+</CardGroup>
+
+## Before You Start
+
+Before migrating, make sure you have:
+
+1. **A Cloud account** - Sign in with GitHub or Google (a personal organisation is created automatically)
+2. **Local projects** - Projects stored on your machine that you want to migrate
+
+<Info>
+Migration copies your data to Cloud - your local projects remain unchanged. You can continue using them locally if needed.
+</Info>
+
+## Starting the Migration
+
+### From the Project Banner
+
+When viewing a local project that hasn't been migrated, you'll see a banner prompting you to migrate:
+
+<Frame>
+  <img src="/images/cloud/migration-prompt-banner.png" alt="Migrate this project to the cloud banner with Learn more button" />
+</Frame>
+
+Click **Learn more** to open the migration wizard.
+
+## Migration Steps
+
+The migration wizard guides you through four steps:
+
+### Step 1: Introduction
+
+The first screen explains what Cloud offers and what will happen during migration.
+
+<Frame>
+  <img src="/images/cloud/migration-introduction.png" alt="Migration introduction screen showing Cloud benefits" />
+</Frame>
+
+- If you're **not signed in**, click **Sign In** to authenticate with GitHub or Google
+- If you're **already signed in**, click **Continue** to proceed
+
+When you click Sign In, you'll see the authentication dialog:
+
+<Frame>
+  <img src="/images/cloud/sign-in-dialog.png" alt="Sign in dialog with GitHub and Google options" />
+</Frame>
+
+### Step 2: Choose Projects
+
+Select which local projects you want to migrate:
+
+<Frame>
+  <img src="/images/cloud/migration-choose-projects.png" alt="Choose projects screen showing project list and organisation selector" />
+</Frame>
+
+<Steps>
+<Step title="Review your projects">
+  You'll see a list of all your local projects with their names and IDs.
+</Step>
+
+<Step title="Select projects to migrate">
+  Click the checkbox next to each project you want to migrate. Use **Select All** to choose everything at once.
+
+  <Frame>
+    <img src="/images/cloud/migration-project-selected.png" alt="Project selected for migration with Migrate button" />
+  </Frame>
+
+  Projects you've already migrated are shown separately with a **View** link to open them in Cloud.
+</Step>
+
+<Step title="Choose target organisation">
+  If you have multiple organisations, select which one should receive the migrated projects.
+</Step>
+
+<Step title="Continue">
+  Click **Continue** to proceed to the migration step.
+</Step>
+</Steps>
+
+<Tip>
+You can migrate projects in batches. If you have many projects, consider migrating a few first to verify everything works as expected.
+</Tip>
+
+### Step 3: Migrate
+
+This step performs the actual migration:
+
+1. Click **Start Migration** to begin
+2. Wait while your data is transferred to Cloud
+3. You'll see a summary report when complete
+
+<Frame>
+  <img src="/images/cloud/migration-complete.png" alt="Migration summary showing projects and tasks migrated" />
+</Frame>
+
+| Item | Description |
+|------|-------------|
+| **Projects** | How many projects were migrated vs. total |
+| **Tasks** | How many issues/tasks were migrated |
+| **PR Merges** | How many pull request links were migrated |
+| **Warnings** | Any issues encountered during migration |
+
+<Warning>
+Don't close the browser or navigate away while migration is in progress. This could result in incomplete data transfer.
+</Warning>
+
+Click **Continue** to proceed to the finish screen.
+
+### Step 4: Finish
+
+The finish screen shows your migrated projects with quick access links:
+
+<Frame>
+  <img src="/images/cloud/migration-finish.png" alt="Finish screen showing migrated projects with View links" />
+</Frame>
+
+- Click **View** next to any project to open it in Cloud
+- Click **Migrate More Projects** to migrate additional projects
+
+## What Gets Migrated
+
+The migration transfers the following data:
+
+### Projects
+- Project name
+- Project colour
+- All project settings
+
+### Issues (Tasks)
+- Issue titles and descriptions
+- Status (which column they're in)
+- Any existing metadata
+
+### Pull Request Links
+- Connections between issues and GitHub PRs
+- PR status information
+
+## What Doesn't Get Migrated
+
+Some data is created fresh in Cloud:
+
+- **Team members** - You'll need to invite teammates after migration
+- **Comments** - Local projects don't have comments, so there's nothing to migrate
+- **Tags** - You'll set these up in your Cloud project
+- **Priorities** - Issues will need priorities assigned after migration
+
+## After Migration
+
+When you return to your local project, you'll see a banner indicating it's been migrated to Cloud:
+
+<Frame>
+  <img src="/images/cloud/migration-banner.png" alt="Project migrated to Cloud banner with View project button" />
+</Frame>
+
+Click **View project** to open the Cloud version with all collaboration features.
+
+Once your projects are in Cloud:
+
+### Invite Your Team
+
+1. Go to your [organisation settings](/cloud/organizations)
+2. [Invite team members](/cloud/team-members) via email
+3. They'll receive an invitation to join
+
+### Set Up Your Board
+
+1. Open a migrated project
+2. [Add tags](/cloud/customisation) for categorisation
+3. [Set priorities](/cloud/issues) on important issues
+4. [Customise columns](/cloud/customisation) if needed
+
+### Connect GitHub (Optional)
+
+If you want PR tracking:
+
+1. Go to organisation settings
+2. [Install the GitHub App](/cloud/github-integration)
+3. Enable code review for your repositories
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="Migration failed with an error">
+Check your internet connection and try again. If the problem persists:
+
+1. Refresh the page
+2. Sign out and sign back in
+3. Try migrating fewer projects at once
+
+If you continue to have issues, check the error message for specific details.
+</Accordion>
+
+<Accordion title="Some projects weren't migrated">
+The migration report shows how many projects were skipped. Common reasons:
+
+- **Duplicate names** - A project with the same name already exists in the target organisation
+- **Invalid data** - The project has corrupted or incomplete data
+
+Try renaming the local project and migrating again.
+</Accordion>
+
+<Accordion title="Tasks are missing after migration">
+Check the following:
+
+1. **Filters** - Make sure you don't have active filters hiding issues
+2. **Columns** - Check if issues are in a hidden status column
+3. **Migration report** - Review the report to see if tasks were skipped
+
+If tasks were skipped, there may have been data issues. Check the warnings in the migration report.
+</Accordion>
+
+<Accordion title="I want to migrate to a different organisation">
+You can run the migration wizard again and select a different target organisation. Note that this will create duplicate projects if you migrate the same projects twice.
+</Accordion>
+
+<Accordion title="Can I undo the migration?">
+Migration copies data to Cloud - it doesn't delete your local projects. Your local data remains unchanged, so there's nothing to "undo".
+
+If you want to remove migrated projects from Cloud, you can delete them from the Cloud project list.
+</Accordion>
+</AccordionGroup>
+
+## Related Documentation
+
+- [Getting Started](/cloud/getting-started) - Set up your Cloud account
+- [Organisations](/cloud/organizations) - Managing your organisation
+- [Team Members](/cloud/team-members) - Inviting teammates
+- [Projects](/cloud/projects) - Working with Cloud projects
