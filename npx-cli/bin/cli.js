@@ -126,6 +126,11 @@ async function extractAndRun(baseName, launch) {
     }
   }
 
+  // Clean up old cached versions only after current version is secured
+  if (!LOCAL_DEV_MODE) {
+    cleanOldVersions();
+  }
+
   // Extract
   if (!fs.existsSync(binPath)) {
     try {
@@ -158,11 +163,6 @@ async function extractAndRun(baseName, launch) {
 
 async function main() {
   fs.mkdirSync(versionCacheDir, { recursive: true });
-
-  // Clean up old cached versions to avoid unbounded disk usage
-  if (!LOCAL_DEV_MODE) {
-    cleanOldVersions();
-  }
 
   const args = process.argv.slice(2);
   const isMcpMode = args.includes("--mcp");
