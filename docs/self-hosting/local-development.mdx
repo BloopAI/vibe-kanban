@@ -83,6 +83,8 @@ GOOGLE_OAUTH_CLIENT_SECRET=
 LOOPS_EMAIL_API_KEY=
 ```
 
+For production or self-hosting on a server, add `PUBLIC_BASE_URL` (your public URL, e.g. `https://kanban.example.com`) and `REMOTE_SERVER_PORTS=0.0.0.0:3000:8081` so the server is reachable from other hosts. Defaults keep local dev unchanged.
+
 <Warning>
 Never commit `.env.remote` to version control. It's already in `.gitignore`.
 </Warning>

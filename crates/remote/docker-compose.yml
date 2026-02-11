@@ -1,3 +1,5 @@
+# Self-hosting: set PUBLIC_BASE_URL to your public URL (e.g. https://kanban.example.com)
+# and REMOTE_SERVER_PORTS=0.0.0.0:3000:8081 so the server is reachable from other hosts.
 services:
   remote-db:
     image: postgres:16-alpine
@@ -65,9 +67,9 @@ services:
       VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET:?set in .env.remote}
       # Optional — leave empty to disable invitation emails
       LOOPS_EMAIL_API_KEY: ${LOOPS_EMAIL_API_KEY:-}
-      SERVER_PUBLIC_BASE_URL: http://localhost:3000
-      VITE_APP_BASE_URL: http://localhost:3000
-      VITE_API_BASE_URL: http://localhost:3000
+      SERVER_PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
+      VITE_APP_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
+      VITE_API_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
       ELECTRIC_ROLE_PASSWORD: ${ELECTRIC_ROLE_PASSWORD:-remote}
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
@@ -85,7 +87,7 @@ services:
       STRIPE_FREE_SEAT_LIMIT: ${STRIPE_FREE_SEAT_LIMIT:-1}
 
     ports:
-      - "127.0.0.1:3000:8081"
+      - "${REMOTE_SERVER_PORTS:-127.0.0.1:3000:8081}"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8081/health"]
