@@ -26,7 +26,9 @@ use serde_json;
 use uuid::Uuid;
 
 use crate::routes::{
-    containers::ContainerQuery, task_attempts::WorkspaceRepoInput, tasks::CreateAndStartTaskRequest,
+    containers::ContainerQuery,
+    task_attempts::{CreateTaskAttemptBody, WorkspaceRepoInput},
+    tasks::CreateAndStartTaskRequest,
 };
 
 // ── MCP request/response types ──────────────────────────────────────────────
@@ -262,6 +264,53 @@ pub struct McpGetIssueResponse {
     pub issue: IssueDetails,
 }
 
+// Deprecated task aliases for backward compatibility
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct McpCreateTaskRequest {
+    #[schemars(
+        description = "Alias of project_id for create_issue. Optional if running inside a workspace linked to a remote project."
+    )]
+    pub project_id: Option<Uuid>,
+    #[schemars(description = "Alias of title for create_issue")]
+    pub title: String,
+    #[schemars(description = "Alias of description for create_issue")]
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct McpListTasksRequest {
+    #[schemars(
+        description = "Alias of project_id for list_issues. Optional if running inside a workspace linked to a remote project."
+    )]
+    pub project_id: Option<Uuid>,
+    #[schemars(description = "Maximum number of tasks to return (default: 50)")]
+    pub limit: Option<i32>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct McpUpdateTaskRequest {
+    #[schemars(description = "Alias of issue_id for update_issue")]
+    pub task_id: Uuid,
+    #[schemars(description = "Alias of title for update_issue")]
+    pub title: Option<String>,
+    #[schemars(description = "Alias of description for update_issue")]
+    pub description: Option<String>,
+    #[schemars(description = "Alias of status for update_issue")]
+    pub status: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct McpDeleteTaskRequest {
+    #[schemars(description = "Alias of issue_id for delete_issue")]
+    pub task_id: Uuid,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct McpGetTaskRequest {
+    #[schemars(description = "Alias of issue_id for get_issue")]
+    pub task_id: Uuid,
+}
+
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct McpWorkspaceRepoInput {
     #[schemars(description = "The repository ID")]
@@ -272,8 +321,18 @@ pub struct McpWorkspaceRepoInput {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct StartWorkspaceSessionRequest {
-    #[schemars(description = "A title for the workspace (used as the task name)")]
-    pub title: String,
+    #[schemars(
+        description = "Optional issue ID to link the workspace to. When provided, the workspace will be associated with this remote issue."
+    )]
+    pub issue_id: Option<Uuid>,
+    #[schemars(
+        description = "Optional title for the workspace task. If omitted and issue_id is provided, the issue title is used."
+    )]
+    pub title: Option<String>,
+    #[schemars(
+        description = "Legacy compatibility: existing local task ID. If provided, starts a workspace for this task directly instead of creating a new task."
+    )]
+    pub task_id: Option<Uuid>,
     #[schemars(
         description = "The coding agent executor to run ('CLAUDE_CODE', 'AMP', 'GEMINI', 'CODEX', 'OPENCODE', 'CURSOR_AGENT', 'QWEN_CODE', 'COPILOT', 'DROID')"
     )]
@@ -282,10 +341,6 @@ pub struct StartWorkspaceSessionRequest {
     pub variant: Option<String>,
     #[schemars(description = "Base branch for each repository in the project")]
     pub repos: Vec<McpWorkspaceRepoInput>,
-    #[schemars(
-        description = "Optional issue ID to link the workspace to. When provided, the workspace will be associated with this remote issue."
-    )]
-    pub issue_id: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -650,6 +705,61 @@ impl TaskServer {
         .unwrap())
     }
 
+    fn normalize_status_name(status_name: &str) -> String {
+        let trimmed = status_name.trim();
+        let compact = trimmed
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .collect::<String>()
+            .to_ascii_lowercase();
+
+        match compact.as_str() {
+            "todo" => "To do".to_string(),
+            "inprogress" => "In progress".to_string(),
+            "inreview" => "In review".to_string(),
+            "done" => "Done".to_string(),
+            "cancelled" | "canceled" => "Cancelled".to_string(),
+            _ => trimmed.to_string(),
+        }
+    }
+
+    async fn resolve_local_project_id_by_remote(
+        &self,
+        remote_project_id: Option<Uuid>,
+    ) -> Result<Uuid, CallToolResult> {
+        let projects: Vec<Project> = self
+            .send_json(self.client.get(self.url("/api/projects")))
+            .await?;
+
+        if projects.is_empty() {
+            return Err(Self::err(
+                "No local projects found. Create a project first.",
+                None::<&str>,
+            )
+            .unwrap());
+        }
+
+        if let Some(remote_project_id) = remote_project_id {
+            if let Some(project) = projects
+                .iter()
+                .find(|project| project.remote_project_id == Some(remote_project_id))
+            {
+                return Ok(project.id);
+            }
+
+            return Err(Self::err(
+                format!(
+                    "No local project is linked to remote project {}. Link/migrate this project first.",
+                    remote_project_id
+                ),
+                None::<String>,
+            )
+            .unwrap());
+        }
+
+        Ok(projects[0].id)
+    }
+
     /// Fetches project statuses for a project, returning a map of status name → status.
     async fn fetch_project_statuses(
         &self,
@@ -669,10 +779,11 @@ impl TaskServer {
         project_id: Uuid,
         status_name: &str,
     ) -> Result<Uuid, CallToolResult> {
+        let normalized_status_name = Self::normalize_status_name(status_name);
         let statuses = self.fetch_project_statuses(project_id).await?;
         statuses
             .iter()
-            .find(|s| s.name.eq_ignore_ascii_case(status_name))
+            .find(|s| s.name.eq_ignore_ascii_case(&normalized_status_name))
             .map(|s| s.id)
             .ok_or_else(|| {
                 let available: Vec<&str> = statuses.iter().map(|s| s.name.as_str()).collect();
@@ -1065,16 +1176,17 @@ impl TaskServer {
     }
 
     #[tool(
-        description = "Start a new workspace session. A local task is auto-created under the first available project."
+        description = "Start a new workspace session. Preferred usage: pass issue_id (and optional title). Legacy usage: pass task_id to start from an existing local task."
     )]
     async fn start_workspace_session(
         &self,
         Parameters(StartWorkspaceSessionRequest {
+            issue_id,
             title,
+            task_id,
             executor,
             variant,
             repos,
-            issue_id,
         }): Parameters<StartWorkspaceSessionRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         if repos.is_empty() {
@@ -1111,21 +1223,6 @@ impl TaskServer {
             variant,
         };
 
-        // Derive project_id from first available project
-        let projects: Vec<Project> = match self
-            .send_json(self.client.get(self.url("/api/projects")))
-            .await
-        {
-            Ok(projects) => projects,
-            Err(e) => return Ok(e),
-        };
-        let project = match projects.first() {
-            Some(p) => p,
-            None => {
-                return Self::err("No projects found. Create a project first.", None::<&str>);
-            }
-        };
-
         let workspace_repos: Vec<WorkspaceRepoInput> = repos
             .into_iter()
             .map(|r| WorkspaceRepoInput {
@@ -1134,8 +1231,73 @@ impl TaskServer {
             })
             .collect();
 
+        // Legacy compatibility path: start from an existing local task.
+        if let Some(task_id) = task_id {
+            let payload = CreateTaskAttemptBody {
+                task_id,
+                executor_profile_id,
+                repos: workspace_repos,
+            };
+            let url = self.url("/api/task-attempts");
+            let workspace: Workspace =
+                match self.send_json(self.client.post(&url).json(&payload)).await {
+                    Ok(workspace) => workspace,
+                    Err(e) => return Ok(e),
+                };
+
+            if let Some(issue_id) = issue_id
+                && let Err(e) = self.link_workspace_to_issue(workspace.id, issue_id).await
+            {
+                return Ok(e);
+            }
+
+            return TaskServer::success(&StartWorkspaceSessionResponse {
+                workspace_id: workspace.id.to_string(),
+            });
+        }
+
+        let remote_issue = if let Some(issue_id) = issue_id {
+            let issue_url = self.url(&format!("/api/remote/issues/{}", issue_id));
+            let issue: Issue = match self.send_json(self.client.get(&issue_url)).await {
+                Ok(issue) => issue,
+                Err(e) => return Ok(e),
+            };
+            Some(issue)
+        } else {
+            None
+        };
+
+        let remote_project_hint = remote_issue
+            .as_ref()
+            .map(|issue| issue.project_id)
+            .or_else(|| self.context.as_ref().and_then(|ctx| ctx.project_id));
+
+        let local_project_id = match self
+            .resolve_local_project_id_by_remote(remote_project_hint)
+            .await
+        {
+            Ok(project_id) => project_id,
+            Err(e) => return Ok(e),
+        };
+
+        let task_title = match title
+            .map(|title| title.trim().to_string())
+            .filter(|title| !title.is_empty())
+        {
+            Some(title) => title,
+            None => match &remote_issue {
+                Some(issue) => issue.title.clone(),
+                None => {
+                    return Self::err(
+                        "title is required when issue_id is not provided",
+                        None::<&str>,
+                    );
+                }
+            },
+        };
+
         let payload = CreateAndStartTaskRequest {
-            task: CreateTask::from_title_description(project.id, title, None),
+            task: CreateTask::from_title_description(local_project_id, task_title, None),
             executor_profile_id,
             repos: workspace_repos,
         };
@@ -1163,7 +1325,7 @@ impl TaskServer {
         };
 
         // Link workspace to remote issue if issue_id is provided
-        if let Some(issue_id) = issue_id
+        if let Some(issue_id) = remote_issue.as_ref().map(|issue| issue.id)
             && let Err(e) = self.link_workspace_to_issue(workspace.id, issue_id).await
         {
             return Ok(e);
@@ -1291,12 +1453,85 @@ impl TaskServer {
         let details = self.issue_to_details(&issue).await;
         TaskServer::success(&McpGetIssueResponse { issue: details })
     }
+
+    #[tool(
+        description = "[Deprecated] Alias for `create_issue`. Prefer `create_issue` for new integrations."
+    )]
+    async fn create_task(
+        &self,
+        Parameters(McpCreateTaskRequest {
+            project_id,
+            title,
+            description,
+        }): Parameters<McpCreateTaskRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.create_issue(Parameters(McpCreateIssueRequest {
+            project_id,
+            title,
+            description,
+        }))
+        .await
+    }
+
+    #[tool(
+        description = "[Deprecated] Alias for `list_issues`. Prefer `list_issues` for new integrations."
+    )]
+    async fn list_tasks(
+        &self,
+        Parameters(McpListTasksRequest { project_id, limit }): Parameters<McpListTasksRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.list_issues(Parameters(McpListIssuesRequest { project_id, limit }))
+            .await
+    }
+
+    #[tool(
+        description = "[Deprecated] Alias for `update_issue`. Prefer `update_issue` for new integrations."
+    )]
+    async fn update_task(
+        &self,
+        Parameters(McpUpdateTaskRequest {
+            task_id,
+            title,
+            description,
+            status,
+        }): Parameters<McpUpdateTaskRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.update_issue(Parameters(McpUpdateIssueRequest {
+            issue_id: task_id,
+            title,
+            description,
+            status,
+        }))
+        .await
+    }
+
+    #[tool(
+        description = "[Deprecated] Alias for `delete_issue`. Prefer `delete_issue` for new integrations."
+    )]
+    async fn delete_task(
+        &self,
+        Parameters(McpDeleteTaskRequest { task_id }): Parameters<McpDeleteTaskRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.delete_issue(Parameters(McpDeleteIssueRequest { issue_id: task_id }))
+            .await
+    }
+
+    #[tool(
+        description = "[Deprecated] Alias for `get_issue`. Prefer `get_issue` for new integrations."
+    )]
+    async fn get_task(
+        &self,
+        Parameters(McpGetTaskRequest { task_id }): Parameters<McpGetTaskRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.get_issue(Parameters(McpGetIssueRequest { issue_id: task_id }))
+            .await
+    }
 }
 
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
-        let mut instruction = "A task and project management server. If you need to create or update tickets or issues then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_issues` to fetch the `issue_ids` of all the issues in a project. TOOLS: 'list_organizations', 'list_projects', 'list_issues', 'create_issue', 'start_workspace_session', 'get_issue', 'update_issue', 'delete_issue', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script'. Make sure to pass `project_id`, `issue_id`, or `repo_id` where required. You can use list tools to get the available ids.".to_string();
+        let mut instruction = "An issue and project management server. Prefer issue tools: 'list_organizations', 'list_projects', 'list_issues', 'create_issue', 'start_workspace_session', 'get_issue', 'update_issue', 'delete_issue'. For compatibility, task aliases are also available: 'list_tasks', 'create_task', 'get_task', 'update_task', 'delete_task'. Use 'list_organizations' first, then 'list_projects' to get a project_id, and 'list_issues' to get issue_ids. Repository tools are also available: 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script'.".to_string();
         if self.context.is_some() {
             let context_instruction = "Use 'get_context' to fetch project/issue/workspace metadata for the active Vibe Kanban workspace session when available.";
             instruction = format!("{} {}", context_instruction, instruction);

@@ -3,7 +3,7 @@ title: "Vibe Kanban MCP Server"
 description: "Configure the Vibe Kanban MCP server"
 ---
 
-Vibe Kanban exposes a local MCP (Model Context Protocol) server, allowing you to manage projects and tasks from external MCP clients like Claude Desktop, Raycast, or even coding agents running within Vibe Kanban itself.
+Vibe Kanban exposes a local MCP (Model Context Protocol) server, allowing you to manage organisations, projects, and issues from external MCP clients like Claude Desktop, Raycast, or even coding agents running within Vibe Kanban itself.
 
 <Note>
 This page covers connecting **external MCP clients** to Vibe Kanban's MCP server. For configuring MCP servers **within** Vibe Kanban for your coding agents, see the [MCP Server Configuration](/integrations/mcp-server-configuration) guide.
@@ -52,30 +52,35 @@ Add the following configuration to your agent's MCP servers configuration:
 
 ## Available MCP Tools
 
-The Vibe Kanban MCP server provides the following tools for managing projects, tasks, and task execution:
+The Vibe Kanban MCP server provides issue-first tools for managing projects, issues, and workspace execution:
 
 ### Project Operations
 
 | Tool | Purpose | Required Parameters | Optional Parameters | Returns |
 |------|---------|-------------------|-------------------|---------|
-| `list_projects` | Fetch all projects | None | None | List of projects with metadata |
-| `list_repos` | List repositories in a project | `project_id` | None | List of repositories with IDs |
+| `list_organizations` | Fetch all accessible organisations | None | None | List of organisations with metadata |
+| `list_projects` | Fetch all projects in an organisation | `organization_id` | None | List of projects with metadata |
+| `list_repos` | List local repositories | None | None | List of repositories with IDs |
 
 ### Context
 
 | Tool | Purpose | Required Parameters | Optional Parameters | Returns |
 |------|---------|-------------------|-------------------|---------|
-| `get_context` | Get current workspace context (only available within an active workspace session) | None | None | Project, task, and workspace metadata |
+| `get_context` | Get current workspace context (only available within an active workspace session) | None | None | Project, issue, and workspace metadata |
 
-### Task Management
+### Issue Management
 
 | Tool | Purpose | Required Parameters | Optional Parameters | Returns |
 |------|---------|-------------------|-------------------|---------|
-| `list_tasks` | List tasks in a project | `project_id` | `status`<br/>`limit` | List of tasks with execution state |
-| `create_task` | Create a new task | `project_id`<br/>`title` | `description` | Created task ID and confirmation |
-| `get_task` | Get task details | `task_id` | None | Full task information |
-| `update_task` | Update task details | `task_id` | `title`<br/>`description`<br/>`status` | Updated task information |
-| `delete_task` | Delete a task | `task_id` | None | Deletion confirmation |
+| `list_issues` | List issues in a project | None (uses workspace context when available) | `project_id`<br/>`limit` | List of issues with status |
+| `create_issue` | Create a new issue | `title` | `project_id`<br/>`description` | Created issue ID and confirmation |
+| `get_issue` | Get issue details | `issue_id` | None | Full issue information |
+| `update_issue` | Update issue details | `issue_id` | `title`<br/>`description`<br/>`status` | Updated issue information |
+| `delete_issue` | Delete an issue | `issue_id` | None | Deletion confirmation |
+
+<Note>
+Task-named tools (`list_tasks`, `create_task`, `get_task`, `update_task`, `delete_task`) remain available as deprecated aliases for backwards compatibility.
+</Note>
 
 ### Repository Management
 
@@ -87,11 +92,11 @@ The Vibe Kanban MCP server provides the following tools for managing projects, t
 | `update_cleanup_script` | Update a repository's cleanup script | `repo_id` | `script` | Update confirmation |
 | `update_dev_server_script` | Update a repository's dev server script | `repo_id` | `script` | Update confirmation |
 
-### Task Execution
+### Workspace Execution
 
 | Tool | Purpose | Required Parameters | Optional Parameters | Returns |
 |------|---------|-------------------|-------------------|---------|
-| `start_workspace_session` | Start working on a task with a coding agent | `task_id`<br/>`executor`<br/>`repos` | `variant` | Task ID and workspace ID |
+| `start_workspace_session` | Start working in a workspace with a coding agent | `executor`<br/>`repos` | `issue_id`<br/>`title`<br/>`variant`<br/>`task_id` (legacy) | Workspace ID |
 
 The `repos` parameter is an array of objects with:
 - `repo_id`: The repository ID (UUID)
@@ -115,14 +120,14 @@ When using `start_workspace_session`, the following executors are supported (cas
 
 Once you have the MCP server configured, you can leverage it to streamline your project planning and execution workflow:
 
-1. **Plan Your Work**: Describe a large feature or project to your MCP client
-2. **Request Task Creation**: At the end of your task description, simply add "then turn this plan into tasks"
-3. **Automatic Task Generation**: Your MCP client will use the Vibe Kanban MCP server to automatically create structured tasks in your project
-4. **Start Task Execution**: Use `start_workspace_session` to programmatically begin work on tasks with specific coding agents
+1. **Plan your work**: Describe a large feature or project to your MCP client
+2. **Request issue creation**: At the end of your prompt, ask it to create issues from the plan
+3. **Automatic issue generation**: Your MCP client uses Vibe Kanban MCP tools to create structured issues in your project
+4. **Start workspace execution**: Use `start_workspace_session` to begin coding work linked to specific issues
 
 ## Example Usage
 
-### Planning and Task Creation
+### Planning and Issue Creation
 
 ```
 I need to build a user authentication system with the following features:
@@ -132,23 +137,23 @@ I need to build a user authentication system with the following features:
 - Session management
 - Protected routes
 
-Then turn this plan into tasks.
+Then turn this plan into issues.
 ```
 
-Your MCP client will use the `create_task` tool to break this down into individual tasks and add them to your Vibe Kanban project automatically.
+Your MCP client can use `create_issue` to break this down into individual issues and add them to your Vibe Kanban project automatically.
 
-### Starting Task Execution
+### Starting Workspace Execution
 
-After tasks are created, you can start work on them programmatically:
+After issues are created, you can start work on them programmatically:
 
 ```
-Start working on the user registration task using Claude Code on the main branch.
+Start working on the user registration issue using Claude Code on the main branch.
 ```
 
 Your MCP client will use the `start_workspace_session` tool with parameters like:
 ```json
 {
-  "task_id": "123e4567-e89b-12d3-a456-426614174000",
+  "issue_id": "123e4567-e89b-12d3-a456-426614174000",
   "executor": "claude-code",
   "repos": [
     {
@@ -159,29 +164,29 @@ Your MCP client will use the `start_workspace_session` tool with parameters like
 }
 ```
 
-This creates a new task attempt, generates a feature branch, and starts the coding agent in an isolated environment.
+This creates a new workspace session, generates a feature branch, and starts the coding agent in an isolated environment.
 
 ### Complete Workflow Example
 
 ```
 1. List all projects to find the project ID
-2. List todo tasks in the project
-3. Create a new task for "Add user profile page"
-4. Start a task attempt for the new task using Amp on the develop branch
+2. List issues in the project
+3. Create a new issue for "Add user profile page"
+4. Start a workspace session for that issue using Amp on the develop branch
 ```
 
-Each step uses the appropriate MCP tool (`list_projects`, `list_tasks`, `create_task`, `start_workspace_session`) to manage the complete workflow from planning to execution.
+Each step uses the appropriate MCP tool (`list_organizations`, `list_projects`, `list_issues`, `create_issue`, `start_workspace_session`) to manage the complete workflow from planning to execution.
 
 ### Internal Coding Agents (Within Vibe Kanban)
 
 A powerful workflow involves using coding agents within Vibe Kanban that are also connected to the Vibe Kanban MCP server:
 
-1. **Create a Planning Task**: Create a task with a custom agent profile configured with a planning prompt. See [Agent Configurations](/configuration-customisation/agent-configurations) for details on creating custom profiles.
+1. **Create a planning issue**: Create an issue with a custom agent profile configured with a planning prompt. See [Agent Configurations](/configuration-customisation/agent-configurations) for details on creating custom profiles.
 2. **Explore and Plan**: The coding agent explores the codebase and develops a comprehensive plan
-3. **Generate Tasks**: Ask the coding agent to "create a series of individual tasks for this plan"
-4. **Automatic Population**: The agent uses the MCP server to populate individual tasks directly in the Vibe Kanban interface
+3. **Generate issues**: Ask the coding agent to "create a series of individual issues for this plan"
+4. **Automatic population**: The agent uses the MCP server to populate individual issues directly in the Vibe Kanban interface
 
-This creates a seamless workflow where high-level planning automatically generates actionable tasks in your project board.
+This creates a seamless workflow where high-level planning automatically generates actionable issues in your project board.
 
 ## Installation Instructions for MCP Clients
 
