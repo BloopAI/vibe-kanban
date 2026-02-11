@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COUNT(*) as \"count!: i64\"\n               FROM execution_processes ep\n               WHERE ep.session_id = $1\n                 AND ep.run_reason = 'cleanupscript'\n                 AND ep.status = 'failed'\n                 AND ep.dropped = FALSE",
+  "describe": {
+    "columns": [
+      {
+        "name": "count!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0307b8705a516585e115eff1fbf85c27a9fb391453b98267fbda24a14118a8d2"
+}
