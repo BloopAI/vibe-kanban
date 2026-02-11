@@ -201,6 +201,17 @@ async fn handoff_complete(
                 "email": profile.email,
             })),
         );
+
+        // Merge the local machine-based ID with the remote user UUID so all
+        // events (local frontend, local backend, remote backend) resolve to
+        // the same PostHog person.
+        analytics.track_event(
+            &profile.user_id.to_string(),
+            "$create_alias",
+            Some(serde_json::json!({
+                "alias": deployment.user_id(),
+            })),
+        );
     }
 
     Ok(close_window_response(format!(
