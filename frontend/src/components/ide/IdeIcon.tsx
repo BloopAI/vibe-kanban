@@ -34,7 +34,7 @@ export function getIdeName(editorType: EditorType | undefined | null): string {
     case EditorType.XCODE:
       return 'Xcode';
     case EditorType.CUSTOM:
-      return 'IDE';
+      return 'Custom';
     case EditorType.GOOGLE_ANTIGRAVITY:
       return 'Antigravity';
   }

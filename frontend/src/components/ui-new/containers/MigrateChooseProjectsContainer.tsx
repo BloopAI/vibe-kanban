@@ -5,10 +5,12 @@ import { MigrateChooseProjects } from '@/components/ui-new/views/MigrateChoosePr
 
 interface MigrateChooseProjectsContainerProps {
   onContinue: (orgId: string, projectIds: string[]) => void;
+  onSkip: () => void;
 }
 
 export function MigrateChooseProjectsContainer({
   onContinue,
+  onSkip,
 }: MigrateChooseProjectsContainerProps) {
   const { projects, isLoading: projectsLoading } = useProjects();
   const { data: orgsData, isLoading: orgsLoading } = useUserOrganizations();
@@ -93,6 +95,7 @@ export function MigrateChooseProjectsContainer({
       onToggleProject={handleToggleProject}
       onSelectAll={handleSelectAll}
       onContinue={handleContinue}
+      onSkip={onSkip}
     />
   );
 }

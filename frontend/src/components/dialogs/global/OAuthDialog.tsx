@@ -8,7 +8,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { LogIn, Github, Loader2, Chrome } from 'lucide-react';
+import { LogIn, Loader2 } from 'lucide-react';
+import { OAuthSignInButton } from '@/components/ui-new/primitives/OAuthButtons';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -189,23 +190,16 @@ const OAuthDialogImpl = NiceModal.create<OAuthDialogProps>(
               </DialogHeader>
 
               <div className="space-y-3 py-4">
-                <Button
-                  variant="outline"
-                  className="w-full h-12 flex items-center justify-center gap-3"
+                <OAuthSignInButton
+                  provider="github"
+                  className="w-full"
                   onClick={() => handleProviderSelect('github')}
-                >
-                  <Github className="h-5 w-5" />
-                  <span>{t('oauth.continueWithGitHub')}</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="w-full h-12 flex items-center justify-center gap-3"
+                />
+                <OAuthSignInButton
+                  provider="google"
+                  className="w-full"
                   onClick={() => handleProviderSelect('google')}
-                >
-                  <Chrome className="h-5 w-5" />
-                  <span>{t('oauth.continueWithGoogle')}</span>
-                </Button>
+                />
               </div>
 
               <DialogFooter>

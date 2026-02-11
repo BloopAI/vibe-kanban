@@ -1,5 +1,11 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from 'react-router-dom';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '@/i18n';
 import { Projects } from '@/pages/Projects';
@@ -56,6 +62,7 @@ const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 function AppContent() {
   const { config, analyticsUserId, updateAndSaveConfig } = useUserSystem();
   const posthog = usePostHog();
+  const location = useLocation();
 
   // Track previous path for back navigation
   usePreviousPath();
@@ -79,6 +86,12 @@ function AppContent() {
 
   useEffect(() => {
     if (!config || !config.remote_onboarding_acknowledged) return;
+
+    // Don't show release notes during onboarding or migration flows
+    const pathname = location.pathname;
+    if (pathname.startsWith('/onboarding') || pathname.startsWith('/migrate'))
+      return;
+
     let cancelled = false;
 
     const showReleaseNotes = async () => {
@@ -96,7 +109,7 @@ function AppContent() {
     return () => {
       cancelled = true;
     };
-  }, [config, updateAndSaveConfig]);
+  }, [config, updateAndSaveConfig, location.pathname]);
 
   // TODO: Disabled while developing FE only
   // if (loading) {

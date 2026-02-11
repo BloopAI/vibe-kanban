@@ -422,5 +422,16 @@
     "skipSignInHeader": "Don't sign in",
     "yes": "Yes",
     "no": "No"
+  },
+  "migration": {
+    "allProjectsMigrated": "모든 프로젝트가 이미 클라우드로 마이그레이션되었습니다.",
+    "continueToWorkspaces": "워크스페이스로 계속"
+  },
+  "appBar": {
+    "projectManagement": {
+      "title": "프로젝트 관리 잠금 해제",
+      "description": "칸반 보드, 팀 협업, 프로젝트 및 조직 전반의 작업 관리에 액세스하려면 로그인하세요.",
+      "tooltip": "프로젝트 관리"
+    }
   }
 }

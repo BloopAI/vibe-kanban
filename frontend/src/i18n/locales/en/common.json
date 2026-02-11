@@ -422,5 +422,16 @@
     "streamsAffected_other": "{{count}} streams affected",
     "status": "(status {{status}})",
     "refreshPage": "Refresh Page"
+  },
+  "migration": {
+    "allProjectsMigrated": "All your projects have already been migrated to the cloud.",
+    "continueToWorkspaces": "Continue to Workspaces"
+  },
+  "appBar": {
+    "projectManagement": {
+      "title": "Unlock Project Management",
+      "description": "Sign in to access kanban boards, team collaboration, and organize your work across projects and organizations.",
+      "tooltip": "Project Management"
+    }
   }
 }

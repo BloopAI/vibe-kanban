@@ -422,5 +422,16 @@
     "skipSignInHeader": "Don't sign in",
     "yes": "Yes",
     "no": "No"
+  },
+  "migration": {
+    "allProjectsMigrated": "すべてのプロジェクトはすでにクラウドに移行済みです。",
+    "continueToWorkspaces": "ワークスペースに進む"
+  },
+  "appBar": {
+    "projectManagement": {
+      "title": "プロジェクト管理を解放",
+      "description": "サインインしてカンバンボード、チームコラボレーション、プロジェクトと組織全体の作業管理にアクセスしましょう。",
+      "tooltip": "プロジェクト管理"
+    }
   }
 }

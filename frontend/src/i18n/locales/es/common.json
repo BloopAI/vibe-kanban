@@ -422,5 +422,16 @@
     "skipSignInHeader": "Don't sign in",
     "yes": "Yes",
     "no": "No"
+  },
+  "migration": {
+    "allProjectsMigrated": "Todos tus proyectos ya han sido migrados a la nube.",
+    "continueToWorkspaces": "Continuar a los espacios de trabajo"
+  },
+  "appBar": {
+    "projectManagement": {
+      "title": "Desbloquear gestión de proyectos",
+      "description": "Inicia sesión para acceder a tableros kanban, colaboración en equipo y organizar tu trabajo en proyectos y organizaciones.",
+      "tooltip": "Gestión de proyectos"
+    }
   }
 }

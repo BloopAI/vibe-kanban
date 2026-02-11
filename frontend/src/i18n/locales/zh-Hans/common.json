@@ -422,5 +422,16 @@
     "skipSignInHeader": "Don't sign in",
     "yes": "Yes",
     "no": "No"
+  },
+  "migration": {
+    "allProjectsMigrated": "您的所有项目已迁移到云端。",
+    "continueToWorkspaces": "继续前往工作区"
+  },
+  "appBar": {
+    "projectManagement": {
+      "title": "解锁项目管理",
+      "description": "登录以访问看板、团队协作，并在项目和组织中管理您的工作。",
+      "tooltip": "项目管理"
+    }
   }
 }

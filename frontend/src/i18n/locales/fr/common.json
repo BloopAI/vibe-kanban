@@ -422,5 +422,16 @@
     "skipSignInHeader": "Don't sign in",
     "yes": "Yes",
     "no": "No"
+  },
+  "migration": {
+    "allProjectsMigrated": "Tous vos projets ont déjà été migrés vers le cloud.",
+    "continueToWorkspaces": "Continuer vers les espaces de travail"
+  },
+  "appBar": {
+    "projectManagement": {
+      "title": "Débloquer la gestion de projet",
+      "description": "Connectez-vous pour accéder aux tableaux kanban, à la collaboration d'équipe et organiser votre travail à travers les projets et organisations.",
+      "tooltip": "Gestion de projet"
+    }
   }
 }

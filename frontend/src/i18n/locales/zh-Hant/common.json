@@ -422,5 +422,16 @@
     "skipSignInHeader": "Don't sign in",
     "yes": "Yes",
     "no": "No"
+  },
+  "migration": {
+    "allProjectsMigrated": "您的所有專案已遷移到雲端。",
+    "continueToWorkspaces": "繼續前往工作區"
+  },
+  "appBar": {
+    "projectManagement": {
+      "title": "解鎖專案管理",
+      "description": "登入以存取看板、團隊協作，並在專案和組織中管理您的工作。",
+      "tooltip": "專案管理"
+    }
   }
 }
