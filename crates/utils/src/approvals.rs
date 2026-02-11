@@ -38,6 +38,7 @@ pub struct CreateApprovalRequest {
     pub tool_call_id: String,
 }
 
+/// Status of a tool permission request (approve/deny for tool execution).
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum ApprovalStatus {
@@ -50,8 +51,38 @@ pub enum ApprovalStatus {
     TimedOut,
 }
 
+/// A question–answer pair. `answer` holds one or more selected labels/values.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct QuestionAnswer {
+    pub question: String,
+    pub answer: Vec<String>,
+}
+
+/// Status of a question answer request.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum QuestionStatus {
+    Answered { answers: Vec<QuestionAnswer> },
+    TimedOut,
+}
+
+// Tracks both approval and question answers requests
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum ApprovalOutcome {
+    Approved,
+    Denied {
+        #[ts(optional)]
+        reason: Option<String>,
+    },
+    Answered {
+        answers: Vec<QuestionAnswer>,
+    },
+    TimedOut,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ApprovalResponse {
     pub execution_process_id: Uuid,
-    pub status: ApprovalStatus,
+    pub status: ApprovalOutcome,
 }

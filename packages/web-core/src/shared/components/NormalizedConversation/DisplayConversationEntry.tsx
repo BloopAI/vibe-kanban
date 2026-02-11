@@ -710,6 +710,7 @@ function DisplayConversationEntry({
 
   const { isProcessGreyed } = useRetryUi();
   const greyed = isProcessGreyed(executionProcessId);
+  const [qaExpanded, qaToggle] = useExpandable(`entry:${expansionKey}`, false);
 
   if (isProcessStart(entry)) {
     return (
@@ -775,6 +776,43 @@ function DisplayConversationEntry({
       </div>
     );
   }
+
+  if (entryType.type === 'user_answered_questions') {
+    const qaEntry = entryType as Extract<
+      NormalizedEntryType,
+      { type: 'user_answered_questions' }
+    >;
+    return (
+      <div className="py-2">
+        <div className="bg-background px-4 py-2 text-sm border-y border-dashed">
+          <button
+            onClick={() => qaToggle()}
+            className="flex items-center gap-1 text-xs opacity-70 w-full cursor-pointer"
+          >
+            <ChevronDown
+              className={cn(
+                'size-3 transition-transform',
+                !qaExpanded && '-rotate-90'
+              )}
+            />
+            <span>
+              {t('askQuestion.answeredCount', {
+                count: qaEntry.answers.length,
+              })}
+            </span>
+          </button>
+          {qaExpanded &&
+            qaEntry.answers.map((qa, i) => (
+              <div key={i} className="mt-2">
+                <div className="font-semibold text-sm">{qa.question}</div>
+                <div className="text-sm font-light">{qa.answer.join(', ')}</div>
+              </div>
+            ))}
+        </div>
+      </div>
+    );
+  }
+
   const renderToolUse = () => {
     if (!isNormalizedEntry(entry)) return null;
     if (entryType.type !== 'tool_use') return null;
@@ -863,6 +901,9 @@ function DisplayConversationEntry({
     );
 
     if (isPendingApprovalStatus(status)) {
+      if (toolEntry.action_type.action === 'ask_user_question') {
+        return content;
+      }
       return (
         <PendingApprovalEntry
           pendingStatus={status}

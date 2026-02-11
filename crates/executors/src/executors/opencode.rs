@@ -182,11 +182,7 @@ impl Opencode {
 
         // Prepare config values that will be moved into the spawned task
         let directory = current_dir.to_string_lossy().to_string();
-        let approvals = if self.auto_approve {
-            None
-        } else {
-            self.approvals.clone()
-        };
+        let approvals = self.approvals.clone();
         let model = self.model.clone();
         let model_variant = self.variant.clone();
         let agent = self.agent.clone();
@@ -789,7 +785,7 @@ fn build_default_permissions(auto_approve: bool) -> String {
     if auto_approve {
         r#"{"question":"deny"}"#.to_string()
     } else {
-        r#"{"edit":"ask","bash":"ask","webfetch":"ask","doom_loop":"ask","external_directory":"ask","question":"deny"}"#.to_string()
+        r#"{"edit":"ask","bash":"ask","webfetch":"ask","doom_loop":"ask","external_directory":"ask","question":"ask"}"#.to_string()
     }
 }
 

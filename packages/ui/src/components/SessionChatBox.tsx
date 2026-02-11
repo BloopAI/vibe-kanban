@@ -17,6 +17,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ChatBoxBase, VisualVariant, type DropzoneProps } from './ChatBoxBase';
 import { type EditorProps, type ExecutorProps } from './CreateChatBox';
+import type { AskUserQuestionItem, QuestionAnswer } from 'shared/types';
 import {
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -27,6 +28,7 @@ import type { LocalImageMetadata } from './TaskAttemptContext';
 import { ToolbarDropdown, ToolbarIconButton } from './Toolbar';
 import { ContextUsageGauge, type ContextUsageInfo } from './ContextUsageGauge';
 import { TodoProgressPopup, type TodoProgressItem } from './TodoProgressPopup';
+import { AskUserQuestionBanner, type AskUserQuestionBannerHandle } from './AskUserQuestionBanner';
 
 // Status enum - single source of truth for execution state
 export type ExecutionStatus =
@@ -108,6 +110,15 @@ interface ApprovalModeProps {
   error?: string | null;
 }
 
+interface AskQuestionModeProps {
+  isActive: boolean;
+  questions: AskUserQuestionItem[];
+  onSubmitAnswers: (answers: QuestionAnswer[]) => void;
+  isSubmitting: boolean;
+  isTimedOut: boolean;
+  error?: string | null;
+}
+
 interface ReviewCommentsProps {
   /** Number of review comments */
   count: number;
@@ -144,6 +155,7 @@ interface SessionChatBoxProps<TExecutor extends string = string> {
   feedbackMode?: FeedbackModeProps;
   editMode?: EditModeProps;
   approvalMode?: ApprovalModeProps;
+  askQuestionMode?: AskQuestionModeProps;
   reviewComments?: ReviewCommentsProps;
   toolbarActions?: ToolbarActionsProps;
   modelSelector?: ReactNode;
@@ -205,6 +217,7 @@ export function SessionChatBox<TExecutor extends string = string>({
   feedbackMode,
   editMode,
   approvalMode,
+  askQuestionMode,
   reviewComments,
   toolbarActions,
   modelSelector,
@@ -229,20 +242,24 @@ export function SessionChatBox<TExecutor extends string = string>({
 }: SessionChatBoxProps<TExecutor>) {
   const { t } = useTranslation('tasks');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const askQuestionBannerRef = useRef<AskUserQuestionBannerHandle>(null);
 
   // Determine if in feedback mode, edit mode, or approval mode
   const isInFeedbackMode = feedbackMode?.isActive ?? false;
   const isInEditMode = editMode?.isActive ?? false;
   const isInApprovalMode = approvalMode?.isActive ?? false;
+  const isInAskQuestionMode = askQuestionMode?.isActive ?? false;
 
-  // Key to force editor remount when entering feedback/edit/approval mode (triggers auto-focus)
+  // Key to force editor remount when entering feedback/edit/approval/question mode (triggers auto-focus)
   const focusKey = isInFeedbackMode
     ? 'feedback'
     : isInEditMode
       ? 'edit'
       : isInApprovalMode
         ? 'approval'
-        : 'normal';
+        : isInAskQuestionMode
+          ? 'question'
+          : 'normal';
 
   // Derived state from status
   const isDisabled = Boolean(
@@ -250,7 +267,8 @@ export function SessionChatBox<TExecutor extends string = string>({
       status === 'stopping' ||
       feedbackMode?.isSubmitting ||
       editMode?.isSubmitting ||
-      approvalMode?.isSubmitting
+      approvalMode?.isSubmitting ||
+      askQuestionMode?.isSubmitting
   );
   const hasContent =
     editor.value.trim().length > 0 || (reviewComments?.count ?? 0) > 0;
@@ -261,6 +279,7 @@ export function SessionChatBox<TExecutor extends string = string>({
   const showRunningAnimation =
     (status === 'running' || status === 'queued' || status === 'sending') &&
     !isInApprovalMode &&
+    !isInAskQuestionMode &&
     editor.value.trim().length === 0;
 
   const placeholder = isInFeedbackMode
@@ -269,12 +288,20 @@ export function SessionChatBox<TExecutor extends string = string>({
       ? 'Edit your message...'
       : isInApprovalMode
         ? 'Provide feedback to request changes...'
-        : session.isNewSessionMode
-          ? 'Start a new conversation...'
-          : 'Continue working on this task...';
+        : isInAskQuestionMode
+          ? 'Type a different answer...'
+          : session.isNewSessionMode
+            ? 'Start a new conversation...'
+            : 'Continue working on this task...';
 
   // Cmd+Enter handler
   const handleCmdEnter = () => {
+    // AskUserQuestion mode: Enter submits custom text as answer
+    if (isInAskQuestionMode && hasContent) {
+      askQuestionBannerRef.current?.submitCustomAnswer(editor.value);
+      editor.onChange('');
+      return;
+    }
     // Approval mode: Cmd+Enter triggers approve or request changes based on input
     if (isInApprovalMode && !approvalMode?.isTimedOut) {
       if (canSend) {
@@ -419,6 +446,42 @@ export function SessionChatBox<TExecutor extends string = string>({
       );
     }
 
+    // AskUserQuestion mode
+    if (isInAskQuestionMode) {
+      if (askQuestionMode?.isTimedOut) {
+        return (
+          <PrimaryButton
+            variant="secondary"
+            onClick={actions.onStop}
+            value={t('conversation.actions.stop')}
+          />
+        );
+      }
+
+      const hasMessage = editor.value.trim().length > 0;
+
+      return (
+        <>
+          <PrimaryButton
+            variant="secondary"
+            onClick={actions.onStop}
+            value={t('conversation.actions.stop')}
+          />
+          {hasMessage && (
+            <PrimaryButton
+              onClick={() => {
+                askQuestionBannerRef.current?.submitCustomAnswer(editor.value);
+                editor.onChange('');
+              }}
+              disabled={askQuestionMode?.isSubmitting}
+              actionIcon={askQuestionMode?.isSubmitting ? 'spinner' : undefined}
+              value={t('conversation.actions.send')}
+            />
+          )}
+        </>
+      );
+    }
+
     switch (status) {
       case 'idle':
         return (
@@ -522,6 +585,21 @@ export function SessionChatBox<TExecutor extends string = string>({
       );
     }
 
+    // AskUserQuestion banner (renders above input)
+    if (isInAskQuestionMode && askQuestionMode) {
+      banners.push(
+        <AskUserQuestionBanner
+          key="ask-question"
+          ref={askQuestionBannerRef}
+          questions={askQuestionMode.questions}
+          onSubmitAnswers={askQuestionMode.onSubmitAnswers}
+          isSubmitting={askQuestionMode.isSubmitting}
+          isTimedOut={askQuestionMode.isTimedOut}
+          error={askQuestionMode.error ?? null}
+        />
+      );
+    }
+
     // Queued message banner
     if (isQueued) {
       banners.push(
@@ -541,13 +619,17 @@ export function SessionChatBox<TExecutor extends string = string>({
   };
 
   // Combine errors
-  const displayError = feedbackMode?.error ?? approvalMode?.error ?? error;
+  const displayError =
+    feedbackMode?.error ??
+    approvalMode?.error ??
+    askQuestionMode?.error ??
+    error;
 
   // Determine visual variant
   const getVisualVariant = () => {
     if (isInFeedbackMode) return VisualVariant.FEEDBACK;
     if (isInEditMode) return VisualVariant.EDIT;
-    if (isInApprovalMode) return VisualVariant.PLAN;
+    if (isInApprovalMode || isInAskQuestionMode) return VisualVariant.PLAN;
     return VisualVariant.NORMAL;
   };
 

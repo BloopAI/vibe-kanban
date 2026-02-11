@@ -639,5 +639,13 @@
     "descriptionSingle": "Change status for \"{{title}}\"",
     "descriptionMultiple": "Change status for {{count}} issues",
     "action": "Change Status"
+  },
+  "askQuestion": {
+    "title": "エージェントが質問しています",
+    "selectMultiple": "複数選択",
+    "confirmSelection": "選択を確定",
+    "submitting": "回答を送信中...",
+    "answeredCount": "{{count}}件の質問に回答済み",
+    "answeredCount_other": "{{count}}件の質問に回答済み"
   }
 }

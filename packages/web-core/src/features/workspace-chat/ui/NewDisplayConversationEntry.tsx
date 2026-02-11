@@ -391,6 +391,7 @@ function NewDisplayConversationEntry(props: Props) {
       return null;
 
     case 'user_feedback':
+    case 'user_answered_questions':
     case 'loading':
       // Fallback to legacy component for these entry types
       return (

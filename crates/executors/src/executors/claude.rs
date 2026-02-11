@@ -21,7 +21,10 @@ use tokio::process::Command;
 use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 use workspace_utils::{
-    approvals::ApprovalStatus, diff::create_unified_diff, log_msg::LogMsg, msg_store::MsgStore,
+    approvals::{ApprovalStatus, QuestionStatus},
+    diff::create_unified_diff,
+    log_msg::LogMsg,
+    msg_store::MsgStore,
     path::make_path_relative,
 };
 
@@ -39,8 +42,8 @@ use crate::{
         StandardCodingAgentExecutor, codex::client::LogWriter, utils::reorder_slash_commands,
     },
     logs::{
-        ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
-        TodoItem, ToolStatus,
+        ActionType, AnsweredQuestion, AskUserQuestionItem, AskUserQuestionOption, FileChange,
+        NormalizedEntry, NormalizedEntryError, NormalizedEntryType, TodoItem, ToolStatus,
         plain_text_processor::PlainTextLogProcessor,
         utils::{
             EntryIndexProvider,
@@ -169,7 +172,6 @@ impl ClaudeCode {
             "--input-format=stream-json",
             "--include-partial-messages",
             "--replay-user-messages",
-            "--disallowedTools=AskUserQuestion",
         ]);
 
         apply_overrides(builder, &self.cmd)
@@ -203,11 +205,11 @@ impl ClaudeCode {
                 "PreToolUse".to_string(),
                 serde_json::json!([
                     {
-                        "matcher": "^ExitPlanMode$",
+                        "matcher": "^(ExitPlanMode|AskUserQuestion)$",
                         "hookCallbackIds": ["tool_approval"],
                     },
                     {
-                        "matcher": "^(?!ExitPlanMode$).*",
+                        "matcher": "^(?!(ExitPlanMode|AskUserQuestion)$).*",
                         "hookCallbackIds": [AUTO_APPROVE_CALLBACK_ID],
                     }
                 ]),
@@ -218,6 +220,16 @@ impl ClaudeCode {
                 serde_json::json!([
                     {
                         "matcher": "^(?!(Glob|Grep|NotebookRead|Read|Task|TodoWrite)$).*",
+                        "hookCallbackIds": ["tool_approval"],
+                    }
+                ]),
+            );
+        } else {
+            hooks.insert(
+                "PreToolUse".to_string(),
+                serde_json::json!([
+                    {
+                        "matcher": "^AskUserQuestion$",
                         "hookCallbackIds": ["tool_approval"],
                     }
                 ]),
@@ -843,6 +855,7 @@ impl ClaudeLogProcessor {
             ClaudeJson::Result { session_id, .. } => session_id.clone(),
             ClaudeJson::StreamEvent { .. } => None, // session might not have been initialized yet
             ClaudeJson::ApprovalResponse { .. } => None,
+            ClaudeJson::QuestionResponse { .. } => None,
             ClaudeJson::ControlRequest { .. } => None,
             ClaudeJson::ControlResponse { .. } => None,
             ClaudeJson::ControlCancelRequest { .. } => None,
@@ -1094,6 +1107,24 @@ impl ClaudeLogProcessor {
             },
             ClaudeToolData::UndoEdit { .. } => ActionType::Other {
                 description: "Undo edit".to_string(),
+            },
+            ClaudeToolData::AskUserQuestion { questions } => ActionType::AskUserQuestion {
+                questions: questions
+                    .iter()
+                    .map(|q| AskUserQuestionItem {
+                        question: q.question.clone(),
+                        header: q.header.clone(),
+                        options: q
+                            .options
+                            .iter()
+                            .map(|o| AskUserQuestionOption {
+                                label: o.label.clone(),
+                                description: o.description.clone(),
+                            })
+                            .collect(),
+                        multi_select: q.multi_select,
+                    })
+                    .collect(),
             },
             ClaudeToolData::Unknown { .. } => {
                 // Surface MCP tools as generic Tool with args
@@ -1674,10 +1705,8 @@ impl ClaudeLogProcessor {
                 tool_name,
                 approval_status,
             } => {
-                // Convert denials and timeouts to visible entries (matching Codex behavior)
                 let entry_opt = match approval_status {
-                    ApprovalStatus::Pending => None,
-                    ApprovalStatus::Approved => None,
+                    ApprovalStatus::Pending | ApprovalStatus::Approved => None,
                     ApprovalStatus::Denied { reason } => Some(NormalizedEntry {
                         timestamp: None,
                         entry_type: NormalizedEntryType::UserFeedback {
@@ -1698,6 +1727,41 @@ impl ClaudeLogProcessor {
                         content: format!("Approval timed out for tool {tool_name}"),
                         metadata: None,
                     }),
+                };
+
+                if let Some(entry) = entry_opt {
+                    let idx = entry_index_provider.next();
+                    patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+                }
+            }
+            ClaudeJson::QuestionResponse {
+                call_id: _,
+                tool_name: _,
+                question_status,
+            } => {
+                let entry_opt = match question_status {
+                    QuestionStatus::Answered { answers } => {
+                        let qa_pairs: Vec<AnsweredQuestion> = answers
+                            .iter()
+                            .map(|qa| AnsweredQuestion {
+                                question: qa.question.clone(),
+                                answer: qa.answer.clone(),
+                            })
+                            .collect();
+                        Some(NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::UserAnsweredQuestions {
+                                answers: qa_pairs,
+                            },
+                            content: format!(
+                                "Answered {} question{}",
+                                answers.len(),
+                                if answers.len() != 1 { "s" } else { "" }
+                            ),
+                            metadata: None,
+                        })
+                    }
+                    QuestionStatus::TimedOut => None,
                 };
 
                 if let Some(entry) = entry_opt {
@@ -1762,6 +1826,13 @@ impl ClaudeLogProcessor {
             },
             ActionType::PlanPresentation { plan } => plan.clone(),
             ActionType::TodoManagement { .. } => "TODO list updated".to_string(),
+            ActionType::AskUserQuestion { questions } => {
+                if questions.len() == 1 {
+                    questions[0].question.clone()
+                } else {
+                    format!("{} questions", questions.len())
+                }
+            }
             ActionType::Other { description: _ } => match tool_data {
                 ClaudeToolData::LS { path } => {
                     let relative_path = make_path_relative(path, worktree_path);
@@ -2096,6 +2167,11 @@ pub enum ClaudeJson {
         tool_name: String,
         approval_status: ApprovalStatus,
     },
+    QuestionResponse {
+        call_id: String,
+        tool_name: String,
+        question_status: QuestionStatus,
+    },
     ControlRequest {
         request_id: String,
         request: ControlRequestType,
@@ -2384,6 +2460,9 @@ pub enum ClaudeToolData {
     },
     #[serde(rename = "TodoRead", alias = "todo_read")]
     TodoRead {},
+    AskUserQuestion {
+        questions: Vec<AskUserQuestionInputItem>,
+    },
     #[serde(untagged)]
     Unknown {
         #[serde(flatten)]
@@ -2420,6 +2499,23 @@ struct ClaudeToolCallInfo {
     tool_name: String,
     tool_data: ClaudeToolData,
     content: String,
+}
+
+/// A single question from AskUserQuestion tool input.
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct AskUserQuestionInputItem {
+    pub question: String,
+    pub header: String,
+    pub options: Vec<AskUserQuestionInputOption>,
+    #[serde(rename = "multiSelect")]
+    pub multi_select: bool,
+}
+
+/// An option for an AskUserQuestion question.
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct AskUserQuestionInputOption {
+    pub label: String,
+    pub description: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -2460,6 +2556,7 @@ impl ClaudeToolData {
             ClaudeToolData::Mermaid { .. } => "Mermaid",
             ClaudeToolData::CodebaseSearchAgent { .. } => "CodebaseSearchAgent",
             ClaudeToolData::UndoEdit { .. } => "UndoEdit",
+            ClaudeToolData::AskUserQuestion { .. } => "AskUserQuestion",
             ClaudeToolData::Unknown { data } => data
                 .get("name")
                 .and_then(|v| v.as_str())

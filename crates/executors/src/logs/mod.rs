@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
-use workspace_utils::approvals::ApprovalStatus;
+use workspace_utils::approvals::{ApprovalStatus, QuestionStatus};
 
 use crate::logs::utils::shell_command_parsing::CommandCategory;
 
@@ -94,6 +94,17 @@ pub enum NormalizedEntryType {
         needs_setup: bool,
     },
     TokenUsageInfo(TokenUsageInfo),
+    UserAnsweredQuestions {
+        answers: Vec<AnsweredQuestion>,
+    },
+}
+
+/// A question–answer pair from a completed AskUserQuestion interaction.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct AnsweredQuestion {
+    pub question: String,
+    pub answer: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -159,7 +170,14 @@ impl ToolStatus {
                 reason: reason.clone(),
             }),
             ApprovalStatus::TimedOut => Some(ToolStatus::TimedOut),
-            ApprovalStatus::Pending => None, // this should not happen
+            ApprovalStatus::Pending => None,
+        }
+    }
+
+    pub fn from_question_status(status: &QuestionStatus) -> Self {
+        match status {
+            QuestionStatus::Answered { .. } => ToolStatus::Created,
+            QuestionStatus::TimedOut => ToolStatus::TimedOut,
         }
     }
 }
@@ -218,9 +236,31 @@ pub enum ActionType {
         todos: Vec<TodoItem>,
         operation: String,
     },
+    AskUserQuestion {
+        questions: Vec<AskUserQuestionItem>,
+    },
     Other {
         description: String,
     },
+}
+
+/// A single question in an AskUserQuestion tool call.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct AskUserQuestionItem {
+    pub question: String,
+    pub header: String,
+    pub options: Vec<AskUserQuestionOption>,
+    #[serde(rename = "multiSelect")]
+    pub multi_select: bool,
+}
+
+/// An option for an AskUserQuestion question.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct AskUserQuestionOption {
+    pub label: String,
+    pub description: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

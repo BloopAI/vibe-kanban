@@ -7,7 +7,7 @@ use axum::{
 };
 use deployment::Deployment;
 use utils::{
-    approvals::{ApprovalResponse, ApprovalStatus},
+    approvals::{ApprovalOutcome, ApprovalResponse},
     response::ApiResponse,
 };
 
@@ -17,24 +17,24 @@ pub async fn respond_to_approval(
     State(deployment): State<DeploymentImpl>,
     Path(id): Path<String>,
     ResponseJson(request): ResponseJson<ApprovalResponse>,
-) -> Result<ResponseJson<ApiResponse<ApprovalStatus>>, StatusCode> {
+) -> Result<ResponseJson<ApiResponse<ApprovalOutcome>>, StatusCode> {
     let service = deployment.approvals();
 
     match service.respond(&deployment.db().pool, &id, request).await {
-        Ok((status, context)) => {
+        Ok((outcome, context)) => {
             deployment
                 .track_if_analytics_allowed(
                     "approval_responded",
                     serde_json::json!({
                         "approval_id": &id,
-                        "status": format!("{:?}", status),
+                        "status": format!("{:?}", outcome),
                         "tool_name": context.tool_name,
                         "execution_process_id": context.execution_process_id.to_string(),
                     }),
                 )
                 .await;
 
-            Ok(ResponseJson(ApiResponse::success(status)))
+            Ok(ResponseJson(ApiResponse::success(outcome)))
         }
         Err(e) => {
             tracing::error!("Failed to respond to approval: {:?}", e);

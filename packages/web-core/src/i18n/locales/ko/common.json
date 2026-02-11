@@ -639,5 +639,13 @@
     "descriptionSingle": "Change status for \"{{title}}\"",
     "descriptionMultiple": "Change status for {{count}} issues",
     "action": "Change Status"
+  },
+  "askQuestion": {
+    "title": "에이전트가 질문하고 있습니다",
+    "selectMultiple": "복수 선택",
+    "confirmSelection": "선택 확인",
+    "submitting": "답변 제출 중...",
+    "answeredCount": "{{count}}개의 질문에 답변함",
+    "answeredCount_other": "{{count}}개의 질문에 답변함"
   }
 }

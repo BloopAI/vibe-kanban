@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use workspace_utils::approvals::ApprovalStatus;
+use workspace_utils::approvals::{ApprovalStatus, QuestionStatus};
 
 /// JSON log events emitted by the OpenCode SDK executor.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,6 +27,10 @@ pub enum OpencodeExecutorEvent {
     ApprovalResponse {
         tool_call_id: String,
         status: ApprovalStatus,
+    },
+    QuestionResponse {
+        tool_call_id: String,
+        status: QuestionStatus,
     },
     SystemMessage {
         content: String,
@@ -59,6 +63,9 @@ pub(super) enum SdkEvent {
     SessionCompacted,
     SessionError(SessionErrorEvent),
     TodoUpdated(TodoUpdatedEvent),
+    QuestionAsked(QuestionAskedEvent),
+    QuestionReplied,
+    QuestionRejected,
     CommandExecuted,
     TuiSessionSelect,
     Unknown { type_: String, properties: Value },
@@ -93,6 +100,11 @@ impl SdkEvent {
             "todo.updated" => {
                 SdkEvent::TodoUpdated(serde_json::from_value(envelope.properties).ok()?)
             }
+            "question.asked" => {
+                SdkEvent::QuestionAsked(serde_json::from_value(envelope.properties).ok()?)
+            }
+            "question.replied" => SdkEvent::QuestionReplied,
+            "question.rejected" => SdkEvent::QuestionRejected,
             "command.executed" => SdkEvent::CommandExecuted,
             "tui.session.select" => SdkEvent::TuiSessionSelect,
             _ => SdkEvent::Unknown {
@@ -204,6 +216,29 @@ pub(super) struct PermissionAskedEvent {
 pub(super) struct PermissionToolInfo {
     #[serde(rename = "callID")]
     pub(super) call_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct QuestionAskedEvent {
+    pub(super) id: String,
+    pub(super) questions: Vec<QuestionInfo>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(super) struct QuestionInfo {
+    pub(super) question: String,
+    pub(super) header: String,
+    #[serde(default)]
+    pub(super) options: Vec<QuestionOption>,
+    #[serde(default)]
+    pub(super) multiple: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(super) struct QuestionOption {
+    pub(super) label: String,
+    #[serde(default)]
+    pub(super) description: String,
 }
 
 #[derive(Debug, Deserialize)]

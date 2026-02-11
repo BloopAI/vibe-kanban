@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
 import {
+  type AskUserQuestionItem,
   BaseAgentCapability,
   type Session,
   type ToolStatus,
@@ -196,10 +197,15 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
           ToolStatus,
           { status: 'pending_approval' }
         >;
+        const questions: AskUserQuestionItem[] | undefined =
+          entryType.action_type.action === 'ask_user_question'
+            ? entryType.action_type.questions
+            : undefined;
         return {
           approvalId: status.approval_id,
           timeoutAt: status.timeout_at,
           executionProcessId: entry.executionProcessId,
+          questions,
         };
       }
     }
@@ -242,9 +248,17 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   );
   const hasReviewComments = (reviewContext?.comments.length ?? 0) > 0;
 
-  // Approval mutation for approve/deny actions
-  const { approveAsync, denyAsync, isApproving, isDenying, denyError } =
-    useApprovalMutation();
+  // Approval mutation for approve/deny/answer actions
+  const {
+    approveAsync,
+    denyAsync,
+    answerAsync,
+    isApproving,
+    isDenying,
+    isAnswering,
+    denyError,
+    answerError,
+  } = useApprovalMutation();
 
   // Branch status for edit retry and conflict detection
   const { data: branchStatus } = useBranchStatus(workspaceId);
@@ -768,6 +782,28 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     onScrollToBottom,
   ]);
 
+  // Handle AskUserQuestion answer submission
+  const handleAnswerQuestion = useCallback(
+    async (answers: Array<{ question: string; answer: string[] }>) => {
+      if (!pendingApproval) return;
+
+      try {
+        await answerAsync({
+          approvalId: pendingApproval.approvalId,
+          executionProcessId: pendingApproval.executionProcessId,
+          answers,
+        });
+        queryClient.invalidateQueries({
+          queryKey: workspaceSummaryKeys.all,
+        });
+        onScrollToBottom();
+      } catch {
+        // Error is handled by mutation
+      }
+    },
+    [pendingApproval, answerAsync, queryClient, onScrollToBottom]
+  );
+
   // Check if approval is timed out
   const isApprovalTimedOut = pendingApproval
     ? new Date() > new Date(pendingApproval.timeoutAt)
@@ -974,7 +1010,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
           : undefined
       }
       approvalMode={
-        pendingApproval
+        pendingApproval && !pendingApproval.questions
           ? {
               isActive: true,
               onApprove: handleApprove,
@@ -982,6 +1018,18 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
               isSubmitting: isApproving || isDenying,
               isTimedOut: isApprovalTimedOut,
               error: denyError?.message ?? null,
+            }
+          : undefined
+      }
+      askQuestionMode={
+        pendingApproval?.questions
+          ? {
+              isActive: true,
+              questions: pendingApproval.questions,
+              onSubmitAnswers: handleAnswerQuestion,
+              isSubmitting: isAnswering,
+              isTimedOut: isApprovalTimedOut,
+              error: answerError?.message ?? null,
             }
           : undefined
       }

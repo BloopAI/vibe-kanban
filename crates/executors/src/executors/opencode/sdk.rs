@@ -18,7 +18,7 @@ use tokio::{
     sync::{Mutex as AsyncMutex, mpsc},
 };
 use tokio_util::sync::CancellationToken;
-use workspace_utils::approvals::ApprovalStatus;
+use workspace_utils::approvals::{ApprovalStatus, QuestionAnswer, QuestionStatus};
 
 use super::{
     slash_commands,
@@ -1259,6 +1259,80 @@ async fn process_event_stream(
 
                 let _ = ctx.control_tx.send(ControlEvent::SessionError { message });
             }
+            "question.asked" => {
+                let request_id = data
+                    .pointer("/properties/id")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string();
+
+                if request_id.is_empty() || !ctx.seen_permissions.insert(request_id.clone()) {
+                    continue;
+                }
+
+                let questions = data
+                    .pointer("/properties/questions")
+                    .and_then(Value::as_array)
+                    .cloned()
+                    .unwrap_or_default();
+
+                let tool_input = serde_json::json!({ "questions": questions });
+
+                let approvals = ctx.approvals.clone();
+                let client = ctx.client.clone();
+                let base_url = ctx.base_url.to_string();
+                let directory = ctx.directory.to_string();
+                let log_writer = ctx.log_writer.clone();
+                let cancel = ctx.cancel.clone();
+                tokio::spawn(async move {
+                    let status =
+                        match request_question_approval(approvals, tool_input, &request_id, cancel)
+                            .await
+                        {
+                            Ok(status) => status,
+                            Err(ExecutorApprovalError::Cancelled) => {
+                                tracing::debug!(
+                                    "OpenCode question approval cancelled for request_id={}",
+                                    request_id
+                                );
+                                return;
+                            }
+                            Err(err) => {
+                                tracing::error!(
+                                    "OpenCode question approval failed for request_id={}: {err}",
+                                    request_id
+                                );
+                                return;
+                            }
+                        };
+
+                    let _ = log_writer
+                        .log_event(&OpencodeExecutorEvent::QuestionResponse {
+                            tool_call_id: request_id.clone(),
+                            status: status.clone(),
+                        })
+                        .await;
+
+                    match status {
+                        QuestionStatus::Answered { answers } => {
+                            let opencode_answers = answers_to_opencode_format(&questions, &answers);
+                            let _ = client
+                                .post(format!("{base_url}/question/{request_id}/reply"))
+                                .query(&[("directory", directory.as_str())])
+                                .json(&serde_json::json!({ "answers": opencode_answers }))
+                                .send()
+                                .await;
+                        }
+                        QuestionStatus::TimedOut => {
+                            let _ = client
+                                .post(format!("{base_url}/question/{request_id}/reject"))
+                                .query(&[("directory", directory.as_str())])
+                                .send()
+                                .await;
+                        }
+                    }
+                });
+            }
             "permission.asked" => {
                 let request_id = data
                     .pointer("/properties/id")
@@ -1390,7 +1464,8 @@ fn event_matches_session(event_type: &str, event: &Value, session_id: &str) -> b
         "message.part.updated" => event
             .pointer("/properties/part/sessionID")
             .and_then(Value::as_str),
-        "permission.asked" | "permission.replied" | "session.idle" | "session.error" => event
+        "permission.asked" | "permission.replied" | "question.asked" | "question.replied"
+        | "question.rejected" | "session.idle" | "session.error" => event
             .pointer("/properties/sessionID")
             .and_then(Value::as_str),
         _ => event
@@ -1437,4 +1512,33 @@ async fn request_permission_approval(
         ) => Ok(ApprovalStatus::Approved),
         Err(err) => Err(err),
     }
+}
+
+async fn request_question_approval(
+    approvals: Option<Arc<dyn ExecutorApprovalService>>,
+    tool_input: Value,
+    request_id: &str,
+    cancel: CancellationToken,
+) -> Result<QuestionStatus, ExecutorApprovalError> {
+    let Some(approvals) = approvals else {
+        return Err(ExecutorApprovalError::ServiceUnavailable);
+    };
+
+    approvals
+        .request_question_answer("question", tool_input, request_id, cancel)
+        .await
+}
+
+fn answers_to_opencode_format(questions: &[Value], answers: &[QuestionAnswer]) -> Vec<Vec<String>> {
+    questions
+        .iter()
+        .map(|q| {
+            let question_text = q.get("question").and_then(Value::as_str).unwrap_or("");
+            answers
+                .iter()
+                .find(|qa| qa.question == question_text)
+                .map(|qa| qa.answer.clone())
+                .unwrap_or_default()
+        })
+        .collect()
 }

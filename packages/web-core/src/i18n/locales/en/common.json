@@ -639,5 +639,13 @@
       "description": "Sign in to organise your coding agents with kanban boards.",
       "migrateOldProjects": "Migrate old projects"
     }
+  },
+  "askQuestion": {
+    "title": "Agent is asking a question",
+    "selectMultiple": "select multiple",
+    "confirmSelection": "Confirm selection",
+    "submitting": "Submitting answers...",
+    "answeredCount": "Answered {{count}} question",
+    "answeredCount_other": "Answered {{count}} questions"
   }
 }

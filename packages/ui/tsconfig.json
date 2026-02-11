@@ -10,7 +10,11 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "shared/*": ["../../shared/*"]
+    }
   },
   "include": ["src"]
 }

@@ -639,5 +639,13 @@
     "descriptionSingle": "Change status for \"{{title}}\"",
     "descriptionMultiple": "Change status for {{count}} issues",
     "action": "Change Status"
+  },
+  "askQuestion": {
+    "title": "L'agent pose une question",
+    "selectMultiple": "sélection multiple",
+    "confirmSelection": "Confirmer la sélection",
+    "submitting": "Envoi des réponses...",
+    "answeredCount": "Répondu à {{count}} question",
+    "answeredCount_other": "Répondu à {{count}} questions"
   }
 }

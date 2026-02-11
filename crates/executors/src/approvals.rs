@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
-use workspace_utils::approvals::ApprovalStatus;
+use workspace_utils::approvals::{ApprovalStatus, QuestionStatus};
 
 /// Errors emitted by executor approval services.
 #[derive(Debug, Error)]
@@ -40,6 +40,15 @@ pub trait ExecutorApprovalService: Send + Sync {
         tool_call_id: &str,
         cancel: CancellationToken,
     ) -> Result<ApprovalStatus, ExecutorApprovalError>;
+
+    /// Requests answers to questions and waits for the user response.
+    async fn request_question_answer(
+        &self,
+        tool_name: &str,
+        tool_input: Value,
+        tool_call_id: &str,
+        cancel: CancellationToken,
+    ) -> Result<QuestionStatus, ExecutorApprovalError>;
 }
 
 #[derive(Debug, Default)]
@@ -55,6 +64,16 @@ impl ExecutorApprovalService for NoopExecutorApprovalService {
         _cancel: CancellationToken,
     ) -> Result<ApprovalStatus, ExecutorApprovalError> {
         Ok(ApprovalStatus::Approved)
+    }
+
+    async fn request_question_answer(
+        &self,
+        _tool_name: &str,
+        _tool_input: Value,
+        _tool_call_id: &str,
+        _cancel: CancellationToken,
+    ) -> Result<QuestionStatus, ExecutorApprovalError> {
+        Err(ExecutorApprovalError::ServiceUnavailable)
     }
 }
 
