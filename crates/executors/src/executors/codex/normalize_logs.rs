@@ -177,7 +177,7 @@ struct ReviewState {
 }
 
 impl ReviewState {
-    fn complete(&mut self, review_event: &ExitedReviewModeEvent) {
+    fn complete(&mut self, review_event: &ExitedReviewModeEvent, worktree_path: &str) {
         let result_text = match &review_event.review_output {
             Some(output) => {
                 let mut sections = Vec::new();
@@ -192,13 +192,15 @@ impl ReviewState {
                 if !output.findings.is_empty() {
                     let mut lines = vec!["### Findings".to_string()];
                     for finding in &output.findings {
-                        let path = finding.code_location.absolute_file_path.display();
+                        let abs_path = finding.code_location.absolute_file_path.to_string_lossy();
+                        let path = make_path_relative(&abs_path, worktree_path);
                         let start = finding.code_location.line_range.start;
                         let end = finding.code_location.line_range.end;
                         lines.push(format!(
-                            "- **P{}** | **Confidence:** {} | {} — `{path}:{start}-{end}`",
+                            "- **P{}** | **Confidence:** {} | {}",
                             finding.priority, finding.confidence_score, finding.title,
                         ));
+                        lines.push(format!("  `{path}:{start}-{end}`"));
                         for body_line in finding.body.lines() {
                             lines.push(format!("  {body_line}"));
                         }
@@ -1107,7 +1109,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 }
                 EventMsg::ExitedReviewMode(review_event) => {
                     if let Some(mut review_state) = state.review.take() {
-                        review_state.complete(&review_event);
+                        review_state.complete(&review_event, &worktree_path_str);
                         if let Some(index) = review_state.index {
                             replace_normalized_entry(
                                 &msg_store,
