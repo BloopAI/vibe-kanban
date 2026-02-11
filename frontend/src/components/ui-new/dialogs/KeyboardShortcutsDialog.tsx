@@ -100,6 +100,10 @@ function useShortcutGroups(): ShortcutGroup[] {
         shortcuts: sequentialByFirstKey.get('w') || [],
       },
       { name: 'View (V ...)', shortcuts: sequentialByFirstKey.get('v') || [] },
+      {
+        name: 'Issues (I ...)',
+        shortcuts: sequentialByFirstKey.get('i') || [],
+      },
       { name: 'Git (X ...)', shortcuts: sequentialByFirstKey.get('x') || [] },
       { name: 'Yank (Y ...)', shortcuts: sequentialByFirstKey.get('y') || [] },
       {
