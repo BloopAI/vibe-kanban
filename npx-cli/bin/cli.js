@@ -76,6 +76,21 @@ const versionCacheDir = LOCAL_DEV_MODE
   ? path.join(LOCAL_DIST_DIR, platformDir)
   : path.join(CACHE_DIR, BINARY_TAG, platformDir);
 
+// Remove old version directories from the binary cache
+function cleanOldVersions() {
+  try {
+    const entries = fs.readdirSync(CACHE_DIR, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory() && entry.name !== BINARY_TAG) {
+        const oldDir = path.join(CACHE_DIR, entry.name);
+        fs.rmSync(oldDir, { recursive: true, force: true });
+      }
+    }
+  } catch {
+    // Ignore cleanup errors — not critical
+  }
+}
+
 function showProgress(downloaded, total) {
   const percent = total ? Math.round((downloaded / total) * 100) : 0;
   const mb = (downloaded / (1024 * 1024)).toFixed(1);
@@ -143,6 +158,11 @@ async function extractAndRun(baseName, launch) {
 
 async function main() {
   fs.mkdirSync(versionCacheDir, { recursive: true });
+
+  // Clean up old cached versions to avoid unbounded disk usage
+  if (!LOCAL_DEV_MODE) {
+    cleanOldVersions();
+  }
 
   const args = process.argv.slice(2);
   const isMcpMode = args.includes("--mcp");
