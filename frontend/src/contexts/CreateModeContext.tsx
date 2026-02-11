@@ -78,7 +78,9 @@ export function CreateModeProvider({
     enabled: !hasWorkspace,
   });
 
-  const reposLoading = hasWorkspace ? workspaceReposLoading : recentReposLoading;
+  const reposLoading = hasWorkspace
+    ? workspaceReposLoading
+    : recentReposLoading;
 
   const initialRepos = useMemo(() => {
     // Use last workspace repos if available
