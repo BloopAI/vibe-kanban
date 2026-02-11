@@ -22,12 +22,19 @@ ElectricSQL (port 3000, internal)
 ## Build & Run
 
 ```bash
-# Local stack (from crates/remote/)
-docker compose --env-file ../../.env.remote -f docker-compose.yml up --build
+# (from the repo root)
+pnpm run remote:dev
 
 # Run desktop client against local server
 export VK_SHARED_API_BASE=http://localhost:3000
 pnpm run dev
+```
+
+To teardown and clean the remote stack (including wiping the database):
+
+```
+(from the repo root)
+pnpm run remote:dev:clean
 ```
 
 Multi-stage Docker build: Node (frontend) → Rust (server) → Debian slim runtime.
@@ -81,14 +88,6 @@ The frontend awaits this txid on the Electric stream before dropping optimistic 
 3. **Add a proxy route** if the shape needs a new scope pattern in `electric_proxy.rs`.
 4. **Return txid** from all mutation routes for that table.
 
-### Postgres Requirements for ElectricSQL
-
-- PostgreSQL 14+ with `wal_level=logical`
-- The `electric_sync` role must have `LOGIN` and `REPLICATION` privileges
-- The role is created by migration; its password is set at startup by `ensure_electric_role_password()` using the `ELECTRIC_ROLE_PASSWORD` env var
-- ElectricSQL connects as `electric_sync`, not the main `remote` user
-- Deploy the remote server first (to run migrations and create the role) before starting ElectricSQL
-
 ### Security
 
 - **ElectricSQL is internal only** — never expose it directly to clients. All shape requests go through the auth-gated proxy in `electric_proxy.rs`.
@@ -116,22 +115,6 @@ This generates both the Axum router and TypeScript type metadata (via `HasJsonPa
 - **OAuth** (`auth/provider.rs`): GitHub and Google. At least one must be configured. Empty env vars are treated as disabled.
 - **Membership**: All resource routes check organisation/project membership before DB access. Use `RequestContext` from the middleware to get user info.
 
-## Environment Variables
-
-**Required:**
-- `VIBEKANBAN_REMOTE_JWT_SECRET` — base64 JWT secret (`openssl rand -base64 48`)
-- `ELECTRIC_ROLE_PASSWORD` — password for the `electric_sync` database role
-- `SERVER_DATABASE_URL` — Postgres connection string
-- At least one of `GITHUB_OAUTH_CLIENT_ID`/`SECRET` or `GOOGLE_OAUTH_CLIENT_ID`/`SECRET`
-
-**Optional (empty string = disabled):**
-- `LOOPS_EMAIL_API_KEY` — email invitations
-- `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_REVIEW_ENDPOINT`, `R2_REVIEW_BUCKET` — Cloudflare R2 storage
-- `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_WEBHOOK_SECRET` — GitHub App integration
-- `STRIPE_SECRET_KEY`, `STRIPE_TEAM_SEAT_PRICE_ID`, `STRIPE_WEBHOOK_SECRET` — billing (requires `vk-billing` feature)
-
-When parsing optional env vars, use the `Ok(v) if !v.is_empty()` pattern — Docker Compose `${VAR:-}` sets empty strings, not unset vars.
-
 ## Frontend (`remote-frontend/`)
 
 - React 18 + React Router 7 + Vite + Tailwind
@@ -152,7 +135,39 @@ When parsing optional env vars, use the `Ok(v) if !v.is_empty()` pattern — Doc
 cargo test --manifest-path crates/remote/Cargo.toml
 ```
 
-SQLx compile-time checks require either a running Postgres or offline query data (`.sqlx/` directory).
+SQLx compile-time checks require either a running Postgres or offline query data (`.sqlx/` directory). Run `pnpm run remote:prepare-db` to do this.
+
+## Shared Types (`api-types` crate)
+
+Types shared between the remote server and the local desktop application belong in the `api-types` crate (`crates/api-types/`), not in the remote crate itself. Both `remote` and `server` depend on `api-types`.
+
+The crate contains:
+
+- **Row types** — API representations of database entities (`Issue`, `Project`, `User`, `Workspace`, etc.)
+- **Request types** — create/update payloads (`CreateIssueRequest`, `UpdateProjectRequest`, etc.)
+- **Shared enums** — `IssuePriority`, `MemberRole`, `PullRequestStatus`, `NotificationType`, etc.
+
+All types derive `TS` from `ts-rs` so they can be exported to TypeScript automatically. When adding a new entity that will be used by both backends, define its types in `api-types`.
+
+## Type Generation (`generate_types.rs`)
+
+The binary at `src/bin/generate_types.rs` generates `shared/remote-types.ts` — the single TypeScript file consumed by the remote frontend. Run it with:
+
+```bash
+pnpm run remote:generate-types        # write shared/remote-types.ts
+pnpm run remote:generate-types --check # CI mode — exits non-zero if file is stale
+```
+
+The generated file contains:
+
+1. **TypeScript interfaces** for every row and request type from `api-types` (each type's `::decl()` call in the `type_decls` vec).
+2. **`ShapeDefinition<T>` constants** — one per ElectricSQL shape, sourced from `shapes::all_shapes()`.
+3. **`MutationDefinition<TRow, TCreate, TUpdate>` constants** — one per CRUD entity, sourced from `routes::all_mutation_definitions()`.
+4. **Type helpers** (`MutationRowType`, `MutationCreateType`, `MutationUpdateType`) for extracting types from a mutation definition.
+
+When adding a new type to `api-types` that the remote frontend needs, add its `::decl()` call to the `type_decls` vec in `generate_types.rs` and re-run the generator.
+
+> The local desktop app has a separate generator (`crates/server/src/bin/generate_types.rs`) that outputs `shared/types.ts`.
 
 ## Common Pitfalls
 
