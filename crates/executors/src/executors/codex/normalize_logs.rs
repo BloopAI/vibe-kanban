@@ -182,7 +182,7 @@ impl ReviewState {
             Some(output) => {
                 let mut sections = Vec::new();
                 sections.push(format!(
-                    "[{}] [{}]",
+                    "**Correctness:** {} | **Confidence:** {}",
                     output.overall_correctness, output.overall_confidence_score,
                 ));
                 let explanation = output.overall_explanation.trim();
@@ -190,13 +190,13 @@ impl ReviewState {
                     sections.push(explanation.to_string());
                 }
                 if !output.findings.is_empty() {
-                    let mut lines = Vec::new();
+                    let mut lines = vec!["### Findings".to_string()];
                     for finding in &output.findings {
                         let path = finding.code_location.absolute_file_path.display();
                         let start = finding.code_location.line_range.start;
                         let end = finding.code_location.line_range.end;
                         lines.push(format!(
-                            "- [P{}] [{}] {} — {path}:{start}-{end}",
+                            "- **P{}** | **Confidence:** {} | {} — `{path}:{start}-{end}`",
                             finding.priority, finding.confidence_score, finding.title,
                         ));
                         for body_line in finding.body.lines() {
