@@ -5,6 +5,7 @@ import { useCreateMode } from '@/contexts/CreateModeContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
+import { useMultiRepoBranches } from '@/hooks/useRepoBranches';
 import { getVariantOptions, areProfilesEqual } from '@/utils/executor';
 import { splitMessageToTitleDescription } from '@/utils/string';
 import type { ExecutorProfileId, BaseCodingAgent, Repo } from 'shared/types';
@@ -28,6 +29,7 @@ export function CreateChatBoxContainer({
   const {
     repos,
     targetBranches,
+    setTargetBranch,
     selectedProfile,
     setSelectedProfile,
     message,
@@ -56,6 +58,33 @@ export function CreateChatBoxContainer({
 
   const showRepoPickerStep = !hasSelectedRepos || isSelectingRepos;
   const showChatStep = hasSelectedRepos && !isSelectingRepos;
+
+  // Auto-select branch for repos that don't have one yet
+  const repoIds = useMemo(() => repos.map((r) => r.id), [repos]);
+  const { branchesByRepo } = useMultiRepoBranches(repoIds);
+
+  useEffect(() => {
+    repos.forEach((repo) => {
+      if (targetBranches[repo.id]) return;
+      const branches = branchesByRepo[repo.id];
+      if (!branches) return;
+
+      // Priority 1: default_target_branch if configured
+      if (
+        repo.default_target_branch &&
+        branches.some((b) => b.name === repo.default_target_branch)
+      ) {
+        setTargetBranch(repo.id, repo.default_target_branch);
+        return;
+      }
+
+      // Priority 2: current checked-out branch
+      const currentBranch = branches.find((b) => b.is_current);
+      if (currentBranch) {
+        setTargetBranch(repo.id, currentBranch.name);
+      }
+    });
+  }, [repos, branchesByRepo, targetBranches, setTargetBranch]);
 
   // Attachment handling - insert markdown and track image IDs
   const handleInsertMarkdown = useCallback(
