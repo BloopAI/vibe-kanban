@@ -44,6 +44,14 @@ pub struct PrMerge {
     pub pr_info: PullRequestInfo,
 }
 
+/// Lightweight PR summary for workspace summaries (avoids expensive git calls)
+#[derive(Debug, Clone)]
+pub struct PrSummary {
+    pub status: MergeStatus,
+    pub number: Option<i64>,
+    pub url: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct PullRequestInfo {
     pub number: i64,
@@ -316,16 +324,19 @@ impl Merge {
         Ok(rows.into_iter().map(Into::into).collect())
     }
 
-    /// Get the latest PR status for each workspace (for workspace summaries)
-    /// Returns a map of workspace_id -> MergeStatus for workspaces that have PRs
+    /// Summary of the latest PR for a workspace
+    /// Get the latest PR info for each workspace (for workspace summaries)
+    /// Returns a map of workspace_id -> PrSummary for workspaces that have PRs
     pub async fn get_latest_pr_status_for_workspaces(
         pool: &SqlitePool,
         archived: bool,
-    ) -> Result<HashMap<Uuid, MergeStatus>, sqlx::Error> {
+    ) -> Result<HashMap<Uuid, PrSummary>, sqlx::Error> {
         #[derive(FromRow)]
         struct PrStatusRow {
             workspace_id: Uuid,
             pr_status: Option<MergeStatus>,
+            pr_number: Option<i64>,
+            pr_url: Option<String>,
         }
 
         // Get the latest PR for each workspace by using a subquery to find the max created_at
@@ -333,7 +344,9 @@ impl Merge {
         let rows = sqlx::query_as::<_, PrStatusRow>(
             r#"SELECT
                 m.workspace_id,
-                m.pr_status
+                m.pr_status,
+                m.pr_number,
+                m.pr_url
             FROM merges m
             INNER JOIN (
                 SELECT workspace_id, MAX(created_at) as max_created_at
@@ -351,7 +364,18 @@ impl Merge {
 
         Ok(rows
             .into_iter()
-            .filter_map(|row| row.pr_status.map(|status| (row.workspace_id, status)))
+            .filter_map(|row| {
+                row.pr_status.map(|status| {
+                    (
+                        row.workspace_id,
+                        PrSummary {
+                            status,
+                            number: row.pr_number,
+                            url: row.pr_url,
+                        },
+                    )
+                })
+            })
             .collect())
     }
 }
