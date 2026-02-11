@@ -80,7 +80,7 @@ export function ProcessLogsViewerContent({
       ) : (
         <Virtuoso<LogEntry>
           ref={virtuosoRef}
-          className="flex-1 rounded-lg"
+          className="h-full rounded-lg"
           data={logs}
           itemContent={(index, entry) =>
             formatLogLine(entry as LogEntry, index)

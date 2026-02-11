@@ -70,7 +70,7 @@ export function DevServerLogsView({
       </summary>
 
       {showLogs && (
-        <div className={height}>
+        <div className={`${height} flex flex-col min-h-0`}>
           {devServerProcesses.length > 1 && (
             <div className="flex border-b bg-muted/30">
               {devServerProcesses.map((process) => (
@@ -89,7 +89,9 @@ export function DevServerLogsView({
               ))}
             </div>
           )}
-          <ProcessLogsViewer processId={activeProcess.id} />
+          <div className="flex-1 min-h-0">
+            <ProcessLogsViewer processId={activeProcess.id} />
+          </div>
         </div>
       )}
     </details>
