@@ -48,8 +48,8 @@ Please head to the [website](https://vibekanban.com/docs) for the latest documen
 
 ## Self-Hosting
 
-Want to host your own Vibe Kanban Cloud instance? See our [self-hosting guide](https://vibekanban.com/docs/self-hosting) for deployment options including Docker Compose, Cloudflare Tunnel, Fly.io, and Railway.
-
+Want to host your own Vibe Kanban Cloud instance? See our [self-hosting guide](https://vibekanban.com/docs/self-hosting).
+  
 ## Support
 
 We use [GitHub Discussions](https://github.com/BloopAI/vibe-kanban/discussions) for feature requests. Please open a discussion to create a feature request. For bugs please open an issue on this repo.
