@@ -16,6 +16,7 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
+  PopoverClose,
 } from './Popover';
 import { Tooltip } from './Tooltip';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
@@ -124,16 +125,18 @@ export function AppBar({
               {t('appBar.projectManagement.description')}
             </p>
             <div className="mt-base">
-              <button
-                type="button"
-                onClick={onSignIn}
-                className={cn(
-                  'px-base py-1 rounded-sm text-xs',
-                  'bg-brand text-on-brand hover:bg-brand-hover cursor-pointer'
-                )}
-              >
-                {t('signIn')}
-              </button>
+              <PopoverClose asChild>
+                <button
+                  type="button"
+                  onClick={onSignIn}
+                  className={cn(
+                    'px-base py-1 rounded-sm text-xs',
+                    'bg-brand text-on-brand hover:bg-brand-hover cursor-pointer'
+                  )}
+                >
+                  {t('signIn')}
+                </button>
+              </PopoverClose>
             </div>
           </PopoverContent>
         </Popover>
