@@ -94,6 +94,8 @@ pub trait ContainerService {
 
     fn notification_service(&self) -> &NotificationService;
 
+    async fn touch(&self, workspace: &Workspace) -> Result<(), ContainerError>;
+
     fn workspace_to_current_dir(&self, workspace: &Workspace) -> PathBuf;
 
     async fn available_agent_slash_commands(

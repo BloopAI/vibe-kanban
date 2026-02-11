@@ -3,7 +3,7 @@ use std::{
     io,
     path::{Path, PathBuf},
     sync::Arc,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use anyhow::anyhow;
@@ -64,6 +64,8 @@ use uuid::Uuid;
 
 use crate::{command, copy};
 
+const WORKSPACE_TOUCH_DEBOUNCE: Duration = Duration::from_mins(2);
+
 #[derive(Clone)]
 pub struct LocalContainerService {
     db: DBService,
@@ -74,6 +76,7 @@ pub struct LocalContainerService {
     /// When stopping execution, we await these to ensure logs are fully persisted.
     db_stream_handles: Arc<RwLock<HashMap<Uuid, JoinHandle<()>>>>,
     exit_monitor_handles: Arc<RwLock<HashMap<Uuid, JoinHandle<()>>>>,
+    workspace_touch_times: Arc<RwLock<HashMap<Uuid, Instant>>>,
     config: Arc<RwLock<Config>>,
     git: GitService,
     image_service: ImageService,
@@ -101,6 +104,7 @@ impl LocalContainerService {
         let cancellation_tokens = Arc::new(RwLock::new(HashMap::new()));
         let db_stream_handles = Arc::new(RwLock::new(HashMap::new()));
         let exit_monitor_handles = Arc::new(RwLock::new(HashMap::new()));
+        let workspace_touch_times = Arc::new(RwLock::new(HashMap::new()));
         let notification_service = NotificationService::new(config.clone());
 
         let container = LocalContainerService {
@@ -110,6 +114,7 @@ impl LocalContainerService {
             msg_stores,
             db_stream_handles,
             exit_monitor_handles,
+            workspace_touch_times,
             config,
             git,
             image_service,
@@ -987,6 +992,39 @@ impl ContainerService for LocalContainerService {
         &self.notification_service
     }
 
+    async fn touch(&self, workspace: &Workspace) -> Result<(), ContainerError> {
+        let now = Instant::now();
+
+        // We debounce touches to avoid excessive database writes, which in SQLites causes DB locks
+        let should_debounce = |last_touch: &Instant| -> bool {
+            now.duration_since(*last_touch) < WORKSPACE_TOUCH_DEBOUNCE
+        };
+
+        // Quick check with read lock
+        if self
+            .workspace_touch_times
+            .read()
+            .await
+            .get(&workspace.id)
+            .is_some_and(should_debounce)
+        {
+            return Ok(());
+        }
+
+        let mut map = self.workspace_touch_times.write().await;
+        // Clean up stale entries older than the debounce window, reduce memory usage over time
+        map.retain(|_, time| should_debounce(time));
+        // check in case another thread has touched already
+        if map.get(&workspace.id).is_some_and(should_debounce) {
+            return Ok(());
+        }
+        map.insert(workspace.id, now);
+        drop(map);
+
+        Workspace::touch(&self.db.pool, workspace.id).await?;
+        Ok(())
+    }
+
     async fn store_db_stream_handle(&self, id: Uuid, handle: JoinHandle<()>) {
         self.add_db_stream_handle(id, handle).await;
     }
@@ -1074,7 +1112,7 @@ impl ContainerService for LocalContainerService {
         &self,
         workspace: &Workspace,
     ) -> Result<ContainerRef, ContainerError> {
-        Workspace::touch(&self.db.pool, workspace.id).await?;
+        self.touch(workspace).await?;
         let repositories =
             WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
 
