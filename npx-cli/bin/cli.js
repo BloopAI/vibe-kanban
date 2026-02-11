@@ -126,11 +126,6 @@ async function extractAndRun(baseName, launch) {
     }
   }
 
-  // Clean up old cached versions only after current version is secured
-  if (!LOCAL_DEV_MODE) {
-    cleanOldVersions();
-  }
-
   // Extract
   if (!fs.existsSync(binPath)) {
     try {
@@ -149,6 +144,11 @@ async function extractAndRun(baseName, launch) {
     console.error(`Extracted binary not found at: ${binPath}`);
     console.error("This usually indicates a corrupt download. Please try again.");
     process.exit(1);
+  }
+
+  // Clean up old cached versions only after current version is fully ready
+  if (!LOCAL_DEV_MODE) {
+    cleanOldVersions();
   }
 
   // Set permissions (non-Windows)
