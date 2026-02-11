@@ -237,7 +237,11 @@ export function OnboardingSignInPage() {
                 className="h-8 w-auto logo"
               />
             </div>
-            {!isLoggedIn && <p className="text-sm text-low">{t('onboardingSignIn.subtitle')}</p>}
+            {!isLoggedIn && (
+              <p className="text-sm text-low">
+                {t('onboardingSignIn.subtitle')}
+              </p>
+            )}
           </header>
 
           {isLoggedIn ? (

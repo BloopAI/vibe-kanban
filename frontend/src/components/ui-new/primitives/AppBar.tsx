@@ -95,10 +95,7 @@ export function AppBar({
       {/* Project management popover for unsigned users */}
       {!isSignedIn && (
         <Popover>
-          <Tooltip
-            content={t('appBar.projectManagement.tooltip')}
-            side="right"
-          >
+          <Tooltip content={t('appBar.projectManagement.tooltip')} side="right">
             <PopoverTrigger asChild>
               <button
                 type="button"
