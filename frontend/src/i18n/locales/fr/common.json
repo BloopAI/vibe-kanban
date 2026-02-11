@@ -1,4 +1,7 @@
 {
+  "editorNames": {
+    "custom": "Personnalisé"
+  },
   "buttons": {
     "save": "Enregistrer",
     "cancel": "Annuler",
@@ -425,13 +428,14 @@
   },
   "migration": {
     "allProjectsMigrated": "Tous vos projets ont déjà été migrés vers le cloud.",
-    "continueToWorkspaces": "Continuer vers les espaces de travail"
+    "continueToProjects": "Continuer vers les projets"
   },
   "appBar": {
-    "projectManagement": {
-      "title": "Débloquer la gestion de projet",
-      "description": "Connectez-vous pour accéder aux tableaux kanban, à la collaboration d'équipe et organiser votre travail à travers les projets et organisations.",
-      "tooltip": "Gestion de projet"
+    "kanban": {
+      "tooltip": "Kanban",
+      "title": "Tableaux Kanban",
+      "description": "Connectez-vous pour organiser vos agents de codage avec des tableaux kanban.",
+      "migrateOldProjects": "Migrer les anciens projets"
     }
   }
 }

@@ -1,4 +1,7 @@
 {
+  "editorNames": {
+    "custom": "Personalizado"
+  },
   "folderPicker": {
     "legend": "Haz clic en los nombres de carpetas para navegar • Usa los botones de acción para seleccionar",
     "manualPathLabel": "Ingresar ruta manualmente:",
@@ -425,13 +428,14 @@
   },
   "migration": {
     "allProjectsMigrated": "Todos tus proyectos ya han sido migrados a la nube.",
-    "continueToWorkspaces": "Continuar a los espacios de trabajo"
+    "continueToProjects": "Continuar a los proyectos"
   },
   "appBar": {
-    "projectManagement": {
-      "title": "Desbloquear gestión de proyectos",
-      "description": "Inicia sesión para acceder a tableros kanban, colaboración en equipo y organizar tu trabajo en proyectos y organizaciones.",
-      "tooltip": "Gestión de proyectos"
+    "kanban": {
+      "tooltip": "Kanban",
+      "title": "Tableros Kanban",
+      "description": "Inicia sesión para organizar tus agentes de codificación con tableros kanban.",
+      "migrateOldProjects": "Migrar proyectos antiguos"
     }
   }
 }

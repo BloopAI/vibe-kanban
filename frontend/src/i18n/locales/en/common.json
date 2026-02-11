@@ -1,4 +1,7 @@
 {
+  "editorNames": {
+    "custom": "Custom"
+  },
   "buttons": {
     "save": "Save",
     "cancel": "Cancel",
@@ -425,13 +428,14 @@
   },
   "migration": {
     "allProjectsMigrated": "All your projects have already been migrated to the cloud.",
-    "continueToWorkspaces": "Continue to Workspaces"
+    "continueToProjects": "Continue to Projects"
   },
   "appBar": {
-    "projectManagement": {
-      "title": "Unlock Project Management",
-      "description": "Sign in to access kanban boards, team collaboration, and organize your work across projects and organizations.",
-      "tooltip": "Project Management"
+    "kanban": {
+      "tooltip": "Kanban",
+      "title": "Kanban Boards",
+      "description": "Sign in to organise your coding agents with kanban boards.",
+      "migrateOldProjects": "Migrate old projects"
     }
   }
 }

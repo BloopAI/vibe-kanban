@@ -227,7 +227,7 @@ export function MigrateChooseProjects({
               {t('migration.allProjectsMigrated')}
             </p>
             <PrimaryButton onClick={onSkip} actionIcon={ArrowRightIcon}>
-              {t('migration.continueToWorkspaces')}
+              {t('migration.continueToProjects')}
             </PrimaryButton>
           </div>
         ) : (

@@ -1,4 +1,7 @@
 {
+  "editorNames": {
+    "custom": "自訂"
+  },
   "buttons": {
     "save": "儲存",
     "cancel": "取消",
@@ -425,13 +428,14 @@
   },
   "migration": {
     "allProjectsMigrated": "您的所有專案已遷移到雲端。",
-    "continueToWorkspaces": "繼續前往工作區"
+    "continueToProjects": "繼續前往專案"
   },
   "appBar": {
-    "projectManagement": {
-      "title": "解鎖專案管理",
-      "description": "登入以存取看板、團隊協作，並在專案和組織中管理您的工作。",
-      "tooltip": "專案管理"
+    "kanban": {
+      "tooltip": "看板",
+      "title": "看板",
+      "description": "登入以使用看板管理您的編碼代理。",
+      "migrateOldProjects": "遷移舊專案"
     }
   }
 }

@@ -138,6 +138,21 @@ export function SharedAppLayout() {
     }
   }, []);
 
+  const handleMigrate = useCallback(async () => {
+    if (!isSignedIn) {
+      try {
+        const profile = await OAuthDialog.show({});
+        if (profile) {
+          navigate('/migrate');
+        }
+      } catch {
+        // Dialog cancelled
+      }
+    } else {
+      navigate('/migrate');
+    }
+  }, [isSignedIn, navigate]);
+
   return (
     <SyncErrorProvider>
       <div className="flex h-screen bg-primary">
@@ -156,6 +171,7 @@ export function SharedAppLayout() {
             isSignedIn={isSignedIn}
             isLoadingProjects={isLoading}
             onSignIn={handleSignIn}
+            onMigrate={handleMigrate}
           />
         )}
         <div className="flex flex-col flex-1 min-w-0">

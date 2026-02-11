@@ -1,7 +1,7 @@
 import {
   LayoutIcon,
   PlusIcon,
-  ProjectorScreenChartIcon,
+  KanbanIcon,
   SpinnerIcon,
   StarIcon,
 } from '@phosphor-icons/react';
@@ -54,6 +54,7 @@ interface AppBarProps {
   isSignedIn?: boolean;
   isLoadingProjects?: boolean;
   onSignIn?: () => void;
+  onMigrate?: () => void;
 }
 
 export function AppBar({
@@ -70,6 +71,7 @@ export function AppBar({
   isSignedIn,
   isLoadingProjects,
   onSignIn,
+  onMigrate,
 }: AppBarProps) {
   const { t } = useTranslation('common');
   const { data: onlineCount } = useDiscordOnlineCount();
@@ -95,7 +97,7 @@ export function AppBar({
       {/* Project management popover for unsigned users */}
       {!isSignedIn && (
         <Popover>
-          <Tooltip content={t('appBar.projectManagement.tooltip')} side="right">
+          <Tooltip content={t('appBar.kanban.tooltip')} side="right">
             <PopoverTrigger asChild>
               <button
                 type="button"
@@ -105,23 +107,20 @@ export function AppBar({
                   'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
                   'bg-primary text-normal hover:bg-brand/10'
                 )}
-                aria-label={t('appBar.projectManagement.tooltip')}
+                aria-label={t('appBar.kanban.tooltip')}
               >
-                <ProjectorScreenChartIcon
-                  className="size-icon-base"
-                  weight="bold"
-                />
+                <KanbanIcon className="size-icon-base" weight="bold" />
               </button>
             </PopoverTrigger>
           </Tooltip>
           <PopoverContent side="right" sideOffset={8}>
             <p className="text-sm font-medium text-high">
-              {t('appBar.projectManagement.title')}
+              {t('appBar.kanban.title')}
             </p>
             <p className="text-xs text-low mt-1">
-              {t('appBar.projectManagement.description')}
+              {t('appBar.kanban.description')}
             </p>
-            <div className="mt-base">
+            <div className="mt-base flex items-center gap-half">
               <PopoverClose asChild>
                 <button
                   type="button"
@@ -132,6 +131,18 @@ export function AppBar({
                   )}
                 >
                   {t('signIn')}
+                </button>
+              </PopoverClose>
+              <PopoverClose asChild>
+                <button
+                  type="button"
+                  onClick={onMigrate}
+                  className={cn(
+                    'px-base py-1 rounded-sm text-xs',
+                    'bg-secondary text-normal hover:bg-panel border border-border cursor-pointer'
+                  )}
+                >
+                  {t('appBar.kanban.migrateOldProjects')}
                 </button>
               </PopoverClose>
             </div>
