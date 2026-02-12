@@ -31,7 +31,7 @@ mod billing {
 }
 mod electric_proxy;
 pub(crate) mod error;
-mod attachments;
+pub mod attachments;
 mod github_app;
 mod identity;
 pub mod issue_assignees;

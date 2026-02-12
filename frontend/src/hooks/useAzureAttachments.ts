@@ -150,7 +150,7 @@ export function useAzureAttachments({
 
           const result = await confirmAttachmentUpload({
             project_id: projectId,
-            blob_path: initResult.blob_path,
+            upload_id: initResult.upload_id,
             filename: file.name,
             content_type: file.type,
             size_bytes: file.size,

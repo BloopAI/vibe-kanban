@@ -1,5 +1,9 @@
 import type {
   AttachmentWithBlob,
+  CommitAttachmentsResponse,
+  ConfirmUploadRequest,
+  InitUploadRequest,
+  InitUploadResponse,
   UpdateIssueRequest,
   UpdateProjectStatusRequest,
 } from 'shared/remote-types';
@@ -90,45 +94,7 @@ export async function bulkUpdateProjectStatuses(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Attachment API types
-// ---------------------------------------------------------------------------
-
-export interface InitUploadRequest {
-  project_id: string;
-  filename: string;
-  size_bytes: number;
-  hash: string;
-}
-
-export interface InitUploadResponse {
-  upload_url: string;
-  blob_path: string;
-  expires_at: string;
-  skip_upload: boolean;
-  existing_blob_id: string | null;
-}
-
-export interface ConfirmUploadRequest {
-  project_id: string;
-  blob_path: string;
-  filename: string;
-  content_type?: string;
-  size_bytes: number;
-  hash: string;
-  issue_id?: string;
-  comment_id?: string;
-}
-
 export type ConfirmUploadResponse = AttachmentWithBlob;
-
-export interface CommitAttachmentsRequest {
-  attachment_ids: string[];
-}
-
-export interface CommitAttachmentsResponse {
-  attachments: AttachmentWithBlob[];
-}
 
 // ---------------------------------------------------------------------------
 // SAS URL cache with TTL — SAS URLs expire after 5 minutes, cache for 4

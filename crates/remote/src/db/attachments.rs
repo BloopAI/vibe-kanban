@@ -1,44 +1,11 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
-use ts_rs::TS;
 use uuid::Uuid;
 
+pub use api_types::{Attachment, AttachmentWithBlob};
+
 use super::blobs::Blob;
-
-/// An attachment links a blob to an issue or comment.
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct Attachment {
-    pub id: Uuid,
-    pub blob_id: Uuid,
-    pub issue_id: Option<Uuid>,
-    pub comment_id: Option<Uuid>,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: Option<DateTime<Utc>>,
-}
-
-/// An attachment with its associated blob data (for API responses).
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct AttachmentWithBlob {
-    pub id: Uuid,
-    pub blob_id: Uuid,
-    pub issue_id: Option<Uuid>,
-    pub comment_id: Option<Uuid>,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: Option<DateTime<Utc>>,
-    // Blob fields
-    pub blob_path: String,
-    pub thumbnail_blob_path: Option<String>,
-    pub original_name: String,
-    pub mime_type: Option<String>,
-    pub size_bytes: i64,
-    pub hash: String,
-    pub width: Option<i32>,
-    pub height: Option<i32>,
-}
 
 #[derive(Debug, Error)]
 pub enum AttachmentError {

@@ -1,0 +1,55 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO pending_uploads (project_id, blob_path, hash, expires_at)\n            VALUES ($1, $2, $3, $4)\n            RETURNING\n                id          AS \"id!: Uuid\",\n                project_id  AS \"project_id!: Uuid\",\n                blob_path   AS \"blob_path!\",\n                hash        AS \"hash!\",\n                created_at  AS \"created_at!: DateTime<Utc>\",\n                expires_at  AS \"expires_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "blob_path!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "hash!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "expires_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4cc8dc5f57a8398ef28942eab072784543333eac379d78c5843ca0c2203b69f5"
+}

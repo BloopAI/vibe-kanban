@@ -7,10 +7,11 @@ use api_types::{
     CreateIssueRequest, CreateOrganizationRequest, CreateOrganizationResponse,
     CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest, GetInvitationResponse,
     GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
-    HandoffRedeemResponse, Issue, ListInvitationsResponse, ListIssuesResponse, ListMembersResponse,
-    ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse, MutationResponse,
-    Organization, ProfileResponse, RevokeInvitationRequest, TokenRefreshRequest,
-    TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
+    HandoffRedeemResponse, Issue, ListAttachmentsResponse, ListInvitationsResponse,
+    ListIssuesResponse, ListMembersResponse, ListOrganizationsResponse,
+    ListProjectStatusesResponse, ListProjectsResponse, MutationResponse, Organization,
+    ProfileResponse, RevokeInvitationRequest, TokenRefreshRequest, TokenRefreshResponse,
+    UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
     UpdateOrganizationRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
@@ -730,7 +731,7 @@ impl RemoteClient {
     pub async fn list_issue_attachments(
         &self,
         issue_id: Uuid,
-    ) -> Result<RemoteListAttachmentsResponse, RemoteClientError> {
+    ) -> Result<ListAttachmentsResponse, RemoteClientError> {
         self.get_authed(&format!("/v1/issues/{issue_id}/attachments"))
             .await
     }
@@ -750,22 +751,6 @@ impl RemoteClient {
             .map_err(|e| RemoteClientError::Transport(e.to_string()))?;
         Ok(bytes.to_vec())
     }
-}
-
-/// Minimal representation of a remote attachment (only fields needed for import).
-#[derive(Debug, Deserialize)]
-pub struct RemoteAttachment {
-    pub id: Uuid,
-    pub original_name: String,
-    pub mime_type: Option<String>,
-    pub size_bytes: i64,
-    pub file_url: Option<String>,
-}
-
-/// Response from listing issue attachments on the remote server.
-#[derive(Debug, Deserialize)]
-pub struct RemoteListAttachmentsResponse {
-    pub attachments: Vec<RemoteAttachment>,
 }
 
 fn map_reqwest_error(e: reqwest::Error) -> RemoteClientError {

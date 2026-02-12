@@ -95,7 +95,7 @@ export type CreateIssueRequest = {
  */
 id?: string, project_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority | null, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, parent_issue_sort_order: number | null, extension_metadata: JsonValue, };
 
-export type UpdateIssueRequest = { status_id: string | null, title: string | null, description: string | null | null, priority: IssuePriority | null | null, start_date: string | null | null, target_date: string | null | null, completed_at: string | null | null, sort_order: number | null, parent_issue_id: string | null | null, parent_issue_sort_order: number | null | null, extension_metadata: JsonValue | null, };
+export type UpdateIssueRequest = { status_id?: string | null, title?: string | null, description?: string | null | null, priority?: IssuePriority | null | null, start_date?: string | null | null, target_date?: string | null | null, completed_at?: string | null | null, sort_order?: number | null, parent_issue_id?: string | null | null, parent_issue_sort_order?: number | null | null, extension_metadata?: JsonValue | null, };
 
 export type CreateIssueAssigneeRequest = { 
 /**
@@ -142,6 +142,16 @@ export type CreateIssueCommentReactionRequest = {
 id?: string, comment_id: string, emoji: string, };
 
 export type UpdateIssueCommentReactionRequest = { emoji: string | null, };
+
+export type InitUploadRequest = { project_id: string, filename: string, size_bytes: number, hash: string, };
+
+export type InitUploadResponse = { upload_url: string, upload_id: string, expires_at: string, skip_upload: boolean, existing_blob_id: string | null, };
+
+export type ConfirmUploadRequest = { project_id: string, upload_id: string, filename: string, content_type?: string, size_bytes: number, hash: string, issue_id?: string, comment_id?: string, };
+
+export type CommitAttachmentsRequest = { attachment_ids: Array<string>, };
+
+export type CommitAttachmentsResponse = { attachments: Array<AttachmentWithBlob>, };
 
 // Shape definition interface
 export interface ShapeDefinition<T> {

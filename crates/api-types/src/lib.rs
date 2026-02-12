@@ -7,6 +7,8 @@
 
 use serde::{Deserialize, Deserializer};
 
+pub mod attachment;
+pub mod blob;
 pub mod issue;
 pub mod issue_assignee;
 pub mod issue_comment;
@@ -29,6 +31,8 @@ pub mod user;
 pub mod workspace;
 pub mod workspaces;
 
+pub use attachment::*;
+pub use blob::*;
 pub use issue::*;
 pub use issue_assignee::*;
 pub use issue_comment::*;

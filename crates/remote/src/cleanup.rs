@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use sqlx::PgPool;
-use time::OffsetDateTime;
 use tokio::task::JoinHandle;
 use tracing::{info, instrument, warn};
 
@@ -9,14 +8,14 @@ use crate::{
     azure_blob::AzureBlobService,
     db::attachments::AttachmentRepository,
     db::blobs::BlobRepository,
+    db::pending_uploads::PendingUploadRepository,
 };
 
 const EXPIRED_BATCH_SIZE: i64 = 100;
-const STAGING_MAX_AGE: Duration = Duration::from_secs(3600);
 const DEFAULT_INTERVAL: Duration = Duration::from_secs(3600);
 
 /// Spawns a background task that periodically cleans up orphan attachments and
-/// staging blobs. Call once during server startup.
+/// expired pending uploads. Call once during server startup.
 pub fn spawn_cleanup_task(pool: PgPool, azure: AzureBlobService) -> JoinHandle<()> {
     let interval = std::env::var("ATTACHMENT_CLEANUP_INTERVAL_SECS")
         .ok()
@@ -45,9 +44,9 @@ pub fn spawn_cleanup_task(pool: PgPool, azure: AzureBlobService) -> JoinHandle<(
 async fn run_sweep(pool: &PgPool, azure: &AzureBlobService) {
     info!("Starting attachment cleanup sweep");
 
-    let (expired, staging) = tokio::join!(
+    let (expired, pending) = tokio::join!(
         cleanup_expired_attachments(pool, azure),
-        cleanup_orphan_staging_blobs(azure),
+        cleanup_expired_pending_uploads(pool, azure),
     );
 
     match expired {
@@ -55,9 +54,9 @@ async fn run_sweep(pool: &PgPool, azure: &AzureBlobService) {
         Err(e) => warn!(error = %e, "Expired attachment cleanup failed"),
     }
 
-    match staging {
-        Ok(count) => info!(deleted = count, "Staging blob cleanup complete"),
-        Err(e) => warn!(error = %e, "Staging blob cleanup failed"),
+    match pending {
+        Ok(count) => info!(deleted = count, "Expired pending uploads cleanup complete"),
+        Err(e) => warn!(error = %e, "Expired pending uploads cleanup failed"),
     }
 }
 
@@ -102,19 +101,18 @@ async fn cleanup_expired_attachments(
     Ok(deleted_count)
 }
 
-async fn cleanup_orphan_staging_blobs(azure: &AzureBlobService) -> anyhow::Result<u32> {
-    let cutoff = OffsetDateTime::now_utc() - STAGING_MAX_AGE;
-    let staging_blobs = azure.list_blobs_with_prefix("staging/").await?;
+async fn cleanup_expired_pending_uploads(
+    pool: &PgPool,
+    azure: &AzureBlobService,
+) -> anyhow::Result<u32> {
+    let expired = PendingUploadRepository::delete_expired(pool).await?;
     let mut deleted_count: u32 = 0;
 
-    for blob in staging_blobs {
-        if blob.last_modified.is_some_and(|t| t < cutoff) {
-            if let Err(e) = azure.delete_blob(&blob.name).await {
-                warn!(blob_name = %blob.name, error = %e, "Failed to delete orphan staging blob");
-            } else {
-                deleted_count += 1;
-            }
+    for pending in expired {
+        if let Err(e) = azure.delete_blob(&pending.blob_path).await {
+            warn!(blob_path = %pending.blob_path, error = %e, "Failed to delete Azure blob for expired pending upload");
         }
+        deleted_count += 1;
     }
 
     Ok(deleted_count)

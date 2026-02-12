@@ -1138,6 +1138,7 @@ impl TaskServer {
             task: CreateTask::from_title_description(project.id, title, None),
             executor_profile_id,
             repos: workspace_repos,
+            linked_issue: None,
         };
 
         // create-and-start returns the task; we need to fetch the workspace it created

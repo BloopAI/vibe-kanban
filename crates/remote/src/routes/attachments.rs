@@ -8,15 +8,19 @@ use axum::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use super::organization_members::{ensure_comment_access, ensure_issue_access, ensure_project_access};
+use api_types::{AttachmentWithUrl, ListAttachmentsResponse};
+
 use crate::{
     AppState,
     auth::RequestContext,
     azure_blob::AzureBlobError,
     db::attachments::{AttachmentError, AttachmentRepository, AttachmentWithBlob},
     db::blobs::{BlobError, BlobRepository},
+    db::pending_uploads::{PendingUploadError, PendingUploadRepository},
     thumbnail::ThumbnailService,
 };
 
@@ -33,56 +37,55 @@ pub fn router() -> Router<AppState> {
         .route("/comments/{comment_id}/attachments/commit", post(commit_comment_attachments))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct InitUploadRequest {
     pub project_id: Uuid,
     pub filename: String,
+    #[ts(type = "number")]
     pub size_bytes: i64,
     pub hash: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct InitUploadResponse {
     pub upload_url: String,
-    pub blob_path: String,
+    pub upload_id: Uuid,
     pub expires_at: DateTime<Utc>,
     pub skip_upload: bool,
     pub existing_blob_id: Option<Uuid>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct ConfirmUploadRequest {
     pub project_id: Uuid,
-    pub blob_path: String,
+    pub upload_id: Uuid,
     pub filename: String,
+    #[ts(optional)]
     pub content_type: Option<String>,
+    #[ts(type = "number")]
     pub size_bytes: i64,
     pub hash: String,
+    #[ts(optional)]
     pub issue_id: Option<Uuid>,
+    #[ts(optional)]
     pub comment_id: Option<Uuid>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct CommitAttachmentsRequest {
     pub attachment_ids: Vec<Uuid>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct CommitAttachmentsResponse {
     pub attachments: Vec<AttachmentWithBlob>,
 }
 
-#[derive(Debug, Serialize)]
-pub(crate) struct AttachmentWithUrl {
-    #[serde(flatten)]
-    attachment: AttachmentWithBlob,
-    file_url: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ListAttachmentsResponse {
-    pub attachments: Vec<AttachmentWithUrl>,
-}
 
 #[derive(Debug, Serialize)]
 struct AttachmentUrlResponse {
@@ -107,6 +110,10 @@ pub enum RouteError {
     AccessDenied,
     #[error("file too large (max 20MB)")]
     FileTooLarge,
+    #[error("upload not found or expired")]
+    UploadNotFound,
+    #[error("pending upload error: {0}")]
+    PendingUpload(#[from] PendingUploadError),
     #[error("thumbnail generation failed: {0}")]
     ThumbnailError(String),
 }
@@ -131,6 +138,11 @@ impl IntoResponse for RouteError {
             RouteError::NoThumbnail => (StatusCode::NOT_FOUND, "No thumbnail available"),
             RouteError::AccessDenied => (StatusCode::FORBIDDEN, "Access denied"),
             RouteError::FileTooLarge => (StatusCode::PAYLOAD_TOO_LARGE, "File too large (max 20MB)"),
+            RouteError::UploadNotFound => (StatusCode::NOT_FOUND, "Upload not found or expired"),
+            RouteError::PendingUpload(e) => {
+                tracing::error!(error = %e, "Pending upload error");
+                (StatusCode::INTERNAL_SERVER_ERROR, "Database error")
+            }
             RouteError::ThumbnailError(e) => {
                 tracing::error!(error = %e, "Thumbnail generation failed");
                 (StatusCode::INTERNAL_SERVER_ERROR, "Thumbnail generation failed")
@@ -164,7 +176,7 @@ async fn init_upload(
 
         return Ok(Json(InitUploadResponse {
             upload_url: read_url,
-            blob_path: existing.blob_path,
+            upload_id: existing.id,
             expires_at: Utc::now() + chrono::Duration::minutes(5),
             skip_upload: true,
             existing_blob_id: Some(existing.id),
@@ -173,12 +185,21 @@ async fn init_upload(
 
     let azure = state.azure_blob().ok_or(RouteError::NotConfigured)?;
     let sanitized_filename = sanitize_filename(&payload.filename);
-    let blob_path = format!("staging/{}/{}_{}", payload.project_id, Uuid::new_v4(), sanitized_filename);
+    let blob_path = format!("attachments/{}/{}_{}", payload.project_id, Uuid::new_v4(), sanitized_filename);
     let upload = azure.create_upload_url(&blob_path)?;
+
+    let pending = PendingUploadRepository::create(
+        state.pool(),
+        payload.project_id,
+        upload.blob_path,
+        payload.hash.clone(),
+        upload.expires_at,
+    )
+    .await?;
 
     Ok(Json(InitUploadResponse {
         upload_url: upload.upload_url,
-        blob_path: upload.blob_path,
+        upload_id: pending.id,
         expires_at: upload.expires_at,
         skip_upload: false,
         existing_blob_id: None,
@@ -211,24 +232,27 @@ async fn confirm_upload(
     let blob = if let Some(existing) = BlobRepository::find_by_hash(state.pool(), payload.project_id, &payload.hash).await? {
         existing
     } else {
-        let props = azure.get_blob_properties(&payload.blob_path).await?;
+        let pending = PendingUploadRepository::find_by_id(state.pool(), payload.upload_id)
+            .await?
+            .ok_or(RouteError::UploadNotFound)?;
+
+        let blob_path = &pending.blob_path;
+
+        let props = azure.get_blob_properties(blob_path).await?;
         if props.content_length > MAX_FILE_SIZE {
-            let _ = azure.delete_blob(&payload.blob_path).await;
+            let _ = azure.delete_blob(blob_path).await;
             return Err(RouteError::FileTooLarge);
         }
 
-        let blob_data = azure.download_blob(&payload.blob_path).await?;
+        let blob_data = azure.download_blob(blob_path).await?;
         let thumbnail_result = ThumbnailService::generate(&blob_data, payload.content_type.as_deref())
             .map_err(|e| RouteError::ThumbnailError(e.to_string()))?;
 
-        let final_blob_path = payload.blob_path.replace("staging/", "attachments/");
-        let content_type = payload.content_type.clone().unwrap_or_else(|| "application/octet-stream".to_string());
-        azure.upload_blob(&final_blob_path, blob_data, content_type).await?;
-        let _ = azure.delete_blob(&payload.blob_path).await;
+        let _ = PendingUploadRepository::delete(state.pool(), pending.id).await;
 
         let (thumbnail_blob_path, width, height) = match thumbnail_result {
             Some(thumb) => {
-                let thumb_path = format!("thumbnails/{}", final_blob_path);
+                let thumb_path = format!("thumbnails/{}", blob_path);
                 azure.upload_blob(&thumb_path, thumb.bytes, thumb.mime_type).await?;
                 (Some(thumb_path), Some(thumb.original_width as i32), Some(thumb.original_height as i32))
             }
@@ -239,7 +263,7 @@ async fn confirm_upload(
             state.pool(),
             None,
             payload.project_id,
-            final_blob_path,
+            blob_path.clone(),
             thumbnail_blob_path,
             payload.filename.clone(),
             payload.content_type.clone(),

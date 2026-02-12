@@ -7,15 +7,11 @@ use azure_core::{
     http::{ClientOptions, RequestContent},
 };
 use azure_storage_blob::{
-    models::{
-        BlobClientGetPropertiesResultHeaders, BlobContainerClientListBlobFlatSegmentOptions,
-        BlockBlobClientUploadOptions,
-    },
+    models::{BlobClientGetPropertiesResultHeaders, BlockBlobClientUploadOptions},
     BlobClient, BlobContainerClient, BlobServiceClient, BlobServiceClientOptions,
 };
 use base64::prelude::*;
 use chrono::{DateTime, Utc};
-use futures::TryStreamExt;
 use hmac::{Hmac, Mac};
 use secrecy::ExposeSecret;
 use sha2::Sha256;
@@ -278,54 +274,6 @@ impl AzureBlobService {
         ))
     }
 
-    /// List all blobs in the container whose path starts with `prefix`.
-    pub async fn list_blobs_with_prefix(
-        &self,
-        prefix: &str,
-    ) -> Result<Vec<BlobListItem>, AzureBlobError> {
-        let mut items = Vec::new();
-        let mut pager = self
-            .container_client()
-            .list_blobs(Some(BlobContainerClientListBlobFlatSegmentOptions {
-                prefix: Some(prefix.to_string()),
-                ..Default::default()
-            }))
-            .map_err(|e| AzureBlobError::Storage(e.to_string()))?
-            .into_pages();
-
-        while let Some(page) = pager
-            .try_next()
-            .await
-            .map_err(|e| AzureBlobError::Storage(e.to_string()))?
-        {
-            let page = page
-                .into_model()
-                .map_err(|e| AzureBlobError::Storage(e.to_string()))?;
-            for blob in &page.segment.blob_items {
-                let name = blob
-                    .name
-                    .as_ref()
-                    .and_then(|n| n.content.clone())
-                    .unwrap_or_default();
-                let last_modified = blob
-                    .properties
-                    .as_ref()
-                    .and_then(|p| p.last_modified);
-                items.push(BlobListItem {
-                    name,
-                    last_modified,
-                });
-            }
-        }
-
-        Ok(items)
-    }
-}
-
-#[derive(Debug)]
-pub struct BlobListItem {
-    pub name: String,
-    pub last_modified: Option<OffsetDateTime>,
 }
 
 // ── SAS token generation (ported from azure_storage 0.21) ────────────────────

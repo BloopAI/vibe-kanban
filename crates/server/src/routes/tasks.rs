@@ -140,13 +140,13 @@ pub async fn create_task(
     Ok(ResponseJson(ApiResponse::success(task)))
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 pub struct LinkedIssueInfo {
     pub remote_project_id: Uuid,
     pub issue_id: Uuid,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 pub struct CreateAndStartTaskRequest {
     pub task: CreateTask,
     pub executor_profile_id: ExecutorProfileId,
@@ -170,9 +170,10 @@ async fn import_issue_attachments(
 
     let mut imported = Vec::new();
 
-    for attachment in response.attachments {
+    for entry in response.attachments {
         // Only import image types
-        let is_image = attachment
+        let is_image = entry
+            .attachment
             .mime_type
             .as_ref()
             .is_some_and(|m| m.starts_with("image/"));
@@ -180,30 +181,37 @@ async fn import_issue_attachments(
             continue;
         }
 
-        let file_url = match &attachment.file_url {
+        let file_url = match &entry.file_url {
             Some(url) => url,
             None => {
-                tracing::warn!("No file_url for attachment {}, skipping", attachment.id);
+                tracing::warn!(
+                    "No file_url for attachment {}, skipping",
+                    entry.attachment.id
+                );
                 continue;
             }
         };
         let bytes = match client.download_from_url(file_url).await {
             Ok(b) => b,
             Err(e) => {
-                tracing::warn!("Failed to download attachment {}: {}", attachment.id, e);
+                tracing::warn!(
+                    "Failed to download attachment {}: {}",
+                    entry.attachment.id,
+                    e
+                );
                 continue;
             }
         };
 
         let image = match image_service
-            .store_image(&bytes, &attachment.original_name)
+            .store_image(&bytes, &entry.attachment.original_name)
             .await
         {
             Ok(img) => img,
             Err(e) => {
                 tracing::warn!(
                     "Failed to store imported image '{}': {}",
-                    attachment.original_name,
+                    entry.attachment.original_name,
                     e
                 );
                 continue;
@@ -214,7 +222,7 @@ async fn import_issue_attachments(
 
         imported.push(ImportedImage {
             image_id: image.id,
-            attachment_id: attachment.id,
+            attachment_id: entry.attachment.id,
             vibe_path,
         });
     }

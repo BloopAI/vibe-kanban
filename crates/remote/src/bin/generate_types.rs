@@ -1,15 +1,16 @@
 use std::{env, fs, path::Path};
 
 use remote::{
-    db::{
-        attachments::{Attachment, AttachmentWithBlob},
-        blobs::Blob,
+    routes::all_mutation_definitions,
+    routes::attachments::{
+        CommitAttachmentsRequest, CommitAttachmentsResponse, ConfirmUploadRequest,
+        InitUploadRequest, InitUploadResponse,
     },
     shapes::all_shapes,
-    routes::all_mutation_definitions,
 };
 use ts_rs::TS;
 use api_types::{
+    Attachment, AttachmentWithBlob, Blob,
     CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
     CreateIssueFollowerRequest, CreateIssueRelationshipRequest, CreateIssueRequest,
     CreateIssueTagRequest, CreateNotificationRequest, CreateProjectRequest,
@@ -111,6 +112,12 @@ fn export_shapes() -> String {
         UpdateIssueCommentRequest::decl(),
         CreateIssueCommentReactionRequest::decl(),
         UpdateIssueCommentReactionRequest::decl(),
+        // Attachment API request/response types
+        InitUploadRequest::decl(),
+        InitUploadResponse::decl(),
+        ConfirmUploadRequest::decl(),
+        CommitAttachmentsRequest::decl(),
+        CommitAttachmentsResponse::decl(),
     ];
 
     for decl in type_decls {
