@@ -36,7 +36,7 @@ export function PreviewControls({
   return (
     <div
       className={cn(
-        'w-full h-full bg-secondary flex flex-col overflow-hidden',
+        'w-full flex-1 min-h-0 bg-secondary flex flex-col overflow-hidden',
         className
       )}
     >
@@ -75,7 +75,7 @@ export function PreviewControls({
           </div>
         )}
 
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {isLoading && devServerProcesses.length === 0 ? (
             <div className="h-full flex items-center justify-center text-low">
               <SpinnerIcon className="size-icon-sm animate-spin" />

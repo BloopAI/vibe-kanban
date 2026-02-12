@@ -162,13 +162,13 @@ export function VirtualizedProcessLogs({
   };
 
   return (
-    <div className="h-full">
+    <div className="flex-1 min-h-0 flex flex-col">
       <VirtuosoMessageListLicense
         licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
       >
         <VirtuosoMessageList<LogEntryWithKey, SearchContext>
           ref={messageListRef}
-          className="h-full"
+          className="flex-1 min-h-0"
           data={channelData}
           context={context}
           initialLocation={INITIAL_TOP_ITEM}

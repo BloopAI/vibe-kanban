@@ -377,7 +377,7 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
                   </div>
                 )}
               </div>
-              <div className="bg-secondary py-base flex-1 border rounded-md bg-muted overflow-hidden min-w-0">
+              <div className="bg-secondary py-base flex-1 border rounded-md bg-muted overflow-hidden min-w-0 flex flex-col">
                 {latestProcess ? (
                   <VirtualizedProcessLogs
                     logs={logs}

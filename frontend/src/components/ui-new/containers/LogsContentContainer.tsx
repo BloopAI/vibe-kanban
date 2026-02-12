@@ -88,7 +88,7 @@ export function LogsContentContainer({ className }: LogsContentContainerProps) {
             $ {content.command}
           </div>
         )}
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 flex flex-col">
           <VirtualizedProcessLogs
             logs={toolLogs}
             error={null}
@@ -129,7 +129,7 @@ export function LogsContentContainer({ className }: LogsContentContainerProps) {
 
   // Process logs - render with VirtualizedProcessLogs
   return (
-    <div className={cn('h-full bg-secondary', className)}>
+    <div className={cn('h-full bg-secondary flex flex-col', className)}>
       <VirtualizedProcessLogs
         key={processId}
         logs={logs}
