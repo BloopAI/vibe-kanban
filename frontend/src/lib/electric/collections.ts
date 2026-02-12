@@ -72,7 +72,10 @@ function createErrorHandlingFetch(
     // This prevents cached Electric shapes from sending unauthenticated
     // requests that would trigger 401s and login dialog prompts.
     if (isPaused?.()) {
-      throw new DOMException('Shape request aborted: not authenticated', 'AbortError');
+      throw new DOMException(
+        'Shape request aborted: not authenticated',
+        'AbortError'
+      );
     }
 
     try {
@@ -185,7 +188,11 @@ function getAuthenticatedShapeOptions(
     },
     // Custom fetch wrapper to catch network-level errors.
     // Aborts requests while paused (during token refresh or after logout).
-    fetchClient: createErrorHandlingFetch(errorHandler, reportError, () => isPaused),
+    fetchClient: createErrorHandlingFetch(
+      errorHandler,
+      reportError,
+      () => isPaused
+    ),
     // Electric's onError callback (for non-network errors like 4xx/5xx responses)
     onError: (error: { status?: number; message?: string; name?: string }) => {
       // Ignore errors while paused (expected during token refresh)
