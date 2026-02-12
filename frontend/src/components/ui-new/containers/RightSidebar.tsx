@@ -202,7 +202,7 @@ export function RightSidebar({
                 defaultExpanded={section.expanded}
                 actions={section.actions}
               >
-                <div className="flex flex-1 border-t min-h-[200px] w-full overflow-auto">
+                <div className="flex flex-1 border-t min-h-[200px] w-full overflow-hidden">
                   {section.content}
                 </div>
               </CollapsibleSectionHeader>
