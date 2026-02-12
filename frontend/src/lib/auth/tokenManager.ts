@@ -115,6 +115,8 @@ class TokenManager {
       login_status?: { status: string };
     }>(['user-system']);
     if (cachedSystem && cachedSystem.login_status?.status !== 'loggedin') {
+      // Pause shapes so they stop making requests while logged out
+      this.pauseShapes();
       return null;
     }
 
@@ -157,6 +159,9 @@ class TokenManager {
       login_status?: { status: string };
     }>(['user-system']);
     const wasLoggedIn = cachedSystem?.login_status?.status === 'loggedin';
+
+    // Pause shapes — session is invalid, prevent further 401s
+    this.pauseShapes();
 
     // Reload system state so the UI transitions to logged-out
     await queryClient.invalidateQueries({ queryKey: ['user-system'] });
