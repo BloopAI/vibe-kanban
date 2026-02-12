@@ -1166,6 +1166,8 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 | EventMsg::CollabWaitingEnd(..)
                 | EventMsg::CollabCloseBegin(..)
                 | EventMsg::CollabCloseEnd(..)
+                | EventMsg::CollabResumeBegin(..)
+                | EventMsg::CollabResumeEnd(..)
                 | EventMsg::ThreadNameUpdated(..)
                 | EventMsg::RequestUserInput(..)
                 | EventMsg::DynamicToolCallRequest(..)
