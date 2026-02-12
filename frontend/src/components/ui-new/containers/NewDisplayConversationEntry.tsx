@@ -204,6 +204,7 @@ function renderToolUseEntry(
         expansionKey={expansionKey}
         status={status}
         workspaceId={taskAttempt?.id}
+        executor={taskAttempt?.session?.executor}
       />
     );
   }
@@ -680,6 +681,7 @@ function SubagentEntry({
   expansionKey,
   status,
   workspaceId,
+  executor,
 }: {
   description: string;
   subagentType: string | null | undefined;
@@ -687,6 +689,7 @@ function SubagentEntry({
   expansionKey: string;
   status: ToolStatus;
   workspaceId: string | undefined;
+  executor?: string | null;
 }) {
   // Only auto-expand if there's a result to show
   const hasResult = Boolean(result?.value);
@@ -704,6 +707,7 @@ function SubagentEntry({
       onToggle={hasResult ? toggle : undefined}
       status={status}
       workspaceId={workspaceId}
+      executor={executor}
     />
   );
 }
