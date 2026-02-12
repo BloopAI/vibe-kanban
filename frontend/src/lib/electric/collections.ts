@@ -2,7 +2,7 @@ import { electricCollectionOptions } from '@tanstack/electric-db-collection';
 import { createCollection } from '@tanstack/react-db';
 
 import { tokenManager } from '../auth/tokenManager';
-import { makeRequest, REMOTE_API_URL } from '@/lib/remoteApi';
+import { makeRequest, getRemoteApiBaseUrl } from '@/lib/remoteApi';
 import type { MutationDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { CollectionConfig, SyncError } from './types';
 
@@ -117,13 +117,13 @@ function getRowKey(item: Record<string, unknown>): string {
  * Registers with tokenManager for pause/resume during token refresh.
  */
 function getAuthenticatedShapeOptions(
+  remoteApiBase: string,
   shape: ShapeDefinition<unknown>,
   params: Record<string, string>,
   config?: CollectionConfig
 ) {
   const url = buildUrl(shape.url, params);
 
-  // Create error handler for this shape's lifecycle
   const errorHandler = new ErrorHandler();
 
   // Track pause state during token refresh
@@ -155,7 +155,7 @@ function getAuthenticatedShapeOptions(
   };
 
   return {
-    url: `${REMOTE_API_URL}${url}`,
+    url: `${remoteApiBase}${url}`,
     params,
     headers: {
       Authorization: async () => {
@@ -237,7 +237,7 @@ type ElectricConfig = Parameters<typeof electricCollectionOptions>[0];
  * @param config - Optional configuration (error handlers, etc.)
  * @param mutation - Optional mutation definition to enable insert/update/delete
  */
-export function createShapeCollection<TRow extends ElectricRow>(
+export async function createShapeCollection<TRow extends ElectricRow>(
   shape: ShapeDefinition<TRow>,
   params: Record<string, string>,
   config?: CollectionConfig,
@@ -251,7 +251,13 @@ export function createShapeCollection<TRow extends ElectricRow>(
     return cached as typeof cached & { __rowType?: TRow };
   }
 
-  const shapeOptions = getAuthenticatedShapeOptions(shape, params, config);
+  const remoteApiBase = await getRemoteApiBaseUrl();
+  const shapeOptions = getAuthenticatedShapeOptions(
+    remoteApiBase,
+    shape,
+    params,
+    config
+  );
   const mutationHandlers = mutation ? buildMutationHandlers(mutation) : {};
 
   const options = electricCollectionOptions({

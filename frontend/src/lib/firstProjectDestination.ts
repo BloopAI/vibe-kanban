@@ -44,7 +44,7 @@ function getFirstProject(projects: Project[]): Project | null {
 async function getFirstProjectInOrganization(
   organizationId: string
 ): Promise<Project | null> {
-  const collection = createShapeCollection(PROJECTS_SHAPE, {
+  const collection = await createShapeCollection(PROJECTS_SHAPE, {
     organization_id: organizationId,
   });
 

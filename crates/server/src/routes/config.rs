@@ -37,8 +37,21 @@ use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
+#[derive(Debug, Serialize)]
+pub struct RuntimeConfig {
+    pub shared_api_base: String,
+}
+
+async fn get_runtime_config(
+    State(deployment): State<DeploymentImpl>,
+) -> ResponseJson<ApiResponse<RuntimeConfig>> {
+    let shared_api_base = deployment.shared_api_base().unwrap_or_else(String::new);
+    ResponseJson(ApiResponse::success(RuntimeConfig { shared_api_base }))
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
+        .route("/runtime-config", get(get_runtime_config))
         .route("/info", get(get_user_system_info))
         .route("/config", put(update_config))
         .route("/sounds/{sound}", get(get_sound))

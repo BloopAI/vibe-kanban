@@ -114,6 +114,10 @@ pub trait Deployment: Clone + Send + Sync + 'static {
         Err(RemoteClientNotConfigured)
     }
 
+    fn shared_api_base(&self) -> Option<String> {
+        None
+    }
+
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {
         let user_id = self.user_id();
         let config = self.config().read().await;

@@ -4,7 +4,37 @@ import type {
 } from 'shared/remote-types';
 import { tokenManager } from './auth/tokenManager';
 
-export const REMOTE_API_URL = import.meta.env.VITE_VK_SHARED_API_BASE || '';
+const BUILD_TIME_REMOTE_API_URL = import.meta.env.VITE_VK_SHARED_API_BASE || '';
+
+let cachedRemoteApiBase: string | null = null;
+let remoteApiBasePromise: Promise<string> | null = null;
+
+export async function getRemoteApiBaseUrl(): Promise<string> {
+  if (cachedRemoteApiBase !== null) return cachedRemoteApiBase;
+  if (remoteApiBasePromise === null) {
+    remoteApiBasePromise = (async (): Promise<string> => {
+      try {
+        const r = await fetch('/api/runtime-config', { cache: 'no-store' });
+        if (r.ok) {
+          const j = (await r.json()) as {
+            data?: { shared_api_base?: string };
+          };
+          const base = j.data?.shared_api_base ?? '';
+          const url = base || BUILD_TIME_REMOTE_API_URL;
+          cachedRemoteApiBase = url;
+          return url;
+        }
+      } catch {
+        // ignore
+      }
+      cachedRemoteApiBase = BUILD_TIME_REMOTE_API_URL;
+      return BUILD_TIME_REMOTE_API_URL;
+    })();
+  }
+  return remoteApiBasePromise as Promise<string>;
+}
+
+export const REMOTE_API_URL = BUILD_TIME_REMOTE_API_URL;
 
 export const makeRequest = async (
   path: string,
@@ -16,6 +46,7 @@ export const makeRequest = async (
     throw new Error('Not authenticated');
   }
 
+  const base = await getRemoteApiBaseUrl();
   const headers = new Headers(options.headers ?? {});
   if (!headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
@@ -24,7 +55,7 @@ export const makeRequest = async (
   headers.set('X-Client-Version', __APP_VERSION__);
   headers.set('X-Client-Type', 'frontend');
 
-  const response = await fetch(`${REMOTE_API_URL}${path}`, {
+  const response = await fetch(`${base}${path}`, {
     ...options,
     headers,
     credentials: 'include',
@@ -34,9 +65,8 @@ export const makeRequest = async (
   if (response.status === 401 && retryOn401) {
     const newToken = await tokenManager.triggerRefresh();
     if (newToken) {
-      // Retry the request with the new token
       headers.set('Authorization', `Bearer ${newToken}`);
-      return fetch(`${REMOTE_API_URL}${path}`, {
+      return fetch(`${base}${path}`, {
         ...options,
         headers,
         credentials: 'include',
