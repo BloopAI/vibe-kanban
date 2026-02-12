@@ -48,6 +48,8 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'package.json'
               - '.npmrc'
+              - '.github/workflows/test.yml'
+              - '.github/actions/**'
             backend:
               - 'crates/api-types/**'
               - 'crates/db/**'
@@ -68,6 +70,8 @@ jobs:
               - 'rustfmt.toml'
               - 'rust-toolchain.toml'
               - '.cargo/**'
+              - '.github/workflows/test.yml'
+              - '.github/actions/**'
             backend-remote:
               - 'crates/remote/**'
               - 'crates/api-types/**'
@@ -79,6 +83,8 @@ jobs:
               - '.cargo/**'
               - 'pnpm-lock.yaml'
               - 'package.json'
+              - '.github/workflows/test.yml'
+              - '.github/actions/**'
 
   frontend-checks:
     needs: changes
