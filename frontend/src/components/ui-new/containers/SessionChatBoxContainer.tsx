@@ -642,26 +642,22 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     }
   }, [workspaceId, repos, handleInsertMarkdown]);
 
-  // Toolbar actions handler - intercepts action execution to provide extra context
+  // Toolbar actions handler
   const handleToolbarAction = useCallback(
     (action: ActionDefinition) => {
-      if (action.id === Actions.InsertPrComments.id) {
-        handleInsertPrComments();
-        return;
-      }
       if (action.requiresTarget && workspaceId) {
         executeAction(action, workspaceId);
       } else {
         executeAction(action);
       }
     },
-    [executeAction, workspaceId, handleInsertPrComments]
+    [executeAction, workspaceId]
   );
 
   // Define which actions appear in the toolbar
   const toolbarActionsList = useMemo(
     () =>
-      [Actions.StartReview, Actions.InsertPrComments].filter((action) =>
+      [Actions.StartReview].filter((action) =>
         isActionVisible(action, actionCtx)
       ),
     [actionCtx]
@@ -830,6 +826,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         context: actionCtx,
         onExecuteAction: handleToolbarAction,
       }}
+      onPrCommentClick={actionCtx.hasOpenPR ? handleInsertPrComments : undefined}
       stats={{
         filesChanged,
         linesAdded,

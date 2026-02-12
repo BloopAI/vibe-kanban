@@ -11,6 +11,7 @@ import {
   WarningIcon,
   ArrowUpIcon,
   ArrowsOutIcon,
+  GithubLogoIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -151,6 +152,7 @@ interface SessionChatBoxProps {
   todos?: TodoItem[];
   inProgressTodo?: TodoItem | null;
   localImages?: LocalImageMetadata[];
+  onPrCommentClick?: () => void;
   onViewCode?: () => void;
   onOpenWorkspace?: () => void;
   onScrollToPreviousMessage?: () => void;
@@ -182,6 +184,7 @@ export function SessionChatBox({
   todos,
   inProgressTodo,
   localImages,
+  onPrCommentClick,
   onViewCode,
   onOpenWorkspace,
   onScrollToPreviousMessage,
@@ -732,6 +735,15 @@ export function SessionChatBox({
             className="hidden"
             onChange={handleFileInputChange}
           />
+          {onPrCommentClick && (
+            <ToolbarIconButton
+              icon={GithubLogoIcon}
+              aria-label="Add PR Comments"
+              title="Insert PR comments into message"
+              onClick={onPrCommentClick}
+              disabled={isDisabled || isRunning}
+            />
+          )}
           {toolbarActions?.actions.map((action) => {
             const icon = action.icon;
             // Skip special icons in toolbar (only standard phosphor icons)
