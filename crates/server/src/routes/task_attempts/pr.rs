@@ -667,8 +667,7 @@ async fn cleanup_failed_pr_workspace(
     // Spawn background cleanup for filesystem resources (worktrees, workspace dir)
     if let Some(workspace_dir) = workspace_dir {
         tokio::spawn(async move {
-            if let Err(e) =
-                WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories).await
+            if let Err(e) = WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories).await
             {
                 tracing::error!(
                     "Background cleanup failed for workspace {} at {}: {}",
