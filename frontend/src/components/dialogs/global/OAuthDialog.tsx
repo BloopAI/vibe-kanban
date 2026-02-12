@@ -17,6 +17,7 @@ import { useAuthMutations } from '@/hooks/auth/useAuthMutations';
 import { useAuthStatus } from '@/hooks/auth/useAuthStatus';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { organizationKeys } from '@/hooks/organizationKeys';
+import { tokenManager } from '@/lib/auth/tokenManager';
 import type { ProfileResponse } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 import { defineModal } from '@/lib/modals';
@@ -108,8 +109,12 @@ const OAuthDialogImpl = NiceModal.create<OAuthDialogProps>(
           popupRef.current.close();
         }
 
-        // Reload user system to refresh login status
-        reloadSystem();
+        // Reload user system, then refresh token so paused Electric shapes
+        // resume after re-authentication without requiring a full page reload.
+        void (async () => {
+          await reloadSystem();
+          await tokenManager.triggerRefresh();
+        })();
 
         // Invalidate organization caches to force fresh fetch after login
         queryClient.invalidateQueries({ queryKey: organizationKeys.all });
