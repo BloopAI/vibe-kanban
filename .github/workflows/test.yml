@@ -24,7 +24,47 @@ env:
   RUNNER_LABEL: &runner_label blacksmith-16vcpu-ubuntu-2404
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: read
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      backend-remote: ${{ steps.filter.outputs.backend-remote }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - 'scripts/check-i18n.sh'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+            backend:
+              - 'crates/**'
+              - '!crates/remote/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'shared/**'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+              - 'rustfmt.toml'
+            backend-remote:
+              - 'crates/remote/**'
+              - 'crates/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'shared/**'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+
   frontend-checks:
+    needs: changes
+    if: always() && (needs.changes.outputs.frontend == 'true' || needs.changes.result == 'skipped')
     runs-on: *runner_label
     steps:
       - uses: actions/checkout@v6
@@ -49,6 +89,8 @@ jobs:
             "cd frontend && npm run build"
 
   backend-schema-checks:
+    needs: changes
+    if: always() && (needs.changes.outputs.backend == 'true' || needs.changes.result == 'skipped')
     runs-on: *runner_label
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -71,7 +113,11 @@ jobs:
         run: npm run prepare-db:check
 
   backend-remote-checks:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    needs: changes
+    if: >-
+      always()
+      && (needs.changes.outputs.backend-remote == 'true' || needs.changes.result == 'skipped')
+      && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: *runner_label
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -104,6 +150,8 @@ jobs:
         run: npm run remote:prepare-db:check
 
   backend-clippy:
+    needs: changes
+    if: always() && (needs.changes.outputs.backend == 'true' || needs.changes.result == 'skipped')
     runs-on: *runner_label
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -126,6 +174,8 @@ jobs:
           wait $pid_fmt
 
   backend-test:
+    needs: changes
+    if: always() && (needs.changes.outputs.backend == 'true' || needs.changes.result == 'skipped')
     runs-on: *runner_label
     env:
       SCCACHE_GHA_ENABLED: "true"
