@@ -36,7 +36,7 @@ jobs:
       backend-remote: ${{ steps.filter.outputs['backend-remote'] }}
     steps:
       - uses: actions/checkout@v6
-      - uses: step-security/paths-filter@v3
+      - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
