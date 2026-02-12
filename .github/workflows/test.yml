@@ -28,11 +28,12 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     permissions:
+      contents: read
       pull-requests: read
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
-      backend-remote: ${{ steps.filter.outputs.backend-remote }}
+      backend-remote: ${{ steps.filter.outputs['backend-remote'] }}
     steps:
       - uses: actions/checkout@v6
       - uses: step-security/paths-filter@v3
@@ -133,7 +134,7 @@ jobs:
     needs: changes
     if: >-
       always()
-      && (needs.changes.outputs.backend-remote == 'true' || needs.changes.result == 'skipped')
+      && (needs.changes.outputs['backend-remote'] == 'true' || needs.changes.result == 'skipped')
       && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: *runner_label
     env:
