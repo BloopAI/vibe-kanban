@@ -3,9 +3,7 @@ use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
 use uuid::Uuid;
 
-pub use api_types::{Attachment, AttachmentWithBlob};
-
-use api_types::Blob;
+use api_types::{Attachment, AttachmentWithBlob, Blob};
 
 #[derive(Debug, Error)]
 pub enum AttachmentError {

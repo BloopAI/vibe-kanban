@@ -12,13 +12,13 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::organization_members::{ensure_comment_access, ensure_issue_access, ensure_project_access};
-use api_types::{AttachmentUrlResponse, AttachmentWithUrl, ListAttachmentsResponse};
+use api_types::{AttachmentUrlResponse, AttachmentWithBlob, AttachmentWithUrl, ListAttachmentsResponse};
 
 use crate::{
     AppState,
     auth::RequestContext,
     azure_blob::AzureBlobError,
-    db::attachments::{AttachmentError, AttachmentRepository, AttachmentWithBlob},
+    db::attachments::{AttachmentError, AttachmentRepository},
     db::blobs::{BlobError, BlobRepository},
     db::pending_uploads::{PendingUploadError, PendingUploadRepository},
     attachments::thumbnail::ThumbnailService,
