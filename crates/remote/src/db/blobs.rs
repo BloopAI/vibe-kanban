@@ -1,9 +1,8 @@
+use api_types::Blob;
 use chrono::{DateTime, Utc};
 use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
 use uuid::Uuid;
-
-pub use api_types::Blob;
 
 #[derive(Debug, Error)]
 pub enum BlobError {
@@ -14,10 +13,7 @@ pub enum BlobError {
 pub struct BlobRepository;
 
 impl BlobRepository {
-    pub async fn find_by_id<'e, E>(
-        executor: E,
-        id: Uuid,
-    ) -> Result<Option<Blob>, BlobError>
+    pub async fn find_by_id<'e, E>(executor: E, id: Uuid) -> Result<Option<Blob>, BlobError>
     where
         E: Executor<'e, Database = Postgres>,
     {
@@ -169,10 +165,7 @@ impl BlobRepository {
     }
 
     /// Get the organization_id for a blob via its project.
-    pub async fn organization_id(
-        pool: &PgPool,
-        blob_id: Uuid,
-    ) -> Result<Option<Uuid>, BlobError> {
+    pub async fn organization_id(pool: &PgPool, blob_id: Uuid) -> Result<Option<Uuid>, BlobError> {
         let record = sqlx::query_scalar!(
             r#"
             SELECT p.organization_id

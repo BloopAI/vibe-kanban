@@ -813,7 +813,9 @@ export function KanbanIssuePanelContainer() {
           );
 
           if (idsToCommit.length > 0) {
-            await commitIssueAttachments(syncedIssue.id, idsToCommit);
+            await commitIssueAttachments(syncedIssue.id, {
+              attachment_ids: idsToCommit,
+            });
           }
           for (const id of idsToDelete) {
             deleteAttachment(id).catch((err) =>

@@ -208,7 +208,9 @@ function IssueCommentsSectionContent() {
       if (idsToCommit.length > 0) {
         try {
           const confirmedComment = await persisted;
-          await commitCommentAttachments(confirmedComment.id, idsToCommit);
+          await commitCommentAttachments(confirmedComment.id, {
+            attachment_ids: idsToCommit,
+          });
         } catch (err) {
           console.error('Failed to commit comment attachments:', err);
         }

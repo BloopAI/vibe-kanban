@@ -1,6 +1,7 @@
 import type {
   AttachmentUrlResponse,
   AttachmentWithBlob,
+  CommitAttachmentsRequest,
   CommitAttachmentsResponse,
   ConfirmUploadRequest,
   InitUploadRequest,
@@ -220,13 +221,13 @@ export async function confirmAttachmentUpload(
 
 export async function commitIssueAttachments(
   issueId: string,
-  attachmentIds: string[]
+  request: CommitAttachmentsRequest
 ): Promise<CommitAttachmentsResponse> {
   const response = await makeRequest(
     `/v1/issues/${issueId}/attachments/commit`,
     {
       method: 'POST',
-      body: JSON.stringify({ attachment_ids: attachmentIds }),
+      body: JSON.stringify(request),
     }
   );
   if (!response.ok) {
@@ -240,13 +241,13 @@ export async function commitIssueAttachments(
 
 export async function commitCommentAttachments(
   commentId: string,
-  attachmentIds: string[]
+  request: CommitAttachmentsRequest
 ): Promise<CommitAttachmentsResponse> {
   const response = await makeRequest(
     `/v1/comments/${commentId}/attachments/commit`,
     {
       method: 'POST',
-      body: JSON.stringify({ attachment_ids: attachmentIds }),
+      body: JSON.stringify(request),
     }
   );
   if (!response.ok) {
