@@ -13,6 +13,7 @@ pub mod filesystem;
 // pub mod github;
 pub mod events;
 pub mod execution_processes;
+pub mod frontend;
 pub mod health;
 pub mod images;
 pub mod migration;
@@ -58,5 +59,9 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         ))
         .with_state(deployment);
 
-    Router::new().nest("/api", base_routes).into_make_service()
+    Router::new()
+        .route("/", get(frontend::serve_frontend_root))
+        .route("/{*path}", get(frontend::serve_frontend))
+        .nest("/api", base_routes)
+        .into_make_service()
 }
