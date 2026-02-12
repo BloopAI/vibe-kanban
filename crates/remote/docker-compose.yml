@@ -48,6 +48,7 @@ services:
         FEATURES: ${FEATURES:-}
         POSTHOG_API_KEY: ${POSTHOG_API_KEY:-}
         POSTHOG_API_ENDPOINT: ${POSTHOG_API_ENDPOINT:-}
+        SENTRY_DSN_REMOTE: ${SENTRY_DSN_REMOTE:-}
       ssh:
         - default
     depends_on:
