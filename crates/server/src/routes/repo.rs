@@ -27,21 +27,18 @@ use crate::{
 };
 
 #[derive(Debug, Deserialize, TS)]
-#[ts(export)]
 pub struct RegisterRepoRequest {
     pub path: String,
     pub display_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize, TS)]
-#[ts(export)]
 pub struct InitRepoRequest {
     pub parent_path: String,
     pub folder_name: String,
 }
 
 #[derive(Debug, Deserialize, TS)]
-#[ts(export)]
 pub struct BatchRepoRequest {
     pub ids: Vec<Uuid>,
 }

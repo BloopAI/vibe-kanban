@@ -20,7 +20,6 @@ use crate::{DeploymentImpl, error::ApiError};
 
 /// Response from GET /api/auth/token - returns the current access token
 #[derive(Debug, Serialize, TS)]
-#[ts(export)]
 pub struct TokenResponse {
     pub access_token: String,
     pub expires_at: Option<DateTime<Utc>>,
@@ -28,7 +27,6 @@ pub struct TokenResponse {
 
 /// Response from GET /api/auth/user - returns the current user ID
 #[derive(Debug, Serialize, TS)]
-#[ts(export)]
 pub struct CurrentUserResponse {
     pub user_id: String,
 }

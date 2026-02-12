@@ -5,7 +5,6 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct MigrationRequest {
     pub organization_id: Uuid,
     /// List of local project IDs to migrate.
@@ -20,13 +19,11 @@ impl MigrationRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct MigrationResponse {
     pub report: MigrationReport,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, TS)]
-#[ts(export)]
 pub struct MigrationReport {
     pub projects: EntityReport,
     pub tasks: EntityReport,
@@ -36,7 +33,6 @@ pub struct MigrationReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, TS)]
-#[ts(export)]
 pub struct EntityReport {
     pub total: usize,
     pub migrated: usize,
@@ -46,7 +42,6 @@ pub struct EntityReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct EntityError {
     pub local_id: Uuid,
     pub error: String,

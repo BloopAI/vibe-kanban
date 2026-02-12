@@ -6,7 +6,6 @@ use uuid::Uuid;
 use crate::some_if_present;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct IssueAssignee {
     pub id: Uuid,
     pub issue_id: Uuid,
