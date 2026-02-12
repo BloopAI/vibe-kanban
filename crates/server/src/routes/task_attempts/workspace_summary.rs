@@ -155,9 +155,9 @@ pub async fn get_workspace_summaries(
                 latest_process_status: latest.map(|p| p.status.clone()),
                 has_running_dev_server: dev_server_workspaces.contains(&id),
                 has_unseen_turns: unseen_workspaces.contains(&id),
-                pr_status: pr_statuses.get(&id).map(|s| s.status.clone()),
-                pr_number: pr_statuses.get(&id).and_then(|s| s.number),
-                pr_url: pr_statuses.get(&id).and_then(|s| s.url.clone()),
+                pr_status: pr_statuses.get(&id).map(|pr| pr.pr_info.status.clone()),
+                pr_number: pr_statuses.get(&id).map(|pr| pr.pr_info.number),
+                pr_url: pr_statuses.get(&id).map(|pr| pr.pr_info.url.clone()),
             }
         })
         .collect();
