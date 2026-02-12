@@ -44,12 +44,11 @@ services:
     build:
       context: ../..
       dockerfile: crates/remote/Dockerfile
+      target: ${REMOTE_SERVER_BUILD_TARGET:-runtime-no-ssh}
       args:
         FEATURES: ${FEATURES:-}
         POSTHOG_API_KEY: ${POSTHOG_API_KEY:-}
         POSTHOG_API_ENDPOINT: ${POSTHOG_API_ENDPOINT:-}
-      ssh:
-        - default
     depends_on:
       remote-db:
         condition: service_healthy
