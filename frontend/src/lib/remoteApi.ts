@@ -1,4 +1,5 @@
 import type {
+  AttachmentUrlResponse,
   AttachmentWithBlob,
   CommitAttachmentsResponse,
   ConfirmUploadRequest,
@@ -93,8 +94,6 @@ export async function bulkUpdateProjectStatuses(
     throw new Error(error.message || 'Failed to bulk update project statuses');
   }
 }
-
-export type ConfirmUploadResponse = AttachmentWithBlob;
 
 // ---------------------------------------------------------------------------
 // SAS URL cache with TTL — SAS URLs expire after 5 minutes, cache for 4
@@ -205,7 +204,7 @@ export async function initAttachmentUpload(
 
 export async function confirmAttachmentUpload(
   params: ConfirmUploadRequest
-): Promise<ConfirmUploadResponse> {
+): Promise<AttachmentWithBlob> {
   const response = await makeRequest('/v1/attachments/confirm', {
     method: 'POST',
     body: JSON.stringify(params),
@@ -285,7 +284,7 @@ export async function fetchAttachmentSasUrl(
     );
   }
 
-  const data: { url: string } = await response.json();
+  const data: AttachmentUrlResponse = await response.json();
   sasUrlCache.set(cacheKey, {
     url: data.url,
     expiresAt: Date.now() + SAS_URL_TTL_MS,

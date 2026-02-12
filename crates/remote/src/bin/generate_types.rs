@@ -10,7 +10,7 @@ use remote::{
 };
 use ts_rs::TS;
 use api_types::{
-    Attachment, AttachmentWithBlob, Blob,
+    Attachment, AttachmentUrlResponse, AttachmentWithBlob, Blob,
     CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
     CreateIssueFollowerRequest, CreateIssueRelationshipRequest, CreateIssueRequest,
     CreateIssueTagRequest, CreateNotificationRequest, CreateProjectRequest,
@@ -118,6 +118,7 @@ fn export_shapes() -> String {
         ConfirmUploadRequest::decl(),
         CommitAttachmentsRequest::decl(),
         CommitAttachmentsResponse::decl(),
+        AttachmentUrlResponse::decl(),
     ];
 
     for decl in type_decls {

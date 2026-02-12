@@ -7,7 +7,7 @@ use tracing::instrument;
 use crate::{
     AppState,
     analytics::{AnalyticsConfig, AnalyticsService},
-    cleanup::spawn_cleanup_task,
+    attachments::cleanup::spawn_cleanup_task,
     auth::{
         GitHubOAuthProvider, GoogleOAuthProvider, JwtService, OAuthHandoffService,
         OAuthTokenValidator, ProviderRegistry,

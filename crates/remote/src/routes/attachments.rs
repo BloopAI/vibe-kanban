@@ -12,7 +12,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::organization_members::{ensure_comment_access, ensure_issue_access, ensure_project_access};
-use api_types::{AttachmentWithUrl, ListAttachmentsResponse};
+use api_types::{AttachmentUrlResponse, AttachmentWithUrl, ListAttachmentsResponse};
 
 use crate::{
     AppState,
@@ -21,7 +21,7 @@ use crate::{
     db::attachments::{AttachmentError, AttachmentRepository, AttachmentWithBlob},
     db::blobs::{BlobError, BlobRepository},
     db::pending_uploads::{PendingUploadError, PendingUploadRepository},
-    thumbnail::ThumbnailService,
+    attachments::thumbnail::ThumbnailService,
 };
 
 pub fn router() -> Router<AppState> {
@@ -87,10 +87,6 @@ pub struct CommitAttachmentsResponse {
 }
 
 
-#[derive(Debug, Serialize)]
-struct AttachmentUrlResponse {
-    url: String,
-}
 
 #[derive(Debug, thiserror::Error)]
 pub enum RouteError {

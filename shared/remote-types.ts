@@ -153,6 +153,8 @@ export type CommitAttachmentsRequest = { attachment_ids: Array<string>, };
 
 export type CommitAttachmentsResponse = { attachments: Array<AttachmentWithBlob>, };
 
+export type AttachmentUrlResponse = { url: string, };
+
 // Shape definition interface
 export interface ShapeDefinition<T> {
   readonly table: string;

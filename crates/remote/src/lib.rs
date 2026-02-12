@@ -4,7 +4,6 @@ mod auth;
 pub mod azure_blob;
 mod shared_key_auth;
 mod billing;
-mod cleanup;
 pub mod config;
 pub mod db;
 pub mod mutation_definition;
@@ -16,7 +15,7 @@ pub mod routes;
 pub mod shape_definition;
 pub mod shapes;
 mod state;
-pub mod thumbnail;
+pub mod attachments;
 
 use std::env;
 

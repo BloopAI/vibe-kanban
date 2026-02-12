@@ -1,3 +1,7 @@
+// SharedKey authorization policy for connecting to Azurite (local Azure Storage emulator).
+// Only used for local development — production uses Entra ID.
+// Based on: https://github.com/Azure/azure-sdk-for-rust/issues/2975#issuecomment-3538764202
+
 use std::borrow::Cow;
 use std::sync::Arc;
 

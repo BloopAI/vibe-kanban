@@ -1,14 +1,13 @@
-use std::fmt;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{fmt, sync::Arc, time::Duration};
 
 use azure_core::{
     credentials::Secret,
     http::{ClientOptions, RequestContent},
 };
+use azure_identity::{ManagedIdentityCredential, ManagedIdentityCredentialOptions, UserAssignedId};
 use azure_storage_blob::{
-    models::{BlobClientGetPropertiesResultHeaders, BlockBlobClientUploadOptions},
     BlobClient, BlobContainerClient, BlobServiceClient, BlobServiceClientOptions,
+    models::{BlobClientGetPropertiesResultHeaders, BlockBlobClientUploadOptions},
 };
 use base64::prelude::*;
 use chrono::{DateTime, Utc};
@@ -18,10 +17,10 @@ use sha2::Sha256;
 use time::OffsetDateTime;
 use url::form_urlencoded;
 
-use azure_identity::{ManagedIdentityCredential, ManagedIdentityCredentialOptions, UserAssignedId};
-
-use crate::config::{AzureAuthMode, AzureBlobConfig};
-use crate::shared_key_auth::SharedKeyAuthorizationPolicy;
+use crate::{
+    config::{AzureAuthMode, AzureBlobConfig},
+    shared_key_auth::SharedKeyAuthorizationPolicy,
+};
 
 #[derive(Clone)]
 pub struct AzureBlobService {
@@ -72,13 +71,12 @@ impl AzureBlobService {
 
         let service_client = match &config.auth_mode {
             AzureAuthMode::EntraId { client_id } => {
-                let credential = ManagedIdentityCredential::new(Some(
-                    ManagedIdentityCredentialOptions {
+                let credential =
+                    ManagedIdentityCredential::new(Some(ManagedIdentityCredentialOptions {
                         user_assigned_id: Some(UserAssignedId::ClientId(client_id.clone())),
                         ..Default::default()
-                    },
-                ))
-                .expect("failed to create ManagedIdentityCredential");
+                    }))
+                    .expect("failed to create ManagedIdentityCredential");
 
                 Arc::new(
                     BlobServiceClient::new(&endpoint, Some(credential), None)
@@ -130,8 +128,7 @@ impl AzureBlobService {
 
     pub fn create_upload_url(&self, blob_path: &str) -> Result<PresignedUpload, AzureBlobError> {
         let expiry_chrono = Utc::now()
-            + chrono::Duration::from_std(self.presign_expiry)
-                .unwrap_or(chrono::Duration::hours(1));
+            + chrono::Duration::from_std(self.presign_expiry).unwrap_or(chrono::Duration::hours(1));
 
         let permissions = BlobSasPermissions {
             create: true,
@@ -273,10 +270,16 @@ impl AzureBlobService {
             base_url, self.container_name, blob_path, token
         ))
     }
-
 }
 
 // ── SAS token generation (ported from azure_storage 0.21) ────────────────────
+//
+// https://github.com/Azure/azure-sdk-for-rust/blob/legacy/sdk/storage/src/shared_access_signature/mod.rs
+//
+// This crate has been deprecated by Azure, but SAS token generation has yet to be implemented in
+// the new azure_storage_blob crate, so we port the relevant code here for now.
+//
+// See: https://github.com/Azure/azure-sdk-for-rust/issues/3330
 
 const SERVICE_SAS_VERSION: &str = "2022-11-02";
 
@@ -456,7 +459,8 @@ impl BlobSharedAccessSignature {
 fn format_sas_date(d: OffsetDateTime) -> String {
     // Truncate nanoseconds to match Azure's canonicalization.
     let d = d.replace_nanosecond(0).unwrap();
-    d.format(&time::format_description::well_known::Rfc3339).unwrap()
+    d.format(&time::format_description::well_known::Rfc3339)
+        .unwrap()
 }
 
 fn sas_hmac_sha256(data: &str, key: &Secret) -> String {
@@ -468,8 +472,9 @@ fn sas_hmac_sha256(data: &str, key: &Secret) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use time::Duration;
+
+    use super::*;
 
     const MOCK_SECRET_KEY: &str = "RZfi3m1W7eyQ5zD4ymSmGANVdJ2SDQmg4sE89SW104s=";
     const MOCK_CANONICALIZED_RESOURCE: &str = "/blob/STORAGE_ACCOUNT_NAME/CONTAINER_NAME/";

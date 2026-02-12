@@ -49,3 +49,10 @@ pub struct AttachmentWithUrl {
 pub struct ListAttachmentsResponse {
     pub attachments: Vec<AttachmentWithUrl>,
 }
+
+/// Response containing a presigned URL for an attachment file or thumbnail.
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct AttachmentUrlResponse {
+    pub url: String,
+}
