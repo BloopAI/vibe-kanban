@@ -35,7 +35,9 @@ export function injectSearchMatches(
         const label = resolveLabel(a, workspace);
         return (
           label.toLowerCase().includes(searchLower) ||
-          a.id.toLowerCase().includes(searchLower)
+          a.id.toLowerCase().includes(searchLower) ||
+          (a.keywords?.some((kw) => kw.toLowerCase().includes(searchLower)) ??
+            false)
         );
       })
       .map((action) => ({ type: 'action' as const, action }));

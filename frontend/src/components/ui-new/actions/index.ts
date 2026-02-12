@@ -217,6 +217,8 @@ interface ActionBase {
   icon: ActionIcon;
   shortcut?: string;
   variant?: 'default' | 'destructive';
+  // Optional search keywords - included in command bar search but not displayed
+  keywords?: string[];
   // Optional visibility condition - if omitted, action is always visible
   isVisible?: (ctx: ActionVisibilityContext) => boolean;
   // Optional active state - if omitted, action is not active
@@ -523,6 +525,7 @@ export const Actions = {
     id: 'create-workspace-from-pr',
     label: 'Create Workspace from PR',
     icon: GitPullRequestIcon,
+    keywords: ['pull request'],
     requiresTarget: ActionTargetType.NONE,
     execute: async () => {
       await CreateWorkspaceFromPrDialog.show({});

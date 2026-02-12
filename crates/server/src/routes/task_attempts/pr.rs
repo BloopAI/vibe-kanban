@@ -32,6 +32,7 @@ use services::services::{
         github::GhCli,
     },
     remote_sync,
+    workspace_manager::WorkspaceManager,
 };
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -631,6 +632,55 @@ pub enum CreateFromPrError {
     RepoNotInProject,
 }
 
+/// Best-effort cleanup of partially-created workspace resources.
+/// Used when workspace creation from PR fails after DB records and filesystem
+/// resources have already been created.
+///
+/// DB records are deleted synchronously (fast). Filesystem cleanup is spawned
+/// as a background task to avoid blocking the error response.
+async fn cleanup_failed_pr_workspace(
+    pool: &sqlx::SqlitePool,
+    workspace: &Workspace,
+    task_id: Uuid,
+) {
+    let workspace_id = workspace.id;
+
+    // Gather data needed for background filesystem cleanup before deleting DB records
+    let workspace_dir = workspace.container_ref.clone().map(PathBuf::from);
+    let repositories = match WorkspaceRepo::find_repos_for_workspace(pool, workspace_id).await {
+        Ok(repos) => repos,
+        Err(e) => {
+            tracing::warn!(
+                "Failed to find repos for workspace {} during cleanup: {}",
+                workspace_id,
+                e
+            );
+            vec![]
+        }
+    };
+
+    // Delete the task — cascades to workspace → workspace_repos, sessions, merges, etc.
+    if let Err(e) = Task::delete(&*pool, task_id).await {
+        tracing::warn!("Failed to delete task {} during cleanup: {}", task_id, e);
+    }
+
+    // Spawn background cleanup for filesystem resources (worktrees, workspace dir)
+    if let Some(workspace_dir) = workspace_dir {
+        tokio::spawn(async move {
+            if let Err(e) =
+                WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories).await
+            {
+                tracing::error!(
+                    "Background cleanup failed for workspace {} at {}: {}",
+                    workspace_id,
+                    workspace_dir.display(),
+                    e
+                );
+            }
+        });
+    }
+}
+
 #[axum::debug_handler]
 pub async fn create_workspace_from_pr(
     State(deployment): State<DeploymentImpl>,
@@ -726,6 +776,7 @@ pub async fn create_workspace_from_pr(
                 payload.pr_number,
             ) {
                 tracing::error!("Failed to checkout PR branch: {e}");
+                cleanup_failed_pr_workspace(pool, &workspace, task.id).await;
                 return Ok(ResponseJson(ApiResponse::error_with_data(
                     CreateFromPrError::BranchFetchFailed {
                         message: e.to_string(),
@@ -740,6 +791,7 @@ pub async fn create_workspace_from_pr(
             tracing::error!(
                 "Failed to get repo info for PR checkout (gh CLI may not be installed): {e}"
             );
+            cleanup_failed_pr_workspace(pool, &workspace, task.id).await;
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 CreateFromPrError::BranchFetchFailed {
                     message: format!("Failed to get repository info: {e}"),
