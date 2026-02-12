@@ -1,11 +1,11 @@
 //! All shape constant instances for realtime streaming.
 
 use crate::shape_definition::{ShapeDefinition, ShapeExport};
-use crate::db::{attachments::Attachment, blobs::Blob};
+use crate::db::attachments::Attachment;
 use api_types::{
-    Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssueRelationship,
-    IssueTag, Notification, OrganizationMember, Project, ProjectStatus, PullRequest, Tag, User,
-    Workspace,
+    Blob, Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower,
+    IssueRelationship, IssueTag, Notification, OrganizationMember, Project, ProjectStatus,
+    PullRequest, Tag, User, Workspace,
 };
 
 // =============================================================================

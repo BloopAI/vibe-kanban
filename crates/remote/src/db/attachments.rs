@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 pub use api_types::{Attachment, AttachmentWithBlob};
 
-use super::blobs::Blob;
+use api_types::Blob;
 
 #[derive(Debug, Error)]
 pub enum AttachmentError {
