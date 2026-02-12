@@ -826,7 +826,9 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         context: actionCtx,
         onExecuteAction: handleToolbarAction,
       }}
-      onPrCommentClick={actionCtx.hasOpenPR ? handleInsertPrComments : undefined}
+      onPrCommentClick={
+        actionCtx.hasOpenPR ? handleInsertPrComments : undefined
+      }
       stats={{
         filesChanged,
         linesAdded,
