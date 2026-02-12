@@ -77,11 +77,10 @@ export function useIssueShortcuts() {
 
   const enabled = isKanban;
 
-  useHotkeys(
-    'i>c',
-    (e) => executeIssueAction(Actions.CreateIssue, e),
-    { ...OPTIONS, enabled }
-  );
+  useHotkeys('i>c', (e) => executeIssueAction(Actions.CreateIssue, e), {
+    ...OPTIONS,
+    enabled,
+  });
   useHotkeys(
     'i>s',
     (e) => {
@@ -115,34 +114,28 @@ export function useIssueShortcuts() {
     },
     { ...OPTIONS, enabled }
   );
-  useHotkeys(
-    'i>m',
-    (e) => executeIssueAction(Actions.MakeSubIssueOf, e),
-    { ...OPTIONS, enabled }
-  );
-  useHotkeys(
-    'i>b',
-    (e) => executeIssueAction(Actions.AddSubIssue, e),
-    { ...OPTIONS, enabled }
-  );
-  useHotkeys(
-    'i>u',
-    (e) => executeIssueAction(Actions.RemoveParentIssue, e),
-    { ...OPTIONS, enabled }
-  );
-  useHotkeys(
-    'i>w',
-    (e) => executeIssueAction(Actions.LinkWorkspace, e),
-    { ...OPTIONS, enabled }
-  );
-  useHotkeys(
-    'i>d',
-    (e) => executeIssueAction(Actions.DuplicateIssue, e),
-    { ...OPTIONS, enabled }
-  );
-  useHotkeys(
-    'i>x',
-    (e) => executeIssueAction(Actions.DeleteIssue, e),
-    { ...OPTIONS, enabled }
-  );
+  useHotkeys('i>m', (e) => executeIssueAction(Actions.MakeSubIssueOf, e), {
+    ...OPTIONS,
+    enabled,
+  });
+  useHotkeys('i>b', (e) => executeIssueAction(Actions.AddSubIssue, e), {
+    ...OPTIONS,
+    enabled,
+  });
+  useHotkeys('i>u', (e) => executeIssueAction(Actions.RemoveParentIssue, e), {
+    ...OPTIONS,
+    enabled,
+  });
+  useHotkeys('i>w', (e) => executeIssueAction(Actions.LinkWorkspace, e), {
+    ...OPTIONS,
+    enabled,
+  });
+  useHotkeys('i>d', (e) => executeIssueAction(Actions.DuplicateIssue, e), {
+    ...OPTIONS,
+    enabled,
+  });
+  useHotkeys('i>x', (e) => executeIssueAction(Actions.DeleteIssue, e), {
+    ...OPTIONS,
+    enabled,
+  });
 }
