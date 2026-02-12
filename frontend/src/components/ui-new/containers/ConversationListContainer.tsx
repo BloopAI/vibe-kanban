@@ -272,8 +272,9 @@ export const ConversationList = forwardRef<
       } else if (pending.addType === 'running') {
         scrollModifier = AutoScrollToBottom;
       } else {
-        // 'historic' - keep current scroll position, don't purge sizes
-        scrollModifier = null;
+        // 'historic' - older entries may have been prepended, adjust scroll
+        // position to keep visible items in place
+        scrollModifier = 'prepend';
       }
 
       const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
