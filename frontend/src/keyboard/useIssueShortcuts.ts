@@ -1,5 +1,5 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react';
-import { useParams, useLocation, useSearchParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useActions } from '@/contexts/ActionsContext';
 import {
@@ -23,10 +23,11 @@ export function useIssueShortcuts() {
     issueId?: string;
   }>();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
 
   const isKanban = location.pathname.startsWith('/projects');
-  const isCreatingIssue = searchParams.get('mode') === 'create';
+  // Detect create mode from the URL path (e.g. /projects/:id/issues/new)
+  // NOT from ?mode=create searchParam which is a legacy format
+  const isCreatingIssue = location.pathname.endsWith('/issues/new');
 
   const executeActionRef = useRef(executeAction);
   const projectIdRef = useRef(projectId);
@@ -48,84 +49,100 @@ export function useIssueShortcuts() {
     issueIdsRef.current = issueIds;
   });
 
-  const executeIssueAction = useCallback((action: ActionDefinition) => {
-    if (!isKanbanRef.current) return;
-    const currentProjectId = projectIdRef.current;
-    const currentIssueIds = issueIdsRef.current;
+  const executeIssueAction = useCallback(
+    (action: ActionDefinition, e?: KeyboardEvent) => {
+      if (!isKanbanRef.current) return;
+      // react-hotkeys-hook does not call preventDefault for sequence hotkeys,
+      // so we must do it manually to stop the second keystroke from being typed
+      // into any focused input (e.g. the title field after i>c opens create mode).
+      e?.preventDefault();
 
-    if (action.requiresTarget === ActionTargetType.ISSUE) {
-      executeActionRef.current(
-        action,
-        undefined,
-        currentProjectId,
-        currentIssueIds
-      );
-    } else if (action.requiresTarget === ActionTargetType.NONE) {
-      executeActionRef.current(action);
-    }
-  }, []);
+      const currentProjectId = projectIdRef.current;
+      const currentIssueIds = issueIdsRef.current;
+
+      if (action.requiresTarget === ActionTargetType.ISSUE) {
+        if (!currentProjectId || currentIssueIds.length === 0) return;
+        executeActionRef.current(
+          action,
+          undefined,
+          currentProjectId,
+          currentIssueIds
+        );
+      } else if (action.requiresTarget === ActionTargetType.NONE) {
+        executeActionRef.current(action);
+      }
+    },
+    []
+  );
 
   const enabled = isKanban;
 
-  useHotkeys('i>c', () => executeIssueAction(Actions.CreateIssue), {
-    ...OPTIONS,
-    enabled,
-  });
+  useHotkeys(
+    'i>c',
+    (e) => executeIssueAction(Actions.CreateIssue, e),
+    { ...OPTIONS, enabled }
+  );
   useHotkeys(
     'i>s',
-    () => {
+    (e) => {
       if (isCreatingIssueRef.current) {
-        executeIssueAction(Actions.ChangeNewIssueStatus);
+        executeIssueAction(Actions.ChangeNewIssueStatus, e);
       } else {
-        executeIssueAction(Actions.ChangeIssueStatus);
+        executeIssueAction(Actions.ChangeIssueStatus, e);
       }
     },
     { ...OPTIONS, enabled }
   );
   useHotkeys(
     'i>p',
-    () => {
+    (e) => {
       if (isCreatingIssueRef.current) {
-        executeIssueAction(Actions.ChangeNewIssuePriority);
+        executeIssueAction(Actions.ChangeNewIssuePriority, e);
       } else {
-        executeIssueAction(Actions.ChangePriority);
+        executeIssueAction(Actions.ChangePriority, e);
       }
     },
     { ...OPTIONS, enabled }
   );
   useHotkeys(
     'i>a',
-    () => {
+    (e) => {
       if (isCreatingIssueRef.current) {
-        executeIssueAction(Actions.ChangeNewIssueAssignees);
+        executeIssueAction(Actions.ChangeNewIssueAssignees, e);
       } else {
-        executeIssueAction(Actions.ChangeAssignees);
+        executeIssueAction(Actions.ChangeAssignees, e);
       }
     },
     { ...OPTIONS, enabled }
   );
-  useHotkeys('i>m', () => executeIssueAction(Actions.MakeSubIssueOf), {
-    ...OPTIONS,
-    enabled,
-  });
-  useHotkeys('i>b', () => executeIssueAction(Actions.AddSubIssue), {
-    ...OPTIONS,
-    enabled,
-  });
-  useHotkeys('i>u', () => executeIssueAction(Actions.RemoveParentIssue), {
-    ...OPTIONS,
-    enabled,
-  });
-  useHotkeys('i>w', () => executeIssueAction(Actions.LinkWorkspace), {
-    ...OPTIONS,
-    enabled,
-  });
-  useHotkeys('i>d', () => executeIssueAction(Actions.DuplicateIssue), {
-    ...OPTIONS,
-    enabled,
-  });
-  useHotkeys('i>x', () => executeIssueAction(Actions.DeleteIssue), {
-    ...OPTIONS,
-    enabled,
-  });
+  useHotkeys(
+    'i>m',
+    (e) => executeIssueAction(Actions.MakeSubIssueOf, e),
+    { ...OPTIONS, enabled }
+  );
+  useHotkeys(
+    'i>b',
+    (e) => executeIssueAction(Actions.AddSubIssue, e),
+    { ...OPTIONS, enabled }
+  );
+  useHotkeys(
+    'i>u',
+    (e) => executeIssueAction(Actions.RemoveParentIssue, e),
+    { ...OPTIONS, enabled }
+  );
+  useHotkeys(
+    'i>w',
+    (e) => executeIssueAction(Actions.LinkWorkspace, e),
+    { ...OPTIONS, enabled }
+  );
+  useHotkeys(
+    'i>d',
+    (e) => executeIssueAction(Actions.DuplicateIssue, e),
+    { ...OPTIONS, enabled }
+  );
+  useHotkeys(
+    'i>x',
+    (e) => executeIssueAction(Actions.DeleteIssue, e),
+    { ...OPTIONS, enabled }
+  );
 }
