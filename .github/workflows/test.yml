@@ -41,6 +41,7 @@ jobs:
           filters: |
             frontend:
               - 'frontend/**'
+              - 'shared/**'
               - 'scripts/check-i18n.sh'
               - 'pnpm-lock.yaml'
               - 'package.json'
