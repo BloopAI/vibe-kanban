@@ -61,6 +61,43 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo build ${FEATURES:+--locked} --release --manifest-path crates/remote/Cargo.toml ${FEATURES:+--features ${FEATURES}} \
  && cp crates/remote/target/release/${APP_NAME} /app/bin/${APP_NAME}
 
+FROM rust:1.93-slim-bookworm AS builder-no-ssh
+ARG APP_NAME
+ARG FEATURES
+ARG POSTHOG_API_KEY=""
+ARG POSTHOG_API_ENDPOINT=""
+
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+ENV POSTHOG_API_KEY=${POSTHOG_API_KEY}
+ENV POSTHOG_API_ENDPOINT=${POSTHOG_API_ENDPOINT}
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends pkg-config libssl-dev ca-certificates git openssh-client \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY rust-toolchain.toml ./
+COPY Cargo.toml Cargo.lock ./
+COPY crates crates
+COPY shared shared
+COPY assets assets
+
+RUN mkdir -p /app/bin
+
+RUN if [ -z "${FEATURES}" ]; then \
+      sed -i '/^billing = {.*vibe-kanban-private.*/d' crates/remote/Cargo.toml; \
+      sed -i '/^# private crate for billing/d' crates/remote/Cargo.toml; \
+      sed -i '/^vk-billing = \["dep:billing"\]/d' crates/remote/Cargo.toml; \
+      rm -f crates/remote/Cargo.lock; \
+    fi
+
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/app/target \
+    cargo build ${FEATURES:+--locked} --release --manifest-path crates/remote/Cargo.toml ${FEATURES:+--features ${FEATURES}} \
+ && cp crates/remote/target/release/${APP_NAME} /app/bin/${APP_NAME}
+
 FROM debian:bookworm-slim AS runtime
 ARG APP_NAME
 
@@ -72,6 +109,31 @@ RUN apt-get update \
 WORKDIR /srv
 
 COPY --from=builder /app/bin/${APP_NAME} /usr/local/bin/${APP_NAME}
+COPY --from=fe-builder /repo/remote-frontend/dist /srv/static
+
+USER appuser
+
+ENV SERVER_LISTEN_ADDR=0.0.0.0:8081 \
+    RUST_LOG=info
+
+EXPOSE 8081
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["wget","--spider","-q","http://127.0.0.1:8081/health"]
+
+ENTRYPOINT ["/usr/local/bin/remote"]
+
+FROM debian:bookworm-slim AS runtime-no-ssh
+ARG APP_NAME
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates libssl3 wget git \
+  && rm -rf /var/lib/apt/lists/* \
+  && useradd --system --create-home --uid 10001 appuser
+
+WORKDIR /srv
+
+COPY --from=builder-no-ssh /app/bin/${APP_NAME} /usr/local/bin/${APP_NAME}
 COPY --from=fe-builder /repo/remote-frontend/dist /srv/static
 
 USER appuser
