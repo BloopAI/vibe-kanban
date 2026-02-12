@@ -10,6 +10,7 @@ use db::models::{
     coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     merge::{Merge, MergeStatus},
+    project::Project,
     project_repo::ProjectRepo,
     repo::{Repo, RepoError},
     session::{CreateSession, Session},
@@ -646,13 +647,20 @@ pub async fn create_workspace_from_pr(
     let project_id = match project_repos.first() {
         Some(project_repo) => project_repo.project_id,
         None => {
-            tracing::error!(
-                "Repo {} is not associated with any project",
+            // Repo not associated with any project — fall back to the first available project
+            tracing::warn!(
+                "Repo {} is not associated with any project, falling back to first project",
                 payload.repo_id
             );
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                CreateFromPrError::RepoNotInProject,
-            )));
+            let projects = Project::find_all(pool).await?;
+            match projects.first() {
+                Some(project) => project.id,
+                None => {
+                    return Ok(ResponseJson(ApiResponse::error_with_data(
+                        CreateFromPrError::RepoNotInProject,
+                    )));
+                }
+            }
         }
     };
 
