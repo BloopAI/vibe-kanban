@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::some_if_present;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS, utoipa::ToSchema)]
 #[sqlx(type_name = "issue_relationship_type", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum IssueRelationshipType {
@@ -15,7 +15,7 @@ pub enum IssueRelationshipType {
     HasDuplicate,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct IssueRelationship {
     pub id: Uuid,
     pub issue_id: Uuid,
@@ -48,7 +48,7 @@ pub struct ListIssueRelationshipsQuery {
     pub issue_id: Uuid,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, utoipa::ToSchema)]
 pub struct ListIssueRelationshipsResponse {
     pub issue_relationships: Vec<IssueRelationship>,
 }

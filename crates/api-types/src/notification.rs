@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::some_if_present;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS, utoipa::ToSchema)]
 #[sqlx(type_name = "notification_type", rename_all = "snake_case")]
 pub enum NotificationType {
     IssueCommentAdded,
@@ -16,7 +16,7 @@ pub enum NotificationType {
     IssueDeleted,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct Notification {
     pub id: Uuid,
     pub organization_id: Uuid,
@@ -51,7 +51,7 @@ pub struct ListNotificationsQuery {
     pub organization_id: Uuid,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, utoipa::ToSchema)]
 pub struct ListNotificationsResponse {
     pub notifications: Vec<Notification>,
 }

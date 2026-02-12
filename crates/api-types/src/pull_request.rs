@@ -4,7 +4,7 @@ use sqlx::Type;
 use ts_rs::TS;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS, utoipa::ToSchema)]
 #[sqlx(type_name = "pull_request_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum PullRequestStatus {
@@ -13,7 +13,7 @@ pub enum PullRequestStatus {
     Closed,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct PullRequest {
     pub id: Uuid,
     pub url: String,

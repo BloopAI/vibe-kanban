@@ -38,7 +38,7 @@ pub enum ExecutionProcessError {
     ValidationError(String),
 }
 
-#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, utoipa::ToSchema)]
 #[sqlx(type_name = "execution_process_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 #[ts(use_ts_enum)]
@@ -49,7 +49,7 @@ pub enum ExecutionProcessStatus {
     Killed,
 }
 
-#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, utoipa::ToSchema)]
 #[sqlx(type_name = "execution_process_run_reason", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum ExecutionProcessRunReason {
@@ -60,12 +60,13 @@ pub enum ExecutionProcessRunReason {
     DevServer,
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct ExecutionProcess {
     pub id: Uuid,
     pub session_id: Uuid,
     pub run_reason: ExecutionProcessRunReason,
     #[ts(type = "ExecutorAction")]
+    #[schema(value_type = ExecutorActionField)]
     pub executor_action: sqlx::types::Json<ExecutorActionField>,
     pub status: ExecutionProcessStatus,
     pub exit_code: Option<i64>,
@@ -114,7 +115,7 @@ pub struct LatestProcessInfo {
     pub completed_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(untagged)]
 pub enum ExecutorActionField {
     ExecutorAction(ExecutorAction),

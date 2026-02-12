@@ -16,9 +16,10 @@ pub enum RepoError {
     NotFound,
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct Repo {
     pub id: Uuid,
+    #[schema(value_type = String)]
     pub path: PathBuf,
     pub name: String,
     pub display_name: String,

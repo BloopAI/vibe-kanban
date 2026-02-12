@@ -64,6 +64,7 @@ impl From<OAuthTokenValidationError> for TokenRefreshError {
     }
 }
 
+#[utoipa::path(post, path = "/v1/tokens/refresh", tag = "Tokens", request_body = TokenRefreshRequest, responses((status = 200, description = "Token refreshed"), (status = 401, description = "Unauthorized")))]
 pub async fn refresh_token(
     State(state): State<AppState>,
     Json(payload): Json<TokenRefreshRequest>,

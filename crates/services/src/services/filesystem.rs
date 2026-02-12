@@ -25,15 +25,16 @@ pub enum FilesystemError {
     #[error("Failed to read directory: {0}")]
     Io(#[from] std::io::Error),
 }
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, utoipa::ToSchema)]
 pub struct DirectoryListResponse {
     pub entries: Vec<DirectoryEntry>,
     pub current_path: String,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, utoipa::ToSchema)]
 pub struct DirectoryEntry {
     pub name: String,
+    #[schema(value_type = String)]
     pub path: PathBuf,
     pub is_directory: bool,
     pub is_git_repo: bool,

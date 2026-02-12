@@ -40,12 +40,22 @@ pub fn router() -> axum::Router<AppState> {
         .route("/issues/bulk", post(bulk_update_issues))
 }
 
+#[utoipa::path(
+    get, path = "/v1/issues",
+    tag = "Issues",
+    params(("project_id" = Uuid, Query, description = "Project ID")),
+    responses(
+        (status = 200, description = "List of issues"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issues.list_issues",
     skip(state, ctx),
     fields(project_id = %query.project_id, user_id = %ctx.user.id)
 )]
-async fn list_issues(
+pub(crate) async fn list_issues(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Query(query): Query<ListIssuesQuery>,
@@ -62,12 +72,23 @@ async fn list_issues(
     Ok(Json(ListIssuesResponse { issues }))
 }
 
+#[utoipa::path(
+    get, path = "/v1/issues/{id}",
+    tag = "Issues",
+    params(("id" = Uuid, Path, description = "Issue ID")),
+    responses(
+        (status = 200, description = "Issue found"),
+        (status = 404, description = "Issue not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issues.get_issue",
     skip(state, ctx),
     fields(issue_id = %issue_id, user_id = %ctx.user.id)
 )]
-async fn get_issue(
+pub(crate) async fn get_issue(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_id): Path<Uuid>,
@@ -85,12 +106,22 @@ async fn get_issue(
     Ok(Json(issue))
 }
 
+#[utoipa::path(
+    post, path = "/v1/issues",
+    tag = "Issues",
+    request_body = CreateIssueRequest,
+    responses(
+        (status = 200, description = "Issue created"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issues.create_issue",
     skip(state, ctx, payload),
     fields(project_id = %payload.project_id, user_id = %ctx.user.id)
 )]
-async fn create_issue(
+pub(crate) async fn create_issue(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateIssueRequest>,
@@ -157,12 +188,24 @@ async fn create_issue(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    patch, path = "/v1/issues/{id}",
+    tag = "Issues",
+    params(("id" = Uuid, Path, description = "Issue ID")),
+    request_body = UpdateIssueRequest,
+    responses(
+        (status = 200, description = "Issue updated"),
+        (status = 404, description = "Issue not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issues.update_issue",
     skip(state, ctx, payload),
     fields(issue_id = %issue_id, user_id = %ctx.user.id)
 )]
-async fn update_issue(
+pub(crate) async fn update_issue(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_id): Path<Uuid>,
@@ -217,12 +260,23 @@ async fn update_issue(
     Ok(Json(MutationResponse { data, txid }))
 }
 
+#[utoipa::path(
+    delete, path = "/v1/issues/{id}",
+    tag = "Issues",
+    params(("id" = Uuid, Path, description = "Issue ID")),
+    responses(
+        (status = 200, description = "Issue deleted"),
+        (status = 404, description = "Issue not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issues.delete_issue",
     skip(state, ctx),
     fields(issue_id = %issue_id, user_id = %ctx.user.id)
 )]
-async fn delete_issue(
+pub(crate) async fn delete_issue(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_id): Path<Uuid>,
@@ -269,12 +323,23 @@ pub struct BulkUpdateIssuesResponse {
     pub txid: i64,
 }
 
+#[utoipa::path(
+    post, path = "/v1/issues/bulk",
+    tag = "Issues",
+    request_body = BulkUpdateIssuesRequest,
+    responses(
+        (status = 200, description = "Issues updated"),
+        (status = 400, description = "Bad request"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issues.bulk_update",
     skip(state, ctx, payload),
     fields(user_id = %ctx.user.id, count = payload.updates.len())
 )]
-async fn bulk_update_issues(
+pub(crate) async fn bulk_update_issues(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<BulkUpdateIssuesRequest>,

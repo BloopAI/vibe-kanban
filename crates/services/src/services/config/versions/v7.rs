@@ -11,13 +11,13 @@ fn default_git_branch_prefix() -> String {
     "vk".to_string()
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, TS, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, TS, Default, utoipa::ToSchema)]
 pub struct ShowcaseState {
     #[serde(default)]
     pub seen_features: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString, utoipa::ToSchema)]
 #[ts(use_ts_enum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]

@@ -24,7 +24,7 @@ use utils::response::ApiResponse;
 
 use crate::{DeploymentImpl, error::ApiError};
 
-#[derive(Debug, Deserialize, Serialize, TS)]
+#[derive(Debug, Deserialize, Serialize, TS, utoipa::ToSchema)]
 pub struct StartReviewRequest {
     pub executor_profile_id: ExecutorProfileId,
     pub additional_prompt: Option<String>,
@@ -39,6 +39,7 @@ pub enum ReviewError {
     ProcessAlreadyRunning,
 }
 
+#[utoipa::path(post, path = "/api/sessions/{session_id}/review", tag = "Sessions", params(("session_id" = Uuid, Path, description = "Session ID")), responses((status = 200, description = "Review started")))]
 #[axum::debug_handler]
 pub async fn start_review(
     Extension(session): Extension<Session>,

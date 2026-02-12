@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::some_if_present;
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct IssueAssignee {
     pub id: Uuid,
     pub issue_id: Uuid,
@@ -34,7 +34,7 @@ pub struct ListIssueAssigneesQuery {
     pub issue_id: Uuid,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, utoipa::ToSchema)]
 pub struct ListIssueAssigneesResponse {
     pub issue_assignees: Vec<IssueAssignee>,
 }

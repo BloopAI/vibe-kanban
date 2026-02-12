@@ -58,7 +58,7 @@ static EXECUTOR_PROFILES_CACHE: LazyLock<RwLock<ExecutorConfigs>> =
 const DEFAULT_PROFILES_JSON: &str = include_str!("../default_profiles.json");
 
 // Executor-centric profile identifier
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, Hash, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, Hash, Eq, utoipa::ToSchema)]
 pub struct ExecutorProfileId {
     /// The executor type (e.g., "CLAUDE_CODE", "AMP")
     #[serde(alias = "profile", deserialize_with = "de_base_coding_agent_kebab")]
@@ -116,7 +116,7 @@ impl std::fmt::Display for ExecutorProfileId {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, utoipa::ToSchema)]
 pub struct ExecutorConfig {
     #[serde(flatten)]
     pub configurations: HashMap<String, CodingAgent>,
@@ -170,7 +170,7 @@ impl ExecutorConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, utoipa::ToSchema)]
 pub struct ExecutorConfigs {
     pub executors: HashMap<BaseCodingAgent, ExecutorConfig>,
 }

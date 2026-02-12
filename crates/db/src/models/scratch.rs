@@ -18,14 +18,14 @@ pub enum ScratchError {
 }
 
 /// Data for a draft follow-up scratch
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct DraftFollowUpData {
     pub message: String,
     pub executor_profile_id: ExecutorProfileId,
 }
 
 /// Data for preview settings scratch (URL override and screen size)
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct PreviewSettingsData {
     pub url: String,
     #[serde(default)]
@@ -37,20 +37,20 @@ pub struct PreviewSettingsData {
 }
 
 /// Data for workspace notes scratch
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct WorkspaceNotesData {
     pub content: String,
 }
 
 /// Workspace-specific panel state
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct WorkspacePanelStateData {
     pub right_main_panel_mode: Option<String>,
     pub is_left_main_panel_visible: bool,
 }
 
 /// Data for UI preferences scratch (global preferences stored per-user or per-device)
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct UiPreferencesData {
     /// Preferred repo actions per repo
     #[serde(default)]
@@ -85,7 +85,7 @@ pub struct UiPreferencesData {
 }
 
 /// Linked issue data for draft workspace scratch
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct DraftWorkspaceLinkedIssue {
     pub issue_id: String,
     pub simple_id: String,
@@ -94,7 +94,7 @@ pub struct DraftWorkspaceLinkedIssue {
 }
 
 /// Data for a draft workspace scratch (new workspace creation)
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct DraftWorkspaceData {
     pub message: String,
     #[serde(default)]
@@ -108,14 +108,14 @@ pub struct DraftWorkspaceData {
 }
 
 /// Repository entry in a draft workspace
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct DraftWorkspaceRepo {
     pub repo_id: Uuid,
     pub target_branch: String,
 }
 
 /// Data for a draft issue scratch (issue creation on kanban board)
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct DraftIssueData {
     #[serde(default)]
     pub title: String,
@@ -140,7 +140,7 @@ pub struct DraftIssueData {
 
 /// The payload of a scratch, tagged by type. The type is part of the composite primary key.
 /// Data is stored as markdown string.
-#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumDiscriminants)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumDiscriminants, utoipa::ToSchema)]
 #[serde(tag = "type", content = "data", rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum_discriminants(name(ScratchType))]
 #[strum_discriminants(derive(Display, EnumString, Serialize, Deserialize, TS))]
@@ -185,7 +185,7 @@ struct ScratchRow {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct Scratch {
     pub id: Uuid,
     pub payload: ScratchPayload,
@@ -220,13 +220,13 @@ impl TryFrom<ScratchRow> for Scratch {
 }
 
 /// Request body for creating a scratch (id comes from URL path, type from payload)
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct CreateScratch {
     pub payload: ScratchPayload,
 }
 
 /// Request body for updating a scratch
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct UpdateScratch {
     pub payload: ScratchPayload,
 }

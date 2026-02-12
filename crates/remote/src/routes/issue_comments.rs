@@ -36,12 +36,22 @@ pub fn router() -> axum::Router<AppState> {
     mutation().router()
 }
 
+#[utoipa::path(
+    get, path = "/v1/issue_comments",
+    tag = "IssueComments",
+    params(("issue_id" = Uuid, Query, description = "Issue ID")),
+    responses(
+        (status = 200, description = "List of issue comments"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_comments.list_issue_comments",
     skip(state, ctx),
     fields(issue_id = %query.issue_id, user_id = %ctx.user.id)
 )]
-async fn list_issue_comments(
+pub(crate) async fn list_issue_comments(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Query(query): Query<ListIssueCommentsQuery>,
@@ -61,12 +71,23 @@ async fn list_issue_comments(
     Ok(Json(ListIssueCommentsResponse { issue_comments }))
 }
 
+#[utoipa::path(
+    get, path = "/v1/issue_comments/{id}",
+    tag = "IssueComments",
+    params(("id" = Uuid, Path, description = "Issue comment ID")),
+    responses(
+        (status = 200, description = "Issue comment found"),
+        (status = 404, description = "Issue comment not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_comments.get_issue_comment",
     skip(state, ctx),
     fields(issue_comment_id = %issue_comment_id, user_id = %ctx.user.id)
 )]
-async fn get_issue_comment(
+pub(crate) async fn get_issue_comment(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_comment_id): Path<Uuid>,
@@ -87,12 +108,22 @@ async fn get_issue_comment(
     Ok(Json(comment))
 }
 
+#[utoipa::path(
+    post, path = "/v1/issue_comments",
+    tag = "IssueComments",
+    request_body = CreateIssueCommentRequest,
+    responses(
+        (status = 200, description = "Issue comment created"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_comments.create_issue_comment",
     skip(state, ctx, payload),
     fields(issue_id = %payload.issue_id, user_id = %ctx.user.id)
 )]
-async fn create_issue_comment(
+pub(crate) async fn create_issue_comment(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateIssueCommentRequest>,
@@ -131,12 +162,24 @@ async fn create_issue_comment(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    patch, path = "/v1/issue_comments/{id}",
+    tag = "IssueComments",
+    params(("id" = Uuid, Path, description = "Issue comment ID")),
+    request_body = UpdateIssueCommentRequest,
+    responses(
+        (status = 200, description = "Issue comment updated"),
+        (status = 404, description = "Issue comment not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_comments.update_issue_comment",
     skip(state, ctx, payload),
     fields(issue_comment_id = %issue_comment_id, user_id = %ctx.user.id)
 )]
-async fn update_issue_comment(
+pub(crate) async fn update_issue_comment(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_comment_id): Path<Uuid>,
@@ -185,12 +228,23 @@ async fn update_issue_comment(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    delete, path = "/v1/issue_comments/{id}",
+    tag = "IssueComments",
+    params(("id" = Uuid, Path, description = "Issue comment ID")),
+    responses(
+        (status = 200, description = "Issue comment deleted"),
+        (status = 404, description = "Issue comment not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_comments.delete_issue_comment",
     skip(state, ctx),
     fields(issue_comment_id = %issue_comment_id, user_id = %ctx.user.id)
 )]
-async fn delete_issue_comment(
+pub(crate) async fn delete_issue_comment(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_comment_id): Path<Uuid>,

@@ -42,7 +42,7 @@ pub mod qa_mock;
 pub mod qwen;
 pub mod utils;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS, utoipa::ToSchema)]
 pub struct SlashCommandDescription {
     /// Command name without the leading slash, e.g. `help` for `/help`.
     pub name: String,
@@ -50,7 +50,7 @@ pub struct SlashCommandDescription {
     pub description: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS, utoipa::ToSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[ts(use_ts_enum)]
 pub enum BaseAgentCapability {
@@ -91,14 +91,14 @@ pub enum ExecutorError {
 
 #[enum_dispatch]
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, TS, Display, EnumDiscriminants, VariantNames,
+    Debug, Clone, Serialize, Deserialize, PartialEq, TS, Display, EnumDiscriminants, VariantNames, utoipa::ToSchema,
 )]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 #[strum_discriminants(
     name(BaseCodingAgent),
     // Only add Hash; Eq/PartialEq are already provided by EnumDiscriminants.
-    derive(EnumString, Hash, strum_macros::Display, Serialize, Deserialize, TS, Type),
+    derive(EnumString, Hash, strum_macros::Display, Serialize, Deserialize, TS, Type, utoipa::ToSchema),
     strum(serialize_all = "SCREAMING_SNAKE_CASE"),
     ts(use_ts_enum),
     serde(rename_all = "SCREAMING_SNAKE_CASE"),
@@ -198,7 +198,7 @@ impl CodingAgent {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AvailabilityInfo {
     LoginDetected { last_auth_timestamp: i64 },
@@ -322,7 +322,7 @@ impl From<AsyncGroupChild> for SpawnedChild {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, utoipa::ToSchema)]
 #[serde(transparent)]
 #[schemars(
     title = "Append Prompt",

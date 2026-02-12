@@ -14,7 +14,8 @@ pub fn router() -> Router<DeploymentImpl> {
     Router::new().route("/migration/start", post(start_migration))
 }
 
-async fn start_migration(
+#[utoipa::path(post, path = "/api/migration/start", tag = "Migration", responses((status = 200, description = "Migration started")))]
+pub(crate) async fn start_migration(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<MigrationRequest>,
 ) -> Result<ResponseJson<ApiResponse<MigrationResponse>>, ApiError> {

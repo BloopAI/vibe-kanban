@@ -6,7 +6,7 @@ use sqlx::{FromRow, SqlitePool, Type};
 use ts_rs::TS;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Type, utoipa::ToSchema)]
 #[sqlx(type_name = "merge_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum MergeStatus {
@@ -16,14 +16,14 @@ pub enum MergeStatus {
     Unknown,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Merge {
     Direct(DirectMerge),
     Pr(PrMerge),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct DirectMerge {
     pub id: Uuid,
     pub workspace_id: Uuid,
@@ -34,7 +34,7 @@ pub struct DirectMerge {
 }
 
 /// PR merge - represents a pull request merge
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct PrMerge {
     pub id: Uuid,
     pub workspace_id: Uuid,
@@ -44,7 +44,7 @@ pub struct PrMerge {
     pub pr_info: PullRequestInfo,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct PullRequestInfo {
     pub number: i64,
     pub url: String,
@@ -53,7 +53,7 @@ pub struct PullRequestInfo {
     pub merge_commit_sha: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, utoipa::ToSchema)]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum MergeType {
     Direct,

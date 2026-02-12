@@ -11,6 +11,7 @@ path = "src/bin/generate_types.rs"
 [features]
 default = []
 vk-billing = ["dep:billing"]
+swagger-ui = ["dep:utoipa-swagger-ui"]
 
 [dependencies]
 # private crate for billing functionality
@@ -38,6 +39,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"]
 tracing-error = "0.2"
 thiserror = "2.0.12"
 ts-rs = { git = "https://github.com/xazukx/ts-rs.git", branch = "use-ts-enum", features = ["uuid-impl", "chrono-impl", "no-serde-warnings", "serde-json-impl"] }
+utoipa = { version = "5", features = ["axum_extras", "chrono", "uuid"] }
+utoipa-swagger-ui = { version = "9", features = ["axum"], optional = true }
 api-types = { path = "../api-types" }
 utils = { path = "../utils" }
 uuid = { version = "1", features = ["serde", "v4"] }

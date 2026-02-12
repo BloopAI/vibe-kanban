@@ -25,6 +25,7 @@ pub struct ContainerInfo {
     pub attempt_id: Uuid,
 }
 
+#[utoipa::path(get, path = "/api/containers/info", tag = "Containers", params(("ref" = String, Query, description = "Container reference")), responses((status = 200, description = "Container info")))]
 pub async fn get_container_info(
     Query(query): Query<ContainerQuery>,
     State(deployment): State<DeploymentImpl>,
@@ -41,6 +42,7 @@ pub async fn get_container_info(
     })))
 }
 
+#[utoipa::path(get, path = "/api/containers/attempt-context", tag = "Containers", params(("ref" = String, Query, description = "Container reference")), responses((status = 200, description = "Workspace context")))]
 pub async fn get_context(
     State(deployment): State<DeploymentImpl>,
     Query(payload): Query<ContainerQuery>,

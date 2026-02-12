@@ -89,6 +89,7 @@ pub struct AcceptInvitationResponse {
     pub role: MemberRole,
 }
 
+#[utoipa::path(post, path = "/v1/organizations/{org_id}/invitations", tag = "OrganizationMembers", params(("org_id" = Uuid, Path, description = "Organization ID")), request_body = CreateInvitationRequest, responses((status = 201, description = "Invitation created"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 pub async fn create_invitation(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
@@ -168,6 +169,7 @@ pub async fn create_invitation(
     ))
 }
 
+#[utoipa::path(get, path = "/v1/organizations/{org_id}/invitations", tag = "OrganizationMembers", params(("org_id" = Uuid, Path, description = "Organization ID")), responses((status = 200, description = "List of invitations"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 pub async fn list_invitations(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
@@ -192,6 +194,7 @@ pub async fn list_invitations(
     Ok(Json(ListInvitationsResponse { invitations }))
 }
 
+#[utoipa::path(get, path = "/v1/invitations/{token}", tag = "OrganizationMembers", params(("token" = String, Path, description = "Invitation token")), responses((status = 200, description = "Invitation details"), (status = 404, description = "Not found")))]
 pub async fn get_invitation(
     State(state): State<AppState>,
     Path(token): Path<String>,
@@ -223,6 +226,7 @@ pub async fn get_invitation(
     }))
 }
 
+#[utoipa::path(post, path = "/v1/organizations/{org_id}/invitations/revoke", tag = "OrganizationMembers", params(("org_id" = Uuid, Path, description = "Organization ID")), request_body = RevokeInvitationRequest, responses((status = 204, description = "Invitation revoked"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 pub async fn revoke_invitation(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
@@ -250,6 +254,7 @@ pub async fn revoke_invitation(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(post, path = "/v1/invitations/{token}/accept", tag = "OrganizationMembers", params(("token" = String, Path, description = "Invitation token")), responses((status = 200, description = "Invitation accepted"), (status = 404, description = "Not found")), security(("bearer_auth" = [])))]
 pub async fn accept_invitation(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
@@ -291,6 +296,7 @@ pub async fn accept_invitation(
     }))
 }
 
+#[utoipa::path(get, path = "/v1/organizations/{org_id}/members", tag = "OrganizationMembers", params(("org_id" = Uuid, Path, description = "Organization ID")), responses((status = 200, description = "List of members"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 pub async fn list_members(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
@@ -332,6 +338,7 @@ pub async fn list_members(
     Ok(Json(ListMembersResponse { members }))
 }
 
+#[utoipa::path(delete, path = "/v1/organizations/{org_id}/members/{user_id}", tag = "OrganizationMembers", params(("org_id" = Uuid, Path, description = "Organization ID"), ("user_id" = Uuid, Path, description = "User ID")), responses((status = 204, description = "Member removed"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 pub async fn remove_member(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
@@ -423,6 +430,7 @@ pub async fn remove_member(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(patch, path = "/v1/organizations/{org_id}/members/{user_id}/role", tag = "OrganizationMembers", params(("org_id" = Uuid, Path, description = "Organization ID"), ("user_id" = Uuid, Path, description = "User ID")), request_body = UpdateMemberRoleRequest, responses((status = 200, description = "Role updated"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 pub async fn update_member_role(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,

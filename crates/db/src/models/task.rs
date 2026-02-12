@@ -8,7 +8,7 @@ use uuid::Uuid;
 use super::{project::Project, workspace::Workspace};
 
 #[derive(
-    Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, EnumString, Display, Default,
+    Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, EnumString, Display, Default, utoipa::ToSchema,
 )]
 #[sqlx(type_name = "task_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
@@ -22,7 +22,7 @@ pub enum TaskStatus {
     Cancelled,
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct Task {
     pub id: Uuid,
     pub project_id: Uuid, // Foreign key to Project
@@ -34,7 +34,7 @@ pub struct Task {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct TaskWithAttemptStatus {
     #[serde(flatten)]
     #[ts(flatten)]
@@ -57,14 +57,14 @@ impl std::ops::DerefMut for TaskWithAttemptStatus {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct TaskRelationships {
     pub parent_task: Option<Task>, // The task that owns the parent workspace
     pub current_workspace: Workspace, // The workspace we're viewing
     pub children: Vec<Task>,       // Tasks created from this workspace
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct CreateTask {
     pub project_id: Uuid,
     pub title: String,
@@ -91,7 +91,7 @@ impl CreateTask {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct UpdateTask {
     pub title: Option<String>,
     pub description: Option<String>,

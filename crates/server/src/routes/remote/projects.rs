@@ -22,7 +22,8 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/projects/{project_id}", get(get_remote_project))
 }
 
-async fn list_remote_projects(
+#[utoipa::path(get, path = "/api/remote/projects", tag = "Remote", params(("organization_id" = Uuid, Query, description = "Organization ID")), responses((status = 200, description = "List remote projects")))]
+pub(crate) async fn list_remote_projects(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ListRemoteProjectsQuery>,
 ) -> Result<ResponseJson<ApiResponse<ListProjectsResponse>>, ApiError> {
@@ -31,7 +32,8 @@ async fn list_remote_projects(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
-async fn get_remote_project(
+#[utoipa::path(get, path = "/api/remote/projects/{project_id}", tag = "Remote", params(("project_id" = Uuid, Path, description = "Project ID")), responses((status = 200, description = "Remote project details")))]
+pub(crate) async fn get_remote_project(
     State(deployment): State<DeploymentImpl>,
     Path(project_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {

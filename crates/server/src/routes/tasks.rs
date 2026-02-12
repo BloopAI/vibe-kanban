@@ -37,11 +37,22 @@ use crate::{
     routes::task_attempts::WorkspaceRepoInput,
 };
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct TaskQuery {
     pub project_id: Uuid,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/tasks",
+    tag = "Tasks",
+    params(
+        ("project_id" = Uuid, Query, description = "Filter by project ID"),
+    ),
+    responses(
+        (status = 200, description = "List of tasks with attempt status")
+    )
+)]
 pub async fn get_tasks(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskQuery>,
@@ -53,6 +64,17 @@ pub async fn get_tasks(
     Ok(ResponseJson(ApiResponse::success(tasks)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/tasks/stream/ws",
+    tag = "Tasks",
+    params(
+        ("project_id" = Uuid, Query, description = "Filter by project ID"),
+    ),
+    responses(
+        (status = 101, description = "WebSocket upgrade for task stream")
+    )
+)]
 pub async fn stream_tasks_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,
@@ -100,6 +122,17 @@ async fn handle_tasks_ws(
     Ok(())
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/tasks/{task_id}",
+    tag = "Tasks",
+    params(
+        ("task_id" = Uuid, Path, description = "Task ID"),
+    ),
+    responses(
+        (status = 200, description = "Task details")
+    )
+)]
 pub async fn get_task(
     Extension(task): Extension<Task>,
     State(_deployment): State<DeploymentImpl>,
@@ -107,6 +140,15 @@ pub async fn get_task(
     Ok(ResponseJson(ApiResponse::success(task)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/tasks",
+    tag = "Tasks",
+    request_body = CreateTask,
+    responses(
+        (status = 200, description = "Task created")
+    )
+)]
 pub async fn create_task(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTask>,
@@ -140,13 +182,13 @@ pub async fn create_task(
     Ok(ResponseJson(ApiResponse::success(task)))
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct LinkedIssueInfo {
     pub remote_project_id: Uuid,
     pub issue_id: Uuid,
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct CreateAndStartTaskRequest {
     pub task: CreateTask,
     pub executor_profile_id: ExecutorProfileId,
@@ -230,6 +272,15 @@ async fn import_issue_attachments(
     Ok(imported)
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/tasks/create-and-start",
+    tag = "Tasks",
+    request_body = CreateAndStartTaskRequest,
+    responses(
+        (status = 200, description = "Task created and started")
+    )
+)]
 pub async fn create_task_and_start(
     State(deployment): State<DeploymentImpl>,
     Json(mut payload): Json<CreateAndStartTaskRequest>,
@@ -375,6 +426,18 @@ pub async fn create_task_and_start(
     })))
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/tasks/{task_id}",
+    tag = "Tasks",
+    params(
+        ("task_id" = Uuid, Path, description = "Task ID"),
+    ),
+    request_body = UpdateTask,
+    responses(
+        (status = 200, description = "Task updated")
+    )
+)]
 pub async fn update_task(
     Extension(existing_task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
@@ -412,6 +475,17 @@ pub async fn update_task(
     Ok(ResponseJson(ApiResponse::success(task)))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/tasks/{task_id}",
+    tag = "Tasks",
+    params(
+        ("task_id" = Uuid, Path, description = "Task ID"),
+    ),
+    responses(
+        (status = 202, description = "Task deletion accepted")
+    )
+)]
 pub async fn delete_task(
     Extension(task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,

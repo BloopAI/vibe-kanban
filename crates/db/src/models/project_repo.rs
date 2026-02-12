@@ -19,14 +19,14 @@ pub enum ProjectRepoError {
     AlreadyExists,
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct ProjectRepo {
     pub id: Uuid,
     pub project_id: Uuid,
     pub repo_id: Uuid,
 }
 
-#[derive(Debug, Clone, Deserialize, TS)]
+#[derive(Debug, Clone, Deserialize, TS, utoipa::ToSchema)]
 pub struct CreateProjectRepo {
     pub display_name: String,
     pub git_repo_path: String,

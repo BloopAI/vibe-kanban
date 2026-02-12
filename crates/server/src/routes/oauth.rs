@@ -41,19 +41,20 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/auth/user", get(get_current_user))
 }
 
-#[derive(Debug, Deserialize)]
-struct HandoffInitPayload {
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub(crate) struct HandoffInitPayload {
     provider: String,
     return_to: String,
 }
 
 #[derive(Debug, Serialize)]
-struct HandoffInitResponseBody {
+pub(crate) struct HandoffInitResponseBody {
     handoff_id: Uuid,
     authorize_url: String,
 }
 
-async fn handoff_init(
+#[utoipa::path(post, path = "/api/auth/handoff/init", tag = "Auth", responses((status = 200, description = "Handoff initialized")))]
+pub(crate) async fn handoff_init(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<HandoffInitPayload>,
 ) -> Result<ResponseJson<ApiResponse<HandoffInitResponseBody>>, ApiError> {
@@ -83,7 +84,7 @@ async fn handoff_init(
 }
 
 #[derive(Debug, Deserialize)]
-struct HandoffCompleteQuery {
+pub(crate) struct HandoffCompleteQuery {
     handoff_id: Uuid,
     #[serde(default)]
     app_code: Option<String>,
@@ -91,7 +92,8 @@ struct HandoffCompleteQuery {
     error: Option<String>,
 }
 
-async fn handoff_complete(
+#[utoipa::path(get, path = "/api/auth/handoff/complete", tag = "Auth", responses((status = 200, description = "Handoff completed")))]
+pub(crate) async fn handoff_complete(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<HandoffCompleteQuery>,
 ) -> Result<Response<String>, ApiError> {
@@ -219,7 +221,8 @@ async fn handoff_complete(
     )))
 }
 
-async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, ApiError> {
+#[utoipa::path(post, path = "/api/auth/logout", tag = "Auth", responses((status = 204, description = "Logged out")))]
+pub(crate) async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, ApiError> {
     let auth_context = deployment.auth_context();
 
     if let Ok(client) = deployment.remote_client() {
@@ -236,7 +239,8 @@ async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, 
     Ok(StatusCode::NO_CONTENT)
 }
 
-async fn status(
+#[utoipa::path(get, path = "/api/auth/status", tag = "Auth", responses((status = 200, description = "Auth status")))]
+pub(crate) async fn status(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<StatusResponse>>, ApiError> {
     use api_types::LoginStatus;
@@ -258,7 +262,8 @@ async fn status(
 }
 
 /// Returns the current access token (auto-refreshes if needed)
-async fn get_token(
+#[utoipa::path(get, path = "/api/auth/token", tag = "Auth", responses((status = 200, description = "Access token")))]
+pub(crate) async fn get_token(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<TokenResponse>>, ApiError> {
     let remote_client = deployment.remote_client()?;
@@ -278,7 +283,8 @@ async fn get_token(
     })))
 }
 
-async fn get_current_user(
+#[utoipa::path(get, path = "/api/auth/user", tag = "Auth", responses((status = 200, description = "Current user")))]
+pub(crate) async fn get_current_user(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<CurrentUserResponse>>, ApiError> {
     let remote_client = deployment.remote_client()?;

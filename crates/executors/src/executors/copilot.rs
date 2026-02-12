@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-#[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
+#[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema, utoipa::ToSchema)]
 #[derivative(Debug, PartialEq)]
 pub struct Copilot {
     #[serde(default)]

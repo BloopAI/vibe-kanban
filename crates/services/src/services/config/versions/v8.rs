@@ -21,14 +21,14 @@ fn default_commit_reminder_enabled() -> bool {
     true
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, TS, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, TS, PartialEq, Eq, utoipa::ToSchema)]
 pub enum SendMessageShortcut {
     #[default]
     ModifierEnter,
     Enter,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[derive(Clone, Debug, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct Config {
     pub config_version: String,
     pub theme: ThemeMode,

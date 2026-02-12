@@ -11,7 +11,7 @@ pub enum MigrationStateError {
     Database(#[from] sqlx::Error),
 }
 
-#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, EnumString, Display)]
+#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, EnumString, Display, utoipa::ToSchema)]
 #[sqlx(type_name = "text", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
@@ -22,7 +22,7 @@ pub enum EntityType {
     Workspace,
 }
 
-#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, EnumString, Display, Default)]
+#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, EnumString, Display, Default, utoipa::ToSchema)]
 #[sqlx(type_name = "text", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
@@ -34,7 +34,7 @@ pub enum MigrationStatus {
     Skipped,
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct MigrationState {
     pub id: Uuid,
     pub entity_type: EntityType,
@@ -47,7 +47,7 @@ pub struct MigrationState {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct CreateMigrationState {
     pub entity_type: EntityType,
     pub local_id: Uuid,
@@ -382,7 +382,7 @@ impl MigrationState {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, utoipa::ToSchema)]
 pub struct MigrationStats {
     pub pending: i64,
     pub migrated: i64,

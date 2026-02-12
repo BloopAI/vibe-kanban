@@ -17,7 +17,8 @@ pub fn router() -> Router<DeploymentImpl> {
     )
 }
 
-async fn get_workspace_by_local_id(
+#[utoipa::path(get, path = "/api/remote/workspaces/by-local-id/{local_workspace_id}", tag = "Remote", params(("local_workspace_id" = Uuid, Path, description = "Local workspace ID")), responses((status = 200, description = "Remote workspace details")))]
+pub(crate) async fn get_workspace_by_local_id(
     State(deployment): State<DeploymentImpl>,
     Path(local_workspace_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
