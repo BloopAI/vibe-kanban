@@ -2,13 +2,13 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CaretDownIcon,
+  CpuIcon,
   CheckCircleIcon,
   XCircleIcon,
   CircleNotchIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import { ToolStatus, ToolResult, BaseCodingAgent } from 'shared/types';
-import { AgentIcon } from '@/components/agents/AgentIcon';
+import { ToolStatus, ToolResult } from 'shared/types';
 import { ChatMarkdown } from './ChatMarkdown';
 
 interface ChatSubagentEntryProps {
@@ -20,7 +20,6 @@ interface ChatSubagentEntryProps {
   className?: string;
   status?: ToolStatus;
   workspaceId?: string;
-  executor?: string | null;
 }
 
 /**
@@ -37,7 +36,6 @@ export function ChatSubagentEntry({
   className,
   status,
   workspaceId,
-  executor,
 }: ChatSubagentEntryProps) {
   const { t } = useTranslation('common');
 
@@ -123,10 +121,7 @@ export function ChatSubagentEntry({
         onClick={hasContent ? onToggle : undefined}
       >
         <span className="relative shrink-0">
-          <AgentIcon
-            agent={(executor as BaseCodingAgent) ?? null}
-            className="size-icon-base"
-          />
+          <CpuIcon className="size-icon-base text-low" />
         </span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-base">
