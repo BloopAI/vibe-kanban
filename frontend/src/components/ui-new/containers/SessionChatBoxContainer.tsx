@@ -43,6 +43,8 @@ import {
   isActionVisible,
   useActionVisibilityContext,
 } from '../actions/useActionVisibility';
+import { PrCommentsDialog } from '@/components/dialogs/tasks/PrCommentsDialog';
+import type { NormalizedComment } from '@/components/ui/wysiwyg/nodes/pr-comment-node';
 
 /** Compute execution status from boolean flags */
 function computeExecutionStatus(params: {
@@ -606,22 +608,60 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     prevEditRef.current = editContext.activeEdit;
   }, [editContext.activeEdit, setLocalMessage]);
 
+  // Handle inserting PR comments into the message editor
+  const handleInsertPrComments = useCallback(async () => {
+    if (!workspaceId) return;
+    const repoId = repos[0]?.id;
+    if (!repoId) return;
+
+    const result = await PrCommentsDialog.show({
+      attemptId: workspaceId,
+      repoId,
+    });
+    if (result.comments.length > 0) {
+      const markdownBlocks = result.comments.map((comment) => {
+        const payload: NormalizedComment = {
+          id:
+            comment.comment_type === 'general'
+              ? comment.id
+              : comment.id.toString(),
+          comment_type: comment.comment_type,
+          author: comment.author,
+          body: comment.body,
+          created_at: comment.created_at,
+          url: comment.url,
+          ...(comment.comment_type === 'review' && {
+            path: comment.path,
+            line: comment.line != null ? Number(comment.line) : null,
+            diff_hunk: comment.diff_hunk,
+          }),
+        };
+        return '```gh-comment\n' + JSON.stringify(payload, null, 2) + '\n```';
+      });
+      handleInsertMarkdown(markdownBlocks.join('\n\n'));
+    }
+  }, [workspaceId, repos, handleInsertMarkdown]);
+
   // Toolbar actions handler - intercepts action execution to provide extra context
   const handleToolbarAction = useCallback(
     (action: ActionDefinition) => {
+      if (action.id === Actions.InsertPrComments.id) {
+        handleInsertPrComments();
+        return;
+      }
       if (action.requiresTarget && workspaceId) {
         executeAction(action, workspaceId);
       } else {
         executeAction(action);
       }
     },
-    [executeAction, workspaceId]
+    [executeAction, workspaceId, handleInsertPrComments]
   );
 
   // Define which actions appear in the toolbar
   const toolbarActionsList = useMemo(
     () =>
-      [Actions.StartReview].filter((action) =>
+      [Actions.StartReview, Actions.InsertPrComments].filter((action) =>
         isActionVisible(action, actionCtx)
       ),
     [actionCtx]

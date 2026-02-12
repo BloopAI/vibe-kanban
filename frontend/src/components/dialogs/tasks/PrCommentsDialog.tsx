@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
@@ -42,14 +42,14 @@ const PrCommentsDialogImpl = NiceModal.create<PrCommentsDialogProps>(
     );
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-    const comments = data?.comments ?? [];
+    const comments = useMemo(() => data?.comments ?? [], [data?.comments]);
 
-    // Reset selection when dialog opens
+    // Select all comments by default when dialog opens or comments load
     useEffect(() => {
-      if (modal.visible) {
-        setSelectedIds(new Set());
+      if (modal.visible && comments.length > 0) {
+        setSelectedIds(new Set(comments.map((c) => getCommentId(c))));
       }
-    }, [modal.visible]);
+    }, [modal.visible, comments]);
 
     const toggleSelection = (id: string) => {
       setSelectedIds((prev) => {

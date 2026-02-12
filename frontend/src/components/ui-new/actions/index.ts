@@ -55,6 +55,7 @@ import {
   LinkIcon,
   ArrowBendUpRightIcon,
   ProhibitIcon,
+  GithubLogoIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import {
@@ -478,6 +479,18 @@ export const Actions = {
       });
     },
   },
+
+  InsertPrComments: {
+    id: 'insert-pr-comments',
+    label: 'Add PR Comments',
+    icon: GithubLogoIcon,
+    requiresTarget: ActionTargetType.WORKSPACE,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasOpenPR,
+    getTooltip: () => 'Insert PR comments into message',
+    // Execution is intercepted in SessionChatBoxContainer
+    // because it needs access to the message editor
+    execute: async () => {},
+  } satisfies WorkspaceActionDefinition,
 
   SpinOffWorkspace: {
     id: 'spin-off-workspace',
