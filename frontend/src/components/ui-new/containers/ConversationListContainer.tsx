@@ -262,19 +262,12 @@ export const ConversationList = forwardRef<
       const pending = pendingUpdateRef.current;
       if (!pending) return;
 
-      let scrollModifier: ScrollModifier;
+      let scrollModifier: ScrollModifier = InitialDataScrollModifier;
 
-      if (loading || pending.addType === 'initial') {
-        // Initial data load - scroll to bottom and purge sizes
-        scrollModifier = InitialDataScrollModifier;
-      } else if (pending.addType === 'plan') {
+      if (pending.addType === 'plan' && !loading) {
         scrollModifier = ScrollToTopOfLastItem;
-      } else if (pending.addType === 'running') {
+      } else if (pending.addType === 'running' && !loading) {
         scrollModifier = AutoScrollToBottom;
-      } else {
-        // 'historic' - older entries may have been prepended, adjust scroll
-        // position to keep visible items in place
-        scrollModifier = 'prepend';
       }
 
       const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
