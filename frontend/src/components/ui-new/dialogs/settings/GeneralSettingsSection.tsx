@@ -65,6 +65,9 @@ export function GeneralSettingsSection() {
   const [branchPrefixError, setBranchPrefixError] = useState<string | null>(
     null
   );
+  const [customSoundPathError, setCustomSoundPathError] = useState<
+    string | null
+  >(null);
   const { setTheme } = useTheme();
 
   // Executor options for the default coding agent dropdown
@@ -155,8 +158,12 @@ export function GeneralSettingsSection() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [hasUnsavedChanges]);
 
-  const playSound = async (soundFile: SoundFile) => {
-    const audio = new Audio(`/api/sounds/${soundFile}`);
+  const playSound = async (soundFile: SoundFile, customPath?: string) => {
+    let url = `/api/sounds/${soundFile}`;
+    if (soundFile === SoundFile.CUSTOM && customPath) {
+      url += `?path=${encodeURIComponent(customPath)}`;
+    }
+    const audio = new Audio(url);
     try {
       await audio.play();
     } catch (err) {
@@ -166,6 +173,16 @@ export function GeneralSettingsSection() {
 
   const handleSave = async () => {
     if (!draft) return;
+
+    if (
+      draft.notifications.sound_enabled &&
+      draft.notifications.sound_file === SoundFile.CUSTOM &&
+      !draft.notifications.custom_sound_path?.trim()
+    ) {
+      setCustomSoundPathError(t('settings.general.notifications.sound.customPathError'));
+      setError(t('settings.general.save.error'));
+      return;
+    }
 
     setSaving(true);
     setError(null);
@@ -646,14 +663,17 @@ export function GeneralSettingsSection() {
           label={t('settings.general.notifications.sound.label')}
           description={t('settings.general.notifications.sound.helper')}
           checked={draft?.notifications.sound_enabled ?? false}
-          onChange={(checked) =>
+          onChange={(checked) => {
+            if (!checked && customSoundPathError) {
+              setCustomSoundPathError(null);
+            }
             updateDraft({
               notifications: {
                 ...draft!.notifications,
                 sound_enabled: checked,
               },
-            })
-          }
+            });
+          }}
         />
 
         {draft?.notifications.sound_enabled && (
@@ -666,14 +686,17 @@ export function GeneralSettingsSection() {
                 <SettingsSelect
                   value={draft.notifications.sound_file}
                   options={soundOptions}
-                  onChange={(value: SoundFile) =>
+                  onChange={(value: SoundFile) => {
+                    if (value !== SoundFile.CUSTOM && customSoundPathError) {
+                      setCustomSoundPathError(null);
+                    }
                     updateDraft({
                       notifications: {
                         ...draft.notifications,
                         sound_file: value,
                       },
-                    })
-                  }
+                    });
+                  }}
                   placeholder={t(
                     'settings.general.notifications.sound.filePlaceholder'
                   )}
@@ -681,11 +704,52 @@ export function GeneralSettingsSection() {
               </div>
               <IconButton
                 icon={SpeakerHighIcon}
-                onClick={() => playSound(draft.notifications.sound_file)}
+                onClick={() =>
+                  playSound(
+                    draft.notifications.sound_file,
+                    draft.notifications.custom_sound_path || undefined
+                  )
+                }
+                disabled={
+                  draft.notifications.sound_file === SoundFile.CUSTOM &&
+                  !draft.notifications.custom_sound_path
+                }
                 aria-label="Preview sound"
                 title="Preview sound"
               />
             </div>
+            {draft.notifications.sound_file === SoundFile.CUSTOM && (
+              <div className="space-y-1 mt-2">
+                <label className="text-xs font-medium text-low">
+                  {t('settings.general.notifications.sound.customPathLabel')}
+                </label>
+                <SettingsInput
+                  value={draft.notifications.custom_sound_path ?? ''}
+                  error={!!customSoundPathError}
+                  onChange={(value) => {
+                    if (customSoundPathError) {
+                      setCustomSoundPathError(null);
+                    }
+                    updateDraft({
+                      notifications: {
+                        ...draft.notifications,
+                        custom_sound_path: value,
+                      },
+                    });
+                  }}
+                  placeholder={t(
+                    'settings.general.notifications.sound.customPathPlaceholder'
+                  )}
+                />
+                {customSoundPathError ? (
+                  <p className="text-xs text-error">{customSoundPathError}</p>
+                ) : (
+                  <p className="text-xs text-low">
+                    {t('settings.general.notifications.sound.customPathHelper')}
+                  </p>
+                )}
+              </div>
+            )}
             <p className="text-sm text-low">
               {t('settings.general.notifications.sound.fileHelper')}
             </p>
