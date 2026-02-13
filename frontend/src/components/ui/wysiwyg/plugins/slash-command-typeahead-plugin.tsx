@@ -5,10 +5,7 @@ import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin';
-import {
-  $createTextNode,
-  KEY_ESCAPE_COMMAND,
-} from 'lexical';
+import { $createTextNode, KEY_ESCAPE_COMMAND } from 'lexical';
 import { TerminalIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import type { BaseCodingAgent, SlashCommandDescription } from 'shared/types';
@@ -146,7 +143,10 @@ export function SlashCommandTypeaheadPlugin({
           : 'Discovering commands…';
 
         return createPortal(
-          <TypeaheadMenu anchorEl={anchorRef.current} onClickOutside={closeTypeahead}>
+          <TypeaheadMenu
+            anchorEl={anchorRef.current}
+            onClickOutside={closeTypeahead}
+          >
             <TypeaheadMenu.Header>
               <TerminalIcon className="size-icon-xs" weight="bold" />
               {t('typeahead.commands')}

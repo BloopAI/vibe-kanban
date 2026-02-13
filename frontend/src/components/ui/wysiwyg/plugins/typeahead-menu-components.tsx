@@ -104,7 +104,11 @@ interface TypeaheadMenuProps {
   children: ReactNode;
 }
 
-function TypeaheadMenuRoot({ anchorEl, onClickOutside, children }: TypeaheadMenuProps) {
+function TypeaheadMenuRoot({
+  anchorEl,
+  onClickOutside,
+  children,
+}: TypeaheadMenuProps) {
   const [placement, setPlacement] = useState<TypeaheadPlacement>(() =>
     getPlacement(anchorEl)
   );
@@ -196,7 +200,9 @@ function TypeaheadMenuHeader({
   className?: string;
 }) {
   return (
-    <div className={`px-base py-half border-b border-border ${className ?? ''}`}>
+    <div
+      className={`px-base py-half border-b border-border ${className ?? ''}`}
+    >
       <div className="flex items-center gap-half text-xs font-medium text-low">
         {children}
       </div>
@@ -205,11 +211,7 @@ function TypeaheadMenuHeader({
 }
 
 function TypeaheadMenuScrollArea({ children }: { children: ReactNode }) {
-  return (
-    <div className="py-half overflow-auto flex-1 min-h-0">
-      {children}
-    </div>
-  );
+  return <div className="py-half overflow-auto flex-1 min-h-0">{children}</div>;
 }
 
 function TypeaheadMenuSectionHeader({ children }: { children: ReactNode }) {
@@ -225,9 +227,7 @@ function TypeaheadMenuDivider() {
 }
 
 function TypeaheadMenuEmpty({ children }: { children: ReactNode }) {
-  return (
-    <div className="px-base py-half text-sm text-low">{children}</div>
-  );
+  return <div className="px-base py-half text-sm text-low">{children}</div>;
 }
 
 interface TypeaheadMenuActionProps {
@@ -290,9 +290,7 @@ function TypeaheadMenuItemComponent({
     <div
       ref={ref}
       className={`px-base py-half rounded-sm cursor-pointer text-sm transition-colors ${
-        isSelected
-          ? 'bg-secondary text-high'
-          : 'hover:bg-secondary text-normal'
+        isSelected ? 'bg-secondary text-high' : 'hover:bg-secondary text-normal'
       }`}
       onMouseMove={handleMouseMove}
       onClick={onClick}
