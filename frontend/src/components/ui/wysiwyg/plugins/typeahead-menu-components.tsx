@@ -100,10 +100,11 @@ function getPlacement(
 
 interface TypeaheadMenuProps {
   anchorEl: HTMLElement;
+  onClickOutside?: () => void;
   children: ReactNode;
 }
 
-function TypeaheadMenuRoot({ anchorEl, children }: TypeaheadMenuProps) {
+function TypeaheadMenuRoot({ anchorEl, onClickOutside, children }: TypeaheadMenuProps) {
   const [placement, setPlacement] = useState<TypeaheadPlacement>(() =>
     getPlacement(anchorEl)
   );
@@ -174,6 +175,10 @@ function TypeaheadMenuRoot({ anchorEl, children }: TypeaheadMenuProps) {
         avoidCollisions={false}
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => {
+          e.preventDefault();
+          onClickOutside?.();
+        }}
         style={contentStyle}
         className="w-auto min-w-80 max-w-[370px] p-0 overflow-hidden !bg-panel flex flex-col"
       >

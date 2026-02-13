@@ -17,6 +17,7 @@ import {
   $getRoot,
   $createParagraphNode,
   $isParagraphNode,
+  KEY_ESCAPE_COMMAND,
 } from 'lexical';
 import { TagIcon, FileTextIcon, GearIcon, PlusIcon } from '@phosphor-icons/react';
 import { TagEditDialog } from '@/components/dialogs/tasks/TagEditDialog';
@@ -311,9 +312,12 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
     }
   }, [loadRecentRepos, runSearch, setFileSearchRepo]);
 
+  const closeTypeahead = useCallback(() => {
+    editor.dispatchCommand(KEY_ESCAPE_COMMAND, new KeyboardEvent('keydown'));
+  }, [editor]);
+
   const handleCreateTag = useCallback(async () => {
-    // Blur editor so the typeahead menu closes before the dialog opens
-    editor.blur();
+    closeTypeahead();
     try {
       const result = await TagEditDialog.show({ tag: null });
       if (result === 'saved') {
@@ -325,7 +329,7 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
     } catch {
       // User cancelled
     }
-  }, [editor, runSearch]);
+  }, [closeTypeahead, runSearch]);
 
   const onQueryChange = useCallback(
     (query: string | null) => {
@@ -455,7 +459,7 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
           : t('typeahead.chooseRepo');
 
         return createPortal(
-          <TypeaheadMenu anchorEl={anchorRef.current}>
+          <TypeaheadMenu anchorEl={anchorRef.current} onClickOutside={closeTypeahead}>
             <TypeaheadMenu.Header>
               <TagIcon className="size-icon-xs" weight="bold" />
               {t('typeahead.tags')}
