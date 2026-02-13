@@ -18,7 +18,7 @@ import {
   $createParagraphNode,
   $isParagraphNode,
 } from 'lexical';
-import { Tag as TagIcon, FileText, Cog } from 'lucide-react';
+import { TagIcon, FileTextIcon, GearIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import type { Repo } from 'shared/types';
 import type { RepoItem } from '@/components/ui-new/actions/pages';
@@ -440,7 +440,7 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
         return createPortal(
           <TypeaheadMenu anchorEl={anchorRef.current}>
             <TypeaheadMenu.Header className="bg-secondary">
-              <TagIcon className="h-3.5 w-3.5" />
+              <TagIcon className="size-icon-xs" weight="bold" />
               {t('typeahead.tags')}
             </TypeaheadMenu.Header>
 
@@ -461,12 +461,12 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
                       setHighlightedIndex={setHighlightedIndex}
                       onClick={() => selectOptionAndCleanUp(option)}
                     >
-                      <div className="flex items-center gap-2 font-medium">
-                        <TagIcon className="h-3.5 w-3.5 text-blue-600" />
+                      <div className="flex items-center gap-half font-medium">
+                        <TagIcon className="size-icon-xs text-brand" weight="bold" />
                         <span>@{tag.tag_name}</span>
                       </div>
                       {tag.content && (
-                        <div className="text-xs mt-0.5 truncate">
+                        <div className="text-xs text-low truncate">
                           {tag.content.slice(0, 60)}
                           {tag.content.length > 60 ? '...' : ''}
                         </div>
@@ -494,8 +494,8 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
                         }}
                         disabled={isChoosingRepo}
                       >
-                        <span className="flex items-center gap-2">
-                          <Cog className="h-3.5 w-3.5" />
+                        <span className="flex items-center gap-half">
+                          <GearIcon className="size-icon-xs" weight="bold" />
                           <span>{repoCtaLabel}</span>
                         </span>
                       </TypeaheadMenu.Action>
@@ -511,11 +511,11 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
                           setHighlightedIndex={setHighlightedIndex}
                           onClick={() => selectOptionAndCleanUp(option)}
                         >
-                          <div className="flex items-center gap-2 font-medium truncate">
-                            <FileText className="h-3.5 w-3.5 flex-shrink-0" />
+                          <div className="flex items-center gap-half font-medium truncate">
+                            <FileTextIcon className="size-icon-xs shrink-0" weight="bold" />
                             <span>{file.name}</span>
                           </div>
-                          <div className="text-xs truncate">{file.path}</div>
+                          <div className="text-xs text-low truncate">{file.path}</div>
                         </TypeaheadMenu.Item>
                       );
                     })}
