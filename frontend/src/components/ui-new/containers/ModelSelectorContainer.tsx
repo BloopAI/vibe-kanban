@@ -237,7 +237,9 @@ export function ModelSelectorContainer({
     config?.agents.find((entry) => entry.is_default)?.id ?? null;
 
   const selectedAgentId =
-    executorConfig?.agent_id ?? presetOptions?.agent_id ?? defaultAgentId;
+    executorConfig?.agent_id !== undefined
+      ? executorConfig.agent_id
+      : (presetOptions?.agent_id ?? defaultAgentId);
 
   const supportsPermissions = (config?.permissions.length ?? 0) > 0;
 

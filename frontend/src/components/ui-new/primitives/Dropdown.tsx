@@ -62,9 +62,7 @@ const DropdownMenuTriggerButton = React.forwardRef<
         <IconComponent className="size-icon-xs text-normal" weight="bold" />
       )}
       {label && (
-        <span className="text-normal truncate flex-1 text-left">
-          {label}
-        </span>
+        <span className="text-normal truncate flex-1 text-left">{label}</span>
       )}
       {children}
       {showCaret && (
