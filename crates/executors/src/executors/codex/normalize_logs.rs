@@ -428,7 +428,12 @@ fn format_todo_status(status: &StepStatus) -> String {
 }
 
 /// Stderr patterns from codex internals that should be suppressed from user-visible logs.
-const SUPPRESSED_STDERR_PATTERNS: &[&str] = &["state db missing rollout path for"];
+const SUPPRESSED_STDERR_PATTERNS: &[&str] = &[
+    // Codex unconditionally logs this error during its SQLite migration when a rollout file
+    // exists on disk but isn't indexed in the state DB — even when the Sqlite feature flag is
+    // disabled (which is the default). See: https://github.com/openai/codex/commit/c38a5958
+    "state db missing rollout path for",
+];
 
 /// Codex-specific stderr normalizer that filters noisy internal messages.
 fn normalize_codex_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: EntryIndexProvider) {
