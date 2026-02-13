@@ -4,36 +4,6 @@ export type PreviewDevToolsSource = typeof PREVIEW_DEVTOOLS_SOURCE;
 
 // === Entry Types (for state management) ===
 
-export interface ConsoleEntry {
-  id: string;
-  level: 'log' | 'warn' | 'error' | 'info' | 'debug';
-  args: unknown[];
-  timestamp: number;
-  stack?: string;
-}
-
-export interface NetworkEntry {
-  id: string;
-  method: string;
-  url: string;
-  status?: number;
-  statusText?: string;
-  duration?: number;
-  phase: 'start' | 'end' | 'error';
-  error?: string;
-  timestamp: number;
-}
-
-export interface ErrorEntry {
-  id: string;
-  message: string;
-  filename?: string;
-  lineno?: number;
-  colno?: number;
-  stack?: string;
-  timestamp: number;
-}
-
 export interface NavigationState {
   url: string;
   title?: string;
@@ -42,24 +12,6 @@ export interface NavigationState {
 }
 
 // === Message Types (from iframe to parent) ===
-
-export interface ConsoleMessage {
-  source: PreviewDevToolsSource;
-  type: 'console';
-  payload: Omit<ConsoleEntry, 'id'>;
-}
-
-export interface NetworkMessage {
-  source: PreviewDevToolsSource;
-  type: 'network';
-  payload: Omit<NetworkEntry, 'id'> & { id: string }; // id comes from iframe
-}
-
-export interface ErrorMessage {
-  source: PreviewDevToolsSource;
-  type: 'error';
-  payload: Omit<ErrorEntry, 'id'>;
-}
 
 export interface NavigationMessage {
   source: PreviewDevToolsSource;
@@ -86,12 +38,7 @@ export interface NavigationCommand {
 
 // === Union Types ===
 
-export type PreviewDevToolsMessage =
-  | ConsoleMessage
-  | NetworkMessage
-  | ErrorMessage
-  | NavigationMessage
-  | ReadyMessage;
+export type PreviewDevToolsMessage = NavigationMessage | ReadyMessage;
 
 export type PreviewDevToolsCommand = NavigationCommand;
 
