@@ -8,7 +8,7 @@ import {
 import { shouldRefreshAccessToken } from "shared/jwt";
 import { refreshTokens } from "./api";
 
-const TOKEN_REFRESH_TIMEOUT_MS = 300_000;
+const TOKEN_REFRESH_TIMEOUT_MS = 80_000;
 const TOKEN_REFRESH_MAX_ATTEMPTS = 3;
 
 async function refreshWithRetry(refreshToken: string) {
