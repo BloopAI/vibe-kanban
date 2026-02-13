@@ -11,6 +11,7 @@ import {
 import { useImageMetadata } from '@/hooks/useImageMetadata';
 import { useAttachmentUrl } from '@/hooks/useAttachmentUrl';
 import { ImagePreviewDialog } from '@/components/dialogs/wysiwyg/ImagePreviewDialog';
+import { downloadBlobUrl } from '@/lib/attachmentUtils';
 import { formatFileSize } from '@/lib/utils';
 import {
   createDecoratorNode,
@@ -109,28 +110,9 @@ function ImageComponent({
 
       if (!fullSizeUrl) return;
 
-      fetch(fullSizeUrl, { method: 'GET', mode: 'cors', credentials: 'omit' })
-        .then(async (response) => {
-          if (!response.ok) {
-            throw new Error('Failed to download attachment file');
-          }
-
-          const blob = await response.blob();
-          const objectUrl = URL.createObjectURL(blob);
-          try {
-            const anchor = document.createElement('a');
-            anchor.href = objectUrl;
-            anchor.download = altText || 'attachment';
-            document.body.appendChild(anchor);
-            anchor.click();
-            document.body.removeChild(anchor);
-          } finally {
-            URL.revokeObjectURL(objectUrl);
-          }
-        })
-        .catch((error) => {
-          console.error('Failed to download attachment:', error);
-        });
+      downloadBlobUrl(fullSizeUrl, altText || 'attachment').catch((error) => {
+        console.error('Failed to download attachment:', error);
+      });
     },
     [fullSizeUrl, altText]
   );
