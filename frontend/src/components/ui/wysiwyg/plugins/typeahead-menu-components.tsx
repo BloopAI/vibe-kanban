@@ -154,7 +154,7 @@ function TypeaheadMenuRoot({ anchorEl, children }: TypeaheadMenuProps) {
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
         style={contentStyle}
-        className="w-auto min-w-80 max-w-[370px] p-0 overflow-hidden !bg-background"
+        className="w-auto min-w-80 max-w-[370px] p-0 overflow-hidden !bg-panel"
       >
         {children}
       </PopoverContent>
@@ -164,8 +164,8 @@ function TypeaheadMenuRoot({ anchorEl, children }: TypeaheadMenuProps) {
 
 function TypeaheadMenuHeader({ children }: { children: ReactNode }) {
   return (
-    <div className="px-3 py-2 border-b bg-muted/30">
-      <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+    <div className="px-base py-half border-b border-border bg-secondary">
+      <div className="flex items-center gap-half text-xs font-medium text-low">
         {children}
       </div>
     </div>
@@ -175,7 +175,7 @@ function TypeaheadMenuHeader({ children }: { children: ReactNode }) {
 function TypeaheadMenuScrollArea({ children }: { children: ReactNode }) {
   return (
     <div
-      className="py-1 overflow-auto"
+      className="py-half overflow-auto"
       style={{ maxHeight: 'var(--typeahead-menu-max-height, 40vh)' }}
     >
       {children}
@@ -185,19 +185,19 @@ function TypeaheadMenuScrollArea({ children }: { children: ReactNode }) {
 
 function TypeaheadMenuSectionHeader({ children }: { children: ReactNode }) {
   return (
-    <div className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase">
+    <div className="px-base py-half text-xs font-medium text-low">
       {children}
     </div>
   );
 }
 
 function TypeaheadMenuDivider() {
-  return <div className="border-t my-1" />;
+  return <div className="h-px bg-border my-half" />;
 }
 
 function TypeaheadMenuEmpty({ children }: { children: ReactNode }) {
   return (
-    <div className="px-3 py-2 text-sm text-muted-foreground">{children}</div>
+    <div className="px-base py-half text-sm text-low">{children}</div>
   );
 }
 
@@ -215,7 +215,7 @@ function TypeaheadMenuAction({
   return (
     <button
       type="button"
-      className="w-full px-3 py-2 text-left text-sm border-l-2 border-l-transparent text-muted-foreground hover:bg-muted hover:text-high disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full px-base py-half text-left text-sm text-low hover:bg-secondary hover:text-high transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
       disabled={disabled}
@@ -261,10 +261,10 @@ function TypeaheadMenuItemComponent({
   return (
     <div
       ref={ref}
-      className={`px-3 py-2 cursor-pointer text-sm border-l-2 ${
+      className={`px-base py-half mx-half rounded-sm cursor-pointer text-sm transition-colors ${
         isSelected
-          ? 'bg-secondary border-l-brand text-high'
-          : 'hover:bg-muted border-l-transparent text-muted-foreground'
+          ? 'bg-secondary text-high'
+          : 'hover:bg-secondary text-normal'
       }`}
       onMouseMove={handleMouseMove}
       onClick={onClick}
