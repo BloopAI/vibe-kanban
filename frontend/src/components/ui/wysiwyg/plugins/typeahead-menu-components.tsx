@@ -21,11 +21,13 @@ type VerticalSide = 'top' | 'bottom';
 interface TypeaheadPlacement {
   side: VerticalSide;
   maxHeight: number;
+  alignOffset: number;
 }
 
 const VIEWPORT_PADDING = 16;
 const MENU_SIDE_OFFSET = 8;
 const MAX_MENU_HEIGHT = 360;
+const MAX_MENU_WIDTH = 370;
 const MIN_RENDERED_MENU_HEIGHT = 96;
 const FLIP_HYSTERESIS_PX = 72;
 
@@ -73,6 +75,13 @@ function clampMenuHeight(height: number) {
   );
 }
 
+function getAlignOffset(anchorRect: DOMRect): number {
+  const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+  const rightOverflow =
+    anchorRect.left + MAX_MENU_WIDTH - viewportWidth + VIEWPORT_PADDING;
+  return rightOverflow > 0 ? -rightOverflow : 0;
+}
+
 function getPlacement(
   anchorEl: HTMLElement,
   previousSide?: VerticalSide
@@ -85,6 +94,7 @@ function getPlacement(
   return {
     side,
     maxHeight: clampMenuHeight(rawHeight),
+    alignOffset: getAlignOffset(anchorRect),
   };
 }
 
@@ -103,7 +113,8 @@ function TypeaheadMenuRoot({ anchorEl, children }: TypeaheadMenuProps) {
       const next = getPlacement(anchorEl, previous.side);
       if (
         next.side === previous.side &&
-        next.maxHeight === previous.maxHeight
+        next.maxHeight === previous.maxHeight &&
+        next.alignOffset === previous.alignOffset
       ) {
         return previous;
       }
@@ -120,12 +131,21 @@ function TypeaheadMenuRoot({ anchorEl, children }: TypeaheadMenuProps) {
 
     window.addEventListener('resize', updateOnFrame);
     window.addEventListener('scroll', updateOnFrame, true);
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener('resize', updateOnFrame);
+      vv.addEventListener('scroll', updateOnFrame);
+    }
     const observer = new ResizeObserver(updateOnFrame);
     observer.observe(anchorEl);
 
     return () => {
       window.removeEventListener('resize', updateOnFrame);
       window.removeEventListener('scroll', updateOnFrame, true);
+      if (vv) {
+        vv.removeEventListener('resize', updateOnFrame);
+        vv.removeEventListener('scroll', updateOnFrame);
+      }
       observer.disconnect();
     };
   }, [anchorEl, syncPlacement]);
@@ -150,6 +170,7 @@ function TypeaheadMenuRoot({ anchorEl, children }: TypeaheadMenuProps) {
         side={placement.side}
         align="start"
         sideOffset={MENU_SIDE_OFFSET}
+        alignOffset={placement.alignOffset}
         avoidCollisions={false}
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
