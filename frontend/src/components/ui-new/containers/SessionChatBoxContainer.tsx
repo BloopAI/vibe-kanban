@@ -254,15 +254,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     );
   }, [branchStatus]);
 
-  // Find the first repo with an open PR (for PR comments insertion)
-  const openPrRepoId = useMemo(
-    () =>
-      branchStatus?.find((repo) =>
-        repo.merges?.some((m) => m.type === 'pr' && m.pr_info.status === 'open')
-      )?.repo_id,
-    [branchStatus]
-  );
-
   // Get workspace branch for conflict resolution dialog
   const { branch: attemptBranch } = useAttemptBranch(workspaceId);
 
@@ -619,11 +610,13 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Handle inserting PR comments into the message editor
   const handleInsertPrComments = useCallback(async () => {
-    if (!workspaceId || !openPrRepoId) return;
+    if (!workspaceId) return;
+    const repoId = repos[0]?.id;
+    if (!repoId) return;
 
     const result = await PrCommentsDialog.show({
       attemptId: workspaceId,
-      repoId: openPrRepoId,
+      repoId,
     });
     if (result.comments.length > 0) {
       const markdownBlocks = result.comments.map((comment) => {
@@ -647,7 +640,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       });
       handleInsertMarkdown(markdownBlocks.join('\n\n'));
     }
-  }, [workspaceId, openPrRepoId, handleInsertMarkdown]);
+  }, [workspaceId, repos, handleInsertMarkdown]);
 
   // Toolbar actions handler
   const handleToolbarAction = useCallback(
@@ -833,7 +826,9 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         context: actionCtx,
         onExecuteAction: handleToolbarAction,
       }}
-      onPrCommentClick={openPrRepoId ? handleInsertPrComments : undefined}
+      onPrCommentClick={
+        actionCtx.hasOpenPR ? handleInsertPrComments : undefined
+      }
       stats={{
         filesChanged,
         linesAdded,
