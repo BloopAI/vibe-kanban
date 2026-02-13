@@ -307,9 +307,7 @@ pub trait StandardCodingAgentExecutor {
     }
 
     /// Returns the default overrides defined by this preset/variant.
-    fn get_preset_options(&self) -> ExecutorConfig {
-        unimplemented!("each executor must override get_preset_options")
-    }
+    fn get_preset_options(&self) -> ExecutorConfig;
 }
 
 /// Result communicated through the exit signal
