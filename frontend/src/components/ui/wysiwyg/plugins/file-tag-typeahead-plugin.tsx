@@ -439,7 +439,7 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
 
         return createPortal(
           <TypeaheadMenu anchorEl={anchorRef.current}>
-            <TypeaheadMenu.Header>
+            <TypeaheadMenu.Header className="bg-secondary">
               <TagIcon className="h-3.5 w-3.5" />
               {t('typeahead.tags')}
             </TypeaheadMenu.Header>

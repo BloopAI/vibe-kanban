@@ -162,9 +162,15 @@ function TypeaheadMenuRoot({ anchorEl, children }: TypeaheadMenuProps) {
   );
 }
 
-function TypeaheadMenuHeader({ children }: { children: ReactNode }) {
+function TypeaheadMenuHeader({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="px-base py-half border-b border-border bg-secondary">
+    <div className={`px-base py-half border-b border-border ${className ?? ''}`}>
       <div className="flex items-center gap-half text-xs font-medium text-low">
         {children}
       </div>
@@ -261,7 +267,7 @@ function TypeaheadMenuItemComponent({
   return (
     <div
       ref={ref}
-      className={`px-base py-half mx-half rounded-sm cursor-pointer text-sm transition-colors ${
+      className={`px-base py-half rounded-sm cursor-pointer text-sm transition-colors ${
         isSelected
           ? 'bg-secondary text-high'
           : 'hover:bg-secondary text-normal'
