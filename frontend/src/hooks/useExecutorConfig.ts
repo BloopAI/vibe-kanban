@@ -153,14 +153,15 @@ function useEffectiveOverrides(
         !modelMustMatch || lastUsedConfig?.model_id === resolved.model_id;
 
       const value =
-        (field in userSelections ? userSelections[field] : undefined) ??
-        (scratchMatches && scratchModelMatches
-          ? scratchConfig?.[field]
-          : undefined) ??
-        (lastUsedMatches && lastUsedModelMatches
-          ? lastUsedConfig?.[field]
-          : undefined) ??
-        (variantWasUserSelected ? presetOptions?.[field] : undefined);
+        field in userSelections
+          ? userSelections[field]
+          : ((scratchMatches && scratchModelMatches
+              ? scratchConfig?.[field]
+              : undefined) ??
+            (lastUsedMatches && lastUsedModelMatches
+              ? lastUsedConfig?.[field]
+              : undefined) ??
+            (variantWasUserSelected ? presetOptions?.[field] : undefined));
       if (value !== undefined) {
         (resolved as Record<string, unknown>)[field] = value;
       }
