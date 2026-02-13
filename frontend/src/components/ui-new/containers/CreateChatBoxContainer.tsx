@@ -242,9 +242,9 @@ export function CreateChatBoxContainer({
           : (variants[0] ?? null);
       }
 
-      setDraftConfig({ ...draftConfig, executor, variant: targetVariant });
+      setDraftConfig({ executor, variant: targetVariant });
     },
-    [profiles, draftConfig, setDraftConfig, config?.executor_profile]
+    [profiles, setDraftConfig, config?.executor_profile]
   );
 
   // Handle submit
