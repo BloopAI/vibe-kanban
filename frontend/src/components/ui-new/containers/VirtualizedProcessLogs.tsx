@@ -41,9 +41,9 @@ const InitialDataScrollModifier: ScrollModifier = {
   purgeItemSizes: true,
 };
 
-const AutoScrollToBottom: ScrollModifier = {
-  type: 'auto-scroll-to-bottom',
-  autoScroll: 'smooth',
+const ScrollToLastItem: ScrollModifier = {
+  type: 'item-location',
+  location: INITIAL_TOP_ITEM,
 };
 
 const computeItemKey: VirtuosoMessageListProps<
@@ -96,14 +96,16 @@ export function VirtualizedProcessLogs({
         originalIndex: index,
       }));
 
-      // Use InitialDataScrollModifier only on the very first data load,
-      // then always use AutoScrollToBottom for subsequent updates.
+      // Use InitialDataScrollModifier (with purgeItemSizes) only on the
+      // very first data load. For all subsequent updates, use ScrollToLastItem
+      // which always jumps to the end — unlike auto-scroll-to-bottom which
+      // only follows if the viewport is already at the bottom.
       let scrollModifier: ScrollModifier;
       if (!hasInitializedRef.current && logs.length > 0) {
         hasInitializedRef.current = true;
         scrollModifier = InitialDataScrollModifier;
       } else {
-        scrollModifier = AutoScrollToBottom;
+        scrollModifier = ScrollToLastItem;
       }
 
       setChannelData({ data: logsWithKeys, scrollModifier });
