@@ -6,6 +6,8 @@ import {
   useReducer,
   useRef,
 } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { useTranslation } from 'react-i18next';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import type { IssuePriority } from 'shared/remote-types';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
@@ -36,6 +38,9 @@ import {
   selectDisplayData,
   selectIsCreateDraftDirty,
 } from './kanban-issue-panel-state';
+import { useAzureAttachments } from '@/hooks/useAzureAttachments';
+import { commitIssueAttachments, deleteAttachment } from '@/lib/remoteApi';
+import { extractAttachmentIds } from '@/lib/attachmentUtils';
 
 const DRAFT_ISSUE_ID = '00000000-0000-0000-0000-000000000002';
 
@@ -45,6 +50,7 @@ const DRAFT_ISSUE_ID = '00000000-0000-0000-0000-000000000002';
  * Must be rendered within both OrgProvider and ProjectProvider.
  */
 export function KanbanIssuePanelContainer() {
+  const { t } = useTranslation('common');
   // Navigation hook - URL is single source of truth
   const {
     issueId: selectedKanbanIssueId,
@@ -249,8 +255,8 @@ export function KanbanIssuePanelContainer() {
     if (mode === 'edit' && selectedIssue) {
       return selectedIssue.simple_id;
     }
-    return 'New Issue';
-  }, [mode, selectedIssue]);
+    return t('kanban.newIssue');
+  }, [mode, selectedIssue, t]);
 
   // Compute display values based on mode
   // - Create mode: createFormData is the single source of truth.
@@ -369,6 +375,79 @@ export function KanbanIssuePanelContainer() {
   const createFormFallback = useMemo(
     () => createBlankCreateFormData(defaultStatusId),
     [defaultStatusId]
+  );
+
+  // --- Image attachment upload integration ---
+
+  // Callback to insert markdown into the description field
+  const handleDescriptionInsert = useCallback(
+    (markdown: string) => {
+      const currentDesc = displayData.description ?? '';
+      const separator = currentDesc.length > 0 ? '\n' : '';
+      const newDesc = currentDesc + separator + markdown;
+
+      if (kanbanCreateMode || !selectedKanbanIssueId) {
+        // Create mode: update form data
+        dispatchFormState({
+          type: 'patchCreateFormData',
+          patch: { description: newDesc },
+          fallback: createFormFallback,
+        });
+      } else {
+        // Edit mode: update local state + debounced save
+        dispatchFormState({
+          type: 'setEditDescription',
+          description: newDesc,
+        });
+        debouncedSaveDescription(newDesc);
+      }
+    },
+    [
+      kanbanCreateMode,
+      selectedKanbanIssueId,
+      displayData.description,
+      createFormFallback,
+      debouncedSaveDescription,
+    ]
+  );
+
+  // Azure attachment upload hook
+  const {
+    uploadFiles,
+    getAttachmentIds,
+    clearAttachments,
+    isUploading,
+    uploadError,
+    clearUploadError,
+  } = useAzureAttachments({
+    projectId,
+    issueId: kanbanCreateMode
+      ? undefined
+      : (selectedKanbanIssueId ?? undefined),
+    onMarkdownInsert: handleDescriptionInsert,
+    onError: (msg) => console.error('[attachment]', msg),
+  });
+
+  // Dropzone for drag-drop image upload on description area
+  const {
+    getRootProps,
+    getInputProps,
+    isDragActive,
+    open: openFilePicker,
+  } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      if (acceptedFiles.length > 0) uploadFiles(acceptedFiles);
+    },
+    noClick: true,
+    noKeyboard: true,
+  });
+
+  // Paste handler for images
+  const onPasteFiles = useCallback(
+    (files: File[]) => {
+      if (files.length > 0) uploadFiles(files);
+    },
+    [uploadFiles]
   );
 
   // Reset local state when switching issues or modes.
@@ -720,6 +799,32 @@ export function KanbanIssuePanelContainer() {
         // Wait for the issue to be confirmed by the backend and get the synced entity
         const syncedIssue = await persisted;
 
+        // Commit only attachments still referenced in the description
+        const allUploadedIds = getAttachmentIds();
+        if (allUploadedIds.length > 0) {
+          const referencedIds = extractAttachmentIds(
+            displayData.description ?? ''
+          );
+          const idsToCommit = allUploadedIds.filter((id) =>
+            referencedIds.has(id)
+          );
+          const idsToDelete = allUploadedIds.filter(
+            (id) => !referencedIds.has(id)
+          );
+
+          if (idsToCommit.length > 0) {
+            await commitIssueAttachments(syncedIssue.id, {
+              attachment_ids: idsToCommit,
+            });
+          }
+          for (const id of idsToDelete) {
+            deleteAttachment(id).catch((err) =>
+              console.error('Failed to delete abandoned attachment:', err)
+            );
+          }
+          clearAttachments();
+        }
+
         // Create assignee records for all selected assignees
         displayData.assigneeIds.forEach((userId) => {
           insertIssueAssignee({
@@ -799,6 +904,8 @@ export function KanbanIssuePanelContainer() {
     closeKanbanIssuePanel,
     cancelDebouncedDraftIssue,
     deleteDraftIssueScratch,
+    getAttachmentIds,
+    clearAttachments,
   ]);
 
   const handleCmdEnterSubmit = useCallback(() => {
@@ -857,7 +964,7 @@ export function KanbanIssuePanelContainer() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full bg-secondary">
-        <p className="text-low">Loading...</p>
+        <p className="text-low">{t('states.loading')}</p>
       </div>
     );
   }
@@ -892,6 +999,12 @@ export function KanbanIssuePanelContainer() {
       }
       onCopyLink={mode === 'edit' ? handleCopyLink : undefined}
       onMoreActions={mode === 'edit' ? handleMoreActions : undefined}
+      onPasteFiles={onPasteFiles}
+      dropzoneProps={{ getRootProps, getInputProps, isDragActive }}
+      onBrowseAttachment={openFilePicker}
+      isUploading={isUploading}
+      attachmentError={uploadError}
+      onDismissAttachmentError={clearUploadError}
     />
   );
 }

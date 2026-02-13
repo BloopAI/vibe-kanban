@@ -1,7 +1,13 @@
 import { useMemo, useCallback, useState, useRef } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { useTranslation } from 'react-i18next';
 import { IssueProvider, useIssueContext } from '@/contexts/remote/IssueContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
+import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useCurrentUser } from '@/hooks/auth/useCurrentUser';
+import { useAzureAttachments } from '@/hooks/useAzureAttachments';
+import { commitCommentAttachments, deleteAttachment } from '@/lib/remoteApi';
+import { extractAttachmentIds } from '@/lib/attachmentUtils';
 import {
   IssueCommentsSection,
   type IssueCommentData,
@@ -29,7 +35,9 @@ export function IssueCommentsSectionContainer({
 }
 
 function IssueCommentsSectionContent() {
+  const { t } = useTranslation('common');
   const { membersWithProfilesById } = useOrgContext();
+  const { projectId } = useProjectContext();
   const issueContext = useIssueContext();
   const { data: currentUser } = useCurrentUser();
   const currentUserId = currentUser?.user_id ?? '';
@@ -45,6 +53,39 @@ function IssueCommentsSectionContent() {
 
   // UI state for comment input
   const [commentInput, setCommentInput] = useState('');
+
+  const handleCommentMarkdownInsert = useCallback((markdown: string) => {
+    setCommentInput((prev) =>
+      prev.trim() ? `${prev}\n\n${markdown}` : markdown
+    );
+  }, []);
+
+  const {
+    uploadFiles,
+    getAttachmentIds,
+    clearAttachments,
+    isUploading,
+    uploadError,
+    clearUploadError,
+  } = useAzureAttachments({
+    projectId,
+    onMarkdownInsert: handleCommentMarkdownInsert,
+  });
+
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      if (acceptedFiles.length > 0) uploadFiles(acceptedFiles);
+    },
+    noClick: true,
+    noKeyboard: true,
+  });
+
+  const onPasteFiles = useCallback(
+    (files: File[]) => {
+      if (files.length > 0) uploadFiles(files);
+    },
+    [uploadFiles]
+  );
 
   // UI state for editing
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -67,9 +108,9 @@ function IssueCommentsSectionContent() {
             ? author
               ? `${author.first_name ?? ''} ${author.last_name ?? ''}`.trim() ||
                 author.email ||
-                'Unknown User'
-              : 'Unknown User'
-            : 'Deleted User',
+                t('kanban.unknownUser')
+              : t('kanban.unknownUser')
+            : t('kanban.deletedUser'),
           message: comment.message,
           createdAt: comment.created_at,
           author: author ?? null,
@@ -85,6 +126,7 @@ function IssueCommentsSectionContent() {
     membersWithProfilesById,
     currentUserId,
     isCurrentUserAdmin,
+    t,
   ]);
 
   // Group reactions by comment, then by emoji
@@ -135,8 +177,8 @@ function IssueCommentsSectionContent() {
             return member
               ? `${member.first_name ?? ''} ${member.last_name ?? ''}`.trim() ||
                   member.email ||
-                  'Unknown User'
-              : 'Unknown User';
+                  t('kanban.unknownUser')
+              : t('kanban.unknownUser');
           }),
         })
       );
@@ -145,17 +187,42 @@ function IssueCommentsSectionContent() {
     }
 
     return result;
-  }, [commentsData, issueContext, currentUserId, membersWithProfilesById]);
+  }, [commentsData, issueContext, currentUserId, membersWithProfilesById, t]);
 
-  const handleSubmitComment = useCallback(() => {
+  const handleSubmitComment = useCallback(async () => {
     if (!commentInput.trim()) return;
-    issueContext.insertComment({
+    const message = commentInput.trim();
+    const { persisted } = issueContext.insertComment({
       issue_id: issueContext.issueId,
-      message: commentInput.trim(),
+      message,
       parent_id: null,
     });
     setCommentInput('');
-  }, [commentInput, issueContext]);
+
+    const allUploadedIds = getAttachmentIds();
+    if (allUploadedIds.length > 0) {
+      const referencedIds = extractAttachmentIds(message);
+      const idsToCommit = allUploadedIds.filter((id) => referencedIds.has(id));
+      const idsToDelete = allUploadedIds.filter((id) => !referencedIds.has(id));
+
+      if (idsToCommit.length > 0) {
+        try {
+          const confirmedComment = await persisted;
+          await commitCommentAttachments(confirmedComment.id, {
+            attachment_ids: idsToCommit,
+          });
+        } catch (err) {
+          console.error('Failed to commit comment attachments:', err);
+        }
+      }
+      for (const id of idsToDelete) {
+        deleteAttachment(id).catch((err) =>
+          console.error('Failed to delete abandoned attachment:', err)
+        );
+      }
+    }
+    clearAttachments();
+  }, [commentInput, issueContext, getAttachmentIds, clearAttachments]);
 
   const handleStartEdit = useCallback(
     (commentId: string) => {
@@ -211,18 +278,21 @@ function IssueCommentsSectionContent() {
     [issueContext, currentUserId]
   );
 
-  const handleReply = useCallback((authorName: string, message: string) => {
-    // Get first line of the message for the quote
-    const firstLine = message.split('\n')[0].trim();
-    const truncatedLine =
-      firstLine.length > 100 ? `${firstLine.slice(0, 100)}...` : firstLine;
-    const quote = `> ${authorName} wrote:\n> ${truncatedLine}`;
-    setCommentInput(quote);
-    // Focus editor after setting value (setTimeout ensures value is set first)
-    setTimeout(() => {
-      commentEditorRef.current?.focus();
-    }, 0);
-  }, []);
+  const handleReply = useCallback(
+    (authorName: string, message: string) => {
+      // Get first line of the message for the quote
+      const firstLine = message.split('\n')[0].trim();
+      const truncatedLine =
+        firstLine.length > 100 ? `${firstLine.slice(0, 100)}...` : firstLine;
+      const quote = `> ${authorName} ${t('kanban.replyQuotePrefix')}\n> ${truncatedLine}`;
+      setCommentInput(quote);
+      // Focus editor after setting value (setTimeout ensures value is set first)
+      setTimeout(() => {
+        commentEditorRef.current?.focus();
+      }, 0);
+    },
+    [t]
+  );
 
   return (
     <IssueCommentsSection
@@ -242,6 +312,12 @@ function IssueCommentsSectionContent() {
       onReply={handleReply}
       isLoading={issueContext.isLoading}
       commentEditorRef={commentEditorRef}
+      onPasteFiles={onPasteFiles}
+      dropzoneProps={{ getRootProps, getInputProps, isDragActive }}
+      onBrowseAttachment={open}
+      isUploading={isUploading}
+      attachmentError={uploadError}
+      onDismissAttachmentError={clearUploadError}
     />
   );
 }

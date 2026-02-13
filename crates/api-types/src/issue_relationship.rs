@@ -16,7 +16,6 @@ pub enum IssueRelationshipType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct IssueRelationship {
     pub id: Uuid,
     pub issue_id: Uuid,

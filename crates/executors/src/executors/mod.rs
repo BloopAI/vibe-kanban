@@ -200,7 +200,6 @@ impl CodingAgent {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
-#[ts(export)]
 pub enum AvailabilityInfo {
     LoginDetected { last_auth_timestamp: i64 },
     InstallationFound,

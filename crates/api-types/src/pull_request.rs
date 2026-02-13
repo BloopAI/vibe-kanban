@@ -7,7 +7,6 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
 #[sqlx(type_name = "pull_request_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
-#[ts(export)]
 pub enum PullRequestStatus {
     Open,
     Merged,
@@ -15,7 +14,6 @@ pub enum PullRequestStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct PullRequest {
     pub id: Uuid,
     pub url: String,

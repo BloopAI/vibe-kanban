@@ -8,8 +8,8 @@ use api_types::{
     CreateOrganizationRequest, CreateOrganizationResponse, CreateWorkspaceRequest, DeleteResponse,
     DeleteWorkspaceRequest, GetInvitationResponse, GetOrganizationResponse, HandoffInitRequest,
     HandoffInitResponse, HandoffRedeemRequest, HandoffRedeemResponse, Issue, IssueRelationship,
-    IssueTag, ListInvitationsResponse, ListIssueRelationshipsResponse, ListIssueTagsResponse,
-    ListIssuesResponse, ListMembersResponse, ListOrganizationsResponse,
+    IssueTag, ListAttachmentsResponse, ListInvitationsResponse, ListIssueRelationshipsResponse,
+    ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse, ListOrganizationsResponse,
     ListProjectStatusesResponse, ListProjectsResponse, ListTagsResponse, MutationResponse,
     Organization, ProfileResponse, RevokeInvitationRequest, Tag, TokenRefreshRequest,
     TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
@@ -814,6 +814,31 @@ impl RemoteClient {
         res.json::<DeleteResponse>()
             .await
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    /// Lists attachments for an issue on the remote server.
+    pub async fn list_issue_attachments(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<ListAttachmentsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/issues/{issue_id}/attachments"))
+            .await
+    }
+
+    /// Used for fetching from presigned Azure SAS URLs.
+    pub async fn download_from_url(&self, url: &str) -> Result<Vec<u8>, RemoteClientError> {
+        let res = self.http.get(url).send().await.map_err(map_reqwest_error)?;
+        if !res.status().is_success() {
+            return Err(RemoteClientError::Http {
+                status: res.status().as_u16(),
+                body: res.text().await.unwrap_or_default(),
+            });
+        }
+        let bytes = res
+            .bytes()
+            .await
+            .map_err(|e| RemoteClientError::Transport(e.to_string()))?;
+        Ok(bytes.to_vec())
     }
 }
 

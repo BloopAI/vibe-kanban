@@ -62,7 +62,6 @@ pub struct ImageMetadataQuery {
 
 /// Metadata response for image files, used for rendering in WYSIWYG editor
 #[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct ImageMetadata {
     pub exists: bool,
     pub file_name: Option<String>,

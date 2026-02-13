@@ -73,6 +73,7 @@ export function NoServerContent({
       },
       executor_profile_id: config.executor_profile,
       repos,
+      linked_issue: null,
     });
   };
 

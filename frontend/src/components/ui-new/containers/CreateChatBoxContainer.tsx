@@ -268,6 +268,12 @@ export function CreateChatBoxContainer({
           repo_id: r.id,
           target_branch: targetBranches[r.id] ?? 'main',
         })),
+        linked_issue: linkedIssue
+          ? {
+              remote_project_id: linkedIssue.remoteProjectId,
+              issue_id: linkedIssue.issueId,
+            }
+          : null,
       },
       linkToIssue: linkedIssue
         ? {

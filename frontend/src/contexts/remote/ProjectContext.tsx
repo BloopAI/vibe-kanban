@@ -15,6 +15,8 @@ import {
   PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
   PROJECT_PULL_REQUESTS_SHAPE,
   PROJECT_WORKSPACES_SHAPE,
+  PROJECT_BLOBS_SHAPE,
+  PROJECT_ATTACHMENTS_SHAPE,
   ISSUE_MUTATION,
   PROJECT_STATUS_MUTATION,
   TAG_MUTATION,
@@ -31,6 +33,8 @@ import {
   type IssueRelationship,
   type PullRequest,
   type Workspace,
+  type Blob as RemoteBlob,
+  type Attachment,
   type CreateIssueRequest,
   type UpdateIssueRequest,
   type CreateProjectStatusRequest,
@@ -57,6 +61,8 @@ import type { SyncError } from '@/lib/electric/types';
  * - IssueRelationships (data + mutations)
  * - PullRequests (data only)
  * - Workspaces (data only)
+ * - Blobs (data only)
+ * - Attachments (data only)
  */
 export interface ProjectContextValue {
   projectId: string;
@@ -71,6 +77,8 @@ export interface ProjectContextValue {
   issueRelationships: IssueRelationship[];
   pullRequests: PullRequest[];
   workspaces: Workspace[];
+  blobs: RemoteBlob[];
+  attachments: Attachment[];
 
   // Loading/error state
   isLoading: boolean;
@@ -134,6 +142,9 @@ export interface ProjectContextValue {
   getTag: (tagId: string) => Tag | undefined;
   getPullRequestsForIssue: (issueId: string) => PullRequest[];
   getWorkspacesForIssue: (issueId: string) => Workspace[];
+  getAttachmentsForIssue: (issueId: string) => Attachment[];
+  getAttachmentsForComment: (commentId: string) => Attachment[];
+  getBlobForAttachment: (attachment: Attachment) => RemoteBlob | undefined;
 
   // Computed aggregations (Maps for O(1) lookup)
   issuesById: Map<string, Issue>;
@@ -191,6 +202,10 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
   const workspacesResult = useShape(PROJECT_WORKSPACES_SHAPE, params, {
     enabled,
   });
+  const blobsResult = useShape(PROJECT_BLOBS_SHAPE, params, { enabled });
+  const attachmentsResult = useShape(PROJECT_ATTACHMENTS_SHAPE, params, {
+    enabled,
+  });
 
   // Board readiness depends on core kanban data only.
   // Other project-scoped shapes hydrate opportunistically after render.
@@ -207,6 +222,8 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueRelationshipsResult.error ||
     pullRequestsResult.error ||
     workspacesResult.error ||
+    blobsResult.error ||
+    attachmentsResult.error ||
     null;
 
   // Combined retry
@@ -220,6 +237,8 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueRelationshipsResult.retry();
     pullRequestsResult.retry();
     workspacesResult.retry();
+    blobsResult.retry();
+    attachmentsResult.retry();
   }, [
     issuesResult,
     statusesResult,
@@ -230,6 +249,8 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueRelationshipsResult,
     pullRequestsResult,
     workspacesResult,
+    blobsResult,
+    attachmentsResult,
   ]);
 
   // Computed Maps for O(1) lookup
@@ -329,6 +350,31 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     [workspacesResult.data]
   );
 
+  const blobsById = useMemo(() => {
+    const map = new Map<string, RemoteBlob>();
+    for (const blob of blobsResult.data) {
+      map.set(blob.id, blob);
+    }
+    return map;
+  }, [blobsResult.data]);
+
+  const getAttachmentsForIssue = useCallback(
+    (issueId: string) =>
+      attachmentsResult.data.filter((a) => a.issue_id === issueId),
+    [attachmentsResult.data]
+  );
+
+  const getAttachmentsForComment = useCallback(
+    (commentId: string) =>
+      attachmentsResult.data.filter((a) => a.comment_id === commentId),
+    [attachmentsResult.data]
+  );
+
+  const getBlobForAttachment = useCallback(
+    (attachment: Attachment) => blobsById.get(attachment.blob_id),
+    [blobsById]
+  );
+
   const value = useMemo<ProjectContextValue>(
     () => ({
       projectId,
@@ -343,6 +389,8 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       issueRelationships: issueRelationshipsResult.data,
       pullRequests: pullRequestsResult.data,
       workspaces: workspacesResult.data,
+      blobs: blobsResult.data,
+      attachments: attachmentsResult.data,
 
       // Loading/error
       isLoading,
@@ -392,6 +440,9 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       getTag,
       getPullRequestsForIssue,
       getWorkspacesForIssue,
+      getAttachmentsForIssue,
+      getAttachmentsForComment,
+      getBlobForAttachment,
 
       // Computed aggregations
       issuesById,
@@ -409,6 +460,8 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       issueRelationshipsResult,
       pullRequestsResult,
       workspacesResult,
+      blobsResult,
+      attachmentsResult,
       isLoading,
       error,
       retry,
@@ -423,6 +476,9 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       getTag,
       getPullRequestsForIssue,
       getWorkspacesForIssue,
+      getAttachmentsForIssue,
+      getAttachmentsForComment,
+      getBlobForAttachment,
       issuesById,
       statusesById,
       tagsById,
