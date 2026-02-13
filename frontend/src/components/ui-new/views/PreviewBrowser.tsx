@@ -23,13 +23,12 @@ import {
   IconButtonGroupItem,
 } from '../primitives/IconButtonGroup';
 import { PreviewNavigation } from './PreviewNavigation';
-import { MiniDevTools, type MiniDevToolsTabType } from './MiniDevTools';
 import type { Repo } from 'shared/types';
 import type {
   ScreenSize,
   ResponsiveDimensions,
 } from '@/hooks/usePreviewSettings';
-import type { UsePreviewDevToolsReturn } from '@/hooks/usePreviewDevTools';
+import type { NavigationState } from '@/types/previewDevTools';
 
 export const MOBILE_WIDTH = 390;
 export const MOBILE_HEIGHT = 844;
@@ -70,19 +69,13 @@ interface PreviewBrowserProps {
   mobileScale: number;
   className?: string;
   iframeRef: RefObject<HTMLIFrameElement>;
-  devTools: UsePreviewDevToolsReturn;
+  navigation: NavigationState | null;
   onNavigateBack: () => void;
   onNavigateForward: () => void;
   isInspectMode: boolean;
   onToggleInspectMode: () => void;
   isErudaVisible: boolean;
   onToggleEruda: () => void;
-  devToolsCollapsed: boolean;
-  onToggleDevToolsCollapsed: () => void;
-  devToolsActiveTab: MiniDevToolsTabType;
-  onDevToolsTabChange: (tab: MiniDevToolsTabType) => void;
-  devToolsExpandedErrorId: string | null;
-  onDevToolsExpandedErrorIdChange: (id: string | null) => void;
 }
 
 export function PreviewBrowser({
@@ -117,19 +110,13 @@ export function PreviewBrowser({
   mobileScale,
   className,
   iframeRef,
-  devTools,
+  navigation,
   onNavigateBack,
   onNavigateForward,
   isInspectMode,
   onToggleInspectMode,
   isErudaVisible,
   onToggleEruda,
-  devToolsCollapsed,
-  onToggleDevToolsCollapsed,
-  devToolsActiveTab,
-  onDevToolsTabChange,
-  devToolsExpandedErrorId,
-  onDevToolsExpandedErrorIdChange,
 }: PreviewBrowserProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const isLoading = isStarting || (isServerRunning && !url);
@@ -175,7 +162,7 @@ export function PreviewBrowser({
         <div className="backdrop-blur-sm bg-primary/80 border border-brand/20 flex items-center gap-base p-base rounded-md shadow-md shrink-0">
           {/* Navigation (Back/Forward) */}
           <PreviewNavigation
-            navigation={devTools.navigation}
+            navigation={navigation}
             onBack={onNavigateBack}
             onForward={onNavigateForward}
             disabled={!isServerRunning}
@@ -491,24 +478,6 @@ export function PreviewBrowser({
         )}
       </div>
 
-      {showIframeContent && (
-        <div className="px-double pb-double">
-          <MiniDevTools
-            consoleLogs={devTools.consoleLogs}
-            networkRequests={devTools.networkRequests}
-            errors={devTools.errors}
-            onClearConsole={devTools.clearConsole}
-            onClearNetwork={devTools.clearNetwork}
-            onClearErrors={devTools.clearErrors}
-            isCollapsed={devToolsCollapsed}
-            onToggleCollapse={onToggleDevToolsCollapsed}
-            activeTab={devToolsActiveTab}
-            onTabChange={onDevToolsTabChange}
-            expandedErrorId={devToolsExpandedErrorId}
-            onExpandedErrorIdChange={onDevToolsExpandedErrorIdChange}
-          />
-        </div>
-      )}
     </div>
   );
 }

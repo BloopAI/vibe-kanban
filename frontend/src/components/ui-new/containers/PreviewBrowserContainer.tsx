@@ -14,7 +14,6 @@ import {
   MOBILE_HEIGHT,
   PHONE_FRAME_PADDING,
 } from '../views/PreviewBrowser';
-import type { MiniDevToolsTabType } from '../views/MiniDevTools';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { usePreviewUrl } from '../hooks/usePreviewUrl';
 import {
@@ -25,7 +24,7 @@ import { useLogStream } from '@/hooks/useLogStream';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialog';
-import { usePreviewDevTools } from '@/hooks/usePreviewDevTools';
+import { usePreviewNavigation } from '@/hooks/usePreviewNavigation';
 import { PreviewDevToolsBridge } from '@/utils/previewDevToolsBridge';
 import { useInspectModeStore } from '@/stores/useInspectModeStore';
 
@@ -154,17 +153,10 @@ export function PreviewBrowserContainer({
     (s) => s.setPendingComponentMarkdown
   );
 
-  // DevTools state
-  const [devToolsCollapsed, setDevToolsCollapsed] = useState(true);
-  const [devToolsActiveTab, setDevToolsActiveTab] =
-    useState<MiniDevToolsTabType>('console');
-  const [devToolsExpandedErrorId, setDevToolsExpandedErrorId] = useState<
-    string | null
-  >(null);
   // Eruda DevTools state
   const [isErudaVisible, setIsErudaVisible] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const devTools = usePreviewDevTools();
+  const { navigation, handleMessage } = usePreviewNavigation();
   const bridgeRef = useRef<PreviewDevToolsBridge | null>(null);
 
   // Sync URL bar from effectiveUrl changes OR iframe navigation
@@ -177,7 +169,7 @@ export function PreviewBrowserContainer({
       return;
     }
 
-    const navUrl = devTools.navigation?.url;
+    const navUrl = navigation?.url;
     if (navUrl && previewProxyPort) {
       const devUrl = transformProxyUrlToDevUrl(navUrl);
       if (devUrl) {
@@ -187,11 +179,11 @@ export function PreviewBrowserContainer({
     }
 
     setUrlInputValue(effectiveUrl ?? '');
-  }, [effectiveUrl, devTools.navigation?.url, previewProxyPort]);
+  }, [effectiveUrl, navigation?.url, previewProxyPort]);
 
   useEffect(() => {
     bridgeRef.current = new PreviewDevToolsBridge(
-      devTools.handleMessage,
+      handleMessage,
       iframeRef
     );
     bridgeRef.current.start();
@@ -199,7 +191,7 @@ export function PreviewBrowserContainer({
     return () => {
       bridgeRef.current?.stop();
     };
-  }, [devTools.handleMessage]);
+  }, [handleMessage]);
 
   // Send inspect mode toggle to iframe
   useEffect(() => {
@@ -476,10 +468,6 @@ export function PreviewBrowserContainer({
     bridgeRef.current?.navigateForward();
   }, []);
 
-  const handleToggleDevToolsCollapsed = useCallback(() => {
-    setDevToolsCollapsed((prev) => !prev);
-  }, []);
-
   const handleToggleEruda = useCallback(() => {
     const iframe = iframeRef.current;
     if (!iframe?.contentWindow) return;
@@ -628,19 +616,13 @@ export function PreviewBrowserContainer({
       mobileScale={mobileScale}
       className={className}
       iframeRef={iframeRef}
-      devTools={devTools}
+      navigation={navigation}
       onNavigateBack={handleNavigateBack}
       onNavigateForward={handleNavigateForward}
       isInspectMode={isInspectMode}
       onToggleInspectMode={toggleInspectMode}
       isErudaVisible={isErudaVisible}
       onToggleEruda={handleToggleEruda}
-      devToolsCollapsed={devToolsCollapsed}
-      onToggleDevToolsCollapsed={handleToggleDevToolsCollapsed}
-      devToolsActiveTab={devToolsActiveTab}
-      onDevToolsTabChange={setDevToolsActiveTab}
-      devToolsExpandedErrorId={devToolsExpandedErrorId}
-      onDevToolsExpandedErrorIdChange={setDevToolsExpandedErrorId}
     />
   );
 }
