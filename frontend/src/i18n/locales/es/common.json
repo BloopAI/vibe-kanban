@@ -566,6 +566,19 @@
       }
     }
   },
+  "modelSelector": {
+    "preset": "Preajuste",
+    "custom": "Personalizar",
+    "permissions": "Permisos",
+    "permissionAuto": "Auto",
+    "permissionAsk": "Preguntar",
+    "permissionPlan": "Plan",
+    "nextTurn": "Siguiente turno",
+    "agent": "Agente",
+    "default": "Predeterminado",
+    "model": "Modelo",
+    "providers": "Proveedores"
+  },
   "syncError": {
     "networkErrors": "Errores de red",
     "streamsAffected": "{{count}} flujo afectado",

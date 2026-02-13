@@ -566,6 +566,19 @@
       }
     }
   },
+  "modelSelector": {
+    "preset": "预设",
+    "custom": "自定义",
+    "permissions": "权限",
+    "permissionAuto": "自动",
+    "permissionAsk": "询问",
+    "permissionPlan": "计划",
+    "nextTurn": "下一个回合",
+    "agent": "代理",
+    "default": "默认",
+    "model": "模型",
+    "providers": "提供商"
+  },
   "syncError": {
     "networkErrors": "网络错误",
     "streamsAffected": "{{count}} 个数据流受影响",

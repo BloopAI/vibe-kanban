@@ -21,6 +21,10 @@ import {
 import { getModifierKey } from '@/utils/platform';
 import { getLanguageOptions } from '@/i18n/languages';
 import { toPrettyCase } from '@/utils/string';
+import {
+  getExecutorVariantKeys,
+  getSortedExecutorVariantKeys,
+} from '@/utils/executor';
 import { useTheme } from '@/components/ThemeProvider';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
@@ -76,8 +80,10 @@ export function GeneralSettingsSection() {
 
   const selectedAgentProfile =
     profiles?.[draft?.executor_profile?.executor || ''];
-  const hasVariants =
-    selectedAgentProfile && Object.keys(selectedAgentProfile).length > 0;
+  const variantOptions = selectedAgentProfile
+    ? getSortedExecutorVariantKeys(selectedAgentProfile)
+    : [];
+  const hasVariants = variantOptions.length > 0;
 
   const validateBranchPrefix = useCallback(
     (prefix: string): string | null => {
@@ -403,10 +409,13 @@ export function GeneralSettingsSection() {
                     key={option.value}
                     onClick={() => {
                       const variants = profiles?.[option.value];
+                      const variantKeys = variants
+                        ? getExecutorVariantKeys(variants)
+                        : [];
                       const keepCurrentVariant =
-                        variants &&
+                        variantKeys.length > 0 &&
                         draft?.executor_profile?.variant &&
-                        variants[draft.executor_profile.variant];
+                        variantKeys.includes(draft.executor_profile.variant);
 
                       const newProfile: ExecutorProfileId = {
                         executor: option.value as BaseCodingAgent,
@@ -436,7 +445,7 @@ export function GeneralSettingsSection() {
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                  {Object.keys(selectedAgentProfile).map((variantLabel) => (
+                  {variantOptions.map((variantLabel) => (
                     <DropdownMenuItem
                       key={variantLabel}
                       onClick={() => {

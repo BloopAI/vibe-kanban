@@ -566,6 +566,19 @@
       }
     }
   },
+  "modelSelector": {
+    "preset": "預設配置",
+    "custom": "自訂",
+    "permissions": "權限",
+    "permissionAuto": "自動",
+    "permissionAsk": "詢問",
+    "permissionPlan": "計畫",
+    "nextTurn": "下一個回合",
+    "agent": "代理",
+    "default": "預設",
+    "model": "模型",
+    "providers": "提供者"
+  },
   "syncError": {
     "networkErrors": "網路錯誤",
     "streamsAffected": "{{count}} 個資料流受影響",

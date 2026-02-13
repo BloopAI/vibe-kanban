@@ -200,7 +200,10 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
         await createAndStart.mutateAsync(
           {
             task,
-            executor_profile_id: value.executorProfileId!,
+            executor_config: {
+              executor: value.executorProfileId!.executor,
+              variant: value.executorProfileId!.variant,
+            },
             repos,
             linked_issue: null,
           },

@@ -10,8 +10,9 @@ use serde::{Deserialize, Deserializer, Serialize, de::Error as DeError};
 use thiserror::Error;
 use ts_rs::TS;
 
-use crate::executors::{
-    AvailabilityInfo, BaseCodingAgent, CodingAgent, StandardCodingAgentExecutor,
+use crate::{
+    executors::{AvailabilityInfo, BaseCodingAgent, CodingAgent, StandardCodingAgentExecutor},
+    model_selector::PermissionPolicy,
 };
 
 /// Return the canonical form for variant keys.
@@ -116,13 +117,90 @@ impl std::fmt::Display for ExecutorProfileId {
     }
 }
 
+/// Unified executor identity + user-selectable overrides.
+///
+/// This is the single object that flows through API requests, action types,
+/// scratch persistence, and frontend state whenever an executor is used.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ExecutorConfig {
+    /// The executor type (e.g., CLAUDE_CODE, AMP)
+    #[serde(alias = "profile", deserialize_with = "de_base_coding_agent_kebab")]
+    pub executor: BaseCodingAgent,
+    /// Optional variant/preset name (e.g., "PLAN", "ROUTER")
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub variant: Option<String>,
+    /// Model override (e.g., "anthropic/claude-sonnet-4-20250514")
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<String>,
+    /// Agent mode override
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<String>,
+    /// Reasoning effort override (e.g., "high", "medium")
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_id: Option<String>,
+    /// Permission policy override
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permission_policy: Option<PermissionPolicy>,
+}
+
+impl ExecutorConfig {
+    /// Create from just an executor (default variant, no overrides)
+    pub fn new(executor: BaseCodingAgent) -> Self {
+        Self {
+            executor,
+            variant: None,
+            model_id: None,
+            agent_id: None,
+            reasoning_id: None,
+            permission_policy: None,
+        }
+    }
+
+    /// Extract the profile identity portion for profile lookup
+    pub fn profile_id(&self) -> ExecutorProfileId {
+        ExecutorProfileId {
+            executor: self.executor,
+            variant: self.variant.clone(),
+        }
+    }
+
+    /// Returns true if any override field is set
+    pub fn has_overrides(&self) -> bool {
+        self.model_id.is_some()
+            || self.agent_id.is_some()
+            || self.reasoning_id.is_some()
+            || self.permission_policy.is_some()
+    }
+}
+
+impl From<ExecutorProfileId> for ExecutorConfig {
+    fn from(id: ExecutorProfileId) -> Self {
+        Self {
+            executor: id.executor,
+            variant: id.variant,
+            model_id: None,
+            agent_id: None,
+            reasoning_id: None,
+            permission_policy: None,
+        }
+    }
+}
+
+impl std::fmt::Display for ExecutorConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.profile_id().fmt(f)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+pub struct ExecutorProfile {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub recently_used_models: Option<ExecutorRecentModels>,
     #[serde(flatten)]
     pub configurations: HashMap<String, CodingAgent>,
 }
 
-impl ExecutorConfig {
+impl ExecutorProfile {
     /// Get variant configuration by name, or None if not found
     pub fn get_variant(&self, variant: &str) -> Option<&CodingAgent> {
         self.configurations.get(variant)
@@ -137,7 +215,10 @@ impl ExecutorConfig {
     pub fn new_with_default(default_config: CodingAgent) -> Self {
         let mut configurations = HashMap::new();
         configurations.insert("DEFAULT".to_string(), default_config);
-        Self { configurations }
+        Self {
+            recently_used_models: None,
+            configurations,
+        }
     }
 
     /// Add or update a variant configuration
@@ -170,9 +251,19 @@ impl ExecutorConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, Default)]
+pub struct ExecutorRecentModels {
+    /// Ordered list of recently used model keys (most recent last).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub models: Vec<String>,
+    /// Last-used reasoning effort per model
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub reasoning_by_model: HashMap<String, String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ExecutorConfigs {
-    pub executors: HashMap<BaseCodingAgent, ExecutorConfig>,
+    pub executors: HashMap<BaseCodingAgent, ExecutorProfile>,
 }
 
 impl ExecutorConfigs {
@@ -274,6 +365,10 @@ impl ExecutorConfigs {
                     for (config_name, config) in override_profile.configurations {
                         default_profile.configurations.insert(config_name, config);
                     }
+                    if override_profile.recently_used_models.is_some() {
+                        default_profile.recently_used_models =
+                            override_profile.recently_used_models;
+                    }
                 }
                 None => {
                     // New executor, add completely
@@ -281,6 +376,7 @@ impl ExecutorConfigs {
                 }
             }
         }
+
         defaults
     }
 
@@ -330,14 +426,22 @@ impl ExecutorConfigs {
                     }
                 }
 
-                // Only include executor if there are actual differences
-                if !override_configurations.is_empty() {
-                    overrides.executors.insert(
-                        *executor_key,
-                        ExecutorConfig {
-                            configurations: override_configurations,
-                        },
-                    );
+                let mut override_profile = ExecutorProfile {
+                    recently_used_models: None,
+                    configurations: override_configurations,
+                };
+
+                if current_profile.recently_used_models != default_profile.recently_used_models {
+                    override_profile.recently_used_models = current_profile
+                        .recently_used_models
+                        .clone()
+                        .or_else(|| Some(ExecutorRecentModels::default()));
+                }
+
+                if !override_profile.configurations.is_empty()
+                    || override_profile.recently_used_models.is_some()
+                {
+                    overrides.executors.insert(*executor_key, override_profile);
                 }
             } else {
                 // New executor, include completely

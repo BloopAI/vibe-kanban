@@ -1,10 +1,10 @@
 import { AgentSelector } from '@/components/tasks/AgentSelector';
 import { ConfigSelector } from '@/components/tasks/ConfigSelector';
 import { cn } from '@/lib/utils';
-import type { ExecutorConfig, ExecutorProfileId } from 'shared/types';
+import type { ExecutorProfile, ExecutorProfileId } from 'shared/types';
 
 type Props = {
-  profiles: Record<string, ExecutorConfig> | null;
+  profiles: Record<string, ExecutorProfile> | null;
   selectedProfile: ExecutorProfileId | null;
   onProfileSelect: (profile: ExecutorProfileId) => void;
   disabled?: boolean;

@@ -35,8 +35,8 @@ use crate::{
     command::{CmdOverrides, CommandBuildError, CommandBuilder, CommandParts, apply_overrides},
     env::ExecutionEnv,
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
-        codex::client::LogWriter, utils::reorder_slash_commands,
+        AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, SpawnedChild,
+        StandardCodingAgentExecutor, codex::client::LogWriter, utils::reorder_slash_commands,
     },
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
@@ -48,6 +48,8 @@ use crate::{
             shell_command_parsing::CommandCategory,
         },
     },
+    model_selector::PermissionPolicy,
+    profile::ExecutorConfig,
     stdout_dup::create_stdout_pipe_writer,
 };
 
@@ -112,6 +114,8 @@ pub struct ClaudeCode {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dangerously_skip_permissions: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disable_api_key: Option<bool>,
@@ -155,6 +159,9 @@ impl ClaudeCode {
         }
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model]);
+        }
+        if let Some(agent) = &self.agent {
+            builder = builder.extend_params(["--agent", agent]);
         }
         builder = builder.extend_params([
             "--verbose",
@@ -223,6 +230,31 @@ impl ClaudeCode {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for ClaudeCode {
+    fn apply_overrides(&mut self, executor_config: &ExecutorConfig) {
+        if let Some(model_id) = &executor_config.model_id {
+            self.model = Some(model_id.clone());
+        }
+        if let Some(agent) = &executor_config.agent_id {
+            self.agent = Some(agent.clone());
+        }
+        if let Some(permission_policy) = executor_config.permission_policy.clone() {
+            match permission_policy {
+                PermissionPolicy::Plan => {
+                    self.plan = Some(true);
+                    self.approvals = Some(false);
+                }
+                PermissionPolicy::Supervised => {
+                    self.plan = Some(false);
+                    self.approvals = Some(true);
+                }
+                PermissionPolicy::Auto => {
+                    self.plan = Some(false);
+                    self.approvals = Some(false);
+                }
+            }
+        }
+    }
+
     fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
         self.approvals_service = Some(approvals);
     }
@@ -284,7 +316,70 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         vec![h1, h2]
     }
 
+    async fn available_model_config(
+        &self,
+        workdir: &Path,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let initial_config = self.build_model_selector_config();
+        let initial_patch = patch::model_selector_config(initial_config, true, None);
+        let this = self.clone();
+        let workdir = workdir.to_path_buf();
+
+        let discovery_stream = futures::stream::once(async move {
+            match this.discover_available_agents(&workdir).await {
+                Ok(mut agent_options) => {
+                    let mut config = this.build_model_selector_config();
+                    let default_agents = [
+                        "Bash",
+                        "general-purpose",
+                        "statusline-setup",
+                        "Explore",
+                        "Plan",
+                    ];
+                    agent_options.retain(|a| !default_agents.contains(&a.id.as_str()));
+                    config.agents = agent_options;
+                    patch::model_selector_config(config, false, None)
+                }
+
+                Err(e) => {
+                    tracing::warn!("Failed to discover Claude Code agents: {}", e);
+                    let mut config = this.build_model_selector_config();
+                    config.agents = Vec::new();
+                    patch::model_selector_config(config, false, None)
+                }
+            }
+        });
+
+        Ok(Box::pin(
+            futures::stream::once(async move { initial_patch }).chain(discovery_stream),
+        ))
+    }
+
+    fn get_preset_options(&self) -> ExecutorConfig {
+        use crate::model_selector::*;
+
+        let permission_policy = if self.plan.unwrap_or(false) {
+            PermissionPolicy::Plan
+        } else if self.dangerously_skip_permissions.unwrap_or(false) {
+            PermissionPolicy::Auto
+        } else if self.approvals.unwrap_or(false) {
+            PermissionPolicy::Supervised
+        } else {
+            PermissionPolicy::Auto
+        };
+
+        ExecutorConfig {
+            executor: BaseCodingAgent::ClaudeCode,
+            variant: None,
+            model_id: self.model.clone(),
+            agent_id: None,
+            reasoning_id: None,
+            permission_policy: Some(permission_policy),
+        }
+    }
+
     // MCP configuration methods
+
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         dirs::home_dir().map(|home| home.join(".claude.json"))
     }
@@ -336,6 +431,37 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 }
 
 impl ClaudeCode {
+    fn build_model_selector_config(&self) -> crate::model_selector::ModelSelectorConfig {
+        use crate::model_selector::*;
+
+        ModelSelectorConfig {
+            providers: vec![],
+            models: [
+                ("claude-opus-4-6", "Opus"),
+                ("claude-opus-4-6[1m]", "Opus (1M context)"),
+                ("claude-haiku-4-5-20251001", "Haiku"),
+                ("claude-sonnet-4-5-20250929", "Sonnet"),
+            ]
+            .into_iter()
+            .map(|(id, name)| ModelInfo {
+                id: id.to_string(),
+                name: name.to_string(),
+                provider_id: None,
+                reasoning_options: vec![],
+            })
+            .collect(),
+            default_model: Some("claude-opus-4-6".to_string()),
+            agents: vec![],
+            permissions: vec![
+                PermissionPolicy::Auto,
+                PermissionPolicy::Supervised,
+                PermissionPolicy::Plan,
+            ],
+            loading: false,
+            error: None,
+        }
+    }
+
     async fn spawn_internal(
         &self,
         current_dir: &Path,
@@ -1801,6 +1927,8 @@ pub enum ClaudeJson {
         slash_commands: Vec<String>,
         #[serde(default)]
         plugins: Vec<ClaudePlugin>,
+        #[serde(default)]
+        agents: Vec<String>,
     },
     Assistant {
         message: ClaudeMessage,
@@ -2416,6 +2544,7 @@ mod tests {
             plan: None,
             approvals: None,
             model: None,
+            agent: None,
             append_prompt: AppendPrompt::default(),
             dangerously_skip_permissions: None,
             cmd: crate::command::CmdOverrides {

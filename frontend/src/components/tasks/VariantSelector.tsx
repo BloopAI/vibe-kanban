@@ -8,10 +8,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import type { ExecutorConfig } from 'shared/types';
+import { getSortedExecutorVariantKeys } from '@/utils/executor';
+import type { ExecutorProfile } from 'shared/types';
 
 type Props = {
-  currentProfile: ExecutorConfig | null;
+  currentProfile: ExecutorProfile | null;
   selectedVariant: string | null;
   onChange: (variant: string | null) => void;
   disabled?: boolean;
@@ -29,8 +30,10 @@ const VariantSelectorInner = forwardRef<HTMLButtonElement, Props>(
       return () => clearTimeout(t);
     }, [selectedVariant, currentProfile]);
 
-    const hasVariants =
-      currentProfile && Object.keys(currentProfile).length > 0;
+    const variantOptions = currentProfile
+      ? getSortedExecutorVariantKeys(currentProfile)
+      : [];
+    const hasVariants = variantOptions.length > 0;
 
     if (!currentProfile) return null;
 
@@ -71,7 +74,7 @@ const VariantSelectorInner = forwardRef<HTMLButtonElement, Props>(
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          {Object.entries(currentProfile).map(([variantLabel]) => (
+          {variantOptions.map((variantLabel) => (
             <DropdownMenuItem
               key={variantLabel}
               onClick={() => onChange(variantLabel)}

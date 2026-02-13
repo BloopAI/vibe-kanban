@@ -108,7 +108,10 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
         const combinedPrompt = promptParts.join('\n\n');
 
         await sessionsApi.startReview(targetSessionId, {
-          executor_profile_id: effectiveProfile,
+          executor_config: {
+            executor: effectiveProfile.executor,
+            variant: effectiveProfile.variant,
+          },
           additional_prompt: combinedPrompt || null,
           use_all_workspace_commits: includeGitContext,
         });

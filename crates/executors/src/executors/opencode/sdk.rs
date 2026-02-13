@@ -2,7 +2,6 @@ use std::{
     collections::{HashMap, HashSet},
     future::Future,
     io,
-    path::Path,
     sync::Arc,
     time::Duration,
 };
@@ -25,10 +24,7 @@ use super::{slash_commands, types::OpencodeExecutorEvent};
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
     env::RepoContext,
-    executors::{
-        ExecutorError,
-        opencode::{OpencodeServer, models::maybe_emit_token_usage},
-    },
+    executors::{ExecutorError, opencode::models::maybe_emit_token_usage},
 };
 
 #[derive(Clone)]
@@ -228,20 +224,6 @@ pub async fn run_session(
     run_session_inner(config, log_writer, client, cancel).await
 }
 
-pub(super) async fn discover_commands(
-    server: &OpencodeServer,
-    directory: &Path,
-) -> Result<Vec<CommandInfo>, ExecutorError> {
-    let directory = directory.to_string_lossy();
-    let client = reqwest::Client::builder()
-        .default_headers(build_default_headers(&directory, &server.server_password))
-        .build()
-        .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
-
-    wait_for_health(&client, &server.base_url).await?;
-    list_commands(&client, &server.base_url, &directory).await
-}
-
 pub async fn run_slash_command(
     config: RunConfig,
     log_writer: LogWriter,
@@ -392,6 +374,18 @@ fn build_default_headers(directory: &str, password: &str) -> HeaderMap {
         headers.insert(AUTHORIZATION, value);
     }
     headers
+}
+
+/// Build HTTP client with OpenCode authentication headers.
+/// Uses Basic Auth: "opencode:{password}" base64 encoded.
+pub fn build_authenticated_client(
+    directory: &str,
+    password: &str,
+) -> Result<reqwest::Client, ExecutorError> {
+    reqwest::Client::builder()
+        .default_headers(build_default_headers(directory, password))
+        .build()
+        .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
 fn append_session_error(session_error: &mut Option<String>, message: String) {

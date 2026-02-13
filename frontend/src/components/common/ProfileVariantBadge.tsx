@@ -1,26 +1,22 @@
-import type { ExecutorProfileId } from 'shared/types';
+import type { ExecutorConfig } from 'shared/types';
 import { cn } from '@/lib/utils';
 
 interface ProfileVariantBadgeProps {
-  profileVariant: ExecutorProfileId | null;
+  executorConfig: ExecutorConfig;
   className?: string;
 }
 
 export function ProfileVariantBadge({
-  profileVariant,
+  executorConfig,
   className,
 }: ProfileVariantBadgeProps) {
-  if (!profileVariant) {
-    return null;
-  }
-
   return (
     <span className={cn('text-xs text-muted-foreground', className)}>
-      {profileVariant.executor}
-      {profileVariant.variant && (
+      {executorConfig.executor}
+      {executorConfig.variant && (
         <>
           <span className="mx-1">/</span>
-          <span className="font-medium">{profileVariant.variant}</span>
+          <span className="font-medium">{executorConfig.variant}</span>
         </>
       )}
     </span>

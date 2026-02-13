@@ -1,10 +1,36 @@
 import type {
   BaseCodingAgent,
+  ExecutorConfig,
   ExecutorConfigs,
+  ExecutorProfile,
   ExecutorAction,
   ExecutorProfileId,
   ExecutionProcess,
 } from 'shared/types';
+
+const RESERVED_KEYS = new Set(['recently_used_models']);
+
+export function getExecutorVariantKeys(
+  executorProfile: ExecutorProfile | Record<string, unknown> | null | undefined
+): string[] {
+  return Object.keys(executorProfile || {}).filter(
+    (key) => !RESERVED_KEYS.has(key)
+  );
+}
+
+function sortVariantKeys(variants: string[]): string[] {
+  return variants.sort((a, b) => {
+    if (a === 'DEFAULT') return -1;
+    if (b === 'DEFAULT') return 1;
+    return a.localeCompare(b);
+  });
+}
+
+export function getSortedExecutorVariantKeys(
+  executorProfile: ExecutorProfile | Record<string, unknown> | null | undefined
+): string[] {
+  return sortVariantKeys(getExecutorVariantKeys(executorProfile));
+}
 
 /**
  * Compare two ExecutorProfileIds for equality.
@@ -31,24 +57,20 @@ export function getVariantOptions(
   profiles: ExecutorConfigs['executors'] | null | undefined
 ): string[] {
   if (!executor || !profiles) return [];
-  const executorConfig = profiles[executor];
-  if (!executorConfig) return [];
+  const executorProfile = profiles[executor];
+  if (!executorProfile) return [];
 
-  const variants = Object.keys(executorConfig);
-  return variants.sort((a, b) => {
-    if (a === 'DEFAULT') return -1;
-    if (b === 'DEFAULT') return 1;
-    return a.localeCompare(b);
-  });
+  const variants = getExecutorVariantKeys(executorProfile);
+  return sortVariantKeys(variants);
 }
 
 /**
- * Extract ExecutorProfileId from an ExecutorAction chain.
+ * Extract full ExecutorConfig from an ExecutorAction chain.
  * Traverses the action chain to find the first coding agent request.
  */
-export function extractProfileFromAction(
+export function executorConfigFromAction(
   action: ExecutorAction | null
-): ExecutorProfileId | null {
+): ExecutorConfig | null {
   let curr: ExecutorAction | null = action;
   while (curr) {
     const typ = curr.typ;
@@ -56,7 +78,7 @@ export function extractProfileFromAction(
       case 'CodingAgentInitialRequest':
       case 'CodingAgentFollowUpRequest':
       case 'ReviewRequest':
-        return typ.executor_profile_id;
+        return typ.executor_config;
       case 'ScriptRequest':
       default:
         curr = curr.next_action;
@@ -67,18 +89,18 @@ export function extractProfileFromAction(
 }
 
 /**
- * Get the latest ExecutorProfileId from a list of execution processes.
+ * Get the full ExecutorConfig from the most recent execution process.
  * Searches from most recent to oldest.
  */
-export function getLatestProfileFromProcesses(
+export function getLatestConfigFromProcesses(
   processes: ExecutionProcess[] | undefined
-): ExecutorProfileId | null {
+): ExecutorConfig | null {
   if (!processes?.length) return null;
   return (
     processes
       .slice()
       .reverse()
-      .map((p) => extractProfileFromAction(p.executor_action ?? null))
-      .find((pid) => pid !== null) ?? null
+      .map((p) => executorConfigFromAction(p.executor_action ?? null))
+      .find((c) => c !== null) ?? null
   );
 }

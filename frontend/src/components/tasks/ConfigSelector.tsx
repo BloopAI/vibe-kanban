@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
+import { getSortedExecutorVariantKeys } from '@/utils/executor';
 import type { ExecutorProfileId } from 'shared/types';
 
 interface ConfigSelectorProps {
@@ -28,15 +29,10 @@ export function ConfigSelector({
 }: ConfigSelectorProps) {
   const selectedAgent = selectedExecutorProfile?.executor;
   const configs = selectedAgent && profiles ? profiles[selectedAgent] : null;
-  const configOptions = configs ? Object.keys(configs).sort() : [];
+  const configOptions = configs ? getSortedExecutorVariantKeys(configs) : [];
   const selectedVariant = selectedExecutorProfile?.variant || 'DEFAULT';
 
-  if (
-    !selectedAgent ||
-    !profiles ||
-    !configs ||
-    Object.keys(configs).length === 0
-  )
+  if (!selectedAgent || !profiles || !configs || configOptions.length === 0)
     return null;
 
   return (

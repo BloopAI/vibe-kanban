@@ -159,13 +159,13 @@ async fn trigger_pr_description_follow_up(
             prompt,
             session_id: info.session_id,
             reset_to_message_id: None,
-            executor_profile_id: executor_profile_id.clone(),
+            executor_config: executors::profile::ExecutorConfig::from(executor_profile_id.clone()),
             working_dir: working_dir.clone(),
         })
     } else {
         ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
             prompt,
-            executor_profile_id: executor_profile_id.clone(),
+            executor_config: executors::profile::ExecutorConfig::from(executor_profile_id.clone()),
             working_dir,
         })
     };

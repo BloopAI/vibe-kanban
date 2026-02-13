@@ -27,7 +27,10 @@ export function useAttemptCreation({
     mutationFn: ({ profile, repos }: CreateAttemptArgs) =>
       attemptsApi.create({
         task_id: taskId,
-        executor_profile_id: profile,
+        executor_config: {
+          executor: profile.executor,
+          variant: profile.variant,
+        },
         repos,
       }),
     onSuccess: (newAttempt: Workspace) => {

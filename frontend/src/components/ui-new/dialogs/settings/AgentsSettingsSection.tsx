@@ -31,6 +31,7 @@ import {
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 import { AgentIcon } from '@/components/agents/AgentIcon';
+import { getExecutorVariantKeys } from '@/utils/executor';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 
@@ -99,8 +100,8 @@ export function AgentsSettingsSection() {
     try {
       const result = await CreateConfigurationDialog.show({
         executorType: executor as BaseCodingAgent,
-        existingConfigs: Object.keys(
-          localParsedProfiles?.executors?.[executor as BaseCodingAgent] || {}
+        existingConfigs: getExecutorVariantKeys(
+          localParsedProfiles?.executors?.[executor as BaseCodingAgent]
         ),
       });
 
@@ -174,7 +175,7 @@ export function AgentsSettingsSection() {
         return;
       }
 
-      const currentConfigs = Object.keys(executorConfigs);
+      const currentConfigs = getExecutorVariantKeys(executorConfigs);
       if (currentConfigs.length <= 1) {
         return;
       }
@@ -191,7 +192,7 @@ export function AgentsSettingsSection() {
       };
 
       const executorsMap = updatedProfiles.executors as unknown as ExecutorsMap;
-      if (Object.keys(remainingConfigs).length === 0) {
+      if (getExecutorVariantKeys(remainingConfigs).length === 0) {
         executorsMap[executorType] = {
           DEFAULT: { [executorType]: {} },
         };
@@ -207,7 +208,9 @@ export function AgentsSettingsSection() {
           selectedExecutorType === executorType &&
           selectedConfiguration === configToDelete
         ) {
-          const nextConfigs = Object.keys(executorsMap[executorType] || {});
+          const nextConfigs = getExecutorVariantKeys(
+            executorsMap[executorType] || {}
+          );
           setSelectedConfiguration(nextConfigs[0] || 'DEFAULT');
         }
 
@@ -390,11 +393,10 @@ export function AgentsSettingsSection() {
                     selected={selectedExecutorType === executor}
                     onClick={() => {
                       setSelectedExecutorType(executor as BaseCodingAgent);
-                      // Select first config for this executor
-                      const configs = Object.keys(
+                      const configs = getExecutorVariantKeys(
                         localParsedProfiles.executors[
                           executor as BaseCodingAgent
-                        ] || {}
+                        ]
                       );
                       if (configs.length > 0) {
                         setSelectedConfiguration(configs[0]);
@@ -438,15 +440,15 @@ export function AgentsSettingsSection() {
             >
               {selectedExecutorType &&
               localParsedProfiles.executors[selectedExecutorType] ? (
-                Object.keys(
+                getExecutorVariantKeys(
                   localParsedProfiles.executors[selectedExecutorType]
                 ).map((configName) => {
                   const isDefault =
                     config?.executor_profile?.executor ===
                       selectedExecutorType &&
                     config?.executor_profile?.variant === configName;
-                  const configCount = Object.keys(
-                    localParsedProfiles.executors[selectedExecutorType] || {}
+                  const configCount = getExecutorVariantKeys(
+                    localParsedProfiles.executors[selectedExecutorType]
                   ).length;
                   return (
                     <TwoColumnPickerItem

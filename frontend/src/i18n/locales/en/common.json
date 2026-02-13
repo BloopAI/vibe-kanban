@@ -586,6 +586,19 @@
       }
     }
   },
+  "modelSelector": {
+    "preset": "Preset",
+    "custom": "Custom",
+    "permissions": "Permissions",
+    "permissionAuto": "Auto",
+    "permissionAsk": "Ask",
+    "permissionPlan": "Plan",
+    "nextTurn": "Next turn",
+    "agent": "Agent",
+    "default": "Default",
+    "model": "Model",
+    "providers": "Providers"
+  },
   "syncError": {
     "networkErrors": "Network Errors",
     "streamsAffected": "{{count}} stream affected",

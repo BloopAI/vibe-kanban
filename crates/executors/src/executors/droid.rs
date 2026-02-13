@@ -12,8 +12,12 @@ use workspace_utils::msg_store::MsgStore;
 use crate::{
     command::{CommandBuildError, CommandBuilder, CommandParts},
     env::ExecutionEnv,
-    executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
-    logs::utils::EntryIndexProvider,
+    executors::{
+        AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, SpawnedChild,
+        StandardCodingAgentExecutor,
+    },
+    logs::utils::{EntryIndexProvider, patch},
+    profile::ExecutorConfig,
 };
 
 pub mod normalize_logs;
@@ -137,6 +141,19 @@ async fn spawn_droid(
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Droid {
+    fn apply_overrides(&mut self, executor_config: &ExecutorConfig) {
+        if let Some(model_id) = &executor_config.model_id {
+            self.model = Some(model_id.clone());
+        }
+        if let Some(permission_policy) = executor_config.permission_policy.clone() {
+            self.autonomy = match permission_policy {
+                crate::model_selector::PermissionPolicy::Auto => Autonomy::SkipPermissionsUnsafe,
+                crate::model_selector::PermissionPolicy::Supervised
+                | crate::model_selector::PermissionPolicy::Plan => Autonomy::Normal,
+            };
+        }
+    }
+
     async fn spawn(
         &self,
         current_dir: &Path,
@@ -179,5 +196,66 @@ impl StandardCodingAgentExecutor for Droid {
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         dirs::home_dir().map(|home| home.join(".factory").join("mcp.json"))
+    }
+
+    fn get_availability_info(&self) -> AvailabilityInfo {
+        let mcp_config_found = self
+            .default_mcp_config_path()
+            .map(|p| p.exists())
+            .unwrap_or(false);
+
+        let installation_indicator_found = dirs::home_dir()
+            .map(|home| home.join(".factory").join("installation_id").exists())
+            .unwrap_or(false);
+
+        if mcp_config_found || installation_indicator_found {
+            AvailabilityInfo::InstallationFound
+        } else {
+            AvailabilityInfo::NotFound
+        }
+    }
+
+    async fn available_model_config(
+        &self,
+        _workdir: &Path,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let config = crate::model_selector::ModelSelectorConfig {
+            models: [
+                ("gpt-5.1-codex", "GPT-5.1 Codex"),
+                ("gpt-5.1", "GPT-5.1"),
+                ("gemini-3-pro-preview", "Gemini 3 Pro Preview"),
+                ("claude-sonnet-4-5-20250929", "Claude Sonnet 4.5"),
+                ("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
+                ("claude-opus-4-1-20250805", "Claude Opus 4.1"),
+                ("glm-4.6", "GLM 4.6"),
+            ]
+            .into_iter()
+            .map(|(id, name)| crate::model_selector::ModelInfo {
+                id: id.to_string(),
+                name: name.to_string(),
+                provider_id: None,
+                reasoning_options: vec![],
+            })
+            .collect(),
+            permissions: vec![],
+            ..Default::default()
+        };
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::model_selector_config(config, false, None)
+        })))
+    }
+
+    fn get_preset_options(&self) -> ExecutorConfig {
+        ExecutorConfig {
+            executor: BaseCodingAgent::Droid,
+            variant: None,
+            model_id: self.model.clone(),
+            agent_id: None,
+            reasoning_id: self
+                .reasoning_effort
+                .as_ref()
+                .map(|e| e.as_ref().to_string()),
+            permission_policy: Some(crate::model_selector::PermissionPolicy::Auto),
+        }
     }
 }

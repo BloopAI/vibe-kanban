@@ -566,6 +566,19 @@
       }
     }
   },
+  "modelSelector": {
+    "preset": "プリセット",
+    "custom": "カスタマイズ",
+    "permissions": "権限",
+    "permissionAuto": "自動",
+    "permissionAsk": "確認",
+    "permissionPlan": "計画",
+    "nextTurn": "次のターン",
+    "agent": "エージェント",
+    "default": "デフォルト",
+    "model": "モデル",
+    "providers": "プロバイダー"
+  },
   "syncError": {
     "networkErrors": "ネットワークエラー",
     "streamsAffected": "{{count}}件のストリームが影響を受けています",

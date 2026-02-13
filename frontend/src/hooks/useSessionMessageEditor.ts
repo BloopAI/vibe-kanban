@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ScratchType,
   type DraftFollowUpData,
-  type ExecutorProfileId,
+  type ExecutorConfig,
 } from 'shared/types';
 import { useScratch } from './useScratch';
 import { useDebouncedCallback } from './useDebouncedCallback';
@@ -23,20 +23,17 @@ interface UseSessionMessageEditorResult {
   isScratchLoading: boolean;
   /** Whether the initial value has been applied from scratch */
   hasInitialValue: boolean;
-  /** Save message and executor profile to scratch */
+  /** Save message and executor config to scratch */
   saveToScratch: (
     message: string,
-    executorProfileId: ExecutorProfileId
+    executorConfig: ExecutorConfig
   ) => Promise<void>;
   /** Delete the draft scratch */
   clearDraft: () => Promise<void>;
   /** Cancel pending debounced save */
   cancelDebouncedSave: () => void;
   /** Handle message change with debounced save */
-  handleMessageChange: (
-    value: string,
-    executorProfileId: ExecutorProfileId
-  ) => void;
+  handleMessageChange: (value: string, executorConfig: ExecutorConfig) => void;
 }
 
 /**
@@ -62,13 +59,16 @@ export function useSessionMessageEditor({
   const [hasInitialValue, setHasInitialValue] = useState(false);
 
   const saveToScratch = useCallback(
-    async (message: string, executorProfileId: ExecutorProfileId) => {
+    async (message: string, executorConfig: ExecutorConfig) => {
       if (!scratchId) return;
       try {
         await updateScratch({
           payload: {
             type: 'DRAFT_FOLLOW_UP',
-            data: { message, executor_profile_id: executorProfileId },
+            data: {
+              message,
+              executor_config: executorConfig,
+            },
           },
         });
       } catch (e) {
@@ -103,9 +103,9 @@ export function useSessionMessageEditor({
   // Handle message change with debounced save
   // Pass executor profile at call-time to avoid stale closure
   const handleMessageChange = useCallback(
-    (value: string, executorProfileId: ExecutorProfileId) => {
+    (value: string, executorConfig: ExecutorConfig) => {
       setLocalMessage(value);
-      debouncedSave(value, executorProfileId);
+      debouncedSave(value, executorConfig);
     },
     [debouncedSave]
   );

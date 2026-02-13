@@ -14,7 +14,7 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useVariant } from '@/hooks/useVariant';
 import { useRetryProcess } from '@/hooks/useRetryProcess';
-import { extractProfileFromAction } from '@/utils/executor';
+import { executorConfigFromAction } from '@/utils/executor';
 
 export function RetryEditorInline({
   attempt,
@@ -46,7 +46,7 @@ export function RetryEditorInline({
       (p) => p.id === executionProcessId
     );
     if (!process?.executor_action) return null;
-    return extractProfileFromAction(process.executor_action);
+    return executorConfigFromAction(process.executor_action);
   }, [attemptData.processes, executionProcessId]);
 
   const { selectedVariant, setSelectedVariant } = useVariant({

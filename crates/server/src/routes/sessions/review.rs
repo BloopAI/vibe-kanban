@@ -15,7 +15,7 @@ use executors::{
         review::{RepoReviewContext as ExecutorRepoReviewContext, ReviewRequest as ReviewAction},
     },
     executors::build_review_prompt,
-    profile::ExecutorProfileId,
+    profile::ExecutorConfig,
 };
 use serde::{Deserialize, Serialize};
 use services::services::container::ContainerService;
@@ -26,7 +26,7 @@ use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct StartReviewRequest {
-    pub executor_profile_id: ExecutorProfileId,
+    pub executor_config: ExecutorConfig,
     pub additional_prompt: Option<String>,
     #[serde(default)]
     pub use_all_workspace_commits: bool,
@@ -104,7 +104,7 @@ pub async fn start_review(
 
     let action = ExecutorAction::new(
         ExecutorActionType::ReviewRequest(ReviewAction {
-            executor_profile_id: payload.executor_profile_id.clone(),
+            executor_config: payload.executor_config.clone(),
             context,
             prompt,
             session_id: agent_session_id,
@@ -129,8 +129,8 @@ pub async fn start_review(
             serde_json::json!({
                 "workspace_id": workspace.id.to_string(),
                 "session_id": session.id.to_string(),
-                "executor": payload.executor_profile_id.executor.to_string(),
-                "variant": payload.executor_profile_id.variant,
+                "executor": payload.executor_config.executor.to_string(),
+                "variant": payload.executor_config.variant,
                 "resumed_session": resumed_session,
             }),
         )

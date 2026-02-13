@@ -11,6 +11,18 @@
       "format": "textarea",
       "default": null
     },
+    "model": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "agent": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "yolo": {
       "type": [
         "boolean",

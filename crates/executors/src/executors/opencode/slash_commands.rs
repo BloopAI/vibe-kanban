@@ -4,13 +4,7 @@
 //! It defines the command enum, parses prompts, executes commands via the SDK,
 //! and formats results as markdown.
 
-use std::{
-    collections::{HashMap, HashSet},
-    future::Future,
-    io,
-    path::Path,
-    pin::Pin,
-};
+use std::{collections::HashMap, future::Future, io, pin::Pin};
 
 use serde_json::Value;
 use tokio::sync::mpsc;
@@ -24,16 +18,9 @@ use super::{
     },
     types::OpencodeExecutorEvent,
 };
-use crate::{
-    env::{ExecutionEnv, RepoContext},
-    executors::{
-        BaseCodingAgent, ExecutorError, SlashCommandDescription,
-        opencode::Opencode,
-        utils::{
-            SlashCommandCache, SlashCommandCacheKey, SlashCommandCall, parse_slash_command,
-            reorder_slash_commands,
-        },
-    },
+use crate::executors::{
+    ExecutorError, SlashCommandDescription,
+    utils::{SlashCommandCall, parse_slash_command},
 };
 
 /// OpenCode slash command with known variants and custom fallback.
@@ -52,44 +39,6 @@ pub enum OpencodeSlashCommand {
         name: String,
         arguments: String,
     },
-}
-
-impl Opencode {
-    pub async fn discover_slash_commands(
-        &self,
-        current_dir: &Path,
-    ) -> Result<Vec<SlashCommandDescription>, ExecutorError> {
-        let key = SlashCommandCacheKey::new(current_dir, &BaseCodingAgent::Opencode);
-        if let Some(cached) = SlashCommandCache::instance().get(&key) {
-            return Ok((*cached).clone());
-        }
-
-        let env = ExecutionEnv::new(RepoContext::default(), false, String::new());
-        let server = self.spawn_server(current_dir, &env).await?;
-        let commands = sdk::discover_commands(&server, current_dir).await?;
-
-        let defaults = hardcoded_slash_commands();
-        let mut seen: HashSet<String> = defaults.iter().map(|cmd| cmd.name.clone()).collect();
-
-        let commands = commands
-            .into_iter()
-            .map(|cmd| {
-                let name = cmd.name.trim_start_matches('/').to_string();
-                SlashCommandDescription {
-                    name,
-                    description: cmd.description,
-                }
-            })
-            .filter(|cmd| seen.insert(cmd.name.clone()))
-            .chain(defaults)
-            .collect::<Vec<_>>();
-
-        let commands = reorder_slash_commands(commands);
-
-        SlashCommandCache::instance().put(key, commands.clone());
-
-        Ok(commands)
-    }
 }
 
 impl OpencodeSlashCommand {

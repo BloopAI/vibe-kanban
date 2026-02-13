@@ -227,9 +227,8 @@ function ProcessesTab({ sessionId }: ProcessesTabProps) {
                             process.executor_action.typ.type ===
                               'ReviewRequest' ? (
                               <ProfileVariantBadge
-                                profileVariant={
-                                  process.executor_action.typ
-                                    .executor_profile_id
+                                executorConfig={
+                                  process.executor_action.typ.executor_config
                                 }
                               />
                             ) : null}

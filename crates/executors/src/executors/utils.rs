@@ -1,7 +1,8 @@
 use std::{
+    hash::Hash,
     num::NonZeroUsize,
     path::PathBuf,
-    sync::{Arc, Mutex, OnceLock},
+    sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
 
@@ -42,7 +43,7 @@ where
 }
 
 pub const SLASH_COMMANDS_CACHE_CAPACITY: usize = 32;
-const TTL: Duration = Duration::from_secs(60 * 5);
+pub const DEFAULT_CACHE_TTL: Duration = Duration::from_secs(60 * 5);
 
 /// Reorder slash commands to prioritize compact then review.
 #[must_use]
@@ -68,11 +69,6 @@ pub fn reorder_slash_commands(
         .collect()
 }
 
-/// Executors can use this key to cache expensive slash command retrievals.
-pub struct SlashCommandCache {
-    cache: Mutex<LruCache<SlashCommandCacheKey, CachedEntry>>,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SlashCommandCacheKey {
     path: PathBuf,
@@ -90,42 +86,50 @@ impl SlashCommandCacheKey {
 }
 
 #[derive(Clone, Debug)]
-struct CachedEntry {
+struct CacheEntry<V> {
     cached_at: Instant,
-    commands: Arc<Vec<SlashCommandDescription>>,
+    value: Arc<V>,
 }
 
-impl SlashCommandCache {
-    pub fn instance() -> &'static Self {
-        static INSTANCE: OnceLock<SlashCommandCache> = OnceLock::new();
-        INSTANCE.get_or_init(|| Self {
-            cache: Mutex::new(LruCache::new(
-                NonZeroUsize::new(SLASH_COMMANDS_CACHE_CAPACITY).unwrap(),
-            )),
-        })
-    }
+pub struct TtlCache<K, V> {
+    cache: Mutex<LruCache<K, CacheEntry<V>>>,
+    ttl: Duration,
+}
 
-    /// Get cached slash commands for the given key.
-    #[must_use]
-    pub fn get(&self, key: &SlashCommandCacheKey) -> Option<Arc<Vec<SlashCommandDescription>>> {
-        let mut cache = self.cache.lock().unwrap_or_else(|e| e.into_inner());
-        let entry = cache.get(key)?;
-        if entry.cached_at.elapsed() > TTL {
-            cache.pop(key);
-            None
-        } else {
-            Some(entry.commands.clone())
+impl<K, V> TtlCache<K, V>
+where
+    K: Hash + Eq,
+{
+    pub fn new(capacity: usize, ttl: Duration) -> Self {
+        Self {
+            cache: Mutex::new(LruCache::new(
+                NonZeroUsize::new(capacity).unwrap_or_else(|| NonZeroUsize::new(1).unwrap()),
+            )),
+            ttl,
         }
     }
 
-    /// Store slash commands in the cache.
-    pub fn put(&self, key: SlashCommandCacheKey, commands: Vec<SlashCommandDescription>) {
+    #[must_use]
+    pub fn get(&self, key: &K) -> Option<Arc<V>> {
+        let mut cache = self.cache.lock().unwrap_or_else(|e| e.into_inner());
+        let entry = cache.get(key)?;
+        let value = entry.value.clone();
+        let expired = entry.cached_at.elapsed() > self.ttl;
+        if expired {
+            cache.pop(key);
+            None
+        } else {
+            Some(value)
+        }
+    }
+
+    pub fn put(&self, key: K, value: V) {
         let mut cache = self.cache.lock().unwrap_or_else(|e| e.into_inner());
         cache.put(
             key,
-            CachedEntry {
+            CacheEntry {
                 cached_at: Instant::now(),
-                commands: Arc::new(commands),
+                value: Arc::new(value),
             },
         );
     }

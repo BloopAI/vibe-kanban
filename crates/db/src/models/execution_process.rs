@@ -653,13 +653,13 @@ impl ExecutionProcess {
 
         match &action.typ {
             ExecutorActionType::CodingAgentInitialRequest(request) => {
-                Ok(Some(request.executor_profile_id.clone()))
+                Ok(Some(request.executor_config.profile_id()))
             }
             ExecutorActionType::CodingAgentFollowUpRequest(request) => {
-                Ok(Some(request.executor_profile_id.clone()))
+                Ok(Some(request.executor_config.profile_id()))
             }
             ExecutorActionType::ReviewRequest(request) => {
-                Ok(Some(request.executor_profile_id.clone()))
+                Ok(Some(request.executor_config.profile_id()))
             }
             _ => Err(ExecutionProcessError::ValidationError(
                 "Couldn't find profile from initial request".to_string(),

@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use executors::profile::ExecutorProfileId;
+use executors::profile::ExecutorConfig;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use strum_macros::{Display, EnumDiscriminants, EnumString};
@@ -21,7 +21,8 @@ pub enum ScratchError {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct DraftFollowUpData {
     pub message: String,
-    pub executor_profile_id: ExecutorProfileId,
+    #[serde(alias = "executor_profile_id", alias = "config")]
+    pub executor_config: ExecutorConfig,
 }
 
 /// Data for preview settings scratch (URL override and screen size)
@@ -101,8 +102,8 @@ pub struct DraftWorkspaceData {
     pub project_id: Option<Uuid>,
     #[serde(default)]
     pub repos: Vec<DraftWorkspaceRepo>,
-    #[serde(default)]
-    pub selected_profile: Option<ExecutorProfileId>,
+    #[serde(default, alias = "selected_profile", alias = "config")]
+    pub executor_config: Option<ExecutorConfig>,
     #[serde(default)]
     pub linked_issue: Option<DraftWorkspaceLinkedIssue>,
 }

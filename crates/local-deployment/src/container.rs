@@ -893,7 +893,7 @@ impl LocalContainerService {
         ctx: &ExecutionContext,
         queued_data: &DraftFollowUpData,
     ) -> Result<ExecutionProcess, ContainerError> {
-        let executor_profile_id = queued_data.executor_profile_id.clone();
+        let executor_profile_id = queued_data.executor_config.profile_id();
 
         // Validate executor matches session if session has prior executions
         let expected_executor: Option<String> =
@@ -938,13 +938,13 @@ impl LocalContainerService {
                 prompt: queued_data.message.clone(),
                 session_id: info.session_id,
                 reset_to_message_id: None,
-                executor_profile_id: executor_profile_id.clone(),
+                executor_config: queued_data.executor_config.clone(),
                 working_dir: working_dir.clone(),
             })
         } else {
             ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                 prompt: queued_data.message.clone(),
-                executor_profile_id: executor_profile_id.clone(),
+                executor_config: queued_data.executor_config.clone(),
                 working_dir,
             })
         };

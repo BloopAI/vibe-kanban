@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type {
   DraftWorkspaceData,
-  ExecutorProfileId,
+  ExecutorConfig,
   Repo,
   RepoWithTargetBranch,
 } from 'shared/types';
@@ -49,9 +49,9 @@ interface DraftState {
   error: string | null;
   projectId: string | null;
   repos: SelectedRepo[];
-  profile: ExecutorProfileId | null;
   message: string;
   linkedIssue: LinkedIssue | null;
+  executorConfig: ExecutorConfig | null;
 }
 
 type DraftAction =
@@ -64,12 +64,15 @@ type DraftAction =
   | { type: 'ADD_REPO'; repo: Repo; targetBranch: string | null }
   | { type: 'REMOVE_REPO'; repoId: string }
   | { type: 'SET_TARGET_BRANCH'; repoId: string; branch: string }
-  | { type: 'SET_PROFILE'; profile: ExecutorProfileId | null }
   | { type: 'SET_MESSAGE'; message: string }
   | { type: 'CLEAR_REPOS' }
   | { type: 'CLEAR' }
   | { type: 'CLEAR_LINKED_ISSUE' }
-  | { type: 'RESOLVE_LINKED_ISSUE'; simpleId: string; title: string };
+  | { type: 'RESOLVE_LINKED_ISSUE'; simpleId: string; title: string }
+  | {
+      type: 'SET_EXECUTOR_CONFIG';
+      config: ExecutorConfig | null;
+    };
 
 // ============================================================================
 // Reducer
@@ -80,9 +83,9 @@ const draftInitialState: DraftState = {
   error: null,
   projectId: null,
   repos: [],
-  profile: null,
   message: '',
   linkedIssue: null,
+  executorConfig: null,
 };
 
 function draftReducer(state: DraftState, action: DraftAction): DraftState {
@@ -135,9 +138,6 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
         ),
       };
 
-    case 'SET_PROFILE':
-      return { ...state, profile: action.profile };
-
     case 'SET_MESSAGE':
       return { ...state, message: action.message };
 
@@ -160,6 +160,9 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
           title: action.title,
         },
       };
+
+    case 'SET_EXECUTOR_CONFIG':
+      return { ...state, executorConfig: action.config };
 
     default:
       return state;
@@ -188,22 +191,22 @@ interface UseCreateModeStateResult {
   selectedProjectId: string | null;
   repos: Repo[];
   targetBranches: Record<string, string | null>;
-  selectedProfile: ExecutorProfileId | null;
   message: string;
   isLoading: boolean;
   hasInitialValue: boolean;
   linkedIssue: LinkedIssue | null;
+  executorConfig: ExecutorConfig | null;
 
   // Actions
   setSelectedProjectId: (id: string | null) => void;
   setMessage: (message: string) => void;
-  setSelectedProfile: (profile: ExecutorProfileId | null) => void;
   addRepo: (repo: Repo) => void;
   removeRepo: (repoId: string) => void;
   clearRepos: () => void;
   setTargetBranch: (repoId: string, branch: string) => void;
   clearDraft: () => Promise<void>;
   clearLinkedIssue: () => void;
+  setExecutorConfig: (config: ExecutorConfig | null) => void;
 }
 
 export function useCreateModeState({
@@ -239,11 +242,11 @@ export function useCreateModeState({
 
   // Profile validator
   const isValidProfile = useCallback(
-    (profile: ExecutorProfileId | null): boolean => {
-      if (!profile || !profiles) return false;
-      const { executor, variant } = profile;
+    (config: ExecutorConfig | null): boolean => {
+      if (!config || !profiles) return false;
+      const { executor, variant } = config;
       if (!(executor in profiles)) return false;
-      if (variant === null) return true;
+      if (variant === null || variant === undefined) return true;
       return variant in profiles[executor];
     },
     [profiles]
@@ -365,7 +368,7 @@ export function useCreateModeState({
         !data.message.trim() &&
         !data.project_id &&
         data.repos.length === 0 &&
-        !data.selected_profile;
+        !data.executor_config;
 
       if (isEmpty && !scratch) return;
 
@@ -390,7 +393,7 @@ export function useCreateModeState({
         repo_id: r.repo.id,
         target_branch: r.targetBranch ?? '',
       })),
-      selected_profile: state.profile,
+      executor_config: state.executorConfig ?? null,
       linked_issue: state.linkedIssue
         ? {
             issue_id: state.linkedIssue.issueId,
@@ -405,8 +408,8 @@ export function useCreateModeState({
     state.message,
     state.projectId,
     state.repos,
-    state.profile,
     state.linkedIssue,
+    state.executorConfig,
     debouncedSave,
   ]);
 
@@ -465,13 +468,6 @@ export function useCreateModeState({
     dispatch({ type: 'SET_MESSAGE', message });
   }, []);
 
-  const setSelectedProfile = useCallback(
-    (profile: ExecutorProfileId | null) => {
-      dispatch({ type: 'SET_PROFILE', profile });
-    },
-    []
-  );
-
   const addRepo = useCallback((repo: Repo) => {
     // Default branch will be auto-selected by CreateModeReposSectionContainer
     dispatch({ type: 'ADD_REPO', repo, targetBranch: null });
@@ -502,24 +498,28 @@ export function useCreateModeState({
     dispatch({ type: 'CLEAR_LINKED_ISSUE' });
   }, []);
 
+  const setExecutorConfig = useCallback((config: ExecutorConfig | null) => {
+    dispatch({ type: 'SET_EXECUTOR_CONFIG', config });
+  }, []);
+
   return {
     selectedProjectId: state.projectId,
     repos,
     targetBranches,
-    selectedProfile: state.profile,
     message: state.message,
     isLoading: scratchLoading,
     hasInitialValue: state.phase === 'ready',
     linkedIssue: state.linkedIssue,
+    executorConfig: state.executorConfig,
     setSelectedProjectId,
     setMessage,
-    setSelectedProfile,
     addRepo,
     removeRepo,
     clearRepos,
     setTargetBranch,
     clearDraft,
     clearLinkedIssue,
+    setExecutorConfig,
   };
 }
 
@@ -534,7 +534,7 @@ interface InitializeParams {
   initialProjectId: string | undefined;
   projectsById: Record<string, { id: string; created_at: unknown }>;
   profiles: Record<string, Record<string, unknown>>;
-  isValidProfile: (profile: ExecutorProfileId | null) => boolean;
+  isValidProfile: (config: ExecutorConfig | null) => boolean;
   dispatch: React.Dispatch<DraftAction>;
 }
 
@@ -621,12 +621,12 @@ async function initializeState({
         restoredData.projectId = scratchData.project_id;
       }
 
-      // Restore profile if still valid
+      // Restore executor config if profile is still valid
       if (
-        scratchData.selected_profile &&
-        isValidProfile(scratchData.selected_profile)
+        scratchData.executor_config &&
+        isValidProfile(scratchData.executor_config)
       ) {
-        restoredData.profile = scratchData.selected_profile;
+        restoredData.executorConfig = scratchData.executor_config;
       }
 
       // Restore repos

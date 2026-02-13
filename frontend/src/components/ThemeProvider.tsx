@@ -76,3 +76,12 @@ export const useTheme = () => {
 
   return context;
 };
+
+export function getResolvedTheme(theme: ThemeMode): 'light' | 'dark' {
+  if (theme === ThemeMode.SYSTEM) {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
+  }
+  return theme === ThemeMode.DARK ? 'dark' : 'light';
+}

@@ -50,9 +50,9 @@ export type CreateTask = { project_id: string, title: string, description: strin
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, };
 
-export type DraftFollowUpData = { message: string, executor_profile_id: ExecutorProfileId, };
+export type DraftFollowUpData = { message: string, executor_config: ExecutorConfig, };
 
-export type DraftWorkspaceData = { message: string, project_id: string | null, repos: Array<DraftWorkspaceRepo>, selected_profile: ExecutorProfileId | null, linked_issue: DraftWorkspaceLinkedIssue | null, };
+export type DraftWorkspaceData = { message: string, project_id: string | null, repos: Array<DraftWorkspaceRepo>, executor_config: ExecutorConfig | null, linked_issue: DraftWorkspaceLinkedIssue | null, };
 
 export type DraftWorkspaceLinkedIssue = { issue_id: string, simple_id: string, title: string, remote_project_id: string, };
 
@@ -260,7 +260,7 @@ export type UserSystemInfo = { config: Config, analytics_user_id: string, login_
 /**
  * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
  */
-capabilities: { [key in string]?: Array<BaseAgentCapability> }, shared_api_base: string | null, executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
+capabilities: { [key in string]?: Array<BaseAgentCapability> }, shared_api_base: string | null, executors: { [key in BaseCodingAgent]?: ExecutorProfile }, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 
@@ -276,9 +276,11 @@ export type CheckEditorAvailabilityResponse = { available: boolean, };
 
 export type CheckAgentAvailabilityQuery = { executor: BaseCodingAgent, };
 
+export type AgentPresetOptionsQuery = { executor: BaseCodingAgent, variant: string | null, };
+
 export type CurrentUserResponse = { user_id: string, };
 
-export type CreateFollowUpAttempt = { prompt: string, executor_profile_id: ExecutorProfileId, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
+export type CreateFollowUpAttempt = { prompt: string, executor_config: ExecutorConfig, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
 export type ResetProcessRequest = { process_id: string, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
@@ -294,7 +296,7 @@ export type RenameBranchRequest = { new_branch_name: string, };
 
 export type RenameBranchResponse = { branch: string, };
 
-export type StartReviewRequest = { executor_profile_id: ExecutorProfileId, additional_prompt: string | null, use_all_workspace_commits: boolean, };
+export type StartReviewRequest = { executor_config: ExecutorConfig, additional_prompt: string | null, use_all_workspace_commits: boolean, };
 
 export type ReviewError = { "type": "process_already_running" };
 
@@ -304,7 +306,7 @@ export type OpenEditorResponse = { url: string | null, };
 
 export type LinkedIssueInfo = { remote_project_id: string, issue_id: string, };
 
-export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, linked_issue: LinkedIssueInfo | null, };
+export type CreateAndStartTaskRequest = { task: CreateTask, executor_config: ExecutorConfig, repos: Array<WorkspaceRepoInput>, linked_issue: LinkedIssueInfo | null, };
 
 export type CreatePrApiRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };
 
@@ -312,7 +314,7 @@ export type ImageResponse = { id: string, file_path: string, original_name: stri
 
 export type ImageMetadata = { exists: boolean, file_name: string | null, path: string | null, size_bytes: bigint | null, format: string | null, proxy_url: string | null, };
 
-export type CreateTaskAttemptBody = { task_id: string, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, };
+export type CreateTaskAttemptBody = { task_id: string, executor_config: ExecutorConfig, repos: Array<WorkspaceRepoInput>, };
 
 export type WorkspaceRepoInput = { repo_id: string, target_branch: string, };
 
@@ -492,6 +494,32 @@ export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path
 
 export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest | { "type": "ReviewRequest" } & ReviewRequest;
 
+export type ExecutorConfig = { 
+/**
+ * The executor type (e.g., CLAUDE_CODE, AMP)
+ */
+executor: BaseCodingAgent, 
+/**
+ * Optional variant/preset name (e.g., "PLAN", "ROUTER")
+ */
+variant?: string | null, 
+/**
+ * Model override (e.g., "anthropic/claude-sonnet-4-20250514")
+ */
+model_id?: string | null, 
+/**
+ * Agent mode override
+ */
+agent_id?: string | null, 
+/**
+ * Reasoning effort override (e.g., "high", "medium")
+ */
+reasoning_id?: string | null, 
+/**
+ * Permission policy override
+ */
+permission_policy?: PermissionPolicy | null, };
+
 export type ScriptContext = "SetupScript" | "CleanupScript" | "ArchiveScript" | "DevServer" | "ToolInstallScript";
 
 export type ScriptRequest = { script: string, language: ScriptRequestLanguage, context: ScriptContext, 
@@ -535,13 +563,23 @@ executor: BaseCodingAgent,
  */
 variant: string | null, };
 
-export type ExecutorConfig = { [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } };
+export type ExecutorRecentModels = { 
+/**
+ * Ordered list of recently used model keys (most recent last).
+ */
+models?: Array<string>, 
+/**
+ * Last-used reasoning effort per model
+ */
+reasoning_by_model?: { [key in string]?: string }, };
 
-export type ExecutorConfigs = { executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
+export type ExecutorProfile = { recently_used_models?: ExecutorRecentModels | null, } & ({ [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } });
+
+export type ExecutorConfigs = { executors: { [key in BaseCodingAgent]?: ExecutorProfile }, };
 
 export enum BaseAgentCapability { SESSION_FORK = "SESSION_FORK", SETUP_HELPER = "SETUP_HELPER", CONTEXT_USAGE = "CONTEXT_USAGE" }
 
-export type ClaudeCode = { append_prompt: AppendPrompt, claude_code_router?: boolean | null, plan?: boolean | null, approvals?: boolean | null, model?: string | null, dangerously_skip_permissions?: boolean | null, disable_api_key?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
+export type ClaudeCode = { append_prompt: AppendPrompt, claude_code_router?: boolean | null, plan?: boolean | null, approvals?: boolean | null, model?: string | null, agent?: string | null, dangerously_skip_permissions?: boolean | null, disable_api_key?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
 export type Gemini = { append_prompt: AppendPrompt, model?: string | null, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
@@ -573,7 +611,7 @@ auto_approve: boolean,
  */
 auto_compact: boolean, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
-export type QwenCode = { append_prompt: AppendPrompt, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
+export type QwenCode = { append_prompt: AppendPrompt, model?: string | null, agent?: string | null, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
 export type Droid = { append_prompt: AppendPrompt, autonomy: Autonomy, model?: string | null, reasoning_effort?: DroidReasoningEffort | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
@@ -585,9 +623,9 @@ export type AppendPrompt = string | null;
 
 export type CodingAgentInitialRequest = { prompt: string, 
 /**
- * Executor profile specification
+ * Unified executor identity + overrides
  */
-executor_profile_id: ExecutorProfileId, 
+executor_config: ExecutorConfig, 
 /**
  * Optional relative path to execute the agent in (relative to container_ref).
  * If None, uses the container_ref directory directly.
@@ -596,16 +634,20 @@ working_dir: string | null, };
 
 export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, reset_to_message_id: string | null, 
 /**
- * Executor profile specification
+ * Unified executor identity + overrides
  */
-executor_profile_id: ExecutorProfileId, 
+executor_config: ExecutorConfig, 
 /**
  * Optional relative path to execute the agent in (relative to container_ref).
  * If None, uses the container_ref directory directly.
  */
 working_dir: string | null, };
 
-export type ReviewRequest = { executor_profile_id: ExecutorProfileId, context: Array<RepoReviewContext> | null, prompt: string, 
+export type ReviewRequest = { 
+/**
+ * Unified executor identity + overrides
+ */
+executor_config: ExecutorConfig, context: Array<RepoReviewContext> | null, prompt: string, 
 /**
  * Optional session ID to resume an existing session
  */
@@ -656,6 +698,64 @@ export type ToolResultValueType = { "type": "markdown" } | { "type": "json" };
 export type ToolStatus = { "status": "created" } | { "status": "success" } | { "status": "failed" } | { "status": "denied", reason: string | null, } | { "status": "pending_approval", approval_id: string, requested_at: string, timeout_at: string, } | { "status": "timed_out" };
 
 export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry } | { "type": "STDOUT", "content": string } | { "type": "STDERR", "content": string } | { "type": "DIFF", "content": Diff };
+
+export type ModelInfo = { 
+/**
+ * Model identifier
+ */
+id: string, 
+/**
+ * Display name
+ */
+name: string, 
+/**
+ * Provider this model belongs to
+ */
+provider_id?: string | null, 
+/**
+ * Configurable reasoning options if supported
+ */
+reasoning_options: Array<ReasoningOption>, };
+
+export type ReasoningOption = { id: string, label: string, is_default: boolean, };
+
+export type ModelProvider = { 
+/**
+ * Provider identifier
+ */
+id: string, 
+/**
+ * Display name
+ */
+name: string, };
+
+export type AgentInfo = { id: string, label: string, description?: string | null, is_default: boolean, };
+
+export enum PermissionPolicy { AUTO = "AUTO", SUPERVISED = "SUPERVISED", PLAN = "PLAN" }
+
+export type ModelSelectorConfig = { 
+/**
+ * Available providers
+ */
+providers: Array<ModelProvider>, 
+/**
+ * Available models
+ */
+models: Array<ModelInfo>, 
+/**
+ * Global default model (format: provider_id/model_id)
+ */
+default_model?: string | null, 
+/**
+ * Available agents
+ */
+agents: Array<AgentInfo>, 
+/**
+ * Supported permission policies
+ */
+permissions: Array<PermissionPolicy>, };
+
+export type ExecutorDiscoveredOptions = { model_selector: ModelSelectorConfig, slash_commands: Array<SlashCommandDescription>, loading_models: boolean, loading_agents: boolean, loading_slash_commands: boolean, error: string | null, };
 
 export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;
 
