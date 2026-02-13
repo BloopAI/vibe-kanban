@@ -41,6 +41,10 @@ pub struct McpCreateIssueRequest {
     pub title: String,
     #[schemars(description = "Optional description of the issue")]
     pub description: Option<String>,
+    #[schemars(description = "Priority: 'urgent', 'high', 'medium', 'low', or omit for none")]
+    pub priority: Option<String>,
+    #[schemars(description = "Parent issue ID to create this as a sub-issue")]
+    pub parent_issue_id: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -188,10 +192,16 @@ pub struct McpListIssuesRequest {
 pub struct IssueSummary {
     #[schemars(description = "The unique identifier of the issue")]
     pub id: String,
+    #[schemars(description = "Short human-readable identifier (e.g. 'PROJ-42')")]
+    pub simple_id: String,
     #[schemars(description = "The title of the issue")]
     pub title: String,
     #[schemars(description = "Current status of the issue")]
     pub status: String,
+    #[schemars(description = "Priority level: urgent, high, medium, low, or null")]
+    pub priority: Option<String>,
+    #[schemars(description = "Parent issue ID if this is a sub-issue")]
+    pub parent_issue_id: Option<String>,
     #[schemars(description = "When the issue was created")]
     pub created_at: String,
     #[schemars(description = "When the issue was last updated")]
@@ -199,9 +209,45 @@ pub struct IssueSummary {
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct McpTagSummary {
+    #[schemars(description = "The tag ID")]
+    pub id: String,
+    #[schemars(description = "The tag name")]
+    pub name: String,
+    #[schemars(description = "The tag color (HSL)")]
+    pub color: String,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct McpRelationshipSummary {
+    #[schemars(description = "The relationship ID (use this to delete)")]
+    pub id: String,
+    #[schemars(description = "The related issue ID")]
+    pub related_issue_id: String,
+    #[schemars(description = "The related issue's simple ID (e.g. 'PROJ-42')")]
+    pub related_simple_id: String,
+    #[schemars(description = "Relationship type: blocking, related, or has_duplicate")]
+    pub relationship_type: String,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct McpSubIssueSummary {
+    #[schemars(description = "The sub-issue ID")]
+    pub id: String,
+    #[schemars(description = "Short human-readable identifier (e.g. 'PROJ-43')")]
+    pub simple_id: String,
+    #[schemars(description = "The sub-issue title")]
+    pub title: String,
+    #[schemars(description = "Current status of the sub-issue")]
+    pub status: String,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct IssueDetails {
     #[schemars(description = "The unique identifier of the issue")]
     pub id: String,
+    #[schemars(description = "Short human-readable identifier (e.g. 'PROJ-42')")]
+    pub simple_id: String,
     #[schemars(description = "The title of the issue")]
     pub title: String,
     #[schemars(description = "Optional description of the issue")]
@@ -210,6 +256,16 @@ pub struct IssueDetails {
     pub status: String,
     #[schemars(description = "The status ID (UUID)")]
     pub status_id: String,
+    #[schemars(description = "Priority level: urgent, high, medium, low, or null")]
+    pub priority: Option<String>,
+    #[schemars(description = "Parent issue ID if this is a sub-issue")]
+    pub parent_issue_id: Option<String>,
+    #[schemars(description = "Tags attached to this issue")]
+    pub tags: Vec<McpTagSummary>,
+    #[schemars(description = "Relationships to other issues")]
+    pub relationships: Vec<McpRelationshipSummary>,
+    #[schemars(description = "Sub-issues under this issue")]
+    pub sub_issues: Vec<McpSubIssueSummary>,
     #[schemars(description = "When the issue was created")]
     pub created_at: String,
     #[schemars(description = "When the issue was last updated")]
@@ -233,6 +289,10 @@ pub struct McpUpdateIssueRequest {
     pub description: Option<String>,
     #[schemars(description = "New status name for the issue (must match a project status name)")]
     pub status: Option<String>,
+    #[schemars(description = "Priority: 'urgent', 'high', 'medium', 'low', or 'none' to clear")]
+    pub priority: Option<String>,
+    #[schemars(description = "Parent issue ID to set (use null to un-nest from parent)")]
+    pub parent_issue_id: Option<Option<Uuid>>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -309,6 +369,52 @@ pub struct McpLinkWorkspaceResponse {
     pub workspace_id: String,
     #[schemars(description = "The issue ID it was linked to")]
     pub issue_id: String,
+}
+
+// ── Tag & Relationship MCP request types ────────────────────────────────────
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct McpListTagsRequest {
+    #[schemars(
+        description = "The ID of the project. Optional if running inside a workspace linked to a remote project."
+    )]
+    pub project_id: Option<Uuid>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct McpAddTagToIssueRequest {
+    #[schemars(description = "The ID of the issue to tag")]
+    pub issue_id: Uuid,
+    #[schemars(
+        description = "The tag name (resolved to ID automatically). Use `list_tags` to see available tags."
+    )]
+    pub tag_name: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct McpRemoveTagFromIssueRequest {
+    #[schemars(description = "The ID of the issue to remove the tag from")]
+    pub issue_id: Uuid,
+    #[schemars(description = "The tag name to remove")]
+    pub tag_name: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct McpCreateIssueRelationshipRequest {
+    #[schemars(description = "The source issue ID")]
+    pub issue_id: Uuid,
+    #[schemars(description = "The related issue ID")]
+    pub related_issue_id: Uuid,
+    #[schemars(description = "Relationship type: 'blocking', 'related', or 'has_duplicate'")]
+    pub relationship_type: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct McpDeleteIssueRelationshipRequest {
+    #[schemars(
+        description = "The relationship ID to delete (from get_issue or create_issue_relationship)"
+    )]
+    pub relationship_id: Uuid,
 }
 
 // ── Server struct ───────────────────────────────────────────────────────────
@@ -723,8 +829,11 @@ impl TaskServer {
             .unwrap_or_else(|| issue.status_id.to_string());
         IssueSummary {
             id: issue.id.to_string(),
+            simple_id: issue.simple_id.clone(),
             title: issue.title.clone(),
             status,
+            priority: issue.priority.map(|p| format!("{:?}", p).to_lowercase()),
+            parent_issue_id: issue.parent_issue_id.map(|id| id.to_string()),
             created_at: issue.created_at.to_rfc3339(),
             updated_at: issue.updated_at.to_rfc3339(),
         }
@@ -749,19 +858,212 @@ impl TaskServer {
             .await
     }
 
-    /// Converts an Issue to IssueDetails, resolving status_id to name.
+    /// Converts an Issue to IssueDetails, resolving status and fetching tags,
+    /// relationships, and sub-issues (all best-effort).
     async fn issue_to_details(&self, issue: &Issue) -> IssueDetails {
         let status = self
             .resolve_status_name(issue.project_id, issue.status_id)
             .await;
+
+        let tags = self
+            .fetch_issue_tags_resolved(issue.project_id, issue.id)
+            .await
+            .unwrap_or_default();
+
+        let relationships = self
+            .fetch_issue_relationships_resolved(issue.project_id, issue.id)
+            .await
+            .unwrap_or_default();
+
+        let sub_issues = self
+            .fetch_sub_issues(issue.project_id, issue.id)
+            .await
+            .unwrap_or_default();
+
         IssueDetails {
             id: issue.id.to_string(),
+            simple_id: issue.simple_id.clone(),
             title: issue.title.clone(),
             description: issue.description.clone(),
             status,
             status_id: issue.status_id.to_string(),
+            priority: issue.priority.map(|p| format!("{:?}", p).to_lowercase()),
+            parent_issue_id: issue.parent_issue_id.map(|id| id.to_string()),
+            tags,
+            relationships,
+            sub_issues,
             created_at: issue.created_at.to_rfc3339(),
             updated_at: issue.updated_at.to_rfc3339(),
+        }
+    }
+
+    /// Fetches tags for an issue, resolving tag_ids to names via project tags.
+    async fn fetch_issue_tags_resolved(
+        &self,
+        project_id: Uuid,
+        issue_id: Uuid,
+    ) -> Result<Vec<McpTagSummary>, CallToolResult> {
+        let tag_map = self.fetch_project_tags_map(project_id).await?;
+
+        let url = self.url(&format!("/api/remote/issue-tags?issue_id={}", issue_id));
+        let response: api_types::ListIssueTagsResponse =
+            self.send_json(self.client.get(&url)).await?;
+
+        Ok(response
+            .issue_tags
+            .iter()
+            .filter_map(|it| {
+                tag_map.get(&it.tag_id).map(|tag| McpTagSummary {
+                    id: tag.id.to_string(),
+                    name: tag.name.clone(),
+                    color: tag.color.clone(),
+                })
+            })
+            .collect())
+    }
+
+    /// Fetches all tags for a project as a lookup map.
+    async fn fetch_project_tags_map(
+        &self,
+        project_id: Uuid,
+    ) -> Result<std::collections::HashMap<Uuid, api_types::Tag>, CallToolResult> {
+        let url = self.url(&format!("/api/remote/tags?project_id={}", project_id));
+        let response: api_types::ListTagsResponse = self.send_json(self.client.get(&url)).await?;
+        Ok(response.tags.into_iter().map(|t| (t.id, t)).collect())
+    }
+
+    /// Fetches relationships for an issue, resolving related issue simple_ids.
+    async fn fetch_issue_relationships_resolved(
+        &self,
+        project_id: Uuid,
+        issue_id: Uuid,
+    ) -> Result<Vec<McpRelationshipSummary>, CallToolResult> {
+        let rel_url = self.url(&format!(
+            "/api/remote/issue-relationships?issue_id={}",
+            issue_id
+        ));
+        let response: api_types::ListIssueRelationshipsResponse =
+            self.send_json(self.client.get(&rel_url)).await?;
+
+        if response.issue_relationships.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Fetch all project issues to resolve simple_ids
+        let issues_url = self.url(&format!("/api/remote/issues?project_id={}", project_id));
+        let issues_response: api_types::ListIssuesResponse = self
+            .send_json(self.client.get(&issues_url))
+            .await
+            .unwrap_or(api_types::ListIssuesResponse { issues: Vec::new() });
+        let simple_id_map: std::collections::HashMap<Uuid, &str> = issues_response
+            .issues
+            .iter()
+            .map(|i| (i.id, i.simple_id.as_str()))
+            .collect();
+
+        Ok(response
+            .issue_relationships
+            .into_iter()
+            .map(|r| {
+                let related_simple_id = simple_id_map
+                    .get(&r.related_issue_id)
+                    .unwrap_or(&"")
+                    .to_string();
+                McpRelationshipSummary {
+                    id: r.id.to_string(),
+                    related_issue_id: r.related_issue_id.to_string(),
+                    related_simple_id,
+                    relationship_type: match r.relationship_type {
+                        api_types::IssueRelationshipType::Blocking => "blocking".to_string(),
+                        api_types::IssueRelationshipType::Related => "related".to_string(),
+                        api_types::IssueRelationshipType::HasDuplicate => {
+                            "has_duplicate".to_string()
+                        }
+                    },
+                }
+            })
+            .collect())
+    }
+
+    /// Fetches sub-issues for a given parent issue.
+    async fn fetch_sub_issues(
+        &self,
+        project_id: Uuid,
+        parent_issue_id: Uuid,
+    ) -> Result<Vec<McpSubIssueSummary>, CallToolResult> {
+        let url = self.url(&format!("/api/remote/issues?project_id={}", project_id));
+        let response: api_types::ListIssuesResponse = self.send_json(self.client.get(&url)).await?;
+
+        let status_names_by_id =
+            self.fetch_project_statuses(project_id)
+                .await
+                .ok()
+                .map(|statuses| {
+                    statuses
+                        .into_iter()
+                        .map(|s| (s.id, s.name))
+                        .collect::<std::collections::HashMap<_, _>>()
+                });
+
+        Ok(response
+            .issues
+            .iter()
+            .filter(|i| i.parent_issue_id == Some(parent_issue_id))
+            .map(|i| {
+                let status = status_names_by_id
+                    .as_ref()
+                    .and_then(|m| m.get(&i.status_id).cloned())
+                    .unwrap_or_else(|| i.status_id.to_string());
+                McpSubIssueSummary {
+                    id: i.id.to_string(),
+                    simple_id: i.simple_id.clone(),
+                    title: i.title.clone(),
+                    status,
+                }
+            })
+            .collect())
+    }
+
+    /// Resolves a tag name to a tag_id using project tags.
+    async fn resolve_tag_id(
+        &self,
+        project_id: Uuid,
+        tag_name: &str,
+    ) -> Result<Uuid, CallToolResult> {
+        let tag_map = self.fetch_project_tags_map(project_id).await?;
+        tag_map
+            .values()
+            .find(|t| t.name.eq_ignore_ascii_case(tag_name))
+            .map(|t| t.id)
+            .ok_or_else(|| {
+                let available: Vec<&str> = tag_map.values().map(|t| t.name.as_str()).collect();
+                Self::err(
+                    format!(
+                        "Unknown tag '{}'. Available tags: {:?}",
+                        tag_name, available
+                    ),
+                    None::<String>,
+                )
+                .unwrap()
+            })
+    }
+
+    /// Parses a priority string to IssuePriority.
+    fn parse_priority(s: &str) -> Result<Option<api_types::IssuePriority>, CallToolResult> {
+        match s.to_lowercase().as_str() {
+            "urgent" => Ok(Some(api_types::IssuePriority::Urgent)),
+            "high" => Ok(Some(api_types::IssuePriority::High)),
+            "medium" => Ok(Some(api_types::IssuePriority::Medium)),
+            "low" => Ok(Some(api_types::IssuePriority::Low)),
+            "none" | "" => Ok(None),
+            _ => Err(Self::err(
+                format!(
+                    "Invalid priority '{}'. Use: urgent, high, medium, low, none",
+                    s
+                ),
+                None::<String>,
+            )
+            .unwrap()),
         }
     }
 }
@@ -787,6 +1089,8 @@ impl TaskServer {
             project_id,
             title,
             description,
+            priority,
+            parent_issue_id,
         }): Parameters<McpCreateIssueRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let project_id = match self.resolve_project_id(project_id) {
@@ -804,18 +1108,26 @@ impl TaskServer {
             Err(e) => return Ok(e),
         };
 
+        let parsed_priority = match priority {
+            Some(ref p) => match Self::parse_priority(p) {
+                Ok(v) => v,
+                Err(e) => return Ok(e),
+            },
+            None => None,
+        };
+
         let payload = api_types::CreateIssueRequest {
             id: None,
             project_id,
             status_id,
             title,
             description: expanded_description,
-            priority: None,
+            priority: parsed_priority,
             start_date: None,
             target_date: None,
             completed_at: None,
             sort_order: 0.0,
-            parent_issue_id: None,
+            parent_issue_id,
             parent_issue_sort_order: None,
             extension_metadata: serde_json::json!({}),
         };
@@ -1198,7 +1510,7 @@ impl TaskServer {
     }
 
     #[tool(
-        description = "Update an existing issue's title, description, or status. `issue_id` is required. `title`, `description`, and `status` are optional."
+        description = "Update an existing issue's title, description, status, priority, or parent. `issue_id` is required. All other fields are optional."
     )]
     async fn update_issue(
         &self,
@@ -1207,6 +1519,8 @@ impl TaskServer {
             title,
             description,
             status,
+            priority,
+            parent_issue_id,
         }): Parameters<McpUpdateIssueRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         // First get the issue to know its project_id for status resolution
@@ -1229,6 +1543,15 @@ impl TaskServer {
             None
         };
 
+        // Parse priority if provided
+        let parsed_priority = match priority {
+            Some(ref p) => match Self::parse_priority(p) {
+                Ok(v) => Some(v),
+                Err(e) => return Ok(e),
+            },
+            None => None,
+        };
+
         // Expand @tagname references in description
         let expanded_description = match description {
             Some(desc) => Some(Some(self.expand_tags(&desc).await)),
@@ -1239,12 +1562,12 @@ impl TaskServer {
             status_id,
             title,
             description: expanded_description,
-            priority: None,
+            priority: parsed_priority,
             start_date: None,
             target_date: None,
             completed_at: None,
             sort_order: None,
-            parent_issue_id: None,
+            parent_issue_id,
             parent_issue_sort_order: None,
             extension_metadata: None,
         };
@@ -1291,12 +1614,225 @@ impl TaskServer {
         let details = self.issue_to_details(&issue).await;
         TaskServer::success(&McpGetIssueResponse { issue: details })
     }
+
+    #[tool(
+        description = "List all tags in a project. Tags are labels that can be attached to issues. `project_id` is optional if running inside a workspace linked to a remote project."
+    )]
+    async fn list_tags(
+        &self,
+        Parameters(McpListTagsRequest { project_id }): Parameters<McpListTagsRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let project_id = match self.resolve_project_id(project_id) {
+            Ok(id) => id,
+            Err(e) => return Ok(e),
+        };
+
+        let tag_map = match self.fetch_project_tags_map(project_id).await {
+            Ok(m) => m,
+            Err(e) => return Ok(e),
+        };
+
+        let summaries: Vec<McpTagSummary> = tag_map
+            .into_values()
+            .map(|t| McpTagSummary {
+                id: t.id.to_string(),
+                name: t.name,
+                color: t.color,
+            })
+            .collect();
+
+        #[derive(Serialize, schemars::JsonSchema)]
+        struct McpListTagsResponse {
+            tags: Vec<McpTagSummary>,
+            count: usize,
+        }
+
+        TaskServer::success(&McpListTagsResponse {
+            count: summaries.len(),
+            tags: summaries,
+        })
+    }
+
+    #[tool(
+        description = "Add a tag to an issue by tag name. Use `list_tags` to see available tag names."
+    )]
+    async fn add_tag_to_issue(
+        &self,
+        Parameters(McpAddTagToIssueRequest { issue_id, tag_name }): Parameters<
+            McpAddTagToIssueRequest,
+        >,
+    ) -> Result<CallToolResult, ErrorData> {
+        // Get the issue to find its project_id
+        let issue_url = self.url(&format!("/api/remote/issues/{}", issue_id));
+        let issue: Issue = match self.send_json(self.client.get(&issue_url)).await {
+            Ok(i) => i,
+            Err(e) => return Ok(e),
+        };
+
+        // Resolve tag name to ID
+        let tag_id = match self.resolve_tag_id(issue.project_id, &tag_name).await {
+            Ok(id) => id,
+            Err(e) => return Ok(e),
+        };
+
+        let payload = api_types::CreateIssueTagRequest {
+            id: None,
+            issue_id,
+            tag_id,
+        };
+
+        let url = self.url("/api/remote/issue-tags");
+        let response: MutationResponse<api_types::IssueTag> =
+            match self.send_json(self.client.post(&url).json(&payload)).await {
+                Ok(r) => r,
+                Err(e) => return Ok(e),
+            };
+
+        #[derive(Serialize, schemars::JsonSchema)]
+        struct McpAddTagToIssueResponse {
+            success: bool,
+            issue_tag_id: String,
+        }
+
+        TaskServer::success(&McpAddTagToIssueResponse {
+            success: true,
+            issue_tag_id: response.data.id.to_string(),
+        })
+    }
+
+    #[tool(description = "Remove a tag from an issue by tag name.")]
+    async fn remove_tag_from_issue(
+        &self,
+        Parameters(McpRemoveTagFromIssueRequest { issue_id, tag_name }): Parameters<
+            McpRemoveTagFromIssueRequest,
+        >,
+    ) -> Result<CallToolResult, ErrorData> {
+        // Get the issue to find its project_id
+        let issue_url = self.url(&format!("/api/remote/issues/{}", issue_id));
+        let issue: Issue = match self.send_json(self.client.get(&issue_url)).await {
+            Ok(i) => i,
+            Err(e) => return Ok(e),
+        };
+
+        // Resolve tag name to ID
+        let tag_id = match self.resolve_tag_id(issue.project_id, &tag_name).await {
+            Ok(id) => id,
+            Err(e) => return Ok(e),
+        };
+
+        // Find the issue_tag junction record
+        let list_url = self.url(&format!("/api/remote/issue-tags?issue_id={}", issue_id));
+        let response: api_types::ListIssueTagsResponse =
+            match self.send_json(self.client.get(&list_url)).await {
+                Ok(r) => r,
+                Err(e) => return Ok(e),
+            };
+
+        let issue_tag = match response.issue_tags.iter().find(|it| it.tag_id == tag_id) {
+            Some(it) => it,
+            None => {
+                return Self::err(
+                    format!("Tag '{}' is not attached to this issue", tag_name),
+                    None::<String>,
+                );
+            }
+        };
+
+        let delete_url = self.url(&format!("/api/remote/issue-tags/{}", issue_tag.id));
+        if let Err(e) = self.send_empty_json(self.client.delete(&delete_url)).await {
+            return Ok(e);
+        }
+
+        #[derive(Serialize, schemars::JsonSchema)]
+        struct McpRemoveTagFromIssueResponse {
+            success: bool,
+        }
+
+        TaskServer::success(&McpRemoveTagFromIssueResponse { success: true })
+    }
+
+    #[tool(
+        description = "Create a relationship between two issues. Types: 'blocking' (issue_id blocks related_issue_id), 'related', 'has_duplicate'."
+    )]
+    async fn create_issue_relationship(
+        &self,
+        Parameters(McpCreateIssueRelationshipRequest {
+            issue_id,
+            related_issue_id,
+            relationship_type,
+        }): Parameters<McpCreateIssueRelationshipRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let rel_type = match relationship_type.to_lowercase().as_str() {
+            "blocking" => api_types::IssueRelationshipType::Blocking,
+            "related" => api_types::IssueRelationshipType::Related,
+            "has_duplicate" => api_types::IssueRelationshipType::HasDuplicate,
+            _ => {
+                return Self::err(
+                    format!(
+                        "Invalid relationship type '{}'. Use: blocking, related, has_duplicate",
+                        relationship_type
+                    ),
+                    None::<String>,
+                );
+            }
+        };
+
+        let payload = api_types::CreateIssueRelationshipRequest {
+            id: None,
+            issue_id,
+            related_issue_id,
+            relationship_type: rel_type,
+        };
+
+        let url = self.url("/api/remote/issue-relationships");
+        let response: MutationResponse<api_types::IssueRelationship> =
+            match self.send_json(self.client.post(&url).json(&payload)).await {
+                Ok(r) => r,
+                Err(e) => return Ok(e),
+            };
+
+        #[derive(Serialize, schemars::JsonSchema)]
+        struct McpCreateIssueRelationshipResponse {
+            relationship_id: String,
+        }
+
+        TaskServer::success(&McpCreateIssueRelationshipResponse {
+            relationship_id: response.data.id.to_string(),
+        })
+    }
+
+    #[tool(description = "Delete a relationship between two issues.")]
+    async fn delete_issue_relationship(
+        &self,
+        Parameters(McpDeleteIssueRelationshipRequest { relationship_id }): Parameters<
+            McpDeleteIssueRelationshipRequest,
+        >,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!(
+            "/api/remote/issue-relationships/{}",
+            relationship_id
+        ));
+        if let Err(e) = self.send_empty_json(self.client.delete(&url)).await {
+            return Ok(e);
+        }
+
+        #[derive(Serialize, schemars::JsonSchema)]
+        struct McpDeleteIssueRelationshipResponse {
+            success: bool,
+            deleted_relationship_id: String,
+        }
+
+        TaskServer::success(&McpDeleteIssueRelationshipResponse {
+            success: true,
+            deleted_relationship_id: relationship_id.to_string(),
+        })
+    }
 }
 
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
-        let mut instruction = "A task and project management server. If you need to create or update tickets or issues then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_issues` to fetch the `issue_ids` of all the issues in a project. TOOLS: 'list_organizations', 'list_projects', 'list_issues', 'create_issue', 'start_workspace_session', 'get_issue', 'update_issue', 'delete_issue', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script'. Make sure to pass `project_id`, `issue_id`, or `repo_id` where required. You can use list tools to get the available ids.".to_string();
+        let mut instruction = "A task and project management server. If you need to create or update tickets or issues then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_issues` to fetch the `issue_ids` of all the issues in a project. Issues have a `simple_id` (e.g. 'PROJ-42') for human-readable reference. TOOLS: 'list_organizations', 'list_projects', 'list_issues', 'create_issue', 'start_workspace_session', 'get_issue', 'update_issue', 'delete_issue', 'list_tags', 'add_tag_to_issue', 'remove_tag_from_issue', 'create_issue_relationship', 'delete_issue_relationship', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script'. Make sure to pass `project_id`, `issue_id`, or `repo_id` where required. You can use list tools to get the available ids.".to_string();
         if self.context.is_some() {
             let context_instruction = "Use 'get_context' to fetch project/issue/workspace metadata for the active Vibe Kanban workspace session when available.";
             instruction = format!("{} {}", context_instruction, instruction);

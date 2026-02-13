@@ -4,12 +4,14 @@ use std::time::Duration;
 
 use api_types::{
     AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
-    CreateIssueRequest, CreateOrganizationRequest, CreateOrganizationResponse,
-    CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest, GetInvitationResponse,
-    GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
-    HandoffRedeemResponse, Issue, ListInvitationsResponse, ListIssuesResponse, ListMembersResponse,
-    ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse, MutationResponse,
-    Organization, ProfileResponse, RevokeInvitationRequest, TokenRefreshRequest,
+    CreateIssueRelationshipRequest, CreateIssueRequest, CreateIssueTagRequest,
+    CreateOrganizationRequest, CreateOrganizationResponse, CreateWorkspaceRequest, DeleteResponse,
+    DeleteWorkspaceRequest, GetInvitationResponse, GetOrganizationResponse, HandoffInitRequest,
+    HandoffInitResponse, HandoffRedeemRequest, HandoffRedeemResponse, Issue, IssueRelationship,
+    IssueTag, ListInvitationsResponse, ListIssueRelationshipsResponse, ListIssueTagsResponse,
+    ListIssuesResponse, ListMembersResponse, ListOrganizationsResponse,
+    ListProjectStatusesResponse, ListProjectsResponse, ListTagsResponse, MutationResponse,
+    Organization, ProfileResponse, RevokeInvitationRequest, Tag, TokenRefreshRequest,
     TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
     UpdateOrganizationRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
 };
@@ -724,6 +726,94 @@ impl RemoteClient {
         )
         .await?;
         Ok(())
+    }
+
+    // ── Tags ───────────────────────────────────────────────────────────
+
+    /// Lists tags for a project.
+    pub async fn list_tags(&self, project_id: Uuid) -> Result<ListTagsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/tags?project_id={project_id}"))
+            .await
+    }
+
+    /// Gets a single tag by ID.
+    pub async fn get_tag(&self, tag_id: Uuid) -> Result<Tag, RemoteClientError> {
+        self.get_authed(&format!("/v1/tags/{tag_id}")).await
+    }
+
+    // ── Issue Tags ─────────────────────────────────────────────────────
+
+    /// Lists tags attached to an issue.
+    pub async fn list_issue_tags(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<ListIssueTagsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/issue_tags?issue_id={issue_id}"))
+            .await
+    }
+
+    /// Attaches a tag to an issue.
+    pub async fn create_issue_tag(
+        &self,
+        request: &CreateIssueTagRequest,
+    ) -> Result<MutationResponse<IssueTag>, RemoteClientError> {
+        self.post_authed("/v1/issue_tags", Some(request)).await
+    }
+
+    /// Removes a tag from an issue.
+    pub async fn delete_issue_tag(
+        &self,
+        issue_tag_id: Uuid,
+    ) -> Result<DeleteResponse, RemoteClientError> {
+        let res = self
+            .send(
+                reqwest::Method::DELETE,
+                &format!("/v1/issue_tags/{issue_tag_id}"),
+                true,
+                None::<&()>,
+            )
+            .await?;
+        res.json::<DeleteResponse>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    // ── Issue Relationships ────────────────────────────────────────────
+
+    /// Lists relationships for an issue.
+    pub async fn list_issue_relationships(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<ListIssueRelationshipsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/issue_relationships?issue_id={issue_id}"))
+            .await
+    }
+
+    /// Creates a relationship between two issues.
+    pub async fn create_issue_relationship(
+        &self,
+        request: &CreateIssueRelationshipRequest,
+    ) -> Result<MutationResponse<IssueRelationship>, RemoteClientError> {
+        self.post_authed("/v1/issue_relationships", Some(request))
+            .await
+    }
+
+    /// Deletes an issue relationship.
+    pub async fn delete_issue_relationship(
+        &self,
+        relationship_id: Uuid,
+    ) -> Result<DeleteResponse, RemoteClientError> {
+        let res = self
+            .send(
+                reqwest::Method::DELETE,
+                &format!("/v1/issue_relationships/{relationship_id}"),
+                true,
+                None::<&()>,
+            )
+            .await?;
+        res.json::<DeleteResponse>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
     }
 }
 
