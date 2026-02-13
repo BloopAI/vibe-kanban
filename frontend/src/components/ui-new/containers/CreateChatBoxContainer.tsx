@@ -217,7 +217,7 @@ export function CreateChatBoxContainer({
     (executor: BaseCodingAgent) => {
       const executorProfile = profiles?.[executor];
       if (!executorProfile) {
-        setDraftConfig({ ...draftConfig, executor, variant: null });
+        setDraftConfig({ executor, variant: null });
         return;
       }
 
