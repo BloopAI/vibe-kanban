@@ -149,11 +149,22 @@ export function useShape<
     };
   }, [error, streamId, shape.table, retry, registerErrorFn, clearErrorFn]);
 
-  const collection = useMemo(() => {
-    if (!enabled) return null;
+  type ShapeCollection = Awaited<ReturnType<typeof createShapeCollection>>;
+  const [collection, setCollection] = useState<ShapeCollection | null>(null);
+
+  useEffect(() => {
+    if (!enabled) {
+      setCollection(null);
+      return;
+    }
+    let cancelled = false;
     const config = { onError: handleError };
-    void retryKey;
-    return createShapeCollection(shape, stableParams, config, mutation);
+    createShapeCollection(shape, stableParams, config, mutation).then((c) => {
+      if (!cancelled) setCollection(c);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [enabled, shape, mutation, handleError, retryKey, stableParams]);
 
   const { data, isLoading: queryLoading } = useLiveQuery(

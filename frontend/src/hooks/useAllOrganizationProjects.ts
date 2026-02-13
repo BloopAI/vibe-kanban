@@ -32,50 +32,61 @@ export function useAllOrganizationProjects() {
       return;
     }
 
+    let cancelled = false;
     const subscriptions: { unsubscribe: () => void }[] = [];
     const projectsByOrg = new Map<string, Project[]>();
 
     const updateAggregated = () => {
+      if (cancelled) return;
       setProjects(Array.from(projectsByOrg.values()).flat());
     };
 
-    for (const orgId of orgIds) {
-      const collection = createShapeCollection(PROJECTS_SHAPE, {
-        organization_id: orgId,
-      });
+    (async () => {
+      for (const orgId of orgIds) {
+        if (cancelled) return;
+        const collection = await createShapeCollection(PROJECTS_SHAPE, {
+          organization_id: orgId,
+        });
+        if (cancelled) return;
 
-      // Read initial data if already synced
-      if (collection.isReady()) {
-        projectsByOrg.set(orgId, collection.toArray as unknown as Project[]);
+        if (collection.isReady()) {
+          projectsByOrg.set(orgId, collection.toArray as unknown as Project[]);
+        }
+
+        const sub = collection.subscribeChanges(
+          () => {
+            projectsByOrg.set(
+              orgId,
+              collection.toArray as unknown as Project[]
+            );
+            updateAggregated();
+            setIsLoading(false);
+          },
+          { includeInitialState: true }
+        );
+        subscriptions.push(sub);
       }
 
-      // Subscribe to live changes
-      const sub = collection.subscribeChanges(
-        () => {
-          projectsByOrg.set(orgId, collection.toArray as unknown as Project[]);
-          updateAggregated();
-          setIsLoading(false);
-        },
-        { includeInitialState: true }
-      );
-      subscriptions.push(sub);
-    }
+      updateAggregated();
 
-    // Initial aggregation from any already-ready collections
-    updateAggregated();
-
-    // Check if all collections are already ready
-    const allReady = orgIds.every((id) => {
-      const col = createShapeCollection(PROJECTS_SHAPE, {
-        organization_id: id,
-      });
-      return col.isReady();
-    });
-    if (allReady) {
-      setIsLoading(false);
-    }
+      let allReady = true;
+      for (const id of orgIds) {
+        if (cancelled) return;
+        const col = await createShapeCollection(PROJECTS_SHAPE, {
+          organization_id: id,
+        });
+        if (!col.isReady()) {
+          allReady = false;
+          break;
+        }
+      }
+      if (allReady && !cancelled) {
+        setIsLoading(false);
+      }
+    })();
 
     return () => {
+      cancelled = true;
       subscriptions.forEach((s) => s.unsubscribe());
     };
   }, [isSignedIn, orgIds]);
