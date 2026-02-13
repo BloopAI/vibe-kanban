@@ -1,19 +1,10 @@
-import { BaseCodingAgent, ThemeMode } from 'shared/types';
-import { useTheme } from '@/components/ThemeProvider';
+import { BaseCodingAgent } from 'shared/types';
+import { useTheme, getResolvedTheme } from '@/components/ThemeProvider';
 
 type AgentIconProps = {
   agent: BaseCodingAgent | null | undefined;
   className?: string;
 };
-
-function getResolvedTheme(theme: ThemeMode): 'light' | 'dark' {
-  if (theme === ThemeMode.SYSTEM) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light';
-  }
-  return theme === ThemeMode.DARK ? 'dark' : 'light';
-}
 
 export function getAgentName(
   agent: BaseCodingAgent | null | undefined

@@ -11,7 +11,7 @@ use db::models::{
     task::{CreateTask, TaskWithAttemptStatus},
     workspace::{Workspace, WorkspaceContext},
 };
-use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
+use executors::executors::BaseCodingAgent;
 use regex::Regex;
 use rmcp::{
     ErrorData, ServerHandler,
@@ -1106,9 +1106,13 @@ impl TaskServer {
             }
         });
 
-        let executor_profile_id = ExecutorProfileId {
+        let executor_config = executors::profile::ExecutorConfig {
             executor: base_executor,
             variant,
+            model_id: None,
+            agent_id: None,
+            reasoning_id: None,
+            permission_policy: None,
         };
 
         // Derive project_id from first available project
@@ -1136,7 +1140,7 @@ impl TaskServer {
 
         let payload = CreateAndStartTaskRequest {
             task: CreateTask::from_title_description(project.id, title, None),
-            executor_profile_id,
+            executor_config,
             repos: workspace_repos,
             linked_issue: None,
         };

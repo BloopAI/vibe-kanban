@@ -346,22 +346,39 @@ impl<'de> Deserialize<'de> for SdkError {
     }
 }
 
-// Provider API types (for /provider endpoint - model context windows)
+// Provider API types (for /provider endpoint — used by both context-window
+// tracking in models.rs and the model-selector in opencode.rs)
 
 #[derive(Debug, Deserialize)]
 pub(super) struct ProviderListResponse {
     pub(super) all: Vec<ProviderInfo>,
+    /// Connected provider IDs — providers with API keys (used by model selector)
+    #[serde(default)]
+    pub(super) connected: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub(super) struct ProviderInfo {
     pub(super) id: String,
     #[serde(default)]
+    pub(super) name: String,
+    #[serde(default)]
     pub(super) models: std::collections::HashMap<String, ProviderModelInfo>,
 }
 
+/// Model info from the /provider endpoint.
+/// Only the fields we actually use are kept; unknown keys are silently ignored
+/// by serde's default behaviour.
 #[derive(Debug, Deserialize, Default)]
 pub(super) struct ProviderModelInfo {
+    #[serde(default)]
+    pub(super) id: String,
+    #[serde(default)]
+    pub(super) name: String,
+    #[serde(default)]
+    pub(super) release_date: Option<String>,
+    #[serde(default)]
+    pub(super) variants: Option<std::collections::HashMap<String, serde_json::Value>>,
     #[serde(default)]
     pub(super) limit: ProviderModelLimit,
 }
@@ -370,4 +387,11 @@ pub(super) struct ProviderModelInfo {
 pub(super) struct ProviderModelLimit {
     #[serde(default, deserialize_with = "deserialize_f64_as_u32")]
     pub(super) context: u32,
+}
+
+/// Configuration response from /config endpoint
+#[derive(Debug, Deserialize)]
+pub(super) struct Config {
+    #[serde(default)]
+    pub(super) model: Option<String>,
 }

@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queueApi } from '@/lib/api';
-import type { ExecutorProfileId, QueueStatus } from 'shared/types';
+import type { ExecutorConfig, QueueStatus } from 'shared/types';
 
 interface UseSessionQueueInteractionOptions {
   /** Session ID for queue operations */
@@ -13,12 +13,14 @@ interface UseSessionQueueInteractionResult {
   isQueued: boolean;
   /** The queued message content, if any */
   queuedMessage: string | null;
+  /** The executor config from the queued message, if any */
+  queuedConfig: ExecutorConfig | null;
   /** Whether a queue operation is in progress */
   isQueueLoading: boolean;
   /** Queue a message for later execution */
   queueMessage: (
     message: string,
-    executorProfileId: ExecutorProfileId
+    executorConfig: ExecutorConfig
   ) => Promise<void>;
   /** Cancel the queued message */
   cancelQueue: () => Promise<void>;
@@ -50,16 +52,22 @@ export function useSessionQueueInteraction({
     ? (queueStatus as Extract<QueueStatus, { status: 'queued' }>).message
     : null;
   const queuedMessage = queuedMessageData?.data.message ?? null;
+  const queuedConfig: ExecutorConfig | null =
+    queuedMessageData?.data.executor_config ?? null;
 
   // Mutation for queueing a message
   const queueMutation = useMutation({
     mutationFn: ({
       message,
-      executor_profile_id,
+      executorConfig,
     }: {
       message: string;
-      executor_profile_id: ExecutorProfileId;
-    }) => queueApi.queue(sessionId!, { message, executor_profile_id }),
+      executorConfig: ExecutorConfig;
+    }) =>
+      queueApi.queue(sessionId!, {
+        message,
+        executor_config: executorConfig,
+      }),
     onSuccess: (status) => {
       queryClient.setQueryData([QUEUE_STATUS_KEY, sessionId], status);
     },
@@ -74,11 +82,11 @@ export function useSessionQueueInteraction({
   });
 
   const queueMessage = useCallback(
-    async (message: string, executorProfileId: ExecutorProfileId) => {
+    async (message: string, executorConfig: ExecutorConfig) => {
       if (!sessionId) return;
       await queueMutation.mutateAsync({
         message,
-        executor_profile_id: executorProfileId,
+        executorConfig,
       });
     },
     [sessionId, queueMutation]
@@ -97,6 +105,7 @@ export function useSessionQueueInteraction({
   return {
     isQueued,
     queuedMessage,
+    queuedConfig,
     isQueueLoading: queueMutation.isPending || cancelMutation.isPending,
     queueMessage,
     cancelQueue,

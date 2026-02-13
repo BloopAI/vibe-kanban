@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { profilesApi } from '@/lib/api';
 import type { JsonValue } from 'shared/types';
+import { presetOptionsKeys } from '@/hooks/usePresetOptions';
 
 export type UseProfilesReturn = {
   // data
@@ -38,6 +39,9 @@ export function useProfiles(): UseProfilesReturn {
         ['profiles'],
         (old) => (old ? { ...old, content } : old)
       );
+      void queryClient.invalidateQueries({
+        queryKey: presetOptionsKeys.all,
+      });
     },
   });
 

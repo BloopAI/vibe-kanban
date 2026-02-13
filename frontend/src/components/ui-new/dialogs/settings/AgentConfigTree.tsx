@@ -13,6 +13,7 @@ import {
 import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
 import { cn } from '@/lib/utils';
 import { toPrettyCase } from '@/utils/string';
+import { getExecutorVariantKeys } from '@/utils/executor';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -307,8 +308,8 @@ export function AgentConfigTree({
       const executorMatches = toPrettyCase(executor)
         .toLowerCase()
         .includes(query);
-      const matchingConfigs = Object.keys(configs).filter((configName) =>
-        toPrettyCase(configName).toLowerCase().includes(query)
+      const matchingConfigs = getExecutorVariantKeys(configs).filter(
+        (configName) => toPrettyCase(configName).toLowerCase().includes(query)
       );
 
       if (executorMatches || matchingConfigs.length > 0) {
@@ -388,7 +389,7 @@ export function AgentConfigTree({
             <ExecutorNode
               key={executor}
               executor={executor}
-              configs={Object.keys(configs)}
+              configs={getExecutorVariantKeys(configs)}
               isExpanded={expandedExecutors.has(executor)}
               selectedExecutor={selectedExecutor}
               selectedConfig={selectedConfig}

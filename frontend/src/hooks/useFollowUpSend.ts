@@ -46,7 +46,7 @@ export function useFollowUpSend({
       setFollowUpError(null);
       const body: CreateFollowUpAttempt = {
         prompt: prompt,
-        executor_profile_id: { executor, variant },
+        executor_config: { executor, variant },
         retry_process_id: null,
         force_when_dirty: null,
         perform_git_reset: null,

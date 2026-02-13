@@ -52,7 +52,7 @@ import type {
   ExecutorProfileId,
   QueueStatus,
 } from 'shared/types';
-import { getLatestProfileFromProcesses } from '@/utils/executor';
+import { getLatestConfigFromProcesses } from '@/utils/executor';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { useTranslation } from 'react-i18next';
 import { useScratch } from '@/hooks/useScratch';
@@ -152,7 +152,7 @@ export function TaskFollowUpSection({
 
   // Variant selection - derive default from latest process
   const latestProfileId = useMemo(
-    () => getLatestProfileFromProcesses(processes),
+    () => getLatestConfigFromProcesses(processes),
     [processes]
   );
 
@@ -165,7 +165,7 @@ export function TaskFollowUpSection({
   const { selectedVariant, setSelectedVariant: setVariantFromHook } =
     useVariant({
       processVariant: latestProfileId?.variant ?? null,
-      scratchVariant: scratchData?.executor_profile_id?.variant,
+      scratchVariant: scratchData?.executor_config?.variant,
     });
 
   // Ref to track current variant for use in message save callback
@@ -194,7 +194,7 @@ export function TaskFollowUpSection({
             type: 'DRAFT_FOLLOW_UP',
             data: {
               message,
-              executor_profile_id: {
+              executor_config: {
                 executor: latestProfileId.executor,
                 variant,
               },
@@ -259,13 +259,7 @@ export function TaskFollowUpSection({
     : null;
 
   const queueMutation = useMutation({
-    mutationFn: ({
-      message,
-      executor_profile_id,
-    }: {
-      message: string;
-      executor_profile_id: ExecutorProfileId;
-    }) => queueApi.queue(sessionId!, { message, executor_profile_id }),
+    mutationFn: (data: DraftFollowUpData) => queueApi.queue(sessionId!, data),
     onSuccess: (status) => {
       queryClient.setQueryData([QUEUE_STATUS_KEY, sessionId], status);
     },
@@ -283,7 +277,10 @@ export function TaskFollowUpSection({
       if (!sessionId) return;
       await queueMutation.mutateAsync({
         message,
-        executor_profile_id: executorProfileId,
+        executor_config: {
+          executor: executorProfileId.executor,
+          variant: executorProfileId.variant,
+        },
       });
     },
     [sessionId, queueMutation]

@@ -6,7 +6,11 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
 import { useMultiRepoBranches } from '@/hooks/useRepoBranches';
-import { getVariantOptions, areProfilesEqual } from '@/utils/executor';
+import { useExecutorConfig } from '@/hooks/useExecutorConfig';
+import {
+  areProfilesEqual,
+  getSortedExecutorVariantKeys,
+} from '@/utils/executor';
 import { splitMessageToTitleDescription } from '@/utils/string';
 import type { ExecutorProfileId, BaseCodingAgent, Repo } from 'shared/types';
 import { CreateChatBox } from '../primitives/CreateChatBox';
@@ -30,8 +34,6 @@ export function CreateChatBoxContainer({
     repos,
     targetBranches,
     setTargetBranch,
-    selectedProfile,
-    setSelectedProfile,
     message,
     setMessage,
     selectedProjectId,
@@ -39,6 +41,8 @@ export function CreateChatBoxContainer({
     hasInitialValue,
     linkedIssue,
     clearLinkedIssue,
+    executorConfig: draftConfig,
+    setExecutorConfig: setDraftConfig,
   } = useCreateMode();
 
   const { createWorkspace } = useCreateWorkspace({
@@ -120,34 +124,40 @@ export function CreateChatBoxContainer({
     noKeyboard: true,
   });
 
-  // Default to user's config profile or first available executor
-  const effectiveProfile = useMemo<ExecutorProfileId | null>(() => {
-    if (selectedProfile) return selectedProfile;
-    if (config?.executor_profile) return config.executor_profile;
-    if (profiles) {
-      const firstExecutor = Object.keys(profiles)[0] as BaseCodingAgent;
-      if (firstExecutor) {
-        const variants = Object.keys(profiles[firstExecutor]);
-        return {
-          executor: firstExecutor,
-          variant: variants[0] ?? null,
-        };
-      }
-    }
-    return null;
-  }, [selectedProfile, config?.executor_profile, profiles]);
+  const scratchConfig = useMemo(() => {
+    if (!hasInitialValue) return undefined; // still loading
+    return draftConfig ?? null;
+  }, [hasInitialValue, draftConfig]);
 
-  // Get variant options for the current executor
-  const variantOptions = useMemo(
-    () => getVariantOptions(effectiveProfile?.executor, profiles),
-    [effectiveProfile?.executor, profiles]
+  const {
+    executorConfig,
+    effectiveExecutor,
+    selectedVariant,
+    executorOptions,
+    variantOptions,
+    presetOptions,
+    setOverrides: setExecutorOverrides,
+  } = useExecutorConfig({
+    profiles,
+    lastUsedConfig: null,
+    scratchConfig,
+    configExecutorProfile: config?.executor_profile,
+    onPersist: (cfg) => setDraftConfig(cfg),
+  });
+
+  const effectiveProfileId = useMemo<ExecutorProfileId | null>(
+    () =>
+      effectiveExecutor
+        ? { executor: effectiveExecutor, variant: selectedVariant }
+        : null,
+    [effectiveExecutor, selectedVariant]
   );
 
   // Detect if user has changed from their saved default
   const hasChangedFromDefault = useMemo(() => {
-    if (!config?.executor_profile || !effectiveProfile) return false;
-    return !areProfilesEqual(effectiveProfile, config.executor_profile);
-  }, [effectiveProfile, config?.executor_profile]);
+    if (!config?.executor_profile || !effectiveProfileId) return false;
+    return !areProfilesEqual(effectiveProfileId, config.executor_profile);
+  }, [effectiveProfileId, config?.executor_profile]);
 
   // Reset toggle when profile matches default again
   useEffect(() => {
@@ -186,36 +196,32 @@ export function CreateChatBoxContainer({
   const canSubmit =
     hasSelectedRepos &&
     message.trim().length > 0 &&
-    effectiveProfile !== null &&
+    effectiveExecutor !== null &&
     projectId !== null;
 
-  // Handle variant change
-  const handleVariantChange = useCallback(
-    (variant: string | null) => {
-      if (!effectiveProfile) return;
-      setSelectedProfile({
-        executor: effectiveProfile.executor,
-        variant,
-      });
-    },
-    [effectiveProfile, setSelectedProfile]
-  );
+  const handlePresetSelect = (presetId: string | null) => {
+    if (!effectiveExecutor) return;
+    setDraftConfig({
+      ...draftConfig,
+      executor: effectiveExecutor,
+      variant: presetId,
+    });
+  };
 
-  // Open settings modal to agent settings section
-  const handleCustomise = useCallback(() => {
+  const handleCustomise = () => {
     SettingsDialog.show({ initialSection: 'agents' });
-  }, []);
+  };
 
   // Handle executor change - use saved variant if switching to default executor
   const handleExecutorChange = useCallback(
     (executor: BaseCodingAgent) => {
-      const executorConfig = profiles?.[executor];
-      if (!executorConfig) {
-        setSelectedProfile({ executor, variant: null });
+      const executorProfile = profiles?.[executor];
+      if (!executorProfile) {
+        setDraftConfig({ ...draftConfig, executor, variant: null });
         return;
       }
 
-      const variants = Object.keys(executorConfig);
+      const variants = getSortedExecutorVariantKeys(executorProfile);
       let targetVariant: string | null = null;
 
       // If switching to user's default executor, use their saved variant
@@ -236,19 +242,20 @@ export function CreateChatBoxContainer({
           : (variants[0] ?? null);
       }
 
-      setSelectedProfile({ executor, variant: targetVariant });
+      setDraftConfig({ ...draftConfig, executor, variant: targetVariant });
     },
-    [profiles, setSelectedProfile, config?.executor_profile]
+    [profiles, draftConfig, setDraftConfig, config?.executor_profile]
   );
 
   // Handle submit
   const handleSubmit = useCallback(async () => {
     setHasAttemptedSubmit(true);
-    if (!canSubmit || !effectiveProfile || !projectId) return;
+    if (!canSubmit || !effectiveProfileId || !executorConfig || !projectId)
+      return;
 
     // Save profile as default if toggle is checked
     if (saveAsDefault && hasChangedFromDefault) {
-      await updateAndSaveConfig({ executor_profile: effectiveProfile });
+      await updateAndSaveConfig({ executor_profile: effectiveProfileId });
     }
 
     const { title, description } = splitMessageToTitleDescription(message);
@@ -263,7 +270,7 @@ export function CreateChatBoxContainer({
           parent_workspace_id: null,
           image_ids: getImageIds(),
         },
-        executor_profile_id: effectiveProfile,
+        executor_config: executorConfig,
         repos: repos.map((r) => ({
           repo_id: r.id,
           target_branch: targetBranches[r.id] ?? 'main',
@@ -288,7 +295,8 @@ export function CreateChatBoxContainer({
     await clearDraft();
   }, [
     canSubmit,
-    effectiveProfile,
+    effectiveProfileId,
+    executorConfig,
     projectId,
     message,
     repos,
@@ -364,20 +372,10 @@ export function CreateChatBoxContainer({
                   isSending={createWorkspace.isPending}
                   disabled={!hasSelectedRepos}
                   executor={{
-                    selected: effectiveProfile?.executor ?? null,
-                    options: Object.keys(profiles ?? {}) as BaseCodingAgent[],
+                    selected: effectiveExecutor,
+                    options: executorOptions,
                     onChange: handleExecutorChange,
                   }}
-                  variant={
-                    effectiveProfile
-                      ? {
-                          selected: effectiveProfile.variant ?? 'DEFAULT',
-                          options: variantOptions,
-                          onChange: handleVariantChange,
-                          onCustomise: handleCustomise,
-                        }
-                      : undefined
-                  }
                   saveAsDefault={{
                     checked: saveAsDefault,
                     onChange: setSaveAsDefault,
@@ -385,9 +383,18 @@ export function CreateChatBoxContainer({
                   }}
                   error={displayError}
                   repoIds={repos.map((r) => r.id)}
-                  projectId={projectId}
-                  agent={effectiveProfile?.executor ?? null}
+                  projectId={projectId ?? undefined}
+                  agent={effectiveExecutor}
                   repoId={repoId}
+                  modelSelector={{
+                    onAdvancedSettings: handleCustomise,
+                    presets: variantOptions,
+                    selectedPreset: selectedVariant,
+                    onPresetSelect: handlePresetSelect,
+                    onOverrideChange: setExecutorOverrides,
+                    executorConfig,
+                    presetOptions,
+                  }}
                   onPasteFiles={uploadFiles}
                   localImages={localImages}
                   dropzone={{ getRootProps, getInputProps, isDragActive }}

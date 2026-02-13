@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import type { BaseCodingAgent } from 'shared/types';
+import type { ExecutorConfig } from 'shared/types';
 import { sessionsApi } from '@/lib/api';
 import { useCreateSession } from './useCreateSession';
 
@@ -10,15 +10,15 @@ interface UseSessionSendOptions {
   workspaceId: string | undefined;
   /** Whether in new session mode */
   isNewSessionMode: boolean;
-  /** Effective executor for new sessions */
-  effectiveExecutor: BaseCodingAgent | null;
   /** Callback when session is selected (to exit new session mode) */
   onSelectSession?: (sessionId: string) => void;
+  /** Unified executor config (executor + variant + overrides) */
+  executorConfig?: ExecutorConfig | null;
 }
 
 interface UseSessionSendResult {
   /** Send a message. Returns true on success, false on failure. */
-  send: (message: string, variant: string | null) => Promise<boolean>;
+  send: (message: string) => Promise<boolean>;
   /** Whether a send operation is in progress */
   isSending: boolean;
   /** Error message if send failed */
@@ -40,8 +40,8 @@ export function useSessionSend({
   sessionId,
   workspaceId,
   isNewSessionMode,
-  effectiveExecutor,
   onSelectSession,
+  executorConfig,
 }: UseSessionSendOptions): UseSessionSendResult {
   const { mutateAsync: createSession, isPending: isCreatingSession } =
     useCreateSession();
@@ -49,24 +49,27 @@ export function useSessionSend({
   const [error, setError] = useState<string | null>(null);
 
   const send = useCallback(
-    async (message: string, variant: string | null): Promise<boolean> => {
+    async (message: string): Promise<boolean> => {
       const trimmed = message.trim();
       if (!trimmed) return false;
+      if (!executorConfig) {
+        setError('No executor selected');
+        return false;
+      }
 
       setError(null);
 
       if (isNewSessionMode) {
         // New session flow
-        if (!workspaceId || !effectiveExecutor) {
-          setError('No executor selected');
+        if (!workspaceId) {
+          setError('No workspace selected');
           return false;
         }
         try {
           const session = await createSession({
             workspaceId,
             prompt: trimmed,
-            variant,
-            executor: effectiveExecutor,
+            executorConfig,
           });
           onSelectSession?.(session.id);
           return true;
@@ -79,12 +82,12 @@ export function useSessionSend({
         }
       } else {
         // Existing session flow
-        if (!sessionId || !effectiveExecutor) return false;
+        if (!sessionId) return false;
         setIsSendingFollowUp(true);
         try {
           await sessionsApi.followUp(sessionId, {
             prompt: trimmed,
-            executor_profile_id: { executor: effectiveExecutor, variant },
+            executor_config: executorConfig,
             retry_process_id: null,
             force_when_dirty: null,
             perform_git_reset: null,
@@ -103,9 +106,9 @@ export function useSessionSend({
       sessionId,
       workspaceId,
       isNewSessionMode,
-      effectiveExecutor,
       createSession,
       onSelectSession,
+      executorConfig,
     ]
   );
 

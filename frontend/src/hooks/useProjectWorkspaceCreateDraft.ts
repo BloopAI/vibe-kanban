@@ -25,7 +25,7 @@ export function useProjectWorkspaceCreateDraft() {
             repo_id: repo.repo_id,
             target_branch: repo.target_branch ?? '',
           })) ?? [],
-        selected_profile: null,
+        executor_config: null,
         linked_issue: initialState.linkedIssue
           ? {
               issue_id: initialState.linkedIssue.issueId,

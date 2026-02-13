@@ -26,6 +26,8 @@ use crate::{
     },
     logs::utils::patch,
     mcp_config::McpConfig,
+    model_selector::ModelSelectorConfig,
+    profile::ExecutorConfig,
 };
 
 pub mod acp;
@@ -218,6 +220,8 @@ impl AvailabilityInfo {
 #[async_trait]
 #[enum_dispatch(CodingAgent)]
 pub trait StandardCodingAgentExecutor {
+    fn apply_overrides(&mut self, _executor_config: &ExecutorConfig) {}
+
     fn use_approvals(&mut self, _approvals: Arc<dyn ExecutorApprovalService>) {}
 
     async fn available_slash_commands(
@@ -282,6 +286,22 @@ pub trait StandardCodingAgentExecutor {
         } else {
             AvailabilityInfo::NotFound
         }
+    }
+
+    /// Returns a stream of model selector configuration updates.
+    async fn available_model_config(
+        &self,
+        _workdir: &Path,
+    ) -> Result<BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let config = ModelSelectorConfig::default();
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::model_selector_config(config, false, None)
+        })))
+    }
+
+    /// Returns the default overrides defined by this preset/variant.
+    fn get_preset_options(&self) -> ExecutorConfig {
+        unimplemented!("each executor must override get_preset_options")
     }
 }
 

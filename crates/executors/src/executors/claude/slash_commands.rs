@@ -7,6 +7,7 @@ use std::{
 };
 
 use command_group::AsyncCommandGroup;
+use convert_case::{Case, Casing};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
@@ -19,11 +20,26 @@ use crate::{
     env::{ExecutionEnv, RepoContext},
     executors::{
         BaseCodingAgent, ExecutorError, SlashCommandDescription,
-        utils::{SlashCommandCache, SlashCommandCacheKey},
+        utils::{DEFAULT_CACHE_TTL, SLASH_COMMANDS_CACHE_CAPACITY, SlashCommandCacheKey, TtlCache},
     },
+    model_selector::AgentInfo,
 };
 
 const SLASH_COMMANDS_DISCOVERY_TIMEOUT: Duration = Duration::from_secs(120);
+const CLAUDE_DISCOVERY_CACHE_CAPACITY: usize = SLASH_COMMANDS_CACHE_CAPACITY;
+
+#[derive(Clone, Debug)]
+struct ClaudeDiscovery {
+    raw_slash_commands: Vec<String>,
+    plugins: Vec<ClaudePlugin>,
+    agents: Vec<String>,
+    slash_commands: Vec<SlashCommandDescription>,
+}
+
+fn discovery_cache() -> &'static TtlCache<SlashCommandCacheKey, ClaudeDiscovery> {
+    static INSTANCE: OnceLock<TtlCache<SlashCommandCacheKey, ClaudeDiscovery>> = OnceLock::new();
+    INSTANCE.get_or_init(|| TtlCache::new(CLAUDE_DISCOVERY_CACHE_CAPACITY, DEFAULT_CACHE_TTL))
+}
 
 impl ClaudeCode {
     fn extract_description(content: &str) -> Option<String> {
@@ -198,7 +214,16 @@ impl ClaudeCode {
     async fn discover_available_command_and_plugins(
         &self,
         current_dir: &Path,
-    ) -> Result<(Vec<String>, Vec<ClaudePlugin>), ExecutorError> {
+    ) -> Result<(Vec<String>, Vec<ClaudePlugin>, Vec<String>), ExecutorError> {
+        let key = SlashCommandCacheKey::new(current_dir, &BaseCodingAgent::ClaudeCode);
+        if let Some(cached) = discovery_cache().get(&key) {
+            return Ok((
+                cached.raw_slash_commands.clone(),
+                cached.plugins.clone(),
+                cached.agents.clone(),
+            ));
+        }
+
         let command_builder = self
             .build_slash_commands_discovery_command_builder()
             .await?;
@@ -229,7 +254,7 @@ impl ClaudeCode {
 
         let mut lines = BufReader::new(stdout).lines();
 
-        let mut discovered: Option<(Vec<String>, Vec<ClaudePlugin>)> = None;
+        let mut discovered: Option<(Vec<String>, Vec<ClaudePlugin>, Vec<String>)> = None;
         let discovery = async {
             while let Some(line) = lines.next_line().await.map_err(ExecutorError::Io)? {
                 if let Ok(json) = serde_json::from_str::<ClaudeJson>(&line)
@@ -237,11 +262,12 @@ impl ClaudeCode {
                         subtype,
                         slash_commands,
                         plugins,
+                        agents,
                         ..
                     } = &json
                     && matches!(subtype.as_deref(), Some("init"))
                 {
-                    discovered = Some((slash_commands.clone(), plugins.clone()));
+                    discovered = Some((slash_commands.clone(), plugins.clone(), agents.clone()));
                     break;
                 }
             }
@@ -252,13 +278,27 @@ impl ClaudeCode {
         let res = tokio::time::timeout(SLASH_COMMANDS_DISCOVERY_TIMEOUT, discovery).await;
         let _ = child.kill().await;
 
-        match res {
-            Ok(Ok(())) => Ok(discovered.unwrap_or_else(|| (vec![], vec![]))),
-            Ok(Err(e)) => Err(e),
-            Err(_) => Err(ExecutorError::Io(std::io::Error::other(
-                "Timed out discovering Claude Code slash commands",
-            ))),
-        }
+        let result = match res {
+            Ok(Ok(())) => discovered.unwrap_or_else(|| (vec![], vec![], vec![])),
+            Ok(Err(e)) => return Err(e),
+            Err(_) => {
+                return Err(ExecutorError::Io(std::io::Error::other(
+                    "Timed out discovering Claude Code slash commands",
+                )));
+            }
+        };
+
+        discovery_cache().put(
+            key,
+            ClaudeDiscovery {
+                raw_slash_commands: result.0.clone(),
+                plugins: result.1.clone(),
+                agents: result.2.clone(),
+                slash_commands: Vec::new(),
+            },
+        );
+
+        Ok(result)
     }
 
     pub async fn discover_available_slash_commands(
@@ -266,12 +306,14 @@ impl ClaudeCode {
         current_dir: &Path,
     ) -> Result<Vec<SlashCommandDescription>, ExecutorError> {
         let key = SlashCommandCacheKey::new(current_dir, &BaseCodingAgent::ClaudeCode);
-        if let Some(cached) = SlashCommandCache::instance().get(&key) {
-            return Ok(cached.as_ref().clone());
+
+        if let Some(cached) = discovery_cache().get(&key)
+            && !cached.slash_commands.is_empty()
+        {
+            return Ok(cached.slash_commands.clone());
         }
 
-        // Run claude-code to discover commands and plugins
-        let (names, plugins) = self
+        let (names, plugins, _) = self
             .discover_available_command_and_plugins(current_dir)
             .await?;
 
@@ -302,8 +344,54 @@ impl ClaudeCode {
             })
             .collect();
 
-        SlashCommandCache::instance().put(key, commands.clone());
+        if let Some(mut entry) = discovery_cache().get(&key).map(|arc| (*arc).clone()) {
+            entry.slash_commands = commands.clone();
+            discovery_cache().put(key, entry);
+        }
 
         Ok(commands)
+    }
+
+    pub async fn discover_available_agents(
+        &self,
+        current_dir: &Path,
+    ) -> Result<Vec<AgentInfo>, ExecutorError> {
+        let (_, _, agents) = self
+            .discover_available_command_and_plugins(current_dir)
+            .await?;
+
+        Ok(Self::map_discovered_agents(agents))
+    }
+
+    fn map_discovered_agents(agents: Vec<String>) -> Vec<AgentInfo> {
+        let mut seen = HashSet::new();
+
+        agents
+            .into_iter()
+            .filter(|name| name != "statusline-setup")
+            .filter_map(|name| {
+                let option = AgentInfo {
+                    id: name.clone(),
+                    label: Self::format_agent_label(&name),
+                    description: None,
+                    is_default: name == "general-purpose",
+                };
+
+                if option.id.trim().is_empty() || !seen.insert(option.id.clone()) {
+                    return None;
+                }
+                Some(option)
+            })
+            .collect()
+    }
+
+    fn format_agent_label(raw: &str) -> String {
+        let raw = raw.trim();
+
+        if let Some((prefix, suffix)) = raw.split_once(':') {
+            format!("{}: {}", prefix.trim(), suffix.to_case(Case::Title))
+        } else {
+            raw.to_case(Case::Title)
+        }
     }
 }
