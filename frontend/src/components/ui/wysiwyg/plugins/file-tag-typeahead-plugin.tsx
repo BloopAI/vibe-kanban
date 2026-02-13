@@ -18,7 +18,8 @@ import {
   $createParagraphNode,
   $isParagraphNode,
 } from 'lexical';
-import { TagIcon, FileTextIcon, GearIcon } from '@phosphor-icons/react';
+import { TagIcon, FileTextIcon, GearIcon, PlusIcon } from '@phosphor-icons/react';
+import { TagEditDialog } from '@/components/dialogs/tasks/TagEditDialog';
 import { useTranslation } from 'react-i18next';
 import type { Repo } from 'shared/types';
 import type { RepoItem } from '@/components/ui-new/actions/pages';
@@ -310,6 +311,20 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
     }
   }, [loadRecentRepos, runSearch, setFileSearchRepo]);
 
+  const handleCreateTag = useCallback(async () => {
+    try {
+      const result = await TagEditDialog.show({ tag: null });
+      if (result === 'saved') {
+        const queryToRefresh = lastQueryRef.current;
+        if (queryToRefresh !== null) {
+          void runSearch(queryToRefresh);
+        }
+      }
+    } catch {
+      // User cancelled
+    }
+  }, [runSearch]);
+
   const onQueryChange = useCallback(
     (query: string | null) => {
       // Lexical uses null to indicate "no active query / close menu"
@@ -450,6 +465,16 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
               </TypeaheadMenu.Empty>
             ) : (
               <TypeaheadMenu.ScrollArea>
+                {/* Create Tag action */}
+                <TypeaheadMenu.Action
+                  onClick={() => void handleCreateTag()}
+                >
+                  <span className="flex items-center gap-half">
+                    <PlusIcon className="size-icon-xs" weight="bold" />
+                    <span>{t('typeahead.createTag')}</span>
+                  </span>
+                </TypeaheadMenu.Action>
+
                 {/* Tags Section */}
                 {tagResults.map((option, index) => {
                   const tag = option.item.tag!;
