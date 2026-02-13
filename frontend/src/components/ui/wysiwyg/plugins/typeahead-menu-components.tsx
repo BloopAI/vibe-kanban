@@ -240,7 +240,6 @@ function TypeaheadMenuAction({
     <button
       type="button"
       className="w-full px-base py-half text-left text-sm text-low hover:bg-secondary hover:text-high transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
       disabled={disabled}
     >
