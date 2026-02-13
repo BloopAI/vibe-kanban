@@ -97,10 +97,10 @@ export function VirtualizedProcessLogs({
   }
 
   return (
-    <div className="h-full">
+    <div className="h-full flex flex-col">
       <Virtuoso<LogEntry>
         ref={virtuosoRef}
-        className="h-full"
+        className="flex-1"
         data={logs}
         itemContent={(index, entry) => {
           const isMatch = matchIndices.includes(index);
