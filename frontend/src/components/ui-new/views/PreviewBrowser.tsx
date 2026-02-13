@@ -7,11 +7,13 @@ import {
   ArrowClockwiseIcon,
   CopyIcon,
   XIcon,
+  CrosshairIcon,
   MonitorIcon,
   DeviceMobileIcon,
   ArrowsOutCardinalIcon,
   PauseIcon,
   CheckIcon,
+  TerminalIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -20,11 +22,13 @@ import {
   IconButtonGroup,
   IconButtonGroupItem,
 } from '../primitives/IconButtonGroup';
+import { PreviewNavigation } from './PreviewNavigation';
 import type { Repo } from 'shared/types';
 import type {
   ScreenSize,
   ResponsiveDimensions,
 } from '@/hooks/usePreviewSettings';
+import type { NavigationState } from '@/types/previewDevTools';
 
 export const MOBILE_WIDTH = 390;
 export const MOBILE_HEIGHT = 844;
@@ -64,6 +68,14 @@ interface PreviewBrowserProps {
   hasFailedDevServer?: boolean;
   mobileScale: number;
   className?: string;
+  iframeRef: RefObject<HTMLIFrameElement>;
+  navigation: NavigationState | null;
+  onNavigateBack: () => void;
+  onNavigateForward: () => void;
+  isInspectMode: boolean;
+  onToggleInspectMode: () => void;
+  isErudaVisible: boolean;
+  onToggleEruda: () => void;
 }
 
 export function PreviewBrowser({
@@ -97,6 +109,14 @@ export function PreviewBrowser({
   hasFailedDevServer,
   mobileScale,
   className,
+  iframeRef,
+  navigation,
+  onNavigateBack,
+  onNavigateForward,
+  isInspectMode,
+  onToggleInspectMode,
+  isErudaVisible,
+  onToggleEruda,
 }: PreviewBrowserProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const isLoading = isStarting || (isServerRunning && !url);
@@ -140,6 +160,34 @@ export function PreviewBrowser({
       {/* Floating Toolbar */}
       <div className="p-double">
         <div className="backdrop-blur-sm bg-primary/80 border border-brand/20 flex items-center gap-base p-base rounded-md shadow-md shrink-0">
+          {/* Navigation (Back/Forward) */}
+          <PreviewNavigation
+            navigation={navigation}
+            onBack={onNavigateBack}
+            onForward={onNavigateForward}
+            disabled={!isServerRunning}
+          />
+
+          {/* Inspect Mode & DevTools */}
+          <IconButtonGroup>
+            <IconButtonGroupItem
+              icon={CrosshairIcon}
+              onClick={onToggleInspectMode}
+              active={isInspectMode}
+              disabled={!isServerRunning}
+              aria-label="Inspect component"
+              title="Inspect component"
+            />
+            <IconButtonGroupItem
+              icon={TerminalIcon}
+              onClick={onToggleEruda}
+              active={isErudaVisible}
+              disabled={!isServerRunning}
+              aria-label={t('preview.toolbar.toggleDevTools')}
+              title={t('preview.toolbar.toggleDevTools')}
+            />
+          </IconButtonGroup>
+
           {/* URL Input */}
           <div
             className={cn(
@@ -308,6 +356,7 @@ export function PreviewBrowser({
                   style={{ width: MOBILE_WIDTH, height: MOBILE_HEIGHT }}
                 >
                   <iframe
+                    ref={iframeRef}
                     src={url}
                     title={t('preview.browser.title')}
                     className="w-full h-full border-0"
@@ -326,6 +375,7 @@ export function PreviewBrowser({
                 style={getIframeContainerStyle()}
               >
                 <iframe
+                  ref={iframeRef}
                   src={url}
                   title={t('preview.browser.title')}
                   className={cn(
@@ -427,6 +477,7 @@ export function PreviewBrowser({
           </div>
         )}
       </div>
+
     </div>
   );
 }
