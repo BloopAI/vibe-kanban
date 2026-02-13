@@ -660,7 +660,7 @@ async fn cleanup_failed_pr_workspace(
     };
 
     // Delete the task — cascades to workspace → workspace_repos, sessions, merges, etc.
-    if let Err(e) = Task::delete(&*pool, task_id).await {
+    if let Err(e) = Task::delete(pool, task_id).await {
         tracing::warn!("Failed to delete task {} during cleanup: {}", task_id, e);
     }
 
