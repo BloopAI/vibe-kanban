@@ -158,7 +158,7 @@ function TypeaheadMenuRoot({ anchorEl, children }: TypeaheadMenuProps) {
   const contentStyle = useMemo(
     () =>
       ({
-        '--typeahead-menu-max-height': `${placement.maxHeight}px`,
+        maxHeight: `${placement.maxHeight}px`,
       }) as CSSProperties,
     [placement.maxHeight]
   );
@@ -175,7 +175,7 @@ function TypeaheadMenuRoot({ anchorEl, children }: TypeaheadMenuProps) {
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
         style={contentStyle}
-        className="w-auto min-w-80 max-w-[370px] p-0 overflow-hidden !bg-panel"
+        className="w-auto min-w-80 max-w-[370px] p-0 overflow-hidden !bg-panel flex flex-col"
       >
         {children}
       </PopoverContent>
@@ -201,10 +201,7 @@ function TypeaheadMenuHeader({
 
 function TypeaheadMenuScrollArea({ children }: { children: ReactNode }) {
   return (
-    <div
-      className="py-half overflow-auto"
-      style={{ maxHeight: 'var(--typeahead-menu-max-height, 40vh)' }}
-    >
+    <div className="py-half overflow-auto flex-1 min-h-0">
       {children}
     </div>
   );
