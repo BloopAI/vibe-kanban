@@ -41,7 +41,7 @@ class TokenManager {
       access_token?: string;
     }>(TOKEN_QUERY_KEY);
     const cachedToken = cachedData?.access_token;
-    if (cachedToken === undefined || shouldRefreshAccessToken(cachedToken)) {
+    if (!cachedToken || shouldRefreshAccessToken(cachedToken)) {
       await queryClient.invalidateQueries({ queryKey: TOKEN_QUERY_KEY });
     }
 
