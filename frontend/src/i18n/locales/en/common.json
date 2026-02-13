@@ -202,7 +202,8 @@
       "title": "Delete Workspace",
       "description": "Are you sure you want to delete this workspace? This action cannot be undone.",
       "deleteBranchLabel": "Delete branch",
-      "cannotDeleteOpenPr": "Cannot delete branch while PR is open"
+      "cannotDeleteOpenPr": "Cannot delete branch while PR is open",
+      "unlinkFromIssueLabel": "Also unlink from issue"
     }
   },
   "fileTree": {

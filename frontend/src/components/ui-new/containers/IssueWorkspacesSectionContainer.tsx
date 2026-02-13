@@ -238,6 +238,7 @@ export function IssueWorkspacesSectionContainer({
       const result = await DeleteWorkspaceDialog.show({
         workspaceId: localWorkspaceId,
         branchName: localWorkspace.branch,
+        isLinkedToIssue: true,
       });
 
       if (result.action !== 'confirmed') {
@@ -245,8 +246,10 @@ export function IssueWorkspacesSectionContainer({
       }
 
       try {
-        // First unlink from remote
-        await attemptsApi.unlinkFromIssue(localWorkspaceId);
+        // Unlink from remote if requested
+        if (result.unlinkFromIssue) {
+          await attemptsApi.unlinkFromIssue(localWorkspaceId);
+        }
         // Then delete local workspace
         await attemptsApi.delete(localWorkspaceId, result.deleteBranches);
       } catch (error) {

@@ -435,9 +435,17 @@ export const Actions = {
     requiresTarget: ActionTargetType.WORKSPACE,
     execute: async (ctx, workspaceId) => {
       const workspace = await getWorkspace(ctx.queryClient, workspaceId);
+
+      // Check if workspace is linked to a remote issue
+      const remoteWs = ctx.remoteWorkspaces.find(
+        (w) => w.local_workspace_id === workspaceId
+      );
+      const isLinkedToIssue = !!remoteWs?.issue_id;
+
       const result = await DeleteWorkspaceDialog.show({
         workspaceId,
         branchName: workspace.branch,
+        isLinkedToIssue,
       });
       if (result.action === 'confirmed') {
         // Calculate next workspace before deleting (only if deleting current)
@@ -445,6 +453,11 @@ export const Actions = {
         const nextWorkspaceId = isCurrentWorkspace
           ? getNextWorkspaceId(ctx.activeWorkspaces, workspaceId)
           : null;
+
+        // Unlink from remote issue if requested
+        if (result.unlinkFromIssue) {
+          await attemptsApi.unlinkFromIssue(workspaceId);
+        }
 
         await attemptsApi.delete(workspaceId, result.deleteBranches);
         ctx.queryClient.invalidateQueries({
