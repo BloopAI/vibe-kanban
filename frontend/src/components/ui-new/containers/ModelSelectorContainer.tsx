@@ -234,9 +234,7 @@ export function ModelSelectorContainer({
     resolveDefaultReasoningId(selectedModel?.reasoning_options ?? []);
 
   const defaultAgentId =
-    config?.agents.find((entry) => entry.is_default)?.id ??
-    config?.agents[0]?.id ??
-    null;
+    config?.agents.find((entry) => entry.is_default)?.id ?? null;
 
   const selectedAgentId =
     executorConfig?.agent_id ?? presetOptions?.agent_id ?? defaultAgentId;
@@ -346,9 +344,7 @@ export function ModelSelectorContainer({
 
   const handlePermissionPolicyChange = (policy: PermissionPolicy) => {
     if (!supportsPermissions) return;
-    const newPolicy =
-      basePermissionPolicy && policy === basePermissionPolicy ? null : policy;
-    onOverrideChange({ permission_policy: newPolicy });
+    onOverrideChange({ permission_policy: policy });
   };
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
