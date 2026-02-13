@@ -22,6 +22,7 @@ use crate::{
     db::{
         identity_errors::IdentityError,
         invitations::{Invitation, InvitationRepository},
+        issue_comments::IssueCommentRepository,
         issues::IssueRepository,
         organization_members,
         organizations::OrganizationRepository,
@@ -633,4 +634,27 @@ pub(crate) async fn ensure_issue_access(
         })?;
 
     Ok(organization_id)
+}
+
+pub(crate) async fn ensure_comment_access(
+    pool: &PgPool,
+    user_id: Uuid,
+    comment_id: Uuid,
+) -> Result<Uuid, ErrorResponse> {
+    let comment = IssueCommentRepository::find_by_id(pool, comment_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %comment_id, "failed to load comment");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?
+        .ok_or_else(|| {
+            warn!(
+                %comment_id,
+                %user_id,
+                "comment not found for access check"
+            );
+            ErrorResponse::new(StatusCode::NOT_FOUND, "comment not found")
+        })?;
+
+    ensure_issue_access(pool, user_id, comment.issue_id).await
 }

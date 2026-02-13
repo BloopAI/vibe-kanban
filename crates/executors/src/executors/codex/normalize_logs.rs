@@ -14,10 +14,10 @@ use codex_protocol::{
         AgentMessageDeltaEvent, AgentMessageEvent, AgentReasoningDeltaEvent, AgentReasoningEvent,
         AgentReasoningSectionBreakEvent, ApplyPatchApprovalRequestEvent, BackgroundEventEvent,
         ErrorEvent, EventMsg, ExecApprovalRequestEvent, ExecCommandBeginEvent, ExecCommandEndEvent,
-        ExecCommandOutputDeltaEvent, ExecOutputStream, FileChange as CodexProtoFileChange,
-        McpInvocation, McpToolCallBeginEvent, McpToolCallEndEvent, PatchApplyBeginEvent,
-        PatchApplyEndEvent, StreamErrorEvent, ViewImageToolCallEvent, WarningEvent,
-        WebSearchBeginEvent, WebSearchEndEvent,
+        ExecCommandOutputDeltaEvent, ExecOutputStream, ExitedReviewModeEvent,
+        FileChange as CodexProtoFileChange, McpInvocation, McpToolCallBeginEvent,
+        McpToolCallEndEvent, PatchApplyBeginEvent, PatchApplyEndEvent, StreamErrorEvent,
+        ViewImageToolCallEvent, WarningEvent, WebSearchBeginEvent, WebSearchEndEvent,
     },
 };
 use futures::StreamExt;
@@ -169,6 +169,76 @@ impl ToNormalizedEntry for WebSearchState {
     }
 }
 
+struct ReviewState {
+    index: Option<usize>,
+    description: String,
+    status: ToolStatus,
+    result: Option<ToolResult>,
+}
+
+impl ReviewState {
+    fn complete(&mut self, review_event: &ExitedReviewModeEvent, worktree_path: &str) {
+        let result_text = match &review_event.review_output {
+            Some(output) => {
+                let mut sections = Vec::new();
+                sections.push(format!(
+                    "**Correctness:** {} | **Confidence:** {}",
+                    output.overall_correctness, output.overall_confidence_score,
+                ));
+                let explanation = output.overall_explanation.trim();
+                if !explanation.is_empty() {
+                    sections.push(explanation.to_string());
+                }
+                if !output.findings.is_empty() {
+                    let mut lines = vec!["### Findings".to_string()];
+                    for finding in &output.findings {
+                        let abs_path = finding.code_location.absolute_file_path.to_string_lossy();
+                        let path = make_path_relative(&abs_path, worktree_path);
+                        let start = finding.code_location.line_range.start;
+                        let end = finding.code_location.line_range.end;
+                        lines.push(format!(
+                            "- **P{}** | **Confidence:** {} | {}",
+                            finding.priority, finding.confidence_score, finding.title,
+                        ));
+                        lines.push(format!("  `{path}:{start}-{end}`"));
+                        for body_line in finding.body.lines() {
+                            lines.push(format!("  {body_line}"));
+                        }
+                    }
+                    sections.push(lines.join("\n"));
+                }
+                if sections.is_empty() {
+                    "Review completed".to_string()
+                } else {
+                    sections.join("\n\n")
+                }
+            }
+            None => "Review completed".to_string(),
+        };
+        self.status = ToolStatus::Success;
+        self.result = Some(ToolResult::markdown(result_text));
+    }
+}
+
+impl ToNormalizedEntry for ReviewState {
+    fn to_normalized_entry(&self) -> NormalizedEntry {
+        NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::ToolUse {
+                tool_name: "Review".to_string(),
+                action_type: ActionType::TaskCreate {
+                    description: self.description.clone(),
+                    subagent_type: Some("review".to_string()),
+                    result: self.result.clone(),
+                },
+                status: self.status.clone(),
+            },
+            content: String::new(),
+            metadata: None,
+        }
+    }
+}
+
 #[derive(Default)]
 struct PatchState {
     entries: Vec<PatchEntry>,
@@ -214,6 +284,7 @@ struct LogState {
     mcp_tools: HashMap<String, McpToolState>,
     patches: HashMap<String, PatchState>,
     web_searches: HashMap<String, WebSearchState>,
+    review: Option<ReviewState>,
 }
 
 enum StreamingTextKind {
@@ -231,6 +302,7 @@ impl LogState {
             mcp_tools: HashMap::new(),
             patches: HashMap::new(),
             web_searches: HashMap::new(),
+            review: None,
         }
     }
 
@@ -1018,6 +1090,35 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         );
                     }
                 }
+                EventMsg::EnteredReviewMode(review_request) => {
+                    let mut review_state = ReviewState {
+                        index: None,
+                        description: review_request
+                            .user_facing_hint
+                            .unwrap_or_else(|| "Reviewing code...".to_string()),
+                        status: ToolStatus::Created,
+                        result: None,
+                    };
+                    let index = add_normalized_entry(
+                        &msg_store,
+                        &entry_index,
+                        review_state.to_normalized_entry(),
+                    );
+                    review_state.index = Some(index);
+                    state.review = Some(review_state);
+                }
+                EventMsg::ExitedReviewMode(review_event) => {
+                    if let Some(mut review_state) = state.review.take() {
+                        review_state.complete(&review_event, &worktree_path_str);
+                        if let Some(index) = review_state.index {
+                            replace_normalized_entry(
+                                &msg_store,
+                                index,
+                                review_state.to_normalized_entry(),
+                            );
+                        }
+                    }
+                }
                 EventMsg::ContextCompacted(..) => {
                     add_normalized_entry(
                         &msg_store,
@@ -1054,8 +1155,6 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 | EventMsg::SkillsUpdateAvailable
                 | EventMsg::TurnAborted(..)
                 | EventMsg::ShutdownComplete
-                | EventMsg::EnteredReviewMode(..)
-                | EventMsg::ExitedReviewMode(..)
                 | EventMsg::TerminalInteraction(..)
                 | EventMsg::ElicitationRequest(..)
                 | EventMsg::TurnComplete(..)

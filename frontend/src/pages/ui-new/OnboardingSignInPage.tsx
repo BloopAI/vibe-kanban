@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  CheckIcon,
-  GithubLogoIcon,
-  GoogleLogoIcon,
-  XIcon,
-} from '@phosphor-icons/react';
+import { CheckIcon, XIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { ThemeMode } from 'shared/types';
@@ -15,6 +10,7 @@ import {
 import { usePostHog } from 'posthog-js/react';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useTheme } from '@/components/ThemeProvider';
+import { OAuthSignInButton } from '@/components/ui-new/primitives/OAuthButtons';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { attemptsApi } from '@/lib/api';
 import { getFirstProjectDestination } from '@/lib/firstProjectDestination';
@@ -241,7 +237,11 @@ export function OnboardingSignInPage() {
                 className="h-8 w-auto logo"
               />
             </div>
-            <p className="text-sm text-low">{t('onboardingSignIn.subtitle')}</p>
+            {!isLoggedIn && (
+              <p className="text-sm text-low">
+                {t('onboardingSignIn.subtitle')}
+              </p>
+            )}
           </header>
 
           {isLoggedIn ? (
@@ -265,27 +265,19 @@ export function OnboardingSignInPage() {
           ) : (
             <>
               <section className="flex flex-col items-center gap-2">
-                <PrimaryButton
-                  value={
-                    pendingProvider === 'github'
-                      ? 'Opening GitHub...'
-                      : 'Continue with GitHub'
-                  }
-                  actionIcon={GithubLogoIcon}
-                  className="min-w-[260px] justify-center"
+                <OAuthSignInButton
+                  provider="github"
                   onClick={() => void handleProviderSignIn('github')}
                   disabled={saving || pendingProvider !== null}
+                  loading={pendingProvider === 'github'}
+                  loadingText="Opening GitHub..."
                 />
-                <PrimaryButton
-                  value={
-                    pendingProvider === 'google'
-                      ? 'Opening Google...'
-                      : 'Continue with Google'
-                  }
-                  actionIcon={GoogleLogoIcon}
-                  className="min-w-[260px] justify-center"
+                <OAuthSignInButton
+                  provider="google"
                   onClick={() => void handleProviderSignIn('google')}
                   disabled={saving || pendingProvider !== null}
+                  loading={pendingProvider === 'google'}
+                  loadingText="Opening Google..."
                 />
               </section>
 

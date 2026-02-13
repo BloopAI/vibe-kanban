@@ -678,6 +678,14 @@ async function initializeState({
         };
       }
 
+      // If scratch had no repos, fall through to use initialRepos
+      if (!restoredData.repos && initialRepos && initialRepos.length > 0) {
+        restoredData.repos = initialRepos.map((r) => ({
+          repo: r,
+          targetBranch: r.target_branch || null,
+        }));
+      }
+
       dispatch({ type: 'INIT_COMPLETE', data: restoredData });
       return;
     }

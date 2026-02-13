@@ -14,12 +14,12 @@ use api_types::{
     CreateIssueCommentRequest, IssueComment, ListIssueCommentsQuery, ListIssueCommentsResponse,
     MemberRole, UpdateIssueCommentRequest,
 };
+use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
     db::{issue_comments::IssueCommentRepository, organization_members::check_user_role},
     mutation_definition::MutationBuilder,
-    response::{DeleteResponse, MutationResponse},
 };
 
 /// Mutation definition for IssueComment - provides both router and TypeScript metadata.

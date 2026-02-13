@@ -1,11 +1,5 @@
-import {
-  createContext,
-  useContext,
-  ReactNode,
-  useMemo,
-  useCallback,
-  useEffect,
-} from 'react';
+import { useContext, ReactNode, useMemo, useCallback, useEffect } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -78,7 +72,8 @@ interface WorkspaceContextValue {
 }
 
 // Exported for optional usage outside WorkspaceProvider (e.g., old UI)
-export const WorkspaceContext = createContext<WorkspaceContextValue | null>(
+export const WorkspaceContext = createHmrContext<WorkspaceContextValue | null>(
+  'WorkspaceContext',
   null
 );
 

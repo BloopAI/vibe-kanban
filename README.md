@@ -46,6 +46,10 @@ npx vibe-kanban
 
 Please head to the [website](https://vibekanban.com/docs) for the latest documentation and user guides.
 
+## Self-Hosting
+
+Want to host your own Vibe Kanban Cloud instance? See our [self-hosting guide](https://vibekanban.com/docs/self-hosting).
+  
 ## Support
 
 We use [GitHub Discussions](https://github.com/BloopAI/vibe-kanban/discussions) for feature requests. Please open a discussion to create a feature request. For bugs please open an issue on this repo.
@@ -79,7 +83,7 @@ pnpm i
 pnpm run dev
 ```
 
-This will start the backend. A blank DB will be copied from the `dev_assets_seed` folder.
+This will start the backend and frontend. A blank DB will be copied from the `dev_assets_seed` folder.
 
 ### Building the frontend
 
@@ -94,7 +98,6 @@ pnpm build
 
 1. Run `./local-build.sh`
 2. Test with `cd npx-cli && node bin/cli.js`
-
 
 ### Environment Variables
 

@@ -1,11 +1,11 @@
 import {
-  createContext,
   useContext,
   useCallback,
   useMemo,
   useState,
   type ReactNode,
 } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
@@ -89,7 +89,10 @@ interface ActionsContextValue {
   executorContext: ActionExecutorContext;
 }
 
-const ActionsContext = createContext<ActionsContextValue | null>(null);
+const ActionsContext = createHmrContext<ActionsContextValue | null>(
+  'ActionsContext',
+  null
+);
 
 interface ActionsProviderProps {
   children: ReactNode;

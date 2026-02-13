@@ -1,11 +1,13 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 
 type GitOperationsContextType = {
   error: string | null;
   setError: (error: string | null) => void;
 };
 
-const GitOperationsContext = createContext<GitOperationsContextType | null>(
+const GitOperationsContext = createHmrContext<GitOperationsContextType | null>(
+  'GitOperationsContext',
   null
 );
 

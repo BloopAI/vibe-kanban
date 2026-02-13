@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id          AS \"id!: Uuid\",\n                blob_id     AS \"blob_id!: Uuid\",\n                issue_id    AS \"issue_id?: Uuid\",\n                comment_id  AS \"comment_id?: Uuid\",\n                created_at  AS \"created_at!: DateTime<Utc>\",\n                expires_at  AS \"expires_at?: DateTime<Utc>\"\n            FROM attachments\n            WHERE expires_at IS NOT NULL AND expires_at < NOW()\n            ORDER BY expires_at ASC\n            LIMIT $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "blob_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "issue_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "comment_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "expires_at?: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "1565680821f93069b2b5c109a7d1ba10889ca9b98c848895de6ef2c3ef4dffa0"
+}

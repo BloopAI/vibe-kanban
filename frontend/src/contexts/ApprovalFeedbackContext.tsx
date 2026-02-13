@@ -1,10 +1,5 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  ReactNode,
-} from 'react';
+import { useContext, useState, useCallback, ReactNode } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { useApprovalMutation } from '@/hooks/useApprovalMutation';
 
 interface ActiveApproval {
@@ -25,7 +20,10 @@ interface ApprovalFeedbackContextType {
 }
 
 const ApprovalFeedbackContext =
-  createContext<ApprovalFeedbackContextType | null>(null);
+  createHmrContext<ApprovalFeedbackContextType | null>(
+    'ApprovalFeedbackContext',
+    null
+  );
 
 export function useApprovalFeedback() {
   const context = useContext(ApprovalFeedbackContext);

@@ -10,6 +10,7 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_issue_access,
 };
+use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
@@ -18,7 +19,6 @@ use crate::{
         issue_comments::IssueCommentRepository,
     },
     mutation_definition::MutationBuilder,
-    response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
     CreateIssueCommentReactionRequest, IssueCommentReaction, ListIssueCommentReactionsQuery,

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CaretDownIcon,
-  RobotIcon,
+  CpuIcon,
   CheckCircleIcon,
   XCircleIcon,
   CircleNotchIcon,
@@ -121,7 +121,7 @@ export function ChatSubagentEntry({
         onClick={hasContent ? onToggle : undefined}
       >
         <span className="relative shrink-0">
-          <RobotIcon className="size-icon-base text-low" />
+          <CpuIcon className="size-icon-base text-low" />
         </span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-base">

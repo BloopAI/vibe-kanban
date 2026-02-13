@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM pending_uploads\n            WHERE expires_at < NOW()\n            RETURNING\n                id          AS \"id!: Uuid\",\n                project_id  AS \"project_id!: Uuid\",\n                blob_path   AS \"blob_path!\",\n                hash        AS \"hash!\",\n                created_at  AS \"created_at!: DateTime<Utc>\",\n                expires_at  AS \"expires_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "blob_path!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "hash!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "expires_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "9b2762d25c773099f99e6ae65ccefc16ac367d725df8ebb7983420aa0fce4149"
+}

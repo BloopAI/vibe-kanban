@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CircleDashedIcon,
@@ -24,6 +25,64 @@ export type TagEditProps = {
   onTagToggle: (tagId: string) => void;
   onCreateTag: (data: { name: string; color: string }) => string;
 };
+
+const IMAGE_FILE_EXTENSION_REGEX =
+  /\.(png|jpe?g|gif|webp|bmp|svg|avif|heic|heif)$/i;
+
+function isImageLikeAttachmentName(name: string): boolean {
+  const normalized = name.trim();
+  if (!normalized) {
+    return false;
+  }
+
+  return IMAGE_FILE_EXTENSION_REGEX.test(normalized);
+}
+
+function formatKanbanDescriptionPreview(
+  markdown: string,
+  options: {
+    codeBlockLabel: string;
+    imageLabel: string;
+    imageWithNameLabel: (name: string) => string;
+    fileLabel: string;
+    fileWithNameLabel: (name: string) => string;
+  }
+): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, options.codeBlockLabel)
+    .replace(
+      /!\[([^\]]*)\]\(([^)]+)\)/g,
+      (_match, altText: string, url: string) => {
+        const normalizedAlt = altText.trim();
+        const normalizedUrl = url.trim();
+        const isImageAttachment =
+          normalizedUrl.startsWith('attachment://') &&
+          isImageLikeAttachmentName(normalizedAlt);
+
+        if (isImageAttachment) {
+          return normalizedAlt
+            ? options.imageWithNameLabel(normalizedAlt)
+            : options.imageLabel;
+        }
+
+        return normalizedAlt
+          ? options.fileWithNameLabel(normalizedAlt)
+          : options.fileLabel;
+      }
+    )
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^\s*>\s?/gm, '')
+    .replace(/^\s*([-*+]|\d+\.)\s+/gm, '')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 export type KanbanCardContentProps = {
   displayId: string;
@@ -61,6 +120,22 @@ export const KanbanCardContent = ({
   tagEditProps,
 }: KanbanCardContentProps) => {
   const { t } = useTranslation('common');
+  const previewDescription = useMemo(() => {
+    if (!description) {
+      return null;
+    }
+
+    const formatted = formatKanbanDescriptionPreview(description, {
+      codeBlockLabel: t('kanban.previewCodeBlock'),
+      imageLabel: t('kanban.previewImage'),
+      imageWithNameLabel: (name: string) =>
+        t('kanban.previewImageWithName', { name }),
+      fileLabel: t('kanban.previewFile'),
+      fileWithNameLabel: (name: string) =>
+        t('kanban.previewFileWithName', { name }),
+    });
+    return formatted.length > 0 ? formatted : null;
+  }, [description, t]);
 
   const tagsDisplay = (
     <>
@@ -115,9 +190,9 @@ export const KanbanCardContent = ({
       <span className="text-base text-normal truncate">{title}</span>
 
       {/* Row 3: Description (optional, truncated) */}
-      {description && (
+      {previewDescription && (
         <p className="text-sm text-low m-0 leading-relaxed line-clamp-4">
-          {description}
+          {previewDescription}
         </p>
       )}
 

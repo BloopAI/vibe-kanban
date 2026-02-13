@@ -37,7 +37,6 @@ pub struct Repo {
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct UpdateRepo {
     #[serde(
         default,

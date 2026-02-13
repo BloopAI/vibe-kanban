@@ -1,11 +1,11 @@
 import React, {
-  createContext,
   useContext,
   useState,
   useCallback,
   useMemo,
   useRef,
 } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import {
   useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
@@ -53,7 +53,10 @@ const defaultValue: ChangesViewContextValue = {
   registerScrollToFile: () => {},
 };
 
-const ChangesViewContext = createContext<ChangesViewContextValue>(defaultValue);
+const ChangesViewContext = createHmrContext<ChangesViewContextValue>(
+  'ChangesViewContext',
+  defaultValue
+);
 
 interface ChangesViewProviderProps {
   children: React.ReactNode;

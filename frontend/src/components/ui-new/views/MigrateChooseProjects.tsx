@@ -1,6 +1,8 @@
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   ArrowSquareOutIcon,
+  ArrowRightIcon,
   BuildingsIcon,
   CaretDownIcon,
   CloudArrowUpIcon,
@@ -26,6 +28,7 @@ interface MigrateChooseProjectsProps {
   onToggleProject: (projectId: string) => void;
   onSelectAll: () => void;
   onContinue: () => void;
+  onSkip?: () => void;
 }
 
 export function MigrateChooseProjects({
@@ -38,7 +41,9 @@ export function MigrateChooseProjects({
   onToggleProject,
   onSelectAll,
   onContinue,
+  onSkip,
 }: MigrateChooseProjectsProps) {
+  const { t } = useTranslation('common');
   const selectedOrg = organizations.find((org) => org.id === selectedOrgId);
 
   const migrateableProjects = projects.filter((p) => !p.remote_project_id);
@@ -216,13 +221,24 @@ export function MigrateChooseProjects({
 
       {/* CTA */}
       <div className="pt-base border-t flex justify-end">
-        <PrimaryButton
-          onClick={onContinue}
-          disabled={selectedProjectIds.size === 0 || !selectedOrgId}
-          actionIcon={CloudArrowUpIcon}
-        >
-          {buttonText}
-        </PrimaryButton>
+        {migrateableProjects.length === 0 && migratedProjects.length > 0 ? (
+          <div className="flex items-center gap-base w-full">
+            <p className="text-sm text-normal flex-1">
+              {t('migration.allProjectsMigrated')}
+            </p>
+            <PrimaryButton onClick={onSkip} actionIcon={ArrowRightIcon}>
+              {t('migration.continueToProjects')}
+            </PrimaryButton>
+          </div>
+        ) : (
+          <PrimaryButton
+            onClick={onContinue}
+            disabled={selectedProjectIds.size === 0 || !selectedOrgId}
+            actionIcon={CloudArrowUpIcon}
+          >
+            {buttonText}
+          </PrimaryButton>
+        )}
       </div>
     </div>
   );

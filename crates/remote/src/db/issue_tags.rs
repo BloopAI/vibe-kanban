@@ -4,7 +4,7 @@ use api_types::IssueTag;
 use uuid::Uuid;
 
 use super::get_txid;
-use crate::response::{DeleteResponse, MutationResponse};
+use api_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum IssueTagError {

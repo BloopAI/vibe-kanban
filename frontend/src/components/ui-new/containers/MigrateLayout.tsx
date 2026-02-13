@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   MigrateSidebar,
   type MigrationStep,
@@ -14,10 +15,15 @@ interface MigrationData {
 }
 
 export function MigrateLayout() {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<MigrationStep>('introduction');
   const [migrationData, setMigrationData] = useState<MigrationData | null>(
     null
   );
+
+  const handleSkip = () => {
+    navigate('/workspaces/create', { replace: true });
+  };
 
   const handleChooseProjectsContinue = (
     orgId: string,
@@ -39,6 +45,7 @@ export function MigrateLayout() {
         return (
           <MigrateChooseProjectsContainer
             onContinue={handleChooseProjectsContinue}
+            onSkip={handleSkip}
           />
         );
       case 'migrate':

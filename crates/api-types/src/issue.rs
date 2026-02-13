@@ -18,7 +18,6 @@ pub enum IssuePriority {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct Issue {
     pub id: Uuid,
     pub project_id: Uuid,
@@ -40,7 +39,7 @@ pub struct Issue {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct CreateIssueRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     /// Using client-generated IDs enables stable optimistic updates.
@@ -60,29 +59,73 @@ pub struct CreateIssueRequest {
     pub extension_metadata: Value,
 }
 
-#[derive(Debug, Clone, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct UpdateIssueRequest {
-    #[serde(default, deserialize_with = "some_if_present")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub status_id: Option<Uuid>,
-    #[serde(default, deserialize_with = "some_if_present")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub title: Option<String>,
-    #[serde(default, deserialize_with = "some_if_present")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub description: Option<Option<String>>,
-    #[serde(default, deserialize_with = "some_if_present")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub priority: Option<Option<IssuePriority>>,
-    #[serde(default, deserialize_with = "some_if_present")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub start_date: Option<Option<DateTime<Utc>>>,
-    #[serde(default, deserialize_with = "some_if_present")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub target_date: Option<Option<DateTime<Utc>>>,
-    #[serde(default, deserialize_with = "some_if_present")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub completed_at: Option<Option<DateTime<Utc>>>,
-    #[serde(default, deserialize_with = "some_if_present")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub sort_order: Option<f64>,
-    #[serde(default, deserialize_with = "some_if_present")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub parent_issue_id: Option<Option<Uuid>>,
-    #[serde(default, deserialize_with = "some_if_present")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub parent_issue_sort_order: Option<Option<f64>>,
-    #[serde(default, deserialize_with = "some_if_present")]
+    #[serde(
+        default,
+        deserialize_with = "some_if_present",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub extension_metadata: Option<Value>,
 }
 
@@ -91,7 +134,7 @@ pub struct ListIssuesQuery {
     pub project_id: Uuid,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ListIssuesResponse {
     pub issues: Vec<Issue>,
 }

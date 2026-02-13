@@ -159,44 +159,20 @@ impl Workspace {
         Ok(workspaces)
     }
 
-    /// Load workspace with full validation - ensures workspace belongs to task and task belongs to project
+    /// Load full workspace context by workspace ID.
     pub async fn load_context(
         pool: &SqlitePool,
         workspace_id: Uuid,
-        task_id: Uuid,
-        project_id: Uuid,
     ) -> Result<WorkspaceContext, WorkspaceError> {
-        let workspace = sqlx::query_as!(
-            Workspace,
-            r#"SELECT  w.id                AS "id!: Uuid",
-                       w.task_id           AS "task_id!: Uuid",
-                       w.container_ref,
-                       w.branch,
-                       w.agent_working_dir,
-                       w.setup_completed_at AS "setup_completed_at: DateTime<Utc>",
-                       w.created_at        AS "created_at!: DateTime<Utc>",
-                       w.updated_at        AS "updated_at!: DateTime<Utc>",
-                       w.archived          AS "archived!: bool",
-                       w.pinned            AS "pinned!: bool",
-                       w.name
-               FROM    workspaces w
-               JOIN    tasks t ON w.task_id = t.id
-               JOIN    projects p ON t.project_id = p.id
-               WHERE   w.id = $1 AND t.id = $2 AND p.id = $3"#,
-            workspace_id,
-            task_id,
-            project_id
-        )
-        .fetch_optional(pool)
-        .await?
-        .ok_or(WorkspaceError::TaskNotFound)?;
-
-        // Load task and project (we know they exist due to JOIN validation)
-        let task = Task::find_by_id(pool, task_id)
+        let workspace = Workspace::find_by_id(pool, workspace_id)
             .await?
             .ok_or(WorkspaceError::TaskNotFound)?;
 
-        let project = Project::find_by_id(pool, project_id)
+        let task = Task::find_by_id(pool, workspace.task_id)
+            .await?
+            .ok_or(WorkspaceError::TaskNotFound)?;
+
+        let project = Project::find_by_id(pool, task.project_id)
             .await?
             .ok_or(WorkspaceError::ProjectNotFound)?;
 

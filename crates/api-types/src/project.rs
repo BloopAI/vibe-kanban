@@ -6,7 +6,6 @@ use uuid::Uuid;
 use crate::some_if_present;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct Project {
     pub id: Uuid,
     pub organization_id: Uuid,
@@ -40,7 +39,7 @@ pub struct ListProjectsQuery {
     pub organization_id: Uuid,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ListProjectsResponse {
     pub projects: Vec<Project>,
 }

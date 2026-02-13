@@ -1,4 +1,4 @@
-import { createContext } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import type { TabType } from '@/types/tabs';
 
 interface TabNavContextType {
@@ -6,4 +6,7 @@ interface TabNavContextType {
   setActiveTab: (tab: TabType) => void;
 }
 
-export const TabNavContext = createContext<TabNavContextType | null>(null);
+export const TabNavContext = createHmrContext<TabNavContextType | null>(
+  'TabNavContext',
+  null
+);

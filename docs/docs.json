@@ -45,26 +45,7 @@
         ]
       },
       {
-        "group": "Core Features",
-        "pages": [
-          "core-features/creating-projects",
-          "core-features/creating-tasks",
-          "core-features/monitoring-task-execution",
-          "core-features/testing-your-application",
-          "core-features/reviewing-code-changes",
-          "core-features/completing-a-task"
-        ]
-      },
-      {
-        "group": "Advanced Features",
-        "pages": [
-          "core-features/subtasks",
-          "core-features/new-task-attempts",
-          "core-features/resolving-rebase-conflicts"
-        ]
-      },
-      {
-        "group": "Workspaces (Beta)",
+        "group": "Workspaces",
         "pages": [
           "workspaces/index",
           "workspaces/creating-workspaces",
@@ -82,7 +63,7 @@
         ]
       },
       {
-        "group": "Cloud (Beta)",
+        "group": "Cloud",
         "pages": [
           "cloud/index",
           "cloud/getting-started",
@@ -100,16 +81,7 @@
         ]
       },
       {
-        "group": "Configuration & Customisation",
-        "pages": [
-          "configuration-customisation/global-settings",
-          "configuration-customisation/agent-configurations",
-          "configuration-customisation/creating-task-tags",
-          "configuration-customisation/keyboard-shortcuts"
-        ]
-      },
-      {
-        "group": "Settings (Beta)",
+        "group": "Settings",
         "pages": [
           "settings-beta/index",
           {
@@ -124,6 +96,12 @@
           "settings-beta/remote-projects",
           "settings-beta/agent-configurations",
           "settings-beta/mcp-servers"
+        ]
+      },
+      {
+        "group": "Self-Hosting",
+        "pages": [
+          "self-hosting/local-development"
         ]
       },
       {

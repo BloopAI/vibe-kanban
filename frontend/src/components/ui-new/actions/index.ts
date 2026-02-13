@@ -101,6 +101,7 @@ export type ActionIcon = Icon | SpecialIconType;
 // Workspace type for sidebar (minimal subset needed for workspace selection)
 interface SidebarWorkspace {
   id: string;
+  isRunning?: boolean;
 }
 
 // Dev server state type for visibility context
@@ -1019,6 +1020,13 @@ export const Actions = {
         (repoStatus?.conflicted_files?.length ?? 0) > 0;
 
       if (hasConflicts && repoStatus) {
+        // Skip showing the dialog if a process is already running
+        // (e.g. an AI session is already resolving these conflicts)
+        const isRunning = ctx.activeWorkspaces.find(
+          (w) => w.id === workspaceId
+        )?.isRunning;
+        if (isRunning) return;
+
         // Show resolve conflicts dialog
         const workspace = await getWorkspace(ctx.queryClient, workspaceId);
         const result = await ResolveConflictsDialog.show({

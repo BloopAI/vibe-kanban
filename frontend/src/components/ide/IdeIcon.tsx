@@ -1,6 +1,7 @@
 import { Code2 } from 'lucide-react';
 import { EditorType, ThemeMode } from 'shared/types';
 import { useTheme } from '@/components/ThemeProvider';
+import i18n from '@/i18n';
 
 type IdeIconProps = {
   editorType?: EditorType | null;
@@ -34,7 +35,7 @@ export function getIdeName(editorType: EditorType | undefined | null): string {
     case EditorType.XCODE:
       return 'Xcode';
     case EditorType.CUSTOM:
-      return 'IDE';
+      return i18n.t('common:editorNames.custom');
     case EditorType.GOOGLE_ANTIGRAVITY:
       return 'Antigravity';
   }

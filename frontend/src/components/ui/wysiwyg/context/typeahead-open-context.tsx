@@ -1,13 +1,14 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { useContext, useState, ReactNode } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 
 export type TypeaheadOpenContextType = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
 };
 
-export const TypeaheadOpenContext = createContext<
+export const TypeaheadOpenContext = createHmrContext<
   TypeaheadOpenContextType | undefined
->(undefined);
+>('TypeaheadOpenContext', undefined);
 
 export function TypeaheadOpenProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);

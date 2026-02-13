@@ -264,7 +264,7 @@ impl MigrationService {
                     requests.push(MigrateIssueRequest {
                         project_id,
                         status_name: map_task_status(&task.status),
-                        title: task.title.clone(),
+                        title: task.title.chars().take(255).collect(),
                         description: task.description.clone(),
                         created_at: task.created_at,
                     });

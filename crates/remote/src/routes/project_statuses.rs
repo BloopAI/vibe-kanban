@@ -13,12 +13,12 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_project_access,
 };
+use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
     db::{get_txid, project_statuses::ProjectStatusRepository, types::is_valid_hsl_color},
     mutation_definition::MutationBuilder,
-    response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
     CreateProjectStatusRequest, ListProjectStatusesQuery, ListProjectStatusesResponse,

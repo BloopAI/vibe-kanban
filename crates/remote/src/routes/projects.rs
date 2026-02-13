@@ -10,12 +10,12 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_member_access,
 };
+use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
     db::{projects::ProjectRepository, types::is_valid_hsl_color},
     mutation_definition::MutationBuilder,
-    response::{DeleteResponse, MutationResponse},
 };
 use api_types::{
     CreateProjectRequest, ListProjectsQuery, ListProjectsResponse, Project, UpdateProjectRequest,

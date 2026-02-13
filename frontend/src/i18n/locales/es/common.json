@@ -1,4 +1,7 @@
 {
+  "editorNames": {
+    "custom": "Personalizado"
+  },
   "folderPicker": {
     "legend": "Haz clic en los nombres de carpetas para navegar • Usa los botones de acción para seleccionar",
     "manualPathLabel": "Ingresar ruta manualmente:",
@@ -372,11 +375,48 @@
     "selectColorFor": "Seleccionar color para",
     "createTag": "Crear",
     "filesCount": "{{count}} Archivos",
+    "attachmentsTitle": "Adjuntos ({{count}})",
+    "deleteAttachmentAria": "Eliminar {{filename}}",
     "noPrCreated": "No se creó PR",
     "noCommentsYet": "Sin comentarios aún",
     "createdBy": "Creado por",
     "comments": "Comentarios",
     "enterCommentPlaceholder": "Ingresa tu comentario aquí...",
+    "attachImage": "Adjuntar imagen",
+    "attachFile": "Adjuntar archivo",
+    "attachFileHint": "Adjuntar archivos (máx. 20MB por archivo)",
+    "attach": "Adjuntar",
+    "dropImagesHere": "Suelta imágenes aquí",
+    "dropFilesHere": "Suelta archivos aquí",
+    "imageDropHint": "PNG, JPG, GIF hasta 20MB",
+    "fileDropHint": "Cualquier tipo de archivo hasta 20MB",
+    "unknownFile": "Archivo desconocido",
+    "unknownUser": "Usuario desconocido",
+    "deletedUser": "Usuario eliminado",
+    "replyQuotePrefix": "escribió:",
+    "moreActions": "Más acciones",
+    "closePanel": "Cerrar panel",
+    "issueTitlePlaceholder": "Título del issue...",
+    "issueDescriptionPlaceholder": "Ingresa la descripción de la tarea...",
+    "createDraftWorkspaceImmediately": "Crear workspace borrador inmediatamente",
+    "createDraftWorkspaceDescription": "Marca para crear automáticamente un workspace",
+    "createTask": "Crear tarea",
+    "newIssue": "Nuevo issue",
+    "previewCodeBlock": "[Bloque de código]",
+    "previewImage": "[Imagen]",
+    "previewImageWithName": "[Imagen: {{name}}]",
+    "previewFile": "[Archivo]",
+    "previewFileWithName": "[Archivo: {{name}}]",
+    "imageAttachmentNameFallback": "Adjunto",
+    "removeImage": "Eliminar imagen",
+    "maxImagesAtOnce": "Máximo {{count}} imágenes a la vez",
+    "maxFilesAtOnce": "Máximo {{count}} archivos a la vez",
+    "fileNotImage": "El archivo {{filename}} no es una imagen",
+    "fileExceedsLimit": "El archivo {{filename}} supera el límite de 20MB",
+    "unknownError": "Error desconocido",
+    "failedToUploadFile": "No se pudo subir {{filename}}: {{message}}",
+    "downloadAttachment": "Descargar archivo adjunto",
+    "downloadAttachmentAria": "Descargar {{filename}}",
     "subIssues": "Subtareas",
     "noSubIssues": "Sin subtareas",
     "markIndependentIssue": "Marcar como problema independiente",
@@ -422,5 +462,17 @@
     "skipSignInHeader": "Don't sign in",
     "yes": "Yes",
     "no": "No"
+  },
+  "migration": {
+    "allProjectsMigrated": "Todos tus proyectos ya han sido migrados a la nube.",
+    "continueToProjects": "Continuar a los proyectos"
+  },
+  "appBar": {
+    "kanban": {
+      "tooltip": "Kanban",
+      "title": "Tableros Kanban",
+      "description": "Inicia sesión para organizar tus agentes de codificación con tableros kanban.",
+      "migrateOldProjects": "Migrar proyectos antiguos"
+    }
   }
 }

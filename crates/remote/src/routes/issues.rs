@@ -15,12 +15,12 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_project_access,
 };
+use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
     db::{get_txid, issues::IssueRepository},
     mutation_definition::MutationBuilder,
-    response::{DeleteResponse, MutationResponse},
 };
 
 /// Mutation definition for Issue - provides both router and TypeScript metadata.

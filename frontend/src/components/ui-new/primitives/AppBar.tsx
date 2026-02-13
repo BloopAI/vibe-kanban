@@ -1,6 +1,7 @@
 import {
   LayoutIcon,
   PlusIcon,
+  KanbanIcon,
   SpinnerIcon,
   StarIcon,
 } from '@phosphor-icons/react';
@@ -11,9 +12,16 @@ import type { Project as RemoteProject } from 'shared/remote-types';
 import { AppBarButton } from './AppBarButton';
 import { AppBarSocialLink } from './AppBarSocialLink';
 import { AppBarUserPopoverContainer } from '../containers/AppBarUserPopoverContainer';
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverClose,
+} from './Popover';
 import { Tooltip } from './Tooltip';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/hooks/useGitHubStars';
+import { useTranslation } from 'react-i18next';
 
 function formatStarCount(count: number): string {
   if (count < 1000) return String(count);
@@ -45,6 +53,8 @@ interface AppBarProps {
   activeProjectId: string | null;
   isSignedIn?: boolean;
   isLoadingProjects?: boolean;
+  onSignIn?: () => void;
+  onMigrate?: () => void;
 }
 
 export function AppBar({
@@ -60,7 +70,10 @@ export function AppBar({
   activeProjectId,
   isSignedIn,
   isLoadingProjects,
+  onSignIn,
+  onMigrate,
 }: AppBarProps) {
+  const { t } = useTranslation('common');
   const { data: onlineCount } = useDiscordOnlineCount();
   const { data: starCount } = useGitHubStars();
 
@@ -80,6 +93,62 @@ export function AppBar({
           onClick={onWorkspacesClick}
         />
       </div>
+
+      {/* Project management popover for unsigned users */}
+      {!isSignedIn && (
+        <Popover>
+          <Tooltip content={t('appBar.kanban.tooltip')} side="right">
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  'flex items-center justify-center w-10 h-10 rounded-lg',
+                  'transition-colors cursor-pointer',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                  'bg-primary text-normal hover:bg-brand/10'
+                )}
+                aria-label={t('appBar.kanban.tooltip')}
+              >
+                <KanbanIcon className="size-icon-base" weight="bold" />
+              </button>
+            </PopoverTrigger>
+          </Tooltip>
+          <PopoverContent side="right" sideOffset={8}>
+            <p className="text-sm font-medium text-high">
+              {t('appBar.kanban.title')}
+            </p>
+            <p className="text-xs text-low mt-1">
+              {t('appBar.kanban.description')}
+            </p>
+            <div className="mt-base flex items-center gap-half">
+              <PopoverClose asChild>
+                <button
+                  type="button"
+                  onClick={onSignIn}
+                  className={cn(
+                    'px-base py-1 rounded-sm text-xs',
+                    'bg-brand text-on-brand hover:bg-brand-hover cursor-pointer'
+                  )}
+                >
+                  {t('signIn')}
+                </button>
+              </PopoverClose>
+              <PopoverClose asChild>
+                <button
+                  type="button"
+                  onClick={onMigrate}
+                  className={cn(
+                    'px-base py-1 rounded-sm text-xs',
+                    'bg-secondary text-normal hover:bg-panel border border-border cursor-pointer'
+                  )}
+                >
+                  {t('appBar.kanban.migrateOldProjects')}
+                </button>
+              </PopoverClose>
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
 
       {/* Loading spinner for projects */}
       {isLoadingProjects && (

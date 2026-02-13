@@ -7,6 +7,7 @@ on:
     paths-ignore:
       - .github/workflows/**
       - '!.github/workflows/test.yml'
+      - docs/**
   push:
     branches:
       - main
@@ -24,7 +25,71 @@ env:
   RUNNER_LABEL: &runner_label blacksmith-16vcpu-ubuntu-2404
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      backend-remote: ${{ steps.filter.outputs['backend-remote'] }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3.0.0
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - 'shared/**'
+              - 'scripts/check-i18n.sh'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'package.json'
+              - '.npmrc'
+              - '.github/workflows/test.yml'
+              - '.github/actions/**'
+            backend:
+              - 'crates/api-types/**'
+              - 'crates/db/**'
+              - 'crates/deployment/**'
+              - 'crates/executors/**'
+              - 'crates/git/**'
+              - 'crates/local-deployment/**'
+              - 'crates/review/**'
+              - 'crates/server/**'
+              - 'crates/services/**'
+              - 'crates/utils/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'shared/**'
+              - 'scripts/prepare-db.js'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+              - 'rustfmt.toml'
+              - 'rust-toolchain.toml'
+              - '.cargo/**'
+              - '.github/workflows/test.yml'
+              - '.github/actions/**'
+            backend-remote:
+              - 'crates/remote/**'
+              - 'crates/api-types/**'
+              - 'crates/utils/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'shared/**'
+              - 'rust-toolchain.toml'
+              - '.cargo/**'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+              - '.github/workflows/test.yml'
+              - '.github/actions/**'
+
   frontend-checks:
+    needs: changes
+    if: always() && (needs.changes.outputs.frontend == 'true' || needs.changes.result == 'skipped')
     runs-on: *runner_label
     steps:
       - uses: actions/checkout@v6
@@ -49,6 +114,8 @@ jobs:
             "cd frontend && npm run build"
 
   backend-schema-checks:
+    needs: changes
+    if: always() && (needs.changes.outputs.backend == 'true' || needs.changes.result == 'skipped')
     runs-on: *runner_label
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -71,7 +138,11 @@ jobs:
         run: npm run prepare-db:check
 
   backend-remote-checks:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    needs: changes
+    if: >-
+      always()
+      && (needs.changes.outputs['backend-remote'] == 'true' || needs.changes.result == 'skipped')
+      && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: *runner_label
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -104,6 +175,8 @@ jobs:
         run: npm run remote:prepare-db:check
 
   backend-clippy:
+    needs: changes
+    if: always() && (needs.changes.outputs.backend == 'true' || needs.changes.result == 'skipped')
     runs-on: *runner_label
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -126,6 +199,8 @@ jobs:
           wait $pid_fmt
 
   backend-test:
+    needs: changes
+    if: always() && (needs.changes.outputs.backend == 'true' || needs.changes.result == 'skipped')
     runs-on: *runner_label
     env:
       SCCACHE_GHA_ENABLED: "true"

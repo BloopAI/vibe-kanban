@@ -14,6 +14,7 @@ import {
   CreateRemoteProjectDialog,
   type CreateRemoteProjectResult,
 } from '@/components/dialogs';
+import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 
@@ -129,6 +130,29 @@ export function SharedAppLayout() {
     }
   }, [navigate, selectedOrgId]);
 
+  const handleSignIn = useCallback(async () => {
+    try {
+      await OAuthDialog.show({});
+    } catch {
+      // Dialog cancelled
+    }
+  }, []);
+
+  const handleMigrate = useCallback(async () => {
+    if (!isSignedIn) {
+      try {
+        const profile = await OAuthDialog.show({});
+        if (profile) {
+          navigate('/migrate');
+        }
+      } catch {
+        // Dialog cancelled
+      }
+    } else {
+      navigate('/migrate');
+    }
+  }, [isSignedIn, navigate]);
+
   return (
     <SyncErrorProvider>
       <div className="flex h-screen bg-primary">
@@ -146,6 +170,8 @@ export function SharedAppLayout() {
             activeProjectId={activeProjectId}
             isSignedIn={isSignedIn}
             isLoadingProjects={isLoading}
+            onSignIn={handleSignIn}
+            onMigrate={handleMigrate}
           />
         )}
         <div className="flex flex-col flex-1 min-w-0">

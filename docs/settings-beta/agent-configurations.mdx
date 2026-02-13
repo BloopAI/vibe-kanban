@@ -3,9 +3,9 @@ title: "Agent Profiles & Configuration"
 description: "Create reusable agent configurations with custom settings for planning mode, model selection, and permission levels that you can quickly switch between when creating task attempts"
 ---
 
-<Note>
-This is the new Settings UI currently in <Badge color="orange">Beta</Badge>. It uses a form-based interface for agent configuration. For JSON editing, use the [classic settings](/configuration-customisation/agent-configurations).
-</Note>
+<Info>
+Agent profiles are configured using a form-based interface. Select an agent and create or edit configuration variants to customise behaviour.
+</Info>
 
 <Info>
 Agent profiles are used throughout Vibe Kanban wherever agents run: onboarding, default settings, attempt creation, and follow-ups. The default configuration appears pre-selected in the agent dropdown in the chat input.
@@ -258,12 +258,6 @@ Once configured, your agent variants appear in the chat input toolbar, allowing 
 MCP (Model Context Protocol) servers are configured separately under **Settings → MCP Servers** but work alongside agent profiles to extend functionality.
 </Note>
 
-<CardGroup cols={2}>
 <Card title="Connecting MCP Servers" icon="server" href="/settings-beta/mcp-servers">
   Configure MCP servers within Vibe Kanban for your coding agents
 </Card>
-
-<Card title="Classic Agent Configuration" icon="code" href="/configuration-customisation/agent-configurations">
-  Use the classic settings for JSON-based agent configuration
-</Card>
-</CardGroup>

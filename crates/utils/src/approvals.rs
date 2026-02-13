@@ -32,7 +32,6 @@ impl ApprovalRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct CreateApprovalRequest {
     pub tool_name: String,
     pub tool_input: serde_json::Value,
@@ -40,7 +39,6 @@ pub struct CreateApprovalRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum ApprovalStatus {
     Pending,
@@ -53,7 +51,6 @@ pub enum ApprovalStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct ApprovalResponse {
     pub execution_process_id: Uuid,
     pub status: ApprovalStatus,

@@ -76,6 +76,21 @@ const versionCacheDir = LOCAL_DEV_MODE
   ? path.join(LOCAL_DIST_DIR, platformDir)
   : path.join(CACHE_DIR, BINARY_TAG, platformDir);
 
+// Remove old version directories from the binary cache
+function cleanOldVersions() {
+  try {
+    const entries = fs.readdirSync(CACHE_DIR, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory() && entry.name !== BINARY_TAG) {
+        const oldDir = path.join(CACHE_DIR, entry.name);
+        fs.rmSync(oldDir, { recursive: true, force: true });
+      }
+    }
+  } catch {
+    // Ignore cleanup errors — not critical
+  }
+}
+
 function showProgress(downloaded, total) {
   const percent = total ? Math.round((downloaded / total) * 100) : 0;
   const mb = (downloaded / (1024 * 1024)).toFixed(1);
@@ -129,6 +144,11 @@ async function extractAndRun(baseName, launch) {
     console.error(`Extracted binary not found at: ${binPath}`);
     console.error("This usually indicates a corrupt download. Please try again.");
     process.exit(1);
+  }
+
+  // Clean up old cached versions only after current version is fully ready
+  if (!LOCAL_DEV_MODE) {
+    cleanOldVersions();
   }
 
   // Set permissions (non-Windows)

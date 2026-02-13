@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CaretRightIcon, SpinnerIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -20,6 +20,8 @@ import { useAttempt } from '@/hooks/useAttempt';
 import { useRepoBranches } from '@/hooks/useRepoBranches';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useWorkspaces } from '@/components/ui-new/hooks/useWorkspaces';
 import type { Result } from '@/lib/api';
 import { ResolveConflictsDialog } from './ResolveConflictsDialog';
 import { RebaseInProgressDialog } from './RebaseInProgressDialog';
@@ -45,6 +47,10 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
 
   const git = useGitOperations(attemptId, repoId);
   const { data: workspace } = useAttempt(attemptId);
+  const { workspaceId: activeWorkspaceId } = useWorkspaceContext();
+  const { workspaces } = useWorkspaces();
+  const isWorkspaceRunning =
+    workspaces.find((w) => w.id === attemptId)?.isRunning ?? false;
 
   // Load branches and repo data internally
   const { data: branches = [], isLoading: branchesLoading } =
@@ -64,14 +70,26 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
   const isRebaseInProgress = repoStatus?.is_rebase_in_progress ?? false;
   const hasConflictedFiles = (repoStatus?.conflicted_files?.length ?? 0) > 0;
 
+  // Prevent the redirect useEffect from firing more than once. Without this,
+  // every 5-second branchStatus poll that still returns conflicts would
+  // re-open the ResolveConflictsDialog (e.g. during long multi-commit rebases).
+  const hasRedirectedRef = useRef(false);
+
   // If rebase is in progress, redirect to the appropriate dialog
+  // Only show if the user is still viewing this workspace
   useEffect(() => {
     if (
       !isInitialLoading &&
       (isRebaseInProgress || hasConflictedFiles) &&
-      repoStatus
+      repoStatus &&
+      !hasRedirectedRef.current
     ) {
+      hasRedirectedRef.current = true;
       modal.hide();
+
+      // Don't show the dialog if the user switched away or if
+      // a process is already running (e.g. resolving these conflicts).
+      if (activeWorkspaceId !== attemptId || isWorkspaceRunning) return;
 
       if (hasConflictedFiles) {
         // Rebase in progress WITH conflicts -> show resolve conflicts dialog
@@ -101,6 +119,8 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
     repoId,
     workspace?.branch,
     modal,
+    activeWorkspaceId,
+    isWorkspaceRunning,
   ]);
 
   // Reset initialization flag when attemptId or repoId changes
@@ -136,16 +156,18 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
 
       if (errorData?.type === 'merge_conflicts') {
         // Hide this dialog and show the resolve conflicts dialog
-        // Use conflict details directly from the error response (no extra API call needed)
+        // Only show if the user is still viewing this workspace
         modal.hide();
-        await ResolveConflictsDialog.show({
-          workspaceId: attemptId,
-          conflictOp: errorData.op,
-          sourceBranch: workspace?.branch ?? null,
-          targetBranch: errorData.target_branch,
-          conflictedFiles: errorData.conflicted_files,
-          repoName: undefined,
-        });
+        if (activeWorkspaceId === attemptId) {
+          await ResolveConflictsDialog.show({
+            workspaceId: attemptId,
+            conflictOp: errorData.op,
+            sourceBranch: workspace?.branch ?? null,
+            targetBranch: errorData.target_branch,
+            conflictedFiles: errorData.conflicted_files,
+            repoName: undefined,
+          });
+        }
         return;
       }
 

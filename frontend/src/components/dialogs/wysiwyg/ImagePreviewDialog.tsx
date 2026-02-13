@@ -42,13 +42,13 @@ const ImagePreviewDialogImpl = NiceModal.create<ImagePreviewDialogProps>(
 
     return (
       <Dialog open={modal.visible} onOpenChange={handleClose}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden">
+        <DialogContent className="w-full max-w-5xl p-0 overflow-hidden">
           {fileName && (
             <DialogHeader className="px-4 pt-4 pb-0">
               <DialogTitle className="truncate">{fileName}</DialogTitle>
             </DialogHeader>
           )}
-          <div className="relative flex items-center justify-center min-h-[200px]">
+          <div className="relative flex items-center justify-center min-h-[220px] max-h-[76vh] px-4 pb-4">
             {!imageLoaded && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
