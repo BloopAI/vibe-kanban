@@ -34,6 +34,8 @@ export class PreviewDevToolsBridge {
     }
 
     this.messageListener = (event: MessageEvent) => {
+      if (event.source !== this.iframeRef.current?.contentWindow) return;
+
       const data = event.data;
 
       // Only handle messages from our devtools
