@@ -257,18 +257,6 @@ export const PROJECT_PULL_REQUESTS_SHAPE = defineShape<PullRequest>(
   '/v1/shape/project/{project_id}/pull_requests'
 );
 
-export const PROJECT_BLOBS_SHAPE = defineShape<Blob>(
-  'blobs',
-  ['project_id'] as const,
-  '/v1/shape/project/{project_id}/blobs'
-);
-
-export const PROJECT_ATTACHMENTS_SHAPE = defineShape<Attachment>(
-  'attachments',
-  ['project_id'] as const,
-  '/v1/shape/project/{project_id}/attachments'
-);
-
 export const ISSUE_COMMENTS_SHAPE = defineShape<IssueComment>(
   'issue_comments',
   ['issue_id'] as const,
