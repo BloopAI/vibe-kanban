@@ -312,6 +312,8 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
   }, [loadRecentRepos, runSearch, setFileSearchRepo]);
 
   const handleCreateTag = useCallback(async () => {
+    // Blur editor so the typeahead menu closes before the dialog opens
+    editor.blur();
     try {
       const result = await TagEditDialog.show({ tag: null });
       if (result === 'saved') {
@@ -323,7 +325,7 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
     } catch {
       // User cancelled
     }
-  }, [runSearch]);
+  }, [editor, runSearch]);
 
   const onQueryChange = useCallback(
     (query: string | null) => {
