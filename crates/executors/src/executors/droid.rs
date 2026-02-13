@@ -165,12 +165,16 @@ impl StandardCodingAgentExecutor for Droid {
         spawn_droid(continue_cmd, &combined_prompt, current_dir, env, &self.cmd).await
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
+    fn normalize_logs(
+        &self,
+        msg_store: Arc<MsgStore>,
+        current_dir: &Path,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
         normalize_logs(
             msg_store.clone(),
             current_dir,
             EntryIndexProvider::start_from(&msg_store),
-        );
+        )
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
