@@ -462,7 +462,7 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
                       onClick={() => selectOptionAndCleanUp(option)}
                     >
                       <div className="flex items-center gap-half font-medium">
-                        <TagIcon className="size-icon-xs text-brand" weight="bold" />
+                        <TagIcon className="size-icon-xs shrink-0" weight="bold" />
                         <span>@{tag.tag_name}</span>
                       </div>
                       {tag.content && (
