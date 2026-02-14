@@ -83,9 +83,11 @@ async function verifyPorts(ports) {
  * Allocate ports for development
  */
 async function allocatePorts() {
-  // If PORT env is set, use it for frontend and PORT+1 for backend
-  if (process.env.PORT) {
-    const frontendPort = parseInt(process.env.PORT, 10);
+  // If VIBE_KANBAN_PORT or PORT env is set, use it for frontend and port+1 for backend
+  // VIBE_KANBAN_PORT takes precedence to avoid conflicts with child processes that read PORT
+  const explicitPort = process.env.VIBE_KANBAN_PORT || process.env.PORT;
+  if (explicitPort) {
+    const frontendPort = parseInt(explicitPort, 10);
     const backendPort = frontendPort + 1;
 
     const ports = {
@@ -95,7 +97,8 @@ async function allocatePorts() {
     };
 
     if (process.argv[2] === "get") {
-      console.log("Using PORT environment variable:");
+      const envVar = process.env.VIBE_KANBAN_PORT ? "VIBE_KANBAN_PORT" : "PORT";
+      console.log(`Using ${envVar} environment variable:`);
       console.log(`Frontend: ${ports.frontend}`);
       console.log(`Backend: ${ports.backend}`);
     }
