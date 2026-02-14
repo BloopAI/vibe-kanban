@@ -351,7 +351,8 @@ function getItemSearchLabel(
     return 'create new issue';
   }
   if (item.type === 'action') {
-    return `${item.action.id} ${getLabel(item.action)}`;
+    const keywords = item.action.keywords?.join(' ') ?? '';
+    return `${item.action.id} ${getLabel(item.action)} ${keywords}`.trim();
   }
   return '';
 }

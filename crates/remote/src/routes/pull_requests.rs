@@ -20,7 +20,7 @@ use crate::{
 };
 use api_types::{PullRequest, PullRequestStatus, UpsertPullRequestRequest};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreatePullRequestRequest {
     pub url: String,
     pub number: i32,
@@ -32,7 +32,7 @@ pub struct CreatePullRequestRequest {
     pub local_workspace_id: Option<Uuid>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdatePullRequestRequest {
     pub url: String,
     pub status: Option<PullRequestStatus>,

@@ -269,19 +269,19 @@ pub(crate) async fn delete_project_status(
     Ok(Json(response))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct BulkUpdateProjectStatusItem {
     pub id: Uuid,
     #[serde(flatten)]
     pub changes: UpdateProjectStatusRequest,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct BulkUpdateProjectStatusesRequest {
     pub updates: Vec<BulkUpdateProjectStatusItem>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct BulkUpdateProjectStatusesResponse {
     pub data: Vec<ProjectStatus>,
     pub txid: i64,

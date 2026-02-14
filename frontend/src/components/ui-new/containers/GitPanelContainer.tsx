@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useActions } from '@/contexts/ActionsContext';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { usePush } from '@/hooks/usePush';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
@@ -23,10 +24,25 @@ export function GitPanelContainer({
   repos,
 }: GitPanelContainerProps) {
   const { executeAction } = useActions();
+  const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
 
   // Hooks for branch management (moved from WorkspacesLayout)
   const renameBranch = useRenameBranch(selectedWorkspace?.id);
   const { data: branchStatus } = useBranchStatus(selectedWorkspace?.id);
+
+  // Get PR info from workspace summary (available immediately, no git calls needed)
+  const summaryPr = useMemo(() => {
+    if (!selectedWorkspace?.id) return undefined;
+    const ws =
+      activeWorkspaces.find((w) => w.id === selectedWorkspace.id) ??
+      archivedWorkspaces.find((w) => w.id === selectedWorkspace.id);
+    if (!ws?.prStatus || !ws.prNumber) return undefined;
+    return {
+      prNumber: ws.prNumber,
+      prUrl: ws.prUrl,
+      prStatus: ws.prStatus,
+    };
+  }, [selectedWorkspace?.id, activeWorkspaces, archivedWorkspaces]);
 
   const handleBranchNameChange = useCallback(
     (newName: string) => {
@@ -36,6 +52,7 @@ export function GitPanelContainer({
   );
 
   // Transform repos to RepoInfo format (moved from WorkspacesLayout)
+  // Uses workspace summary PR data as a fast fallback before branchStatus loads
   const repoInfos: RepoInfo[] = useMemo(
     () =>
       repos.map((repo) => {
@@ -59,6 +76,12 @@ export function GitPanelContainer({
             prUrl = relevantPR.pr_info.url;
             prStatus = relevantPR.pr_info.status;
           }
+        } else if (summaryPr) {
+          // Use workspace summary PR data as a fast fallback while branchStatus loads.
+          // The summary is fetched from the DB (no git calls) and is already cached.
+          prNumber = summaryPr.prNumber;
+          prUrl = summaryPr.prUrl;
+          prStatus = summaryPr.prStatus;
         }
 
         return {
@@ -74,7 +97,7 @@ export function GitPanelContainer({
           isTargetRemote: repoStatus?.is_target_remote ?? false,
         };
       }),
-    [repos, branchStatus]
+    [repos, branchStatus, summaryPr]
   );
 
   // Track push state per repo: idle, pending, success, or error

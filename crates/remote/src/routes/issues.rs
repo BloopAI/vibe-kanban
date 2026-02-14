@@ -305,19 +305,19 @@ pub(crate) async fn delete_issue(
 // Bulk Update
 // =============================================================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct BulkUpdateIssueItem {
     pub id: Uuid,
     #[serde(flatten)]
     pub changes: UpdateIssueRequest,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct BulkUpdateIssuesRequest {
     pub updates: Vec<BulkUpdateIssueItem>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct BulkUpdateIssuesResponse {
     pub data: Vec<Issue>,
     pub txid: i64,

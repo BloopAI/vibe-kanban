@@ -19,7 +19,7 @@ use crate::{
     db::{issues::IssueRepository, workspaces::{CreateWorkspaceParams, WorkspaceRepository}},
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateWorkspaceRequest {
     pub project_id: Uuid,
     pub local_workspace_id: Option<Uuid>,

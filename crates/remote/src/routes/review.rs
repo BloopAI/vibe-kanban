@@ -31,7 +31,7 @@ pub fn public_router() -> Router<AppState> {
         .route("/review/{id}/failed", post(review_failed))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct InitReviewRequest {
     pub gh_pr_url: String,
     pub email: String,

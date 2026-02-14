@@ -8,7 +8,17 @@ use uuid::Uuid;
 use super::{project::Project, workspace::Workspace};
 
 #[derive(
-    Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, EnumString, Display, Default, utoipa::ToSchema,
+    Debug,
+    Clone,
+    Type,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    TS,
+    EnumString,
+    Display,
+    Default,
+    utoipa::ToSchema,
 )]
 #[sqlx(type_name = "task_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]

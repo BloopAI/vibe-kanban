@@ -70,6 +70,11 @@ pub fn router() -> Router<AppState> {
             shapes::PROJECT_PULL_REQUESTS_SHAPE.url,
             get(proxy_pull_requests),
         )
+        .route(shapes::PROJECT_BLOBS_SHAPE.url, get(proxy_blobs))
+        .route(
+            shapes::PROJECT_ATTACHMENTS_SHAPE.url,
+            get(proxy_attachments),
+        )
         // Issue-scoped
         .route(
             shapes::ISSUE_COMMENTS_SHAPE.url,
@@ -351,6 +356,44 @@ async fn proxy_pull_requests(
     proxy_table(
         &state,
         &shapes::PROJECT_PULL_REQUESTS_SHAPE,
+        &query.params,
+        &[project_id.to_string()],
+    )
+    .await
+}
+
+async fn proxy_blobs(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+    Query(query): Query<ShapeQuery>,
+) -> Result<Response, ProxyError> {
+    organization_members::assert_project_access(state.pool(), project_id, ctx.user.id)
+        .await
+        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
+
+    proxy_table(
+        &state,
+        &shapes::PROJECT_BLOBS_SHAPE,
+        &query.params,
+        &[project_id.to_string()],
+    )
+    .await
+}
+
+async fn proxy_attachments(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+    Query(query): Query<ShapeQuery>,
+) -> Result<Response, ProxyError> {
+    organization_members::assert_project_access(state.pool(), project_id, ctx.user.id)
+        .await
+        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
+
+    proxy_table(
+        &state,
+        &shapes::PROJECT_ATTACHMENTS_SHAPE,
         &query.params,
         &[project_id.to_string()],
     )

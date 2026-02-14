@@ -275,7 +275,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     {
         app = app.merge(
             utoipa_swagger_ui::SwaggerUi::new("/swagger-ui")
-                .url("/api/openapi.json", ApiDoc::openapi()),
+                .config(utoipa_swagger_ui::Config::new(["/api/openapi.json"])),
         );
     }
 

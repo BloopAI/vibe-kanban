@@ -21,7 +21,9 @@ pub mod normalize_logs;
 use normalize_logs::normalize_logs;
 
 // Configuration types for Droid executor
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS, JsonSchema, utoipa::ToSchema)]
+#[derive(
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS, JsonSchema, utoipa::ToSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 pub enum Autonomy {
     Normal,
@@ -35,7 +37,9 @@ fn default_autonomy() -> Autonomy {
     Autonomy::SkipPermissionsUnsafe
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr, utoipa::ToSchema)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr, utoipa::ToSchema,
+)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 #[ts(rename = "DroidReasoningEffort")]

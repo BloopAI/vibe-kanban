@@ -40,7 +40,9 @@ impl CommandParts {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, Default, utoipa::ToSchema)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, Default, utoipa::ToSchema,
+)]
 pub struct CmdOverrides {
     #[schemars(
         title = "Base Command Override",

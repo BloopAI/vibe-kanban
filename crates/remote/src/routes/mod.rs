@@ -281,11 +281,9 @@ pub(crate) mod workspaces;
         api_types::PullRequest,
         api_types::PullRequestStatus,
         api_types::UpsertPullRequestRequest,
-        // Mutation Response
-        api_types::MutationResponse,
+        // Mutation Response + Delete
         api_types::DeleteResponse,
         // Migration
-        api_types::BulkMigrateRequest,
         api_types::BulkMigrateResponse,
         api_types::MigrateProjectRequest,
         api_types::MigrateIssueRequest,
@@ -425,6 +423,7 @@ pub fn router(state: AppState) -> Router {
             require_session,
         ));
 
+    #[allow(unused_mut)]
     let mut router = Router::<AppState>::new()
         .nest("/v1", v1_public)
         .nest("/v1", v1_protected);

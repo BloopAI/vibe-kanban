@@ -96,7 +96,7 @@ pub struct CallbackQuery {
     pub state: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct TriggerPrReviewRequest {
     /// GitHub PR URL, e.g., "https://github.com/owner/repo/pull/123"
     pub pr_url: String,
@@ -107,7 +107,7 @@ pub struct TriggerPrReviewResponse {
     pub review_id: Uuid,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateRepoReviewEnabledRequest {
     pub enabled: bool,
 }
@@ -611,7 +611,7 @@ pub async fn handle_callback(
     Redirect::temporary(&url).into_response()
 }
 
-#[utoipa::path(post, path = "/v1/github/webhook", tag = "GitHubApp", responses((status = 200, description = "Webhook processed"), (status = 401, description = "Invalid signature")))]
+#[utoipa::path(post, path = "/v1/github/webhook", tag = "GitHubApp", request_body(content = String, description = "Raw webhook payload"), responses((status = 200, description = "Webhook processed"), (status = 401, description = "Invalid signature")))]
 /// POST /v1/github/webhook
 /// Handles webhook events from GitHub
 pub async fn handle_webhook(

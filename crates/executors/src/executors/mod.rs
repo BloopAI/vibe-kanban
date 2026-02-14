@@ -91,7 +91,16 @@ pub enum ExecutorError {
 
 #[enum_dispatch]
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, TS, Display, EnumDiscriminants, VariantNames, utoipa::ToSchema,
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    TS,
+    Display,
+    EnumDiscriminants,
+    VariantNames,
+    utoipa::ToSchema,
 )]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]

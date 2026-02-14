@@ -1,10 +1,6 @@
 import type { ReviewResult } from "./types/review";
-import {
-  getAccessToken,
-  getRefreshToken,
-  storeTokens,
-  clearTokens,
-} from "./auth";
+import { clearTokens } from "./auth";
+import { getToken, triggerRefresh } from "./tokenManager";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -223,7 +219,6 @@ export async function getReviewMetadata(
   return res.json();
 }
 
-// Token refresh
 export async function refreshTokens(
   refreshToken: string,
 ): Promise<{ access_token: string; refresh_token: string }> {
@@ -233,57 +228,16 @@ export async function refreshTokens(
     body: JSON.stringify({ refresh_token: refreshToken }),
   });
   if (!res.ok) {
-    throw new Error(`Token refresh failed (${res.status})`);
+    throw new ApiError(`Token refresh failed (${res.status})`, res.status);
   }
   return res.json();
-}
-
-// Authenticated fetch wrapper with automatic token refresh
-let isRefreshing = false;
-let refreshPromise: Promise<string> | null = null;
-
-async function getValidAccessToken(): Promise<string> {
-  const accessToken = getAccessToken();
-  if (!accessToken) {
-    throw new Error("Not authenticated");
-  }
-  return accessToken;
-}
-
-async function handleTokenRefresh(): Promise<string> {
-  if (isRefreshing && refreshPromise) {
-    return refreshPromise;
-  }
-
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) {
-    clearTokens();
-    throw new Error("No refresh token available");
-  }
-
-  isRefreshing = true;
-  refreshPromise = (async () => {
-    try {
-      const tokens = await refreshTokens(refreshToken);
-      storeTokens(tokens.access_token, tokens.refresh_token);
-      return tokens.access_token;
-    } catch {
-      clearTokens();
-      throw new Error("Session expired");
-    } finally {
-      isRefreshing = false;
-      refreshPromise = null;
-    }
-  })();
-
-  return refreshPromise;
 }
 
 export async function authenticatedFetch(
   url: string,
   options: RequestInit = {},
 ): Promise<Response> {
-  const accessToken = await getValidAccessToken();
+  const accessToken = await getToken();
 
   const res = await fetch(url, {
     ...options,
@@ -294,8 +248,7 @@ export async function authenticatedFetch(
   });
 
   if (res.status === 401) {
-    // Try to refresh the token
-    const newAccessToken = await handleTokenRefresh();
+    const newAccessToken = await triggerRefresh();
     return fetch(url, {
       ...options,
       headers: {

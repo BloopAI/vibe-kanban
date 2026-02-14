@@ -424,7 +424,15 @@ has_unseen_turns: boolean,
 /**
  * PR status for this workspace (if any PR exists)
  */
-pr_status: MergeStatus | null, };
+pr_status: MergeStatus | null, 
+/**
+ * PR number for this workspace (if any PR exists)
+ */
+pr_number: bigint | null, 
+/**
+ * PR URL for this workspace (if any PR exists)
+ */
+pr_url: string | null, };
 
 export type WorkspaceSummaryResponse = { summaries: Array<WorkspaceSummary>, };
 

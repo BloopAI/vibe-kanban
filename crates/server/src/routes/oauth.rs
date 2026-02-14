@@ -222,7 +222,9 @@ pub(crate) async fn handoff_complete(
 }
 
 #[utoipa::path(post, path = "/api/auth/logout", tag = "Auth", responses((status = 204, description = "Logged out")))]
-pub(crate) async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, ApiError> {
+pub(crate) async fn logout(
+    State(deployment): State<DeploymentImpl>,
+) -> Result<StatusCode, ApiError> {
     let auth_context = deployment.auth_context();
 
     if let Ok(client) = deployment.remote_client() {

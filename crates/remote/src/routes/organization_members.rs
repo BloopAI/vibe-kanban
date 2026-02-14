@@ -57,7 +57,7 @@ pub fn protected_router() -> Router<AppState> {
         )
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateInvitationRequest {
     pub email: String,
     pub role: MemberRole,

@@ -40,7 +40,7 @@ pub struct CreateNotificationRequest {
     pub seen: bool,
 }
 
-#[derive(Debug, Clone, Deserialize, TS)]
+#[derive(Debug, Clone, Deserialize, TS, utoipa::ToSchema)]
 pub struct UpdateNotificationRequest {
     #[serde(default, deserialize_with = "some_if_present")]
     pub seen: Option<bool>,

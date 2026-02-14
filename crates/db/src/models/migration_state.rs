@@ -11,7 +11,9 @@ pub enum MigrationStateError {
     Database(#[from] sqlx::Error),
 }
 
-#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, EnumString, Display, utoipa::ToSchema)]
+#[derive(
+    Debug, Clone, Type, Serialize, Deserialize, PartialEq, EnumString, Display, utoipa::ToSchema,
+)]
 #[sqlx(type_name = "text", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
@@ -22,7 +24,18 @@ pub enum EntityType {
     Workspace,
 }
 
-#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, EnumString, Display, Default, utoipa::ToSchema)]
+#[derive(
+    Debug,
+    Clone,
+    Type,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    EnumString,
+    Display,
+    Default,
+    utoipa::ToSchema,
+)]
 #[sqlx(type_name = "text", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]

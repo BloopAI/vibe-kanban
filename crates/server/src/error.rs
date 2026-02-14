@@ -164,6 +164,11 @@ fn remote_client_error(err: &RemoteClientError) -> ErrorInfo {
             "RemoteClientError",
             "Remote service timeout. Please try again.",
         ),
+        RemoteClientError::TokenRefreshTimeout => ErrorInfo::with_status(
+            StatusCode::UNAUTHORIZED,
+            "RemoteClientError",
+            "Remote service timeout during token refresh. Please sign in again.",
+        ),
         RemoteClientError::Transport(_) => ErrorInfo::with_status(
             StatusCode::BAD_GATEWAY,
             "RemoteClientError",

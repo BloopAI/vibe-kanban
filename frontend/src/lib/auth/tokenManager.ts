@@ -1,7 +1,8 @@
 import { ApiError, oauthApi } from '../api';
+import { shouldRefreshAccessToken } from 'shared/jwt';
 
 const TOKEN_QUERY_KEY = ['auth', 'token'] as const;
-const TOKEN_STALE_TIME = 125 * 1000; // 125 seconds (slightly longer than the BE stale time)
+const TOKEN_STALE_TIME = 125 * 1000;
 
 type RefreshStateCallback = (isRefreshing: boolean) => void;
 type PauseableShape = { pause: () => void; resume: () => void };
@@ -17,18 +18,14 @@ class TokenManager {
   private pauseableShapes = new Set<PauseableShape>();
 
   /**
-   * Get the current access token.
-   * Returns cached token if fresh, or fetches a new one if stale.
-   * If a refresh is in progress, waits for it to complete.
+   * Get a valid access token, refreshing if needed.
    * Returns null immediately if the user is not logged in.
    */
   async getToken(): Promise<string | null> {
-    // If a refresh is in progress, wait for it
     if (this.refreshPromise) {
       return this.refreshPromise;
     }
 
-    // Use React Query's fetchQuery for caching
     const { queryClient } = await import('../../main');
 
     // Skip token fetch if user is not logged in — avoids unnecessary 401s
@@ -38,6 +35,14 @@ class TokenManager {
     }>(['user-system']);
     if (cachedSystem && cachedSystem.login_status?.status !== 'loggedin') {
       return null;
+    }
+
+    const cachedData = queryClient.getQueryData<{
+      access_token?: string;
+    }>(TOKEN_QUERY_KEY);
+    const cachedToken = cachedData?.access_token;
+    if (!cachedToken || shouldRefreshAccessToken(cachedToken)) {
+      await queryClient.invalidateQueries({ queryKey: TOKEN_QUERY_KEY });
     }
 
     try {
@@ -62,15 +67,8 @@ class TokenManager {
    * Returns the new token (or null if refresh failed).
    */
   triggerRefresh(): Promise<string | null> {
-    // If already refreshing, return the existing promise (deduplication)
-    if (this.refreshPromise) {
-      return this.refreshPromise;
-    }
-
-    // CRITICAL: Assign promise SYNCHRONOUSLY before any async work.
-    // This prevents race conditions when multiple 401 handlers call
-    // triggerRefresh() nearly simultaneously - they all get the same promise.
-    this.refreshPromise = this.doRefresh();
+    // CRITICAL: Assign promise SYNCHRONOUSLY so concurrent 401 handlers share one refresh.
+    this.refreshPromise ??= this.doRefresh();
     return this.refreshPromise;
   }
 

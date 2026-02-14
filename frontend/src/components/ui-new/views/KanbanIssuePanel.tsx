@@ -27,7 +27,6 @@ import { AutoResizeTextarea } from '@/components/ui-new/primitives/AutoResizeTex
 import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/IssueCommentsSectionContainer';
 import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/IssueSubIssuesSectionContainer';
 import { IssueRelationshipsSectionContainer } from '@/components/ui-new/containers/IssueRelationshipsSectionContainer';
-import { IssueAttachmentsSectionContainer } from '@/components/ui-new/containers/IssueAttachmentsSectionContainer';
 import { IssueWorkspacesSectionContainer } from '@/components/ui-new/containers/IssueWorkspacesSectionContainer';
 import {
   Tooltip,
@@ -406,13 +405,6 @@ export function KanbanIssuePanel({
         {!isCreateMode && issueId && (
           <div className="border-t">
             <IssueRelationshipsSectionContainer issueId={issueId} />
-          </div>
-        )}
-
-        {/* Attachments Section (Edit mode only) */}
-        {!isCreateMode && issueId && (
-          <div className="border-t">
-            <IssueAttachmentsSectionContainer issueId={issueId} />
           </div>
         )}
 

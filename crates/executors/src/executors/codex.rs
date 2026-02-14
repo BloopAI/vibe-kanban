@@ -58,7 +58,9 @@ use crate::{
 };
 
 /// Sandbox policy modes for Codex
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr, utoipa::ToSchema)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr, utoipa::ToSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum SandboxMode {
@@ -77,7 +79,9 @@ pub enum SandboxMode {
 /// - `OnRequest`: The model decides when to ask the user for approval.
 /// - `Never`: Commands never ask for approval. Commands that fail in the
 ///   restricted sandbox are not retried.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr, utoipa::ToSchema)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr, utoipa::ToSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum AskForApproval {
@@ -88,7 +92,9 @@ pub enum AskForApproval {
 }
 
 /// Reasoning effort for the underlying model
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr, utoipa::ToSchema)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr, utoipa::ToSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum ReasoningEffort {
@@ -99,7 +105,9 @@ pub enum ReasoningEffort {
 }
 
 /// Model reasoning summary style
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr, utoipa::ToSchema)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr, utoipa::ToSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum ReasoningSummary {
@@ -110,7 +118,9 @@ pub enum ReasoningSummary {
 }
 
 /// Format for model reasoning summaries
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr, utoipa::ToSchema)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr, utoipa::ToSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum ReasoningSummaryFormat {
@@ -279,7 +289,7 @@ impl StandardCodingAgentExecutor for Codex {
 
 impl Codex {
     pub fn base_command() -> &'static str {
-        "npx -y @openai/codex@0.98.0"
+        "npx -y @openai/codex@0.101.0"
     }
 
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
