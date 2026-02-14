@@ -10,11 +10,118 @@ use std::os::windows::io::{FromRawHandle, IntoRawHandle, OwnedHandle};
 
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use futures::{StreamExt, stream::BoxStream};
-use tokio::io::{AsyncWrite, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_util::io::ReaderStream;
 
 use crate::executors::{ExecutorError, SpawnedChild};
+
+// =========================================
+// UTF-8 chunk boundary helper
+// =========================================
+
+/// Buffers incomplete UTF-8 trailing bytes across chunk boundaries.
+///
+/// Fast path (no leftover): validates the chunk directly — zero extra copies.
+/// Slow path (leftover exists): merges with the next chunk before validating.
+struct Utf8Chunker {
+    leftover: Vec<u8>,
+}
+
+impl Utf8Chunker {
+    fn new() -> Self {
+        Self {
+            leftover: Vec::new(),
+        }
+    }
+
+    /// Process a raw byte chunk. Returns `Some(String)` with the valid UTF-8
+    /// portion, buffering any incomplete trailing bytes for the next call.
+    fn push(&mut self, data: &[u8]) -> Option<String> {
+        if self.leftover.is_empty() {
+            // Fast path
+            match std::str::from_utf8(data) {
+                Ok(s) => Some(s.to_owned()),
+                Err(e) => {
+                    let valid_up_to = e.valid_up_to();
+                    self.leftover.extend_from_slice(&data[valid_up_to..]);
+                    if valid_up_to > 0 {
+                        // Safety: valid_up_to is validated by from_utf8
+                        Some(unsafe { std::str::from_utf8_unchecked(&data[..valid_up_to]) }.to_owned())
+                    } else {
+                        None
+                    }
+                }
+            }
+        } else {
+            // Slow path: merge leftover with new data
+            self.leftover.extend_from_slice(data);
+            match std::str::from_utf8(&self.leftover) {
+                Ok(_) => {
+                    // Safety: just validated
+                    Some(unsafe { String::from_utf8_unchecked(std::mem::take(&mut self.leftover)) })
+                }
+                Err(e) => {
+                    let valid_up_to = e.valid_up_to();
+                    let result = if valid_up_to > 0 {
+                        Some(
+                            unsafe { std::str::from_utf8_unchecked(&self.leftover[..valid_up_to]) }
+                                .to_owned(),
+                        )
+                    } else {
+                        None
+                    };
+                    self.leftover = self.leftover[valid_up_to..].to_vec();
+                    result
+                }
+            }
+        }
+    }
+
+    /// Drain any remaining bytes at end-of-stream (lossy fallback).
+    fn flush(&mut self) -> Option<String> {
+        if self.leftover.is_empty() {
+            None
+        } else {
+            Some(String::from_utf8_lossy(&std::mem::take(&mut self.leftover)).into_owned())
+        }
+    }
+}
+
+/// Convert a byte-oriented `ReaderStream` into a UTF-8 safe `String` stream.
+///
+/// Multi-byte UTF-8 characters (e.g. CJK/한글, 3 bytes each) may be split
+/// across chunk boundaries. Incomplete trailing bytes are buffered and joined
+/// with the next chunk before emitting.
+pub fn utf8_safe_stream(
+    reader: impl AsyncRead + Unpin + Send + 'static,
+) -> BoxStream<'static, std::io::Result<String>> {
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<std::io::Result<String>>();
+
+    tokio::spawn(async move {
+        let mut stream = ReaderStream::new(reader);
+        let mut chunker = Utf8Chunker::new();
+
+        while let Some(res) = stream.next().await {
+            match res {
+                Ok(data) => {
+                    if let Some(s) = chunker.push(&data) {
+                        let _ = tx.send(Ok(s));
+                    }
+                }
+                Err(err) => {
+                    let _ = tx.send(Err(err));
+                }
+            }
+        }
+
+        if let Some(s) = chunker.flush() {
+            let _ = tx.send(Ok(s));
+        }
+    });
+
+    Box::pin(UnboundedReceiverStream::new(rx))
+}
 
 /// Duplicate stdout from AsyncGroupChild.
 ///
@@ -55,20 +162,25 @@ pub fn duplicate_stdout(
     // Read original stdout and write to both new ChildStdout and duplicate stream
     tokio::spawn(async move {
         let mut stdout_stream = ReaderStream::new(original_stdout);
+        let mut chunker = Utf8Chunker::new();
 
         while let Some(res) = stdout_stream.next().await {
             match res {
                 Ok(data) => {
                     let _ = fd_writer.write_all(&data).await;
-
-                    let string_chunk = String::from_utf8_lossy(&data).into_owned();
-                    let _ = dup_writer.send(Ok(string_chunk));
+                    if let Some(s) = chunker.push(&data) {
+                        let _ = dup_writer.send(Ok(s));
+                    }
                 }
                 Err(err) => {
                     tracing::error!("Error reading from child stdout: {}", err);
                     let _ = dup_writer.send(Err(err));
                 }
             }
+        }
+
+        if let Some(s) = chunker.flush() {
+            let _ = dup_writer.send(Ok(s));
         }
     });
 
@@ -127,20 +239,27 @@ pub fn tee_stdout_with_appender(
         let shared_writer = shared_writer.clone();
         tokio::spawn(async move {
             let mut stdout_stream = ReaderStream::new(original_stdout);
+            let mut chunker = Utf8Chunker::new();
+
             while let Some(res) = stdout_stream.next().await {
                 match res {
                     Ok(data) => {
-                        // forward to child stdout
                         let mut w = shared_writer.lock().await;
                         let _ = w.write_all(&data).await;
-                        // publish duplicate
-                        let string_chunk = String::from_utf8_lossy(&data).into_owned();
-                        let _ = dup_tx.send(Ok(string_chunk));
+                        drop(w);
+
+                        if let Some(s) = chunker.push(&data) {
+                            let _ = dup_tx.send(Ok(s));
+                        }
                     }
                     Err(err) => {
                         let _ = dup_tx.send(Err(err));
                     }
                 }
+            }
+
+            if let Some(s) = chunker.flush() {
+                let _ = dup_tx.send(Ok(s));
             }
         });
     }
