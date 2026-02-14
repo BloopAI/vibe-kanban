@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { stripAnsi } from 'fancy-ansi';
 
 const urlPatterns = [
-  /(https?:\/\/(?:\[[0-9a-f:]+\]|localhost|127\.0\.0\.1|0\.0\.0\.0|\d{1,3}(?:\.\d{1,3}){3})(?::\d{2,5})?(?:\/\S*)?)/i,
+  // Full URL with scheme — matches any hostname (localhost, IPs, FQDNs, Tailscale names, etc.)
+  /(https?:\/\/(?:\[[0-9a-f:]+\]|[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)*|\d{1,3}(?:\.\d{1,3}){3})(?::\d{2,5})?(?:\/\S*)?)/i,
+  // Bare host:port without scheme — kept restrictive to avoid false positives on non-URL text
   /(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[[0-9a-f:]+\]|(?:\d{1,3}\.){3}\d{1,3}):(\d{2,5})/i,
 ];
 
