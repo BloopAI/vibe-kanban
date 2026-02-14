@@ -23,6 +23,7 @@ pub struct RepoReviewContext {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ReviewRequest {
     /// Unified executor identity + overrides
+    #[serde(alias = "executor_profile_id", alias = "profile_variant_label")]
     pub executor_config: ExecutorConfig,
     pub context: Option<Vec<RepoReviewContext>>,
     pub prompt: String,
