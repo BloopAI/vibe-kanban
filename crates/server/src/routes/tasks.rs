@@ -20,7 +20,7 @@ use db::models::{
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
 use deployment::Deployment;
-use executors::profile::ExecutorProfileId;
+use executors::profile::ExecutorConfig;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use services::services::{
@@ -149,7 +149,7 @@ pub struct LinkedIssueInfo {
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct CreateAndStartTaskRequest {
     pub task: CreateTask,
-    pub executor_profile_id: ExecutorProfileId,
+    pub executor_config: ExecutorConfig,
     pub repos: Vec<WorkspaceRepoInput>,
     pub linked_issue: Option<LinkedIssueInfo>,
 }
@@ -346,7 +346,7 @@ pub async fn create_task_and_start(
 
     let is_attempt_running = deployment
         .container()
-        .start_workspace(&workspace, payload.executor_profile_id.clone())
+        .start_workspace(&workspace, payload.executor_config.clone())
         .await
         .inspect_err(|err| tracing::error!("Failed to start task attempt: {}", err))
         .is_ok();
@@ -355,8 +355,8 @@ pub async fn create_task_and_start(
             "task_attempt_started",
             serde_json::json!({
                 "task_id": task.id.to_string(),
-                "executor": &payload.executor_profile_id.executor,
-                "variant": &payload.executor_profile_id.variant,
+                "executor": &payload.executor_config.executor,
+                "variant": &payload.executor_config.variant,
                 "workspace_id": workspace.id.to_string(),
             }),
         )
@@ -371,7 +371,7 @@ pub async fn create_task_and_start(
         task,
         has_in_progress_attempt: is_attempt_running,
         last_attempt_failed: false,
-        executor: payload.executor_profile_id.executor.to_string(),
+        executor: payload.executor_config.executor.to_string(),
     })))
 }
 

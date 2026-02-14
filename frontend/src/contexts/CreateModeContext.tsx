@@ -1,7 +1,7 @@
 import { useContext, useMemo, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createHmrContext } from '@/lib/hmrContext.ts';
-import type { Repo, ExecutorProfileId } from 'shared/types';
+import type { Repo, ExecutorConfig } from 'shared/types';
 import {
   useCreateModeState,
   type CreateModeInitialState,
@@ -27,8 +27,6 @@ interface CreateModeContextValue {
   clearRepos: () => void;
   targetBranches: Record<string, string | null>;
   setTargetBranch: (repoId: string, branch: string) => void;
-  selectedProfile: ExecutorProfileId | null;
-  setSelectedProfile: (profile: ExecutorProfileId | null) => void;
   message: string;
   setMessage: (message: string) => void;
   clearDraft: () => Promise<void>;
@@ -38,6 +36,10 @@ interface CreateModeContextValue {
   linkedIssue: LinkedIssue | null;
   /** Clear the linked issue */
   clearLinkedIssue: () => void;
+  /** Persisted executor config (model selector state) */
+  executorConfig: ExecutorConfig | null;
+  /** Update executor config (triggers debounced scratch save) */
+  setExecutorConfig: (config: ExecutorConfig | null) => void;
 }
 
 const CreateModeContext = createHmrContext<CreateModeContextValue | null>(
@@ -109,14 +111,14 @@ export function CreateModeProvider({
       clearRepos: state.clearRepos,
       targetBranches: state.targetBranches,
       setTargetBranch: state.setTargetBranch,
-      selectedProfile: state.selectedProfile,
-      setSelectedProfile: state.setSelectedProfile,
       message: state.message,
       setMessage: state.setMessage,
       clearDraft: state.clearDraft,
       hasInitialValue: state.hasInitialValue,
       linkedIssue: state.linkedIssue,
       clearLinkedIssue: state.clearLinkedIssue,
+      executorConfig: state.executorConfig,
+      setExecutorConfig: state.setExecutorConfig,
     }),
     [
       state.selectedProjectId,
@@ -127,14 +129,14 @@ export function CreateModeProvider({
       state.clearRepos,
       state.targetBranches,
       state.setTargetBranch,
-      state.selectedProfile,
-      state.setSelectedProfile,
       state.message,
       state.setMessage,
       state.clearDraft,
       state.hasInitialValue,
       state.linkedIssue,
       state.clearLinkedIssue,
+      state.executorConfig,
+      state.setExecutorConfig,
     ]
   );
 

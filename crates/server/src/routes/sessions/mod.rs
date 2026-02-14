@@ -21,7 +21,7 @@ use executors::{
     actions::{
         ExecutorAction, ExecutorActionType, coding_agent_follow_up::CodingAgentFollowUpRequest,
     },
-    profile::ExecutorProfileId,
+    profile::ExecutorConfig,
 };
 use serde::Deserialize;
 use services::services::container::ContainerService;
@@ -86,7 +86,7 @@ pub async fn create_session(
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateFollowUpAttempt {
     pub prompt: String,
-    pub executor_profile_id: ExecutorProfileId,
+    pub executor_config: ExecutorConfig,
     pub retry_process_id: Option<Uuid>,
     pub force_when_dirty: Option<bool>,
     pub perform_git_reset: Option<bool>,
@@ -120,7 +120,7 @@ pub async fn follow_up(
         .ensure_container_exists(&workspace)
         .await?;
 
-    let executor_profile_id = payload.executor_profile_id;
+    let executor_profile_id = payload.executor_config.profile_id();
 
     // Validate executor matches session if session has prior executions
     let expected_executor: Option<String> =
@@ -172,14 +172,14 @@ pub async fn follow_up(
             prompt: prompt.clone(),
             session_id: info.session_id,
             reset_to_message_id: if is_reset { info.message_id } else { None },
-            executor_profile_id: executor_profile_id.clone(),
+            executor_config: payload.executor_config.clone(),
             working_dir: working_dir.clone(),
         })
     } else {
         ExecutorActionType::CodingAgentInitialRequest(
             executors::actions::coding_agent_initial::CodingAgentInitialRequest {
                 prompt,
-                executor_profile_id: executor_profile_id.clone(),
+                executor_config: payload.executor_config.clone(),
                 working_dir,
             },
         )

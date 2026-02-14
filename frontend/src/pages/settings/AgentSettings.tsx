@@ -35,6 +35,7 @@ import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateC
 import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteConfigurationDialog';
 import { useAgentAvailability } from '@/hooks/useAgentAvailability';
 import { AgentAvailabilityIndicator } from '@/components/AgentAvailabilityIndicator';
+import { getExecutorVariantKeys } from '@/utils/executor';
 import type {
   BaseCodingAgent,
   ExecutorConfigs,
@@ -160,8 +161,8 @@ export function AgentSettings() {
     try {
       const result = await CreateConfigurationDialog.show({
         executorType: selectedExecutorType,
-        existingConfigs: Object.keys(
-          localParsedProfiles?.executors?.[selectedExecutorType] || {}
+        existingConfigs: getExecutorVariantKeys(
+          localParsedProfiles?.executors?.[selectedExecutorType]
         ),
       });
 
@@ -243,7 +244,7 @@ export function AgentSettings() {
       }
 
       // Check if this is the last configuration
-      const currentConfigs = Object.keys(
+      const currentConfigs = getExecutorVariantKeys(
         localParsedProfiles.executors[selectedExecutorType] || {}
       );
       if (currentConfigs.length <= 1) {
@@ -266,7 +267,7 @@ export function AgentSettings() {
 
       const executorsMap = updatedProfiles.executors as unknown as ExecutorsMap;
       // If no configurations left, create a blank DEFAULT (should not happen due to check above)
-      if (Object.keys(remainingConfigs).length === 0) {
+      if (getExecutorVariantKeys(remainingConfigs).length === 0) {
         executorsMap[selectedExecutorType] = {
           DEFAULT: { [selectedExecutorType]: {} },
         };
@@ -282,7 +283,7 @@ export function AgentSettings() {
         setIsDirty(false);
 
         // Select the next available configuration
-        const nextConfigs = Object.keys(
+        const nextConfigs = getExecutorVariantKeys(
           executorsMap[selectedExecutorType] || {}
         );
         const nextSelected = nextConfigs[0] || 'DEFAULT';
@@ -520,7 +521,7 @@ export function AgentSettings() {
                 const selectedProfile =
                   profiles?.[currentProfileVariant?.executor || ''];
                 const hasVariants =
-                  selectedProfile && Object.keys(selectedProfile).length > 0;
+                  getExecutorVariantKeys(selectedProfile).length > 0;
 
                 if (hasVariants) {
                   return (
@@ -538,8 +539,8 @@ export function AgentSettings() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        {Object.entries(selectedProfile).map(
-                          ([variantLabel]) => (
+                        {getExecutorVariantKeys(selectedProfile).map(
+                          (variantLabel) => (
                             <DropdownMenuItem
                               key={variantLabel}
                               onClick={() => {
@@ -680,9 +681,8 @@ export function AgentSettings() {
                         />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.keys(
-                          localParsedProfiles.executors[selectedExecutorType] ||
-                            {}
+                        {getExecutorVariantKeys(
+                          localParsedProfiles.executors[selectedExecutorType]
                         ).map((configuration) => (
                           <SelectItem key={configuration} value={configuration}>
                             {configuration}
@@ -701,15 +701,13 @@ export function AgentSettings() {
                       disabled={
                         profilesSaving ||
                         !localParsedProfiles.executors[selectedExecutorType] ||
-                        Object.keys(
-                          localParsedProfiles.executors[selectedExecutorType] ||
-                            {}
+                        getExecutorVariantKeys(
+                          localParsedProfiles.executors[selectedExecutorType]
                         ).length <= 1
                       }
                       title={
-                        Object.keys(
-                          localParsedProfiles.executors[selectedExecutorType] ||
-                            {}
+                        getExecutorVariantKeys(
+                          localParsedProfiles.executors[selectedExecutorType]
                         ).length <= 1
                           ? t('settings.agents.editor.deleteTitle')
                           : t('settings.agents.editor.deleteButton', {

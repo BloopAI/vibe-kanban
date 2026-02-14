@@ -10,7 +10,7 @@ use crate::{
     approvals::ExecutorApprovalService,
     env::ExecutionEnv,
     executors::{BaseCodingAgent, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
-    profile::{ExecutorConfigs, ExecutorProfileId},
+    profile::{ExecutorConfig, ExecutorConfigs},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -22,7 +22,9 @@ pub struct RepoReviewContext {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ReviewRequest {
-    pub executor_profile_id: ExecutorProfileId,
+    /// Unified executor identity + overrides
+    #[serde(alias = "executor_profile_id", alias = "profile_variant_label")]
+    pub executor_config: ExecutorConfig,
     pub context: Option<Vec<RepoReviewContext>>,
     pub prompt: String,
     /// Optional session ID to resume an existing session
@@ -35,7 +37,7 @@ pub struct ReviewRequest {
 
 impl ReviewRequest {
     pub fn base_executor(&self) -> BaseCodingAgent {
-        self.executor_profile_id.executor
+        self.executor_config.executor
     }
 
     pub fn effective_dir(&self, current_dir: &Path) -> std::path::PathBuf {
@@ -54,19 +56,16 @@ impl Executable for ReviewRequest {
         approvals: Arc<dyn ExecutorApprovalService>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        // Use working_dir if specified, otherwise use current_dir
-        let effective_dir = match &self.working_dir {
-            Some(rel_path) => current_dir.join(rel_path),
-            None => current_dir.to_path_buf(),
-        };
+        let effective_dir = self.effective_dir(current_dir);
 
-        let executor_profile_id = self.executor_profile_id.clone();
+        let profile_id = self.executor_config.profile_id();
         let mut agent = ExecutorConfigs::get_cached()
-            .get_coding_agent(&executor_profile_id)
-            .ok_or(ExecutorError::UnknownExecutorType(
-                executor_profile_id.to_string(),
-            ))?;
+            .get_coding_agent(&profile_id)
+            .ok_or(ExecutorError::UnknownExecutorType(profile_id.to_string()))?;
 
+        if self.executor_config.has_overrides() {
+            agent.apply_overrides(&self.executor_config);
+        }
         agent.use_approvals(approvals.clone());
 
         agent

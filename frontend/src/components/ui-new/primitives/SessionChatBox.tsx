@@ -30,7 +30,7 @@ import {
   VisualVariant,
   type DropzoneProps,
   type EditorProps,
-  type VariantProps,
+  type ModelSelectorProps,
 } from './ChatBoxBase';
 import { PrimaryButton } from './PrimaryButton';
 import { ToolbarIconButton, ToolbarDropdown } from './Toolbar';
@@ -54,7 +54,7 @@ import { TodoProgressPopup } from './TodoProgressPopup';
 import { useUserSystem } from '@/components/ConfigProvider';
 
 // Re-export shared types
-export type { EditorProps, VariantProps } from './ChatBoxBase';
+export type { EditorProps, ModelSelectorProps } from './ChatBoxBase';
 
 // Status enum - single source of truth for execution state
 export type ExecutionStatus =
@@ -137,13 +137,14 @@ interface SessionChatBoxProps {
   editor: EditorProps;
   actions: ActionsProps;
   session: SessionProps;
+  workspaceId?: string;
   stats?: StatsProps;
-  variant?: VariantProps;
   feedbackMode?: FeedbackModeProps;
   editMode?: EditModeProps;
   approvalMode?: ApprovalModeProps;
   reviewComments?: ReviewCommentsProps;
   toolbarActions?: ToolbarActionsProps;
+  modelSelector?: ModelSelectorProps;
   error?: string | null;
   repoIds?: string[];
   projectId?: string;
@@ -169,13 +170,14 @@ export function SessionChatBox({
   editor,
   actions,
   session,
+  workspaceId,
   stats,
-  variant,
   feedbackMode,
   editMode,
   approvalMode,
   reviewComments,
   toolbarActions,
+  modelSelector,
   error,
   repoIds,
   projectId,
@@ -529,7 +531,6 @@ export function SessionChatBox({
       executor={agent || executor?.selected}
       autoFocus={true}
       focusKey={focusKey}
-      variant={variant}
       error={displayError}
       banner={renderBanner()}
       visualVariant={getVisualVariant()}
@@ -537,6 +538,11 @@ export function SessionChatBox({
       onPasteFiles={actions.onPasteFiles}
       localImages={localImages}
       dropzone={dropzone}
+      modelSelector={
+        modelSelector && agent
+          ? { ...modelSelector, agent, workspaceId }
+          : undefined
+      }
       headerLeft={
         <>
           {/* New session mode: agent icon + executor dropdown */}

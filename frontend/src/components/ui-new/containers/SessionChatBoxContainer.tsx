@@ -17,8 +17,8 @@ import { useEntries, useTokenUsage } from '@/contexts/EntriesContext';
 import { useReviewOptional } from '@/contexts/ReviewProvider';
 import { useActions } from '@/contexts/ActionsContext';
 import { useTodos } from '@/hooks/useTodos';
-import { getLatestProfileFromProcesses } from '@/utils/executor';
-import { useExecutorSelection } from '@/hooks/useExecutorSelection';
+import { getLatestConfigFromProcesses } from '@/utils/executor';
+import { useExecutorConfig } from '@/hooks/useExecutorConfig';
 import { useSessionMessageEditor } from '@/hooks/useSessionMessageEditor';
 import { useSessionQueueInteraction } from '@/hooks/useSessionQueueInteraction';
 import { useSessionSend } from '@/hooks/useSessionSend';
@@ -39,6 +39,7 @@ import {
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
 import { Actions, type ActionDefinition } from '../actions';
+import { SettingsDialog } from '../dialogs/SettingsDialog';
 import {
   isActionVisible,
   useActionVisibilityContext,
@@ -286,22 +287,21 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const { executionProcesses: lastSessionProcesses } =
     useExecutionProcesses(lastSessionId);
 
-  // Compute latestProfileId: current processes > last session processes > session metadata
-  const latestProfileId = useMemo(() => {
-    // Current session's processes take priority
-    const fromProcesses = getLatestProfileFromProcesses(processes);
+  // Compute latestConfig: current processes > last session processes > session metadata
+  const latestConfig = useMemo(() => {
+    // Current session's processes take priority (full ExecutorConfig)
+    const fromProcesses = getLatestConfigFromProcesses(processes);
     if (fromProcesses) return fromProcesses;
 
-    // Try full profile from last session's processes (includes variant)
-    const fromLastSession = getLatestProfileFromProcesses(lastSessionProcesses);
+    // Try full config from last session's processes
+    const fromLastSession = getLatestConfigFromProcesses(lastSessionProcesses);
     if (fromLastSession) return fromLastSession;
 
-    // Fallback: just executor from session metadata, no variant
+    // Fallback: just executor from session metadata
     const lastSessionExecutor = sessions?.[0]?.executor;
     if (lastSessionExecutor) {
       return {
         executor: lastSessionExecutor as BaseCodingAgent,
-        variant: null,
       };
     }
 
@@ -309,7 +309,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   }, [processes, lastSessionProcesses, sessions]);
 
   const needsExecutorSelection =
-    isNewSessionMode || (!session?.executor && !latestProfileId?.executor);
+    isNewSessionMode || (!session?.executor && !latestConfig?.executor);
 
   // Message editor state
   const {
@@ -365,41 +365,35 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     noKeyboard: true,
   });
 
-  // Executor/variant selection
+  // Unified executor + variant + model selector options resolution
   const {
+    executorConfig,
     effectiveExecutor,
-    executorOptions,
-    handleExecutorChange,
     selectedVariant,
+    executorOptions,
     variantOptions,
-    setSelectedVariant: setVariantFromHook,
-  } = useExecutorSelection({
+    presetOptions,
+    setExecutor: handleExecutorChange,
+    setVariant: setSelectedVariant,
+    setOverrides: setExecutorOverrides,
+  } = useExecutorConfig({
     profiles,
-    latestProfileId,
-    scratchVariant: scratchData?.executor_profile_id?.variant,
+    lastUsedConfig: latestConfig,
+    scratchConfig: scratchData?.executor_config ?? undefined,
     configExecutorProfile: config?.executor_profile,
+    onPersist: (cfg) => void saveToScratch(localMessageRef.current, cfg),
   });
 
-  // Wrap variant change to also save to scratch
-  const setSelectedVariant = useCallback(
-    (variant: string | null) => {
-      setVariantFromHook(variant);
-      if (effectiveExecutor) {
-        saveToScratch(localMessage, { executor: effectiveExecutor, variant });
-      }
-    },
-    [setVariantFromHook, saveToScratch, localMessage, effectiveExecutor]
-  );
-
   // Navigate to agent settings to customise variants
-  const handleCustomise = useCallback(() => {
-    navigate('/settings/agents');
-  }, [navigate]);
+  const handleCustomise = () => {
+    SettingsDialog.show({ initialSection: 'agents' });
+  };
 
   // Queue interaction
   const {
     isQueued,
     queuedMessage,
+    queuedConfig,
     isQueueLoading,
     queueMessage,
     cancelQueue,
@@ -416,8 +410,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     sessionId,
     workspaceId,
     isNewSessionMode,
-    effectiveExecutor,
     onSelectSession,
+    executorConfig,
   });
 
   const handleSend = useCallback(async () => {
@@ -425,7 +419,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       reviewMarkdown,
     ]);
 
-    const success = await send(prompt, selectedVariant);
+    const success = await send(prompt);
     if (success) {
       cancelDebouncedSave();
       setLocalMessage('');
@@ -440,7 +434,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     send,
     localMessage,
     reviewMarkdown,
-    selectedVariant,
     cancelDebouncedSave,
     setLocalMessage,
     clearUploadedImages,
@@ -472,20 +465,14 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Queue message handler
   const handleQueueMessage = useCallback(async () => {
-    // Allow queueing if there's a message OR review comments, and we have an executor
-    if ((!localMessage.trim() && !reviewMarkdown) || !effectiveExecutor) return;
+    // Allow queueing if there's a message OR review comments, and we have a config
+    if ((!localMessage.trim() && !reviewMarkdown) || !executorConfig) return;
 
     const { prompt } = buildAgentPrompt(localMessage, [reviewMarkdown]);
 
     cancelDebouncedSave();
-    await saveToScratch(localMessage, {
-      executor: effectiveExecutor,
-      variant: selectedVariant,
-    });
-    await queueMessage(prompt, {
-      executor: effectiveExecutor,
-      variant: selectedVariant,
-    });
+    await saveToScratch(localMessage, executorConfig);
+    await queueMessage(prompt, executorConfig);
 
     // Clear local state after queueing (same as handleSend)
     setLocalMessage('');
@@ -494,8 +481,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   }, [
     localMessage,
     reviewMarkdown,
-    effectiveExecutor,
-    selectedVariant,
+    executorConfig,
     queueMessage,
     cancelDebouncedSave,
     saveToScratch,
@@ -508,11 +494,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const handleEditorChange = useCallback(
     (value: string) => {
       if (isQueued) cancelQueue();
-      if (effectiveExecutor) {
-        handleMessageChange(value, {
-          executor: effectiveExecutor,
-          variant: selectedVariant,
-        });
+      if (executorConfig) {
+        handleMessageChange(value, executorConfig);
       } else {
         setLocalMessage(value);
       }
@@ -522,8 +505,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       isQueued,
       cancelQueue,
       handleMessageChange,
-      effectiveExecutor,
-      selectedVariant,
+      executorConfig,
       sendError,
       clearError,
       setLocalMessage,
@@ -559,8 +541,17 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     if (queuedMessage) {
       setLocalMessage(queuedMessage);
     }
+    if (queuedConfig) {
+      setExecutorOverrides(queuedConfig);
+    }
     await cancelQueue();
-  }, [queuedMessage, setLocalMessage, cancelQueue]);
+  }, [
+    queuedMessage,
+    queuedConfig,
+    setLocalMessage,
+    setExecutorOverrides,
+    cancelQueue,
+  ]);
 
   // Message edit retry mutation
   const editRetryMutation = useMessageEditRetry(sessionId ?? '', () => {
@@ -572,12 +563,11 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Handle edit submission
   const handleSubmitEdit = useCallback(async () => {
-    if (!editContext.activeEdit || !localMessage.trim() || !effectiveExecutor)
+    if (!editContext.activeEdit || !localMessage.trim() || !executorConfig)
       return;
     editRetryMutation.mutate({
       message: localMessage,
-      executor: effectiveExecutor,
-      variant: selectedVariant,
+      executorConfig,
       executionProcessId: editContext.activeEdit.processId,
       branchStatus,
       processes,
@@ -585,8 +575,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   }, [
     editContext.activeEdit,
     localMessage,
-    effectiveExecutor,
-    selectedVariant,
+    executorConfig,
     branchStatus,
     processes,
     editRetryMutation,
@@ -757,6 +746,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         status="idle"
         repoIds={repoIds}
         projectId={projectId}
+        workspaceId={workspaceId}
         tokenUsageInfo={tokenUsageInfo}
         editor={{
           value: '',
@@ -796,6 +786,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       onScrollToPreviousMessage={onScrollToPreviousMessage}
       repoIds={repoIds}
       projectId={projectId}
+      workspaceId={workspaceId}
       tokenUsageInfo={tokenUsageInfo}
       editor={{
         value: editorValue,
@@ -807,12 +798,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         onCancelQueue: handleCancelQueue,
         onStop: stopExecution,
         onPasteFiles: uploadFiles,
-      }}
-      variant={{
-        selected: selectedVariant,
-        options: variantOptions,
-        onChange: setSelectedVariant,
-        onCustomise: handleCustomise,
       }}
       session={{
         sessions,
@@ -891,6 +876,15 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       }
       localImages={localImages}
       dropzone={{ getRootProps, getInputProps, isDragActive }}
+      modelSelector={{
+        onAdvancedSettings: handleCustomise,
+        presets: variantOptions,
+        selectedPreset: selectedVariant,
+        onPresetSelect: setSelectedVariant,
+        onOverrideChange: setExecutorOverrides,
+        executorConfig,
+        presetOptions,
+      }}
     />
   );
 }
