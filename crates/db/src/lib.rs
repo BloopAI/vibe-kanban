@@ -80,7 +80,7 @@ impl DBService {
         );
         let options = SqliteConnectOptions::from_str(&database_url)?
             .create_if_missing(true)
-            .journal_mode(SqliteJournalMode::Delete);
+            .journal_mode(SqliteJournalMode::Wal);
         let pool = SqlitePool::connect_with(options).await?;
         run_migrations(&pool).await?;
         Ok(DBService { pool })
@@ -116,7 +116,7 @@ impl DBService {
         );
         let options = SqliteConnectOptions::from_str(&database_url)?
             .create_if_missing(true)
-            .journal_mode(SqliteJournalMode::Delete);
+            .journal_mode(SqliteJournalMode::Wal);
 
         let pool = if let Some(hook) = after_connect {
             SqlitePoolOptions::new()
