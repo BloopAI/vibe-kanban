@@ -111,13 +111,22 @@ const FolderPickerDialogImpl = NiceModal.create<FolderPickerDialogProps>(
       // Don't set manual path here since home directory path varies by system
     };
 
-    const handleManualPathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setManualPath(e.target.value);
-    };
+  const handleManualPathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setManualPath(e.target.value);
+  };
 
-    const handleManualPathSubmit = () => {
-      loadDirectory(manualPath);
-    };
+  const handleManualPathKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleManualPathSubmit();
+    }
+  };
+
+  const handleManualPathSubmit = () => {
+    loadDirectory(manualPath);
+  };
 
     const handleSelectCurrent = () => {
       const selectedPath = manualPath || currentPath;
@@ -165,6 +174,7 @@ const FolderPickerDialogImpl = NiceModal.create<FolderPickerDialogProps>(
                   <Input
                     value={manualPath}
                     onChange={handleManualPathChange}
+                    onKeyDown={handleManualPathKeyDown}
                     placeholder="/path/to/your/project"
                     className="flex-1 min-w-0"
                   />
