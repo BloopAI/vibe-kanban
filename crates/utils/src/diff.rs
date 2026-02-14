@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 // Structs compatible with props: https://github.com/MrWangJustToDo/git-diff-view
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FileDiffDetails {
     pub file_name: Option<String>,
@@ -16,7 +16,7 @@ pub struct FileDiffDetails {
 }
 
 // Worktree diffs for the diffs tab: minimal, no hunks, optional full contents
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Diff {
     pub change: DiffChangeKind,
@@ -32,7 +32,7 @@ pub struct Diff {
     pub repo_id: Option<Uuid>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum DiffChangeKind {
     Added,

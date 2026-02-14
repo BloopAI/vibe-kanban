@@ -4,7 +4,7 @@ use sqlx::{FromRow, SqlitePool};
 use ts_rs::TS;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct ExecutionProcessRepoState {
     pub id: Uuid,
     pub execution_process_id: Uuid,

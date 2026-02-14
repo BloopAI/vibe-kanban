@@ -13,14 +13,14 @@ use crate::{
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, utoipa::ToSchema)]
 pub struct RepoReviewContext {
     pub repo_id: Uuid,
     pub repo_name: String,
     pub base_commit: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, utoipa::ToSchema)]
 pub struct ReviewRequest {
     pub executor_profile_id: ExecutorProfileId,
     pub context: Option<Vec<RepoReviewContext>>,

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct MigrationRequest {
     pub organization_id: Uuid,
     /// List of local project IDs to migrate.
@@ -18,12 +18,12 @@ impl MigrationRequest {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct MigrationResponse {
     pub report: MigrationReport,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, TS, utoipa::ToSchema)]
 pub struct MigrationReport {
     pub projects: EntityReport,
     pub tasks: EntityReport,
@@ -32,7 +32,7 @@ pub struct MigrationReport {
     pub warnings: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, TS, utoipa::ToSchema)]
 pub struct EntityReport {
     pub total: usize,
     pub migrated: usize,
@@ -41,7 +41,7 @@ pub struct EntityReport {
     pub errors: Vec<EntityError>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct EntityError {
     pub local_id: Uuid,
     pub error: String,

@@ -94,8 +94,9 @@ pub struct UserSystemInfo {
 }
 
 // TODO: update frontend, BE schema has changed, this replaces GET /config and /config/constants
+#[utoipa::path(get, path = "/api/info", tag = "Config", responses((status = 200, description = "User system info")))]
 #[axum::debug_handler]
-async fn get_user_system_info(
+pub(crate) async fn get_user_system_info(
     State(deployment): State<DeploymentImpl>,
 ) -> ResponseJson<ApiResponse<UserSystemInfo>> {
     let config = deployment.config().read().await;
@@ -127,7 +128,8 @@ async fn get_user_system_info(
     ResponseJson(ApiResponse::success(user_system_info))
 }
 
-async fn update_config(
+#[utoipa::path(put, path = "/api/config", tag = "Config", responses((status = 200, description = "Config updated")))]
+pub(crate) async fn update_config(
     State(deployment): State<DeploymentImpl>,
     Json(new_config): Json<Config>,
 ) -> ResponseJson<ApiResponse<Config>> {
@@ -202,7 +204,8 @@ async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &C
     }
 }
 
-async fn get_sound(Path(sound): Path<SoundFile>) -> Result<Response, ApiError> {
+#[utoipa::path(get, path = "/api/sounds/{sound}", tag = "Config", params(("sound" = String, Path, description = "Sound file name")), responses((status = 200, description = "Sound file", content_type = "audio/wav")))]
+pub(crate) async fn get_sound(Path(sound): Path<SoundFile>) -> Result<Response, ApiError> {
     let sound = sound.serve().await.map_err(DeploymentError::Other)?;
     let response = Response::builder()
         .status(http::StatusCode::OK)
@@ -227,12 +230,13 @@ pub struct GetMcpServerResponse {
     config_path: String,
 }
 
-#[derive(TS, Debug, Serialize, Deserialize)]
+#[derive(TS, Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct UpdateMcpServersBody {
     servers: HashMap<String, Value>,
 }
 
-async fn get_mcp_servers(
+#[utoipa::path(get, path = "/api/mcp-config", tag = "Config", responses((status = 200, description = "MCP server configuration")))]
+pub(crate) async fn get_mcp_servers(
     State(_deployment): State<DeploymentImpl>,
     Query(query): Query<McpServerQuery>,
 ) -> Result<ResponseJson<ApiResponse<GetMcpServerResponse>>, ApiError> {
@@ -268,7 +272,8 @@ async fn get_mcp_servers(
     })))
 }
 
-async fn update_mcp_servers(
+#[utoipa::path(post, path = "/api/mcp-config", tag = "Config", responses((status = 200, description = "MCP servers updated")))]
+pub(crate) async fn update_mcp_servers(
     State(_deployment): State<DeploymentImpl>,
     Query(query): Query<McpServerQuery>,
     Json(payload): Json<UpdateMcpServersBody>,
@@ -402,7 +407,8 @@ pub struct ProfilesContent {
     pub path: String,
 }
 
-async fn get_profiles(
+#[utoipa::path(get, path = "/api/profiles", tag = "Config", responses((status = 200, description = "Executor profiles")))]
+pub(crate) async fn get_profiles(
     State(_deployment): State<DeploymentImpl>,
 ) -> ResponseJson<ApiResponse<ProfilesContent>> {
     let profiles_path = utils::assets::profiles_path();
@@ -422,7 +428,8 @@ async fn get_profiles(
     }))
 }
 
-async fn update_profiles(
+#[utoipa::path(put, path = "/api/profiles", tag = "Config", responses((status = 200, description = "Profiles updated")))]
+pub(crate) async fn update_profiles(
     State(_deployment): State<DeploymentImpl>,
     body: String,
 ) -> ResponseJson<ApiResponse<String>> {
@@ -465,7 +472,8 @@ pub struct CheckEditorAvailabilityResponse {
     available: bool,
 }
 
-async fn check_editor_availability(
+#[utoipa::path(get, path = "/api/editors/check-availability", tag = "Config", responses((status = 200, description = "Editor availability")))]
+pub(crate) async fn check_editor_availability(
     State(_deployment): State<DeploymentImpl>,
     Query(query): Query<CheckEditorAvailabilityQuery>,
 ) -> ResponseJson<ApiResponse<CheckEditorAvailabilityResponse>> {
@@ -488,7 +496,8 @@ pub struct CheckAgentAvailabilityQuery {
     executor: BaseCodingAgent,
 }
 
-async fn check_agent_availability(
+#[utoipa::path(get, path = "/api/agents/check-availability", tag = "Config", responses((status = 200, description = "Agent availability")))]
+pub(crate) async fn check_agent_availability(
     State(_deployment): State<DeploymentImpl>,
     Query(query): Query<CheckAgentAvailabilityQuery>,
 ) -> ResponseJson<ApiResponse<AvailabilityInfo>> {
@@ -512,6 +521,7 @@ pub struct AgentSlashCommandsStreamQuery {
     repo_id: Option<Uuid>,
 }
 
+#[utoipa::path(get, path = "/api/agents/slash-commands/ws", tag = "Config", responses((status = 101, description = "WebSocket upgrade for slash commands stream")))]
 pub async fn stream_agent_slash_commands_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,

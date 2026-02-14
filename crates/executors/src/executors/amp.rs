@@ -18,7 +18,7 @@ use crate::{
     logs::{stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider},
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, utoipa::ToSchema)]
 pub struct Amp {
     #[serde(default)]
     pub append_prompt: AppendPrompt,

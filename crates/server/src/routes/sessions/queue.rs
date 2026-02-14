@@ -13,13 +13,14 @@ use utils::response::ApiResponse;
 use crate::{DeploymentImpl, error::ApiError, middleware::load_session_middleware};
 
 /// Request body for queueing a follow-up message
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, utoipa::ToSchema)]
 pub struct QueueMessageRequest {
     pub message: String,
     pub executor_profile_id: ExecutorProfileId,
 }
 
 /// Queue a follow-up message to be executed when the current execution finishes
+#[utoipa::path(post, path = "/api/sessions/{session_id}/queue", tag = "Sessions", params(("session_id" = Uuid, Path, description = "Session ID")), responses((status = 200, description = "Message queued")))]
 pub async fn queue_message(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,
@@ -50,6 +51,7 @@ pub async fn queue_message(
 }
 
 /// Cancel a queued follow-up message
+#[utoipa::path(delete, path = "/api/sessions/{session_id}/queue", tag = "Sessions", params(("session_id" = Uuid, Path, description = "Session ID")), responses((status = 200, description = "Queue cancelled")))]
 pub async fn cancel_queued_message(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,
@@ -72,6 +74,7 @@ pub async fn cancel_queued_message(
 }
 
 /// Get the current queue status for a session's workspace
+#[utoipa::path(get, path = "/api/sessions/{session_id}/queue", tag = "Sessions", params(("session_id" = Uuid, Path, description = "Session ID")), responses((status = 200, description = "Queue status")))]
 pub async fn get_queue_status(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,

@@ -34,12 +34,22 @@ pub fn router() -> axum::Router<AppState> {
     mutation().router()
 }
 
+#[utoipa::path(
+    get, path = "/v1/issue_tags",
+    tag = "IssueTags",
+    params(("issue_id" = Uuid, Query, description = "Issue ID")),
+    responses(
+        (status = 200, description = "List of issue tags"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_tags.list_issue_tags",
     skip(state, ctx),
     fields(issue_id = %query.issue_id, user_id = %ctx.user.id)
 )]
-async fn list_issue_tags(
+pub(crate) async fn list_issue_tags(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Query(query): Query<ListIssueTagsQuery>,
@@ -59,12 +69,23 @@ async fn list_issue_tags(
     Ok(Json(ListIssueTagsResponse { issue_tags }))
 }
 
+#[utoipa::path(
+    get, path = "/v1/issue_tags/{id}",
+    tag = "IssueTags",
+    params(("id" = Uuid, Path, description = "Issue tag ID")),
+    responses(
+        (status = 200, description = "Issue tag found"),
+        (status = 404, description = "Issue tag not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_tags.get_issue_tag",
     skip(state, ctx),
     fields(issue_tag_id = %issue_tag_id, user_id = %ctx.user.id)
 )]
-async fn get_issue_tag(
+pub(crate) async fn get_issue_tag(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_tag_id): Path<Uuid>,
@@ -85,12 +106,22 @@ async fn get_issue_tag(
     Ok(Json(issue_tag))
 }
 
+#[utoipa::path(
+    post, path = "/v1/issue_tags",
+    tag = "IssueTags",
+    request_body = CreateIssueTagRequest,
+    responses(
+        (status = 200, description = "Issue tag created"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_tags.create_issue_tag",
     skip(state, ctx, payload),
     fields(issue_id = %payload.issue_id, user_id = %ctx.user.id)
 )]
-async fn create_issue_tag(
+pub(crate) async fn create_issue_tag(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateIssueTagRequest>,
@@ -108,12 +139,23 @@ async fn create_issue_tag(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    delete, path = "/v1/issue_tags/{id}",
+    tag = "IssueTags",
+    params(("id" = Uuid, Path, description = "Issue tag ID")),
+    responses(
+        (status = 200, description = "Issue tag deleted"),
+        (status = 404, description = "Issue tag not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_tags.delete_issue_tag",
     skip(state, ctx),
     fields(issue_tag_id = %issue_tag_id, user_id = %ctx.user.id)
 )]
-async fn delete_issue_tag(
+pub(crate) async fn delete_issue_tag(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_tag_id): Path<Uuid>,

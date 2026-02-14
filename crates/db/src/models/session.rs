@@ -17,7 +17,7 @@ pub enum SessionError {
     ExecutorMismatch { expected: String, actual: String },
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct Session {
     pub id: Uuid,
     pub workspace_id: Uuid,

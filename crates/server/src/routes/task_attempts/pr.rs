@@ -41,7 +41,7 @@ use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
-#[derive(Debug, Deserialize, Serialize, TS)]
+#[derive(Debug, Deserialize, Serialize, TS, utoipa::ToSchema)]
 pub struct CreatePrApiRequest {
     pub title: String,
     pub body: Option<String>,
@@ -72,7 +72,7 @@ pub struct AttachPrResponse {
     pub pr_status: Option<MergeStatus>,
 }
 
-#[derive(Debug, Deserialize, Serialize, TS)]
+#[derive(Debug, Deserialize, Serialize, TS, utoipa::ToSchema)]
 pub struct AttachExistingPrRequest {
     pub repo_id: Uuid,
 }
@@ -185,6 +185,7 @@ async fn trigger_pr_description_follow_up(
     Ok(())
 }
 
+#[utoipa::path(post, path = "/api/task-attempts/{id}/pr", tag = "TaskAttempts", params(("id" = Uuid, Path, description = "Workspace ID")), responses((status = 200, description = "PR created")))]
 pub async fn create_pr(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -387,6 +388,7 @@ pub async fn create_pr(
     }
 }
 
+#[utoipa::path(post, path = "/api/task-attempts/{id}/pr/attach", tag = "TaskAttempts", params(("id" = Uuid, Path, description = "Workspace ID")), responses((status = 200, description = "PR attached")))]
 pub async fn attach_existing_pr(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -529,6 +531,7 @@ pub async fn attach_existing_pr(
     }
 }
 
+#[utoipa::path(get, path = "/api/task-attempts/{id}/pr/comments", tag = "TaskAttempts", params(("id" = Uuid, Path, description = "Workspace ID"), ("repo_id" = Uuid, Query, description = "Repo ID")), responses((status = 200, description = "PR comments")))]
 pub async fn get_pr_comments(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -603,7 +606,7 @@ pub async fn get_pr_comments(
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct CreateWorkspaceFromPrBody {
     pub repo_id: Uuid,
     pub pr_number: i64,
@@ -681,6 +684,7 @@ async fn cleanup_failed_pr_workspace(
     }
 }
 
+#[utoipa::path(post, path = "/api/task-attempts/from-pr", tag = "TaskAttempts", responses((status = 200, description = "Workspace created from PR")))]
 #[axum::debug_handler]
 pub async fn create_workspace_from_pr(
     State(deployment): State<DeploymentImpl>,

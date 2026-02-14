@@ -20,7 +20,7 @@ use crate::{
 };
 use api_types::{PullRequest, PullRequestStatus, UpsertPullRequestRequest};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreatePullRequestRequest {
     pub url: String,
     pub number: i32,
@@ -32,7 +32,7 @@ pub struct CreatePullRequestRequest {
     pub local_workspace_id: Option<Uuid>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdatePullRequestRequest {
     pub url: String,
     pub status: Option<PullRequestStatus>,
@@ -49,12 +49,13 @@ pub fn router() -> Router<AppState> {
     )
 }
 
+#[utoipa::path(post, path = "/v1/pull_requests", tag = "PullRequests", request_body = CreatePullRequestRequest, responses((status = 200, description = "Pull request created"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 #[instrument(
     name = "pull_requests.create_pull_request",
     skip(state, ctx, payload),
     fields(issue_id = %payload.issue_id, local_workspace_id = ?payload.local_workspace_id, user_id = %ctx.user.id)
 )]
-async fn create_pull_request(
+pub(crate) async fn create_pull_request(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreatePullRequestRequest>,
@@ -109,12 +110,13 @@ async fn create_pull_request(
     Ok(Json(pr))
 }
 
+#[utoipa::path(patch, path = "/v1/pull_requests", tag = "PullRequests", request_body = UpdatePullRequestRequest, responses((status = 200, description = "Pull request updated"), (status = 404, description = "Not found"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 #[instrument(
     name = "pull_requests.update_pull_request",
     skip(state, ctx, payload),
     fields(url = %payload.url, user_id = %ctx.user.id)
 )]
-async fn update_pull_request(
+pub(crate) async fn update_pull_request(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<UpdatePullRequestRequest>,
@@ -155,12 +157,13 @@ async fn update_pull_request(
     Ok(Json(pr))
 }
 
+#[utoipa::path(put, path = "/v1/pull_requests", tag = "PullRequests", request_body = UpsertPullRequestRequest, responses((status = 200, description = "Pull request upserted"), (status = 404, description = "Not found"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 #[instrument(
     name = "pull_requests.upsert_pull_request",
     skip(state, ctx, payload),
     fields(url = %payload.url, local_workspace_id = %payload.local_workspace_id, user_id = %ctx.user.id)
 )]
-async fn upsert_pull_request(
+pub(crate) async fn upsert_pull_request(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<UpsertPullRequestRequest>,

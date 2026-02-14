@@ -97,7 +97,7 @@ fn normalize_claude_stderr_logs(
 
 use derivative::Derivative;
 
-#[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
+#[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema, utoipa::ToSchema)]
 #[derivative(Debug, PartialEq)]
 pub struct ClaudeCode {
     #[serde(default)]

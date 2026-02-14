@@ -36,12 +36,13 @@ pub struct SessionQuery {
     pub workspace_id: Uuid,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, utoipa::ToSchema)]
 pub struct CreateSessionRequest {
     pub workspace_id: Uuid,
     pub executor: Option<String>,
 }
 
+#[utoipa::path(get, path = "/api/sessions", tag = "Sessions", params(("workspace_id" = Uuid, Query, description = "Workspace ID")), responses((status = 200, description = "List sessions")))]
 pub async fn get_sessions(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<SessionQuery>,
@@ -51,12 +52,14 @@ pub async fn get_sessions(
     Ok(ResponseJson(ApiResponse::success(sessions)))
 }
 
+#[utoipa::path(get, path = "/api/sessions/{session_id}", tag = "Sessions", params(("session_id" = Uuid, Path, description = "Session ID")), responses((status = 200, description = "Session details")))]
 pub async fn get_session(
     Extension(session): Extension<Session>,
 ) -> Result<ResponseJson<ApiResponse<Session>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(session)))
 }
 
+#[utoipa::path(post, path = "/api/sessions", tag = "Sessions", responses((status = 200, description = "Session created")))]
 pub async fn create_session(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateSessionRequest>,
@@ -83,7 +86,7 @@ pub async fn create_session(
     Ok(ResponseJson(ApiResponse::success(session)))
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, utoipa::ToSchema)]
 pub struct CreateFollowUpAttempt {
     pub prompt: String,
     pub executor_profile_id: ExecutorProfileId,
@@ -92,13 +95,14 @@ pub struct CreateFollowUpAttempt {
     pub perform_git_reset: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, utoipa::ToSchema)]
 pub struct ResetProcessRequest {
     pub process_id: Uuid,
     pub force_when_dirty: Option<bool>,
     pub perform_git_reset: Option<bool>,
 }
 
+#[utoipa::path(post, path = "/api/sessions/{session_id}/follow-up", tag = "Sessions", params(("session_id" = Uuid, Path, description = "Session ID")), responses((status = 200, description = "Follow-up started")))]
 pub async fn follow_up(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,
@@ -211,6 +215,7 @@ pub async fn follow_up(
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
+#[utoipa::path(post, path = "/api/sessions/{session_id}/reset", tag = "Sessions", params(("session_id" = Uuid, Path, description = "Session ID")), responses((status = 200, description = "Process reset")))]
 pub async fn reset_process(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,

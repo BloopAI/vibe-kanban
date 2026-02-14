@@ -35,12 +35,22 @@ pub fn router() -> axum::Router<AppState> {
     mutation().router()
 }
 
+#[utoipa::path(
+    get, path = "/v1/projects",
+    tag = "Projects",
+    params(("organization_id" = Uuid, Query, description = "Organization ID")),
+    responses(
+        (status = 200, description = "List of projects"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "projects.list_projects",
     skip(state, ctx),
     fields(organization_id = %query.organization_id, user_id = %ctx.user.id)
 )]
-async fn list_projects(
+pub(crate) async fn list_projects(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Query(query): Query<ListProjectsQuery>,
@@ -57,12 +67,23 @@ async fn list_projects(
     Ok(Json(ListProjectsResponse { projects }))
 }
 
+#[utoipa::path(
+    get, path = "/v1/projects/{id}",
+    tag = "Projects",
+    params(("id" = Uuid, Path, description = "Project ID")),
+    responses(
+        (status = 200, description = "Project found"),
+        (status = 404, description = "Project not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "projects.get_project",
     skip(state, ctx),
     fields(project_id = %project_id, user_id = %ctx.user.id)
 )]
-async fn get_project(
+pub(crate) async fn get_project(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
@@ -80,12 +101,23 @@ async fn get_project(
     Ok(Json(project))
 }
 
+#[utoipa::path(
+    post, path = "/v1/projects",
+    tag = "Projects",
+    request_body = CreateProjectRequest,
+    responses(
+        (status = 200, description = "Project created"),
+        (status = 400, description = "Bad request"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "projects.create_project",
     skip(state, ctx, payload),
     fields(organization_id = %payload.organization_id, user_id = %ctx.user.id)
 )]
-async fn create_project(
+pub(crate) async fn create_project(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateProjectRequest>,
@@ -126,12 +158,25 @@ async fn create_project(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    patch, path = "/v1/projects/{id}",
+    tag = "Projects",
+    params(("id" = Uuid, Path, description = "Project ID")),
+    request_body = UpdateProjectRequest,
+    responses(
+        (status = 200, description = "Project updated"),
+        (status = 400, description = "Bad request"),
+        (status = 404, description = "Project not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "projects.update_project",
     skip(state, ctx, payload),
     fields(project_id = %project_id, user_id = %ctx.user.id)
 )]
-async fn update_project(
+pub(crate) async fn update_project(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
@@ -166,12 +211,23 @@ async fn update_project(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    delete, path = "/v1/projects/{id}",
+    tag = "Projects",
+    params(("id" = Uuid, Path, description = "Project ID")),
+    responses(
+        (status = 200, description = "Project deleted"),
+        (status = 404, description = "Project not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "projects.delete_project",
     skip(state, ctx),
     fields(project_id = %project_id, user_id = %ctx.user.id)
 )]
-async fn delete_project(
+pub(crate) async fn delete_project(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,

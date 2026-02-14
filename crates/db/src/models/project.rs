@@ -17,7 +17,7 @@ pub enum ProjectError {
     CreateFailed(String),
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct Project {
     pub id: Uuid,
     pub name: String,
@@ -29,18 +29,18 @@ pub struct Project {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Deserialize, TS)]
+#[derive(Debug, Clone, Deserialize, TS, utoipa::ToSchema)]
 pub struct CreateProject {
     pub name: String,
     pub repositories: Vec<CreateProjectRepo>,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, utoipa::ToSchema)]
 pub struct UpdateProject {
     pub name: Option<String>,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, utoipa::ToSchema)]
 pub struct SearchResult {
     pub path: String,
     pub is_file: bool,
@@ -50,7 +50,7 @@ pub struct SearchResult {
     pub score: i64,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, utoipa::ToSchema)]
 pub enum SearchMatchType {
     FileName,
     DirectoryName,

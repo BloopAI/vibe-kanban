@@ -7,14 +7,14 @@ pub mod plain_text_processor;
 pub mod stderr_processor;
 pub mod utils;
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ToolResultValueType {
     Markdown,
     Json,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct ToolResult {
     pub r#type: ToolResultValueType,
     /// For Markdown, this will be a JSON string; for JSON, a structured value
@@ -37,14 +37,14 @@ impl ToolResult {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum CommandExitStatus {
     ExitCode { code: i32 },
     Success { success: bool },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct CommandRunResult {
     pub exit_status: Option<CommandExitStatus>,
     pub output: Option<String>,
@@ -59,7 +59,7 @@ pub struct NormalizedConversation {
     pub summary: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq, utoipa::ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum NormalizedEntryError {
     SetupRequired,
@@ -67,7 +67,7 @@ pub enum NormalizedEntryError {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum NormalizedEntryType {
     UserMessage,
@@ -94,13 +94,13 @@ pub enum NormalizedEntryType {
     TokenUsageInfo(TokenUsageInfo),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct TokenUsageInfo {
     pub total_tokens: u32,
     pub model_context_window: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct NormalizedEntry {
     pub timestamp: Option<String>,
     pub entry_type: NormalizedEntryType,
@@ -131,7 +131,7 @@ impl NormalizedEntry {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default, utoipa::ToSchema)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum ToolStatus {
     #[default]
@@ -162,7 +162,7 @@ impl ToolStatus {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct TodoItem {
     pub content: String,
     pub status: String,
@@ -171,7 +171,7 @@ pub struct TodoItem {
 }
 
 /// Types of tool actions that can be performed
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum ActionType {
     FileRead {
@@ -219,7 +219,7 @@ pub enum ActionType {
     },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum FileChange {
     /// Create a file if it doesn't exist, and overwrite its content.

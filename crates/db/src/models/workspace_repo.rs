@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use super::repo::Repo;
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct WorkspaceRepo {
     pub id: Uuid,
     pub workspace_id: Uuid,
@@ -26,7 +26,7 @@ pub struct CreateWorkspaceRepo {
     pub target_branch: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct RepoWithTargetBranch {
     #[serde(flatten)]
     pub repo: Repo,

@@ -21,6 +21,7 @@ pub struct MultiRepoSearchQuery {
     pub repo_ids: String,
 }
 
+#[utoipa::path(get, path = "/api/search", tag = "Search", params(("q" = String, Query, description = "Search query"), ("repo_ids" = String, Query, description = "Comma-separated repo IDs")), responses((status = 200, description = "Search results")))]
 pub async fn search_files(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<MultiRepoSearchQuery>,

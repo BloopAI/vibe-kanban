@@ -32,7 +32,7 @@ use crate::{
 mod mcp;
 const CURSOR_AUTH_REQUIRED_MSG: &str = "Authentication required. Please run 'cursor-agent login' first, or set CURSOR_API_KEY environment variable.";
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, utoipa::ToSchema)]
 pub struct CursorAgent {
     #[serde(default)]
     pub append_prompt: AppendPrompt,

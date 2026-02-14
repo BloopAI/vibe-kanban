@@ -25,6 +25,7 @@ sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-rustls-aws-lc-rs",
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { workspace = true }
+utoipa = { workspace = true }
 dirs = "5.0"
 git2 = { workspace = true }
 tempfile = "3.21"

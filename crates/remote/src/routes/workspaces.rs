@@ -19,7 +19,7 @@ use crate::{
     db::{issues::IssueRepository, workspaces::{CreateWorkspaceParams, WorkspaceRepository}},
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CreateWorkspaceRequest {
     pub project_id: Uuid,
     pub local_workspace_id: Option<Uuid>,
@@ -50,12 +50,19 @@ pub fn router() -> Router<AppState> {
         )
 }
 
+#[utoipa::path(
+    post, path = "/v1/workspaces",
+    tag = "Workspaces",
+    request_body = CreateWorkspaceRequest,
+    responses((status = 200, description = "Workspace created"), (status = 403, description = "Forbidden")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "workspaces.create_workspace",
     skip(state, ctx, payload),
     fields(project_id = %payload.project_id, user_id = %ctx.user.id)
 )]
-async fn create_workspace(
+pub(crate) async fn create_workspace(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateWorkspaceRequest>,
@@ -109,12 +116,19 @@ async fn create_workspace(
     Ok(Json(workspace))
 }
 
+#[utoipa::path(
+    patch, path = "/v1/workspaces",
+    tag = "Workspaces",
+    request_body = UpdateWorkspaceRequest,
+    responses((status = 200, description = "Workspace updated"), (status = 404, description = "Not found"), (status = 403, description = "Forbidden")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "workspaces.update_workspace",
     skip(state, ctx, payload),
     fields(local_workspace_id = %payload.local_workspace_id, user_id = %ctx.user.id)
 )]
-async fn update_workspace(
+pub(crate) async fn update_workspace(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<UpdateWorkspaceRequest>,
@@ -150,12 +164,19 @@ async fn update_workspace(
     Ok(Json(updated))
 }
 
+#[utoipa::path(
+    delete, path = "/v1/workspaces",
+    tag = "Workspaces",
+    request_body = DeleteWorkspaceRequest,
+    responses((status = 204, description = "Workspace deleted"), (status = 404, description = "Not found")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "workspaces.delete_workspace",
     skip(state, ctx, payload),
     fields(local_workspace_id = %payload.local_workspace_id, user_id = %ctx.user.id)
 )]
-async fn delete_workspace(
+pub(crate) async fn delete_workspace(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<DeleteWorkspaceRequest>,
@@ -186,12 +207,19 @@ async fn delete_workspace(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    delete, path = "/v1/workspaces/{workspace_id}",
+    tag = "Workspaces",
+    params(("workspace_id" = Uuid, Path, description = "Workspace ID")),
+    responses((status = 204, description = "Workspace unlinked"), (status = 404, description = "Not found")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "workspaces.unlink_workspace",
     skip(state, ctx),
     fields(workspace_id = %workspace_id, user_id = %ctx.user.id)
 )]
-async fn unlink_workspace(
+pub(crate) async fn unlink_workspace(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(workspace_id): Path<Uuid>,
@@ -222,12 +250,19 @@ async fn unlink_workspace(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    get, path = "/v1/workspaces/by-local-id/{local_workspace_id}",
+    tag = "Workspaces",
+    params(("local_workspace_id" = Uuid, Path, description = "Local workspace ID")),
+    responses((status = 200, description = "Workspace found"), (status = 404, description = "Not found")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "workspaces.get_workspace_by_local_id",
     skip(state, ctx),
     fields(local_workspace_id = %local_workspace_id, user_id = %ctx.user.id)
 )]
-async fn get_workspace_by_local_id(
+pub(crate) async fn get_workspace_by_local_id(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(local_workspace_id): Path<Uuid>,
@@ -245,12 +280,19 @@ async fn get_workspace_by_local_id(
     Ok(Json(workspace))
 }
 
+#[utoipa::path(
+    head, path = "/v1/workspaces/exists/{local_workspace_id}",
+    tag = "Workspaces",
+    params(("local_workspace_id" = Uuid, Path, description = "Local workspace ID")),
+    responses((status = 200, description = "Workspace exists"), (status = 404, description = "Not found")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "workspaces.workspace_exists",
     skip(state, _ctx),
     fields(local_workspace_id = %local_workspace_id)
 )]
-async fn workspace_exists(
+pub(crate) async fn workspace_exists(
     State(state): State<AppState>,
     Extension(_ctx): Extension<RequestContext>,
     Path(local_workspace_id): Path<Uuid>,

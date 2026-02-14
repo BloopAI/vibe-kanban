@@ -16,7 +16,7 @@ use uuid::Uuid;
 use crate::{DeploymentImpl, error::ApiError};
 
 /// Request for fetching workspace summaries
-#[derive(Debug, Deserialize, Serialize, TS)]
+#[derive(Debug, Deserialize, Serialize, TS, utoipa::ToSchema)]
 pub struct WorkspaceSummaryRequest {
     pub archived: bool,
 }
@@ -67,6 +67,7 @@ pub struct DiffStats {
 
 /// Fetch summary information for workspaces filtered by archived status.
 /// This endpoint returns data that cannot be efficiently included in the streaming endpoint.
+#[utoipa::path(post, path = "/api/task-attempts/workspace-summaries", tag = "TaskAttempts", responses((status = 200, description = "Workspace summaries")))]
 #[axum::debug_handler]
 pub async fn get_workspace_summaries(
     State(deployment): State<DeploymentImpl>,

@@ -13,6 +13,7 @@ use utils::{
 
 use crate::DeploymentImpl;
 
+#[utoipa::path(post, path = "/api/approvals/{id}/respond", tag = "Approvals", params(("id" = String, Path, description = "Approval ID")), responses((status = 200, description = "Approval response recorded")))]
 pub async fn respond_to_approval(
     State(deployment): State<DeploymentImpl>,
     Path(id): Path<String>,

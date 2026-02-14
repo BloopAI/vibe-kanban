@@ -2,44 +2,44 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS, utoipa::ToSchema)]
 pub struct HandoffInitRequest {
     pub provider: String,
     pub return_to: String,
     pub app_challenge: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS, utoipa::ToSchema)]
 pub struct HandoffInitResponse {
     pub handoff_id: Uuid,
     pub authorize_url: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS, utoipa::ToSchema)]
 pub struct HandoffRedeemRequest {
     pub handoff_id: Uuid,
     pub app_code: String,
     pub app_verifier: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS, utoipa::ToSchema)]
 pub struct HandoffRedeemResponse {
     pub access_token: String,
     pub refresh_token: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS, utoipa::ToSchema)]
 pub struct TokenRefreshRequest {
     pub refresh_token: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS, utoipa::ToSchema)]
 pub struct TokenRefreshResponse {
     pub access_token: String,
     pub refresh_token: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS, utoipa::ToSchema)]
 pub struct ProviderProfile {
     pub provider: String,
     pub username: Option<String>,
@@ -48,7 +48,7 @@ pub struct ProviderProfile {
     pub avatar_url: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS, utoipa::ToSchema)]
 pub struct ProfileResponse {
     pub user_id: Uuid,
     pub username: Option<String>,
@@ -56,14 +56,14 @@ pub struct ProfileResponse {
     pub providers: Vec<ProviderProfile>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS, utoipa::ToSchema)]
 #[serde(tag = "status", rename_all = "lowercase")]
 pub enum LoginStatus {
     LoggedOut,
     LoggedIn { profile: ProfileResponse },
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS, utoipa::ToSchema)]
 pub struct StatusResponse {
     pub logged_in: bool,
     #[serde(skip_serializing_if = "Option::is_none")]

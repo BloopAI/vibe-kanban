@@ -36,12 +36,22 @@ pub fn router() -> axum::Router<AppState> {
     mutation().router()
 }
 
+#[utoipa::path(
+    get, path = "/v1/issue_relationships",
+    tag = "IssueRelationships",
+    params(("issue_id" = Uuid, Query, description = "Issue ID")),
+    responses(
+        (status = 200, description = "List of issue relationships"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_relationships.list_issue_relationships",
     skip(state, ctx),
     fields(issue_id = %query.issue_id, user_id = %ctx.user.id)
 )]
-async fn list_issue_relationships(
+pub(crate) async fn list_issue_relationships(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Query(query): Query<ListIssueRelationshipsQuery>,
@@ -66,12 +76,23 @@ async fn list_issue_relationships(
     }))
 }
 
+#[utoipa::path(
+    get, path = "/v1/issue_relationships/{id}",
+    tag = "IssueRelationships",
+    params(("id" = Uuid, Path, description = "Issue relationship ID")),
+    responses(
+        (status = 200, description = "Issue relationship found"),
+        (status = 404, description = "Issue relationship not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_relationships.get_issue_relationship",
     skip(state, ctx),
     fields(issue_relationship_id = %issue_relationship_id, user_id = %ctx.user.id)
 )]
-async fn get_issue_relationship(
+pub(crate) async fn get_issue_relationship(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_relationship_id): Path<Uuid>,
@@ -92,12 +113,22 @@ async fn get_issue_relationship(
     Ok(Json(relationship))
 }
 
+#[utoipa::path(
+    post, path = "/v1/issue_relationships",
+    tag = "IssueRelationships",
+    request_body = CreateIssueRelationshipRequest,
+    responses(
+        (status = 200, description = "Issue relationship created"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_relationships.create_issue_relationship",
     skip(state, ctx, payload),
     fields(issue_id = %payload.issue_id, user_id = %ctx.user.id)
 )]
-async fn create_issue_relationship(
+pub(crate) async fn create_issue_relationship(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateIssueRelationshipRequest>,
@@ -120,12 +151,23 @@ async fn create_issue_relationship(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    delete, path = "/v1/issue_relationships/{id}",
+    tag = "IssueRelationships",
+    params(("id" = Uuid, Path, description = "Issue relationship ID")),
+    responses(
+        (status = 200, description = "Issue relationship deleted"),
+        (status = 404, description = "Issue relationship not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_relationships.delete_issue_relationship",
     skip(state, ctx),
     fields(issue_relationship_id = %issue_relationship_id, user_id = %ctx.user.id)
 )]
-async fn delete_issue_relationship(
+pub(crate) async fn delete_issue_relationship(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_relationship_id): Path<Uuid>,

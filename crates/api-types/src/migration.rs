@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct MigrateProjectRequest {
     pub organization_id: Uuid,
     pub name: String,
@@ -10,7 +10,7 @@ pub struct MigrateProjectRequest {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct MigrateIssueRequest {
     pub project_id: Uuid,
     pub status_name: String,
@@ -19,7 +19,7 @@ pub struct MigrateIssueRequest {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct MigratePullRequestRequest {
     pub url: String,
     pub number: i32,
@@ -30,7 +30,7 @@ pub struct MigratePullRequestRequest {
     pub issue_id: Uuid,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct MigrateWorkspaceRequest {
     pub project_id: Uuid,
     pub issue_id: Option<Uuid>,
@@ -39,12 +39,12 @@ pub struct MigrateWorkspaceRequest {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct BulkMigrateRequest<T> {
     pub items: Vec<T>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct BulkMigrateResponse {
     pub ids: Vec<Uuid>,
 }

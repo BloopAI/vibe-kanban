@@ -130,7 +130,7 @@ impl Default for Config {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct GitHubConfig {
     pub pat: Option<String>,
     pub oauth_token: Option<String>,
@@ -151,7 +151,7 @@ impl From<v1::GitHubConfig> for GitHubConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct NotificationConfig {
     pub sound_enabled: bool,
     pub push_enabled: bool,
@@ -199,7 +199,7 @@ impl GitHubConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString, utoipa::ToSchema)]
 #[ts(use_ts_enum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]

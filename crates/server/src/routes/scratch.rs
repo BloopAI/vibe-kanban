@@ -23,6 +23,7 @@ pub struct ScratchPath {
     id: Uuid,
 }
 
+#[utoipa::path(get, path = "/api/scratch", tag = "Scratch", responses((status = 200, description = "List scratch items")))]
 pub async fn list_scratch(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Scratch>>>, ApiError> {
@@ -30,6 +31,7 @@ pub async fn list_scratch(
     Ok(ResponseJson(ApiResponse::success(scratch_items)))
 }
 
+#[utoipa::path(get, path = "/api/scratch/{scratch_type}/{id}", tag = "Scratch", params(("scratch_type" = String, Path, description = "Scratch type"), ("id" = Uuid, Path, description = "Scratch ID")), responses((status = 200, description = "Scratch item")))]
 pub async fn get_scratch(
     State(deployment): State<DeploymentImpl>,
     Path(ScratchPath { scratch_type, id }): Path<ScratchPath>,
@@ -40,6 +42,7 @@ pub async fn get_scratch(
     Ok(ResponseJson(ApiResponse::success(scratch)))
 }
 
+#[utoipa::path(post, path = "/api/scratch/{scratch_type}/{id}", tag = "Scratch", params(("scratch_type" = String, Path, description = "Scratch type"), ("id" = Uuid, Path, description = "Scratch ID")), responses((status = 200, description = "Scratch created")))]
 pub async fn create_scratch(
     State(deployment): State<DeploymentImpl>,
     Path(ScratchPath { scratch_type, id }): Path<ScratchPath>,
@@ -64,6 +67,7 @@ pub async fn create_scratch(
     Ok(ResponseJson(ApiResponse::success(scratch)))
 }
 
+#[utoipa::path(put, path = "/api/scratch/{scratch_type}/{id}", tag = "Scratch", params(("scratch_type" = String, Path, description = "Scratch type"), ("id" = Uuid, Path, description = "Scratch ID")), responses((status = 200, description = "Scratch updated")))]
 pub async fn update_scratch(
     State(deployment): State<DeploymentImpl>,
     Path(ScratchPath { scratch_type, id }): Path<ScratchPath>,
@@ -89,6 +93,7 @@ pub async fn update_scratch(
     Ok(ResponseJson(ApiResponse::success(scratch)))
 }
 
+#[utoipa::path(delete, path = "/api/scratch/{scratch_type}/{id}", tag = "Scratch", params(("scratch_type" = String, Path, description = "Scratch type"), ("id" = Uuid, Path, description = "Scratch ID")), responses((status = 200, description = "Scratch deleted")))]
 pub async fn delete_scratch(
     State(deployment): State<DeploymentImpl>,
     Path(ScratchPath { scratch_type, id }): Path<ScratchPath>,
@@ -100,6 +105,7 @@ pub async fn delete_scratch(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+#[utoipa::path(get, path = "/api/scratch/{scratch_type}/{id}/stream/ws", tag = "Scratch", params(("scratch_type" = String, Path, description = "Scratch type"), ("id" = Uuid, Path, description = "Scratch ID")), responses((status = 101, description = "WebSocket upgrade for scratch stream")))]
 pub async fn stream_scratch_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,

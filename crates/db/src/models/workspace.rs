@@ -28,14 +28,14 @@ pub enum WorkspaceError {
     BranchNotFound(String),
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
 pub struct ContainerInfo {
     pub workspace_id: Uuid,
     pub task_id: Uuid,
     pub project_id: Uuid,
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct Workspace {
     pub id: Uuid,
     pub task_id: Uuid,
@@ -50,7 +50,7 @@ pub struct Workspace {
     pub name: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct WorkspaceWithStatus {
     #[serde(flatten)]
     #[ts(flatten)]
@@ -83,13 +83,13 @@ pub struct CreateFollowUpAttempt {
 }
 
 /// Context data for resume operations (simplified)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AttemptResumeContext {
     pub execution_history: String,
     pub cumulative_diffs: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct WorkspaceContext {
     pub workspace: Workspace,
     pub task: Task,

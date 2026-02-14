@@ -26,8 +26,9 @@ pub fn router() -> Router<AppState> {
         .route("/migration/workspaces", post(migrate_workspaces))
 }
 
+#[utoipa::path(post, path = "/v1/migration/projects", tag = "Migration", request_body = BulkMigrateRequest<MigrateProjectRequest>, responses((status = 200, description = "Projects migrated"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 #[instrument(name = "migration.projects", skip(state, ctx, payload))]
-async fn migrate_projects(
+pub(crate) async fn migrate_projects(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<BulkMigrateRequest<MigrateProjectRequest>>,
@@ -51,8 +52,9 @@ async fn migrate_projects(
     Ok(Json(BulkMigrateResponse { ids }))
 }
 
+#[utoipa::path(post, path = "/v1/migration/issues", tag = "Migration", request_body = BulkMigrateRequest<MigrateIssueRequest>, responses((status = 200, description = "Issues migrated"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 #[instrument(name = "migration.issues", skip(state, ctx, payload))]
-async fn migrate_issues(
+pub(crate) async fn migrate_issues(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<BulkMigrateRequest<MigrateIssueRequest>>,
@@ -72,8 +74,9 @@ async fn migrate_issues(
     Ok(Json(BulkMigrateResponse { ids }))
 }
 
+#[utoipa::path(post, path = "/v1/migration/pull_requests", tag = "Migration", request_body = BulkMigrateRequest<MigratePullRequestRequest>, responses((status = 200, description = "Pull requests migrated"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 #[instrument(name = "migration.pull_requests", skip(state, ctx, payload))]
-async fn migrate_pull_requests(
+pub(crate) async fn migrate_pull_requests(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<BulkMigrateRequest<MigratePullRequestRequest>>,
@@ -93,8 +96,9 @@ async fn migrate_pull_requests(
     Ok(Json(BulkMigrateResponse { ids }))
 }
 
+#[utoipa::path(post, path = "/v1/migration/workspaces", tag = "Migration", request_body = BulkMigrateRequest<MigrateWorkspaceRequest>, responses((status = 200, description = "Workspaces migrated"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 #[instrument(name = "migration.workspaces", skip(state, ctx, payload))]
-async fn migrate_workspaces(
+pub(crate) async fn migrate_workspaces(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<BulkMigrateRequest<MigrateWorkspaceRequest>>,

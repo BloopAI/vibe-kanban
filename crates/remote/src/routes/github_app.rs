@@ -96,7 +96,7 @@ pub struct CallbackQuery {
     pub state: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct TriggerPrReviewRequest {
     /// GitHub PR URL, e.g., "https://github.com/owner/repo/pull/123"
     pub pr_url: String,
@@ -107,7 +107,7 @@ pub struct TriggerPrReviewResponse {
     pub review_id: Uuid,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateRepoReviewEnabledRequest {
     pub enabled: bool,
 }
@@ -119,6 +119,7 @@ pub struct BulkUpdateReviewEnabledResponse {
 
 // ========== Protected Route Handlers ==========
 
+#[utoipa::path(get, path = "/v1/organizations/{org_id}/github-app/install-url", tag = "GitHubApp", params(("org_id" = Uuid, Path, description = "Organization ID")), responses((status = 200, description = "Install URL"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 /// GET /v1/organizations/:org_id/github-app/install-url
 /// Returns URL to install the GitHub App for this organization
 pub async fn get_install_url(
@@ -184,6 +185,7 @@ pub async fn get_install_url(
     Ok(Json(InstallUrlResponse { install_url }))
 }
 
+#[utoipa::path(get, path = "/v1/organizations/{org_id}/github-app/status", tag = "GitHubApp", params(("org_id" = Uuid, Path, description = "Organization ID")), responses((status = 200, description = "Installation status"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 /// GET /v1/organizations/:org_id/github-app/status
 /// Returns the GitHub App installation status for this organization
 pub async fn get_status(
@@ -248,6 +250,7 @@ pub async fn get_status(
     }
 }
 
+#[utoipa::path(delete, path = "/v1/organizations/{org_id}/github-app", tag = "GitHubApp", params(("org_id" = Uuid, Path, description = "Organization ID")), responses((status = 204, description = "Uninstalled"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 /// DELETE /v1/organizations/:org_id/github-app
 /// Removes the local installation record (does not uninstall from GitHub)
 pub async fn uninstall(
@@ -280,6 +283,7 @@ pub async fn uninstall(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(patch, path = "/v1/organizations/{org_id}/github-app/repositories/{repo_id}/review-enabled", tag = "GitHubApp", params(("org_id" = Uuid, Path, description = "Organization ID"), ("repo_id" = Uuid, Path, description = "Repository ID")), request_body = UpdateRepoReviewEnabledRequest, responses((status = 200, description = "Updated"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 /// PATCH /v1/organizations/:org_id/github-app/repositories/:repo_id/review-enabled
 /// Toggle whether a repository should trigger PR reviews
 pub async fn update_repo_review_enabled(
@@ -340,6 +344,7 @@ pub async fn update_repo_review_enabled(
     }))
 }
 
+#[utoipa::path(get, path = "/v1/organizations/{org_id}/github-app/repositories", tag = "GitHubApp", params(("org_id" = Uuid, Path, description = "Organization ID")), responses((status = 200, description = "List of repositories"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 /// GET /v1/organizations/:org_id/github-app/repositories
 /// Fetches repositories from GitHub API, syncs to DB, and returns the list
 pub async fn fetch_repositories(
@@ -411,6 +416,7 @@ pub async fn fetch_repositories(
     ))
 }
 
+#[utoipa::path(patch, path = "/v1/organizations/{org_id}/github-app/repositories/review-enabled", tag = "GitHubApp", params(("org_id" = Uuid, Path, description = "Organization ID")), request_body = UpdateRepoReviewEnabledRequest, responses((status = 200, description = "Bulk updated"), (status = 403, description = "Forbidden")), security(("bearer_auth" = [])))]
 /// PATCH /v1/organizations/:org_id/github-app/repositories/review-enabled
 /// Bulk toggle review_enabled for all repositories
 pub async fn bulk_update_review_enabled(
@@ -461,6 +467,7 @@ pub async fn bulk_update_review_enabled(
 
 // ========== Public Route Handlers ==========
 
+#[utoipa::path(get, path = "/v1/github/app/callback", tag = "GitHubApp", params(("installation_id" = Option<i64>, Query, description = "Installation ID"), ("state" = Option<String>, Query, description = "State token")), responses((status = 307, description = "Redirect")))]
 /// GET /v1/github/app/callback
 /// Handles redirect from GitHub after app installation
 pub async fn handle_callback(
@@ -604,6 +611,7 @@ pub async fn handle_callback(
     Redirect::temporary(&url).into_response()
 }
 
+#[utoipa::path(post, path = "/v1/github/webhook", tag = "GitHubApp", request_body(content = String, description = "Raw webhook payload"), responses((status = 200, description = "Webhook processed"), (status = 401, description = "Invalid signature")))]
 /// POST /v1/github/webhook
 /// Handles webhook events from GitHub
 pub async fn handle_webhook(
@@ -1074,6 +1082,7 @@ fn parse_pr_url(url: &str) -> Option<(String, String, u64)> {
     Some((owner, repo, pr_number))
 }
 
+#[utoipa::path(post, path = "/v1/debug/pr-review/trigger", tag = "GitHubApp", request_body = TriggerPrReviewRequest, responses((status = 200, description = "Review triggered"), (status = 400, description = "Bad request")), security(("bearer_auth" = [])))]
 /// POST /v1/debug/pr-review/trigger
 /// Manually trigger a PR review for debugging purposes
 pub async fn trigger_pr_review(

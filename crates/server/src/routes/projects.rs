@@ -25,6 +25,14 @@ use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware};
 
+#[utoipa::path(
+    get,
+    path = "/api/projects",
+    tag = "Projects",
+    responses(
+        (status = 200, description = "List of projects")
+    )
+)]
 pub async fn get_projects(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Project>>>, ApiError> {
@@ -32,6 +40,14 @@ pub async fn get_projects(
     Ok(ResponseJson(ApiResponse::success(projects)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/projects/stream/ws",
+    tag = "Projects",
+    responses(
+        (status = 101, description = "WebSocket upgrade for project stream")
+    )
+)]
 pub async fn stream_projects_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,
@@ -74,12 +90,32 @@ async fn handle_projects_ws(socket: WebSocket, deployment: DeploymentImpl) -> an
     Ok(())
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/projects/{id}",
+    tag = "Projects",
+    params(
+        ("id" = Uuid, Path, description = "Project ID"),
+    ),
+    responses(
+        (status = 200, description = "Project details")
+    )
+)]
 pub async fn get_project(
     Extension(project): Extension<Project>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(project)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/projects",
+    tag = "Projects",
+    request_body = CreateProject,
+    responses(
+        (status = 200, description = "Project created")
+    )
+)]
 pub async fn create_project(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateProject>,
@@ -126,6 +162,18 @@ pub async fn create_project(
     }
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/projects/{id}",
+    tag = "Projects",
+    params(
+        ("id" = Uuid, Path, description = "Project ID"),
+    ),
+    request_body = UpdateProject,
+    responses(
+        (status = 200, description = "Project updated")
+    )
+)]
 pub async fn update_project(
     Extension(existing_project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
@@ -144,6 +192,17 @@ pub async fn update_project(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/projects/{id}",
+    tag = "Projects",
+    params(
+        ("id" = Uuid, Path, description = "Project ID"),
+    ),
+    responses(
+        (status = 200, description = "Project deleted")
+    )
+)]
 pub async fn delete_project(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
@@ -176,9 +235,10 @@ pub async fn delete_project(
     }
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, utoipa::ToSchema)]
 pub struct OpenEditorRequest {
     pub editor_type: Option<String>,
+    #[schema(value_type = Option<String>)]
     pub git_repo_path: Option<PathBuf>,
 }
 
@@ -187,6 +247,17 @@ pub struct OpenEditorResponse {
     pub url: Option<String>,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/projects/{id}/open-editor",
+    tag = "Projects",
+    params(
+        ("id" = Uuid, Path, description = "Project ID"),
+    ),
+    responses(
+        (status = 200, description = "Editor opened")
+    )
+)]
 pub async fn open_project_in_editor(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
@@ -245,6 +316,18 @@ pub async fn open_project_in_editor(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/projects/{id}/search",
+    tag = "Projects",
+    params(
+        ("id" = Uuid, Path, description = "Project ID"),
+        ("q" = String, Query, description = "Search query"),
+    ),
+    responses(
+        (status = 200, description = "Search results")
+    )
+)]
 pub async fn search_project_files(
     State(deployment): State<DeploymentImpl>,
     Extension(project): Extension<Project>,
@@ -285,6 +368,17 @@ pub async fn search_project_files(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/projects/{id}/repositories",
+    tag = "Projects",
+    params(
+        ("id" = Uuid, Path, description = "Project ID"),
+    ),
+    responses(
+        (status = 200, description = "List of project repositories")
+    )
+)]
 pub async fn get_project_repositories(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
@@ -296,6 +390,18 @@ pub async fn get_project_repositories(
     Ok(ResponseJson(ApiResponse::success(repositories)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/projects/{id}/repositories",
+    tag = "Projects",
+    params(
+        ("id" = Uuid, Path, description = "Project ID"),
+    ),
+    request_body = CreateProjectRepo,
+    responses(
+        (status = 200, description = "Repository added to project")
+    )
+)]
 pub async fn add_project_repository(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
@@ -380,6 +486,18 @@ pub async fn add_project_repository(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/projects/{project_id}/repositories/{repo_id}",
+    tag = "Projects",
+    params(
+        ("project_id" = Uuid, Path, description = "Project ID"),
+        ("repo_id" = Uuid, Path, description = "Repository ID"),
+    ),
+    responses(
+        (status = 200, description = "Repository removed from project")
+    )
+)]
 pub async fn delete_project_repository(
     State(deployment): State<DeploymentImpl>,
     Path((project_id, repo_id)): Path<(Uuid, Uuid)>,
@@ -420,6 +538,18 @@ pub async fn delete_project_repository(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/projects/{project_id}/repositories/{repo_id}",
+    tag = "Projects",
+    params(
+        ("project_id" = Uuid, Path, description = "Project ID"),
+        ("repo_id" = Uuid, Path, description = "Repository ID"),
+    ),
+    responses(
+        (status = 200, description = "Project repository details")
+    )
+)]
 pub async fn get_project_repository(
     State(deployment): State<DeploymentImpl>,
     Path((project_id, repo_id)): Path<(Uuid, Uuid)>,

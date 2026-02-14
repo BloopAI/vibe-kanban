@@ -31,7 +31,7 @@ pub fn public_router() -> Router<AppState> {
         .route("/review/{id}/failed", post(review_failed))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct InitReviewRequest {
     pub gh_pr_url: String,
     pub email: String,
@@ -197,6 +197,7 @@ async fn check_rate_limit(repo: &ReviewRepository<'_>, ip: IpAddr) -> Result<(),
     Ok(())
 }
 
+#[utoipa::path(post, path = "/v1/review/init", tag = "Review", request_body = InitReviewRequest, responses((status = 200, description = "Upload initialized"), (status = 429, description = "Rate limited")))]
 pub async fn init_review_upload(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -303,6 +304,7 @@ async fn proxy_post_to_worker(
     Ok(builder.body(Body::from(bytes)).unwrap())
 }
 
+#[utoipa::path(post, path = "/v1/review/start", tag = "Review", responses((status = 200, description = "Review started")))]
 /// POST /review/start - Start review processing on worker
 pub async fn start_review(
     State(state): State<AppState>,
@@ -315,6 +317,7 @@ pub async fn start_review(
     proxy_post_to_worker(&state, "/review/start", body).await
 }
 
+#[utoipa::path(get, path = "/v1/review/{id}/status", tag = "Review", params(("id" = String, Path, description = "Review ID")), responses((status = 200, description = "Review status"), (status = 404, description = "Not found")))]
 /// GET /review/:id/status - Get review status from worker
 pub async fn get_review_status(
     State(state): State<AppState>,
@@ -330,6 +333,7 @@ pub async fn get_review_status(
     proxy_to_worker(&state, &format!("/review/{}/status", review_id)).await
 }
 
+#[utoipa::path(get, path = "/v1/review/{id}/metadata", tag = "Review", params(("id" = String, Path, description = "Review ID")), responses((status = 200, description = "Review metadata"), (status = 404, description = "Not found")))]
 /// GET /review/:id/metadata - Get PR metadata from database
 pub async fn get_review_metadata(
     State(state): State<AppState>,
@@ -346,6 +350,7 @@ pub async fn get_review_metadata(
     }))
 }
 
+#[utoipa::path(get, path = "/v1/review/{id}", tag = "Review", params(("id" = String, Path, description = "Review ID")), responses((status = 200, description = "Review result"), (status = 404, description = "Not found")))]
 /// GET /review/:id - Get complete review result from worker
 pub async fn get_review(
     State(state): State<AppState>,
@@ -361,6 +366,7 @@ pub async fn get_review(
     proxy_to_worker(&state, &format!("/review/{}", review_id)).await
 }
 
+#[utoipa::path(get, path = "/v1/review/{id}/file/{file_hash}", tag = "Review", params(("id" = String, Path, description = "Review ID"), ("file_hash" = String, Path, description = "File hash")), responses((status = 200, description = "File content"), (status = 404, description = "Not found")))]
 /// GET /review/:id/file/:file_hash - Get file content from worker
 pub async fn get_review_file(
     State(state): State<AppState>,
@@ -376,6 +382,7 @@ pub async fn get_review_file(
     proxy_to_worker(&state, &format!("/review/{}/file/{}", review_id, file_hash)).await
 }
 
+#[utoipa::path(get, path = "/v1/review/{id}/diff", tag = "Review", params(("id" = String, Path, description = "Review ID")), responses((status = 200, description = "Review diff"), (status = 404, description = "Not found")))]
 /// GET /review/:id/diff - Get diff for review from worker
 pub async fn get_review_diff(
     State(state): State<AppState>,
@@ -391,6 +398,7 @@ pub async fn get_review_diff(
     proxy_to_worker(&state, &format!("/review/{}/diff", review_id)).await
 }
 
+#[utoipa::path(post, path = "/v1/review/{id}/success", tag = "Review", params(("id" = String, Path, description = "Review ID")), responses((status = 200, description = "Review marked successful"), (status = 404, description = "Not found")))]
 /// POST /review/:id/success - Called by worker when review completes successfully
 /// Sends success notification email to the user, or posts PR comment for webhook reviews
 pub async fn review_success(
@@ -448,6 +456,7 @@ pub async fn review_success(
     Ok(StatusCode::OK)
 }
 
+#[utoipa::path(post, path = "/v1/review/{id}/failed", tag = "Review", params(("id" = String, Path, description = "Review ID")), responses((status = 200, description = "Review marked failed"), (status = 404, description = "Not found")))]
 /// POST /review/:id/failed - Called by worker when review fails
 /// Sends failure notification email to the user, or posts PR comment for webhook reviews
 pub async fn review_failed(

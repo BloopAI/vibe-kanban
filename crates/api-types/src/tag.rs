@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::some_if_present;
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct Tag {
     pub id: Uuid,
     pub project_id: Uuid,
@@ -12,7 +12,7 @@ pub struct Tag {
     pub color: String,
 }
 
-#[derive(Debug, Clone, Deserialize, TS)]
+#[derive(Debug, Clone, Deserialize, TS, utoipa::ToSchema)]
 pub struct CreateTagRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     /// Using client-generated IDs enables stable optimistic updates.
@@ -23,7 +23,7 @@ pub struct CreateTagRequest {
     pub color: String,
 }
 
-#[derive(Debug, Clone, Deserialize, TS)]
+#[derive(Debug, Clone, Deserialize, TS, utoipa::ToSchema)]
 pub struct UpdateTagRequest {
     #[serde(default, deserialize_with = "some_if_present")]
     pub name: Option<String>,
@@ -36,7 +36,7 @@ pub struct ListTagsQuery {
     pub project_id: Uuid,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, utoipa::ToSchema)]
 pub struct ListTagsResponse {
     pub tags: Vec<Tag>,
 }

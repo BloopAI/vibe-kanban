@@ -33,12 +33,22 @@ pub fn router() -> axum::Router<AppState> {
     mutation().router()
 }
 
+#[utoipa::path(
+    get, path = "/v1/tags",
+    tag = "Tags",
+    params(("project_id" = Uuid, Query, description = "Project ID")),
+    responses(
+        (status = 200, description = "List of tags"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "tags.list_tags",
     skip(state, ctx),
     fields(project_id = %query.project_id, user_id = %ctx.user.id)
 )]
-async fn list_tags(
+pub(crate) async fn list_tags(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Query(query): Query<ListTagsQuery>,
@@ -55,12 +65,23 @@ async fn list_tags(
     Ok(Json(ListTagsResponse { tags }))
 }
 
+#[utoipa::path(
+    get, path = "/v1/tags/{id}",
+    tag = "Tags",
+    params(("id" = Uuid, Path, description = "Tag ID")),
+    responses(
+        (status = 200, description = "Tag found"),
+        (status = 404, description = "Tag not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "tags.get_tag",
     skip(state, ctx),
     fields(tag_id = %tag_id, user_id = %ctx.user.id)
 )]
-async fn get_tag(
+pub(crate) async fn get_tag(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(tag_id): Path<Uuid>,
@@ -78,12 +99,23 @@ async fn get_tag(
     Ok(Json(tag))
 }
 
+#[utoipa::path(
+    post, path = "/v1/tags",
+    tag = "Tags",
+    request_body = CreateTagRequest,
+    responses(
+        (status = 200, description = "Tag created"),
+        (status = 400, description = "Bad request"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "tags.create_tag",
     skip(state, ctx, payload),
     fields(project_id = %payload.project_id, user_id = %ctx.user.id)
 )]
-async fn create_tag(
+pub(crate) async fn create_tag(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateTagRequest>,
@@ -113,12 +145,25 @@ async fn create_tag(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    patch, path = "/v1/tags/{id}",
+    tag = "Tags",
+    params(("id" = Uuid, Path, description = "Tag ID")),
+    request_body = UpdateTagRequest,
+    responses(
+        (status = 200, description = "Tag updated"),
+        (status = 400, description = "Bad request"),
+        (status = 404, description = "Tag not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "tags.update_tag",
     skip(state, ctx, payload),
     fields(tag_id = %tag_id, user_id = %ctx.user.id)
 )]
-async fn update_tag(
+pub(crate) async fn update_tag(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(tag_id): Path<Uuid>,
@@ -154,12 +199,23 @@ async fn update_tag(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    delete, path = "/v1/tags/{id}",
+    tag = "Tags",
+    params(("id" = Uuid, Path, description = "Tag ID")),
+    responses(
+        (status = 200, description = "Tag deleted"),
+        (status = 404, description = "Tag not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "tags.delete_tag",
     skip(state, ctx),
     fields(tag_id = %tag_id, user_id = %ctx.user.id)
 )]
-async fn delete_tag(
+pub(crate) async fn delete_tag(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(tag_id): Path<Uuid>,

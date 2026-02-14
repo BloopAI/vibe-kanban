@@ -14,12 +14,12 @@ use crate::{
     executors::{ExecutorError, SpawnedChild},
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, utoipa::ToSchema)]
 pub enum ScriptRequestLanguage {
     Bash,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, utoipa::ToSchema)]
 pub enum ScriptContext {
     SetupScript,
     CleanupScript,
@@ -28,7 +28,7 @@ pub enum ScriptContext {
     ToolInstallScript,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, utoipa::ToSchema)]
 pub struct ScriptRequest {
     pub script: String,
     pub language: ScriptRequestLanguage,

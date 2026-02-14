@@ -8,7 +8,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 /// Represents a queued follow-up message for a session
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct QueuedMessage {
     /// The session this message is queued for
     pub session_id: Uuid,
@@ -19,7 +19,7 @@ pub struct QueuedMessage {
 }
 
 /// Status of the queue for a session (for frontend display)
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum QueueStatus {
     /// No message queued

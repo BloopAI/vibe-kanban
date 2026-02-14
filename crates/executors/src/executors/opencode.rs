@@ -32,7 +32,7 @@ mod types;
 use sdk::{LogWriter, RunConfig, generate_server_password, run_session, run_slash_command};
 use slash_commands::{OpencodeSlashCommand, hardcoded_slash_commands};
 
-#[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
+#[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema, utoipa::ToSchema)]
 #[derivative(Debug, PartialEq)]
 pub struct Opencode {
     #[serde(default)]

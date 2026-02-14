@@ -6,7 +6,7 @@ use strum_macros::{EnumIter, EnumString};
 use thiserror::Error;
 use ts_rs::TS;
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS, Error)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Error, utoipa::ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[ts(tag = "type", rename_all = "snake_case")]
 pub enum EditorOpenError {
@@ -28,7 +28,7 @@ pub enum EditorOpenError {
     },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct EditorConfig {
     editor_type: EditorType,
     custom_command: Option<String>,
@@ -38,7 +38,7 @@ pub struct EditorConfig {
     remote_ssh_user: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString, EnumIter)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString, EnumIter, utoipa::ToSchema)]
 #[ts(use_ts_enum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]

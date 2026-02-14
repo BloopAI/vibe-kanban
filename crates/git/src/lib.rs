@@ -61,7 +61,7 @@ pub struct GitService {}
 // their contents omitted from the diff stream to avoid UI crashes.
 const MAX_INLINE_DIFF_BYTES: usize = 2 * 1024 * 1024; // ~2MB
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq, Eq, utoipa::ToSchema)]
 #[serde(rename_all = "snake_case")]
 #[ts(rename_all = "snake_case")]
 pub enum ConflictOp {
@@ -71,7 +71,7 @@ pub enum ConflictOp {
     Revert,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, utoipa::ToSchema)]
 pub struct GitBranch {
     pub name: String,
     pub is_current: bool,
@@ -80,7 +80,7 @@ pub struct GitBranch {
     pub last_commit_date: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, utoipa::ToSchema)]
 pub struct GitRemote {
     pub name: String,
     pub url: String,

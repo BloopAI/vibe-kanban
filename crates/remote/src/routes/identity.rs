@@ -16,6 +16,7 @@ pub fn router() -> Router<AppState> {
     Router::new().route("/identity", get(get_identity))
 }
 
+#[utoipa::path(get, path = "/v1/identity", tag = "Identity", responses((status = 200, description = "Current user identity")), security(("bearer_auth" = [])))]
 #[instrument(name = "identity.get_identity", skip(ctx), fields(user_id = %ctx.user.id))]
 pub async fn get_identity(Extension(ctx): Extension<RequestContext>) -> Json<IdentityResponse> {
     let user = ctx.user;

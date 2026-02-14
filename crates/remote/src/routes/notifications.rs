@@ -51,12 +51,19 @@ pub fn router() -> Router<AppState> {
         .route("/notifications/mark-all-seen", post(mark_all_seen))
 }
 
+#[utoipa::path(
+    get, path = "/v1/notifications",
+    tag = "Notifications",
+    params(("include_dismissed" = bool, Query, description = "Include dismissed notifications")),
+    responses((status = 200, description = "List of notifications")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "notifications.list",
     skip(state, ctx),
     fields(user_id = %ctx.user.id)
 )]
-async fn list_notifications(
+pub(crate) async fn list_notifications(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Query(query): Query<ListNotificationsQuery>,
@@ -75,12 +82,19 @@ async fn list_notifications(
     Ok(Json(ListNotificationsResponse { notifications }))
 }
 
+#[utoipa::path(
+    get, path = "/v1/notifications/{id}",
+    tag = "Notifications",
+    params(("id" = Uuid, Path, description = "Notification ID")),
+    responses((status = 200, description = "Notification found"), (status = 404, description = "Not found")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "notifications.get",
     skip(state, ctx),
     fields(notification_id = %notification_id, user_id = %ctx.user.id)
 )]
-async fn get_notification(
+pub(crate) async fn get_notification(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(notification_id): Path<Uuid>,
@@ -106,12 +120,20 @@ async fn get_notification(
     Ok(Json(notification))
 }
 
+#[utoipa::path(
+    patch, path = "/v1/notifications/{id}",
+    tag = "Notifications",
+    params(("id" = Uuid, Path, description = "Notification ID")),
+    request_body = UpdateNotificationRequest,
+    responses((status = 200, description = "Notification updated"), (status = 404, description = "Not found")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "notifications.update",
     skip(state, ctx, payload),
     fields(notification_id = %notification_id, user_id = %ctx.user.id)
 )]
-async fn update_notification(
+pub(crate) async fn update_notification(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(notification_id): Path<Uuid>,
@@ -145,12 +167,19 @@ async fn update_notification(
     Ok(Json(notification))
 }
 
+#[utoipa::path(
+    delete, path = "/v1/notifications/{id}",
+    tag = "Notifications",
+    params(("id" = Uuid, Path, description = "Notification ID")),
+    responses((status = 204, description = "Notification deleted"), (status = 404, description = "Not found")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "notifications.delete",
     skip(state, ctx),
     fields(notification_id = %notification_id, user_id = %ctx.user.id)
 )]
-async fn delete_notification(
+pub(crate) async fn delete_notification(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(notification_id): Path<Uuid>,
@@ -183,12 +212,18 @@ async fn delete_notification(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    post, path = "/v1/notifications/mark-all-seen",
+    tag = "Notifications",
+    responses((status = 200, description = "All notifications marked as seen")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "notifications.mark_all_seen",
     skip(state, ctx),
     fields(user_id = %ctx.user.id)
 )]
-async fn mark_all_seen(
+pub(crate) async fn mark_all_seen(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
 ) -> Result<Json<MarkAllSeenResponse>, ErrorResponse> {
@@ -202,12 +237,18 @@ async fn mark_all_seen(
     Ok(Json(MarkAllSeenResponse { updated }))
 }
 
+#[utoipa::path(
+    get, path = "/v1/notifications/unread-count",
+    tag = "Notifications",
+    responses((status = 200, description = "Unread notification count")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "notifications.unread_count",
     skip(state, ctx),
     fields(user_id = %ctx.user.id)
 )]
-async fn unread_count(
+pub(crate) async fn unread_count(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
 ) -> Result<Json<UnreadCountResponse>, ErrorResponse> {

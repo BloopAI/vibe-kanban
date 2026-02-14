@@ -71,6 +71,7 @@ pub struct ImageMetadata {
     pub proxy_url: Option<String>,
 }
 
+#[utoipa::path(post, path = "/api/images/upload", tag = "Images", responses((status = 200, description = "Image uploaded")))]
 pub async fn upload_image(
     State(deployment): State<DeploymentImpl>,
     multipart: Multipart,
@@ -124,6 +125,7 @@ pub(crate) async fn process_image_upload(
     Err(ApiError::Image(ImageError::NotFound))
 }
 
+#[utoipa::path(post, path = "/api/images/task/{task_id}/upload", tag = "Images", params(("task_id" = Uuid, Path, description = "Task ID")), responses((status = 200, description = "Task image uploaded")))]
 pub async fn upload_task_image(
     Path(task_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
@@ -138,6 +140,7 @@ pub async fn upload_task_image(
 }
 
 /// Serve an image file by ID
+#[utoipa::path(get, path = "/api/images/{id}/file", tag = "Images", params(("id" = Uuid, Path, description = "Image ID")), responses((status = 200, description = "Image file")))]
 pub async fn serve_image(
     Path(image_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
@@ -171,6 +174,7 @@ pub async fn serve_image(
     Ok(response)
 }
 
+#[utoipa::path(delete, path = "/api/images/{id}", tag = "Images", params(("id" = Uuid, Path, description = "Image ID")), responses((status = 200, description = "Image deleted")))]
 pub async fn delete_image(
     Path(image_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
@@ -180,6 +184,7 @@ pub async fn delete_image(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+#[utoipa::path(get, path = "/api/images/task/{task_id}", tag = "Images", params(("task_id" = Uuid, Path, description = "Task ID")), responses((status = 200, description = "Task images")))]
 pub async fn get_task_images(
     Path(task_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
@@ -191,6 +196,7 @@ pub async fn get_task_images(
 
 /// Get metadata for an image associated with a task.
 /// The path should be in the format `.vibe-images/{uuid}.{ext}`.
+#[utoipa::path(get, path = "/api/images/task/{task_id}/metadata", tag = "Images", params(("task_id" = Uuid, Path, description = "Task ID"), ("path" = String, Query, description = "Image path")), responses((status = 200, description = "Image metadata")))]
 pub async fn get_task_image_metadata(
     Path(task_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,

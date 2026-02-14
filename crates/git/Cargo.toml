@@ -16,6 +16,7 @@ tempfile = "3.21"
 thiserror = { workspace = true }
 tracing = { workspace = true }
 ts-rs = { workspace = true }
+utoipa = { workspace = true }
 utils = { path = "../utils" }
 
 [dev-dependencies]

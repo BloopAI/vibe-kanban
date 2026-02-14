@@ -4,7 +4,7 @@ use sqlx::{FromRow, SqlitePool};
 use ts_rs::TS;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct Tag {
     pub id: Uuid,
     pub tag_name: String,
@@ -13,13 +13,13 @@ pub struct Tag {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, utoipa::ToSchema)]
 pub struct CreateTag {
     pub tag_name: String,
     pub content: String,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, utoipa::ToSchema)]
 pub struct UpdateTag {
     pub tag_name: Option<String>,
     pub content: Option<String>,
