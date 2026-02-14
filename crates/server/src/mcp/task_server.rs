@@ -146,8 +146,8 @@ pub struct ListReposResponse {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct McpListProjectsRequest {
-    #[schemars(description = "The ID of the organization to list projects from")]
-    pub organization_id: Uuid,
+    #[schemars(description = "The ID of the organization to list projects from. If not provided, lists projects from all organizations.")]
+    pub organization_id: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -837,10 +837,14 @@ impl TaskServer {
         &self,
         Parameters(McpListProjectsRequest { organization_id }): Parameters<McpListProjectsRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let url = self.url(&format!(
-            "/api/remote/projects?organization_id={}",
-            organization_id
-        ));
+        let url = if let Some(org_id) = organization_id {
+            self.url(&format!(
+                "/api/remote/projects?organization_id={}",
+                org_id
+            ))
+        } else {
+            self.url("/api/remote/projects")
+        };
         let response: api_types::ListProjectsResponse =
             match self.send_json(self.client.get(&url)).await {
                 Ok(r) => r,
