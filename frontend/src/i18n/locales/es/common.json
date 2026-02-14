@@ -360,6 +360,7 @@
     "selectedRepo": "Repositorio seleccionado: {{repoName}}",
     "missingRepo": "El repositorio seleccionado ya no está disponible.",
     "noTagsOrFiles": "No se encontraron etiquetas ni archivos",
+    "createTag": "Crear nueva etiqueta",
     "noCommands": "No hay comandos disponibles para este agente."
   },
   "kanban": {

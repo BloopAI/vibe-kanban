@@ -5,8 +5,8 @@ import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin';
-import { $createTextNode } from 'lexical';
-import { Command as CommandIcon } from 'lucide-react';
+import { $createTextNode, KEY_ESCAPE_COMMAND } from 'lexical';
+import { TerminalIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import type { BaseCodingAgent, SlashCommandDescription } from 'shared/types';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
@@ -52,6 +52,9 @@ export function SlashCommandTypeaheadPlugin({
   const { setIsOpen } = useTypeaheadOpen();
   const [options, setOptions] = useState<SlashCommandOption[]>([]);
   const [activeQuery, setActiveQuery] = useState<string | null>(null);
+  const closeTypeahead = useCallback(() => {
+    editor.dispatchCommand(KEY_ESCAPE_COMMAND, new KeyboardEvent('keydown'));
+  }, [editor]);
 
   const slashCommandsQuery = useSlashCommands(agent, {
     workspaceId: taskAttemptId,
@@ -140,9 +143,12 @@ export function SlashCommandTypeaheadPlugin({
           : 'Discovering commands…';
 
         return createPortal(
-          <TypeaheadMenu anchorEl={anchorRef.current}>
+          <TypeaheadMenu
+            anchorEl={anchorRef.current}
+            onClickOutside={closeTypeahead}
+          >
             <TypeaheadMenu.Header>
-              <CommandIcon className="h-3.5 w-3.5" />
+              <TerminalIcon className="size-icon-xs" weight="bold" />
               {t('typeahead.commands')}
             </TypeaheadMenu.Header>
 
@@ -153,7 +159,7 @@ export function SlashCommandTypeaheadPlugin({
             ) : options.length === 0 && !showLoadingRow ? null : (
               <TypeaheadMenu.ScrollArea>
                 {showLoadingRow && (
-                  <div className="px-3 py-2 text-sm text-muted-foreground select-none">
+                  <div className="px-base py-half text-sm text-low select-none">
                     {loadingText}
                   </div>
                 )}
@@ -168,13 +174,13 @@ export function SlashCommandTypeaheadPlugin({
                       setHighlightedIndex={setHighlightedIndex}
                       onClick={() => selectOptionAndCleanUp(option)}
                     >
-                      <div className="flex items-center gap-2 font-medium">
+                      <div className="flex items-center gap-half font-medium">
                         <span className="font-mono">
                           /{option.command.name}
                         </span>
                       </div>
                       {details && (
-                        <div className="text-xs mt-0.5 truncate text-muted-foreground">
+                        <div className="text-xs text-low truncate">
                           {details}
                         </div>
                       )}

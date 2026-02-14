@@ -370,6 +370,7 @@
     "selectedRepo": "Selected repo: {{repoName}}",
     "missingRepo": "Selected repo is no longer available.",
     "noTagsOrFiles": "No tags or files found",
+    "createTag": "Create new tag",
     "noCommands": "No commands available for this agent."
   },
   "kanban": {

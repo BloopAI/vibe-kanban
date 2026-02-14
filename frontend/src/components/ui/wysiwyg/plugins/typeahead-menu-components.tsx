@@ -21,11 +21,13 @@ type VerticalSide = 'top' | 'bottom';
 interface TypeaheadPlacement {
   side: VerticalSide;
   maxHeight: number;
+  alignOffset: number;
 }
 
 const VIEWPORT_PADDING = 16;
 const MENU_SIDE_OFFSET = 8;
 const MAX_MENU_HEIGHT = 360;
+const MAX_MENU_WIDTH = 370;
 const MIN_RENDERED_MENU_HEIGHT = 96;
 const FLIP_HYSTERESIS_PX = 72;
 
@@ -73,6 +75,13 @@ function clampMenuHeight(height: number) {
   );
 }
 
+function getAlignOffset(anchorRect: DOMRect): number {
+  const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+  const rightOverflow =
+    anchorRect.left + MAX_MENU_WIDTH - viewportWidth + VIEWPORT_PADDING;
+  return rightOverflow > 0 ? -rightOverflow : 0;
+}
+
 function getPlacement(
   anchorEl: HTMLElement,
   previousSide?: VerticalSide
@@ -85,15 +94,21 @@ function getPlacement(
   return {
     side,
     maxHeight: clampMenuHeight(rawHeight),
+    alignOffset: getAlignOffset(anchorRect),
   };
 }
 
 interface TypeaheadMenuProps {
   anchorEl: HTMLElement;
+  onClickOutside?: () => void;
   children: ReactNode;
 }
 
-function TypeaheadMenuRoot({ anchorEl, children }: TypeaheadMenuProps) {
+function TypeaheadMenuRoot({
+  anchorEl,
+  onClickOutside,
+  children,
+}: TypeaheadMenuProps) {
   const [placement, setPlacement] = useState<TypeaheadPlacement>(() =>
     getPlacement(anchorEl)
   );
@@ -103,7 +118,8 @@ function TypeaheadMenuRoot({ anchorEl, children }: TypeaheadMenuProps) {
       const next = getPlacement(anchorEl, previous.side);
       if (
         next.side === previous.side &&
-        next.maxHeight === previous.maxHeight
+        next.maxHeight === previous.maxHeight &&
+        next.alignOffset === previous.alignOffset
       ) {
         return previous;
       }
@@ -120,12 +136,21 @@ function TypeaheadMenuRoot({ anchorEl, children }: TypeaheadMenuProps) {
 
     window.addEventListener('resize', updateOnFrame);
     window.addEventListener('scroll', updateOnFrame, true);
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener('resize', updateOnFrame);
+      vv.addEventListener('scroll', updateOnFrame);
+    }
     const observer = new ResizeObserver(updateOnFrame);
     observer.observe(anchorEl);
 
     return () => {
       window.removeEventListener('resize', updateOnFrame);
       window.removeEventListener('scroll', updateOnFrame, true);
+      if (vv) {
+        vv.removeEventListener('resize', updateOnFrame);
+        vv.removeEventListener('scroll', updateOnFrame);
+      }
       observer.disconnect();
     };
   }, [anchorEl, syncPlacement]);
@@ -138,7 +163,7 @@ function TypeaheadMenuRoot({ anchorEl, children }: TypeaheadMenuProps) {
   const contentStyle = useMemo(
     () =>
       ({
-        '--typeahead-menu-max-height': `${placement.maxHeight}px`,
+        maxHeight: `${placement.maxHeight}px`,
       }) as CSSProperties,
     [placement.maxHeight]
   );
@@ -150,11 +175,16 @@ function TypeaheadMenuRoot({ anchorEl, children }: TypeaheadMenuProps) {
         side={placement.side}
         align="start"
         sideOffset={MENU_SIDE_OFFSET}
+        alignOffset={placement.alignOffset}
         avoidCollisions={false}
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => {
+          e.preventDefault();
+          onClickOutside?.();
+        }}
         style={contentStyle}
-        className="w-auto min-w-80 max-w-[370px] p-0 overflow-hidden !bg-background"
+        className="w-auto min-w-80 max-w-[370px] p-0 overflow-hidden !bg-panel flex flex-col"
       >
         {children}
       </PopoverContent>
@@ -162,10 +192,18 @@ function TypeaheadMenuRoot({ anchorEl, children }: TypeaheadMenuProps) {
   );
 }
 
-function TypeaheadMenuHeader({ children }: { children: ReactNode }) {
+function TypeaheadMenuHeader({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="px-3 py-2 border-b bg-muted/30">
-      <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+    <div
+      className={`px-base py-half border-b border-border ${className ?? ''}`}
+    >
+      <div className="flex items-center gap-half text-xs font-medium text-low">
         {children}
       </div>
     </div>
@@ -173,32 +211,23 @@ function TypeaheadMenuHeader({ children }: { children: ReactNode }) {
 }
 
 function TypeaheadMenuScrollArea({ children }: { children: ReactNode }) {
-  return (
-    <div
-      className="py-1 overflow-auto"
-      style={{ maxHeight: 'var(--typeahead-menu-max-height, 40vh)' }}
-    >
-      {children}
-    </div>
-  );
+  return <div className="py-half overflow-auto flex-1 min-h-0">{children}</div>;
 }
 
 function TypeaheadMenuSectionHeader({ children }: { children: ReactNode }) {
   return (
-    <div className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase">
+    <div className="px-base py-half text-xs font-medium text-low">
       {children}
     </div>
   );
 }
 
 function TypeaheadMenuDivider() {
-  return <div className="border-t my-1" />;
+  return <div className="h-px bg-border my-half" />;
 }
 
 function TypeaheadMenuEmpty({ children }: { children: ReactNode }) {
-  return (
-    <div className="px-3 py-2 text-sm text-muted-foreground">{children}</div>
-  );
+  return <div className="px-base py-half text-sm text-low">{children}</div>;
 }
 
 interface TypeaheadMenuActionProps {
@@ -215,8 +244,7 @@ function TypeaheadMenuAction({
   return (
     <button
       type="button"
-      className="w-full px-3 py-2 text-left text-sm border-l-2 border-l-transparent text-muted-foreground hover:bg-muted hover:text-high disabled:opacity-50 disabled:cursor-not-allowed"
-      onMouseDown={(event) => event.preventDefault()}
+      className="w-full px-base py-half text-left text-sm text-low hover:bg-secondary hover:text-high transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       onClick={onClick}
       disabled={disabled}
     >
@@ -261,10 +289,8 @@ function TypeaheadMenuItemComponent({
   return (
     <div
       ref={ref}
-      className={`px-3 py-2 cursor-pointer text-sm border-l-2 ${
-        isSelected
-          ? 'bg-secondary border-l-brand text-high'
-          : 'hover:bg-muted border-l-transparent text-muted-foreground'
+      className={`px-base py-half rounded-sm cursor-pointer text-sm transition-colors ${
+        isSelected ? 'bg-secondary text-high' : 'hover:bg-secondary text-normal'
       }`}
       onMouseMove={handleMouseMove}
       onClick={onClick}

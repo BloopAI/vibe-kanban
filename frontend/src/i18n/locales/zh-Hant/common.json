@@ -360,6 +360,7 @@
     "selectedRepo": "已選擇儲存庫：{{repoName}}",
     "missingRepo": "所選儲存庫已無法使用。",
     "noTagsOrFiles": "找不到標籤或檔案",
+    "createTag": "建立新標籤",
     "noCommands": "此代理沒有可用的指令。"
   },
   "kanban": {

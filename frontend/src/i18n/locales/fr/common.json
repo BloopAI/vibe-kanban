@@ -360,6 +360,7 @@
     "selectedRepo": "Dépôt sélectionné : {{repoName}}",
     "missingRepo": "Le dépôt sélectionné n'est plus disponible.",
     "noTagsOrFiles": "Aucun tag ou fichier trouvé",
+    "createTag": "Créer un nouveau tag",
     "noCommands": "Aucune commande disponible pour cet agent."
   },
   "kanban": {
