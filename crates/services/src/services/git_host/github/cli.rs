@@ -301,6 +301,32 @@ impl GhCli {
         Self::parse_pr_list(&raw)
     }
 
+    /// List recent PRs for a repo (all states), returning status info for each.
+    pub fn list_prs_for_repo(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        limit: usize,
+    ) -> Result<Vec<PullRequestInfo>, GhCliError> {
+        let repo_spec = repo_info.repo_spec();
+        let limit_str = limit.to_string();
+        let raw = self.run(
+            [
+                "pr",
+                "list",
+                "--repo",
+                &repo_spec,
+                "--state",
+                "all",
+                "--limit",
+                &limit_str,
+                "--json",
+                "number,url,state,mergedAt,mergeCommit",
+            ],
+            None,
+        )?;
+        Self::parse_pr_list(&raw)
+    }
+
     pub fn list_open_prs(&self, owner: &str, repo: &str) -> Result<Vec<OpenPrInfo>, GhCliError> {
         let raw = self.run(
             [

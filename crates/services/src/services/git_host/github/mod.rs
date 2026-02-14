@@ -2,7 +2,7 @@
 
 mod cli;
 
-use std::{path::Path, time::Duration};
+use std::{collections::HashMap, path::Path, time::Duration};
 
 use async_trait::async_trait;
 use backon::{ExponentialBuilder, Retryable};
@@ -387,6 +387,57 @@ impl GitHostProvider for GitHubProvider {
             );
         })
         .await
+    }
+
+    async fn get_pr_statuses(
+        &self,
+        repo_path: &Path,
+        remote_url: &str,
+        pr_urls: &[String],
+    ) -> Result<HashMap<String, PullRequestInfo>, GitHostError> {
+        let repo_info = self.get_repo_info(remote_url, repo_path).await?;
+
+        let limit = pr_urls.len().max(30);
+        let url_set: std::collections::HashSet<&str> = pr_urls.iter().map(|u| u.as_str()).collect();
+
+        let all_prs = (|| async {
+            let cli = self.gh_cli.clone();
+            let repo_info = repo_info.clone();
+
+            let prs = task::spawn_blocking(move || cli.list_prs_for_repo(&repo_info, limit))
+                .await
+                .map_err(|err| {
+                    GitHostError::PullRequest(format!(
+                        "Failed to execute GitHub CLI for listing PRs: {err}"
+                    ))
+                })?
+                .map_err(GitHostError::from)?;
+
+            Ok(prs)
+        })
+        .retry(
+            &ExponentialBuilder::default()
+                .with_min_delay(Duration::from_secs(1))
+                .with_max_delay(Duration::from_secs(30))
+                .with_max_times(3)
+                .with_jitter(),
+        )
+        .when(|e: &GitHostError| e.should_retry())
+        .notify(|err: &GitHostError, dur: Duration| {
+            tracing::warn!(
+                "GitHub API call failed, retrying after {:.2}s: {}",
+                dur.as_secs_f64(),
+                err
+            );
+        })
+        .await?;
+
+        // Filter to only the PR URLs we care about
+        Ok(all_prs
+            .into_iter()
+            .filter(|pr| url_set.contains(pr.url.as_str()))
+            .map(|pr| (pr.url.clone(), pr))
+            .collect())
     }
 
     fn provider_kind(&self) -> ProviderKind {
