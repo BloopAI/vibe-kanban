@@ -21,6 +21,7 @@ pub struct CodingAgentFollowUpRequest {
     #[serde(default)]
     pub reset_to_message_id: Option<String>,
     /// Unified executor identity + overrides
+    #[serde(alias = "executor_profile_id", alias = "profile_variant_label")]
     pub executor_config: ExecutorConfig,
     /// Optional relative path to execute the agent in (relative to container_ref).
     /// If None, uses the container_ref directory directly.
