@@ -76,8 +76,6 @@ services:
   remote-server:
     environment:
       SERVER_PUBLIC_BASE_URL: https://localhost
-      VITE_APP_BASE_URL: https://localhost
-      VITE_API_BASE_URL: https://localhost
 ```
 
 Docker Compose automatically merges this with `docker-compose.yml`.
