@@ -65,6 +65,7 @@ export const SEQUENCE_FIRST_KEYS = new Set([
   'y', // Yank/Copy
   't', // Toggle
   'r', // Run
+  'i', // Issue
 ]);
 
 /**
@@ -255,6 +256,78 @@ export const sequentialBindings: SequentialBinding[] = [
     description: 'Run archive script',
     group: 'Run',
     actionId: 'run-archive-script',
+  },
+
+  // Issue (I)
+  {
+    id: 'seq-issue-create',
+    keys: ['i', 'c'],
+    description: 'Create Issue',
+    group: 'Issue',
+    actionId: 'create-issue',
+  },
+  {
+    id: 'seq-issue-status',
+    keys: ['i', 's'],
+    description: 'Change Status',
+    group: 'Issue',
+    actionId: 'change-issue-status',
+  },
+  {
+    id: 'seq-issue-priority',
+    keys: ['i', 'p'],
+    description: 'Change Priority',
+    group: 'Issue',
+    actionId: 'change-issue-priority',
+  },
+  {
+    id: 'seq-issue-assignees',
+    keys: ['i', 'a'],
+    description: 'Change Assignees',
+    group: 'Issue',
+    actionId: 'change-assignees',
+  },
+  {
+    id: 'seq-issue-make-sub-issue',
+    keys: ['i', 'm'],
+    description: 'Make Sub-issue of',
+    group: 'Issue',
+    actionId: 'make-sub-issue-of',
+  },
+  {
+    id: 'seq-issue-add-sub-issue',
+    keys: ['i', 'b'],
+    description: 'Add Sub-issue',
+    group: 'Issue',
+    actionId: 'add-sub-issue',
+  },
+  {
+    id: 'seq-issue-remove-parent',
+    keys: ['i', 'u'],
+    description: 'Remove Parent',
+    group: 'Issue',
+    actionId: 'remove-parent-issue',
+  },
+  {
+    id: 'seq-issue-link-workspace',
+    keys: ['i', 'w'],
+    description: 'Link Workspace',
+    group: 'Issue',
+    actionId: 'link-workspace',
+  },
+  {
+    id: 'seq-issue-duplicate',
+    keys: ['i', 'd'],
+    description: 'Duplicate Issue',
+    group: 'Issue',
+    actionId: 'duplicate-issue',
+  },
+  {
+    id: 'seq-issue-delete',
+    keys: ['i', 'x'],
+    description: 'Delete Issue',
+    group: 'Issue',
+    actionId: 'delete-issue',
   },
 ];
 
