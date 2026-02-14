@@ -66,6 +66,13 @@ const InitialDataScrollModifier: ScrollModifier = {
   purgeItemSizes: true,
 };
 
+// Used when data updates after initial load (e.g., historic batch loading).
+// Scrolls to bottom like InitialDataScrollModifier but preserves measured sizes.
+const ScrollToBottomModifier: ScrollModifier = {
+  type: 'item-location',
+  location: INITIAL_TOP_ITEM,
+};
+
 const AutoScrollToBottom: ScrollModifier = {
   type: 'auto-scroll-to-bottom',
   autoScroll: 'smooth',
@@ -163,6 +170,11 @@ const computeItemKey: VirtuosoMessageListProps<
   MessageListContext
 >['computeItemKey'] = ({ data }) => `conv-${data.patchKey}`;
 
+const itemIdentity: VirtuosoMessageListProps<
+  DisplayEntry,
+  MessageListContext
+>['itemIdentity'] = (item) => item.patchKey;
+
 export const ConversationList = forwardRef<
   ConversationListHandle,
   ConversationListProps
@@ -257,12 +269,18 @@ export const ConversationList = forwardRef<
       const pending = pendingUpdateRef.current;
       if (!pending) return;
 
-      let scrollModifier: ScrollModifier = InitialDataScrollModifier;
+      let scrollModifier: ScrollModifier;
 
-      if (pending.addType === 'plan' && !loading) {
+      if (loading) {
+        // First data load: purge estimated sizes and jump to bottom
+        scrollModifier = InitialDataScrollModifier;
+      } else if (pending.addType === 'plan') {
         scrollModifier = ScrollToTopOfLastItem;
-      } else if (pending.addType === 'running' && !loading) {
+      } else if (pending.addType === 'running') {
         scrollModifier = AutoScrollToBottom;
+      } else {
+        // Historic/subsequent updates: scroll to bottom but keep measured sizes
+        scrollModifier = ScrollToBottomModifier;
       }
 
       const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
@@ -393,6 +411,7 @@ export const ConversationList = forwardRef<
             initialLocation={INITIAL_TOP_ITEM}
             context={messageListContext}
             computeItemKey={computeItemKey}
+            itemIdentity={itemIdentity}
             ItemContent={ItemContent}
             Header={({ context }) => (
               <div className="pt-2">
