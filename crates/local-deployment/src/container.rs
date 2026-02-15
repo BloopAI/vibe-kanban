@@ -6,6 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use indexmap::IndexMap;
 use anyhow::anyhow;
 use async_trait::async_trait;
 use command_group::AsyncGroupChild;
@@ -83,6 +84,7 @@ pub struct LocalContainerService {
     analytics: Option<AnalyticsContext>,
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
+    normalized_log_cache: Arc<RwLock<IndexMap<Uuid, Arc<Vec<LogMsg>>>>>,
     notification_service: NotificationService,
     remote_client: Option<RemoteClient>,
 }
@@ -106,6 +108,7 @@ impl LocalContainerService {
         let exit_monitor_handles = Arc::new(RwLock::new(HashMap::new()));
         let workspace_touch_times = Arc::new(RwLock::new(HashMap::new()));
         let notification_service = NotificationService::new(config.clone());
+        let normalized_log_cache = Arc::new(RwLock::new(IndexMap::new()));
 
         let container = LocalContainerService {
             db,
@@ -121,6 +124,7 @@ impl LocalContainerService {
             analytics,
             approvals,
             queued_message_service,
+            normalized_log_cache,
             notification_service,
             remote_client,
         };
@@ -978,6 +982,10 @@ fn failure_exit_status() -> std::process::ExitStatus {
 impl ContainerService for LocalContainerService {
     fn msg_stores(&self) -> &Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>> {
         &self.msg_stores
+    }
+
+    fn normalized_log_cache(&self) -> &Arc<RwLock<IndexMap<Uuid, Arc<Vec<LogMsg>>>>> {
+        &self.normalized_log_cache
     }
 
     fn db(&self) -> &DBService {
