@@ -4,6 +4,7 @@ use std::{
     sync::Arc,
 };
 
+use indexmap::IndexMap;
 use anyhow::{Error as AnyhowError, anyhow};
 use async_trait::async_trait;
 use db::{
@@ -87,6 +88,8 @@ pub enum ContainerError {
 #[async_trait]
 pub trait ContainerService {
     fn msg_stores(&self) -> &Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>;
+
+    fn normalized_log_cache(&self) -> &Arc<RwLock<IndexMap<Uuid, Arc<Vec<LogMsg>>>>>;
 
     fn db(&self) -> &DBService;
 
@@ -863,6 +866,22 @@ pub trait ContainerService {
                     .boxed(),
             )
         } else {
+            // Check normalized log cache first
+            {
+                let cache = self.normalized_log_cache().read().await;
+                if let Some(cached_msgs) = cache.get(id) {
+                    let msgs = Arc::clone(cached_msgs);
+                    let stream = futures::stream::iter(
+                        (0..msgs.len()).map(move |i| Ok::<_, std::io::Error>(msgs[i].clone())),
+                    )
+                    .chain(futures::stream::once(async {
+                        Ok::<_, std::io::Error>(LogMsg::Finished)
+                    }))
+                    .boxed();
+                    return Some(stream);
+                }
+            }
+
             // Fallback: load from DB and normalize
             let log_records =
                 match ExecutionProcessLogs::find_by_execution_id(&self.db().pool, *id).await {
@@ -1007,11 +1026,40 @@ pub trait ContainerService {
                     return None;
                 }
             }
+
+            // Stream normalized JsonPatch messages to the consumer and
+            // populate the cache once the stream completes.
+            // normalize_logs() spawns a tokio task that reads from the store
+            // and pushes JsonPatch messages back into it. The stream terminates
+            // when all Arc<MsgStore> references are dropped (normalizer done +
+            // temp_store dropped here), closing the broadcast channel.
+            let cache_ref = self.normalized_log_cache().clone();
+            let cache_id = *id;
+            let collected = Arc::new(std::sync::Mutex::new(Vec::<LogMsg>::new()));
+            let collected_clone = Arc::clone(&collected);
+
             Some(
                 temp_store
                     .history_plus_stream()
                     .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
-                    .chain(futures::stream::once(async {
+                    .map(move |msg| {
+                        if let Ok(ref m) = msg {
+                            collected.lock().unwrap().push(m.clone());
+                        }
+                        msg
+                    })
+                    .chain(futures::stream::once(async move {
+                        // Stream ended — normalizer is done. Cache the results.
+                        let patches: Vec<LogMsg> =
+                            std::mem::take(&mut *collected_clone.lock().unwrap());
+                        if !patches.is_empty() {
+                            let cached = Arc::new(patches);
+                            let mut cache = cache_ref.write().await;
+                            if cache.len() >= 200 {
+                                cache.shift_remove_index(0);
+                            }
+                            cache.insert(cache_id, cached);
+                        }
                         Ok::<_, std::io::Error>(LogMsg::Finished)
                     }))
                     .boxed(),

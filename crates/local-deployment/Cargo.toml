@@ -21,6 +21,7 @@ async-trait = { workspace = true }
 thiserror = { workspace = true }
 command-group = { version = "5.0", features = ["with-tokio"] }
 futures = "0.3"
+indexmap = "2"
 tokio = { workspace = true }
 globwalk = "0.9"
 portable-pty = "0.8"

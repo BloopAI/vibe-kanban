@@ -23,6 +23,7 @@ import {
   nextActionPatch,
   REMAINING_BATCH_SIZE,
 } from './constants';
+import { getCachedEntries, setCachedEntries } from './entryCache';
 
 export const useConversationHistoryOld = ({
   attempt,
@@ -60,6 +61,12 @@ export const useConversationHistoryOld = ({
   const loadEntriesForHistoricExecutionProcess = (
     executionProcess: ExecutionProcess
   ) => {
+    // Check cache first
+    const cached = getCachedEntries(executionProcess.id);
+    if (cached) {
+      return Promise.resolve(cached);
+    }
+
     let url = '';
     if (executionProcess.executor_action.typ.type === 'ScriptRequest') {
       url = `/api/execution-processes/${executionProcess.id}/raw-logs/ws`;
@@ -71,6 +78,8 @@ export const useConversationHistoryOld = ({
       const controller = streamJsonPatchEntries<PatchType>(url, {
         onFinished: (allEntries) => {
           controller.close();
+          // Cache the result for future use
+          setCachedEntries(executionProcess.id, allEntries);
           resolve(allEntries);
         },
         onError: (err) => {
@@ -440,22 +449,29 @@ export const useConversationHistoryOld = ({
 
       if (!executionProcesses?.current) return localDisplayedExecutionProcesses;
 
-      for (const executionProcess of [
-        ...executionProcesses.current,
-      ].reverse()) {
-        if (executionProcess.status === ExecutionProcessStatus.running)
-          continue;
+      const historicProcesses = [...executionProcesses.current]
+        .reverse()
+        .filter((ep) => ep.status !== ExecutionProcessStatus.running);
 
-        const entries =
-          await loadEntriesForHistoricExecutionProcess(executionProcess);
-        const entriesWithKey = entries.map((e, idx) =>
-          patchWithKey(e, executionProcess.id, idx)
+      const CONCURRENCY = 6;
+
+      for (let i = 0; i < historicProcesses.length; i += CONCURRENCY) {
+        const batch = historicProcesses.slice(i, i + CONCURRENCY);
+        const batchResults = await Promise.all(
+          batch.map(async (ep) => ({
+            ep,
+            entries: await loadEntriesForHistoricExecutionProcess(ep),
+          }))
         );
 
-        localDisplayedExecutionProcesses[executionProcess.id] = {
-          executionProcess,
-          entries: entriesWithKey,
-        };
+        for (const { ep, entries } of batchResults) {
+          if (!localDisplayedExecutionProcesses[ep.id]) {
+            localDisplayedExecutionProcesses[ep.id] = {
+              executionProcess: ep,
+              entries: entries.map((e, idx) => patchWithKey(e, ep.id, idx)),
+            };
+          }
+        }
 
         if (
           flattenEntries(localDisplayedExecutionProcesses).length >
@@ -472,39 +488,41 @@ export const useConversationHistoryOld = ({
     async (batchSize: number): Promise<boolean> => {
       if (!executionProcesses?.current) return false;
 
-      let anyUpdated = false;
-      for (const executionProcess of [
-        ...executionProcesses.current,
-      ].reverse()) {
-        const current = displayedExecutionProcesses.current;
-        if (
-          current[executionProcess.id] ||
-          executionProcess.status === ExecutionProcessStatus.running
-        )
-          continue;
-
-        const entries =
-          await loadEntriesForHistoricExecutionProcess(executionProcess);
-        const entriesWithKey = entries.map((e, idx) =>
-          patchWithKey(e, executionProcess.id, idx)
+      const remaining = [...executionProcesses.current]
+        .reverse()
+        .filter(
+          (ep) =>
+            !displayedExecutionProcesses.current[ep.id] &&
+            ep.status !== ExecutionProcessStatus.running
         );
 
+      if (remaining.length === 0) return false;
+
+      const CONCURRENCY = 6;
+      const batch = remaining.slice(0, CONCURRENCY);
+      const batchResults = await Promise.all(
+        batch.map(async (ep) => ({
+          ep,
+          entries: await loadEntriesForHistoricExecutionProcess(ep),
+        }))
+      );
+
+      for (const { ep, entries } of batchResults) {
+        const entriesWithKey = entries.map((e, idx) =>
+          patchWithKey(e, ep.id, idx)
+        );
         mergeIntoDisplayed((state) => {
-          state[executionProcess.id] = {
-            executionProcess,
-            entries: entriesWithKey,
-          };
+          state[ep.id] = { executionProcess: ep, entries: entriesWithKey };
         });
 
         if (
           flattenEntries(displayedExecutionProcesses.current).length > batchSize
         ) {
-          anyUpdated = true;
           break;
         }
-        anyUpdated = true;
       }
-      return anyUpdated;
+
+      return batchResults.length > 0;
     },
     [executionProcesses]
   );
