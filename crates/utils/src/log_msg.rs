@@ -78,8 +78,11 @@ impl LogMsg {
             LogMsg::Stdout(s) => EV_STDOUT.len() + s.len() + OVERHEAD,
             LogMsg::Stderr(s) => EV_STDERR.len() + s.len() + OVERHEAD,
             LogMsg::JsonPatch(patch) => {
-                let json_len = serde_json::to_string(patch).map(|s| s.len()).unwrap_or(2);
-                EV_JSON_PATCH.len() + json_len + OVERHEAD
+                // Estimate: ~256 bytes per operation instead of serializing.
+                // The byte budget (~100 MB) is approximate so exact sizing is unnecessary.
+                let ops = patch.0.len();
+                let estimated = ops * 256;
+                EV_JSON_PATCH.len() + estimated.max(2) + OVERHEAD
             }
             LogMsg::SessionId(s) => EV_SESSION_ID.len() + s.len() + OVERHEAD,
             LogMsg::MessageId(s) => EV_MESSAGE_ID.len() + s.len() + OVERHEAD,
