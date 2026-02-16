@@ -459,6 +459,26 @@ pub struct PushTaskAttemptRequest {
     pub repo_id: Uuid,
 }
 
+/// Resolves the best available vibe-kanban identifier for commit messages.
+/// Priority: remote issue simple_id > remote issue UUID > local task UUID.
+async fn resolve_vibe_kanban_identifier(
+    deployment: &DeploymentImpl,
+    local_workspace_id: Uuid,
+    task_id: Uuid,
+) -> String {
+    if let Ok(client) = deployment.remote_client()
+        && let Ok(remote_ws) = client.get_workspace_by_local_id(local_workspace_id).await
+        && let Some(issue_id) = remote_ws.issue_id
+        && let Ok(issue) = client.get_issue(issue_id).await
+    {
+        if !issue.simple_id.is_empty() {
+            return issue.simple_id;
+        }
+        return issue_id.to_string();
+    }
+    task_id.to_string()
+}
+
 #[axum::debug_handler]
 pub async fn merge_task_attempt(
     Extension(workspace): Extension<Workspace>,
@@ -509,10 +529,9 @@ pub async fn merge_task_attempt(
         .parent_task(pool)
         .await?
         .ok_or(ApiError::Workspace(WorkspaceError::TaskNotFound))?;
-    let task_uuid_str = task.id.to_string();
-    let first_uuid_section = task_uuid_str.split('-').next().unwrap_or(&task_uuid_str);
+    let vk_id = resolve_vibe_kanban_identifier(&deployment, workspace.id, task.id).await;
 
-    let mut commit_message = format!("{} (vibe-kanban {})", task.title, first_uuid_section);
+    let mut commit_message = format!("{} (vibe-kanban {})", task.title, vk_id);
 
     // Add description on next line if it exists
     if let Some(description) = &task.description

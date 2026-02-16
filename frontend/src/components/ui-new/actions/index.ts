@@ -111,6 +111,7 @@ export type DevServerState = 'stopped' | 'starting' | 'running' | 'stopping';
 export interface ProjectMutations {
   removeIssue: (id: string) => void;
   duplicateIssue: (issueId: string) => void;
+  getIssue: (issueId: string) => { simple_id: string } | undefined;
 }
 
 // Context provided to action executors (from React hooks)
@@ -973,6 +974,16 @@ export const Actions = {
       const repos = await attemptsApi.getRepos(workspaceId);
       const repo = repos.find((r) => r.id === repoId);
 
+      // Resolve vibe-kanban identifier from remote workspace + issue
+      let issueIdentifier: string | undefined;
+      const remoteWs = ctx.remoteWorkspaces.find(
+        (w) => w.local_workspace_id === workspaceId
+      );
+      if (remoteWs?.issue_id && ctx.projectMutations?.getIssue) {
+        const issue = ctx.projectMutations.getIssue(remoteWs.issue_id);
+        issueIdentifier = issue?.simple_id || remoteWs.issue_id;
+      }
+
       const result = await CreatePRDialog.show({
         attempt: workspace,
         task: {
@@ -983,6 +994,7 @@ export const Actions = {
         },
         repoId,
         targetBranch: repo?.target_branch,
+        issueIdentifier,
       });
 
       if (!result.success && result.error) {

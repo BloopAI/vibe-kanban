@@ -70,6 +70,7 @@ function ProjectMutationsRegistration({ children }: { children: ReactNode }) {
           extension_metadata: issue.extension_metadata,
         });
       },
+      getIssue,
     });
 
     return () => {

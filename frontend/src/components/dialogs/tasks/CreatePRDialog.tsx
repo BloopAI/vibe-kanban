@@ -39,6 +39,7 @@ interface CreatePRDialogProps {
   task: TaskWithAttemptStatus;
   repoId: string;
   targetBranch?: string;
+  issueIdentifier?: string;
 }
 
 export type CreatePRDialogResult = {
@@ -47,7 +48,7 @@ export type CreatePRDialogResult = {
 };
 
 const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
-  ({ attempt, task, repoId, targetBranch }) => {
+  ({ attempt, task, repoId, targetBranch, issueIdentifier }) => {
     const modal = useModal();
     const { t } = useTranslation('tasks');
     const { isLoaded } = useAuth();
@@ -81,11 +82,12 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
         return;
       }
 
-      setPrTitle(`${task.title} (vibe-kanban)`);
+      const suffix = issueIdentifier ? ` ${issueIdentifier}` : '';
+      setPrTitle(`${task.title} (vibe-kanban${suffix})`);
       setPrBody(task.description || '');
       setError(null);
       setGhCliHelp(null);
-    }, [modal.visible, isLoaded, task]);
+    }, [modal.visible, isLoaded, task, issueIdentifier]);
 
     // Set default base branch when branches are loaded
     useEffect(() => {
