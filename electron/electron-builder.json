@@ -1,0 +1,24 @@
+{
+  "appId": "ai.bloop.vibe-kanban-electron",
+  "productName": "vibe-kanban",
+  "directories": {
+    "output": "dist"
+  },
+  "files": ["main.js", "package.json"],
+  "extraResources": [
+    {
+      "from": "../target/release/server",
+      "to": "server"
+    }
+  ],
+  "mac": {
+    "target": "dmg",
+    "category": "public.app-category.developer-tools"
+  },
+  "linux": {
+    "target": ["AppImage", "deb"]
+  },
+  "win": {
+    "target": "nsis"
+  }
+}
