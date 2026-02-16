@@ -388,7 +388,7 @@ export function ModelSelectorContainer({
     return (
       <div className="flex flex-wrap items-center gap-base">
         <DropdownMenu>
-          <DropdownMenuTriggerButton label={loadingLabel} disabled />
+          <DropdownMenuTriggerButton size="sm" label={loadingLabel} disabled />
         </DropdownMenu>
       </div>
     );
@@ -426,6 +426,7 @@ export function ModelSelectorContainer({
     <div className="flex flex-wrap items-center gap-base">
       <DropdownMenu>
         <DropdownMenuTriggerButton
+          size="sm"
           icon={SlidersHorizontalIcon}
           label={
             resolvedPreset?.toLowerCase() !== 'default'
@@ -462,6 +463,7 @@ export function ModelSelectorContainer({
           onOpenChange={handleOpenChange}
           trigger={
             <DropdownMenuTriggerButton
+              size="sm"
               label={modelLabel}
               disabled={loadingModels}
             />
@@ -486,7 +488,11 @@ export function ModelSelectorContainer({
 
       {permissionPolicy && config.permissions.length > 0 && (
         <DropdownMenu>
-          <DropdownMenuTriggerButton icon={permissionIcon} showCaret={false} />
+          <DropdownMenuTriggerButton
+            size="sm"
+            icon={permissionIcon}
+            showCaret={false}
+          />
           <DropdownMenuContent align="start">
             <DropdownMenuLabel>
               {t('modelSelector.permissions')}
@@ -509,7 +515,7 @@ export function ModelSelectorContainer({
 
       {config.agents.length > 0 && (
         <DropdownMenu>
-          <DropdownMenuTriggerButton label={agentLabel} />
+          <DropdownMenuTriggerButton size="sm" label={agentLabel} />
           <DropdownMenuContent align="start">
             <DropdownMenuLabel>{t('modelSelector.agent')}</DropdownMenuLabel>
             <DropdownMenuItem
