@@ -147,7 +147,7 @@ pub async fn sync_all_linked_workspaces(
             MergeStatus::Open => PullRequestStatus::Open,
             MergeStatus::Merged => PullRequestStatus::Merged,
             MergeStatus::Closed => PullRequestStatus::Closed,
-            MergeStatus::Unknown => continue,
+            MergeStatus::Unknown => PullRequestStatus::Open,
         };
         sync_pr_to_remote(
             client,

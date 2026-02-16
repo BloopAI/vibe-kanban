@@ -590,7 +590,8 @@ pub async fn push_task_attempt_branch(
             if let Ok(client) = deployment.remote_client() {
                 let pool = deployment.db().pool.clone();
                 let git = deployment.git().clone();
-                let ws = workspace.clone();
+                let mut ws = workspace.clone();
+                ws.container_ref = Some(container_ref.clone());
                 tokio::spawn(async move {
                     let stats = diff_stream::compute_diff_stats(&pool, &git, &ws).await;
                     remote_sync::sync_workspace_to_remote(
@@ -639,7 +640,8 @@ pub async fn force_push_task_attempt_branch(
     if let Ok(client) = deployment.remote_client() {
         let pool = deployment.db().pool.clone();
         let git = deployment.git().clone();
-        let ws = workspace.clone();
+        let mut ws = workspace.clone();
+        ws.container_ref = Some(container_ref.clone());
         tokio::spawn(async move {
             let stats = diff_stream::compute_diff_stats(&pool, &git, &ws).await;
             remote_sync::sync_workspace_to_remote(&client, ws.id, None, None, stats.as_ref())
