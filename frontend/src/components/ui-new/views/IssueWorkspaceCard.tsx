@@ -49,7 +49,6 @@ export interface WorkspaceWithStats {
 export interface IssueWorkspaceCardProps {
   workspace: WorkspaceWithStats;
   onClick?: () => void;
-  onLinkPr?: () => void;
   onUnlink?: () => void;
   onDelete?: () => void;
   showOwner?: boolean;
@@ -112,7 +111,6 @@ function IssueWorkspaceCardContainer({
 export function IssueWorkspaceCard({
   workspace,
   onClick,
-  onLinkPr,
   onUnlink,
   onDelete,
   showOwner = true,
@@ -168,7 +166,7 @@ export function IssueWorkspaceCard({
               className="h-5 w-5 text-[10px] border-2 border-panel"
             />
           )}
-          {(onLinkPr || onUnlink || onDelete) && (
+          {(onUnlink || onDelete) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -183,17 +181,6 @@ export function IssueWorkspaceCard({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {onLinkPr && workspace.prs.length === 0 && (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onLinkPr();
-                    }}
-                  >
-                    <GitPullRequestIcon className="size-icon-xs" />
-                    {t('workspaces.linkPr')}
-                  </DropdownMenuItem>
-                )}
                 {onUnlink && (
                   <DropdownMenuItem
                     onClick={(e) => {

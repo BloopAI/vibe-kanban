@@ -401,8 +401,7 @@
       "forcePush": "Force Push",
       "forcePushing": "Force Pushing...",
       "creating": "Creating...",
-      "createPr": "Create PR",
-      "linkPr": "Link PR"
+      "createPr": "Create PR"
     },
     "errors": {
       "changeTargetBranch": "Failed to change target branch",
@@ -758,15 +757,6 @@
       "prNotFound": "Pull request not found",
       "repoNotInProject": "Repository is not in any project",
       "failedToCreateWorkspace": "Failed to create workspace"
-    }
-  },
-  "linkPrToWorkspace": {
-    "title": "Link Pull Request",
-    "description": "Select an open pull request to link to this workspace.",
-    "linking": "Linking...",
-    "linkPr": "Link PR",
-    "errors": {
-      "failedToLinkPr": "Failed to link pull request"
     }
   }
 }

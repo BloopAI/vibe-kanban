@@ -264,16 +264,6 @@ export function IssueWorkspacesSectionContainer({
     [localWorkspacesById, t]
   );
 
-  // Handle clicking "Link PR" on a workspace card
-  const handleLinkPr = useCallback(async (localWorkspaceId: string) => {
-    const { LinkPrToWorkspaceDialog } = await import(
-      '@/components/dialogs/tasks/LinkPrToWorkspaceDialog'
-    );
-    await LinkPrToWorkspaceDialog.show({
-      workspaceId: localWorkspaceId,
-    });
-  }, []);
-
   // Actions for the section header
   const actions: SectionAction[] = useMemo(
     () => [
@@ -296,7 +286,6 @@ export function IssueWorkspacesSectionContainer({
       actions={actions}
       onWorkspaceClick={handleWorkspaceClick}
       onCreateWorkspace={handleAddWorkspace}
-      onLinkPr={handleLinkPr}
       onUnlinkWorkspace={handleUnlinkWorkspace}
       onDeleteWorkspace={handleDeleteWorkspace}
       shouldAnimateCreateButton={shouldAnimateCreateButton}

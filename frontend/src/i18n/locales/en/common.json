@@ -183,7 +183,6 @@
       "action": "Rename",
       "renaming": "Renaming..."
     },
-    "linkPr": "Link pull request",
     "unlinkFromIssue": "Unlink from issue",
     "deleteWorkspace": "Delete workspace",
     "unlink": "Unlink",

@@ -90,7 +90,6 @@ import {
   OpenPrInfo,
   GitRemote,
   ListPrsError,
-  LinkPrRequest,
   AttachExistingPrRequest,
   AttachPrResponse,
   CreateWorkspaceFromPrBody,
@@ -700,21 +699,6 @@ export const attemptsApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponseAsResult<string, PrError>(response);
-  },
-
-  /** Manually link an existing PR to a workspace */
-  linkPr: async (
-    attemptId: string,
-    data: LinkPrRequest
-  ): Promise<Result<AttachPrResponse, PrError>> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/pr/link`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
-    return handleApiResponseAsResult<AttachPrResponse, PrError>(response);
   },
 
   /** Try to auto-attach a PR by matching the workspace branch */
