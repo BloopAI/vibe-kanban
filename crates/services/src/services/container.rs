@@ -866,9 +866,23 @@ pub trait ContainerService {
             ))
         } else {
 
-            // Check disk cache first
-            if let Some(lines) = self.normalized_log_cache().read_lines(id) {
-                return Some(NormalizedLogStream::Cached(lines));
+            // Check disk cache — only for completed processes to avoid serving partial data
+            let process = match ExecutionProcess::find_by_id(&self.db().pool, *id).await {
+                Ok(Some(process)) => process,
+                Ok(None) => {
+                    tracing::error!("No execution process found for ID: {}", id);
+                    return None;
+                }
+                Err(e) => {
+                    tracing::error!("Failed to fetch execution process {}: {}", id, e);
+                    return None;
+                }
+            };
+
+            if process.status != ExecutionProcessStatus::Running {
+                if let Some(lines) = self.normalized_log_cache().read_lines(id) {
+                    return Some(NormalizedLogStream::Cached(lines));
+                }
             }
             // Fallback: load from DB and normalize
             let log_records =
@@ -901,18 +915,6 @@ pub trait ContainerService {
                 }
             }
             temp_store.push_finished();
-
-            let process = match ExecutionProcess::find_by_id(&self.db().pool, *id).await {
-                Ok(Some(process)) => process,
-                Ok(None) => {
-                    tracing::error!("No execution process found for ID: {}", id);
-                    return None;
-                }
-                Err(e) => {
-                    tracing::error!("Failed to fetch execution process {}: {}", id, e);
-                    return None;
-                }
-            };
 
             // Get the workspace to determine correct directory
             let (workspace, _session) =
@@ -1150,7 +1152,8 @@ pub trait ContainerService {
                     }
                     LogMsg::Finished => {
                         let _ = writer.flush();
-                        cache.evict_if_needed();
+                        let cache = cache.clone();
+                        tokio::task::spawn_blocking(move || cache.evict_if_needed());
                         break;
                     }
                     _ => continue,
