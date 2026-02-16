@@ -22,9 +22,14 @@
     
     // Initialize with dark theme
     window.eruda.init({ defaults: { theme: 'Dark' } });
-    
-    // Hide by default
     window.eruda.hide();
+    
+    try {
+      var entryBtn = window.eruda._entryBtn;
+      if (entryBtn && entryBtn._$el && entryBtn._$el[0]) {
+        entryBtn._$el[0].style.display = 'none';
+      }
+    } catch (e) { /* ignore */ }
     
     // Send ready signal
     send('eruda-ready', {});

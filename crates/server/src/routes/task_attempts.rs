@@ -1333,14 +1333,15 @@ pub async fn start_dev_server(
         .await?
         .ok_or(SqlxError::RowNotFound)?;
 
-    // Stop any existing dev servers for this project
+    // Stop any existing dev servers for this workspace (not the whole project,
+    // so that other workspaces' dev servers keep running)
     let existing_dev_servers =
-        match ExecutionProcess::find_running_dev_servers_by_project(pool, project.id).await {
+        match ExecutionProcess::find_running_dev_servers_by_workspace(pool, workspace.id).await {
             Ok(servers) => servers,
             Err(e) => {
                 tracing::error!(
-                    "Failed to find running dev servers for project {}: {}",
-                    project.id,
+                    "Failed to find running dev servers for workspace {}: {}",
+                    workspace.id,
                     e
                 );
                 return Err(ApiError::Workspace(WorkspaceError::ValidationError(
@@ -1351,9 +1352,9 @@ pub async fn start_dev_server(
 
     for dev_server in existing_dev_servers {
         tracing::info!(
-            "Stopping existing dev server {} for project {}",
+            "Stopping existing dev server {} for workspace {}",
             dev_server.id,
-            project.id
+            workspace.id
         );
 
         if let Err(e) = deployment
