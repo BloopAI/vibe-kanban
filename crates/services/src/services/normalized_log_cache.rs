@@ -60,16 +60,16 @@ impl NormalizedLogCache {
     }
 
     /// Read all cached lines for `id`, returning `None` if the file does not
-    /// exist. Opening the file in append mode serves as a lightweight mtime
-    /// touch so that recently-read entries are less likely to be evicted.
+    /// exist. The file's mtime is explicitly touched so that recently-read
+    /// entries are less likely to be evicted.
     pub fn read_lines(&self, id: &Uuid) -> Option<Vec<String>> {
         let path = self.cache_path(id);
         if !path.exists() {
             return None;
         }
         let contents = fs::read_to_string(&path).ok()?;
-        // Touch mtime: opening in append mode updates it on most platforms.
-        let _ = fs::OpenOptions::new().append(true).open(&path);
+        // Touch mtime so recently-read entries are less likely to be evicted.
+        let _ = fs::File::open(&path).and_then(|f| f.set_modified(std::time::SystemTime::now()));
         Some(
             contents
                 .lines()
