@@ -185,6 +185,7 @@ export function AppBar({
                   key={project.id}
                   draggableId={project.id}
                   index={index}
+                  disableInteractiveElementBlocking
                   isDragDisabled={isSavingProjectOrder}
                 >
                   {(dragProvided, snapshot) => (
