@@ -1,15 +1,11 @@
 use anyhow::{self, Error as AnyhowError};
-use axum::Router;
 use deployment::{Deployment, DeploymentError};
-use server::{DeploymentImpl, preview_proxy, routes, tunnel};
-use services::services::container::ContainerService;
+use server::{startup, tunnel};
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
 use thiserror::Error;
-use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
-    assets::asset_dir,
     port_file::write_port_file_with_proxy,
     sentry::{self as sentry_utils, SentrySource, sentry_layer},
 };
@@ -46,50 +42,6 @@ async fn main() -> Result<(), VibeKanbanError> {
         .with(sentry_layer())
         .init();
 
-    // Create asset directory if it doesn't exist
-    if !asset_dir().exists() {
-        std::fs::create_dir_all(asset_dir())?;
-    }
-
-    // Copy old database to new location for safe downgrades
-    let old_db = asset_dir().join("db.sqlite");
-    let new_db = asset_dir().join("db.v2.sqlite");
-    if !new_db.exists() && old_db.exists() {
-        tracing::info!(
-            "Copying database to new location: {:?} -> {:?}",
-            old_db,
-            new_db
-        );
-        std::fs::copy(&old_db, &new_db).expect("Failed to copy database file");
-        tracing::info!("Database copy complete");
-    }
-
-    let deployment = DeploymentImpl::new().await?;
-    deployment.update_sentry_scope().await?;
-    deployment
-        .container()
-        .cleanup_orphan_executions()
-        .await
-        .map_err(DeploymentError::from)?;
-    deployment
-        .container()
-        .backfill_before_head_commits()
-        .await
-        .map_err(DeploymentError::from)?;
-    deployment
-        .container()
-        .backfill_repo_names()
-        .await
-        .map_err(DeploymentError::from)?;
-    deployment
-        .track_if_analytics_allowed("session_start", serde_json::json!({}))
-        .await;
-    // Preload global executor options cache for all executors with DEFAULT presets
-    tokio::spawn(async move {
-        executors::executors::utils::preload_global_executor_options_cache().await;
-    });
-    let app_router = routes::router(deployment.clone());
-
     let port = std::env::var("BACKEND_PORT")
         .or_else(|_| std::env::var("PORT"))
         .ok()
@@ -102,7 +54,7 @@ async fn main() -> Result<(), VibeKanbanError> {
         .unwrap_or_else(|| {
             tracing::info!("No PORT environment variable set, using port 0 for auto-assignment");
             0
-        }); // Use 0 to find free port if no specific port provided
+        });
 
     let proxy_port = std::env::var("PREVIEW_PROXY_PORT")
         .ok()
@@ -111,88 +63,54 @@ async fn main() -> Result<(), VibeKanbanError> {
 
     let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
 
-    let main_listener = tokio::net::TcpListener::bind(format!("{host}:{port}")).await?;
-    let actual_main_port = main_listener.local_addr()?.port();
+    let handle =
+        startup::start_with_bind(&format!("{host}:{port}"), &format!("{host}:{proxy_port}"))
+            .await?;
 
-    let proxy_listener = tokio::net::TcpListener::bind(format!("{host}:{proxy_port}")).await?;
-    let actual_proxy_port = proxy_listener.local_addr()?.port();
-
-    preview_proxy::set_proxy_port(actual_proxy_port);
-
-    if let Err(e) = write_port_file_with_proxy(actual_main_port, Some(actual_proxy_port)).await {
+    if let Err(e) = write_port_file_with_proxy(handle.port, Some(handle.proxy_port)).await {
         tracing::warn!("Failed to write port file: {}", e);
     }
-
-    let shutdown_token = CancellationToken::new();
-
-    tracing::info!(
-        "Main server on :{}, Preview proxy on :{}",
-        actual_main_port,
-        actual_proxy_port
-    );
 
     // Production only: open browser
     if !cfg!(debug_assertions) {
         tracing::info!("Opening browser...");
-        let browser_port = actual_main_port;
+        let url = handle.url();
         tokio::spawn(async move {
-            if let Err(e) =
-                utils::browser::open_browser(&format!("http://127.0.0.1:{browser_port}")).await
-            {
+            if let Err(e) = utils::browser::open_browser(&url).await {
                 tracing::warn!(
-                    "Failed to open browser automatically: {}. Please open http://127.0.0.1:{} manually.",
-                    e,
-                    browser_port
+                    "Failed to open browser automatically: {e}. Please open {url} manually."
                 );
             }
         });
     }
 
-    let proxy_router: Router = preview_proxy::router();
-
-    let main_shutdown = shutdown_token.clone();
-    let proxy_shutdown = shutdown_token.clone();
-
-    let main_server = axum::serve(main_listener, app_router)
-        .with_graceful_shutdown(async move { main_shutdown.cancelled().await });
-    let proxy_server = axum::serve(proxy_listener, proxy_router)
-        .with_graceful_shutdown(async move { proxy_shutdown.cancelled().await });
-
-    let main_handle = tokio::spawn(async move {
-        if let Err(e) = main_server.await {
-            tracing::error!("Main server error: {}", e);
-        }
-    });
-    let proxy_handle = tokio::spawn(async move {
-        if let Err(e) = proxy_server.await {
-            tracing::error!("Preview proxy error: {}", e);
-        }
-    });
-
-    deployment.server_info().set_port(actual_main_port).await;
+    // Set up relay tunnel
+    handle.deployment.server_info().set_port(handle.port).await;
     let relay_host_name = {
-        let config = deployment.config().read().await;
-        tunnel::effective_relay_host_name(&config, deployment.user_id())
+        let config = handle.deployment.config().read().await;
+        tunnel::effective_relay_host_name(&config, handle.deployment.user_id())
     };
-    deployment.server_info().set_hostname(relay_host_name).await;
-    tunnel::spawn_relay(&deployment).await;
+    handle
+        .deployment
+        .server_info()
+        .set_hostname(relay_host_name)
+        .await;
+    tunnel::spawn_relay(&handle.deployment).await;
 
-    tokio::select! {
-        _ = shutdown_signal() => {
-            tracing::info!("Shutdown signal received");
-        }
-        _ = main_handle => {}
-        _ = proxy_handle => {}
-    }
+    // Cancel the server when a shutdown signal (Ctrl-C / SIGTERM) arrives.
+    let shutdown_token = handle.shutdown_token();
+    tokio::spawn(async move {
+        shutdown_signal().await;
+        tracing::info!("Shutdown signal received");
+        shutdown_token.cancel();
+    });
 
-    shutdown_token.cancel();
-
-    perform_cleanup_actions(&deployment).await;
+    handle.serve().await?;
 
     Ok(())
 }
 
-pub async fn shutdown_signal() {
+async fn shutdown_signal() {
     // Always wait for Ctrl+C
     let ctrl_c = async {
         if let Err(e) = tokio::signal::ctrl_c().await {
@@ -226,12 +144,4 @@ pub async fn shutdown_signal() {
         // Only ctrl_c is available, so just await it
         ctrl_c.await;
     }
-}
-
-pub async fn perform_cleanup_actions(deployment: &DeploymentImpl) {
-    deployment
-        .container()
-        .kill_all_running_processes()
-        .await
-        .expect("Failed to cleanly kill running execution processes");
 }
