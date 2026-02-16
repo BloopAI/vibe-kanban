@@ -56,7 +56,9 @@ async function getFirstProjectInOrganization(
         return;
       }
 
-      settle(getFirstProjectByOrder(collection.toArray as unknown as Project[]));
+      settle(
+        getFirstProjectByOrder(collection.toArray as unknown as Project[])
+      );
     };
 
     subscription = collection.subscribeChanges(tryResolve, {
