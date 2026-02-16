@@ -603,6 +603,72 @@ pub async fn get_pr_comments(
     }
 }
 
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct LinkPrRequest {
+    pub repo_id: Uuid,
+    pub pr_number: i64,
+    pub pr_url: String,
+    pub base_branch: String,
+}
+
+pub async fn link_pr(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<LinkPrRequest>,
+) -> Result<ResponseJson<ApiResponse<AttachPrResponse, PrError>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    let workspace_repo =
+        WorkspaceRepo::find_by_workspace_and_repo_id(pool, workspace.id, request.repo_id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
+
+    // Check if PR already attached for this repo
+    let merges = Merge::find_by_workspace_and_repo_id(pool, workspace.id, request.repo_id).await?;
+    if let Some(Merge::Pr(pr_merge)) = merges.into_iter().next() {
+        return Ok(ResponseJson(ApiResponse::success(AttachPrResponse {
+            pr_attached: true,
+            pr_url: Some(pr_merge.pr_info.url.clone()),
+            pr_number: Some(pr_merge.pr_info.number),
+            pr_status: Some(pr_merge.pr_info.status.clone()),
+        })));
+    }
+
+    // Save PR info to database
+    Merge::create_pr(
+        pool,
+        workspace.id,
+        workspace_repo.repo_id,
+        &request.base_branch,
+        request.pr_number,
+        &request.pr_url,
+    )
+    .await?;
+
+    // Sync to remote if connected
+    if let Ok(client) = deployment.remote_client() {
+        let upsert_request = UpsertPullRequestRequest {
+            url: request.pr_url.clone(),
+            number: request.pr_number as i32,
+            status: PullRequestStatus::Open,
+            merged_at: None,
+            merge_commit_sha: None,
+            target_branch_name: request.base_branch.clone(),
+            local_workspace_id: workspace.id,
+        };
+        tokio::spawn(async move {
+            remote_sync::sync_pr_to_remote(&client, upsert_request).await;
+        });
+    }
+
+    Ok(ResponseJson(ApiResponse::success(AttachPrResponse {
+        pr_attached: true,
+        pr_url: Some(request.pr_url),
+        pr_number: Some(request.pr_number),
+        pr_status: Some(MergeStatus::Open),
+    })))
+}
+
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct CreateWorkspaceFromPrBody {
     pub repo_id: Uuid,

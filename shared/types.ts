@@ -356,6 +356,8 @@ export type GitRemote = { name: string, url: string, };
 
 export type ListPrsError = { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "auth_failed", message: string, } | { "type": "unsupported_provider" };
 
+export type LinkPrRequest = { repo_id: string, pr_number: bigint, pr_url: string, base_branch: string, };
+
 export type CreateWorkspaceFromPrBody = { repo_id: string, pr_number: bigint, pr_title: string, pr_url: string, head_branch: string, base_branch: string, run_setup: boolean, remote_name: string | null, };
 
 export type CreateWorkspaceFromPrResponse = { workspace: Workspace, task: Task, };

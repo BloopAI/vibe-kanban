@@ -36,6 +36,10 @@ export {
 
 export { CreatePRDialog } from './tasks/CreatePRDialog';
 export {
+  LinkPrToWorkspaceDialog,
+  type LinkPrToWorkspaceDialogProps,
+} from './tasks/LinkPrToWorkspaceDialog';
+export {
   EditorSelectionDialog,
   type EditorSelectionDialogProps,
 } from './tasks/EditorSelectionDialog';

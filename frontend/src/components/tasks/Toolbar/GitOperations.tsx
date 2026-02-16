@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   CheckCircle,
   ExternalLink,
+  Link2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button.tsx';
 import {
@@ -26,6 +27,7 @@ import { ChangeTargetBranchDialog } from '@/components/dialogs/tasks/ChangeTarge
 import RepoSelector from '@/components/tasks/RepoSelector';
 import { RebaseDialog } from '@/components/dialogs/tasks/RebaseDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
+import { LinkPrToWorkspaceDialog } from '@/components/dialogs/tasks/LinkPrToWorkspaceDialog';
 import { useTranslation } from 'react-i18next';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useGitOperations } from '@/hooks/useGitOperations';
@@ -516,6 +518,26 @@ function GitOperations({
               <GitPullRequest className="h-3.5 w-3.5" />
               <span className="truncate max-w-[10ch]">{prButtonLabel}</span>
             </Button>
+
+            {!mergeInfo.hasOpenPR && !mergeInfo.hasMergedPR && (
+              <Button
+                onClick={() =>
+                  LinkPrToWorkspaceDialog.show({
+                    workspaceId: selectedAttempt.id,
+                  })
+                }
+                disabled={isAttemptRunning}
+                variant="outline"
+                size="xs"
+                className="gap-1 shrink-0"
+                aria-label={t('git.states.linkPr')}
+              >
+                <Link2 className="h-3.5 w-3.5" />
+                <span className="truncate max-w-[10ch]">
+                  {t('git.states.linkPr')}
+                </span>
+              </Button>
+            )}
 
             <Button
               onClick={handleRebaseDialogOpen}

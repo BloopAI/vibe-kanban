@@ -1,0 +1,373 @@
+import { useState, useEffect, useContext, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowSquareOut } from '@phosphor-icons/react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '@/lib/modals';
+import { attemptsApi, repoApi } from '@/lib/api';
+import { WorkspaceContext } from '@/contexts/WorkspaceContext';
+import { SearchableDropdownContainer } from '@/components/ui-new/containers/SearchableDropdownContainer';
+import type { OpenPrInfo, GitRemote } from 'shared/types';
+
+export interface LinkPrToWorkspaceDialogProps {
+  workspaceId: string;
+}
+
+const LinkPrToWorkspaceDialogImpl =
+  NiceModal.create<LinkPrToWorkspaceDialogProps>(({ workspaceId }) => {
+    const modal = useModal();
+    const { t } = useTranslation('tasks');
+    const queryClient = useQueryClient();
+
+    const workspaceContext = useContext(WorkspaceContext);
+    const currentWorkspaceRepoId = workspaceContext?.repos[0]?.id ?? null;
+
+    const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null);
+    const [selectedRemote, setSelectedRemote] = useState<string | null>(null);
+    const [selectedPrNumber, setSelectedPrNumber] = useState<number | null>(
+      null
+    );
+
+    const { data: repos = [], isLoading: isLoadingRepos } = useQuery({
+      queryKey: ['repos'],
+      queryFn: () => repoApi.list(),
+      enabled: modal.visible,
+    });
+
+    useEffect(() => {
+      if (selectedRepoId) return;
+      if (
+        currentWorkspaceRepoId &&
+        repos.some((r) => r.id === currentWorkspaceRepoId)
+      ) {
+        setSelectedRepoId(currentWorkspaceRepoId);
+      } else if (repos.length === 1) {
+        setSelectedRepoId(repos[0].id);
+      }
+    }, [repos, selectedRepoId, currentWorkspaceRepoId]);
+
+    const { data: remotes = [], isLoading: isLoadingRemotes } = useQuery({
+      queryKey: ['repo-remotes', selectedRepoId],
+      queryFn: async () => {
+        if (!selectedRepoId) return [];
+        return repoApi.listRemotes(selectedRepoId);
+      },
+      enabled: modal.visible && !!selectedRepoId,
+    });
+
+    useEffect(() => {
+      if (remotes.length > 0 && !selectedRemote) {
+        setSelectedRemote(remotes[0].name);
+      }
+    }, [remotes, selectedRemote]);
+
+    const {
+      data: prsResult,
+      isLoading: isLoadingPrs,
+      error: prsError,
+    } = useQuery({
+      queryKey: ['open-prs', selectedRepoId, selectedRemote],
+      queryFn: async () => {
+        if (!selectedRepoId || !selectedRemote) return null;
+        return repoApi.listOpenPrs(selectedRepoId, selectedRemote);
+      },
+      enabled: modal.visible && !!selectedRepoId && !!selectedRemote,
+    });
+
+    const openPrs = useMemo<OpenPrInfo[]>(
+      () => (prsResult?.success === true ? prsResult.data : []),
+      [prsResult]
+    );
+
+    const selectedPr = useMemo(
+      () =>
+        openPrs.find((pr) => Number(pr.number) === selectedPrNumber) ?? null,
+      [openPrs, selectedPrNumber]
+    );
+
+    let prsErrorMessage: string | null = null;
+    if (prsResult?.success === false) {
+      switch (prsResult.error?.type) {
+        case 'cli_not_installed':
+          prsErrorMessage = t('createWorkspaceFromPr.errors.cliNotInstalled', {
+            provider: prsResult.error.provider,
+          });
+          break;
+        case 'auth_failed':
+          prsErrorMessage = prsResult.error.message;
+          break;
+        case 'unsupported_provider':
+          prsErrorMessage = t(
+            'createWorkspaceFromPr.errors.unsupportedProvider'
+          );
+          break;
+        default:
+          prsErrorMessage =
+            prsResult.message ||
+            t('createWorkspaceFromPr.errors.failedToLoadPrs');
+      }
+    } else if (prsError) {
+      prsErrorMessage = t('createWorkspaceFromPr.errors.failedToLoadPrs');
+    }
+
+    const linkMutation = useMutation({
+      mutationFn: async () => {
+        if (
+          !selectedRepoId ||
+          !selectedPrNumber ||
+          !selectedRemote ||
+          !selectedPr
+        ) {
+          throw new Error('Missing required fields');
+        }
+        const result = await attemptsApi.linkPr(workspaceId, {
+          repo_id: selectedRepoId,
+          pr_number: selectedPrNumber as unknown as bigint,
+          pr_url: selectedPr.url,
+          base_branch: selectedPr.base_branch,
+        });
+        if (!result.success) {
+          switch (result.error?.type) {
+            case 'cli_not_installed':
+              throw new Error(
+                t('createWorkspaceFromPr.errors.cliNotInstalled', {
+                  provider: result.error.provider,
+                })
+              );
+            case 'unsupported_provider':
+              throw new Error(
+                t('createWorkspaceFromPr.errors.unsupportedProvider')
+              );
+            default:
+              throw new Error(
+                result.message || t('linkPrToWorkspace.errors.failedToLinkPr')
+              );
+          }
+        }
+        return result.data;
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['workspaces'] });
+        queryClient.invalidateQueries({ queryKey: ['branch-status'] });
+        modal.hide();
+      },
+    });
+
+    useEffect(() => {
+      if (!modal.visible) {
+        setSelectedRepoId(null);
+        setSelectedRemote(null);
+        setSelectedPrNumber(null);
+      }
+    }, [modal.visible]);
+
+    const handleOpenChange = (open: boolean) => {
+      if (!open) modal.hide();
+    };
+
+    const canLink =
+      selectedRepoId &&
+      selectedRemote &&
+      selectedPrNumber &&
+      !linkMutation.isPending &&
+      !isLoadingPrs;
+
+    const handleLink = () => {
+      if (canLink) {
+        linkMutation.mutate();
+      }
+    };
+
+    return (
+      <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{t('linkPrToWorkspace.title')}</DialogTitle>
+            <DialogDescription>
+              {t('linkPrToWorkspace.description')}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>{t('createWorkspaceFromPr.repositoryLabel')}</Label>
+              {isLoadingRepos ? (
+                <div className="text-sm text-muted-foreground">
+                  {t('createWorkspaceFromPr.loadingRepositories')}
+                </div>
+              ) : repos.length === 0 ? (
+                <div className="text-sm text-muted-foreground">
+                  {t('createWorkspaceFromPr.noRepositoriesFound')}
+                </div>
+              ) : (
+                <Select
+                  value={selectedRepoId ?? undefined}
+                  onValueChange={(value) => {
+                    setSelectedRepoId(value);
+                    setSelectedRemote(null);
+                    setSelectedPrNumber(null);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={t('createWorkspaceFromPr.selectRepository')}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {repos.map((repo) => (
+                      <SelectItem key={repo.id} value={repo.id}>
+                        {repo.display_name || repo.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {selectedRepoId && remotes.length > 1 && (
+              <div className="space-y-2">
+                <Label>{t('createWorkspaceFromPr.remoteLabel')}</Label>
+                {isLoadingRemotes ? (
+                  <div className="text-sm text-muted-foreground">
+                    {t('createWorkspaceFromPr.loadingRemotes')}
+                  </div>
+                ) : (
+                  <Select
+                    value={selectedRemote ?? undefined}
+                    onValueChange={(value) => {
+                      setSelectedRemote(value);
+                      setSelectedPrNumber(null);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={t('createWorkspaceFromPr.selectRemote')}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {remotes.map((remote: GitRemote, index: number) => (
+                        <SelectItem key={remote.name} value={remote.name}>
+                          {remote.name}
+                          {index === 0 &&
+                            ` (${t('createWorkspaceFromPr.default')})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>{t('createWorkspaceFromPr.pullRequestLabel')}</Label>
+              {isLoadingPrs || isLoadingRemotes ? (
+                <div className="text-sm text-muted-foreground">
+                  {t('createWorkspaceFromPr.loadingPullRequests')}
+                </div>
+              ) : prsErrorMessage ? (
+                <div className="text-sm text-destructive">
+                  {prsErrorMessage}
+                </div>
+              ) : !selectedRepoId ? (
+                <div className="text-sm text-muted-foreground">
+                  {t('createWorkspaceFromPr.selectRepositoryFirst')}
+                </div>
+              ) : openPrs.length === 0 ? (
+                <div className="text-sm text-muted-foreground">
+                  {t('createWorkspaceFromPr.noPullRequestsFound')}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <SearchableDropdownContainer
+                    items={openPrs}
+                    selectedValue={selectedPrNumber?.toString() ?? null}
+                    getItemKey={(pr) => String(pr.number)}
+                    getItemLabel={(pr) => `#${pr.number}: ${pr.title}`}
+                    filterItem={(pr, query) =>
+                      String(pr.number).includes(query) ||
+                      pr.title.toLowerCase().includes(query)
+                    }
+                    onSelect={(pr) => setSelectedPrNumber(Number(pr.number))}
+                    trigger={
+                      <Button
+                        variant="outline"
+                        className="flex-1 justify-start font-normal min-w-0"
+                      >
+                        <span className="truncate">
+                          {selectedPr
+                            ? `#${selectedPr.number}: ${selectedPr.title}`
+                            : t('createWorkspaceFromPr.selectPullRequest')}
+                        </span>
+                      </Button>
+                    }
+                    contentClassName="w-[400px]"
+                    placeholder={t(
+                      'createWorkspaceFromPr.searchPrsPlaceholder'
+                    )}
+                    emptyMessage={t('createWorkspaceFromPr.noMatchingPrs')}
+                    getItemBadge={null}
+                    getItemIcon={null}
+                  />
+                  {selectedPr && (
+                    <a
+                      href={selectedPr.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-shrink-0 p-2 text-muted-foreground hover:text-foreground transition-colors"
+                      title={t('createWorkspaceFromPr.openPrInBrowser')}
+                    >
+                      <ArrowSquareOut className="size-4" />
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {linkMutation.error && (
+              <div className="text-sm text-destructive">
+                {linkMutation.error.message}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => modal.hide()}
+              disabled={linkMutation.isPending}
+            >
+              {t('common:buttons.cancel')}
+            </Button>
+            <Button onClick={handleLink} disabled={!canLink}>
+              {linkMutation.isPending
+                ? t('linkPrToWorkspace.linking')
+                : t('linkPrToWorkspace.linkPr')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  });
+
+export const LinkPrToWorkspaceDialog = defineModal<
+  LinkPrToWorkspaceDialogProps,
+  void
+>(LinkPrToWorkspaceDialogImpl);
