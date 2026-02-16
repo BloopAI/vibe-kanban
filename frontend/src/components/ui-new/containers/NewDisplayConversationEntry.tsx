@@ -278,7 +278,7 @@ function NewDisplayConversationEntry(props: Props) {
     taskAttempt,
     resetAction,
   } = props;
-  const canRetry = !!(
+  const executorCanFork = !!(
     taskAttempt?.session?.executor &&
     capabilities?.[taskAttempt.session.executor]?.includes(
       BaseAgentCapability.SESSION_FORK
@@ -323,7 +323,7 @@ function NewDisplayConversationEntry(props: Props) {
           expansionKey={expansionKey}
           workspaceId={taskAttempt?.id}
           executionProcessId={executionProcessId}
-          canRetry={canRetry}
+          executorCanFork={executorCanFork}
           resetAction={resetAction}
         />
       );
@@ -548,14 +548,14 @@ function UserMessageEntry({
   expansionKey,
   workspaceId,
   executionProcessId,
-  canRetry,
+  executorCanFork,
   resetAction,
 }: {
   content: string;
   expansionKey: string;
   workspaceId: string | undefined;
   executionProcessId: string | undefined;
-  canRetry: boolean;
+  executorCanFork: boolean;
   resetAction: UseResetProcessResult;
 }) {
   const [expanded, toggle] = usePersistedExpanded(`user:${expansionKey}`, true);
@@ -579,10 +579,10 @@ function UserMessageEntry({
   // Only show actions when we have a process ID and not already in edit mode
   const canShowActions =
     !!executionProcessId && !isInEditMode && !isResetPending;
-  // Edit/retry is capability-gated (e.g. Amp has no retry)
-  const canEdit = canShowActions && canRetry;
+  // Edit/retry/reset is not supported when the executor doesn't have the fork capability
+  const canEdit = canShowActions && executorCanFork;
   // Only show reset if we have a process ID, not in edit mode, not pending, and not first process
-  const canReset = canShowActions && canResetProcess(executionProcessId);
+  const canReset = canEdit && canResetProcess(executionProcessId);
 
   return (
     <ChatUserMessage

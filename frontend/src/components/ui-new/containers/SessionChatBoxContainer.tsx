@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
 import {
-  BaseAgentCapability,
   type Session,
   type ToolStatus,
   type BaseCodingAgent,
@@ -215,7 +214,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Message edit context
   const editContext = useMessageEditContext();
-  const isInEditModeRaw = editContext.isInEditMode;
+  const isInEditMode = editContext.isInEditMode;
 
   // Get todos from entries
   const { todos, inProgressTodo } = useTodos(entries);
@@ -252,7 +251,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   }, [branchStatus]);
 
   // User profiles, config preference, and latest executor from processes
-  const { profiles, config, capabilities } = useUserSystem();
+  const { profiles, config } = useUserSystem();
 
   // Fetch processes from last session to get full profile (only in new session mode)
   const lastSessionId = isNewSessionMode ? sessions?.[0]?.id : undefined;
@@ -352,13 +351,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     scratchVariant: scratchData?.executor_profile_id?.variant,
     configExecutorProfile: config?.executor_profile,
   });
-  const supportsEditRetry = !!(
-    effectiveExecutor &&
-    capabilities?.[effectiveExecutor]?.includes(
-      BaseAgentCapability.SESSION_FORK
-    )
-  );
-  const isInEditMode = isInEditModeRaw && supportsEditRetry;
 
   // Wrap variant change to also save to scratch
   const setSelectedVariant = useCallback(
@@ -552,12 +544,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Handle edit submission
   const handleSubmitEdit = useCallback(async () => {
-    if (
-      !editContext.activeEdit ||
-      !localMessage.trim() ||
-      !effectiveExecutor ||
-      !supportsEditRetry
-    )
+    if (!editContext.activeEdit || !localMessage.trim() || !effectiveExecutor)
       return;
     editRetryMutation.mutate({
       message: localMessage,
@@ -575,7 +562,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     branchStatus,
     processes,
     editRetryMutation,
-    supportsEditRetry,
   ]);
 
   // Handle cancel edit mode
@@ -583,13 +569,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     editContext.cancelEdit();
     setLocalMessage('');
   }, [editContext, setLocalMessage]);
-
-  // If capability changes while edit mode is active, exit edit mode.
-  useEffect(() => {
-    if (isInEditModeRaw && !supportsEditRetry) {
-      editContext.cancelEdit();
-    }
-  }, [isInEditModeRaw, supportsEditRetry, editContext]);
 
   // Populate editor with original message when entering edit mode
   const prevEditRef = useRef(editContext.activeEdit);
