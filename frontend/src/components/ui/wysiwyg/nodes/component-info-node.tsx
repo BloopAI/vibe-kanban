@@ -1,5 +1,10 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
 import { NodeKey, SerializedLexicalNode, Spread } from 'lexical';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   createDecoratorNode,
   type DecoratorNodeConfig,
@@ -27,7 +32,21 @@ export type SerializedComponentInfoNode = Spread<
   SerializedLexicalNode
 >;
 
-const TOOLTIP_DELAY_MS = 350;
+function toRelativePath(absolutePath: string): string {
+  const worktreeMatch = absolutePath.match(
+    /\/worktrees\/[^/]+\/[^/]+\/(.+)$/
+  );
+  if (worktreeMatch) return worktreeMatch[1];
+
+  const srcMatch = absolutePath.match(/\/(src\/.+)$/);
+  if (srcMatch) return srcMatch[1];
+
+  if (absolutePath.startsWith('/') && absolutePath.split('/').length > 4) {
+    return absolutePath.split('/').slice(-3).join('/');
+  }
+
+  return absolutePath;
+}
 
 function ComponentInfoComponent({
   data,
@@ -37,45 +56,14 @@ function ComponentInfoComponent({
   nodeKey: NodeKey;
   onDoubleClickEdit: (event: React.MouseEvent) => void;
 }): JSX.Element {
-  const [showTooltip, setShowTooltip] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const displayName = data.component || data.tagName || 'unknown';
 
-  const handleMouseEnter = useCallback(() => {
-    timerRef.current = setTimeout(() => {
-      setShowTooltip(true);
-    }, TOOLTIP_DELAY_MS);
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    setShowTooltip(false);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
-
-  const tooltipRows: Array<{ label: string; value: string; mono?: boolean }> =
-    [];
-  tooltipRows.push({ label: 'Component', value: data.component });
-  if (data.file) {
-    tooltipRows.push({ label: 'File', value: data.file, mono: true });
-  }
-  if (data.line != null) {
-    tooltipRows.push({ label: 'Line', value: String(data.line) });
-  }
-  if (data.cssClass) {
-    tooltipRows.push({ label: 'Class', value: data.cssClass, mono: true });
-  }
+  const displayPath = data.file ? toRelativePath(data.file) : null;
+  const fileLine = displayPath
+    ? data.line != null
+      ? `${displayPath}:${data.line}`
+      : displayPath
+    : null;
 
   const stackBreadcrumb =
     data.stack && data.stack.length > 1
@@ -83,62 +71,54 @@ function ComponentInfoComponent({
       : null;
 
   return (
-    <span
-      className="relative inline-flex items-center"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onDoubleClick={onDoubleClickEdit}
-    >
-      <span
-        className="inline-flex items-center px-1.5 py-0.5 rounded-md text-sm font-medium cursor-default max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap select-none"
-        style={{
-          backgroundColor: '#D239C0',
-          color: '#ffffff',
-          lineHeight: '1.4',
-        }}
-      >
-        &lt;{displayName}&gt;
-      </span>
-
-      {showTooltip && (
-        <span
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[999] pointer-events-none"
-          style={{
-            animation: 'componentInfoTooltipFadeIn 100ms ease-out',
-          }}
+    <TooltipProvider delayDuration={350}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className="inline-flex items-center gap-half px-half bg-muted rounded-sm border border-border text-xs text-muted-foreground cursor-default select-none hover:border-muted-foreground transition-colors"
+            onDoubleClick={onDoubleClickEdit}
+          >
+            &lt;{displayName}/&gt;
+          </span>
+        </TooltipTrigger>
+        <TooltipContent
+          side="top"
+          className="max-w-[400px] px-plusfifty py-base"
+          style={{ backgroundColor: 'hsl(var(--bg-panel))' }}
         >
-          <span className="block bg-panel border border-low shadow-lg rounded-md px-base py-half max-w-[300px]">
-            <span className="flex flex-col gap-0.5">
-              {tooltipRows.map((row) => (
-                <span
-                  key={row.label}
-                  className="flex items-baseline gap-2 text-sm"
-                >
-                  <span className="text-low shrink-0">{row.label}</span>
-                  <span
-                    className={`text-normal overflow-hidden text-ellipsis whitespace-nowrap min-w-0 ${row.mono ? 'font-ibm-plex-mono' : ''}`}
-                  >
-                    {row.value}
-                  </span>
-                </span>
-              ))}
-            </span>
-            {stackBreadcrumb && (
-              <span className="block mt-1 pt-1 border-t border-low text-sm text-low overflow-hidden text-ellipsis whitespace-nowrap">
-                {stackBreadcrumb}
+          <div className="flex flex-col gap-half">
+            <div className="flex items-center gap-base">
+              <span className="text-sm text-foreground">
+                {data.component}
+              </span>
+              <span className="text-xs text-muted-foreground bg-muted px-half rounded-sm">
+                {data.framework}
+              </span>
+            </div>
+
+            {fileLine && (
+              <span className="text-xs font-ibm-plex-mono text-muted-foreground break-all leading-relaxed">
+                {fileLine}
               </span>
             )}
-          </span>
-        </span>
-      )}
 
-      <style>{`
-        @keyframes componentInfoTooltipFadeIn {
-          from { opacity: 0; transform: translateX(-50%) scale(0.97); }
-          to { opacity: 1; transform: translateX(-50%) scale(1); }
-        }
-      `}</style>
-    </span>
+            {data.cssClass && (
+              <span className="text-xs font-ibm-plex-mono text-muted-foreground break-all">
+                {data.cssClass}
+              </span>
+            )}
+
+            {stackBreadcrumb && (
+              <div className="border-t border-border pt-half">
+                <span className="text-xs text-muted-foreground leading-relaxed break-words">
+                  {stackBreadcrumb}
+                </span>
+              </div>
+            )}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
