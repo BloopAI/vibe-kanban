@@ -991,6 +991,20 @@ export const Actions = {
     },
   },
 
+  GitLinkPR: {
+    id: 'git-link-pr',
+    label: 'Link Pull Request',
+    icon: LinkIcon,
+    requiresTarget: ActionTargetType.GIT,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos && !ctx.hasOpenPR,
+    execute: async (_ctx, workspaceId) => {
+      const { LinkPrToWorkspaceDialog } = await import(
+        '@/components/dialogs/tasks/LinkPrToWorkspaceDialog'
+      );
+      await LinkPrToWorkspaceDialog.show({ workspaceId });
+    },
+  },
+
   GitMerge: {
     id: 'git-merge',
     label: 'Merge',

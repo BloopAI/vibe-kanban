@@ -12,6 +12,7 @@ import {
   SpinnerGapIcon,
   WarningCircleIcon,
   DotsThreeIcon,
+  LinkIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -25,6 +26,7 @@ import { useRepoAction } from '@/stores/useUiPreferencesStore';
 
 export type RepoAction =
   | 'pull-request'
+  | 'link-pr'
   | 'merge'
   | 'change-target'
   | 'rebase'
@@ -36,6 +38,7 @@ const repoActionOptions: SplitButtonOption<RepoAction>[] = [
     label: 'Open pull request',
     icon: GitPullRequestIcon,
   },
+  { value: 'link-pr', label: 'Link pull request', icon: LinkIcon },
   { value: 'merge', label: 'Merge', icon: GitMergeIcon },
 ];
 
@@ -86,18 +89,21 @@ export function RepoCard({
   const { t: tCommon } = useTranslation('common');
   const [selectedAction, setSelectedAction] = useRepoAction(repoId);
 
-  // Hide "Open pull request" option when PR is already open
+  // Hide "Open pull request" and "Link pull request" when PR is already open
+  // Hide "Link pull request" when any PR is already linked (open or merged)
   // Hide "merge" option when PR is already open or target branch is remote
   const hasPrOpen = prStatus === 'open';
+  const hasPrLinked = !!prNumber;
   const availableActionOptions = useMemo(
     () =>
       repoActionOptions.filter((opt) => {
         if (opt.value === 'pull-request' && hasPrOpen) return false;
+        if (opt.value === 'link-pr' && hasPrLinked) return false;
         if (opt.value === 'merge' && (hasPrOpen || isTargetRemote))
           return false;
         return true;
       }),
-    [hasPrOpen, isTargetRemote]
+    [hasPrOpen, hasPrLinked, isTargetRemote]
   );
 
   // If current selection is unavailable, fall back to the first available option.
