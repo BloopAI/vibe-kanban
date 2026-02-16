@@ -43,7 +43,9 @@
     "remote:prepare-db": "cd crates/remote && bash scripts/prepare-db.sh",
     "remote:prepare-db:check": "cd crates/remote && bash scripts/prepare-db.sh --check",
     "tauri:dev": "export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export VK_ALLOWED_ORIGINS=\"http://localhost:${FRONTEND_PORT}\" && cd crates/tauri-app && cargo tauri dev",
-    "tauri:build": "cd crates/tauri-app && cargo tauri build"
+    "tauri:build": "cd crates/tauri-app && cargo tauri build",
+    "electron:dev": "cd electron && npx electron .",
+    "electron:build": "cd electron && npx electron-builder"
   },
   "devDependencies": {
     "bippy": "0.5.28",
