@@ -62,7 +62,10 @@ function useShortcutGroups(): ShortcutGroup[] {
     const modifiers: ShortcutGroup = {
       name: t('shortcuts.groups.modifiers'),
       shortcuts: [
-        { keys: [mod, 'K'], description: t('shortcuts.actions.openCommandBar') },
+        {
+          keys: [mod, 'K'],
+          description: t('shortcuts.actions.openCommandBar'),
+        },
         sendShortcut === 'Enter'
           ? {
               keys: enterKey,
