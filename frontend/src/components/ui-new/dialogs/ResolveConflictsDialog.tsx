@@ -20,6 +20,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
+import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
+import { getLatestProfileFromProcesses } from '@/utils/executor';
 import type {
   BaseCodingAgent,
   ExecutorProfileId,
@@ -82,16 +84,22 @@ const ResolveConflictsDialogImpl =
       const sessionExecutor =
         resolvedSession?.executor as BaseCodingAgent | null;
 
+      // Get the variant from the session's latest process
+      const { executionProcesses: sessionProcesses } =
+        useExecutionProcesses(selectedSessionId);
+      const sessionProfileFromProcesses = useMemo(
+        () => getLatestProfileFromProcesses(sessionProcesses),
+        [sessionProcesses]
+      );
+
       const resolvedDefaultProfile = useMemo(() => {
+        // Use the variant from the session's processes if available
+        if (sessionProfileFromProcesses) return sessionProfileFromProcesses;
         if (sessionExecutor) {
-          const variant =
-            config?.executor_profile?.executor === sessionExecutor
-              ? config.executor_profile.variant
-              : null;
-          return { executor: sessionExecutor, variant };
+          return { executor: sessionExecutor, variant: null };
         }
         return config?.executor_profile ?? null;
-      }, [sessionExecutor, config?.executor_profile]);
+      }, [sessionProfileFromProcesses, sessionExecutor, config?.executor_profile]);
 
       // Default to creating a new session if no existing session
       const [createNewSession, setCreateNewSession] =
