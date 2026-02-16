@@ -93,6 +93,8 @@ services:
       SERVER_LISTEN_ADDR: 0.0.0.0:8081
       ELECTRIC_URL: http://electric:3000
       # OAuth — configure at least one provider (GitHub or Google)
+      # Optional — set for GitHub Enterprise Server (default: https://github.com)
+      GITHUB_BASE_URL: ${GITHUB_BASE_URL:-}
       GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:-}
       GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:-}
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}

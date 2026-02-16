@@ -10,7 +10,6 @@ use super::jwt::{GitHubAppJwt, JwtError};
 use crate::config::GitHubAppConfig;
 
 const USER_AGENT: &str = "VibeKanbanRemote/1.0";
-const GITHUB_API_BASE: &str = "https://api.github.com";
 
 #[derive(Debug, Error)]
 pub enum GitHubAppError {
@@ -87,6 +86,8 @@ pub struct GitHubAppService {
     client: Client,
     app_slug: String,
     webhook_secret: SecretString,
+    base_url: String,
+    api_url: String,
 }
 
 impl GitHubAppService {
@@ -98,12 +99,19 @@ impl GitHubAppService {
             client,
             app_slug: config.app_slug.clone(),
             webhook_secret: config.webhook_secret.clone(),
+            base_url: config.base_url.clone(),
+            api_url: config.api_url.clone(),
         })
     }
 
     /// Get the app slug for constructing installation URLs
     pub fn app_slug(&self) -> &str {
         &self.app_slug
+    }
+
+    /// Get the base URL for constructing web URLs (e.g., PR links)
+    pub fn base_url(&self) -> &str {
+        &self.base_url
     }
 
     /// Get the webhook secret for signature verification
@@ -120,7 +128,7 @@ impl GitHubAppService {
 
         let url = format!(
             "{}/app/installations/{}/access_tokens",
-            GITHUB_API_BASE, installation_id
+            self.api_url, installation_id
         );
 
         let response = self
@@ -160,7 +168,7 @@ impl GitHubAppService {
     ) -> Result<InstallationInfo, GitHubAppError> {
         let jwt = self.jwt_generator.generate()?;
 
-        let url = format!("{}/app/installations/{}", GITHUB_API_BASE, installation_id);
+        let url = format!("{}/app/installations/{}", self.api_url, installation_id);
 
         let response = self
             .client
@@ -192,7 +200,7 @@ impl GitHubAppService {
         installation_id: i64,
     ) -> Result<Vec<Repository>, GitHubAppError> {
         let token = self.get_installation_token(installation_id).await?;
-        let url = format!("{}/installation/repositories", GITHUB_API_BASE);
+        let url = format!("{}/installation/repositories", self.api_url);
 
         let mut all_repos = Vec::new();
         let mut page = 1u32;
@@ -243,7 +251,7 @@ impl GitHubAppService {
         // Use the issues API to post comments (PRs are issues in GitHub)
         let url = format!(
             "{}/repos/{}/{}/issues/{}/comments",
-            GITHUB_API_BASE, owner, repo, pr_number
+            self.api_url, owner, repo, pr_number
         );
 
         let response = self
@@ -288,9 +296,14 @@ impl GitHubAppService {
         let temp_dir = tempfile::tempdir()
             .map_err(|e| GitHubAppError::GitOperation(format!("Failed to create temp dir: {e}")))?;
 
+        let host = url::Url::parse(&self.base_url)
+            .ok()
+            .and_then(|u| u.host_str().map(String::from))
+            .unwrap_or_else(|| "github.com".to_string());
+
         let clone_url = format!(
-            "https://x-access-token:{}@github.com/{}/{}.git",
-            token, owner, repo
+            "https://x-access-token:{}@{}/{}/{}.git",
+            token, host, owner, repo
         );
 
         debug!(owner, repo, head_sha, "Cloning repository");
@@ -428,7 +441,7 @@ impl GitHubAppService {
 
         let url = format!(
             "{}/repos/{}/{}/pulls/{}",
-            GITHUB_API_BASE, owner, repo, pr_number
+            self.api_url, owner, repo, pr_number
         );
 
         let response = self

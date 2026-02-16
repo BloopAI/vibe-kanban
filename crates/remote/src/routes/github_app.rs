@@ -176,7 +176,8 @@ pub async fn get_install_url(
 
     // Build installation URL
     let install_url = format!(
-        "https://github.com/apps/{}/installations/new?state={}",
+        "{}/apps/{}/installations/new?state={}",
+        github_app.base_url(),
         github_app.app_slug(),
         urlencoding::encode(&state_token)
     );
@@ -1050,26 +1051,20 @@ async fn handle_issue_comment_event(
 // ========== Debug Endpoint ==========
 
 /// Parse a GitHub PR URL into (owner, repo, pr_number)
-fn parse_pr_url(url: &str) -> Option<(String, String, u64)> {
+fn parse_pr_url(url_str: &str) -> Option<(String, String, u64)> {
     // Parse URLs like: https://github.com/owner/repo/pull/123
-    let url = url.trim_end_matches('/');
-    let parts: Vec<&str> = url.split('/').collect();
+    // or GHE: https://github.mycompany.com/owner/repo/pull/123
+    let parsed = url::Url::parse(url_str.trim_end_matches('/')).ok()?;
+    let segments: Vec<&str> = parsed.path_segments()?.collect();
 
-    // Find "github.com" and get owner/repo/pull/number
-    let github_idx = parts.iter().position(|&p| p == "github.com")?;
-
-    if parts.len() < github_idx + 5 {
+    // Expect: ["owner", "repo", "pull", "123"]
+    if segments.len() < 4 || segments[2] != "pull" {
         return None;
     }
 
-    let owner = parts[github_idx + 1].to_string();
-    let repo = parts[github_idx + 2].to_string();
-
-    if parts[github_idx + 3] != "pull" {
-        return None;
-    }
-
-    let pr_number: u64 = parts[github_idx + 4].parse().ok()?;
+    let owner = segments[0].to_string();
+    let repo = segments[1].to_string();
+    let pr_number: u64 = segments[3].parse().ok()?;
 
     Some((owner, repo, pr_number))
 }
