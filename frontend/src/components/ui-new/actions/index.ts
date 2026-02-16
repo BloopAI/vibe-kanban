@@ -1187,8 +1187,13 @@ export const Actions = {
     icon: GearIcon,
     requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    execute: (ctx, _workspaceId, repoId) => {
-      ctx.navigate(`/settings/repos?repoId=${repoId}`);
+    execute: async (_ctx, _workspaceId, repoId) => {
+      await SettingsDialog.show({
+        initialSection: 'repos',
+        initialState: {
+          repoId,
+        },
+      });
     },
   },
 
