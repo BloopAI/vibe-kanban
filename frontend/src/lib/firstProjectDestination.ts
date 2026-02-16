@@ -1,11 +1,7 @@
 import type { Project } from 'shared/remote-types';
 import { type OrganizationWithRole } from 'shared/types';
-import { handleApiResponse, organizationsApi } from '@/lib/api';
+import { organizationsApi, remoteProjectsApi } from '@/lib/api';
 import { getFirstProjectByOrder } from '@/lib/projectOrder';
-
-type ListRemoteProjectsResponse = {
-  projects: Project[];
-};
 
 function getFirstOrganization(
   organizations: OrganizationWithRole[]
@@ -23,11 +19,7 @@ function getFirstOrganization(
 async function getFirstProjectInOrganization(
   organizationId: string
 ): Promise<Project | null> {
-  const response = await fetch(
-    `/api/remote/projects?organization_id=${encodeURIComponent(organizationId)}`
-  );
-  const { projects } =
-    await handleApiResponse<ListRemoteProjectsResponse>(response);
+  const projects = await remoteProjectsApi.listByOrganization(organizationId);
   return getFirstProjectByOrder(projects);
 }
 

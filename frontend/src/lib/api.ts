@@ -100,6 +100,7 @@ import {
   MigrationRequest,
   MigrationResponse,
 } from 'shared/types';
+import type { Project as RemoteProject } from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
 
@@ -137,6 +138,10 @@ export type Err<E> = { success: false; error: E | undefined; message?: string };
 
 // Result type for endpoints that need typed errors
 export type Result<T, E> = Ok<T> | Err<E>;
+
+type ListRemoteProjectsResponse = {
+  projects: RemoteProject[];
+};
 
 // Special handler for Result-returning endpoints
 const handleApiResponseAsResult = async <T, E>(
@@ -1351,6 +1356,19 @@ export const organizationsApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+};
+
+export const remoteProjectsApi = {
+  listByOrganization: async (
+    organizationId: string
+  ): Promise<RemoteProject[]> => {
+    const response = await makeRequest(
+      `/api/remote/projects?organization_id=${encodeURIComponent(organizationId)}`
+    );
+    const result =
+      await handleApiResponse<ListRemoteProjectsResponse>(response);
+    return result.projects;
   },
 };
 
