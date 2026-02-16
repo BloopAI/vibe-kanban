@@ -254,15 +254,17 @@ const ResolveConflictsDialogImpl =
 
               {error && <div className="text-sm text-destructive">{error}</div>}
 
-              {/* Agent/profile selector - only show when creating new session */}
-              {profiles && createNewSession && (
+              {/* Agent/profile selector */}
+              {profiles && (
                 <div className="flex gap-3 flex-col sm:flex-row">
-                  <AgentSelector
-                    profiles={profiles}
-                    selectedExecutorProfile={effectiveProfile}
-                    onChange={setUserSelectedProfile}
-                    showLabel={false}
-                  />
+                  {createNewSession && (
+                    <AgentSelector
+                      profiles={profiles}
+                      selectedExecutorProfile={effectiveProfile}
+                      onChange={setUserSelectedProfile}
+                      showLabel={false}
+                    />
+                  )}
                   <ConfigSelector
                     profiles={profiles}
                     selectedExecutorProfile={effectiveProfile}
