@@ -140,6 +140,8 @@ impl From<GhCliError> for GitHostError {
                     GitHostError::InsufficientPermissions(msg.clone())
                 } else if lower.contains("404") || lower.contains("not found") {
                     GitHostError::RepoNotFoundOrNoAccess(msg.clone())
+                } else if lower.contains("not a git repository") {
+                    GitHostError::NotAGitRepository(msg.clone())
                 } else {
                     GitHostError::PullRequest(msg.clone())
                 }
