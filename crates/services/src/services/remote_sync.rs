@@ -1,9 +1,15 @@
-use api_types::UpsertPullRequestRequest;
+use api_types::{PullRequestStatus, UpsertPullRequestRequest};
+use db::models::{
+    merge::{Merge, MergeStatus},
+    workspace::Workspace,
+};
+use git::GitService;
+use sqlx::SqlitePool;
 use tracing::{debug, error};
 use uuid::Uuid;
 
 use super::{
-    diff_stream::DiffStats,
+    diff_stream::{self, DiffStats},
     remote_client::{RemoteClient, RemoteClientError},
 };
 
@@ -97,4 +103,66 @@ pub async fn sync_pr_to_remote(client: &RemoteClient, request: UpsertPullRequest
             error!("Failed to sync PR #{} to remote: {}", number, e);
         }
     }
+}
+
+/// Syncs all linked workspaces and their PRs to the remote server.
+/// Used after login to catch up on any changes made while logged out.
+pub async fn sync_all_linked_workspaces(
+    client: &RemoteClient,
+    pool: &SqlitePool,
+    git: &GitService,
+) {
+    // Sync workspace stats
+    let workspaces = match Workspace::fetch_all(pool, None).await {
+        Ok(ws) => ws,
+        Err(e) => {
+            error!("Failed to fetch workspaces for post-login sync: {}", e);
+            return;
+        }
+    };
+
+    for workspace in &workspaces {
+        let stats = diff_stream::compute_diff_stats(pool, git, workspace).await;
+        sync_workspace_to_remote(
+            client,
+            workspace.id,
+            workspace.name.clone().map(Some),
+            Some(workspace.archived),
+            stats.as_ref(),
+        )
+        .await;
+    }
+
+    // Sync all PR data
+    let pr_merges = match Merge::find_all_pr(pool).await {
+        Ok(prs) => prs,
+        Err(e) => {
+            error!("Failed to fetch PR merges for post-login sync: {}", e);
+            return;
+        }
+    };
+
+    for pr_merge in pr_merges {
+        let pr_status = match pr_merge.pr_info.status {
+            MergeStatus::Open => PullRequestStatus::Open,
+            MergeStatus::Merged => PullRequestStatus::Merged,
+            MergeStatus::Closed => PullRequestStatus::Closed,
+            MergeStatus::Unknown => continue,
+        };
+        sync_pr_to_remote(
+            client,
+            UpsertPullRequestRequest {
+                url: pr_merge.pr_info.url,
+                number: pr_merge.pr_info.number as i32,
+                status: pr_status,
+                merged_at: pr_merge.pr_info.merged_at,
+                merge_commit_sha: pr_merge.pr_info.merge_commit_sha,
+                target_branch_name: pr_merge.target_branch_name,
+                local_workspace_id: pr_merge.workspace_id,
+            },
+        )
+        .await;
+    }
+
+    debug!("Post-login workspace sync completed");
 }

@@ -10,7 +10,9 @@ use chrono::{DateTime, Utc};
 use deployment::Deployment;
 use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
-use services::services::{config::save_config_to_file, oauth_credentials::Credentials};
+use services::services::{
+    config::save_config_to_file, oauth_credentials::Credentials, remote_sync,
+};
 use sha2::{Digest, Sha256};
 use ts_rs::TS;
 use utils::{assets::config_path, jwt::extract_expiration, response::ApiResponse};
@@ -188,6 +190,15 @@ async fn handoff_complete(
 
     // Fetch and cache the user's profile
     let _ = deployment.get_login_status().await;
+
+    // Sync all linked workspace states and PRs to remote in the background
+    if let Ok(client) = deployment.remote_client() {
+        let pool = deployment.db().pool.clone();
+        let git = deployment.git().clone();
+        tokio::spawn(async move {
+            remote_sync::sync_all_linked_workspaces(&client, &pool, &git).await;
+        });
+    }
 
     if let Some(profile) = deployment.auth_context().cached_profile().await
         && let Some(analytics) = deployment.analytics()

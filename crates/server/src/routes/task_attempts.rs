@@ -10,7 +10,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use api_types::CreateWorkspaceRequest;
+use api_types::{CreateWorkspaceRequest, PullRequestStatus, UpsertPullRequestRequest};
 use axum::{
     Extension, Json, Router,
     extract::{
@@ -585,7 +585,22 @@ pub async fn push_task_attempt_branch(
         .git()
         .push_to_remote(&worktree_path, &workspace.branch, false)
     {
-        Ok(_) => Ok(ResponseJson(ApiResponse::success(()))),
+        Ok(_) => {
+            // Sync workspace stats to remote after successful push
+            if let Ok(client) = deployment.remote_client() {
+                let pool = deployment.db().pool.clone();
+                let git = deployment.git().clone();
+                let ws = workspace.clone();
+                tokio::spawn(async move {
+                    let stats = diff_stream::compute_diff_stats(&pool, &git, &ws).await;
+                    remote_sync::sync_workspace_to_remote(
+                        &client, ws.id, None, None, stats.as_ref(),
+                    )
+                    .await;
+                });
+            }
+            Ok(ResponseJson(ApiResponse::success(())))
+        }
         Err(GitServiceError::GitCLI(GitCliError::PushRejected(_))) => Ok(ResponseJson(
             ApiResponse::error_with_data(PushError::ForcePushRequired),
         )),
@@ -619,6 +634,19 @@ pub async fn force_push_task_attempt_branch(
     deployment
         .git()
         .push_to_remote(&worktree_path, &workspace.branch, true)?;
+
+    // Sync workspace stats to remote after successful force push
+    if let Ok(client) = deployment.remote_client() {
+        let pool = deployment.db().pool.clone();
+        let git = deployment.git().clone();
+        let ws = workspace.clone();
+        tokio::spawn(async move {
+            let stats = diff_stream::compute_diff_stats(&pool, &git, &ws).await;
+            remote_sync::sync_workspace_to_remote(&client, ws.id, None, None, stats.as_ref())
+                .await;
+        });
+    }
+
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
@@ -1916,6 +1944,49 @@ pub async fn link_workspace(
             lines_removed: stats.as_ref().map(|s| s.lines_removed as i32),
         })
         .await?;
+
+    // Sync any existing PR data for this workspace to remote
+    {
+        let pool = deployment.db().pool.clone();
+        let ws_id = workspace.id;
+        let client = client.clone();
+        tokio::spawn(async move {
+            let merges = match Merge::find_by_workspace_id(&pool, ws_id).await {
+                Ok(m) => m,
+                Err(e) => {
+                    tracing::error!(
+                        "Failed to fetch merges for workspace {} during link: {}",
+                        ws_id,
+                        e
+                    );
+                    return;
+                }
+            };
+            for merge in merges {
+                if let Merge::Pr(pr_merge) = merge {
+                    let pr_status = match pr_merge.pr_info.status {
+                        MergeStatus::Open => PullRequestStatus::Open,
+                        MergeStatus::Merged => PullRequestStatus::Merged,
+                        MergeStatus::Closed => PullRequestStatus::Closed,
+                        MergeStatus::Unknown => continue,
+                    };
+                    remote_sync::sync_pr_to_remote(
+                        &client,
+                        UpsertPullRequestRequest {
+                            url: pr_merge.pr_info.url,
+                            number: pr_merge.pr_info.number as i32,
+                            status: pr_status,
+                            merged_at: pr_merge.pr_info.merged_at,
+                            merge_commit_sha: pr_merge.pr_info.merge_commit_sha,
+                            target_branch_name: pr_merge.target_branch_name,
+                            local_workspace_id: ws_id,
+                        },
+                    )
+                    .await;
+                }
+            }
+        });
+    }
 
     Ok(ResponseJson(ApiResponse::success(())))
 }
