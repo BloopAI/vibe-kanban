@@ -246,12 +246,12 @@ export function IssueWorkspacesSectionContainer({
       }
 
       try {
-        // Unlink from remote if requested
+        // Delete local workspace first
+        await attemptsApi.delete(localWorkspaceId, result.deleteBranches);
+        // Unlink from remote after successful deletion
         if (result.unlinkFromIssue) {
           await attemptsApi.unlinkFromIssue(localWorkspaceId);
         }
-        // Then delete local workspace
-        await attemptsApi.delete(localWorkspaceId, result.deleteBranches);
       } catch (error) {
         ConfirmDialog.show({
           title: t('common:error'),
