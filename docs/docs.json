@@ -83,19 +83,19 @@
       {
         "group": "Settings",
         "pages": [
-          "settings-beta/index",
+          "settings/index",
           {
             "group": "General",
             "pages": [
-              "settings-beta/general",
-              "settings-beta/creating-task-tags"
+              "settings/general",
+              "settings/creating-task-tags"
             ]
           },
-          "settings-beta/projects-repositories",
-          "settings-beta/organization-settings",
-          "settings-beta/remote-projects",
-          "settings-beta/agent-configurations",
-          "settings-beta/mcp-servers"
+          "settings/projects-repositories",
+          "settings/organization-settings",
+          "settings/remote-projects",
+          "settings/agent-configurations",
+          "settings/mcp-servers"
         ]
       },
       {

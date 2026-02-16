@@ -3,14 +3,10 @@ title: "Overview"
 description: "Configure appearance, default agent, editor, git, and notification preferences"
 ---
 
-<Note>
-This is the new Settings UI currently in <Badge color="orange">Beta</Badge>. It provides the same configuration options with a redesigned interface accessible from the Workspaces UI.
-</Note>
-
 The General tab contains application-wide settings for appearance, default agent, editor configuration, git preferences, and notifications.
 
 <Frame>
-<img src="/images/settings-beta-general.png" alt="General settings tab showing appearance, default agent, and editor options" />
+<img src="/images/settings-general.png" alt="General settings tab showing appearance, default agent, and editor options" />
 </Frame>
 
 ## Appearance
@@ -23,7 +19,7 @@ Customise how the application looks and feels:
 ## Default Coding Agent
 
 <Frame>
-<img src="/images/settings-beta-default-coding-agent.png" alt="Default Coding Agent section showing agent and variant dropdowns" />
+<img src="/images/settings-default-coding-agent.png" alt="Default Coding Agent section showing agent and variant dropdowns" />
 </Frame>
 
 Set the coding agent that will be used by default when creating new task attempts or follow-ups.
@@ -40,7 +36,7 @@ You can override the default agent configuration per attempt in the create attem
 ## Editor
 
 <Frame>
-<img src="/images/settings-beta-editor.png" alt="Editor settings showing Editor Type dropdown and Remote SSH Host input" />
+<img src="/images/settings-editor.png" alt="Editor settings showing Editor Type dropdown and Remote SSH Host input" />
 </Frame>
 
 Configure your code editing experience.
@@ -75,7 +71,7 @@ idea
 ### Opening Your Editor
 
 <Frame>
-<img src="/images/settings-beta-open-in-ide.png" alt="Open in IDE option in the context bar" />
+<img src="/images/settings-open-in-ide.png" alt="Open in IDE option in the context bar" />
 </Frame>
 
 Once configured, you can open your editor from several places:
@@ -129,7 +125,7 @@ Test your SSH connection first with `ssh user@host` to ensure it works without p
 ## Git
 
 <Frame>
-<img src="/images/settings-beta-git.png" alt="Git settings showing Branch Prefix and Workspace Directory fields" />
+<img src="/images/settings-git.png" alt="Git settings showing Branch Prefix and Workspace Directory fields" />
 </Frame>
 
 Configure git branch naming and workspace storage preferences.
@@ -162,7 +158,7 @@ Changes to Workspace Directory require an app restart. Existing workspaces remai
 ## Notifications
 
 <Frame>
-<img src="/images/settings-beta-notifications.png" alt="Notifications settings showing sound effects and push notifications toggles" />
+<img src="/images/settings-notifications.png" alt="Notifications settings showing sound effects and push notifications toggles" />
 </Frame>
 
 Configure how Vibe Kanban alerts you about task progress and status changes.
@@ -185,7 +181,7 @@ Choose the keyboard shortcut to send messages in the chat input (`Enter` or `⌘
 ## Tags
 
 <Frame>
-<img src="/images/settings-beta-tags.png" alt="Tags section showing task tags table with tag names, content, and actions" />
+<img src="/images/settings-tags.png" alt="Tags section showing task tags table with tag names, content, and actions" />
 </Frame>
 
 Create reusable text snippets that can be inserted into workspace prompts using `@tag_name`.
@@ -195,22 +191,7 @@ Create reusable text snippets that can be inserted into workspace prompts using 
 - **Content** - The text that will be inserted
 - **Actions** - Edit or delete existing tags
 
-<Card title="Learn more about tags" icon="tag" href="/settings-beta/creating-task-tags">
+<Card title="Learn more about tags" icon="tag" href="/settings/creating-task-tags">
   Complete guide to creating and managing tags
 </Card>
 
-## Beta Features
-
-Enable or disable beta features to try new functionality before general release.
-
-### Workspaces <Badge color="orange">Beta</Badge>
-
-The new Workspaces UI is a complete redesign of the task execution experience with multi-repository support, multiple agent sessions, and an integrated preview browser. When enabled, you can access it by clicking on any task attempt.
-
-To enable or disable Workspaces:
-1. Find the **Beta Features** section
-2. Toggle **Enable Workspaces Beta**
-
-<Card title="Workspaces Documentation" icon="window" href="/workspaces">
-  Complete guide to using the new Workspaces UI
-</Card>
