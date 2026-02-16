@@ -19,24 +19,8 @@ import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 import { bulkUpdateProjects } from '@/lib/remoteApi';
+import { sortProjectsByOrder } from '@/lib/projectOrder';
 import type { Project as RemoteProject } from 'shared/remote-types';
-
-function sortProjects(projects: RemoteProject[]): RemoteProject[] {
-  return [...projects].sort((a, b) => {
-    const bySortOrder = a.sort_order - b.sort_order;
-    if (bySortOrder !== 0) {
-      return bySortOrder;
-    }
-
-    const byCreatedAt =
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    if (byCreatedAt !== 0) {
-      return byCreatedAt;
-    }
-
-    return a.id.localeCompare(b.id);
-  });
-}
 
 export function SharedAppLayout() {
   const navigate = useNavigate();
@@ -76,7 +60,7 @@ export function SharedAppLayout() {
     selectedOrgId || null
   );
   const sortedProjects = useMemo(
-    () => sortProjects(orgProjects),
+    () => sortProjectsByOrder(orgProjects),
     [orgProjects]
   );
   const [orderedProjects, setOrderedProjects] =
@@ -87,7 +71,7 @@ export function SharedAppLayout() {
     setOrderedProjects(sortedProjects);
   }, [sortedProjects]);
 
-  // Navigate to latest project when org changes
+  // Navigate to the first ordered project when org changes
   useEffect(() => {
     // Skip auto-navigation when on migration flow
     if (isMigrateRoute) {

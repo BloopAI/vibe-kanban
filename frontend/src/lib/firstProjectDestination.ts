@@ -2,6 +2,7 @@ import { PROJECTS_SHAPE, type Project } from 'shared/remote-types';
 import { type OrganizationWithRole } from 'shared/types';
 import { organizationsApi } from '@/lib/api';
 import { createShapeCollection } from '@/lib/electric/collections';
+import { getFirstProjectByOrder } from '@/lib/projectOrder';
 
 const FIRST_PROJECT_LOOKUP_TIMEOUT_MS = 3000;
 
@@ -19,26 +20,7 @@ function getFirstOrganization(
 }
 
 function getFirstProject(projects: Project[]): Project | null {
-  if (projects.length === 0) {
-    return null;
-  }
-
-  const sortedProjects = [...projects].sort((a, b) => {
-    const aCreatedAt = new Date(a.created_at).getTime();
-    const bCreatedAt = new Date(b.created_at).getTime();
-    if (aCreatedAt !== bCreatedAt) {
-      return aCreatedAt - bCreatedAt;
-    }
-
-    const nameCompare = a.name.localeCompare(b.name);
-    if (nameCompare !== 0) {
-      return nameCompare;
-    }
-
-    return a.id.localeCompare(b.id);
-  });
-
-  return sortedProjects[0];
+  return getFirstProjectByOrder(projects);
 }
 
 async function getFirstProjectInOrganization(
