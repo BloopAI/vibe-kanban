@@ -1,15 +1,13 @@
 use anyhow::{self, Error as AnyhowError};
 use axum::Router;
-use deployment::{Deployment, DeploymentError};
-use server::{DeploymentImpl, preview_proxy, routes};
-use services::services::container::ContainerService;
+use deployment::DeploymentError;
+use server::{preview_proxy, routes, startup};
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
-    assets::asset_dir,
     browser::open_browser,
     port_file::write_port_file_with_proxy,
     sentry::{self as sentry_utils, SentrySource, sentry_layer},
@@ -47,48 +45,8 @@ async fn main() -> Result<(), VibeKanbanError> {
         .with(sentry_layer())
         .init();
 
-    // Create asset directory if it doesn't exist
-    if !asset_dir().exists() {
-        std::fs::create_dir_all(asset_dir())?;
-    }
+    let deployment = startup::initialize_deployment().await?;
 
-    // Copy old database to new location for safe downgrades
-    let old_db = asset_dir().join("db.sqlite");
-    let new_db = asset_dir().join("db.v2.sqlite");
-    if !new_db.exists() && old_db.exists() {
-        tracing::info!(
-            "Copying database to new location: {:?} -> {:?}",
-            old_db,
-            new_db
-        );
-        std::fs::copy(&old_db, &new_db).expect("Failed to copy database file");
-        tracing::info!("Database copy complete");
-    }
-
-    let deployment = DeploymentImpl::new().await?;
-    deployment.update_sentry_scope().await?;
-    deployment
-        .container()
-        .cleanup_orphan_executions()
-        .await
-        .map_err(DeploymentError::from)?;
-    deployment
-        .container()
-        .backfill_before_head_commits()
-        .await
-        .map_err(DeploymentError::from)?;
-    deployment
-        .container()
-        .backfill_repo_names()
-        .await
-        .map_err(DeploymentError::from)?;
-    deployment
-        .track_if_analytics_allowed("session_start", serde_json::json!({}))
-        .await;
-    // Preload global executor options cache for all executors with DEFAULT presets
-    tokio::spawn(async move {
-        executors::executors::utils::preload_global_executor_options_cache().await;
-    });
     let app_router = routes::router(deployment.clone());
 
     let port = std::env::var("BACKEND_PORT")
@@ -177,12 +135,12 @@ async fn main() -> Result<(), VibeKanbanError> {
 
     shutdown_token.cancel();
 
-    perform_cleanup_actions(&deployment).await;
+    startup::perform_cleanup_actions(&deployment).await;
 
     Ok(())
 }
 
-pub async fn shutdown_signal() {
+async fn shutdown_signal() {
     // Always wait for Ctrl+C
     let ctrl_c = async {
         if let Err(e) = tokio::signal::ctrl_c().await {
@@ -216,12 +174,4 @@ pub async fn shutdown_signal() {
         // Only ctrl_c is available, so just await it
         ctrl_c.await;
     }
-}
-
-pub async fn perform_cleanup_actions(deployment: &DeploymentImpl) {
-    deployment
-        .container()
-        .kill_all_running_processes()
-        .await
-        .expect("Failed to cleanly kill running execution processes");
 }
