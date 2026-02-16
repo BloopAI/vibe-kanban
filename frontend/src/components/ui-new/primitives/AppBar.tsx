@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   DragDropContext,
   Draggable,
@@ -56,7 +55,8 @@ interface AppBarProps {
   onCreateProject: () => void;
   onWorkspacesClick: () => void;
   onProjectClick: (projectId: string) => void;
-  onProjectsReorder: (orderedProjects: RemoteProject[]) => Promise<void>;
+  onProjectsDragEnd: (result: DropResult) => void;
+  isSavingProjectOrder?: boolean;
   isWorkspacesActive: boolean;
   activeProjectId: string | null;
   isSignedIn?: boolean;
@@ -74,7 +74,8 @@ export function AppBar({
   onCreateProject,
   onWorkspacesClick,
   onProjectClick,
-  onProjectsReorder,
+  onProjectsDragEnd,
+  isSavingProjectOrder,
   isWorkspacesActive,
   activeProjectId,
   isSignedIn,
@@ -85,62 +86,6 @@ export function AppBar({
   const { t } = useTranslation('common');
   const { data: onlineCount } = useDiscordOnlineCount();
   const { data: starCount } = useGitHubStars();
-  const sortedProjects = useMemo(() => {
-    return [...projects].sort((a, b) => {
-      const bySortOrder = a.sort_order - b.sort_order;
-      if (bySortOrder !== 0) {
-        return bySortOrder;
-      }
-
-      const byCreatedAt =
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      if (byCreatedAt !== 0) {
-        return byCreatedAt;
-      }
-
-      return a.id.localeCompare(b.id);
-    });
-  }, [projects]);
-  const [orderedProjects, setOrderedProjects] =
-    useState<RemoteProject[]>(sortedProjects);
-  const [isSavingProjectOrder, setIsSavingProjectOrder] = useState(false);
-
-  useEffect(() => {
-    setOrderedProjects(sortedProjects);
-  }, [sortedProjects]);
-
-  const handleProjectDragEnd = useCallback(
-    async ({ source, destination }: DropResult) => {
-      if (isSavingProjectOrder) {
-        return;
-      }
-      if (!destination || source.index === destination.index) {
-        return;
-      }
-
-      const previousOrder = orderedProjects;
-      const reordered = [...orderedProjects];
-      const [moved] = reordered.splice(source.index, 1);
-
-      if (!moved) {
-        return;
-      }
-
-      reordered.splice(destination.index, 0, moved);
-      setOrderedProjects(reordered);
-      setIsSavingProjectOrder(true);
-
-      try {
-        await onProjectsReorder(reordered);
-      } catch (error) {
-        console.error('Failed to reorder projects:', error);
-        setOrderedProjects(previousOrder);
-      } finally {
-        setIsSavingProjectOrder(false);
-      }
-    },
-    [isSavingProjectOrder, onProjectsReorder, orderedProjects]
-  );
 
   return (
     <div
@@ -223,7 +168,7 @@ export function AppBar({
       )}
 
       {/* Middle section: Project buttons */}
-      <DragDropContext onDragEnd={handleProjectDragEnd}>
+      <DragDropContext onDragEnd={onProjectsDragEnd}>
         <Droppable
           droppableId="app-bar-projects"
           direction="vertical"
@@ -235,7 +180,7 @@ export function AppBar({
               {...dropProvided.droppableProps}
               className="flex flex-col items-center gap-base"
             >
-              {orderedProjects.map((project, index) => (
+              {projects.map((project, index) => (
                 <Draggable
                   key={project.id}
                   draggableId={project.id}

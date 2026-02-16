@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { DropResult } from '@hello-pangea/dnd';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { SyncErrorProvider } from '@/contexts/SyncErrorContext';
 
@@ -19,6 +20,23 @@ import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 import { bulkUpdateProjects } from '@/lib/remoteApi';
 import type { Project as RemoteProject } from 'shared/remote-types';
+
+function sortProjects(projects: RemoteProject[]): RemoteProject[] {
+  return [...projects].sort((a, b) => {
+    const bySortOrder = a.sort_order - b.sort_order;
+    if (bySortOrder !== 0) {
+      return bySortOrder;
+    }
+
+    const byCreatedAt =
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (byCreatedAt !== 0) {
+      return byCreatedAt;
+    }
+
+    return a.id.localeCompare(b.id);
+  });
+}
 
 export function SharedAppLayout() {
   const navigate = useNavigate();
@@ -57,6 +75,17 @@ export function SharedAppLayout() {
   const { data: orgProjects = [], isLoading } = useOrganizationProjects(
     selectedOrgId || null
   );
+  const sortedProjects = useMemo(
+    () => sortProjects(orgProjects),
+    [orgProjects]
+  );
+  const [orderedProjects, setOrderedProjects] =
+    useState<RemoteProject[]>(sortedProjects);
+  const [isSavingProjectOrder, setIsSavingProjectOrder] = useState(false);
+
+  useEffect(() => {
+    setOrderedProjects(sortedProjects);
+  }, [sortedProjects]);
 
   // Navigate to latest project when org changes
   useEffect(() => {
@@ -72,11 +101,7 @@ export function SharedAppLayout() {
       selectedOrgId &&
       !isLoading
     ) {
-      if (orgProjects.length > 0) {
-        const sortedProjects = [...orgProjects].sort(
-          (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
+      if (sortedProjects.length > 0) {
         navigate(`/projects/${sortedProjects[0].id}`);
       } else {
         navigate('/workspaces');
@@ -85,7 +110,7 @@ export function SharedAppLayout() {
     } else if (prevOrgIdRef.current === null && selectedOrgId) {
       prevOrgIdRef.current = selectedOrgId;
     }
-  }, [selectedOrgId, orgProjects, isLoading, navigate, isMigrateRoute]);
+  }, [selectedOrgId, sortedProjects, isLoading, navigate, isMigrateRoute]);
 
   // Navigation state for AppBar active indicators
   const isWorkspacesActive = location.pathname.startsWith('/workspaces');
@@ -104,16 +129,42 @@ export function SharedAppLayout() {
     [navigate]
   );
 
-  const handleProjectsReorder = useCallback(
-    async (orderedProjects: RemoteProject[]) => {
-      await bulkUpdateProjects(
-        orderedProjects.map((project, index) => ({
-          id: project.id,
-          changes: { sort_order: index },
-        }))
-      );
+  const handleProjectsDragEnd = useCallback(
+    async ({ source, destination }: DropResult) => {
+      if (isSavingProjectOrder) {
+        return;
+      }
+      if (!destination || source.index === destination.index) {
+        return;
+      }
+
+      const previousOrder = orderedProjects;
+      const reordered = [...orderedProjects];
+      const [moved] = reordered.splice(source.index, 1);
+
+      if (!moved) {
+        return;
+      }
+
+      reordered.splice(destination.index, 0, moved);
+      setOrderedProjects(reordered);
+      setIsSavingProjectOrder(true);
+
+      try {
+        await bulkUpdateProjects(
+          reordered.map((project, index) => ({
+            id: project.id,
+            changes: { sort_order: index },
+          }))
+        );
+      } catch (error) {
+        console.error('Failed to reorder projects:', error);
+        setOrderedProjects(previousOrder);
+      } finally {
+        setIsSavingProjectOrder(false);
+      }
     },
-    []
+    [isSavingProjectOrder, orderedProjects]
   );
 
   const handleCreateOrg = useCallback(async () => {
@@ -172,7 +223,7 @@ export function SharedAppLayout() {
       <div className="flex h-screen bg-primary">
         {!isMigrateRoute && (
           <AppBar
-            projects={orgProjects}
+            projects={orderedProjects}
             organizations={organizations}
             selectedOrgId={selectedOrgId ?? ''}
             onOrgSelect={setSelectedOrgId}
@@ -180,7 +231,8 @@ export function SharedAppLayout() {
             onCreateProject={handleCreateProject}
             onWorkspacesClick={handleWorkspacesClick}
             onProjectClick={handleProjectClick}
-            onProjectsReorder={handleProjectsReorder}
+            onProjectsDragEnd={handleProjectsDragEnd}
+            isSavingProjectOrder={isSavingProjectOrder}
             isWorkspacesActive={isWorkspacesActive}
             activeProjectId={activeProjectId}
             isSignedIn={isSignedIn}
