@@ -213,7 +213,7 @@ fn generate_types_content() -> String {
         executors::actions::review::RepoReviewContext::decl(),
         executors::logs::CommandExitStatus::decl(),
         executors::logs::CommandRunResult::decl(),
-        executors::logs::CommandCategory::decl(),
+        executors::logs::utils::shell_command_parsing::CommandCategory::decl(),
         executors::logs::NormalizedEntry::decl(),
         executors::logs::NormalizedEntryType::decl(),
         executors::logs::TokenUsageInfo::decl(),
