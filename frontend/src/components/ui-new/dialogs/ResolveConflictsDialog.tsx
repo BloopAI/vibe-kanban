@@ -73,33 +73,49 @@ const ResolveConflictsDialogImpl =
         }
       }, [activeWorkspaceId, workspaceId, modal]);
 
+      // Resolve the session to use for default profile: selected session,
+      // or fall back to the most recent session in this workspace.
       const resolvedSession = useMemo(() => {
-        if (!selectedSessionId) return selectedSession ?? null;
-        return (
-          sessions.find((session) => session.id === selectedSessionId) ??
-          selectedSession ??
-          null
-        );
+        if (selectedSessionId) {
+          return (
+            sessions.find((session) => session.id === selectedSessionId) ??
+            selectedSession ??
+            null
+          );
+        }
+        // No selected session — use the most recent session (sessions are
+        // ordered most-recently-used first)
+        return selectedSession ?? sessions[0] ?? null;
       }, [sessions, selectedSessionId, selectedSession]);
       const sessionExecutor =
         resolvedSession?.executor as BaseCodingAgent | null;
 
       // Get the variant from the session's latest process
+      const resolvedSessionId = resolvedSession?.id;
       const { executionProcesses: sessionProcesses } =
-        useExecutionProcesses(selectedSessionId);
+        useExecutionProcesses(resolvedSessionId);
       const sessionProfileFromProcesses = useMemo(
         () => getLatestProfileFromProcesses(sessionProcesses),
         [sessionProcesses]
       );
 
       const resolvedDefaultProfile = useMemo(() => {
-        // Use the variant from the session's processes if available
+        // Prefer the full profile (executor+variant) from the session's processes
         if (sessionProfileFromProcesses) return sessionProfileFromProcesses;
+        // Fall back to session executor with config variant hint while processes load
         if (sessionExecutor) {
-          return { executor: sessionExecutor, variant: null };
+          const variant =
+            config?.executor_profile?.executor === sessionExecutor
+              ? config.executor_profile.variant
+              : null;
+          return { executor: sessionExecutor, variant };
         }
         return config?.executor_profile ?? null;
-      }, [sessionProfileFromProcesses, sessionExecutor, config?.executor_profile]);
+      }, [
+        sessionProfileFromProcesses,
+        sessionExecutor,
+        config?.executor_profile,
+      ]);
 
       // Default to creating a new session if no existing session
       const [createNewSession, setCreateNewSession] =
