@@ -8,7 +8,6 @@ import {
   type SidebarWorkspace,
 } from '@/components/ui-new/hooks/useWorkspaces';
 import { useAttempt } from '@/hooks/useAttempt';
-import { ApiError } from '@/lib/api';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useWorkspaceSessions } from '@/hooks/useWorkspaceSessions';
 import {
@@ -175,8 +174,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   );
 
   const isLoading = isLoadingList || isLoadingWorkspace;
+  // Show not-found when a workspaceId is in the URL but the fetch failed
+  // (covers 404, 400 for invalid UUIDs, and any other fetch error)
   const isError =
-    workspaceError instanceof ApiError && workspaceError.status === 404;
+    !!workspaceId && !isCreateMode && !isLoading && !workspace && !!workspaceError;
 
   const selectWorkspace = useCallback(
     (id: string) => {
