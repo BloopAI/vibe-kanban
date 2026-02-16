@@ -1,6 +1,6 @@
 use api_types::{
-    CreateIssueRequest, Issue, IssueAssignee, IssuePriority, IssueTag, ListIssuesResponse,
-    MutationResponse, Tag, UpdateIssueRequest,
+    CreateIssueRequest, Issue, IssuePriority, ListIssueAssigneesResponse, ListIssueTagsResponse,
+    ListIssuesResponse, ListTagsResponse, MutationResponse, UpdateIssueRequest,
 };
 use rmcp::{
     ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
@@ -172,21 +172,6 @@ struct McpListIssuePrioritiesResponse {
     priorities: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
-struct RemoteListIssueAssigneesResponse {
-    issue_assignees: Vec<IssueAssignee>,
-}
-
-#[derive(Debug, Deserialize)]
-struct RemoteListIssueTagsResponse {
-    issue_tags: Vec<IssueTag>,
-}
-
-#[derive(Debug, Deserialize)]
-struct RemoteListTagsResponse {
-    tags: Vec<Tag>,
-}
-
 #[tool_router(router = remote_issues_tools_router, vis = "pub")]
 impl TaskServer {
     #[tool(
@@ -349,8 +334,7 @@ impl TaskServer {
 
             if let Some(tag_name) = tag_name {
                 let url = self.url(&format!("/api/remote/tags?project_id={}", project_id));
-                let tags: RemoteListTagsResponse = match self.send_json(self.client.get(&url)).await
-                {
+                let tags: ListTagsResponse = match self.send_json(self.client.get(&url)).await {
                     Ok(t) => t,
                     Err(e) => return Ok(e),
                 };
@@ -614,7 +598,7 @@ impl TaskServer {
                 "/api/remote/issue-assignees?issue_id={}",
                 issue.id
             ));
-            let assignees: RemoteListIssueAssigneesResponse =
+            let assignees: ListIssueAssigneesResponse =
                 self.send_json(self.client.get(&url)).await?;
             if assignees
                 .issue_assignees
@@ -635,8 +619,7 @@ impl TaskServer {
         let mut filtered = Vec::new();
         for issue in issues {
             let url = self.url(&format!("/api/remote/issue-tags?issue_id={}", issue.id));
-            let issue_tags: RemoteListIssueTagsResponse =
-                self.send_json(self.client.get(&url)).await?;
+            let issue_tags: ListIssueTagsResponse = self.send_json(self.client.get(&url)).await?;
             if issue_tags
                 .issue_tags
                 .iter()

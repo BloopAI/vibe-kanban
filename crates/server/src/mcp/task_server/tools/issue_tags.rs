@@ -1,4 +1,6 @@
-use api_types::{IssueTag, MutationResponse, Tag};
+use api_types::{
+    CreateIssueTagRequest, IssueTag, ListIssueTagsResponse, ListTagsResponse, MutationResponse,
+};
 use rmcp::{
     ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
@@ -7,16 +9,6 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::TaskServer;
-
-#[derive(Debug, Deserialize)]
-struct RemoteListTagsResponse {
-    tags: Vec<Tag>,
-}
-
-#[derive(Debug, Deserialize)]
-struct RemoteListIssueTagsResponse {
-    issue_tags: Vec<IssueTag>,
-}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListTagsRequest {
@@ -108,7 +100,7 @@ impl TaskServer {
         };
 
         let url = self.url(&format!("/api/remote/tags?project_id={}", project_id));
-        let response: RemoteListTagsResponse = match self.send_json(self.client.get(&url)).await {
+        let response: ListTagsResponse = match self.send_json(self.client.get(&url)).await {
             Ok(r) => r,
             Err(e) => return Ok(e),
         };
@@ -137,11 +129,10 @@ impl TaskServer {
         Parameters(McpListIssueTagsRequest { issue_id }): Parameters<McpListIssueTagsRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/remote/issue-tags?issue_id={}", issue_id));
-        let response: RemoteListIssueTagsResponse =
-            match self.send_json(self.client.get(&url)).await {
-                Ok(r) => r,
-                Err(e) => return Ok(e),
-            };
+        let response: ListIssueTagsResponse = match self.send_json(self.client.get(&url)).await {
+            Ok(r) => r,
+            Err(e) => return Ok(e),
+        };
 
         let issue_tags = response
             .issue_tags
@@ -165,11 +156,11 @@ impl TaskServer {
         &self,
         Parameters(McpAddIssueTagRequest { issue_id, tag_id }): Parameters<McpAddIssueTagRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let payload = serde_json::json!({
-            "id": null,
-            "issue_id": issue_id,
-            "tag_id": tag_id,
-        });
+        let payload = CreateIssueTagRequest {
+            id: None,
+            issue_id,
+            tag_id,
+        };
 
         let url = self.url("/api/remote/issue-tags");
         let response: MutationResponse<IssueTag> =

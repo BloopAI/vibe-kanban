@@ -1,4 +1,6 @@
-use api_types::{IssueAssignee, MutationResponse};
+use api_types::{
+    CreateIssueAssigneeRequest, IssueAssignee, ListIssueAssigneesResponse, MutationResponse,
+};
 use rmcp::{
     ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
@@ -12,11 +14,6 @@ use super::TaskServer;
 struct McpListIssueAssigneesRequest {
     #[schemars(description = "Issue ID to list assignees for")]
     issue_id: Uuid,
-}
-
-#[derive(Debug, Deserialize)]
-struct RemoteListIssueAssigneesResponse {
-    issue_assignees: Vec<IssueAssignee>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -76,11 +73,11 @@ impl TaskServer {
             "/api/remote/issue-assignees?issue_id={}",
             issue_id
         ));
-        let response: RemoteListIssueAssigneesResponse =
-            match self.send_json(self.client.get(&url)).await {
-                Ok(r) => r,
-                Err(e) => return Ok(e),
-            };
+        let response: ListIssueAssigneesResponse = match self.send_json(self.client.get(&url)).await
+        {
+            Ok(r) => r,
+            Err(e) => return Ok(e),
+        };
 
         let assignees = response
             .issue_assignees
@@ -105,11 +102,11 @@ impl TaskServer {
         &self,
         Parameters(McpAssignIssueRequest { issue_id, user_id }): Parameters<McpAssignIssueRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let payload = serde_json::json!({
-            "id": null,
-            "issue_id": issue_id,
-            "user_id": user_id,
-        });
+        let payload = CreateIssueAssigneeRequest {
+            id: None,
+            issue_id,
+            user_id,
+        };
 
         let url = self.url("/api/remote/issue-assignees");
         let response: MutationResponse<IssueAssignee> =
