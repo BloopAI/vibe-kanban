@@ -197,12 +197,24 @@
 
       return VKBippy.getOwnerStack(fiber).then(function(stack) {
         if (hasSourceFiles(stack)) {
-          return {
+          var payload = {
             framework: 'react',
             component: componentName,
             htmlPreview: htmlPreview,
             stack: buildStackEntries(stack, 3)
           };
+          try {
+            for (var i = 0; i < stack.length; i++) {
+              var frame = stack[i];
+              if (!frame.isServer && frame.fileName && VKBippy.isSourceFile(frame.fileName)) {
+                payload.file = VKBippy.normalizeFileName(frame.fileName);
+                if (frame.lineNumber != null) payload.line = frame.lineNumber;
+                if (frame.columnNumber != null) payload.column = frame.columnNumber;
+                break;
+              }
+            }
+          } catch(e) {}
+          return payload;
         }
         // Fallback: component names without file paths
         var names = getComponentNamesFromFiber(element, 3);

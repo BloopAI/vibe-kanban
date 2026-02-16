@@ -18,7 +18,7 @@ use axum::{
 };
 use futures_util::{SinkExt, StreamExt};
 use reqwest::Client;
-use tokio_tungstenite::tungstenite;
+use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
 
 /// Global storage for the preview proxy port once assigned.
 /// Set once during server startup, read by the config API.
@@ -100,6 +100,16 @@ async fn subdomain_proxy(request: Request) -> Response {
 async fn proxy_impl(target_port: u16, path_str: String, request: Request) -> Response {
     let (mut parts, body) = request.into_parts();
 
+    // Extract query string and subprotocols before WebSocket upgrade.
+    // Both are required: Vite 6+ needs ?token= for auth, and checks
+    // Sec-WebSocket-Protocol: vite-hmr before accepting the upgrade.
+    let query_string = parts.uri.query().map(|q| q.to_string());
+    let ws_protocols: Option<String> = parts
+        .headers
+        .get("sec-websocket-protocol")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+
     if let Ok(ws) = WebSocketUpgrade::from_request_parts(&mut parts, &()).await {
         tracing::debug!(
             "WebSocket upgrade request for path: {} -> localhost:{}",
@@ -107,9 +117,25 @@ async fn proxy_impl(target_port: u16, path_str: String, request: Request) -> Res
             target_port
         );
 
+        let ws = if let Some(ref protocols) = ws_protocols {
+            let protocol_list: Vec<String> =
+                protocols.split(',').map(|p| p.trim().to_string()).collect();
+            ws.protocols(protocol_list)
+        } else {
+            ws
+        };
+
         return ws
             .on_upgrade(move |client_socket| async move {
-                if let Err(e) = handle_ws_proxy(client_socket, target_port, path_str).await {
+                if let Err(e) = handle_ws_proxy(
+                    client_socket,
+                    target_port,
+                    path_str,
+                    query_string,
+                    ws_protocols,
+                )
+                .await
+                {
                     tracing::warn!("WebSocket proxy closed: {}", e);
                 }
             })
@@ -295,11 +321,24 @@ async fn handle_ws_proxy(
     client_socket: axum::extract::ws::WebSocket,
     target_port: u16,
     path: String,
+    query_string: Option<String>,
+    ws_protocols: Option<String>,
 ) -> anyhow::Result<()> {
-    let ws_url = format!("ws://localhost:{}/{}", target_port, path);
+    let ws_url = match &query_string {
+        Some(q) if !q.is_empty() => {
+            format!("ws://localhost:{}/{}?{}", target_port, path, q)
+        }
+        _ => format!("ws://localhost:{}/{}", target_port, path),
+    };
     tracing::debug!("Connecting to dev server WebSocket: {}", ws_url);
 
-    let (dev_server_ws, _response) = tokio_tungstenite::connect_async(&ws_url).await?;
+    let mut ws_request = ws_url.into_client_request()?;
+    if let Some(ref protocols) = ws_protocols {
+        ws_request
+            .headers_mut()
+            .insert("sec-websocket-protocol", protocols.parse()?);
+    }
+    let (dev_server_ws, _response) = tokio_tungstenite::connect_async(ws_request).await?;
     tracing::debug!("Connected to dev server WebSocket");
 
     let (mut client_sender, mut client_receiver) = client_socket.split();

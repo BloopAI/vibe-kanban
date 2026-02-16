@@ -33,9 +33,7 @@ export type SerializedComponentInfoNode = Spread<
 >;
 
 function toRelativePath(absolutePath: string): string {
-  const worktreeMatch = absolutePath.match(
-    /\/worktrees\/[^/]+\/[^/]+\/(.+)$/
-  );
+  const worktreeMatch = absolutePath.match(/\/worktrees\/[^/]+\/[^/]+\/(.+)$/);
   if (worktreeMatch) return worktreeMatch[1];
 
   const srcMatch = absolutePath.match(/\/(src\/.+)$/);
@@ -58,12 +56,41 @@ function ComponentInfoComponent({
 }): JSX.Element {
   const displayName = data.component || data.tagName || 'unknown';
 
-  const displayPath = data.file ? toRelativePath(data.file) : null;
+  let file = data.file;
+  let line = data.line;
+  let column = data.column;
+
+  if (!file && data.stack?.length) {
+    const firstFile = data.stack[0]?.file;
+    if (firstFile) {
+      const match = firstFile.match(
+        /^(.+\.(?:tsx|ts|jsx|js|vue|svelte)):(\d+):(\d+)$/
+      );
+      if (match) {
+        file = match[1];
+        line = parseInt(match[2], 10);
+        column = parseInt(match[3], 10);
+      } else {
+        file = firstFile;
+      }
+    }
+  }
+
+  const displayPath = file ? toRelativePath(file) : null;
   const fileLine = displayPath
-    ? data.line != null
-      ? `${displayPath}:${data.line}`
+    ? line != null
+      ? `${displayPath}:${line}`
       : displayPath
     : null;
+
+  const fileName = file?.split('/').pop();
+  const badgeLabel = fileName
+    ? line != null
+      ? column != null
+        ? `${fileName}:${line}:${column}`
+        : `${fileName}:${line}`
+      : fileName
+    : displayName;
 
   const stackBreadcrumb =
     data.stack && data.stack.length > 1
@@ -75,10 +102,10 @@ function ComponentInfoComponent({
       <Tooltip>
         <TooltipTrigger asChild>
           <span
-            className="inline-flex items-center gap-half px-half bg-muted rounded-sm border border-border text-xs text-muted-foreground cursor-default select-none hover:border-muted-foreground transition-colors"
+            className="inline-flex items-center gap-half px-half bg-muted rounded-sm border border-border text-xs font-ibm-plex-mono text-muted-foreground cursor-default select-none hover:border-muted-foreground transition-colors"
             onDoubleClick={onDoubleClickEdit}
           >
-            &lt;{displayName}/&gt;
+            {badgeLabel}
           </span>
         </TooltipTrigger>
         <TooltipContent
@@ -88,9 +115,7 @@ function ComponentInfoComponent({
         >
           <div className="flex flex-col gap-half">
             <div className="flex items-center gap-base">
-              <span className="text-sm text-foreground">
-                {data.component}
-              </span>
+              <span className="text-sm text-foreground">{data.component}</span>
               <span className="text-xs text-muted-foreground bg-muted px-half rounded-sm">
                 {data.framework}
               </span>
@@ -113,6 +138,14 @@ function ComponentInfoComponent({
                 <span className="text-xs text-muted-foreground leading-relaxed break-words">
                   {stackBreadcrumb}
                 </span>
+              </div>
+            )}
+
+            {data.htmlPreview && (
+              <div className="border-t border-border pt-half">
+                <pre className="text-xs font-ibm-plex-mono text-muted-foreground whitespace-pre overflow-x-auto max-h-[120px] overflow-y-auto leading-relaxed">
+                  {data.htmlPreview}
+                </pre>
               </div>
             )}
           </div>
