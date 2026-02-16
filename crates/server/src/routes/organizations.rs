@@ -47,7 +47,8 @@ pub fn router() -> Router<DeploymentImpl> {
         )
 }
 
-async fn list_organizations(
+#[utoipa::path(get, path = "/api/organizations", tag = "Organizations", responses((status = 200, description = "List organizations")))]
+pub(crate) async fn list_organizations(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ListOrganizationsResponse>>, ApiError> {
     let client = deployment.remote_client()?;
@@ -57,7 +58,8 @@ async fn list_organizations(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
-async fn get_organization(
+#[utoipa::path(get, path = "/api/organizations/{id}", tag = "Organizations", params(("id" = Uuid, Path, description = "Organization ID")), responses((status = 200, description = "Organization details")))]
+pub(crate) async fn get_organization(
     State(deployment): State<DeploymentImpl>,
     Path(id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<GetOrganizationResponse>>, ApiError> {
@@ -68,7 +70,8 @@ async fn get_organization(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
-async fn create_organization(
+#[utoipa::path(post, path = "/api/organizations", tag = "Organizations", responses((status = 200, description = "Organization created")))]
+pub(crate) async fn create_organization(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreateOrganizationRequest>,
 ) -> Result<ResponseJson<ApiResponse<CreateOrganizationResponse>>, ApiError> {
@@ -88,7 +91,8 @@ async fn create_organization(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
-async fn update_organization(
+#[utoipa::path(patch, path = "/api/organizations/{id}", tag = "Organizations", params(("id" = Uuid, Path, description = "Organization ID")), responses((status = 200, description = "Organization updated")))]
+pub(crate) async fn update_organization(
     State(deployment): State<DeploymentImpl>,
     Path(id): Path<Uuid>,
     Json(request): Json<UpdateOrganizationRequest>,
@@ -100,7 +104,8 @@ async fn update_organization(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
-async fn delete_organization(
+#[utoipa::path(delete, path = "/api/organizations/{id}", tag = "Organizations", params(("id" = Uuid, Path, description = "Organization ID")), responses((status = 204, description = "Organization deleted")))]
+pub(crate) async fn delete_organization(
     State(deployment): State<DeploymentImpl>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
@@ -111,7 +116,8 @@ async fn delete_organization(
     Ok(StatusCode::NO_CONTENT)
 }
 
-async fn create_invitation(
+#[utoipa::path(post, path = "/api/organizations/{org_id}/invitations", tag = "Organizations", params(("org_id" = Uuid, Path, description = "Organization ID")), responses((status = 200, description = "Invitation created")))]
+pub(crate) async fn create_invitation(
     State(deployment): State<DeploymentImpl>,
     Path(org_id): Path<Uuid>,
     Json(request): Json<CreateInvitationRequest>,
@@ -134,7 +140,8 @@ async fn create_invitation(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
-async fn list_invitations(
+#[utoipa::path(get, path = "/api/organizations/{org_id}/invitations", tag = "Organizations", params(("org_id" = Uuid, Path, description = "Organization ID")), responses((status = 200, description = "List invitations")))]
+pub(crate) async fn list_invitations(
     State(deployment): State<DeploymentImpl>,
     Path(org_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<ListInvitationsResponse>>, ApiError> {
@@ -145,7 +152,8 @@ async fn list_invitations(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
-async fn get_invitation(
+#[utoipa::path(get, path = "/api/invitations/{token}", tag = "Organizations", params(("token" = String, Path, description = "Invitation token")), responses((status = 200, description = "Invitation details")))]
+pub(crate) async fn get_invitation(
     State(deployment): State<DeploymentImpl>,
     Path(token): Path<String>,
 ) -> Result<ResponseJson<ApiResponse<GetInvitationResponse>>, ApiError> {
@@ -156,7 +164,8 @@ async fn get_invitation(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
-async fn revoke_invitation(
+#[utoipa::path(post, path = "/api/organizations/{org_id}/invitations/revoke", tag = "Organizations", params(("org_id" = Uuid, Path, description = "Organization ID")), responses((status = 204, description = "Invitation revoked")))]
+pub(crate) async fn revoke_invitation(
     State(deployment): State<DeploymentImpl>,
     Path(org_id): Path<Uuid>,
     Json(payload): Json<RevokeInvitationRequest>,
@@ -170,7 +179,8 @@ async fn revoke_invitation(
     Ok(StatusCode::NO_CONTENT)
 }
 
-async fn accept_invitation(
+#[utoipa::path(post, path = "/api/invitations/{token}/accept", tag = "Organizations", params(("token" = String, Path, description = "Invitation token")), responses((status = 200, description = "Invitation accepted")))]
+pub(crate) async fn accept_invitation(
     State(deployment): State<DeploymentImpl>,
     Path(invitation_token): Path<String>,
 ) -> Result<ResponseJson<ApiResponse<AcceptInvitationResponse>>, ApiError> {
@@ -181,7 +191,8 @@ async fn accept_invitation(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
-async fn list_members(
+#[utoipa::path(get, path = "/api/organizations/{org_id}/members", tag = "Organizations", params(("org_id" = Uuid, Path, description = "Organization ID")), responses((status = 200, description = "List members")))]
+pub(crate) async fn list_members(
     State(deployment): State<DeploymentImpl>,
     Path(org_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<ListMembersResponse>>, ApiError> {
@@ -192,7 +203,8 @@ async fn list_members(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
-async fn remove_member(
+#[utoipa::path(delete, path = "/api/organizations/{org_id}/members/{user_id}", tag = "Organizations", params(("org_id" = Uuid, Path, description = "Organization ID"), ("user_id" = Uuid, Path, description = "User ID")), responses((status = 204, description = "Member removed")))]
+pub(crate) async fn remove_member(
     State(deployment): State<DeploymentImpl>,
     Path((org_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, ApiError> {
@@ -203,7 +215,8 @@ async fn remove_member(
     Ok(StatusCode::NO_CONTENT)
 }
 
-async fn update_member_role(
+#[utoipa::path(patch, path = "/api/organizations/{org_id}/members/{user_id}/role", tag = "Organizations", params(("org_id" = Uuid, Path, description = "Organization ID"), ("user_id" = Uuid, Path, description = "User ID")), responses((status = 200, description = "Member role updated")))]
+pub(crate) async fn update_member_role(
     State(deployment): State<DeploymentImpl>,
     Path((org_id, user_id)): Path<(Uuid, Uuid)>,
     Json(request): Json<UpdateMemberRoleRequest>,

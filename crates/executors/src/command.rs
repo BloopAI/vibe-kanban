@@ -40,7 +40,9 @@ impl CommandParts {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, Default)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, Default, utoipa::ToSchema,
+)]
 pub struct CmdOverrides {
     #[schemars(
         title = "Base Command Override",
@@ -62,7 +64,7 @@ pub struct CmdOverrides {
     pub env: Option<HashMap<String, String>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, utoipa::ToSchema)]
 pub struct CommandBuilder {
     /// Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
     pub base: String,

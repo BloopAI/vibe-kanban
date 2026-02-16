@@ -36,6 +36,7 @@ pub fn protected_router() -> Router<AppState> {
         .route("/oauth/logout", post(logout))
 }
 
+#[utoipa::path(post, path = "/v1/oauth/web/init", tag = "Auth", request_body = HandoffInitRequest, responses((status = 200, description = "Handoff initiated"), (status = 400, description = "Bad request")))]
 pub async fn web_init(
     State(state): State<AppState>,
     Json(payload): Json<HandoffInitRequest>,
@@ -62,6 +63,7 @@ pub async fn web_init(
     }
 }
 
+#[utoipa::path(post, path = "/v1/oauth/web/redeem", tag = "Auth", request_body = HandoffRedeemRequest, responses((status = 200, description = "Token redeemed"), (status = 400, description = "Bad request")))]
 pub async fn web_redeem(
     State(state): State<AppState>,
     Json(payload): Json<HandoffRedeemRequest>,
@@ -99,6 +101,7 @@ pub struct StartQuery {
     handoff_id: Uuid,
 }
 
+#[utoipa::path(get, path = "/v1/oauth/{provider}/start", tag = "Auth", params(("provider" = String, Path, description = "OAuth provider"), ("handoff_id" = Uuid, Query, description = "Handoff ID")), responses((status = 307, description = "Redirect to provider")))]
 pub async fn authorize_start(
     State(state): State<AppState>,
     Path(provider): Path<String>,
@@ -126,6 +129,7 @@ pub struct CallbackQuery {
     error: Option<String>,
 }
 
+#[utoipa::path(get, path = "/v1/oauth/{provider}/callback", tag = "Auth", params(("provider" = String, Path, description = "OAuth provider")), responses((status = 307, description = "Redirect with result")))]
 pub async fn authorize_callback(
     State(state): State<AppState>,
     Path(provider): Path<String>,
@@ -187,6 +191,7 @@ pub async fn authorize_callback(
     }
 }
 
+#[utoipa::path(get, path = "/v1/profile", tag = "Auth", responses((status = 200, description = "User profile")), security(("bearer_auth" = [])))]
 pub async fn profile(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
@@ -214,6 +219,7 @@ pub async fn profile(
     })
 }
 
+#[utoipa::path(post, path = "/v1/oauth/logout", tag = "Auth", responses((status = 204, description = "Logged out")), security(("bearer_auth" = [])))]
 pub async fn logout(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,

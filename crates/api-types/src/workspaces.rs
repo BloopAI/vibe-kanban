@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct DeleteWorkspaceRequest {
     pub local_workspace_id: Uuid,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct CreateWorkspaceRequest {
     pub project_id: Uuid,
     pub local_workspace_id: Uuid,
@@ -23,7 +23,7 @@ pub struct CreateWorkspaceRequest {
     pub lines_removed: Option<i32>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpdateWorkspaceRequest {
     pub local_workspace_id: Uuid,
     #[serde(skip_serializing_if = "Option::is_none")]

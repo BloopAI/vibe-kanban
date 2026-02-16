@@ -29,6 +29,13 @@ pub fn router() -> Router<AppState> {
         .route("/organizations/{org_id}", delete(delete_organization))
 }
 
+#[utoipa::path(
+    post, path = "/v1/organizations",
+    tag = "Organizations",
+    request_body = CreateOrganizationRequest,
+    responses((status = 201, description = "Organization created"), (status = 400, description = "Bad request"), (status = 409, description = "Conflict")),
+    security(("bearer_auth" = []))
+)]
 pub async fn create_organization(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
@@ -89,6 +96,12 @@ pub async fn create_organization(
     ))
 }
 
+#[utoipa::path(
+    get, path = "/v1/organizations",
+    tag = "Organizations",
+    responses((status = 200, description = "List of organizations")),
+    security(("bearer_auth" = []))
+)]
 pub async fn list_organizations(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
@@ -103,6 +116,13 @@ pub async fn list_organizations(
     Ok(Json(ListOrganizationsResponse { organizations }))
 }
 
+#[utoipa::path(
+    get, path = "/v1/organizations/{org_id}",
+    tag = "Organizations",
+    params(("org_id" = Uuid, Path, description = "Organization ID")),
+    responses((status = 200, description = "Organization found"), (status = 404, description = "Not found"), (status = 403, description = "Forbidden")),
+    security(("bearer_auth" = []))
+)]
 pub async fn get_organization(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
@@ -144,6 +164,14 @@ pub async fn get_organization(
     }))
 }
 
+#[utoipa::path(
+    patch, path = "/v1/organizations/{org_id}",
+    tag = "Organizations",
+    params(("org_id" = Uuid, Path, description = "Organization ID")),
+    request_body = UpdateOrganizationRequest,
+    responses((status = 200, description = "Organization updated"), (status = 403, description = "Forbidden"), (status = 404, description = "Not found")),
+    security(("bearer_auth" = []))
+)]
 pub async fn update_organization(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
@@ -177,6 +205,13 @@ pub async fn update_organization(
     Ok(Json(organization))
 }
 
+#[utoipa::path(
+    delete, path = "/v1/organizations/{org_id}",
+    tag = "Organizations",
+    params(("org_id" = Uuid, Path, description = "Organization ID")),
+    responses((status = 204, description = "Organization deleted"), (status = 403, description = "Forbidden"), (status = 404, description = "Not found")),
+    security(("bearer_auth" = []))
+)]
 pub async fn delete_organization(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,

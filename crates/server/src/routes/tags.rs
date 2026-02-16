@@ -19,6 +19,7 @@ pub struct TagSearchParams {
     pub search: Option<String>,
 }
 
+#[utoipa::path(get, path = "/api/tags", tag = "Tags", params(("search" = Option<String>, Query, description = "Filter by name")), responses((status = 200, description = "List of tags")))]
 pub async fn get_tags(
     State(deployment): State<DeploymentImpl>,
     Query(params): Query<TagSearchParams>,
@@ -34,6 +35,7 @@ pub async fn get_tags(
     Ok(ResponseJson(ApiResponse::success(tags)))
 }
 
+#[utoipa::path(post, path = "/api/tags", tag = "Tags", request_body = CreateTag, responses((status = 200, description = "Tag created")))]
 pub async fn create_tag(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTag>,
@@ -53,6 +55,7 @@ pub async fn create_tag(
     Ok(ResponseJson(ApiResponse::success(tag)))
 }
 
+#[utoipa::path(put, path = "/api/tags/{tag_id}", tag = "Tags", params(("tag_id" = Uuid, Path, description = "Tag ID")), request_body = UpdateTag, responses((status = 200, description = "Tag updated")))]
 pub async fn update_tag(
     Extension(tag): Extension<Tag>,
     State(deployment): State<DeploymentImpl>,
@@ -73,6 +76,7 @@ pub async fn update_tag(
     Ok(ResponseJson(ApiResponse::success(updated_tag)))
 }
 
+#[utoipa::path(delete, path = "/api/tags/{tag_id}", tag = "Tags", params(("tag_id" = Uuid, Path, description = "Tag ID")), responses((status = 200, description = "Tag deleted")))]
 pub async fn delete_tag(
     Extension(tag): Extension<Tag>,
     State(deployment): State<DeploymentImpl>,

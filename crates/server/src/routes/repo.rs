@@ -43,6 +43,7 @@ pub struct BatchRepoRequest {
     pub ids: Vec<Uuid>,
 }
 
+#[utoipa::path(post, path = "/api/repos", tag = "Repos", responses((status = 200, description = "Repo registered")))]
 pub async fn register_repo(
     State(deployment): State<DeploymentImpl>,
     ResponseJson(payload): ResponseJson<RegisterRepoRequest>,
@@ -59,6 +60,7 @@ pub async fn register_repo(
     Ok(ResponseJson(ApiResponse::success(repo)))
 }
 
+#[utoipa::path(post, path = "/api/repos/init", tag = "Repos", responses((status = 200, description = "Repo initialized")))]
 pub async fn init_repo(
     State(deployment): State<DeploymentImpl>,
     ResponseJson(payload): ResponseJson<InitRepoRequest>,
@@ -76,6 +78,7 @@ pub async fn init_repo(
     Ok(ResponseJson(ApiResponse::success(repo)))
 }
 
+#[utoipa::path(get, path = "/api/repos/{repo_id}/branches", tag = "Repos", params(("repo_id" = Uuid, Path, description = "Repo ID")), responses((status = 200, description = "Repo branches")))]
 pub async fn get_repo_branches(
     State(deployment): State<DeploymentImpl>,
     Path(repo_id): Path<Uuid>,
@@ -89,6 +92,7 @@ pub async fn get_repo_branches(
     Ok(ResponseJson(ApiResponse::success(branches)))
 }
 
+#[utoipa::path(get, path = "/api/repos/{repo_id}/remotes", tag = "Repos", params(("repo_id" = Uuid, Path, description = "Repo ID")), responses((status = 200, description = "Repo remotes")))]
 pub async fn get_repo_remotes(
     State(deployment): State<DeploymentImpl>,
     Path(repo_id): Path<Uuid>,
@@ -102,6 +106,7 @@ pub async fn get_repo_remotes(
     Ok(ResponseJson(ApiResponse::success(remotes)))
 }
 
+#[utoipa::path(post, path = "/api/repos/batch", tag = "Repos", responses((status = 200, description = "Batch repo lookup")))]
 pub async fn get_repos_batch(
     State(deployment): State<DeploymentImpl>,
     ResponseJson(payload): ResponseJson<BatchRepoRequest>,
@@ -110,6 +115,7 @@ pub async fn get_repos_batch(
     Ok(ResponseJson(ApiResponse::success(repos)))
 }
 
+#[utoipa::path(get, path = "/api/repos", tag = "Repos", responses((status = 200, description = "List all repos")))]
 pub async fn get_repos(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Repo>>>, ApiError> {
@@ -117,6 +123,7 @@ pub async fn get_repos(
     Ok(ResponseJson(ApiResponse::success(repos)))
 }
 
+#[utoipa::path(get, path = "/api/repos/recent", tag = "Repos", responses((status = 200, description = "Recent repos")))]
 pub async fn get_recent_repos(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Repo>>>, ApiError> {
@@ -124,6 +131,7 @@ pub async fn get_recent_repos(
     Ok(ResponseJson(ApiResponse::success(repos)))
 }
 
+#[utoipa::path(get, path = "/api/repos/{repo_id}", tag = "Repos", params(("repo_id" = Uuid, Path, description = "Repo ID")), responses((status = 200, description = "Repo details")))]
 pub async fn get_repo(
     State(deployment): State<DeploymentImpl>,
     Path(repo_id): Path<Uuid>,
@@ -135,6 +143,7 @@ pub async fn get_repo(
     Ok(ResponseJson(ApiResponse::success(repo)))
 }
 
+#[utoipa::path(put, path = "/api/repos/{repo_id}", tag = "Repos", params(("repo_id" = Uuid, Path, description = "Repo ID")), responses((status = 200, description = "Repo updated")))]
 pub async fn update_repo(
     State(deployment): State<DeploymentImpl>,
     Path(repo_id): Path<Uuid>,
@@ -144,6 +153,7 @@ pub async fn update_repo(
     Ok(ResponseJson(ApiResponse::success(repo)))
 }
 
+#[utoipa::path(post, path = "/api/repos/{repo_id}/open-editor", tag = "Repos", params(("repo_id" = Uuid, Path, description = "Repo ID")), responses((status = 200, description = "Editor opened")))]
 pub async fn open_repo_in_editor(
     State(deployment): State<DeploymentImpl>,
     Path(repo_id): Path<Uuid>,
@@ -191,6 +201,7 @@ pub async fn open_repo_in_editor(
     }
 }
 
+#[utoipa::path(get, path = "/api/repos/{repo_id}/search", tag = "Repos", params(("repo_id" = Uuid, Path, description = "Repo ID"), ("q" = String, Query, description = "Search query")), responses((status = 200, description = "Search results")))]
 pub async fn search_repo(
     State(deployment): State<DeploymentImpl>,
     Path(repo_id): Path<Uuid>,
@@ -241,6 +252,7 @@ pub struct ListPrsQuery {
     pub remote: Option<String>,
 }
 
+#[utoipa::path(get, path = "/api/repos/{repo_id}/prs", tag = "Repos", params(("repo_id" = Uuid, Path, description = "Repo ID"), ("remote" = Option<String>, Query, description = "Remote name")), responses((status = 200, description = "Open PRs")))]
 pub async fn list_open_prs(
     State(deployment): State<DeploymentImpl>,
     Path(repo_id): Path<Uuid>,

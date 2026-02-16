@@ -41,12 +41,19 @@ pub fn router() -> axum::Router<AppState> {
     mutation().router()
 }
 
+#[utoipa::path(
+    get, path = "/v1/issue_comment_reactions",
+    tag = "IssueCommentReactions",
+    params(("comment_id" = Uuid, Query, description = "Comment ID")),
+    responses((status = 200, description = "List of reactions"), (status = 403, description = "Forbidden")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_comment_reactions.list_issue_comment_reactions",
     skip(state, ctx),
     fields(comment_id = %query.comment_id, user_id = %ctx.user.id)
 )]
-async fn list_issue_comment_reactions(
+pub(crate) async fn list_issue_comment_reactions(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Query(query): Query<ListIssueCommentReactionsQuery>,
@@ -77,12 +84,19 @@ async fn list_issue_comment_reactions(
     }))
 }
 
+#[utoipa::path(
+    get, path = "/v1/issue_comment_reactions/{id}",
+    tag = "IssueCommentReactions",
+    params(("id" = Uuid, Path, description = "Reaction ID")),
+    responses((status = 200, description = "Reaction found"), (status = 404, description = "Not found"), (status = 403, description = "Forbidden")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_comment_reactions.get_issue_comment_reaction",
     skip(state, ctx),
     fields(issue_comment_reaction_id = %issue_comment_reaction_id, user_id = %ctx.user.id)
 )]
-async fn get_issue_comment_reaction(
+pub(crate) async fn get_issue_comment_reaction(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_comment_reaction_id): Path<Uuid>,
@@ -109,12 +123,19 @@ async fn get_issue_comment_reaction(
     Ok(Json(reaction))
 }
 
+#[utoipa::path(
+    post, path = "/v1/issue_comment_reactions",
+    tag = "IssueCommentReactions",
+    request_body = CreateIssueCommentReactionRequest,
+    responses((status = 200, description = "Reaction created"), (status = 403, description = "Forbidden")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_comment_reactions.create_issue_comment_reaction",
     skip(state, ctx, payload),
     fields(comment_id = %payload.comment_id, user_id = %ctx.user.id)
 )]
-async fn create_issue_comment_reaction(
+pub(crate) async fn create_issue_comment_reaction(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateIssueCommentReactionRequest>,
@@ -145,12 +166,20 @@ async fn create_issue_comment_reaction(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    patch, path = "/v1/issue_comment_reactions/{id}",
+    tag = "IssueCommentReactions",
+    params(("id" = Uuid, Path, description = "Reaction ID")),
+    request_body = UpdateIssueCommentReactionRequest,
+    responses((status = 200, description = "Reaction updated"), (status = 404, description = "Not found"), (status = 403, description = "Forbidden")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_comment_reactions.update_issue_comment_reaction",
     skip(state, ctx, payload),
     fields(issue_comment_reaction_id = %issue_comment_reaction_id, user_id = %ctx.user.id)
 )]
-async fn update_issue_comment_reaction(
+pub(crate) async fn update_issue_comment_reaction(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_comment_reaction_id): Path<Uuid>,
@@ -196,12 +225,19 @@ async fn update_issue_comment_reaction(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    delete, path = "/v1/issue_comment_reactions/{id}",
+    tag = "IssueCommentReactions",
+    params(("id" = Uuid, Path, description = "Reaction ID")),
+    responses((status = 200, description = "Reaction deleted"), (status = 404, description = "Not found"), (status = 403, description = "Forbidden")),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_comment_reactions.delete_issue_comment_reaction",
     skip(state, ctx),
     fields(issue_comment_reaction_id = %issue_comment_reaction_id, user_id = %ctx.user.id)
 )]
-async fn delete_issue_comment_reaction(
+pub(crate) async fn delete_issue_comment_reaction(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_comment_reaction_id): Path<Uuid>,

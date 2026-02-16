@@ -16,6 +16,7 @@ pub struct ListDirectoryQuery {
     path: Option<String>,
 }
 
+#[utoipa::path(get, path = "/api/filesystem/directory", tag = "Filesystem", params(("path" = Option<String>, Query, description = "Directory path")), responses((status = 200, description = "Directory listing")))]
 pub async fn list_directory(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ListDirectoryQuery>,
@@ -38,6 +39,7 @@ pub async fn list_directory(
     }
 }
 
+#[utoipa::path(get, path = "/api/filesystem/git-repos", tag = "Filesystem", params(("path" = Option<String>, Query, description = "Root path to search")), responses((status = 200, description = "Git repositories found")))]
 pub async fn list_git_repos(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ListDirectoryQuery>,

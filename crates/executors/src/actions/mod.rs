@@ -23,7 +23,7 @@ pub mod script;
 pub use review::RepoReviewContext;
 
 #[enum_dispatch]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, utoipa::ToSchema)]
 #[serde(tag = "type")]
 pub enum ExecutorActionType {
     CodingAgentInitialRequest,
@@ -32,7 +32,7 @@ pub enum ExecutorActionType {
     ReviewRequest,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct ExecutorAction {
     pub typ: ExecutorActionType,
     pub next_action: Option<Box<ExecutorAction>>,

@@ -12,6 +12,7 @@ use futures_util::TryStreamExt;
 
 use crate::DeploymentImpl;
 
+#[utoipa::path(get, path = "/api/events", tag = "Events", responses((status = 200, content_type = "text/event-stream", description = "SSE event stream")))]
 pub async fn events(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<Sse<impl futures_util::Stream<Item = Result<Event, BoxError>>>, axum::http::StatusCode>

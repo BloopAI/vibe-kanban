@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::PullRequestStatus;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpsertPullRequestRequest {
     pub url: String,
     pub number: i32,

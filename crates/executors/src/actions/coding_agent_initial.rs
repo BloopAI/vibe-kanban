@@ -14,7 +14,7 @@ use crate::{
     profile::ExecutorProfileId,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, utoipa::ToSchema)]
 pub struct CodingAgentInitialRequest {
     pub prompt: String,
     /// Executor profile specification

@@ -42,12 +42,22 @@ pub fn router() -> axum::Router<AppState> {
         .route("/project_statuses/bulk", post(bulk_update_project_statuses))
 }
 
+#[utoipa::path(
+    get, path = "/v1/project_statuses",
+    tag = "ProjectStatuses",
+    params(("project_id" = Uuid, Query, description = "Project ID")),
+    responses(
+        (status = 200, description = "List of project statuses"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "project_statuses.list_project_statuses",
     skip(state, ctx),
     fields(project_id = %query.project_id, user_id = %ctx.user.id)
 )]
-async fn list_project_statuses(
+pub(crate) async fn list_project_statuses(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Query(query): Query<ListProjectStatusesQuery>,
@@ -67,12 +77,23 @@ async fn list_project_statuses(
     Ok(Json(ListProjectStatusesResponse { project_statuses }))
 }
 
+#[utoipa::path(
+    get, path = "/v1/project_statuses/{id}",
+    tag = "ProjectStatuses",
+    params(("id" = Uuid, Path, description = "Project status ID")),
+    responses(
+        (status = 200, description = "Project status found"),
+        (status = 404, description = "Project status not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "project_statuses.get_project_status",
     skip(state, ctx),
     fields(project_status_id = %project_status_id, user_id = %ctx.user.id)
 )]
-async fn get_project_status(
+pub(crate) async fn get_project_status(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(project_status_id): Path<Uuid>,
@@ -93,12 +114,23 @@ async fn get_project_status(
     Ok(Json(status))
 }
 
+#[utoipa::path(
+    post, path = "/v1/project_statuses",
+    tag = "ProjectStatuses",
+    request_body = CreateProjectStatusRequest,
+    responses(
+        (status = 200, description = "Project status created"),
+        (status = 400, description = "Bad request"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "project_statuses.create_project_status",
     skip(state, ctx, payload),
     fields(project_id = %payload.project_id, user_id = %ctx.user.id)
 )]
-async fn create_project_status(
+pub(crate) async fn create_project_status(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateProjectStatusRequest>,
@@ -130,12 +162,25 @@ async fn create_project_status(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    patch, path = "/v1/project_statuses/{id}",
+    tag = "ProjectStatuses",
+    params(("id" = Uuid, Path, description = "Project status ID")),
+    request_body = UpdateProjectStatusRequest,
+    responses(
+        (status = 200, description = "Project status updated"),
+        (status = 400, description = "Bad request"),
+        (status = 404, description = "Project status not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "project_statuses.update_project_status",
     skip(state, ctx, payload),
     fields(project_status_id = %project_status_id, user_id = %ctx.user.id)
 )]
-async fn update_project_status(
+pub(crate) async fn update_project_status(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(project_status_id): Path<Uuid>,
@@ -180,12 +225,23 @@ async fn update_project_status(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    delete, path = "/v1/project_statuses/{id}",
+    tag = "ProjectStatuses",
+    params(("id" = Uuid, Path, description = "Project status ID")),
+    responses(
+        (status = 200, description = "Project status deleted"),
+        (status = 404, description = "Project status not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "project_statuses.delete_project_status",
     skip(state, ctx),
     fields(project_status_id = %project_status_id, user_id = %ctx.user.id)
 )]
-async fn delete_project_status(
+pub(crate) async fn delete_project_status(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(project_status_id): Path<Uuid>,
@@ -213,30 +269,41 @@ async fn delete_project_status(
     Ok(Json(response))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct BulkUpdateProjectStatusItem {
     pub id: Uuid,
     #[serde(flatten)]
     pub changes: UpdateProjectStatusRequest,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct BulkUpdateProjectStatusesRequest {
     pub updates: Vec<BulkUpdateProjectStatusItem>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct BulkUpdateProjectStatusesResponse {
     pub data: Vec<ProjectStatus>,
     pub txid: i64,
 }
 
+#[utoipa::path(
+    post, path = "/v1/project_statuses/bulk",
+    tag = "ProjectStatuses",
+    request_body = BulkUpdateProjectStatusesRequest,
+    responses(
+        (status = 200, description = "Project statuses updated"),
+        (status = 400, description = "Bad request"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "project_statuses.bulk_update",
     skip(state, ctx, payload),
     fields(user_id = %ctx.user.id, count = payload.updates.len())
 )]
-async fn bulk_update_project_statuses(
+pub(crate) async fn bulk_update_project_statuses(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<BulkUpdateProjectStatusesRequest>,

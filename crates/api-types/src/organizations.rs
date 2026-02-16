@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::MemberRole;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS, utoipa::ToSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[sqlx(type_name = "invitation_status", rename_all = "lowercase")]
 #[ts(use_ts_enum)]
@@ -18,7 +18,7 @@ pub enum InvitationStatus {
     Expired,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS, utoipa::ToSchema)]
 pub struct Organization {
     pub id: Uuid,
     pub name: String,
@@ -29,7 +29,7 @@ pub struct Organization {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS, utoipa::ToSchema)]
 pub struct OrganizationWithRole {
     pub id: Uuid,
     pub name: String,
@@ -41,36 +41,36 @@ pub struct OrganizationWithRole {
     pub user_role: MemberRole,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct ListOrganizationsResponse {
     pub organizations: Vec<OrganizationWithRole>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct GetOrganizationResponse {
     pub organization: Organization,
     pub user_role: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct CreateOrganizationRequest {
     pub name: String,
     pub slug: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct CreateOrganizationResponse {
     pub organization: OrganizationWithRole,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct UpdateOrganizationRequest {
     pub name: String,
 }
 
 // Invitation types
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct Invitation {
     pub id: Uuid,
     pub organization_id: Uuid,
@@ -83,23 +83,23 @@ pub struct Invitation {
     pub expires_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct CreateInvitationRequest {
     pub email: String,
     pub role: MemberRole,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct CreateInvitationResponse {
     pub invitation: Invitation,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct ListInvitationsResponse {
     pub invitations: Vec<Invitation>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct GetInvitationResponse {
     pub id: Uuid,
     pub organization_slug: String,
@@ -107,14 +107,14 @@ pub struct GetInvitationResponse {
     pub expires_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct AcceptInvitationResponse {
     pub organization_id: String,
     pub organization_slug: String,
     pub role: MemberRole,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct RevokeInvitationRequest {
     pub invitation_id: Uuid,
 }
@@ -123,14 +123,14 @@ pub struct RevokeInvitationRequest {
 
 /// Organization member info for API responses (without organization_id).
 /// See also `OrganizationMember` in organization_member.rs for the full DB row type.
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct OrganizationMemberInfo {
     pub user_id: Uuid,
     pub role: MemberRole,
     pub joined_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct OrganizationMemberWithProfile {
     pub user_id: Uuid,
     pub role: MemberRole,
@@ -142,17 +142,17 @@ pub struct OrganizationMemberWithProfile {
     pub avatar_url: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct ListMembersResponse {
     pub members: Vec<OrganizationMemberWithProfile>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct UpdateMemberRoleRequest {
     pub role: MemberRole,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct UpdateMemberRoleResponse {
     pub user_id: Uuid,
     pub role: MemberRole,

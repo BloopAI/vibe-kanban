@@ -27,7 +27,8 @@ pub fn router() -> Router<DeploymentImpl> {
         )
 }
 
-async fn list_issues(
+#[utoipa::path(get, path = "/api/remote/issues", tag = "Remote", params(("project_id" = Uuid, Query, description = "Project ID")), responses((status = 200, description = "List remote issues")))]
+pub(crate) async fn list_issues(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ListIssuesQuery>,
 ) -> Result<ResponseJson<ApiResponse<ListIssuesResponse>>, ApiError> {
@@ -36,7 +37,8 @@ async fn list_issues(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
-async fn get_issue(
+#[utoipa::path(get, path = "/api/remote/issues/{issue_id}", tag = "Remote", params(("issue_id" = Uuid, Path, description = "Issue ID")), responses((status = 200, description = "Issue details")))]
+pub(crate) async fn get_issue(
     State(deployment): State<DeploymentImpl>,
     Path(issue_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<Issue>>, ApiError> {
@@ -45,7 +47,8 @@ async fn get_issue(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
-async fn create_issue(
+#[utoipa::path(post, path = "/api/remote/issues", tag = "Remote", responses((status = 200, description = "Issue created")))]
+pub(crate) async fn create_issue(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreateIssueRequest>,
 ) -> Result<ResponseJson<ApiResponse<MutationResponse<Issue>>>, ApiError> {
@@ -54,7 +57,8 @@ async fn create_issue(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
-async fn update_issue(
+#[utoipa::path(patch, path = "/api/remote/issues/{issue_id}", tag = "Remote", params(("issue_id" = Uuid, Path, description = "Issue ID")), responses((status = 200, description = "Issue updated")))]
+pub(crate) async fn update_issue(
     State(deployment): State<DeploymentImpl>,
     Path(issue_id): Path<Uuid>,
     Json(request): Json<UpdateIssueRequest>,
@@ -64,7 +68,8 @@ async fn update_issue(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
-async fn delete_issue(
+#[utoipa::path(delete, path = "/api/remote/issues/{issue_id}", tag = "Remote", params(("issue_id" = Uuid, Path, description = "Issue ID")), responses((status = 200, description = "Issue deleted")))]
+pub(crate) async fn delete_issue(
     State(deployment): State<DeploymentImpl>,
     Path(issue_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {

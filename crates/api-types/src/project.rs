@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::some_if_present;
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct Project {
     pub id: Uuid,
     pub organization_id: Uuid,
@@ -15,7 +15,7 @@ pub struct Project {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Deserialize, TS)]
+#[derive(Debug, Clone, Deserialize, TS, utoipa::ToSchema)]
 pub struct CreateProjectRequest {
     /// Optional client-generated ID. If not provided, server generates one.
     /// Using client-generated IDs enables stable optimistic updates.
@@ -26,7 +26,7 @@ pub struct CreateProjectRequest {
     pub color: String,
 }
 
-#[derive(Debug, Clone, Deserialize, TS)]
+#[derive(Debug, Clone, Deserialize, TS, utoipa::ToSchema)]
 pub struct UpdateProjectRequest {
     #[serde(default, deserialize_with = "some_if_present")]
     pub name: Option<String>,
@@ -39,7 +39,7 @@ pub struct ListProjectsQuery {
     pub organization_id: Uuid,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct ListProjectsResponse {
     pub projects: Vec<Project>,
 }

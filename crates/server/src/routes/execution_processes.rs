@@ -30,6 +30,13 @@ pub struct SessionExecutionProcessQuery {
     pub show_soft_deleted: Option<bool>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/execution-processes/{id}",
+    tag = "ExecutionProcesses",
+    params(("id" = Uuid, Path, description = "Execution process ID")),
+    responses((status = 200, description = "Execution process details"))
+)]
 pub async fn get_execution_process_by_id(
     Extension(execution_process): Extension<ExecutionProcess>,
     State(_deployment): State<DeploymentImpl>,
@@ -37,6 +44,13 @@ pub async fn get_execution_process_by_id(
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/execution-processes/{id}/raw-logs/ws",
+    tag = "ExecutionProcesses",
+    params(("id" = Uuid, Path, description = "Execution process ID")),
+    responses((status = 101, description = "WebSocket upgrade for raw logs"))
+)]
 pub async fn stream_raw_logs_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,
@@ -120,6 +134,13 @@ async fn handle_raw_logs_ws(
     Ok(())
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/execution-processes/{id}/normalized-logs/ws",
+    tag = "ExecutionProcesses",
+    params(("id" = Uuid, Path, description = "Execution process ID")),
+    responses((status = 101, description = "WebSocket upgrade for normalized logs"))
+)]
 pub async fn stream_normalized_logs_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,
@@ -166,6 +187,13 @@ async fn handle_normalized_logs_ws(
     Ok(())
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/execution-processes/{id}/stop",
+    tag = "ExecutionProcesses",
+    params(("id" = Uuid, Path, description = "Execution process ID")),
+    responses((status = 200, description = "Execution process stopped"))
+)]
 pub async fn stop_execution_process(
     Extension(execution_process): Extension<ExecutionProcess>,
     State(deployment): State<DeploymentImpl>,
@@ -178,6 +206,16 @@ pub async fn stop_execution_process(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/execution-processes/stream/session/ws",
+    tag = "ExecutionProcesses",
+    params(
+        ("session_id" = Uuid, Query, description = "Session ID"),
+        ("show_soft_deleted" = Option<bool>, Query, description = "Include soft-deleted processes"),
+    ),
+    responses((status = 101, description = "WebSocket upgrade for execution process stream"))
+)]
 pub async fn stream_execution_processes_by_session_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,
@@ -233,6 +271,13 @@ async fn handle_execution_processes_by_session_ws(
     Ok(())
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/execution-processes/{id}/repo-states",
+    tag = "ExecutionProcesses",
+    params(("id" = Uuid, Path, description = "Execution process ID")),
+    responses((status = 200, description = "Repo states for execution process"))
+)]
 pub async fn get_execution_process_repo_states(
     Extension(execution_process): Extension<ExecutionProcess>,
     State(deployment): State<DeploymentImpl>,

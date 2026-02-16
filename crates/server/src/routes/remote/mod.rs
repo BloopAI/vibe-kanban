@@ -2,10 +2,10 @@ use axum::Router;
 
 use crate::DeploymentImpl;
 
-mod issues;
-mod project_statuses;
-mod projects;
-mod workspaces;
+pub mod issues;
+pub mod project_statuses;
+pub mod projects;
+pub mod workspaces;
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()

@@ -58,19 +58,19 @@ use crate::{
     routes::task_attempts::gh_cli_setup::GhCliSetupError,
 };
 
-#[derive(Debug, Deserialize, Serialize, TS)]
+#[derive(Debug, Deserialize, Serialize, TS, utoipa::ToSchema)]
 pub struct RebaseTaskAttemptRequest {
     pub repo_id: Uuid,
     pub old_base_branch: Option<String>,
     pub new_base_branch: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize, TS)]
+#[derive(Debug, Deserialize, Serialize, TS, utoipa::ToSchema)]
 pub struct AbortConflictsRequest {
     pub repo_id: Uuid,
 }
 
-#[derive(Debug, Deserialize, Serialize, TS)]
+#[derive(Debug, Deserialize, Serialize, TS, utoipa::ToSchema)]
 pub struct ContinueRebaseRequest {
     pub repo_id: Uuid,
 }
@@ -105,7 +105,7 @@ pub struct WorkspaceStreamQuery {
     pub limit: Option<i64>,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, utoipa::ToSchema)]
 pub struct UpdateWorkspace {
     pub archived: Option<bool>,
     pub pinned: Option<bool>,
@@ -120,12 +120,23 @@ pub struct DeleteWorkspaceQuery {
     pub delete_branches: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct LinkWorkspaceRequest {
     pub project_id: Uuid,
     pub issue_id: Uuid,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/task-attempts",
+    tag = "TaskAttempts",
+    params(
+        ("task_id" = Option<Uuid>, Query, description = "Filter by task ID"),
+    ),
+    responses(
+        (status = 200, description = "List of workspaces")
+    )
+)]
 pub async fn get_task_attempts(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskAttemptQuery>,
@@ -135,12 +146,34 @@ pub async fn get_task_attempts(
     Ok(ResponseJson(ApiResponse::success(workspaces)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/task-attempts/{id}",
+    tag = "TaskAttempts",
+    params(
+        ("id" = Uuid, Path, description = "Workspace ID"),
+    ),
+    responses(
+        (status = 200, description = "Workspace details")
+    )
+)]
 pub async fn get_task_attempt(
     Extension(workspace): Extension<Workspace>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(workspace)))
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/task-attempts/{id}",
+    tag = "TaskAttempts",
+    params(
+        ("id" = Uuid, Path, description = "Workspace ID"),
+    ),
+    responses(
+        (status = 200, description = "Workspace updated")
+    )
+)]
 pub async fn update_workspace(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -189,20 +222,20 @@ pub async fn update_workspace(
     Ok(ResponseJson(ApiResponse::success(updated)))
 }
 
-#[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
+#[derive(Debug, Serialize, Deserialize, ts_rs::TS, utoipa::ToSchema)]
 pub struct CreateTaskAttemptBody {
     pub task_id: Uuid,
     pub executor_profile_id: ExecutorProfileId,
     pub repos: Vec<WorkspaceRepoInput>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
+#[derive(Debug, Serialize, Deserialize, ts_rs::TS, utoipa::ToSchema)]
 pub struct WorkspaceRepoInput {
     pub repo_id: Uuid,
     pub target_branch: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, TS)]
+#[derive(Debug, Deserialize, Serialize, TS, utoipa::ToSchema)]
 pub struct RunAgentSetupRequest {
     pub executor_profile_id: ExecutorProfileId,
 }
@@ -210,6 +243,15 @@ pub struct RunAgentSetupRequest {
 #[derive(Debug, Serialize, TS)]
 pub struct RunAgentSetupResponse {}
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts",
+    tag = "TaskAttempts",
+    request_body = CreateTaskAttemptBody,
+    responses(
+        (status = 200, description = "Task attempt created")
+    )
+)]
 #[axum::debug_handler]
 pub async fn create_task_attempt(
     State(deployment): State<DeploymentImpl>,
@@ -299,6 +341,14 @@ pub async fn create_task_attempt(
     Ok(ResponseJson(ApiResponse::success(workspace)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/run-agent-setup",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    request_body = RunAgentSetupRequest,
+    responses((status = 200, description = "Agent setup executed"))
+)]
 #[axum::debug_handler]
 pub async fn run_agent_setup(
     Extension(workspace): Extension<Workspace>,
@@ -331,6 +381,16 @@ pub async fn run_agent_setup(
     Ok(ResponseJson(ApiResponse::success(RunAgentSetupResponse {})))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/task-attempts/{id}/diff/ws",
+    tag = "TaskAttempts",
+    params(
+        ("id" = Uuid, Path, description = "Workspace ID"),
+        ("stats_only" = Option<bool>, Query, description = "Only return diff stats"),
+    ),
+    responses((status = 101, description = "WebSocket upgrade for diff stream"))
+)]
 #[axum::debug_handler]
 pub async fn stream_task_attempt_diff_ws(
     ws: WebSocketUpgrade,
@@ -394,6 +454,16 @@ async fn handle_task_attempt_diff_ws(
     Ok(())
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/task-attempts/stream/ws",
+    tag = "TaskAttempts",
+    params(
+        ("archived" = Option<bool>, Query, description = "Filter by archived status"),
+        ("limit" = Option<i64>, Query, description = "Limit results"),
+    ),
+    responses((status = 101, description = "WebSocket upgrade for workspace stream"))
+)]
 pub async fn stream_workspaces_ws(
     ws: WebSocketUpgrade,
     Query(query): Query<WorkspaceStreamQuery>,
@@ -449,16 +519,24 @@ async fn handle_workspaces_ws(
     Ok(())
 }
 
-#[derive(Debug, Deserialize, Serialize, TS)]
+#[derive(Debug, Deserialize, Serialize, TS, utoipa::ToSchema)]
 pub struct MergeTaskAttemptRequest {
     pub repo_id: Uuid,
 }
 
-#[derive(Debug, Deserialize, Serialize, TS)]
+#[derive(Debug, Deserialize, Serialize, TS, utoipa::ToSchema)]
 pub struct PushTaskAttemptRequest {
     pub repo_id: Uuid,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/merge",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    request_body = MergeTaskAttemptRequest,
+    responses((status = 200, description = "Changes merged"))
+)]
 #[axum::debug_handler]
 pub async fn merge_task_attempt(
     Extension(workspace): Extension<Workspace>,
@@ -558,6 +636,14 @@ pub async fn merge_task_attempt(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/push",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    request_body = PushTaskAttemptRequest,
+    responses((status = 200, description = "Branch pushed"))
+)]
 pub async fn push_task_attempt_branch(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -593,6 +679,14 @@ pub async fn push_task_attempt_branch(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/push/force",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    request_body = PushTaskAttemptRequest,
+    responses((status = 200, description = "Branch force pushed"))
+)]
 pub async fn force_push_task_attempt_branch(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -629,7 +723,7 @@ pub enum PushError {
     ForcePushRequired,
 }
 
-#[derive(serde::Deserialize, TS)]
+#[derive(serde::Deserialize, TS, utoipa::ToSchema)]
 pub struct OpenEditorRequest {
     editor_type: Option<String>,
     file_path: Option<String>,
@@ -640,6 +734,13 @@ pub struct OpenEditorResponse {
     pub url: Option<String>,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/open-editor",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    responses((status = 200, description = "Editor opened"))
+)]
 pub async fn open_task_attempt_in_editor(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -740,6 +841,13 @@ pub struct RepoBranchStatus {
     pub status: BranchStatus,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/task-attempts/{id}/branch-status",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    responses((status = 200, description = "Branch status for all repos"))
+)]
 pub async fn get_task_attempt_branch_status(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -886,7 +994,7 @@ pub async fn get_task_attempt_branch_status(
     Ok(ResponseJson(ApiResponse::success(results)))
 }
 
-#[derive(serde::Deserialize, Debug, TS)]
+#[derive(serde::Deserialize, Debug, TS, utoipa::ToSchema)]
 pub struct ChangeTargetBranchRequest {
     pub repo_id: Uuid,
     pub new_target_branch: String,
@@ -899,7 +1007,7 @@ pub struct ChangeTargetBranchResponse {
     pub status: (usize, usize),
 }
 
-#[derive(serde::Deserialize, Debug, TS)]
+#[derive(serde::Deserialize, Debug, TS, utoipa::ToSchema)]
 pub struct RenameBranchRequest {
     pub new_branch_name: String,
 }
@@ -921,6 +1029,14 @@ pub enum RenameBranchError {
     RenameFailed { repo_name: String, message: String },
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/change-target-branch",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    request_body = ChangeTargetBranchRequest,
+    responses((status = 200, description = "Target branch changed"))
+)]
 #[axum::debug_handler]
 pub async fn change_target_branch(
     Extension(workspace): Extension<Workspace>,
@@ -974,6 +1090,14 @@ pub async fn change_target_branch(
     )))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/rename-branch",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    request_body = RenameBranchRequest,
+    responses((status = 200, description = "Branch renamed"))
+)]
 #[axum::debug_handler]
 pub async fn rename_branch(
     Extension(workspace): Extension<Workspace>,
@@ -1114,6 +1238,14 @@ pub async fn rename_branch(
     })))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/rebase",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    request_body = RebaseTaskAttemptRequest,
+    responses((status = 200, description = "Rebase completed or conflict"))
+)]
 #[axum::debug_handler]
 pub async fn rebase_task_attempt(
     Extension(workspace): Extension<Workspace>,
@@ -1214,6 +1346,14 @@ pub async fn rebase_task_attempt(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/conflicts/abort",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    request_body = AbortConflictsRequest,
+    responses((status = 200, description = "Conflicts aborted"))
+)]
 #[axum::debug_handler]
 pub async fn abort_conflicts_task_attempt(
     Extension(workspace): Extension<Workspace>,
@@ -1238,6 +1378,14 @@ pub async fn abort_conflicts_task_attempt(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/rebase/continue",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    request_body = ContinueRebaseRequest,
+    responses((status = 200, description = "Rebase continued"))
+)]
 #[axum::debug_handler]
 pub async fn continue_rebase_task_attempt(
     Extension(workspace): Extension<Workspace>,
@@ -1262,6 +1410,13 @@ pub async fn continue_rebase_task_attempt(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/start-dev-server",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    responses((status = 200, description = "Dev server started"))
+)]
 #[axum::debug_handler]
 pub async fn start_dev_server(
     Extension(workspace): Extension<Workspace>,
@@ -1378,6 +1533,13 @@ pub async fn start_dev_server(
     Ok(ResponseJson(ApiResponse::success(execution_processes)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/task-attempts/{id}/children",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    responses((status = 200, description = "Task relationships"))
+)]
 pub async fn get_task_attempt_children(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -1408,6 +1570,13 @@ pub async fn get_task_attempt_children(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/stop",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    responses((status = 200, description = "Execution stopped"))
+)]
 pub async fn stop_task_attempt_execution(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -1434,6 +1603,13 @@ pub enum RunScriptError {
     ProcessAlreadyRunning,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/run-setup-script",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    responses((status = 200, description = "Setup script executed"))
+)]
 #[axum::debug_handler]
 pub async fn run_setup_script(
     Extension(workspace): Extension<Workspace>,
@@ -1513,6 +1689,13 @@ pub async fn run_setup_script(
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/run-cleanup-script",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    responses((status = 200, description = "Cleanup script executed"))
+)]
 #[axum::debug_handler]
 pub async fn run_cleanup_script(
     Extension(workspace): Extension<Workspace>,
@@ -1592,6 +1775,13 @@ pub async fn run_cleanup_script(
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/run-archive-script",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    responses((status = 200, description = "Archive script executed"))
+)]
 pub async fn run_archive_script(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -1666,6 +1856,13 @@ pub async fn run_archive_script(
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/gh-cli-setup",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    responses((status = 200, description = "GH CLI setup executed"))
+)]
 #[axum::debug_handler]
 pub async fn gh_cli_setup_handler(
     Extension(workspace): Extension<Workspace>,
@@ -1703,6 +1900,13 @@ pub async fn gh_cli_setup_handler(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/task-attempts/{id}/repos",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    responses((status = 200, description = "Repos with target branches"))
+)]
 pub async fn get_task_attempt_repos(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -1715,6 +1919,13 @@ pub async fn get_task_attempt_repos(
     Ok(ResponseJson(ApiResponse::success(repos)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/task-attempts/{id}/first-message",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    responses((status = 200, description = "First user message"))
+)]
 pub async fn get_first_user_message(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -1726,6 +1937,17 @@ pub async fn get_first_user_message(
     Ok(ResponseJson(ApiResponse::success(message)))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/task-attempts/{id}",
+    tag = "TaskAttempts",
+    params(
+        ("id" = Uuid, Path, description = "Workspace ID"),
+        ("delete_remote" = Option<bool>, Query, description = "Delete remote workspace"),
+        ("delete_branches" = Option<bool>, Query, description = "Delete git branches"),
+    ),
+    responses((status = 202, description = "Workspace deletion accepted"))
+)]
 pub async fn delete_workspace(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -1881,6 +2103,13 @@ pub async fn delete_workspace(
 }
 
 /// Mark all coding agent turns for a workspace as seen
+#[utoipa::path(
+    put,
+    path = "/api/task-attempts/{id}/mark-seen",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    responses((status = 200, description = "Turns marked as seen"))
+)]
 #[axum::debug_handler]
 pub async fn mark_seen(
     Extension(workspace): Extension<Workspace>,
@@ -1894,6 +2123,13 @@ pub async fn mark_seen(
 }
 
 /// Links a local workspace to the remote server, associating it with a remote issue.
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/link",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    responses((status = 200, description = "Workspace linked"))
+)]
 pub async fn link_workspace(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -1921,6 +2157,13 @@ pub async fn link_workspace(
 }
 
 /// Unlinks a local workspace from the remote server by deleting the remote workspace.
+#[utoipa::path(
+    post,
+    path = "/api/task-attempts/{id}/unlink",
+    tag = "TaskAttempts",
+    params(("id" = Uuid, Path, description = "Workspace ID")),
+    responses((status = 200, description = "Workspace unlinked"))
+)]
 pub async fn unlink_workspace(
     AxumPath(workspace_id): AxumPath<uuid::Uuid>,
     State(deployment): State<DeploymentImpl>,

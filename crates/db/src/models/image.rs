@@ -4,7 +4,7 @@ use sqlx::{FromRow, SqlitePool};
 use ts_rs::TS;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct Image {
     pub id: Uuid,
     pub file_path: String, // relative path within cache/images/
@@ -25,7 +25,7 @@ pub struct CreateImage {
     pub hash: String,
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS, utoipa::ToSchema)]
 pub struct TaskImage {
     pub id: Uuid,
     pub task_id: Uuid,

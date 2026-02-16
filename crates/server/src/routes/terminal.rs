@@ -49,6 +49,7 @@ enum TerminalMessage {
     Error { message: String },
 }
 
+#[utoipa::path(get, path = "/api/terminal/ws", tag = "Terminal", params(("workspace_id" = Uuid, Query, description = "Workspace ID")), responses((status = 101, description = "WebSocket upgrade for terminal")))]
 pub async fn terminal_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,

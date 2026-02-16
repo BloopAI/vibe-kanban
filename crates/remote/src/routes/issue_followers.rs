@@ -34,12 +34,22 @@ pub fn router() -> axum::Router<AppState> {
     mutation().router()
 }
 
+#[utoipa::path(
+    get, path = "/v1/issue_followers",
+    tag = "IssueFollowers",
+    params(("issue_id" = Uuid, Query, description = "Issue ID")),
+    responses(
+        (status = 200, description = "List of issue followers"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_followers.list_issue_followers",
     skip(state, ctx),
     fields(issue_id = %query.issue_id, user_id = %ctx.user.id)
 )]
-async fn list_issue_followers(
+pub(crate) async fn list_issue_followers(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Query(query): Query<ListIssueFollowersQuery>,
@@ -59,12 +69,23 @@ async fn list_issue_followers(
     Ok(Json(ListIssueFollowersResponse { issue_followers }))
 }
 
+#[utoipa::path(
+    get, path = "/v1/issue_followers/{id}",
+    tag = "IssueFollowers",
+    params(("id" = Uuid, Path, description = "Issue follower ID")),
+    responses(
+        (status = 200, description = "Issue follower found"),
+        (status = 404, description = "Issue follower not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_followers.get_issue_follower",
     skip(state, ctx),
     fields(issue_follower_id = %issue_follower_id, user_id = %ctx.user.id)
 )]
-async fn get_issue_follower(
+pub(crate) async fn get_issue_follower(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_follower_id): Path<Uuid>,
@@ -85,12 +106,22 @@ async fn get_issue_follower(
     Ok(Json(follower))
 }
 
+#[utoipa::path(
+    post, path = "/v1/issue_followers",
+    tag = "IssueFollowers",
+    request_body = CreateIssueFollowerRequest,
+    responses(
+        (status = 200, description = "Issue follower created"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_followers.create_issue_follower",
     skip(state, ctx, payload),
     fields(issue_id = %payload.issue_id, user_id = %ctx.user.id)
 )]
-async fn create_issue_follower(
+pub(crate) async fn create_issue_follower(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateIssueFollowerRequest>,
@@ -112,12 +143,23 @@ async fn create_issue_follower(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    delete, path = "/v1/issue_followers/{id}",
+    tag = "IssueFollowers",
+    params(("id" = Uuid, Path, description = "Issue follower ID")),
+    responses(
+        (status = 200, description = "Issue follower deleted"),
+        (status = 404, description = "Issue follower not found"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("bearer_auth" = []))
+)]
 #[instrument(
     name = "issue_followers.delete_issue_follower",
     skip(state, ctx),
     fields(issue_follower_id = %issue_follower_id, user_id = %ctx.user.id)
 )]
-async fn delete_issue_follower(
+pub(crate) async fn delete_issue_follower(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(issue_follower_id): Path<Uuid>,

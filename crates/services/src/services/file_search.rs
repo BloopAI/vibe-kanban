@@ -25,7 +25,7 @@ use ts_rs::TS;
 use super::file_ranker::{FileRanker, FileStats};
 
 /// Search mode for different use cases
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 #[derive(Default)]
 pub enum SearchMode {
