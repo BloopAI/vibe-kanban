@@ -1,10 +1,11 @@
-import { PROJECTS_SHAPE, type Project } from 'shared/remote-types';
+import type { Project } from 'shared/remote-types';
 import { type OrganizationWithRole } from 'shared/types';
-import { organizationsApi } from '@/lib/api';
-import { createShapeCollection } from '@/lib/electric/collections';
+import { handleApiResponse, organizationsApi } from '@/lib/api';
 import { getFirstProjectByOrder } from '@/lib/projectOrder';
 
-const FIRST_PROJECT_LOOKUP_TIMEOUT_MS = 3000;
+type ListRemoteProjectsResponse = {
+  projects: Project[];
+};
 
 function getFirstOrganization(
   organizations: OrganizationWithRole[]
@@ -22,55 +23,12 @@ function getFirstOrganization(
 async function getFirstProjectInOrganization(
   organizationId: string
 ): Promise<Project | null> {
-  const collection = createShapeCollection(PROJECTS_SHAPE, {
-    organization_id: organizationId,
-  });
-
-  if (collection.isReady()) {
-    return getFirstProjectByOrder(collection.toArray as unknown as Project[]);
-  }
-
-  return new Promise<Project | null>((resolve) => {
-    let settled = false;
-    let timeoutId: number | undefined;
-    let subscription: { unsubscribe: () => void } | undefined;
-
-    const settle = (project: Project | null) => {
-      if (settled) return;
-      settled = true;
-
-      if (timeoutId !== undefined) {
-        window.clearTimeout(timeoutId);
-        timeoutId = undefined;
-      }
-      if (subscription) {
-        subscription.unsubscribe();
-        subscription = undefined;
-      }
-
-      resolve(project);
-    };
-
-    const tryResolve = () => {
-      if (!collection.isReady()) {
-        return;
-      }
-
-      settle(
-        getFirstProjectByOrder(collection.toArray as unknown as Project[])
-      );
-    };
-
-    subscription = collection.subscribeChanges(tryResolve, {
-      includeInitialState: true,
-    });
-
-    timeoutId = window.setTimeout(() => {
-      settle(null);
-    }, FIRST_PROJECT_LOOKUP_TIMEOUT_MS);
-
-    tryResolve();
-  });
+  const response = await fetch(
+    `/api/remote/projects?organization_id=${encodeURIComponent(organizationId)}`
+  );
+  const { projects } =
+    await handleApiResponse<ListRemoteProjectsResponse>(response);
+  return getFirstProjectByOrder(projects);
 }
 
 export async function getFirstProjectDestination(
