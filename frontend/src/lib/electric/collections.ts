@@ -2,7 +2,7 @@ import { electricCollectionOptions } from '@tanstack/electric-db-collection';
 import { createCollection } from '@tanstack/react-db';
 
 import { tokenManager } from '../auth/tokenManager';
-import { makeRequest, REMOTE_API_URL } from '@/lib/remoteApi';
+import { makeRequest, getRemoteApiUrl } from '@/lib/remoteApi';
 import type { MutationDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { CollectionConfig, SyncError } from './types';
 
@@ -169,7 +169,7 @@ function getAuthenticatedShapeOptions(
   };
 
   return {
-    url: `${REMOTE_API_URL}${url}`,
+    url: `${getRemoteApiUrl()}${url}`,
     params,
     headers: {
       Authorization: async () => {

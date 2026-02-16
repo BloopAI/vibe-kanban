@@ -11,7 +11,33 @@ import type {
 } from 'shared/remote-types';
 import { tokenManager } from './auth/tokenManager';
 
-export const REMOTE_API_URL = import.meta.env.VITE_VK_SHARED_API_BASE || '';
+const BUILD_TIME_API_BASE = import.meta.env.VITE_VK_SHARED_API_BASE || '';
+
+// Mutable module-level variable — overridden at runtime by ConfigProvider
+// when VK_SHARED_API_BASE is set (for self-hosting support)
+let _remoteApiBase: string = BUILD_TIME_API_BASE;
+
+/**
+ * Set the remote API base URL at runtime.
+ * Called by ConfigProvider when /api/info returns a shared_api_base value.
+ * No-op if base is null/undefined/empty (preserves build-time fallback).
+ */
+export function setRemoteApiBase(base: string | null | undefined) {
+  if (base) {
+    _remoteApiBase = base;
+  }
+}
+
+/**
+ * Get the current remote API base URL.
+ * Returns the runtime value if set by ConfigProvider, otherwise the build-time default.
+ */
+export function getRemoteApiUrl(): string {
+  return _remoteApiBase;
+}
+
+// Backward-compatible export — consumers should migrate to getRemoteApiUrl()
+export const REMOTE_API_URL = BUILD_TIME_API_BASE;
 
 export const makeRequest = async (
   path: string,
@@ -31,7 +57,7 @@ export const makeRequest = async (
   headers.set('X-Client-Version', __APP_VERSION__);
   headers.set('X-Client-Type', 'frontend');
 
-  const response = await fetch(`${REMOTE_API_URL}${path}`, {
+  const response = await fetch(`${getRemoteApiUrl()}${path}`, {
     ...options,
     headers,
     credentials: 'include',
@@ -43,7 +69,7 @@ export const makeRequest = async (
     if (newToken) {
       // Retry the request with the new token
       headers.set('Authorization', `Bearer ${newToken}`);
-      return fetch(`${REMOTE_API_URL}${path}`, {
+      return fetch(`${getRemoteApiUrl()}${path}`, {
         ...options,
         headers,
         credentials: 'include',

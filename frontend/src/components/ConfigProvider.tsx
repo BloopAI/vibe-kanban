@@ -11,6 +11,7 @@ import {
 import type { ExecutorConfig } from 'shared/types';
 import { configApi } from '../lib/api';
 import { updateLanguageFromConfig } from '../i18n/config';
+import { setRemoteApiBase } from '@/lib/remoteApi';
 
 interface UserSystemState {
   config: Config | null;
@@ -78,6 +79,10 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       string,
       BaseAgentCapability[]
     > | null) || null;
+
+  // Set runtime remote API base URL for self-hosting support.
+  // Must run during render (not in useEffect) so it's set before children mount.
+  setRemoteApiBase(userSystemInfo?.shared_api_base);
 
   // Sync language with i18n when config changes
   useEffect(() => {
