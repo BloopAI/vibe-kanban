@@ -12,6 +12,7 @@ use super::{ApiResponseEnvelope, TaskServer};
 
 mod context;
 mod issue_assignees;
+mod issue_tags;
 mod organizations;
 mod remote_issues;
 mod remote_projects;
@@ -31,6 +32,7 @@ impl TaskServer {
                 + Self::remote_projects_tools_router()
                 + Self::remote_issues_tools_router()
                 + Self::issue_assignees_tools_router()
+                + Self::issue_tags_tools_router()
                 + Self::task_attempts_tools_router(),
             context: None,
         }

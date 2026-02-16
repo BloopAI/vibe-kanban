@@ -1,6 +1,6 @@
 use api_types::{
-    CreateIssueRequest, Issue, IssueAssignee, IssuePriority, ListIssuesResponse, MutationResponse,
-    UpdateIssueRequest,
+    CreateIssueRequest, Issue, IssueAssignee, IssuePriority, IssueTag, ListIssuesResponse,
+    MutationResponse, Tag, UpdateIssueRequest,
 };
 use rmcp::{
     ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
@@ -54,8 +54,14 @@ struct McpListIssuesRequest {
     parent_issue_id: Option<Uuid>,
     #[schemars(description = "Case-insensitive substring match against title and description")]
     search: Option<String>,
+    #[schemars(description = "Filter by issue simple ID (case-insensitive exact match)")]
+    simple_id: Option<String>,
     #[schemars(description = "Filter to issues assigned to this user ID")]
     assignee_user_id: Option<Uuid>,
+    #[schemars(description = "Filter to issues having this tag ID")]
+    tag_id: Option<Uuid>,
+    #[schemars(description = "Filter to issues having a tag with this name (case-insensitive)")]
+    tag_name: Option<String>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -64,6 +70,8 @@ struct IssueSummary {
     id: String,
     #[schemars(description = "The title of the issue")]
     title: String,
+    #[schemars(description = "The human-readable issue simple ID")]
+    simple_id: String,
     #[schemars(description = "Current status of the issue")]
     status: String,
     #[schemars(description = "Current priority of the issue")]
@@ -82,6 +90,8 @@ struct IssueDetails {
     id: String,
     #[schemars(description = "The title of the issue")]
     title: String,
+    #[schemars(description = "The human-readable issue simple ID")]
+    simple_id: String,
     #[schemars(description = "Optional description of the issue")]
     description: Option<String>,
     #[schemars(description = "Current status of the issue")]
@@ -167,6 +177,16 @@ struct RemoteListIssueAssigneesResponse {
     issue_assignees: Vec<IssueAssignee>,
 }
 
+#[derive(Debug, Deserialize)]
+struct RemoteListIssueTagsResponse {
+    issue_tags: Vec<IssueTag>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RemoteListTagsResponse {
+    tags: Vec<Tag>,
+}
+
 #[tool_router(router = remote_issues_tools_router, vis = "pub")]
 impl TaskServer {
     #[tool(
@@ -246,7 +266,10 @@ impl TaskServer {
             priority,
             parent_issue_id,
             search,
+            simple_id,
             assignee_user_id,
+            tag_id,
+            tag_name,
         }): Parameters<McpListIssuesRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let project_id = match self.resolve_project_id(project_id) {
@@ -276,6 +299,10 @@ impl TaskServer {
                         .map(|description| description.to_ascii_lowercase().contains(&search))
                         .unwrap_or(false)
             });
+        }
+
+        if let Some(simple_id) = simple_id {
+            issues.retain(|issue| issue.simple_id.eq_ignore_ascii_case(&simple_id));
         }
 
         let status_names_by_id = match self.fetch_project_statuses(project_id).await {
@@ -311,6 +338,47 @@ impl TaskServer {
                 Err(e) => return Ok(e),
             };
             issues.retain(|issue| issue.priority == Some(priority_filter));
+        }
+
+        if tag_id.is_some() || tag_name.is_some() {
+            let mut candidate_tag_ids = std::collections::HashSet::new();
+
+            if let Some(tag_id) = tag_id {
+                candidate_tag_ids.insert(tag_id);
+            }
+
+            if let Some(tag_name) = tag_name {
+                let url = self.url(&format!("/api/remote/tags?project_id={}", project_id));
+                let tags: RemoteListTagsResponse = match self.send_json(self.client.get(&url)).await
+                {
+                    Ok(t) => t,
+                    Err(e) => return Ok(e),
+                };
+                let matching_tag_ids = tags
+                    .tags
+                    .into_iter()
+                    .filter(|tag| tag.name.eq_ignore_ascii_case(&tag_name))
+                    .map(|tag| tag.id)
+                    .collect::<std::collections::HashSet<_>>();
+
+                if candidate_tag_ids.is_empty() {
+                    candidate_tag_ids = matching_tag_ids;
+                } else {
+                    candidate_tag_ids.retain(|id| matching_tag_ids.contains(id));
+                }
+            }
+
+            if candidate_tag_ids.is_empty() {
+                issues.clear();
+            } else {
+                issues = match self
+                    .filter_issues_by_tag_ids(issues, &candidate_tag_ids)
+                    .await
+                {
+                    Ok(filtered) => filtered,
+                    Err(e) => return Ok(e),
+                };
+            }
         }
 
         if let Some(assignee_user_id) = assignee_user_id {
@@ -473,6 +541,7 @@ impl TaskServer {
         IssueSummary {
             id: issue.id.to_string(),
             title: issue.title.clone(),
+            simple_id: issue.simple_id.clone(),
             status,
             priority: issue
                 .priority
@@ -491,6 +560,7 @@ impl TaskServer {
         IssueDetails {
             id: issue.id.to_string(),
             title: issue.title.clone(),
+            simple_id: issue.simple_id.clone(),
             description: issue.description.clone(),
             status,
             status_id: issue.status_id.to_string(),
@@ -550,6 +620,27 @@ impl TaskServer {
                 .issue_assignees
                 .iter()
                 .any(|assignee| assignee.user_id == assignee_user_id)
+            {
+                filtered.push(issue);
+            }
+        }
+        Ok(filtered)
+    }
+
+    async fn filter_issues_by_tag_ids(
+        &self,
+        issues: Vec<Issue>,
+        tag_ids: &std::collections::HashSet<Uuid>,
+    ) -> Result<Vec<Issue>, CallToolResult> {
+        let mut filtered = Vec::new();
+        for issue in issues {
+            let url = self.url(&format!("/api/remote/issue-tags?issue_id={}", issue.id));
+            let issue_tags: RemoteListIssueTagsResponse =
+                self.send_json(self.client.get(&url)).await?;
+            if issue_tags
+                .issue_tags
+                .iter()
+                .any(|issue_tag| tag_ids.contains(&issue_tag.tag_id))
             {
                 filtered.push(issue);
             }

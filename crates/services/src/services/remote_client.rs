@@ -7,10 +7,11 @@ use api_types::{
     CreateIssueAssigneeRequest, CreateIssueRequest, CreateOrganizationRequest,
     CreateOrganizationResponse, CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest,
     GetInvitationResponse, GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse,
-    HandoffRedeemRequest, HandoffRedeemResponse, Issue, IssueAssignee, ListAttachmentsResponse,
-    ListInvitationsResponse, ListIssueAssigneesResponse, ListIssuesResponse, ListMembersResponse,
-    ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse, MutationResponse,
-    Organization, ProfileResponse, RevokeInvitationRequest, TokenRefreshRequest,
+    HandoffRedeemRequest, HandoffRedeemResponse, Issue, IssueAssignee, IssueTag,
+    ListAttachmentsResponse, ListInvitationsResponse, ListIssueAssigneesResponse,
+    ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse, ListOrganizationsResponse,
+    ListProjectStatusesResponse, ListProjectsResponse, ListTagsResponse, MutationResponse,
+    Organization, ProfileResponse, RevokeInvitationRequest, Tag, TokenRefreshRequest,
     TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
     UpdateOrganizationRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
 };
@@ -103,6 +104,23 @@ struct RemoteCreateIssueAssigneeRequest {
     id: Option<Uuid>,
     issue_id: Uuid,
     user_id: Uuid,
+}
+
+#[derive(Debug, Deserialize)]
+struct RemoteListTagsResponse {
+    tags: Vec<Tag>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RemoteListIssueTagsResponse {
+    issue_tags: Vec<IssueTag>,
+}
+
+#[derive(Debug, Serialize)]
+struct RemoteCreateIssueTagRequest {
+    id: Option<Uuid>,
+    issue_id: Uuid,
+    tag_id: Uuid,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -820,6 +838,75 @@ impl RemoteClient {
             .send(
                 reqwest::Method::DELETE,
                 &format!("/v1/issue_assignees/{issue_assignee_id}"),
+                true,
+                None::<&()>,
+            )
+            .await?;
+        res.json::<DeleteResponse>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    // ── Tags ───────────────────────────────────────────────────────────
+
+    /// Lists tags for a project.
+    pub async fn list_tags(&self, project_id: Uuid) -> Result<ListTagsResponse, RemoteClientError> {
+        let response: RemoteListTagsResponse = self
+            .get_authed(&format!("/v1/tags?project_id={project_id}"))
+            .await?;
+        Ok(ListTagsResponse {
+            tags: response.tags,
+        })
+    }
+
+    /// Gets a single tag by ID.
+    pub async fn get_tag(&self, tag_id: Uuid) -> Result<Tag, RemoteClientError> {
+        self.get_authed(&format!("/v1/tags/{tag_id}")).await
+    }
+
+    // ── Issue Tags ─────────────────────────────────────────────────────
+
+    /// Lists tags attached to an issue.
+    pub async fn list_issue_tags(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<ListIssueTagsResponse, RemoteClientError> {
+        let response: RemoteListIssueTagsResponse = self
+            .get_authed(&format!("/v1/issue_tags?issue_id={issue_id}"))
+            .await?;
+        Ok(ListIssueTagsResponse {
+            issue_tags: response.issue_tags,
+        })
+    }
+
+    /// Gets a single issue-tag relation by ID.
+    pub async fn get_issue_tag(&self, issue_tag_id: Uuid) -> Result<IssueTag, RemoteClientError> {
+        self.get_authed(&format!("/v1/issue_tags/{issue_tag_id}"))
+            .await
+    }
+
+    /// Attaches a tag to an issue.
+    pub async fn create_issue_tag(
+        &self,
+        request: &api_types::CreateIssueTagRequest,
+    ) -> Result<MutationResponse<IssueTag>, RemoteClientError> {
+        let payload = RemoteCreateIssueTagRequest {
+            id: request.id,
+            issue_id: request.issue_id,
+            tag_id: request.tag_id,
+        };
+        self.post_authed("/v1/issue_tags", Some(&payload)).await
+    }
+
+    /// Removes a tag from an issue.
+    pub async fn delete_issue_tag(
+        &self,
+        issue_tag_id: Uuid,
+    ) -> Result<DeleteResponse, RemoteClientError> {
+        let res = self
+            .send(
+                reqwest::Method::DELETE,
+                &format!("/v1/issue_tags/{issue_tag_id}"),
                 true,
                 None::<&()>,
             )
