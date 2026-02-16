@@ -1,0 +1,63 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO projects (\n                id, organization_id, name, color, sort_order,\n                created_at, updated_at\n            )\n            VALUES (\n                $1,\n                $2,\n                $3,\n                $4,\n                COALESCE(\n                    (SELECT MAX(sort_order) + 1 FROM projects WHERE organization_id = $2),\n                    0\n                ),\n                $5,\n                $6\n            )\n            RETURNING\n                id               AS \"id!: Uuid\",\n                organization_id  AS \"organization_id!: Uuid\",\n                name             AS \"name!\",\n                color            AS \"color!\",\n                sort_order       AS \"sort_order!\",\n                created_at       AS \"created_at!: DateTime<Utc>\",\n                updated_at       AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "organization_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "color!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "sort_order!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Varchar",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "37af75dde5f977838d59b57729e9a238d2d2def278d376adc1d4c1d038a918cf"
+}

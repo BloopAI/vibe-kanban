@@ -7,6 +7,7 @@ import type {
   InitUploadRequest,
   InitUploadResponse,
   UpdateIssueRequest,
+  UpdateProjectRequest,
   UpdateProjectStatusRequest,
 } from 'shared/remote-types';
 import { tokenManager } from './auth/tokenManager';
@@ -85,6 +86,26 @@ export const makeRequest = async (
 export interface BulkUpdateIssueItem {
   id: string;
   changes: Partial<UpdateIssueRequest>;
+}
+
+export interface BulkUpdateProjectItem {
+  id: string;
+  changes: Partial<UpdateProjectRequest>;
+}
+
+export async function bulkUpdateProjects(
+  updates: BulkUpdateProjectItem[]
+): Promise<void> {
+  const response = await makeRequest('/v1/projects/bulk', {
+    method: 'POST',
+    body: JSON.stringify({
+      updates: updates.map((u) => ({ id: u.id, ...u.changes })),
+    }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to bulk update projects');
+  }
 }
 
 export async function bulkUpdateIssues(

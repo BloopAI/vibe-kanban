@@ -1,3 +1,10 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  DragDropContext,
+  Draggable,
+  Droppable,
+  type DropResult,
+} from '@hello-pangea/dnd';
 import {
   LayoutIcon,
   PlusIcon,
@@ -49,6 +56,7 @@ interface AppBarProps {
   onCreateProject: () => void;
   onWorkspacesClick: () => void;
   onProjectClick: (projectId: string) => void;
+  onProjectsReorder: (orderedProjects: RemoteProject[]) => Promise<void>;
   isWorkspacesActive: boolean;
   activeProjectId: string | null;
   isSignedIn?: boolean;
@@ -66,6 +74,7 @@ export function AppBar({
   onCreateProject,
   onWorkspacesClick,
   onProjectClick,
+  onProjectsReorder,
   isWorkspacesActive,
   activeProjectId,
   isSignedIn,
@@ -76,6 +85,62 @@ export function AppBar({
   const { t } = useTranslation('common');
   const { data: onlineCount } = useDiscordOnlineCount();
   const { data: starCount } = useGitHubStars();
+  const sortedProjects = useMemo(() => {
+    return [...projects].sort((a, b) => {
+      const bySortOrder = a.sort_order - b.sort_order;
+      if (bySortOrder !== 0) {
+        return bySortOrder;
+      }
+
+      const byCreatedAt =
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      if (byCreatedAt !== 0) {
+        return byCreatedAt;
+      }
+
+      return a.id.localeCompare(b.id);
+    });
+  }, [projects]);
+  const [orderedProjects, setOrderedProjects] =
+    useState<RemoteProject[]>(sortedProjects);
+  const [isSavingProjectOrder, setIsSavingProjectOrder] = useState(false);
+
+  useEffect(() => {
+    setOrderedProjects(sortedProjects);
+  }, [sortedProjects]);
+
+  const handleProjectDragEnd = useCallback(
+    async ({ source, destination }: DropResult) => {
+      if (isSavingProjectOrder) {
+        return;
+      }
+      if (!destination || source.index === destination.index) {
+        return;
+      }
+
+      const previousOrder = orderedProjects;
+      const reordered = [...orderedProjects];
+      const [moved] = reordered.splice(source.index, 1);
+
+      if (!moved) {
+        return;
+      }
+
+      reordered.splice(destination.index, 0, moved);
+      setOrderedProjects(reordered);
+      setIsSavingProjectOrder(true);
+
+      try {
+        await onProjectsReorder(reordered);
+      } catch (error) {
+        console.error('Failed to reorder projects:', error);
+        setOrderedProjects(previousOrder);
+      } finally {
+        setIsSavingProjectOrder(false);
+      }
+    },
+    [isSavingProjectOrder, onProjectsReorder, orderedProjects]
+  );
 
   return (
     <div
@@ -158,33 +223,64 @@ export function AppBar({
       )}
 
       {/* Middle section: Project buttons */}
-      {projects.map((project) => (
-        <Tooltip key={project.id} content={project.name} side="right">
-          <button
-            type="button"
-            onClick={() => onProjectClick(project.id)}
-            className={cn(
-              'flex items-center justify-center w-10 h-10 rounded-lg',
-              'text-sm font-medium transition-colors cursor-pointer',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-              activeProjectId === project.id
-                ? ''
-                : 'bg-primary text-normal hover:opacity-80'
-            )}
-            style={
-              activeProjectId === project.id
-                ? {
-                    color: `hsl(${project.color})`,
-                    backgroundColor: `hsl(${project.color} / 0.2)`,
-                  }
-                : undefined
-            }
-            aria-label={project.name}
-          >
-            {getProjectInitials(project.name)}
-          </button>
-        </Tooltip>
-      ))}
+      <DragDropContext onDragEnd={handleProjectDragEnd}>
+        <Droppable
+          droppableId="app-bar-projects"
+          direction="vertical"
+          isDropDisabled={isSavingProjectOrder}
+        >
+          {(dropProvided) => (
+            <div
+              ref={dropProvided.innerRef}
+              {...dropProvided.droppableProps}
+              className="flex flex-col items-center gap-base"
+            >
+              {orderedProjects.map((project, index) => (
+                <Draggable
+                  key={project.id}
+                  draggableId={project.id}
+                  index={index}
+                  isDragDisabled={isSavingProjectOrder}
+                >
+                  {(dragProvided, snapshot) => (
+                    <Tooltip content={project.name} side="right">
+                      <button
+                        ref={dragProvided.innerRef}
+                        type="button"
+                        onClick={() => onProjectClick(project.id)}
+                        {...dragProvided.draggableProps}
+                        {...dragProvided.dragHandleProps}
+                        className={cn(
+                          'flex items-center justify-center w-10 h-10 rounded-lg',
+                          'text-sm font-medium transition-colors cursor-grab',
+                          'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                          snapshot.isDragging && 'shadow-lg',
+                          activeProjectId === project.id
+                            ? ''
+                            : 'bg-primary text-normal hover:opacity-80'
+                        )}
+                        style={{
+                          ...(dragProvided.draggableProps.style ?? {}),
+                          ...(activeProjectId === project.id
+                            ? {
+                                color: `hsl(${project.color})`,
+                                backgroundColor: `hsl(${project.color} / 0.2)`,
+                              }
+                            : {}),
+                        }}
+                        aria-label={project.name}
+                      >
+                        {getProjectInitials(project.name)}
+                      </button>
+                    </Tooltip>
+                  )}
+                </Draggable>
+              ))}
+              {dropProvided.placeholder}
+            </div>
+          )}
+        </Droppable>
+      </DragDropContext>
 
       {/* Create project button */}
       {isSignedIn && (

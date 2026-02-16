@@ -17,6 +17,8 @@ import {
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
+import { bulkUpdateProjects } from '@/lib/remoteApi';
+import type { Project as RemoteProject } from 'shared/remote-types';
 
 export function SharedAppLayout() {
   const navigate = useNavigate();
@@ -102,6 +104,18 @@ export function SharedAppLayout() {
     [navigate]
   );
 
+  const handleProjectsReorder = useCallback(
+    async (orderedProjects: RemoteProject[]) => {
+      await bulkUpdateProjects(
+        orderedProjects.map((project, index) => ({
+          id: project.id,
+          changes: { sort_order: index },
+        }))
+      );
+    },
+    []
+  );
+
   const handleCreateOrg = useCallback(async () => {
     try {
       const result: CreateOrganizationResult =
@@ -166,6 +180,7 @@ export function SharedAppLayout() {
             onCreateProject={handleCreateProject}
             onWorkspacesClick={handleWorkspacesClick}
             onProjectClick={handleProjectClick}
+            onProjectsReorder={handleProjectsReorder}
             isWorkspacesActive={isWorkspacesActive}
             activeProjectId={activeProjectId}
             isSignedIn={isSignedIn}

@@ -41,6 +41,7 @@ impl ProjectRepository {
                 organization_id  AS "organization_id!: Uuid",
                 name             AS "name!",
                 color            AS "color!",
+                sort_order       AS "sort_order!",
                 created_at       AS "created_at!: DateTime<Utc>",
                 updated_at       AS "updated_at!: DateTime<Utc>"
             FROM projects
@@ -70,15 +71,27 @@ impl ProjectRepository {
             Project,
             r#"
             INSERT INTO projects (
-                id, organization_id, name, color,
+                id, organization_id, name, color, sort_order,
                 created_at, updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6)
+            VALUES (
+                $1,
+                $2,
+                $3,
+                $4,
+                COALESCE(
+                    (SELECT MAX(sort_order) + 1 FROM projects WHERE organization_id = $2),
+                    0
+                ),
+                $5,
+                $6
+            )
             RETURNING
                 id               AS "id!: Uuid",
                 organization_id  AS "organization_id!: Uuid",
                 name             AS "name!",
                 color            AS "color!",
+                sort_order       AS "sort_order!",
                 created_at       AS "created_at!: DateTime<Utc>",
                 updated_at       AS "updated_at!: DateTime<Utc>"
             "#,
@@ -110,11 +123,12 @@ impl ProjectRepository {
                 organization_id  AS "organization_id!: Uuid",
                 name             AS "name!",
                 color            AS "color!",
+                sort_order       AS "sort_order!",
                 created_at       AS "created_at!: DateTime<Utc>",
                 updated_at       AS "updated_at!: DateTime<Utc>"
             FROM projects
             WHERE organization_id = $1
-            ORDER BY created_at DESC
+            ORDER BY sort_order ASC, created_at DESC
             "#,
             organization_id
         )
@@ -131,6 +145,7 @@ impl ProjectRepository {
         id: Uuid,
         name: Option<String>,
         color: Option<String>,
+        sort_order: Option<i32>,
     ) -> Result<MutationResponse<Project>, ProjectError> {
         let mut tx = pool.begin().await?;
         let updated_at = Utc::now();
@@ -141,18 +156,21 @@ impl ProjectRepository {
             SET
                 name = COALESCE($1, name),
                 color = COALESCE($2, color),
-                updated_at = $3
-            WHERE id = $4
+                sort_order = COALESCE($3, sort_order),
+                updated_at = $4
+            WHERE id = $5
             RETURNING
                 id               AS "id!: Uuid",
                 organization_id  AS "organization_id!: Uuid",
                 name             AS "name!",
                 color            AS "color!",
+                sort_order       AS "sort_order!",
                 created_at       AS "created_at!: DateTime<Utc>",
                 updated_at       AS "updated_at!: DateTime<Utc>"
             "#,
             name,
             color,
+            sort_order,
             updated_at,
             id
         )
