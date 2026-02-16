@@ -59,6 +59,9 @@ impl CursorAgent {
 
         if self.force.unwrap_or(false) {
             builder = builder.extend_params(["--force"]);
+        } else {
+            // trusting the current directory is a minimum requirement for cursor to run
+            builder = builder.extend_params(["--trust"]);
         }
 
         if let Some(model) = &self.model {
