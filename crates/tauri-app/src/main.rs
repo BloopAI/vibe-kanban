@@ -1,0 +1,82 @@
+// Prevents additional console window on Windows in release, DO NOT REMOVE!!
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+use std::sync::Arc;
+
+use tauri::Manager;
+use tokio::sync::oneshot;
+use tracing_subscriber::EnvFilter;
+
+fn main() {
+    // Install rustls crypto provider before any TLS operations
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
+
+    let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
+    let filter_string = format!(
+        "warn,server={level},services={level},db={level},executors={level},deployment={level},local_deployment={level},utils={level},vibe_kanban_tauri={level}",
+        level = log_level
+    );
+    let env_filter = EnvFilter::try_new(filter_string).expect("Failed to create tracing filter");
+    tracing_subscriber::fmt().with_env_filter(env_filter).init();
+
+    // Channel to signal the server to shut down when the window closes
+    let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
+    let shutdown_tx = Arc::new(std::sync::Mutex::new(Some(shutdown_tx)));
+    let shutdown_tx_clone = shutdown_tx.clone();
+
+    tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
+        .setup(|app| {
+            let window = app
+                .get_webview_window("main")
+                .expect("Failed to get main window");
+
+            // Spawn the Axum server on Tauri's async runtime
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = run_server(window, shutdown_rx).await {
+                    tracing::error!("Server failed to start: {}", e);
+                }
+            });
+
+            Ok(())
+        })
+        .on_window_event(move |_window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                // Send shutdown signal to the server
+                if let Some(tx) = shutdown_tx_clone.lock().unwrap().take() {
+                    let _ = tx.send(());
+                }
+            }
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+
+async fn run_server(
+    window: tauri::WebviewWindow,
+    shutdown_rx: oneshot::Receiver<()>,
+) -> anyhow::Result<()> {
+    let handle = server::startup::start().await?;
+
+    let url = handle.url();
+    tracing::info!("Server running on {url}");
+
+    // Navigate the webview to the server URL
+    if let Err(e) = window.eval(&format!("window.location.replace('{url}')")) {
+        tracing::error!("Failed to navigate webview: {}", e);
+    }
+
+    // When the window closes, cancel the server's shutdown token
+    let shutdown_token = handle.shutdown_token();
+    tauri::async_runtime::spawn(async move {
+        let _ = shutdown_rx.await;
+        tracing::info!("Shutdown signal received, stopping server...");
+        shutdown_token.cancel();
+    });
+
+    handle.serve().await?;
+
+    Ok(())
+}
