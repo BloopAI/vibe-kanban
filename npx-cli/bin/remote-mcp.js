@@ -22,21 +22,8 @@ const REMOTE_TYPES_FILE_CANDIDATES = [
     path.join(process.cwd(), 'shared', 'remote-types.ts'),
 ];
 const FALLBACK_MANIFEST = {
-    organizationsEndpoint: '/v1/organizations',
-    mutations: [
-        { table: 'projects', rowType: 'Project', url: '/v1/projects' },
-        {
-            table: 'project_statuses',
-            rowType: 'ProjectStatus',
-            url: '/v1/project_statuses',
-        },
-        { table: 'issues', rowType: 'Issue', url: '/v1/issues' },
-    ],
-    shapesByTable: new Map([
-        ['projects', [{ params: ['organization_id'] }]],
-        ['project_statuses', [{ params: ['project_id'] }]],
-        ['issues', [{ params: ['project_id'] }]],
-    ]),
+    mutations: [],
+    shapesByTable: new Map(),
 };
 function readFirstExistingFile(paths) {
     for (const candidate of paths) {
@@ -113,15 +100,9 @@ function prettyName(name) {
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(' ');
 }
-function shapePriority(shape) {
-    const params = shape.params || [];
-    if (params.includes('project_id'))
-        return 0;
-    if (params.includes('organization_id'))
-        return 1;
-    if (params.includes('issue_id'))
-        return 2;
-    return 10 + params.length;
+function shapeSortKey(shape) {
+    const params = Array.isArray(shape?.params) ? shape.params : [];
+    return [params.length, [...params].sort().join(','), shape.constName || ''].join('|');
 }
 function buildManifestFromTypes(typesSource) {
     const parsedShapes = parseShapeDefinitions(typesSource);
@@ -153,7 +134,6 @@ function buildManifestFromTypes(typesSource) {
         });
     }
     return {
-        organizationsEndpoint: '/v1/organizations',
         mutations,
         shapesByTable,
     };
@@ -288,15 +268,12 @@ function requireObject(value, fieldName) {
     }
     return value;
 }
-function sortStatuses(statuses) {
-    return [...statuses].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-}
 function pickListShape(table) {
     const shapes = MANIFEST.shapesByTable.get(table) || [];
     if (shapes.length === 0) {
         return null;
     }
-    return [...shapes].sort((a, b) => shapePriority(a) - shapePriority(b))[0];
+    return [...shapes].sort((a, b) => shapeSortKey(a).localeCompare(shapeSortKey(b)))[0];
 }
 function buildGeneratedCrudTools() {
     const tools = [];
@@ -473,219 +450,9 @@ function buildGeneratedCrudTools() {
     }
     return tools;
 }
-function findMutationByTable(table) {
-    return MANIFEST.mutations.find((mutation) => mutation.table === table);
-}
-const issueMutation = findMutationByTable('issues');
-const projectStatusMutation = findMutationByTable('project_statuses');
-async function getProjectStatuses(projectId) {
-    if (!projectStatusMutation) {
-        throw new Error('project_statuses mutation not available in remote-types.ts');
-    }
-    const response = await remoteRequest(projectStatusMutation.url, {
-        query: { project_id: projectId },
-    });
-    const statuses = Array.isArray(response.project_statuses)
-        ? response.project_statuses
-        : [];
-    return sortStatuses(statuses);
-}
-async function resolveStatusId(projectId, explicitStatusId, explicitStatusName) {
-    if (explicitStatusId)
-        return explicitStatusId;
-    const statuses = await getProjectStatuses(projectId);
-    if (explicitStatusName) {
-        const match = statuses.find((status) => typeof status.name === 'string' &&
-            status.name.toLowerCase() === explicitStatusName.toLowerCase());
-        if (!match) {
-            const available = statuses
-                .map((status) => status.name)
-                .filter(Boolean)
-                .join(', ');
-            throw new Error(`Unknown status '${explicitStatusName}'. Available statuses: ${available || 'none'}`);
-        }
-        return match.id;
-    }
-    const defaultStatus = statuses.find((status) => !status.hidden) || statuses[0];
-    if (!defaultStatus || !defaultStatus.id) {
-        throw new Error('No available project status to assign to the issue');
-    }
-    return defaultStatus.id;
-}
-function buildManualTools() {
-    const tools = [];
-    tools.push({
-        definition: {
-            name: 'list_organizations',
-            description: 'List organizations for the authenticated Vibe Kanban user.',
-            inputSchema: {
-                type: 'object',
-                properties: {},
-                additionalProperties: false,
-            },
-        },
-        handler: async () => {
-            const response = await remoteRequest(MANIFEST.organizationsEndpoint);
-            return {
-                organizations: Array.isArray(response.organizations)
-                    ? response.organizations
-                    : [],
-            };
-        },
-    });
-    if (issueMutation) {
-        tools.push({
-            definition: {
-                name: 'create_issue',
-                description: 'Create an issue with optional status name support. If status is omitted, the first visible status is used.',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        project_id: {
-                            type: 'string',
-                            description: 'Project UUID.',
-                        },
-                        title: {
-                            type: 'string',
-                            description: 'Issue title.',
-                        },
-                        description: {
-                            type: ['string', 'null'],
-                            description: 'Issue description.',
-                        },
-                        status: {
-                            type: 'string',
-                            description: 'Optional status name.',
-                        },
-                        status_id: {
-                            type: 'string',
-                            description: 'Optional explicit status UUID.',
-                        },
-                    },
-                    required: ['project_id', 'title'],
-                    additionalProperties: false,
-                },
-            },
-            handler: async (args) => {
-                const projectId = requireString(args.project_id, 'project_id');
-                const title = requireString(args.title, 'title');
-                const statusId = await resolveStatusId(projectId, args.status_id, args.status);
-                const payload = {
-                    project_id: projectId,
-                    status_id: statusId,
-                    title,
-                    description: args.description === undefined ? null : args.description,
-                    priority: null,
-                    start_date: null,
-                    target_date: null,
-                    completed_at: null,
-                    sort_order: 0,
-                    parent_issue_id: null,
-                    parent_issue_sort_order: null,
-                    extension_metadata: {},
-                };
-                const response = await remoteRequest(issueMutation.url, {
-                    method: 'POST',
-                    body: payload,
-                });
-                return {
-                    issue: response.data,
-                    txid: response.txid,
-                };
-            },
-        });
-        tools.push({
-            definition: {
-                name: 'update_issue',
-                description: 'Update an issue with optional status name support. Provide one or more fields to update.',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        issue_id: {
-                            type: 'string',
-                            description: 'Issue UUID.',
-                        },
-                        title: {
-                            type: 'string',
-                            description: 'New title.',
-                        },
-                        description: {
-                            type: ['string', 'null'],
-                            description: 'New description.',
-                        },
-                        status: {
-                            type: 'string',
-                            description: 'Optional new status name.',
-                        },
-                        status_id: {
-                            type: 'string',
-                            description: 'Optional new status UUID.',
-                        },
-                        priority: {
-                            type: ['string', 'null'],
-                            description: 'Priority value.',
-                        },
-                        start_date: {
-                            type: ['string', 'null'],
-                            description: 'Start date (ISO string) or null.',
-                        },
-                        target_date: {
-                            type: ['string', 'null'],
-                            description: 'Target date (ISO string) or null.',
-                        },
-                        completed_at: {
-                            type: ['string', 'null'],
-                            description: 'Completion timestamp (ISO string) or null.',
-                        },
-                    },
-                    required: ['issue_id'],
-                    additionalProperties: false,
-                },
-            },
-            handler: async (args) => {
-                const issueId = requireString(args.issue_id, 'issue_id');
-                const updatePayload = {};
-                if (args.title !== undefined)
-                    updatePayload.title = args.title;
-                if (args.description !== undefined)
-                    updatePayload.description = args.description;
-                if (args.priority !== undefined)
-                    updatePayload.priority = args.priority;
-                if (args.start_date !== undefined)
-                    updatePayload.start_date = args.start_date;
-                if (args.target_date !== undefined)
-                    updatePayload.target_date = args.target_date;
-                if (args.completed_at !== undefined) {
-                    updatePayload.completed_at = args.completed_at;
-                }
-                if (args.status !== undefined || args.status_id !== undefined) {
-                    const existingIssue = await remoteRequest(`${issueMutation.url}/${issueId}`);
-                    const statusId = await resolveStatusId(existingIssue.project_id, args.status_id, args.status);
-                    updatePayload.status_id = statusId;
-                }
-                if (Object.keys(updatePayload).length === 0) {
-                    throw new Error('No fields provided for update');
-                }
-                const response = await remoteRequest(`${issueMutation.url}/${issueId}`, {
-                    method: 'PATCH',
-                    body: updatePayload,
-                });
-                return {
-                    issue: response.data,
-                    txid: response.txid,
-                };
-            },
-        });
-    }
-    return tools;
-}
 function buildToolRegistry() {
     const registry = new Map();
     for (const entry of buildGeneratedCrudTools()) {
-        registry.set(entry.definition.name, entry);
-    }
-    // Manual tools override generated entries where names collide.
-    for (const entry of buildManualTools()) {
         registry.set(entry.definition.name, entry);
     }
     return registry;
