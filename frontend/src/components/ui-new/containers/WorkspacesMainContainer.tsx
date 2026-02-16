@@ -23,6 +23,8 @@ interface WorkspacesMainContainerProps {
   sessions: Session[];
   onSelectSession: (sessionId: string) => void;
   isLoading: boolean;
+  /** Whether the workspace fetch failed (e.g. 404) */
+  isError: boolean;
   /** Whether user is creating a new session */
   isNewSessionMode: boolean;
   /** Callback to start new session mode */
@@ -39,6 +41,7 @@ export const WorkspacesMainContainer = forwardRef<
     sessions,
     onSelectSession,
     isLoading,
+    isError,
     isNewSessionMode,
     onStartNewSession,
   },
@@ -79,6 +82,7 @@ export const WorkspacesMainContainer = forwardRef<
       sessions={sessions}
       onSelectSession={onSelectSession}
       isLoading={isLoading}
+      isError={isError}
       containerRef={containerRef}
       isNewSessionMode={isNewSessionMode}
       onStartNewSession={onStartNewSession}

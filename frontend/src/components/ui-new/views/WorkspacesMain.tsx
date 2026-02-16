@@ -12,6 +12,7 @@ import { EntriesProvider } from '@/contexts/EntriesContext';
 import { MessageEditProvider } from '@/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
+import { WorkspaceNotFound } from '@/components/ui-new/views/WorkspaceNotFound';
 
 export type { ConversationListHandle };
 
@@ -26,6 +27,8 @@ interface WorkspacesMainProps {
   sessions: Session[];
   onSelectSession: (sessionId: string) => void;
   isLoading: boolean;
+  /** Whether the workspace fetch failed (e.g. 404) */
+  isError: boolean;
   containerRef: RefObject<HTMLElement | null>;
   conversationListRef: RefObject<ConversationListHandle>;
   /** Whether user is creating a new session */
@@ -45,6 +48,7 @@ export function WorkspacesMain({
   sessions,
   onSelectSession,
   isLoading,
+  isError,
   containerRef,
   conversationListRef,
   isNewSessionMode,
@@ -76,6 +80,8 @@ export function WorkspacesMain({
               <div className="flex-1 flex items-center justify-center">
                 <p className="text-low">{t('common:workspaces.loading')}</p>
               </div>
+            ) : isError ? (
+              <WorkspaceNotFound />
             ) : !workspaceWithSession ? (
               <div className="flex-1 flex items-center justify-center">
                 <p className="text-low">

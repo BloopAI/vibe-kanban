@@ -17,6 +17,7 @@ import { MessageEditProvider } from '@/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
 import { createWorkspaceWithSession } from '@/types/attempt';
+import { WorkspaceNotFound } from '@/components/ui-new/views/WorkspaceNotFound';
 
 export function VSCodeWorkspacePage() {
   const { t } = useTranslation('common');
@@ -28,6 +29,7 @@ export function VSCodeWorkspacePage() {
     selectedSession,
     selectSession,
     isLoading,
+    isError,
     diffStats,
     isNewSessionMode,
     startNewSession,
@@ -66,10 +68,8 @@ export function VSCodeWorkspacePage() {
                   <div className="flex-1 flex items-center justify-center">
                     <p className="text-low">{t('workspaces.loading')}</p>
                   </div>
-                ) : !workspaceWithSession ? (
-                  <div className="flex-1 flex items-center justify-center">
-                    <p className="text-low">{t('workspaces.notFound')}</p>
-                  </div>
+                ) : isError || !workspaceWithSession ? (
+                  <WorkspaceNotFound showGoToWorkspaces={false} />
                 ) : (
                   <div className="flex-1 min-h-0 overflow-hidden flex justify-center">
                     <div className="w-chat max-w-full h-full">
