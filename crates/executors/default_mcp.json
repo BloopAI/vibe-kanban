@@ -7,6 +7,14 @@
       "--mcp"
     ]
   },
+  "vibe_kanban_remote": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "vibe-kanban@latest",
+      "--remote-mcp"
+    ]
+  },
   "context7": {
     "type": "http",
     "url": "https://mcp.context7.com/mcp",
@@ -51,6 +59,12 @@
       "url": "https://www.vibekanban.com/docs/integrations/vibe-kanban-mcp-server",
       "icon": "favicon-vk-light.svg"
     },
+    "vibe_kanban_remote": {
+      "name": "Vibe Kanban Remote",
+      "description": "Direct cloud issue management through your local Vibe Kanban auth session",
+      "url": "https://www.vibekanban.com/docs/integrations/vibe-kanban-mcp-server",
+      "icon": "favicon-vk-light.svg"
+    },
     "context7": {
       "name": "Context7",
       "description": "Fetch up-to-date documentation and code examples",
@@ -83,4 +97,3 @@
     }
   }
 }
-
