@@ -184,6 +184,11 @@ pub fn patch_entry_path(patch: &Patch) -> Option<String> {
     patch.0.first().map(|op| op.path().to_string())
 }
 
+pub fn is_add_or_replace(patch: &Patch) -> bool {
+    use json_patch::PatchOperation::*;
+    patch.0.iter().all(|op| matches!(op, Add(..) | Replace(..)))
+}
+
 pub fn convert_replace_to_add(mut patch: Patch) -> Patch {
     for op in &mut patch.0 {
         if let json_patch::PatchOperation::Replace(r) = op {

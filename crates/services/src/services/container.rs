@@ -40,7 +40,7 @@ use executors::{
         NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
         utils::{
             ConversationPatch,
-            patch::{convert_replace_to_add, patch_entry_path},
+            patch::{convert_replace_to_add, is_add_or_replace, patch_entry_path},
         },
     },
     profile::ExecutorProfileId,
@@ -1050,11 +1050,14 @@ pub trait ContainerService {
                                 // First patch — just buffer it
                                 return Some((None, (stream, Some(patch))));
                             };
-                            if patch_entry_path(&patch) == patch_entry_path(&prev) {
-                                // Same path — replace buffer
+                            if patch_entry_path(&patch) == patch_entry_path(&prev)
+                                && is_add_or_replace(&patch)
+                                && is_add_or_replace(&prev)
+                            {
+                                // Same path, both add/replace — replace buffer
                                 Some((None, (stream, Some(patch))))
                             } else {
-                                // Different path — emit prev, buffer new
+                                // Different — emit prev, buffer new
                                 Some((Some(prev), (stream, Some(patch))))
                             }
                         }
