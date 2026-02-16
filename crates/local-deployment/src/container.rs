@@ -1008,6 +1008,10 @@ impl ContainerService for LocalContainerService {
         &self.notification_service
     }
 
+    fn normalized_log_cache(&self) -> &NormalizedLogCache {
+        &self.normalized_log_cache
+    }
+
     async fn touch(&self, workspace: &Workspace) -> Result<(), ContainerError> {
         let now = Instant::now();
 

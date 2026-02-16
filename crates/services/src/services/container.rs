@@ -51,8 +51,8 @@ use utils::{
     text::{git_branch_id, short_uuid},
 };
 use uuid::Uuid;
-
 use crate::services::{
+    normalized_log_cache::{NormalizedLogCache, NormalizedLogStream},
     notification::NotificationService, workspace_manager::WorkspaceError as WorkspaceManagerError,
     worktree_manager::WorktreeError,
 };
@@ -93,6 +93,8 @@ pub trait ContainerService {
     fn git(&self) -> &GitService;
 
     fn notification_service(&self) -> &NotificationService;
+
+    fn normalized_log_cache(&self) -> &NormalizedLogCache;
 
     async fn touch(&self, workspace: &Workspace) -> Result<(), ContainerError>;
 
@@ -850,10 +852,10 @@ pub trait ContainerService {
     async fn stream_normalized_logs(
         &self,
         id: &Uuid,
-    ) -> Option<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>> {
+    ) -> Option<NormalizedLogStream> {
         // First try in-memory store (existing behavior)
         if let Some(store) = self.get_msg_store_by_id(id).await {
-            Some(
+            Some(NormalizedLogStream::Messages(
                 store
                     .history_plus_stream() // BoxStream<Result<LogMsg, io::Error>>
                     .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
@@ -861,8 +863,13 @@ pub trait ContainerService {
                         Ok::<_, std::io::Error>(LogMsg::Finished)
                     }))
                     .boxed(),
-            )
+            ))
         } else {
+
+            // Check disk cache first
+            if let Some(lines) = self.normalized_log_cache().read_lines(id) {
+                return Some(NormalizedLogStream::Cached(lines));
+            }
             // Fallback: load from DB and normalize
             let log_records =
                 match ExecutionProcessLogs::find_by_execution_id(&self.db().pool, *id).await {
@@ -1007,7 +1014,7 @@ pub trait ContainerService {
                     return None;
                 }
             }
-            Some(
+            Some(NormalizedLogStream::Messages(
                 temp_store
                     .history_plus_stream()
                     .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
@@ -1015,7 +1022,7 @@ pub trait ContainerService {
                         Ok::<_, std::io::Error>(LogMsg::Finished)
                     }))
                     .boxed(),
-            )
+            ))
         }
     }
 
@@ -1104,6 +1111,49 @@ pub trait ContainerService {
                         }
                         LogMsg::JsonPatch(_) | LogMsg::Ready => continue,
                     }
+                }
+            }
+        })
+    }
+
+    fn spawn_cache_writer(&self, execution_id: &Uuid) -> JoinHandle<()> {
+        let execution_id = *execution_id;
+        let msg_stores = self.msg_stores().clone();
+        let cache = self.normalized_log_cache().clone();
+
+        tokio::spawn(async move {
+            let store = {
+                let map = msg_stores.read().await;
+                map.get(&execution_id).cloned()
+            };
+
+            let Some(store) = store else { return };
+
+            let mut writer = match cache.writer(&execution_id) {
+                Ok(w) => w,
+                Err(e) => {
+                    tracing::warn!("Failed to open cache writer for {}: {}", execution_id, e);
+                    return;
+                }
+            };
+
+            let mut stream = store.history_plus_stream();
+            while let Some(Ok(msg)) = stream.next().await {
+                match &msg {
+                    LogMsg::JsonPatch(_) => {
+                        if let Ok(json_line) = serde_json::to_string(&msg) {
+                            if let Err(e) = writer.append_line(&json_line) {
+                                tracing::warn!("Cache write error for {}: {}", execution_id, e);
+                                return;
+                            }
+                        }
+                    }
+                    LogMsg::Finished => {
+                        let _ = writer.flush();
+                        cache.evict_if_needed();
+                        break;
+                    }
+                    _ => continue,
                 }
             }
         })
@@ -1390,6 +1440,10 @@ pub trait ContainerService {
         let db_stream_handle = self.spawn_stream_raw_logs_to_db(&execution_process.id);
         self.store_db_stream_handle(execution_process.id, db_stream_handle)
             .await;
+
+        // Also cache normalized logs to disk for fast replay
+        let _cache_handle = self.spawn_cache_writer(&execution_process.id);
+
         Ok(execution_process)
     }
 
