@@ -177,7 +177,11 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   // Show not-found when a workspaceId is in the URL but the fetch failed
   // (covers 404, 400 for invalid UUIDs, and any other fetch error)
   const isError =
-    !!workspaceId && !isCreateMode && !isLoading && !workspace && !!workspaceError;
+    !!workspaceId &&
+    !isCreateMode &&
+    !isLoading &&
+    !workspace &&
+    !!workspaceError;
 
   const selectWorkspace = useCallback(
     (id: string) => {
