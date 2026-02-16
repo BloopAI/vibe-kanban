@@ -393,7 +393,8 @@
       "mobileView": "Vista móvil (390x844)",
       "responsiveView": "Vista adaptable (redimensionable)",
       "startDevServer": "Iniciar servidor de desarrollo",
-      "submitUrl": "Enviar URL"
+      "submitUrl": "Enviar URL",
+      "toggleDevTools": "Alternar DevTools"
     },
     "loading": {
       "startingServer": "Iniciando servidor de desarrollo...",

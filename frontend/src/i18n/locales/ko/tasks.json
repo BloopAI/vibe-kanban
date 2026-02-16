@@ -384,7 +384,8 @@
       "mobileView": "모바일 보기 (390x844)",
       "responsiveView": "반응형 보기 (크기 조절 가능)",
       "startDevServer": "개발 서버 시작",
-      "submitUrl": "URL 제출"
+      "submitUrl": "URL 제출",
+      "toggleDevTools": "DevTools 전환"
     },
     "loading": {
       "startingServer": "개발 서버 시작 중...",

@@ -134,7 +134,8 @@
       "mobileView": "Vue mobile (390x844)",
       "responsiveView": "Vue responsive (redimensionnable)",
       "startDevServer": "Démarrer le serveur de développement",
-      "submitUrl": "Valider l'URL"
+      "submitUrl": "Valider l'URL",
+      "toggleDevTools": "Basculer DevTools"
     },
     "loading": {
       "startingServer": "Démarrage du serveur de développement...",

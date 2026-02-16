@@ -154,7 +154,8 @@
       "mobileView": "行動裝置檢視 (390x844)",
       "responsiveView": "響應式檢視（可調整大小）",
       "startDevServer": "啟動開發伺服器",
-      "submitUrl": "提交 URL"
+      "submitUrl": "提交 URL",
+      "toggleDevTools": "切換 DevTools"
     },
     "loading": {
       "startingServer": "正在啟動開發伺服器...",

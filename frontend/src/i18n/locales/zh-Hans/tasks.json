@@ -154,7 +154,8 @@
       "mobileView": "移动视图 (390x844)",
       "responsiveView": "响应式视图（可调整大小）",
       "startDevServer": "启动开发服务器",
-      "submitUrl": "提交 URL"
+      "submitUrl": "提交 URL",
+      "toggleDevTools": "切换 DevTools"
     },
     "loading": {
       "startingServer": "正在启动开发服务器...",
