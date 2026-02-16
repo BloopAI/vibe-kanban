@@ -234,6 +234,7 @@ fn generate_types_content() -> String {
         executors::model_selector::AgentInfo::decl(),
         executors::model_selector::PermissionPolicy::decl(),
         executors::model_selector::ModelSelectorConfig::decl(),
+        executors::executor_discovery::ExecutorDiscoveredOptions::decl(),
         serde_json::Value::decl(),
     ];
 

@@ -12,11 +12,13 @@ use workspace_utils::msg_store::MsgStore;
 use crate::{
     command::{CommandBuildError, CommandBuilder, CommandParts},
     env::ExecutionEnv,
+    executor_discovery::ExecutorDiscoveredOptions,
     executors::{
         AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, SpawnedChild,
         StandardCodingAgentExecutor,
     },
     logs::utils::{EntryIndexProvider, patch},
+    model_selector::{ModelInfo, ModelSelectorConfig},
     profile::ExecutorConfig,
 };
 
@@ -215,36 +217,6 @@ impl StandardCodingAgentExecutor for Droid {
         }
     }
 
-    async fn available_model_config(
-        &self,
-        _workdir: &Path,
-    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
-        let config = crate::model_selector::ModelSelectorConfig {
-            models: [
-                ("gpt-5.1-codex", "GPT-5.1 Codex"),
-                ("gpt-5.1", "GPT-5.1"),
-                ("gemini-3-pro-preview", "Gemini 3 Pro Preview"),
-                ("claude-sonnet-4-5-20250929", "Claude Sonnet 4.5"),
-                ("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
-                ("claude-opus-4-1-20250805", "Claude Opus 4.1"),
-                ("glm-4.6", "GLM 4.6"),
-            ]
-            .into_iter()
-            .map(|(id, name)| crate::model_selector::ModelInfo {
-                id: id.to_string(),
-                name: name.to_string(),
-                provider_id: None,
-                reasoning_options: vec![],
-            })
-            .collect(),
-            permissions: vec![],
-            ..Default::default()
-        };
-        Ok(Box::pin(futures::stream::once(async move {
-            patch::model_selector_config(config, false, None)
-        })))
-    }
-
     fn get_preset_options(&self) -> ExecutorConfig {
         ExecutorConfig {
             executor: BaseCodingAgent::Droid,
@@ -257,5 +229,38 @@ impl StandardCodingAgentExecutor for Droid {
                 .map(|e| e.as_ref().to_string()),
             permission_policy: Some(crate::model_selector::PermissionPolicy::Auto),
         }
+    }
+
+    async fn discover_options(
+        &self,
+        _workdir: Option<&std::path::Path>,
+        _repo_path: Option<&std::path::Path>,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let options = ExecutorDiscoveredOptions {
+            model_selector: ModelSelectorConfig {
+                models: [
+                    ("gpt-5.1-codex", "GPT-5.1 Codex"),
+                    ("gpt-5.1", "GPT-5.1"),
+                    ("gemini-3-pro-preview", "Gemini 3 Pro Preview"),
+                    ("claude-sonnet-4-5-20250929", "Claude Sonnet 4.5"),
+                    ("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
+                    ("claude-opus-4-1-20250805", "Claude Opus 4.1"),
+                    ("glm-4.6", "GLM 4.6"),
+                ]
+                .into_iter()
+                .map(|(id, name)| ModelInfo {
+                    id: id.to_string(),
+                    name: name.to_string(),
+                    provider_id: None,
+                    reasoning_options: vec![],
+                })
+                .collect(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::executor_discovered_options(options)
+        })))
     }
 }

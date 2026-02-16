@@ -30,9 +30,9 @@ import {
   isModelAvailable,
   resolveDefaultReasoningId,
 } from '@/utils/modelSelector';
-import { profilesApi, agentsApi } from '@/lib/api';
+import { profilesApi } from '@/lib/api';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { useJsonPatchWsStream } from '@/hooks/useJsonPatchWsStream';
+import { useModelSelectorConfig } from '@/hooks/useExecutorDiscovery';
 import { ModelSelectorPopover } from '../primitives/model-selector/ModelSelectorPopover';
 import {
   DropdownMenu,
@@ -42,14 +42,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTriggerButton,
 } from '../primitives/Dropdown';
-
-import type { ModelSelectorConfig } from 'shared/types';
-
-type ModelConfigStreamState = {
-  config: ModelSelectorConfig | null;
-  loading: boolean;
-  error: string | null;
-};
 
 interface ModelSelectorContainerProps {
   agent: BaseCodingAgent | null;
@@ -104,26 +96,11 @@ export function ModelSelectorContainer({
     selectedPreset ??
     (presets.includes('DEFAULT') ? 'DEFAULT' : (presets[0] ?? null));
 
-  const endpoint = agent
-    ? agentsApi.getModelConfigStreamUrl(agent, { workspaceId })
-    : undefined;
-
-  const initialData = useCallback(
-    (): ModelConfigStreamState => ({
-      config: null,
-      loading: true,
-      error: null,
-    }),
-    []
-  );
-
-  const { data, error } = useJsonPatchWsStream<ModelConfigStreamState>(
-    endpoint,
-    !!endpoint,
-    initialData
-  );
-
-  const streamError = data?.error ?? error;
+  const {
+    config: streamConfig,
+    loadingModels,
+    error: streamError,
+  } = useModelSelectorConfig(agent, { workspaceId });
 
   useEffect(() => {
     if (streamError) {
@@ -131,7 +108,7 @@ export function ModelSelectorContainer({
     }
   }, [streamError]);
 
-  const baseConfig = data?.config ?? null;
+  const baseConfig = streamConfig;
   const config = appendPresetModel(baseConfig, presetOptions?.model_id);
 
   const availableProviderIds = useMemo(
@@ -417,7 +394,7 @@ export function ModelSelectorContainer({
     );
   }
 
-  const showModelSelector = config.loading || config.models.length > 0;
+  const showModelSelector = loadingModels || config.models.length > 0;
   const showDefaultOption = !config.default_model && config.models.length > 0;
   const displaySelectedModel = showModelSelector
     ? getSelectedModel(config.models, selectedProviderId, selectedModelId)
@@ -428,7 +405,7 @@ export function ModelSelectorContainer({
         selectedReasoningId
       )
     : null;
-  const modelLabelBase = config.loading
+  const modelLabelBase = loadingModels
     ? loadingLabel
     : (displaySelectedModel?.name ?? selectedModelId ?? defaultLabel);
   const modelLabel = reasoningLabel
@@ -486,10 +463,11 @@ export function ModelSelectorContainer({
           trigger={
             <DropdownMenuTriggerButton
               label={modelLabel}
-              disabled={config.loading}
+              disabled={loadingModels}
             />
           }
           config={config}
+          error={streamError}
           selectedProviderId={selectedProviderId}
           selectedModelId={selectedModelId}
           selectedReasoningId={selectedReasoningId}

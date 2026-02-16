@@ -1398,7 +1398,7 @@ export const scratchApi = {
 
 // Agents API
 export const agentsApi = {
-  getSlashCommandsStreamUrl: (
+  getDiscoveredOptionsStreamUrl: (
     agent: BaseCodingAgent,
     opts?: { workspaceId?: string; repoId?: string }
   ): string => {
@@ -1407,19 +1407,7 @@ export const agentsApi = {
     if (opts?.workspaceId) params.set('workspace_id', opts.workspaceId);
     if (opts?.repoId) params.set('repo_id', opts.repoId);
 
-    return `/api/agents/slash-commands/ws?${params.toString()}`;
-  },
-
-  getModelConfigStreamUrl: (
-    agent: BaseCodingAgent,
-    opts?: { workspaceId?: string; repoId?: string }
-  ): string => {
-    const params = new URLSearchParams();
-    params.set('executor', agent);
-    if (opts?.workspaceId) params.set('workspace_id', opts.workspaceId);
-    if (opts?.repoId) params.set('repo_id', opts.repoId);
-
-    return `/api/agents/model-config/ws?${params.toString()}`;
+    return `/api/agents/discovered-options/ws?${params.toString()}`;
   },
 
   getPresetOptions: async (

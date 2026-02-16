@@ -26,6 +26,7 @@ interface ModelSelectorPopoverProps {
   onOpenChange: (open: boolean) => void;
   trigger: ReactElement;
   config: ModelSelectorConfig;
+  error?: string | null;
   selectedProviderId: string | null;
   selectedModelId: string | null;
   selectedReasoningId: string | null;
@@ -230,6 +231,7 @@ export function ModelSelectorPopover({
   onOpenChange,
   trigger,
   config,
+  error,
   selectedProviderId,
   selectedModelId,
   selectedReasoningId,
@@ -321,9 +323,9 @@ export function ModelSelectorPopover({
         }}
       >
         <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
-          {config.error && (
+          {error && (
             <div className="px-base py-half bg-red-500/10 border-b border-red-500/20">
-              <span className="text-sm text-red-600">{config.error}</span>
+              <span className="text-sm text-red-600">{error}</span>
             </div>
           )}
           <DropdownMenuLabel>{t('modelSelector.model')}</DropdownMenuLabel>

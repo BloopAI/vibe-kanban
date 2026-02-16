@@ -27,7 +27,6 @@ use crate::{
     },
     logs::utils::patch,
     mcp_config::McpConfig,
-    model_selector::ModelSelectorConfig,
     profile::ExecutorConfig,
 };
 
@@ -225,15 +224,6 @@ pub trait StandardCodingAgentExecutor {
 
     fn use_approvals(&mut self, _approvals: Arc<dyn ExecutorApprovalService>) {}
 
-    async fn available_slash_commands(
-        &self,
-        _workdir: &Path,
-    ) -> Result<BoxStream<'static, json_patch::Patch>, ExecutorError> {
-        Ok(Box::pin(futures::stream::once(async move {
-            patch::slash_commands(Vec::new(), false, None)
-        })))
-    }
-
     async fn spawn(
         &self,
         current_dir: &Path,
@@ -295,14 +285,15 @@ pub trait StandardCodingAgentExecutor {
         }
     }
 
-    /// Returns a stream of model selector configuration updates.
-    async fn available_model_config(
+    /// Returns a stream of executor discovered options updates.
+    async fn discover_options(
         &self,
-        _workdir: &Path,
+        _workdir: Option<&Path>,
+        _repo_path: Option<&Path>,
     ) -> Result<BoxStream<'static, json_patch::Patch>, ExecutorError> {
-        let config = ModelSelectorConfig::default();
+        let options = crate::executor_discovery::ExecutorDiscoveredOptions::default();
         Ok(Box::pin(futures::stream::once(async move {
-            patch::model_selector_config(config, false, None)
+            patch::executor_discovered_options(options)
         })))
     }
 

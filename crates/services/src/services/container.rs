@@ -104,13 +104,13 @@ pub trait ContainerService {
 
     fn workspace_to_current_dir(&self, workspace: &Workspace) -> PathBuf;
 
-    async fn available_agent_slash_commands(
+    async fn discover_executor_options(
         &self,
         executor_profile_id: ExecutorProfileId,
         workspace_id: Option<Uuid>,
         repo_id: Option<Uuid>,
     ) -> Result<Option<BoxStream<'static, Patch>>, ContainerError> {
-        let agent_workdir = if let Some(workspace_id) = workspace_id {
+        let (workdir, repo_path) = if let Some(workspace_id) = workspace_id {
             let workspace = Workspace::find_by_id(&self.db().pool, workspace_id)
                 .await?
                 .ok_or(SqlxError::RowNotFound)?;
@@ -125,79 +125,37 @@ pub trait ContainerService {
             }
 
             let workspace_path = PathBuf::from(container_ref);
-            match workspace.agent_working_dir.as_deref() {
+            let workdir = match workspace.agent_working_dir.as_deref() {
                 Some(dir) if !dir.is_empty() => Some(workspace_path.join(dir)),
                 _ => Some(workspace_path),
-            }
-        } else if let Some(repo_id) = repo_id {
-            Repo::find_by_id(&self.db().pool, repo_id)
-                .await
-                .ok()
-                .flatten()
-                .map(|repo| repo.path)
-        } else {
-            None
-        }
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-
-        #[cfg(feature = "qa-mode")]
-        {
-            let _ = executor_profile_id;
-            let agent = QaMockExecutor;
-            let stream = agent.available_slash_commands(&agent_workdir).await?;
-            return Ok(Some(stream));
-        }
-        #[cfg(not(feature = "qa-mode"))]
-        {
-            let executor =
-                ExecutorConfigs::get_cached().get_coding_agent_or_default(&executor_profile_id);
-
-            let stream = executor.available_slash_commands(&agent_workdir).await?;
-            Ok(Some(stream))
-        }
-    }
-
-    async fn available_agent_model_config(
-        &self,
-        executor_profile_id: ExecutorProfileId,
-        workspace_id: Option<Uuid>,
-        repo_id: Option<Uuid>,
-    ) -> Result<Option<BoxStream<'static, Patch>>, ContainerError> {
-        let agent_workdir = if let Some(workspace_id) = workspace_id {
-            let workspace = Workspace::find_by_id(&self.db().pool, workspace_id)
-                .await?
-                .ok_or(SqlxError::RowNotFound)?;
-
-            let container_ref = match workspace.container_ref.as_deref() {
-                Some(container_ref) if !container_ref.is_empty() => container_ref,
-                _ => &self.ensure_container_exists(&workspace).await?,
             };
 
-            if container_ref.is_empty() {
-                return Err(ContainerError::Other(anyhow!("Workspace path is empty")));
-            }
+            let repos = WorkspaceRepo::find_repos_for_workspace(&self.db().pool, workspace_id)
+                .await
+                .unwrap_or_default();
+            let repo_path = if repos.len() == 1 {
+                Some(repos[0].path.clone())
+            } else {
+                None
+            };
 
-            let workspace_path = PathBuf::from(container_ref);
-            match workspace.agent_working_dir.as_deref() {
-                Some(dir) if !dir.is_empty() => Some(workspace_path.join(dir)),
-                _ => Some(workspace_path),
-            }
+            (workdir, repo_path)
         } else if let Some(repo_id) = repo_id {
-            Repo::find_by_id(&self.db().pool, repo_id)
+            let repo = Repo::find_by_id(&self.db().pool, repo_id)
                 .await
                 .ok()
                 .flatten()
-                .map(|repo| repo.path)
+                .map(|repo| repo.path);
+            (None, repo)
         } else {
-            None
-        }
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+            (None, None)
+        };
 
         #[cfg(feature = "qa-mode")]
         {
             let _ = executor_profile_id;
-            let _ = agent_workdir;
-            // QA mode doesn't support model config streaming yet
+            let _ = workdir;
+            let _ = repo_path;
             return Ok(None);
         }
         #[cfg(not(feature = "qa-mode"))]
@@ -205,7 +163,13 @@ pub trait ContainerService {
             let executor =
                 ExecutorConfigs::get_cached().get_coding_agent_or_default(&executor_profile_id);
 
-            let stream = executor.available_model_config(&agent_workdir).await?;
+            // Spawn background task to refresh global cache for this executor
+            let base_agent = executors::executors::BaseCodingAgent::from(&executor);
+            executors::executors::utils::spawn_global_cache_refresh_for_agent(base_agent);
+
+            let stream = executor
+                .discover_options(workdir.as_deref(), repo_path.as_deref())
+                .await?;
             Ok(Some(stream))
         }
     }

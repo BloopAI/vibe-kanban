@@ -226,6 +226,49 @@ impl ClaudeCode {
 
         Some(serde_json::Value::Object(hooks))
     }
+
+    fn compute_cmd_key(&self) -> String {
+        serde_json::to_string(&self.cmd).unwrap_or_default()
+    }
+}
+
+fn default_discovered_options() -> crate::executor_discovery::ExecutorDiscoveredOptions {
+    use crate::{
+        executor_discovery::ExecutorDiscoveredOptions,
+        model_selector::{ModelInfo, ModelSelectorConfig},
+    };
+
+    ExecutorDiscoveredOptions {
+        model_selector: ModelSelectorConfig {
+            providers: vec![],
+            models: [
+                ("claude-opus-4-6", "Opus"),
+                ("claude-opus-4-6[1m]", "Opus (1M context)"),
+                ("claude-haiku-4-5-20251001", "Haiku"),
+                ("claude-sonnet-4-5-20250929", "Sonnet"),
+            ]
+            .into_iter()
+            .map(|(id, name)| ModelInfo {
+                id: id.to_string(),
+                name: name.to_string(),
+                provider_id: None,
+                reasoning_options: vec![],
+            })
+            .collect(),
+            default_model: Some("claude-opus-4-6".to_string()),
+            agents: vec![],
+            permissions: vec![
+                PermissionPolicy::Auto,
+                PermissionPolicy::Supervised,
+                PermissionPolicy::Plan,
+            ],
+        },
+        slash_commands: ClaudeCode::hardcoded_slash_commands(),
+        loading_models: false,
+        loading_agents: false,
+        loading_slash_commands: false,
+        error: None,
+    }
 }
 
 #[async_trait]
@@ -316,19 +359,112 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         vec![h1, h2]
     }
 
-    async fn available_model_config(
+    async fn discover_options(
         &self,
-        workdir: &Path,
+        workdir: Option<&Path>,
+        repo_path: Option<&Path>,
     ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
-        let initial_config = self.build_model_selector_config();
-        let initial_patch = patch::model_selector_config(initial_config, true, None);
-        let this = self.clone();
-        let workdir = workdir.to_path_buf();
+        use crate::{
+            executor_discovery::ExecutorConfigCacheKey, executors::utils::executor_options_cache,
+        };
 
-        let discovery_stream = futures::stream::once(async move {
-            match this.discover_available_agents(&workdir).await {
-                Ok(mut agent_options) => {
-                    let mut config = this.build_model_selector_config();
+        let cache = executor_options_cache();
+        let cmd_key = self.compute_cmd_key();
+        let base_executor = BaseCodingAgent::ClaudeCode;
+
+        let (target_path, initial_options) = if let Some(wd) = workdir {
+            let wd_buf = wd.to_path_buf();
+            let target_key =
+                ExecutorConfigCacheKey::new(Some(&wd_buf), cmd_key.clone(), base_executor);
+            if let Some(cached) = cache.get(&target_key) {
+                return Ok(Box::pin(futures::stream::once(async move {
+                    patch::executor_discovered_options(cached.as_ref().clone().with_loading(false))
+                })));
+            }
+            let provisional = repo_path
+                .and_then(|rp| {
+                    let rp_buf = rp.to_path_buf();
+                    let repo_key =
+                        ExecutorConfigCacheKey::new(Some(&rp_buf), cmd_key.clone(), base_executor);
+                    cache.get(&repo_key)
+                })
+                .or_else(|| {
+                    let global_key =
+                        ExecutorConfigCacheKey::new(None, cmd_key.clone(), base_executor);
+                    cache.get(&global_key)
+                });
+            (
+                Some(wd.to_path_buf()),
+                provisional
+                    .map(|p| {
+                        let mut opts = p.as_ref().clone();
+                        opts.loading_models = false;
+                        opts.loading_agents = true;
+                        opts.loading_slash_commands = true;
+                        opts
+                    })
+                    .unwrap_or_else(|| {
+                        let mut opts = default_discovered_options();
+                        opts.loading_models = false;
+                        opts.loading_agents = true;
+                        opts.loading_slash_commands = true;
+                        opts
+                    }),
+            )
+        } else if let Some(rp) = repo_path {
+            let rp_buf = rp.to_path_buf();
+            let target_key =
+                ExecutorConfigCacheKey::new(Some(&rp_buf), cmd_key.clone(), base_executor);
+            if let Some(cached) = cache.get(&target_key) {
+                return Ok(Box::pin(futures::stream::once(async move {
+                    patch::executor_discovered_options(cached.as_ref().clone().with_loading(false))
+                })));
+            }
+            let global_key = ExecutorConfigCacheKey::new(None, cmd_key.clone(), base_executor);
+            let provisional = cache.get(&global_key);
+            (
+                Some(rp.to_path_buf()),
+                provisional
+                    .map(|p| {
+                        let mut opts = p.as_ref().clone();
+                        opts.loading_models = false;
+                        opts.loading_agents = true;
+                        opts.loading_slash_commands = true;
+                        opts
+                    })
+                    .unwrap_or_else(|| {
+                        let mut opts = default_discovered_options();
+                        opts.loading_models = false;
+                        opts.loading_agents = true;
+                        opts.loading_slash_commands = true;
+                        opts
+                    }),
+            )
+        } else {
+            let global_key = ExecutorConfigCacheKey::new(None, cmd_key.clone(), base_executor);
+            if let Some(cached) = cache.get(&global_key) {
+                return Ok(Box::pin(futures::stream::once(async move {
+                    patch::executor_discovered_options(cached.as_ref().clone().with_loading(false))
+                })));
+            }
+            let mut opts = default_discovered_options();
+            opts.loading_models = false;
+            opts.loading_agents = true;
+            opts.loading_slash_commands = true;
+            (None, opts)
+        };
+
+        let initial_patch = patch::executor_discovered_options(initial_options);
+
+        let this = self.clone();
+        let cmd_key_for_discovery = cmd_key.clone();
+
+        let discovery_stream = async_stream::stream! {
+            let discovery_path = target_path.as_deref().unwrap_or(Path::new(".")).to_path_buf();
+            let mut final_options = default_discovered_options();
+
+            match this.discover_agents_and_slash_commands_initial(&discovery_path).await {
+                Ok((mut agent_options, slash_commands_initial, plugins)) => {
                     let default_agents = [
                         "Bash",
                         "general-purpose",
@@ -337,18 +473,48 @@ impl StandardCodingAgentExecutor for ClaudeCode {
                         "Plan",
                     ];
                     agent_options.retain(|a| !default_agents.contains(&a.id.as_str()));
-                    config.agents = agent_options;
-                    patch::model_selector_config(config, false, None)
-                }
+                    final_options.model_selector.agents = agent_options.clone();
+                    yield patch::update_agents(agent_options);
+                    yield patch::agents_loaded();
 
+                    let defaults = Self::hardcoded_slash_commands();
+                    let slash_commands = reorder_slash_commands(
+                        [slash_commands_initial, defaults].concat()
+                    );
+                    final_options.slash_commands = slash_commands.clone();
+                    yield patch::update_slash_commands(slash_commands);
+
+                    let slash_commands_with_descriptions = Self::fill_slash_command_descriptions(
+                        &discovery_path,
+                        &plugins,
+                        &final_options.slash_commands,
+                    ).await;
+                    final_options.slash_commands = slash_commands_with_descriptions;
+                    yield patch::update_slash_commands(final_options.slash_commands.clone());
+                    yield patch::slash_commands_loaded();
+
+                    let cache = executor_options_cache();
+                    if let Some(path) = &target_path {
+                        let target_cache_key = ExecutorConfigCacheKey::new(
+                            Some(path),
+                            cmd_key_for_discovery.clone(),
+                            BaseCodingAgent::ClaudeCode,
+                        );
+                        cache.put(target_cache_key, final_options.clone());
+                    }
+                    let global_cache_key = ExecutorConfigCacheKey::new(
+                        None,
+                        cmd_key_for_discovery,
+                        BaseCodingAgent::ClaudeCode,
+                    );
+                    cache.put(global_cache_key, final_options);
+                }
                 Err(e) => {
-                    tracing::warn!("Failed to discover Claude Code agents: {}", e);
-                    let mut config = this.build_model_selector_config();
-                    config.agents = Vec::new();
-                    patch::model_selector_config(config, false, None)
+                    tracing::warn!("Failed to discover Claude Code options: {}", e);
+                    yield patch::discovery_error(e.to_string());
                 }
             }
-        });
+        };
 
         Ok(Box::pin(
             futures::stream::once(async move { initial_patch }).chain(discovery_stream),
@@ -400,68 +566,9 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         }
         AvailabilityInfo::NotFound
     }
-
-    async fn available_slash_commands(
-        &self,
-        current_dir: &Path,
-    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
-        let defaults = Self::hardcoded_slash_commands();
-        let this = self.clone();
-        let current_dir = current_dir.to_path_buf();
-
-        let initial = patch::slash_commands(defaults.clone(), true, None);
-
-        let discovery_stream = futures::stream::once(async move {
-            match this.discover_available_slash_commands(&current_dir).await {
-                Ok(commands) => {
-                    let merged = reorder_slash_commands([commands, defaults].concat());
-                    patch::slash_commands(merged, false, None)
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to discover Claude Code slash commands: {}", e);
-                    patch::slash_commands(defaults, false, Some(e.to_string()))
-                }
-            }
-        });
-
-        Ok(Box::pin(
-            futures::stream::once(async move { initial }).chain(discovery_stream),
-        ))
-    }
 }
 
 impl ClaudeCode {
-    fn build_model_selector_config(&self) -> crate::model_selector::ModelSelectorConfig {
-        use crate::model_selector::*;
-
-        ModelSelectorConfig {
-            providers: vec![],
-            models: [
-                ("claude-opus-4-6", "Opus"),
-                ("claude-opus-4-6[1m]", "Opus (1M context)"),
-                ("claude-haiku-4-5-20251001", "Haiku"),
-                ("claude-sonnet-4-5-20250929", "Sonnet"),
-            ]
-            .into_iter()
-            .map(|(id, name)| ModelInfo {
-                id: id.to_string(),
-                name: name.to_string(),
-                provider_id: None,
-                reasoning_options: vec![],
-            })
-            .collect(),
-            default_model: Some("claude-opus-4-6".to_string()),
-            agents: vec![],
-            permissions: vec![
-                PermissionPolicy::Auto,
-                PermissionPolicy::Supervised,
-                PermissionPolicy::Plan,
-            ],
-            loading: false,
-            error: None,
-        }
-    }
-
     async fn spawn_internal(
         &self,
         current_dir: &Path,

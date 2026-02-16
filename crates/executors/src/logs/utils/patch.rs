@@ -7,7 +7,7 @@ use ts_rs::TS;
 use workspace_utils::{diff::Diff, msg_store::MsgStore};
 
 use crate::{
-    executors::SlashCommandDescription,
+    executor_discovery::ExecutorDiscoveredOptions,
     logs::{NormalizedEntry, utils::EntryIndexProvider},
 };
 
@@ -201,29 +201,77 @@ pub fn convert_replace_to_add(mut patch: Patch) -> Patch {
     patch
 }
 
-pub fn slash_commands(
-    commands: Vec<SlashCommandDescription>,
-    discovering: bool,
-    error: Option<String>,
-) -> Patch {
+pub fn executor_discovered_options(options: ExecutorDiscoveredOptions) -> Patch {
     serde_json::from_value(json!([
-        {"op": "replace", "path": "/commands", "value": commands},
-        {"op": "replace", "path": "/discovering", "value": discovering},
-        {"op": "replace", "path": "/error", "value": error},
+        {"op": "replace", "path": "/options", "value": options},
     ]))
     .unwrap_or_default()
 }
 
-/// Create a JSON patch for model selector configuration.
-pub fn model_selector_config(
-    config: crate::model_selector::ModelSelectorConfig,
-    loading: bool,
-    error: Option<String>,
+pub fn update_models(models: Vec<crate::model_selector::ModelInfo>) -> Patch {
+    serde_json::from_value(json!([
+        {"op": "replace", "path": "/options/model_selector/models", "value": models},
+    ]))
+    .unwrap_or_default()
+}
+
+pub fn models_loaded() -> Patch {
+    serde_json::from_value(json!([
+        {"op": "replace", "path": "/options/loading_models", "value": false},
+    ]))
+    .unwrap_or_default()
+}
+
+pub fn update_agents(agents: Vec<crate::model_selector::AgentInfo>) -> Patch {
+    serde_json::from_value(json!([
+        {"op": "replace", "path": "/options/model_selector/agents", "value": agents},
+    ]))
+    .unwrap_or_default()
+}
+
+pub fn agents_loaded() -> Patch {
+    serde_json::from_value(json!([
+        {"op": "replace", "path": "/options/loading_agents", "value": false},
+    ]))
+    .unwrap_or_default()
+}
+
+pub fn update_slash_commands(
+    slash_commands: Vec<crate::executors::SlashCommandDescription>,
 ) -> Patch {
     serde_json::from_value(json!([
-        {"op": "replace", "path": "/config", "value": config},
-        {"op": "replace", "path": "/loading", "value": loading},
-        {"op": "replace", "path": "/error", "value": error},
+        {"op": "replace", "path": "/options/slash_commands", "value": slash_commands},
+    ]))
+    .unwrap_or_default()
+}
+
+pub fn slash_commands_loaded() -> Patch {
+    serde_json::from_value(json!([
+        {"op": "replace", "path": "/options/loading_slash_commands", "value": false},
+    ]))
+    .unwrap_or_default()
+}
+
+pub fn update_providers(providers: Vec<crate::model_selector::ModelProvider>) -> Patch {
+    serde_json::from_value(json!([
+        {"op": "replace", "path": "/options/model_selector/providers", "value": providers},
+    ]))
+    .unwrap_or_default()
+}
+
+pub fn update_default_model(default_model: Option<String>) -> Patch {
+    serde_json::from_value(json!([
+        {"op": "replace", "path": "/options/model_selector/default_model", "value": default_model},
+    ]))
+    .unwrap_or_default()
+}
+
+pub fn discovery_error(error: String) -> Patch {
+    serde_json::from_value(json!([
+        {"op": "replace", "path": "/options/error", "value": error},
+        {"op": "replace", "path": "/options/loading_models", "value": false},
+        {"op": "replace", "path": "/options/loading_agents", "value": false},
+        {"op": "replace", "path": "/options/loading_slash_commands", "value": false},
     ]))
     .unwrap_or_default()
 }

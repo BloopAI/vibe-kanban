@@ -70,6 +70,7 @@ async fn main() -> Result<(), VibeKanbanError> {
     deployment
         .track_if_analytics_allowed("session_start", serde_json::json!({}))
         .await;
+
     // Pre-warm file search cache for most active projects
     let deployment_for_cache = deployment.clone();
     tokio::spawn(async move {
@@ -80,6 +81,11 @@ async fn main() -> Result<(), VibeKanbanError> {
         {
             tracing::warn!("Failed to warm file search cache: {}", e);
         }
+    });
+
+    // Preload global executor options cache for all executors with DEFAULT presets
+    tokio::spawn(async move {
+        executors::executors::utils::preload_global_executor_options_cache().await;
     });
 
     let app_router = routes::router(deployment.clone());

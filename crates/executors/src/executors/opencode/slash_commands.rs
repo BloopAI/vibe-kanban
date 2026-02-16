@@ -13,10 +13,9 @@ use tokio_util::sync::CancellationToken;
 use super::{
     sdk::{
         self, AgentInfo, CommandInfo, ConfigProvidersResponse, ConfigResponse, ControlEvent,
-        EventListenerConfig, FormatterStatus, LogWriter, LspStatus, ProviderListResponse,
-        RunConfig,
+        EventListenerConfig, FormatterStatus, LogWriter, LspStatus, RunConfig,
     },
-    types::OpencodeExecutorEvent,
+    types::{OpencodeExecutorEvent, ProviderListResponse},
 };
 use crate::executors::{
     ExecutorError, SlashCommandDescription,

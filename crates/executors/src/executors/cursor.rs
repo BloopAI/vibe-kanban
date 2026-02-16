@@ -18,6 +18,7 @@ use workspace_utils::{
 use crate::{
     command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
+    executor_discovery::ExecutorDiscoveredOptions,
     executors::{
         AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, SpawnedChild,
         StandardCodingAgentExecutor,
@@ -30,6 +31,7 @@ use crate::{
             ConversationPatch, EntryIndexProvider, patch, shell_command_parsing::CommandCategory,
         },
     },
+    model_selector::{ModelInfo, ModelSelectorConfig},
     profile::ExecutorConfig,
 };
 
@@ -537,44 +539,6 @@ impl StandardCodingAgentExecutor for CursorAgent {
         }
     }
 
-    async fn available_model_config(
-        &self,
-        _workdir: &Path,
-    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
-        let config = crate::model_selector::ModelSelectorConfig {
-            models: [
-                ("auto", "Auto"),
-                ("composer-1.5", "Composer 1.5"),
-                ("gpt-5.1-codex-max", "GPT-5.1 Codex Max"),
-                ("gpt-5.1-codex-max-high", "GPT-5.1 Codex Max High"),
-                ("gpt-5.2", "GPT-5.2"),
-                ("opus-4.5-thinking", "Opus 4.5 Thinking"),
-                ("gpt-5.2-high", "GPT-5.2 High"),
-                ("gemini-3-pro", "Gemini 3 Pro"),
-                ("opus-4.5", "Opus 4.5"),
-                ("sonnet-4.5", "Sonnet 4.5"),
-                ("sonnet-4.5-thinking", "Sonnet 4.5 Thinking"),
-                ("gemini-3-flash", "Gemini 3 Flash"),
-                ("grok", "Grok"),
-                ("composer-1", "Composer 1"),
-            ]
-            .into_iter()
-            .map(|(id, name)| crate::model_selector::ModelInfo {
-                id: id.to_string(),
-                name: name.to_string(),
-                provider_id: None,
-                reasoning_options: vec![],
-            })
-            .collect(),
-            default_model: Some("auto".to_string()),
-            permissions: vec![],
-            ..Default::default()
-        };
-        Ok(Box::pin(futures::stream::once(async move {
-            patch::model_selector_config(config, false, None)
-        })))
-    }
-
     fn get_preset_options(&self) -> ExecutorConfig {
         ExecutorConfig {
             executor: BaseCodingAgent::CursorAgent,
@@ -584,6 +548,47 @@ impl StandardCodingAgentExecutor for CursorAgent {
             reasoning_id: None,
             permission_policy: Some(crate::model_selector::PermissionPolicy::Auto),
         }
+    }
+
+    async fn discover_options(
+        &self,
+        _workdir: Option<&std::path::Path>,
+        _repo_path: Option<&std::path::Path>,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let options = ExecutorDiscoveredOptions {
+            model_selector: ModelSelectorConfig {
+                models: [
+                    ("auto", "Auto"),
+                    ("composer-1.5", "Composer 1.5"),
+                    ("gpt-5.1-codex-max", "GPT-5.1 Codex Max"),
+                    ("gpt-5.1-codex-max-high", "GPT-5.1 Codex Max High"),
+                    ("gpt-5.2", "GPT-5.2"),
+                    ("opus-4.5-thinking", "Opus 4.5 Thinking"),
+                    ("gpt-5.2-high", "GPT-5.2 High"),
+                    ("gemini-3-pro", "Gemini 3 Pro"),
+                    ("opus-4.5", "Opus 4.5"),
+                    ("sonnet-4.5", "Sonnet 4.5"),
+                    ("sonnet-4.5-thinking", "Sonnet 4.5 Thinking"),
+                    ("gemini-3-flash", "Gemini 3 Flash"),
+                    ("grok", "Grok"),
+                    ("composer-1", "Composer 1"),
+                ]
+                .into_iter()
+                .map(|(id, name)| ModelInfo {
+                    id: id.to_string(),
+                    name: name.to_string(),
+                    provider_id: None,
+                    reasoning_options: vec![],
+                })
+                .collect(),
+                default_model: Some("auto".to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::executor_discovered_options(options)
+        })))
     }
 }
 /* ===========================

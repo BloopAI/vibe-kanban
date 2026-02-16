@@ -2,6 +2,7 @@ pub mod actions;
 pub mod approvals;
 pub mod command;
 pub mod env;
+pub mod executor_discovery;
 pub mod executors;
 pub mod logs;
 pub mod mcp_config;

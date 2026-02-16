@@ -6,7 +6,7 @@ use std::{
 use serde_json::Value;
 
 use crate::executors::opencode::{
-    sdk::EventStreamContext,
+    sdk::{EventStreamContext, list_providers},
     types::{MessageRole, OpencodeExecutorEvent, ProviderListResponse, SdkEvent},
 };
 
@@ -178,34 +178,12 @@ async fn fetch_model_context_windows(
     base_url: &str,
     directory: &str,
 ) -> Option<ModelContextWindows> {
-    let response = match client
-        .get(format!("{base_url}/provider"))
-        .query(&[("directory", directory)])
-        .send()
-        .await
-    {
-        Ok(resp) => resp,
+    let parsed = match list_providers(client, base_url, directory).await {
+        Ok(p) => p,
         Err(err) => {
             tracing::debug!("OpenCode provider list request failed: {err}");
             return None;
         }
     };
-
-    if !response.status().is_success() {
-        tracing::debug!(
-            "OpenCode provider list request failed with HTTP {}",
-            response.status()
-        );
-        return None;
-    }
-
-    let parsed = match response.json::<ProviderListResponse>().await {
-        Ok(parsed) => parsed,
-        Err(err) => {
-            tracing::debug!("OpenCode provider list response parse failed: {err}");
-            return None;
-        }
-    };
-
     Some(extract_context_windows(&parsed))
 }

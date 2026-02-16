@@ -12,11 +12,13 @@ use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
+    executor_discovery::ExecutorDiscoveredOptions,
     executors::{
         AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, SpawnedChild,
         StandardCodingAgentExecutor,
     },
     logs::utils::patch,
+    model_selector::{ModelInfo, ModelSelectorConfig, PermissionPolicy},
     profile::ExecutorConfig,
 };
 
@@ -175,37 +177,6 @@ impl StandardCodingAgentExecutor for Gemini {
         }
     }
 
-    async fn available_model_config(
-        &self,
-        _workdir: &Path,
-    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
-        let config = crate::model_selector::ModelSelectorConfig {
-            models: vec![
-                crate::model_selector::ModelInfo {
-                    id: "gemini-3-pro-preview".to_string(),
-                    name: "Gemini 3 Pro".to_string(),
-                    provider_id: None,
-                    reasoning_options: vec![],
-                },
-                crate::model_selector::ModelInfo {
-                    id: "gemini-3-flash-preview".to_string(),
-                    name: "Gemini 3 Flash".to_string(),
-                    provider_id: None,
-                    reasoning_options: vec![],
-                },
-            ],
-            default_model: Some("gemini-3-pro-preview".to_string()),
-            permissions: vec![
-                crate::model_selector::PermissionPolicy::Auto,
-                crate::model_selector::PermissionPolicy::Supervised,
-            ],
-            ..Default::default()
-        };
-        Ok(Box::pin(futures::stream::once(async move {
-            patch::model_selector_config(config, false, None)
-        })))
-    }
-
     fn get_preset_options(&self) -> ExecutorConfig {
         use crate::model_selector::*;
         ExecutorConfig {
@@ -220,5 +191,37 @@ impl StandardCodingAgentExecutor for Gemini {
                 PermissionPolicy::Supervised
             }),
         }
+    }
+
+    async fn discover_options(
+        &self,
+        _workdir: Option<&std::path::Path>,
+        _repo_path: Option<&std::path::Path>,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let options = ExecutorDiscoveredOptions {
+            model_selector: ModelSelectorConfig {
+                models: vec![
+                    ModelInfo {
+                        id: "gemini-3-pro-preview".to_string(),
+                        name: "Gemini 3 Pro".to_string(),
+                        provider_id: None,
+                        reasoning_options: vec![],
+                    },
+                    ModelInfo {
+                        id: "gemini-3-flash-preview".to_string(),
+                        name: "Gemini 3 Flash".to_string(),
+                        provider_id: None,
+                        reasoning_options: vec![],
+                    },
+                ],
+                default_model: Some("gemini-3-pro-preview".to_string()),
+                permissions: vec![PermissionPolicy::Auto, PermissionPolicy::Supervised],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::executor_discovered_options(options)
+        })))
     }
 }

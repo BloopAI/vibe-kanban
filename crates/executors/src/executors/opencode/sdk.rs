@@ -20,7 +20,10 @@ use tokio::{
 use tokio_util::sync::CancellationToken;
 use workspace_utils::approvals::ApprovalStatus;
 
-use super::{slash_commands, types::OpencodeExecutorEvent};
+use super::{
+    slash_commands,
+    types::{OpencodeExecutorEvent, ProviderInfo, ProviderListResponse},
+};
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
     env::RepoContext,
@@ -137,26 +140,6 @@ pub struct ConfigResponse {
 pub struct ConfigProvidersResponse {
     pub providers: Vec<ProviderInfo>,
     pub default: HashMap<String, String>,
-}
-
-/// Information about a provider.
-#[derive(Debug, Deserialize)]
-pub struct ProviderInfo {
-    pub id: String,
-    #[serde(default)]
-    #[allow(dead_code)]
-    pub name: String,
-    #[serde(default)]
-    pub models: HashMap<String, Value>,
-}
-
-/// Provider list response.
-#[derive(Debug, Deserialize)]
-#[allow(dead_code)]
-pub struct ProviderListResponse {
-    pub all: Vec<ProviderInfo>,
-    pub default: HashMap<String, String>,
-    pub connected: Vec<String>,
 }
 
 /// LSP server status.

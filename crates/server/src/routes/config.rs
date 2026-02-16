@@ -51,10 +51,9 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/agents/check-availability", get(check_agent_availability))
         .route("/agents/preset-options", get(get_agent_preset_options))
         .route(
-            "/agents/slash-commands/ws",
-            get(stream_agent_slash_commands_ws),
+            "/agents/discovered-options/ws",
+            get(stream_executor_discovered_options_ws),
         )
-        .route("/agents/model-config/ws", get(stream_agent_model_config_ws))
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -535,7 +534,7 @@ async fn get_agent_preset_options(
 }
 
 #[derive(Debug, Deserialize)]
-pub struct AgentSlashCommandsStreamQuery {
+pub struct ExecutorDiscoveredOptionsStreamQuery {
     executor: BaseCodingAgent,
     #[serde(default)]
     workspace_id: Option<Uuid>,
@@ -543,22 +542,22 @@ pub struct AgentSlashCommandsStreamQuery {
     repo_id: Option<Uuid>,
 }
 
-pub async fn stream_agent_slash_commands_ws(
+pub async fn stream_executor_discovered_options_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,
-    Query(query): Query<AgentSlashCommandsStreamQuery>,
+    Query(query): Query<ExecutorDiscoveredOptionsStreamQuery>,
 ) -> impl IntoResponse {
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_agent_slash_commands_ws(socket, deployment, query).await {
-            tracing::warn!("slash commands WS closed: {}", e);
+        if let Err(e) = handle_executor_discovered_options_ws(socket, deployment, query).await {
+            tracing::warn!("discovered options WS closed: {}", e);
         }
     })
 }
 
-async fn handle_agent_slash_commands_ws(
+async fn handle_executor_discovered_options_ws(
     socket: WebSocket,
     deployment: DeploymentImpl,
-    query: AgentSlashCommandsStreamQuery,
+    query: ExecutorDiscoveredOptionsStreamQuery,
 ) -> anyhow::Result<()> {
     use futures_util::{SinkExt, StreamExt};
 
@@ -568,7 +567,7 @@ async fn handle_agent_slash_commands_ws(
 
     match deployment
         .container()
-        .available_agent_slash_commands(
+        .discover_executor_options(
             ExecutorProfileId::new(query.executor),
             query.workspace_id,
             query.repo_id,
@@ -598,81 +597,7 @@ async fn handle_agent_slash_commands_ws(
             let _ = sender.send(LogMsg::Ready.to_ws_message_unchecked()).await;
         }
         Err(e) => {
-            tracing::warn!("Failed to start slash command stream: {}", e);
-        }
-    }
-
-    let _ = sender
-        .send(LogMsg::Finished.to_ws_message_unchecked())
-        .await;
-    Ok(())
-}
-
-#[derive(Debug, Deserialize)]
-pub struct AgentModelConfigStreamQuery {
-    executor: BaseCodingAgent,
-    #[serde(default)]
-    workspace_id: Option<Uuid>,
-    #[serde(default)]
-    repo_id: Option<Uuid>,
-}
-
-pub async fn stream_agent_model_config_ws(
-    ws: WebSocketUpgrade,
-    State(deployment): State<DeploymentImpl>,
-    Query(query): Query<AgentModelConfigStreamQuery>,
-) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_agent_model_config_ws(socket, deployment, query).await {
-            tracing::warn!("model config WS closed: {}", e);
-        }
-    })
-}
-
-async fn handle_agent_model_config_ws(
-    socket: WebSocket,
-    deployment: DeploymentImpl,
-    query: AgentModelConfigStreamQuery,
-) -> anyhow::Result<()> {
-    use futures_util::{SinkExt, StreamExt};
-
-    let (mut sender, mut receiver) = socket.split();
-
-    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
-
-    match deployment
-        .container()
-        .available_agent_model_config(
-            ExecutorProfileId::new(query.executor),
-            query.workspace_id,
-            query.repo_id,
-        )
-        .await
-    {
-        Ok(Some(mut stream)) => {
-            if let Some(patch) = stream.next().await {
-                let _ = sender
-                    .send(LogMsg::JsonPatch(patch).to_ws_message_unchecked())
-                    .await;
-            }
-
-            let _ = sender.send(LogMsg::Ready.to_ws_message_unchecked()).await;
-
-            while let Some(patch) = stream.next().await {
-                if sender
-                    .send(LogMsg::JsonPatch(patch).to_ws_message_unchecked())
-                    .await
-                    .is_err()
-                {
-                    break;
-                }
-            }
-        }
-        Ok(None) => {
-            let _ = sender.send(LogMsg::Ready.to_ws_message_unchecked()).await;
-        }
-        Err(e) => {
-            tracing::warn!("Failed to start model config stream: {}", e);
+            tracing::warn!("Failed to start discovered options stream: {}", e);
         }
     }
 

@@ -11,11 +11,13 @@ use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
+    executor_discovery::ExecutorDiscoveredOptions,
     executors::{
         AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, SpawnedChild,
         StandardCodingAgentExecutor, gemini::AcpAgentHarness,
     },
     logs::utils::patch,
+    model_selector::{ModelSelectorConfig, PermissionPolicy},
     profile::ExecutorConfig,
 };
 
@@ -173,22 +175,6 @@ impl StandardCodingAgentExecutor for QwenCode {
         }
     }
 
-    async fn available_model_config(
-        &self,
-        _workdir: &Path,
-    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
-        let config = crate::model_selector::ModelSelectorConfig {
-            permissions: vec![
-                crate::model_selector::PermissionPolicy::Auto,
-                crate::model_selector::PermissionPolicy::Supervised,
-            ],
-            ..Default::default()
-        };
-        Ok(Box::pin(futures::stream::once(async move {
-            patch::model_selector_config(config, false, None)
-        })))
-    }
-
     fn get_preset_options(&self) -> ExecutorConfig {
         use crate::model_selector::*;
         ExecutorConfig {
@@ -203,5 +189,22 @@ impl StandardCodingAgentExecutor for QwenCode {
                 PermissionPolicy::Supervised
             }),
         }
+    }
+
+    async fn discover_options(
+        &self,
+        _workdir: Option<&std::path::Path>,
+        _repo_path: Option<&std::path::Path>,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let options = ExecutorDiscoveredOptions {
+            model_selector: ModelSelectorConfig {
+                permissions: vec![PermissionPolicy::Auto, PermissionPolicy::Supervised],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::executor_discovered_options(options)
+        })))
     }
 }

@@ -50,11 +50,13 @@ use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuildError, CommandBuilder, CommandParts, apply_overrides},
     env::ExecutionEnv,
+    executor_discovery::ExecutorDiscoveredOptions,
     executors::{
         AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, ExecutorExitResult,
         SlashCommandDescription, SpawnedChild, StandardCodingAgentExecutor,
     },
     logs::utils::patch,
+    model_selector::{ModelInfo, ModelSelectorConfig, PermissionPolicy, ReasoningOption},
     profile::ExecutorConfig,
     stdout_dup::create_stdout_pipe_writer,
 };
@@ -195,37 +197,6 @@ impl StandardCodingAgentExecutor for Codex {
         self.approvals = Some(approvals);
     }
 
-    async fn available_slash_commands(
-        &self,
-        _workdir: &Path,
-    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
-        let commands = vec![
-            SlashCommandDescription {
-                name: "compact".to_string(),
-                description: Some(
-                    "summarize conversation to prevent hitting the context limit".to_string(),
-                ),
-            },
-            SlashCommandDescription {
-                name: "init".to_string(),
-                description: Some(
-                    "create an AGENTS.md file with instructions for Codex".to_string(),
-                ),
-            },
-            SlashCommandDescription {
-                name: "status".to_string(),
-                description: Some("show current session configuration and token usage".to_string()),
-            },
-            SlashCommandDescription {
-                name: "mcp".to_string(),
-                description: Some("list configured MCP tools".to_string()),
-            },
-        ];
-        Ok(Box::pin(futures::stream::once(async move {
-            patch::slash_commands(commands, false, None)
-        })))
-    }
-
     async fn spawn(
         &self,
         current_dir: &Path,
@@ -288,57 +259,6 @@ impl StandardCodingAgentExecutor for Codex {
         }
     }
 
-    async fn available_model_config(
-        &self,
-        _workdir: &Path,
-    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
-        use crate::model_selector::*;
-
-        let xhigh_reasoning_options = ReasoningOption::from_names(
-            [
-                ReasoningEffort::Low,
-                ReasoningEffort::Medium,
-                ReasoningEffort::High,
-                ReasoningEffort::Xhigh,
-            ]
-            .map(|e| e.as_ref().to_string()),
-        );
-
-        let config = ModelSelectorConfig {
-            models: vec![
-                ModelInfo {
-                    id: "gpt-5.3-codex".to_string(),
-                    name: "GPT-5.3 Codex".to_string(),
-                    provider_id: None,
-                    reasoning_options: xhigh_reasoning_options.clone(),
-                },
-                ModelInfo {
-                    id: "gpt-5.2-codex".to_string(),
-                    name: "GPT-5.2 Codex".to_string(),
-                    provider_id: None,
-                    reasoning_options: xhigh_reasoning_options.clone(),
-                },
-                ModelInfo {
-                    id: "gpt-5.2".to_string(),
-                    name: "GPT-5.2".to_string(),
-                    provider_id: None,
-                    reasoning_options: xhigh_reasoning_options.clone(),
-                },
-                ModelInfo {
-                    id: "gpt-5.1-codex-max".to_string(),
-                    name: "GPT-5.1 Codex Max".to_string(),
-                    provider_id: None,
-                    reasoning_options: xhigh_reasoning_options.clone(),
-                },
-            ],
-            permissions: vec![PermissionPolicy::Auto, PermissionPolicy::Supervised],
-            ..Default::default()
-        };
-        Ok(Box::pin(futures::stream::once(async move {
-            patch::model_selector_config(config, false, None)
-        })))
-    }
-
     fn get_preset_options(&self) -> ExecutorConfig {
         use crate::model_selector::*;
         let permission_policy =
@@ -360,6 +280,84 @@ impl StandardCodingAgentExecutor for Codex {
             permission_policy: Some(permission_policy),
         }
     }
+
+    async fn discover_options(
+        &self,
+        _workdir: Option<&std::path::Path>,
+        _repo_path: Option<&std::path::Path>,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let xhigh_reasoning_options = ReasoningOption::from_names(
+            [
+                ReasoningEffort::Low,
+                ReasoningEffort::Medium,
+                ReasoningEffort::High,
+                ReasoningEffort::Xhigh,
+            ]
+            .map(|e| e.as_ref().to_string()),
+        );
+
+        let options = ExecutorDiscoveredOptions {
+            model_selector: ModelSelectorConfig {
+                models: vec![
+                    ModelInfo {
+                        id: "gpt-5.3-codex".to_string(),
+                        name: "GPT-5.3 Codex".to_string(),
+                        provider_id: None,
+                        reasoning_options: xhigh_reasoning_options.clone(),
+                    },
+                    ModelInfo {
+                        id: "gpt-5.2-codex".to_string(),
+                        name: "GPT-5.2 Codex".to_string(),
+                        provider_id: None,
+                        reasoning_options: xhigh_reasoning_options.clone(),
+                    },
+                    ModelInfo {
+                        id: "gpt-5.2".to_string(),
+                        name: "GPT-5.2".to_string(),
+                        provider_id: None,
+                        reasoning_options: xhigh_reasoning_options.clone(),
+                    },
+                    ModelInfo {
+                        id: "gpt-5.1-codex-max".to_string(),
+                        name: "GPT-5.1 Codex Max".to_string(),
+                        provider_id: None,
+                        reasoning_options: xhigh_reasoning_options,
+                    },
+                ],
+                permissions: vec![PermissionPolicy::Auto, PermissionPolicy::Supervised],
+                ..Default::default()
+            },
+            slash_commands: vec![
+                SlashCommandDescription {
+                    name: "compact".to_string(),
+                    description: Some(
+                        "summarize conversation to prevent hitting the context limit".to_string(),
+                    ),
+                },
+                SlashCommandDescription {
+                    name: "init".to_string(),
+                    description: Some(
+                        "create an AGENTS.md file with instructions for Codex".to_string(),
+                    ),
+                },
+                SlashCommandDescription {
+                    name: "status".to_string(),
+                    description: Some(
+                        "show current session configuration and token usage".to_string(),
+                    ),
+                },
+                SlashCommandDescription {
+                    name: "mcp".to_string(),
+                    description: Some("list configured MCP tools".to_string()),
+                },
+            ],
+            ..Default::default()
+        };
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::executor_discovered_options(options)
+        })))
+    }
+
     async fn spawn_review(
         &self,
         current_dir: &Path,

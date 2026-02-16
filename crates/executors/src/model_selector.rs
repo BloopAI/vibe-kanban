@@ -78,14 +78,6 @@ pub struct ModelSelectorConfig {
 
     /// Supported permission policies
     pub permissions: Vec<PermissionPolicy>,
-
-    /// Loading state
-    #[serde(default)]
-    pub loading: bool,
-
-    /// Error message if any
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
 }
 
 impl ReasoningOption {
