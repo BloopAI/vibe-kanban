@@ -19,10 +19,6 @@ function getFirstOrganization(
   return firstNonPersonal ?? organizations[0];
 }
 
-function getFirstProject(projects: Project[]): Project | null {
-  return getFirstProjectByOrder(projects);
-}
-
 async function getFirstProjectInOrganization(
   organizationId: string
 ): Promise<Project | null> {
@@ -31,7 +27,7 @@ async function getFirstProjectInOrganization(
   });
 
   if (collection.isReady()) {
-    return getFirstProject(collection.toArray as unknown as Project[]);
+    return getFirstProjectByOrder(collection.toArray as unknown as Project[]);
   }
 
   return new Promise<Project | null>((resolve) => {
@@ -60,7 +56,7 @@ async function getFirstProjectInOrganization(
         return;
       }
 
-      settle(getFirstProject(collection.toArray as unknown as Project[]));
+      settle(getFirstProjectByOrder(collection.toArray as unknown as Project[]));
     };
 
     subscription = collection.subscribeChanges(tryResolve, {
