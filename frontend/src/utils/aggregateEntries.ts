@@ -44,7 +44,9 @@ function getFileEditPath(entry: PatchTypeWithKey): string | null {
  * Determines if a patch entry can be aggregated and returns its aggregation type.
  * Handles file_read, search, web_fetch, and command_run (categorized by command type).
  */
-function getAggregationType(entry: PatchTypeWithKey): ToolAggregationType | null {
+function getAggregationType(
+  entry: PatchTypeWithKey
+): ToolAggregationType | null {
   if (entry.type !== 'NORMALIZED_ENTRY') return null;
 
   const entryType = entry.content.entry_type;

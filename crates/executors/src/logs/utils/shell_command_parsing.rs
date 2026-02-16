@@ -68,7 +68,7 @@ impl CommandCategory {
 /// Unwrap shell wrappers to get the actual command.
 ///
 /// Handles: `zsh -c "command"` / `bash -lc 'command'` / etc.
-fn unwrap_shell_command(command: &str) -> &str {
+pub fn unwrap_shell_command(command: &str) -> &str {
     let mut remaining = command;
 
     loop {

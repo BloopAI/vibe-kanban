@@ -34,13 +34,14 @@ use crate::{
     approvals::ToolCallMetadata,
     executors::codex::session::SessionHandler,
     logs::{
-        ActionType, CommandCategory, CommandExitStatus, CommandRunResult, FileChange,
-        NormalizedEntry, NormalizedEntryError, NormalizedEntryType, TodoItem, ToolResult,
-        ToolResultValueType, ToolStatus,
+        ActionType, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
+        NormalizedEntryError, NormalizedEntryType, TodoItem, ToolResult, ToolResultValueType,
+        ToolStatus,
         plain_text_processor::PlainTextLogProcessor,
         utils::{
             ConversationPatch, EntryIndexProvider,
             patch::{add_normalized_entry, replace_normalized_entry, upsert_normalized_entry},
+            shell_command_parsing::{CommandCategory, unwrap_shell_command},
         },
     },
 };
@@ -87,7 +88,7 @@ impl ToNormalizedEntry for CommandState {
             entry_type: NormalizedEntryType::ToolUse {
                 tool_name: "bash".to_string(),
                 action_type: ActionType::CommandRun {
-                    command: self.command.clone(),
+                    command: unwrap_shell_command(&self.command).to_string(),
                     result: Some(CommandRunResult {
                         exit_status: self
                             .exit_code

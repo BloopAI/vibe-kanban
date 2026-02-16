@@ -910,7 +910,11 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
       case 'command_run_read':
         return { label: 'Read', icon: FileTextIcon, unit: 'command' };
       case 'command_run_search':
-        return { label: 'Search', icon: ListMagnifyingGlassIcon, unit: 'command' };
+        return {
+          label: 'Search',
+          icon: ListMagnifyingGlassIcon,
+          unit: 'command',
+        };
       case 'command_run_edit':
         return { label: 'Edit', icon: PencilSimpleIcon, unit: 'command' };
       case 'command_run_fetch':

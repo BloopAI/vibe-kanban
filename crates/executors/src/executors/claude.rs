@@ -39,12 +39,13 @@ use crate::{
         codex::client::LogWriter, utils::reorder_slash_commands,
     },
     logs::{
-        ActionType, CommandCategory, FileChange, NormalizedEntry, NormalizedEntryError,
-        NormalizedEntryType, TodoItem, ToolStatus,
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
+        TodoItem, ToolStatus,
         plain_text_processor::PlainTextLogProcessor,
         utils::{
             EntryIndexProvider,
             patch::{self, ConversationPatch},
+            shell_command_parsing::CommandCategory,
         },
     },
     stdout_dup::create_stdout_pipe_writer,

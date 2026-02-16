@@ -12,12 +12,13 @@ use workspace_utils::{
 };
 
 use crate::logs::{
-    ActionType, CommandCategory, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
+    ActionType, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
     NormalizedEntryError, NormalizedEntryType, TodoItem, ToolResult, ToolStatus,
     plain_text_processor::PlainTextLogProcessor,
     utils::{
         EntryIndexProvider,
         patch::{add_normalized_entry, replace_normalized_entry},
+        shell_command_parsing::CommandCategory,
     },
 };
 

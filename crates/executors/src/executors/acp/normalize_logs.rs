@@ -15,11 +15,10 @@ use super::AcpEvent;
 use crate::{
     approvals::ToolCallMetadata,
     logs::{
-        ActionType, CommandCategory, FileChange, NormalizedEntry, NormalizedEntryError,
-        NormalizedEntryType, TodoItem, ToolResult, ToolResultValueType,
-        ToolStatus as LogToolStatus,
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
+        TodoItem, ToolResult, ToolResultValueType, ToolStatus as LogToolStatus,
         stderr_processor::normalize_stderr_logs,
-        utils::{ConversationPatch, EntryIndexProvider},
+        utils::{ConversationPatch, EntryIndexProvider, shell_command_parsing::CommandCategory},
     },
 };
 

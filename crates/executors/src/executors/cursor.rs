@@ -22,10 +22,10 @@ use crate::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
     },
     logs::{
-        ActionType, CommandCategory, FileChange, NormalizedEntry, NormalizedEntryError,
-        NormalizedEntryType, TodoItem, ToolStatus,
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
+        TodoItem, ToolStatus,
         plain_text_processor::PlainTextLogProcessor,
-        utils::{ConversationPatch, EntryIndexProvider},
+        utils::{ConversationPatch, EntryIndexProvider, shell_command_parsing::CommandCategory},
     },
 };
 

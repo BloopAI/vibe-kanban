@@ -12,13 +12,14 @@ use super::types::{
 use crate::{
     approvals::ToolCallMetadata,
     logs::{
-        ActionType, CommandCategory, CommandExitStatus, CommandRunResult, FileChange,
-        NormalizedEntry, NormalizedEntryError, NormalizedEntryType, TodoItem, TokenUsageInfo,
-        ToolResult, ToolStatus,
+        ActionType, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
+        NormalizedEntryError, NormalizedEntryType, TodoItem, TokenUsageInfo, ToolResult,
+        ToolStatus,
         stderr_processor::normalize_stderr_logs,
         utils::{
             EntryIndexProvider,
             patch::{add_normalized_entry, replace_normalized_entry, upsert_normalized_entry},
+            shell_command_parsing::CommandCategory,
         },
     },
 };
