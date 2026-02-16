@@ -8,6 +8,7 @@ import {
   type SidebarWorkspace,
 } from '@/components/ui-new/hooks/useWorkspaces';
 import { useAttempt } from '@/hooks/useAttempt';
+import { ApiError } from '@/lib/api';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useWorkspaceSessions } from '@/hooks/useWorkspaceSessions';
 import {
@@ -103,7 +104,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const {
     data: workspace,
     isLoading: isLoadingWorkspace,
-    isError: isWorkspaceError,
+    error: workspaceError,
   } = useAttempt(workspaceId, { enabled: !!workspaceId && !isCreateMode });
 
   // Fetch sessions for the current workspace
@@ -174,7 +175,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   );
 
   const isLoading = isLoadingList || isLoadingWorkspace;
-  const isError = isWorkspaceError;
+  const isError =
+    workspaceError instanceof ApiError && workspaceError.status === 404;
 
   const selectWorkspace = useCallback(
     (id: string) => {
