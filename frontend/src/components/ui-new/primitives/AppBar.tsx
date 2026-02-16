@@ -189,36 +189,39 @@ export function AppBar({
                   isDragDisabled={isSavingProjectOrder}
                 >
                   {(dragProvided, snapshot) => (
-                    <Tooltip content={project.name} side="right">
-                      <button
-                        ref={dragProvided.innerRef}
-                        type="button"
-                        onClick={() => onProjectClick(project.id)}
-                        {...dragProvided.draggableProps}
-                        {...dragProvided.dragHandleProps}
-                        className={cn(
-                          'flex items-center justify-center w-10 h-10 rounded-lg',
-                          'text-sm font-medium transition-colors cursor-grab',
-                          'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-                          snapshot.isDragging && 'shadow-lg',
-                          activeProjectId === project.id
-                            ? ''
-                            : 'bg-primary text-normal hover:opacity-80'
-                        )}
-                        style={{
-                          ...(dragProvided.draggableProps.style ?? {}),
-                          ...(activeProjectId === project.id
-                            ? {
-                                color: `hsl(${project.color})`,
-                                backgroundColor: `hsl(${project.color} / 0.2)`,
-                              }
-                            : {}),
-                        }}
-                        aria-label={project.name}
-                      >
-                        {getProjectInitials(project.name)}
-                      </button>
-                    </Tooltip>
+                    <div
+                      ref={dragProvided.innerRef}
+                      {...dragProvided.draggableProps}
+                      {...dragProvided.dragHandleProps}
+                      style={dragProvided.draggableProps.style}
+                    >
+                      <Tooltip content={project.name} side="right">
+                        <button
+                          type="button"
+                          onClick={() => onProjectClick(project.id)}
+                          className={cn(
+                            'flex items-center justify-center w-10 h-10 rounded-lg',
+                            'text-sm font-medium transition-colors cursor-grab',
+                            'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                            snapshot.isDragging && 'shadow-lg',
+                            activeProjectId === project.id
+                              ? ''
+                              : 'bg-primary text-normal hover:opacity-80'
+                          )}
+                          style={
+                            activeProjectId === project.id
+                              ? {
+                                  color: `hsl(${project.color})`,
+                                  backgroundColor: `hsl(${project.color} / 0.2)`,
+                                }
+                              : undefined
+                          }
+                          aria-label={project.name}
+                        >
+                          {getProjectInitials(project.name)}
+                        </button>
+                      </Tooltip>
+                    </div>
                   )}
                 </Draggable>
               ))}
