@@ -91,6 +91,7 @@ import {
   GitRemote,
   ListPrsError,
   LinkPrRequest,
+  AttachExistingPrRequest,
   AttachPrResponse,
   CreateWorkspaceFromPrBody,
   CreateWorkspaceFromPrResponse,
@@ -708,6 +709,21 @@ export const attemptsApi = {
   ): Promise<Result<AttachPrResponse, PrError>> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/pr/link`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponseAsResult<AttachPrResponse, PrError>(response);
+  },
+
+  /** Try to auto-attach a PR by matching the workspace branch */
+  attachPr: async (
+    attemptId: string,
+    data: AttachExistingPrRequest
+  ): Promise<Result<AttachPrResponse, PrError>> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/pr/attach`,
       {
         method: 'POST',
         body: JSON.stringify(data),
