@@ -69,7 +69,7 @@ export function VSCodeWorkspacePage() {
                     <p className="text-low">{t('workspaces.loading')}</p>
                   </div>
                 ) : isError || !workspaceWithSession ? (
-                  <WorkspaceNotFound showGoToWorkspaces={false} />
+                  <WorkspaceNotFound />
                 ) : (
                   <div className="flex-1 min-h-0 overflow-hidden flex justify-center">
                     <div className="w-chat max-w-full h-full">

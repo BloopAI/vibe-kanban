@@ -29,6 +29,8 @@ interface WorkspacesMainProps {
   isLoading: boolean;
   /** Whether the workspace fetch failed (e.g. 404) */
   isError: boolean;
+  /** Callback to navigate to the workspaces list */
+  onGoToWorkspaces?: () => void;
   containerRef: RefObject<HTMLElement | null>;
   conversationListRef: RefObject<ConversationListHandle>;
   /** Whether user is creating a new session */
@@ -49,6 +51,7 @@ export function WorkspacesMain({
   onSelectSession,
   isLoading,
   isError,
+  onGoToWorkspaces,
   containerRef,
   conversationListRef,
   isNewSessionMode,
@@ -81,7 +84,7 @@ export function WorkspacesMain({
                 <p className="text-low">{t('common:workspaces.loading')}</p>
               </div>
             ) : isError ? (
-              <WorkspaceNotFound />
+              <WorkspaceNotFound onGoToWorkspaces={onGoToWorkspaces} />
             ) : !workspaceWithSession ? (
               <div className="flex-1 flex items-center justify-center">
                 <p className="text-low">

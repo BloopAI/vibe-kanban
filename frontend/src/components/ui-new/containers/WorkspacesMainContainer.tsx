@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
 } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Workspace, Session } from 'shared/types';
 import { createWorkspaceWithSession } from '@/types/attempt';
 import {
@@ -48,6 +49,7 @@ export const WorkspacesMainContainer = forwardRef<
   ref
 ) {
   const { diffStats } = useWorkspaceContext();
+  const navigate = useNavigate();
   const containerRef = useRef<HTMLElement>(null);
   const conversationListRef = useRef<ConversationListHandle>(null);
 
@@ -56,6 +58,10 @@ export const WorkspacesMainContainer = forwardRef<
     if (!selectedWorkspace) return undefined;
     return createWorkspaceWithSession(selectedWorkspace, selectedSession);
   }, [selectedWorkspace, selectedSession]);
+
+  const handleGoToWorkspaces = useCallback(() => {
+    navigate('/workspaces');
+  }, [navigate]);
 
   const handleScrollToPreviousMessage = useCallback(() => {
     conversationListRef.current?.scrollToPreviousUserMessage();
@@ -83,6 +89,7 @@ export const WorkspacesMainContainer = forwardRef<
       onSelectSession={onSelectSession}
       isLoading={isLoading}
       isError={isError}
+      onGoToWorkspaces={handleGoToWorkspaces}
       containerRef={containerRef}
       isNewSessionMode={isNewSessionMode}
       onStartNewSession={onStartNewSession}
