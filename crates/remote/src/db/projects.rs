@@ -148,8 +148,26 @@ impl ProjectRepository {
         sort_order: Option<i32>,
     ) -> Result<MutationResponse<Project>, ProjectError> {
         let mut tx = pool.begin().await?;
+        let data = Self::update_partial(&mut *tx, id, name, color, sort_order).await?;
+
+        let txid = get_txid(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(MutationResponse { data, txid })
+    }
+
+    /// Updates project fields using a provided executor (used by bulk update transactions).
+    pub async fn update_partial<'e, E>(
+        executor: E,
+        id: Uuid,
+        name: Option<String>,
+        color: Option<String>,
+        sort_order: Option<i32>,
+    ) -> Result<Project, ProjectError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let updated_at = Utc::now();
-        let data = sqlx::query_as!(
+        let record = sqlx::query_as!(
             Project,
             r#"
             UPDATE projects
@@ -174,12 +192,10 @@ impl ProjectRepository {
             updated_at,
             id
         )
-        .fetch_one(&mut *tx)
+        .fetch_one(executor)
         .await?;
 
-        let txid = get_txid(&mut *tx).await?;
-        tx.commit().await?;
-        Ok(MutationResponse { data, txid })
+        Ok(record)
     }
 
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, ProjectError> {

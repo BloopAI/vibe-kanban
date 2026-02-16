@@ -4,7 +4,6 @@ use axum::{
     http::StatusCode,
     routing::post,
 };
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
@@ -255,32 +254,13 @@ async fn bulk_update_projects(
             ));
         }
 
-        let updated = sqlx::query_as!(
-            Project,
-            r#"
-            UPDATE projects
-            SET
-                name = COALESCE($1, name),
-                color = COALESCE($2, color),
-                sort_order = COALESCE($3, sort_order),
-                updated_at = $4
-            WHERE id = $5
-            RETURNING
-                id               AS "id!: Uuid",
-                organization_id  AS "organization_id!: Uuid",
-                name             AS "name!",
-                color            AS "color!",
-                sort_order       AS "sort_order!",
-                created_at       AS "created_at!: DateTime<Utc>",
-                updated_at       AS "updated_at!: DateTime<Utc>"
-            "#,
+        let updated = ProjectRepository::update_partial(
+            &mut *tx,
+            item.id,
             item.changes.name,
             item.changes.color,
             item.changes.sort_order,
-            Utc::now(),
-            item.id
         )
-        .fetch_one(&mut *tx)
         .await
         .map_err(|error| {
             tracing::error!(?error, project_id = %item.id, "failed to update project");
