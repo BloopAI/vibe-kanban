@@ -187,7 +187,8 @@
       "title": "Eliminar espacio de trabajo",
       "description": "¿Estás seguro de que deseas eliminar este espacio de trabajo? Esta acción no se puede deshacer.",
       "deleteBranchLabel": "Eliminar rama",
-      "cannotDeleteOpenPr": "No se puede eliminar la rama mientras el PR está abierto"
+      "cannotDeleteOpenPr": "No se puede eliminar la rama mientras el PR está abierto",
+      "unlinkFromIssueLabel": "También desvincular del issue"
     },
     "linkError": "Failed to link workspace"
   },

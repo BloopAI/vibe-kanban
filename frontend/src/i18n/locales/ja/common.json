@@ -187,7 +187,8 @@
       "title": "ワークスペースを削除",
       "description": "このワークスペースを削除してもよろしいですか？この操作は元に戻せません。",
       "deleteBranchLabel": "ブランチを削除",
-      "cannotDeleteOpenPr": "PRがオープン中はブランチを削除できません"
+      "cannotDeleteOpenPr": "PRがオープン中はブランチを削除できません",
+      "unlinkFromIssueLabel": "イシューからもリンク解除する"
     },
     "linkError": "Failed to link workspace"
   },

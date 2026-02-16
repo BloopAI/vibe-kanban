@@ -187,7 +187,8 @@
       "title": "Supprimer l'espace de travail",
       "description": "Êtes-vous sûr de vouloir supprimer cet espace de travail ? Cette action est irréversible.",
       "deleteBranchLabel": "Supprimer la branche",
-      "cannotDeleteOpenPr": "Impossible de supprimer la branche tant que la PR est ouverte"
+      "cannotDeleteOpenPr": "Impossible de supprimer la branche tant que la PR est ouverte",
+      "unlinkFromIssueLabel": "Également dissocier du ticket"
     },
     "linkError": "Failed to link workspace"
   },

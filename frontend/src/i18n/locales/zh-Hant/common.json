@@ -187,7 +187,8 @@
       "title": "刪除工作區",
       "description": "確定要刪除此工作區嗎？此操作無法復原。",
       "deleteBranchLabel": "刪除分支",
-      "cannotDeleteOpenPr": "PR 開啟時無法刪除分支"
+      "cannotDeleteOpenPr": "PR 開啟時無法刪除分支",
+      "unlinkFromIssueLabel": "同時取消與議題的關聯"
     },
     "linkError": "Failed to link workspace"
   },
