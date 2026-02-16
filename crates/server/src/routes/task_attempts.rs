@@ -595,7 +595,11 @@ pub async fn push_task_attempt_branch(
                 tokio::spawn(async move {
                     let stats = diff_stream::compute_diff_stats(&pool, &git, &ws).await;
                     remote_sync::sync_workspace_to_remote(
-                        &client, ws.id, None, None, stats.as_ref(),
+                        &client,
+                        ws.id,
+                        None,
+                        None,
+                        stats.as_ref(),
                     )
                     .await;
                 });
@@ -644,8 +648,7 @@ pub async fn force_push_task_attempt_branch(
         ws.container_ref = Some(container_ref.clone());
         tokio::spawn(async move {
             let stats = diff_stream::compute_diff_stats(&pool, &git, &ws).await;
-            remote_sync::sync_workspace_to_remote(&client, ws.id, None, None, stats.as_ref())
-                .await;
+            remote_sync::sync_workspace_to_remote(&client, ws.id, None, None, stats.as_ref()).await;
         });
     }
 
