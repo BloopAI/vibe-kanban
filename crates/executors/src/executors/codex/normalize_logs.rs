@@ -34,9 +34,9 @@ use crate::{
     approvals::ToolCallMetadata,
     executors::codex::session::SessionHandler,
     logs::{
-        ActionType, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
-        NormalizedEntryError, NormalizedEntryType, TodoItem, ToolResult, ToolResultValueType,
-        ToolStatus,
+        ActionType, CommandCategory, CommandExitStatus, CommandRunResult, FileChange,
+        NormalizedEntry, NormalizedEntryError, NormalizedEntryType, TodoItem, ToolResult,
+        ToolResultValueType, ToolStatus,
         plain_text_processor::PlainTextLogProcessor,
         utils::{
             ConversationPatch, EntryIndexProvider,
@@ -98,6 +98,7 @@ impl ToNormalizedEntry for CommandState {
                             build_command_output(Some(&self.stdout), Some(&self.stderr))
                         },
                     }),
+                    category: CommandCategory::from_command(&self.command),
                 },
                 status: self.status.clone(),
             },

@@ -12,9 +12,9 @@ use super::types::{
 use crate::{
     approvals::ToolCallMetadata,
     logs::{
-        ActionType, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
-        NormalizedEntryError, NormalizedEntryType, TodoItem, TokenUsageInfo, ToolResult,
-        ToolStatus,
+        ActionType, CommandCategory, CommandExitStatus, CommandRunResult, FileChange,
+        NormalizedEntry, NormalizedEntryError, NormalizedEntryType, TodoItem, TokenUsageInfo,
+        ToolResult, ToolStatus,
         stderr_processor::normalize_stderr_logs,
         utils::{
             EntryIndexProvider,
@@ -1007,13 +1007,17 @@ impl ToolCallState {
                 output,
                 error,
                 exit_code,
-            } => ActionType::CommandRun {
-                command: command.clone().unwrap_or_default(),
-                result: Some(CommandRunResult {
-                    exit_status: exit_code.map(|code| CommandExitStatus::ExitCode { code }),
-                    output: output.as_deref().or(error.as_deref()).map(str::to_string),
-                }),
-            },
+            } => {
+                let cmd = command.clone().unwrap_or_default();
+                ActionType::CommandRun {
+                    command: cmd.clone(),
+                    result: Some(CommandRunResult {
+                        exit_status: exit_code.map(|code| CommandExitStatus::ExitCode { code }),
+                        output: output.as_deref().or(error.as_deref()).map(str::to_string),
+                    }),
+                    category: CommandCategory::from_command(&cmd),
+                }
+            }
             ToolData::Read { file_path } => ActionType::FileRead {
                 path: file_path
                     .as_deref()

@@ -15,8 +15,9 @@ use super::AcpEvent;
 use crate::{
     approvals::ToolCallMetadata,
     logs::{
-        ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
-        TodoItem, ToolResult, ToolResultValueType, ToolStatus as LogToolStatus,
+        ActionType, CommandCategory, FileChange, NormalizedEntry, NormalizedEntryError,
+        NormalizedEntryType, TodoItem, ToolResult, ToolResultValueType,
+        ToolStatus as LogToolStatus,
         stderr_processor::normalize_stderr_logs,
         utils::{ConversationPatch, EntryIndexProvider},
     },
@@ -363,7 +364,11 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             output: None,
                         })
                     };
-                    ActionType::CommandRun { command, result }
+                    ActionType::CommandRun {
+                        command: command.clone(),
+                        result,
+                        category: CommandCategory::from_command(&command),
+                    }
                 }
                 agent_client_protocol::ToolKind::Delete => ActionType::FileEdit {
                     path: tc

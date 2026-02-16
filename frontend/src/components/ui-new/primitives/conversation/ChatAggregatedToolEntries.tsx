@@ -7,6 +7,8 @@ export interface AggregatedEntry {
   summary: string;
   status?: ToolStatus;
   expansionKey: string;
+  content?: string;
+  command?: string;
 }
 
 interface ChatAggregatedToolEntriesProps {

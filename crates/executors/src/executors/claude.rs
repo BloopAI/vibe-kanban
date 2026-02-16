@@ -39,8 +39,8 @@ use crate::{
         codex::client::LogWriter, utils::reorder_slash_commands,
     },
     logs::{
-        ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
-        TodoItem, ToolStatus,
+        ActionType, CommandCategory, FileChange, NormalizedEntry, NormalizedEntryError,
+        NormalizedEntryType, TodoItem, ToolStatus,
         plain_text_processor::PlainTextLogProcessor,
         utils::{
             EntryIndexProvider,
@@ -796,6 +796,7 @@ impl ClaudeLogProcessor {
             ClaudeToolData::Bash { command, .. } => ActionType::CommandRun {
                 command: command.clone(),
                 result: None,
+                category: CommandCategory::from_command(command),
             },
             ClaudeToolData::Grep { pattern, .. } => ActionType::Search {
                 query: pattern.clone(),
@@ -1177,6 +1178,7 @@ impl ClaudeLogProcessor {
                                     action_type: ActionType::CommandRun {
                                         command: info.content.clone(),
                                         result,
+                                        category: CommandCategory::from_command(&info.content),
                                     },
                                     status,
                                 },

@@ -50,6 +50,7 @@ import {
   FileTextIcon,
   ListMagnifyingGlassIcon,
   GlobeIcon,
+  PencilSimpleIcon,
 } from '@phosphor-icons/react';
 
 type Props = {
@@ -854,20 +855,27 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
 
       const { action_type, status, tool_name } = entryType;
       let summary = '';
+      let content = patchEntry.content.content;
+      let command: string | undefined;
       if (action_type.action === 'file_read') {
         summary = action_type.path;
       } else if (action_type.action === 'search') {
         summary = action_type.query;
       } else if (action_type.action === 'web_fetch') {
         summary = action_type.url;
+      } else if (action_type.action === 'command_run') {
+        summary = action_type.command;
+        command = action_type.command;
+        content = action_type.result?.output ?? '';
       }
 
       return {
         summary,
         status,
         expansionKey: patchEntry.patchKey,
-        content: patchEntry.content.content,
+        content,
         toolName: tool_name,
+        command,
       };
     });
   }, [group.entries]);
@@ -876,7 +884,7 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
     (index: number) => {
       const entry = aggregatedEntries[index];
       if (entry && entry.content) {
-        viewToolContentInPanel(entry.toolName, entry.content);
+        viewToolContentInPanel(entry.toolName, entry.content, entry.command);
       }
     },
     [aggregatedEntries, viewToolContentInPanel]
@@ -899,6 +907,14 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
         return { label: 'Search', icon: ListMagnifyingGlassIcon, unit: 'file' };
       case 'web_fetch':
         return { label: 'Fetched', icon: GlobeIcon, unit: 'URL' };
+      case 'command_run_read':
+        return { label: 'Read', icon: FileTextIcon, unit: 'command' };
+      case 'command_run_search':
+        return { label: 'Search', icon: ListMagnifyingGlassIcon, unit: 'command' };
+      case 'command_run_edit':
+        return { label: 'Edit', icon: PencilSimpleIcon, unit: 'command' };
+      case 'command_run_fetch':
+        return { label: 'Fetch', icon: GlobeIcon, unit: 'command' };
     }
   };
   const { label, icon, unit } = getDisplayProps();

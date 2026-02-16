@@ -12,7 +12,7 @@ use workspace_utils::{
 };
 
 use crate::logs::{
-    ActionType, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
+    ActionType, CommandCategory, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
     NormalizedEntryError, NormalizedEntryType, TodoItem, ToolResult, ToolStatus,
     plain_text_processor::PlainTextLogProcessor,
     utils::{
@@ -1088,6 +1088,7 @@ impl ToNormalizedEntry for CommandRunState {
                 action_type: ActionType::CommandRun {
                     command: self.command.clone(),
                     result,
+                    category: CommandCategory::from_command(&self.command),
                 },
                 status: self.status.clone(),
             },

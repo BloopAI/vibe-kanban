@@ -390,6 +390,7 @@ export const useConversationHistory = ({
                     output,
                     exit_status,
                   },
+                  category: 'other',
                 },
                 status: toolStatus,
               },
