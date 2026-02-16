@@ -9,7 +9,7 @@ use super::TaskServer;
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
-        let mut instruction = "A task and project management server. If you need to create or update tickets or issues then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_issues` to fetch the `issue_ids` of all the issues in a project. TOOLS: 'list_organizations', 'list_projects', 'list_issues', 'create_issue', 'start_workspace_session', 'get_issue', 'update_issue', 'delete_issue', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script'. Make sure to pass `project_id`, `issue_id`, or `repo_id` where required. You can use list tools to get the available ids.".to_string();
+        let mut instruction = "A task and project/workspace management server. Use list tools first to discover IDs, then call mutation tools with those IDs. TOOLS: 'list_workspaces', 'delete_workspace', 'list_organizations', 'list_org_members', 'list_projects', 'list_issue_priorities', 'list_issues', 'create_issue', 'get_issue', 'update_issue', 'delete_issue', 'list_issue_assignees', 'assign_issue', 'unassign_issue', 'start_workspace_session', 'link_workspace', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script'.".to_string();
         if self.context.is_some() {
             let context_instruction = "Use 'get_context' to fetch project/issue/workspace metadata for the active Vibe Kanban workspace session when available.";
             instruction = format!("{} {}", context_instruction, instruction);

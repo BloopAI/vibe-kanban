@@ -11,11 +11,13 @@ use uuid::Uuid;
 use super::{ApiResponseEnvelope, TaskServer};
 
 mod context;
+mod issue_assignees;
 mod organizations;
 mod remote_issues;
 mod remote_projects;
 mod repos;
 mod task_attempts;
+mod workspaces;
 
 impl TaskServer {
     pub fn new(base_url: &str) -> Self {
@@ -23,10 +25,12 @@ impl TaskServer {
             client: reqwest::Client::new(),
             base_url: base_url.to_string(),
             tool_router: Self::context_tools_router()
+                + Self::workspaces_tools_router()
                 + Self::organizations_tools_router()
                 + Self::repos_tools_router()
                 + Self::remote_projects_tools_router()
                 + Self::remote_issues_tools_router()
+                + Self::issue_assignees_tools_router()
                 + Self::task_attempts_tools_router(),
             context: None,
         }
@@ -174,6 +178,23 @@ impl TaskServer {
         }
         Err(Self::err(
             "project_id is required (not available from workspace context)",
+            None::<&str>,
+        )
+        .unwrap())
+    }
+
+    // Resolves an organization_id from an explicit parameter or falls back to context.
+    fn resolve_organization_id(&self, explicit: Option<Uuid>) -> Result<Uuid, CallToolResult> {
+        if let Some(id) = explicit {
+            return Ok(id);
+        }
+        if let Some(ctx) = &self.context
+            && let Some(id) = ctx.organization_id
+        {
+            return Ok(id);
+        }
+        Err(Self::err(
+            "organization_id is required (not available from workspace context)",
             None::<&str>,
         )
         .unwrap())

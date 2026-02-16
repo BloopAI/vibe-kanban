@@ -4,14 +4,14 @@ use std::time::Duration;
 
 use api_types::{
     AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
-    CreateIssueRequest, CreateOrganizationRequest, CreateOrganizationResponse,
-    CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest, GetInvitationResponse,
-    GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
-    HandoffRedeemResponse, Issue, ListAttachmentsResponse, ListInvitationsResponse,
-    ListIssuesResponse, ListMembersResponse, ListOrganizationsResponse,
-    ListProjectStatusesResponse, ListProjectsResponse, MutationResponse, Organization,
-    ProfileResponse, RevokeInvitationRequest, TokenRefreshRequest, TokenRefreshResponse,
-    UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
+    CreateIssueAssigneeRequest, CreateIssueRequest, CreateOrganizationRequest,
+    CreateOrganizationResponse, CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest,
+    GetInvitationResponse, GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse,
+    HandoffRedeemRequest, HandoffRedeemResponse, Issue, IssueAssignee, ListAttachmentsResponse,
+    ListInvitationsResponse, ListIssueAssigneesResponse, ListIssuesResponse, ListMembersResponse,
+    ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse, MutationResponse,
+    Organization, ProfileResponse, RevokeInvitationRequest, TokenRefreshRequest,
+    TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
     UpdateOrganizationRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
@@ -91,6 +91,18 @@ fn map_error_code(code: Option<&str>) -> HandoffErrorCode {
 #[derive(Deserialize)]
 struct ApiErrorResponse {
     error: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct RemoteListIssueAssigneesResponse {
+    issue_assignees: Vec<IssueAssignee>,
+}
+
+#[derive(Debug, Serialize)]
+struct RemoteCreateIssueAssigneeRequest {
+    id: Option<Uuid>,
+    issue_id: Uuid,
+    user_id: Uuid,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -752,6 +764,62 @@ impl RemoteClient {
             .send(
                 reqwest::Method::DELETE,
                 &format!("/v1/issues/{issue_id}"),
+                true,
+                None::<&()>,
+            )
+            .await?;
+        res.json::<DeleteResponse>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    // ── Issue Assignees ────────────────────────────────────────────────
+
+    /// Lists assignees for an issue.
+    pub async fn list_issue_assignees(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<ListIssueAssigneesResponse, RemoteClientError> {
+        let response: RemoteListIssueAssigneesResponse = self
+            .get_authed(&format!("/v1/issue_assignees?issue_id={issue_id}"))
+            .await?;
+        Ok(ListIssueAssigneesResponse {
+            issue_assignees: response.issue_assignees,
+        })
+    }
+
+    /// Gets a single issue assignee by ID.
+    pub async fn get_issue_assignee(
+        &self,
+        issue_assignee_id: Uuid,
+    ) -> Result<IssueAssignee, RemoteClientError> {
+        self.get_authed(&format!("/v1/issue_assignees/{issue_assignee_id}"))
+            .await
+    }
+
+    /// Creates a new issue assignee.
+    pub async fn create_issue_assignee(
+        &self,
+        request: &CreateIssueAssigneeRequest,
+    ) -> Result<MutationResponse<IssueAssignee>, RemoteClientError> {
+        let payload = RemoteCreateIssueAssigneeRequest {
+            id: request.id,
+            issue_id: request.issue_id,
+            user_id: request.user_id,
+        };
+        self.post_authed("/v1/issue_assignees", Some(&payload))
+            .await
+    }
+
+    /// Deletes an issue assignee.
+    pub async fn delete_issue_assignee(
+        &self,
+        issue_assignee_id: Uuid,
+    ) -> Result<DeleteResponse, RemoteClientError> {
+        let res = self
+            .send(
+                reqwest::Method::DELETE,
+                &format!("/v1/issue_assignees/{issue_assignee_id}"),
                 true,
                 None::<&()>,
             )
