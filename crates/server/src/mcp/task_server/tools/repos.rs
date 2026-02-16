@@ -17,9 +17,6 @@ struct McpRepoSummary {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-struct ListReposRequest {}
-
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct GetRepoRequest {
     #[schemars(description = "The ID of the repository to retrieve")]
     repo_id: Uuid,
@@ -84,10 +81,7 @@ struct ListReposResponse {
 #[tool_router(router = repos_tools_router, vis = "pub")]
 impl TaskServer {
     #[tool(description = "List all repositories.")]
-    async fn list_repos(
-        &self,
-        Parameters(_): Parameters<ListReposRequest>,
-    ) -> Result<CallToolResult, ErrorData> {
+    async fn list_repos(&self) -> Result<CallToolResult, ErrorData> {
         let url = self.url("/api/repos");
         let repos: Vec<Repo> = match self.send_json(self.client.get(&url)).await {
             Ok(rs) => rs,
