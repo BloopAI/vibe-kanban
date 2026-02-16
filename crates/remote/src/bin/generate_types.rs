@@ -132,9 +132,6 @@ fn export_shapes() -> String {
         output.push_str("\n\n");
     }
 
-    output.push_str("// Additional endpoint constants\n");
-    output.push_str("export const ORGANIZATIONS_ENDPOINT = '/v1/organizations';\n\n");
-
     // ShapeDefinition interface
     output.push_str("// Shape definition interface\n");
     output.push_str("export interface ShapeDefinition<T> {\n");

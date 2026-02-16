@@ -155,9 +155,6 @@ export type CommitAttachmentsResponse = { attachments: Array<AttachmentWithBlob>
 
 export type AttachmentUrlResponse = { url: string, };
 
-// Additional endpoint constants
-export const ORGANIZATIONS_ENDPOINT = '/v1/organizations';
-
 // Shape definition interface
 export interface ShapeDefinition<T> {
   readonly table: string;
