@@ -1,6 +1,7 @@
 use axum::{extract::ws::Message, response::sse::Event};
 use json_patch::Patch;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 pub const EV_STDOUT: &str = "stdout";
 pub const EV_STDERR: &str = "stderr";
@@ -9,6 +10,37 @@ pub const EV_SESSION_ID: &str = "session_id";
 pub const EV_MESSAGE_ID: &str = "message_id";
 pub const EV_READY: &str = "ready";
 pub const EV_FINISHED: &str = "finished";
+
+/// Estimate the serialized JSON byte length of a `serde_json::Value` by
+/// walking the tree. No allocation, no serde — just arithmetic.
+fn value_json_len(v: &Value) -> usize {
+    match v {
+        Value::Null => 4,                           // null
+        Value::Bool(true) => 4,                     // true
+        Value::Bool(false) => 5,                    // false
+        Value::Number(_) => 20, // i64 ≤ 20 digits, f64 via ryu ≤ 24; 20 is close enough
+        Value::String(s) => {
+            // 2 for quotes + content length. JSON escaping can only make it
+            // longer, so this is a lower bound — good enough for budget sizing.
+            2 + s.len()
+        }
+        Value::Array(arr) => {
+            // [elem,elem,...] → 2 brackets + separating commas
+            let inner: usize = arr.iter().map(value_json_len).sum();
+            let commas = arr.len().saturating_sub(1);
+            2 + inner + commas
+        }
+        Value::Object(map) => {
+            // {"key":val,"key":val} → 2 braces + per-entry: 2 key quotes + colon + comma
+            let inner: usize = map
+                .iter()
+                .map(|(k, v)| k.len() + 2 + 1 + value_json_len(v)) // "key":value
+                .sum();
+            let commas = map.len().saturating_sub(1);
+            2 + inner + commas
+        }
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum LogMsg {
@@ -78,11 +110,20 @@ impl LogMsg {
             LogMsg::Stdout(s) => EV_STDOUT.len() + s.len() + OVERHEAD,
             LogMsg::Stderr(s) => EV_STDERR.len() + s.len() + OVERHEAD,
             LogMsg::JsonPatch(patch) => {
-                // Estimate: ~256 bytes per operation instead of serializing.
-                // The byte budget (~100 MB) is approximate so exact sizing is unnecessary.
-                let ops = patch.0.len();
-                let estimated = ops * 256;
-                EV_JSON_PATCH.len() + estimated.max(2) + OVERHEAD
+                // Walk the Value tree in each op to estimate size without serializing.
+                // Per-op overhead: {"op":"add","path":"/entries/N","value":} ≈ 50 bytes.
+                let ops_bytes: usize = patch.0.iter().map(|op| {
+                    let val_len = match op {
+                        json_patch::PatchOperation::Add(o) => value_json_len(&o.value),
+                        json_patch::PatchOperation::Replace(o) => value_json_len(&o.value),
+                        json_patch::PatchOperation::Remove(_) => 0,
+                        json_patch::PatchOperation::Move(_) => 0,
+                        json_patch::PatchOperation::Copy(_) => 0,
+                        json_patch::PatchOperation::Test(o) => value_json_len(&o.value),
+                    };
+                    50 + val_len
+                }).sum();
+                EV_JSON_PATCH.len() + ops_bytes.max(2) + OVERHEAD
             }
             LogMsg::SessionId(s) => EV_SESSION_ID.len() + s.len() + OVERHEAD,
             LogMsg::MessageId(s) => EV_MESSAGE_ID.len() + s.len() + OVERHEAD,
