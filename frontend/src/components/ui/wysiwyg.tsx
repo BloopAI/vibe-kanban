@@ -22,6 +22,11 @@ import {
   PR_COMMENT_TRANSFORMER,
   PR_COMMENT_EXPORT_TRANSFORMER,
 } from './wysiwyg/nodes/pr-comment-node';
+import {
+  ComponentInfoNode,
+  COMPONENT_INFO_TRANSFORMER,
+  COMPONENT_INFO_EXPORT_TRANSFORMER,
+} from './wysiwyg/nodes/component-info-node';
 import { TABLE_TRANSFORMER } from './wysiwyg/transformers/table-transformer';
 import {
   TaskAttemptContext,
@@ -34,6 +39,7 @@ import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plu
 import { SlashCommandTypeaheadPlugin } from './wysiwyg/plugins/slash-command-typeahead-plugin';
 import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plugin';
 import { ImageKeyboardPlugin } from './wysiwyg/plugins/image-keyboard-plugin';
+import { ComponentInfoKeyboardPlugin } from './wysiwyg/plugins/component-info-keyboard-plugin';
 import { ReadOnlyLinkPlugin } from './wysiwyg/plugins/read-only-link-plugin';
 import { ClickableCodePlugin } from './wysiwyg/plugins/clickable-code-plugin';
 import { ToolbarPlugin } from './wysiwyg/plugins/toolbar-plugin';
@@ -310,6 +316,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
           LinkNode,
           ImageNode,
           PrCommentNode,
+          ComponentInfoNode,
           TableNode,
           TableRowNode,
           TableCellNode,
@@ -323,8 +330,10 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       () => [
         TABLE_TRANSFORMER,
         IMAGE_TRANSFORMER,
-        PR_COMMENT_EXPORT_TRANSFORMER, // Export transformer for DecoratorNode (must be before import transformer)
-        PR_COMMENT_TRANSFORMER, // Import transformer for fenced code block
+        PR_COMMENT_EXPORT_TRANSFORMER,
+        PR_COMMENT_TRANSFORMER,
+        COMPONENT_INFO_EXPORT_TRANSFORMER,
+        COMPONENT_INFO_TRANSFORMER,
         CODE,
         ...TRANSFORMERS,
       ],
@@ -442,6 +451,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                       />
                     </TypeaheadOpenProvider>
                     <ImageKeyboardPlugin />
+                    <ComponentInfoKeyboardPlugin />
                     <CodeBlockShortcutPlugin />
                   </>
                 )}

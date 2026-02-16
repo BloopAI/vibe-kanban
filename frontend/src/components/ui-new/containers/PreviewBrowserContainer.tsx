@@ -182,10 +182,7 @@ export function PreviewBrowserContainer({
   }, [effectiveUrl, navigation?.url, previewProxyPort]);
 
   useEffect(() => {
-    bridgeRef.current = new PreviewDevToolsBridge(
-      handleMessage,
-      iframeRef
-    );
+    bridgeRef.current = new PreviewDevToolsBridge(handleMessage, iframeRef);
     bridgeRef.current.start();
 
     return () => {
@@ -212,11 +209,15 @@ export function PreviewBrowserContainer({
     const handleMessage = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
       if (!event.data || event.data.source !== 'click-to-component') return;
-      if (
-        event.data.type === 'component-detected' &&
-        event.data.payload?.markdown
-      ) {
-        setPendingComponentMarkdown(event.data.payload.markdown);
+      if (event.data.type !== 'component-detected') return;
+
+      const { data } = event;
+
+      if (data.version === 2 && data.payload) {
+        const fenced = `\`\`\`vk-component\n${JSON.stringify(data.payload)}\n\`\`\``;
+        setPendingComponentMarkdown(fenced);
+      } else if (data.payload?.markdown) {
+        setPendingComponentMarkdown(data.payload.markdown);
       }
     };
 

@@ -477,7 +477,6 @@ export function PreviewBrowser({
           </div>
         )}
       </div>
-
     </div>
   );
 }
