@@ -275,6 +275,41 @@ function pickListShape(table) {
     }
     return [...shapes].sort((a, b) => shapeSortKey(a).localeCompare(shapeSortKey(b)))[0];
 }
+function shouldExpandIssueScopedList(error, mutation, args) {
+    if (!mutation?.table || typeof mutation.table !== 'string') {
+        return false;
+    }
+    if (!mutation.table.startsWith('issue_')) {
+        return false;
+    }
+    const projectId = typeof args?.project_id === 'string' ? args.project_id.trim() : '';
+    if (!projectId) {
+        return false;
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    return message.includes('missing field `issue_id`');
+}
+async function expandIssueScopedRowsByProjectId(mutation, projectId) {
+    const issuesResponse = await remoteRequest('/v1/issues', {
+        query: { project_id: projectId },
+    });
+    const issues = Array.isArray(issuesResponse.issues) ? issuesResponse.issues : [];
+    const rows = [];
+    for (const issue of issues) {
+        const issueId = issue?.id;
+        if (typeof issueId !== 'string' || issueId.length === 0) {
+            continue;
+        }
+        const response = await remoteRequest(mutation.url, {
+            query: { issue_id: issueId },
+        });
+        const batch = Array.isArray(response[mutation.table])
+            ? response[mutation.table]
+            : [];
+        rows.push(...batch);
+    }
+    return rows;
+}
 function buildGeneratedCrudTools() {
     const tools = [];
     for (const mutation of MANIFEST.mutations) {
@@ -312,10 +347,20 @@ function buildGeneratedCrudTools() {
                 for (const param of listParams) {
                     query[param] = requireString(args[param], param);
                 }
-                const response = await remoteRequest(mutation.url, { query });
-                const rows = Array.isArray(response[mutation.table])
-                    ? response[mutation.table]
-                    : [];
+                let rows = [];
+                try {
+                    const response = await remoteRequest(mutation.url, { query });
+                    rows = Array.isArray(response[mutation.table])
+                        ? response[mutation.table]
+                        : [];
+                }
+                catch (error) {
+                    if (!shouldExpandIssueScopedList(error, mutation, args)) {
+                        throw error;
+                    }
+                    const projectId = requireString(args.project_id, 'project_id');
+                    rows = await expandIssueScopedRowsByProjectId(mutation, projectId);
+                }
                 const limit = typeof args.limit === 'number' && Number.isFinite(args.limit)
                     ? Math.max(0, Math.floor(args.limit))
                     : rows.length;
