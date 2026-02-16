@@ -184,6 +184,18 @@ pub fn patch_entry_path(patch: &Patch) -> Option<String> {
     patch.0.first().map(|op| op.path().to_string())
 }
 
+pub fn convert_replace_to_add(mut patch: Patch) -> Patch {
+    for op in &mut patch.0 {
+        if let json_patch::PatchOperation::Replace(r) = op {
+            *op = json_patch::PatchOperation::Add(json_patch::AddOperation {
+                path: r.path.clone(),
+                value: r.value.clone(),
+            });
+        }
+    }
+    patch
+}
+
 pub fn slash_commands(
     commands: Vec<SlashCommandDescription>,
     discovering: bool,

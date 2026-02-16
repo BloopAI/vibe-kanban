@@ -38,7 +38,10 @@ use executors::{
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
-        utils::{ConversationPatch, patch::patch_entry_path},
+        utils::{
+            ConversationPatch,
+            patch::{convert_replace_to_add, patch_entry_path},
+        },
     },
     profile::ExecutorProfileId,
 };
@@ -1066,7 +1069,7 @@ pub trait ContainerService {
                 },
             )
             .filter_map(|opt| async move { opt })
-            .map(|p| Ok::<_, std::io::Error>(LogMsg::JsonPatch(p)))
+            .map(|p| Ok::<_, std::io::Error>(LogMsg::JsonPatch(convert_replace_to_add(p))))
             .chain(futures::stream::once(async {
                 Ok::<_, std::io::Error>(LogMsg::Finished)
             }));
