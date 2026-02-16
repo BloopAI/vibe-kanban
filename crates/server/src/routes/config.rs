@@ -91,6 +91,7 @@ pub struct UserSystemInfo {
     pub environment: Environment,
     /// Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
     pub capabilities: HashMap<String, Vec<BaseAgentCapability>>,
+    pub shared_api_base: Option<String>,
 }
 
 // TODO: update frontend, BE schema has changed, this replaces GET /config and /config/constants
@@ -122,6 +123,7 @@ async fn get_user_system_info(
             }
             caps
         },
+        shared_api_base: deployment.shared_api_base(),
     };
 
     ResponseJson(ApiResponse::success(user_system_info))
