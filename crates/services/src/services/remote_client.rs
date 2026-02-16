@@ -4,11 +4,11 @@ use std::time::Duration;
 
 use api_types::{
     AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
-    CreateIssueAssigneeRequest, CreateIssueRequest, CreateOrganizationRequest,
-    CreateOrganizationResponse, CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest,
-    GetInvitationResponse, GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse,
-    HandoffRedeemRequest, HandoffRedeemResponse, Issue, IssueAssignee, IssueTag,
-    ListAttachmentsResponse, ListInvitationsResponse, ListIssueAssigneesResponse,
+    CreateIssueAssigneeRequest, CreateIssueRequest, CreateIssueTagRequest,
+    CreateOrganizationRequest, CreateOrganizationResponse, CreateWorkspaceRequest, DeleteResponse,
+    DeleteWorkspaceRequest, GetInvitationResponse, GetOrganizationResponse, HandoffInitRequest,
+    HandoffInitResponse, HandoffRedeemRequest, HandoffRedeemResponse, Issue, IssueAssignee,
+    IssueTag, ListAttachmentsResponse, ListInvitationsResponse, ListIssueAssigneesResponse,
     ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse, ListOrganizationsResponse,
     ListProjectStatusesResponse, ListProjectsResponse, ListTagsResponse, MutationResponse,
     Organization, ProfileResponse, RevokeInvitationRequest, Tag, TokenRefreshRequest,
@@ -92,35 +92,6 @@ fn map_error_code(code: Option<&str>) -> HandoffErrorCode {
 #[derive(Deserialize)]
 struct ApiErrorResponse {
     error: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct RemoteListIssueAssigneesResponse {
-    issue_assignees: Vec<IssueAssignee>,
-}
-
-#[derive(Debug, Serialize)]
-struct RemoteCreateIssueAssigneeRequest {
-    id: Option<Uuid>,
-    issue_id: Uuid,
-    user_id: Uuid,
-}
-
-#[derive(Debug, Deserialize)]
-struct RemoteListTagsResponse {
-    tags: Vec<Tag>,
-}
-
-#[derive(Debug, Deserialize)]
-struct RemoteListIssueTagsResponse {
-    issue_tags: Vec<IssueTag>,
-}
-
-#[derive(Debug, Serialize)]
-struct RemoteCreateIssueTagRequest {
-    id: Option<Uuid>,
-    issue_id: Uuid,
-    tag_id: Uuid,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -798,12 +769,8 @@ impl RemoteClient {
         &self,
         issue_id: Uuid,
     ) -> Result<ListIssueAssigneesResponse, RemoteClientError> {
-        let response: RemoteListIssueAssigneesResponse = self
-            .get_authed(&format!("/v1/issue_assignees?issue_id={issue_id}"))
-            .await?;
-        Ok(ListIssueAssigneesResponse {
-            issue_assignees: response.issue_assignees,
-        })
+        self.get_authed(&format!("/v1/issue_assignees?issue_id={issue_id}"))
+            .await
     }
 
     /// Gets a single issue assignee by ID.
@@ -820,13 +787,7 @@ impl RemoteClient {
         &self,
         request: &CreateIssueAssigneeRequest,
     ) -> Result<MutationResponse<IssueAssignee>, RemoteClientError> {
-        let payload = RemoteCreateIssueAssigneeRequest {
-            id: request.id,
-            issue_id: request.issue_id,
-            user_id: request.user_id,
-        };
-        self.post_authed("/v1/issue_assignees", Some(&payload))
-            .await
+        self.post_authed("/v1/issue_assignees", Some(request)).await
     }
 
     /// Deletes an issue assignee.
@@ -851,12 +812,8 @@ impl RemoteClient {
 
     /// Lists tags for a project.
     pub async fn list_tags(&self, project_id: Uuid) -> Result<ListTagsResponse, RemoteClientError> {
-        let response: RemoteListTagsResponse = self
-            .get_authed(&format!("/v1/tags?project_id={project_id}"))
-            .await?;
-        Ok(ListTagsResponse {
-            tags: response.tags,
-        })
+        self.get_authed(&format!("/v1/tags?project_id={project_id}"))
+            .await
     }
 
     /// Gets a single tag by ID.
@@ -871,12 +828,8 @@ impl RemoteClient {
         &self,
         issue_id: Uuid,
     ) -> Result<ListIssueTagsResponse, RemoteClientError> {
-        let response: RemoteListIssueTagsResponse = self
-            .get_authed(&format!("/v1/issue_tags?issue_id={issue_id}"))
-            .await?;
-        Ok(ListIssueTagsResponse {
-            issue_tags: response.issue_tags,
-        })
+        self.get_authed(&format!("/v1/issue_tags?issue_id={issue_id}"))
+            .await
     }
 
     /// Gets a single issue-tag relation by ID.
@@ -888,14 +841,9 @@ impl RemoteClient {
     /// Attaches a tag to an issue.
     pub async fn create_issue_tag(
         &self,
-        request: &api_types::CreateIssueTagRequest,
+        request: &CreateIssueTagRequest,
     ) -> Result<MutationResponse<IssueTag>, RemoteClientError> {
-        let payload = RemoteCreateIssueTagRequest {
-            id: request.id,
-            issue_id: request.issue_id,
-            tag_id: request.tag_id,
-        };
-        self.post_authed("/v1/issue_tags", Some(&payload)).await
+        self.post_authed("/v1/issue_tags", Some(request)).await
     }
 
     /// Removes a tag from an issue.
