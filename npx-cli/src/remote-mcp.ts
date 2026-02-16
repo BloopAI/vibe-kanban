@@ -36,9 +36,11 @@ const REMOTE_TYPES_FILE_CANDIDATES = [
 ];
 
 const FALLBACK_MANIFEST = {
+  shapes: [],
   mutations: [],
-  shapesByTable: new Map(),
 };
+
+const ELECTRIC_QUERY_PARAMS = ['offset', 'handle', 'live', 'cursor', 'columns'];
 
 function readFirstExistingFile(paths) {
   for (const candidate of paths) {
@@ -92,6 +94,8 @@ function parseMutationDefinitions(typesSource) {
     mutations.push({
       constName: match[1],
       rowType: genericTypes[0] || match[3],
+      createType: genericTypes[1] || 'unknown',
+      updateType: genericTypes[2] || 'unknown',
       displayName: match[3],
       url: match[4],
     });
@@ -132,28 +136,37 @@ function prettyName(name) {
     .join(' ');
 }
 
-function shapeSortKey(shape) {
-  const params = Array.isArray(shape?.params) ? shape.params : [];
-  return [params.length, [...params].sort().join(','), shape.constName || ''].join(
-    '|'
-  );
+function shapeToolBaseName(shape) {
+  return String(shape?.constName || '')
+    .toLowerCase()
+    .replace(/_shape$/, '');
+}
+
+function extractPathParams(shapeUrl) {
+  const params = [];
+  const regex = /\{([^}]+)\}/g;
+
+  let match;
+  while ((match = regex.exec(shapeUrl)) !== null) {
+    params.push(match[1]);
+  }
+
+  return params;
 }
 
 function buildManifestFromTypes(typesSource) {
   const parsedShapes = parseShapeDefinitions(typesSource);
   const parsedMutations = parseMutationDefinitions(typesSource);
 
-  const shapesByTable = new Map();
-  for (const shape of parsedShapes) {
-    const existing = shapesByTable.get(shape.table) || [];
-    existing.push({
-      constName: shape.constName,
-      rowType: shape.rowType,
-      params: shape.params,
-      url: shape.url,
-    });
-    shapesByTable.set(shape.table, existing);
-  }
+  const shapes = parsedShapes.map((shape) => ({
+    constName: shape.constName,
+    rowType: shape.rowType,
+    table: shape.table,
+    params: shape.params,
+    url: shape.url,
+    pathParams: extractPathParams(shape.url),
+    toolBaseName: shapeToolBaseName(shape),
+  }));
 
   const mutations = [];
   for (const mutation of parsedMutations) {
@@ -161,9 +174,15 @@ function buildManifestFromTypes(typesSource) {
     if (!table) {
       continue;
     }
+
     mutations.push({
+      constName: mutation.constName,
       table,
       rowType: mutation.rowType,
+      createType: mutation.createType,
+      updateType: mutation.updateType,
+      hasCreate: mutation.createType !== 'unknown',
+      hasUpdate: mutation.updateType !== 'unknown',
       displayName: mutation.displayName,
       url: mutation.url,
       singular: singularize(table),
@@ -172,8 +191,8 @@ function buildManifestFromTypes(typesSource) {
   }
 
   return {
+    shapes,
     mutations,
-    shapesByTable,
   };
 }
 
@@ -184,7 +203,7 @@ function loadRemoteManifest() {
   }
 
   const manifest = buildManifestFromTypes(typesSource);
-  if (manifest.mutations.length === 0) {
+  if (manifest.shapes.length === 0 && manifest.mutations.length === 0) {
     return FALLBACK_MANIFEST;
   }
 
@@ -335,127 +354,158 @@ function requireObject(value, fieldName) {
   return value;
 }
 
-function pickListShape(table) {
-  const shapes = MANIFEST.shapesByTable.get(table) || [];
-  if (shapes.length === 0) {
-    return null;
+function normalizeLimit(value, defaultValue) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.max(0, Math.floor(value));
   }
-
-  return [...shapes].sort((a, b) =>
-    shapeSortKey(a).localeCompare(shapeSortKey(b))
-  )[0];
+  return defaultValue;
 }
 
-function shouldExpandIssueScopedList(error: unknown, mutation: any, args: any) {
-  if (!mutation?.table || typeof mutation.table !== 'string') {
-    return false;
+function resolveShapePath(shape, args) {
+  let pathName = shape.url;
+
+  for (const param of shape.pathParams) {
+    const value = requireString(args[param], param);
+    pathName = pathName.replace(`{${param}}`, encodeURIComponent(value));
   }
 
-  if (!mutation.table.startsWith('issue_')) {
-    return false;
-  }
-
-  const projectId = typeof args?.project_id === 'string' ? args.project_id.trim() : '';
-  if (!projectId) {
-    return false;
-  }
-
-  const message = error instanceof Error ? error.message : String(error);
-  return message.includes('missing field `issue_id`');
+  return pathName;
 }
 
-async function expandIssueScopedRowsByProjectId(mutation: any, projectId: string) {
-  const issuesResponse = await remoteRequest('/v1/issues', {
-    query: { project_id: projectId },
-  });
-  const issues = Array.isArray(issuesResponse.issues) ? issuesResponse.issues : [];
+function buildShapeQuery(shape, args) {
+  const query: any = {};
+  const pathParamSet = new Set(shape.pathParams);
+
+  for (const param of shape.params) {
+    if (pathParamSet.has(param)) {
+      continue;
+    }
+    query[param] = requireString(args[param], param);
+  }
+
+  for (const key of ELECTRIC_QUERY_PARAMS) {
+    const value = args[key];
+    if (value === undefined || value === null || value === '') {
+      continue;
+    }
+    query[key] = String(value);
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(query, 'offset')) {
+    query.offset = '-1';
+  }
+
+  return query;
+}
+
+function extractRowsFromShapePayload(payload) {
+  if (!Array.isArray(payload)) {
+    return [];
+  }
 
   const rows = [];
-  for (const issue of issues) {
-    const issueId = issue?.id;
-    if (typeof issueId !== 'string' || issueId.length === 0) {
+  for (const item of payload) {
+    if (!item || typeof item !== 'object') {
       continue;
     }
 
-    const response = await remoteRequest(mutation.url, {
-      query: { issue_id: issueId },
-    });
-    const batch = Array.isArray(response[mutation.table])
-      ? response[mutation.table]
-      : [];
-    rows.push(...batch);
+    if (!Object.prototype.hasOwnProperty.call(item, 'value')) {
+      continue;
+    }
+
+    if (
+      item.headers &&
+      typeof item.headers === 'object' &&
+      (item.headers.control || item.headers.operation === 'delete')
+    ) {
+      continue;
+    }
+
+    rows.push(item.value);
   }
 
   return rows;
 }
 
-function buildGeneratedCrudTools() {
+function buildShapeListTools() {
   const tools: any[] = [];
+  const tableCounts = new Map<string, number>();
 
-  for (const mutation of MANIFEST.mutations) {
-    const shape = pickListShape(mutation.table);
-    const listParams = shape?.params || [];
-    const listToolName = `list_${mutation.table}`;
-    const getToolName = `get_${mutation.singular}`;
-    const createToolName = `create_${mutation.singular}`;
-    const updateToolName = `update_${mutation.singular}`;
-    const deleteToolName = `delete_${mutation.singular}`;
+  for (const shape of MANIFEST.shapes) {
+    tableCounts.set(shape.table, (tableCounts.get(shape.table) || 0) + 1);
+  }
 
-    const listProperties: any = {};
-    for (const param of listParams) {
-      listProperties[param] = {
+  const toolNames = new Set<string>();
+  for (const shape of MANIFEST.shapes) {
+    const uniqueTable = (tableCounts.get(shape.table) || 0) === 1;
+    const candidates = [];
+
+    if (uniqueTable) {
+      candidates.push(`list_${shape.table}`);
+    }
+    candidates.push(`list_${shape.toolBaseName}`);
+
+    const name = candidates.find((candidate) => !toolNames.has(candidate));
+    if (!name) {
+      continue;
+    }
+    toolNames.add(name);
+
+    const properties: any = {};
+    for (const param of shape.params) {
+      properties[param] = {
         type: 'string',
         description: `${param} filter`,
       };
     }
-    listProperties.limit = {
+    for (const electricParam of ELECTRIC_QUERY_PARAMS) {
+      properties[electricParam] = {
+        type: 'string',
+        description: `Optional Electric shape parameter: ${electricParam}.`,
+      };
+    }
+    properties.limit = {
       type: 'number',
       description: 'Optional maximum number of rows to return.',
     };
 
     tools.push({
       definition: {
-        name: listToolName,
-        description: `List ${prettyName(mutation.table)} rows.`,
+        name,
+        description: `List ${prettyName(shape.table)} rows from ${shape.constName}.`,
         inputSchema: {
           type: 'object',
-          properties: listProperties,
-          required: listParams,
+          properties,
+          required: shape.params,
           additionalProperties: false,
         },
       },
       handler: async (args: any) => {
-        const query: any = {};
-        for (const param of listParams) {
-          query[param] = requireString(args[param], param);
-        }
-
-        let rows = [];
-        try {
-          const response = await remoteRequest(mutation.url, { query });
-          rows = Array.isArray(response[mutation.table])
-            ? response[mutation.table]
-            : [];
-        } catch (error) {
-          if (!shouldExpandIssueScopedList(error, mutation, args)) {
-            throw error;
-          }
-
-          const projectId = requireString(args.project_id, 'project_id');
-          rows = await expandIssueScopedRowsByProjectId(mutation, projectId);
-        }
-
-        const limit =
-          typeof args.limit === 'number' && Number.isFinite(args.limit)
-            ? Math.max(0, Math.floor(args.limit))
-            : rows.length;
+        const pathName = resolveShapePath(shape, args);
+        const query = buildShapeQuery(shape, args);
+        const payload = await remoteRequest(pathName, { query });
+        const rows = extractRowsFromShapePayload(payload);
+        const limit = normalizeLimit(args.limit, rows.length);
 
         return {
-          [mutation.table]: rows.slice(0, limit),
+          [shape.table]: rows.slice(0, limit),
           total_count: rows.length,
         };
       },
     });
+  }
+
+  return tools;
+}
+
+function buildMutationCrudTools() {
+  const tools: any[] = [];
+
+  for (const mutation of MANIFEST.mutations) {
+    const getToolName = `get_${mutation.singular}`;
+    const createToolName = `create_${mutation.singular}`;
+    const updateToolName = `update_${mutation.singular}`;
+    const deleteToolName = `delete_${mutation.singular}`;
 
     tools.push({
       definition: {
@@ -482,86 +532,90 @@ function buildGeneratedCrudTools() {
       },
     });
 
-    tools.push({
-      definition: {
-        name: createToolName,
-        description: `Create a new ${prettyName(mutation.singular)}.`,
-        inputSchema: {
-          type: 'object',
-          properties: {
-            data: {
-              type: 'object',
-              description: 'Create payload sent directly to the remote API.',
+    if (mutation.hasCreate) {
+      tools.push({
+        definition: {
+          name: createToolName,
+          description: `Create a new ${prettyName(mutation.singular)}.`,
+          inputSchema: {
+            type: 'object',
+            properties: {
+              data: {
+                type: 'object',
+                description: 'Create payload sent directly to the remote API.',
+              },
             },
+            required: ['data'],
+            additionalProperties: false,
           },
-          required: ['data'],
-          additionalProperties: false,
         },
-      },
-      handler: async (args: any) => {
-        const data = requireObject(args.data, 'data');
-        const response = await remoteRequest(mutation.url, {
-          method: 'POST',
-          body: data,
-        });
+        handler: async (args: any) => {
+          const data = requireObject(args.data, 'data');
+          const response = await remoteRequest(mutation.url, {
+            method: 'POST',
+            body: data,
+          });
 
-        if (
-          response &&
-          typeof response === 'object' &&
-          response.data !== undefined
-        ) {
-          return {
-            [mutation.singular]: response.data,
-            txid: response.txid,
-          };
-        }
+          if (
+            response &&
+            typeof response === 'object' &&
+            response.data !== undefined
+          ) {
+            return {
+              [mutation.singular]: response.data,
+              txid: response.txid,
+            };
+          }
 
-        return response;
-      },
-    });
+          return response;
+        },
+      });
+    }
 
-    tools.push({
-      definition: {
-        name: updateToolName,
-        description: `Update an existing ${prettyName(mutation.singular)}.`,
-        inputSchema: {
-          type: 'object',
-          properties: {
-            [mutation.idField]: {
-              type: 'string',
-              description: `${mutation.idField} UUID`,
+    if (mutation.hasUpdate) {
+      tools.push({
+        definition: {
+          name: updateToolName,
+          description: `Update an existing ${prettyName(mutation.singular)}.`,
+          inputSchema: {
+            type: 'object',
+            properties: {
+              [mutation.idField]: {
+                type: 'string',
+                description: `${mutation.idField} UUID`,
+              },
+              data: {
+                type: 'object',
+                description: 'Patch payload sent directly to the remote API.',
+              },
             },
-            data: {
-              type: 'object',
-              description: 'Patch payload sent directly to the remote API.',
-            },
+            required: [mutation.idField, 'data'],
+            additionalProperties: false,
           },
-          required: [mutation.idField, 'data'],
-          additionalProperties: false,
         },
-      },
-      handler: async (args: any) => {
-        const rowId = requireString(args[mutation.idField], mutation.idField);
-        const data = requireObject(args.data, 'data');
-        const response = await remoteRequest(`${mutation.url}/${rowId}`, {
-          method: 'PATCH',
-          body: data,
-        });
+        handler: async (args: any) => {
+          const rowId = requireString(args[mutation.idField], mutation.idField);
+          const data = requireObject(args.data, 'data');
+          const response = await remoteRequest(`${mutation.url}/${rowId}`, {
+            method: 'PATCH',
+            body: data,
+          });
 
-        if (
-          response &&
-          typeof response === 'object' &&
-          response.data !== undefined
-        ) {
-          return {
-            [mutation.singular]: response.data,
-            txid: response.txid,
-          };
-        }
+          if (
+            response &&
+            typeof response === 'object' &&
+            response.data !== undefined
+          ) {
+            return {
+              [mutation.singular]: response.data,
+              txid: response.txid,
+            };
+          }
 
-        return response;
-      },
-    });
+          return response;
+        },
+      });
+    }
 
     tools.push({
       definition: {
@@ -598,7 +652,11 @@ function buildGeneratedCrudTools() {
 function buildToolRegistry() {
   const registry = new Map<string, any>();
 
-  for (const entry of buildGeneratedCrudTools()) {
+  for (const entry of buildShapeListTools()) {
+    registry.set(entry.definition.name, entry);
+  }
+
+  for (const entry of buildMutationCrudTools()) {
     registry.set(entry.definition.name, entry);
   }
 
