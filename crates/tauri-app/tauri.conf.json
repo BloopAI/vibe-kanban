@@ -4,7 +4,10 @@
   "version": "0.1.13",
   "identifier": "ai.bloop.vibe-kanban",
   "build": {
-    "beforeBuildCommand": "cd ../../frontend && pnpm run build",
+    "beforeBuildCommand": {
+      "script": "pnpm run build",
+      "cwd": "../../frontend"
+    },
     "devUrl": "http://localhost:3000",
     "frontendDist": "../../frontend/dist"
   },
