@@ -471,13 +471,22 @@ impl Opencode {
 }
 
 fn map_opencode_agents(agents: &[SDKAgentInfo]) -> Vec<AgentInfo> {
+    let default_agent_name = if agents
+        .iter()
+        .any(|a| a.name.eq_ignore_ascii_case("sisyphus"))
+    {
+        "sisyphus"
+    } else {
+        "build"
+    };
+
     agents
         .iter()
         .map(|agent| AgentInfo {
             id: agent.name.clone(),
             label: agent.name.to_case(Case::Title),
             description: agent.description.clone(),
-            is_default: agent.name.to_lowercase() == "build",
+            is_default: agent.name.eq_ignore_ascii_case(default_agent_name),
         })
         .collect()
 }
