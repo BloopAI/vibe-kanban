@@ -304,6 +304,7 @@ export const useConversationHistoryOld = ({
                   : { status: 'failed' };
 
             const output = p.entries.map((line) => line.content).join('\n');
+            const script = p.executionProcess.executor_action.typ.script;
 
             const toolNormalizedEntry: NormalizedEntry = {
               entry_type: {
@@ -311,11 +312,12 @@ export const useConversationHistoryOld = ({
                 tool_name: toolName,
                 action_type: {
                   action: 'command_run',
-                  command: p.executionProcess.executor_action.typ.script,
+                  command: script,
                   result: {
                     output,
                     exit_status,
                   },
+                  category: 'other',
                 },
                 status: toolStatus,
               },

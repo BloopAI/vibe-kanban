@@ -64,17 +64,23 @@ export function WorkspacesLayout() {
     updateAndSaveConfig,
     loading: configLoading,
   } = useUserSystem();
+  const hasAutoShownWorkspacesGuide = useRef(false);
 
   // Auto-show Workspaces Guide on first visit
   useEffect(() => {
-    const seenFeatures = config?.showcases?.seen_features ?? [];
-    if (configLoading || seenFeatures.includes(WORKSPACES_GUIDE_ID)) return;
+    if (hasAutoShownWorkspacesGuide.current) return;
+    if (configLoading || !config) return;
+
+    const seenFeatures = config.showcases?.seen_features ?? [];
+    if (seenFeatures.includes(WORKSPACES_GUIDE_ID)) return;
+
+    hasAutoShownWorkspacesGuide.current = true;
 
     void updateAndSaveConfig({
       showcases: { seen_features: [...seenFeatures, WORKSPACES_GUIDE_ID] },
     });
     WorkspacesGuideDialog.show().finally(() => WorkspacesGuideDialog.hide());
-  }, [configLoading, config?.showcases?.seen_features, updateAndSaveConfig]);
+  }, [configLoading, config, updateAndSaveConfig]);
 
   // Ensure left panels visible when right main panel hidden
   useEffect(() => {
@@ -125,7 +131,7 @@ export function WorkspacesLayout() {
                   className="min-w-0 h-full overflow-hidden"
                 >
                   {isCreateMode ? (
-                    <CreateChatBoxContainer />
+                    <CreateChatBoxContainer onWorkspaceCreated={null} />
                   ) : (
                     <WorkspacesMainContainer
                       ref={mainContainerRef}
@@ -175,10 +181,9 @@ export function WorkspacesLayout() {
               )}
             </Group>
 
-            {isRightSidebarVisible && (
+            {isRightSidebarVisible && !isCreateMode && (
               <div className="w-[300px] shrink-0 h-full overflow-hidden">
                 <RightSidebar
-                  isCreateMode={isCreateMode}
                   rightMainPanelMode={rightMainPanelMode}
                   selectedWorkspace={selectedWorkspace}
                   repos={repos}

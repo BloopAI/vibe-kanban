@@ -2,12 +2,14 @@ import {
   CaretLeftIcon,
   CopyIcon,
   FolderIcon,
+  GitBranchIcon,
   ArrowFatLineUpIcon,
   ArrowUpIcon,
   MinusIcon,
   ArrowDownIcon,
   PlusIcon,
 } from '@phosphor-icons/react';
+import { useDeferredValue, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Command,
@@ -70,6 +72,8 @@ interface CommandBarProps {
   statuses?: StatusItem[];
 }
 
+const BRANCH_SEARCH_RESULT_LIMIT = 300;
+
 export function CommandBar({
   page,
   canGoBack,
@@ -81,18 +85,57 @@ export function CommandBar({
   statuses = [],
 }: CommandBarProps) {
   const { t } = useTranslation('common');
+  const deferredSearch = useDeferredValue(search);
+  const normalizedSearch = deferredSearch.trim().toLowerCase();
+  const isSearching = normalizedSearch.length > 0;
+
+  const filteredGroups = useMemo(() => {
+    if (!isSearching) {
+      return page.groups;
+    }
+
+    const isBranchSelectionPage = page.id === 'selectBranch';
+    const groups: ResolvedGroup[] = [];
+    let remainingBranchResults = BRANCH_SEARCH_RESULT_LIMIT;
+
+    for (const group of page.groups) {
+      const matchedItems: ResolvedGroupItem[] = [];
+
+      for (const item of group.items) {
+        const label = getItemSearchLabel(item, getLabel);
+        if (!label) continue;
+        if (!label.toLowerCase().includes(normalizedSearch)) continue;
+
+        if (isBranchSelectionPage && item.type === 'branch') {
+          if (remainingBranchResults <= 0) {
+            continue;
+          }
+          remainingBranchResults -= 1;
+        }
+
+        matchedItems.push(item);
+      }
+
+      if (matchedItems.length > 0) {
+        groups.push({
+          label: group.label,
+          items: matchedItems,
+        });
+      }
+
+      if (isBranchSelectionPage && remainingBranchResults <= 0) {
+        break;
+      }
+    }
+
+    return groups;
+  }, [isSearching, page.groups, page.id, normalizedSearch, getLabel]);
 
   return (
     <Command
       className="rounded-sm border border-border [&_[cmdk-group-heading]]:px-base [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-low [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-half [&_[cmdk-input-wrapper]_svg]:h-4 [&_[cmdk-input-wrapper]_svg]:w-4 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-base [&_[cmdk-item]]:py-half"
+      shouldFilter={false}
       loop
-      filter={(value, search) => {
-        // Always show the back option
-        if (value === '__back__') return 1;
-        // Default filtering for other items
-        if (value.toLowerCase().includes(search.toLowerCase())) return 1;
-        return 0;
-      }}
     >
       <div className="flex items-center border-b border-border">
         <CommandInput
@@ -112,7 +155,7 @@ export function CommandBar({
           </CommandGroup>
         )}
         {/* Render groups directly - order is explicit from page definition */}
-        {page.groups.map((group) => (
+        {filteredGroups.map((group) => (
           <CommandGroup key={group.label} heading={group.label}>
             {group.items.map((item) => {
               if (item.type === 'page') {
@@ -136,6 +179,22 @@ export function CommandBar({
                   >
                     <FolderIcon className="h-4 w-4" weight="regular" />
                     <span>{item.repo.display_name}</span>
+                  </CommandItem>
+                );
+              } else if (item.type === 'branch') {
+                return (
+                  <CommandItem
+                    key={item.branch.name}
+                    value={item.branch.name}
+                    onSelect={() => onSelect(item)}
+                  >
+                    <GitBranchIcon className="h-4 w-4" weight="regular" />
+                    <span>{item.branch.name}</span>
+                    {item.branch.isCurrent && (
+                      <span className="ml-auto text-xs capitalize text-low">
+                        {t('branchSelector.badges.current')}
+                      </span>
+                    )}
                   </CommandItem>
                 );
               } else if (item.type === 'status') {
@@ -264,4 +323,36 @@ export function CommandBar({
       </CommandList>
     </Command>
   );
+}
+
+function getItemSearchLabel(
+  item: ResolvedGroupItem,
+  getLabel: (action: ActionDefinition) => string
+): string {
+  if (item.type === 'page') {
+    return `${item.pageId} ${item.label}`;
+  }
+  if (item.type === 'repo') {
+    return `${item.repo.id} ${item.repo.display_name}`;
+  }
+  if (item.type === 'branch') {
+    return item.branch.name;
+  }
+  if (item.type === 'status') {
+    return `${item.status.id} ${item.status.name}`;
+  }
+  if (item.type === 'priority') {
+    return `${item.priority.id ?? 'none'} ${item.priority.name}`;
+  }
+  if (item.type === 'issue') {
+    return `${item.issue.id} ${item.issue.simple_id} ${item.issue.title}`;
+  }
+  if (item.type === 'createSubIssue') {
+    return 'create new issue';
+  }
+  if (item.type === 'action') {
+    const keywords = item.action.keywords?.join(' ') ?? '';
+    return `${item.action.id} ${getLabel(item.action)} ${keywords}`.trim();
+  }
+  return '';
 }

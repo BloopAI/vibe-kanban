@@ -18,6 +18,7 @@ use crate::logs::{
     utils::{
         EntryIndexProvider,
         patch::{add_normalized_entry, replace_normalized_entry},
+        shell_command_parsing::CommandCategory,
     },
 };
 
@@ -1093,6 +1094,7 @@ impl ToNormalizedEntry for CommandRunState {
                 action_type: ActionType::CommandRun {
                     command: self.command.clone(),
                     result,
+                    category: CommandCategory::from_command(&self.command),
                 },
                 status: self.status.clone(),
             },

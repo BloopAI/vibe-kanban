@@ -14,6 +14,7 @@
     "@git-diff-view/react": "^0.0.30",
     "clsx": "^2.1.1",
     "highlight.js": "^11.11.1",
+    "jwt-decode": "^4.0.0",
     "posthog-js": "^1.283.0",
     "prettier": "^3.6.1",
     "react": "^18.2.0",

@@ -29,6 +29,7 @@ interface ShortcutGroup {
 
 function useShortcutGroups(): ShortcutGroup[] {
   const { config } = useUserSystem();
+  const { t } = useTranslation('common');
   const sendShortcut = config?.send_message_shortcut ?? 'ModifierEnter';
 
   return useMemo(() => {
@@ -37,36 +38,43 @@ function useShortcutGroups(): ShortcutGroup[] {
 
     // Quick Actions - single key shortcuts
     const quickActions: ShortcutGroup = {
-      name: 'Quick Actions',
+      name: t('shortcuts.groups.quickActions'),
       shortcuts: [
-        { keys: '?', description: 'Show this help' },
-        { keys: 'Esc', description: 'Close/cancel' },
-        { keys: 'C', description: 'Create new task' },
-        { keys: 'D', description: 'Delete selected' },
-        { keys: '/', description: 'Focus search' },
+        { keys: '?', description: t('shortcuts.actions.showHelp') },
+        { keys: 'Esc', description: t('shortcuts.actions.closeCancel') },
+        { keys: 'C', description: t('shortcuts.actions.createNewTask') },
+        { keys: 'D', description: t('shortcuts.actions.deleteSelected') },
+        { keys: '/', description: t('shortcuts.actions.focusSearch') },
       ],
     };
 
     // Navigation - Vim-style
     const navigation: ShortcutGroup = {
-      name: 'Navigation',
+      name: t('shortcuts.groups.navigation'),
       shortcuts: [
-        { keys: 'J', description: 'Move down' },
-        { keys: 'K', description: 'Move up' },
-        { keys: 'H', description: 'Move left' },
-        { keys: 'L', description: 'Move right' },
+        { keys: 'J', description: t('shortcuts.actions.moveDown') },
+        { keys: 'K', description: t('shortcuts.actions.moveUp') },
+        { keys: 'H', description: t('shortcuts.actions.moveLeft') },
+        { keys: 'L', description: t('shortcuts.actions.moveRight') },
       ],
     };
 
     const modifiers: ShortcutGroup = {
-      name: 'Modifiers',
+      name: t('shortcuts.groups.modifiers'),
       shortcuts: [
-        { keys: [mod, 'K'], description: 'Open command bar' },
+        {
+          keys: [mod, 'K'],
+          description: t('shortcuts.actions.openCommandBar'),
+        },
         sendShortcut === 'Enter'
-          ? { keys: enterKey, description: 'Send message', useHintKey: true }
+          ? {
+              keys: enterKey,
+              description: t('shortcuts.actions.sendMessage'),
+              useHintKey: true,
+            }
           : {
               keys: [mod, enterKey],
-              description: 'Send message',
+              description: t('shortcuts.actions.sendMessage'),
               useHintKey: true,
             },
       ],
@@ -84,7 +92,10 @@ function useShortcutGroups(): ShortcutGroup[] {
 
       sequentialByFirstKey.get(firstKey)!.push({
         keys: formatSequentialKeys(binding.keys),
-        description: binding.description,
+        description: t(
+          `shortcuts.actions.${binding.actionId}`,
+          binding.description
+        ),
         hasScope: hasWorkspaceScope,
       });
     }
@@ -92,25 +103,41 @@ function useShortcutGroups(): ShortcutGroup[] {
     // Create named groups for sequential shortcuts
     const sequentialGroups: ShortcutGroup[] = [
       {
-        name: 'Go To (G ...)',
+        name: t('shortcuts.groups.goTo'),
         shortcuts: sequentialByFirstKey.get('g') || [],
       },
       {
-        name: 'Workspace (W ...)',
+        name: t('shortcuts.groups.workspace'),
         shortcuts: sequentialByFirstKey.get('w') || [],
       },
-      { name: 'View (V ...)', shortcuts: sequentialByFirstKey.get('v') || [] },
-      { name: 'Git (X ...)', shortcuts: sequentialByFirstKey.get('x') || [] },
-      { name: 'Yank (Y ...)', shortcuts: sequentialByFirstKey.get('y') || [] },
       {
-        name: 'Toggle (T ...)',
+        name: t('shortcuts.groups.view'),
+        shortcuts: sequentialByFirstKey.get('v') || [],
+      },
+      {
+        name: t('shortcuts.groups.issues'),
+        shortcuts: sequentialByFirstKey.get('i') || [],
+      },
+      {
+        name: t('shortcuts.groups.git'),
+        shortcuts: sequentialByFirstKey.get('x') || [],
+      },
+      {
+        name: t('shortcuts.groups.yank'),
+        shortcuts: sequentialByFirstKey.get('y') || [],
+      },
+      {
+        name: t('shortcuts.groups.toggle'),
         shortcuts: sequentialByFirstKey.get('t') || [],
       },
-      { name: 'Run (R ...)', shortcuts: sequentialByFirstKey.get('r') || [] },
+      {
+        name: t('shortcuts.groups.run'),
+        shortcuts: sequentialByFirstKey.get('r') || [],
+      },
     ].filter((g) => g.shortcuts.length > 0);
 
     return [quickActions, navigation, modifiers, ...sequentialGroups];
-  }, [sendShortcut]);
+  }, [sendShortcut, t]);
 }
 
 function ShortcutRow({ item }: { item: ShortcutItem }) {

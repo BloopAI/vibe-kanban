@@ -10,6 +10,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use api_types::CreateWorkspaceRequest;
 use axum::{
     Extension, Json, Router,
     extract::{
@@ -49,7 +50,7 @@ use services::services::{
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::{api::workspaces::CreateWorkspaceRequest, response::ApiResponse};
+use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{
@@ -132,14 +133,6 @@ pub async fn get_task_attempts(
     let pool = &deployment.db().pool;
     let workspaces = Workspace::fetch_all(pool, query.task_id).await?;
     Ok(ResponseJson(ApiResponse::success(workspaces)))
-}
-
-pub async fn get_workspace_count(
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<i64>>, ApiError> {
-    let pool = &deployment.db().pool;
-    let count = Workspace::count_all(pool).await?;
-    Ok(ResponseJson(ApiResponse::success(count)))
 }
 
 pub async fn get_task_attempt(
@@ -345,8 +338,7 @@ pub async fn stream_task_attempt_diff_ws(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
 ) -> impl IntoResponse {
-    let _ = Workspace::touch(&deployment.db().pool, workspace.id).await;
-
+    let _ = deployment.container().touch(&workspace).await;
     let stats_only = params.stats_only;
     ws.on_upgrade(move |socket| async move {
         if let Err(e) = handle_task_attempt_diff_ws(socket, deployment, workspace, stats_only).await
@@ -657,8 +649,7 @@ pub async fn open_task_attempt_in_editor(
         .container()
         .ensure_container_exists(&workspace)
         .await?;
-
-    Workspace::touch(&deployment.db().pool, workspace.id).await?;
+    deployment.container().touch(&workspace).await?;
 
     let workspace_path = Path::new(&container_ref);
 
@@ -1991,7 +1982,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempts_router = Router::new()
         .route("/", get(get_task_attempts).post(create_task_attempt))
         .route("/from-pr", post(pr::create_workspace_from_pr))
-        .route("/count", get(get_workspace_count))
         .route("/stream/ws", get(stream_workspaces_ws))
         .route("/summary", post(workspace_summary::get_workspace_summaries))
         .nest("/{id}", task_attempt_id_router)

@@ -62,9 +62,9 @@
     "deleteError": "Failed to delete organization"
   },
   "loginRequired": {
-    "title": "Login Required",
-    "description": "You need to be logged in to manage organization settings.",
-    "action": "Login"
+    "title": "Sign in required",
+    "description": "You need to sign in to manage organization settings.",
+    "action": "Sign in"
   },
   "confirmRemoveMember": "Are you sure you want to remove this member from the organization?",
   "sharedProjects": {

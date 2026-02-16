@@ -4,9 +4,8 @@ import type {
   AggregatedPatchGroup,
   AggregatedDiffGroup,
   AggregatedThinkingGroup,
+  ToolAggregationType,
 } from '@/hooks/useConversationHistory/types';
-
-type AggregationType = 'file_read' | 'search' | 'web_fetch';
 
 /**
  * Checks if a patch entry is a user_message entry.
@@ -43,9 +42,11 @@ function getFileEditPath(entry: PatchTypeWithKey): string | null {
 
 /**
  * Determines if a patch entry can be aggregated and returns its aggregation type.
- * Only file_read, search, and web_fetch tool_use entries can be aggregated.
+ * Handles file_read, search, web_fetch, and command_run (categorized by command type).
  */
-function getAggregationType(entry: PatchTypeWithKey): AggregationType | null {
+function getAggregationType(
+  entry: PatchTypeWithKey
+): ToolAggregationType | null {
   if (entry.type !== 'NORMALIZED_ENTRY') return null;
 
   const entryType = entry.content.entry_type;
@@ -55,6 +56,18 @@ function getAggregationType(entry: PatchTypeWithKey): AggregationType | null {
   if (action_type.action === 'file_read') return 'file_read';
   if (action_type.action === 'search') return 'search';
   if (action_type.action === 'web_fetch') return 'web_fetch';
+
+  if (action_type.action === 'command_run') {
+    const category = action_type.category;
+    if (
+      category === 'read' ||
+      category === 'search' ||
+      category === 'edit' ||
+      category === 'fetch'
+    ) {
+      return `command_run_${category}`;
+    }
+  }
 
   return null;
 }
@@ -173,9 +186,9 @@ export function aggregateConsecutiveEntries(
 
   const result: DisplayEntry[] = [];
 
-  // State for tool aggregation (file_read, search, web_fetch)
+  // State for tool aggregation (file_read, search, web_fetch, command_run_*)
   let currentToolGroup: PatchTypeWithKey[] = [];
-  let currentAggregationType: AggregationType | null = null;
+  let currentAggregationType: ToolAggregationType | null = null;
 
   // State for diff aggregation (file_edit by path)
   let currentDiffGroup: PatchTypeWithKey[] = [];

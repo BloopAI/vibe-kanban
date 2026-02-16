@@ -227,7 +227,7 @@ export function OrganizationsSettingsSection() {
         <PrimaryButton
           variant="secondary"
           value={t('loginRequired.action')}
-          onClick={() => void OAuthDialog.show()}
+          onClick={() => void OAuthDialog.show({})}
         >
           <SignInIcon className="size-icon-xs mr-1" weight="bold" />
         </PrimaryButton>

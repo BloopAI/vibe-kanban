@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useMemo, ReactNode } from 'react';
+import { useContext, useState, useMemo, ReactNode } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 
 interface ProcessSelectionContextType {
   selectedProcessId: string | null;
@@ -6,7 +7,10 @@ interface ProcessSelectionContextType {
 }
 
 const ProcessSelectionContext =
-  createContext<ProcessSelectionContextType | null>(null);
+  createHmrContext<ProcessSelectionContextType | null>(
+    'ProcessSelectionContext',
+    null
+  );
 
 interface ProcessSelectionProviderProps {
   children: ReactNode;

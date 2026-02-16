@@ -37,7 +37,6 @@ pub struct Repo {
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
-#[ts(export)]
 pub struct UpdateRepo {
     #[serde(
         default,
@@ -270,6 +269,37 @@ impl Repo {
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM repos
                ORDER BY display_name ASC"#
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn list_by_recent_workspace_usage(
+        pool: &SqlitePool,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Repo,
+            r#"SELECT r.id as "id!: Uuid",
+                      r.path,
+                      r.name,
+                      r.display_name,
+                      r.setup_script,
+                      r.cleanup_script,
+                      r.archive_script,
+                      r.copy_files,
+                      r.parallel_setup_script as "parallel_setup_script!: bool",
+                      r.dev_server_script,
+                      r.default_target_branch,
+                      r.default_working_dir,
+                      r.created_at as "created_at!: DateTime<Utc>",
+                      r.updated_at as "updated_at!: DateTime<Utc>"
+               FROM repos r
+               LEFT JOIN (
+                   SELECT repo_id, MAX(updated_at) AS last_used_at
+                   FROM workspace_repos
+                   GROUP BY repo_id
+               ) wr ON wr.repo_id = r.id
+               ORDER BY wr.last_used_at DESC, r.display_name ASC"#
         )
         .fetch_all(pool)
         .await

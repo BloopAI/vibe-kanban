@@ -1,21 +1,11 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use thiserror::Error;
-use ts_rs::TS;
+use api_types::IssueAssignee;
 use uuid::Uuid;
 
 use super::get_txid;
-use crate::mutation_types::{DeleteResponse, MutationResponse};
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct IssueAssignee {
-    pub id: Uuid,
-    pub issue_id: Uuid,
-    pub user_id: Uuid,
-    pub assigned_at: DateTime<Utc>,
-}
+use api_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum IssueAssigneeError {

@@ -1,20 +1,10 @@
-use serde::{Deserialize, Serialize};
 use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
-use ts_rs::TS;
+use api_types::Tag;
 use uuid::Uuid;
 
 use super::get_txid;
-use crate::mutation_types::{DeleteResponse, MutationResponse};
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct Tag {
-    pub id: Uuid,
-    pub project_id: Uuid,
-    pub name: String,
-    pub color: String,
-}
+use api_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum TagError {

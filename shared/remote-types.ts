@@ -20,6 +20,12 @@ export type Issue = { id: string, project_id: string, issue_number: number, simp
 
 export type IssueAssignee = { id: string, issue_id: string, user_id: string, assigned_at: string, };
 
+export type Blob = { id: string, project_id: string, blob_path: string, thumbnail_blob_path: string | null, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, width: number | null, height: number | null, created_at: string, updated_at: string, };
+
+export type Attachment = { id: string, blob_id: string, issue_id: string | null, comment_id: string | null, created_at: string, expires_at: string | null, };
+
+export type AttachmentWithBlob = { id: string, blob_id: string, issue_id: string | null, comment_id: string | null, created_at: string, expires_at: string | null, blob_path: string, thumbnail_blob_path: string | null, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, width: number | null, height: number | null, };
+
 export type IssueFollower = { id: string, issue_id: string, user_id: string, };
 
 export type IssueTag = { id: string, issue_id: string, tag_id: string, };
@@ -89,7 +95,7 @@ export type CreateIssueRequest = {
  */
 id?: string, project_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority | null, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, parent_issue_sort_order: number | null, extension_metadata: JsonValue, };
 
-export type UpdateIssueRequest = { status_id: string | null, title: string | null, description: string | null | null, priority: IssuePriority | null | null, start_date: string | null | null, target_date: string | null | null, completed_at: string | null | null, sort_order: number | null, parent_issue_id: string | null | null, parent_issue_sort_order: number | null | null, extension_metadata: JsonValue | null, };
+export type UpdateIssueRequest = { status_id?: string | null, title?: string | null, description?: string | null | null, priority?: IssuePriority | null | null, start_date?: string | null | null, target_date?: string | null | null, completed_at?: string | null | null, sort_order?: number | null, parent_issue_id?: string | null | null, parent_issue_sort_order?: number | null | null, extension_metadata?: JsonValue | null, };
 
 export type CreateIssueAssigneeRequest = { 
 /**
@@ -98,16 +104,12 @@ export type CreateIssueAssigneeRequest = {
  */
 id?: string, issue_id: string, user_id: string, };
 
-export type UpdateIssueAssigneeRequest = { user_id: string | null, };
-
 export type CreateIssueFollowerRequest = { 
 /**
  * Optional client-generated ID. If not provided, server generates one.
  * Using client-generated IDs enables stable optimistic updates.
  */
 id?: string, issue_id: string, user_id: string, };
-
-export type UpdateIssueFollowerRequest = { user_id: string | null, };
 
 export type CreateIssueTagRequest = { 
 /**
@@ -116,16 +118,12 @@ export type CreateIssueTagRequest = {
  */
 id?: string, issue_id: string, tag_id: string, };
 
-export type UpdateIssueTagRequest = { tag_id: string | null, };
-
 export type CreateIssueRelationshipRequest = { 
 /**
  * Optional client-generated ID. If not provided, server generates one.
  * Using client-generated IDs enables stable optimistic updates.
  */
 id?: string, issue_id: string, related_issue_id: string, relationship_type: IssueRelationshipType, };
-
-export type UpdateIssueRelationshipRequest = { related_issue_id: string | null, relationship_type: IssueRelationshipType | null, };
 
 export type CreateIssueCommentRequest = { 
 /**
@@ -144,6 +142,18 @@ export type CreateIssueCommentReactionRequest = {
 id?: string, comment_id: string, emoji: string, };
 
 export type UpdateIssueCommentReactionRequest = { emoji: string | null, };
+
+export type InitUploadRequest = { project_id: string, filename: string, size_bytes: number, hash: string, };
+
+export type InitUploadResponse = { upload_url: string, upload_id: string, expires_at: string, skip_upload: boolean, existing_blob_id: string | null, };
+
+export type ConfirmUploadRequest = { project_id: string, upload_id: string, filename: string, content_type?: string, size_bytes: number, hash: string, issue_id?: string, comment_id?: string, };
+
+export type CommitAttachmentsRequest = { attachment_ids: Array<string>, };
+
+export type CommitAttachmentsResponse = { attachments: Array<AttachmentWithBlob>, };
+
+export type AttachmentUrlResponse = { url: string, };
 
 // Shape definition interface
 export interface ShapeDefinition<T> {
@@ -247,6 +257,18 @@ export const PROJECT_PULL_REQUESTS_SHAPE = defineShape<PullRequest>(
   '/v1/shape/project/{project_id}/pull_requests'
 );
 
+export const PROJECT_BLOBS_SHAPE = defineShape<Blob>(
+  'blobs',
+  ['project_id'] as const,
+  '/v1/shape/project/{project_id}/blobs'
+);
+
+export const PROJECT_ATTACHMENTS_SHAPE = defineShape<Attachment>(
+  'attachments',
+  ['project_id'] as const,
+  '/v1/shape/project/{project_id}/attachments'
+);
+
 export const ISSUE_COMMENTS_SHAPE = defineShape<IssueComment>(
   'issue_comments',
   ['issue_id'] as const,
@@ -259,9 +281,6 @@ export const ISSUE_REACTIONS_SHAPE = defineShape<IssueCommentReaction>(
   '/v1/shape/issue/{issue_id}/reactions'
 );
 
-// Scope enum matching Rust
-export type Scope = 'Organization' | 'Project' | 'Issue' | 'Comment';
-
 // =============================================================================
 // Mutation Definitions
 // =============================================================================
@@ -269,8 +288,6 @@ export type Scope = 'Organization' | 'Project' | 'Issue' | 'Comment';
 // Mutation definition interface
 export interface MutationDefinition<TRow, TCreate = unknown, TUpdate = unknown> {
   readonly name: string;
-  readonly table: string;
-  readonly mutationScope: Scope;
   readonly url: string;
   readonly _rowType: TRow;  // Phantom field for type inference (not present at runtime)
   readonly _createType: TCreate;  // Phantom field for type inference (not present at runtime)
@@ -280,88 +297,64 @@ export interface MutationDefinition<TRow, TCreate = unknown, TUpdate = unknown> 
 // Helper to create type-safe mutation definitions
 function defineMutation<TRow, TCreate, TUpdate>(
   name: string,
-  table: string,
-  mutationScope: Scope,
   url: string
 ): MutationDefinition<TRow, TCreate, TUpdate> {
-  return { name, table, mutationScope, url } as MutationDefinition<TRow, TCreate, TUpdate>;
+  return { name, url } as MutationDefinition<TRow, TCreate, TUpdate>;
 }
 
 // Individual mutation definitions
 export const PROJECT_MUTATION = defineMutation<Project, CreateProjectRequest, UpdateProjectRequest>(
   'Project',
-  'projects',
-  'Organization',
   '/v1/projects'
 );
 
-export const NOTIFICATION_MUTATION = defineMutation<Notification, CreateNotificationRequest, UpdateNotificationRequest>(
+export const NOTIFICATION_MUTATION = defineMutation<Notification, unknown, UpdateNotificationRequest>(
   'Notification',
-  'notifications',
-  'Organization',
   '/v1/notifications'
 );
 
 export const TAG_MUTATION = defineMutation<Tag, CreateTagRequest, UpdateTagRequest>(
   'Tag',
-  'tags',
-  'Project',
   '/v1/tags'
 );
 
 export const PROJECT_STATUS_MUTATION = defineMutation<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest>(
   'ProjectStatus',
-  'project_statuses',
-  'Project',
   '/v1/project_statuses'
 );
 
 export const ISSUE_MUTATION = defineMutation<Issue, CreateIssueRequest, UpdateIssueRequest>(
   'Issue',
-  'issues',
-  'Project',
   '/v1/issues'
 );
 
-export const ISSUE_ASSIGNEE_MUTATION = defineMutation<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest>(
+export const ISSUE_ASSIGNEE_MUTATION = defineMutation<IssueAssignee, CreateIssueAssigneeRequest, unknown>(
   'IssueAssignee',
-  'issue_assignees',
-  'Issue',
   '/v1/issue_assignees'
 );
 
-export const ISSUE_FOLLOWER_MUTATION = defineMutation<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest>(
+export const ISSUE_FOLLOWER_MUTATION = defineMutation<IssueFollower, CreateIssueFollowerRequest, unknown>(
   'IssueFollower',
-  'issue_followers',
-  'Issue',
   '/v1/issue_followers'
 );
 
-export const ISSUE_TAG_MUTATION = defineMutation<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest>(
+export const ISSUE_TAG_MUTATION = defineMutation<IssueTag, CreateIssueTagRequest, unknown>(
   'IssueTag',
-  'issue_tags',
-  'Issue',
   '/v1/issue_tags'
 );
 
-export const ISSUE_RELATIONSHIP_MUTATION = defineMutation<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest>(
+export const ISSUE_RELATIONSHIP_MUTATION = defineMutation<IssueRelationship, CreateIssueRelationshipRequest, unknown>(
   'IssueRelationship',
-  'issue_relationships',
-  'Issue',
   '/v1/issue_relationships'
 );
 
 export const ISSUE_COMMENT_MUTATION = defineMutation<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest>(
   'IssueComment',
-  'issue_comments',
-  'Issue',
   '/v1/issue_comments'
 );
 
 export const ISSUE_COMMENT_REACTION_MUTATION = defineMutation<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>(
   'IssueCommentReaction',
-  'issue_comment_reactions',
-  'Comment',
   '/v1/issue_comment_reactions'
 );
 

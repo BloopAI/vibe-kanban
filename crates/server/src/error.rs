@@ -164,6 +164,11 @@ fn remote_client_error(err: &RemoteClientError) -> ErrorInfo {
             "RemoteClientError",
             "Remote service timeout. Please try again.",
         ),
+        RemoteClientError::TokenRefreshTimeout => ErrorInfo::with_status(
+            StatusCode::UNAUTHORIZED,
+            "RemoteClientError",
+            "Remote service timeout during token refresh. Please sign in again.",
+        ),
         RemoteClientError::Transport(_) => ErrorInfo::with_status(
             StatusCode::BAD_GATEWAY,
             "RemoteClientError",
@@ -316,7 +321,48 @@ impl IntoResponse for ApiError {
                 "GitServiceError",
                 "A rebase is already in progress. Resolve conflicts or abort the rebase, then retry.",
             ),
-            ApiError::GitService(_) => ErrorInfo::internal("GitServiceError"),
+            ApiError::GitService(git::GitServiceError::BranchNotFound(branch)) => {
+                ErrorInfo::not_found(
+                    "GitServiceError",
+                    format!(
+                        "Branch '{}' not found. Try changing the target branch.",
+                        branch
+                    ),
+                )
+            }
+            ApiError::GitService(git::GitServiceError::BranchesDiverged(msg)) => {
+                ErrorInfo::conflict(
+                    "GitServiceError",
+                    format!(
+                        "{} Rebase onto the target branch first, then retry the merge.",
+                        msg
+                    ),
+                )
+            }
+            ApiError::GitService(git::GitServiceError::WorktreeDirty(branch, files)) => {
+                ErrorInfo::conflict(
+                    "GitServiceError",
+                    format!(
+                        "Branch '{}' has uncommitted changes ({}). Commit or revert them before retrying.",
+                        branch, files
+                    ),
+                )
+            }
+            ApiError::GitService(git::GitServiceError::GitCLI(git::GitCliError::AuthFailed(
+                msg,
+            ))) => ErrorInfo::with_status(
+                StatusCode::UNAUTHORIZED,
+                "GitServiceError",
+                format!(
+                    "{}. Check your git credentials or SSH keys and try again.",
+                    msg
+                ),
+            ),
+            ApiError::GitService(e) => ErrorInfo::with_status(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "GitServiceError",
+                format!("Git operation failed: {}", e),
+            ),
             ApiError::GitHost(_) => ErrorInfo::internal("GitHostError"),
 
             ApiError::Image(ImageError::InvalidFormat) => ErrorInfo::bad_request(

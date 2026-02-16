@@ -16,6 +16,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --filter ./remote-frontend --frozen-lockfile
 
 COPY remote-frontend/ remote-frontend/
+COPY shared/ shared/
 
 RUN pnpm -C remote-frontend build
 
@@ -24,10 +25,12 @@ ARG APP_NAME
 ARG FEATURES
 ARG POSTHOG_API_KEY=""
 ARG POSTHOG_API_ENDPOINT=""
+ARG SENTRY_DSN_REMOTE=""
 
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 ENV POSTHOG_API_KEY=${POSTHOG_API_KEY}
 ENV POSTHOG_API_ENDPOINT=${POSTHOG_API_ENDPOINT}
+ENV SENTRY_DSN_REMOTE=${SENTRY_DSN_REMOTE}
 
 # Install build dependencies, plus git and openssh-client for private repo access
 RUN apt-get update \
@@ -44,11 +47,21 @@ COPY assets assets
 
 RUN mkdir -p /app/bin
 
+# When building without FEATURES (self-hosted), strip the private billing dependency
+# and its feature flag from Cargo.toml so cargo doesn't try to fetch the private git repo.
+# Also remove the Cargo.lock which references the private repo.
+RUN if [ -z "${FEATURES}" ]; then \
+      sed -i '/^billing = {.*vibe-kanban-private.*/d' crates/remote/Cargo.toml; \
+      sed -i '/^# private crate for billing/d' crates/remote/Cargo.toml; \
+      sed -i '/^vk-billing = \["dep:billing"\]/d' crates/remote/Cargo.toml; \
+      rm -f crates/remote/Cargo.lock; \
+    fi
+
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/app/target \
     --mount=type=ssh \
-    cargo build --locked --release --manifest-path crates/remote/Cargo.toml ${FEATURES:+--features ${FEATURES}} \
+    cargo build ${FEATURES:+--locked} --release --manifest-path crates/remote/Cargo.toml ${FEATURES:+--features ${FEATURES}} \
  && cp crates/remote/target/release/${APP_NAME} /app/bin/${APP_NAME}
 
 FROM debian:bookworm-slim AS runtime
@@ -72,6 +85,6 @@ ENV SERVER_LISTEN_ADDR=0.0.0.0:8081 \
 EXPOSE 8081
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD ["wget","--spider","-q","http://127.0.0.1:8081/health"]
+  CMD ["wget","--spider","-q","http://127.0.0.1:8081/v1/health"]
 
 ENTRYPOINT ["/usr/local/bin/remote"]

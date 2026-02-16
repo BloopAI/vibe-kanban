@@ -450,12 +450,6 @@ export const attemptsApi = {
     return handleApiResponse<Workspace[]>(response);
   },
 
-  /** Get total count of workspaces */
-  getCount: async (): Promise<number> => {
-    const response = await makeRequest('/api/task-attempts/count');
-    return handleApiResponse<number>(response);
-  },
-
   get: async (attemptId: string): Promise<Workspace> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}`);
     return handleApiResponse<Workspace>(response);
@@ -856,6 +850,11 @@ export const repoApi = {
     return handleApiResponse<Repo[]>(response);
   },
 
+  listRecent: async (): Promise<Repo[]> => {
+    const response = await makeRequest('/api/repos/recent');
+    return handleApiResponse<Repo[]>(response);
+  },
+
   getById: async (repoId: string): Promise<Repo> => {
     const response = await makeRequest(`/api/repos/${repoId}`);
     return handleApiResponse<Repo>(response);
@@ -1214,6 +1213,9 @@ export const oauthApi = {
   /** Returns the current access token for the remote server (auto-refreshes if needed) */
   getToken: async (): Promise<TokenResponse | null> => {
     const response = await makeRequest('/api/auth/token');
+    if (response.status === 401) {
+      throw new ApiError('Unauthorized', 401, response);
+    }
     if (!response.ok) return null;
     return handleApiResponse<TokenResponse>(response);
   },

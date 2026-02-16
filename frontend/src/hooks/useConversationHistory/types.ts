@@ -6,13 +6,25 @@ export type PatchTypeWithKey = PatchType & {
 };
 
 /**
+ * Aggregation types for tool use entries that can be grouped together.
+ */
+export type ToolAggregationType =
+  | 'file_read'
+  | 'search'
+  | 'web_fetch'
+  | 'command_run_read'
+  | 'command_run_search'
+  | 'command_run_edit'
+  | 'command_run_fetch';
+
+/**
  * A group of consecutive entries of the same aggregatable type (e.g., file_read, search, web_fetch).
  * Used to display multiple read/search/fetch operations in a collapsed accordion style.
  */
 export type AggregatedPatchGroup = {
   type: 'AGGREGATED_GROUP';
   /** The aggregation category (e.g., 'file_read', 'search', 'web_fetch') */
-  aggregationType: 'file_read' | 'search' | 'web_fetch';
+  aggregationType: ToolAggregationType;
   /** The individual entries in this group */
   entries: PatchTypeWithKey[];
   /** Unique key for the group */

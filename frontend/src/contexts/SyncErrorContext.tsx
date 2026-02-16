@@ -1,5 +1,4 @@
 import {
-  createContext,
   useContext,
   useState,
   useCallback,
@@ -7,6 +6,7 @@ import {
   useEffect,
   type ReactNode,
 } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import type { SyncError } from '@/lib/electric/types';
 
 /**
@@ -40,7 +40,10 @@ export interface SyncErrorContextValue {
   retryAll: () => void;
 }
 
-const SyncErrorContext = createContext<SyncErrorContextValue | null>(null);
+const SyncErrorContext = createHmrContext<SyncErrorContextValue | null>(
+  'SyncErrorContext',
+  null
+);
 
 interface SyncErrorProviderProps {
   children: ReactNode;

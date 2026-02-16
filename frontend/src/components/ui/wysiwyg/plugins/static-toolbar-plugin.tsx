@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
   $getSelection,
@@ -65,9 +65,13 @@ function ToolbarButton({
 
 interface StaticToolbarPluginProps {
   saveStatus?: 'idle' | 'saved';
+  extraActions?: ReactNode;
 }
 
-export function StaticToolbarPlugin({ saveStatus }: StaticToolbarPluginProps) {
+export function StaticToolbarPlugin({
+  saveStatus,
+  extraActions,
+}: StaticToolbarPluginProps) {
   const [editor] = useLexicalComposerContext();
 
   // Text format state
@@ -211,6 +215,13 @@ export function StaticToolbarPlugin({ saveStatus }: StaticToolbarPluginProps) {
         icon={ListNumbers}
         label="Numbered List"
       />
+
+      {extraActions && (
+        <>
+          <div className="w-px h-4 bg-border mx-half" />
+          <div className="flex items-center gap-half">{extraActions}</div>
+        </>
+      )}
 
       {/* Save Status Indicator */}
       {saveStatus && (

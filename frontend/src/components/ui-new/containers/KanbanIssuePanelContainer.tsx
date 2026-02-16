@@ -1,10 +1,20 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useReducer,
+  useRef,
+} from 'react';
+import { useDropzone } from 'react-dropzone';
+import { useTranslation } from 'react-i18next';
 import type { OrganizationMemberWithProfile } from 'shared/types';
-import { useNavigate } from 'react-router-dom';
+import type { IssuePriority } from 'shared/remote-types';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
+import { useProjectWorkspaceCreateDraft } from '@/hooks/useProjectWorkspaceCreateDraft';
 import {
   KanbanIssuePanel,
   type IssueFormData,
@@ -14,8 +24,23 @@ import { useUserContext } from '@/contexts/remote/UserContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
+import {
+  buildLinkedIssueCreateState,
+  buildWorkspaceCreateInitialState,
+  buildWorkspaceCreatePrompt,
+} from '@/lib/workspaceCreateState';
 import { ScratchType, type DraftIssueData } from 'shared/types';
 import { useScratch } from '@/hooks/useScratch';
+import {
+  createBlankCreateFormData,
+  createInitialKanbanIssuePanelFormState,
+  kanbanIssuePanelFormReducer,
+  selectDisplayData,
+  selectIsCreateDraftDirty,
+} from './kanban-issue-panel-state';
+import { useAzureAttachments } from '@/hooks/useAzureAttachments';
+import { commitIssueAttachments, deleteAttachment } from '@/lib/remoteApi';
+import { extractAttachmentIds } from '@/lib/attachmentUtils';
 
 const DRAFT_ISSUE_ID = '00000000-0000-0000-0000-000000000002';
 
@@ -25,6 +50,7 @@ const DRAFT_ISSUE_ID = '00000000-0000-0000-0000-000000000002';
  * Must be rendered within both OrgProvider and ProjectProvider.
  */
 export function KanbanIssuePanelContainer() {
+  const { t } = useTranslation('common');
   // Navigation hook - URL is single source of truth
   const {
     issueId: selectedKanbanIssueId,
@@ -35,9 +61,10 @@ export function KanbanIssuePanelContainer() {
     createDefaultParentIssueId: kanbanCreateDefaultParentIssueId,
     openIssue,
     closePanel,
+    updateCreateDefaults,
   } = useKanbanNavigation();
 
-  const navigate = useNavigate();
+  const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
   const { workspaces } = useUserContext();
   const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
 
@@ -128,6 +155,14 @@ export function KanbanIssuePanelContainer() {
     }
   }, [parentIssue, openIssue]);
 
+  const handleRemoveParentIssue = useCallback(() => {
+    if (!selectedKanbanIssueId || !selectedIssue?.parent_issue_id) return;
+    updateIssue(selectedKanbanIssueId, {
+      parent_issue_id: null,
+      parent_issue_sort_order: null,
+    });
+  }, [selectedKanbanIssueId, selectedIssue?.parent_issue_id, updateIssue]);
+
   // Get all current assignees from issue_assignees
   const currentAssigneeIds = useMemo(() => {
     if (!selectedKanbanIssueId) return [];
@@ -167,116 +202,90 @@ export function KanbanIssuePanelContainer() {
   const defaultStatusId =
     kanbanCreateDefaultStatusId ?? sortedStatuses[0]?.id ?? '';
 
+  // Default create form values for the current URL defaults + project context
+  const createModeDefaults = useMemo<IssueFormData>(
+    () => ({
+      title: '',
+      description: null,
+      statusId: defaultStatusId,
+      priority: kanbanCreateDefaultPriority ?? null,
+      assigneeIds: [...(kanbanCreateDefaultAssigneeIds ?? [])],
+      tagIds: [],
+      createDraftWorkspace: false,
+    }),
+    [
+      defaultStatusId,
+      kanbanCreateDefaultPriority,
+      kanbanCreateDefaultAssigneeIds,
+    ]
+  );
+
   // Track previous issue ID to detect actual issue switches (not just data updates)
   const prevIssueIdRef = useRef<string | null>(null);
+  const titleInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Track previous issue ID for title content sync
-  const lastTitleIssueIdRef = useRef<string | null | undefined>(null);
-
-  // For create mode - full local state needed
-  const [createFormData, setCreateFormData] = useState<IssueFormData | null>(
-    null
+  const [formState, dispatchFormState] = useReducer(
+    kanbanIssuePanelFormReducer,
+    undefined,
+    createInitialKanbanIssuePanelFormState
   );
+  const createFormData = formState.createFormData;
+  const isDraftAutosavePaused = formState.isDraftAutosavePaused;
 
-  // Callback ref that handles title content sync and auto-focus
-  const titleRefCallback = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (node) {
-        // Set title content when issue changes
-        if (selectedKanbanIssueId !== lastTitleIssueIdRef.current) {
-          const title =
-            mode === 'create'
-              ? (createFormData?.title ?? '')
-              : (selectedIssue?.title ?? '');
-          node.textContent = title;
-          lastTitleIssueIdRef.current = selectedKanbanIssueId;
-        } else if (
-          mode === 'create' &&
-          createFormData?.title &&
-          node.textContent !== createFormData.title
-        ) {
-          // Handle late scratch restore: title data changed but issue ID didn't
-          node.textContent = createFormData.title;
-        }
-        // Auto-focus in create mode after any dialog close focus handling runs.
-        if (mode === 'create') {
-          requestAnimationFrame(() => {
-            node.focus();
-            // Place cursor at end of content (not start)
-            if (node.textContent) {
-              const selection = window.getSelection();
-              const range = document.createRange();
-              range.selectNodeContents(node);
-              range.collapse(false);
-              selection?.removeAllRanges();
-              selection?.addRange(range);
-            }
-          });
-        }
-      }
-    },
-    [selectedKanbanIssueId, selectedIssue?.title, mode, createFormData?.title]
-  );
+  useEffect(() => {
+    if (mode !== 'create') return;
+
+    const titleInput = titleInputRef.current;
+    if (!titleInput || document.activeElement === titleInput) return;
+
+    const frameId = requestAnimationFrame(() => {
+      const node = titleInputRef.current;
+      if (!node || document.activeElement === node) return;
+
+      node.focus();
+      const caretIndex = node.value.length;
+      node.setSelectionRange(caretIndex, caretIndex);
+    });
+
+    return () => cancelAnimationFrame(frameId);
+  }, [mode, selectedKanbanIssueId, createFormData?.title]);
 
   // Display ID: use real simple_id in edit mode, placeholder for create mode
   const displayId = useMemo(() => {
     if (mode === 'edit' && selectedIssue) {
       return selectedIssue.simple_id;
     }
-    return 'New Issue';
-  }, [mode, selectedIssue]);
-
-  // For edit mode - only track text field edits (title, description)
-  // Dropdown fields (status, priority, assignees, tags) derive from server state
-  // When null, no local edits exist; values are read from server state
-  const [localTextEdits, setLocalTextEdits] = useState<{
-    title: string | null;
-    description: string | null;
-  } | null>(null);
+    return t('kanban.newIssue');
+  }, [mode, selectedIssue, t]);
 
   // Compute display values based on mode
-  // - Create mode: createFormData is the single source of truth
-  // - Edit mode: text fields from localTextEdits (if editing) or server, dropdown fields always from server
+  // - Create mode: createFormData is the single source of truth.
+  // - Edit mode: text fields come from explicit local edit state, dropdown fields from server.
   const displayData = useMemo((): IssueFormData => {
-    if (mode === 'create') {
-      return (
-        createFormData ?? {
-          title: '',
-          description: null,
-          statusId: defaultStatusId,
-          priority: null,
-          assigneeIds: [],
-          tagIds: [],
-          createDraftWorkspace: false,
-        }
-      );
-    }
-
-    // Edit mode: dropdown fields from server, text fields from local edits or server
-    return {
-      title:
-        localTextEdits && localTextEdits.title !== null
-          ? localTextEdits.title
-          : (selectedIssue?.title ?? ''),
-      description:
-        localTextEdits && localTextEdits.description !== null
-          ? localTextEdits.description
-          : (selectedIssue?.description ?? null),
-      statusId: selectedIssue?.status_id ?? '', // Always from server
-      priority: selectedIssue?.priority ?? null, // Always from server
-      assigneeIds: currentAssigneeIds, // Always from server
-      tagIds: currentTagIds, // Always from server
-      createDraftWorkspace: false,
-    };
+    return selectDisplayData({
+      state: formState,
+      mode,
+      createModeDefaults,
+      selectedIssue,
+      currentAssigneeIds,
+      currentTagIds,
+    });
   }, [
+    formState,
     mode,
-    createFormData,
-    localTextEdits,
+    createModeDefaults,
     selectedIssue,
-    defaultStatusId,
     currentAssigneeIds,
     currentTagIds,
   ]);
+
+  const isCreateDraftDirty = useMemo(() => {
+    return selectIsCreateDraftDirty({
+      state: formState,
+      mode,
+      createModeDefaults,
+    });
+  }, [formState, mode, createModeDefaults]);
 
   // Resolve assignee IDs to full profiles for avatar display
   const displayAssigneeUsers = useMemo(() => {
@@ -320,6 +329,14 @@ export function KanbanIssuePanelContainer() {
     isLoading: draftIssueLoading,
   } = useScratch(ScratchType.DRAFT_ISSUE, DRAFT_ISSUE_ID);
 
+  const hasDraftIssueScratch = useMemo(() => {
+    const scratchData =
+      draftIssueScratch?.payload?.type === 'DRAFT_ISSUE'
+        ? draftIssueScratch.payload.data
+        : undefined;
+    return Boolean(scratchData && scratchData.project_id === projectId);
+  }, [draftIssueScratch, projectId]);
+
   const {
     debounced: debouncedSaveDraftIssue,
     cancel: cancelDebouncedDraftIssue,
@@ -332,9 +349,6 @@ export function KanbanIssuePanelContainer() {
       console.error('Failed to save draft issue:', e);
     }
   }, 500);
-
-  // Track whether we've already restored from scratch in this create-mode session
-  const hasRestoredFromScratch = useRef(false);
 
   // Reset save status only when switching to a different issue or mode
   useEffect(() => {
@@ -358,7 +372,85 @@ export function KanbanIssuePanelContainer() {
     [statuses, defaultStatusId]
   );
 
-  // Reset local state when switching issues or modes
+  const createFormFallback = useMemo(
+    () => createBlankCreateFormData(defaultStatusId),
+    [defaultStatusId]
+  );
+
+  // --- Image attachment upload integration ---
+
+  // Callback to insert markdown into the description field
+  const handleDescriptionInsert = useCallback(
+    (markdown: string) => {
+      const currentDesc = displayData.description ?? '';
+      const separator = currentDesc.length > 0 ? '\n' : '';
+      const newDesc = currentDesc + separator + markdown;
+
+      if (kanbanCreateMode || !selectedKanbanIssueId) {
+        // Create mode: update form data
+        dispatchFormState({
+          type: 'patchCreateFormData',
+          patch: { description: newDesc },
+          fallback: createFormFallback,
+        });
+      } else {
+        // Edit mode: update local state + debounced save
+        dispatchFormState({
+          type: 'setEditDescription',
+          description: newDesc,
+        });
+        debouncedSaveDescription(newDesc);
+      }
+    },
+    [
+      kanbanCreateMode,
+      selectedKanbanIssueId,
+      displayData.description,
+      createFormFallback,
+      debouncedSaveDescription,
+    ]
+  );
+
+  // Azure attachment upload hook
+  const {
+    uploadFiles,
+    getAttachmentIds,
+    clearAttachments,
+    isUploading,
+    uploadError,
+    clearUploadError,
+  } = useAzureAttachments({
+    projectId,
+    issueId: kanbanCreateMode
+      ? undefined
+      : (selectedKanbanIssueId ?? undefined),
+    onMarkdownInsert: handleDescriptionInsert,
+    onError: (msg) => console.error('[attachment]', msg),
+  });
+
+  // Dropzone for drag-drop image upload on description area
+  const {
+    getRootProps,
+    getInputProps,
+    isDragActive,
+    open: openFilePicker,
+  } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      if (acceptedFiles.length > 0) uploadFiles(acceptedFiles);
+    },
+    noClick: true,
+    noKeyboard: true,
+  });
+
+  // Paste handler for images
+  const onPasteFiles = useCallback(
+    (files: File[]) => {
+      if (files.length > 0) uploadFiles(files);
+    },
+    [uploadFiles]
+  );
+
+  // Reset local state when switching issues or modes.
   useEffect(() => {
     const currentIssueId = selectedKanbanIssueId;
     const isNewIssue = currentIssueId !== prevIssueIdRef.current;
@@ -377,48 +469,40 @@ export function KanbanIssuePanelContainer() {
     cancelDebouncedDescription();
     cancelDebouncedDraftIssue();
 
-    // Clear local text edits (they apply to the previous issue)
-    setLocalTextEdits(null);
+    let nextCreateFormData: IssueFormData | null = null;
+    let hasRestoredFromScratch = false;
 
     // Initialize create form data if in create mode
     if (mode === 'create') {
-      hasRestoredFromScratch.current = false;
-
       // Gate on scratch loading — don't initialize until we know the scratch state
       if (draftIssueLoading) {
-        setCreateFormData(null);
-        return;
-      }
-
-      // Priority 1: Restore from scratch if available for this project
-      const scratchData =
-        draftIssueScratch?.payload?.type === 'DRAFT_ISSUE'
-          ? draftIssueScratch.payload.data
-          : undefined;
-
-      if (scratchData && scratchData.project_id === projectId) {
-        hasRestoredFromScratch.current = true;
-        setCreateFormData(restoreFromScratch(scratchData));
+        nextCreateFormData = null;
       } else {
-        // Priority 2: Seed from URL defaults (read once), then empty form
-        setCreateFormData({
-          title: '',
-          description: null,
-          statusId: kanbanCreateDefaultStatusId ?? defaultStatusId,
-          priority: kanbanCreateDefaultPriority ?? null,
-          assigneeIds: kanbanCreateDefaultAssigneeIds ?? [],
-          tagIds: [],
-          createDraftWorkspace: false,
-        });
+        // Priority 1: Restore from scratch if available for this project
+        const scratchData =
+          draftIssueScratch?.payload?.type === 'DRAFT_ISSUE'
+            ? draftIssueScratch.payload.data
+            : undefined;
+
+        if (scratchData && scratchData.project_id === projectId) {
+          hasRestoredFromScratch = true;
+          nextCreateFormData = restoreFromScratch(scratchData);
+        } else {
+          // Priority 2: Seed from URL defaults (read once), then empty form
+          nextCreateFormData = createModeDefaults;
+        }
       }
-    } else {
-      // Edit mode: clear createFormData, displayData will derive from selectedIssue
-      setCreateFormData(null);
     }
+
+    dispatchFormState({
+      type: 'resetForIssueChange',
+      mode,
+      createFormData: nextCreateFormData,
+      hasRestoredFromScratch,
+    });
   }, [
     mode,
     selectedKanbanIssueId,
-    defaultStatusId,
     cancelDebouncedTitle,
     cancelDebouncedDescription,
     cancelDebouncedDraftIssue,
@@ -426,18 +510,21 @@ export function KanbanIssuePanelContainer() {
     draftIssueLoading,
     projectId,
     restoreFromScratch,
-    kanbanCreateDefaultStatusId,
-    kanbanCreateDefaultPriority,
-    kanbanCreateDefaultAssigneeIds,
+    createModeDefaults,
   ]);
 
   // Handle late scratch loading: if scratch arrives after initial create mode render
   useEffect(() => {
     if (mode !== 'create') {
-      hasRestoredFromScratch.current = false;
+      if (formState.hasRestoredFromScratch) {
+        dispatchFormState({
+          type: 'setHasRestoredFromScratch',
+          hasRestoredFromScratch: false,
+        });
+      }
       return;
     }
-    if (hasRestoredFromScratch.current) return;
+    if (formState.hasRestoredFromScratch) return;
     if (draftIssueLoading) return;
 
     const scratchData =
@@ -446,36 +533,52 @@ export function KanbanIssuePanelContainer() {
         : undefined;
 
     if (scratchData && scratchData.project_id === projectId) {
-      hasRestoredFromScratch.current = true;
-      setCreateFormData(restoreFromScratch(scratchData));
+      dispatchFormState({
+        type: 'setCreateFormData',
+        createFormData: restoreFromScratch(scratchData),
+      });
+      dispatchFormState({
+        type: 'setHasRestoredFromScratch',
+        hasRestoredFromScratch: true,
+      });
     } else if (createFormData === null) {
       // Scratch loaded but no data — seed from URL defaults
-      setCreateFormData({
-        title: '',
-        description: null,
-        statusId: kanbanCreateDefaultStatusId ?? defaultStatusId,
-        priority: kanbanCreateDefaultPriority ?? null,
-        assigneeIds: kanbanCreateDefaultAssigneeIds ?? [],
-        tagIds: [],
-        createDraftWorkspace: false,
+      dispatchFormState({
+        type: 'setCreateFormData',
+        createFormData: createModeDefaults,
       });
     }
   }, [
     mode,
+    formState.hasRestoredFromScratch,
     draftIssueScratch,
     draftIssueLoading,
     projectId,
     restoreFromScratch,
     createFormData,
-    kanbanCreateDefaultStatusId,
-    kanbanCreateDefaultPriority,
-    kanbanCreateDefaultAssigneeIds,
-    defaultStatusId,
+    createModeDefaults,
   ]);
 
   // Auto-save draft issue to scratch when form data changes in create mode
   useEffect(() => {
-    if (mode !== 'create' || !createFormData || !projectId) return;
+    if (
+      mode !== 'create' ||
+      !createFormData ||
+      !projectId ||
+      isDraftAutosavePaused
+    ) {
+      return;
+    }
+
+    if (!isCreateDraftDirty) {
+      cancelDebouncedDraftIssue();
+      if (hasDraftIssueScratch) {
+        deleteDraftIssueScratch().catch((error) => {
+          console.error('Failed to delete draft issue:', error);
+        });
+      }
+      return;
+    }
 
     debouncedSaveDraftIssue({
       title: createFormData.title,
@@ -494,6 +597,11 @@ export function KanbanIssuePanelContainer() {
     projectId,
     kanbanCreateDefaultParentIssueId,
     debouncedSaveDraftIssue,
+    isDraftAutosavePaused,
+    isCreateDraftDirty,
+    hasDraftIssueScratch,
+    cancelDebouncedDraftIssue,
+    deleteDraftIssueScratch,
   ]);
 
   // Form change handler - persists changes immediately in edit mode
@@ -504,43 +612,55 @@ export function KanbanIssuePanelContainer() {
     ) => {
       // Create mode: update createFormData for all fields
       if (kanbanCreateMode || !selectedKanbanIssueId) {
+        if (isDraftAutosavePaused) {
+          dispatchFormState({
+            type: 'setDraftAutosavePaused',
+            isPaused: false,
+          });
+        }
+
         // For statusId, open the status selection dialog with callback
         if (field === 'statusId') {
-          const { CommandBarDialog } = await import(
-            '@/components/ui-new/dialogs/CommandBarDialog'
+          const { ProjectSelectionDialog } = await import(
+            '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
           );
-          await CommandBarDialog.show({
-            pendingStatusSelection: {
-              projectId,
-              issueIds: [],
-              isCreateMode: true,
-              onCreateModeUpdate: (statusId: string) => {
-                setCreateFormData((prev) =>
-                  prev ? { ...prev, statusId } : prev
-                );
-              },
-            },
+          const result = await ProjectSelectionDialog.show({
+            projectId,
+            selection: { type: 'status', issueIds: [], isCreateMode: true },
           });
+          if (result && typeof result === 'object' && 'statusId' in result) {
+            const statusId = result.statusId as string;
+            updateCreateDefaults({ statusId });
+            dispatchFormState({
+              type: 'patchCreateFormData',
+              patch: { statusId },
+              fallback: createFormFallback,
+            });
+          }
           return;
         }
 
         // For priority, open the priority selection dialog with callback
         if (field === 'priority') {
-          const { CommandBarDialog } = await import(
-            '@/components/ui-new/dialogs/CommandBarDialog'
+          const { ProjectSelectionDialog } = await import(
+            '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
           );
-          await CommandBarDialog.show({
-            pendingPrioritySelection: {
-              projectId,
-              issueIds: [],
-              isCreateMode: true,
-              onCreateModeUpdate: (priority) => {
-                setCreateFormData((prev) =>
-                  prev ? { ...prev, priority } : prev
-                );
-              },
-            },
+          const result = await ProjectSelectionDialog.show({
+            projectId,
+            selection: { type: 'priority', issueIds: [], isCreateMode: true },
           });
+          if (result && typeof result === 'object' && 'priority' in result) {
+            const priority = (result as { priority: IssuePriority | null })
+              .priority;
+            updateCreateDefaults({
+              priority,
+            });
+            dispatchFormState({
+              type: 'patchCreateFormData',
+              patch: { priority },
+              fallback: createFormFallback,
+            });
+          }
           return;
         }
 
@@ -555,26 +675,20 @@ export function KanbanIssuePanelContainer() {
             isCreateMode: true,
             createModeAssigneeIds: createFormData?.assigneeIds ?? [],
             onCreateModeAssigneesChange: (assigneeIds: string[]) => {
-              setCreateFormData((prev) =>
-                prev ? { ...prev, assigneeIds } : prev
-              );
+              dispatchFormState({
+                type: 'setCreateAssigneeIds',
+                assigneeIds,
+              });
             },
           });
           return;
         }
 
         // For other fields, just update the form data
-        setCreateFormData((prev) => {
-          const base = prev ?? {
-            title: '',
-            description: null,
-            statusId: defaultStatusId,
-            priority: null,
-            assigneeIds: [],
-            tagIds: [],
-            createDraftWorkspace: false,
-          };
-          return { ...base, [field]: value };
+        dispatchFormState({
+          type: 'patchCreateFormData',
+          patch: { [field]: value } as Partial<IssueFormData>,
+          fallback: createFormFallback,
         });
         return;
       }
@@ -582,17 +696,17 @@ export function KanbanIssuePanelContainer() {
       // Edit mode: handle text fields vs dropdown fields differently
       if (field === 'title') {
         // Text field: update local state, then debounced save
-        setLocalTextEdits((prev) => ({
+        dispatchFormState({
+          type: 'setEditTitle',
           title: value as string,
-          description: prev?.description ?? null,
-        }));
+        });
         debouncedSaveTitle(value as string);
       } else if (field === 'description') {
         // Text field: update local state, then debounced save
-        setLocalTextEdits((prev) => ({
-          title: prev?.title ?? null,
+        dispatchFormState({
+          type: 'setEditDescription',
           description: value as string | null,
-        }));
+        });
         debouncedSaveDescription(value as string | null);
       } else if (field === 'statusId') {
         // Status changes go through the command bar status selection
@@ -636,16 +750,18 @@ export function KanbanIssuePanelContainer() {
       kanbanCreateMode,
       selectedKanbanIssueId,
       projectId,
-      defaultStatusId,
+      createFormFallback,
       createFormData,
       debouncedSaveTitle,
       debouncedSaveDescription,
       openStatusSelection,
       openPrioritySelection,
       openAssigneeSelection,
+      updateCreateDefaults,
       issueTags,
       insertIssueTag,
       removeIssueTag,
+      isDraftAutosavePaused,
     ]
   );
 
@@ -683,6 +799,32 @@ export function KanbanIssuePanelContainer() {
         // Wait for the issue to be confirmed by the backend and get the synced entity
         const syncedIssue = await persisted;
 
+        // Commit only attachments still referenced in the description
+        const allUploadedIds = getAttachmentIds();
+        if (allUploadedIds.length > 0) {
+          const referencedIds = extractAttachmentIds(
+            displayData.description ?? ''
+          );
+          const idsToCommit = allUploadedIds.filter((id) =>
+            referencedIds.has(id)
+          );
+          const idsToDelete = allUploadedIds.filter(
+            (id) => !referencedIds.has(id)
+          );
+
+          if (idsToCommit.length > 0) {
+            await commitIssueAttachments(syncedIssue.id, {
+              attachment_ids: idsToCommit,
+            });
+          }
+          for (const id of idsToDelete) {
+            deleteAttachment(id).catch((err) =>
+              console.error('Failed to delete abandoned attachment:', err)
+            );
+          }
+          clearAttachments();
+        }
+
         // Create assignee records for all selected assignees
         displayData.assigneeIds.forEach((userId) => {
           insertIssueAssignee({
@@ -701,10 +843,10 @@ export function KanbanIssuePanelContainer() {
 
         // Navigate to workspace creation if requested
         if (displayData.createDraftWorkspace) {
-          // Build initial prompt from issue title and description
-          const initialPrompt = displayData.description
-            ? `${displayData.title}\n\n${displayData.description}`
-            : displayData.title;
+          const initialPrompt = buildWorkspaceCreatePrompt(
+            displayData.title,
+            displayData.description
+          );
 
           // Get defaults from most recent workspace
           const defaults = await getWorkspaceDefaults(
@@ -716,19 +858,17 @@ export function KanbanIssuePanelContainer() {
           cancelDebouncedDraftIssue();
           deleteDraftIssueScratch().catch(console.error);
 
-          navigate('/workspaces/create', {
-            state: {
-              initialPrompt,
-              preferredRepos: defaults?.preferredRepos ?? null,
-              project_id: defaults?.project_id ?? null,
-              linkedIssue: {
-                issueId: syncedIssue.id,
-                simpleId: syncedIssue.simple_id,
-                title: displayData.title,
-                remoteProjectId: projectId,
-              },
-            },
+          const createState = buildWorkspaceCreateInitialState({
+            prompt: initialPrompt,
+            defaults,
+            linkedIssue: buildLinkedIssueCreateState(syncedIssue, projectId),
           });
+          const draftId = await openWorkspaceCreateFromState(createState, {
+            issueId: syncedIssue.id,
+          });
+          if (!draftId) {
+            openIssue(syncedIssue.id);
+          }
           return; // Don't open issue panel since we're navigating away
         }
 
@@ -758,13 +898,35 @@ export function KanbanIssuePanelContainer() {
     insertIssueTag,
     openIssue,
     kanbanCreateDefaultParentIssueId,
-    navigate,
+    openWorkspaceCreateFromState,
     workspaces,
     localWorkspaceIds,
     closeKanbanIssuePanel,
     cancelDebouncedDraftIssue,
     deleteDraftIssueScratch,
+    getAttachmentIds,
+    clearAttachments,
   ]);
+
+  const handleCmdEnterSubmit = useCallback(() => {
+    if (mode !== 'create') return;
+    void handleSubmit();
+  }, [mode, handleSubmit]);
+
+  const handleDeleteDraft = useCallback(() => {
+    cancelDebouncedDraftIssue();
+    dispatchFormState({
+      type: 'setDraftAutosavePaused',
+      isPaused: true,
+    });
+    dispatchFormState({
+      type: 'setCreateFormData',
+      createFormData: createModeDefaults,
+    });
+    deleteDraftIssueScratch().catch((error) => {
+      console.error('Failed to delete draft issue:', error);
+    });
+  }, [cancelDebouncedDraftIssue, deleteDraftIssueScratch, createModeDefaults]);
 
   // Tag create callback - returns the new tag ID so it can be auto-selected
   const handleCreateTag = useCallback(
@@ -802,7 +964,7 @@ export function KanbanIssuePanelContainer() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full bg-secondary">
-        <p className="text-low">Loading...</p>
+        <p className="text-low">{t('states.loading')}</p>
       </div>
     );
   }
@@ -820,19 +982,29 @@ export function KanbanIssuePanelContainer() {
       creatorUser={issueCreator}
       parentIssue={parentIssue}
       onParentIssueClick={handleParentIssueClick}
+      onRemoveParentIssue={handleRemoveParentIssue}
       linkedPrs={linkedPrs}
       onClose={closeKanbanIssuePanel}
       onSubmit={handleSubmit}
-      onCmdEnterSubmit={handleSubmit}
+      onCmdEnterSubmit={handleCmdEnterSubmit}
       onCreateTag={handleCreateTag}
       isSubmitting={isSubmitting}
       isLoading={isLoading}
       descriptionSaveStatus={
         mode === 'edit' ? descriptionSaveStatus : undefined
       }
-      titleRef={titleRefCallback}
+      titleInputRef={titleInputRef}
+      onDeleteDraft={
+        mode === 'create' && isCreateDraftDirty ? handleDeleteDraft : undefined
+      }
       onCopyLink={mode === 'edit' ? handleCopyLink : undefined}
       onMoreActions={mode === 'edit' ? handleMoreActions : undefined}
+      onPasteFiles={onPasteFiles}
+      dropzoneProps={{ getRootProps, getInputProps, isDragActive }}
+      onBrowseAttachment={openFilePicker}
+      isUploading={isUploading}
+      attachmentError={uploadError}
+      onDismissAttachmentError={clearUploadError}
     />
   );
 }

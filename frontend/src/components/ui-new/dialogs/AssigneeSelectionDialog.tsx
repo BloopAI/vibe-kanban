@@ -27,6 +27,8 @@ export interface AssigneeSelectionDialogProps {
   createModeAssigneeIds?: string[];
   /** Callback for create-mode assignee changes (bypasses URL params when provided) */
   onCreateModeAssigneesChange?: (assigneeIds: string[]) => void;
+  /** Optional additional options for create-mode selection (e.g. "Me", "Unassigned"). */
+  additionalOptions?: MultiSelectOption<string>[];
 }
 
 const getUserDisplayName = (user: OrganizationMemberWithProfile): string => {
@@ -43,11 +45,13 @@ function AssigneeSelectionContent({
   isCreateMode,
   createModeAssigneeIds,
   onCreateModeAssigneesChange,
+  additionalOptions,
 }: {
   issueIds: string[];
   isCreateMode: boolean;
   createModeAssigneeIds?: string[];
   onCreateModeAssigneesChange?: (assigneeIds: string[]) => void;
+  additionalOptions?: MultiSelectOption<string>[];
 }) {
   const { t } = useTranslation('common');
   const modal = useModal();
@@ -69,6 +73,13 @@ function AssigneeSelectionContent({
   const [localCreateAssignees, setLocalCreateAssignees] = useState<string[]>(
     createModeAssigneeIds ?? []
   );
+
+  // Keep local create-mode state aligned with incoming source-of-truth values.
+  // This avoids stale selections when the draft is reset outside the dialog.
+  useEffect(() => {
+    if (!hasCreateCallback) return;
+    setLocalCreateAssignees(createModeAssigneeIds ?? []);
+  }, [hasCreateCallback, createModeAssigneeIds, modal.visible]);
 
   // Fallback: Get/set create mode defaults from URL (for callers without callback)
   const [searchParams, setSearchParams] = useSearchParams();
@@ -119,21 +130,25 @@ function AssigneeSelectionContent({
     }
   }, [modal.visible]);
 
-  const options: MultiSelectOption<string>[] = useMemo(
-    () =>
-      users.map((user) => ({
-        value: user.user_id,
-        label: getUserDisplayName(user),
-        searchValue: `${user.user_id} ${getUserDisplayName(user)} ${user.email ?? ''}`,
-        renderOption: () => (
-          <div className="flex items-center gap-base">
-            <UserAvatar user={user} className="h-5 w-5 text-[10px]" />
-            <span>{getUserDisplayName(user)}</span>
-          </div>
-        ),
-      })),
-    [users]
-  );
+  const options: MultiSelectOption<string>[] = useMemo(() => {
+    const userOptions = users.map((user) => ({
+      value: user.user_id,
+      label: getUserDisplayName(user),
+      searchValue: `${user.user_id} ${getUserDisplayName(user)} ${user.email ?? ''}`,
+      renderOption: () => (
+        <div className="flex items-center gap-base">
+          <UserAvatar user={user} className="h-5 w-5 text-[10px]" />
+          <span>{getUserDisplayName(user)}</span>
+        </div>
+      ),
+    }));
+
+    if (!isCreateMode || !additionalOptions || additionalOptions.length === 0) {
+      return userOptions;
+    }
+
+    return [...additionalOptions, ...userOptions];
+  }, [users, isCreateMode, additionalOptions]);
 
   const handleToggle = useCallback(
     (userId: string) => {
@@ -215,6 +230,7 @@ function AssigneeSelectionWithContext({
   isCreateMode = false,
   createModeAssigneeIds,
   onCreateModeAssigneesChange,
+  additionalOptions,
 }: AssigneeSelectionDialogProps) {
   // Get organization ID from store (set when navigating to project)
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
@@ -237,6 +253,7 @@ function AssigneeSelectionWithContext({
           isCreateMode={isCreateMode}
           createModeAssigneeIds={createModeAssigneeIds}
           onCreateModeAssigneesChange={onCreateModeAssigneesChange}
+          additionalOptions={additionalOptions}
         />
       </ProjectProvider>
     </OrgProvider>
@@ -251,6 +268,7 @@ const AssigneeSelectionDialogImpl =
       isCreateMode,
       createModeAssigneeIds,
       onCreateModeAssigneesChange,
+      additionalOptions,
     }) => {
       return (
         <AssigneeSelectionWithContext
@@ -259,6 +277,7 @@ const AssigneeSelectionDialogImpl =
           isCreateMode={isCreateMode}
           createModeAssigneeIds={createModeAssigneeIds}
           onCreateModeAssigneesChange={onCreateModeAssigneesChange}
+          additionalOptions={additionalOptions}
         />
       );
     }

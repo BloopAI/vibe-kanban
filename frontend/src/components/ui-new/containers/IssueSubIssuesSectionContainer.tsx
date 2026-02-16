@@ -6,6 +6,7 @@ import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
 import { useActions } from '@/contexts/ActionsContext';
 import { bulkUpdateIssues } from '@/lib/remoteApi';
+import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import {
   IssueSubIssuesSection,
   type SubIssueData,
@@ -35,6 +36,8 @@ export function IssueSubIssuesSectionContainer({
   const {
     issues,
     statuses,
+    updateIssue,
+    removeIssue,
     getAssigneesForIssue,
     isLoading: projectLoading,
   } = useProjectContext();
@@ -167,6 +170,36 @@ export function IssueSubIssuesSectionContainer({
     [projectId, openAssigneeSelection]
   );
 
+  const handleSubIssueMarkIndependent = useCallback(
+    (subIssueId: string) => {
+      updateIssue(subIssueId, {
+        parent_issue_id: null,
+        parent_issue_sort_order: null,
+      });
+    },
+    [updateIssue]
+  );
+
+  const handleSubIssueDelete = useCallback(
+    async (subIssueId: string) => {
+      const subIssue = issues.find((issue) => issue.id === subIssueId);
+      const result = await ConfirmDialog.show({
+        title: 'Delete Sub-issue',
+        message: subIssue
+          ? `Are you sure you want to delete "${subIssue.title}"? This action cannot be undone.`
+          : 'Are you sure you want to delete this sub-issue? This action cannot be undone.',
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        variant: 'destructive',
+      });
+
+      if (result === 'confirmed') {
+        removeIssue(subIssueId);
+      }
+    },
+    [issues, removeIssue]
+  );
+
   // Actions for the section header
   const actions: SectionAction[] = useMemo(
     () => [
@@ -188,6 +221,8 @@ export function IssueSubIssuesSectionContainer({
         parentIssueId={issueId}
         subIssues={subIssues}
         onSubIssueClick={handleSubIssueClick}
+        onSubIssueMarkIndependent={handleSubIssueMarkIndependent}
+        onSubIssueDelete={handleSubIssueDelete}
         onSubIssuePriorityClick={handleSubIssuePriorityClick}
         onSubIssueAssigneeClick={handleSubIssueAssigneeClick}
         isLoading={isLoading}

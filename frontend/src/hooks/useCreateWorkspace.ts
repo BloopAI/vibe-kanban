@@ -14,7 +14,12 @@ interface CreateWorkspaceParams {
   };
 }
 
-export function useCreateWorkspace() {
+interface UseCreateWorkspaceOptions {
+  onWorkspaceCreated?: (workspaceId: string) => void;
+}
+
+export function useCreateWorkspace(options: UseCreateWorkspaceOptions = {}) {
+  const { onWorkspaceCreated } = options;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -49,9 +54,13 @@ export function useCreateWorkspace() {
         });
       }
 
-      // Navigate to the new workspace
+      // Navigate to the new workspace (or let caller handle in project sidebar)
       if (workspaceId) {
-        navigate(`/workspaces/${workspaceId}`);
+        if (onWorkspaceCreated) {
+          onWorkspaceCreated(workspaceId);
+        } else {
+          navigate(`/workspaces/${workspaceId}`);
+        }
       }
     },
     onError: (err) => {

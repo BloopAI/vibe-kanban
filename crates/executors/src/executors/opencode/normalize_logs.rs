@@ -19,6 +19,7 @@ use crate::{
         utils::{
             EntryIndexProvider,
             patch::{add_normalized_entry, replace_normalized_entry, upsert_normalized_entry},
+            shell_command_parsing::CommandCategory,
         },
     },
 };
@@ -654,6 +655,8 @@ enum ToolData {
     },
     Task {
         description: Option<String>,
+        subagent_type: Option<String>,
+        output: Option<String>,
     },
     Other {
         input: Option<Value>,
@@ -869,13 +872,29 @@ impl ToolCallState {
                     *todos = v.todos;
                 }
             }
-            ToolData::Task { description } => {
-                if let Some(d) = input.and_then(|v| {
-                    v.get("description")
+            ToolData::Task {
+                description,
+                subagent_type,
+                output: task_output,
+            } => {
+                if let Some(inp) = input {
+                    if let Some(d) = inp
+                        .get("description")
                         .and_then(Value::as_str)
                         .map(str::to_string)
-                }) {
-                    *description = Some(d);
+                    {
+                        *description = Some(d);
+                    }
+                    if let Some(s) = inp
+                        .get("subagent_type")
+                        .and_then(Value::as_str)
+                        .map(str::to_string)
+                    {
+                        *subagent_type = Some(s);
+                    }
+                }
+                if let Some(o) = output {
+                    *task_output = Some(o);
                 }
             }
             ToolData::Unknown => {
@@ -957,7 +976,11 @@ impl ToolCallState {
                 },
                 todos: vec![],
             },
-            "task" => ToolData::Task { description: None },
+            "task" => ToolData::Task {
+                description: None,
+                subagent_type: None,
+                output: None,
+            },
             _ => return,
         };
 
@@ -990,13 +1013,17 @@ impl ToolCallState {
                 output,
                 error,
                 exit_code,
-            } => ActionType::CommandRun {
-                command: command.clone().unwrap_or_default(),
-                result: Some(CommandRunResult {
-                    exit_status: exit_code.map(|code| CommandExitStatus::ExitCode { code }),
-                    output: output.as_deref().or(error.as_deref()).map(str::to_string),
-                }),
-            },
+            } => {
+                let cmd = command.clone().unwrap_or_default();
+                ActionType::CommandRun {
+                    command: cmd.clone(),
+                    result: Some(CommandRunResult {
+                        exit_status: exit_code.map(|code| CommandExitStatus::ExitCode { code }),
+                        output: output.as_deref().or(error.as_deref()).map(str::to_string),
+                    }),
+                    category: CommandCategory::from_command(&cmd),
+                }
+            }
             ToolData::Read { file_path } => ActionType::FileRead {
                 path: file_path
                     .as_deref()
@@ -1047,10 +1074,16 @@ impl ToolCallState {
                 }
                 .to_string(),
             },
-            ToolData::Task { description } => ActionType::TaskCreate {
+            ToolData::Task {
+                description,
+                subagent_type,
+                output,
+            } => ActionType::TaskCreate {
                 description: description.clone().unwrap_or_default(),
-                subagent_type: None,
-                result: None,
+                subagent_type: subagent_type.clone(),
+                result: output
+                    .as_deref()
+                    .map(|o| ToolResult::markdown(o.to_string())),
             },
             ToolData::Unknown => ActionType::Tool {
                 tool_name: self.tool_name.clone(),
@@ -1083,6 +1116,13 @@ impl ToolCallState {
             ActionType::Search { query } => query.clone(),
             ActionType::WebFetch { url } => url.clone(),
             ActionType::TodoManagement { .. } => "TODO list updated".to_string(),
+            ActionType::TaskCreate { description, .. } => {
+                if description.is_empty() {
+                    "Task".to_string()
+                } else {
+                    format!("Task: `{description}`")
+                }
+            }
             _ => String::new(),
         }
         .trim()

@@ -31,25 +31,26 @@ mod billing {
 }
 mod electric_proxy;
 pub(crate) mod error;
+pub mod attachments;
 mod github_app;
 mod identity;
-mod issue_assignees;
-mod issue_comment_reactions;
-mod issue_comments;
-mod issue_followers;
-mod issue_relationships;
-mod issue_tags;
-mod issues;
+pub mod issue_assignees;
+pub mod issue_comment_reactions;
+pub mod issue_comments;
+pub mod issue_followers;
+pub mod issue_relationships;
+pub mod issue_tags;
+pub mod issues;
 mod migration;
-mod notifications;
+pub mod notifications;
 mod oauth;
 pub(crate) mod organization_members;
 mod organizations;
-mod project_statuses;
-mod projects;
+pub mod project_statuses;
+pub mod projects;
 mod pull_requests;
 mod review;
-mod tags;
+pub mod tags;
 mod tokens;
 mod workspaces;
 
@@ -122,6 +123,7 @@ pub fn router(state: AppState) -> Router {
         .merge(issue_comment_reactions::router())
         .merge(issues::router())
         .merge(issue_assignees::router())
+        .merge(attachments::router())
         .merge(issue_followers::router())
         .merge(issue_tags::router())
         .merge(issue_relationships::router())
@@ -175,4 +177,21 @@ async fn health() -> Json<HealthResponse> {
         status: "ok",
         version: env!("CARGO_PKG_VERSION"),
     })
+}
+
+/// Collect all mutation definitions for TypeScript generation.
+pub fn all_mutation_definitions() -> Vec<crate::mutation_definition::MutationDefinition> {
+    vec![
+        projects::mutation().definition(),
+        notifications::mutation().definition(),
+        tags::mutation().definition(),
+        project_statuses::mutation().definition(),
+        issues::mutation().definition(),
+        issue_assignees::mutation().definition(),
+        issue_followers::mutation().definition(),
+        issue_tags::mutation().definition(),
+        issue_relationships::mutation().definition(),
+        issue_comments::mutation().definition(),
+        issue_comment_reactions::mutation().definition(),
+    ]
 }

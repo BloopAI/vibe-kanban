@@ -10,19 +10,29 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_issue_access,
 };
+use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::issue_tags::{IssueTag, IssueTagRepository},
-    define_mutation_router,
-    entities::{
-        CreateIssueTagRequest, ListIssueTagsQuery, ListIssueTagsResponse, UpdateIssueTagRequest,
-    },
-    mutation_types::{DeleteResponse, MutationResponse},
+    db::issue_tags::IssueTagRepository,
+    mutation_definition::{MutationBuilder, NoUpdate},
+};
+use api_types::{
+    CreateIssueTagRequest, IssueTag, ListIssueTagsQuery, ListIssueTagsResponse,
 };
 
-// Generate router that references handlers below
-define_mutation_router!(IssueTag, table: "issue_tags");
+/// Mutation definition for IssueTag - provides both router and TypeScript metadata.
+pub fn mutation() -> MutationBuilder<IssueTag, CreateIssueTagRequest, NoUpdate> {
+    MutationBuilder::new("issue_tags")
+        .list(list_issue_tags)
+        .get(get_issue_tag)
+        .create(create_issue_tag)
+        .delete(delete_issue_tag)
+}
+
+pub fn router() -> axum::Router<AppState> {
+    mutation().router()
+}
 
 #[instrument(
     name = "issue_tags.list_issue_tags",
@@ -96,23 +106,6 @@ async fn create_issue_tag(
             })?;
 
     Ok(Json(response))
-}
-
-#[instrument(
-    name = "issue_tags.update_issue_tag",
-    skip(_state, _ctx, _payload),
-    fields(issue_tag_id = %_issue_tag_id)
-)]
-async fn update_issue_tag(
-    State(_state): State<AppState>,
-    Extension(_ctx): Extension<RequestContext>,
-    Path(_issue_tag_id): Path<Uuid>,
-    Json(_payload): Json<UpdateIssueTagRequest>,
-) -> Result<Json<MutationResponse<IssueTag>>, ErrorResponse> {
-    Err(ErrorResponse::new(
-        StatusCode::METHOD_NOT_ALLOWED,
-        "issue tags cannot be updated, only created or deleted",
-    ))
 }
 
 #[instrument(

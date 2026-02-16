@@ -1,4 +1,7 @@
 {
+  "editorNames": {
+    "custom": "Personalizado"
+  },
   "folderPicker": {
     "legend": "Haz clic en los nombres de carpetas para navegar • Usa los botones de acción para seleccionar",
     "manualPathLabel": "Ingresar ruta manualmente:",
@@ -154,6 +157,7 @@
     "backToActive": "Volver a activos",
     "noArchived": "No hay espacios de trabajo archivados",
     "noWorkspaces": "Sin espacios de trabajo",
+    "newWorkspace": "Nuevo espacio de trabajo",
     "needsAttention": "Necesita Atención",
     "idle": "Inactivo",
     "running": "En Ejecución",
@@ -252,7 +256,9 @@
   "commandBar": {
     "noResults": "No se encontraron resultados.",
     "back": "Atrás",
-    "defaultPlaceholder": "Escribe un comando o busca..."
+    "defaultPlaceholder": "Escribe un comando o busca...",
+    "selectBranch": "Select Branch",
+    "selectBranchFor": "Select Branch for {{repoName}}"
   },
   "chatBox": {
     "variants": "Variantes",
@@ -344,12 +350,74 @@
     "title": "Atajos de Teclado",
     "inWorkspace": "(en espacio de trabajo)",
     "sequentialHint": "Atajos secuenciales: Presiona la primera tecla, luego la segunda en 500ms.",
-    "configurableHint": "Configurable en Ajustes → General → Entrada de Mensaje"
+    "configurableHint": "Configurable en Ajustes → General → Entrada de Mensaje",
+    "groups": {
+      "quickActions": "Acciones Rápidas",
+      "navigation": "Navegación",
+      "modifiers": "Modificadores",
+      "goTo": "Ir a (G ...)",
+      "workspace": "Espacio de trabajo (W ...)",
+      "view": "Vista (V ...)",
+      "issues": "Issues (I ...)",
+      "git": "Git (X ...)",
+      "yank": "Copiar (Y ...)",
+      "toggle": "Alternar (T ...)",
+      "run": "Ejecutar (R ...)"
+    },
+    "actions": {
+      "showHelp": "Mostrar esta ayuda",
+      "closeCancel": "Cerrar/cancelar",
+      "createNewTask": "Crear nueva tarea",
+      "deleteSelected": "Eliminar seleccionado",
+      "focusSearch": "Enfocar búsqueda",
+      "moveDown": "Mover abajo",
+      "moveUp": "Mover arriba",
+      "moveLeft": "Mover a la izquierda",
+      "moveRight": "Mover a la derecha",
+      "openCommandBar": "Abrir barra de comandos",
+      "sendMessage": "Enviar mensaje",
+      "settings": "Ir a Ajustes",
+      "new-workspace": "Ir a Nuevo espacio de trabajo",
+      "duplicate-workspace": "Duplicar espacio de trabajo",
+      "rename-workspace": "Renombrar espacio de trabajo",
+      "pin-workspace": "Fijar/Desfijar espacio de trabajo",
+      "archive-workspace": "Archivar espacio de trabajo",
+      "delete-workspace": "Eliminar espacio de trabajo",
+      "toggle-changes-mode": "Alternar panel de cambios",
+      "toggle-logs-mode": "Alternar panel de registros",
+      "toggle-preview-mode": "Alternar panel de vista previa",
+      "toggle-left-sidebar": "Alternar barra lateral izquierda",
+      "toggle-left-main-panel": "Alternar panel de chat",
+      "create-issue": "Crear issue",
+      "change-issue-status": "Cambiar estado",
+      "change-issue-priority": "Cambiar prioridad",
+      "change-assignees": "Cambiar asignados",
+      "make-sub-issue-of": "Hacer sub-issue de",
+      "add-sub-issue": "Agregar sub-issue",
+      "remove-parent-issue": "Quitar padre",
+      "link-workspace": "Vincular espacio de trabajo",
+      "duplicate-issue": "Duplicar issue",
+      "delete-issue": "Eliminar issue",
+      "git-create-pr": "Crear Pull Request",
+      "git-merge": "Fusionar rama",
+      "git-rebase": "Rebase de rama",
+      "git-push": "Enviar cambios",
+      "copy-path": "Copiar ruta",
+      "copy-raw-logs": "Copiar registros sin formato",
+      "toggle-dev-server": "Alternar servidor de desarrollo",
+      "toggle-wrap-lines": "Alternar ajuste de línea",
+      "run-setup-script": "Ejecutar script de configuración",
+      "run-cleanup-script": "Ejecutar script de limpieza",
+      "run-archive-script": "Ejecutar script de archivado"
+    }
   },
   "typeahead": {
     "tags": "Etiquetas",
     "files": "Archivos",
     "commands": "Comandos",
+    "chooseRepo": "Elegir repositorio",
+    "selectedRepo": "Repositorio seleccionado: {{repoName}}",
+    "missingRepo": "El repositorio seleccionado ya no está disponible.",
     "noTagsOrFiles": "No se encontraron etiquetas ni archivos",
     "noCommands": "No hay comandos disponibles para este agente."
   },
@@ -366,13 +434,51 @@
     "selectColorFor": "Seleccionar color para",
     "createTag": "Crear",
     "filesCount": "{{count}} Archivos",
+    "attachmentsTitle": "Adjuntos ({{count}})",
+    "deleteAttachmentAria": "Eliminar {{filename}}",
     "noPrCreated": "No se creó PR",
     "noCommentsYet": "Sin comentarios aún",
     "createdBy": "Creado por",
     "comments": "Comentarios",
     "enterCommentPlaceholder": "Ingresa tu comentario aquí...",
+    "attachImage": "Adjuntar imagen",
+    "attachFile": "Adjuntar archivo",
+    "attachFileHint": "Adjuntar archivos (máx. 20MB por archivo)",
+    "attach": "Adjuntar",
+    "dropImagesHere": "Suelta imágenes aquí",
+    "dropFilesHere": "Suelta archivos aquí",
+    "imageDropHint": "PNG, JPG, GIF hasta 20MB",
+    "fileDropHint": "Cualquier tipo de archivo hasta 20MB",
+    "unknownFile": "Archivo desconocido",
+    "unknownUser": "Usuario desconocido",
+    "deletedUser": "Usuario eliminado",
+    "replyQuotePrefix": "escribió:",
+    "moreActions": "Más acciones",
+    "closePanel": "Cerrar panel",
+    "issueTitlePlaceholder": "Título del issue...",
+    "issueDescriptionPlaceholder": "Ingresa la descripción de la tarea...",
+    "createDraftWorkspaceImmediately": "Crear workspace borrador inmediatamente",
+    "createDraftWorkspaceDescription": "Marca para crear automáticamente un workspace",
+    "createTask": "Crear tarea",
+    "newIssue": "Nuevo issue",
+    "previewCodeBlock": "[Bloque de código]",
+    "previewImage": "[Imagen]",
+    "previewImageWithName": "[Imagen: {{name}}]",
+    "previewFile": "[Archivo]",
+    "previewFileWithName": "[Archivo: {{name}}]",
+    "imageAttachmentNameFallback": "Adjunto",
+    "removeImage": "Eliminar imagen",
+    "maxImagesAtOnce": "Máximo {{count}} imágenes a la vez",
+    "maxFilesAtOnce": "Máximo {{count}} archivos a la vez",
+    "fileNotImage": "El archivo {{filename}} no es una imagen",
+    "fileExceedsLimit": "El archivo {{filename}} supera el límite de 20MB",
+    "unknownError": "Error desconocido",
+    "failedToUploadFile": "No se pudo subir {{filename}}: {{message}}",
+    "downloadAttachment": "Descargar archivo adjunto",
+    "downloadAttachmentAria": "Descargar {{filename}}",
     "subIssues": "Subtareas",
     "noSubIssues": "Sin subtareas",
+    "markIndependentIssue": "Marcar como problema independiente",
     "parentIssue": "Padre",
     "subIssueIndicator": "↳",
     "showSubIssues": "Mostrar subtareas",
@@ -386,11 +492,46 @@
       "action": "Iniciar sesión"
     }
   },
+  "createMode": {
+    "headings": {
+      "repoStep": "¿En qué repositorios te gustaría trabajar?",
+      "chatStep": "¿En qué te gustaría trabajar?"
+    },
+    "repoPicker": {
+      "actions": {
+        "recent": "Recientes",
+        "browse": "Explorar",
+        "create": "Crear"
+      }
+    }
+  },
   "syncError": {
     "networkErrors": "Errores de red",
     "streamsAffected": "{{count}} flujo afectado",
     "streamsAffected_other": "{{count}} flujos afectados",
     "status": "(estado {{status}})",
     "refreshPage": "Actualizar página"
+  },
+  "onboardingSignIn": {
+    "subtitle": "Sign in to continue",
+    "signedInAs": "Signed in as {{name}}.",
+    "moreOptions": "More options",
+    "featureHeader": "Feature",
+    "signedInHeader": "Signed in",
+    "skipSignInHeader": "Don't sign in",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "migration": {
+    "allProjectsMigrated": "Todos tus proyectos ya han sido migrados a la nube.",
+    "continueToProjects": "Continuar a los proyectos"
+  },
+  "appBar": {
+    "kanban": {
+      "tooltip": "Kanban",
+      "title": "Tableros Kanban",
+      "description": "Inicia sesión para organizar tus agentes de codificación con tableros kanban.",
+      "migrateOldProjects": "Migrar proyectos antiguos"
+    }
   }
 }

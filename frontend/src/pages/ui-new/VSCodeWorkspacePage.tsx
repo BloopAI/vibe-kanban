@@ -103,6 +103,7 @@ export function VSCodeWorkspacePage() {
                     linesAdded={diffStats.lines_added}
                     linesRemoved={diffStats.lines_removed}
                     disableViewCode
+                    showOpenWorkspaceButton={false}
                     onScrollToPreviousMessage={handleScrollToPreviousMessage}
                     onScrollToBottom={handleScrollToBottom}
                   />

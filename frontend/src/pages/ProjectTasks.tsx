@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,6 @@ import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowca
 import { BetaWorkspacesDialog } from '@/components/dialogs/global/BetaWorkspacesDialog';
 import { showcases } from '@/config/showcases';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { useWorkspaceCount } from '@/hooks/useWorkspaceCount';
 import { usePostHog } from 'posthog-js/react';
 
 import { useSearch } from '@/contexts/SearchContext';
@@ -155,6 +154,7 @@ export function ProjectTasks() {
     error: projectError,
   } = useProject();
   const selectedOrgId = useSelectedOrgId();
+  const hasShownMigrationDialogRef = useRef(false);
 
   useEffect(() => {
     enableScope(Scope.KANBAN);
@@ -214,44 +214,19 @@ export function ProjectTasks() {
     seenFeatures,
   ]);
 
-  // Beta workspaces invitation - only fetch count if invitation not yet sent
-  const shouldCheckBetaInvitation =
-    isLoaded && !config?.beta_workspaces_invitation_sent;
-  const { data: workspaceCount } = useWorkspaceCount({
-    enabled: shouldCheckBetaInvitation,
-  });
-
   useEffect(() => {
     if (!isLoaded) return;
-    if (config?.beta_workspaces_invitation_sent) return;
-    if (workspaceCount === undefined || workspaceCount <= 5) return;
+    if (hasShownMigrationDialogRef.current) return;
 
-    BetaWorkspacesDialog.show().then((joinBeta) => {
+    hasShownMigrationDialogRef.current = true;
+
+    BetaWorkspacesDialog.show().then((shouldMigrate) => {
       BetaWorkspacesDialog.hide();
-      void updateAndSaveConfig({
-        beta_workspaces_invitation_sent: true,
-        beta_workspaces: joinBeta === true,
-      });
-      if (joinBeta === true) {
-        navigate('/workspaces');
+      if (shouldMigrate === true) {
+        navigate('/migrate');
       }
     });
-  }, [
-    isLoaded,
-    config?.beta_workspaces_invitation_sent,
-    workspaceCount,
-    updateAndSaveConfig,
-    navigate,
-  ]);
-
-  // Redirect beta users from old attempt URLs to the new workspaces UI
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (!config?.beta_workspaces) return;
-    if (!attemptId || attemptId === 'latest') return;
-
-    navigate(`/workspaces/${attemptId}`, { replace: true });
-  }, [isLoaded, config?.beta_workspaces, attemptId, navigate]);
+  }, [isLoaded, navigate]);
 
   const isLatest = attemptId === 'latest';
   const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(
@@ -595,19 +570,13 @@ export function ProjectTasks() {
     (task: Task, attemptIdToShow?: string) => {
       if (!projectId) return;
 
-      // If beta_workspaces is enabled, always navigate to task view (not attempt)
-      if (config?.beta_workspaces) {
-        navigateWithSearch(paths.task(projectId, task.id));
-        return;
-      }
-
       if (attemptIdToShow) {
         navigateWithSearch(paths.attempt(projectId, task.id, attemptIdToShow));
       } else {
         navigateWithSearch(`${paths.task(projectId, task.id)}/attempts/latest`);
       }
     },
-    [projectId, navigateWithSearch, config?.beta_workspaces]
+    [projectId, navigateWithSearch]
   );
 
   const selectNextTask = useCallback(() => {
@@ -937,63 +906,61 @@ export function ProjectTasks() {
         </Alert>
       )}
 
-      {config?.beta_workspaces && (
-        <div className="mx-4 my-4 flex justify-center">
-          <div className="max-w-2xl w-full p-3 border border-orange-500/30 bg-orange-500/5 rounded flex items-center gap-4">
-            <div className="flex items-center gap-3 flex-1">
-              {project?.remote_project_id ? (
-                <Cloud className="h-5 w-5 text-orange-500" />
-              ) : (
-                <Sparkles className="h-5 w-5 text-orange-500" />
-              )}
-              <div>
-                {project?.remote_project_id ? (
-                  <>
-                    <p className="text-sm font-medium">
-                      Project migrated to Cloud
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Access collaboration, tags, priorities, and more
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm font-medium">
-                      Migrate this project to the cloud
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Get collaboration, tags, priorities, sub-issues and more
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
+      <div className="mx-4 my-4 flex justify-center">
+        <div className="max-w-2xl w-full p-3 border border-orange-500/30 bg-orange-500/5 rounded flex items-center gap-4">
+          <div className="flex items-center gap-3 flex-1">
             {project?.remote_project_id ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  navigate(
-                    `/projects/${project.remote_project_id}${selectedOrgId ? `?orgId=${selectedOrgId}` : ''}`
-                  )
-                }
-                className="flex items-center gap-1.5"
-              >
-                View project
-                <ExternalLink className="h-3.5 w-3.5" />
-              </Button>
+              <Cloud className="h-5 w-5 text-orange-500" />
             ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate('/migrate')}
-              >
-                Learn more
-              </Button>
+              <Sparkles className="h-5 w-5 text-orange-500" />
             )}
+            <div>
+              {project?.remote_project_id ? (
+                <>
+                  <p className="text-sm font-medium">
+                    Project migrated to Cloud
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Access collaboration, tags, priorities, and more
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium">
+                    Migrate this project to the cloud
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Get collaboration, tags, priorities, sub-issues and more
+                  </p>
+                </>
+              )}
+            </div>
           </div>
+          {project?.remote_project_id ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                navigate(
+                  `/projects/${project.remote_project_id}${selectedOrgId ? `?orgId=${selectedOrgId}` : ''}`
+                )
+              }
+              className="flex items-center gap-1.5"
+            >
+              View project
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/migrate')}
+            >
+              Learn more
+            </Button>
+          )}
         </div>
-      )}
+      </div>
 
       <div className="flex-1 min-h-0">{attemptArea}</div>
     </div>

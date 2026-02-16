@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -52,9 +52,24 @@ const ResolveConflictsDialogImpl =
       const modal = useModal();
       const queryClient = useQueryClient();
       const { profiles, config } = useUserSystem();
-      const { sessions, selectedSession, selectedSessionId, selectSession } =
-        useWorkspaceContext();
+      const {
+        workspaceId: activeWorkspaceId,
+        sessions,
+        selectedSession,
+        selectedSessionId,
+        selectSession,
+      } = useWorkspaceContext();
       const { t } = useTranslation(['tasks', 'common']);
+
+      // Auto-dismiss when the user switches to a different workspace
+      useEffect(() => {
+        if (activeWorkspaceId && activeWorkspaceId !== workspaceId) {
+          modal.resolve({
+            action: 'cancelled',
+          } as ResolveConflictsDialogResult);
+          modal.hide();
+        }
+      }, [activeWorkspaceId, workspaceId, modal]);
 
       const resolvedSession = useMemo(() => {
         if (!selectedSessionId) return selectedSession ?? null;

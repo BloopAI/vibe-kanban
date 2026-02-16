@@ -1,12 +1,11 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
-use ts_rs::TS;
+use api_types::Project;
 use uuid::Uuid;
 
 use super::{get_txid, project_statuses::ProjectStatusRepository, tags::TagRepository};
-use crate::mutation_types::{DeleteResponse, MutationResponse};
+use api_types::{DeleteResponse, MutationResponse};
 
 /// Default color for the initial project created with personal organizations
 /// HSL format: "H S% L%" (blue - matches "To do" status)
@@ -14,17 +13,6 @@ pub const INITIAL_PROJECT_COLOR: &str = "217 91% 60%";
 
 /// Default name for the initial project
 pub const INITIAL_PROJECT_NAME: &str = "Initial Project";
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct Project {
-    pub id: Uuid,
-    pub organization_id: Uuid,
-    pub name: String,
-    pub color: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
 
 #[derive(Debug, Error)]
 pub enum ProjectError {

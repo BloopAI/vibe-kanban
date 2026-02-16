@@ -1,15 +1,19 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useProjects } from '@/hooks/useProjects';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { MigrateChooseProjects } from '@/components/ui-new/views/MigrateChooseProjects';
 
 interface MigrateChooseProjectsContainerProps {
   onContinue: (orgId: string, projectIds: string[]) => void;
+  onSkip: () => void;
 }
 
 export function MigrateChooseProjectsContainer({
   onContinue,
+  onSkip,
 }: MigrateChooseProjectsContainerProps) {
+  const navigate = useNavigate();
   const { projects, isLoading: projectsLoading } = useProjects();
   const { data: orgsData, isLoading: orgsLoading } = useUserOrganizations();
   const organizations = useMemo(
@@ -21,6 +25,7 @@ export function MigrateChooseProjectsContainer({
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(
     new Set()
   );
+  const hasInitializedSelectionRef = useRef(false);
 
   // Filter out already-migrated projects for selection purposes
   const migrateableProjects = useMemo(
@@ -34,6 +39,16 @@ export function MigrateChooseProjectsContainer({
       setSelectedOrgId(organizations[0].id);
     }
   }, [organizations, selectedOrgId]);
+
+  // Default to all migratable projects selected on first data load.
+  useEffect(() => {
+    if (projectsLoading || hasInitializedSelectionRef.current) {
+      return;
+    }
+
+    setSelectedProjectIds(new Set(migrateableProjects.map((p) => p.id)));
+    hasInitializedSelectionRef.current = true;
+  }, [projectsLoading, migrateableProjects]);
 
   const handleOrgChange = (orgId: string) => {
     setSelectedOrgId(orgId);
@@ -69,6 +84,21 @@ export function MigrateChooseProjectsContainer({
     }
   };
 
+  const migratedProjects = useMemo(
+    () => projects.filter((p) => p.remote_project_id),
+    [projects]
+  );
+
+  const handleSkip = () => {
+    if (migratedProjects.length > 0 && migratedProjects[0].remote_project_id) {
+      navigate(`/projects/${migratedProjects[0].remote_project_id}`, {
+        replace: true,
+      });
+    } else {
+      onSkip();
+    }
+  };
+
   const isLoading = projectsLoading || orgsLoading;
 
   return (
@@ -82,6 +112,7 @@ export function MigrateChooseProjectsContainer({
       onToggleProject={handleToggleProject}
       onSelectAll={handleSelectAll}
       onContinue={handleContinue}
+      onSkip={handleSkip}
     />
   );
 }

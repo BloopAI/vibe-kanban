@@ -1,4 +1,7 @@
 {
+  "editorNames": {
+    "custom": "カスタム"
+  },
   "folderPicker": {
     "legend": "フォルダ名をクリックして移動 • アクションボタンで選択",
     "manualPathLabel": "パスを手動入力:",
@@ -154,6 +157,7 @@
     "backToActive": "アクティブに戻る",
     "noArchived": "アーカイブされたワークスペースはありません",
     "noWorkspaces": "ワークスペースがありません",
+    "newWorkspace": "新しいワークスペース",
     "needsAttention": "対応が必要",
     "idle": "待機中",
     "running": "実行中",
@@ -252,7 +256,9 @@
   "commandBar": {
     "noResults": "結果が見つかりません。",
     "back": "戻る",
-    "defaultPlaceholder": "コマンドを入力または検索..."
+    "defaultPlaceholder": "コマンドを入力または検索...",
+    "selectBranch": "Select Branch",
+    "selectBranchFor": "Select Branch for {{repoName}}"
   },
   "chatBox": {
     "variants": "バリアント",
@@ -344,12 +350,74 @@
     "title": "キーボードショートカット",
     "inWorkspace": "(ワークスペース内)",
     "sequentialHint": "シーケンシャルショートカット：最初のキーを押し、500ms以内に2番目のキーを押してください。",
-    "configurableHint": "設定 → 一般 → メッセージ入力で設定可能"
+    "configurableHint": "設定 → 一般 → メッセージ入力で設定可能",
+    "groups": {
+      "quickActions": "クイックアクション",
+      "navigation": "ナビゲーション",
+      "modifiers": "修飾キー",
+      "goTo": "移動 (G ...)",
+      "workspace": "ワークスペース (W ...)",
+      "view": "表示 (V ...)",
+      "issues": "課題 (I ...)",
+      "git": "Git (X ...)",
+      "yank": "コピー (Y ...)",
+      "toggle": "切り替え (T ...)",
+      "run": "実行 (R ...)"
+    },
+    "actions": {
+      "showHelp": "このヘルプを表示",
+      "closeCancel": "閉じる/キャンセル",
+      "createNewTask": "新しいタスクを作成",
+      "deleteSelected": "選択を削除",
+      "focusSearch": "検索にフォーカス",
+      "moveDown": "下に移動",
+      "moveUp": "上に移動",
+      "moveLeft": "左に移動",
+      "moveRight": "右に移動",
+      "openCommandBar": "コマンドバーを開く",
+      "sendMessage": "メッセージを送信",
+      "settings": "設定に移動",
+      "new-workspace": "新しいワークスペースに移動",
+      "duplicate-workspace": "ワークスペースを複製",
+      "rename-workspace": "ワークスペースの名前を変更",
+      "pin-workspace": "ワークスペースをピン留め/解除",
+      "archive-workspace": "ワークスペースをアーカイブ",
+      "delete-workspace": "ワークスペースを削除",
+      "toggle-changes-mode": "変更パネルの切り替え",
+      "toggle-logs-mode": "ログパネルの切り替え",
+      "toggle-preview-mode": "プレビューパネルの切り替え",
+      "toggle-left-sidebar": "左サイドバーの切り替え",
+      "toggle-left-main-panel": "チャットパネルの切り替え",
+      "create-issue": "課題を作成",
+      "change-issue-status": "ステータスを変更",
+      "change-issue-priority": "優先度を変更",
+      "change-assignees": "担当者を変更",
+      "make-sub-issue-of": "サブ課題にする",
+      "add-sub-issue": "サブ課題を追加",
+      "remove-parent-issue": "親課題を解除",
+      "link-workspace": "ワークスペースをリンク",
+      "duplicate-issue": "課題を複製",
+      "delete-issue": "課題を削除",
+      "git-create-pr": "Pull Requestを作成",
+      "git-merge": "ブランチをマージ",
+      "git-rebase": "ブランチをリベース",
+      "git-push": "変更をプッシュ",
+      "copy-path": "パスをコピー",
+      "copy-raw-logs": "生ログをコピー",
+      "toggle-dev-server": "開発サーバーの切り替え",
+      "toggle-wrap-lines": "行折り返しの切り替え",
+      "run-setup-script": "セットアップスクリプトを実行",
+      "run-cleanup-script": "クリーンアップスクリプトを実行",
+      "run-archive-script": "アーカイブスクリプトを実行"
+    }
   },
   "typeahead": {
     "tags": "タグ",
     "files": "ファイル",
     "commands": "コマンド",
+    "chooseRepo": "リポジトリを選択",
+    "selectedRepo": "選択中のリポジトリ: {{repoName}}",
+    "missingRepo": "選択したリポジトリは利用できなくなりました。",
     "noTagsOrFiles": "タグまたはファイルが見つかりません",
     "noCommands": "このエージェントで利用可能なコマンドはありません。"
   },
@@ -366,13 +434,51 @@
     "selectColorFor": "色を選択:",
     "createTag": "作成",
     "filesCount": "{{count}}ファイル",
+    "attachmentsTitle": "添付ファイル ({{count}})",
+    "deleteAttachmentAria": "{{filename}} を削除",
     "noPrCreated": "PRが作成されていません",
     "noCommentsYet": "コメントはまだありません",
     "createdBy": "作成者",
     "comments": "コメント",
     "enterCommentPlaceholder": "コメントを入力してください...",
+    "attachImage": "画像を添付",
+    "attachFile": "ファイルを添付",
+    "attachFileHint": "ファイルを添付（1ファイル最大20MB）",
+    "attach": "添付",
+    "dropImagesHere": "ここに画像をドロップ",
+    "dropFilesHere": "ここにファイルをドロップ",
+    "imageDropHint": "PNG、JPG、GIF、最大20MB",
+    "fileDropHint": "任意のファイル形式、最大20MB",
+    "unknownFile": "不明なファイル",
+    "unknownUser": "不明なユーザー",
+    "deletedUser": "削除済みユーザー",
+    "replyQuotePrefix": "が書きました:",
+    "moreActions": "その他の操作",
+    "closePanel": "パネルを閉じる",
+    "issueTitlePlaceholder": "課題タイトル...",
+    "issueDescriptionPlaceholder": "タスクの説明を入力してください...",
+    "createDraftWorkspaceImmediately": "下書きワークスペースをすぐに作成",
+    "createDraftWorkspaceDescription": "チェックするとワークスペースを自動作成します",
+    "createTask": "タスクを作成",
+    "newIssue": "新しい課題",
+    "previewCodeBlock": "[コードブロック]",
+    "previewImage": "[画像]",
+    "previewImageWithName": "[画像: {{name}}]",
+    "previewFile": "[ファイル]",
+    "previewFileWithName": "[ファイル: {{name}}]",
+    "imageAttachmentNameFallback": "添付ファイル",
+    "removeImage": "画像を削除",
+    "maxImagesAtOnce": "一度に最大 {{count}} 枚までアップロードできます",
+    "maxFilesAtOnce": "一度に最大 {{count}} 個までアップロードできます",
+    "fileNotImage": "{{filename}} は画像ではありません",
+    "fileExceedsLimit": "{{filename}} は20MBの上限を超えています",
+    "unknownError": "不明なエラー",
+    "failedToUploadFile": "{{filename}} のアップロードに失敗しました: {{message}}",
+    "downloadAttachment": "添付ファイルをダウンロード",
+    "downloadAttachmentAria": "{{filename}} をダウンロード",
     "subIssues": "サブ課題",
     "noSubIssues": "サブ課題なし",
+    "markIndependentIssue": "独立した課題としてマーク",
     "parentIssue": "親",
     "subIssueIndicator": "↳",
     "showSubIssues": "サブ課題を表示",
@@ -386,11 +492,46 @@
       "action": "サインイン"
     }
   },
+  "createMode": {
+    "headings": {
+      "repoStep": "どのリポジトリで作業しますか？",
+      "chatStep": "何に取り組みますか？"
+    },
+    "repoPicker": {
+      "actions": {
+        "recent": "最近",
+        "browse": "参照",
+        "create": "作成"
+      }
+    }
+  },
   "syncError": {
     "networkErrors": "ネットワークエラー",
     "streamsAffected": "{{count}}件のストリームが影響を受けています",
     "streamsAffected_other": "{{count}}件のストリームが影響を受けています",
     "status": "(ステータス {{status}})",
     "refreshPage": "ページを更新"
+  },
+  "onboardingSignIn": {
+    "subtitle": "Sign in to continue",
+    "signedInAs": "Signed in as {{name}}.",
+    "moreOptions": "More options",
+    "featureHeader": "Feature",
+    "signedInHeader": "Signed in",
+    "skipSignInHeader": "Don't sign in",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "migration": {
+    "allProjectsMigrated": "すべてのプロジェクトはすでにクラウドに移行済みです。",
+    "continueToProjects": "プロジェクトに進む"
+  },
+  "appBar": {
+    "kanban": {
+      "tooltip": "カンバン",
+      "title": "カンバンボード",
+      "description": "サインインしてカンバンボードでコーディングエージェントを整理しましょう。",
+      "migrateOldProjects": "古いプロジェクトを移行"
+    }
   }
 }

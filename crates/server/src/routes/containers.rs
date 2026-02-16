@@ -45,22 +45,13 @@ pub async fn get_context(
     State(deployment): State<DeploymentImpl>,
     Query(payload): Query<ContainerQuery>,
 ) -> Result<ResponseJson<ApiResponse<WorkspaceContext>>, ApiError> {
-    let result =
-        Workspace::resolve_container_ref(&deployment.db().pool, &payload.container_ref).await;
+    let info =
+        Workspace::resolve_container_ref_by_prefix(&deployment.db().pool, &payload.container_ref)
+            .await
+            .map_err(ApiError::Database)?;
 
-    match result {
-        Ok(info) => {
-            let ctx = Workspace::load_context(
-                &deployment.db().pool,
-                info.workspace_id,
-                info.task_id,
-                info.project_id,
-            )
-            .await?;
-            Ok(ResponseJson(ApiResponse::success(ctx)))
-        }
-        Err(e) => Err(ApiError::Database(e)),
-    }
+    let ctx = Workspace::load_context(&deployment.db().pool, info.workspace_id).await?;
+    Ok(ResponseJson(ApiResponse::success(ctx)))
 }
 
 pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {

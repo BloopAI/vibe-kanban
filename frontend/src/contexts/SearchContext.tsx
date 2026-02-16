@@ -1,5 +1,4 @@
 import {
-  createContext,
   useContext,
   useState,
   useEffect,
@@ -7,6 +6,7 @@ import {
   useCallback,
   ReactNode,
 } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { useLocation, useParams } from 'react-router-dom';
 
 interface SearchState {
@@ -18,7 +18,10 @@ interface SearchState {
   registerInputRef: (ref: HTMLInputElement | null) => void;
 }
 
-const SearchContext = createContext<SearchState | null>(null);
+const SearchContext = createHmrContext<SearchState | null>(
+  'SearchContext',
+  null
+);
 
 interface SearchProviderProps {
   children: ReactNode;

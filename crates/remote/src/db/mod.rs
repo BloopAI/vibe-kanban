@@ -1,4 +1,6 @@
+pub mod attachments;
 pub mod auth;
+pub mod blobs;
 pub mod github_app;
 pub mod identity_errors;
 pub mod invitations;
@@ -15,6 +17,7 @@ pub mod oauth;
 pub mod oauth_accounts;
 pub mod organization_members;
 pub mod organizations;
+pub mod pending_uploads;
 pub mod project_notification_preferences;
 pub mod project_statuses;
 pub mod projects;

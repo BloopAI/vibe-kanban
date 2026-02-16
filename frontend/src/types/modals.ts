@@ -20,8 +20,6 @@ declare module '@ebay/nice-modal-react' {
     confirm: ConfirmDialogProps;
 
     // App flow modals
-    disclaimer: void;
-    onboarding: void;
     'release-notes': void;
 
     // Task-related modals

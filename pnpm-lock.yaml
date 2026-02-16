@@ -11,6 +11,9 @@ importers:
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
+      jwt-decode:
+        specifier: ^4.0.0
+        version: 4.0.0
       vite:
         specifier: ^6.3.5
         version: 6.3.5(@types/node@24.10.1)(jiti@1.21.7)(yaml@2.8.0)
@@ -176,6 +179,9 @@ importers:
       immer:
         specifier: ^11.1.3
         version: 11.1.3
+      jwt-decode:
+        specifier: ^4.0.0
+        version: 4.0.0
       lexical:
         specifier: ^0.36.2
         version: 0.36.2
@@ -336,6 +342,9 @@ importers:
       highlight.js:
         specifier: ^11.11.1
         version: 11.11.1
+      jwt-decode:
+        specifier: ^4.0.0
+        version: 4.0.0
       posthog-js:
         specifier: ^1.283.0
         version: 1.283.0
@@ -2875,6 +2884,10 @@ packages:
   jsonpointer@5.0.1:
     resolution: {integrity: sha512-p/nXbhSEcu3pZRdkW1OfJhpsVtW1gd4Wa1fnQc9YLiTfAjn0312eMKimbdIQzuZl9aa9xUGaRlP9T/CJE/ditQ==}
     engines: {node: '>=0.10.0'}
+
+  jwt-decode@4.0.0:
+    resolution: {integrity: sha512-+KJGIyHgkGuIq3IEBNftfhW/LfWhXUIY6OmyVWjliu5KH1y0fw7VQ8YndE2O4qZdMSd9SqbnC8GOcZEy0Om7sA==}
+    engines: {node: '>=18'}
 
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
@@ -6567,6 +6580,8 @@ snapshots:
   json5@2.2.3: {}
 
   jsonpointer@5.0.1: {}
+
+  jwt-decode@4.0.0: {}
 
   keyv@4.5.4:
     dependencies:

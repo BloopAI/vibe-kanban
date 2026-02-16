@@ -1,7 +1,12 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CircleDashedIcon, PlusIcon } from '@phosphor-icons/react';
+import {
+  CircleDashedIcon,
+  DotsThreeIcon,
+  PlusIcon,
+} from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { IssuePriority, PullRequest, Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
@@ -21,6 +26,64 @@ export type TagEditProps = {
   onCreateTag: (data: { name: string; color: string }) => string;
 };
 
+const IMAGE_FILE_EXTENSION_REGEX =
+  /\.(png|jpe?g|gif|webp|bmp|svg|avif|heic|heif)$/i;
+
+function isImageLikeAttachmentName(name: string): boolean {
+  const normalized = name.trim();
+  if (!normalized) {
+    return false;
+  }
+
+  return IMAGE_FILE_EXTENSION_REGEX.test(normalized);
+}
+
+function formatKanbanDescriptionPreview(
+  markdown: string,
+  options: {
+    codeBlockLabel: string;
+    imageLabel: string;
+    imageWithNameLabel: (name: string) => string;
+    fileLabel: string;
+    fileWithNameLabel: (name: string) => string;
+  }
+): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, options.codeBlockLabel)
+    .replace(
+      /!\[([^\]]*)\]\(([^)]+)\)/g,
+      (_match, altText: string, url: string) => {
+        const normalizedAlt = altText.trim();
+        const normalizedUrl = url.trim();
+        const isImageAttachment =
+          normalizedUrl.startsWith('attachment://') &&
+          isImageLikeAttachmentName(normalizedAlt);
+
+        if (isImageAttachment) {
+          return normalizedAlt
+            ? options.imageWithNameLabel(normalizedAlt)
+            : options.imageLabel;
+        }
+
+        return normalizedAlt
+          ? options.fileWithNameLabel(normalizedAlt)
+          : options.fileLabel;
+      }
+    )
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^\s*>\s?/gm, '')
+    .replace(/^\s*([-*+]|\d+\.)\s+/gm, '')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export type KanbanCardContentProps = {
   displayId: string;
   title: string;
@@ -35,6 +98,7 @@ export type KanbanCardContentProps = {
   className?: string;
   onPriorityClick?: (e: React.MouseEvent) => void;
   onAssigneeClick?: (e: React.MouseEvent) => void;
+  onMoreActionsClick?: () => void;
   tagEditProps?: TagEditProps;
 };
 
@@ -52,9 +116,26 @@ export const KanbanCardContent = ({
   className,
   onPriorityClick,
   onAssigneeClick,
+  onMoreActionsClick,
   tagEditProps,
 }: KanbanCardContentProps) => {
   const { t } = useTranslation('common');
+  const previewDescription = useMemo(() => {
+    if (!description) {
+      return null;
+    }
+
+    const formatted = formatKanbanDescriptionPreview(description, {
+      codeBlockLabel: t('kanban.previewCodeBlock'),
+      imageLabel: t('kanban.previewImage'),
+      imageWithNameLabel: (name: string) =>
+        t('kanban.previewImageWithName', { name }),
+      fileLabel: t('kanban.previewFile'),
+      fileWithNameLabel: (name: string) =>
+        t('kanban.previewFileWithName', { name }),
+    });
+    return formatted.length > 0 ? formatted : null;
+  }, [description, t]);
 
   const tagsDisplay = (
     <>
@@ -72,26 +153,46 @@ export const KanbanCardContent = ({
 
   return (
     <div className={cn('flex flex-col gap-half min-w-0', className)}>
-      {/* Row 1: Task ID + sub-issue indicator + loading dots */}
-      <div className="flex items-center gap-half">
-        {isSubIssue && (
-          <span className="text-sm text-low">
-            {t('kanban.subIssueIndicator')}
+      {/* Row 1: Task ID + sub-issue indicator + loading dots + more actions */}
+      <div className="flex items-center justify-between gap-half">
+        <div className="flex items-center gap-half min-w-0">
+          {isSubIssue && (
+            <span className="text-sm text-low">
+              {t('kanban.subIssueIndicator')}
+            </span>
+          )}
+          <span className="font-ibm-plex-mono text-sm text-low truncate">
+            {displayId}
           </span>
+          {isLoading && <RunningDots />}
+        </div>
+        {onMoreActionsClick && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onMoreActionsClick();
+            }}
+            className={cn(
+              'p-half -m-half rounded-sm text-low hover:text-normal hover:bg-secondary shrink-0',
+              'invisible opacity-0 group-hover:visible group-hover:opacity-100',
+              'transition-[opacity,color,background-color]'
+            )}
+            aria-label="More actions"
+            title="More actions"
+          >
+            <DotsThreeIcon className="size-icon-xs" weight="bold" />
+          </button>
         )}
-        <span className="font-ibm-plex-mono text-sm text-low truncate">
-          {displayId}
-        </span>
-        {isLoading && <RunningDots />}
       </div>
 
       {/* Row 2: Title */}
       <span className="text-base text-normal truncate">{title}</span>
 
       {/* Row 3: Description (optional, truncated) */}
-      {description && (
+      {previewDescription && (
         <p className="text-sm text-low m-0 leading-relaxed line-clamp-4">
-          {description}
+          {previewDescription}
         </p>
       )}
 

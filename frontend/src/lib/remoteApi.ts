@@ -1,4 +1,11 @@
 import type {
+  AttachmentUrlResponse,
+  AttachmentWithBlob,
+  CommitAttachmentsRequest,
+  CommitAttachmentsResponse,
+  ConfirmUploadRequest,
+  InitUploadRequest,
+  InitUploadResponse,
   UpdateIssueRequest,
   UpdateProjectStatusRequest,
 } from 'shared/remote-types';
@@ -87,4 +94,201 @@ export async function bulkUpdateProjectStatuses(
     const error = await response.json();
     throw new Error(error.message || 'Failed to bulk update project statuses');
   }
+}
+
+// ---------------------------------------------------------------------------
+// SAS URL cache with TTL — SAS URLs expire after 5 minutes, cache for 4
+// ---------------------------------------------------------------------------
+
+const SAS_URL_TTL_MS = 4 * 60 * 1000;
+
+interface CachedSasUrl {
+  url: string;
+  expiresAt: number;
+}
+
+const sasUrlCache = new Map<string, CachedSasUrl>();
+
+// ---------------------------------------------------------------------------
+// Utility: SHA-256 file hash
+// ---------------------------------------------------------------------------
+
+export async function computeFileHash(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const hash = await crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+// ---------------------------------------------------------------------------
+// Utility: Upload to Azure Blob Storage with progress
+// ---------------------------------------------------------------------------
+
+export function uploadToAzure(
+  uploadUrl: string,
+  file: File,
+  onProgress?: (pct: number) => void
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl, true);
+    xhr.setRequestHeader('x-ms-blob-type', 'BlockBlob');
+    xhr.setRequestHeader('Content-Type', file.type);
+
+    if (onProgress) {
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      });
+    }
+
+    xhr.onload = () => {
+      if (xhr.status === 201) {
+        resolve();
+      } else {
+        reject(
+          new Error(
+            `Azure upload failed with status ${xhr.status}: ${xhr.statusText}`
+          )
+        );
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error('Azure upload failed: network error'));
+    };
+
+    xhr.send(file);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Utility: safe error response parsing (handles non-JSON error bodies)
+// ---------------------------------------------------------------------------
+
+async function parseErrorResponse(
+  response: Response,
+  fallbackMessage: string
+): Promise<Error> {
+  try {
+    const body = await response.json();
+    const message = body.error || body.message || fallbackMessage;
+    return new Error(`${message} (${response.status} ${response.statusText})`);
+  } catch {
+    return new Error(
+      `${fallbackMessage} (${response.status} ${response.statusText})`
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Attachment API functions
+// ---------------------------------------------------------------------------
+
+export async function initAttachmentUpload(
+  params: InitUploadRequest
+): Promise<InitUploadResponse> {
+  const response = await makeRequest('/v1/attachments/init', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  if (!response.ok) {
+    throw await parseErrorResponse(
+      response,
+      'Failed to init attachment upload'
+    );
+  }
+  return response.json();
+}
+
+export async function confirmAttachmentUpload(
+  params: ConfirmUploadRequest
+): Promise<AttachmentWithBlob> {
+  const response = await makeRequest('/v1/attachments/confirm', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  if (!response.ok) {
+    throw await parseErrorResponse(
+      response,
+      'Failed to confirm attachment upload'
+    );
+  }
+  return response.json();
+}
+
+export async function commitIssueAttachments(
+  issueId: string,
+  request: CommitAttachmentsRequest
+): Promise<CommitAttachmentsResponse> {
+  const response = await makeRequest(
+    `/v1/issues/${issueId}/attachments/commit`,
+    {
+      method: 'POST',
+      body: JSON.stringify(request),
+    }
+  );
+  if (!response.ok) {
+    throw await parseErrorResponse(
+      response,
+      'Failed to commit issue attachments'
+    );
+  }
+  return response.json();
+}
+
+export async function commitCommentAttachments(
+  commentId: string,
+  request: CommitAttachmentsRequest
+): Promise<CommitAttachmentsResponse> {
+  const response = await makeRequest(
+    `/v1/comments/${commentId}/attachments/commit`,
+    {
+      method: 'POST',
+      body: JSON.stringify(request),
+    }
+  );
+  if (!response.ok) {
+    throw await parseErrorResponse(
+      response,
+      'Failed to commit comment attachments'
+    );
+  }
+  return response.json();
+}
+
+export async function deleteAttachment(attachmentId: string): Promise<void> {
+  const response = await makeRequest(`/v1/attachments/${attachmentId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw await parseErrorResponse(response, 'Failed to delete attachment');
+  }
+}
+
+export async function fetchAttachmentSasUrl(
+  attachmentId: string,
+  type: 'file' | 'thumbnail'
+): Promise<string> {
+  const cacheKey = `${attachmentId}:${type}`;
+  const cached = sasUrlCache.get(cacheKey);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.url;
+  }
+
+  const response = await makeRequest(`/v1/attachments/${attachmentId}/${type}`);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch attachment ${type}: ${response.statusText}`
+    );
+  }
+
+  const data: AttachmentUrlResponse = await response.json();
+  sasUrlCache.set(cacheKey, {
+    url: data.url,
+    expiresAt: Date.now() + SAS_URL_TTL_MS,
+  });
+  return data.url;
 }

@@ -7,7 +7,7 @@ use axum::{
     routing::post,
 };
 use tracing::instrument;
-use utils::api::migration::{
+use api_types::{
     BulkMigrateRequest, BulkMigrateResponse, MigrateIssueRequest, MigrateProjectRequest,
     MigratePullRequestRequest, MigrateWorkspaceRequest,
 };

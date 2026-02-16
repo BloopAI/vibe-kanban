@@ -18,7 +18,7 @@ use crate::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
         TodoItem, ToolResult, ToolResultValueType, ToolStatus as LogToolStatus,
         stderr_processor::normalize_stderr_logs,
-        utils::{ConversationPatch, EntryIndexProvider},
+        utils::{ConversationPatch, EntryIndexProvider, shell_command_parsing::CommandCategory},
     },
 };
 
@@ -366,7 +366,11 @@ pub fn normalize_logs(
                             output: None,
                         })
                     };
-                    ActionType::CommandRun { command, result }
+                    ActionType::CommandRun {
+                        command: command.clone(),
+                        result,
+                        category: CommandCategory::from_command(&command),
+                    }
                 }
                 agent_client_protocol::ToolKind::Delete => ActionType::FileEdit {
                     path: tc

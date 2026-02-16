@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CaretDownIcon,
-  RobotIcon,
+  CpuIcon,
   CheckCircleIcon,
   XCircleIcon,
   CircleNotchIcon,
@@ -121,7 +121,7 @@ export function ChatSubagentEntry({
         onClick={hasContent ? onToggle : undefined}
       >
         <span className="relative shrink-0">
-          <RobotIcon className="size-icon-base text-low" />
+          <CpuIcon className="size-icon-base text-low" />
         </span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-base">
@@ -147,7 +147,7 @@ export function ChatSubagentEntry({
       {/* Expanded content - shows subagent output */}
       {expanded && hasContent && (
         <div className="border-t p-double bg-panel/50">
-          <div className="text-xs font-medium text-low mb-base uppercase tracking-wide">
+          <div className="text-xs font-medium text-low pb-base uppercase tracking-wide">
             {t('conversation.output')}
           </div>
           <div className="prose prose-sm dark:prose-invert max-w-none">

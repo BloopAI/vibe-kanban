@@ -130,9 +130,7 @@ export function ChatBoxBase({
     <div
       {...(dropzone?.getRootProps() ?? {})}
       className={cn(
-        'flex w-chat max-w-full flex-col relative',
-        '@chat:rounded-t-md',
-        !isDragActive && 'border-t @chat:border-x',
+        'relative flex w-chat max-w-full flex-col rounded-sm border border-border bg-secondary',
         (visualVariant === VisualVariant.FEEDBACK ||
           visualVariant === VisualVariant.EDIT ||
           visualVariant === VisualVariant.PLAN) &&
@@ -143,7 +141,7 @@ export function ChatBoxBase({
       {dropzone && <input {...dropzone.getInputProps()} />}
 
       {isDragActive && (
-        <div className="absolute inset-0 z-50 bg-primary/80 backdrop-blur-sm border-2 border-dashed border-brand @chat:rounded-t-md flex items-center justify-center pointer-events-none animate-in fade-in-0 duration-150">
+        <div className="absolute inset-0 z-50 flex items-center justify-center rounded-sm border-2 border-dashed border-brand bg-primary/80 backdrop-blur-sm pointer-events-none animate-in fade-in-0 duration-150">
           <div className="text-center">
             <div className="mx-auto mb-2 w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center">
               <ImageIcon className="h-5 w-5 text-brand" />
@@ -169,7 +167,7 @@ export function ChatBoxBase({
 
       {/* Header - Stats and selector */}
       {visualVariant === VisualVariant.NORMAL && (
-        <div className="flex items-center gap-base bg-transparent px-base py-[9px] @chat:rounded-t-md border-b">
+        <div className="flex items-center gap-base border-b px-base py-base">
           <div className="flex flex-1 items-center gap-base text-sm min-w-0 overflow-hidden">
             {headerLeft}
           </div>
@@ -178,7 +176,7 @@ export function ChatBoxBase({
       )}
 
       {/* Editor area */}
-      <div className="flex flex-col gap-plusfifty px-base py-base rounded-md">
+      <div className="flex flex-col gap-base px-base py-base">
         <WYSIWYGEditor
           key={focusKey}
           placeholder={placeholder}

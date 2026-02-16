@@ -1,11 +1,5 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  ReactNode,
-  useEffect,
-  useCallback,
-} from 'react';
+import { useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { genId } from '@/utils/id';
 import { DiffSide } from '@/types/diff';
 
@@ -37,7 +31,10 @@ interface ReviewContextType {
   generateReviewMarkdown: () => string;
 }
 
-const ReviewContext = createContext<ReviewContextType | null>(null);
+const ReviewContext = createHmrContext<ReviewContextType | null>(
+  'ReviewContext',
+  null
+);
 
 export function useReview() {
   const context = useContext(ReviewContext);

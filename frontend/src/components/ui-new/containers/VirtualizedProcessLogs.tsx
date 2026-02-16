@@ -41,9 +41,9 @@ const InitialDataScrollModifier: ScrollModifier = {
   purgeItemSizes: true,
 };
 
-const AutoScrollToBottom: ScrollModifier = {
-  type: 'auto-scroll-to-bottom',
-  autoScroll: 'smooth',
+const ScrollToLastItem: ScrollModifier = {
+  type: 'item-location',
+  location: INITIAL_TOP_ITEM,
 };
 
 const computeItemKey: VirtuosoMessageListProps<
@@ -85,32 +85,29 @@ export function VirtualizedProcessLogs({
     LogEntryWithKey,
     SearchContext
   > | null>(null);
-  const prevLogsLengthRef = useRef(0);
+  const hasInitializedRef = useRef(false);
   const prevCurrentMatchRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      // Add keys and original index to log entries
       const logsWithKeys: LogEntryWithKey[] = logs.map((entry, index) => ({
         ...entry,
         key: `log-${index}`,
         originalIndex: index,
       }));
 
-      // Determine scroll modifier based on whether this is initial load or update
+      // Use InitialDataScrollModifier (with purgeItemSizes) only on the
+      // very first data load. For all subsequent updates, use ScrollToLastItem
+      // which always jumps to the end — unlike auto-scroll-to-bottom which
+      // only follows if the viewport is already at the bottom.
       let scrollModifier: ScrollModifier;
-      if (prevLogsLengthRef.current === 0 && logs.length > 0) {
-        // Initial load - scroll to bottom
+      if (!hasInitializedRef.current && logs.length > 0) {
+        hasInitializedRef.current = true;
         scrollModifier = InitialDataScrollModifier;
-      } else if (logs.length > prevLogsLengthRef.current) {
-        // New logs added - auto-scroll to bottom
-        scrollModifier = AutoScrollToBottom;
       } else {
-        // No new logs - keep current position
-        scrollModifier = AutoScrollToBottom;
+        scrollModifier = ScrollToLastItem;
       }
 
-      prevLogsLengthRef.current = logs.length;
       setChannelData({ data: logsWithKeys, scrollModifier });
     }, 100);
 

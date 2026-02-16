@@ -1,27 +1,8 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use thiserror::Error;
-use ts_rs::TS;
+use api_types::{PullRequest, PullRequestStatus};
 use uuid::Uuid;
-
-use super::types::PullRequestStatus;
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct PullRequest {
-    pub id: Uuid,
-    pub url: String,
-    pub number: i32,
-    pub status: PullRequestStatus,
-    pub merged_at: Option<DateTime<Utc>>,
-    pub merge_commit_sha: Option<String>,
-    pub target_branch_name: String,
-    pub issue_id: Uuid,
-    pub workspace_id: Option<Uuid>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
 
 #[derive(Debug, Error)]
 pub enum PullRequestError {

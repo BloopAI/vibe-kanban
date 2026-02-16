@@ -25,7 +25,9 @@ import { useSessionSend } from '@/hooks/useSessionSend';
 import { useSessionAttachments } from '@/hooks/useSessionAttachments';
 import { useMessageEditRetry } from '@/hooks/useMessageEditRetry';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
+import { useAttemptBranch } from '@/hooks/useAttemptBranch';
 import { useApprovalMutation } from '@/hooks/useApprovalMutation';
+import { ResolveConflictsDialog } from '@/components/ui-new/dialogs/ResolveConflictsDialog';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import { buildAgentPrompt } from '@/utils/promptMessage';
 import {
@@ -41,6 +43,8 @@ import {
   isActionVisible,
   useActionVisibilityContext,
 } from '../actions/useActionVisibility';
+import { PrCommentsDialog } from '@/components/dialogs/tasks/PrCommentsDialog';
+import type { NormalizedComment } from '@/components/ui/wysiwyg/nodes/pr-comment-node';
 
 /** Compute execution status from boolean flags */
 function computeExecutionStatus(params: {
@@ -80,6 +84,8 @@ interface SharedProps {
   onScrollToBottom: () => void;
   /** Disable the "view code" click handler (for VS Code extension) */
   disableViewCode: boolean;
+  /** Replace diff stats with an "Open Workspace" button in header */
+  showOpenWorkspaceButton: boolean;
 }
 
 /** Props for existing session mode */
@@ -123,6 +129,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     onScrollToPreviousMessage,
     onScrollToBottom,
     disableViewCode = false,
+    showOpenWorkspaceButton,
   } = props;
 
   // Extract mode-specific values
@@ -155,6 +162,11 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         : RIGHT_MAIN_PANEL_MODES.CHANGES
     );
   }, [rightMainPanelMode, setRightMainPanelMode]);
+
+  const handleOpenWorkspace = useCallback(() => {
+    if (!workspaceId) return;
+    navigate(`/workspaces/${workspaceId}`);
+  }, [navigate, workspaceId]);
 
   // Get entries early to extract pending approval for scratch key
   const { entries } = useEntries();
@@ -241,6 +253,30 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       ) ?? 0
     );
   }, [branchStatus]);
+
+  // Get workspace branch for conflict resolution dialog
+  const { branch: attemptBranch } = useAttemptBranch(workspaceId);
+
+  // Find the first repo with conflicts (for the resolve dialog)
+  const repoWithConflicts = useMemo(
+    () =>
+      branchStatus?.find(
+        (r) => r.is_rebase_in_progress || (r.conflicted_files?.length ?? 0) > 0
+      ),
+    [branchStatus]
+  );
+
+  const handleResolveConflicts = useCallback(() => {
+    if (!workspaceId || !repoWithConflicts) return;
+    ResolveConflictsDialog.show({
+      workspaceId,
+      conflictOp: repoWithConflicts.conflict_op ?? 'rebase',
+      sourceBranch: attemptBranch,
+      targetBranch: repoWithConflicts.target_branch_name,
+      conflictedFiles: repoWithConflicts.conflicted_files ?? [],
+      repoName: repoWithConflicts.repo_name,
+    });
+  }, [workspaceId, repoWithConflicts, attemptBranch]);
 
   // User profiles, config preference, and latest executor from processes
   const { profiles, config } = useUserSystem();
@@ -572,7 +608,41 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     prevEditRef.current = editContext.activeEdit;
   }, [editContext.activeEdit, setLocalMessage]);
 
-  // Toolbar actions handler - intercepts action execution to provide extra context
+  // Handle inserting PR comments into the message editor
+  const handleInsertPrComments = useCallback(async () => {
+    if (!workspaceId) return;
+    const repoId = repos[0]?.id;
+    if (!repoId) return;
+
+    const result = await PrCommentsDialog.show({
+      attemptId: workspaceId,
+      repoId,
+    });
+    if (result.comments.length > 0) {
+      const markdownBlocks = result.comments.map((comment) => {
+        const payload: NormalizedComment = {
+          id:
+            comment.comment_type === 'general'
+              ? comment.id
+              : comment.id.toString(),
+          comment_type: comment.comment_type,
+          author: comment.author,
+          body: comment.body,
+          created_at: comment.created_at,
+          url: comment.url,
+          ...(comment.comment_type === 'review' && {
+            path: comment.path,
+            line: comment.line != null ? Number(comment.line) : null,
+            diff_hunk: comment.diff_hunk,
+          }),
+        };
+        return '```gh-comment\n' + JSON.stringify(payload, null, 2) + '\n```';
+      });
+      handleInsertMarkdown(markdownBlocks.join('\n\n'));
+    }
+  }, [workspaceId, repos, handleInsertMarkdown]);
+
+  // Toolbar actions handler
   const handleToolbarAction = useCallback(
     (action: ActionDefinition) => {
       if (action.requiresTarget && workspaceId) {
@@ -720,6 +790,9 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     <SessionChatBox
       status={status}
       onViewCode={disableViewCode ? undefined : handleViewCode}
+      onOpenWorkspace={
+        showOpenWorkspaceButton && workspaceId ? handleOpenWorkspace : undefined
+      }
       onScrollToPreviousMessage={onScrollToPreviousMessage}
       repoIds={repoIds}
       projectId={projectId}
@@ -753,12 +826,16 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         context: actionCtx,
         onExecuteAction: handleToolbarAction,
       }}
+      onPrCommentClick={
+        actionCtx.hasOpenPR ? handleInsertPrComments : undefined
+      }
       stats={{
         filesChanged,
         linesAdded,
         linesRemoved,
         hasConflicts,
         conflictedFilesCount,
+        onResolveConflicts: handleResolveConflicts,
       }}
       error={sendError}
       agent={effectiveExecutor}

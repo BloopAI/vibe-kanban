@@ -10,23 +10,31 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_issue_access,
 };
+use api_types::{
+    CreateIssueCommentRequest, IssueComment, ListIssueCommentsQuery, ListIssueCommentsResponse,
+    MemberRole, UpdateIssueCommentRequest,
+};
+use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{
-        issue_comments::{IssueComment, IssueCommentRepository},
-        organization_members::{MemberRole, check_user_role},
-    },
-    define_mutation_router,
-    entities::{
-        CreateIssueCommentRequest, ListIssueCommentsQuery, ListIssueCommentsResponse,
-        UpdateIssueCommentRequest,
-    },
-    mutation_types::{DeleteResponse, MutationResponse},
+    db::{issue_comments::IssueCommentRepository, organization_members::check_user_role},
+    mutation_definition::MutationBuilder,
 };
 
-// Generate router that references handlers below
-define_mutation_router!(IssueComment, table: "issue_comments");
+/// Mutation definition for IssueComment - provides both router and TypeScript metadata.
+pub fn mutation() -> MutationBuilder<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> {
+    MutationBuilder::new("issue_comments")
+        .list(list_issue_comments)
+        .get(get_issue_comment)
+        .create(create_issue_comment)
+        .update(update_issue_comment)
+        .delete(delete_issue_comment)
+}
+
+pub fn router() -> axum::Router<AppState> {
+    mutation().router()
+}
 
 #[instrument(
     name = "issue_comments.list_issue_comments",

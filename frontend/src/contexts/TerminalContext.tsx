@@ -1,5 +1,4 @@
 import {
-  createContext,
   useContext,
   useReducer,
   useMemo,
@@ -7,6 +6,7 @@ import {
   useRef,
   ReactNode,
 } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import type { Terminal } from '@xterm/xterm';
 import type { FitAddon } from '@xterm/addon-fit';
 
@@ -193,7 +193,10 @@ interface TerminalContextType {
   getTerminalConnection: (tabId: string) => TerminalConnection | null;
 }
 
-const TerminalContext = createContext<TerminalContextType | null>(null);
+const TerminalContext = createHmrContext<TerminalContextType | null>(
+  'TerminalContext',
+  null
+);
 
 interface TerminalProviderProps {
   children: ReactNode;

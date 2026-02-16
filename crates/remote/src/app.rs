@@ -7,15 +7,17 @@ use tracing::instrument;
 use crate::{
     AppState,
     analytics::{AnalyticsConfig, AnalyticsService},
+    attachments::cleanup::spawn_cleanup_task,
     auth::{
         GitHubOAuthProvider, GoogleOAuthProvider, JwtService, OAuthHandoffService,
         OAuthTokenValidator, ProviderRegistry,
     },
+    azure_blob::AzureBlobService,
     billing::BillingService,
     config::RemoteServerConfig,
     db,
     github_app::GitHubAppService,
-    mail::LoopsMailer,
+    mail::{LoopsMailer, Mailer, NoopMailer},
     r2::R2Service,
     routes,
 };
@@ -78,9 +80,18 @@ impl Server {
         let oauth_token_validator =
             Arc::new(OAuthTokenValidator::new(pool.clone(), registry.clone()));
 
-        let api_key = std::env::var("LOOPS_EMAIL_API_KEY")
-            .context("LOOPS_EMAIL_API_KEY environment variable is required")?;
-        let mailer = Arc::new(LoopsMailer::new(api_key));
+        let mailer: Arc<dyn Mailer> = match std::env::var("LOOPS_EMAIL_API_KEY") {
+            Ok(api_key) if !api_key.is_empty() => {
+                tracing::info!("Email service (Loops) configured");
+                Arc::new(LoopsMailer::new(api_key))
+            }
+            _ => {
+                tracing::info!(
+                    "LOOPS_EMAIL_API_KEY not set. Email notifications (invitations, review updates) will be disabled."
+                );
+                Arc::new(NoopMailer)
+            }
+        };
 
         let server_public_base_url = config.server_public_base_url.clone().ok_or_else(|| {
             anyhow::anyhow!(
@@ -94,6 +105,15 @@ impl Server {
         } else {
             tracing::warn!(
                 "R2 storage service not configured. Set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_REVIEW_ENDPOINT, and R2_REVIEW_BUCKET to enable."
+            );
+        }
+
+        let azure_blob = config.azure_blob.as_ref().map(AzureBlobService::new);
+        if azure_blob.is_some() {
+            tracing::info!("Azure Blob storage service initialized");
+        } else {
+            tracing::info!(
+                "Azure Blob storage not configured. Set AZURE_STORAGE_ACCOUNT_NAME and AZURE_STORAGE_ACCOUNT_KEY to enable issue attachments."
             );
         }
 
@@ -145,6 +165,10 @@ impl Server {
             }
         };
 
+        if let Some(ref azure_blob_service) = azure_blob {
+            spawn_cleanup_task(pool.clone(), azure_blob_service.clone());
+        }
+
         let state = AppState::new(
             pool.clone(),
             config.clone(),
@@ -155,6 +179,7 @@ impl Server {
             server_public_base_url,
             http_client,
             r2,
+            azure_blob,
             github_app,
             billing,
             analytics,

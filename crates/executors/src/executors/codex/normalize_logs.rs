@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::{Arc, LazyLock},
+    time::Duration,
 };
 
 use codex_app_server_protocol::{
@@ -14,10 +15,10 @@ use codex_protocol::{
         AgentMessageDeltaEvent, AgentMessageEvent, AgentReasoningDeltaEvent, AgentReasoningEvent,
         AgentReasoningSectionBreakEvent, ApplyPatchApprovalRequestEvent, BackgroundEventEvent,
         ErrorEvent, EventMsg, ExecApprovalRequestEvent, ExecCommandBeginEvent, ExecCommandEndEvent,
-        ExecCommandOutputDeltaEvent, ExecOutputStream, FileChange as CodexProtoFileChange,
-        McpInvocation, McpToolCallBeginEvent, McpToolCallEndEvent, PatchApplyBeginEvent,
-        PatchApplyEndEvent, StreamErrorEvent, ViewImageToolCallEvent, WarningEvent,
-        WebSearchBeginEvent, WebSearchEndEvent,
+        ExecCommandOutputDeltaEvent, ExecOutputStream, ExitedReviewModeEvent,
+        FileChange as CodexProtoFileChange, McpInvocation, McpToolCallBeginEvent,
+        McpToolCallEndEvent, PatchApplyBeginEvent, PatchApplyEndEvent, StreamErrorEvent,
+        ViewImageToolCallEvent, WarningEvent, WebSearchBeginEvent, WebSearchEndEvent,
     },
 };
 use futures::StreamExt;
@@ -36,10 +37,11 @@ use crate::{
         ActionType, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
         NormalizedEntryError, NormalizedEntryType, TodoItem, ToolResult, ToolResultValueType,
         ToolStatus,
-        stderr_processor::normalize_stderr_logs,
+        plain_text_processor::PlainTextLogProcessor,
         utils::{
             ConversationPatch, EntryIndexProvider,
             patch::{add_normalized_entry, replace_normalized_entry, upsert_normalized_entry},
+            shell_command_parsing::{CommandCategory, unwrap_shell_command},
         },
     },
 };
@@ -86,7 +88,7 @@ impl ToNormalizedEntry for CommandState {
             entry_type: NormalizedEntryType::ToolUse {
                 tool_name: "bash".to_string(),
                 action_type: ActionType::CommandRun {
-                    command: self.command.clone(),
+                    command: unwrap_shell_command(&self.command).to_string(),
                     result: Some(CommandRunResult {
                         exit_status: self
                             .exit_code
@@ -97,6 +99,7 @@ impl ToNormalizedEntry for CommandState {
                             build_command_output(Some(&self.stdout), Some(&self.stderr))
                         },
                     }),
+                    category: CommandCategory::from_command(&self.command),
                 },
                 status: self.status.clone(),
             },
@@ -169,6 +172,76 @@ impl ToNormalizedEntry for WebSearchState {
     }
 }
 
+struct ReviewState {
+    index: Option<usize>,
+    description: String,
+    status: ToolStatus,
+    result: Option<ToolResult>,
+}
+
+impl ReviewState {
+    fn complete(&mut self, review_event: &ExitedReviewModeEvent, worktree_path: &str) {
+        let result_text = match &review_event.review_output {
+            Some(output) => {
+                let mut sections = Vec::new();
+                sections.push(format!(
+                    "**Correctness:** {} | **Confidence:** {}",
+                    output.overall_correctness, output.overall_confidence_score,
+                ));
+                let explanation = output.overall_explanation.trim();
+                if !explanation.is_empty() {
+                    sections.push(explanation.to_string());
+                }
+                if !output.findings.is_empty() {
+                    let mut lines = vec!["### Findings".to_string()];
+                    for finding in &output.findings {
+                        let abs_path = finding.code_location.absolute_file_path.to_string_lossy();
+                        let path = make_path_relative(&abs_path, worktree_path);
+                        let start = finding.code_location.line_range.start;
+                        let end = finding.code_location.line_range.end;
+                        lines.push(format!(
+                            "- **P{}** | **Confidence:** {} | {}",
+                            finding.priority, finding.confidence_score, finding.title,
+                        ));
+                        lines.push(format!("  `{path}:{start}-{end}`"));
+                        for body_line in finding.body.lines() {
+                            lines.push(format!("  {body_line}"));
+                        }
+                    }
+                    sections.push(lines.join("\n"));
+                }
+                if sections.is_empty() {
+                    "Review completed".to_string()
+                } else {
+                    sections.join("\n\n")
+                }
+            }
+            None => "Review completed".to_string(),
+        };
+        self.status = ToolStatus::Success;
+        self.result = Some(ToolResult::markdown(result_text));
+    }
+}
+
+impl ToNormalizedEntry for ReviewState {
+    fn to_normalized_entry(&self) -> NormalizedEntry {
+        NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::ToolUse {
+                tool_name: "Review".to_string(),
+                action_type: ActionType::TaskCreate {
+                    description: self.description.clone(),
+                    subagent_type: Some("review".to_string()),
+                    result: self.result.clone(),
+                },
+                status: self.status.clone(),
+            },
+            content: String::new(),
+            metadata: None,
+        }
+    }
+}
+
 #[derive(Default)]
 struct PatchState {
     entries: Vec<PatchEntry>,
@@ -214,6 +287,7 @@ struct LogState {
     mcp_tools: HashMap<String, McpToolState>,
     patches: HashMap<String, PatchState>,
     web_searches: HashMap<String, WebSearchState>,
+    review: Option<ReviewState>,
 }
 
 enum StreamingTextKind {
@@ -231,6 +305,7 @@ impl LogState {
             mcp_tools: HashMap::new(),
             patches: HashMap::new(),
             web_searches: HashMap::new(),
+            review: None,
         }
     }
 
@@ -354,12 +429,55 @@ fn format_todo_status(status: &StepStatus) -> String {
     .to_string()
 }
 
+/// Stderr patterns from codex internals that should be suppressed from user-visible logs.
+const SUPPRESSED_STDERR_PATTERNS: &[&str] = &[
+    // Codex unconditionally logs this error during its SQLite migration when a rollout file
+    // exists on disk but isn't indexed in the state DB — even when the Sqlite feature flag is
+    // disabled (which is the default). See: https://github.com/openai/codex/commit/c38a5958
+    "state db missing rollout path for",
+];
+
+/// Codex-specific stderr normalizer that filters noisy internal messages.
+fn normalize_codex_stderr_logs(
+    msg_store: Arc<MsgStore>,
+    entry_index_provider: EntryIndexProvider,
+) -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async move {
+        let mut stderr = msg_store.stderr_chunked_stream();
+        let mut processor = PlainTextLogProcessor::builder()
+            .normalized_entry_producer(|content: String| NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::ErrorMessage {
+                    error_type: NormalizedEntryError::Other,
+                },
+                content: strip_ansi_escapes::strip_str(&content),
+                metadata: None,
+            })
+            .time_gap(Duration::from_secs(2))
+            .index_provider(entry_index_provider)
+            .transform_lines(Box::new(|lines: &mut Vec<String>| {
+                lines.retain(|line| {
+                    !SUPPRESSED_STDERR_PATTERNS
+                        .iter()
+                        .any(|pattern| line.contains(pattern))
+                });
+            }))
+            .build();
+
+        while let Some(Ok(chunk)) = stderr.next().await {
+            for patch in processor.process(chunk) {
+                msg_store.push_patch(patch);
+            }
+        }
+    })
+}
+
 pub fn normalize_logs(
     msg_store: Arc<MsgStore>,
     worktree_path: &Path,
 ) -> Vec<tokio::task::JoinHandle<()>> {
     let entry_index = EntryIndexProvider::start_from(&msg_store);
-    let h1 = normalize_stderr_logs(msg_store.clone(), entry_index.clone());
+    let h1 = normalize_codex_stderr_logs(msg_store.clone(), entry_index.clone());
 
     let worktree_path_str = worktree_path.to_string_lossy().to_string();
     let h2 = tokio::spawn(async move {
@@ -1021,6 +1139,35 @@ pub fn normalize_logs(
                         );
                     }
                 }
+                EventMsg::EnteredReviewMode(review_request) => {
+                    let mut review_state = ReviewState {
+                        index: None,
+                        description: review_request
+                            .user_facing_hint
+                            .unwrap_or_else(|| "Reviewing code...".to_string()),
+                        status: ToolStatus::Created,
+                        result: None,
+                    };
+                    let index = add_normalized_entry(
+                        &msg_store,
+                        &entry_index,
+                        review_state.to_normalized_entry(),
+                    );
+                    review_state.index = Some(index);
+                    state.review = Some(review_state);
+                }
+                EventMsg::ExitedReviewMode(review_event) => {
+                    if let Some(mut review_state) = state.review.take() {
+                        review_state.complete(&review_event, &worktree_path_str);
+                        if let Some(index) = review_state.index {
+                            replace_normalized_entry(
+                                &msg_store,
+                                index,
+                                review_state.to_normalized_entry(),
+                            );
+                        }
+                    }
+                }
                 EventMsg::ContextCompacted(..) => {
                     add_normalized_entry(
                         &msg_store,
@@ -1057,8 +1204,6 @@ pub fn normalize_logs(
                 | EventMsg::SkillsUpdateAvailable
                 | EventMsg::TurnAborted(..)
                 | EventMsg::ShutdownComplete
-                | EventMsg::EnteredReviewMode(..)
-                | EventMsg::ExitedReviewMode(..)
                 | EventMsg::TerminalInteraction(..)
                 | EventMsg::ElicitationRequest(..)
                 | EventMsg::TurnComplete(..)
@@ -1070,6 +1215,8 @@ pub fn normalize_logs(
                 | EventMsg::CollabWaitingEnd(..)
                 | EventMsg::CollabCloseBegin(..)
                 | EventMsg::CollabCloseEnd(..)
+                | EventMsg::CollabResumeBegin(..)
+                | EventMsg::CollabResumeEnd(..)
                 | EventMsg::ThreadNameUpdated(..)
                 | EventMsg::RequestUserInput(..)
                 | EventMsg::DynamicToolCallRequest(..)

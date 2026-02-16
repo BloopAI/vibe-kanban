@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { useContext, useMemo } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import type { ExecutionProcess } from 'shared/types';
 
@@ -17,7 +18,10 @@ type ExecutionProcessesContextType = {
 };
 
 const ExecutionProcessesContext =
-  createContext<ExecutionProcessesContextType | null>(null);
+  createHmrContext<ExecutionProcessesContextType | null>(
+    'ExecutionProcessesContext',
+    null
+  );
 
 export const ExecutionProcessesProvider: React.FC<{
   attemptId: string | undefined;

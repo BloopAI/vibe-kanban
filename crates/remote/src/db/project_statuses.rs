@@ -1,12 +1,11 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
-use ts_rs::TS;
+use api_types::ProjectStatus;
 use uuid::Uuid;
 
 use super::get_txid;
-use crate::mutation_types::{DeleteResponse, MutationResponse};
+use api_types::{DeleteResponse, MutationResponse};
 
 /// Default statuses that are created for each new project (name, color, sort_order, hidden)
 /// Colors are in HSL format: "H S% L%"
@@ -18,18 +17,6 @@ pub const DEFAULT_STATUSES: &[(&str, &str, i32, bool)] = &[
     ("Done", "142 71% 45%", 4, false),
     ("Cancelled", "0 84% 60%", 5, true),
 ];
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct ProjectStatus {
-    pub id: Uuid,
-    pub project_id: Uuid,
-    pub name: String,
-    pub color: String,
-    pub sort_order: i32,
-    pub hidden: bool,
-    pub created_at: DateTime<Utc>,
-}
 
 #[derive(Debug, Error)]
 pub enum ProjectStatusError {

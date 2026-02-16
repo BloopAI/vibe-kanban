@@ -36,7 +36,7 @@ export function PreviewControls({
   return (
     <div
       className={cn(
-        'w-full h-full bg-secondary flex flex-col overflow-hidden',
+        'w-full bg-secondary flex flex-col overflow-hidden',
         className
       )}
     >

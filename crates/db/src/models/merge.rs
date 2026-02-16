@@ -316,24 +316,29 @@ impl Merge {
         Ok(rows.into_iter().map(Into::into).collect())
     }
 
-    /// Get the latest PR status for each workspace (for workspace summaries)
-    /// Returns a map of workspace_id -> MergeStatus for workspaces that have PRs
+    /// Get the latest PR for each workspace (for workspace summaries)
+    /// Returns a map of workspace_id -> PrMerge for workspaces that have PRs
     pub async fn get_latest_pr_status_for_workspaces(
         pool: &SqlitePool,
         archived: bool,
-    ) -> Result<HashMap<Uuid, MergeStatus>, sqlx::Error> {
-        #[derive(FromRow)]
-        struct PrStatusRow {
-            workspace_id: Uuid,
-            pr_status: Option<MergeStatus>,
-        }
-
+    ) -> Result<HashMap<Uuid, PrMerge>, sqlx::Error> {
         // Get the latest PR for each workspace by using a subquery to find the max created_at
         // Only consider PR merges (not direct merges)
-        let rows = sqlx::query_as::<_, PrStatusRow>(
+        let rows = sqlx::query_as!(
+            MergeRow,
             r#"SELECT
-                m.workspace_id,
-                m.pr_status
+                m.id as "id!: Uuid",
+                m.workspace_id as "workspace_id!: Uuid",
+                m.repo_id as "repo_id!: Uuid",
+                m.merge_type as "merge_type!: MergeType",
+                m.merge_commit,
+                m.pr_number,
+                m.pr_url,
+                m.pr_status as "pr_status?: MergeStatus",
+                m.pr_merged_at as "pr_merged_at?: DateTime<Utc>",
+                m.pr_merge_commit_sha,
+                m.target_branch_name as "target_branch_name!: String",
+                m.created_at as "created_at!: DateTime<Utc>"
             FROM merges m
             INNER JOIN (
                 SELECT workspace_id, MAX(created_at) as max_created_at
@@ -344,14 +349,17 @@ impl Merge {
                 AND m.created_at = latest.max_created_at
             INNER JOIN workspaces w ON m.workspace_id = w.id
             WHERE m.merge_type = 'pr' AND w.archived = $1"#,
+            archived
         )
-        .bind(archived)
         .fetch_all(pool)
         .await?;
 
         Ok(rows
             .into_iter()
-            .filter_map(|row| row.pr_status.map(|status| (row.workspace_id, status)))
+            .map(|row| {
+                let workspace_id = row.workspace_id;
+                (workspace_id, PrMerge::from(row))
+            })
             .collect())
     }
 }

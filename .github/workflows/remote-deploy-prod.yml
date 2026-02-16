@@ -43,6 +43,11 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ssh-key: ${{ secrets.DEPLOY_KEY }}
 
+      - name: Setup SSH Agent for private dependencies
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VK_PRIVATE_DEPLOY_KEY }}
+
       - name: Determine and update version
         id: version
         run: |
@@ -75,6 +80,7 @@ jobs:
           # Update version in crates/remote/Cargo.toml
           cd crates/remote
           cargo set-version "$new_version"
+          cargo update remote
           cd ../..
 
           echo "New version: $new_version"
@@ -83,11 +89,14 @@ jobs:
           echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
           echo "new_ref=$new_tag" >> $GITHUB_OUTPUT
 
+      - name: Stop SSH agent
+        run: ssh-agent -k
+
       - name: Commit changes and create tag
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add crates/remote/Cargo.toml
+          git add crates/remote/Cargo.toml crates/remote/Cargo.lock
           git commit -m "chore: bump remote version to ${{ steps.version.outputs.new_version }}"
           git tag -a ${{ steps.version.outputs.new_tag }} -m "Remote release ${{ steps.version.outputs.new_tag }}"
           git push

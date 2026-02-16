@@ -1,4 +1,7 @@
 {
+  "editorNames": {
+    "custom": "Personnalisé"
+  },
   "buttons": {
     "save": "Enregistrer",
     "cancel": "Annuler",
@@ -154,6 +157,7 @@
     "backToActive": "Retour aux actifs",
     "noArchived": "Aucun espace de travail archivé",
     "noWorkspaces": "Aucun espace de travail",
+    "newWorkspace": "Nouvel espace de travail",
     "needsAttention": "Nécessite Attention",
     "idle": "Inactif",
     "running": "En Cours",
@@ -252,7 +256,9 @@
   "commandBar": {
     "noResults": "Aucun résultat trouvé.",
     "back": "Retour",
-    "defaultPlaceholder": "Tapez une commande ou recherchez..."
+    "defaultPlaceholder": "Tapez une commande ou recherchez...",
+    "selectBranch": "Select Branch",
+    "selectBranchFor": "Select Branch for {{repoName}}"
   },
   "chatBox": {
     "variants": "Variantes",
@@ -344,12 +350,74 @@
     "title": "Raccourcis Clavier",
     "inWorkspace": "(dans l'espace de travail)",
     "sequentialHint": "Raccourcis séquentiels : Appuyez sur la première touche, puis sur la seconde en 500ms.",
-    "configurableHint": "Configurable dans Paramètres → Général → Saisie de Message"
+    "configurableHint": "Configurable dans Paramètres → Général → Saisie de Message",
+    "groups": {
+      "quickActions": "Actions Rapides",
+      "navigation": "Navigation",
+      "modifiers": "Modificateurs",
+      "goTo": "Aller à (G ...)",
+      "workspace": "Espace de travail (W ...)",
+      "view": "Vue (V ...)",
+      "issues": "Tickets (I ...)",
+      "git": "Git (X ...)",
+      "yank": "Copier (Y ...)",
+      "toggle": "Basculer (T ...)",
+      "run": "Exécuter (R ...)"
+    },
+    "actions": {
+      "showHelp": "Afficher cette aide",
+      "closeCancel": "Fermer/annuler",
+      "createNewTask": "Créer une nouvelle tâche",
+      "deleteSelected": "Supprimer la sélection",
+      "focusSearch": "Aller à la recherche",
+      "moveDown": "Déplacer vers le bas",
+      "moveUp": "Déplacer vers le haut",
+      "moveLeft": "Déplacer vers la gauche",
+      "moveRight": "Déplacer vers la droite",
+      "openCommandBar": "Ouvrir la barre de commandes",
+      "sendMessage": "Envoyer le message",
+      "settings": "Aller aux Paramètres",
+      "new-workspace": "Aller au Nouvel espace de travail",
+      "duplicate-workspace": "Dupliquer l'espace de travail",
+      "rename-workspace": "Renommer l'espace de travail",
+      "pin-workspace": "Épingler/Désépingler l'espace de travail",
+      "archive-workspace": "Archiver l'espace de travail",
+      "delete-workspace": "Supprimer l'espace de travail",
+      "toggle-changes-mode": "Basculer le panneau Modifications",
+      "toggle-logs-mode": "Basculer le panneau Logs",
+      "toggle-preview-mode": "Basculer le panneau Aperçu",
+      "toggle-left-sidebar": "Basculer la barre latérale gauche",
+      "toggle-left-main-panel": "Basculer le panneau Chat",
+      "create-issue": "Créer un ticket",
+      "change-issue-status": "Changer le statut",
+      "change-issue-priority": "Changer la priorité",
+      "change-assignees": "Changer les assignés",
+      "make-sub-issue-of": "Transformer en sous-ticket de",
+      "add-sub-issue": "Ajouter un sous-ticket",
+      "remove-parent-issue": "Retirer le parent",
+      "link-workspace": "Lier un espace de travail",
+      "duplicate-issue": "Dupliquer le ticket",
+      "delete-issue": "Supprimer le ticket",
+      "git-create-pr": "Créer une Pull Request",
+      "git-merge": "Fusionner la branche",
+      "git-rebase": "Rebaser la branche",
+      "git-push": "Pousser les modifications",
+      "copy-path": "Copier le chemin",
+      "copy-raw-logs": "Copier les logs bruts",
+      "toggle-dev-server": "Basculer le serveur de développement",
+      "toggle-wrap-lines": "Basculer le retour à la ligne",
+      "run-setup-script": "Exécuter le script de configuration",
+      "run-cleanup-script": "Exécuter le script de nettoyage",
+      "run-archive-script": "Exécuter le script d'archivage"
+    }
   },
   "typeahead": {
     "tags": "Tags",
     "files": "Fichiers",
     "commands": "Commandes",
+    "chooseRepo": "Choisir un dépôt",
+    "selectedRepo": "Dépôt sélectionné : {{repoName}}",
+    "missingRepo": "Le dépôt sélectionné n'est plus disponible.",
     "noTagsOrFiles": "Aucun tag ou fichier trouvé",
     "noCommands": "Aucune commande disponible pour cet agent."
   },
@@ -366,13 +434,51 @@
     "selectColorFor": "Sélectionner la couleur pour",
     "createTag": "Créer",
     "filesCount": "{{count}} Fichiers",
+    "attachmentsTitle": "Pièces jointes ({{count}})",
+    "deleteAttachmentAria": "Supprimer {{filename}}",
     "noPrCreated": "Aucune PR créée",
     "noCommentsYet": "Aucun commentaire",
     "createdBy": "Créé par",
     "comments": "Commentaires",
     "enterCommentPlaceholder": "Entrez votre commentaire ici...",
+    "attachImage": "Joindre une image",
+    "attachFile": "Joindre un fichier",
+    "attachFileHint": "Joindre des fichiers (20Mo max par fichier)",
+    "attach": "Joindre",
+    "dropImagesHere": "Déposez les images ici",
+    "dropFilesHere": "Déposez les fichiers ici",
+    "imageDropHint": "PNG, JPG, GIF jusqu'à 20Mo",
+    "fileDropHint": "Tout type de fichier jusqu'à 20Mo",
+    "unknownFile": "Fichier inconnu",
+    "unknownUser": "Utilisateur inconnu",
+    "deletedUser": "Utilisateur supprimé",
+    "replyQuotePrefix": "a écrit :",
+    "moreActions": "Plus d'actions",
+    "closePanel": "Fermer le panneau",
+    "issueTitlePlaceholder": "Titre du ticket...",
+    "issueDescriptionPlaceholder": "Entrez la description de la tâche...",
+    "createDraftWorkspaceImmediately": "Créer immédiatement un espace de travail brouillon",
+    "createDraftWorkspaceDescription": "Cochez pour créer automatiquement un espace de travail",
+    "createTask": "Créer la tâche",
+    "newIssue": "Nouveau ticket",
+    "previewCodeBlock": "[Bloc de code]",
+    "previewImage": "[Image]",
+    "previewImageWithName": "[Image : {{name}}]",
+    "previewFile": "[Fichier]",
+    "previewFileWithName": "[Fichier : {{name}}]",
+    "imageAttachmentNameFallback": "Pièce jointe",
+    "removeImage": "Supprimer l'image",
+    "maxImagesAtOnce": "Maximum {{count}} images à la fois",
+    "maxFilesAtOnce": "Maximum {{count}} fichiers à la fois",
+    "fileNotImage": "Le fichier {{filename}} n'est pas une image",
+    "fileExceedsLimit": "Le fichier {{filename}} dépasse la limite de 20Mo",
+    "unknownError": "Erreur inconnue",
+    "failedToUploadFile": "Échec de l'envoi de {{filename}} : {{message}}",
+    "downloadAttachment": "Télécharger la pièce jointe",
+    "downloadAttachmentAria": "Télécharger {{filename}}",
     "subIssues": "Sous-tâches",
     "noSubIssues": "Aucune sous-tâche",
+    "markIndependentIssue": "Marquer comme problème indépendant",
     "parentIssue": "Parent",
     "subIssueIndicator": "↳",
     "showSubIssues": "Afficher les sous-tâches",
@@ -386,11 +492,46 @@
       "action": "Se connecter"
     }
   },
+  "createMode": {
+    "headings": {
+      "repoStep": "Sur quels dépôts voulez-vous travailler ?",
+      "chatStep": "Sur quoi voulez-vous travailler ?"
+    },
+    "repoPicker": {
+      "actions": {
+        "recent": "Récents",
+        "browse": "Parcourir",
+        "create": "Créer"
+      }
+    }
+  },
   "syncError": {
     "networkErrors": "Erreurs réseau",
     "streamsAffected": "{{count}} flux affecté",
     "streamsAffected_other": "{{count}} flux affectés",
     "status": "(statut {{status}})",
     "refreshPage": "Actualiser la page"
+  },
+  "onboardingSignIn": {
+    "subtitle": "Sign in to continue",
+    "signedInAs": "Signed in as {{name}}.",
+    "moreOptions": "More options",
+    "featureHeader": "Feature",
+    "signedInHeader": "Signed in",
+    "skipSignInHeader": "Don't sign in",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "migration": {
+    "allProjectsMigrated": "Tous vos projets ont déjà été migrés vers le cloud.",
+    "continueToProjects": "Continuer vers les projets"
+  },
+  "appBar": {
+    "kanban": {
+      "tooltip": "Kanban",
+      "title": "Tableaux Kanban",
+      "description": "Connectez-vous pour organiser vos agents de codage avec des tableaux kanban.",
+      "migrateOldProjects": "Migrer les anciens projets"
+    }
   }
 }

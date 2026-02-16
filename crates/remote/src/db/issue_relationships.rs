@@ -1,22 +1,11 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use thiserror::Error;
-use ts_rs::TS;
+use api_types::{IssueRelationship, IssueRelationshipType};
 use uuid::Uuid;
 
-use super::{get_txid, types::IssueRelationshipType};
-use crate::mutation_types::{DeleteResponse, MutationResponse};
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct IssueRelationship {
-    pub id: Uuid,
-    pub issue_id: Uuid,
-    pub related_issue_id: Uuid,
-    pub relationship_type: IssueRelationshipType,
-    pub created_at: DateTime<Utc>,
-}
+use super::get_txid;
+use api_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum IssueRelationshipError {

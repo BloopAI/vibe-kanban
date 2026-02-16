@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import {
   IssueWorkspaceCard,
+  IssueWorkspaceCreateCard,
   type WorkspaceWithStats,
 } from '@/components/ui-new/views/IssueWorkspaceCard';
 import {
@@ -14,8 +15,10 @@ export interface IssueWorkspacesSectionProps {
   isLoading?: boolean;
   actions?: SectionAction[];
   onWorkspaceClick?: (localWorkspaceId: string | null) => void;
+  onCreateWorkspace?: () => void;
   onUnlinkWorkspace?: (localWorkspaceId: string) => void;
   onDeleteWorkspace?: (localWorkspaceId: string) => void;
+  shouldAnimateCreateButton?: boolean;
 }
 
 /**
@@ -27,8 +30,10 @@ export function IssueWorkspacesSection({
   isLoading,
   actions = [],
   onWorkspaceClick,
+  onCreateWorkspace,
   onUnlinkWorkspace,
   onDeleteWorkspace,
+  shouldAnimateCreateButton = false,
 }: IssueWorkspacesSectionProps) {
   const { t } = useTranslation('common');
 
@@ -43,7 +48,10 @@ export function IssueWorkspacesSection({
         {isLoading ? (
           <p className="text-low py-half">{t('workspaces.loading')}</p>
         ) : workspaces.length === 0 ? (
-          <p className="text-low py-half">{t('workspaces.noWorkspaces')}</p>
+          <IssueWorkspaceCreateCard
+            onClick={onCreateWorkspace}
+            shouldAnimateCreateButton={shouldAnimateCreateButton}
+          />
         ) : (
           workspaces.map((workspace) => {
             const { localWorkspaceId } = workspace;

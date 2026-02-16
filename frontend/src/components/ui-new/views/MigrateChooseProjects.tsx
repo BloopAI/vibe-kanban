@@ -1,10 +1,11 @@
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   ArrowSquareOutIcon,
+  ArrowRightIcon,
   BuildingsIcon,
   CaretDownIcon,
   CloudArrowUpIcon,
-  InfoIcon,
 } from '@phosphor-icons/react';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import {
@@ -27,6 +28,7 @@ interface MigrateChooseProjectsProps {
   onToggleProject: (projectId: string) => void;
   onSelectAll: () => void;
   onContinue: () => void;
+  onSkip?: () => void;
 }
 
 export function MigrateChooseProjects({
@@ -39,7 +41,9 @@ export function MigrateChooseProjects({
   onToggleProject,
   onSelectAll,
   onContinue,
+  onSkip,
 }: MigrateChooseProjectsProps) {
+  const { t } = useTranslation('common');
   const selectedOrg = organizations.find((org) => org.id === selectedOrgId);
 
   const migrateableProjects = projects.filter((p) => !p.remote_project_id);
@@ -117,7 +121,16 @@ export function MigrateChooseProjects({
           Local Projects
         </label>
         {projects.length === 0 ? (
-          <p className="text-sm text-low">No local projects found.</p>
+          <div className="space-y-base">
+            <p className="text-sm text-low">No local projects found.</p>
+            <Link
+              to="/workspaces/create"
+              className="inline-flex items-center gap-half text-sm text-brand hover:underline"
+            >
+              Skip to create a workspace
+              <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
+            </Link>
+          </div>
         ) : (
           <div className="bg-secondary border rounded">
             {/* Select all - only for migrateable projects */}
@@ -193,28 +206,39 @@ export function MigrateChooseProjects({
       </div>
 
       {/* Info box */}
-      <div className="mb-double p-base bg-secondary border rounded flex gap-base">
-        <InfoIcon className="size-icon-sm text-brand shrink-0" weight="fill" />
-        <div className="text-sm text-normal">
-          <p className="mb-half">
-            Your local projects will be copied to the cloud as new projects in
-            the selected organization. All tasks and data will be migrated.
-          </p>
-          <p className="text-low">
-            You can return here later to migrate additional projects.
-          </p>
-        </div>
+      <div className="mb-double p-base bg-secondary border rounded">
+        <ul className="text-sm text-normal list-disc pl-double space-y-half">
+          <li>
+            Information about tasks, such as titles and descriptions, will be
+            migrated to equivalent projects in the cloud
+          </li>
+          <li>
+            Your code and agent logs will not be migrated to the cloud and will
+            continue to live entirely locally
+          </li>
+        </ul>
       </div>
 
       {/* CTA */}
       <div className="pt-base border-t flex justify-end">
-        <PrimaryButton
-          onClick={onContinue}
-          disabled={selectedProjectIds.size === 0 || !selectedOrgId}
-          actionIcon={CloudArrowUpIcon}
-        >
-          {buttonText}
-        </PrimaryButton>
+        {migrateableProjects.length === 0 && migratedProjects.length > 0 ? (
+          <div className="flex items-center gap-base w-full">
+            <p className="text-sm text-normal flex-1">
+              {t('migration.allProjectsMigrated')}
+            </p>
+            <PrimaryButton onClick={onSkip} actionIcon={ArrowRightIcon}>
+              {t('migration.continueToProjects')}
+            </PrimaryButton>
+          </div>
+        ) : (
+          <PrimaryButton
+            onClick={onContinue}
+            disabled={selectedProjectIds.size === 0 || !selectedOrgId}
+            actionIcon={CloudArrowUpIcon}
+          >
+            {buttonText}
+          </PrimaryButton>
+        )}
       </div>
     </div>
   );

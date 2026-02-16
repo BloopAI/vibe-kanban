@@ -25,7 +25,7 @@ use crate::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
         TodoItem, ToolStatus,
         plain_text_processor::PlainTextLogProcessor,
-        utils::{ConversationPatch, EntryIndexProvider},
+        utils::{ConversationPatch, EntryIndexProvider, shell_command_parsing::CommandCategory},
     },
 };
 
@@ -41,7 +41,7 @@ pub struct CursorAgent {
     pub force: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(
-        description = "auto, sonnet-4.5, sonnet-4.5-thinking, gpt-5, opus-4.1, grok, composer-1"
+        description = "auto, sonnet-4.5, sonnet-4.5-thinking, gpt-5, opus-4.1, grok, composer-1, composer-1.5"
     )]
     pub model: Option<String>,
     #[serde(flatten)]
@@ -59,6 +59,9 @@ impl CursorAgent {
 
         if self.force.unwrap_or(false) {
             builder = builder.extend_params(["--force"]);
+        } else {
+            // trusting the current directory is a minimum requirement for cursor to run
+            builder = builder.extend_params(["--trust"]);
         }
 
         if let Some(model) = &self.model {
@@ -420,6 +423,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
                                         exit_status,
                                         output,
                                     }),
+                                    category: CommandCategory::from_command(&args.command),
                                 };
                             } else if let CursorToolCall::Mcp { args, result } = &tool_call {
                                 // Extract a human-readable text from content array using typed deserialization
@@ -814,6 +818,7 @@ impl CursorToolCall {
                     ActionType::CommandRun {
                         command: cmd.clone(),
                         result: None,
+                        category: CommandCategory::from_command(cmd),
                     },
                     cmd.to_string(),
                 )

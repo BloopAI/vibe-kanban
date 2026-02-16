@@ -7,6 +7,7 @@ import {
   PencilSimpleIcon,
   TrashIcon,
   ArrowBendUpLeftIcon,
+  PaperclipIcon,
 } from '@phosphor-icons/react';
 import {
   Tooltip,
@@ -14,6 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { ErrorAlert } from '@/components/ui-new/primitives/ErrorAlert';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 import { CollapsibleSectionHeader } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
 import {
@@ -46,6 +48,12 @@ export interface ReactionGroup {
   userNames: string[];
 }
 
+interface DropzoneProps {
+  getRootProps: () => Record<string, unknown>;
+  getInputProps: () => Record<string, unknown>;
+  isDragActive: boolean;
+}
+
 interface IssueCommentsSectionProps {
   comments: IssueCommentData[];
   commentInput: string;
@@ -62,8 +70,13 @@ interface IssueCommentsSectionProps {
   onToggleReaction: (commentId: string, emoji: string) => void;
   onReply: (authorName: string, message: string) => void;
   isLoading?: boolean;
-  /** Ref to the comment input editor for programmatic focus */
   commentEditorRef?: React.Ref<WYSIWYGEditorRef>;
+  onPasteFiles?: (files: File[]) => void;
+  dropzoneProps?: DropzoneProps;
+  onBrowseAttachment?: () => void;
+  isUploading?: boolean;
+  attachmentError?: string | null;
+  onDismissAttachmentError?: () => void;
 }
 
 export function IssueCommentsSection({
@@ -83,6 +96,12 @@ export function IssueCommentsSection({
   onReply,
   isLoading,
   commentEditorRef,
+  onPasteFiles,
+  dropzoneProps,
+  onBrowseAttachment,
+  isUploading,
+  attachmentError,
+  onDismissAttachmentError,
 }: IssueCommentsSectionProps) {
   const { t } = useTranslation('common');
 
@@ -121,8 +140,12 @@ export function IssueCommentsSection({
           ))
         )}
 
-        {/* Comment Input with WYSIWYG */}
-        <div className="flex flex-col gap-double bg-secondary border border-border rounded-sm p-double">
+        {/* Comment Input with WYSIWYG + dropzone */}
+        <div
+          {...dropzoneProps?.getRootProps()}
+          className="relative flex flex-col gap-double bg-secondary border border-border rounded-sm p-double"
+        >
+          <input {...dropzoneProps?.getInputProps()} />
           <WYSIWYGEditor
             ref={commentEditorRef}
             value={commentInput}
@@ -130,13 +153,45 @@ export function IssueCommentsSection({
             placeholder={t('kanban.enterCommentPlaceholder')}
             className="min-h-[20px]"
             onCmdEnter={onSubmitComment}
+            onPasteFiles={onPasteFiles}
             autoFocus={false}
           />
-          <div className="flex items-center justify-end">
+          {attachmentError && (
+            <div className="mb-half">
+              <ErrorAlert
+                message={attachmentError}
+                onDismiss={onDismissAttachmentError}
+                dismissLabel={t('buttons.close')}
+              />
+            </div>
+          )}
+          <div className="flex items-center justify-end gap-half">
+            {onBrowseAttachment && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={onBrowseAttachment}
+                      title={t('kanban.attachFile')}
+                      className={cn(
+                        'size-[22px] rounded-full bg-panel border border-border',
+                        'flex items-center justify-center',
+                        'text-low hover:text-normal transition-colors'
+                      )}
+                      aria-label={t('kanban.attachFile')}
+                    >
+                      <PaperclipIcon size={12} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('kanban.attachFileHint')}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             <button
               type="button"
               onClick={onSubmitComment}
-              disabled={!commentInput.trim()}
+              disabled={!commentInput.trim() || isUploading}
               className={cn(
                 'size-[22px] rounded-full bg-panel border border-border',
                 'flex items-center justify-center',
@@ -147,6 +202,13 @@ export function IssueCommentsSection({
               <ArrowUpIcon size={12} weight="bold" />
             </button>
           </div>
+          {dropzoneProps?.isDragActive && (
+            <div className="absolute inset-0 z-50 bg-primary/80 backdrop-blur-sm border-2 border-dashed border-brand rounded flex items-center justify-center">
+              <p className="text-sm font-medium text-high">
+                {t('kanban.dropFilesHere')}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </CollapsibleSectionHeader>

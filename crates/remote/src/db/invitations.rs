@@ -1,12 +1,13 @@
+use api_types::MemberRole;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-pub use utils::api::organizations::InvitationStatus;
+pub use api_types::InvitationStatus;
 use uuid::Uuid;
 
 use super::{
     identity_errors::IdentityError,
-    organization_members::{MemberRole, add_member, assert_admin},
+    organization_members::{add_member, assert_admin},
     organizations::{Organization, OrganizationRepository, is_personal_org},
 };
 use crate::{billing::BillingService, db::organization_members::is_member};

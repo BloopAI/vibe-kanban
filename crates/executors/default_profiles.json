@@ -127,6 +127,12 @@
               "model": "composer-1"
         }
       },
+      "COMPOSER_1_5": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "composer-1.5"
+        }
+      },
       "GPT_5_1_CODEX_MAX": {
         "CURSOR_AGENT": {
               "force": true,

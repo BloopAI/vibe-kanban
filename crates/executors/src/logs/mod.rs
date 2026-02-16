@@ -3,20 +3,20 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use workspace_utils::approvals::ApprovalStatus;
 
+use crate::logs::utils::shell_command_parsing::CommandCategory;
+
 pub mod plain_text_processor;
 pub mod stderr_processor;
 pub mod utils;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
-#[ts(export)]
 pub enum ToolResultValueType {
     Markdown,
     Json,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct ToolResult {
     pub r#type: ToolResultValueType,
     /// For Markdown, this will be a JSON string; for JSON, a structured value
@@ -41,14 +41,12 @@ impl ToolResult {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
-#[ts(export)]
 pub enum CommandExitStatus {
     ExitCode { code: i32 },
     Success { success: bool },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct CommandRunResult {
     pub exit_status: Option<CommandExitStatus>,
     pub output: Option<String>,
@@ -136,7 +134,6 @@ impl NormalizedEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
-#[ts(export)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum ToolStatus {
     #[default]
@@ -168,7 +165,6 @@ impl ToolStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct TodoItem {
     pub content: String,
     pub status: String,
@@ -178,7 +174,6 @@ pub struct TodoItem {
 
 /// Types of tool actions that can be performed
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum ActionType {
     FileRead {
@@ -192,6 +187,8 @@ pub enum ActionType {
         command: String,
         #[serde(default)]
         result: Option<CommandRunResult>,
+        #[serde(default)]
+        category: CommandCategory,
     },
     Search {
         query: String,

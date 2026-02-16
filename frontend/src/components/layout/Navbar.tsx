@@ -124,7 +124,7 @@ export function Navbar() {
   };
 
   const handleOpenOAuth = async () => {
-    const profile = await OAuthDialog.show();
+    const profile = await OAuthDialog.show({});
     if (profile) {
       await reloadSystem();
     }

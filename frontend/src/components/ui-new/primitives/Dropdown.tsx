@@ -3,6 +3,7 @@ import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import {
   CaretDownIcon,
   CaretRightIcon,
+  CheckIcon,
   MagnifyingGlassIcon,
   type Icon,
 } from '@phosphor-icons/react';
@@ -30,19 +31,18 @@ interface DropdownMenuTriggerButtonProps
   label?: string;
 }
 
+export const dropdownMenuTriggerButtonClassName =
+  'flex items-center gap-half bg-secondary border border-border rounded-sm px-base py-half ' +
+  'focus:outline-none focus-visible:ring-1 focus-visible:ring-brand ' +
+  'disabled:opacity-50 disabled:cursor-not-allowed min-w-0';
+
 const DropdownMenuTriggerButton = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
   DropdownMenuTriggerButtonProps
 >(({ className, icon: IconComponent, label, children, ...props }, ref) => (
   <DropdownMenuPrimitive.Trigger
     ref={ref}
-    className={cn(
-      'flex items-center gap-half bg-secondary border border-border rounded-sm px-base py-half',
-      'focus:outline-none focus-visible:ring-1 focus-visible:ring-brand',
-      'disabled:opacity-50 disabled:cursor-not-allowed',
-      'min-w-0',
-      className
-    )}
+    className={cn(dropdownMenuTriggerButtonClassName, className)}
     {...props}
   >
     {IconComponent && (
@@ -144,7 +144,7 @@ DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 interface DropdownMenuItemProps
   extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> {
   icon?: Icon;
-  badge?: string;
+  badge?: React.ReactNode;
   variant?: 'default' | 'destructive';
   /** When true, prevents hover from stealing focus (useful for searchable dropdowns) */
   preventFocusOnHover?: boolean;
@@ -213,17 +213,19 @@ const DropdownMenuCheckboxItem = React.forwardRef<
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
     className={cn(
-      'relative flex cursor-pointer select-none items-center',
-      'py-half px-base mx-half rounded-sm text-sm text-low',
+      'relative flex cursor-pointer select-none items-center gap-base',
+      'py-half px-base mx-half rounded-sm text-sm text-high',
       'outline-none transition-colors focus:bg-secondary',
-      'data-[state=checked]:text-high',
       'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className
     )}
     checked={checked}
     {...props}
   >
-    {children}
+    <span className="flex-1">{children}</span>
+    <DropdownMenuPrimitive.ItemIndicator>
+      <CheckIcon className="size-icon-xs text-brand shrink-0" weight="bold" />
+    </DropdownMenuPrimitive.ItemIndicator>
   </DropdownMenuPrimitive.CheckboxItem>
 ));
 DropdownMenuCheckboxItem.displayName =

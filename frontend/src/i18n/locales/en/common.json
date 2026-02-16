@@ -1,4 +1,7 @@
 {
+  "editorNames": {
+    "custom": "Custom"
+  },
   "buttons": {
     "save": "Save",
     "cancel": "Cancel",
@@ -128,6 +131,16 @@
     "errorDescription": "There was a problem authenticating your account",
     "tryAgain": "Try Again"
   },
+  "onboardingSignIn": {
+    "subtitle": "Sign in to continue",
+    "signedInAs": "Signed in as {{name}}.",
+    "moreOptions": "More options",
+    "featureHeader": "Feature",
+    "signedInHeader": "Signed in",
+    "skipSignInHeader": "Don't sign in",
+    "yes": "Yes",
+    "no": "No"
+  },
   "toolbar": {
     "sortBy": "Sort by",
     "groupBy": "Group by"
@@ -154,6 +167,7 @@
     "backToActive": "Back to Active",
     "noArchived": "No archived workspaces",
     "noWorkspaces": "No workspaces",
+    "newWorkspace": "New workspace",
     "needsAttention": "Needs Attention",
     "idle": "Idle",
     "running": "Running",
@@ -252,7 +266,9 @@
   "commandBar": {
     "noResults": "No results found.",
     "back": "Back",
-    "defaultPlaceholder": "Type a command or search..."
+    "defaultPlaceholder": "Type a command or search...",
+    "selectBranch": "Select Branch",
+    "selectBranchFor": "Select Branch for {{repoName}}"
   },
   "chatBox": {
     "variants": "Variants",
@@ -265,9 +281,9 @@
     "noProjectsFound": "No projects found"
   },
   "betaWorkspaces": {
-    "title": "Try the new UI",
-    "intro": "We've rebuilt Vibe Kanban's UI from the ground up, and you've been invited to try it.",
-    "newUiDescription": "The new UI is optimised for day-to-day work: juggling agents, previewing changes, and reviewing code. It also unlocks features that aren't available in the old UI:",
+    "title": "It's time to migrate!",
+    "intro": "We've rebuilt Vibe Kanban's UI from the ground up, and Workspaces is now the recommended way to use it.",
+    "newUiDescription": "The new UI is designed for day-to-day work: juggling agents, previewing changes, and reviewing code. It also unlocks features that aren't available in the old UI:",
     "newFeatures": {
       "multiRepo": "Edit multiple repositories at the same time",
       "multiAgent": "Run multiple agent conversations (even across different agents) in a single workspace",
@@ -279,15 +295,15 @@
       "settings": "Changing settings",
       "projects": "Managing projects"
     },
-    "transition": "During the transition over the next few weeks, you'll move between both.",
-    "optOutNote": "Want to opt out? You can switch back to the current UI at any time in Settings.",
+    "transition": "During the transition over the next few weeks, you'll move between both views.",
+    "optOutNote": "Heads up: the legacy Local Projects view will be unavailable shortly and should no longer be used.",
     "joinBeta": "Join Beta",
-    "maybeLater": "Maybe Later"
+    "maybeLater": "Not Right Now"
   },
   "workspacesGuide": {
     "welcome": {
       "title": "Welcome",
-      "content": "Welcome to Workspaces, a redesigned UI for Vibe Kanban. We're rolling this out to select users for early feedback. Share your thoughts anytime using the feedback icon in the navbar."
+      "content": "Welcome to the Workspaces page. One view of the workspaces across all of your projects, and the fastest way to review work from your agents. Share feedback anytime via the navbar icon."
     },
     "commandBar": {
       "title": "Command Bar",
@@ -344,12 +360,74 @@
     "title": "Keyboard Shortcuts",
     "inWorkspace": "(in workspace)",
     "sequentialHint": "Sequential shortcuts: Press the first key, then the second within 500ms.",
-    "configurableHint": "Configurable in Settings → General → Message Input"
+    "configurableHint": "Configurable in Settings → General → Message Input",
+    "groups": {
+      "quickActions": "Quick Actions",
+      "navigation": "Navigation",
+      "modifiers": "Modifiers",
+      "goTo": "Go To (G ...)",
+      "workspace": "Workspace (W ...)",
+      "view": "View (V ...)",
+      "issues": "Issues (I ...)",
+      "git": "Git (X ...)",
+      "yank": "Yank (Y ...)",
+      "toggle": "Toggle (T ...)",
+      "run": "Run (R ...)"
+    },
+    "actions": {
+      "showHelp": "Show this help",
+      "closeCancel": "Close/cancel",
+      "createNewTask": "Create new task",
+      "deleteSelected": "Delete selected",
+      "focusSearch": "Focus search",
+      "moveDown": "Move down",
+      "moveUp": "Move up",
+      "moveLeft": "Move left",
+      "moveRight": "Move right",
+      "openCommandBar": "Open command bar",
+      "sendMessage": "Send message",
+      "settings": "Go to Settings",
+      "new-workspace": "Go to New Workspace",
+      "duplicate-workspace": "Duplicate workspace",
+      "rename-workspace": "Rename workspace",
+      "pin-workspace": "Pin/Unpin workspace",
+      "archive-workspace": "Archive workspace",
+      "delete-workspace": "Delete workspace",
+      "toggle-changes-mode": "Toggle Changes panel",
+      "toggle-logs-mode": "Toggle Logs panel",
+      "toggle-preview-mode": "Toggle Preview panel",
+      "toggle-left-sidebar": "Toggle Left Sidebar",
+      "toggle-left-main-panel": "Toggle Chat panel",
+      "create-issue": "Create Issue",
+      "change-issue-status": "Change Status",
+      "change-issue-priority": "Change Priority",
+      "change-assignees": "Change Assignees",
+      "make-sub-issue-of": "Make Sub-issue of",
+      "add-sub-issue": "Add Sub-issue",
+      "remove-parent-issue": "Remove Parent",
+      "link-workspace": "Link Workspace",
+      "duplicate-issue": "Duplicate Issue",
+      "delete-issue": "Delete Issue",
+      "git-create-pr": "Create Pull Request",
+      "git-merge": "Merge branch",
+      "git-rebase": "Rebase branch",
+      "git-push": "Push changes",
+      "copy-path": "Copy path",
+      "copy-raw-logs": "Copy raw logs",
+      "toggle-dev-server": "Toggle dev server",
+      "toggle-wrap-lines": "Toggle line wrapping",
+      "run-setup-script": "Run setup script",
+      "run-cleanup-script": "Run cleanup script",
+      "run-archive-script": "Run archive script"
+    }
   },
   "typeahead": {
     "tags": "Tags",
     "files": "Files",
     "commands": "Commands",
+    "chooseRepo": "Choose repo",
+    "selectedRepo": "Selected repo: {{repoName}}",
+    "missingRepo": "Selected repo is no longer available.",
     "noTagsOrFiles": "No tags or files found",
     "noCommands": "No commands available for this agent."
   },
@@ -366,13 +444,51 @@
     "selectColorFor": "Select color for",
     "createTag": "Create",
     "filesCount": "{{count}} Files",
+    "attachmentsTitle": "Attachments ({{count}})",
+    "deleteAttachmentAria": "Delete {{filename}}",
     "noPrCreated": "No PR created",
     "noCommentsYet": "No comments yet",
     "createdBy": "Created by",
     "comments": "Comments",
     "enterCommentPlaceholder": "Enter your comment here...",
+    "attachImage": "Attach image",
+    "attachFile": "Attach file",
+    "attachFileHint": "Attach files (max 20MB each)",
+    "attach": "Attach",
+    "dropImagesHere": "Drop images here",
+    "dropFilesHere": "Drop files here",
+    "imageDropHint": "PNG, JPG, GIF up to 20MB",
+    "fileDropHint": "Any file type up to 20MB",
+    "unknownFile": "Unknown file",
+    "unknownUser": "Unknown User",
+    "deletedUser": "Deleted User",
+    "replyQuotePrefix": "wrote:",
+    "moreActions": "More actions",
+    "closePanel": "Close panel",
+    "issueTitlePlaceholder": "Issue Title...",
+    "issueDescriptionPlaceholder": "Enter task description here...",
+    "createDraftWorkspaceImmediately": "Create draft workspace immediately",
+    "createDraftWorkspaceDescription": "Tick to automatically create a workspace",
+    "createTask": "Create Task",
+    "newIssue": "New Issue",
+    "previewCodeBlock": "[Code block]",
+    "previewImage": "[Image]",
+    "previewImageWithName": "[Image: {{name}}]",
+    "previewFile": "[File]",
+    "previewFileWithName": "[File: {{name}}]",
+    "imageAttachmentNameFallback": "Attachment",
+    "removeImage": "Remove image",
+    "maxImagesAtOnce": "Maximum {{count}} images at once",
+    "maxFilesAtOnce": "Maximum {{count}} files at once",
+    "fileNotImage": "File {{filename}} is not an image",
+    "fileExceedsLimit": "File {{filename}} exceeds 20MB limit",
+    "unknownError": "Unknown error",
+    "failedToUploadFile": "Failed to upload {{filename}}: {{message}}",
+    "downloadAttachment": "Download attachment",
+    "downloadAttachmentAria": "Download {{filename}}",
     "subIssues": "Sub-issues",
     "noSubIssues": "No sub-issues",
+    "markIndependentIssue": "Mark as independent issue",
     "parentIssue": "Parent",
     "subIssueIndicator": "↳",
     "showSubIssues": "Show sub-issues",
@@ -386,11 +502,36 @@
       "action": "Sign in"
     }
   },
+  "createMode": {
+    "headings": {
+      "repoStep": "Which repositories would you like to work on?",
+      "chatStep": "What would you like to work on?"
+    },
+    "repoPicker": {
+      "actions": {
+        "recent": "Recent",
+        "browse": "Browse",
+        "create": "Create"
+      }
+    }
+  },
   "syncError": {
     "networkErrors": "Network Errors",
     "streamsAffected": "{{count}} stream affected",
     "streamsAffected_other": "{{count}} streams affected",
     "status": "(status {{status}})",
     "refreshPage": "Refresh Page"
+  },
+  "migration": {
+    "allProjectsMigrated": "All your projects have already been migrated to the cloud.",
+    "continueToProjects": "Continue to Projects"
+  },
+  "appBar": {
+    "kanban": {
+      "tooltip": "Kanban",
+      "title": "Kanban Boards",
+      "description": "Sign in to organise your coding agents with kanban boards.",
+      "migrateOldProjects": "Migrate old projects"
+    }
   }
 }

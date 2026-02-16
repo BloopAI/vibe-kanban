@@ -1,11 +1,5 @@
-import {
-  createContext,
-  ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-} from 'react';
+import { ReactNode, useCallback, useContext, useEffect, useMemo } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   type Config,
@@ -54,7 +48,8 @@ interface UserSystemContextType {
   loading: boolean;
 }
 
-const UserSystemContext = createContext<UserSystemContextType | undefined>(
+const UserSystemContext = createHmrContext<UserSystemContextType | undefined>(
+  'UserSystemContext',
   undefined
 );
 

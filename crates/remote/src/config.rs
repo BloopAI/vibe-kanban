@@ -14,7 +14,9 @@ pub struct RemoteServerConfig {
     pub electric_secret: Option<SecretString>,
     pub electric_role_password: Option<SecretString>,
     pub r2: Option<R2Config>,
+    pub azure_blob: Option<AzureBlobConfig>,
     pub review_worker_base_url: Option<String>,
+    pub review_disabled: bool,
     pub github_app: Option<GitHubAppConfig>,
 }
 
@@ -30,8 +32,8 @@ pub struct R2Config {
 impl R2Config {
     pub fn from_env() -> Result<Option<Self>, ConfigError> {
         let access_key_id = match env::var("R2_ACCESS_KEY_ID") {
-            Ok(v) => v,
-            Err(_) => {
+            Ok(v) if !v.is_empty() => v,
+            _ => {
                 tracing::info!("R2_ACCESS_KEY_ID not set, R2 storage disabled");
                 return Ok(None);
             }
@@ -66,6 +68,77 @@ impl R2Config {
 }
 
 #[derive(Debug, Clone)]
+pub enum AzureAuthMode {
+    /// Entra ID via user-assigned managed identity (production).
+    EntraId { client_id: String },
+    /// Shared Key via custom HMAC policy (local Azurite).
+    SharedKey,
+}
+
+#[derive(Debug, Clone)]
+pub struct AzureBlobConfig {
+    pub account_name: String,
+    /// Account key is always required for SAS token generation.
+    pub account_key: SecretString,
+    pub container_name: String,
+    pub endpoint_url: Option<String>,
+    pub public_endpoint_url: Option<String>,
+    pub presign_expiry_secs: u64,
+    pub auth_mode: AzureAuthMode,
+}
+
+impl AzureBlobConfig {
+    pub fn from_env() -> Result<Option<Self>, ConfigError> {
+        let account_name = match env::var("AZURE_STORAGE_ACCOUNT_NAME") {
+            Ok(v) => v,
+            Err(_) => {
+                tracing::info!("AZURE_STORAGE_ACCOUNT_NAME not set, Azure Blob storage disabled");
+                return Ok(None);
+            }
+        };
+
+        tracing::info!("AZURE_STORAGE_ACCOUNT_NAME is set, checking other Azure Blob env vars");
+
+        let account_key = env::var("AZURE_STORAGE_ACCOUNT_KEY")
+            .map_err(|_| ConfigError::MissingVar("AZURE_STORAGE_ACCOUNT_KEY"))?;
+
+        let container_name = env::var("AZURE_STORAGE_CONTAINER_NAME")
+            .unwrap_or_else(|_| "issue-attachments".to_string());
+
+        let endpoint_url = env::var("AZURE_STORAGE_ENDPOINT_URL").ok();
+        let public_endpoint_url = env::var("AZURE_STORAGE_PUBLIC_ENDPOINT_URL").ok();
+
+        let auth_mode = match env::var("AZURE_MANAGED_IDENTITY_CLIENT_ID") {
+            Ok(client_id) => AzureAuthMode::EntraId { client_id },
+            Err(_) => AzureAuthMode::SharedKey,
+        };
+
+        let presign_expiry_secs = env::var("AZURE_BLOB_PRESIGN_EXPIRY_SECS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(3600);
+
+        tracing::info!(
+            account_name = %account_name,
+            container_name = %container_name,
+            endpoint_url = ?endpoint_url,
+            auth_mode = ?auth_mode,
+            "Azure Blob config loaded successfully"
+        );
+
+        Ok(Some(Self {
+            account_name,
+            account_key: SecretString::new(account_key.into()),
+            container_name,
+            endpoint_url,
+            public_endpoint_url,
+            presign_expiry_secs,
+            auth_mode,
+        }))
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct GitHubAppConfig {
     pub app_id: u64,
     pub private_key: SecretString, // Base64-encoded PEM
@@ -76,8 +149,8 @@ pub struct GitHubAppConfig {
 impl GitHubAppConfig {
     pub fn from_env() -> Result<Option<Self>, ConfigError> {
         let app_id = match env::var("GITHUB_APP_ID") {
-            Ok(v) => v,
-            Err(_) => {
+            Ok(v) if !v.is_empty() => v,
+            _ => {
                 tracing::info!("GITHUB_APP_ID not set, GitHub App integration disabled");
                 return Ok(None);
             }
@@ -149,8 +222,13 @@ impl RemoteServerConfig {
             .map(|s| SecretString::new(s.into()));
 
         let r2 = R2Config::from_env()?;
+        let azure_blob = AzureBlobConfig::from_env()?;
 
         let review_worker_base_url = env::var("REVIEW_WORKER_BASE_URL").ok();
+
+        let review_disabled = env::var("REVIEW_DISABLED")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
 
         let github_app = GitHubAppConfig::from_env()?;
 
@@ -163,7 +241,9 @@ impl RemoteServerConfig {
             electric_secret,
             electric_role_password,
             r2,
+            azure_blob,
             review_worker_base_url,
+            review_disabled,
             github_app,
         })
     }
@@ -208,7 +288,7 @@ impl AuthConfig {
         let jwt_secret = SecretString::new(jwt_secret.into());
 
         let github = match env::var("GITHUB_OAUTH_CLIENT_ID") {
-            Ok(client_id) => {
+            Ok(client_id) if !client_id.is_empty() => {
                 let client_secret = env::var("GITHUB_OAUTH_CLIENT_SECRET")
                     .map_err(|_| ConfigError::MissingVar("GITHUB_OAUTH_CLIENT_SECRET"))?;
                 Some(OAuthProviderConfig::new(
@@ -216,11 +296,11 @@ impl AuthConfig {
                     SecretString::new(client_secret.into()),
                 ))
             }
-            Err(_) => None,
+            _ => None,
         };
 
         let google = match env::var("GOOGLE_OAUTH_CLIENT_ID") {
-            Ok(client_id) => {
+            Ok(client_id) if !client_id.is_empty() => {
                 let client_secret = env::var("GOOGLE_OAUTH_CLIENT_SECRET")
                     .map_err(|_| ConfigError::MissingVar("GOOGLE_OAUTH_CLIENT_SECRET"))?;
                 Some(OAuthProviderConfig::new(
@@ -228,7 +308,7 @@ impl AuthConfig {
                     SecretString::new(client_secret.into()),
                 ))
             }
-            Err(_) => None,
+            _ => None,
         };
 
         if github.is_none() && google.is_none() {

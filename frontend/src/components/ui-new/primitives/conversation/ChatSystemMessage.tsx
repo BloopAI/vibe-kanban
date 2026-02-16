@@ -23,7 +23,7 @@ export function ChatSystemMessage({
       onClick={onToggle}
       role="button"
     >
-      <InfoIcon className="shrink-0 size-icon-base mt-0.5" />
+      <InfoIcon className="shrink-0 size-icon-base pt-0.5" />
       <span
         className={cn(
           !expanded && 'truncate',

@@ -83,16 +83,26 @@ const ConfirmDialogImpl = NiceModal.create<ConfirmDialogProps>((props) => {
             {message}
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="gap-2">
-          {showCancelButton && (
+        {showCancelButton ? (
+          <DialogFooter className="gap-2">
             <Button variant="outline" onClick={handleCancel}>
               {cancelText}
             </Button>
-          )}
-          <Button variant={getConfirmButtonVariant()} onClick={handleConfirm}>
-            {confirmText}
-          </Button>
-        </DialogFooter>
+            <Button variant={getConfirmButtonVariant()} onClick={handleConfirm}>
+              {confirmText}
+            </Button>
+          </DialogFooter>
+        ) : (
+          <div className="flex w-full">
+            <Button
+              className="ml-auto"
+              variant={getConfirmButtonVariant()}
+              onClick={handleConfirm}
+            >
+              {confirmText}
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

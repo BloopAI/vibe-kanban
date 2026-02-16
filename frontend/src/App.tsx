@@ -1,5 +1,11 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from 'react-router-dom';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '@/i18n';
 import { Projects } from '@/pages/Projects';
@@ -9,7 +15,6 @@ import { Migration } from '@/pages/Migration';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { SharedAppLayout } from '@/components/ui-new/containers/SharedAppLayout';
 import { usePostHog } from 'posthog-js/react';
-import { useAuth } from '@/hooks';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
 import { useUiPreferencesScratch } from '@/hooks/useUiPreferencesScratch';
 
@@ -32,8 +37,6 @@ import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ThemeMode } from 'shared/types';
 import * as Sentry from '@sentry/react';
 
-import { DisclaimerDialog } from '@/components/dialogs/global/DisclaimerDialog';
-import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
 import { ReleaseNotesDialog } from '@/components/dialogs/global/ReleaseNotesDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 
@@ -50,13 +53,16 @@ import { WorkspacesLanding } from '@/pages/ui-new/WorkspacesLanding';
 import { ElectricTestPage } from '@/pages/ui-new/ElectricTestPage';
 import { ProjectKanban } from '@/pages/ui-new/ProjectKanban';
 import { MigratePage } from '@/pages/ui-new/MigratePage';
+import { LandingPage } from '@/pages/ui-new/LandingPage';
+import { OnboardingSignInPage } from '@/pages/ui-new/OnboardingSignInPage';
+import { RootRedirectPage } from '@/pages/ui-new/RootRedirectPage';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
   const { config, analyticsUserId, updateAndSaveConfig } = useUserSystem();
   const posthog = usePostHog();
-  const { isSignedIn } = useAuth();
+  const location = useLocation();
 
   // Track previous path for back navigation
   usePreviousPath();
@@ -79,51 +85,31 @@ function AppContent() {
   }, [config?.analytics_enabled, analyticsUserId, posthog]);
 
   useEffect(() => {
-    if (!config) return;
+    if (!config || !config.remote_onboarding_acknowledged) return;
+
+    // Don't show release notes during onboarding or migration flows
+    const pathname = location.pathname;
+    if (pathname.startsWith('/onboarding') || pathname.startsWith('/migrate'))
+      return;
+
     let cancelled = false;
 
-    const showNextStep = async () => {
-      // 1) Disclaimer - first step
-      if (!config.disclaimer_acknowledged) {
-        await DisclaimerDialog.show();
-        if (!cancelled) {
-          await updateAndSaveConfig({ disclaimer_acknowledged: true });
-        }
-        DisclaimerDialog.hide();
-        return;
-      }
-
-      // 2) Onboarding - configure executor and editor
-      if (!config.onboarding_acknowledged) {
-        const result = await OnboardingDialog.show();
-        if (!cancelled) {
-          await updateAndSaveConfig({
-            onboarding_acknowledged: true,
-            executor_profile: result.profile,
-            editor: result.editor,
-          });
-        }
-        OnboardingDialog.hide();
-        return;
-      }
-
-      // 3) Release notes - last step
+    const showReleaseNotes = async () => {
       if (config.show_release_notes) {
         await ReleaseNotesDialog.show();
         if (!cancelled) {
           await updateAndSaveConfig({ show_release_notes: false });
         }
         ReleaseNotesDialog.hide();
-        return;
       }
     };
 
-    showNextStep();
+    showReleaseNotes();
 
     return () => {
       cancelled = true;
     };
-  }, [config, isSignedIn, updateAndSaveConfig]);
+  }, [config, updateAndSaveConfig, location.pathname]);
 
   // TODO: Disabled while developing FE only
   // if (loading) {
@@ -139,6 +125,31 @@ function AppContent() {
       <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
         <SearchProvider>
           <SentryRoutes>
+            <Route
+              path="/"
+              element={
+                <NewDesignScope>
+                  <RootRedirectPage />
+                </NewDesignScope>
+              }
+            />
+            <Route
+              path="/onboarding"
+              element={
+                <NewDesignScope>
+                  <LandingPage />
+                </NewDesignScope>
+              }
+            />
+            <Route
+              path="/onboarding/sign-in"
+              element={
+                <NewDesignScope>
+                  <OnboardingSignInPage />
+                </NewDesignScope>
+              }
+            />
+
             {/* ========== LEGACY DESIGN ROUTES ========== */}
             {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
             <Route
@@ -157,7 +168,6 @@ function AppContent() {
                 </LegacyDesignScope>
               }
             >
-              <Route path="/" element={<Projects />} />
               <Route path="/local-projects" element={<Projects />} />
               <Route path="/local-projects/:projectId" element={<Projects />} />
               <Route path="/migration" element={<Migration />} />
@@ -226,7 +236,23 @@ function AppContent() {
               {/* Projects routes */}
               <Route path="/projects/:projectId" element={<ProjectKanban />} />
               <Route
+                path="/projects/:projectId/issues/new"
+                element={<ProjectKanban />}
+              />
+              <Route
                 path="/projects/:projectId/issues/:issueId"
+                element={<ProjectKanban />}
+              />
+              <Route
+                path="/projects/:projectId/issues/:issueId/workspaces/:workspaceId"
+                element={<ProjectKanban />}
+              />
+              <Route
+                path="/projects/:projectId/issues/:issueId/workspaces/create/:draftId"
+                element={<ProjectKanban />}
+              />
+              <Route
+                path="/projects/:projectId/workspaces/create/:draftId"
                 element={<ProjectKanban />}
               />
 

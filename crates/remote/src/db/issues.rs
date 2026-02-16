@@ -1,42 +1,15 @@
+use api_types::{Issue, IssuePriority, PullRequestStatus};
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
-use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{
-    get_txid,
-    project_statuses::ProjectStatusRepository,
-    pull_requests::PullRequestRepository,
-    types::{IssuePriority, PullRequestStatus},
-    workspaces::WorkspaceRepository,
+    get_txid, issue_assignees::IssueAssigneeRepository, project_statuses::ProjectStatusRepository,
+    pull_requests::PullRequestRepository, workspaces::WorkspaceRepository,
 };
-use crate::mutation_types::{DeleteResponse, MutationResponse};
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct Issue {
-    pub id: Uuid,
-    pub project_id: Uuid,
-    pub issue_number: i32,
-    pub simple_id: String,
-    pub status_id: Uuid,
-    pub title: String,
-    pub description: Option<String>,
-    pub priority: Option<IssuePriority>,
-    pub start_date: Option<DateTime<Utc>>,
-    pub target_date: Option<DateTime<Utc>>,
-    pub completed_at: Option<DateTime<Utc>>,
-    pub sort_order: f64,
-    pub parent_issue_id: Option<Uuid>,
-    pub parent_issue_sort_order: Option<f64>,
-    pub extension_metadata: Value,
-    pub creator_user_id: Option<Uuid>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
+use api_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum IssueError {
@@ -48,6 +21,8 @@ pub enum IssueError {
     ProjectStatus(#[from] super::project_statuses::ProjectStatusError),
     #[error("workspace error: {0}")]
     Workspace(#[from] super::workspaces::WorkspaceError),
+    #[error("issue assignee error: {0}")]
+    IssueAssignee(#[from] super::issue_assignees::IssueAssigneeError),
 }
 
 pub struct IssueRepository;
@@ -397,55 +372,87 @@ impl IssueRepository {
         Ok(())
     }
 
-    /// Syncs issue status when a workspace is created.
-    /// If this is the first workspace for the issue and the issue is in "Backlog" or "To do",
-    /// moves the issue to "In progress".
-    pub async fn sync_status_from_workspace_created(
+    /// Moves an issue to the given target status if its current status is "Backlog" or "To do".
+    async fn move_to_status_if_pending(
         pool: &PgPool,
         issue_id: Uuid,
+        current_status_id: Uuid,
+        target_status_id: Uuid,
     ) -> Result<(), IssueError> {
-        let workspace_count = WorkspaceRepository::count_by_issue_id(pool, issue_id).await?;
-        if workspace_count != 1 {
-            return Ok(());
-        }
-
-        let Some(issue) = Self::find_by_id(pool, issue_id).await? else {
-            return Ok(());
-        };
-
         let Some(current_status) =
-            ProjectStatusRepository::find_by_id(pool, issue.status_id).await?
+            ProjectStatusRepository::find_by_id(pool, current_status_id).await?
         else {
             return Ok(());
         };
 
-        let current_name_lower = current_status.name.to_lowercase();
-        if current_name_lower != "backlog" && current_name_lower != "to do" {
-            return Ok(());
+        let name = current_status.name.to_lowercase();
+        if name == "backlog" || name == "to do" {
+            Self::update(
+                pool,
+                issue_id,
+                Some(target_status_id),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .await?;
         }
 
-        let Some(in_progress_status) =
-            ProjectStatusRepository::find_by_name(pool, issue.project_id, "In progress").await?
-        else {
-            return Ok(());
-        };
+        Ok(())
+    }
 
-        Self::update(
-            pool,
-            issue_id,
-            Some(in_progress_status.id),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        )
-        .await?;
+    /// Syncs issue state when a workspace is created:
+    /// - If this is the first workspace and the issue is in "Backlog" or "To do", moves to "In progress"
+    /// - If sub-issue, also moves parent issue to "In progress" if pending
+    /// - If the issue has no assignees, adds the workspace creator as an assignee
+    pub async fn sync_issue_from_workspace_created(
+        pool: &PgPool,
+        issue_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), IssueError> {
+        // Status sync: only on first workspace
+        let workspace_count = WorkspaceRepository::count_by_issue_id(pool, issue_id).await?;
+        if workspace_count == 1 {
+            let Some(issue) = Self::find_by_id(pool, issue_id).await? else {
+                return Ok(());
+            };
+
+            let Some(in_progress_status) =
+                ProjectStatusRepository::find_by_name(pool, issue.project_id, "In progress")
+                    .await?
+            else {
+                return Ok(());
+            };
+
+            Self::move_to_status_if_pending(pool, issue_id, issue.status_id, in_progress_status.id)
+                .await?;
+
+            // If sub-issue, also move parent issue to "In progress"
+            if let Some(parent_issue_id) = issue.parent_issue_id {
+                if let Some(parent_issue) = Self::find_by_id(pool, parent_issue_id).await? {
+                    Self::move_to_status_if_pending(
+                        pool,
+                        parent_issue_id,
+                        parent_issue.status_id,
+                        in_progress_status.id,
+                    )
+                    .await?;
+                }
+            }
+        }
+
+        // Assignee sync: add creator if no assignees exist
+        let assignees = IssueAssigneeRepository::list_by_issue(pool, issue_id).await?;
+        if assignees.is_empty() {
+            IssueAssigneeRepository::create(pool, None, issue_id, user_id).await?;
+        }
 
         Ok(())
     }

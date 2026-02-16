@@ -3,7 +3,6 @@ import { useProject } from '@/contexts/ProjectContext';
 import { useTaskAttemptsWithSessions } from '@/hooks/useTaskAttempts';
 import { useTaskAttemptWithSession } from '@/hooks/useTaskAttempt';
 import { useNavigateWithSearch } from '@/hooks';
-import { useUserSystem } from '@/components/ConfigProvider';
 import { paths } from '@/lib/paths';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
@@ -22,7 +21,6 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
   const { t } = useTranslation('tasks');
   const navigate = useNavigateWithSearch();
   const { projectId } = useProject();
-  const { config } = useUserSystem();
 
   const {
     data: attempts = [],
@@ -117,9 +115,7 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                 columns={attemptColumns}
                 keyExtractor={(attempt) => attempt.id}
                 onRowClick={(attempt) => {
-                  if (config?.beta_workspaces) {
-                    navigate(`/workspaces/${attempt.id}`);
-                  } else if (projectId) {
+                  if (projectId) {
                     navigate(
                       paths.attempt(projectId, attempt.task_id, attempt.id)
                     );
@@ -144,9 +140,7 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                 columns={attemptColumns}
                 keyExtractor={(attempt) => attempt.id}
                 onRowClick={(attempt) => {
-                  if (config?.beta_workspaces) {
-                    navigate(`/workspaces/${attempt.id}`);
-                  } else if (projectId && task.id) {
+                  if (projectId && task.id) {
                     navigate(paths.attempt(projectId, task.id, attempt.id));
                   }
                 }}

@@ -1,9 +1,10 @@
 import { cn } from '@/lib/utils';
-import { PlusIcon, UsersIcon } from '@phosphor-icons/react';
+import { PlusIcon, UsersIcon, XIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import type { IssuePriority, ProjectStatus } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { IconButton } from '@/components/ui-new/primitives/IconButton';
 import { StatusDot } from '@/components/ui-new/primitives/StatusDot';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
@@ -25,6 +26,7 @@ export interface IssuePropertyRowProps {
   creatorUser?: OrganizationMemberWithProfile | null;
   parentIssue?: { id: string; simpleId: string } | null;
   onParentIssueClick?: () => void;
+  onRemoveParentIssue?: () => void;
   onStatusClick: () => void;
   onPriorityClick: () => void;
   onAssigneeClick: () => void;
@@ -41,6 +43,7 @@ export function IssuePropertyRow({
   creatorUser,
   parentIssue,
   onParentIssueClick,
+  onRemoveParentIssue,
   onStatusClick,
   onPriorityClick,
   onAssigneeClick,
@@ -104,27 +107,40 @@ export function IssuePropertyRow({
         )}
 
       {parentIssue && (
-        <button
-          type="button"
-          onClick={onParentIssueClick}
-          className="flex items-center gap-half px-base py-half bg-panel rounded-sm text-sm hover:bg-secondary transition-colors whitespace-nowrap"
-        >
-          <span className="text-low">{t('kanban.parentIssue', 'Parent')}:</span>
-          <span className="font-ibm-plex-mono text-normal">
-            {parentIssue.simpleId}
-          </span>
-        </button>
+        <div className="flex items-center gap-half">
+          <PrimaryButton
+            variant="tertiary"
+            onClick={onParentIssueClick}
+            disabled={disabled}
+            className="whitespace-nowrap text-sm"
+          >
+            <span className="text-low">
+              {t('kanban.parentIssue', 'Parent')}:
+            </span>
+            <span className="font-ibm-plex-mono text-normal">
+              {parentIssue.simpleId}
+            </span>
+          </PrimaryButton>
+          {onRemoveParentIssue && (
+            <IconButton
+              icon={XIcon}
+              onClick={onRemoveParentIssue}
+              disabled={disabled}
+              aria-label="Remove parent issue"
+              title="Remove parent issue"
+            />
+          )}
+        </div>
       )}
 
       {onAddClick && (
-        <button
-          type="button"
+        <IconButton
+          icon={PlusIcon}
           onClick={onAddClick}
           disabled={disabled}
-          className="flex items-center justify-center p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors disabled:opacity-50"
-        >
-          <PlusIcon className="size-icon-xs" weight="bold" />
-        </button>
+          aria-label="Add"
+          title="Add"
+        />
       )}
     </div>
   );

@@ -10,6 +10,7 @@ import { UserProvider } from '@/contexts/remote/UserContext';
 import { SequenceTrackerProvider } from '@/keyboard/SequenceTracker';
 import { SequenceIndicator } from '@/keyboard/SequenceIndicator';
 import { useWorkspaceShortcuts } from '@/keyboard/useWorkspaceShortcuts';
+import { useIssueShortcuts } from '@/keyboard/useIssueShortcuts';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import NiceModal from '@ebay/nice-modal-react';
@@ -46,6 +47,7 @@ function KeyboardShortcutsHandler() {
     { scope: Scope.GLOBAL }
   );
   useWorkspaceShortcuts();
+  useIssueShortcuts();
   return null;
 }
 

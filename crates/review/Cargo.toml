@@ -1,6 +1,6 @@
 [package]
 name = "review"
-version = "0.1.6"
+version = "0.1.13"
 edition = "2024"
 publish = false
 
@@ -21,7 +21,6 @@ indicatif = "0.17"
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 uuid = { version = "1.0", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
 tempfile = "3.8"
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

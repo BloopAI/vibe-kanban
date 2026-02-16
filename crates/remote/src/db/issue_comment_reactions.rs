@@ -1,22 +1,11 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use thiserror::Error;
-use ts_rs::TS;
+use api_types::IssueCommentReaction;
 use uuid::Uuid;
 
 use super::get_txid;
-use crate::mutation_types::{DeleteResponse, MutationResponse};
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct IssueCommentReaction {
-    pub id: Uuid,
-    pub comment_id: Uuid,
-    pub user_id: Uuid,
-    pub emoji: String,
-    pub created_at: DateTime<Utc>,
-}
+use api_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum IssueCommentReactionError {

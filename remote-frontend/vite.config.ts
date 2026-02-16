@@ -21,10 +21,18 @@ export default defineConfig({
       },
     }),
   ],
+  resolve: {
+    alias: {
+      shared: path.resolve(__dirname, '../shared'),
+    },
+  },
   server: {
     port: 3002,
     allowedHosts: [
       ".trycloudflare.com", // allow all cloudflared tunnels
     ],
+    fs: {
+      allow: [path.resolve(__dirname, '.'), path.resolve(__dirname, '..')],
+    },
   }
 })

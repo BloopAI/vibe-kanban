@@ -66,7 +66,7 @@ export function ChatScriptEntry({
         }
       }}
     >
-      <span className="relative shrink-0 mt-0.5">
+      <span className="relative shrink-0 pt-0.5">
         <TerminalIcon className="size-icon-base text-low" />
         <ToolStatusDot
           status={status}

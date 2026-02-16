@@ -584,6 +584,14 @@ impl FileSearchCache {
         file_ranker: FileRanker,
     ) {
         while let Some(repo_path) = build_receiver.recv().await {
+            if !repo_path.exists() {
+                warn!(
+                    "Skipping cache build for non-existent repo path: {:?}",
+                    repo_path
+                );
+                continue;
+            }
+
             let cache_builder = FileSearchCache {
                 cache: cache.clone(),
                 git_service: git_service.clone(),

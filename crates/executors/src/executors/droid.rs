@@ -17,11 +17,8 @@ use crate::{
 };
 
 pub mod normalize_logs;
-pub mod session;
 
 use normalize_logs::normalize_logs;
-
-use self::session::fork_session;
 
 // Configuration types for Droid executor
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
@@ -160,14 +157,9 @@ impl StandardCodingAgentExecutor for Droid {
         _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let forked_session_id = fork_session(session_id).map_err(|e| {
-            ExecutorError::FollowUpNotSupported(format!(
-                "Failed to fork Droid session {session_id}: {e}"
-            ))
-        })?;
         let continue_cmd = self
             .build_command_builder()?
-            .build_follow_up(&["--session-id".to_string(), forked_session_id.clone()])?;
+            .build_follow_up(&["--session-id".to_string(), session_id.to_string()])?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
         spawn_droid(continue_cmd, &combined_prompt, current_dir, env, &self.cmd).await

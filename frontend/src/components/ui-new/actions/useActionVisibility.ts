@@ -10,9 +10,11 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useDevServer } from '@/hooks/useDevServer';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
+import { useShape } from '@/lib/electric/hooks';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { useAuth } from '@/hooks/auth/useAuth';
+import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
 import type { Workspace, Merge } from 'shared/types';
 import type {
   ActionVisibilityContext,
@@ -23,12 +25,19 @@ import type {
 import { resolveLabel } from './index';
 import type { CommandBarPage } from './pages';
 
+interface ActionVisibilityOptions {
+  projectId?: string;
+  issueIds?: string[];
+}
+
 /**
  * Hook that builds the visibility context from stores/context.
  * Used by both NavbarContainer and CommandBarDialog to evaluate
  * action visibility and state conditions.
  */
-export function useActionVisibilityContext(): ActionVisibilityContext {
+export function useActionVisibilityContext(
+  options?: ActionVisibilityOptions
+): ActionVisibilityContext {
   const { workspace, workspaceId, isCreateMode, repos } = useWorkspaceContext();
   // Use workspace-specific panel state (pass undefined when in create mode)
   const panelState = useWorkspacePanelState(
@@ -39,9 +48,40 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
   const expanded = useUiPreferencesStore((s) => s.expanded);
 
   // Derive kanban state from URL (URL is single source of truth)
-  const { issueId: selectedKanbanIssueId } = useParams<{ issueId?: string }>();
+  const { projectId: routeProjectId, issueId: routeIssueId } = useParams<{
+    projectId?: string;
+    issueId?: string;
+  }>();
   const [searchParams] = useSearchParams();
   const kanbanCreateMode = searchParams.get('mode') === 'create';
+  const effectiveProjectId = options?.projectId ?? routeProjectId;
+  const optionIssueIds = options?.issueIds;
+  const effectiveIssueIds = useMemo(
+    () => optionIssueIds ?? (routeIssueId ? [routeIssueId] : []),
+    [optionIssueIds, routeIssueId]
+  );
+  const hasSelectedKanbanIssue = effectiveIssueIds.length > 0;
+  const shouldResolveSelectedIssueParent =
+    !!effectiveProjectId && effectiveIssueIds.length === 1;
+
+  const projectIssuesParams = useMemo(
+    () => ({ project_id: effectiveProjectId ?? '' }),
+    [effectiveProjectId]
+  );
+  const { data: projectIssues } = useShape(
+    PROJECT_ISSUES_SHAPE,
+    projectIssuesParams,
+    {
+      enabled: shouldResolveSelectedIssueParent,
+    }
+  );
+  const hasSelectedKanbanIssueParent = useMemo(() => {
+    if (!shouldResolveSelectedIssueParent) return false;
+    const selectedIssue = projectIssues.find(
+      (issue) => issue.id === effectiveIssueIds[0]
+    );
+    return !!selectedIssue?.parent_issue_id;
+  }, [shouldResolveSelectedIssueParent, projectIssues, effectiveIssueIds]);
 
   // Derive layoutMode from current route instead of persisted state
   const location = useLocation();
@@ -106,7 +146,8 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       hasUnpushedCommits,
       isAttemptRunning: isAttemptRunningVisible,
       logsPanelContent,
-      hasSelectedKanbanIssue: !!selectedKanbanIssueId,
+      hasSelectedKanbanIssue,
+      hasSelectedKanbanIssueParent,
       isCreatingIssue: kanbanCreateMode,
       isSignedIn,
     };
@@ -129,7 +170,8 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     branchStatus,
     isAttemptRunningVisible,
     logsPanelContent,
-    selectedKanbanIssueId,
+    hasSelectedKanbanIssue,
+    hasSelectedKanbanIssueParent,
     kanbanCreateMode,
     isSignedIn,
   ]);

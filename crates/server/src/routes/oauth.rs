@@ -1,3 +1,4 @@
+use api_types::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse};
 use axum::{
     Router,
     extract::{Json, Query, State},
@@ -12,19 +13,13 @@ use serde::{Deserialize, Serialize};
 use services::services::{config::save_config_to_file, oauth_credentials::Credentials};
 use sha2::{Digest, Sha256};
 use ts_rs::TS;
-use utils::{
-    api::oauth::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse},
-    assets::config_path,
-    jwt::extract_expiration,
-    response::ApiResponse,
-};
+use utils::{assets::config_path, jwt::extract_expiration, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
 /// Response from GET /api/auth/token - returns the current access token
 #[derive(Debug, Serialize, TS)]
-#[ts(export)]
 pub struct TokenResponse {
     pub access_token: String,
     pub expires_at: Option<DateTime<Utc>>,
@@ -32,7 +27,6 @@ pub struct TokenResponse {
 
 /// Response from GET /api/auth/user - returns the current user ID
 #[derive(Debug, Serialize, TS)]
-#[ts(export)]
 pub struct CurrentUserResponse {
     pub user_id: String,
 }
@@ -205,6 +199,19 @@ async fn handoff_complete(
                 "email": profile.email,
             })),
         );
+
+        // Merge the local machine-based ID with the remote user UUID so all
+        // events (local frontend, local backend, remote backend) resolve to
+        // the same PostHog person. Uses $merge_dangerously because
+        // $create_alias is blocked by PostHog's safeguard when the machine
+        // ID was already used as a distinct_id in a prior identify call.
+        analytics.track_event(
+            &profile.user_id.to_string(),
+            "$merge_dangerously",
+            Some(serde_json::json!({
+                "alias": deployment.user_id(),
+            })),
+        );
     }
 
     Ok(close_window_response(format!(
@@ -232,7 +239,7 @@ async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, 
 async fn status(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<StatusResponse>>, ApiError> {
-    use utils::api::oauth::LoginStatus;
+    use api_types::LoginStatus;
 
     match deployment.get_login_status().await {
         LoginStatus::LoggedOut => Ok(ResponseJson(ApiResponse::success(StatusResponse {

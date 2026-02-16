@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { OrgProvider, useOrgContext } from '@/contexts/remote/OrgContext';
@@ -9,7 +9,7 @@ import {
 } from '@/contexts/remote/ProjectContext';
 import { useActions } from '@/contexts/ActionsContext';
 import { KanbanContainer } from '@/components/ui-new/containers/KanbanContainer';
-import { KanbanIssuePanelContainer } from '@/components/ui-new/containers/KanbanIssuePanelContainer';
+import { ProjectRightSidebarContainer } from '@/components/ui-new/containers/ProjectRightSidebarContainer';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 import { PERSIST_KEYS, usePaneSize } from '@/stores/useUiPreferencesStore';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
@@ -17,6 +17,10 @@ import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
 import { useAuth } from '@/hooks/auth/useAuth';
+import {
+  buildIssueCreatePath,
+  buildProjectRootPath,
+} from '@/lib/routes/projectSidebarRoutes';
 
 /**
  * Component that registers project mutations with ActionsContext.
@@ -76,20 +80,14 @@ function ProjectMutationsRegistration({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-/**
- * Inner component that renders the Kanban board once we have the org context
- */
-function ProjectKanbanInner({ projectId }: { projectId: string }) {
-  const { t } = useTranslation('common');
-  const { projects, isLoading } = useOrgContext();
-
-  // Panel visibility derived from URL
+function ProjectKanbanLayout() {
   const { isPanelOpen } = useKanbanNavigation();
-
   const [kanbanLeftPanelSize, setKanbanLeftPanelSize] = usePaneSize(
     PERSIST_KEYS.kanbanLeftPanel,
     75
   );
+
+  const isRightPanelOpen = isPanelOpen;
 
   const kanbanDefaultLayout: Layout =
     typeof kanbanLeftPanelSize === 'number'
@@ -100,10 +98,53 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
       : { 'kanban-left': 75, 'kanban-right': 25 };
 
   const onKanbanLayoutChange = (layout: Layout) => {
-    if (isPanelOpen) {
+    if (isRightPanelOpen) {
       setKanbanLeftPanelSize(layout['kanban-left']);
     }
   };
+
+  return (
+    <Group
+      orientation="horizontal"
+      className="flex-1 min-w-0 h-full"
+      defaultLayout={kanbanDefaultLayout}
+      onLayoutChange={onKanbanLayoutChange}
+    >
+      <Panel
+        id="kanban-left"
+        minSize="20%"
+        className="min-w-0 h-full overflow-hidden bg-primary"
+      >
+        <KanbanContainer />
+      </Panel>
+
+      {isRightPanelOpen && (
+        <Separator
+          id="kanban-separator"
+          className="w-1 bg-panel outline-none hover:bg-brand/50 transition-colors cursor-col-resize"
+        />
+      )}
+
+      {isRightPanelOpen && (
+        <Panel
+          id="kanban-right"
+          minSize="400px"
+          maxSize="800px"
+          className="min-w-0 h-full overflow-hidden bg-secondary"
+        >
+          <ProjectRightSidebarContainer />
+        </Panel>
+      )}
+    </Group>
+  );
+}
+
+/**
+ * Inner component that renders the Kanban board once we have the org context
+ */
+function ProjectKanbanInner({ projectId }: { projectId: string }) {
+  const { t } = useTranslation('common');
+  const { projects, isLoading } = useOrgContext();
 
   const project = projects.find((p) => p.id === projectId);
 
@@ -126,38 +167,7 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
   return (
     <ProjectProvider projectId={projectId}>
       <ProjectMutationsRegistration>
-        <Group
-          orientation="horizontal"
-          className="flex-1 min-w-0 h-full"
-          defaultLayout={kanbanDefaultLayout}
-          onLayoutChange={onKanbanLayoutChange}
-        >
-          <Panel
-            id="kanban-left"
-            minSize="20%"
-            className="min-w-0 h-full overflow-hidden bg-primary"
-          >
-            <KanbanContainer />
-          </Panel>
-
-          {isPanelOpen && (
-            <Separator
-              id="kanban-separator"
-              className="w-1 bg-panel outline-none hover:bg-brand/50 transition-colors cursor-col-resize"
-            />
-          )}
-
-          {isPanelOpen && (
-            <Panel
-              id="kanban-right"
-              minSize="400px"
-              maxSize="800px"
-              className="min-w-0 h-full overflow-hidden bg-secondary"
-            >
-              <KanbanIssuePanelContainer />
-            </Panel>
-          )}
-        </Group>
+        <ProjectKanbanLayout />
       </ProjectMutationsRegistration>
     </ProjectProvider>
   );
@@ -197,31 +207,68 @@ function useFindProjectById(projectId: string | undefined) {
  * URL patterns:
  * - /projects/:projectId - Kanban board with no issue selected
  * - /projects/:projectId/issues/:issueId - Kanban with issue panel open
- * - /projects/:projectId?mode=create - Kanban with create issue panel
+ * - /projects/:projectId/issues/:issueId/workspaces/:workspaceId - Kanban with workspace session panel open
+ * - /projects/:projectId/issues/new - Kanban with create issue panel
+ * - /projects/:projectId/issues/:issueId/workspaces/create/:draftId - Kanban with workspace create panel
  *
  * Note: This component is rendered inside SharedAppLayout which provides
  * NavbarContainer, AppBar, and SyncErrorProvider.
  */
 export function ProjectKanban() {
-  const { projectId, issueId } = useKanbanNavigation();
+  const { projectId, hasInvalidWorkspaceCreateDraftId } = useKanbanNavigation();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation('common');
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
 
-  // One-time migration: if orgId is in URL, save to store and clean URL
+  // One-time URL migrations:
+  // - /projects/:projectId?mode=create -> /projects/:projectId/issues/new
+  // - strip orgId after storing it
   useEffect(() => {
-    const orgIdFromUrl = searchParams.get('orgId');
-    if (orgIdFromUrl && projectId) {
-      setSelectedOrgId(orgIdFromUrl);
-      // Preserve issueId if present
-      const targetUrl = issueId
-        ? `/projects/${projectId}/issues/${issueId}`
-        : `/projects/${projectId}`;
-      navigate(targetUrl, { replace: true });
+    if (!projectId) return;
+
+    if (hasInvalidWorkspaceCreateDraftId) {
+      navigate(buildProjectRootPath(projectId), { replace: true });
+      return;
     }
-  }, [searchParams, projectId, issueId, setSelectedOrgId, navigate]);
+
+    const orgIdFromUrl = searchParams.get('orgId');
+    if (orgIdFromUrl) {
+      setSelectedOrgId(orgIdFromUrl);
+    }
+
+    const isLegacyCreateMode = searchParams.get('mode') === 'create';
+    if (isLegacyCreateMode) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('mode');
+      nextParams.delete('orgId');
+      const nextQuery = nextParams.toString();
+      const createPath = buildIssueCreatePath(projectId);
+      navigate(nextQuery ? `${createPath}?${nextQuery}` : createPath, {
+        replace: true,
+      });
+      return;
+    }
+
+    if (orgIdFromUrl) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('orgId');
+      const nextQuery = nextParams.toString();
+      navigate(
+        nextQuery ? `${location.pathname}?${nextQuery}` : location.pathname,
+        { replace: true }
+      );
+    }
+  }, [
+    searchParams,
+    projectId,
+    hasInvalidWorkspaceCreateDraftId,
+    setSelectedOrgId,
+    navigate,
+    location.pathname,
+  ]);
 
   // Find the project and get its organization
   const { organizationId, isLoading } = useFindProjectById(

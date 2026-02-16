@@ -1,6 +1,14 @@
-import type { RefCallback } from 'react';
+import type { RefObject } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import { XIcon, LinkIcon, DotsThreeIcon } from '@phosphor-icons/react';
+import {
+  XIcon,
+  LinkIcon,
+  DotsThreeIcon,
+  TrashIcon,
+  PaperclipIcon,
+  ImageIcon,
+} from '@phosphor-icons/react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type {
   IssuePriority,
@@ -14,10 +22,19 @@ import { IssueTagsRow } from '@/components/ui-new/views/IssueTagsRow';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { Toggle } from '@/components/ui-new/primitives/Toggle';
 import { CopyButton } from '@/components/ui-new/containers/CopyButton';
+import { IconButton } from '@/components/ui-new/primitives/IconButton';
+import { AutoResizeTextarea } from '@/components/ui-new/primitives/AutoResizeTextarea';
 import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/IssueCommentsSectionContainer';
 import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/IssueSubIssuesSectionContainer';
 import { IssueRelationshipsSectionContainer } from '@/components/ui-new/containers/IssueRelationshipsSectionContainer';
 import { IssueWorkspacesSectionContainer } from '@/components/ui-new/containers/IssueWorkspacesSectionContainer';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { ErrorAlert } from '@/components/ui-new/primitives/ErrorAlert';
 
 export type IssuePanelMode = 'create' | 'edit';
 
@@ -61,12 +78,14 @@ export interface KanbanIssuePanelProps {
   creatorUser?: OrganizationMemberWithProfile | null;
   parentIssue?: { id: string; simpleId: string } | null;
   onParentIssueClick?: () => void;
+  onRemoveParentIssue?: () => void;
   linkedPrs?: LinkedPullRequest[];
 
   // Actions
   onClose: () => void;
   onSubmit: () => void;
   onCmdEnterSubmit?: () => void;
+  onDeleteDraft?: () => void;
 
   // Tag create callback - returns the new tag ID
   onCreateTag?: (data: { name: string; color: string }) => string;
@@ -78,14 +97,26 @@ export interface KanbanIssuePanelProps {
   // Save status for description field
   descriptionSaveStatus?: 'idle' | 'saved';
 
-  // Callback ref for title input (created in container)
-  titleRef: RefCallback<HTMLDivElement>;
+  // Ref for title input (created in container)
+  titleInputRef: RefObject<HTMLTextAreaElement>;
 
   // Copy link callback (edit mode only)
   onCopyLink?: () => void;
 
   // More actions callback (edit mode only) - opens command bar with issue actions
   onMoreActions?: () => void;
+
+  // Image attachment upload
+  onPasteFiles?: (files: File[]) => void;
+  dropzoneProps?: {
+    getRootProps: () => Record<string, unknown>;
+    getInputProps: () => Record<string, unknown>;
+    isDragActive: boolean;
+  };
+  onBrowseAttachment?: () => void;
+  isUploading?: boolean;
+  attachmentError?: string | null;
+  onDismissAttachmentError?: () => void;
 }
 
 export function KanbanIssuePanel({
@@ -100,29 +131,51 @@ export function KanbanIssuePanel({
   creatorUser,
   parentIssue,
   onParentIssueClick,
+  onRemoveParentIssue,
   linkedPrs = [],
   onClose,
   onSubmit,
   onCmdEnterSubmit,
+  onDeleteDraft,
   onCreateTag,
   isSubmitting,
   descriptionSaveStatus,
-  titleRef,
+  titleInputRef,
   onCopyLink,
   onMoreActions,
+  onPasteFiles,
+  dropzoneProps,
+  onBrowseAttachment,
+  isUploading,
+  attachmentError,
+  onDismissAttachmentError,
 }: KanbanIssuePanelProps) {
+  const { t } = useTranslation('common');
   const isCreateMode = mode === 'create';
+  const breadcrumbTextClass =
+    'min-w-0 text-sm text-normal truncate rounded-sm px-1 py-0.5 hover:bg-panel hover:text-high transition-colors';
   const creatorName =
     creatorUser?.first_name?.trim() || creatorUser?.username?.trim() || null;
   const showCreator = !isCreateMode && Boolean(creatorName);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
-      onClose();
+      const target = e.target as HTMLElement;
+      const isEditable =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable;
+      if (isEditable) {
+        target.blur();
+        (e.currentTarget as HTMLElement).focus();
+        e.stopPropagation();
+      } else {
+        onClose();
+      }
     }
   };
 
-  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
       onCmdEnterSubmit?.();
@@ -131,15 +184,14 @@ export function KanbanIssuePanel({
 
   return (
     <div
-      className="flex flex-col h-full overflow-hidden"
+      className="flex flex-col h-full overflow-hidden outline-none"
       onKeyDown={handleKeyDown}
+      tabIndex={-1}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-base py-half border-b shrink-0">
-        <div className="flex items-center gap-half">
-          <span className="font-ibm-plex-mono text-base text-normal">
-            {displayId}
-          </span>
+        <div className="flex items-center gap-half min-w-0 font-ibm-plex-mono">
+          <span className={`${breadcrumbTextClass} shrink-0`}>{displayId}</span>
           {!isCreateMode && onCopyLink && (
             <CopyButton
               iconSize="size-icon-sm"
@@ -155,7 +207,7 @@ export function KanbanIssuePanel({
               type="button"
               onClick={onMoreActions}
               className="p-half rounded-sm text-low hover:text-normal hover:bg-panel transition-colors"
-              aria-label="More actions"
+              aria-label={t('kanban.moreActions')}
             >
               <DotsThreeIcon className="size-icon-sm" weight="bold" />
             </button>
@@ -164,7 +216,7 @@ export function KanbanIssuePanel({
             type="button"
             onClick={onClose}
             className="p-half rounded-sm text-low hover:text-normal hover:bg-panel transition-colors"
-            aria-label="Close panel"
+            aria-label={t('kanban.closePanel')}
           >
             <XIcon className="size-icon-sm" weight="bold" />
           </button>
@@ -184,6 +236,7 @@ export function KanbanIssuePanel({
             creatorUser={showCreator ? creatorUser : undefined}
             parentIssue={parentIssue}
             onParentIssueClick={onParentIssueClick}
+            onRemoveParentIssue={onRemoveParentIssue}
             onStatusClick={() => onFormChange('statusId', formData.statusId)}
             onPriorityClick={() => onFormChange('priority', formData.priority)}
             onAssigneeClick={() =>
@@ -208,21 +261,19 @@ export function KanbanIssuePanel({
         {/* Title and Description */}
         <div className="rounded-sm">
           {/* Title Input */}
-          <div className="relative w-full mt-base">
-            <div
-              ref={titleRef}
-              role="textbox"
-              contentEditable={!isSubmitting}
-              suppressContentEditableWarning
-              data-empty={!formData.title ? 'true' : 'false'}
-              onInput={(e) => {
-                const v = e.currentTarget.textContent ?? '';
-                onFormChange('title', v);
-              }}
+          <div className="w-full mt-base">
+            <AutoResizeTextarea
+              ref={titleInputRef}
+              value={formData.title}
+              onChange={(value) => onFormChange('title', value)}
               onKeyDown={handleTitleKeyDown}
+              placeholder="Issue Title..."
+              autoFocus={isCreateMode}
+              aria-label="Issue title"
+              disabled={isSubmitting}
               className={cn(
-                'w-full bg-transparent text-high font-medium text-lg px-base',
-                'focus:outline-none',
+                'px-base text-lg font-medium text-high',
+                'placeholder:text-high/50',
                 isSubmitting && 'opacity-50 pointer-events-none'
               )}
             />
@@ -235,23 +286,85 @@ export function KanbanIssuePanel({
                 "[[data-empty='true']_+_&]:block" // show placeholder when previous sibling data-empty=true
               )}
             >
-              Issue Title...
+              {t('kanban.issueTitlePlaceholder')}
             </div>
           </div>
 
-          {/* Description WYSIWYG Editor */}
-          <div className="mt-base">
+          {/* Description WYSIWYG Editor with image dropzone */}
+          <div {...dropzoneProps?.getRootProps()} className="relative mt-base">
+            <input
+              {...(dropzoneProps?.getInputProps() as React.InputHTMLAttributes<HTMLInputElement>)}
+              data-dropzone-input
+            />
             <WYSIWYGEditor
-              placeholder="Enter task description here..."
+              placeholder={t('kanban.issueDescriptionPlaceholder')}
               value={formData.description ?? ''}
               onChange={(value) => onFormChange('description', value || null)}
               onCmdEnter={onCmdEnterSubmit}
+              onPasteFiles={onPasteFiles}
               disabled={isSubmitting}
               autoFocus={false}
               className="min-h-[100px] px-base"
               showStaticToolbar
               saveStatus={descriptionSaveStatus}
+              staticToolbarActions={
+                onBrowseAttachment ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            if (!isSubmitting && !isUploading) {
+                              onBrowseAttachment();
+                            }
+                          }}
+                          disabled={isSubmitting || isUploading}
+                          className={cn(
+                            'p-half rounded-sm transition-colors',
+                            'text-low hover:text-normal hover:bg-panel/50',
+                            'disabled:opacity-50 disabled:cursor-not-allowed'
+                          )}
+                          title={t('kanban.attachFile')}
+                          aria-label={t('kanban.attachFile')}
+                        >
+                          <PaperclipIcon className="size-icon-sm" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {t('kanban.attachFileHint')}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : null
+              }
             />
+            {attachmentError && (
+              <div className="px-base">
+                <ErrorAlert
+                  message={attachmentError}
+                  className="mt-half mb-half"
+                  onDismiss={onDismissAttachmentError}
+                  dismissLabel={t('buttons.close')}
+                />
+              </div>
+            )}
+            {dropzoneProps?.isDragActive && (
+              <div className="absolute inset-0 z-50 bg-primary/80 backdrop-blur-sm border-2 border-dashed border-brand rounded flex items-center justify-center pointer-events-none animate-in fade-in-0 duration-150">
+                <div className="text-center">
+                  <div className="mx-auto mb-2 w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center">
+                    <ImageIcon className="h-5 w-5 text-brand" />
+                  </div>
+                  <p className="text-sm font-medium text-high">
+                    {t('kanban.dropFilesHere')}
+                  </p>
+                  <p className="text-xs text-low mt-0.5">
+                    {t('kanban.fileDropHint')}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -263,8 +376,8 @@ export function KanbanIssuePanel({
               onCheckedChange={(checked) =>
                 onFormChange('createDraftWorkspace', checked)
               }
-              label="Create draft workspace immediately"
-              description="Tick to automatically create a workspace"
+              label={t('kanban.createDraftWorkspaceImmediately')}
+              description={t('kanban.createDraftWorkspaceDescription')}
               disabled={isSubmitting}
             />
           </div>
@@ -272,14 +385,24 @@ export function KanbanIssuePanel({
 
         {/* Create Task Button (Create mode only) */}
         {isCreateMode && (
-          <div className="px-base pb-base">
+          <div className="px-base pb-base flex items-center gap-half">
             <PrimaryButton
-              value="Create Task"
+              value={t('kanban.createTask')}
               onClick={onSubmit}
               disabled={isSubmitting || !formData.title.trim()}
               actionIcon={isSubmitting ? 'spinner' : undefined}
               variant="default"
             />
+            {onDeleteDraft && (
+              <IconButton
+                icon={TrashIcon}
+                onClick={onDeleteDraft}
+                disabled={isSubmitting}
+                aria-label="Delete draft"
+                title="Delete draft"
+                className="hover:text-error hover:bg-error/10"
+              />
+            )}
           </div>
         )}
 

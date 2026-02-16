@@ -58,6 +58,8 @@ pub struct ReviewMetadataResponse {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ReviewError {
+    #[error("Review feature is disabled")]
+    Disabled,
     #[error("R2 storage not configured")]
     NotConfigured,
     #[error("failed to generate upload URL: {0}")]
@@ -79,6 +81,9 @@ pub enum ReviewError {
 impl IntoResponse for ReviewError {
     fn into_response(self) -> Response {
         let (status, message) = match &self {
+            ReviewError::Disabled => {
+                (StatusCode::SERVICE_UNAVAILABLE, "Review feature is disabled")
+            }
             ReviewError::NotConfigured => (
                 StatusCode::SERVICE_UNAVAILABLE,
                 "Review upload service not available",
@@ -197,6 +202,10 @@ pub async fn init_review_upload(
     headers: HeaderMap,
     Json(payload): Json<InitReviewRequest>,
 ) -> Result<Json<InitReviewResponse>, ReviewError> {
+    if state.config.review_disabled {
+        return Err(ReviewError::Disabled);
+    }
+
     // 1. Generate the review ID upfront (used in both R2 path and DB record)
     let review_id = Uuid::new_v4();
 
@@ -299,6 +308,10 @@ pub async fn start_review(
     State(state): State<AppState>,
     Json(body): Json<serde_json::Value>,
 ) -> Result<Response, ReviewError> {
+    if state.config.review_disabled {
+        return Err(ReviewError::Disabled);
+    }
+
     proxy_post_to_worker(&state, "/review/start", body).await
 }
 

@@ -77,7 +77,7 @@ export const ChatToolSummary = forwardRef<
       onClick={isClickable ? handleClick : undefined}
       role={isClickable ? 'button' : undefined}
     >
-      <span className="relative shrink-0 mt-0.5">
+      <span className="relative shrink-0 pt-0.5">
         <Icon className="size-icon-base" />
         {status && (
           <ToolStatusDot

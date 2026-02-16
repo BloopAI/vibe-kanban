@@ -1,38 +1,26 @@
 use std::{env, fs, path::Path};
 
 use remote::{
-    db::{
-        issue_assignees::IssueAssignee,
-        issue_comment_reactions::IssueCommentReaction,
-        issue_comments::IssueComment,
-        issue_followers::IssueFollower,
-        issue_relationships::IssueRelationship,
-        issue_tags::IssueTag,
-        issues::Issue,
-        notifications::{Notification, NotificationType},
-        organization_members::{MemberRole, OrganizationMember},
-        project_statuses::ProjectStatus,
-        projects::Project,
-        pull_requests::PullRequest,
-        tags::Tag,
-        types::{IssuePriority, IssueRelationshipType, PullRequestStatus},
-        users::User,
-        users::UserData,
-        workspaces::Workspace,
+    routes::all_mutation_definitions,
+    routes::attachments::{
+        CommitAttachmentsRequest, CommitAttachmentsResponse, ConfirmUploadRequest,
+        InitUploadRequest, InitUploadResponse,
     },
-    // Import from new unified entities module
-    entities::{
-        CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
-        CreateIssueFollowerRequest, CreateIssueRelationshipRequest, CreateIssueRequest,
-        CreateIssueTagRequest, CreateNotificationRequest, CreateProjectRequest,
-        CreateProjectStatusRequest, CreateTagRequest, UpdateIssueAssigneeRequest,
-        UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueFollowerRequest,
-        UpdateIssueRelationshipRequest, UpdateIssueRequest, UpdateIssueTagRequest,
-        UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest,
-        UpdateTagRequest, all_entities, all_shapes,
-    },
+    shapes::all_shapes,
 };
 use ts_rs::TS;
+use api_types::{
+    Attachment, AttachmentUrlResponse, AttachmentWithBlob, Blob,
+    CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
+    CreateIssueFollowerRequest, CreateIssueRelationshipRequest, CreateIssueRequest,
+    CreateIssueTagRequest, CreateNotificationRequest, CreateProjectRequest,
+    CreateProjectStatusRequest, CreateTagRequest, Issue, IssueAssignee, IssueComment,
+    IssueCommentReaction, IssueFollower, IssueRelationship, IssueRelationshipType, IssueTag,
+    IssuePriority, MemberRole, Notification, NotificationType, OrganizationMember, Project,
+    ProjectStatus, PullRequest, PullRequestStatus, Tag, UpdateIssueCommentReactionRequest,
+    UpdateIssueCommentRequest, UpdateIssueRequest, UpdateNotificationRequest, UpdateProjectRequest,
+    UpdateProjectStatusRequest, UpdateTagRequest, User, UserData, Workspace,
+};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -89,6 +77,9 @@ fn export_shapes() -> String {
         Tag::decl(),
         Issue::decl(),
         IssueAssignee::decl(),
+        Blob::decl(),
+        Attachment::decl(),
+        AttachmentWithBlob::decl(),
         IssueFollower::decl(),
         IssueTag::decl(),
         IssueRelationship::decl(),
@@ -114,17 +105,20 @@ fn export_shapes() -> String {
         CreateIssueRequest::decl(),
         UpdateIssueRequest::decl(),
         CreateIssueAssigneeRequest::decl(),
-        UpdateIssueAssigneeRequest::decl(),
         CreateIssueFollowerRequest::decl(),
-        UpdateIssueFollowerRequest::decl(),
         CreateIssueTagRequest::decl(),
-        UpdateIssueTagRequest::decl(),
         CreateIssueRelationshipRequest::decl(),
-        UpdateIssueRelationshipRequest::decl(),
         CreateIssueCommentRequest::decl(),
         UpdateIssueCommentRequest::decl(),
         CreateIssueCommentReactionRequest::decl(),
         UpdateIssueCommentReactionRequest::decl(),
+        // Attachment API request/response types
+        InitUploadRequest::decl(),
+        InitUploadResponse::decl(),
+        ConfirmUploadRequest::decl(),
+        CommitAttachmentsRequest::decl(),
+        CommitAttachmentsResponse::decl(),
+        AttachmentUrlResponse::decl(),
     ];
 
     for decl in type_decls {
@@ -161,8 +155,7 @@ fn export_shapes() -> String {
 
     // Generate individual shape definitions
     output.push_str("// Individual shape definitions with embedded types\n");
-    for shape in &shapes {
-        let const_name = url_to_const_name(shape.url());
+    for (name, shape) in &shapes {
         let params_str = shape
             .params()
             .iter()
@@ -171,20 +164,14 @@ fn export_shapes() -> String {
             .join(", ");
 
         output.push_str(&format!(
-            "export const {}_SHAPE = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '/v1{}'\n);\n\n",
-            const_name,
+            "export const {} = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '/v1{}'\n);\n\n",
+            name,
             shape.ts_type_name(),
             shape.table(),
             params_str,
             shape.url()
         ));
     }
-
-    // Generate MutationDefinition interface
-    let entities = all_entities();
-
-    output.push_str("// Scope enum matching Rust\n");
-    output.push_str("export type Scope = 'Organization' | 'Project' | 'Issue' | 'Comment';\n\n");
 
     output.push_str(
         "// =============================================================================\n",
@@ -194,63 +181,51 @@ fn export_shapes() -> String {
         "// =============================================================================\n\n",
     );
 
+    // MutationDefinition interface
     output.push_str("// Mutation definition interface\n");
     output.push_str(
         "export interface MutationDefinition<TRow, TCreate = unknown, TUpdate = unknown> {\n",
     );
     output.push_str("  readonly name: string;\n");
-    output.push_str("  readonly table: string;\n");
-    output.push_str("  readonly mutationScope: Scope;\n");
     output.push_str("  readonly url: string;\n");
     output.push_str(
         "  readonly _rowType: TRow;  // Phantom field for type inference (not present at runtime)\n",
     );
-    output.push_str(
-        "  readonly _createType: TCreate;  // Phantom field for type inference (not present at runtime)\n",
-    );
-    output.push_str(
-        "  readonly _updateType: TUpdate;  // Phantom field for type inference (not present at runtime)\n",
-    );
+    output.push_str("  readonly _createType: TCreate;  // Phantom field for type inference (not present at runtime)\n");
+    output.push_str("  readonly _updateType: TUpdate;  // Phantom field for type inference (not present at runtime)\n");
     output.push_str("}\n\n");
 
-    // Helper function for mutation definitions
+    // Helper function
     output.push_str("// Helper to create type-safe mutation definitions\n");
     output.push_str("function defineMutation<TRow, TCreate, TUpdate>(\n");
     output.push_str("  name: string,\n");
-    output.push_str("  table: string,\n");
-    output.push_str("  mutationScope: Scope,\n");
     output.push_str("  url: string\n");
     output.push_str("): MutationDefinition<TRow, TCreate, TUpdate> {\n");
     output.push_str(
-        "  return { name, table, mutationScope, url } as MutationDefinition<TRow, TCreate, TUpdate>;\n",
+        "  return { name, url } as MutationDefinition<TRow, TCreate, TUpdate>;\n",
     );
     output.push_str("}\n\n");
 
     // Generate individual mutation definitions
     output.push_str("// Individual mutation definitions\n");
-    for entity in &entities {
-        let has_mutations = entity.mutation_scope().is_some() && !entity.fields().is_empty();
-        if !has_mutations {
-            continue;
-        }
-
-        let const_name = to_screaming_snake_case(entity.name());
-        let mutation_scope = entity
-            .mutation_scope()
-            .map(|s| format!("'{:?}'", s))
-            .unwrap();
+    for mutation in all_mutation_definitions() {
+        let ts_type = &mutation.row_type;
+        let const_name = to_screaming_snake_case(ts_type);
+        let create_type = mutation.create_type.as_deref().unwrap_or("unknown");
+        let update_type = mutation.update_type.as_deref().unwrap_or("unknown");
 
         output.push_str(&format!(
-            "export const {const_name}_MUTATION = defineMutation<{ts_type}, Create{name}Request, Update{name}Request>(\n  '{name}',\n  '{table}',\n  {scope},\n  '/v1/{table}'\n);\n\n",
-            const_name = const_name,
-            ts_type = entity.ts_type_name(),
-            name = entity.name(),
-            table = entity.table(),
-            scope = mutation_scope,
+            "export const {}_MUTATION = defineMutation<{}, {}, {}>(\n  '{}',\n  '/v1/{}'\n);\n\n",
+            const_name,
+            ts_type,
+            create_type,
+            update_type,
+            ts_type,
+            mutation.table,
         ));
     }
 
-    // Type helpers for mutations
+    // Type helpers
     output.push_str("// Type helpers to extract types from a mutation definition\n");
     output.push_str("export type MutationRowType<M extends MutationDefinition<unknown>> = M extends MutationDefinition<infer R> ? R : never;\n");
     output.push_str("export type MutationCreateType<M extends MutationDefinition<unknown, unknown>> = M extends MutationDefinition<unknown, infer C> ? C : never;\n");
@@ -269,16 +244,4 @@ fn to_screaming_snake_case(s: &str) -> String {
         result.push(c.to_ascii_uppercase());
     }
     result
-}
-
-/// Convert URL path to const name
-/// "/shape/user/workspaces" -> "USER_WORKSPACES"
-/// "/shape/project/{project_id}/workspaces" -> "PROJECT_WORKSPACES"
-fn url_to_const_name(url: &str) -> String {
-    url.trim_start_matches("/shape/")
-        .split('/')
-        .filter(|s| !s.starts_with('{'))
-        .collect::<Vec<_>>()
-        .join("_")
-        .to_uppercase()
 }

@@ -1,13 +1,15 @@
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NodeKey, SerializedLexicalNode, Spread, $getNodeByKey } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { HelpCircle, Loader2, X } from 'lucide-react';
+import { Download, File, HelpCircle, Loader2, X } from 'lucide-react';
 import {
   useTaskAttemptId,
   useTaskId,
   useLocalImages,
 } from '../context/task-attempt-context';
 import { useImageMetadata } from '@/hooks/useImageMetadata';
+import { useAttachmentUrl } from '@/hooks/useAttachmentUrl';
 import { ImagePreviewDialog } from '@/components/dialogs/wysiwyg/ImagePreviewDialog';
 import { formatFileSize } from '@/lib/utils';
 import {
@@ -44,6 +46,7 @@ function ImageComponent({
   nodeKey: NodeKey;
   onDoubleClickEdit: (event: React.MouseEvent) => void;
 }): JSX.Element {
+  const { t } = useTranslation('common');
   const { src, altText } = data;
   const taskAttemptId = useTaskAttemptId();
   const taskId = useTaskId();
@@ -51,6 +54,15 @@ function ImageComponent({
   const [editor] = useLexicalComposerContext();
 
   const isVibeImage = src.startsWith('.vibe-images/');
+  const isAttachment = src.startsWith('attachment://');
+  const attachmentId = isAttachment ? src.replace('attachment://', '') : null;
+
+  // Resolve attachment blob URLs (hooks called unconditionally; null attachmentId = no-op)
+  const { url: thumbnailUrl, loading: attachmentLoading } = useAttachmentUrl(
+    attachmentId,
+    'thumbnail'
+  );
+  const { url: fullSizeUrl } = useAttachmentUrl(attachmentId, 'file');
 
   // Use TanStack Query for caching metadata across component recreations
   // Pass both taskAttemptId and taskId - the hook prefers taskAttemptId when available
@@ -67,8 +79,17 @@ function ImageComponent({
       event.preventDefault();
       event.stopPropagation();
 
-      // Open preview dialog if we have a valid image URL
-      if (metadata?.exists && metadata.proxy_url) {
+      if (isAttachment && fullSizeUrl) {
+        if (thumbnailUrl) {
+          ImagePreviewDialog.show({
+            imageUrl: fullSizeUrl,
+            altText,
+            fileName: altText || undefined,
+          });
+        } else {
+          window.open(fullSizeUrl, '_blank', 'noopener,noreferrer');
+        }
+      } else if (metadata?.exists && metadata.proxy_url) {
         ImagePreviewDialog.show({
           imageUrl: metadata.proxy_url,
           altText,
@@ -78,7 +99,40 @@ function ImageComponent({
         });
       }
     },
-    [metadata, altText]
+    [isAttachment, fullSizeUrl, thumbnailUrl, metadata, altText]
+  );
+
+  const handleDownload = useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (!fullSizeUrl) return;
+
+      fetch(fullSizeUrl, { method: 'GET', mode: 'cors', credentials: 'omit' })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error('Failed to download attachment file');
+          }
+
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          try {
+            const anchor = document.createElement('a');
+            anchor.href = objectUrl;
+            anchor.download = altText || 'attachment';
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+          } finally {
+            URL.revokeObjectURL(objectUrl);
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to download attachment:', error);
+        });
+    },
+    [fullSizeUrl, altText]
   );
 
   const handleDelete = useCallback(
@@ -108,7 +162,33 @@ function ImageComponent({
   // Check if image exists in local images (for create mode where no task context exists yet)
   const hasLocalImage = localImages.some((img) => img.path === src);
 
-  if (isVibeImage && (hasLocalImage || hasContext)) {
+  if (isAttachment) {
+    if (attachmentLoading) {
+      thumbnailContent = (
+        <div className="w-10 h-10 flex items-center justify-center bg-muted rounded flex-shrink-0">
+          <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+        </div>
+      );
+    } else if (thumbnailUrl) {
+      thumbnailContent = (
+        <img
+          src={thumbnailUrl}
+          alt={altText}
+          className="w-10 h-10 object-cover rounded flex-shrink-0"
+          draggable={false}
+        />
+      );
+    } else {
+      thumbnailContent = (
+        <div className="w-10 h-10 flex items-center justify-center bg-muted rounded flex-shrink-0">
+          <File className="w-5 h-5 text-muted-foreground" />
+        </div>
+      );
+    }
+    displayName = truncatePath(
+      altText || t('kanban.imageAttachmentNameFallback')
+    );
+  } else if (isVibeImage && (hasLocalImage || hasContext)) {
     if (loading) {
       thumbnailContent = (
         <div className="w-10 h-10 flex items-center justify-center bg-muted rounded flex-shrink-0">
@@ -188,10 +268,24 @@ function ImageComponent({
         <button
           onClick={handleDelete}
           className="absolute top-1 right-1 w-4 h-4 rounded-full bg-foreground/70 hover:bg-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          aria-label="Remove image"
+          aria-label={t('kanban.removeImage')}
           type="button"
         >
           <X className="w-2.5 h-2.5 text-background" />
+        </button>
+      )}
+      {isAttachment && fullSizeUrl && (
+        <button
+          onClick={handleDownload}
+          className={
+            editor.isEditable()
+              ? 'absolute top-1 right-6 w-4 h-4 rounded-full bg-foreground/70 hover:bg-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'
+              : 'absolute top-1 right-1 w-4 h-4 rounded-full bg-foreground/70 hover:bg-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'
+          }
+          aria-label={t('kanban.downloadAttachment')}
+          type="button"
+        >
+          <Download className="w-2.5 h-2.5 text-background" />
         </button>
       )}
     </span>

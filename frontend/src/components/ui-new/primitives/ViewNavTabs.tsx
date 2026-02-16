@@ -1,9 +1,9 @@
 'use client';
 
 import { useTranslation } from 'react-i18next';
-import { PlusIcon } from '@phosphor-icons/react';
 import type { ProjectStatus } from 'shared/remote-types';
 import type { KanbanViewMode } from '@/stores/useUiPreferencesStore';
+import { cn } from '@/lib/utils';
 import {
   ButtonGroup,
   ButtonGroupItem,
@@ -15,7 +15,6 @@ export interface ViewNavTabsProps {
   hiddenStatuses: ProjectStatus[];
   selectedStatusId: string | null;
   onStatusSelect: (statusId: string | null) => void;
-  onCreateIssue?: () => void;
   className?: string;
 }
 
@@ -25,7 +24,6 @@ export function ViewNavTabs({
   hiddenStatuses,
   selectedStatusId,
   onStatusSelect,
-  onCreateIssue,
   className,
 }: ViewNavTabsProps) {
   const { t } = useTranslation('common');
@@ -33,8 +31,8 @@ export function ViewNavTabs({
   const isAllTab = activeView === 'list' && selectedStatusId === null;
 
   return (
-    <div className="flex items-center gap-base">
-      <ButtonGroup className={className}>
+    <div className="flex min-w-0 flex-wrap items-center gap-base">
+      <ButtonGroup className={cn('flex-wrap', className)}>
         {/* Active (Kanban) tab */}
         <ButtonGroupItem
           active={isActiveTab}
@@ -75,18 +73,6 @@ export function ViewNavTabs({
           );
         })}
       </ButtonGroup>
-
-      {/* Create Issue button */}
-      {onCreateIssue && (
-        <button
-          type="button"
-          onClick={onCreateIssue}
-          className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors"
-          aria-label={t('kanban.createIssue', 'Create issue')}
-        >
-          <PlusIcon className="size-icon-sm" weight="bold" />
-        </button>
-      )}
     </div>
   );
 }

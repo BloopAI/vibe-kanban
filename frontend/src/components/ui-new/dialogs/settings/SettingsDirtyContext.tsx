@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { useContext, useState, useCallback } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import type { ReactNode } from 'react';
 
 interface SettingsDirtyContextValue {
@@ -7,7 +8,8 @@ interface SettingsDirtyContextValue {
   clearAll: () => void;
 }
 
-const SettingsDirtyContext = createContext<SettingsDirtyContextValue | null>(
+const SettingsDirtyContext = createHmrContext<SettingsDirtyContextValue | null>(
+  'SettingsDirtyContext',
   null
 );
 

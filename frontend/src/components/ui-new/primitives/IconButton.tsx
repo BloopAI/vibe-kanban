@@ -3,6 +3,7 @@ import type { Icon } from '@phosphor-icons/react';
 
 interface IconButtonProps {
   icon: Icon;
+  iconClassName?: string;
   onClick?: () => void;
   disabled?: boolean;
   variant?: 'default' | 'tertiary';
@@ -13,6 +14,7 @@ interface IconButtonProps {
 
 export function IconButton({
   icon: IconComponent,
+  iconClassName,
   onClick,
   disabled,
   variant = 'default',
@@ -39,7 +41,10 @@ export function IconButton({
       aria-label={ariaLabel}
       title={title}
     >
-      <IconComponent className="size-icon-sm" weight="bold" />
+      <IconComponent
+        className={cn('size-icon-sm', iconClassName)}
+        weight="bold"
+      />
     </button>
   );
 }

@@ -1,5 +1,4 @@
 import {
-  createContext,
   useContext,
   useState,
   useCallback,
@@ -7,6 +6,7 @@ import {
   useMemo,
   type ReactNode,
 } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import type { LogsPanelContent } from '@/components/ui-new/containers/LogsContentContainer';
 import {
   useWorkspacePanelState,
@@ -50,7 +50,10 @@ const defaultValue: LogsPanelContextValue = {
   isTerminalExpanded: false,
 };
 
-const LogsPanelContext = createContext<LogsPanelContextValue>(defaultValue);
+const LogsPanelContext = createHmrContext<LogsPanelContextValue>(
+  'LogsPanelContext',
+  defaultValue
+);
 
 interface LogsPanelProviderProps {
   children: ReactNode;

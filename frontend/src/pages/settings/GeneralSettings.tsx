@@ -181,14 +181,12 @@ export function GeneralSettings() {
     }
   };
 
-  const resetDisclaimer = async () => {
-    if (!config) return;
-    updateAndSaveConfig({ disclaimer_acknowledged: false });
-  };
-
   const resetOnboarding = async () => {
     if (!config) return;
-    updateAndSaveConfig({ onboarding_acknowledged: false });
+    updateAndSaveConfig({
+      onboarding_acknowledged: false,
+      remote_onboarding_acknowledged: false,
+    });
   };
 
   if (loading) {
@@ -730,19 +728,6 @@ export function GeneralSettings() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">
-                {t('settings.general.safety.disclaimer.title')}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {t('settings.general.safety.disclaimer.description')}
-              </p>
-            </div>
-            <Button variant="outline" onClick={resetDisclaimer}>
-              {t('settings.general.safety.disclaimer.button')}
-            </Button>
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">
                 {t('settings.general.safety.onboarding.title')}
               </p>
               <p className="text-sm text-muted-foreground">
@@ -752,34 +737,6 @@ export function GeneralSettings() {
             <Button variant="outline" onClick={resetOnboarding}>
               {t('settings.general.safety.onboarding.button')}
             </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('settings.general.beta.title')}</CardTitle>
-          <CardDescription>
-            {t('settings.general.beta.description')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="beta-workspaces"
-              checked={draft?.beta_workspaces ?? false}
-              onCheckedChange={(checked: boolean) =>
-                updateDraft({ beta_workspaces: checked })
-              }
-            />
-            <div className="space-y-0.5">
-              <Label htmlFor="beta-workspaces" className="cursor-pointer">
-                {t('settings.general.beta.workspaces.label')}
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                {t('settings.general.beta.workspaces.helper')}
-              </p>
-            </div>
           </div>
         </CardContent>
       </Card>

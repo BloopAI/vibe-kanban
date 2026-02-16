@@ -1,10 +1,5 @@
-import {
-  createContext,
-  useContext,
-  ReactNode,
-  useMemo,
-  useEffect,
-} from 'react';
+import { useContext, ReactNode, useMemo, useEffect } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { useLocation } from 'react-router-dom';
 import type { Project } from 'shared/types';
 import { useProjects } from '@/hooks/useProjects';
@@ -17,7 +12,10 @@ interface ProjectContextValue {
   isError: boolean;
 }
 
-const ProjectContext = createContext<ProjectContextValue | null>(null);
+const ProjectContext = createHmrContext<ProjectContextValue | null>(
+  'ProjectContext',
+  null
+);
 
 interface ProjectProviderProps {
   children: ReactNode;
