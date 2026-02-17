@@ -219,6 +219,7 @@ interface UseCreateModeStateResult {
   selectedProjectId: string | null;
   repos: Repo[];
   targetBranches: Record<string, string | null>;
+  hasResolvedInitialRepoDefaults: boolean;
   preferredExecutorConfig: ExecutorConfig | null;
   message: string;
   isLoading: boolean;
@@ -338,11 +339,19 @@ export function useCreateModeState({
     !localWorkspacesLoading &&
     (!state.linkedIssue || !remoteWorkspacesLoading);
 
-  const { preferredRepos, preferredExecutorConfig } =
+  const { preferredRepos, preferredExecutorConfig, hasResolvedPreferredRepos } =
     useWorkspaceCreateDefaults({
       sourceWorkspaceId,
       enabled: shouldLoadWorkspaceDefaults,
     });
+
+  const hasResolvedInitialRepoDefaults =
+    (state.phase === 'ready' &&
+      !localWorkspacesLoading &&
+      (!state.linkedIssue || !remoteWorkspacesLoading) &&
+      hasResolvedPreferredRepos &&
+      (preferredRepos.length === 0 || state.repos.length > 0)) ||
+    state.repos.length > 0;
 
   useEffect(() => {
     if (state.phase !== 'ready') return;
@@ -544,6 +553,7 @@ export function useCreateModeState({
     selectedProjectId: state.projectId,
     repos,
     targetBranches,
+    hasResolvedInitialRepoDefaults,
     preferredExecutorConfig,
     message: state.message,
     isLoading: scratchLoading,
