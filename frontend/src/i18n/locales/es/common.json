@@ -165,6 +165,10 @@
     "pin": "Fijar",
     "unpin": "Desfijar",
     "archive": "Archivar",
+    "unarchive": "Desarchivar",
+    "archiveConfirmMessage": "¿Estás seguro de que deseas archivar este espacio de trabajo? Se moverá a la sección de archivados.",
+    "unarchiveConfirmMessage": "¿Estás seguro de que deseas desarchivar este espacio de trabajo? Se moverá de vuelta a la sección de activos.",
+    "archiveError": "Error al archivar el espacio de trabajo",
     "more": "Más acciones",
     "rename": {
       "title": "Renombrar espacio de trabajo",
@@ -175,6 +179,8 @@
       "renaming": "Renombrando..."
     },
     "unlinkFromIssue": "Desvincular del problema",
+    "archiveWorkspace": "Archivar espacio de trabajo",
+    "unarchiveWorkspace": "Desarchivar espacio de trabajo",
     "deleteWorkspace": "Eliminar espacio de trabajo",
     "unlink": "Desvincular",
     "delete": "Eliminar",

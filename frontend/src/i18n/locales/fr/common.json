@@ -165,6 +165,10 @@
     "pin": "Épingler",
     "unpin": "Désépingler",
     "archive": "Archiver",
+    "unarchive": "Désarchiver",
+    "archiveConfirmMessage": "Êtes-vous sûr de vouloir archiver cet espace de travail ? Il sera déplacé vers la section des archives.",
+    "unarchiveConfirmMessage": "Êtes-vous sûr de vouloir désarchiver cet espace de travail ? Il sera déplacé vers la section des actifs.",
+    "archiveError": "Échec de l'archivage de l'espace de travail",
     "more": "Plus d'actions",
     "rename": {
       "title": "Renommer l'espace de travail",
@@ -175,6 +179,8 @@
       "renaming": "Renommage..."
     },
     "unlinkFromIssue": "Dissocier du problème",
+    "archiveWorkspace": "Archiver l'espace de travail",
+    "unarchiveWorkspace": "Désarchiver l'espace de travail",
     "deleteWorkspace": "Supprimer l'espace de travail",
     "unlink": "Dissocier",
     "delete": "Supprimer",

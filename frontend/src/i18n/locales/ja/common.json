@@ -165,6 +165,10 @@
     "pin": "ピン留め",
     "unpin": "ピン留め解除",
     "archive": "アーカイブ",
+    "unarchive": "アーカイブ解除",
+    "archiveConfirmMessage": "このワークスペースをアーカイブしてもよろしいですか？アーカイブセクションに移動されます。",
+    "unarchiveConfirmMessage": "このワークスペースのアーカイブを解除してもよろしいですか？アクティブセクションに戻されます。",
+    "archiveError": "ワークスペースのアーカイブに失敗しました",
     "more": "その他の操作",
     "rename": {
       "title": "ワークスペースの名前を変更",
@@ -175,6 +179,8 @@
       "renaming": "名前を変更中..."
     },
     "unlinkFromIssue": "課題からリンク解除",
+    "archiveWorkspace": "ワークスペースをアーカイブ",
+    "unarchiveWorkspace": "ワークスペースのアーカイブを解除",
     "deleteWorkspace": "ワークスペースを削除",
     "unlink": "リンク解除",
     "delete": "削除",

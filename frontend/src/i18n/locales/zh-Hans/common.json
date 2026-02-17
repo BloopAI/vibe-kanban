@@ -165,6 +165,10 @@
     "pin": "置顶",
     "unpin": "取消置顶",
     "archive": "归档",
+    "unarchive": "取消归档",
+    "archiveConfirmMessage": "确定要归档此工作区吗？它将被移至归档部分。",
+    "unarchiveConfirmMessage": "确定要取消归档此工作区吗？它将被移回活跃部分。",
+    "archiveError": "归档工作区失败",
     "more": "更多操作",
     "rename": {
       "title": "重命名工作区",
@@ -175,6 +179,8 @@
       "renaming": "正在重命名..."
     },
     "unlinkFromIssue": "从问题取消关联",
+    "archiveWorkspace": "归档工作区",
+    "unarchiveWorkspace": "取消归档工作区",
     "deleteWorkspace": "删除工作区",
     "unlink": "取消关联",
     "delete": "删除",
