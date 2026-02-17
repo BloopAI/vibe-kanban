@@ -33,7 +33,7 @@ export function VSCodeWorkspacePage() {
     startNewSession,
   } = useWorkspaceContext();
 
-  usePageTitle(workspace?.name ?? undefined);
+  usePageTitle(workspace?.name);
 
   const workspaceWithSession = workspace
     ? createWorkspaceWithSession(workspace, selectedSession)

@@ -47,9 +47,7 @@ export function WorkspacesLayout() {
 
   const { t } = useTranslation('common');
   usePageTitle(
-    isCreateMode
-      ? t('workspaces.newWorkspace')
-      : (selectedWorkspace?.name ?? undefined)
+    isCreateMode ? t('workspaces.newWorkspace') : selectedWorkspace?.name
   );
 
   const mainContainerRef = useRef<WorkspacesMainContainerHandle>(null);
