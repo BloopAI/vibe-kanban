@@ -37,6 +37,7 @@ export function CreateChatBoxContainer({
     selectedProjectId,
     clearDraft,
     hasInitialValue,
+    hasResolvedInitialRepoDefaults,
     linkedIssue,
     clearLinkedIssue,
     executorConfig: draftConfig,
@@ -54,9 +55,16 @@ export function CreateChatBoxContainer({
 
   useEffect(() => {
     if (!hasInitialValue || hasInitializedStep) return;
+    if (!hasSelectedRepos && !hasResolvedInitialRepoDefaults) return;
+
     setIsSelectingRepos(!hasSelectedRepos);
     setHasInitializedStep(true);
-  }, [hasInitialValue, hasInitializedStep, hasSelectedRepos]);
+  }, [
+    hasInitialValue,
+    hasInitializedStep,
+    hasSelectedRepos,
+    hasResolvedInitialRepoDefaults,
+  ]);
 
   const showRepoPickerStep = !hasSelectedRepos || isSelectingRepos;
   const showChatStep = hasSelectedRepos && !isSelectingRepos;

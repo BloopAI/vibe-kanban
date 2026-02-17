@@ -9,9 +9,10 @@ import {
 import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjects } from '@/hooks/useProjects';
+import { useWorkspaceCreateDefaults } from '@/hooks/useWorkspaceCreateDefaults';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useShape } from '@/lib/electric/hooks';
-import { attemptsApi, projectsApi } from '@/lib/api';
+import { projectsApi } from '@/lib/api';
 
 // ============================================================================
 // Types
@@ -228,6 +229,8 @@ interface UseCreateModeStateResult {
   selectedProjectId: string | null;
   repos: Repo[];
   targetBranches: Record<string, string | null>;
+  hasResolvedInitialRepoDefaults: boolean;
+  preferredExecutorConfig: ExecutorConfig | null;
   message: string;
   isLoading: boolean;
   hasInitialValue: boolean;
@@ -348,7 +351,35 @@ export function useCreateModeState({
   // ============================================================================
   const hasAttemptedAutoSelect = useRef(false);
   const initialProjectIdRef = useRef(initialProjectId);
-  const hasAttemptedRepoDefaults = useRef(false);
+  const sourceWorkspaceId = useMemo(() => {
+    if (state.linkedIssue) {
+      return getLatestWorkspaceIdForRemoteProject({
+        remoteWorkspaces,
+        localWorkspaceIds,
+        remoteProjectId: state.linkedIssue.remoteProjectId,
+      });
+    }
+    return lastWorkspaceId;
+  }, [state.linkedIssue, remoteWorkspaces, localWorkspaceIds, lastWorkspaceId]);
+
+  const shouldLoadWorkspaceDefaults =
+    state.phase === 'ready' &&
+    !localWorkspacesLoading &&
+    (!state.linkedIssue || !remoteWorkspacesLoading);
+
+  const { preferredRepos, preferredExecutorConfig, hasResolvedPreferredRepos } =
+    useWorkspaceCreateDefaults({
+      sourceWorkspaceId,
+      enabled: shouldLoadWorkspaceDefaults,
+    });
+
+  const hasResolvedInitialRepoDefaults =
+    (state.phase === 'ready' &&
+      !localWorkspacesLoading &&
+      (!state.linkedIssue || !remoteWorkspacesLoading) &&
+      hasResolvedPreferredRepos &&
+      (preferredRepos.length === 0 || state.repos.length > 0)) ||
+    state.repos.length > 0;
 
   useEffect(() => {
     if (state.phase !== 'ready') return;
@@ -396,55 +427,21 @@ export function useCreateModeState({
   }, [state.phase, state.projectId, projectsById, projectsLoading]);
 
   // ============================================================================
-  // Auto-select repos/branches for new drafts
+  // Auto-apply repos/branches defaults for fresh drafts
   // ============================================================================
   useEffect(() => {
-    if (state.phase !== 'ready') return;
-    if (hasAttemptedRepoDefaults.current) return;
+    if (!shouldLoadWorkspaceDefaults) return;
     if (state.repos.length > 0) return;
-    if (localWorkspacesLoading) return;
-    if (state.linkedIssue && remoteWorkspacesLoading) return;
+    if (preferredRepos.length === 0) return;
 
-    hasAttemptedRepoDefaults.current = true;
-
-    const sourceWorkspaceId = state.linkedIssue
-      ? getLatestWorkspaceIdForRemoteProject({
-          remoteWorkspaces,
-          localWorkspaceIds,
-          remoteProjectId: state.linkedIssue.remoteProjectId,
-        })
-      : lastWorkspaceId;
-    if (!sourceWorkspaceId) return;
-
-    attemptsApi
-      .getRepos(sourceWorkspaceId)
-      .then((repos) => {
-        if (repos.length === 0) return;
-
-        dispatch({
-          type: 'SET_REPOS_IF_EMPTY',
-          repos: repos.map((repo) => ({
-            repo,
-            targetBranch: repo.target_branch || null,
-          })),
-        });
-      })
-      .catch((error) => {
-        console.error(
-          '[useCreateModeState] Failed to load repo defaults:',
-          error
-        );
-      });
-  }, [
-    state.phase,
-    state.linkedIssue,
-    state.repos.length,
-    lastWorkspaceId,
-    localWorkspacesLoading,
-    remoteWorkspacesLoading,
-    remoteWorkspaces,
-    localWorkspaceIds,
-  ]);
+    dispatch({
+      type: 'SET_REPOS_IF_EMPTY',
+      repos: preferredRepos.map((repo) => ({
+        repo,
+        targetBranch: repo.target_branch || null,
+      })),
+    });
+  }, [shouldLoadWorkspaceDefaults, state.repos.length, preferredRepos]);
 
   // ============================================================================
   // Persistence to scratch (debounced)
@@ -593,6 +590,8 @@ export function useCreateModeState({
     selectedProjectId: state.projectId,
     repos,
     targetBranches,
+    hasResolvedInitialRepoDefaults,
+    preferredExecutorConfig,
     message: state.message,
     isLoading: scratchLoading,
     hasInitialValue: state.phase === 'ready',

@@ -25,6 +25,8 @@ interface CreateModeContextValue {
   clearRepos: () => void;
   targetBranches: Record<string, string | null>;
   setTargetBranch: (repoId: string, branch: string) => void;
+  hasResolvedInitialRepoDefaults: boolean;
+  preferredExecutorConfig: ExecutorConfig | null;
   message: string;
   setMessage: (message: string) => void;
   clearDraft: () => Promise<void>;
@@ -99,6 +101,8 @@ export function CreateModeProvider({
       clearRepos: state.clearRepos,
       targetBranches: state.targetBranches,
       setTargetBranch: state.setTargetBranch,
+      hasResolvedInitialRepoDefaults: state.hasResolvedInitialRepoDefaults,
+      preferredExecutorConfig: state.preferredExecutorConfig,
       message: state.message,
       setMessage: state.setMessage,
       clearDraft: state.clearDraft,
@@ -117,6 +121,8 @@ export function CreateModeProvider({
       state.clearRepos,
       state.targetBranches,
       state.setTargetBranch,
+      state.hasResolvedInitialRepoDefaults,
+      state.preferredExecutorConfig,
       state.message,
       state.setMessage,
       state.clearDraft,

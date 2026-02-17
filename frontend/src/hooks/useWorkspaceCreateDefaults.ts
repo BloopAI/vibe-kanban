@@ -19,15 +19,18 @@ interface WorkspaceCreateDefaultsData {
 interface UseWorkspaceCreateDefaultsResult {
   preferredRepos: RepoWithTargetBranch[];
   preferredExecutorConfig: ExecutorConfig | null;
+  hasResolvedPreferredRepos: boolean;
 }
 
 export function useWorkspaceCreateDefaults({
   sourceWorkspaceId,
   enabled,
 }: UseWorkspaceCreateDefaultsOptions): UseWorkspaceCreateDefaultsResult {
-  const { data } = useQuery<WorkspaceCreateDefaultsData>({
+  const queryEnabled = enabled && !!sourceWorkspaceId;
+
+  const { data, status } = useQuery<WorkspaceCreateDefaultsData>({
     queryKey: ['workspaceCreateDefaults', sourceWorkspaceId],
-    enabled: enabled && !!sourceWorkspaceId,
+    enabled: queryEnabled,
     queryFn: async () => {
       const [repos, workspaceWithSession] = await Promise.all([
         attemptsApi.getRepos(sourceWorkspaceId!),
@@ -58,5 +61,6 @@ export function useWorkspaceCreateDefaults({
   return {
     preferredRepos: data?.repos ?? [],
     preferredExecutorConfig,
+    hasResolvedPreferredRepos: !queryEnabled || status !== 'pending',
   };
 }
