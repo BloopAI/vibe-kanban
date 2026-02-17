@@ -391,7 +391,7 @@ export function ModelSelectorContainer({
 
   if (!config) {
     return (
-      <Toolbar className="flex-wrap">
+      <Toolbar>
         <DropdownMenu>
           <ToolbarDropdownButton size="sm" label={loadingLabel} disabled />
         </DropdownMenu>
@@ -428,7 +428,7 @@ export function ModelSelectorContainer({
   const permissionIcon = permissionMeta?.icon ?? HandIcon;
 
   return (
-    <Toolbar className="flex-wrap">
+    <Toolbar>
       <ToolbarDropdown
         size="sm"
         icon={SlidersHorizontalIcon}
