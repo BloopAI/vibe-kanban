@@ -54,7 +54,7 @@ function ReasoningDropdown({
       >
         <DropdownMenuItem
           icon={isDefaultSelected ? CheckIcon : undefined}
-          onClick={() => onSelect(null)}
+          onSelect={() => onSelect(null)}
         >
           {t('modelSelector.default')}
         </DropdownMenuItem>
@@ -62,7 +62,7 @@ function ReasoningDropdown({
           <DropdownMenuItem
             key={option.id}
             icon={option.id === selectedId ? CheckIcon : undefined}
-            onClick={() => onSelect(option.id)}
+            onSelect={() => onSelect(option.id)}
           >
             {option.label}
           </DropdownMenuItem>

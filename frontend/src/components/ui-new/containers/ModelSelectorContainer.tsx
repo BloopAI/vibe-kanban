@@ -313,11 +313,13 @@ export function ModelSelectorContainer({
           })()
         : null;
     pendingReasoningRef.current = null;
+    setIsOpen(false);
   };
 
   const handleReasoningSelect = (reasoningId: string | null) => {
     onOverrideChange({ reasoning_id: reasoningId });
     pendingReasoningRef.current = reasoningId;
+    setIsOpen(false);
   };
 
   const handleAgentSelect = (id: string | null) => {
@@ -442,7 +444,7 @@ export function ModelSelectorContainer({
             <DropdownMenuItem
               key={preset}
               icon={preset === resolvedPreset ? CheckIcon : undefined}
-              onClick={() => onPresetSelect?.(preset)}
+              onSelect={() => onPresetSelect?.(preset)}
             >
               {toPrettyCase(preset)}
             </DropdownMenuItem>
@@ -451,7 +453,7 @@ export function ModelSelectorContainer({
           <DropdownMenuItem disabled>{presetLabel}</DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem icon={GearIcon} onClick={onAdvancedSettings}>
+        <DropdownMenuItem icon={GearIcon} onSelect={onAdvancedSettings}>
           {t('modelSelector.custom')}
         </DropdownMenuItem>
       </ToolbarDropdown>
@@ -501,7 +503,7 @@ export function ModelSelectorContainer({
               <DropdownMenuItem
                 key={policy}
                 icon={meta?.icon ?? HandIcon}
-                onClick={() => handlePermissionPolicyChange(policy)}
+                onSelect={() => handlePermissionPolicyChange(policy)}
               >
                 {meta?.label ?? toPrettyCase(policy)}
               </DropdownMenuItem>
@@ -515,7 +517,7 @@ export function ModelSelectorContainer({
           <DropdownMenuLabel>{t('modelSelector.agent')}</DropdownMenuLabel>
           <DropdownMenuItem
             icon={selectedAgentId === null ? CheckIcon : undefined}
-            onClick={() => handleAgentSelect(null)}
+            onSelect={() => handleAgentSelect(null)}
           >
             {t('modelSelector.default')}
           </DropdownMenuItem>
@@ -524,7 +526,7 @@ export function ModelSelectorContainer({
             <DropdownMenuItem
               key={agentOption.id}
               icon={agentOption.id === selectedAgentId ? CheckIcon : undefined}
-              onClick={() => handleAgentSelect(agentOption.id)}
+              onSelect={() => handleAgentSelect(agentOption.id)}
             >
               {agentOption.label}
             </DropdownMenuItem>
