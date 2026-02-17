@@ -758,5 +758,12 @@
       "repoNotInProject": "儲存庫不在任何專案中",
       "failedToCreateWorkspace": "建立工作區失敗"
     }
+  },
+  "shareDialog": {
+    "loginRequired": {
+      "title": "Sign in required",
+      "description": "Sign in to access this feature.",
+      "action": "Sign in"
+    }
   }
 }

@@ -1,7 +1,8 @@
 {
   "settings": {
     "common": {
-      "unsavedChanges": "• 未保存の変更があります"
+      "unsavedChanges": "• 未保存の変更があります",
+      "discardChangesConfirm": "Discard unsaved changes?"
     },
     "unsavedChanges": {
       "title": "未保存の変更",
@@ -406,7 +407,8 @@
         "error": "プロジェクト設定の保存に失敗しました",
         "unsavedChanges": "• 未保存の変更があります",
         "discard": "破棄",
-        "confirmSwitch": "未保存の変更があります。本当にプロジェクトを切り替えますか？変更は失われます。"
+        "confirmSwitch": "未保存の変更があります。本当にプロジェクトを切り替えますか？変更は失われます。",
+        "saving": "Saving..."
       },
       "repositories": {
         "title": "リポジトリ",
@@ -486,6 +488,44 @@
         "unsavedChanges": "未保存の変更があります",
         "discard": "破棄",
         "confirmSwitch": "未保存の変更があります。本当にリポジトリを切り替えますか？変更は失われます。"
+      }
+    },
+    "remoteProjects": {
+      "title": "Remote Projects",
+      "description": "Manage cloud-synced projects across organizations.",
+      "loading": "Loading remote projects...",
+      "loadError": "Failed to load organizations",
+      "noProjects": "No projects yet. Create one to get started.",
+      "selectOrg": "Select an organization",
+      "createSuccess": "Project created successfully",
+      "deleteSuccess": "Project deleted successfully",
+      "nameRequired": "Project name is required",
+      "saveSuccess": "Project updated successfully",
+      "saveError": "Failed to update project",
+      "columns": {
+        "organizations": "Organizations",
+        "projects": "Projects"
+      },
+      "actions": {
+        "addProject": "Add Project"
+      },
+      "form": {
+        "name": {
+          "label": "Project Name",
+          "placeholder": "Enter project name"
+        },
+        "color": {
+          "label": "Project Color"
+        },
+        "statuses": {
+          "label": "Project Statuses",
+          "description": "Manage kanban columns for this project."
+        }
+      },
+      "loginRequired": {
+        "title": "Sign in required",
+        "description": "Sign in to manage your remote projects.",
+        "action": "Sign in"
       }
     }
   },

@@ -758,5 +758,12 @@
       "repoNotInProject": "Le dépôt n'est dans aucun projet",
       "failedToCreateWorkspace": "Échec de la création de l'espace de travail"
     }
+  },
+  "shareDialog": {
+    "loginRequired": {
+      "title": "Sign in required",
+      "description": "Sign in to access this feature.",
+      "action": "Sign in"
+    }
   }
 }

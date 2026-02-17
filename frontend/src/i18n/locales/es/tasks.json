@@ -758,5 +758,12 @@
       "repoNotInProject": "El repositorio no está en ningún proyecto",
       "failedToCreateWorkspace": "Error al crear espacio de trabajo"
     }
+  },
+  "shareDialog": {
+    "loginRequired": {
+      "title": "Sign in required",
+      "description": "Sign in to access this feature.",
+      "action": "Sign in"
+    }
   }
 }

@@ -1,7 +1,8 @@
 {
   "settings": {
     "common": {
-      "unsavedChanges": "• 您有未保存的更改"
+      "unsavedChanges": "• 您有未保存的更改",
+      "discardChangesConfirm": "Discard unsaved changes?"
     },
     "unsavedChanges": {
       "title": "未保存的更改",
@@ -406,7 +407,8 @@
         "error": "保存项目设置失败",
         "unsavedChanges": "• 您有未保存的更改",
         "discard": "放弃",
-        "confirmSwitch": "您有未保存的更改。您确定要切换项目吗？您的更改将丢失。"
+        "confirmSwitch": "您有未保存的更改。您确定要切换项目吗？您的更改将丢失。",
+        "saving": "Saving..."
       },
       "repositories": {
         "title": "仓库",
@@ -486,6 +488,44 @@
         "unsavedChanges": "您有未保存的更改",
         "discard": "放弃",
         "confirmSwitch": "您有未保存的更改。您确定要切换仓库吗？您的更改将丢失。"
+      }
+    },
+    "remoteProjects": {
+      "title": "Remote Projects",
+      "description": "Manage cloud-synced projects across organizations.",
+      "loading": "Loading remote projects...",
+      "loadError": "Failed to load organizations",
+      "noProjects": "No projects yet. Create one to get started.",
+      "selectOrg": "Select an organization",
+      "createSuccess": "Project created successfully",
+      "deleteSuccess": "Project deleted successfully",
+      "nameRequired": "Project name is required",
+      "saveSuccess": "Project updated successfully",
+      "saveError": "Failed to update project",
+      "columns": {
+        "organizations": "Organizations",
+        "projects": "Projects"
+      },
+      "actions": {
+        "addProject": "Add Project"
+      },
+      "form": {
+        "name": {
+          "label": "Project Name",
+          "placeholder": "Enter project name"
+        },
+        "color": {
+          "label": "Project Color"
+        },
+        "statuses": {
+          "label": "Project Statuses",
+          "description": "Manage kanban columns for this project."
+        }
+      },
+      "loginRequired": {
+        "title": "Sign in required",
+        "description": "Sign in to manage your remote projects.",
+        "action": "Sign in"
       }
     }
   },

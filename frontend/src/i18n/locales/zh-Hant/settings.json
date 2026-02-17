@@ -1,7 +1,8 @@
 {
   "settings": {
     "common": {
-      "unsavedChanges": "• 您有未儲存的變更"
+      "unsavedChanges": "• 您有未儲存的變更",
+      "discardChangesConfirm": "Discard unsaved changes?"
     },
     "unsavedChanges": {
       "title": "未儲存的變更",
@@ -406,7 +407,8 @@
         "error": "儲存專案設定失敗",
         "unsavedChanges": "• 您有未儲存的變更",
         "discard": "放棄",
-        "confirmSwitch": "您有未儲存的變更。確定要切換專案嗎？您的變更將會遺失。"
+        "confirmSwitch": "您有未儲存的變更。確定要切換專案嗎？您的變更將會遺失。",
+        "saving": "Saving..."
       },
       "repositories": {
         "title": "儲存庫",
@@ -486,6 +488,44 @@
         "unsavedChanges": "您有未儲存的變更",
         "discard": "放棄",
         "confirmSwitch": "您有未儲存的變更。確定要切換儲存庫嗎？您的變更將會遺失。"
+      }
+    },
+    "remoteProjects": {
+      "title": "Remote Projects",
+      "description": "Manage cloud-synced projects across organizations.",
+      "loading": "Loading remote projects...",
+      "loadError": "Failed to load organizations",
+      "noProjects": "No projects yet. Create one to get started.",
+      "selectOrg": "Select an organization",
+      "createSuccess": "Project created successfully",
+      "deleteSuccess": "Project deleted successfully",
+      "nameRequired": "Project name is required",
+      "saveSuccess": "Project updated successfully",
+      "saveError": "Failed to update project",
+      "columns": {
+        "organizations": "Organizations",
+        "projects": "Projects"
+      },
+      "actions": {
+        "addProject": "Add Project"
+      },
+      "form": {
+        "name": {
+          "label": "Project Name",
+          "placeholder": "Enter project name"
+        },
+        "color": {
+          "label": "Project Color"
+        },
+        "statuses": {
+          "label": "Project Statuses",
+          "description": "Manage kanban columns for this project."
+        }
+      },
+      "loginRequired": {
+        "title": "Sign in required",
+        "description": "Sign in to manage your remote projects.",
+        "action": "Sign in"
       }
     }
   },

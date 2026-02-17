@@ -758,5 +758,12 @@
       "repoNotInProject": "リポジトリがどのプロジェクトにも属していません",
       "failedToCreateWorkspace": "ワークスペースの作成に失敗しました"
     }
+  },
+  "shareDialog": {
+    "loginRequired": {
+      "title": "Sign in required",
+      "description": "Sign in to access this feature.",
+      "action": "Sign in"
+    }
   }
 }
