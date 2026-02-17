@@ -29,6 +29,7 @@ use db::models::{
     image::WorkspaceImage,
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     repo::{Repo, RepoError},
+    requests::{LinkedIssueInfo, WorkspaceRepoInput},
     session::{CreateSession, Session},
     workspace::{CreateWorkspace, Workspace, WorkspaceError},
     workspace_repo::{CreateWorkspaceRepo, RepoWithTargetBranch, WorkspaceRepo},
@@ -189,9 +190,10 @@ pub async fn update_workspace(
 }
 
 #[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
-pub struct WorkspaceRepoInput {
-    pub repo_id: Uuid,
-    pub target_branch: String,
+pub struct CreateTaskAttemptBody {
+    pub task_id: Uuid,
+    pub executor_config: ExecutorConfig,
+    pub repos: Vec<WorkspaceRepoInput>,
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -1829,12 +1831,6 @@ pub async fn unlink_workspace(
 }
 
 // ── Create-and-start (moved from tasks.rs) ──────────────────────────────────
-
-#[derive(Debug, Serialize, Deserialize, TS)]
-pub struct LinkedIssueInfo {
-    pub remote_project_id: Uuid,
-    pub issue_id: Uuid,
-}
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct CreateAndStartWorkspaceRequest {

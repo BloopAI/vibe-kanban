@@ -31,7 +31,6 @@ chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { workspace = true }
 tower-http = { workspace = true }
-rmcp = { version = "0.5.0", features = ["server", "transport-io"] }
 schemars = { workspace = true }
 sentry = { version = "0.41.0", default-features = false, features = ["anyhow", "backtrace", "panic", "debug-images", "reqwest"] }
 reqwest = { workspace = true }

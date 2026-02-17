@@ -1,5 +1,4 @@
 pub mod error;
-pub mod mcp;
 pub mod middleware;
 pub mod preview_proxy;
 pub mod routes;
