@@ -242,7 +242,7 @@ export function ToolbarPlugin() {
       <ToolbarButton
         active={isCode}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code')}
-        title="Inline Code"
+        title="Inline Code (Cmd/Ctrl+E)"
       >
         <Code size={iconSize} />
       </ToolbarButton>

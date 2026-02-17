@@ -4,6 +4,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import {
   $getSelection,
   $isRangeSelection,
+  FORMAT_TEXT_COMMAND,
   INDENT_CONTENT_COMMAND,
   KEY_TAB_COMMAND,
   KEY_MODIFIER_COMMAND,
@@ -132,10 +133,6 @@ export function KeyboardCommandsPlugin({
       COMMAND_PRIORITY_NORMAL
     );
 
-    if (!onCmdEnter && !onShiftCmdEnter) {
-      return unregisterTab;
-    }
-
     const flushAndSubmit = () => {
       if (onChange && transformers) {
         const markdown = editor
@@ -151,7 +148,23 @@ export function KeyboardCommandsPlugin({
     const unregisterModifier = editor.registerCommand(
       KEY_MODIFIER_COMMAND,
       (event: KeyboardEvent) => {
-        if (!(event.metaKey || event.ctrlKey) || event.key !== 'Enter') {
+        if (!(event.metaKey || event.ctrlKey)) {
+          return false;
+        }
+
+        const key = event.key.toLowerCase();
+
+        if (key === 'e') {
+          event.preventDefault();
+          event.stopPropagation();
+          return editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code');
+        }
+
+        if (key !== 'enter') {
+          return false;
+        }
+
+        if (!onCmdEnter && !onShiftCmdEnter) {
           return false;
         }
 
@@ -173,33 +186,36 @@ export function KeyboardCommandsPlugin({
       COMMAND_PRIORITY_NORMAL
     );
 
-    const unregisterEnter = editor.registerCommand(
-      KEY_ENTER_COMMAND,
-      (event: KeyboardEvent | null) => {
-        if (!event) return false;
+    const unregisterEnter =
+      onCmdEnter || onShiftCmdEnter
+        ? editor.registerCommand(
+            KEY_ENTER_COMMAND,
+            (event: KeyboardEvent | null) => {
+              if (!event) return false;
 
-        // If typeahead is open, let it handle Enter
-        if (isTypeaheadOpen) {
-          return false;
-        }
+              // If typeahead is open, let it handle Enter
+              if (isTypeaheadOpen) {
+                return false;
+              }
 
-        if (sendShortcut === 'Enter') {
-          if (event.shiftKey || event.metaKey || event.ctrlKey) {
-            return false;
-          }
-          event.preventDefault();
-          flushAndSubmit();
-          return true;
-        }
+              if (sendShortcut === 'Enter') {
+                if (event.shiftKey || event.metaKey || event.ctrlKey) {
+                  return false;
+                }
+                event.preventDefault();
+                flushAndSubmit();
+                return true;
+              }
 
-        if (event.metaKey || event.ctrlKey) {
-          return true;
-        }
+              if (event.metaKey || event.ctrlKey) {
+                return true;
+              }
 
-        return false;
-      },
-      COMMAND_PRIORITY_HIGH
-    );
+              return false;
+            },
+            COMMAND_PRIORITY_HIGH
+          )
+        : () => {};
 
     return () => {
       unregisterTab();
