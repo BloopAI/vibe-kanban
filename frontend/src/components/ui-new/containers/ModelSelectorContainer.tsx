@@ -444,7 +444,7 @@ export function ModelSelectorContainer({
             <DropdownMenuItem
               key={preset}
               icon={preset === resolvedPreset ? CheckIcon : undefined}
-              onSelect={() => onPresetSelect?.(preset)}
+              onClick={() => onPresetSelect?.(preset)}
             >
               {toPrettyCase(preset)}
             </DropdownMenuItem>
@@ -453,7 +453,7 @@ export function ModelSelectorContainer({
           <DropdownMenuItem disabled>{presetLabel}</DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem icon={GearIcon} onSelect={onAdvancedSettings}>
+        <DropdownMenuItem icon={GearIcon} onClick={onAdvancedSettings}>
           {t('modelSelector.custom')}
         </DropdownMenuItem>
       </ToolbarDropdown>
@@ -503,7 +503,7 @@ export function ModelSelectorContainer({
               <DropdownMenuItem
                 key={policy}
                 icon={meta?.icon ?? HandIcon}
-                onSelect={() => handlePermissionPolicyChange(policy)}
+                onClick={() => handlePermissionPolicyChange(policy)}
               >
                 {meta?.label ?? toPrettyCase(policy)}
               </DropdownMenuItem>
@@ -517,7 +517,7 @@ export function ModelSelectorContainer({
           <DropdownMenuLabel>{t('modelSelector.agent')}</DropdownMenuLabel>
           <DropdownMenuItem
             icon={selectedAgentId === null ? CheckIcon : undefined}
-            onSelect={() => handleAgentSelect(null)}
+            onClick={() => handleAgentSelect(null)}
           >
             {t('modelSelector.default')}
           </DropdownMenuItem>
@@ -526,7 +526,7 @@ export function ModelSelectorContainer({
             <DropdownMenuItem
               key={agentOption.id}
               icon={agentOption.id === selectedAgentId ? CheckIcon : undefined}
-              onSelect={() => handleAgentSelect(agentOption.id)}
+              onClick={() => handleAgentSelect(agentOption.id)}
             >
               {agentOption.label}
             </DropdownMenuItem>
