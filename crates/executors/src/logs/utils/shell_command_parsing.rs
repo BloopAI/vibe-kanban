@@ -29,8 +29,8 @@ impl CommandCategory {
 
         let command = unwrap_shell_command(command);
 
-        // Any output redirect is an edit operation, e.g. echo > file
-        if command.contains('>') {
+        // Any output redirect to a real file is an edit operation, e.g. echo > file
+        if has_file_redirect(command) {
             return Self::Edit;
         }
 
@@ -63,6 +63,49 @@ impl CommandCategory {
             _ => Self::Other,
         }
     }
+}
+
+/// Check whether a command contains a redirect to an actual file (not `/dev/null` or fd dup).
+///
+/// Uses shlex to tokenize (handles quoting), then looks for tokens containing `>`
+/// and checks whether the redirect target is a real file.
+fn has_file_redirect(command: &str) -> bool {
+    if !command.contains('>') {
+        return false;
+    }
+
+    let tokens: Vec<String> = shlex::Shlex::new(command).collect();
+    let mut i = 0;
+    while i < tokens.len() {
+        let t = &tokens[i];
+        if let Some(target) = redirect_target(t) {
+            if is_file_target(target) {
+                return true;
+            }
+        } else if (t == ">" || t == ">>" || t.ends_with('>') || t.ends_with(">>"))
+            && let Some(next) = tokens.get(i + 1) {
+                if is_file_target(next) {
+                    return true;
+                }
+                i += 1;
+            }
+        i += 1;
+    }
+    false
+}
+
+/// Given a token containing `>`, extract the redirect target if it's inline.
+/// E.g. ">file" => Some("file"), "2>/dev/null" => Some("/dev/null"), ">" => None
+fn redirect_target(token: &str) -> Option<&str> {
+    let pos = token.find('>')?;
+    let after = &token[pos + 1..];
+    let after = after.strip_prefix('>').unwrap_or(after);
+    if after.is_empty() { None } else { Some(after) }
+}
+
+/// Returns true if the redirect target is a real file (not /dev/null or &fd).
+fn is_file_target(target: &str) -> bool {
+    !target.starts_with('&') && target != "/dev/null"
 }
 
 /// Unwrap shell wrappers to get the actual command.
