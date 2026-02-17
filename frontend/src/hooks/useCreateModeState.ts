@@ -1,6 +1,13 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import type { DraftWorkspaceData, Repo } from 'shared/types';
+import type { DraftWorkspaceData, ExecutorConfig, Repo } from 'shared/types';
 import { ScratchType } from 'shared/types';
 import {
   PROJECT_ISSUES_SHAPE,
@@ -218,6 +225,7 @@ interface UseCreateModeStateResult {
   selectedProjectId: string | null;
   repos: Repo[];
   targetBranches: Record<string, string | null>;
+  preferredExecutorConfig: ExecutorConfig | null;
   message: string;
   isLoading: boolean;
   hasInitialValue: boolean;
@@ -320,6 +328,20 @@ export function useCreateModeState({
   const hasAttemptedAutoSelect = useRef(false);
   const initialProjectIdRef = useRef(initialProjectId);
   const hasAttemptedRepoDefaults = useRef(false);
+  const hasAttemptedExecutorDefaults = useRef(false);
+  const [preferredExecutorConfig, setPreferredExecutorConfig] =
+    useState<ExecutorConfig | null>(null);
+
+  const sourceWorkspaceId = useMemo(() => {
+    if (state.linkedIssue) {
+      return getLatestWorkspaceIdForRemoteProject({
+        remoteWorkspaces,
+        localWorkspaceIds,
+        remoteProjectId: state.linkedIssue.remoteProjectId,
+      });
+    }
+    return lastWorkspaceId;
+  }, [state.linkedIssue, remoteWorkspaces, localWorkspaceIds, lastWorkspaceId]);
 
   useEffect(() => {
     if (state.phase !== 'ready') return;
@@ -378,13 +400,6 @@ export function useCreateModeState({
 
     hasAttemptedRepoDefaults.current = true;
 
-    const sourceWorkspaceId = state.linkedIssue
-      ? getLatestWorkspaceIdForRemoteProject({
-          remoteWorkspaces,
-          localWorkspaceIds,
-          remoteProjectId: state.linkedIssue.remoteProjectId,
-        })
-      : lastWorkspaceId;
     if (!sourceWorkspaceId) return;
 
     attemptsApi
@@ -410,11 +425,46 @@ export function useCreateModeState({
     state.phase,
     state.linkedIssue,
     state.repos.length,
-    lastWorkspaceId,
+    sourceWorkspaceId,
     localWorkspacesLoading,
     remoteWorkspacesLoading,
-    remoteWorkspaces,
-    localWorkspaceIds,
+  ]);
+
+  // ============================================================================
+  // Auto-select executor config for new drafts
+  // ============================================================================
+  useEffect(() => {
+    if (state.phase !== 'ready') return;
+    if (hasAttemptedExecutorDefaults.current) return;
+    if (localWorkspacesLoading) return;
+    if (state.linkedIssue && remoteWorkspacesLoading) return;
+
+    hasAttemptedExecutorDefaults.current = true;
+
+    if (!sourceWorkspaceId) return;
+
+    attemptsApi
+      .getWithSession(sourceWorkspaceId)
+      .then((workspaceWithSession) => {
+        const executor = workspaceWithSession.session?.executor;
+        if (!executor) return;
+
+        setPreferredExecutorConfig({
+          executor: executor as ExecutorConfig['executor'],
+        });
+      })
+      .catch((error) => {
+        console.error(
+          '[useCreateModeState] Failed to load executor defaults:',
+          error
+        );
+      });
+  }, [
+    state.phase,
+    state.linkedIssue,
+    sourceWorkspaceId,
+    localWorkspacesLoading,
+    remoteWorkspacesLoading,
   ]);
 
   // ============================================================================
@@ -555,6 +605,7 @@ export function useCreateModeState({
     selectedProjectId: state.projectId,
     repos,
     targetBranches,
+    preferredExecutorConfig,
     message: state.message,
     isLoading: scratchLoading,
     hasInitialValue: state.phase === 'ready',

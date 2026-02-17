@@ -35,6 +35,7 @@ function pickVariant(
 interface UseLocalExecutorConfigOptions {
   profiles: Record<string, ExecutorProfile> | null;
   preferredProfile: ExecutorProfileId | null | undefined;
+  preferredConfig?: ExecutorConfig | null;
   lockedExecutor?: BaseCodingAgent | null;
   resetKey?: string | null;
 }
@@ -53,6 +54,7 @@ interface UseLocalExecutorConfigResult {
 export function useLocalExecutorConfig({
   profiles,
   preferredProfile,
+  preferredConfig = null,
   lockedExecutor = null,
   resetKey,
 }: UseLocalExecutorConfigOptions): UseLocalExecutorConfigResult {
@@ -122,8 +124,8 @@ export function useLocalExecutorConfig({
   const executorConfig = useMemo(() => {
     if (!profiles) return null;
     if (localConfig) return normalizeConfig(localConfig);
-    return normalizeConfig(null);
-  }, [profiles, localConfig, normalizeConfig]);
+    return normalizeConfig(preferredConfig);
+  }, [profiles, localConfig, normalizeConfig, preferredConfig]);
 
   const effectiveExecutor = executorConfig?.executor ?? null;
   const selectedVariant = executorConfig?.variant ?? null;

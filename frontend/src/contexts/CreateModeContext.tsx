@@ -1,6 +1,6 @@
 import { useContext, useMemo, type ReactNode } from 'react';
 import { createHmrContext } from '@/lib/hmrContext.ts';
-import type { Repo } from 'shared/types';
+import type { ExecutorConfig, Repo } from 'shared/types';
 import {
   useCreateModeState,
   type CreateModeInitialState,
@@ -25,6 +25,7 @@ interface CreateModeContextValue {
   clearRepos: () => void;
   targetBranches: Record<string, string | null>;
   setTargetBranch: (repoId: string, branch: string) => void;
+  preferredExecutorConfig: ExecutorConfig | null;
   message: string;
   setMessage: (message: string) => void;
   clearDraft: () => Promise<void>;
@@ -52,7 +53,7 @@ export function CreateModeProvider({
   initialState,
   draftId,
 }: CreateModeProviderProps) {
-  // Fetch most recent workspace to seed project selection only
+  // Fetch most recent workspace to seed create-mode defaults
   const {
     workspaces: activeWorkspaces,
     archivedWorkspaces,
@@ -95,6 +96,7 @@ export function CreateModeProvider({
       clearRepos: state.clearRepos,
       targetBranches: state.targetBranches,
       setTargetBranch: state.setTargetBranch,
+      preferredExecutorConfig: state.preferredExecutorConfig,
       message: state.message,
       setMessage: state.setMessage,
       clearDraft: state.clearDraft,
@@ -111,6 +113,7 @@ export function CreateModeProvider({
       state.clearRepos,
       state.targetBranches,
       state.setTargetBranch,
+      state.preferredExecutorConfig,
       state.message,
       state.setMessage,
       state.clearDraft,

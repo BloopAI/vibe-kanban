@@ -30,6 +30,7 @@ export function CreateChatBoxContainer({
   const {
     repos,
     targetBranches,
+    preferredExecutorConfig,
     message,
     setMessage,
     selectedProjectId,
@@ -103,6 +104,7 @@ export function CreateChatBoxContainer({
   } = useLocalExecutorConfig({
     profiles,
     preferredProfile: config?.executor_profile,
+    preferredConfig: preferredExecutorConfig,
   });
   const { data: presetOptions } = usePresetOptions(
     effectiveExecutor,
