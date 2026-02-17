@@ -69,7 +69,7 @@ interface ChatBoxBaseProps {
   // Footer right content (action buttons)
   footerRight: ReactNode;
 
-  // Model selector (rendered above editor)
+  // Model selector (rendered below editor)
   modelSelector?: ChatBoxModelSelector;
 
   // Banner content (queued message indicator, feedback mode indicator)
@@ -178,21 +178,6 @@ export function ChatBoxBase({
 
       {/* Editor area */}
       <div className="flex flex-col gap-plusfifty px-base py-base rounded-md">
-        {modelSelector && (
-          <div>
-            <ModelSelectorContainer
-              agent={modelSelector.agent}
-              workspaceId={modelSelector.workspaceId}
-              onAdvancedSettings={modelSelector.onAdvancedSettings}
-              presets={modelSelector.presets}
-              selectedPreset={modelSelector.selectedPreset}
-              onPresetSelect={modelSelector.onPresetSelect}
-              onOverrideChange={modelSelector.onOverrideChange}
-              executorConfig={modelSelector.executorConfig}
-              presetOptions={modelSelector.presetOptions}
-            />
-          </div>
-        )}
         <WYSIWYGEditor
           key={focusKey}
           placeholder={placeholder}
@@ -213,6 +198,21 @@ export function ChatBoxBase({
           localImages={localImages}
           sendShortcut={config?.send_message_shortcut}
         />
+        {modelSelector && (
+          <div>
+            <ModelSelectorContainer
+              agent={modelSelector.agent}
+              workspaceId={modelSelector.workspaceId}
+              onAdvancedSettings={modelSelector.onAdvancedSettings}
+              presets={modelSelector.presets}
+              selectedPreset={modelSelector.selectedPreset}
+              onPresetSelect={modelSelector.onPresetSelect}
+              onOverrideChange={modelSelector.onOverrideChange}
+              executorConfig={modelSelector.executorConfig}
+              presetOptions={modelSelector.presetOptions}
+            />
+          </div>
+        )}
 
         {/* Footer - Controls */}
         <div className="flex items-end justify-between">
