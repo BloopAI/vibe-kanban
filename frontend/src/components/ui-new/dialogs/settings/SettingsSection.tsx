@@ -83,7 +83,9 @@ export function SettingsSection({
             className="rounded-sm opacity-70 ring-offset-panel transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
           >
             <XIcon className="h-4 w-4 text-normal" weight="bold" />
-            <span className="sr-only">{t('close', { ns: 'common' })}</span>
+            <span className="sr-only">
+              {t('buttons.close', { ns: 'common' })}
+            </span>
           </button>
         )}
       </div>

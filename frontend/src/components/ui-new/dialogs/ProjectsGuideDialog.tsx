@@ -83,7 +83,7 @@ const ProjectsGuideDialogImpl = NiceModal.create<NoProps>(() => {
   return createPortal(
     <GuideDialogShell
       topics={topics}
-      closeLabel={t('close')}
+      closeLabel={t('buttons.close')}
       onClose={handleClose}
     />,
     container
