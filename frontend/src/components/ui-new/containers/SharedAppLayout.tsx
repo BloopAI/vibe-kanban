@@ -67,27 +67,13 @@ export function SharedAppLayout() {
     useState<RemoteProject[]>(sortedProjects);
   const [isSavingProjectOrder, setIsSavingProjectOrder] = useState(false);
   const isSyncingProjectOrderRef = useRef(false);
-  const syncingProjectOrderOrgIdRef = useRef<string | null>(null);
-  const syncingProjectOrderTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (
-      isSyncingProjectOrderRef.current &&
-      syncingProjectOrderOrgIdRef.current === selectedOrgId
-    ) {
+    if (isSyncingProjectOrderRef.current || isSavingProjectOrder) {
       return;
     }
     setOrderedProjects(sortedProjects);
-  }, [selectedOrgId, sortedProjects]);
-
-  useEffect(() => {
-    return () => {
-      if (syncingProjectOrderTimeoutRef.current !== null) {
-        window.clearTimeout(syncingProjectOrderTimeoutRef.current);
-        syncingProjectOrderTimeoutRef.current = null;
-      }
-    };
-  }, []);
+  }, [isSavingProjectOrder, sortedProjects]);
 
   // Navigate to the first ordered project when org changes
   useEffect(() => {
@@ -152,12 +138,6 @@ export function SharedAppLayout() {
       setOrderedProjects(reordered);
       setIsSavingProjectOrder(true);
       isSyncingProjectOrderRef.current = true;
-      syncingProjectOrderOrgIdRef.current = selectedOrgId;
-
-      if (syncingProjectOrderTimeoutRef.current !== null) {
-        window.clearTimeout(syncingProjectOrderTimeoutRef.current);
-        syncingProjectOrderTimeoutRef.current = null;
-      }
 
       try {
         await bulkUpdateProjects(
@@ -170,15 +150,13 @@ export function SharedAppLayout() {
         console.error('Failed to reorder projects:', error);
         setOrderedProjects(previousOrder);
       } finally {
-        syncingProjectOrderTimeoutRef.current = window.setTimeout(() => {
+        window.setTimeout(() => {
           isSyncingProjectOrderRef.current = false;
-          syncingProjectOrderOrgIdRef.current = null;
           setIsSavingProjectOrder(false);
-          syncingProjectOrderTimeoutRef.current = null;
         }, 500);
       }
     },
-    [isSavingProjectOrder, orderedProjects, selectedOrgId]
+    [isSavingProjectOrder, orderedProjects]
   );
 
   const handleCreateOrg = useCallback(async () => {
