@@ -1,9 +1,11 @@
-import type { Project } from 'shared/remote-types';
+import { PROJECTS_SHAPE, type Project } from 'shared/remote-types';
 import { type OrganizationWithRole } from 'shared/types';
-import { organizationsApi, remoteProjectsApi } from '@/lib/api';
+import { organizationsApi } from '@/lib/api';
+import { createShapeCollection } from '@/lib/electric/collections';
 import { getFirstProjectByOrder } from '@/lib/projectOrder';
 
 const NAV_DEBUG_PREFIX = '[NAV_DEBUG]';
+const FIRST_PROJECT_LOOKUP_TIMEOUT_MS = 3000;
 
 function getFirstOrganization(
   organizations: OrganizationWithRole[]
@@ -22,10 +24,7 @@ function getFirstOrganization(
     return null;
   }
 
-  const firstNonPersonal = organizations.find(
-    (organization) => !organization.is_personal
-  );
-  const selectedOrganization = firstNonPersonal ?? organizations[0];
+  const selectedOrganization = organizations[0];
   console.log(`${NAV_DEBUG_PREFIX} selected organization for redirect`, {
     id: selectedOrganization.id,
     name: selectedOrganization.name,
@@ -37,17 +36,85 @@ function getFirstOrganization(
 async function getFirstProjectInOrganization(
   organizationId: string
 ): Promise<Project | null> {
-  const projects = await remoteProjectsApi.listByOrganization(organizationId);
-  const firstProject = getFirstProjectByOrder(projects);
-
-  console.log(`${NAV_DEBUG_PREFIX} organization projects fetched`, {
-    organizationId,
-    projectCount: projects.length,
-    projectIds: projects.map((project) => project.id),
-    selectedProjectId: firstProject?.id ?? null,
+  const collection = createShapeCollection(PROJECTS_SHAPE, {
+    organization_id: organizationId,
   });
 
-  return firstProject;
+  const getCollectionProjects = () =>
+    collection.toArray as unknown as Project[];
+
+  if (collection.isReady()) {
+    const projects = getCollectionProjects();
+    const firstProject = getFirstProjectByOrder(projects);
+
+    console.log(`${NAV_DEBUG_PREFIX} organization projects fetched`, {
+      organizationId,
+      source: 'electric-ready',
+      projectCount: projects.length,
+      projectIds: projects.map((project) => project.id),
+      selectedProjectId: firstProject?.id ?? null,
+    });
+
+    return firstProject;
+  }
+
+  return new Promise<Project | null>((resolve) => {
+    let settled = false;
+    let timeoutId: number | undefined;
+    let subscription: { unsubscribe: () => void } | undefined;
+
+    const settle = (project: Project | null) => {
+      if (settled) return;
+      settled = true;
+
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+        timeoutId = undefined;
+      }
+      if (subscription) {
+        subscription.unsubscribe();
+        subscription = undefined;
+      }
+
+      resolve(project);
+    };
+
+    const tryResolve = () => {
+      if (!collection.isReady()) {
+        return;
+      }
+
+      const projects = getCollectionProjects();
+      const firstProject = getFirstProjectByOrder(projects);
+
+      console.log(`${NAV_DEBUG_PREFIX} organization projects fetched`, {
+        organizationId,
+        source: 'electric-sync',
+        projectCount: projects.length,
+        projectIds: projects.map((project) => project.id),
+        selectedProjectId: firstProject?.id ?? null,
+      });
+
+      settle(firstProject);
+    };
+
+    subscription = collection.subscribeChanges(tryResolve, {
+      includeInitialState: true,
+    });
+
+    timeoutId = window.setTimeout(() => {
+      console.log(
+        `${NAV_DEBUG_PREFIX} project lookup timed out while waiting for Electric sync`,
+        {
+          organizationId,
+          timeoutMs: FIRST_PROJECT_LOOKUP_TIMEOUT_MS,
+        }
+      );
+      settle(null);
+    }, FIRST_PROJECT_LOOKUP_TIMEOUT_MS);
+
+    tryResolve();
+  });
 }
 
 export async function getFirstProjectDestination(
