@@ -15,7 +15,6 @@ import { toPrettyCase } from '@/utils/string';
 import {
   getModelKey,
   getRecentModelEntries,
-  getRecentReasoningByModel,
   touchRecentModel,
   updateRecentModelEntries,
   setRecentReasoning,
@@ -26,9 +25,7 @@ import {
   escapeAttributeValue,
   parseModelId,
   appendPresetModel,
-  resolveDefaultModelId,
   isModelAvailable,
-  resolveDefaultReasoningId,
 } from '@/utils/modelSelector';
 import { profilesApi } from '@/lib/api';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -95,9 +92,7 @@ export function ModelSelectorContainer({
     },
   };
 
-  const resolvedPreset =
-    selectedPreset ??
-    (presets.includes('DEFAULT') ? 'DEFAULT' : (presets[0] ?? null));
+  const resolvedPreset = selectedPreset;
 
   const {
     config: streamConfig,
@@ -131,103 +126,48 @@ export function ModelSelectorContainer({
     [executorConfig?.model_id, hasProviders]
   );
 
-  const fallbackProviderId = availableProviderIds[0] ?? null;
   const resolvedConfigProviderId = resolveProviderId(configProviderId);
+  const selectedProviderId = resolvedConfigProviderId;
 
-  const { providerId: presetProviderId } = useMemo(
-    () => parseModelId(presetOptions?.model_id, hasProviders),
-    [presetOptions?.model_id, hasProviders]
-  );
-  const resolvedPresetProviderId = resolveProviderId(presetProviderId);
+  const selectedModelId = useMemo(() => {
+    if (!config || !configModelId) return null;
+    if (selectedProviderId) {
+      return isModelAvailable(config, selectedProviderId, configModelId)
+        ? configModelId
+        : null;
+    }
 
-  const hasDefaultModel = Boolean(config?.default_model);
-  const selectedProviderId =
-    resolvedConfigProviderId ??
-    resolvedPresetProviderId ??
-    (hasDefaultModel ? fallbackProviderId : null);
-
-  const defaultModelId = config
-    ? resolveDefaultModelId(
-        config.models,
-        selectedProviderId,
-        config.default_model,
-        hasProviders
-      )
-    : null;
-
-  const { modelId: presetModelId } = useMemo(
-    () => parseModelId(presetOptions?.model_id, hasProviders),
-    [presetOptions?.model_id, hasProviders]
-  );
-
-  const presetModelMatchesProvider =
-    !selectedProviderId ||
-    !resolvedPresetProviderId ||
-    resolvedPresetProviderId === selectedProviderId;
-  const resolvedPresetModelId = presetModelMatchesProvider
-    ? presetModelId
-    : null;
-
-  const selectedModelId = (() => {
-    const candidate = configModelId ?? resolvedPresetModelId ?? defaultModelId;
-    if (!candidate || !config || !selectedProviderId) return candidate;
-    const hasMatch = isModelAvailable(config, selectedProviderId, candidate);
-    return hasMatch
-      ? candidate
-      : resolveDefaultModelId(
-          config.models,
-          selectedProviderId,
-          config.default_model,
-          hasProviders
-        );
-  })();
+    const selectedModelLower = configModelId.toLowerCase();
+    const hasModelMatch = config.models.some(
+      (model) => model.id.toLowerCase() === selectedModelLower
+    );
+    return hasModelMatch ? configModelId : null;
+  }, [config, configModelId, selectedProviderId]);
 
   const selectedModel = config
     ? getSelectedModel(config.models, selectedProviderId, selectedModelId)
     : null;
 
-  const recentReasoningByModel = getRecentReasoningByModel(profiles, agent);
-
-  const presetReasoningId =
-    resolvedPresetModelId && selectedModelId === resolvedPresetModelId
-      ? (presetOptions?.reasoning_id ?? null)
+  const selectedReasoningId = useMemo(() => {
+    const reasoningId = executorConfig?.reasoning_id ?? null;
+    if (!reasoningId || !selectedModel) return null;
+    return selectedModel.reasoning_options.some(
+      (option) => option.id === reasoningId
+    )
+      ? reasoningId
       : null;
-
-  const recentReasoningId = useMemo(() => {
-    if (!selectedModel || !recentReasoningByModel) return null;
-    const key = selectedModel.provider_id
-      ? `${selectedModel.provider_id}/${selectedModel.id}`
-      : selectedModel.id;
-    const keyLower = key.toLowerCase();
-    for (const [k, v] of Object.entries(recentReasoningByModel)) {
-      if (k.toLowerCase() === keyLower) {
-        if (selectedModel.reasoning_options.some((o) => o.id === v)) return v;
-      }
-    }
-    return null;
-  }, [selectedModel, recentReasoningByModel]);
-
-  const selectedReasoningId =
-    executorConfig?.reasoning_id ??
-    presetReasoningId ??
-    recentReasoningId ??
-    resolveDefaultReasoningId(selectedModel?.reasoning_options ?? []);
-
-  const defaultAgentId =
-    config?.agents.find((entry) => entry.is_default)?.id ?? null;
+  }, [executorConfig?.reasoning_id, selectedModel]);
 
   const selectedAgentId =
-    executorConfig?.agent_id !== undefined
-      ? executorConfig.agent_id
-      : (presetOptions?.agent_id ?? defaultAgentId);
+    executorConfig?.agent_id !== undefined ? executorConfig.agent_id : null;
 
   const supportsPermissions = (config?.permissions.length ?? 0) > 0;
 
-  const basePermissionPolicy = supportsPermissions
-    ? (presetOptions?.permission_policy ?? config?.permissions[0] ?? null)
-    : null;
   const permissionPolicy = supportsPermissions
-    ? (executorConfig?.permission_policy ?? basePermissionPolicy)
+    ? executorConfig?.permission_policy &&
+      config?.permissions.includes(executorConfig.permission_policy)
+      ? executorConfig.permission_policy
+      : null
     : null;
 
   // LRU persistence (on popover close)
@@ -400,7 +340,7 @@ export function ModelSelectorContainer({
   }
 
   const showModelSelector = loadingModels || config.models.length > 0;
-  const showDefaultOption = !config.default_model && config.models.length > 0;
+  const showDefaultOption = config.models.length > 0;
   const displaySelectedModel = showModelSelector
     ? getSelectedModel(config.models, selectedProviderId, selectedModelId)
     : null;
@@ -433,7 +373,9 @@ export function ModelSelectorContainer({
         size="sm"
         icon={SlidersHorizontalIcon}
         label={
-          resolvedPreset?.toLowerCase() !== 'default' ? presetLabel : undefined
+          resolvedPreset && resolvedPreset.toLowerCase() !== 'default'
+            ? presetLabel
+            : undefined
         }
         showCaret={false}
         align="start"
@@ -487,7 +429,7 @@ export function ModelSelectorContainer({
         />
       )}
 
-      {permissionPolicy && config.permissions.length > 0 && (
+      {config.permissions.length > 0 && (
         <ToolbarDropdown
           size="sm"
           icon={permissionIcon}
