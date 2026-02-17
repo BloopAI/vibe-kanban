@@ -678,25 +678,30 @@ impl ExecutionProcess {
             LatestProcessInfo,
             r#"
             SELECT
-                s.workspace_id as "workspace_id!: Uuid",
-                ep.id as "execution_process_id!: Uuid",
-                ep.session_id as "session_id!: Uuid",
-                ep.status as "status!: ExecutionProcessStatus",
-                ep.completed_at as "completed_at?: DateTime<Utc>"
-            FROM execution_processes ep
-            JOIN sessions s ON ep.session_id = s.id
-            JOIN workspaces w ON s.workspace_id = w.id
-            WHERE w.archived = $1
-              AND ep.run_reason IN ('codingagent', 'setupscript', 'cleanupscript')
-              AND ep.dropped = FALSE
-              AND ep.created_at = (
-                  SELECT MAX(ep2.created_at)
-                  FROM execution_processes ep2
-                  JOIN sessions s2 ON ep2.session_id = s2.id
-                  WHERE s2.workspace_id = s.workspace_id
-                    AND ep2.run_reason IN ('codingagent', 'setupscript', 'cleanupscript')
-                    AND ep2.dropped = FALSE
-              )
+                workspace_id as "workspace_id!: Uuid",
+                execution_process_id as "execution_process_id!: Uuid",
+                session_id as "session_id!: Uuid",
+                status as "status!: ExecutionProcessStatus",
+                completed_at as "completed_at?: DateTime<Utc>"
+            FROM (
+                SELECT
+                    s.workspace_id,
+                    ep.id as execution_process_id,
+                    ep.session_id,
+                    ep.status,
+                    ep.completed_at,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY s.workspace_id
+                        ORDER BY ep.created_at DESC
+                    ) as rn
+                FROM execution_processes ep
+                JOIN sessions s ON ep.session_id = s.id
+                JOIN workspaces w ON s.workspace_id = w.id
+                WHERE w.archived = $1
+                  AND ep.run_reason IN ('codingagent', 'setupscript', 'cleanupscript')
+                  AND ep.dropped = FALSE
+            )
+            WHERE rn = 1
             "#,
             archived
         )
