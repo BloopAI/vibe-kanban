@@ -4,7 +4,6 @@ use axum::{
     http::StatusCode,
     routing::post,
 };
-use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -20,7 +19,8 @@ use crate::{
     mutation_definition::MutationBuilder,
 };
 use api_types::{
-    CreateProjectRequest, ListProjectsQuery, ListProjectsResponse, Project, UpdateProjectRequest,
+    BulkUpdateProjectsRequest, BulkUpdateProjectsResponse, CreateProjectRequest, ListProjectsQuery,
+    ListProjectsResponse, Project, UpdateProjectRequest,
 };
 
 /// Mutation definition for Projects - provides both router and TypeScript metadata.
@@ -174,24 +174,6 @@ async fn update_project(
     })?;
 
     Ok(Json(response))
-}
-
-#[derive(Debug, Deserialize)]
-pub struct BulkUpdateProjectItem {
-    pub id: Uuid,
-    #[serde(flatten)]
-    pub changes: UpdateProjectRequest,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct BulkUpdateProjectsRequest {
-    pub updates: Vec<BulkUpdateProjectItem>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct BulkUpdateProjectsResponse {
-    pub data: Vec<Project>,
-    pub txid: i64,
 }
 
 #[instrument(

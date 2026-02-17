@@ -46,3 +46,21 @@ pub struct ListProjectsQuery {
 pub struct ListProjectsResponse {
     pub projects: Vec<Project>,
 }
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BulkUpdateProjectItem {
+    pub id: Uuid,
+    #[serde(flatten)]
+    pub changes: UpdateProjectRequest,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BulkUpdateProjectsRequest {
+    pub updates: Vec<BulkUpdateProjectItem>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BulkUpdateProjectsResponse {
+    pub data: Vec<Project>,
+    pub txid: i64,
+}
