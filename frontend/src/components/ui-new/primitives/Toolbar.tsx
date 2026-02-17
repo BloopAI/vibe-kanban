@@ -6,6 +6,7 @@ import {
   UserIcon,
   TagIcon,
 } from '@phosphor-icons/react';
+import type * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import {
@@ -56,11 +57,14 @@ function ToolbarIconButton({
 }
 
 interface ToolbarDropdownProps {
-  label: string;
+  label?: string;
   icon?: Icon;
   children?: React.ReactNode;
   className?: string;
   disabled?: boolean;
+  size?: 'default' | 'sm';
+  showCaret?: boolean;
+  align?: DropdownMenuPrimitive.DropdownMenuContentProps['align'];
 }
 
 function ToolbarDropdown({
@@ -69,6 +73,9 @@ function ToolbarDropdown({
   children,
   className,
   disabled,
+  size = 'default',
+  showCaret = true,
+  align,
 }: ToolbarDropdownProps) {
   const { t } = useTranslation('common');
 
@@ -79,8 +86,10 @@ function ToolbarDropdown({
         label={label}
         className={className}
         disabled={disabled}
+        size={size}
+        showCaret={showCaret}
       />
-      <DropdownMenuContent>
+      <DropdownMenuContent align={align}>
         {children ?? (
           <>
             <DropdownMenuLabel>{t('toolbar.sortBy')}</DropdownMenuLabel>
@@ -108,4 +117,11 @@ function ToolbarDropdown({
   );
 }
 
-export { Toolbar, ToolbarIconButton, ToolbarDropdown };
+interface ToolbarDropdownButtonProps
+  extends React.ComponentPropsWithoutRef<typeof DropdownMenuTriggerButton> {}
+
+function ToolbarDropdownButton(props: ToolbarDropdownButtonProps) {
+  return <DropdownMenuTriggerButton {...props} />;
+}
+
+export { Toolbar, ToolbarIconButton, ToolbarDropdown, ToolbarDropdownButton };
