@@ -142,7 +142,7 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
         } catch (err) {
           if (cancelled) return;
           setError(
-            err instanceof Error ? err.message : t('common:error.generic')
+            err instanceof Error ? err.message : t('common:errors.generic')
           );
         } finally {
           if (!cancelled) setIsLoadingRepo(false);
@@ -195,7 +195,7 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
         modal.hide();
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : t('common:error.generic')
+          err instanceof Error ? err.message : t('common:errors.generic')
         );
       } finally {
         setIsSaving(false);
@@ -255,7 +255,7 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
         // The logs will update automatically via useLogStream/useExecutionProcesses
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : t('common:error.generic')
+          err instanceof Error ? err.message : t('common:errors.generic')
         );
       } finally {
         setIsTesting(false);

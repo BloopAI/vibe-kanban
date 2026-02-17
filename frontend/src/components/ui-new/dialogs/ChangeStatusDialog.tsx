@@ -26,7 +26,7 @@ function ChangeStatusDialogContent({
   issueIds,
 }: Pick<ChangeStatusDialogProps, 'issueIds'>) {
   const modal = useModal();
-  const { t } = useTranslation(['kanban', 'common']);
+  const { t } = useTranslation('common');
   const [selectedStatusId, setSelectedStatusId] = useState<string>('');
 
   const { statuses, updateIssue, getIssue } = useProjectContext();
@@ -111,7 +111,7 @@ function ChangeStatusDialogContent({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleCancel}>
-            {t('common:buttons.cancel', { defaultValue: 'Cancel' })}
+            {t('buttons.cancel')}
           </Button>
           <Button onClick={handleConfirm} disabled={!selectedStatusId}>
             {t('changeStatus.action', { defaultValue: 'Change Status' })}

@@ -124,10 +124,10 @@ const DeleteWorkspaceDialogImpl = NiceModal.create<DeleteWorkspaceDialogProps>(
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={handleCancel}>
-              {t('confirm.defaultCancel', 'Cancel')}
+              {t('buttons.cancel')}
             </Button>
             <Button variant="destructive" onClick={handleConfirm}>
-              {t('confirm.delete', 'Delete')}
+              {t('buttons.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

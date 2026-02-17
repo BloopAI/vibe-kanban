@@ -151,7 +151,7 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full w-full">
-        <p className="text-low">{t('loading')}</p>
+        <p className="text-low">{t('states.loading')}</p>
       </div>
     );
   }
@@ -279,7 +279,7 @@ export function ProjectKanban() {
   if (!authLoaded || isLoading) {
     return (
       <div className="flex items-center justify-center h-full w-full">
-        <p className="text-low">{t('loading')}</p>
+        <p className="text-low">{t('states.loading')}</p>
       </div>
     );
   }

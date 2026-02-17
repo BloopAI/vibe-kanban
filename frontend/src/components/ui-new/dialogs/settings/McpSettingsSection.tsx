@@ -312,7 +312,7 @@ export function McpSettingsSection() {
               label={t('settings.mcp.labels.serverConfig')}
               description={
                 mcpLoading ? (
-                  t('settings.mcp.loading.configuration')
+                  t('settings.mcp.loadingStates.configuration')
                 ) : (
                   <>
                     {t('settings.mcp.labels.saveLocation')}
@@ -327,7 +327,9 @@ export function McpSettingsSection() {
             >
               <SettingsTextarea
                 value={
-                  mcpLoading ? t('settings.mcp.loading.jsonEditor') : mcpServers
+                  mcpLoading
+                    ? t('settings.mcp.loadingStates.jsonEditor')
+                    : mcpServers
                 }
                 onChange={handleMcpServersChange}
                 disabled={mcpLoading}

@@ -33,9 +33,7 @@ export function IssueRelationshipsSection({
     >
       <div className="p-base flex flex-col gap-half border-t">
         {isLoading ? (
-          <p className="text-low py-half">
-            {t('common.loading', 'Loading...')}
-          </p>
+          <p className="text-low py-half">{t('states.loading')}</p>
         ) : relationships.length === 0 ? (
           <p className="text-low py-half">
             {t('kanban.noRelationships', 'No relationships')}

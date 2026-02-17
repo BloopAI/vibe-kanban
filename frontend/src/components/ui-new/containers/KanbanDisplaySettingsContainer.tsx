@@ -643,9 +643,7 @@ export function KanbanDisplaySettingsContainer({
                   : 'bg-panel text-low cursor-not-allowed'
               )}
             >
-              {isSaving
-                ? t('common.saving', 'Saving...')
-                : t('common.save', 'Save')}
+              {isSaving ? t('states.saving') : t('buttons.save')}
             </button>
           </div>
         </div>

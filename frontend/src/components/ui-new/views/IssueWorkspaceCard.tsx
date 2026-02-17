@@ -344,7 +344,7 @@ export function IssueWorkspaceCreateCard({
             shouldAnimateCreateButton && 'create-issue-attention'
           )}
         >
-          {t('create', 'Create')}
+          {t('buttons.create')}
         </button>
       </div>
     </IssueWorkspaceCardContainer>

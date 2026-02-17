@@ -87,7 +87,7 @@ export function MultiSelectCommandBar<T extends string = string>({
       </CommandList>
       <div className="border-t border-border p-base">
         <PrimaryButton onClick={onClose} className="w-full justify-center">
-          {t('commandBar.close', 'Close')}
+          {t('buttons.close')}
         </PrimaryButton>
       </div>
     </Command>

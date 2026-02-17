@@ -728,6 +728,13 @@
     "statusFailed": "Failed with exit code {{exitCode}}",
     "statusKilled": "Process was killed"
   },
+  "shareDialog": {
+    "loginRequired": {
+      "title": "Sign in required",
+      "description": "Sign in to access this feature.",
+      "action": "Sign in"
+    }
+  },
   "createWorkspaceFromPr": {
     "title": "Create Workspace from PR",
     "description": "Select an open pull request to create a workspace from. A task will be created automatically using the PR title.",

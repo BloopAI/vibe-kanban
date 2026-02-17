@@ -434,7 +434,7 @@ export function PierreDiffCard({
               ...(codeLine !== undefined ? { codeLine } : {}),
             });
           }}
-          title={t('comments.addReviewComment')}
+          title={t('common:comments.addReviewComment')}
         >
           <PlusIcon className="size-3.5" weight="bold" />
         </button>

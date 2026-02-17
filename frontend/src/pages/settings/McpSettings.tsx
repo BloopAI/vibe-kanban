@@ -332,7 +332,9 @@ export function McpSettings() {
                     : '{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}'
                 }
                 value={
-                  mcpLoading ? t('settings.mcp.loading.jsonEditor') : mcpServers
+                  mcpLoading
+                    ? t('settings.mcp.loadingStates.jsonEditor')
+                    : mcpServers
                 }
                 onChange={handleMcpServersChange}
                 disabled={mcpLoading}
@@ -345,7 +347,7 @@ export function McpSettings() {
               )}
               <div className="text-sm text-muted-foreground">
                 {mcpLoading ? (
-                  t('settings.mcp.loading.configuration')
+                  t('settings.mcp.loadingStates.configuration')
                 ) : (
                   <span>
                     {t('settings.mcp.labels.saveLocation')}

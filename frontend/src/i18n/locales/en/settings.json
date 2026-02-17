@@ -1,7 +1,8 @@
 {
   "settings": {
     "common": {
-      "unsavedChanges": "• You have unsaved changes"
+      "unsavedChanges": "• You have unsaved changes",
+      "discardChangesConfirm": "Discard unsaved changes?"
     },
     "unsavedChanges": {
       "title": "Unsaved Changes",
@@ -402,6 +403,7 @@
       },
       "save": {
         "button": "Save Project Settings",
+        "saving": "Saving...",
         "success": "✓ Project settings saved successfully!",
         "error": "Failed to save project settings",
         "unsavedChanges": "• You have unsaved changes",
@@ -486,6 +488,44 @@
         "unsavedChanges": "You have unsaved changes",
         "discard": "Discard",
         "confirmSwitch": "You have unsaved changes. Are you sure you want to switch repositories? Your changes will be lost."
+      }
+    },
+    "remoteProjects": {
+      "title": "Remote Projects",
+      "description": "Manage cloud-synced projects across organizations.",
+      "loading": "Loading remote projects...",
+      "loadError": "Failed to load organizations",
+      "noProjects": "No projects yet. Create one to get started.",
+      "selectOrg": "Select an organization",
+      "createSuccess": "Project created successfully",
+      "deleteSuccess": "Project deleted successfully",
+      "nameRequired": "Project name is required",
+      "saveSuccess": "Project updated successfully",
+      "saveError": "Failed to update project",
+      "columns": {
+        "organizations": "Organizations",
+        "projects": "Projects"
+      },
+      "actions": {
+        "addProject": "Add Project"
+      },
+      "form": {
+        "name": {
+          "label": "Project Name",
+          "placeholder": "Enter project name"
+        },
+        "color": {
+          "label": "Project Color"
+        },
+        "statuses": {
+          "label": "Project Statuses",
+          "description": "Manage kanban columns for this project."
+        }
+      },
+      "loginRequired": {
+        "title": "Sign in required",
+        "description": "Sign in to manage your remote projects.",
+        "action": "Sign in"
       }
     }
   },
