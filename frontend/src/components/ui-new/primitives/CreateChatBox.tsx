@@ -177,7 +177,7 @@ export function CreateChatBox({
             className="hidden"
             onChange={handleFileInputChange}
           />
-          <div className="flex items-center gap-half">
+          <div className="flex items-center gap-base">
             <span className="h-3 w-px bg-border/70" aria-hidden="true" />
             <button
               type="button"
