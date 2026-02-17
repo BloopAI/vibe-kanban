@@ -39,6 +39,11 @@ import zhHantSettings from './locales/zh-Hant/settings.json';
 import zhHantProjects from './locales/zh-Hant/projects.json';
 import zhHantTasks from './locales/zh-Hant/tasks.json';
 import zhHantOrganization from './locales/zh-Hant/organization.json';
+import trCommon from './locales/tr/common.json';
+import trSettings from './locales/tr/settings.json';
+import trProjects from './locales/tr/projects.json';
+import trTasks from './locales/tr/tasks.json';
+import trOrganization from './locales/tr/organization.json';
 
 const resources = {
   en: {
@@ -89,6 +94,13 @@ const resources = {
     projects: zhHantProjects,
     tasks: zhHantTasks,
     organization: zhHantOrganization,
+  },
+  tr: {
+    common: trCommon,
+    settings: trSettings,
+    projects: trProjects,
+    tasks: trTasks,
+    organization: trOrganization,
   },
 };
 

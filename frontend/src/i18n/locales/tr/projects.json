@@ -1,0 +1,26 @@
+{
+  "title": "Projeler",
+  "subtitle": "Projelerinizi yönetin ve ilerlemeyi takip edin",
+  "createProject": "Proje Oluştur",
+  "loading": "Projeler yükleniyor...",
+  "repoSearch": {
+    "searching": "Depolar aranıyor...",
+    "stillSearching": "Hâlâ aranıyor... ({{seconds}}s)",
+    "takingLonger": "Bu normalden uzun sürüyor. Aşağıdan manuel olarak göz atabilirsiniz.",
+    "noReposFound": "Yaygın konumlarda depo bulunamadı.",
+    "browseHint": "Bir depoya göz atmak için aşağıdaki seçeneği kullanın."
+  },
+  "errors": {
+    "fetchFailed": "Projeler yüklenemedi",
+    "deleteFailed": "Proje silinemedi"
+  },
+  "empty": {
+    "title": "Henüz proje yok",
+    "description": "İlk projenizi oluşturarak başlayın.",
+    "createFirst": "İlk projenizi oluşturun"
+  },
+  "projectNotFound": "Aradığınız proje mevcut değil veya silinmiş.",
+  "viewProject": "Projeyi Görüntüle",
+  "openInIDE": "IDE'de Aç",
+  "createdDate": "Oluşturulma: {{date}}"
+}
