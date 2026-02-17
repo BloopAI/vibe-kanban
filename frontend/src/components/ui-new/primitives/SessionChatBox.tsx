@@ -725,7 +725,7 @@ export function SessionChatBox({
         </>
       }
       footerLeft={
-        <>
+        <div className="flex items-center gap-base">
           <ToolbarIconButton
             icon={PaperclipIcon}
             aria-label={t('tasks:taskFormDialog.attachImage')}
@@ -775,7 +775,7 @@ export function SessionChatBox({
               />
             );
           })}
-        </>
+        </div>
       }
       footerRight={renderActionButtons()}
     />
