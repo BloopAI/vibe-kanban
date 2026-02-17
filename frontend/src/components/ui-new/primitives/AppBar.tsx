@@ -178,7 +178,7 @@ export function AppBar({
             <div
               ref={dropProvided.innerRef}
               {...dropProvided.droppableProps}
-              className="flex flex-col items-center"
+              className="flex flex-col items-center -mb-base"
             >
               {projects.map((project, index) => (
                 <Draggable
@@ -193,7 +193,7 @@ export function AppBar({
                       ref={dragProvided.innerRef}
                       {...dragProvided.draggableProps}
                       {...dragProvided.dragHandleProps}
-                      className={cn(index < projects.length - 1 && 'mb-base')}
+                      className="mb-base"
                       style={dragProvided.draggableProps.style}
                     >
                       <Tooltip content={project.name} side="right">
