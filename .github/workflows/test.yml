@@ -7,7 +7,6 @@ on:
     paths-ignore:
       - .github/workflows/**
       - '!.github/workflows/test.yml'
-      - docs/**
   push:
     branches:
       - main
