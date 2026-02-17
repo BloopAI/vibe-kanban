@@ -199,7 +199,7 @@ export function ChatBoxBase({
           sendShortcut={config?.send_message_shortcut}
         />
         {/* Footer - Controls */}
-        <div className="flex min-w-0 flex-wrap items-end gap-base">
+        <div className="flex min-w-0 flex-wrap items-center gap-base">
           {modelSelector && (
             <div className="min-w-0 flex-1">
               <ModelSelectorContainer
@@ -215,9 +215,9 @@ export function ChatBoxBase({
               />
             </div>
           )}
-          <div className="ml-auto flex shrink-0 items-end gap-base">
+          <div className="ml-auto flex shrink-0 items-center gap-base">
             <Toolbar className="gap-double">{footerLeft}</Toolbar>
-            <div className="flex gap-base">{footerRight}</div>
+            <div className="flex items-center gap-base">{footerRight}</div>
           </div>
         </div>
       </div>
