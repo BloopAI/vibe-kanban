@@ -3,8 +3,8 @@ use std::{str::FromStr, sync::Arc};
 use db::{
     DBService,
     models::{
-        execution_process::ExecutionProcess, project::Project, scratch::Scratch, session::Session,
-        task::Task, workspace::Workspace,
+        execution_process::ExecutionProcess, scratch::Scratch, session::Session, task::Task,
+        workspace::Workspace,
     },
 };
 use serde_json::json;
@@ -20,9 +20,7 @@ mod streams;
 #[path = "events/types.rs"]
 pub mod types;
 
-pub use patches::{
-    execution_process_patch, project_patch, scratch_patch, task_patch, workspace_patch,
-};
+pub use patches::{execution_process_patch, scratch_patch, task_patch, workspace_patch};
 pub use types::{EventError, EventPatch, EventPatchInner, HookTables, RecordTypes};
 
 #[derive(Clone)]
@@ -125,14 +123,6 @@ impl EventService {
                                     msg_store_for_preupdate.push_patch(patch);
                                 }
                             }
-                            "projects" => {
-                                if let Ok(value) = preupdate.get_old_column_value(0)
-                                    && let Ok(project_id) = <Uuid as Decode<Sqlite>>::decode(value)
-                                {
-                                    let patch = project_patch::remove(project_id);
-                                    msg_store_for_preupdate.push_patch(patch);
-                                }
-                            }
                             "workspaces" => {
                                 if let Ok(value) = preupdate.get_old_column_value(0)
                                     && let Ok(workspace_id) =
@@ -178,7 +168,6 @@ impl EventService {
                         runtime_handle.spawn(async move {
                             let record_type: RecordTypes = match (table, hook.operation.clone()) {
                                 (HookTables::Tasks, SqliteOperation::Delete)
-                                | (HookTables::Projects, SqliteOperation::Delete)
                                 | (HookTables::Workspaces, SqliteOperation::Delete)
                                 | (HookTables::ExecutionProcesses, SqliteOperation::Delete)
                                 | (HookTables::Scratch, SqliteOperation::Delete) => {
@@ -195,19 +184,6 @@ impl EventService {
                                         },
                                         Err(e) => {
                                             tracing::error!("Failed to fetch task: {:?}", e);
-                                            return;
-                                        }
-                                    }
-                                }
-                                (HookTables::Projects, _) => {
-                                    match Project::find_by_rowid(&db.pool, rowid).await {
-                                        Ok(Some(project)) => RecordTypes::Project(project),
-                                        Ok(None) => RecordTypes::DeletedProject {
-                                            rowid,
-                                            project_id: None,
-                                        },
-                                        Err(e) => {
-                                            tracing::error!("Failed to fetch project: {:?}", e);
                                             return;
                                         }
                                     }
@@ -299,15 +275,6 @@ impl EventService {
                                     ..
                                 } => {
                                     let patch = task_patch::remove(*task_id);
-                                    msg_store_for_hook.push_patch(patch);
-                                    return;
-                                }
-                                RecordTypes::Project(project) => {
-                                    let patch = match hook.operation {
-                                        SqliteOperation::Insert => project_patch::add(project),
-                                        SqliteOperation::Update => project_patch::replace(project),
-                                        _ => project_patch::replace(project),
-                                    };
                                     msg_store_for_hook.push_patch(patch);
                                     return;
                                 }
