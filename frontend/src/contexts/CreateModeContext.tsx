@@ -82,6 +82,7 @@ export function CreateModeProvider({
     initialProjectId: lastWorkspaceTask?.project_id,
     initialState,
     draftId,
+    lastWorkspaceId: mostRecentWorkspace?.id ?? null,
     remoteWorkspaces,
     localWorkspaceIds,
     localWorkspacesLoading,

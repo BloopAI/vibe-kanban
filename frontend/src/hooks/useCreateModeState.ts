@@ -216,6 +216,7 @@ interface UseCreateModeStateParams {
   initialProjectId?: string;
   initialState?: CreateModeInitialState | null;
   draftId?: string | null;
+  lastWorkspaceId: string | null;
   remoteWorkspaces: RemoteWorkspace[];
   localWorkspaceIds: Set<string>;
   localWorkspacesLoading: boolean;
@@ -249,6 +250,7 @@ export function useCreateModeState({
   initialProjectId,
   initialState,
   draftId,
+  lastWorkspaceId,
   remoteWorkspaces,
   localWorkspaceIds,
   localWorkspacesLoading,
@@ -346,7 +348,7 @@ export function useCreateModeState({
   // ============================================================================
   const hasAttemptedAutoSelect = useRef(false);
   const initialProjectIdRef = useRef(initialProjectId);
-  const hasAttemptedIssueRepoDefaults = useRef(false);
+  const hasAttemptedRepoDefaults = useRef(false);
 
   useEffect(() => {
     if (state.phase !== 'ready') return;
@@ -394,22 +396,24 @@ export function useCreateModeState({
   }, [state.phase, state.projectId, projectsById, projectsLoading]);
 
   // ============================================================================
-  // Auto-select repos/branches for linked issue drafts
+  // Auto-select repos/branches for new drafts
   // ============================================================================
   useEffect(() => {
     if (state.phase !== 'ready') return;
-    if (hasAttemptedIssueRepoDefaults.current) return;
-    if (!state.linkedIssue) return;
+    if (hasAttemptedRepoDefaults.current) return;
     if (state.repos.length > 0) return;
-    if (localWorkspacesLoading || remoteWorkspacesLoading) return;
+    if (localWorkspacesLoading) return;
+    if (state.linkedIssue && remoteWorkspacesLoading) return;
 
-    hasAttemptedIssueRepoDefaults.current = true;
+    hasAttemptedRepoDefaults.current = true;
 
-    const sourceWorkspaceId = getLatestWorkspaceIdForRemoteProject({
-      remoteWorkspaces,
-      localWorkspaceIds,
-      remoteProjectId: state.linkedIssue.remoteProjectId,
-    });
+    const sourceWorkspaceId = state.linkedIssue
+      ? getLatestWorkspaceIdForRemoteProject({
+          remoteWorkspaces,
+          localWorkspaceIds,
+          remoteProjectId: state.linkedIssue.remoteProjectId,
+        })
+      : lastWorkspaceId;
     if (!sourceWorkspaceId) return;
 
     attemptsApi
@@ -427,7 +431,7 @@ export function useCreateModeState({
       })
       .catch((error) => {
         console.error(
-          '[useCreateModeState] Failed to load issue-based repo defaults:',
+          '[useCreateModeState] Failed to load repo defaults:',
           error
         );
       });
@@ -435,6 +439,7 @@ export function useCreateModeState({
     state.phase,
     state.linkedIssue,
     state.repos.length,
+    lastWorkspaceId,
     localWorkspacesLoading,
     remoteWorkspacesLoading,
     remoteWorkspaces,
