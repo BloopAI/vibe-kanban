@@ -512,7 +512,16 @@ pub async fn merge_task_attempt(
     let task_uuid_str = task.id.to_string();
     let first_uuid_section = task_uuid_str.split('-').next().unwrap_or(&task_uuid_str);
 
-    let mut commit_message = format!("{} (vibe-kanban {})", task.title, first_uuid_section);
+    // Check if branding is enabled in config
+    let config = deployment.config().read().await;
+    let branding_enabled = config.branding_in_commit_and_pr_enabled;
+    drop(config);
+
+    let mut commit_message = if branding_enabled {
+        format!("{} (vibe-kanban {})", task.title, first_uuid_section)
+    } else {
+        format!("{} ({})", task.title, first_uuid_section)
+    };
 
     // Add description on next line if it exists
     if let Some(description) = &task.description

@@ -1,7 +1,10 @@
 use std::{collections::HashMap, env, fs, path::Path};
 
 use schemars::{JsonSchema, Schema, SchemaGenerator, generate::SchemaSettings};
-use services::services::config::{DEFAULT_COMMIT_REMINDER_PROMPT, DEFAULT_PR_DESCRIPTION_PROMPT};
+use services::services::config::{
+    DEFAULT_COMMIT_REMINDER_PROMPT, DEFAULT_PR_DESCRIPTION_PROMPT,
+    DEFAULT_PR_DESCRIPTION_PROMPT_NO_BRANDING,
+};
 use ts_rs::TS;
 
 fn generate_types_content() -> String {
@@ -253,8 +256,9 @@ fn generate_types_content() -> String {
 
     // Append exported constants
     let constants = format!(
-        "export const DEFAULT_PR_DESCRIPTION_PROMPT = {};\n\nexport const DEFAULT_COMMIT_REMINDER_PROMPT = {};",
+        "export const DEFAULT_PR_DESCRIPTION_PROMPT = {};\n\nexport const DEFAULT_PR_DESCRIPTION_PROMPT_NO_BRANDING = {};\n\nexport const DEFAULT_COMMIT_REMINDER_PROMPT = {};",
         serde_json::to_string(DEFAULT_PR_DESCRIPTION_PROMPT).unwrap(),
+        serde_json::to_string(DEFAULT_PR_DESCRIPTION_PROMPT_NO_BRANDING).unwrap(),
         serde_json::to_string(DEFAULT_COMMIT_REMINDER_PROMPT).unwrap()
     );
 

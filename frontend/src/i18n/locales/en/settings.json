@@ -179,6 +179,10 @@
         "customPrompt": {
           "useCustom": "Use custom prompt",
           "helper": "Custom prompt for the commit reminder. The git status will be appended automatically."
+        },
+        "branding": {
+          "label": "Include Vibe Kanban branding",
+          "helper": "Add '(Vibe Kanban)' to commit messages and PR titles."
         }
       },
       "notifications": {

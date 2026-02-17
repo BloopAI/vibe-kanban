@@ -179,6 +179,10 @@
         "customPrompt": {
           "useCustom": "カスタムプロンプトを使用",
           "helper": "コミットリマインダー用のカスタムプロンプト。gitステータスは自動的に追加されます。"
+        },
+        "branding": {
+          "label": "Vibe Kanban ブランディングを含める",
+          "helper": "コミットメッセージと PR タイトルに '(Vibe Kanban)' を追加します。"
         }
       },
       "notifications": {

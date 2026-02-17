@@ -21,6 +21,10 @@ fn default_commit_reminder_enabled() -> bool {
     true
 }
 
+fn default_branding_in_commit_and_pr_enabled() -> bool {
+    true
+}
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize, TS, PartialEq, Eq)]
 pub enum SendMessageShortcut {
     #[default]
@@ -60,6 +64,8 @@ pub struct Config {
     pub commit_reminder_prompt: Option<String>,
     #[serde(default)]
     pub send_message_shortcut: SendMessageShortcut,
+    #[serde(default = "default_branding_in_commit_and_pr_enabled")]
+    pub branding_in_commit_and_pr_enabled: bool,
 }
 
 impl Config {
@@ -89,6 +95,7 @@ impl Config {
             commit_reminder_enabled: true,
             commit_reminder_prompt: None,
             send_message_shortcut: SendMessageShortcut::default(),
+            branding_in_commit_and_pr_enabled: true,
         }
     }
 
@@ -143,6 +150,7 @@ impl Default for Config {
             commit_reminder_enabled: true,
             commit_reminder_prompt: None,
             send_message_shortcut: SendMessageShortcut::default(),
+            branding_in_commit_and_pr_enabled: true,
         }
     }
 }

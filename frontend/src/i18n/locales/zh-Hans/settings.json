@@ -179,6 +179,10 @@
         "customPrompt": {
           "useCustom": "使用自定义提示",
           "helper": "提交提醒的自定义提示。git 状态将自动追加。"
+        },
+        "branding": {
+          "label": "包含 Vibe Kanban 品牌",
+          "helper": "在提交消息和 PR 标题中加入 '(Vibe Kanban)'。"
         }
       },
       "notifications": {

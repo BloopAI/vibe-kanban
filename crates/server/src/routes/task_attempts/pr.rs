@@ -26,7 +26,7 @@ use executors::actions::{
 use git::{GitCliError, GitRemote, GitServiceError};
 use serde::{Deserialize, Serialize};
 use services::services::{
-    config::DEFAULT_PR_DESCRIPTION_PROMPT,
+    config::{DEFAULT_PR_DESCRIPTION_PROMPT, DEFAULT_PR_DESCRIPTION_PROMPT_NO_BRANDING},
     container::ContainerService,
     git_host::{
         self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
@@ -102,12 +102,19 @@ async fn trigger_pr_description_follow_up(
     pr_number: i64,
     pr_url: &str,
 ) -> Result<(), ApiError> {
-    // Get the custom prompt from config, or use default
+    // Get the custom prompt from config, or use default based on branding setting
     let config = deployment.config().read().await;
+    let branding_enabled = config.branding_in_commit_and_pr_enabled;
     let prompt_template = config
         .pr_auto_description_prompt
         .as_deref()
-        .unwrap_or(DEFAULT_PR_DESCRIPTION_PROMPT);
+        .unwrap_or_else(|| {
+            if branding_enabled {
+                DEFAULT_PR_DESCRIPTION_PROMPT
+            } else {
+                DEFAULT_PR_DESCRIPTION_PROMPT_NO_BRANDING
+            }
+        });
 
     // Replace placeholders in prompt
     let prompt = prompt_template

@@ -609,6 +609,16 @@ export function GeneralSettingsSection() {
           }
         />
 
+        <SettingsCheckbox
+          id="branding-in-commit-and-pr"
+          label={t('settings.general.commits.branding.label')}
+          description={t('settings.general.commits.branding.helper')}
+          checked={draft?.branding_in_commit_and_pr_enabled ?? true}
+          onChange={(checked) =>
+            updateDraft({ branding_in_commit_and_pr_enabled: checked })
+          }
+        />
+
         {draft?.commit_reminder_enabled && (
           <>
             <SettingsCheckbox
