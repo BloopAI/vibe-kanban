@@ -1,3 +1,4 @@
+import * as React from 'react';
 import {
   type Icon,
   SortAscendingIcon,
@@ -120,8 +121,10 @@ function ToolbarDropdown({
 interface ToolbarDropdownButtonProps
   extends React.ComponentPropsWithoutRef<typeof DropdownMenuTriggerButton> {}
 
-function ToolbarDropdownButton(props: ToolbarDropdownButtonProps) {
-  return <DropdownMenuTriggerButton {...props} />;
-}
+const ToolbarDropdownButton = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuTriggerButton>,
+  ToolbarDropdownButtonProps
+>((props, ref) => <DropdownMenuTriggerButton ref={ref} {...props} />);
+ToolbarDropdownButton.displayName = 'ToolbarDropdownButton';
 
 export { Toolbar, ToolbarIconButton, ToolbarDropdown, ToolbarDropdownButton };
