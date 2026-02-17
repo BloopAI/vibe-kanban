@@ -5,6 +5,7 @@ import { getFirstProjectDestination } from '@/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 
 const DEFAULT_DESTINATION = '/workspaces/create';
+const NAV_DEBUG_PREFIX = '[NAV_DEBUG]';
 
 export function RootRedirectPage() {
   const { config, loading, loginStatus } = useUserSystem();
@@ -15,16 +16,35 @@ export function RootRedirectPage() {
     let cancelled = false;
 
     const resolveDestination = async () => {
+      console.log(`${NAV_DEBUG_PREFIX} root redirect evaluating`, {
+        loading,
+        hasConfig: Boolean(config),
+        remoteOnboardingAcknowledged: config?.remote_onboarding_acknowledged,
+        loginStatus: loginStatus?.status ?? null,
+      });
+
       if (loading || !config) {
+        console.log(
+          `${NAV_DEBUG_PREFIX} root redirect waiting for config/user-system`
+        );
         return;
       }
 
       if (!config.remote_onboarding_acknowledged) {
+        console.log(
+          `${NAV_DEBUG_PREFIX} redirecting to onboarding because remote onboarding is not acknowledged`
+        );
         setDestination('/onboarding');
         return;
       }
 
       if (loginStatus?.status !== 'loggedin') {
+        console.log(
+          `${NAV_DEBUG_PREFIX} redirecting to workspaces because user is not logged in`,
+          {
+            loginStatus: loginStatus?.status ?? null,
+          }
+        );
         setDestination(DEFAULT_DESTINATION);
         return;
       }
@@ -32,7 +52,14 @@ export function RootRedirectPage() {
       const firstProjectDestination =
         await getFirstProjectDestination(setSelectedOrgId);
       if (!cancelled) {
-        setDestination(firstProjectDestination ?? DEFAULT_DESTINATION);
+        const resolvedDestination =
+          firstProjectDestination ?? DEFAULT_DESTINATION;
+        console.log(`${NAV_DEBUG_PREFIX} final root destination`, {
+          firstProjectDestination,
+          fallbackDestination: DEFAULT_DESTINATION,
+          resolvedDestination,
+        });
+        setDestination(resolvedDestination);
       }
     };
 
