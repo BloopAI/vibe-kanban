@@ -5,7 +5,7 @@ use db::models::{
     task::{CreateTask, TaskWithAttemptStatus},
     workspace::Workspace,
 };
-use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
+use executors::{executors::BaseCodingAgent, profile::ExecutorConfig};
 use rmcp::{
     ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
@@ -109,10 +109,8 @@ impl TaskServer {
             }
         });
 
-        let executor_profile_id = ExecutorProfileId {
-            executor: base_executor,
-            variant,
-        };
+        let mut executor_config = ExecutorConfig::new(base_executor);
+        executor_config.variant = variant;
 
         // Derive project_id from first available project
         let projects: Vec<Project> = match self
@@ -139,7 +137,7 @@ impl TaskServer {
 
         let payload = CreateAndStartTaskRequest {
             task: CreateTask::from_title_description(project.id, title, None),
-            executor_profile_id,
+            executor_config,
             repos: workspace_repos,
             linked_issue: None,
         };
