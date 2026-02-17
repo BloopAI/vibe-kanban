@@ -1,6 +1,7 @@
 use api_types::{
     CreateIssueRequest, Issue, IssuePriority, ListIssueAssigneesResponse, ListIssueTagsResponse,
-    ListIssuesResponse, ListTagsResponse, MutationResponse, UpdateIssueRequest,
+    ListIssuesResponse, ListPullRequestsResponse, ListTagsResponse, MutationResponse,
+    PullRequestStatus, UpdateIssueRequest,
 };
 use rmcp::{
     ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
@@ -82,6 +83,28 @@ struct IssueSummary {
     created_at: String,
     #[schemars(description = "When the issue was last updated")]
     updated_at: String,
+    #[schemars(description = "Number of pull requests linked to this issue")]
+    pull_request_count: usize,
+    #[schemars(description = "URL of the most recent pull request, if any")]
+    latest_pr_url: Option<String>,
+    #[schemars(
+        description = "Status of the most recent pull request: 'open', 'merged', or 'closed'"
+    )]
+    latest_pr_status: Option<String>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct PullRequestSummary {
+    #[schemars(description = "PR number")]
+    number: i32,
+    #[schemars(description = "URL of the pull request")]
+    url: String,
+    #[schemars(description = "Status of the pull request: 'open', 'merged', or 'closed'")]
+    status: String,
+    #[schemars(description = "When the PR was merged, if applicable")]
+    merged_at: Option<String>,
+    #[schemars(description = "Target branch for the PR")]
+    target_branch_name: String,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -112,6 +135,8 @@ struct IssueDetails {
     created_at: String,
     #[schemars(description = "When the issue was last updated")]
     updated_at: String,
+    #[schemars(description = "Pull requests linked to this issue")]
+    pull_requests: Vec<PullRequestSummary>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -384,7 +409,12 @@ impl TaskServer {
 
         let mut summaries = Vec::with_capacity(filtered_page.len());
         for issue in &filtered_page {
-            summaries.push(self.issue_to_summary(issue, status_names_by_id.as_ref()));
+            let pull_requests = self.fetch_pull_requests(issue.id).await;
+            summaries.push(self.issue_to_summary(
+                issue,
+                status_names_by_id.as_ref(),
+                &pull_requests,
+            ));
         }
 
         TaskServer::success(&McpListIssuesResponse {
@@ -410,7 +440,8 @@ impl TaskServer {
             Err(e) => return Ok(e),
         };
 
-        let details = self.issue_to_details(&issue).await;
+        let pull_requests = self.fetch_pull_requests(issue_id).await;
+        let details = self.issue_to_details(&issue, pull_requests).await;
         TaskServer::success(&McpGetIssueResponse { issue: details })
     }
 
@@ -483,7 +514,8 @@ impl TaskServer {
                 Err(e) => return Ok(e),
             };
 
-        let details = self.issue_to_details(&response.data).await;
+        let pull_requests = self.fetch_pull_requests(issue_id).await;
+        let details = self.issue_to_details(&response.data, pull_requests).await;
         TaskServer::success(&McpUpdateIssueResponse { issue: details })
     }
 
@@ -518,10 +550,12 @@ impl TaskServer {
         &self,
         issue: &Issue,
         status_names_by_id: Option<&std::collections::HashMap<Uuid, String>>,
+        pull_requests: &ListPullRequestsResponse,
     ) -> IssueSummary {
         let status = status_names_by_id
             .and_then(|status_map| status_map.get(&issue.status_id).cloned())
             .unwrap_or_else(|| issue.status_id.to_string());
+        let latest_pr = pull_requests.pull_requests.first();
         IssueSummary {
             id: issue.id.to_string(),
             title: issue.title.clone(),
@@ -534,10 +568,17 @@ impl TaskServer {
             parent_issue_id: issue.parent_issue_id.map(|id| id.to_string()),
             created_at: issue.created_at.to_rfc3339(),
             updated_at: issue.updated_at.to_rfc3339(),
+            pull_request_count: pull_requests.pull_requests.len(),
+            latest_pr_url: latest_pr.map(|pr| pr.url.clone()),
+            latest_pr_status: latest_pr.map(|pr| Self::pr_status_label(pr.status).to_string()),
         }
     }
 
-    async fn issue_to_details(&self, issue: &Issue) -> IssueDetails {
+    async fn issue_to_details(
+        &self,
+        issue: &Issue,
+        pull_requests: ListPullRequestsResponse,
+    ) -> IssueDetails {
         let status = self
             .resolve_status_name(issue.project_id, issue.status_id)
             .await;
@@ -558,6 +599,38 @@ impl TaskServer {
             completed_at: issue.completed_at.map(|date| date.to_rfc3339()),
             created_at: issue.created_at.to_rfc3339(),
             updated_at: issue.updated_at.to_rfc3339(),
+            pull_requests: pull_requests
+                .pull_requests
+                .into_iter()
+                .map(|pr| PullRequestSummary {
+                    number: pr.number,
+                    url: pr.url,
+                    status: Self::pr_status_label(pr.status).to_string(),
+                    merged_at: pr.merged_at.map(|dt| dt.to_rfc3339()),
+                    target_branch_name: pr.target_branch_name,
+                })
+                .collect(),
+        }
+    }
+
+    fn pr_status_label(status: PullRequestStatus) -> &'static str {
+        match status {
+            PullRequestStatus::Open => "open",
+            PullRequestStatus::Merged => "merged",
+            PullRequestStatus::Closed => "closed",
+        }
+    }
+
+    async fn fetch_pull_requests(&self, issue_id: Uuid) -> ListPullRequestsResponse {
+        let url = self.url(&format!("/api/remote/pull-requests?issue_id={}", issue_id));
+        match self
+            .send_json::<ListPullRequestsResponse>(self.client.get(&url))
+            .await
+        {
+            Ok(response) => response,
+            Err(_) => ListPullRequestsResponse {
+                pull_requests: vec![],
+            },
         }
     }
 

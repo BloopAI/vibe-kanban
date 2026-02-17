@@ -27,3 +27,8 @@ pub struct PullRequest {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct ListPullRequestsResponse {
+    pub pull_requests: Vec<PullRequest>,
+}

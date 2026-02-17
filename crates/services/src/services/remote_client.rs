@@ -10,10 +10,11 @@ use api_types::{
     HandoffInitResponse, HandoffRedeemRequest, HandoffRedeemResponse, Issue, IssueAssignee,
     IssueTag, ListAttachmentsResponse, ListInvitationsResponse, ListIssueAssigneesResponse,
     ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse, ListOrganizationsResponse,
-    ListProjectStatusesResponse, ListProjectsResponse, ListTagsResponse, MutationResponse,
-    Organization, ProfileResponse, RevokeInvitationRequest, Tag, TokenRefreshRequest,
-    TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
-    UpdateOrganizationRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
+    ListProjectStatusesResponse, ListProjectsResponse, ListPullRequestsResponse, ListTagsResponse,
+    MutationResponse, Organization, ProfileResponse, RevokeInvitationRequest, Tag,
+    TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest,
+    UpdateMemberRoleResponse, UpdateOrganizationRequest, UpdateWorkspaceRequest,
+    UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
@@ -910,6 +911,15 @@ impl RemoteClient {
         )
         .await?;
         Ok(())
+    }
+
+    /// Lists pull requests linked to an issue.
+    pub async fn list_pull_requests(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<ListPullRequestsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/pull_requests?issue_id={issue_id}"))
+            .await
     }
 
     /// Lists attachments for an issue on the remote server.
