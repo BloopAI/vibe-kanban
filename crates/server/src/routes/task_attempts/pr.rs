@@ -105,16 +105,15 @@ async fn trigger_pr_description_follow_up(
     // Get the custom prompt from config, or use default based on branding setting
     let config = deployment.config().read().await;
     let branding_enabled = config.branding_in_commit_and_pr_enabled;
-    let prompt_template = config
-        .pr_auto_description_prompt
-        .as_deref()
-        .unwrap_or_else(|| {
-            if branding_enabled {
+    let prompt_template =
+        config
+            .pr_auto_description_prompt
+            .as_deref()
+            .unwrap_or(if branding_enabled {
                 DEFAULT_PR_DESCRIPTION_PROMPT
             } else {
                 DEFAULT_PR_DESCRIPTION_PROMPT_NO_BRANDING
-            }
-        });
+            });
 
     // Replace placeholders in prompt
     let prompt = prompt_template
