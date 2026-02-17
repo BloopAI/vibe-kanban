@@ -66,10 +66,28 @@ export function SharedAppLayout() {
   const [orderedProjects, setOrderedProjects] =
     useState<RemoteProject[]>(sortedProjects);
   const [isSavingProjectOrder, setIsSavingProjectOrder] = useState(false);
+  const isSyncingProjectOrderRef = useRef(false);
+  const syncingProjectOrderOrgIdRef = useRef<string | null>(null);
+  const syncingProjectOrderTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (
+      isSyncingProjectOrderRef.current &&
+      syncingProjectOrderOrgIdRef.current === selectedOrgId
+    ) {
+      return;
+    }
     setOrderedProjects(sortedProjects);
-  }, [sortedProjects]);
+  }, [selectedOrgId, sortedProjects]);
+
+  useEffect(() => {
+    return () => {
+      if (syncingProjectOrderTimeoutRef.current !== null) {
+        window.clearTimeout(syncingProjectOrderTimeoutRef.current);
+        syncingProjectOrderTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Navigate to the first ordered project when org changes
   useEffect(() => {
@@ -115,7 +133,7 @@ export function SharedAppLayout() {
 
   const handleProjectsDragEnd = useCallback(
     async ({ source, destination }: DropResult) => {
-      if (isSavingProjectOrder) {
+      if (isSavingProjectOrder || isSyncingProjectOrderRef.current) {
         return;
       }
       if (!destination || source.index === destination.index) {
@@ -133,6 +151,13 @@ export function SharedAppLayout() {
       reordered.splice(destination.index, 0, moved);
       setOrderedProjects(reordered);
       setIsSavingProjectOrder(true);
+      isSyncingProjectOrderRef.current = true;
+      syncingProjectOrderOrgIdRef.current = selectedOrgId;
+
+      if (syncingProjectOrderTimeoutRef.current !== null) {
+        window.clearTimeout(syncingProjectOrderTimeoutRef.current);
+        syncingProjectOrderTimeoutRef.current = null;
+      }
 
       try {
         await bulkUpdateProjects(
@@ -145,10 +170,15 @@ export function SharedAppLayout() {
         console.error('Failed to reorder projects:', error);
         setOrderedProjects(previousOrder);
       } finally {
-        setIsSavingProjectOrder(false);
+        syncingProjectOrderTimeoutRef.current = window.setTimeout(() => {
+          isSyncingProjectOrderRef.current = false;
+          syncingProjectOrderOrgIdRef.current = null;
+          setIsSavingProjectOrder(false);
+          syncingProjectOrderTimeoutRef.current = null;
+        }, 500);
       }
     },
-    [isSavingProjectOrder, orderedProjects]
+    [isSavingProjectOrder, orderedProjects, selectedOrgId]
   );
 
   const handleCreateOrg = useCallback(async () => {
