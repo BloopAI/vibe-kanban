@@ -18,6 +18,7 @@ pub struct RemoteServerConfig {
     pub review_worker_base_url: Option<String>,
     pub review_disabled: bool,
     pub github_app: Option<GitHubAppConfig>,
+    pub allowed_users: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone)]
@@ -232,6 +233,21 @@ impl RemoteServerConfig {
 
         let github_app = GitHubAppConfig::from_env()?;
 
+        let allowed_users = env::var("ALLOWED_USERS")
+            .ok()
+            .filter(|v| !v.is_empty())
+            .map(|v| {
+                v.split(',')
+                    .map(|email| email.trim().to_lowercase())
+                    .filter(|email| !email.is_empty())
+                    .collect::<Vec<String>>()
+            })
+            .filter(|list| !list.is_empty());
+
+        if let Some(ref users) = allowed_users {
+            tracing::info!(count = users.len(), "User whitelist enabled");
+        }
+
         Ok(Self {
             database_url,
             listen_addr,
@@ -245,6 +261,7 @@ impl RemoteServerConfig {
             review_worker_base_url,
             review_disabled,
             github_app,
+            allowed_users,
         })
     }
 }

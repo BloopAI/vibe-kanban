@@ -322,8 +322,22 @@ fn hash_sha256_hex(input: &str) -> String {
 
 fn simple_html_response(status: StatusCode, message: String) -> Response<String> {
     let body = format!(
-        "<!doctype html><html><head><meta charset=\"utf-8\"><title>OAuth</title></head>\
-         <body style=\"font-family: sans-serif; margin: 3rem;\"><h1>{}</h1></body></html>",
+        "<!doctype html>\
+         <html>\
+           <head>\
+             <meta charset=\"utf-8\">\
+             <title>OAuth</title>\
+             <script>\
+               window.addEventListener('load', () => {{\
+                 if (window.opener) {{\
+                   window.opener.postMessage({{ type: 'oauth-error', message: '{}' }}, '*');\
+                 }}\
+               }});\
+             </script>\
+           </head>\
+           <body style=\"font-family: sans-serif; margin: 3rem;\"><h1>{}</h1></body>\
+         </html>",
+        message.replace("'", "\\'"),
         message
     );
     Response::builder()

@@ -75,7 +75,15 @@ GOOGLE_OAUTH_CLIENT_SECRET=
 
 # Email (optional — leave empty to disable invitation emails)
 LOOPS_EMAIL_API_KEY=
+
+# User whitelist (optional — leave empty to allow all users)
+# Comma-separated list of allowed email addresses
+ALLOWED_USERS=admin@example.com,user@example.com
 ```
+
+<Info>
+**User whitelist**: Set `ALLOWED_USERS` to restrict access to specific email addresses (e.g., `admin@company.com,user@company.com`). When configured, only users with matching emails can authenticate. Leave empty to allow all users.
+</Info>
 
 ## Step 4: Create Production Docker Compose
 
@@ -157,6 +165,7 @@ services:
       VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET}
       ELECTRIC_ROLE_PASSWORD: ${ELECTRIC_ROLE_PASSWORD}
       LOOPS_EMAIL_API_KEY: ${LOOPS_EMAIL_API_KEY:-}
+      ALLOWED_USERS: ${ALLOWED_USERS:-}
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8081/v1/health"]
       interval: 5s

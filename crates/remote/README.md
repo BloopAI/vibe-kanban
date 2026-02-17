@@ -21,6 +21,10 @@ GOOGLE_OAUTH_CLIENT_SECRET=
 
 # Optional — leave empty to disable invitation emails
 LOOPS_EMAIL_API_KEY=
+
+# Optional — comma-separated list of allowed user email addresses
+# If set, only these users can login. Leave empty to allow all users.
+ALLOWED_USERS=
 ```
 
 Generate `VIBEKANBAN_REMOTE_JWT_SECRET` once using `openssl rand -base64 48` and copy the value into `.env.remote`.

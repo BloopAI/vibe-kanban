@@ -103,6 +103,7 @@ pub struct OAuthHandoffService {
     providers: Arc<ProviderRegistry>,
     jwt: Arc<JwtService>,
     public_origin: String,
+    allowed_users: Option<Vec<String>>,
 }
 
 impl OAuthHandoffService {
@@ -111,6 +112,7 @@ impl OAuthHandoffService {
         providers: Arc<ProviderRegistry>,
         jwt: Arc<JwtService>,
         public_origin: String,
+        allowed_users: Option<Vec<String>>,
     ) -> Self {
         let trimmed_origin = public_origin.trim_end_matches('/').to_string();
         Self {
@@ -118,6 +120,7 @@ impl OAuthHandoffService {
             providers,
             jwt,
             public_origin: trimmed_origin,
+            allowed_users,
         }
     }
 
@@ -269,6 +272,18 @@ impl OAuthHandoffService {
             .map_err(HandoffError::Provider)?;
 
         let user_profile = self.fetch_user_with_retries(&provider, &grant).await?;
+
+        // Check if user is in whitelist (if configured)
+        if let Some(ref allowed) = self.allowed_users {
+            let email = ensure_email(provider.name(), &user_profile);
+            if !allowed.contains(&email.to_lowercase()) {
+                return Ok(CallbackResult::Error {
+                    handoff_id: Some(record.id),
+                    return_to: Some(record.return_to.clone()),
+                    error: "access_denied".to_string(),
+                });
+            }
+        }
 
         let user = self.upsert_identity(&provider, &user_profile).await?;
 
