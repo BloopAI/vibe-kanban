@@ -381,6 +381,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     lastUsedConfig: latestConfig,
     scratchConfig: scratchData?.executor_config ?? undefined,
     configExecutorProfile: config?.executor_profile,
+    selectionMode: needsExecutorSelection ? 'explicit' : 'resume',
     onPersist: (cfg) => void saveToScratch(localMessageRef.current, cfg),
   });
 

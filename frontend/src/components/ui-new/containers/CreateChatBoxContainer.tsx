@@ -6,12 +6,9 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
 import { useExecutorConfig } from '@/hooks/useExecutorConfig';
-import {
-  areProfilesEqual,
-  getSortedExecutorVariantKeys,
-} from '@/utils/executor';
+import { areProfilesEqual } from '@/utils/executor';
 import { splitMessageToTitleDescription } from '@/utils/string';
-import type { ExecutorProfileId, BaseCodingAgent, Repo } from 'shared/types';
+import type { ExecutorProfileId, Repo } from 'shared/types';
 import { CreateChatBox } from '../primitives/CreateChatBox';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
 import { CreateModeRepoPickerBar } from './CreateModeRepoPickerBar';
@@ -107,12 +104,15 @@ export function CreateChatBoxContainer({
     executorOptions,
     variantOptions,
     presetOptions,
+    setExecutor: setSelectedExecutor,
+    setVariant: setSelectedVariant,
     setOverrides: setExecutorOverrides,
   } = useExecutorConfig({
     profiles,
     lastUsedConfig: null,
     scratchConfig,
     configExecutorProfile: config?.executor_profile,
+    selectionMode: 'explicit',
     onPersist: (cfg) => setDraftConfig(cfg),
   });
 
@@ -177,51 +177,12 @@ export function CreateChatBoxContainer({
 
   const handlePresetSelect = (presetId: string | null) => {
     if (!effectiveExecutor) return;
-    setDraftConfig({
-      ...draftConfig,
-      executor: effectiveExecutor,
-      variant: presetId,
-    });
+    setSelectedVariant(presetId);
   };
 
   const handleCustomise = () => {
     SettingsDialog.show({ initialSection: 'agents' });
   };
-
-  // Handle executor change - use saved variant if switching to default executor
-  const handleExecutorChange = useCallback(
-    (executor: BaseCodingAgent) => {
-      const executorProfile = profiles?.[executor];
-      if (!executorProfile) {
-        setDraftConfig({ executor, variant: null });
-        return;
-      }
-
-      const variants = getSortedExecutorVariantKeys(executorProfile);
-      let targetVariant: string | null = null;
-
-      // If switching to user's default executor, use their saved variant
-      if (
-        config?.executor_profile?.executor === executor &&
-        config?.executor_profile?.variant
-      ) {
-        const savedVariant = config.executor_profile.variant;
-        if (variants.includes(savedVariant)) {
-          targetVariant = savedVariant;
-        }
-      }
-
-      // Fallback to DEFAULT or first available
-      if (!targetVariant) {
-        targetVariant = variants.includes('DEFAULT')
-          ? 'DEFAULT'
-          : (variants[0] ?? null);
-      }
-
-      setDraftConfig({ executor, variant: targetVariant });
-    },
-    [profiles, setDraftConfig, config?.executor_profile]
-  );
 
   // Handle submit
   const handleSubmit = useCallback(async () => {
@@ -352,7 +313,7 @@ export function CreateChatBoxContainer({
                   executor={{
                     selected: effectiveExecutor,
                     options: executorOptions,
-                    onChange: handleExecutorChange,
+                    onChange: setSelectedExecutor,
                   }}
                   saveAsDefault={{
                     checked: saveAsDefault,

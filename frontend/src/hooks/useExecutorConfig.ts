@@ -23,46 +23,55 @@ const OVERRIDE_FIELDS = [
   'permission_policy',
 ] as const;
 
+export type ExecutorSelectionMode = 'resume' | 'explicit';
+
 /**
  * Resolves effective executor.
- * userSelections.executor → scratch → lastUsedConfig → configDefault → first available
+ * resume: userSelections.executor → scratch → lastUsedConfig → configDefault → first available
+ * explicit: userSelections.executor only
  */
 function useEffectiveExecutor(
   userSelections: Partial<ExecutorConfig>,
   profiles: Record<string, ExecutorProfile> | null,
   scratchConfig: ExecutorConfig | null | undefined,
   lastUsedConfig: ExecutorConfig | null,
-  configExecutorProfile: ExecutorProfileId | null | undefined
+  configExecutorProfile: ExecutorProfileId | null | undefined,
+  selectionMode: ExecutorSelectionMode
 ) {
   const options = useMemo(
     () => Object.keys(profiles ?? {}) as BaseCodingAgent[],
     [profiles]
   );
 
-  const effective = useMemo(
-    () =>
+  const effective = useMemo(() => {
+    if (selectionMode === 'explicit') {
+      return userSelections.executor ?? null;
+    }
+    return (
       userSelections.executor ??
       scratchConfig?.executor ??
       lastUsedConfig?.executor ??
       configExecutorProfile?.executor ??
       options[0] ??
-      null,
-    [
-      userSelections.executor,
-      scratchConfig,
-      lastUsedConfig,
-      configExecutorProfile,
-      options,
-    ]
-  );
+      null
+    );
+  }, [
+    userSelections.executor,
+    scratchConfig,
+    lastUsedConfig,
+    configExecutorProfile,
+    options,
+    selectionMode,
+  ]);
 
   return { effective, options };
 }
 
 /**
  * Resolves effective variant.
- * userSelections.variant → scratch (if same executor) → lastUsedConfig (if same executor)
+ * resume: userSelections.variant → scratch (if same executor) → lastUsedConfig (if same executor)
  * → configDefault → DEFAULT/first
+ * explicit: userSelections.variant only
  */
 function useEffectiveVariant(
   userSelections: Partial<ExecutorConfig>,
@@ -70,7 +79,8 @@ function useEffectiveVariant(
   profiles: Record<string, ExecutorProfile> | null,
   scratchConfig: ExecutorConfig | null | undefined,
   lastUsedConfig: ExecutorConfig | null,
-  configExecutorProfile: ExecutorProfileId | null | undefined
+  configExecutorProfile: ExecutorProfileId | null | undefined,
+  selectionMode: ExecutorSelectionMode
 ) {
   const options = useMemo(
     () => getVariantOptions(effectiveExecutor, profiles),
@@ -81,6 +91,7 @@ function useEffectiveVariant(
 
   const resolved = useMemo(() => {
     if (wasUserSelected) return userSelections.variant ?? null;
+    if (selectionMode === 'explicit') return null;
 
     if (
       scratchConfig !== undefined &&
@@ -107,6 +118,7 @@ function useEffectiveVariant(
     lastUsedConfig,
     configExecutorProfile,
     options,
+    selectionMode,
   ]);
 
   return { resolved, options, wasUserSelected };
@@ -114,7 +126,8 @@ function useEffectiveVariant(
 
 /**
  * Resolves each override field independently through the fallback chain:
- * userSelections[field] → scratch[field] → lastUsed[field] → preset[field]
+ * resume: userSelections[field] → scratch[field] → lastUsed[field] → preset[field]
+ * explicit: userSelections[field] only
  */
 function useEffectiveOverrides(
   effectiveExecutor: BaseCodingAgent | null,
@@ -123,7 +136,8 @@ function useEffectiveOverrides(
   scratchConfig: ExecutorConfig | null | undefined,
   lastUsedConfig: ExecutorConfig | null,
   variantWasUserSelected: boolean,
-  presetOptions: ExecutorConfig | null | undefined
+  presetOptions: ExecutorConfig | null | undefined,
+  selectionMode: ExecutorSelectionMode
 ) {
   return useMemo((): ExecutorConfig | null => {
     if (!effectiveExecutor) return null;
@@ -153,15 +167,19 @@ function useEffectiveOverrides(
         !modelMustMatch || lastUsedConfig?.model_id === resolved.model_id;
 
       const value =
-        field in userSelections
-          ? userSelections[field]
-          : ((scratchMatches && scratchModelMatches
-              ? scratchConfig?.[field]
-              : undefined) ??
-            (lastUsedMatches && lastUsedModelMatches
-              ? lastUsedConfig?.[field]
-              : undefined) ??
-            (variantWasUserSelected ? presetOptions?.[field] : undefined));
+        selectionMode === 'explicit'
+          ? field in userSelections
+            ? userSelections[field]
+            : undefined
+          : field in userSelections
+            ? userSelections[field]
+            : ((scratchMatches && scratchModelMatches
+                ? scratchConfig?.[field]
+                : undefined) ??
+              (lastUsedMatches && lastUsedModelMatches
+                ? lastUsedConfig?.[field]
+                : undefined) ??
+              (variantWasUserSelected ? presetOptions?.[field] : undefined));
       if (value !== undefined) {
         (resolved as Record<string, unknown>)[field] = value;
       }
@@ -176,6 +194,7 @@ function useEffectiveOverrides(
     lastUsedConfig,
     presetOptions,
     variantWasUserSelected,
+    selectionMode,
   ]);
 }
 
@@ -184,6 +203,7 @@ interface UseExecutorConfigOptions {
   lastUsedConfig: ExecutorConfig | null;
   scratchConfig?: ExecutorConfig | null;
   configExecutorProfile?: ExecutorProfileId | null;
+  selectionMode?: ExecutorSelectionMode;
   onPersist?: (config: ExecutorConfig) => void;
 }
 
@@ -205,6 +225,7 @@ export function useExecutorConfig({
   lastUsedConfig,
   scratchConfig,
   configExecutorProfile,
+  selectionMode = 'resume',
   onPersist,
 }: UseExecutorConfigOptions): UseExecutorConfigResult {
   const [userSelections, setUserSelections] = useState<Partial<ExecutorConfig>>(
@@ -216,7 +237,8 @@ export function useExecutorConfig({
     profiles,
     scratchConfig,
     lastUsedConfig,
-    configExecutorProfile
+    configExecutorProfile,
+    selectionMode
   );
 
   const variant = useEffectiveVariant(
@@ -225,11 +247,16 @@ export function useExecutorConfig({
     profiles,
     scratchConfig,
     lastUsedConfig,
-    configExecutorProfile
+    configExecutorProfile,
+    selectionMode
   );
 
+  const presetLookupExecutor =
+    selectionMode === 'explicit' && variant.resolved === null
+      ? null
+      : executor.effective;
   const { data: presetOptions } = usePresetOptions(
-    executor.effective,
+    presetLookupExecutor,
     variant.resolved
   );
 
@@ -240,7 +267,8 @@ export function useExecutorConfig({
     scratchConfig,
     lastUsedConfig,
     variant.wasUserSelected,
-    presetOptions
+    presetOptions,
+    selectionMode
   );
 
   const profileKey = getProfileKey(executor.effective, variant.resolved);
@@ -269,17 +297,18 @@ export function useExecutorConfig({
   const setExecutor = useCallback(
     (exec: BaseCodingAgent) => {
       setUserSelections({ executor: exec });
-      // Persist with auto-resolved variant (no overrides)
+      if (selectionMode === 'explicit') {
+        persist({ executor: exec, variant: null });
+        return;
+      }
       const newVariants = getVariantOptions(exec, profiles);
       const newVariant = newVariants[0] ?? null;
       persist({ executor: exec, variant: newVariant });
     },
-    [profiles, persist]
+    [profiles, persist, selectionMode]
   );
 
   // Setting variant → keeps executor, sets variant, clears all override fields.
-  // Since 'variant' is in userSelections → variantWasUserSelected=true
-  // → override fields fall through to preset options for the new variant.
   const setVariant = useCallback(
     (v: string | null) => {
       setUserSelections((prev) => ({ executor: prev.executor, variant: v }));
