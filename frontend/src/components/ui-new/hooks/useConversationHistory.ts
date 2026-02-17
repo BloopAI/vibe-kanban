@@ -87,6 +87,8 @@ export const useConversationHistory = ({
     return codingAgentProcessCount <= 1;
   }, [executionProcessesRaw]);
 
+  const PARALLEL_WS_LIMIT = 4;
+
   const mergeIntoDisplayed = (
     mutator: (state: ExecutionProcessStateStore) => void
   ) => {
@@ -521,22 +523,29 @@ export const useConversationHistory = ({
 
       if (!executionProcesses?.current) return localDisplayedExecutionProcesses;
 
-      for (const executionProcess of [
-        ...executionProcesses.current,
-      ].reverse()) {
-        if (executionProcess.status === ExecutionProcessStatus.running)
-          continue;
+      const candidates = [...executionProcesses.current]
+        .reverse()
+        .filter((ep) => ep.status !== ExecutionProcessStatus.running);
 
-        const entries =
-          await loadEntriesForHistoricExecutionProcess(executionProcess);
-        const entriesWithKey = entries.map((e, idx) =>
-          patchWithKey(e, executionProcess.id, idx)
+      // Load in parallel batches of PARALLEL_WS_LIMIT
+      for (let i = 0; i < candidates.length; i += PARALLEL_WS_LIMIT) {
+        const batch = candidates.slice(i, i + PARALLEL_WS_LIMIT);
+        const results = await Promise.all(
+          batch.map(async (ep) => ({
+            ep,
+            entries: await loadEntriesForHistoricExecutionProcess(ep),
+          }))
         );
 
-        localDisplayedExecutionProcesses[executionProcess.id] = {
-          executionProcess,
-          entries: entriesWithKey,
-        };
+        for (const { ep, entries } of results) {
+          const entriesWithKey = entries.map((e, idx) =>
+            patchWithKey(e, ep.id, idx)
+          );
+          localDisplayedExecutionProcesses[ep.id] = {
+            executionProcess: ep,
+            entries: entriesWithKey,
+          };
+        }
 
         if (
           flattenEntries(localDisplayedExecutionProcesses).length >
@@ -553,38 +562,48 @@ export const useConversationHistory = ({
     async (batchSize: number): Promise<boolean> => {
       if (!executionProcesses?.current) return false;
 
-      let anyUpdated = false;
-      for (const executionProcess of [
-        ...executionProcesses.current,
-      ].reverse()) {
-        const current = displayedExecutionProcesses.current;
-        if (
-          current[executionProcess.id] ||
-          executionProcess.status === ExecutionProcessStatus.running
-        )
-          continue;
-
-        const entries =
-          await loadEntriesForHistoricExecutionProcess(executionProcess);
-        const entriesWithKey = entries.map((e, idx) =>
-          patchWithKey(e, executionProcess.id, idx)
+      const candidates = [...executionProcesses.current]
+        .reverse()
+        .filter(
+          (ep) =>
+            !displayedExecutionProcesses.current[ep.id] &&
+            ep.status !== ExecutionProcessStatus.running
         );
 
-        mergeIntoDisplayed((state) => {
-          state[executionProcess.id] = {
-            executionProcess,
-            entries: entriesWithKey,
-          };
-        });
+      if (candidates.length === 0) return false;
+
+      let anyUpdated = false;
+
+      for (let i = 0; i < candidates.length; i += PARALLEL_WS_LIMIT) {
+        const batch = candidates.slice(i, i + PARALLEL_WS_LIMIT);
+        const results = await Promise.all(
+          batch.map(async (ep) => ({
+            ep,
+            entries: await loadEntriesForHistoricExecutionProcess(ep),
+          }))
+        );
+
+        for (const { ep, entries } of results) {
+          const entriesWithKey = entries.map((e, idx) =>
+            patchWithKey(e, ep.id, idx)
+          );
+          mergeIntoDisplayed((state) => {
+            state[ep.id] = {
+              executionProcess: ep,
+              entries: entriesWithKey,
+            };
+          });
+          anyUpdated = true;
+        }
 
         if (
-          flattenEntries(displayedExecutionProcesses.current).length > batchSize
+          flattenEntries(displayedExecutionProcesses.current).length >
+          batchSize
         ) {
-          anyUpdated = true;
           break;
         }
-        anyUpdated = true;
       }
+
       return anyUpdated;
     },
     [executionProcesses]

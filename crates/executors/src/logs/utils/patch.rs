@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use json_patch::Patch;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::{from_value, json, to_value};
 use ts_rs::TS;
 use workspace_utils::{diff::Diff, msg_store::MsgStore};
@@ -10,14 +10,6 @@ use crate::{
     executor_discovery::ExecutorDiscoveredOptions,
     logs::{NormalizedEntry, utils::EntryIndexProvider},
 };
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, TS)]
-#[serde(rename_all = "lowercase")]
-enum PatchOperation {
-    Add,
-    Replace,
-    Remove,
-}
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Serialize, TS)]
@@ -29,102 +21,72 @@ pub enum PatchType {
     Diff(Diff),
 }
 
-#[derive(Serialize)]
-struct PatchEntry {
-    op: PatchOperation,
-    path: String,
-    value: PatchType,
-}
-
 pub fn escape_json_pointer_segment(s: &str) -> String {
     s.replace('~', "~0").replace('/', "~1")
+}
+
+fn single_op(op: json_patch::PatchOperation) -> Patch {
+    Patch(vec![op])
+}
+
+fn add_entry(path: impl std::fmt::Display, value: serde_json::Value) -> Patch {
+    single_op(json_patch::PatchOperation::Add(json_patch::AddOperation {
+        path: format!("/entries/{path}").try_into().unwrap(),
+        value,
+    }))
+}
+
+fn replace_entry(path: impl std::fmt::Display, value: serde_json::Value) -> Patch {
+    single_op(json_patch::PatchOperation::Replace(
+        json_patch::ReplaceOperation {
+            path: format!("/entries/{path}").try_into().unwrap(),
+            value,
+        },
+    ))
+}
+
+fn remove_entry(path: impl std::fmt::Display) -> Patch {
+    single_op(json_patch::PatchOperation::Remove(
+        json_patch::RemoveOperation {
+            path: format!("/entries/{path}").try_into().unwrap(),
+        },
+    ))
 }
 
 /// Helper functions to create JSON patches for conversation entries
 pub struct ConversationPatch;
 
 impl ConversationPatch {
-    /// Create an ADD patch for a new conversation entry at the given index
     pub fn add_normalized_entry(entry_index: usize, entry: NormalizedEntry) -> Patch {
-        let patch_entry = PatchEntry {
-            op: PatchOperation::Add,
-            path: format!("/entries/{entry_index}"),
-            value: PatchType::NormalizedEntry(entry),
-        };
-
-        from_value(json!([patch_entry])).unwrap()
+        add_entry(entry_index, to_value(PatchType::NormalizedEntry(entry)).unwrap())
     }
 
-    /// Create an ADD patch for a new string at the given index
     pub fn add_stdout(entry_index: usize, entry: String) -> Patch {
-        let patch_entry = PatchEntry {
-            op: PatchOperation::Add,
-            path: format!("/entries/{entry_index}"),
-            value: PatchType::Stdout(entry),
-        };
-
-        from_value(json!([patch_entry])).unwrap()
+        add_entry(entry_index, to_value(PatchType::Stdout(entry)).unwrap())
     }
 
-    /// Create an ADD patch for a new string at the given index
     pub fn add_stderr(entry_index: usize, entry: String) -> Patch {
-        let patch_entry = PatchEntry {
-            op: PatchOperation::Add,
-            path: format!("/entries/{entry_index}"),
-            value: PatchType::Stderr(entry),
-        };
-
-        from_value(json!([patch_entry])).unwrap()
+        add_entry(entry_index, to_value(PatchType::Stderr(entry)).unwrap())
     }
 
-    /// Create an ADD patch for a new diff at the given index
     pub fn add_diff(entry_index: String, diff: Diff) -> Patch {
-        let patch_entry = PatchEntry {
-            op: PatchOperation::Add,
-            path: format!("/entries/{entry_index}"),
-            value: PatchType::Diff(diff),
-        };
-
-        from_value(json!([patch_entry])).unwrap()
+        add_entry(entry_index, to_value(PatchType::Diff(diff)).unwrap())
     }
 
-    /// Create an ADD patch for a new diff at the given index
     pub fn replace_diff(entry_index: String, diff: Diff) -> Patch {
-        let patch_entry = PatchEntry {
-            op: PatchOperation::Replace,
-            path: format!("/entries/{entry_index}"),
-            value: PatchType::Diff(diff),
-        };
-
-        from_value(json!([patch_entry])).unwrap()
+        replace_entry(entry_index, to_value(PatchType::Diff(diff)).unwrap())
     }
 
-    /// Create a REMOVE patch for removing a diff
     pub fn remove_diff(entry_index: String) -> Patch {
-        from_value(json!([{
-            "op": PatchOperation::Remove,
-            "path": format!("/entries/{entry_index}"),
-        }]))
-        .unwrap()
+        remove_entry(entry_index)
     }
 
-    /// Create a REPLACE patch for updating an existing conversation entry at the given index
     pub fn replace(entry_index: usize, entry: NormalizedEntry) -> Patch {
-        let patch_entry = PatchEntry {
-            op: PatchOperation::Replace,
-            path: format!("/entries/{entry_index}"),
-            value: PatchType::NormalizedEntry(entry),
-        };
-
-        from_value(json!([patch_entry])).unwrap()
+        replace_entry(entry_index, to_value(PatchType::NormalizedEntry(entry)).unwrap())
     }
 
     pub fn remove(entry_index: usize) -> Patch {
-        from_value(json!([{
-            "op": PatchOperation::Remove,
-            "path": format!("/entries/{entry_index}"),
-        }]))
-        .unwrap()
+        remove_entry(entry_index)
     }
 }
 

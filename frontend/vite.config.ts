@@ -109,6 +109,7 @@ export default defineConfig({
     },
   },
   server: {
+    host: process.env.HOST || 'localhost',
     port: parseInt(process.env.FRONTEND_PORT || '3000'),
     proxy: {
       '/api': {

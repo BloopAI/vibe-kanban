@@ -47,6 +47,7 @@ use services::services::{
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
     image::ImageService,
+    normalized_log_cache::NormalizedLogCache,
     notification::NotificationService,
     queued_message::QueuedMessageService,
     remote_client::RemoteClient,
@@ -85,6 +86,7 @@ pub struct LocalContainerService {
     queued_message_service: QueuedMessageService,
     notification_service: NotificationService,
     remote_client: Option<RemoteClient>,
+    normalized_log_cache: NormalizedLogCache,
 }
 
 impl LocalContainerService {
@@ -107,6 +109,15 @@ impl LocalContainerService {
         let workspace_touch_times = Arc::new(RwLock::new(HashMap::new()));
         let notification_service = NotificationService::new(config.clone());
 
+        let normalized_log_cache = NormalizedLogCache::new().unwrap_or_else(|e| {
+            tracing::warn!("Failed to initialize normalized log cache: {}", e);
+            NormalizedLogCache::with_dir(
+                std::env::temp_dir().join("vk-normalized-logs"),
+                128 * 1024 * 1024,
+            )
+            .expect("Failed to create fallback cache dir")
+        });
+
         let container = LocalContainerService {
             db,
             child_store,
@@ -123,11 +134,16 @@ impl LocalContainerService {
             queued_message_service,
             notification_service,
             remote_client,
+            normalized_log_cache,
         };
 
         container.spawn_workspace_cleanup();
 
         container
+    }
+
+    pub fn normalized_log_cache(&self) -> &NormalizedLogCache {
+        &self.normalized_log_cache
     }
 
     pub async fn get_child_from_store(&self, id: &Uuid) -> Option<Arc<RwLock<AsyncGroupChild>>> {
@@ -990,6 +1006,10 @@ impl ContainerService for LocalContainerService {
 
     fn notification_service(&self) -> &NotificationService {
         &self.notification_service
+    }
+
+    fn normalized_log_cache(&self) -> &NormalizedLogCache {
+        &self.normalized_log_cache
     }
 
     async fn touch(&self, workspace: &Workspace) -> Result<(), ContainerError> {

@@ -3,7 +3,7 @@ use axum::{
     Extension, Router,
     extract::{
         Path, Query, State,
-        ws::{WebSocket, WebSocketUpgrade},
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     middleware::from_fn_with_state,
     response::{IntoResponse, Json as ResponseJson},
@@ -17,6 +17,7 @@ use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::Deserialize;
 use services::services::container::ContainerService;
+use services::services::normalized_log_cache::NormalizedLogStream;
 use utils::{log_msg::LogMsg, response::ApiResponse};
 use uuid::Uuid;
 
@@ -125,7 +126,7 @@ pub async fn stream_normalized_logs_ws(
     State(deployment): State<DeploymentImpl>,
     Path(exec_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let stream = deployment
+    let normalized_stream = deployment
         .container()
         .stream_normalized_logs(&exec_id)
         .await
@@ -133,11 +134,8 @@ pub async fn stream_normalized_logs_ws(
             ApiError::ExecutionProcess(ExecutionProcessError::ExecutionProcessNotFound)
         })?;
 
-    // Convert the error type to anyhow::Error and turn TryStream -> Stream<Result<_, _>>
-    let stream = stream.err_into::<anyhow::Error>().into_stream();
-
     Ok(ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_normalized_logs_ws(socket, stream).await {
+        if let Err(e) = handle_normalized_logs_ws(socket, normalized_stream).await {
             tracing::warn!("normalized logs WS closed: {}", e);
         }
     }))
@@ -145,21 +143,41 @@ pub async fn stream_normalized_logs_ws(
 
 async fn handle_normalized_logs_ws(
     socket: WebSocket,
-    stream: impl futures_util::Stream<Item = anyhow::Result<LogMsg>> + Unpin + Send + 'static,
+    normalized_stream: NormalizedLogStream,
 ) -> anyhow::Result<()> {
-    let mut stream = stream.map_ok(|msg| msg.to_ws_message_unchecked());
     let (mut sender, mut receiver) = socket.split();
     tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(msg) => {
-                if sender.send(msg).await.is_err() {
-                    break;
+
+    match normalized_stream {
+        NormalizedLogStream::Cached(lines) => {
+            // Send pre-serialized JSON lines directly — no serde needed
+            for line in lines {
+                if sender.send(Message::Text(line.into())).await.is_err() {
+                    return Ok(());
                 }
             }
-            Err(e) => {
-                tracing::error!("stream error: {}", e);
-                break;
+            // Send Finished sentinel
+            let finished = LogMsg::Finished.to_ws_message_unchecked();
+            let _ = sender.send(finished).await;
+        }
+        NormalizedLogStream::Messages(stream) => {
+            // Existing path: serialize each LogMsg
+            let mut stream = stream
+                .err_into::<anyhow::Error>()
+                .into_stream()
+                .map_ok(|msg| msg.to_ws_message_unchecked());
+            while let Some(item) = stream.next().await {
+                match item {
+                    Ok(msg) => {
+                        if sender.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("stream error: {}", e);
+                        break;
+                    }
+                }
             }
         }
     }
