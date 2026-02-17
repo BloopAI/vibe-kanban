@@ -38,6 +38,10 @@
     "remote:prepare-db:check": "cd crates/remote && bash scripts/prepare-db.sh --check",
     "npx:build:remote-mcp": "pnpm exec tsc -p npx-cli/tsconfig.json"
   },
+  "dependencies": {
+    "@tanstack/db": "^0.5.6",
+    "@tanstack/electric-db-collection": "^0.2.6"
+  },
   "devDependencies": {
     "concurrently": "^8.2.2",
     "jwt-decode": "^4.0.0",

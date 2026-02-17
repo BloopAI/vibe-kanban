@@ -10,6 +10,7 @@ declare const Buffer: any;
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { listShapeRows } = require('./electric-shape-list');
 
 const REMOTE_BASE_URL = (
   process.env.VK_SHARED_API_BASE || 'https://api.vibekanban.com'
@@ -39,8 +40,6 @@ const FALLBACK_MANIFEST = {
   shapes: [],
   mutations: [],
 };
-
-const ELECTRIC_QUERY_PARAMS = ['offset', 'handle', 'live', 'cursor', 'columns'];
 
 function readFirstExistingFile(paths) {
   for (const candidate of paths) {
@@ -361,70 +360,23 @@ function normalizeLimit(value, defaultValue) {
   return defaultValue;
 }
 
-function resolveShapePath(shape, args) {
+function resolveShapePath(shape, params) {
   let pathName = shape.url;
 
   for (const param of shape.pathParams) {
-    const value = requireString(args[param], param);
+    const value = requireString(params[param], param);
     pathName = pathName.replace(`{${param}}`, encodeURIComponent(value));
   }
 
   return pathName;
 }
 
-function buildShapeQuery(shape, args) {
-  const query: any = {};
-  const pathParamSet = new Set(shape.pathParams);
-
+function buildShapeParams(shape, args) {
+  const params: any = {};
   for (const param of shape.params) {
-    if (pathParamSet.has(param)) {
-      continue;
-    }
-    query[param] = requireString(args[param], param);
+    params[param] = requireString(args[param], param);
   }
-
-  for (const key of ELECTRIC_QUERY_PARAMS) {
-    const value = args[key];
-    if (value === undefined || value === null || value === '') {
-      continue;
-    }
-    query[key] = String(value);
-  }
-
-  if (!Object.prototype.hasOwnProperty.call(query, 'offset')) {
-    query.offset = '-1';
-  }
-
-  return query;
-}
-
-function extractRowsFromShapePayload(payload) {
-  if (!Array.isArray(payload)) {
-    return [];
-  }
-
-  const rows = [];
-  for (const item of payload) {
-    if (!item || typeof item !== 'object') {
-      continue;
-    }
-
-    if (!Object.prototype.hasOwnProperty.call(item, 'value')) {
-      continue;
-    }
-
-    if (
-      item.headers &&
-      typeof item.headers === 'object' &&
-      (item.headers.control || item.headers.operation === 'delete')
-    ) {
-      continue;
-    }
-
-    rows.push(item.value);
-  }
-
-  return rows;
+  return params;
 }
 
 function buildShapeListTools() {
@@ -458,12 +410,6 @@ function buildShapeListTools() {
         description: `${param} filter`,
       };
     }
-    for (const electricParam of ELECTRIC_QUERY_PARAMS) {
-      properties[electricParam] = {
-        type: 'string',
-        description: `Optional Electric shape parameter: ${electricParam}.`,
-      };
-    }
     properties.limit = {
       type: 'number',
       description: 'Optional maximum number of rows to return.',
@@ -481,10 +427,14 @@ function buildShapeListTools() {
         },
       },
       handler: async (args: any) => {
-        const pathName = resolveShapePath(shape, args);
-        const query = buildShapeQuery(shape, args);
-        const payload = await remoteRequest(pathName, { query });
-        const rows = extractRowsFromShapePayload(payload);
+        const params = buildShapeParams(shape, args);
+        const rows = await listShapeRows({
+          table: shape.table,
+          remoteBaseUrl: REMOTE_BASE_URL,
+          shapePath: resolveShapePath(shape, params),
+          queryParams: params,
+          fetchAuthToken,
+        });
         const limit = normalizeLimit(args.limit, rows.length);
 
         return {

@@ -11,5 +11,5 @@
     "rootDir": "src",
     "outDir": "bin"
   },
-  "include": ["src/remote-mcp.ts"]
+  "include": ["src/**/*.ts"]
 }
