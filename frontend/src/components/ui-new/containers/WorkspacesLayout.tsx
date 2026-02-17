@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
@@ -42,6 +44,13 @@ export function WorkspacesLayout() {
     isNewSessionMode,
     startNewSession,
   } = useWorkspaceContext();
+
+  const { t } = useTranslation('common');
+  usePageTitle(
+    isCreateMode
+      ? t('workspaces.newWorkspace')
+      : (selectedWorkspace?.name ?? undefined)
+  );
 
   const mainContainerRef = useRef<WorkspacesMainContainerHandle>(null);
 

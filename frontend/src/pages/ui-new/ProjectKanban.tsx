@@ -8,6 +8,7 @@ import {
   useProjectContext,
 } from '@/contexts/remote/ProjectContext';
 import { useActions } from '@/contexts/ActionsContext';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { KanbanContainer } from '@/components/ui-new/containers/KanbanContainer';
 import { ProjectRightSidebarContainer } from '@/components/ui-new/containers/ProjectRightSidebarContainer';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
@@ -80,8 +81,11 @@ function ProjectMutationsRegistration({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-function ProjectKanbanLayout() {
-  const { isPanelOpen } = useKanbanNavigation();
+function ProjectKanbanLayout({ projectName }: { projectName: string }) {
+  const { issueId, isPanelOpen } = useKanbanNavigation();
+  const { getIssue } = useProjectContext();
+  const issue = issueId ? getIssue(issueId) : undefined;
+  usePageTitle(issue?.title, projectName);
   const [kanbanLeftPanelSize, setKanbanLeftPanelSize] = usePaneSize(
     PERSIST_KEYS.kanbanLeftPanel,
     75
@@ -167,7 +171,7 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
   return (
     <ProjectProvider projectId={projectId}>
       <ProjectMutationsRegistration>
-        <ProjectKanbanLayout />
+        <ProjectKanbanLayout projectName={project.name} />
       </ProjectMutationsRegistration>
     </ProjectProvider>
   );
