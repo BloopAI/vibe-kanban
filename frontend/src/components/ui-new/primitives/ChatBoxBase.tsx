@@ -199,9 +199,9 @@ export function ChatBoxBase({
           sendShortcut={config?.send_message_shortcut}
         />
         {/* Footer - Controls */}
-        <div className="flex flex-wrap items-end gap-base">
+        <div className="flex min-w-0 flex-wrap items-end gap-base">
           {modelSelector && (
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <ModelSelectorContainer
                 agent={modelSelector.agent}
                 workspaceId={modelSelector.workspaceId}

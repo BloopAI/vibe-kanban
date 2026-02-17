@@ -391,7 +391,7 @@ export function ModelSelectorContainer({
 
   if (!config) {
     return (
-      <Toolbar>
+      <Toolbar className="max-w-full min-w-0 overflow-x-auto">
         <DropdownMenu>
           <ToolbarDropdownButton size="sm" label={loadingLabel} disabled />
         </DropdownMenu>
@@ -428,7 +428,7 @@ export function ModelSelectorContainer({
   const permissionIcon = permissionMeta?.icon ?? HandIcon;
 
   return (
-    <Toolbar>
+    <Toolbar className="max-w-full min-w-0 overflow-x-auto">
       <ToolbarDropdown
         size="sm"
         icon={SlidersHorizontalIcon}
