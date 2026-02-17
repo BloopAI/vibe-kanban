@@ -390,6 +390,7 @@
       "rename-workspace": "Renombrar espacio de trabajo",
       "pin-workspace": "Fijar/Desfijar espacio de trabajo",
       "archive-workspace": "Archivar espacio de trabajo",
+      "unarchive-workspace": "Desarchivar espacio de trabajo",
       "delete-workspace": "Eliminar espacio de trabajo",
       "toggle-changes-mode": "Alternar panel de cambios",
       "toggle-logs-mode": "Alternar panel de registros",

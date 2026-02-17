@@ -390,6 +390,7 @@
       "rename-workspace": "워크스페이스 이름 변경",
       "pin-workspace": "워크스페이스 고정/해제",
       "archive-workspace": "워크스페이스 보관",
+      "unarchive-workspace": "워크스페이스 보관 해제",
       "delete-workspace": "워크스페이스 삭제",
       "toggle-changes-mode": "변경사항 패널 전환",
       "toggle-logs-mode": "로그 패널 전환",

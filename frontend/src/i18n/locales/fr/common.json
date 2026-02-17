@@ -390,6 +390,7 @@
       "rename-workspace": "Renommer l'espace de travail",
       "pin-workspace": "Épingler/Désépingler l'espace de travail",
       "archive-workspace": "Archiver l'espace de travail",
+      "unarchive-workspace": "Désarchiver l'espace de travail",
       "delete-workspace": "Supprimer l'espace de travail",
       "toggle-changes-mode": "Basculer le panneau Modifications",
       "toggle-logs-mode": "Basculer le panneau Logs",

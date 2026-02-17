@@ -390,6 +390,7 @@
       "rename-workspace": "重新命名工作區",
       "pin-workspace": "釘選/取消釘選工作區",
       "archive-workspace": "封存工作區",
+      "unarchive-workspace": "取消封存工作區",
       "delete-workspace": "刪除工作區",
       "toggle-changes-mode": "切換變更面板",
       "toggle-logs-mode": "切換日誌面板",

@@ -390,6 +390,7 @@
       "rename-workspace": "ワークスペースの名前を変更",
       "pin-workspace": "ワークスペースをピン留め/解除",
       "archive-workspace": "ワークスペースをアーカイブ",
+      "unarchive-workspace": "ワークスペースのアーカイブを解除",
       "delete-workspace": "ワークスペースを削除",
       "toggle-changes-mode": "変更パネルの切り替え",
       "toggle-logs-mode": "ログパネルの切り替え",
