@@ -339,24 +339,49 @@ function buildMutationHandlers(
     onUpdate: async ({
       transaction,
     }: MutationFnParams): Promise<{ txid: number[] }> => {
-      const results = await Promise.all(
-        transaction.mutations.map(async (m) => {
-          const { key, changes } = m;
-          const response = await makeRequest(`${mutation.url}/${key}`, {
-            method: 'PATCH',
-            body: JSON.stringify(changes),
-          });
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.message || `Failed to update ${mutation.name}`
-            );
+      if (transaction.mutations.length > 1) {
+        const updates = transaction.mutations.map((m) => {
+          if (!m.key) {
+            throw new Error(`Failed to update ${mutation.name}: missing key`);
           }
-          const result = (await response.json()) as { txid: number };
-          return result.txid;
-        })
+          return {
+            id: String(m.key),
+            ...(m.changes as Record<string, unknown>),
+          };
+        });
+
+        const response = await makeRequest(`${mutation.url}/bulk`, {
+          method: 'POST',
+          body: JSON.stringify({ updates }),
+        });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(
+            error.message || `Failed to bulk update ${mutation.name}`
+          );
+        }
+        const result = (await response.json()) as { txid: number };
+        return { txid: [result.txid] };
+      }
+
+      const mutationItem = transaction.mutations[0];
+      if (!mutationItem?.key) {
+        throw new Error(`Failed to update ${mutation.name}: missing key`);
+      }
+
+      const response = await makeRequest(
+        `${mutation.url}/${mutationItem.key}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(mutationItem.changes),
+        }
       );
-      return { txid: results };
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || `Failed to update ${mutation.name}`);
+      }
+      const result = (await response.json()) as { txid: number };
+      return { txid: [result.txid] };
     },
     onDelete: async ({
       transaction,

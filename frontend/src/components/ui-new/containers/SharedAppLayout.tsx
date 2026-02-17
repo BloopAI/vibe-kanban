@@ -6,7 +6,6 @@ import { SyncErrorProvider } from '@/contexts/SyncErrorContext';
 import { NavbarContainer } from './NavbarContainer';
 import { AppBar } from '../primitives/AppBar';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
-import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useAuth } from '@/hooks/auth/useAuth';
 import {
@@ -18,9 +17,13 @@ import {
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
-import { bulkUpdateProjects } from '@/lib/remoteApi';
+import { useShape } from '@/lib/electric/hooks';
 import { sortProjectsByOrder } from '@/lib/projectOrder';
-import type { Project as RemoteProject } from 'shared/remote-types';
+import {
+  PROJECT_MUTATION,
+  PROJECTS_SHAPE,
+  type Project as RemoteProject,
+} from 'shared/remote-types';
 
 export function SharedAppLayout() {
   const navigate = useNavigate();
@@ -56,9 +59,18 @@ export function SharedAppLayout() {
     }
   }, [organizations, selectedOrgId, setSelectedOrgId]);
 
-  const { data: orgProjects = [], isLoading } = useOrganizationProjects(
-    selectedOrgId || null
+  const projectParams = useMemo(
+    () => ({ organization_id: selectedOrgId || '' }),
+    [selectedOrgId]
   );
+  const {
+    data: orgProjects = [],
+    isLoading,
+    updateMany: updateManyProjects,
+  } = useShape(PROJECTS_SHAPE, projectParams, {
+    enabled: isSignedIn && !!selectedOrgId,
+    mutation: PROJECT_MUTATION,
+  });
   const sortedProjects = useMemo(
     () => sortProjectsByOrder(orgProjects),
     [orgProjects]
@@ -66,10 +78,9 @@ export function SharedAppLayout() {
   const [orderedProjects, setOrderedProjects] =
     useState<RemoteProject[]>(sortedProjects);
   const [isSavingProjectOrder, setIsSavingProjectOrder] = useState(false);
-  const isSyncingProjectOrderRef = useRef(false);
 
   useEffect(() => {
-    if (isSyncingProjectOrderRef.current || isSavingProjectOrder) {
+    if (isSavingProjectOrder) {
       return;
     }
     setOrderedProjects(sortedProjects);
@@ -119,7 +130,7 @@ export function SharedAppLayout() {
 
   const handleProjectsDragEnd = useCallback(
     async ({ source, destination }: DropResult) => {
-      if (isSavingProjectOrder || isSyncingProjectOrderRef.current) {
+      if (isSavingProjectOrder) {
         return;
       }
       if (!destination || source.index === destination.index) {
@@ -137,26 +148,22 @@ export function SharedAppLayout() {
       reordered.splice(destination.index, 0, moved);
       setOrderedProjects(reordered);
       setIsSavingProjectOrder(true);
-      isSyncingProjectOrderRef.current = true;
 
       try {
-        await bulkUpdateProjects(
+        await updateManyProjects(
           reordered.map((project, index) => ({
             id: project.id,
             changes: { sort_order: index },
           }))
-        );
+        ).persisted;
       } catch (error) {
         console.error('Failed to reorder projects:', error);
         setOrderedProjects(previousOrder);
       } finally {
-        window.setTimeout(() => {
-          isSyncingProjectOrderRef.current = false;
-          setIsSavingProjectOrder(false);
-        }, 500);
+        setIsSavingProjectOrder(false);
       }
     },
-    [isSavingProjectOrder, orderedProjects]
+    [isSavingProjectOrder, orderedProjects, updateManyProjects]
   );
 
   const handleCreateOrg = useCallback(async () => {

@@ -54,6 +54,10 @@ export interface UseShapeMutationResult<TRow, TCreate, TUpdate>
   insert: (data: TCreate) => InsertResult<TRow>;
   /** Update a row by ID (optimistic), returns persistence promise */
   update: (id: string, changes: Partial<TUpdate>) => MutationResult;
+  /** Update multiple rows in a single optimistic transaction */
+  updateMany: (
+    updates: Array<{ id: string; changes: Partial<TUpdate> }>
+  ) => MutationResult;
   /** Delete a row by ID (optimistic), returns persistence promise */
   remove: (id: string) => MutationResult;
 }
@@ -178,10 +182,16 @@ export function useShape<
   type TransactionResult = { isPersisted: { promise: Promise<void> } };
   type CollectionWithMutations = {
     insert: (data: unknown) => TransactionResult;
-    update: (
-      id: string,
-      updater: (draft: Record<string, unknown>) => void
-    ) => TransactionResult;
+    update: {
+      (
+        id: string,
+        updater: (draft: Record<string, unknown>) => void
+      ): TransactionResult;
+      (
+        ids: string[],
+        updater: (drafts: Array<Record<string, unknown>>) => void
+      ): TransactionResult;
+    };
     delete: (id: string) => TransactionResult;
   };
   const typedCollection =
@@ -226,6 +236,35 @@ export function useShape<
     [typedCollection]
   );
 
+  const updateMany = useCallback(
+    (updates: Array<{ id: string; changes: unknown }>): MutationResult => {
+      if (!typedCollection || updates.length === 0) {
+        return { persisted: Promise.resolve() };
+      }
+
+      const ids = updates.map((update) => update.id);
+      const changesById = new Map(
+        updates.map((update) => [update.id, update.changes])
+      );
+
+      const tx = typedCollection.update(
+        ids,
+        (drafts: Array<Record<string, unknown>>) => {
+          for (const draft of drafts) {
+            const draftId = String(draft.id ?? '');
+            const changes = changesById.get(draftId);
+            if (changes) {
+              Object.assign(draft, changes);
+            }
+          }
+        }
+      );
+
+      return { persisted: tx.isPersisted.promise };
+    },
+    [typedCollection]
+  );
+
   const remove = useCallback(
     (id: string): MutationResult => {
       if (!typedCollection) {
@@ -249,6 +288,7 @@ export function useShape<
       ...base,
       insert,
       update,
+      updateMany,
       remove,
     } as M extends MutationDefinition<unknown, unknown, unknown>
       ? UseShapeMutationResult<T, MutationCreateType<M>, MutationUpdateType<M>>
