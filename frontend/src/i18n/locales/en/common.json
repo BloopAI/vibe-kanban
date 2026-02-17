@@ -179,6 +179,10 @@
     "pin": "Pin",
     "unpin": "Unpin",
     "archive": "Archive",
+    "unarchive": "Unarchive",
+    "archiveConfirmMessage": "Are you sure you want to archive this workspace? It will be moved to the archived section.",
+    "unarchiveConfirmMessage": "Are you sure you want to unarchive this workspace? It will be moved back to the active section.",
+    "archiveError": "Failed to archive workspace",
     "more": "More actions",
     "rename": {
       "title": "Rename Workspace",
@@ -189,6 +193,8 @@
       "renaming": "Renaming..."
     },
     "unlinkFromIssue": "Unlink from issue",
+    "archiveWorkspace": "Archive workspace",
+    "unarchiveWorkspace": "Unarchive workspace",
     "deleteWorkspace": "Delete workspace",
     "unlink": "Unlink",
     "delete": "Delete",
@@ -398,6 +404,7 @@
       "rename-workspace": "Rename workspace",
       "pin-workspace": "Pin/Unpin workspace",
       "archive-workspace": "Archive workspace",
+      "unarchive-workspace": "Unarchive workspace",
       "delete-workspace": "Delete workspace",
       "toggle-changes-mode": "Toggle Changes panel",
       "toggle-logs-mode": "Toggle Logs panel",

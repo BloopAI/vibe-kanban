@@ -18,6 +18,7 @@ export interface IssueWorkspacesSectionProps {
   onCreateWorkspace?: () => void;
   onUnlinkWorkspace?: (localWorkspaceId: string) => void;
   onDeleteWorkspace?: (localWorkspaceId: string) => void;
+  onArchiveWorkspace?: (localWorkspaceId: string) => void;
   shouldAnimateCreateButton?: boolean;
 }
 
@@ -33,6 +34,7 @@ export function IssueWorkspacesSection({
   onCreateWorkspace,
   onUnlinkWorkspace,
   onDeleteWorkspace,
+  onArchiveWorkspace,
   shouldAnimateCreateButton = false,
 }: IssueWorkspacesSectionProps) {
   const { t } = useTranslation('common');
@@ -76,6 +78,11 @@ export function IssueWorkspacesSection({
                   localWorkspaceId &&
                   workspace.isOwnedByCurrentUser
                     ? () => onDeleteWorkspace(localWorkspaceId)
+                    : undefined
+                }
+                onArchive={
+                  onArchiveWorkspace && localWorkspaceId
+                    ? () => onArchiveWorkspace(localWorkspaceId)
                     : undefined
                 }
               />
