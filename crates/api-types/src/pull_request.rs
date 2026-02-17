@@ -28,6 +28,11 @@ pub struct PullRequest {
     pub updated_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct ListPullRequestsQuery {
+    pub issue_id: Uuid,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ListPullRequestsResponse {
     pub pull_requests: Vec<PullRequest>,

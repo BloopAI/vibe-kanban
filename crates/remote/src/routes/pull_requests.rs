@@ -18,12 +18,10 @@ use crate::{
     auth::RequestContext,
     db::{issues::IssueRepository, pull_requests::PullRequestRepository, workspaces::WorkspaceRepository},
 };
-use api_types::{ListPullRequestsResponse, PullRequest, PullRequestStatus, UpsertPullRequestRequest};
-
-#[derive(Debug, Deserialize)]
-pub struct ListPullRequestsQuery {
-    pub issue_id: Uuid,
-}
+use api_types::{
+    ListPullRequestsQuery, ListPullRequestsResponse, PullRequest, PullRequestStatus,
+    UpsertPullRequestRequest,
+};
 
 #[derive(Debug, Deserialize)]
 pub struct CreatePullRequestRequest {
