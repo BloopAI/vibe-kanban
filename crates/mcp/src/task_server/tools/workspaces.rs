@@ -52,6 +52,29 @@ struct McpListWorkspacesResponse {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct McpUpdateWorkspaceRequest {
+    #[schemars(
+        description = "Workspace ID to update. Optional if running inside that workspace context."
+    )]
+    workspace_id: Option<Uuid>,
+    #[schemars(description = "Set archived state")]
+    archived: Option<bool>,
+    #[schemars(description = "Set pinned state")]
+    pinned: Option<bool>,
+    #[schemars(description = "Set workspace display name (empty string clears it)")]
+    name: Option<String>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct McpUpdateWorkspaceResponse {
+    success: bool,
+    workspace_id: String,
+    archived: bool,
+    pinned: bool,
+    name: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpDeleteWorkspaceRequest {
     #[schemars(
         description = "Workspace ID to delete. Optional if running inside that workspace context."
@@ -140,6 +163,52 @@ impl TaskServer {
             limit,
             offset,
             workspaces: workspace_summaries,
+        })
+    }
+
+    #[tool(
+        description = "Update a workspace's archived, pinned, or name fields. `workspace_id` is optional if running inside that workspace context."
+    )]
+    async fn update_workspace(
+        &self,
+        Parameters(McpUpdateWorkspaceRequest {
+            workspace_id,
+            archived,
+            pinned,
+            name,
+        }): Parameters<McpUpdateWorkspaceRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let workspace_id = match workspace_id {
+            Some(id) => id,
+            None => match self.context.as_ref() {
+                Some(ctx) => ctx.workspace_id,
+                None => {
+                    return Self::err(
+                        "workspace_id is required (not available from workspace context)",
+                        None::<&str>,
+                    );
+                }
+            },
+        };
+
+        let url = self.url(&format!("/api/task-attempts/{}", workspace_id));
+        let payload = serde_json::json!({
+            "archived": archived,
+            "pinned": pinned,
+            "name": name,
+        });
+
+        let updated: Workspace = match self.send_json(self.client.put(&url).json(&payload)).await {
+            Ok(ws) => ws,
+            Err(e) => return Ok(e),
+        };
+
+        TaskServer::success(&McpUpdateWorkspaceResponse {
+            success: true,
+            workspace_id: updated.id.to_string(),
+            archived: updated.archived,
+            pinned: updated.pinned,
+            name: updated.name,
         })
     }
 
